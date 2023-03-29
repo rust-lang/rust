@@ -1,4 +1,4 @@
-use crate::traits::{specialization_graph, translate_substs};
+use crate::traits::specialization_graph;
 
 use super::assembly;
 use super::trait_goals::structural_traits;
@@ -7,7 +7,6 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
-use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::specialization_graph::LeafDef;
 use rustc_infer::traits::Reveal;
@@ -165,7 +164,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             // return ambiguity this would otherwise be incomplete, resulting in
             // unsoundness during coherence (#105782).
             let Some(assoc_def) = fetch_eligible_assoc_item_def(
-                ecx.infcx,
+                ecx,
                 goal.param_env,
                 goal_trait_ref,
                 goal.predicate.def_id(),
@@ -196,8 +195,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 goal_trait_ref.def_id,
                 impl_substs,
             );
-            let substs = translate_substs(
-                ecx.infcx,
+            let substs = ecx.translate_substs(
                 goal.param_env,
                 impl_def_id,
                 impl_substs_with_gat,
@@ -504,15 +502,15 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
 ///
 /// FIXME: We should merge these 3 implementations as it's likely that they otherwise
 /// diverge.
-#[instrument(level = "debug", skip(infcx, param_env), ret)]
+#[instrument(level = "debug", skip(ecx, param_env), ret)]
 fn fetch_eligible_assoc_item_def<'tcx>(
-    infcx: &InferCtxt<'tcx>,
+    ecx: &EvalCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     goal_trait_ref: ty::TraitRef<'tcx>,
     trait_assoc_def_id: DefId,
     impl_def_id: DefId,
 ) -> Result<Option<LeafDef>, NoSolution> {
-    let node_item = specialization_graph::assoc_def(infcx.tcx, impl_def_id, trait_assoc_def_id)
+    let node_item = specialization_graph::assoc_def(ecx.tcx(), impl_def_id, trait_assoc_def_id)
         .map_err(|ErrorGuaranteed { .. }| NoSolution)?;
 
     let eligible = if node_item.is_final() {
@@ -524,7 +522,7 @@ fn fetch_eligible_assoc_item_def<'tcx>(
         // transmute checking and polymorphic MIR optimizations could
         // get a result which isn't correct for all monomorphizations.
         if param_env.reveal() == Reveal::All {
-            let poly_trait_ref = infcx.resolve_vars_if_possible(goal_trait_ref);
+            let poly_trait_ref = ecx.resolve_vars_if_possible(goal_trait_ref);
             !poly_trait_ref.still_further_specializable()
         } else {
             debug!(?node_item.item.def_id, "not eligible due to default");

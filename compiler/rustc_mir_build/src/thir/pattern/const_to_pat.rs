@@ -2,11 +2,12 @@ use rustc_hir as hir;
 use rustc_index::vec::Idx;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
-use rustc_middle::mir::{self, Field};
+use rustc_middle::mir;
 use rustc_middle::thir::{FieldPat, Pat, PatKind};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint;
 use rustc_span::Span;
+use rustc_target::abi::FieldIdx;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCause};
 
@@ -218,7 +219,7 @@ impl<'tcx> ConstToPat<'tcx> {
     ) -> Result<Vec<FieldPat<'tcx>>, FallbackToConstRef> {
         vals.enumerate()
             .map(|(idx, val)| {
-                let field = Field::new(idx);
+                let field = FieldIdx::new(idx);
                 Ok(FieldPat { field, pattern: self.recur(val, false)? })
             })
             .collect()

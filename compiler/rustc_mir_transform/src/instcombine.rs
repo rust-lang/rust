@@ -3,14 +3,14 @@
 use crate::MirPass;
 use rustc_hir::Mutability;
 use rustc_middle::mir::{
-    BinOp, Body, CastKind, Constant, ConstantKind, Field, LocalDecls, Operand, Place,
-    ProjectionElem, Rvalue, SourceInfo, Statement, StatementKind, SwitchTargets, Terminator,
-    TerminatorKind, UnOp,
+    BinOp, Body, CastKind, Constant, ConstantKind, LocalDecls, Operand, Place, ProjectionElem,
+    Rvalue, SourceInfo, Statement, StatementKind, SwitchTargets, Terminator, TerminatorKind, UnOp,
 };
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, ParamEnv, SubstsRef, Ty, TyCtxt};
 use rustc_span::symbol::Symbol;
+use rustc_target::abi::FieldIdx;
 
 pub struct InstCombine;
 
@@ -187,7 +187,7 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
                     for (i, field) in variant.fields.iter().enumerate() {
                         let field_ty = field.ty(self.tcx, substs);
                         if field_ty == *cast_ty {
-                            let place = place.project_deeper(&[ProjectionElem::Field(Field::from_usize(i), *cast_ty)], self.tcx);
+                            let place = place.project_deeper(&[ProjectionElem::Field(FieldIdx::from_usize(i), *cast_ty)], self.tcx);
                             let operand = if operand.is_move() { Operand::Move(place) } else { Operand::Copy(place) };
                             *rvalue = Rvalue::Use(operand);
                             return;

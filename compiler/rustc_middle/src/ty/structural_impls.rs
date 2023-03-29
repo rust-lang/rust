@@ -4,7 +4,7 @@
 //! to help with the tedium.
 
 use crate::mir::interpret;
-use crate::mir::{Field, ProjectionKind};
+use crate::mir::ProjectionKind;
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
 use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
@@ -217,6 +217,7 @@ CloneLiftImpls! {
 // implementation and traversal implementations (the latter only for
 // TyCtxt<'_> interners).
 TrivialTypeTraversalAndLiftImpls! {
+    ::rustc_target::abi::FieldIdx,
     ::rustc_target::abi::VariantIdx,
     crate::middle::region::Scope,
     crate::ty::FloatTy,
@@ -268,7 +269,6 @@ TrivialTypeTraversalAndLiftImpls! {
     ::rustc_span::Span,
     ::rustc_span::symbol::Ident,
     ::rustc_errors::ErrorGuaranteed,
-    Field,
     interpret::Scalar,
     rustc_target::abi::Size,
     ty::BoundVar,

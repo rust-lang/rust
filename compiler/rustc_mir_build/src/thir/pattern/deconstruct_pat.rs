@@ -53,14 +53,14 @@ use smallvec::{smallvec, SmallVec};
 use rustc_data_structures::captures::Captures;
 use rustc_hir::{HirId, RangeEnd};
 use rustc_index::vec::Idx;
-use rustc_middle::mir::{self, Field};
+use rustc_middle::mir;
 use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, VariantDef};
 use rustc_middle::{middle::stability::EvalResult, mir::interpret::ConstValue};
 use rustc_session::lint;
 use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi::{Integer, Size, VariantIdx, FIRST_VARIANT};
+use rustc_target::abi::{FieldIdx, Integer, Size, VariantIdx, FIRST_VARIANT};
 
 use self::Constructor::*;
 use self::SliceKind::*;
@@ -1126,7 +1126,7 @@ impl<'tcx> SplitWildcard<'tcx> {
 /// Note that the number of fields of a constructor may not match the fields declared in the
 /// original struct/variant. This happens if a private or `non_exhaustive` field is uninhabited,
 /// because the code mustn't observe that it is uninhabited. In that case that field is not
-/// included in `fields`. For that reason, when you have a `mir::Field` you must use
+/// included in `fields`. For that reason, when you have a `FieldIdx` you must use
 /// `index_with_declared_idx`.
 #[derive(Debug, Clone, Copy)]
 pub(super) struct Fields<'p, 'tcx> {
@@ -1165,7 +1165,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         cx: &'a MatchCheckCtxt<'p, 'tcx>,
         ty: Ty<'tcx>,
         variant: &'a VariantDef,
-    ) -> impl Iterator<Item = (Field, Ty<'tcx>)> + Captures<'a> + Captures<'p> {
+    ) -> impl Iterator<Item = (FieldIdx, Ty<'tcx>)> + Captures<'a> + Captures<'p> {
         let ty::Adt(adt, substs) = ty.kind() else { bug!() };
         // Whether we must not match the fields of this variant exhaustively.
         let is_non_exhaustive = variant.is_field_list_non_exhaustive() && !adt.did().is_local();
@@ -1180,7 +1180,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
             if is_uninhabited && (!is_visible || is_non_exhaustive) {
                 None
             } else {
-                Some((Field::new(i), ty))
+                Some((FieldIdx::new(i), ty))
             }
         })
     }
@@ -1438,7 +1438,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 ty::Tuple(..) => PatKind::Leaf {
                     subpatterns: subpatterns
                         .enumerate()
-                        .map(|(i, pattern)| FieldPat { field: Field::new(i), pattern })
+                        .map(|(i, pattern)| FieldPat { field: FieldIdx::new(i), pattern })
                         .collect(),
                 },
                 ty::Adt(adt_def, _) if adt_def.is_box() => {

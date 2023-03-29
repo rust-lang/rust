@@ -12,9 +12,7 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::resolve_bound_vars;
 use crate::middle::stability;
 use crate::mir::interpret::{self, Allocation, ConstAllocation};
-use crate::mir::{
-    Body, BorrowCheckResult, Field, Local, Place, PlaceElem, ProjectionKind, Promoted,
-};
+use crate::mir::{Body, BorrowCheckResult, Local, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::query::LocalCrate;
 use crate::thir::Thir;
 use crate::traits;
@@ -65,7 +63,7 @@ use rustc_span::def_id::{DefPathHash, StableCrateId};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi::{Layout, LayoutS, TargetDataLayout, VariantIdx};
+use rustc_target::abi::{FieldIdx, Layout, LayoutS, TargetDataLayout, VariantIdx};
 use rustc_target::spec::abi;
 use rustc_type_ir::sty::TyKind::*;
 use rustc_type_ir::WithCachedTypeInfo;
@@ -2125,7 +2123,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn mk_place_field(self, place: Place<'tcx>, f: Field, ty: Ty<'tcx>) -> Place<'tcx> {
+    pub fn mk_place_field(self, place: Place<'tcx>, f: FieldIdx, ty: Ty<'tcx>) -> Place<'tcx> {
         self.mk_place_elem(place, PlaceElem::Field(f, ty))
     }
 

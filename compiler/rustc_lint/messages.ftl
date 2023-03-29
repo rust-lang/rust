@@ -91,7 +91,7 @@ lint_ty_qualified = usage of qualified `ty::{$ty}`
 lint_lintpass_by_hand = implementing `LintPass` by hand
     .help = try using `declare_lint_pass!` or `impl_lint_pass!` instead
 
-lint_non_existant_doc_keyword = found non-existing keyword `{$keyword}` used in `#[doc(keyword = \"...\")]`
+lint_non_existant_doc_keyword = found non-existing keyword `{$keyword}` used in `#[doc(keyword = "...")]`
     .help = only existing keywords are allowed in core/std
 
 lint_diag_out_of_impl =
@@ -197,7 +197,9 @@ lint_drop_glue =
     types that do not implement `Drop` can still have drop glue, consider instead using `{$needs_drop}` to detect whether a type is trivially dropped
 
 lint_range_endpoint_out_of_range = range endpoint is out of range for `{$ty}`
-    .suggestion = use an inclusive range instead
+
+lint_range_use_inclusive_range = use an inclusive range instead
+
 
 lint_overflowing_bin_hex = literal out of range for `{$ty}`
     .negative_note = the literal `{$lit}` (decimal `{$dec}`) does not fit into the type `{$ty}`

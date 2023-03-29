@@ -15,7 +15,7 @@ use rustc_mir_dataflow::MoveDataParamEnv;
 use rustc_mir_dataflow::{on_all_children_bits, on_all_drop_children_bits};
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use rustc_span::{DesugaringKind, Span};
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{FieldIdx, VariantIdx};
 use std::fmt;
 
 /// During MIR building, Drop terminators are inserted in every place where a drop may occur.
@@ -252,7 +252,7 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, '_, 'tcx> {
         }
     }
 
-    fn field_subpath(&self, path: Self::Path, field: Field) -> Option<Self::Path> {
+    fn field_subpath(&self, path: Self::Path, field: FieldIdx) -> Option<Self::Path> {
         rustc_mir_dataflow::move_path_children_matching(self.ctxt.move_data(), path, |e| match e {
             ProjectionElem::Field(idx, _) => idx == field,
             _ => false,

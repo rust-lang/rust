@@ -6,7 +6,7 @@
 use crate::mir::*;
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_hir as hir;
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{FieldIdx, VariantIdx};
 
 #[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable)]
 pub struct PlaceTy<'tcx> {
@@ -33,7 +33,7 @@ impl<'tcx> PlaceTy<'tcx> {
     ///
     /// Note that the resulting type has not been normalized.
     #[instrument(level = "debug", skip(tcx), ret)]
-    pub fn field_ty(self, tcx: TyCtxt<'tcx>, f: Field) -> Ty<'tcx> {
+    pub fn field_ty(self, tcx: TyCtxt<'tcx>, f: FieldIdx) -> Ty<'tcx> {
         match self.ty.kind() {
             ty::Adt(adt_def, substs) => {
                 let variant_def = match self.variant_index {
@@ -61,14 +61,14 @@ impl<'tcx> PlaceTy<'tcx> {
     /// `place_ty.projection_ty_core(tcx, elem, |...| { ... })`
     /// projects `place_ty` onto `elem`, returning the appropriate
     /// `Ty` or downcast variant corresponding to that projection.
-    /// The `handle_field` callback must map a `Field` to its `Ty`,
+    /// The `handle_field` callback must map a `FieldIdx` to its `Ty`,
     /// (which should be trivial when `T` = `Ty`).
     pub fn projection_ty_core<V, T>(
         self,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         elem: &ProjectionElem<V, T>,
-        mut handle_field: impl FnMut(&Self, Field, T) -> Ty<'tcx>,
+        mut handle_field: impl FnMut(&Self, FieldIdx, T) -> Ty<'tcx>,
         mut handle_opaque_cast: impl FnMut(&Self, T) -> Ty<'tcx>,
     ) -> PlaceTy<'tcx>
     where

@@ -83,5 +83,29 @@ LL |     fluent_messages! { "./missing-message-ref.ftl" }
    |
    = help: you may have meant to use a variable reference (`{$message}`)
 
-error: aborting due to 10 previous errors
+error: invalid escape `\n` in Fluent resource
+  --> $DIR/test.rs:99:24
+   |
+LL |     fluent_messages! { "./invalid-escape.ftl" }
+   |                        ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: os-specific message
+
+error: invalid escape `\"` in Fluent resource
+  --> $DIR/test.rs:99:24
+   |
+LL |     fluent_messages! { "./invalid-escape.ftl" }
+   |                        ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: os-specific message
+
+error: invalid escape `\'` in Fluent resource
+  --> $DIR/test.rs:99:24
+   |
+LL |     fluent_messages! { "./invalid-escape.ftl" }
+   |                        ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: os-specific message
+
+error: aborting due to 13 previous errors
 

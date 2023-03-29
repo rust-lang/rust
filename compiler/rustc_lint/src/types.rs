@@ -4,7 +4,8 @@ use crate::{
         AtomicOrderingFence, AtomicOrderingLoad, AtomicOrderingStore, ImproperCTypes,
         InvalidAtomicOrderingDiag, OnlyCastu8ToChar, OverflowingBinHex, OverflowingBinHexSign,
         OverflowingBinHexSub, OverflowingInt, OverflowingIntHelp, OverflowingLiteral,
-        OverflowingUInt, RangeEndpointOutOfRange, UnusedComparisons, VariantSizeDifferencesDiag,
+        OverflowingUInt, RangeEndpointOutOfRange, UnusedComparisons, UseInclusiveRange,
+        VariantSizeDifferencesDiag,
     },
 };
 use crate::{LateContext, LateLintPass, LintContext};
@@ -136,6 +137,14 @@ fn lint_overflowing_range_endpoint<'tcx>(
     expr: &'tcx hir::Expr<'tcx>,
     ty: &str,
 ) -> bool {
+    // Look past casts to support cases like `0..256 as u8`
+    let (expr, lit_span) = if let Node::Expr(par_expr) = cx.tcx.hir().get(cx.tcx.hir().parent_id(expr.hir_id))
+      && let ExprKind::Cast(_, _) = par_expr.kind {
+        (par_expr, expr.span)
+    } else {
+        (expr, expr.span)
+    };
+
     // We only want to handle exclusive (`..`) ranges,
     // which are represented as `ExprKind::Struct`.
     let par_id = cx.tcx.hir().parent_id(expr.hir_id);
@@ -155,7 +164,6 @@ fn lint_overflowing_range_endpoint<'tcx>(
     if !(eps[1].expr.hir_id == expr.hir_id && lit_val - 1 == max) {
         return false;
     };
-    let Ok(start) = cx.sess().source_map().span_to_snippet(eps[0].span) else { return false };
 
     use rustc_ast::{LitIntType, LitKind};
     let suffix = match lit.node {
@@ -164,16 +172,28 @@ fn lint_overflowing_range_endpoint<'tcx>(
         LitKind::Int(_, LitIntType::Unsuffixed) => "",
         _ => bug!(),
     };
-    cx.emit_spanned_lint(
-        OVERFLOWING_LITERALS,
-        struct_expr.span,
-        RangeEndpointOutOfRange {
-            ty,
-            suggestion: struct_expr.span,
+
+    let sub_sugg = if expr.span.lo() == lit_span.lo() {
+        let Ok(start) = cx.sess().source_map().span_to_snippet(eps[0].span) else { return false };
+        UseInclusiveRange::WithoutParen {
+            sugg: struct_expr.span.shrink_to_lo().to(lit_span.shrink_to_hi()),
             start,
             literal: lit_val - 1,
             suffix,
-        },
+        }
+    } else {
+        UseInclusiveRange::WithParen {
+            eq_sugg: expr.span.shrink_to_lo(),
+            lit_sugg: lit_span,
+            literal: lit_val - 1,
+            suffix,
+        }
+    };
+
+    cx.emit_spanned_lint(
+        OVERFLOWING_LITERALS,
+        struct_expr.span,
+        RangeEndpointOutOfRange { ty, sub: sub_sugg },
     );
 
     // We've just emitted a lint, special cased for `(...)..MAX+1` ranges,
