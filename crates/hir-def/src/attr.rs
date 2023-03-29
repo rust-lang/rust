@@ -7,7 +7,6 @@ use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{
     attrs::{collect_attrs, Attr, AttrId, RawAttrs},
-    name::{AsName, Name},
     HirFileId, InFile,
 };
 use itertools::Itertools;
