@@ -43,7 +43,6 @@ use crate::{
     types::{transparent_newtype_field, CItemKind},
     EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext,
 };
-use ast::Static;
 use hir::IsAsync;
 use rustc_ast::attr;
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
@@ -371,7 +370,7 @@ impl EarlyLintPass for UnsafeCode {
                 }
             }
 
-            ast::ItemKind::Static(Static(..)) => {
+            ast::ItemKind::Static(..) => {
                 if let Some(attr) = attr::find_by_name(&it.attrs, sym::no_mangle) {
                     self.report_unsafe(cx, attr.span, BuiltinUnsafe::NoMangleStatic);
                 }

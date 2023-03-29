@@ -2891,7 +2891,11 @@ pub struct Fn {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub struct Static(pub P<Ty>, pub Mutability, pub Option<P<Expr>>);
+pub struct Static {
+    pub ty: P<Ty>,
+    pub mutability: Mutability,
+    pub expr: Option<P<Expr>>,
+}
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ItemKind {
@@ -2978,7 +2982,7 @@ impl ItemKind {
         match self {
             ItemKind::ExternCrate(..) => "extern crate",
             ItemKind::Use(..) => "`use` import",
-            ItemKind::Static(Static(..)) => "static item",
+            ItemKind::Static(..) => "static item",
             ItemKind::Const(..) => "constant item",
             ItemKind::Fn(..) => "function",
             ItemKind::Mod(..) => "module",
@@ -3087,7 +3091,9 @@ pub enum ForeignItemKind {
 impl From<ForeignItemKind> for ItemKind {
     fn from(foreign_item_kind: ForeignItemKind) -> ItemKind {
         match foreign_item_kind {
-            ForeignItemKind::Static(a, b, c) => ItemKind::Static(Static(a, b, c)),
+            ForeignItemKind::Static(a, b, c) => {
+                ItemKind::Static(Static { ty: a, mutability: b, expr: c })
+            }
             ForeignItemKind::Fn(fn_kind) => ItemKind::Fn(fn_kind),
             ForeignItemKind::TyAlias(ty_alias_kind) => ItemKind::TyAlias(ty_alias_kind),
             ForeignItemKind::MacCall(a) => ItemKind::MacCall(a),
@@ -3100,7 +3106,9 @@ impl TryFrom<ItemKind> for ForeignItemKind {
 
     fn try_from(item_kind: ItemKind) -> Result<ForeignItemKind, ItemKind> {
         Ok(match item_kind {
-            ItemKind::Static(Static(a, b, c)) => ForeignItemKind::Static(a, b, c),
+            ItemKind::Static(Static { ty: a, mutability: b, expr: c }) => {
+                ForeignItemKind::Static(a, b, c)
+            }
             ItemKind::Fn(fn_kind) => ForeignItemKind::Fn(fn_kind),
             ItemKind::TyAlias(ty_alias_kind) => ForeignItemKind::TyAlias(ty_alias_kind),
             ItemKind::MacCall(a) => ForeignItemKind::MacCall(a),

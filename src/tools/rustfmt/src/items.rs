@@ -1805,7 +1805,7 @@ pub(crate) struct StaticParts<'a> {
 impl<'a> StaticParts<'a> {
     pub(crate) fn from_item(item: &'a ast::Item) -> Self {
         let (defaultness, prefix, ty, mutability, expr) = match item.kind {
-            ast::ItemKind::Static(ast::Static(ref ty, mutability, ref expr)) => {
+            ast::ItemKind::Static(ast::Static { ref ty, mutability, ref expr}) => {
                 (None, "static", ty, mutability, expr)
             }
             ast::ItemKind::Const(defaultness, ref ty, ref expr) => {

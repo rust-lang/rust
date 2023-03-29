@@ -990,7 +990,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     replace_span: self.ending_semi_or_hi(item.span),
                 });
             }
-            ItemKind::Static(Static(.., None)) => {
+            ItemKind::Static(Static { expr: None, .. }) => {
                 self.session.emit_err(errors::StaticWithoutBody {
                     span: item.span,
                     replace_span: self.ending_semi_or_hi(item.span),

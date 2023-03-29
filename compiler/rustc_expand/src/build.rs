@@ -620,14 +620,14 @@ impl<'a> ExtCtxt<'a> {
         span: Span,
         name: Ident,
         ty: P<ast::Ty>,
-        mutbl: ast::Mutability,
+        mutability: ast::Mutability,
         expr: P<ast::Expr>,
     ) -> P<ast::Item> {
         self.item(
             span,
             name,
             AttrVec::new(),
-            ast::ItemKind::Static(ast::Static(ty, mutbl, Some(expr))),
+            ast::ItemKind::Static(ast::Static { ty, mutability, expr: Some(expr) }),
         )
     }
 

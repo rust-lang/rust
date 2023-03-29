@@ -228,7 +228,7 @@ impl<'a> Parser<'a> {
             self.bump(); // `static`
             let m = self.parse_mutability();
             let (ident, ty, expr) = self.parse_item_global(Some(m))?;
-            (ident, ItemKind::Static(Static(ty, m, expr)))
+            (ident, ItemKind::Static(Static { ty, mutability: m, expr }))
         } else if let Const::Yes(const_span) = self.parse_constness(Case::Sensitive) {
             // CONST ITEM
             if self.token.is_keyword(kw::Impl) {
@@ -863,7 +863,7 @@ impl<'a> Parser<'a> {
                 let kind = match AssocItemKind::try_from(kind) {
                     Ok(kind) => kind,
                     Err(kind) => match kind {
-                        ItemKind::Static(Static(a, _, b)) => {
+                        ItemKind::Static(Static { ty: a, mutability: _, expr: b }) => {
                             self.sess.emit_err(errors::AssociatedStaticItemNotAllowed { span });
                             AssocItemKind::Const(Defaultness::Final, a, b)
                         }

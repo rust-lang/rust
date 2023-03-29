@@ -157,7 +157,7 @@ impl<'a> State<'a> {
                 self.print_use_tree(tree);
                 self.word(";");
             }
-            ast::ItemKind::Static(Static(ty, mutbl, body)) => {
+            ast::ItemKind::Static(Static { ty, mutability: mutbl, expr: body }) => {
                 let def = ast::Defaultness::Final;
                 self.print_item_const(
                     item.ident,

@@ -106,7 +106,7 @@ impl EarlyLintPass for RedundantStaticLifetimes {
                 // #2438)
             }
 
-            if let ItemKind::Static(Static(ref var_type, _, _)) = item.kind {
+            if let ItemKind::Static(Static{ ty: ref var_type,.. }) = item.kind {
                 Self::visit_type(var_type, cx, "statics have by default a `'static` lifetime");
             }
         }
