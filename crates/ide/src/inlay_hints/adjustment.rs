@@ -264,7 +264,7 @@ mod tests {
         check_with_config(
             InlayHintsConfig { adjustment_hints: AdjustmentHints::Always, ..DISABLED_CONFIG },
             r#"
-//- minicore: coerce_unsized, fn, eq
+//- minicore: coerce_unsized, fn, eq, index
 fn main() {
     let _: u32         = loop {};
                        //^^^^^^^<never-to-any>
@@ -360,6 +360,19 @@ fn main() {
     (()) == {()};
   // ^^&
          // ^^^^&
+    let closure: dyn Fn = || ();
+    closure();
+  //^^^^^^^(
+  //^^^^^^^&
+  //^^^^^^^)
+    Struct[0];
+  //^^^^^^(
+  //^^^^^^&
+  //^^^^^^)
+    &mut Struct[0];
+       //^^^^^^(
+       //^^^^^^&mut $
+       //^^^^^^)
 }
 
 #[derive(Copy, Clone)]
@@ -369,8 +382,13 @@ impl Struct {
     fn by_ref(&self) {}
     fn by_ref_mut(&mut self) {}
 }
+struct StructMut;
+impl core::ops::Index<usize> for Struct {
+    type Output = ();
+}
+impl core::ops::IndexMut for Struct {}
 "#,
-        )
+        );
     }
 
     #[test]
@@ -382,7 +400,7 @@ impl Struct {
                 ..DISABLED_CONFIG
             },
             r#"
-//- minicore: coerce_unsized, fn, eq
+//- minicore: coerce_unsized, fn, eq, index
 fn main() {
 
     Struct.consume();
@@ -457,6 +475,13 @@ fn main() {
     (()) == {()};
   // ^^.&
          // ^^^^.&
+    let closure: dyn Fn = || ();
+    closure();
+  //^^^^^^^.&
+    Struct[0];
+  //^^^^^^.&
+    &mut Struct[0];
+       //^^^^^^.&mut
 }
 
 #[derive(Copy, Clone)]
@@ -466,6 +491,11 @@ impl Struct {
     fn by_ref(&self) {}
     fn by_ref_mut(&mut self) {}
 }
+struct StructMut;
+impl core::ops::Index<usize> for Struct {
+    type Output = ();
+}
+impl core::ops::IndexMut for Struct {}
 "#,
         );
     }
