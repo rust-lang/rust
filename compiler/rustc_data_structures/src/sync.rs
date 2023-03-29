@@ -1,21 +1,46 @@
-//! This module defines types which are thread safe if cfg!(parallel_compiler) is true.
+//! This module defines various operations and types that are implemented in
+//! one way for the serial compiler, and another way the parallel compiler.
 //!
-//! `Lrc` is an alias of `Arc` if cfg!(parallel_compiler) is true, `Rc` otherwise.
+//! Operations
+//! ----------
+//! The parallel versions of operations use Rayon to execute code in parallel,
+//! while the serial versions degenerate straightforwardly to serial execution.
+//! The operations include `join`, `parallel`, `par_iter`, and `par_for_each`.
 //!
-//! `Lock` is a mutex.
-//! It internally uses `parking_lot::Mutex` if cfg!(parallel_compiler) is true,
-//! `RefCell` otherwise.
+//! `rustc_erase_owner!` erases an `OwningRef` owner into `Erased` for the
+//! serial version and `Erased + Send + Sync` for the parallel version.
 //!
-//! `RwLock` is a read-write lock.
-//! It internally uses `parking_lot::RwLock` if cfg!(parallel_compiler) is true,
-//! `RefCell` otherwise.
+//! Types
+//! -----
+//! The parallel versions of types provide various kinds of synchronization,
+//! while the serial compiler versions do not.
 //!
-//! `MTLock` is a mutex which disappears if cfg!(parallel_compiler) is false.
+//! The following table shows how the types are implemented internally. Except
+//! where noted otherwise, the type in column one is defined as a
+//! newtype around the type from column two or three.
 //!
-//! `MTRef` is an immutable reference if cfg!(parallel_compiler), and a mutable reference otherwise.
+//! | Type                    | Serial version      | Parallel version                |
+//! | ----------------------- | ------------------- | ------------------------------- |
+//! | `Lrc<T>`                | `rc::Rc<T>`         | `sync::Arc<T>`                  |
+//! |` Weak<T>`               | `rc::Weak<T>`       | `sync::Weak<T>`                 |
+//! |                         |                     |                                 |
+//! | `AtomicBool`            | `Cell<bool>`        | `atomic::AtomicBool`            |
+//! | `AtomicU32`             | `Cell<u32>`         | `atomic::AtomicU32`             |
+//! | `AtomicU64`             | `Cell<u64>`         | `atomic::AtomicU64`             |
+//! | `AtomicUsize`           | `Cell<usize>`       | `atomic::AtomicUsize`           |
+//! |                         |                     |                                 |
+//! | `Lock<T>`               | `RefCell<T>`        | `parking_lot::Mutex<T>`         |
+//! | `RwLock<T>`             | `RefCell<T>`        | `parking_lot::RwLock<T>`        |
+//! | `MTLock<T>`        [^1] | `T`                 | `Lock<T>`                       |
+//! | `MTLockRef<'a, T>` [^2] | `&'a mut MTLock<T>` | `&'a MTLock<T>`                 |
+//! |                         |                     |                                 |
+//! | `ParallelIterator`      | `Iterator`          | `rayon::iter::ParallelIterator` |
 //!
-//! `rustc_erase_owner!` erases an OwningRef owner into Erased or Erased + Send + Sync
-//! depending on the value of cfg!(parallel_compiler).
+//! [^1] `MTLock` is similar to `Lock`, but the serial version avoids the cost
+//! of a `RefCell`. This is appropriate when interior mutability is not
+//! required.
+//!
+//! [^2] `MTLockRef` is a typedef.
 
 use crate::owning_ref::{Erased, OwningRef};
 use std::collections::HashMap;
@@ -209,7 +234,7 @@ cfg_if! {
             }
         }
 
-        pub type MTRef<'a, T> = &'a mut T;
+        pub type MTLockRef<'a, T> = &'a mut MTLock<T>;
 
         #[derive(Debug, Default)]
         pub struct MTLock<T>(T);
@@ -267,7 +292,7 @@ cfg_if! {
         pub use std::sync::Arc as Lrc;
         pub use std::sync::Weak as Weak;
 
-        pub type MTRef<'a, T> = &'a T;
+        pub type MTLockRef<'a, T> = &'a MTLock<T>;
 
         #[derive(Debug, Default)]
         pub struct MTLock<T>(Lock<T>);
