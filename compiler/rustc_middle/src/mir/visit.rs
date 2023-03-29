@@ -335,6 +335,7 @@ macro_rules! make_mir_visitor {
                         ty::InstanceDef::VTableShim(_def_id) |
                         ty::InstanceDef::ReifyShim(_def_id) |
                         ty::InstanceDef::Virtual(_def_id, _) |
+                        ty::InstanceDef::ThreadLocalShim(_def_id) |
                         ty::InstanceDef::ClosureOnceShim { call_once: _def_id, track_caller: _ } |
                         ty::InstanceDef::DropGlue(_def_id, None) => {}
 

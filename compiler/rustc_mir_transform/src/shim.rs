@@ -76,6 +76,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
 
             build_drop_shim(tcx, def_id, ty)
         }
+        ty::InstanceDef::ThreadLocalShim(..) => build_thread_local_shim(tcx, instance),
         ty::InstanceDef::CloneShim(def_id, ty) => build_clone_shim(tcx, def_id, ty),
         ty::InstanceDef::FnPtrAddrShim(def_id, ty) => build_fn_ptr_addr_shim(tcx, def_id, ty),
         ty::InstanceDef::Virtual(..) => {
@@ -320,6 +321,34 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
     fn array_subpath(&self, _path: Self::Path, _index: u64, _size: u64) -> Option<Self::Path> {
         None
     }
+}
+
+fn build_thread_local_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'tcx> {
+    let def_id = instance.def_id();
+
+    let span = tcx.def_span(def_id);
+    let source_info = SourceInfo::outermost(span);
+
+    let mut blocks = IndexVec::with_capacity(1);
+    blocks.push(BasicBlockData {
+        statements: vec![Statement {
+            source_info,
+            kind: StatementKind::Assign(Box::new((
+                Place::return_place(),
+                Rvalue::ThreadLocalRef(def_id),
+            ))),
+        }],
+        terminator: Some(Terminator { source_info, kind: TerminatorKind::Return }),
+        is_cleanup: false,
+    });
+
+    new_body(
+        MirSource::from_instance(instance),
+        blocks,
+        IndexVec::from_raw(vec![LocalDecl::new(tcx.thread_local_ptr_ty(def_id), span)]),
+        0,
+        span,
+    )
 }
 
 /// Builds a `Clone::clone` shim for `self_ty`. Here, `def_id` is `Clone::clone`.

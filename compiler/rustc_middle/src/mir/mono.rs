@@ -382,6 +382,7 @@ impl<'tcx> CodegenUnit<'tcx> {
                             | InstanceDef::ClosureOnceShim { .. }
                             | InstanceDef::DropGlue(..)
                             | InstanceDef::CloneShim(..)
+                            | InstanceDef::ThreadLocalShim(..)
                             | InstanceDef::FnPtrAddrShim(..) => None,
                         }
                     }

@@ -190,7 +190,8 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::query::TyCtxtAt;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::{
-    self, GenericParamDefKind, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, VtblEntry,
+    self, GenericParamDefKind, Instance, InstanceDef, Ty, TyCtxt, TypeFoldable, TypeVisitableExt,
+    VtblEntry,
 };
 use rustc_middle::{middle::codegen_fn_attrs::CodegenFnAttrFlags, mir::visit::TyContext};
 use rustc_session::config::EntryFnType;
@@ -461,6 +462,16 @@ fn collect_items_rec<'tcx>(
                 for &id in alloc.inner().provenance().ptrs().values() {
                     collect_miri(tcx, id, &mut neighbors);
                 }
+            }
+
+            if tcx.needs_thread_local_shim(def_id) {
+                neighbors.push(respan(
+                    starting_point.span,
+                    MonoItem::Fn(Instance {
+                        def: InstanceDef::ThreadLocalShim(def_id),
+                        substs: InternalSubsts::empty(),
+                    }),
+                ));
             }
         }
         MonoItem::Fn(instance) => {
@@ -962,6 +973,9 @@ fn visit_instance_use<'tcx>(
                 bug!("{:?} being reified", instance);
             }
         }
+        ty::InstanceDef::ThreadLocalShim(..) => {
+            bug!("{:?} being reified", instance);
+        }
         ty::InstanceDef::DropGlue(_, None) => {
             // Don't need to emit noop drop glue if we are calling directly.
             if !is_direct_call {
@@ -1210,11 +1224,9 @@ impl<'v> RootCollector<'_, 'v> {
                 self.output.push(dummy_spanned(MonoItem::GlobalAsm(id)));
             }
             DefKind::Static(..) => {
-                debug!(
-                    "RootCollector: ItemKind::Static({})",
-                    self.tcx.def_path_str(id.owner_id.to_def_id())
-                );
-                self.output.push(dummy_spanned(MonoItem::Static(id.owner_id.to_def_id())));
+                let def_id = id.owner_id.to_def_id();
+                debug!("RootCollector: ItemKind::Static({})", self.tcx.def_path_str(def_id));
+                self.output.push(dummy_spanned(MonoItem::Static(def_id)));
             }
             DefKind::Const => {
                 // const items only generate mono items if they are

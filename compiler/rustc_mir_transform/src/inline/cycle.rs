@@ -83,6 +83,7 @@ pub(crate) fn mir_callgraph_reachable<'tcx>(
                 | InstanceDef::ReifyShim(_)
                 | InstanceDef::FnPtrShim(..)
                 | InstanceDef::ClosureOnceShim { .. }
+                | InstanceDef::ThreadLocalShim { .. }
                 | InstanceDef::CloneShim(..) => {}
 
                 // This shim does not call any other functions, thus there can be no recursion.
