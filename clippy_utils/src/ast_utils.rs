@@ -287,7 +287,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
         (ExternCrate(l), ExternCrate(r)) => l == r,
         (Use(l), Use(r)) => eq_use_tree(l, r),
         (Static(ast::Static{ ty: lt, mutability: lm, expr: le}), Static(ast::Static { ty: rt, mutability: rm, expr: re})) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re),
-        (Const(ld, lt, le), Const(rd, rt, re)) => eq_defaultness(*ld, *rd) && eq_ty(lt, rt) && eq_expr_opt(le, re),
+        (Const(ast::ConstItem { defaultness: ld, ty: lt, expr: le}), Const(ast::ConstItem { defaultness: rd, ty: rt, expr: re} )) => eq_defaultness(*ld, *rd) && eq_ty(lt, rt) && eq_expr_opt(le, re),
         (
             Fn(box ast::Fn {
                 defaultness: ld,
@@ -451,7 +451,7 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
 pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
     use AssocItemKind::*;
     match (l, r) {
-        (Const(ld, lt, le), Const(rd, rt, re)) => eq_defaultness(*ld, *rd) && eq_ty(lt, rt) && eq_expr_opt(le, re),
+        (Const(ast::ConstItem { defaultness: ld, ty: lt, expr: le}), Const(ast::ConstItem { defaultness: rd, ty: rt, expr: re})) => eq_defaultness(*ld, *rd) && eq_ty(lt, rt) && eq_expr_opt(le, re),
         (
             Fn(box ast::Fn {
                 defaultness: ld,
