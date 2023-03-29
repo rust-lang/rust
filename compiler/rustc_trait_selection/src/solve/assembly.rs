@@ -4,8 +4,8 @@ use super::search_graph::OverflowHandler;
 #[cfg(doc)]
 use super::trait_goals::structural_traits::*;
 use super::{EvalCtxt, SolverMode};
+use crate::solve::CanonicalResponseExt;
 use crate::traits::coherence;
-use itertools::Itertools;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
@@ -547,61 +547,41 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
+    /// If there are multiple ways to prove a trait or projection goal, we have
+    /// to somehow try to merge the candidates into one. If that fails, we return
+    /// ambiguity.
     #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn merge_candidates(
         &mut self,
         mut candidates: Vec<Candidate<'tcx>>,
     ) -> QueryResult<'tcx> {
-        match candidates.len() {
-            0 => return Err(NoSolution),
-            1 => return Ok(candidates.pop().unwrap().result),
-            _ => {}
+        // First try merging all candidates. This is complete and fully sound.
+        let responses = candidates.iter().map(|c| c.result).collect::<Vec<_>>();
+        if let Some(result) = self.try_merge_responses(&responses) {
+            return Ok(result);
         }
 
-        if candidates.len() > 1 {
-            let mut i = 0;
-            'outer: while i < candidates.len() {
-                for j in (0..candidates.len()).filter(|&j| i != j) {
-                    if self.candidate_should_be_dropped_in_favor_of(&candidates[i], &candidates[j])
-                    {
-                        debug!(candidate = ?candidates[i], "Dropping candidate #{}/{}", i, candidates.len());
-                        candidates.swap_remove(i);
-                        continue 'outer;
+        // We then check whether we should prioritize `ParamEnv` candidates.
+        //
+        // Doing so is incomplete and would therefore be unsound during coherence.
+        match self.solver_mode() {
+            SolverMode::Coherence => (),
+            // Prioritize `ParamEnv` candidates only if they do not guide inference.
+            //
+            // This is still incomplete as we may add incorrect region bounds.
+            SolverMode::Normal => {
+                let param_env_responses = candidates
+                    .iter()
+                    .filter(|c| matches!(c.source, CandidateSource::ParamEnv(_)))
+                    .map(|c| c.result)
+                    .collect::<Vec<_>>();
+                if let Some(result) = self.try_merge_responses(&param_env_responses) {
+                    if result.has_only_region_constraints() {
+                        return Ok(result);
                     }
                 }
-
-                debug!(candidate = ?candidates[i], "Retaining candidate #{}/{}", i, candidates.len());
-                i += 1;
-            }
-
-            // If there are *STILL* multiple candidates that have *different* response
-            // results, give up and report ambiguity.
-            if candidates.len() > 1 && !candidates.iter().map(|cand| cand.result).all_equal() {
-                let certainty = if candidates.iter().all(|x| {
-                    matches!(x.result.value.certainty, Certainty::Maybe(MaybeCause::Overflow))
-                }) {
-                    Certainty::Maybe(MaybeCause::Overflow)
-                } else {
-                    Certainty::AMBIGUOUS
-                };
-                return self.evaluate_added_goals_and_make_canonical_response(certainty);
             }
         }
-
-        Ok(candidates.pop().unwrap().result)
-    }
-
-    fn candidate_should_be_dropped_in_favor_of(
-        &self,
-        candidate: &Candidate<'tcx>,
-        other: &Candidate<'tcx>,
-    ) -> bool {
-        // FIXME: implement this
-        match (candidate.source, other.source) {
-            (CandidateSource::Impl(_), _)
-            | (CandidateSource::ParamEnv(_), _)
-            | (CandidateSource::AliasBound, _)
-            | (CandidateSource::BuiltinImpl, _) => false,
-        }
+        self.flounder(&responses)
     }
 }
