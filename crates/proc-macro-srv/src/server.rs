@@ -14,7 +14,7 @@ use proc_macro::{
 };
 
 mod token_stream;
-pub use token_stream::TokenStream;
+pub(crate) use token_stream::TokenStream;
 use token_stream::TokenStreamBuilder;
 
 mod symbol;

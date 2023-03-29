@@ -4,15 +4,15 @@ use crate::tt::{self, TokenTree};
 
 #[derive(Debug, Default, Clone)]
 pub struct TokenStream {
-    pub token_trees: Vec<TokenTree>,
+    pub(super) token_trees: Vec<TokenTree>,
 }
 
 impl TokenStream {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         TokenStream::default()
     }
 
-    pub fn with_subtree(subtree: tt::Subtree) -> Self {
+    pub(crate) fn with_subtree(subtree: tt::Subtree) -> Self {
         if subtree.delimiter.kind != tt::DelimiterKind::Invisible {
             TokenStream { token_trees: vec![TokenTree::Subtree(subtree)] }
         } else {
@@ -20,11 +20,11 @@ impl TokenStream {
         }
     }
 
-    pub fn into_subtree(self) -> tt::Subtree {
+    pub(crate) fn into_subtree(self) -> tt::Subtree {
         tt::Subtree { delimiter: tt::Delimiter::UNSPECIFIED, token_trees: self.token_trees }
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub(super) fn is_empty(&self) -> bool {
         self.token_trees.is_empty()
     }
 }
@@ -78,12 +78,12 @@ impl Extend<TokenStream> for TokenStream {
     }
 }
 
-pub struct TokenStreamBuilder {
+pub(super) struct TokenStreamBuilder {
     acc: TokenStream,
 }
 
-/// Public implementation details for the `TokenStream` type, such as iterators.
-pub mod token_stream {
+/// pub(super)lic implementation details for the `TokenStream` type, such as iterators.
+pub(super) mod token_stream {
     use std::str::FromStr;
 
     use super::{tt, TokenStream, TokenTree};

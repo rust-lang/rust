@@ -24,6 +24,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       CC: deny_c
+      # we want to build r-a on stable to check that it keeps building on stable,
+      # but we also want to test our proc-macro-srv which depends on nightly features
       RUSTC_BOOTSTRAP: 1
 
     strategy:

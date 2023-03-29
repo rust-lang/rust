@@ -25,7 +25,7 @@ impl ProcMacros {
     /// *`info` - RustCInfo about the compiler that was used to compile the
     ///           macro crate. This is the information we use to figure out
     ///           which ABI to return
-    pub fn from_lib(
+    pub(crate) fn from_lib(
         lib: &Library,
         symbol_name: String,
         info: RustCInfo,
@@ -37,22 +37,10 @@ impl ProcMacros {
 
             return Ok(Self { exported_macros: macros.to_vec() });
         }
-
-        // if we reached this point, versions didn't match. in testing, we
-        // want that to panic - this could mean that the format of `rustc
-        // --version` no longer matches the format of the version string
-        // stored in the `.rustc` section, and we want to catch that in-tree
-        // with `x.py test`
-        if cfg!(test) {
-            panic!(
-                "sysroot ABI mismatch: dylib rustc version (read from .rustc section): {:?} != proc-macro-srv version (read from 'rustc --version'): {:?}",
-                info.version_string, crate::RUSTC_VERSION_STRING
-            );
-        }
         Err(LoadProcMacroDylibError::AbiMismatch(info.version_string))
     }
 
-    pub fn expand(
+    pub(crate) fn expand(
         &self,
         macro_name: &str,
         macro_body: &tt::Subtree,
@@ -107,7 +95,7 @@ impl ProcMacros {
         Err(proc_macro::bridge::PanicMessage::String("Nothing to expand".to_string()).into())
     }
 
-    pub fn list_macros(&self) -> Vec<(String, ProcMacroKind)> {
+    pub(crate) fn list_macros(&self) -> Vec<(String, ProcMacroKind)> {
         self.exported_macros
             .iter()
             .map(|proc_macro| match proc_macro {
@@ -129,5 +117,11 @@ impl ProcMacros {
 fn test_version_check() {
     let path = paths::AbsPathBuf::assert(crate::proc_macro_test_dylib_path());
     let info = proc_macro_api::read_dylib_info(&path).unwrap();
-    assert_eq!(info.version_string, crate::RUSTC_VERSION_STRING);
+    assert_eq!(
+        info.version_string,
+        crate::RUSTC_VERSION_STRING,
+        "sysroot ABI mismatch: dylib rustc version (read from .rustc section): {:?} != proc-macro-srv version (read from 'rustc --version'): {:?}",
+        info.version_string,
+        crate::RUSTC_VERSION_STRING,
+    );
 }

@@ -13,8 +13,6 @@ use object::Object;
 use paths::AbsPath;
 use proc_macro_api::{read_dylib_info, ProcMacroKind};
 
-use crate::tt;
-
 const NEW_REGISTRAR_SYMBOL: &str = "_rustc_proc_macro_decls_";
 
 fn invalid_data_err(e: impl Into<Box<dyn std::error::Error + Send + Sync>>) -> io::Error {
@@ -152,9 +150,9 @@ impl Expander {
     pub fn expand(
         &self,
         macro_name: &str,
-        macro_body: &tt::Subtree,
-        attributes: Option<&tt::Subtree>,
-    ) -> Result<tt::Subtree, String> {
+        macro_body: &crate::tt::Subtree,
+        attributes: Option<&crate::tt::Subtree>,
+    ) -> Result<crate::tt::Subtree, String> {
         let result = self.inner.proc_macros.expand(macro_name, macro_body, attributes);
         result.map_err(|e| e.as_str().unwrap_or_else(|| "<unknown error>".to_string()))
     }

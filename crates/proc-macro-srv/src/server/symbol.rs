@@ -12,11 +12,11 @@ thread_local! {
 pub struct Symbol(u32);
 
 impl Symbol {
-    pub fn intern(data: &str) -> Symbol {
+    pub(super) fn intern(data: &str) -> Symbol {
         SYMBOL_INTERNER.with(|i| i.borrow_mut().intern(data))
     }
 
-    pub fn text(&self) -> SmolStr {
+    pub(super) fn text(&self) -> SmolStr {
         SYMBOL_INTERNER.with(|i| i.borrow().get(self).clone())
     }
 }
