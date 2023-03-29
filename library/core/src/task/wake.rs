@@ -173,6 +173,7 @@ unsafe impl Sync for RawWakerVTable {}
 #[stable(feature = "futures_api", since = "1.36.0")]
 impl PartialEq for RawWakerVTable {
     fn eq(&self, other: &Self) -> bool {
+        // SAFETY: Comparison is just a bunch of pointer-equality: checking exact variants is unnecessary.
         unsafe { self.v2 == other.v2 }
     }
 }
