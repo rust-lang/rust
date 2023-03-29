@@ -54,6 +54,22 @@ cfg_if::cfg_if! {
     }
 }
 
+// This is the same as musl except that we default to using the system libunwind
+// instead of libgcc.
+#[cfg(target_env = "ohos")]
+cfg_if::cfg_if! {
+    if #[cfg(all(feature = "llvm-libunwind", feature = "system-llvm-libunwind"))] {
+        compile_error!("`llvm-libunwind` and `system-llvm-libunwind` cannot be enabled at the same time");
+    } else if #[cfg(feature = "llvm-libunwind")] {
+        #[link(name = "unwind", kind = "static", modifiers = "-bundle")]
+        extern "C" {}
+    } else {
+        #[link(name = "unwind", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
+        #[link(name = "unwind", cfg(not(target_feature = "crt-static")))]
+        extern "C" {}
+    }
+}
+
 #[cfg(target_os = "android")]
 cfg_if::cfg_if! {
     if #[cfg(feature = "llvm-libunwind")] {
