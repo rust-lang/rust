@@ -151,7 +151,7 @@ impl CoerceMany {
             if let Some(id) = expr {
                 ctx.result.type_mismatches.insert(
                     id.into(),
-                    TypeMismatch { expected: self.merged_ty().clone(), actual: expr_ty.clone() },
+                    TypeMismatch { expected: self.merged_ty(), actual: expr_ty.clone() },
                 );
             }
             cov_mark::hit!(coerce_merge_fail_fallback);

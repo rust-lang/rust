@@ -587,7 +587,7 @@ pub fn callable_sig_from_fnonce(
     let fn_once_trait = FnTrait::FnOnce.get_id(db, krate)?;
     let output_assoc_type = db.trait_data(fn_once_trait).associated_type_by_name(&name![Output])?;
 
-    let mut table = InferenceTable::new(db, env.clone());
+    let mut table = InferenceTable::new(db, env);
     let b = TyBuilder::trait_ref(db, fn_once_trait);
     if b.remaining() != 2 {
         return None;

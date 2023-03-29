@@ -92,7 +92,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, file_id: FileId) -> Option<Vec<Assist>> {
     // if we aren't adding to a crate root, walk backwards such that we support `#[path = ...]` overrides if possible
 
     // build all parent paths of the form `../module_name/mod.rs` and `../module_name.rs`
-    let paths = iter::successors(Some(parent.clone()), |prev| prev.parent()).filter_map(|path| {
+    let paths = iter::successors(Some(parent), |prev| prev.parent()).filter_map(|path| {
         let parent = path.parent()?;
         let (name, _) = path.name_and_extension()?;
         Some(([parent.join(&format!("{name}.rs"))?, path.join("mod.rs")?], name.to_owned()))

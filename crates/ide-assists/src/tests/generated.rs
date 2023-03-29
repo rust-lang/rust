@@ -439,7 +439,7 @@ fn doctest_convert_match_to_let_else() {
         r#####"
 //- minicore: option
 fn foo(opt: Option<()>) {
-    let val = $0match opt {
+    let val$0 = match opt {
         Some(it) => it,
         None => return,
     };

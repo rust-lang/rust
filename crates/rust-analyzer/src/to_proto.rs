@@ -279,7 +279,7 @@ fn completion_item(
 
     let mut lsp_item = lsp_types::CompletionItem {
         label: item.label.to_string(),
-        detail: item.detail.map(|it| it.to_string()),
+        detail: item.detail,
         filter_text: Some(lookup),
         kind: Some(completion_item_kind(item.kind)),
         text_edit: Some(text_edit),

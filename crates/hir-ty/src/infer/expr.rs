@@ -333,7 +333,7 @@ impl<'a> InferenceContext<'a> {
                 let prev_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
                 let prev_ret_ty = mem::replace(&mut self.return_ty, ret_ty.clone());
                 let prev_ret_coercion =
-                    mem::replace(&mut self.return_coercion, Some(CoerceMany::new(ret_ty.clone())));
+                    mem::replace(&mut self.return_coercion, Some(CoerceMany::new(ret_ty)));
                 let prev_resume_yield_tys =
                     mem::replace(&mut self.resume_yield_tys, resume_yield_tys);
 
@@ -404,7 +404,7 @@ impl<'a> InferenceContext<'a> {
                                     .push(callee_ty.clone())
                                     .push(TyBuilder::tuple_with(params.iter().cloned()))
                                     .build();
-                                self.write_method_resolution(tgt_expr, func, subst.clone());
+                                self.write_method_resolution(tgt_expr, func, subst)
                             }
                         }
                         self.write_expr_adj(*callee, adjustments);
@@ -805,7 +805,7 @@ impl<'a> InferenceContext<'a> {
                             .push(self_ty.clone())
                             .push(index_ty.clone())
                             .build();
-                        self.write_method_resolution(tgt_expr, func, substs.clone());
+                        self.write_method_resolution(tgt_expr, func, substs);
                     }
                     self.resolve_associated_type_with_params(
                         self_ty,
@@ -914,7 +914,7 @@ impl<'a> InferenceContext<'a> {
                 (elem_ty, consteval::usize_const(self.db, Some(0), krate))
             }
             Array::ElementList { elements, .. } => {
-                let mut coerce = CoerceMany::new(elem_ty.clone());
+                let mut coerce = CoerceMany::new(elem_ty);
                 for &expr in elements.iter() {
                     let cur_elem_ty = self.infer_expr_inner(expr, &expected);
                     coerce.coerce(self, Some(expr), &cur_elem_ty);
@@ -1222,7 +1222,7 @@ impl<'a> InferenceContext<'a> {
         });
 
         let (break_ty, ty) =
-            self.with_breakable_ctx(BreakableKind::Block, Some(coerce_ty.clone()), label, |this| {
+            self.with_breakable_ctx(BreakableKind::Block, Some(coerce_ty), label, |this| {
                 for stmt in statements {
                     match stmt {
                         Statement::Let { pat, type_ref, initializer, else_branch } => {

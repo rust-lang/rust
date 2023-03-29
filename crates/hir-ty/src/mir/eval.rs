@@ -1414,7 +1414,7 @@ impl Evaluator<'_> {
             }
             CallableDefId::StructId(id) => {
                 let (size, variant_layout, tag) =
-                    self.layout_of_variant(id.into(), generic_args.clone(), &locals)?;
+                    self.layout_of_variant(id.into(), generic_args, &locals)?;
                 let result = self.make_by_layout(
                     size,
                     &variant_layout,
@@ -1425,7 +1425,7 @@ impl Evaluator<'_> {
             }
             CallableDefId::EnumVariantId(id) => {
                 let (size, variant_layout, tag) =
-                    self.layout_of_variant(id.into(), generic_args.clone(), &locals)?;
+                    self.layout_of_variant(id.into(), generic_args, &locals)?;
                 let result = self.make_by_layout(
                     size,
                     &variant_layout,
@@ -1507,7 +1507,7 @@ impl Evaluator<'_> {
                 );
             }
             let (imp, generic_args) =
-                lookup_impl_method(self.db, self.trait_env.clone(), def, generic_args.clone());
+                lookup_impl_method(self.db, self.trait_env.clone(), def, generic_args);
             let generic_args = self.subst_filler(&generic_args, &locals);
             let def = imp.into();
             let mir_body =
