@@ -2891,7 +2891,7 @@ pub struct Fn {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub struct Static {
+pub struct StaticItem {
     pub ty: P<Ty>,
     pub mutability: Mutability,
     pub expr: Option<P<Expr>>,
@@ -2917,7 +2917,7 @@ pub enum ItemKind {
     /// A static item (`static`).
     ///
     /// E.g., `static FOO: i32 = 42;` or `static FOO: &'static str = "bar";`.
-    Static(Box<Static>),
+    Static(Box<StaticItem>),
     /// A constant item (`const`).
     ///
     /// E.g., `const FOO: i32 = 42;`.
@@ -3099,7 +3099,7 @@ impl From<ForeignItemKind> for ItemKind {
     fn from(foreign_item_kind: ForeignItemKind) -> ItemKind {
         match foreign_item_kind {
             ForeignItemKind::Static(a, b, c) => {
-                ItemKind::Static(Static { ty: a, mutability: b, expr: c }.into())
+                ItemKind::Static(StaticItem { ty: a, mutability: b, expr: c }.into())
             }
             ForeignItemKind::Fn(fn_kind) => ItemKind::Fn(fn_kind),
             ForeignItemKind::TyAlias(ty_alias_kind) => ItemKind::TyAlias(ty_alias_kind),
@@ -3113,7 +3113,7 @@ impl TryFrom<ItemKind> for ForeignItemKind {
 
     fn try_from(item_kind: ItemKind) -> Result<ForeignItemKind, ItemKind> {
         Ok(match item_kind {
-            ItemKind::Static(box Static { ty: a, mutability: b, expr: c }) => {
+            ItemKind::Static(box StaticItem { ty: a, mutability: b, expr: c }) => {
                 ForeignItemKind::Static(a, b, c)
             }
             ItemKind::Fn(fn_kind) => ForeignItemKind::Fn(fn_kind),

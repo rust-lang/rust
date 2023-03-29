@@ -286,7 +286,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
     match (l, r) {
         (ExternCrate(l), ExternCrate(r)) => l == r,
         (Use(l), Use(r)) => eq_use_tree(l, r),
-        (Static(box ast::Static{ ty: lt, mutability: lm, expr: le}), Static(box ast::Static { ty: rt, mutability: rm, expr: re})) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re),
+        (Static(box ast::StaticItem { ty: lt, mutability: lm, expr: le}), Static(box ast::StaticItem { ty: rt, mutability: rm, expr: re})) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re),
         (Const(box ast::ConstItem { defaultness: ld, ty: lt, expr: le}), Const(box ast::ConstItem { defaultness: rd, ty: rt, expr: re} )) => eq_defaultness(*ld, *rd) && eq_ty(lt, rt) && eq_expr_opt(le, re),
         (
             Fn(box ast::Fn {

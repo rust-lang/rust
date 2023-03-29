@@ -806,7 +806,7 @@ trait UnusedDelimLint {
         use ast::ItemKind::*;
 
         if let Const(box ast::ConstItem { expr: Some(expr), .. })
-        | Static(box ast::Static { expr: Some(expr), .. }) = &item.kind
+        | Static(box ast::StaticItem { expr: Some(expr), .. }) = &item.kind
         {
             self.check_unused_delims_expr(
                 cx,

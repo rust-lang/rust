@@ -3,7 +3,7 @@ use crate::errors;
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, TrailingToken};
-use ast::Static;
+use ast::StaticItem;
 use rustc_ast::ast::*;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, TokenKind};
@@ -228,7 +228,7 @@ impl<'a> Parser<'a> {
             self.bump(); // `static`
             let m = self.parse_mutability();
             let (ident, ty, expr) = self.parse_item_global(Some(m))?;
-            (ident, ItemKind::Static(Box::new(Static { ty, mutability: m, expr })))
+            (ident, ItemKind::Static(Box::new(StaticItem { ty, mutability: m, expr })))
         } else if let Const::Yes(const_span) = self.parse_constness(Case::Sensitive) {
             // CONST ITEM
             if self.token.is_keyword(kw::Impl) {
@@ -863,7 +863,7 @@ impl<'a> Parser<'a> {
                 let kind = match AssocItemKind::try_from(kind) {
                     Ok(kind) => kind,
                     Err(kind) => match kind {
-                        ItemKind::Static(box Static { ty, mutability: _, expr }) => {
+                        ItemKind::Static(box StaticItem { ty, mutability: _, expr }) => {
                             self.sess.emit_err(errors::AssociatedStaticItemNotAllowed { span });
                             AssocItemKind::Const(Box::new(ConstItem {
                                 defaultness: Defaultness::Final,

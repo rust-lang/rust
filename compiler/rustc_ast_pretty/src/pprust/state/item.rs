@@ -2,7 +2,7 @@ use crate::pp::Breaks::Inconsistent;
 use crate::pprust::state::delimited::IterDelimited;
 use crate::pprust::state::{AnnNode, PrintState, State, INDENT_UNIT};
 
-use ast::Static;
+use ast::StaticItem;
 use rustc_ast as ast;
 use rustc_ast::GenericBound;
 use rustc_ast::ModKind;
@@ -157,7 +157,7 @@ impl<'a> State<'a> {
                 self.print_use_tree(tree);
                 self.word(";");
             }
-            ast::ItemKind::Static(box Static { ty, mutability: mutbl, expr: body }) => {
+            ast::ItemKind::Static(box StaticItem { ty, mutability: mutbl, expr: body }) => {
                 let def = ast::Defaultness::Final;
                 self.print_item_const(
                     item.ident,
