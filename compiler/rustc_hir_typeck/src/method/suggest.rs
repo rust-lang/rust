@@ -245,6 +245,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         None
     }
 
+    fn suggest_missing_writer(
+        &self,
+        rcvr_ty: Ty<'tcx>,
+        args: (&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>]),
+    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+        let (ty_str, _ty_file) = self.tcx.short_ty_string(rcvr_ty);
+        let mut err =
+            struct_span_err!(self.tcx.sess, args.0.span, E0599, "cannot write into `{}`", ty_str);
+        err.span_note(
+            args.0.span,
+            "must implement `io::Write`, `fmt::Write`, or have a `write_fmt` method",
+        );
+        if let ExprKind::Lit(_) = args.0.kind {
+            err.span_help(
+                args.0.span.shrink_to_lo(),
+                "a writer is needed before this format string",
+            );
+        };
+
+        err
+    }
+
     pub fn report_no_match_method_error(
         &self,
         mut span: Span,
@@ -323,16 +345,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        let mut err = struct_span_err!(
-            tcx.sess,
-            span,
-            E0599,
-            "no {} named `{}` found for {} `{}` in the current scope",
-            item_kind,
-            item_name,
-            rcvr_ty.prefix_string(self.tcx),
-            ty_str_reported,
-        );
+        let is_write = sugg_span.ctxt().outer_expn_data().macro_def_id.map_or(false, |def_id| {
+            tcx.is_diagnostic_item(sym::write_macro, def_id)
+                || tcx.is_diagnostic_item(sym::writeln_macro, def_id)
+        }) && item_name.name == Symbol::intern("write_fmt");
+        let mut err = if is_write
+            && let Some(args) = args
+        {
+            self.suggest_missing_writer(rcvr_ty, args)
+        } else {
+            struct_span_err!(
+                tcx.sess,
+                span,
+                E0599,
+                "no {} named `{}` found for {} `{}` in the current scope",
+                item_kind,
+                item_name,
+                rcvr_ty.prefix_string(self.tcx),
+                ty_str_reported,
+            )
+        };
         if tcx.sess.source_map().is_multiline(sugg_span) {
             err.span_label(sugg_span.with_hi(span.lo()), "");
         }
