@@ -12,7 +12,7 @@
 //!
 //! Shareable mutable containers exist to permit mutability in a controlled manner, even in the
 //! presence of aliasing. [`Cell<T>`], [`RefCell<T>`], and [`OnceCell<T>`] allow doing this in
-//! a single-threaded way - they do not implement [`Sync`]. (If you need to do aliasing and
+//! a single-threaded way—they do not implement [`Sync`]. (If you need to do aliasing and
 //! mutation among multiple threads, [`Mutex<T>`], [`RwLock<T>`], [`OnceLock<T>`] or [`atomic`]
 //! types are the correct data structures to do so).
 //!
