@@ -16,7 +16,7 @@
 use std::ops::Index;
 use std::sync::Arc;
 
-use chalk_ir::{cast::Cast, ConstValue, DebruijnIndex, Mutability, Safety, Scalar, TypeFlags};
+use chalk_ir::{cast::Cast, DebruijnIndex, Mutability, Safety, Scalar, TypeFlags};
 use either::Either;
 use hir_def::{
     body::Body,
@@ -37,10 +37,10 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::{always, never};
 
 use crate::{
-    db::HirDatabase, fold_tys, fold_tys_and_consts, infer::coerce::CoerceMany,
-    lower::ImplTraitLoweringMode, static_lifetime, to_assoc_type_id, AliasEq, AliasTy, Const,
-    DomainGoal, GenericArg, Goal, ImplTraitId, InEnvironment, Interner, ProjectionTy, RpitId,
-    Substitution, TraitRef, Ty, TyBuilder, TyExt, TyKind,
+    db::HirDatabase, fold_tys, infer::coerce::CoerceMany, lower::ImplTraitLoweringMode,
+    static_lifetime, to_assoc_type_id, AliasEq, AliasTy, DomainGoal, GenericArg, Goal, ImplTraitId,
+    InEnvironment, Interner, ProjectionTy, RpitId, Substitution, TraitRef, Ty, TyBuilder, TyExt,
+    TyKind,
 };
 
 // This lint has a false positive here. See the link below for details.
@@ -744,43 +744,13 @@ impl<'a> InferenceContext<'a> {
         self.result.standard_types.unknown.clone()
     }
 
-    /// Replaces ConstScalar::Unknown by a new type var, so we can maybe still infer it.
-    fn insert_const_vars_shallow(&mut self, c: Const) -> Const {
-        let data = c.data(Interner);
-        match &data.value {
-            ConstValue::Concrete(cc) => match cc.interned {
-                crate::ConstScalar::Unknown => self.table.new_const_var(data.ty.clone()),
-                _ => c,
-            },
-            _ => c,
-        }
-    }
-
     /// Replaces `Ty::Error` by a new type var, so we can maybe still infer it.
     fn insert_type_vars_shallow(&mut self, ty: Ty) -> Ty {
-        match ty.kind(Interner) {
-            TyKind::Error => self.table.new_type_var(),
-            TyKind::InferenceVar(..) => {
-                let ty_resolved = self.resolve_ty_shallow(&ty);
-                if ty_resolved.is_unknown() {
-                    self.table.new_type_var()
-                } else {
-                    ty
-                }
-            }
-            _ => ty,
-        }
+        self.table.insert_type_vars_shallow(ty)
     }
 
     fn insert_type_vars(&mut self, ty: Ty) -> Ty {
-        fold_tys_and_consts(
-            ty,
-            |x, _| match x {
-                Either::Left(ty) => Either::Left(self.insert_type_vars_shallow(ty)),
-                Either::Right(c) => Either::Right(self.insert_const_vars_shallow(c)),
-            },
-            DebruijnIndex::INNERMOST,
-        )
+        self.table.insert_type_vars(ty)
     }
 
     fn push_obligation(&mut self, o: DomainGoal) {
@@ -850,8 +820,6 @@ impl<'a> InferenceContext<'a> {
             None => return (self.err_ty(), None),
         };
         let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
-        // FIXME: this should resolve assoc items as well, see this example:
-        // https://play.rust-lang.org/?gist=087992e9e22495446c01c0d4e2d69521
         let (resolution, unresolved) = if value_ns {
             match self.resolver.resolve_path_in_value_ns(self.db.upcast(), path) {
                 Some(ResolveValueResult::ValueNs(value)) => match value {
@@ -905,8 +873,68 @@ impl<'a> InferenceContext<'a> {
             TypeNs::SelfType(impl_id) => {
                 let generics = crate::utils::generics(self.db.upcast(), impl_id.into());
                 let substs = generics.placeholder_subst(self.db);
-                let ty = self.db.impl_self_ty(impl_id).substitute(Interner, &substs);
-                self.resolve_variant_on_alias(ty, unresolved, mod_path)
+                let mut ty = self.db.impl_self_ty(impl_id).substitute(Interner, &substs);
+
+                let Some(mut remaining_idx) = unresolved else {
+                    return self.resolve_variant_on_alias(ty, None, mod_path);
+                };
+
+                let mut remaining_segments = path.segments().skip(remaining_idx);
+
+                // We need to try resolving unresolved segments one by one because each may resolve
+                // to a projection, which `TyLoweringContext` cannot handle on its own.
+                while !remaining_segments.is_empty() {
+                    let resolved_segment = path.segments().get(remaining_idx - 1).unwrap();
+                    let current_segment = remaining_segments.take(1);
+
+                    // If we can resolve to an enum variant, it takes priority over associated type
+                    // of the same name.
+                    if let Some((AdtId::EnumId(id), _)) = ty.as_adt() {
+                        let enum_data = self.db.enum_data(id);
+                        let name = current_segment.first().unwrap().name;
+                        if let Some(local_id) = enum_data.variant(name) {
+                            let variant = EnumVariantId { parent: id, local_id };
+                            return if remaining_segments.len() == 1 {
+                                (ty, Some(variant.into()))
+                            } else {
+                                // We still have unresolved paths, but enum variants never have
+                                // associated types!
+                                (self.err_ty(), None)
+                            };
+                        }
+                    }
+
+                    // `lower_partly_resolved_path()` returns `None` as type namespace unless
+                    // `remaining_segments` is empty, which is never the case here. We don't know
+                    // which namespace the new `ty` is in until normalized anyway.
+                    (ty, _) = ctx.lower_partly_resolved_path(
+                        resolution,
+                        resolved_segment,
+                        current_segment,
+                        false,
+                    );
+
+                    ty = self.table.insert_type_vars(ty);
+                    ty = self.table.normalize_associated_types_in(ty);
+                    ty = self.table.resolve_ty_shallow(&ty);
+                    if ty.is_unknown() {
+                        return (self.err_ty(), None);
+                    }
+
+                    // FIXME(inherent_associated_types): update `resolution` based on `ty` here.
+                    remaining_idx += 1;
+                    remaining_segments = remaining_segments.skip(1);
+                }
+
+                let variant = ty.as_adt().and_then(|(id, _)| match id {
+                    AdtId::StructId(s) => Some(VariantId::StructId(s)),
+                    AdtId::UnionId(u) => Some(VariantId::UnionId(u)),
+                    AdtId::EnumId(_) => {
+                        // FIXME Error E0071, expected struct, variant or union type, found enum `Foo`
+                        None
+                    }
+                });
+                (ty, variant)
             }
             TypeNs::TypeAliasId(it) => {
                 let container = it.lookup(self.db.upcast()).container;
