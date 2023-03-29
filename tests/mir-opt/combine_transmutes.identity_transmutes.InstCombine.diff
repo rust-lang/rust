@@ -1,0 +1,43 @@
+- // MIR for `identity_transmutes` before InstCombine
++ // MIR for `identity_transmutes` after InstCombine
+  
+  fn identity_transmutes() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/combine_transmutes.rs:+0:37: +0:37
+      let _1: i32;                         // in scope 0 at $DIR/combine_transmutes.rs:+2:9: +2:11
+      let mut _3: std::vec::Vec<i32>;      // in scope 0 at $DIR/combine_transmutes.rs:+3:46: +3:56
+      scope 1 {
+          debug _a => _1;                  // in scope 1 at $DIR/combine_transmutes.rs:+2:9: +2:11
+          let _2: std::vec::Vec<i32>;      // in scope 1 at $DIR/combine_transmutes.rs:+3:9: +3:11
+          scope 2 {
+              debug _a => _2;              // in scope 2 at $DIR/combine_transmutes.rs:+3:9: +3:11
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/combine_transmutes.rs:+2:9: +2:11
+-         _1 = const 1_i32 as i32 (Transmute); // scope 0 at $DIR/combine_transmutes.rs:+2:14: +2:38
++         _1 = const 1_i32;                // scope 0 at $DIR/combine_transmutes.rs:+2:14: +2:38
+          StorageLive(_2);                 // scope 1 at $DIR/combine_transmutes.rs:+3:9: +3:11
+          StorageLive(_3);                 // scope 1 at $DIR/combine_transmutes.rs:+3:46: +3:56
+          _3 = Vec::<i32>::new() -> bb1;   // scope 1 at $DIR/combine_transmutes.rs:+3:46: +3:56
+                                           // mir::Constant
+                                           // + span: $DIR/combine_transmutes.rs:15:46: 15:54
+                                           // + user_ty: UserType(0)
+                                           // + literal: Const { ty: fn() -> Vec<i32> {Vec::<i32>::new}, val: Value(<ZST>) }
+      }
+  
+      bb1: {
+-         _2 = move _3 as std::vec::Vec<i32> (Transmute); // scope 1 at $DIR/combine_transmutes.rs:+3:14: +3:57
++         _2 = move _3;                    // scope 1 at $DIR/combine_transmutes.rs:+3:14: +3:57
+          StorageDead(_3);                 // scope 1 at $DIR/combine_transmutes.rs:+3:56: +3:57
+          _0 = const ();                   // scope 0 at $DIR/combine_transmutes.rs:+0:37: +4:2
+          drop(_2) -> bb2;                 // scope 1 at $DIR/combine_transmutes.rs:+4:1: +4:2
+      }
+  
+      bb2: {
+          StorageDead(_2);                 // scope 1 at $DIR/combine_transmutes.rs:+4:1: +4:2
+          StorageDead(_1);                 // scope 0 at $DIR/combine_transmutes.rs:+4:1: +4:2
+          return;                          // scope 0 at $DIR/combine_transmutes.rs:+4:2: +4:2
+      }
+  }
+  
