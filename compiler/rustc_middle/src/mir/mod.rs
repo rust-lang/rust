@@ -21,7 +21,7 @@ use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::{self, GeneratorKind, ImplicitSelfKind};
 use rustc_hir::{self as hir, HirId};
 use rustc_session::Session;
-use rustc_target::abi::{Size, VariantIdx};
+use rustc_target::abi::{FieldIdx, Size, VariantIdx};
 
 use polonius_engine::Atom;
 pub use rustc_ast::Mutability;
@@ -1512,7 +1512,7 @@ impl<V, T> ProjectionElem<V, T> {
     }
 
     /// Returns `true` if this is a `Field` projection with the given index.
-    pub fn is_field_to(&self, f: Field) -> bool {
+    pub fn is_field_to(&self, f: FieldIdx) -> bool {
         matches!(*self, Self::Field(x, _) if x == f)
     }
 }
@@ -1520,22 +1520,6 @@ impl<V, T> ProjectionElem<V, T> {
 /// Alias for projections as they appear in `UserTypeProjection`, where we
 /// need neither the `V` parameter for `Index` nor the `T` for `Field`.
 pub type ProjectionKind = ProjectionElem<(), ()>;
-
-rustc_index::newtype_index! {
-    /// A [newtype'd][wrapper] index type in the MIR [control-flow graph][CFG]
-    ///
-    /// A field (e.g., `f` in `_1.f`) is one variant of [`ProjectionElem`]. Conceptually,
-    /// rustc can identify that a field projection refers to either two different regions of memory
-    /// or the same one between the base and the 'projection element'.
-    /// Read more about projections in the [rustc-dev-guide][mir-datatypes]
-    ///
-    /// [wrapper]: https://rustc-dev-guide.rust-lang.org/appendix/glossary.html#newtype
-    /// [CFG]: https://rustc-dev-guide.rust-lang.org/appendix/background.html#cfg
-    /// [mir-datatypes]: https://rustc-dev-guide.rust-lang.org/mir/index.html#mir-data-types
-    #[derive(HashStable)]
-    #[debug_format = "field[{}]"]
-    pub struct Field {}
-}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct PlaceRef<'tcx> {
@@ -2685,12 +2669,17 @@ impl<'tcx> UserTypeProjections {
         self.map_projections(|pat_ty_proj| pat_ty_proj.deref())
     }
 
-    pub fn leaf(self, field: Field) -> Self {
+    pub fn leaf(self, field: FieldIdx) -> Self {
         self.map_projections(|pat_ty_proj| pat_ty_proj.leaf(field))
     }
 
-    pub fn variant(self, adt_def: AdtDef<'tcx>, variant_index: VariantIdx, field: Field) -> Self {
-        self.map_projections(|pat_ty_proj| pat_ty_proj.variant(adt_def, variant_index, field))
+    pub fn variant(
+        self,
+        adt_def: AdtDef<'tcx>,
+        variant_index: VariantIdx,
+        field_index: FieldIdx,
+    ) -> Self {
+        self.map_projections(|pat_ty_proj| pat_ty_proj.variant(adt_def, variant_index, field_index))
     }
 }
 
@@ -2733,7 +2722,7 @@ impl UserTypeProjection {
         self
     }
 
-    pub(crate) fn leaf(mut self, field: Field) -> Self {
+    pub(crate) fn leaf(mut self, field: FieldIdx) -> Self {
         self.projs.push(ProjectionElem::Field(field, ()));
         self
     }
@@ -2742,13 +2731,13 @@ impl UserTypeProjection {
         mut self,
         adt_def: AdtDef<'_>,
         variant_index: VariantIdx,
-        field: Field,
+        field_index: FieldIdx,
     ) -> Self {
         self.projs.push(ProjectionElem::Downcast(
             Some(adt_def.variant(variant_index).name),
             variant_index,
         ));
-        self.projs.push(ProjectionElem::Field(field, ()));
+        self.projs.push(ProjectionElem::Field(field_index, ()));
         self
     }
 }

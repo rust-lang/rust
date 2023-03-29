@@ -17,6 +17,7 @@ use rustc_middle::thir::*;
 use rustc_middle::ty::cast::{mir_cast_kind, CastTy};
 use rustc_middle::ty::{self, Ty, UpvarSubsts};
 use rustc_span::Span;
+use rustc_target::abi::FieldIdx;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Returns an rvalue suitable for use until the end of the current
@@ -553,8 +554,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     result_value,
                     Rvalue::CheckedBinaryOp(op, Box::new((lhs.to_copy(), rhs.to_copy()))),
                 );
-                let val_fld = Field::new(0);
-                let of_fld = Field::new(1);
+                let val_fld = FieldIdx::new(0);
+                let of_fld = FieldIdx::new(1);
 
                 let tcx = self.tcx;
                 let val = tcx.mk_place_field(result_value, val_fld, ty);

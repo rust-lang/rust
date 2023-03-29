@@ -9,15 +9,15 @@ use rustc_hir::GeneratorKind;
 use rustc_infer::infer::{LateBoundRegionConversionTime, TyCtxtInferExt};
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::{
-    AggregateKind, Constant, FakeReadCause, Field, Local, LocalInfo, LocalKind, Location, Operand,
-    Place, PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
+    AggregateKind, Constant, FakeReadCause, Local, LocalInfo, LocalKind, Location, Operand, Place,
+    PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
 };
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{symbol::sym, Span, Symbol, DUMMY_SP};
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
     type_known_to_meet_bound_modulo_regions, Obligation, ObligationCause,
@@ -302,7 +302,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     fn describe_field(
         &self,
         place: PlaceRef<'tcx>,
-        field: Field,
+        field: FieldIdx,
         including_tuple_field: IncludingTupleField,
     ) -> Option<String> {
         let place_ty = match place {
@@ -331,7 +331,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     fn describe_field_from_ty(
         &self,
         ty: Ty<'_>,
-        field: Field,
+        field: FieldIdx,
         variant_index: Option<VariantIdx>,
         including_tuple_field: IncludingTupleField,
     ) -> Option<String> {

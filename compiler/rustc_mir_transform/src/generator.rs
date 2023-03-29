@@ -73,7 +73,7 @@ use rustc_mir_dataflow::{self, Analysis};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_target::spec::PanicStrategy;
 use std::{iter, ops};
 
@@ -162,9 +162,10 @@ impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
                 place,
                 Place {
                     local: SELF_ARG,
-                    projection: self
-                        .tcx()
-                        .mk_place_elems(&[ProjectionElem::Field(Field::new(0), self.ref_gen_ty)]),
+                    projection: self.tcx().mk_place_elems(&[ProjectionElem::Field(
+                        FieldIdx::new(0),
+                        self.ref_gen_ty,
+                    )]),
                 },
                 self.tcx,
             );
@@ -297,7 +298,7 @@ impl<'tcx> TransformVisitor<'tcx> {
         let self_place = Place::from(SELF_ARG);
         let base = self.tcx.mk_place_downcast_unnamed(self_place, variant_index);
         let mut projection = base.projection.to_vec();
-        projection.push(ProjectionElem::Field(Field::new(idx), ty));
+        projection.push(ProjectionElem::Field(FieldIdx::new(idx), ty));
 
         Place { local: base.local, projection: self.tcx.mk_place_elems(&projection) }
     }
@@ -967,7 +968,7 @@ fn compute_layout<'tcx>(
 
     // Build the generator variant field list.
     // Create a map from local indices to generator struct indices.
-    let mut variant_fields: IndexVec<VariantIdx, IndexVec<Field, GeneratorSavedLocal>> =
+    let mut variant_fields: IndexVec<VariantIdx, IndexVec<FieldIdx, GeneratorSavedLocal>> =
         iter::repeat(IndexVec::new()).take(RESERVED_VARIANTS).collect();
     let mut remap = FxHashMap::default();
     for (suspension_point_idx, live_locals) in live_locals_at_suspension_points.iter().enumerate() {

@@ -9,6 +9,7 @@ use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_target::abi::FieldIdx;
 
 /// Constructs the types used when accessing a Box's pointer
 pub fn build_ptr_tys<'tcx>(
@@ -32,9 +33,9 @@ pub fn build_projection<'tcx>(
     ptr_ty: Ty<'tcx>,
 ) -> [PlaceElem<'tcx>; 3] {
     [
-        PlaceElem::Field(Field::new(0), unique_ty),
-        PlaceElem::Field(Field::new(0), nonnull_ty),
-        PlaceElem::Field(Field::new(0), ptr_ty),
+        PlaceElem::Field(FieldIdx::new(0), unique_ty),
+        PlaceElem::Field(FieldIdx::new(0), nonnull_ty),
+        PlaceElem::Field(FieldIdx::new(0), ptr_ty),
     ]
 }
 

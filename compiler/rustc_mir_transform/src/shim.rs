@@ -5,7 +5,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::InternalSubsts;
 use rustc_middle::ty::{self, EarlyBinder, GeneratorSubsts, Ty, TyCtxt};
-use rustc_target::abi::{VariantIdx, FIRST_VARIANT};
+use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 
 use rustc_index::vec::{Idx, IndexVec};
 
@@ -309,7 +309,7 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
 
     fn clear_drop_flag(&mut self, _location: Location, _path: Self::Path, _mode: DropFlagMode) {}
 
-    fn field_subpath(&self, _path: Self::Path, _field: Field) -> Option<Self::Path> {
+    fn field_subpath(&self, _path: Self::Path, _field: FieldIdx) -> Option<Self::Path> {
         None
     }
     fn deref_subpath(&self, _path: Self::Path) -> Option<Self::Path> {
@@ -530,7 +530,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
             // created by block 2*i. We store this block in `unwind` so that the next clone block
             // will unwind to it if cloning fails.
 
-            let field = Field::new(i);
+            let field = FieldIdx::new(i);
             let src_field = self.tcx.mk_place_field(src, field, ity);
 
             let dest_field = self.tcx.mk_place_field(dest, field, ity);
@@ -753,7 +753,7 @@ fn build_call_shim<'tcx>(
     if let Some(untuple_args) = untuple_args {
         let tuple_arg = Local::new(1 + (sig.inputs().len() - 1));
         args.extend(untuple_args.iter().enumerate().map(|(i, ity)| {
-            Operand::Move(tcx.mk_place_field(Place::from(tuple_arg), Field::new(i), *ity))
+            Operand::Move(tcx.mk_place_field(Place::from(tuple_arg), FieldIdx::new(i), *ity))
         }));
     }
 

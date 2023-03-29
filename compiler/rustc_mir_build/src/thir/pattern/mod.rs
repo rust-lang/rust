@@ -21,12 +21,13 @@ use rustc_middle::mir::interpret::{
     ConstValue, ErrorHandled, LitToConstError, LitToConstInput, Scalar,
 };
 use rustc_middle::mir::{self, UserTypeProjection};
-use rustc_middle::mir::{BorrowKind, Field, Mutability};
+use rustc_middle::mir::{BorrowKind, Mutability};
 use rustc_middle::thir::{Ascription, BindingMode, FieldPat, LocalVarId, Pat, PatKind, PatRange};
 use rustc_middle::ty::subst::{GenericArg, SubstsRef};
 use rustc_middle::ty::CanonicalUserTypeAnnotation;
 use rustc_middle::ty::{self, AdtDef, ConstKind, Region, Ty, TyCtxt, UserType};
 use rustc_span::{Span, Symbol};
+use rustc_target::abi::FieldIdx;
 
 use std::cmp::Ordering;
 
@@ -356,7 +357,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let subpatterns = fields
                     .iter()
                     .map(|field| FieldPat {
-                        field: Field::new(self.typeck_results.field_index(field.hir_id)),
+                        field: FieldIdx::new(self.typeck_results.field_index(field.hir_id)),
                         pattern: self.lower_pattern(&field.pat),
                     })
                     .collect();
@@ -379,7 +380,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         pats.iter()
             .enumerate_and_adjust(expected_len, gap_pos)
             .map(|(i, subpattern)| FieldPat {
-                field: Field::new(i),
+                field: FieldIdx::new(i),
                 pattern: self.lower_pattern(subpattern),
             })
             .collect()
@@ -723,7 +724,7 @@ macro_rules! ClonePatternFoldableImpls {
 }
 
 ClonePatternFoldableImpls! { <'tcx>
-    Span, Field, Mutability, Symbol, LocalVarId, usize,
+    Span, FieldIdx, Mutability, Symbol, LocalVarId, usize,
     Region<'tcx>, Ty<'tcx>, BindingMode, AdtDef<'tcx>,
     SubstsRef<'tcx>, &'tcx GenericArg<'tcx>, UserType<'tcx>,
     UserTypeProjection, CanonicalUserTypeAnnotation<'tcx>

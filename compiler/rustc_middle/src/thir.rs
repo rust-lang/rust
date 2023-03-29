@@ -17,14 +17,14 @@ use rustc_index::newtype_index;
 use rustc_index::vec::IndexVec;
 use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::AllocId;
-use rustc_middle::mir::{self, BinOp, BorrowKind, FakeReadCause, Field, Mutability, UnOp};
+use rustc_middle::mir::{self, BinOp, BorrowKind, FakeReadCause, Mutability, UnOp};
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, AdtDef, FnSig, Ty, UpvarSubsts};
 use rustc_middle::ty::{CanonicalUserType, CanonicalUserTypeAnnotation};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use std::fmt;
 use std::ops::Index;
@@ -366,7 +366,7 @@ pub enum ExprKind<'tcx> {
         /// Variant containing the field.
         variant_index: VariantIdx,
         /// This can be a named (`.foo`) or unnamed (`.0`) field.
-        name: Field,
+        name: FieldIdx,
     },
     /// A *non-overloaded* indexing operation.
     Index {
@@ -491,7 +491,7 @@ pub enum ExprKind<'tcx> {
 /// This is used in struct constructors.
 #[derive(Clone, Debug, HashStable)]
 pub struct FieldExpr {
-    pub name: Field,
+    pub name: FieldIdx,
     pub expr: ExprId,
 }
 
@@ -570,7 +570,7 @@ pub enum BindingMode {
 
 #[derive(Clone, Debug, HashStable)]
 pub struct FieldPat<'tcx> {
-    pub field: Field,
+    pub field: FieldIdx,
     pub pattern: Box<Pat<'tcx>>,
 }
 

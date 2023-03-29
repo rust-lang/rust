@@ -25,6 +25,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_span::Symbol;
+use rustc_target::abi::FieldIdx;
 use rustc_target::spec::abi::Abi;
 
 use super::lints;
@@ -793,7 +794,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let mutability = captured_place.mutability;
 
                 let mut projs = closure_env_projs.clone();
-                projs.push(ProjectionElem::Field(Field::new(i), ty));
+                projs.push(ProjectionElem::Field(FieldIdx::new(i), ty));
                 match capture {
                     ty::UpvarCapture::ByValue => {}
                     ty::UpvarCapture::ByRef(..) => {

@@ -40,7 +40,7 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{FieldIdx, VariantIdx};
 
 use crate::lattice::{HasBottom, HasTop};
 use crate::{
@@ -919,7 +919,7 @@ impl<V: HasTop> ValueOrPlace<V> {
 /// Although only field projections are currently allowed, this could change in the future.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum TrackElem {
-    Field(Field),
+    Field(FieldIdx),
     Variant(VariantIdx),
     Discriminant,
 }
@@ -941,7 +941,7 @@ pub fn iter_fields<'tcx>(
     ty: Ty<'tcx>,
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    mut f: impl FnMut(Option<VariantIdx>, Field, Ty<'tcx>),
+    mut f: impl FnMut(Option<VariantIdx>, FieldIdx, Ty<'tcx>),
 ) {
     match ty.kind() {
         ty::Tuple(list) => {

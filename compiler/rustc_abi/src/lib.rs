@@ -1057,6 +1057,32 @@ impl Scalar {
     }
 }
 
+rustc_index::newtype_index! {
+    /// The *source-order* index of a field in a variant.
+    ///
+    /// This is how most code after type checking refers to fields, rather than
+    /// using names (as names have hygiene complications and more complex lookup).
+    ///
+    /// Particularly for `repr(Rust)` types, this may not be the same as *layout* order.
+    /// (It is for `repr(C)` `struct`s, however.)
+    ///
+    /// For example, in the following types,
+    /// ```rust
+    /// # enum Never {}
+    /// # #[repr(u16)]
+    /// enum Demo1 {
+    ///    Variant0 { a: Never, b: i32 } = 100,
+    ///    Variant1 { c: u8, d: u64 } = 10,
+    /// }
+    /// struct Demo2 { e: u8, f: u16, g: u8 }
+    /// ```
+    /// `b` is `FieldIdx(1)` in `VariantIdx(0)`,
+    /// `d` is `FieldIdx(1)` in `VariantIdx(1)`, and
+    /// `f` is `FieldIdx(1)` in `VariantIdx(0)`.
+    #[derive(HashStable_Generic)]
+    pub struct FieldIdx {}
+}
+
 /// Describes how the fields of a type are located in memory.
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]

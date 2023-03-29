@@ -10,6 +10,7 @@ use rustc_index::vec::Idx;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::CanonicalUserTypeAnnotation;
+use rustc_target::abi::FieldIdx;
 use std::iter;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -344,7 +345,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .collect();
 
                 let field_names: Vec<_> =
-                    (0..adt_def.variant(variant_index).fields.len()).map(Field::new).collect();
+                    (0..adt_def.variant(variant_index).fields.len()).map(FieldIdx::new).collect();
 
                 let fields: Vec<_> = if let Some(FruInfo { base, field_types }) = base {
                     let place_builder =
