@@ -547,7 +547,7 @@ impl<'a> CompletionContext<'a> {
         self.krate != defining_crate && attrs.has_doc_hidden()
     }
 
-    pub fn doc_aliases(&self, scope_def: ScopeDef) -> Vec<syntax::SmolStr> {
+    fn doc_aliases(&self, scope_def: ScopeDef) -> Vec<syntax::SmolStr> {
         if let Some(attrs) = scope_def.attrs(self.db) {
             attrs.doc_aliases()
         } else {
