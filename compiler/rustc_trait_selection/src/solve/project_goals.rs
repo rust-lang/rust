@@ -17,7 +17,6 @@ use rustc_middle::ty::ProjectionPredicate;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{ToPredicate, TypeVisitableExt};
 use rustc_span::{sym, DUMMY_SP};
-use std::iter;
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     #[instrument(level = "debug", skip(self), ret)]
@@ -144,9 +143,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         let goal_trait_ref = goal.predicate.projection_ty.trait_ref(tcx);
         let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::ForLookup };
-        if iter::zip(goal_trait_ref.substs, impl_trait_ref.skip_binder().substs)
-            .any(|(goal, imp)| !drcx.generic_args_may_unify(goal, imp))
-        {
+        if !drcx.substs_refs_may_unify(goal_trait_ref.substs, impl_trait_ref.skip_binder().substs) {
             return Err(NoSolution);
         }
 

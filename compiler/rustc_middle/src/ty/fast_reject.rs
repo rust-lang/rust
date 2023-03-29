@@ -1,6 +1,6 @@
 use crate::mir::Mutability;
 use crate::ty::subst::GenericArgKind;
-use crate::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use crate::ty::{self, SubstsRef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_hir::def_id::DefId;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -188,22 +188,24 @@ pub struct DeepRejectCtxt {
 }
 
 impl DeepRejectCtxt {
-    pub fn generic_args_may_unify<'tcx>(
+    pub fn substs_refs_may_unify<'tcx>(
         self,
-        obligation_arg: ty::GenericArg<'tcx>,
-        impl_arg: ty::GenericArg<'tcx>,
+        obligation_substs: SubstsRef<'tcx>,
+        impl_substs: SubstsRef<'tcx>,
     ) -> bool {
-        match (obligation_arg.unpack(), impl_arg.unpack()) {
-            // We don't fast reject based on regions for now.
-            (GenericArgKind::Lifetime(_), GenericArgKind::Lifetime(_)) => true,
-            (GenericArgKind::Type(obl), GenericArgKind::Type(imp)) => {
-                self.types_may_unify(obl, imp)
+        iter::zip(obligation_substs, impl_substs).all(|(obl, imp)| {
+            match (obl.unpack(), imp.unpack()) {
+                // We don't fast reject based on regions for now.
+                (GenericArgKind::Lifetime(_), GenericArgKind::Lifetime(_)) => true,
+                (GenericArgKind::Type(obl), GenericArgKind::Type(imp)) => {
+                    self.types_may_unify(obl, imp)
+                }
+                (GenericArgKind::Const(obl), GenericArgKind::Const(imp)) => {
+                    self.consts_may_unify(obl, imp)
+                }
+                _ => bug!("kind mismatch: {obl} {imp}"),
             }
-            (GenericArgKind::Const(obl), GenericArgKind::Const(imp)) => {
-                self.consts_may_unify(obl, imp)
-            }
-            _ => bug!("kind mismatch: {obligation_arg} {impl_arg}"),
-        }
+        })
     }
 
     pub fn types_may_unify<'tcx>(self, obligation_ty: Ty<'tcx>, impl_ty: Ty<'tcx>) -> bool {
@@ -258,9 +260,7 @@ impl DeepRejectCtxt {
             },
             ty::Adt(obl_def, obl_substs) => match k {
                 &ty::Adt(impl_def, impl_substs) => {
-                    obl_def == impl_def
-                        && iter::zip(obl_substs, impl_substs)
-                            .all(|(obl, imp)| self.generic_args_may_unify(obl, imp))
+                    obl_def == impl_def && self.substs_refs_may_unify(obl_substs, impl_substs)
                 }
                 _ => false,
             },
