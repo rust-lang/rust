@@ -2378,7 +2378,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     }
 
     /// Binary searches this `VecDeque` for a given element.
-    /// This behaves similarly to [`contains`] if this `VecDeque` is sorted.
+    /// If the `VecDeque` is not sorted, the returned result is unspecified and
+    /// meaningless.
     ///
     /// If the value is found then [`Result::Ok`] is returned, containing the
     /// index of the matching element. If there are multiple matches, then any
@@ -2434,12 +2435,13 @@ impl<T, A: Allocator> VecDeque<T, A> {
     }
 
     /// Binary searches this `VecDeque` with a comparator function.
-    /// This behaves similarly to [`contains`] if this `VecDeque` is sorted.
     ///
-    /// The comparator function should implement an order consistent
-    /// with the sort order of the deque, returning an order code that
-    /// indicates whether its argument is `Less`, `Equal` or `Greater`
-    /// than the desired target.
+    /// The comparator function should return an order code that indicates
+    /// whether its argument is `Less`, `Equal` or `Greater` the desired
+    /// target.
+    /// If the `VecDeque` is not sorted or if the comparator function does not
+    /// implement an order consistent with the sort order of the underlying
+    /// `VecDeque`, the returned result is unspecified and meaningless.
     ///
     /// If the value is found then [`Result::Ok`] is returned, containing the
     /// index of the matching element. If there are multiple matches, then any
@@ -2489,10 +2491,11 @@ impl<T, A: Allocator> VecDeque<T, A> {
     }
 
     /// Binary searches this `VecDeque` with a key extraction function.
-    /// This behaves similarly to [`contains`] if this `VecDeque` is sorted.
     ///
     /// Assumes that the deque is sorted by the key, for instance with
     /// [`make_contiguous().sort_by_key()`] using the same key extraction function.
+    /// If the deque is not sorted by the key, the returned result is
+    /// unspecified and meaningless.
     ///
     /// If the value is found then [`Result::Ok`] is returned, containing the
     /// index of the matching element. If there are multiple matches, then any

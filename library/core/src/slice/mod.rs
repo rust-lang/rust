@@ -2343,7 +2343,8 @@ impl<T> [T] {
     }
 
     /// Binary searches this slice for a given element.
-    /// This behaves similarly to [`contains`] if this slice is sorted.
+    /// If the slice is not sorted, the returned result is unspecified and
+    /// meaningless.
     ///
     /// If the value is found then [`Result::Ok`] is returned, containing the
     /// index of the matching element. If there are multiple matches, then any
@@ -2418,12 +2419,13 @@ impl<T> [T] {
     }
 
     /// Binary searches this slice with a comparator function.
-    /// This behaves similarly to [`contains`] if this slice is sorted.
     ///
-    /// The comparator function should implement an order consistent
-    /// with the sort order of the underlying slice, returning an
-    /// order code that indicates whether its argument is `Less`,
-    /// `Equal` or `Greater` the desired target.
+    /// The comparator function should return an order code that indicates
+    /// whether its argument is `Less`, `Equal` or `Greater` the desired
+    /// target.
+    /// If the slice is not sorted or if the comparator function does not
+    /// implement an order consistent with the sort order of the underlying
+    /// slice, the returned result is unspecified and meaningless.
     ///
     /// If the value is found then [`Result::Ok`] is returned, containing the
     /// index of the matching element. If there are multiple matches, then any
@@ -2504,10 +2506,11 @@ impl<T> [T] {
     }
 
     /// Binary searches this slice with a key extraction function.
-    /// This behaves similarly to [`contains`] if this slice is sorted.
     ///
     /// Assumes that the slice is sorted by the key, for instance with
     /// [`sort_by_key`] using the same key extraction function.
+    /// If the slice is not sorted by the key, the returned result is
+    /// unspecified and meaningless.
     ///
     /// If the value is found then [`Result::Ok`] is returned, containing the
     /// index of the matching element. If there are multiple matches, then any
