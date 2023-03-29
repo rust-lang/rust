@@ -466,7 +466,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 }
             }
 
-            BorrowKind::Mut { .. } => {
+            BorrowKind::Mut { .. } | BorrowKind::DerefMut => {
                 let ty = place.ty(self.body, self.tcx).ty;
 
                 // In theory, any zero-sized value could be borrowed

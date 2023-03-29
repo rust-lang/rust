@@ -259,7 +259,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                                 self.requires_unsafe(pat.span, BorrowOfLayoutConstrainedField);
                             }
                         }
-                        BorrowKind::Mut { .. } => {
+                        BorrowKind::Mut { .. } | BorrowKind::DerefMut => {
                             self.requires_unsafe(pat.span, MutationOfLayoutConstrainedField);
                         }
                     }
@@ -452,7 +452,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                         {
                             self.requires_unsafe(expr.span, BorrowOfLayoutConstrainedField)
                         }
-                        BorrowKind::Mut { .. } => {
+                        BorrowKind::Mut { .. } | BorrowKind::DerefMut => {
                             self.requires_unsafe(expr.span, MutationOfLayoutConstrainedField)
                         }
                         BorrowKind::Shallow | BorrowKind::Shared | BorrowKind::Unique => {}

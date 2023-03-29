@@ -228,6 +228,23 @@ pub enum BorrowKind {
         /// (i.e., `adjustment::Adjust::Borrow`).
         allow_two_phase_borrow: bool,
     },
+
+    /// Corresponds to the borrow of the receiver in `DerefMut::deref_mut`. We don't want
+    /// to require the `mut` keyword for deref assignments on variables that implement
+    /// `DerefMut` to be more consistent with how we handle `&mut` in that case. More specifically
+    /// we want to allow the following to compile:
+    ///
+    /// ```ignore (rust)
+    /// fn bar_mut(y: RefMut<'_, u32>) {
+    ///     *y = 3;
+    /// }
+    /// ```
+    ///
+    /// given that the `mut` on mutable references is implicit too.
+    ///
+    /// `BorrowKind::DerefMut` is necessary in order to allow the borrow checker to let
+    /// this pass without `y` being `mut`.
+    DerefMut,
 }
 
 ///////////////////////////////////////////////////////////////////////////

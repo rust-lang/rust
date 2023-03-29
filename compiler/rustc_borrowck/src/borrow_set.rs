@@ -75,6 +75,7 @@ impl<'tcx> fmt::Display for BorrowData<'tcx> {
             mir::BorrowKind::Shallow => "shallow ",
             mir::BorrowKind::Unique => "uniq ",
             mir::BorrowKind::Mut { .. } => "mut ",
+            mir::BorrowKind::DerefMut => "deref mut",
         };
         write!(w, "&{:?} {}{:?}", self.region, kind, self.borrowed_place)
     }

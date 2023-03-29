@@ -1176,6 +1176,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     }
                     Control::Break
                 }
+                (_, BorrowKind::DerefMut) => bug!(
+                    "should never encounter BorrowKind::DerefMut when checking for place accesses"
+                ),
             },
         );
 
@@ -1201,6 +1204,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         );
     }
 
+    #[instrument(skip(self, flow_state), level = "debug")]
     fn consume_rvalue(
         &mut self,
         location: Location,
@@ -1214,7 +1218,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         (Shallow(Some(ArtificialField::ShallowBorrow)), Read(ReadKind::Borrow(bk)))
                     }
                     BorrowKind::Shared => (Deep, Read(ReadKind::Borrow(bk))),
-                    BorrowKind::Unique | BorrowKind::Mut { .. } => {
+                    BorrowKind::Unique | BorrowKind::Mut { .. } | BorrowKind::DerefMut => {
                         let wk = WriteKind::MutableBorrow(bk);
                         if allow_two_phase_borrow(bk) {
                             (Deep, Reservation(wk))
@@ -1584,7 +1588,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
             // only mutable borrows should be 2-phase
             assert!(match borrow.kind {
-                BorrowKind::Shared | BorrowKind::Shallow => false,
+                BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::DerefMut => false,
                 BorrowKind::Unique | BorrowKind::Mut { .. } => true,
             });
 
@@ -1962,6 +1966,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// Checks the permissions for the given place and read or write kind
     ///
     /// Returns `true` if an error is reported.
+    #[instrument(skip(self, flow_state), level = "debug")]
     fn check_access_permissions(
         &mut self,
         (place, span): (Place<'tcx>, Span),
@@ -1979,14 +1984,20 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let the_place_err;
 
         match kind {
+            Reservation(WriteKind::MutableBorrow(BorrowKind::DerefMut))
+            | Read(ReadKind::Borrow(BorrowKind::DerefMut)) => {
+                bug!(
+                    "should never encounter BorrowKind::DerefMut with Reservation or Read when checking access permissions"
+                );
+            }
             Reservation(WriteKind::MutableBorrow(
                 borrow_kind @ (BorrowKind::Unique | BorrowKind::Mut { .. }),
             ))
             | Write(WriteKind::MutableBorrow(
-                borrow_kind @ (BorrowKind::Unique | BorrowKind::Mut { .. }),
+                borrow_kind @ (BorrowKind::Unique | BorrowKind::Mut { .. } | BorrowKind::DerefMut),
             )) => {
                 let is_local_mutation_allowed = match borrow_kind {
-                    BorrowKind::Unique => LocalMutationIsAllowed::Yes,
+                    BorrowKind::Unique | BorrowKind::DerefMut => LocalMutationIsAllowed::Yes,
                     BorrowKind::Mut { .. } => is_local_mutation_allowed,
                     BorrowKind::Shared | BorrowKind::Shallow => unreachable!(),
                 };

@@ -1993,7 +1993,10 @@ impl<'tcx> Rvalue<'tcx> {
 impl BorrowKind {
     pub fn allows_two_phase_borrow(&self) -> bool {
         match *self {
-            BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Unique => false,
+            BorrowKind::Shared
+            | BorrowKind::Shallow
+            | BorrowKind::Unique
+            | BorrowKind::DerefMut => false,
             BorrowKind::Mut { allow_two_phase_borrow } => allow_two_phase_borrow,
         }
     }
@@ -2002,7 +2005,7 @@ impl BorrowKind {
     pub fn describe_mutability(&self) -> &str {
         match *self {
             BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Unique => "immutable",
-            BorrowKind::Mut { .. } => "mutable",
+            BorrowKind::Mut { .. } | BorrowKind::DerefMut => "mutable",
         }
     }
 }
@@ -2036,6 +2039,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             Ref(region, borrow_kind, ref place) => {
                 let kind_str = match borrow_kind {
                     BorrowKind::Shared => "",
+                    BorrowKind::DerefMut => "deref mut ",
                     BorrowKind::Shallow => "shallow ",
                     BorrowKind::Mut { .. } | BorrowKind::Unique => "mut ",
                 };

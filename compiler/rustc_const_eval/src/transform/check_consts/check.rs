@@ -415,7 +415,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         BorrowKind::Unique => {
                             PlaceContext::NonMutatingUse(NonMutatingUseContext::UniqueBorrow)
                         }
-                        BorrowKind::Mut { .. } => {
+                        BorrowKind::Mut { .. } | BorrowKind::DerefMut => {
                             PlaceContext::MutatingUse(MutatingUseContext::Borrow)
                         }
                     };
@@ -459,7 +459,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
             }
 
-            Rvalue::Ref(_, kind @ (BorrowKind::Mut { .. } | BorrowKind::Unique), place) => {
+            Rvalue::Ref(_, kind @ (BorrowKind::Mut { .. } | BorrowKind::Unique | BorrowKind::DerefMut), place) => {
                 let ty = place.ty(self.body, self.tcx).ty;
                 let is_allowed = match ty.kind() {
                     // Inside a `static mut`, `&mut [...]` is allowed.

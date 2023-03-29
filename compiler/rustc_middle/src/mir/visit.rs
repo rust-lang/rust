@@ -643,7 +643,7 @@ macro_rules! make_mir_visitor {
                             BorrowKind::Unique => PlaceContext::NonMutatingUse(
                                 NonMutatingUseContext::UniqueBorrow
                             ),
-                            BorrowKind::Mut { .. } =>
+                            BorrowKind::Mut { .. } | BorrowKind::DerefMut =>
                                 PlaceContext::MutatingUse(MutatingUseContext::Borrow),
                         };
                         self.visit_place(path, ctx, location);

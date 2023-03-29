@@ -253,7 +253,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
                         (Shallow(Some(ArtificialField::ShallowBorrow)), Read(ReadKind::Borrow(bk)))
                     }
                     BorrowKind::Shared => (Deep, Read(ReadKind::Borrow(bk))),
-                    BorrowKind::Unique | BorrowKind::Mut { .. } => {
+                    BorrowKind::Unique | BorrowKind::Mut { .. } | BorrowKind::DerefMut => {
                         let wk = WriteKind::MutableBorrow(bk);
                         if allow_two_phase_borrow(bk) {
                             (Deep, Reservation(wk))
@@ -381,7 +381,10 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
                         // Reads don't invalidate shared or shallow borrows
                     }
 
-                    (Read(_), BorrowKind::Unique | BorrowKind::Mut { .. }) => {
+                    (
+                        Read(_),
+                        BorrowKind::Unique | BorrowKind::Mut { .. } | BorrowKind::DerefMut,
+                    ) => {
                         // Reading from mere reservations of mutable-borrows is OK.
                         if !is_active(&this.dominators, borrow, location) {
                             // If the borrow isn't active yet, reads don't invalidate it
@@ -422,7 +425,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
 
             // only mutable borrows should be 2-phase
             assert!(match borrow.kind {
-                BorrowKind::Shared | BorrowKind::Shallow => false,
+                BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::DerefMut => false,
                 BorrowKind::Unique | BorrowKind::Mut { .. } => true,
             });
 

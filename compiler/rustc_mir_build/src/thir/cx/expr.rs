@@ -154,7 +154,14 @@ impl<'tcx> Cx<'tcx> {
 
                 let expr = Box::new([self.thir.exprs.push(expr)]);
 
-                self.overloaded_place(hir_expr, adjustment.target, Some(call), expr, deref.span)
+                self.overloaded_place(
+                    hir_expr,
+                    adjustment.target,
+                    Some(call),
+                    expr,
+                    deref.span,
+                    OverloadedPlaceKind::Deref,
+                )
             }
             Adjust::Borrow(AutoBorrow::Ref(_, m)) => ExprKind::Borrow {
                 borrow_kind: m.to_borrow_kind(),
@@ -467,7 +474,14 @@ impl<'tcx> Cx<'tcx> {
                 if self.typeck_results().is_method_call(expr) {
                     let lhs = self.mirror_expr(lhs);
                     let index = self.mirror_expr(index);
-                    self.overloaded_place(expr, expr_ty, None, Box::new([lhs, index]), expr.span)
+                    self.overloaded_place(
+                        expr,
+                        expr_ty,
+                        None,
+                        Box::new([lhs, index]),
+                        expr.span,
+                        OverloadedPlaceKind::Index,
+                    )
                 } else {
                     ExprKind::Index { lhs: self.mirror_expr(lhs), index: self.mirror_expr(index) }
                 }
@@ -476,7 +490,14 @@ impl<'tcx> Cx<'tcx> {
             hir::ExprKind::Unary(hir::UnOp::Deref, ref arg) => {
                 if self.typeck_results().is_method_call(expr) {
                     let arg = self.mirror_expr(arg);
-                    self.overloaded_place(expr, expr_ty, None, Box::new([arg]), expr.span)
+                    self.overloaded_place(
+                        expr,
+                        expr_ty,
+                        None,
+                        Box::new([arg]),
+                        expr.span,
+                        OverloadedPlaceKind::Deref,
+                    )
                 } else {
                     ExprKind::Deref { arg: self.mirror_expr(arg) }
                 }
@@ -987,6 +1008,7 @@ impl<'tcx> Cx<'tcx> {
         overloaded_callee: Option<Ty<'tcx>>,
         args: Box<[ExprId]>,
         span: Span,
+        kind: OverloadedPlaceKind,
     ) -> ExprKind<'tcx> {
         // For an overloaded *x or x[y] expression of type T, the method
         // call returns an &T and we must add the deref so that the types
@@ -1007,12 +1029,44 @@ impl<'tcx> Cx<'tcx> {
         let fun = self.method_callee(expr, span, overloaded_callee);
         let fun = self.thir.exprs.push(fun);
         let fun_ty = self.thir[fun].ty;
-        let ref_expr = self.thir.exprs.push(Expr {
-            temp_lifetime,
-            ty: ref_ty,
-            span,
-            kind: ExprKind::Call { ty: fun_ty, fun, args, from_hir_call: false, fn_span: span },
-        });
+        debug!(?fun_ty);
+
+        let ref_expr = if let OverloadedPlaceKind::Deref = kind {
+            assert_eq!(args.len(), 1);
+            let Expr { temp_lifetime: arg_temp_lifetime, ty: arg_ty, span: arg_span, kind } =
+                &self.thir[args[0]];
+
+            debug!(?kind);
+
+            let arg = self.thir.exprs.push(Expr {
+                temp_lifetime: *arg_temp_lifetime,
+                ty: *arg_ty,
+                span: *arg_span,
+                kind: ExprKind::DerefMutArg { arg: args[0] },
+            });
+
+            self.thir.exprs.push(Expr {
+                temp_lifetime,
+                ty: ref_ty,
+                span,
+                kind: ExprKind::Call {
+                    ty: fun_ty,
+                    fun,
+                    args: Box::new([arg]),
+                    from_hir_call: false,
+                    fn_span: span,
+                },
+            })
+        } else {
+            self.thir.exprs.push(Expr {
+                temp_lifetime,
+                ty: ref_ty,
+                span,
+                kind: ExprKind::Call { ty: fun_ty, fun, args, from_hir_call: false, fn_span: span },
+            })
+        };
+
+        debug!(?ref_expr);
 
         // construct and return a deref wrapper `*foo()`
         ExprKind::Deref { arg: ref_expr }
@@ -1162,4 +1216,10 @@ fn bin_op(op: hir::BinOpKind) -> BinOp {
         hir::BinOpKind::Gt => BinOp::Gt,
         _ => bug!("no equivalent for ast binop {:?}", op),
     }
+}
+
+#[derive(Copy, Clone, Debug)]
+enum OverloadedPlaceKind {
+    Index,
+    Deref,
 }

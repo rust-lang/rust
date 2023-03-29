@@ -455,11 +455,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::VarRef { id } => {
                 let place_builder = if this.is_bound_var_in_guard(id) {
                     let index = this.var_local_id(id, RefWithinGuard);
-                    let local_decl = &mut this.local_decls[index];
                     PlaceBuilder::from(index).deref()
                 } else {
                     let index = this.var_local_id(id, OutsideGuard);
-                    let local_decl = &mut this.local_decls[index];
                     PlaceBuilder::from(index)
                 };
                 block.and(place_builder)

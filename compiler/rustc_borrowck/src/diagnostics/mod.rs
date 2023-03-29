@@ -645,17 +645,18 @@ impl UseSpans<'_> {
         f: impl Fn(Option<GeneratorKind>, Span) -> crate::session_diagnostics::CaptureVarCause,
     ) {
         use crate::session_diagnostics::CaptureVarKind::*;
+        use rustc_middle::mir::BorrowKind;
+
         if let UseSpans::ClosureUse { generator_kind, capture_kind_span, path_span, .. } = self {
             if capture_kind_span != path_span {
                 err.subdiagnostic(match kind {
                     Some(kd) => match kd {
-                        rustc_middle::mir::BorrowKind::Shared
-                        | rustc_middle::mir::BorrowKind::Shallow
-                        | rustc_middle::mir::BorrowKind::Unique => {
+                        BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Unique => {
                             Immute { kind_span: capture_kind_span }
                         }
 
-                        rustc_middle::mir::BorrowKind::Mut { .. } => {
+                        rustc_middle::mir::BorrowKind::Mut { .. }
+                        | rustc_middle::mir::BorrowKind::DerefMut => {
                             Mut { kind_span: capture_kind_span }
                         }
                     },
