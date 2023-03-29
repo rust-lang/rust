@@ -13,9 +13,8 @@ use self::SimplifiedType::*;
 pub enum SimplifiedType {
     BoolSimplifiedType,
     CharSimplifiedType,
-    IntSimplifiedType(ty::IntTy),
-    UintSimplifiedType(ty::UintTy),
-    FloatSimplifiedType(ty::FloatTy),
+    IntSimplifiedType,
+    FloatSimplifiedType,
     AdtSimplifiedType(DefId),
     ForeignSimplifiedType(DefId),
     StrSimplifiedType,
@@ -112,9 +111,8 @@ pub fn simplify_type<'tcx>(
     match *ty.kind() {
         ty::Bool => Some(BoolSimplifiedType),
         ty::Char => Some(CharSimplifiedType),
-        ty::Int(int_type) => Some(IntSimplifiedType(int_type)),
-        ty::Uint(uint_type) => Some(UintSimplifiedType(uint_type)),
-        ty::Float(float_type) => Some(FloatSimplifiedType(float_type)),
+        ty::Int(_) | ty::Uint(_) | ty::Infer(ty::IntVar(_)) => Some(IntSimplifiedType),
+        ty::Float(_) | ty::Infer(ty::FloatVar(_)) => Some(FloatSimplifiedType),
         ty::Adt(def, _) => Some(AdtSimplifiedType(def.did())),
         ty::Str => Some(StrSimplifiedType),
         ty::Array(..) => Some(ArraySimplifiedType),
