@@ -13,7 +13,7 @@
 //! instance, a walker looking for item names in a module will miss all of
 //! those that are created by the expansion of a macro.
 
-use crate::ast::*;
+use crate::{ast::*, Static};
 
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
@@ -305,7 +305,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
     match &item.kind {
         ItemKind::ExternCrate(_) => {}
         ItemKind::Use(use_tree) => visitor.visit_use_tree(use_tree, item.id, false),
-        ItemKind::Static(typ, _, expr) | ItemKind::Const(_, typ, expr) => {
+        ItemKind::Static(Static(typ, _, expr)) | ItemKind::Const(_, typ, expr) => {
             visitor.visit_ty(typ);
             walk_list!(visitor, visit_expr, expr);
         }

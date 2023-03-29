@@ -9,8 +9,8 @@
 use itertools::{Either, Itertools};
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
-use rustc_ast::walk_list;
 use rustc_ast::*;
+use rustc_ast::{walk_list, Static};
 use rustc_ast_pretty::pprust::{self, State};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_macros::Subdiagnostic;
@@ -990,7 +990,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     replace_span: self.ending_semi_or_hi(item.span),
                 });
             }
-            ItemKind::Static(.., None) => {
+            ItemKind::Static(Static(.., None)) => {
                 self.session.emit_err(errors::StaticWithoutBody {
                     span: item.span,
                     replace_span: self.ending_semi_or_hi(item.span),
