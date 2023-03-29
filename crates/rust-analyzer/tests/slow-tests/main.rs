@@ -59,7 +59,10 @@ use std::collections::Spam;
 "#,
     )
     .with_config(serde_json::json!({
-        "cargo": { "sysroot": "discover" }
+        "cargo": { "sysroot": "discover" },
+        "procMacro": {
+            "enable": false,
+        }
     }))
     .server()
     .wait_until_workspace_is_loaded();
@@ -508,7 +511,7 @@ fn main() {}
 #[test]
 fn test_missing_module_code_action_in_json_project() {
     if skip_slow_tests() {
-        // return;
+        return;
     }
 
     let tmp_dir = TestDir::new();
@@ -612,7 +615,10 @@ fn main() {{}}
 "#
     ))
     .with_config(serde_json::json!({
-        "cargo": { "sysroot": "discover" }
+        "cargo": { "sysroot": "discover" },
+        "procMacro": {
+            "enable": false,
+        }
     }))
     .server()
     .wait_until_workspace_is_loaded();
@@ -685,7 +691,7 @@ version = \"0.0.0\"
 #[test]
 fn out_dirs_check() {
     if skip_slow_tests() {
-        // return;
+        return;
     }
 
     let server = Project::with_fixture(
@@ -711,10 +717,20 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
 }
 //- /src/main.rs
-#[rustc_builtin_macro] macro_rules! include {}
-#[rustc_builtin_macro] macro_rules! include_str {}
-#[rustc_builtin_macro] macro_rules! concat {}
-#[rustc_builtin_macro] macro_rules! env {}
+#![feature(rustc_attrs)]
+#[rustc_builtin_macro] macro_rules! include {
+    ($file:expr $(,)?) => {{ /* compiler built-in */ }};
+}
+#[rustc_builtin_macro] macro_rules! include_str {
+    ($file:expr $(,)?) => {{ /* compiler built-in */ }};
+}
+#[rustc_builtin_macro] macro_rules! concat {
+    ($($e:ident),+ $(,)?) => {{ /* compiler built-in */ }};
+}
+#[rustc_builtin_macro] macro_rules! env {
+    ($name:expr $(,)?) => {{ /* compiler built-in */ }};
+    ($name:expr, $error_msg:expr $(,)?) => {{ /* compiler built-in */ }};
+}
 
 include!(concat!(env!("OUT_DIR"), "/hello.rs"));
 
@@ -749,7 +765,7 @@ fn main() {
     let res = server.send_request::<HoverRequest>(HoverParams {
         text_document_position_params: TextDocumentPositionParams::new(
             server.doc_id("src/main.rs"),
-            Position::new(19, 10),
+            Position::new(29, 10),
         ),
         work_done_progress_params: Default::default(),
     });
@@ -758,7 +774,7 @@ fn main() {
     let res = server.send_request::<HoverRequest>(HoverParams {
         text_document_position_params: TextDocumentPositionParams::new(
             server.doc_id("src/main.rs"),
-            Position::new(20, 10),
+            Position::new(30, 10),
         ),
         work_done_progress_params: Default::default(),
     });
@@ -768,23 +784,23 @@ fn main() {
         GotoDefinitionParams {
             text_document_position_params: TextDocumentPositionParams::new(
                 server.doc_id("src/main.rs"),
-                Position::new(17, 9),
+                Position::new(27, 9),
             ),
             work_done_progress_params: Default::default(),
             partial_result_params: Default::default(),
         },
         json!([{
             "originSelectionRange": {
-                "end": { "character": 10, "line": 17 },
-                "start": { "character": 8, "line": 17 }
+                "end": { "character": 10, "line": 27 },
+                "start": { "character": 8, "line": 27 }
             },
             "targetRange": {
-                "end": { "character": 9, "line": 8 },
-                "start": { "character": 0, "line": 7 }
+                "end": { "character": 9, "line": 18 },
+                "start": { "character": 0, "line": 17 }
             },
             "targetSelectionRange": {
-                "end": { "character": 8, "line": 8 },
-                "start": { "character": 7, "line": 8 }
+                "end": { "character": 8, "line": 18 },
+                "start": { "character": 7, "line": 18 }
             },
             "targetUri": "file:///[..]src/main.rs"
         }]),
@@ -794,23 +810,23 @@ fn main() {
         GotoDefinitionParams {
             text_document_position_params: TextDocumentPositionParams::new(
                 server.doc_id("src/main.rs"),
-                Position::new(18, 9),
+                Position::new(28, 9),
             ),
             work_done_progress_params: Default::default(),
             partial_result_params: Default::default(),
         },
         json!([{
             "originSelectionRange": {
-                "end": { "character": 10, "line": 18 },
-                "start": { "character": 8, "line": 18 }
+                "end": { "character": 10, "line": 28 },
+                "start": { "character": 8, "line": 28 }
             },
             "targetRange": {
-                "end": { "character": 9, "line": 12 },
-                "start": { "character": 0, "line":11 }
+                "end": { "character": 9, "line": 22 },
+                "start": { "character": 0, "line": 21 }
             },
             "targetSelectionRange": {
-                "end": { "character": 8, "line": 12 },
-                "start": { "character": 7, "line": 12 }
+                "end": { "character": 8, "line": 22 },
+                "start": { "character": 7, "line": 22 }
             },
             "targetUri": "file:///[..]src/main.rs"
         }]),
@@ -836,6 +852,7 @@ edition = "2021"
 bar = {path = "../bar"}
 
 //- /foo/src/main.rs
+#![feature(rustc_attrs, decl_macro)]
 use bar::Bar;
 
 #[rustc_builtin_macro]
@@ -912,7 +929,7 @@ pub fn foo(_input: TokenStream) -> TokenStream {
     let res = server.send_request::<HoverRequest>(HoverParams {
         text_document_position_params: TextDocumentPositionParams::new(
             server.doc_id("foo/src/main.rs"),
-            Position::new(10, 9),
+            Position::new(11, 9),
         ),
         work_done_progress_params: Default::default(),
     });
