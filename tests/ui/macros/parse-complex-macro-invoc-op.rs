@@ -4,6 +4,7 @@
 #![allow(unused_assignments)]
 #![allow(unused_variables)]
 #![allow(stable_features)]
+#![allow(drop_copy)]
 
 // Test parsing binary operators after macro invocations.
 

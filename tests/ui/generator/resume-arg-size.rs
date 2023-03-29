@@ -1,4 +1,5 @@
 #![feature(generators)]
+#![allow(drop_copy)]
 
 // run-pass
 
