@@ -5,12 +5,11 @@ use crate::errors::{
     MalformedFeatureAttribute, MalformedFeatureAttributeHelp, RemoveExprNotSupported,
 };
 use rustc_ast::ptr::P;
-use rustc_ast::token::{Delimiter, Token, TokenKind};
+use rustc_ast::token::TokenKind;
+use rustc_ast::tokenstream::LazyAttrTokenStream;
 use rustc_ast::tokenstream::{AttrTokenStream, AttrTokenTree};
-use rustc_ast::tokenstream::{DelimSpan, Spacing};
-use rustc_ast::tokenstream::{LazyAttrTokenStream, TokenTree};
 use rustc_ast::NodeId;
-use rustc_ast::{self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem};
+use rustc_ast::{self as ast, Attribute, HasAttrs, HasTokens, MetaItem};
 use rustc_attr as attr;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::fx::FxHashMap;
@@ -347,54 +346,8 @@ impl<'a> StripUnconfigured<'a> {
         }
     }
 
-    fn expand_cfg_attr_item(
-        &self,
-        attr: &Attribute,
-        (item, item_span): (ast::AttrItem, Span),
-    ) -> Attribute {
-        let orig_tokens = attr.tokens();
-
-        // We are taking an attribute of the form `#[cfg_attr(pred, attr)]`
-        // and producing an attribute of the form `#[attr]`. We
-        // have captured tokens for `attr` itself, but we need to
-        // synthesize tokens for the wrapper `#` and `[]`, which
-        // we do below.
-
-        // Use the `#` in `#[cfg_attr(pred, attr)]` as the `#` token
-        // for `attr` when we expand it to `#[attr]`
-        let mut orig_trees = orig_tokens.into_trees();
-        let TokenTree::Token(pound_token @ Token { kind: TokenKind::Pound, .. }, _) = orig_trees.next().unwrap() else {
-            panic!("Bad tokens for attribute {:?}", attr);
-        };
-        let pound_span = pound_token.span;
-
-        let mut trees = vec![AttrTokenTree::Token(pound_token, Spacing::Alone)];
-        if attr.style == AttrStyle::Inner {
-            // For inner attributes, we do the same thing for the `!` in `#![some_attr]`
-            let TokenTree::Token(bang_token @ Token { kind: TokenKind::Not, .. }, _) = orig_trees.next().unwrap() else {
-                panic!("Bad tokens for attribute {:?}", attr);
-            };
-            trees.push(AttrTokenTree::Token(bang_token, Spacing::Alone));
-        }
-        // We don't really have a good span to use for the synthesized `[]`
-        // in `#[attr]`, so just use the span of the `#` token.
-        let bracket_group = AttrTokenTree::Delimited(
-            DelimSpan::from_single(pound_span),
-            Delimiter::Bracket,
-            item.tokens
-                .as_ref()
-                .unwrap_or_else(|| panic!("Missing tokens for {:?}", item))
-                .to_attr_token_stream(),
-        );
-        trees.push(bracket_group);
-        let tokens = Some(LazyAttrTokenStream::new(AttrTokenStream::new(trees)));
-        let attr = attr::mk_attr_from_item(
-            &self.sess.parse_sess.attr_id_generator,
-            item,
-            tokens,
-            attr.style,
-            item_span,
-        );
+    fn expand_cfg_attr_item(&self, attr: &Attribute, item: (ast::AttrItem, Span)) -> Attribute {
+        let attr = attr.expand_cfg_attr(&self.sess.parse_sess.attr_id_generator, item);
         if attr.has_name(sym::crate_type) {
             self.sess.parse_sess.buffer_lint(
                 rustc_lint_defs::builtin::DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,

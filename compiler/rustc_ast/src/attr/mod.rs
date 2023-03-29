@@ -5,8 +5,8 @@ use crate::ast::{DelimArgs, Expr, ExprKind, LitKind, MetaItemLit};
 use crate::ast::{MacDelimiter, MetaItem, MetaItemKind, NestedMetaItem, NormalAttr};
 use crate::ast::{Path, PathSegment, DUMMY_NODE_ID};
 use crate::ptr::P;
-use crate::token::{self, CommentKind, Delimiter, Token};
-use crate::tokenstream::{DelimSpan, Spacing, TokenTree};
+use crate::token::{self, CommentKind, Delimiter, Token, TokenKind};
+use crate::tokenstream::{AttrTokenStream, AttrTokenTree, DelimSpan, Spacing, TokenTree};
 use crate::tokenstream::{LazyAttrTokenStream, TokenStream};
 use crate::util::comments;
 use crate::util::literal::escape_string_symbol;
@@ -214,6 +214,51 @@ impl Attribute {
                 Spacing::Alone,
             )]),
         }
+    }
+
+    pub fn expand_cfg_attr(
+        self: &Attribute,
+        attr_id_generator: &AttrIdGenerator,
+        (item, item_span): (AttrItem, Span),
+    ) -> Attribute {
+        let orig_tokens = self.tokens();
+
+        // We are taking an attribute of the form `#[cfg_attr(pred, attr)]`
+        // and producing an attribute of the form `#[attr]`. We
+        // have captured tokens for `attr` itself, but we need to
+        // synthesize tokens for the wrapper `#` and `[]`, which
+        // we do below.
+
+        // Use the `#` in `#[cfg_attr(pred, attr)]` as the `#` token
+        // for `attr` when we expand it to `#[attr]`
+        let mut orig_trees = orig_tokens.into_trees();
+        let TokenTree::Token(pound_token @ Token { kind: TokenKind::Pound, .. }, _) = orig_trees.next().unwrap() else {
+            panic!("Bad tokens for attribute {:?}", self);
+        };
+        let pound_span = pound_token.span;
+
+        let mut trees = vec![AttrTokenTree::Token(pound_token, Spacing::Alone)];
+        if self.style == AttrStyle::Inner {
+            // For inner attributes, we do the same thing for the `!` in `#![some_attr]`
+            let TokenTree::Token(bang_token @ Token { kind: TokenKind::Not, .. }, _) = orig_trees.next().unwrap() else {
+                panic!("Bad tokens for attribute {:?}", self);
+            };
+            trees.push(AttrTokenTree::Token(bang_token, Spacing::Alone));
+        }
+        // We don't really have a good span to use for the synthesized `[]`
+        // in `#[attr]`, so just use the span of the `#` token.
+        let bracket_group = AttrTokenTree::Delimited(
+            DelimSpan::from_single(pound_span),
+            Delimiter::Bracket,
+            item.tokens
+                .as_ref()
+                .unwrap_or_else(|| panic!("Missing tokens for {:?}", item))
+                .to_attr_token_stream(),
+        );
+        trees.push(bracket_group);
+        let tokens = Some(LazyAttrTokenStream::new(AttrTokenStream::new(trees)));
+
+        mk_attr_from_item(attr_id_generator, item, tokens, self.style, item_span)
     }
 }
 
