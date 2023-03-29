@@ -180,9 +180,11 @@ impl PartialEq for RawWakerVTable {
 #[stable(feature = "futures_api", since = "1.36.0")]
 impl fmt::Debug for RawWakerVTable {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // SAFETY: Matching on unions is always unsafe.
+        // The determinant of this union is that `v2`'s padding must always be null pointers, i.e. v1's adapter fields must be `Some(_)`
         unsafe {
             match self {
-                RawWakerVTable { v1 } if v1.other_adapter.is_none() => self.v1.fmt(f),
+                RawWakerVTable { v1 } if v1.other_adapter.is_some() => self.v1.fmt(f),
                 RawWakerVTable { v2 } => v2.fmt(f),
             }
         }
@@ -196,12 +198,14 @@ unsafe extern "C" fn clone_adapter(
     clone: unsafe fn(*const ()) -> RawWaker,
     data: *const (),
 ) -> RawWaker {
+    // SAFETY: The safety constraints are passed up to the caller
     unsafe { (clone)(data) }
 }
 #[allow(improper_ctypes_definitions)]
 /// # Safety
 /// This function must only be called with function pointers sourced from the same shared object
 unsafe extern "C" fn other_adapter(other: unsafe fn(*const ()), data: *const ()) {
+    // SAFETY: The safety constraints are passed up to the caller
     unsafe { (other)(data) }
 }
 impl RawWakerVTable {
@@ -447,6 +451,8 @@ impl Waker {
         // SAFETY: This is safe because `Waker::from_raw` is the only way
         // to initialize `wake` and `data` requiring the user to acknowledge
         // that the contract of `RawWaker` is upheld.
+        // Matching on unions is always unsafe.
+        // The determinant of this union is that `v2`'s padding must always be null pointers, i.e. v1's adapter fields must be `Some(_)`
         unsafe {
             match *vtable {
                 RawWakerVTable {
@@ -470,6 +476,8 @@ impl Waker {
         let RawWaker { data, vtable } = self.waker;
 
         // SAFETY: see `wake`
+        // Matching on unions is always unsafe.
+        // The determinant of this union is that `v2`'s padding must always be null pointers, i.e. v1's adapter fields must be `Some(_)`
         unsafe {
             match *vtable {
                 RawWakerVTable {
@@ -525,6 +533,8 @@ impl Clone for Waker {
             // SAFETY: This is safe because `Waker::from_raw` is the only way
             // to initialize `clone` and `data` requiring the user to acknowledge
             // that the contract of [`RawWaker`] is upheld.
+            // Matching on unions is always unsafe.
+            // The determinant of this union is that `v2`'s padding must always be null pointers, i.e. v1's adapter fields must be `Some(_)`
             waker: unsafe {
                 match *vtable {
                     RawWakerVTable {
@@ -545,6 +555,8 @@ impl Drop for Waker {
         // SAFETY: This is safe because `Waker::from_raw` is the only way
         // to initialize `drop` and `data` requiring the user to acknowledge
         // that the contract of `RawWaker` is upheld.
+        // Matching on unions is always unsafe.
+        // The determinant of this union is that `v2`'s padding must always be null pointers, i.e. v1's adapter fields must be `Some(_)`
         unsafe {
             match *vtable {
                 RawWakerVTable {
