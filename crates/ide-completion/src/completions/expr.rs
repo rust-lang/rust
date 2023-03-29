@@ -88,7 +88,7 @@ pub(crate) fn complete_expr_path(
                     let module_scope = module.scope(ctx.db, Some(ctx.module));
                     for (name, def) in module_scope {
                         if scope_def_applicable(def) {
-                            acc.add_path_resolution(ctx, path_ctx, name, def);
+                            acc.add_path_resolution(ctx, path_ctx, name, def, vec![]);
                         }
                     }
                 }
@@ -212,7 +212,7 @@ pub(crate) fn complete_expr_path(
                     }
                 }
             }
-            ctx.process_all_names(&mut |name, def| match def {
+            ctx.process_all_names(&mut |name, def, doc_aliases| match def {
                 ScopeDef::ModuleDef(hir::ModuleDef::Trait(t)) => {
                     let assocs = t.items_with_supertraits(ctx.db);
                     match &*assocs {
@@ -220,12 +220,14 @@ pub(crate) fn complete_expr_path(
                         // there is no associated item path that can be constructed with them
                         [] => (),
                         // FIXME: Render the assoc item with the trait qualified
-                        &[_item] => acc.add_path_resolution(ctx, path_ctx, name, def),
+                        &[_item] => acc.add_path_resolution(ctx, path_ctx, name, def, doc_aliases),
                         // FIXME: Append `::` to the thing here, since a trait on its own won't work
-                        [..] => acc.add_path_resolution(ctx, path_ctx, name, def),
+                        [..] => acc.add_path_resolution(ctx, path_ctx, name, def, doc_aliases),
                     }
                 }
-                _ if scope_def_applicable(def) => acc.add_path_resolution(ctx, path_ctx, name, def),
+                _ if scope_def_applicable(def) => {
+                    acc.add_path_resolution(ctx, path_ctx, name, def, doc_aliases)
+                }
                 _ => (),
             });
 

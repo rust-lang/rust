@@ -165,9 +165,9 @@ impl Completions {
         ctx: &CompletionContext<'_>,
         path_ctx: &PathCompletionCtx,
     ) {
-        ctx.process_all_names(&mut |name, res| match res {
+        ctx.process_all_names(&mut |name, res, doc_aliases| match res {
             ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) if m.is_crate_root(ctx.db) => {
-                self.add_module(ctx, path_ctx, m, name);
+                self.add_module(ctx, path_ctx, m, name, doc_aliases);
             }
             _ => (),
         });
@@ -179,6 +179,7 @@ impl Completions {
         path_ctx: &PathCompletionCtx,
         local_name: hir::Name,
         resolution: hir::ScopeDef,
+        doc_aliases: Vec<syntax::SmolStr>,
     ) {
         let is_private_editable = match ctx.def_is_visible(&resolution) {
             Visible::Yes => false,
@@ -187,7 +188,9 @@ impl Completions {
         };
         self.add(
             render_path_resolution(
-                RenderContext::new(ctx).private_editable(is_private_editable),
+                RenderContext::new(ctx)
+                    .private_editable(is_private_editable)
+                    .doc_aliases(doc_aliases),
                 path_ctx,
                 local_name,
                 resolution,
@@ -236,12 +239,14 @@ impl Completions {
         path_ctx: &PathCompletionCtx,
         module: hir::Module,
         local_name: hir::Name,
+        doc_aliases: Vec<syntax::SmolStr>,
     ) {
         self.add_path_resolution(
             ctx,
             path_ctx,
             local_name,
             hir::ScopeDef::ModuleDef(module.into()),
+            doc_aliases,
         );
     }
 

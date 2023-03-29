@@ -353,6 +353,7 @@ impl CompletionItem {
             relevance: CompletionRelevance::default(),
             ref_match: None,
             imports_to_add: Default::default(),
+            doc_aliases: None,
         }
     }
 
@@ -385,6 +386,7 @@ pub(crate) struct Builder {
     source_range: TextRange,
     imports_to_add: SmallVec<[LocatedImport; 1]>,
     trait_name: Option<SmolStr>,
+    doc_aliases: Option<SmolStr>,
     label: SmolStr,
     insert_text: Option<String>,
     is_snippet: bool,
@@ -424,6 +426,8 @@ impl Builder {
             }
         } else if let Some(trait_name) = self.trait_name {
             label = SmolStr::from(format!("{label} (as {trait_name})"));
+        } else if let Some(doc_aliases) = self.doc_aliases {
+            label = SmolStr::from(format!("{label} (alias {doc_aliases})"));
         }
 
         let text_edit = match self.text_edit {
@@ -457,6 +461,10 @@ impl Builder {
     }
     pub(crate) fn trait_name(&mut self, trait_name: SmolStr) -> &mut Builder {
         self.trait_name = Some(trait_name);
+        self
+    }
+    pub(crate) fn doc_aliases(&mut self, doc_aliases: SmolStr) -> &mut Builder {
+        self.doc_aliases = Some(doc_aliases);
         self
     }
     pub(crate) fn insert_text(&mut self, insert_text: impl Into<String>) -> &mut Builder {
