@@ -17,7 +17,7 @@ use ide_db::{
 };
 use syntax::{
     ast::{self, AttrKind, NameOrNameRef},
-    AstNode,
+    AstNode, SmolStr,
     SyntaxKind::{self, *},
     SyntaxToken, TextRange, TextSize, T,
 };
@@ -493,7 +493,7 @@ impl<'a> CompletionContext<'a> {
 
     /// A version of [`SemanticsScope::process_all_names`] that filters out `#[doc(hidden)]` items and
     /// passes all doc-aliases along, to funnel it into [`Completions::add_path_resolution`].
-    pub(crate) fn process_all_names(&self, f: &mut dyn FnMut(Name, ScopeDef, Vec<syntax::SmolStr>)) {
+    pub(crate) fn process_all_names(&self, f: &mut dyn FnMut(Name, ScopeDef, Vec<SmolStr>)) {
         let _p = profile::span("CompletionContext::process_all_names");
         self.scope.process_all_names(&mut |name, def| {
             if self.is_scope_def_hidden(def) {
@@ -547,7 +547,7 @@ impl<'a> CompletionContext<'a> {
         self.krate != defining_crate && attrs.has_doc_hidden()
     }
 
-    fn doc_aliases(&self, scope_def: ScopeDef) -> Vec<syntax::SmolStr> {
+    fn doc_aliases(&self, scope_def: ScopeDef) -> Vec<SmolStr> {
         if let Some(attrs) = scope_def.attrs(self.db) {
             attrs.doc_aliases()
         } else {

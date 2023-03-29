@@ -243,10 +243,7 @@ impl Attrs {
     }
 
     pub fn doc_aliases(&self) -> Vec<SmolStr> {
-        self.doc_exprs()
-            .into_iter()
-            .flat_map(|doc_expr| doc_expr.aliases())
-            .collect()
+        self.doc_exprs().into_iter().flat_map(|doc_expr| doc_expr.aliases()).collect()
     }
 
     pub fn is_proc_macro(&self) -> bool {
