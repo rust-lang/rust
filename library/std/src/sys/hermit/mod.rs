@@ -80,15 +80,9 @@ pub fn hashmap_random_keys() -> (u64, u64) {
     let mut buf = [0; 16];
     let mut slice = &mut buf[..];
     while !slice.is_empty() {
-        let res = unsafe { abi::read_entropy(slice.as_mut_ptr(), slice.len(), 0) };
-        if res < 0 {
-            panic!(
-                "random key generation failed: {}",
-                crate::io::Error::from_raw_os_error(-res as i32)
-            );
-        } else {
-            slice = &mut slice[res as usize..];
-        }
+        let res = cvt(unsafe { abi::read_entropy(slice.as_mut_ptr(), slice.len(), 0) })
+            .expect("failed to generate random hashmap keys");
+        slice = &mut slice[res as usize..];
     }
 
     let key1 = buf[..8].try_into().unwrap();
