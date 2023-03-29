@@ -16,6 +16,7 @@ type Converter<'a, 'b> = impl ProofForConversion<'a, 'b>;
 //~^ ERROR reference has a longer lifetime than the data it references
 
 // Even _defining_use with an explicit `'a: 'b` compiles fine, too.
+#[defines(Converter<'a, 'b>)]
 fn _defining_use<'a, 'b>(x: &'b &'a ()) -> Converter<'a, 'b> {
     x
 }

@@ -1,0 +1,57 @@
+error[E0658]: `impl Trait` in type aliases is unstable
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:5:12
+   |
+LL | type Foo = impl Debug;
+   |            ^^^^^^^^^^
+   |
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+
+error[E0658]: the `#[type_alias_impl_trait]` attribute is an experimental feature
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:10:1
+   |
+LL | #[defines(Foo)]
+   | ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+
+error[E0658]: `impl Trait` in type aliases is unstable
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:17:17
+   |
+LL |     type Foo2 = impl Debug;
+   |                 ^^^^^^^^^^
+   |
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+
+error[E0658]: `impl Trait` in type aliases is unstable
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:22:13
+   |
+LL | type Foo3 = impl Debug;
+   |             ^^^^^^^^^^
+   |
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+
+error[E0658]: the `#[type_alias_impl_trait]` attribute is an experimental feature
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:25:1
+   |
+LL | #[defines(Foo3)]
+   | ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+
+error[E0658]: `impl Trait` in type aliases is unstable
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:32:17
+   |
+LL |     type Foo4 = impl Debug;
+   |                 ^^^^^^^^^^
+   |
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

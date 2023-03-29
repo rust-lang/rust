@@ -548,7 +548,7 @@ impl<'a> Parser<'a> {
         params: &mut ThinVec<GenericParam>,
         param_insertion_point: Option<Span>,
     ) -> PResult<'a, ()> {
-        let generics = self.parse_generics()?;
+        let generics = self.parse_generics(&[])?;
         let arity = generics.params.len();
 
         let mut lifetimes: ThinVec<_> = generics

@@ -5,6 +5,7 @@ pub mod foo {
     type MainFn = impl Fn();
 
     fn bar() {}
+    #[defines(MainFn)]
     pub const BAR: MainFn = bar;
 }
 

@@ -93,6 +93,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                         param_def_id_to_index,
                         has_self: generics.has_self,
                         has_late_bound_regions: generics.has_late_bound_regions,
+                        defines_opaque_types: vec![],
                     };
                 }
 
@@ -348,6 +349,23 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
 
     let param_def_id_to_index = params.iter().map(|param| (param.def_id, param.index)).collect();
 
+    let defines_opaque_types = node
+        .defines_opaque_types()
+        .iter()
+        .filter_map(|&path| {
+            assert!(path.res.opt_def_id().is_some(), "{path:#?}");
+            let id = path.res.opt_def_id()?;
+            if id.is_local() {
+                // FIXME: not using LocalDefId here, see `Generics::defines_opaque_types`, too
+                // We want to encode a type here in the future and use it in a new `Predicate` in
+                // `where` bounds.
+                Some(id)
+            } else {
+                todo!("emit an error about not being able to constrain ids from other crates")
+            }
+        })
+        .collect();
+
     ty::Generics {
         parent: parent_def_id,
         parent_count,
@@ -355,6 +373,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         param_def_id_to_index,
         has_self: has_self || parent_has_self,
         has_late_bound_regions: has_late_bound_regions(tcx, node),
+        defines_opaque_types,
     }
 }
 

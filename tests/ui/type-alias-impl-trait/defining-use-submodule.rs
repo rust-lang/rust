@@ -11,11 +11,13 @@ type Foo = impl std::fmt::Display;
 type Bar = impl std::fmt::Display;
 
 mod foo {
+    #[defines(super::Foo)]
     pub fn foo() -> super::Foo {
         "foo"
     }
 
     pub mod bar {
+        #[defines(crate::Bar)]
         pub fn bar() -> crate::Bar {
             1
         }

@@ -6,6 +6,8 @@
 
 type X<A: ToString + Clone, B: ToString + Clone> = impl ToString;
 
+#[defines(X<A, B>)]
+#[defines(X<B, A>)]
 fn f<A: ToString + Clone, B: ToString + Clone>(a: A, b: B) -> (X<A, B>, X<B, A>) {
     (a.clone(), a)
     //~^ ERROR concrete type differs from previous defining opaque type

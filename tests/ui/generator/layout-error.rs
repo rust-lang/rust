@@ -23,6 +23,7 @@ fn main() {
 
     type F = impl Future;
     // Check that statics are inhabited computes they layout.
+    #[defines(F)]
     static POOL: Task<F> = Task::new();
     Task::spawn(&POOL, || cb());
 }

@@ -4,8 +4,9 @@ use std::fmt::Debug;
 
 type Foo = impl Debug;
 //~^ ERROR cycle detected
+//~| ERROR cycle detected
 
-fn is_send<T: Send>() { }
+fn is_send<T: Send>() {}
 
 fn not_good() {
     // Error: this function does not constrain `Foo` to any particular
@@ -13,7 +14,10 @@ fn not_good() {
     is_send::<Foo>();
 }
 
-fn not_gooder() {
+fn not_gooder()
+where
+    Foo: Debug,
+{
     // Constrain `Foo = u32`
     let x: Foo = 22_u32;
 

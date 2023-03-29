@@ -269,6 +269,7 @@ pub fn expand_test_or_bench(
                 ast::ConstItem {
                     defaultness: ast::Defaultness::Final,
                     ty: cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
+                    defines_opaque_types: Default::default(),
                     // test::TestDescAndFn {
                     expr: Some(
                         cx.expr_struct(

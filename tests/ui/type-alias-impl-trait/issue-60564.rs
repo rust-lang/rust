@@ -16,6 +16,7 @@ where
     E: std::fmt::Debug,
 {
     type BitsIter = IterBitsIter<T, E, u8>;
+    #[defines(IterBitsIter<T, E, u8>)]
     fn iter_bits(self, n: u8) -> Self::BitsIter {
         (0u8..n).rev().map(move |shift| ((self >> T::from(shift)) & T::from(1)).try_into().unwrap())
         //~^ ERROR expected generic type parameter, found `u8`

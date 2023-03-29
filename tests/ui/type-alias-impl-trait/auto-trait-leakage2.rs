@@ -8,6 +8,7 @@ mod m {
     //~^ within this `Foo`
     //~| expansion of desugaring
 
+    #[defines(Foo)]
     pub fn foo() -> Foo {
         Rc::new(22_u32)
     }

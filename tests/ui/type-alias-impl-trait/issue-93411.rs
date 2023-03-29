@@ -14,6 +14,7 @@ fn main() {
 }
 
 type BlahFut<'a> = impl Future<Output = ()> + Send + 'a;
+#[defines(BlahFut<'a>)]
 fn blah<'a>(_value: &'a u8) -> BlahFut<'a> {
     async {}
 }

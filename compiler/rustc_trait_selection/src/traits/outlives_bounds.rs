@@ -104,6 +104,18 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
         output
     }
 
+    #[cfg(bootstrap)]
+    fn implied_bounds_tys(
+        &'a self,
+        param_env: ParamEnv<'tcx>,
+        body_id: LocalDefId,
+        tys: FxIndexSet<Ty<'tcx>>,
+    ) -> Bounds<'a, 'tcx> {
+        tys.into_iter().flat_map(move |ty| self.implied_outlives_bounds(param_env, body_id, ty))
+    }
+
+    #[cfg(not(bootstrap))]
+    #[defines(Bounds<'a, 'tcx>)]
     fn implied_bounds_tys(
         &'a self,
         param_env: ParamEnv<'tcx>,

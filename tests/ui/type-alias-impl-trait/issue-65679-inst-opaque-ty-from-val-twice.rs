@@ -11,7 +11,10 @@ type T = impl Sized;
 
 fn take(_: fn() -> T) {}
 
-fn main() {
+#[defines(T)]
+fn foo() {
     take(|| {});
     take(|| {});
 }
+
+fn main() {}

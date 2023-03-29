@@ -6,6 +6,7 @@ trait Bar {
 
 type FooFn<B> = impl FnOnce(B);
 
+#[defines(FooFn<B>)]
 fn foo<B: Bar>() -> FooFn<B> {
     fn mop<B: Bar>(bar: B) { bar.bar() }
     mop // NOTE: no function pointer, but function zst item

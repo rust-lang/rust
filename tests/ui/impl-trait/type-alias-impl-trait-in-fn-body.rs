@@ -7,6 +7,7 @@ use std::fmt::Debug;
 fn main() {
     type Existential = impl Debug;
 
+    #[defines(Existential)]
     fn f() -> Existential {}
     println!("{:?}", f());
 }

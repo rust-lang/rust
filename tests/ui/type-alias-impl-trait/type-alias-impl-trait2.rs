@@ -20,6 +20,7 @@ mod defining_use_scope {
     // single definition
     pub type Foo = impl std::fmt::Display;
 
+    #[defines(Foo)]
     pub fn foo() -> Foo {
         "foo"
     }
@@ -27,29 +28,35 @@ mod defining_use_scope {
     // two definitions
     pub type Bar = impl std::fmt::Display;
 
+    #[defines(Bar)]
     pub fn bar1() -> Bar {
         "bar1"
     }
 
+    #[defines(Bar)]
     pub fn bar2() -> Bar {
         "bar2"
     }
 
     pub type MyIter<T> = impl Iterator<Item = T>;
 
+    #[defines(MyIter<T>)]
     pub fn my_iter<T>(t: T) -> MyIter<T> {
         std::iter::once(t)
     }
 
+    #[defines(MyIter<T>)]
     fn my_iter2<T>(t: T) -> MyIter<T> {
         std::iter::once(t)
     }
 
+    #[defines(MyIter<U>)]
     // param names should not have an effect!
     fn my_iter3<U>(u: U) -> MyIter<U> {
         std::iter::once(u)
     }
 
+    #[defines(MyIter<V>)]
     // param position should not have an effect!
     fn my_iter4<U, V>(_: U, v: V) -> MyIter<V> {
         std::iter::once(v)
@@ -58,6 +65,7 @@ mod defining_use_scope {
     // param names should not have an effect!
     type MyOtherIter<T> = impl Iterator<Item = T>;
 
+    #[defines(MyOtherIter<U>)]
     fn my_other_iter<U>(u: U) -> MyOtherIter<U> {
         std::iter::once(u)
     }
@@ -65,6 +73,7 @@ mod defining_use_scope {
     trait Trait {}
     type GenericBound<'a, T: Trait + 'a> = impl Sized + 'a;
 
+    #[defines(GenericBound<'a, T>)]
     fn generic_bound<'a, T: Trait + 'a>(t: T) -> GenericBound<'a, T> {
         t
     }
@@ -72,6 +81,7 @@ mod defining_use_scope {
     mod pass_through {
         pub type Passthrough<T: 'static> = impl Sized + 'static;
 
+        #[defines(Passthrough<T>)]
         fn define_passthrough<T: 'static>(t: T) -> Passthrough<T> {
             t
         }
@@ -80,5 +90,4 @@ mod defining_use_scope {
     fn use_passthrough(x: pass_through::Passthrough<u32>) -> pass_through::Passthrough<u32> {
         x
     }
-
 }

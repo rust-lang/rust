@@ -1726,6 +1726,7 @@ impl<'a> State<'a> {
         self.print_formal_generic_params(generic_params);
         let generics = ast::Generics {
             params: ThinVec::new(),
+            defines_opaque_types: ThinVec::new(),
             where_clause: ast::WhereClause {
                 has_where_token: false,
                 predicates: ThinVec::new(),

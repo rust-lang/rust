@@ -5,6 +5,7 @@ type Foo = impl Send;
 // This is not structural-match
 struct A;
 
+#[defines(Foo)]
 const fn value() -> Foo {
     A
 }

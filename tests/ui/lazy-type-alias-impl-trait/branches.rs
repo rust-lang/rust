@@ -2,12 +2,9 @@
 
 type Foo = impl std::fmt::Debug;
 
+#[defines(Foo)]
 fn foo(b: bool) -> Foo {
-    if b {
-        vec![42_i32]
-    } else {
-        std::iter::empty().collect()
-    }
+    if b { vec![42_i32] } else { std::iter::empty().collect() }
 }
 
 type Bar = impl std::fmt::Debug;

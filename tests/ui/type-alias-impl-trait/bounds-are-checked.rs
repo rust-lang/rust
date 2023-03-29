@@ -5,6 +5,7 @@
 
 type X<'a> = impl Into<&'static str> + From<&'a str>;
 
+#[defines(X<'a>)]
 fn f<'a: 'static>(t: &'a str) -> X<'a> {
     t
     //~^ ERROR expected generic lifetime parameter, found `'static`

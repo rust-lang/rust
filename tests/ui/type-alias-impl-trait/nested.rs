@@ -7,6 +7,7 @@ trait Trait<T> {}
 
 impl<T, U> Trait<T> for U {}
 
+#[defines(Bar)]
 fn bar() -> Bar {
     42
 }

@@ -17,6 +17,7 @@ trait Trait {
     {
         async move { self.f().await }
         //~^ ERROR: the trait bound `T: Trait` is not satisfied
+        //~| ERROR: cannot register hidden type without
     }
 }
 

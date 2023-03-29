@@ -23,7 +23,8 @@ pub fn associated_body(node: Node<'_>) -> Option<(LocalDefId, BodyId)> {
     match node {
         Node::Item(Item {
             owner_id,
-            kind: ItemKind::Const(_, body) | ItemKind::Static(.., body) | ItemKind::Fn(.., body),
+            kind:
+                ItemKind::Const(_, body, _) | ItemKind::Static(.., body, _) | ItemKind::Fn(.., body),
             ..
         })
         | Node::TraitItem(TraitItem {
@@ -182,7 +183,7 @@ impl<'hir> Map<'hir> {
         let hir_id = self.local_def_id_to_hir_id(local_def_id);
         let def_kind = match self.find(hir_id)? {
             Node::Item(item) => match item.kind {
-                ItemKind::Static(_, mt, _) => DefKind::Static(mt),
+                ItemKind::Static(_, mt, _, _) => DefKind::Static(mt),
                 ItemKind::Const(..) => DefKind::Const,
                 ItemKind::Fn(..) => DefKind::Fn,
                 ItemKind::Macro(_, macro_kind) => DefKind::Macro(macro_kind),

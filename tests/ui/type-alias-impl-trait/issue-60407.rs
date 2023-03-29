@@ -10,6 +10,7 @@ fn main() {
     unsafe { TEST = Some(foo()) }
 }
 
+#[defines(Debuggable)]
 fn foo() -> Debuggable {
     0u32
 }

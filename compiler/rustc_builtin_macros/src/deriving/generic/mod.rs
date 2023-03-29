@@ -575,7 +575,7 @@ impl<'a> TraitDef<'a> {
                 attrs: ast::AttrVec::new(),
                 kind: ast::AssocItemKind::Type(Box::new(ast::TyAlias {
                     defaultness: ast::Defaultness::Final,
-                    generics: Generics::default(),
+                    generics: Generics::new(self.span, Default::default()),
                     where_clauses: (
                         ast::TyAliasWhereClause::default(),
                         ast::TyAliasWhereClause::default(),
@@ -736,7 +736,8 @@ impl<'a> TraitDef<'a> {
             }
         }
 
-        let trait_generics = Generics { params, where_clause, span };
+        let trait_generics =
+            Generics { params, where_clause, span, defines_opaque_types: ThinVec::new() };
 
         // Create the reference to the trait.
         let trait_ref = cx.trait_ref(trait_path);

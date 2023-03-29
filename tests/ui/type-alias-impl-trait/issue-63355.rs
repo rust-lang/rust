@@ -22,6 +22,7 @@ impl Foo for () {}
 impl Bar for () {
     type Foo = FooImpl;
 
+    #[defines(FooImpl)]
     fn foo() -> Self::Foo {
         ()
     }
@@ -34,10 +35,13 @@ impl Baz for () {
     type Foo = FooImpl;
     type Bar = BarImpl;
 
+    #[defines(FooImpl)]
     fn foo() -> Self::Foo {
         ()
     }
 
+    #[defines(BarImpl)]
+    #[defines(FooImpl)]
     fn bar() -> Self::Bar {
         ()
     }

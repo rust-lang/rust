@@ -9,6 +9,7 @@ trait Dummy {}
 impl Dummy for () {}
 
 type F = impl Dummy;
+#[defines(F)]
 fn f() -> F {}
 
 trait Test {

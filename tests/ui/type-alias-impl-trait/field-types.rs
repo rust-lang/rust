@@ -11,6 +11,7 @@ struct Bar {
     foo: Foo,
 }
 
+#[defines(Foo)]
 fn bar() -> Bar {
     Bar { foo: "foo" }
 }

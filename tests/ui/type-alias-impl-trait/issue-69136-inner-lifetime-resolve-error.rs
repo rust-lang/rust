@@ -17,6 +17,7 @@ impl<T> WithAssoc<T> for () {
 type Return<A> = impl WithAssoc<A, AssocType = impl SomeTrait + 'a>;
 //~^ ERROR use of undeclared lifetime name `'a`
 
+#[defines(Return<()>)]
 fn my_fun() -> Return<()> {}
 //~^ ERROR expected generic type parameter, found `()`
 

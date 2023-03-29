@@ -5,6 +5,7 @@
 
 type X<T> = impl Clone;
 
+#[defines(X<T>)]
 fn f<T: Clone>(t: T) -> X<T> {
     t
     //~^ ERROR the trait bound `T: Clone` is not satisfied

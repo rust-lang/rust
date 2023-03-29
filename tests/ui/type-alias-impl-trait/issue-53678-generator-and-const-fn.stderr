@@ -1,8 +1,0 @@
-error: fatal error triggered by #[rustc_error]
-  --> $DIR/issue-53678-generator-and-const-fn.rs:19:1
-   |
-LL | fn main() {}
-   | ^^^^^^^^^
-
-error: aborting due to previous error
-

@@ -4,6 +4,7 @@ fn main() {}
 
 mod boo {
     pub type Boo = impl ::std::fmt::Debug;
+    #[defines(Boo)]
     fn bomp() -> Boo {
         ""
     }

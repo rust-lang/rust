@@ -110,7 +110,7 @@ fn primary_body_of(
 ) -> Option<(hir::BodyId, Option<&hir::Ty<'_>>, Option<&hir::FnSig<'_>>)> {
     match node {
         Node::Item(item) => match item.kind {
-            hir::ItemKind::Const(ty, body) | hir::ItemKind::Static(ty, _, body) => {
+            hir::ItemKind::Const(ty, body, _) | hir::ItemKind::Static(ty, _, body, _) => {
                 Some((body, Some(ty), None))
             }
             hir::ItemKind::Fn(ref sig, .., body) => Some((body, None, Some(sig))),

@@ -32,7 +32,7 @@ fn test_fun_to_string() {
             inputs: ThinVec::new(),
             output: ast::FnRetTy::Default(rustc_span::DUMMY_SP),
         };
-        let generics = ast::Generics::default();
+        let generics = ast::Generics::new(rustc_span::DUMMY_SP, Default::default());
         assert_eq!(
             fun_to_string(&decl, ast::FnHeader::default(), abba_ident, &generics),
             "fn abba()"

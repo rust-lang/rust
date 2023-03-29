@@ -1,5 +1,5 @@
 error[E0277]: `T` doesn't implement `Debug`
-  --> $DIR/not_a_defining_use.rs:10:5
+  --> $DIR/not_a_defining_use.rs:11:5
    |
 LL |     (t, 5i8)
    |     ^^^^^^^^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
@@ -11,7 +11,7 @@ LL | type Two<T: std::fmt::Debug, U> = impl Debug;
    |           +++++++++++++++++
 
 error[E0277]: the trait bound `U: Bar` is not satisfied
-  --> $DIR/not_a_defining_use.rs:25:5
+  --> $DIR/not_a_defining_use.rs:27:5
    |
 LL |     (t, <U as Bar>::FOO)
    |     ^^^^^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `U`
@@ -22,7 +22,7 @@ LL | type Two<T, U: Bar> = impl Debug;
    |              +++++
 
 error[E0277]: `T` doesn't implement `Debug`
-  --> $DIR/not_a_defining_use.rs:25:5
+  --> $DIR/not_a_defining_use.rs:27:5
    |
 LL |     (t, <U as Bar>::FOO)
    |     ^^^^^^^^^^^^^^^^^^^^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`

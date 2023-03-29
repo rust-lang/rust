@@ -494,6 +494,13 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // RFC 2397
     gated!(do_not_recommend, Normal, template!(Word), WarnFollowing, experimental!(do_not_recommend)),
 
+    // `#[defines]` for type alias impl trait
+    gated!(
+        defines, Normal, template!(List: "path"), DuplicatesOk,
+        @only_local: true,
+        type_alias_impl_trait, experimental!(type_alias_impl_trait),
+    ),
+
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================

@@ -4,6 +4,7 @@
 
 type A = impl Iterator;
 
+#[defines(A)]
 fn def_a() -> A {
     0..1
 }

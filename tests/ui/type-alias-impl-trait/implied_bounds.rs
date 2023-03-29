@@ -1,6 +1,7 @@
 #![feature(type_alias_impl_trait)]
 
 type WithLifetime<'a> = impl Equals<SelfType = ()>;
+#[defines(WithLifetime<'a>)]
 fn _defining_use<'a>() -> WithLifetime<'a> {}
 
 trait Convert<'a> {

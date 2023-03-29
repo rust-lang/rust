@@ -1,0 +1,9 @@
+error[E0091]: type parameter `T` is unused
+  --> $DIR/defining-scopes-syntactic.rs:6:15
+   |
+LL | type DropType<T> = ();
+   |               ^ unused type parameter
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0091`.

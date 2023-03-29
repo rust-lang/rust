@@ -5,6 +5,8 @@
 use std::iter::{once, Chain};
 
 type I<A> = Chain<A, impl Iterator<Item = &'static str>>;
+
+#[defines(I<A>)]
 fn test2<A: Iterator<Item = &'static str>>(x: A) -> I<A> {
     x.chain(once("5"))
 }

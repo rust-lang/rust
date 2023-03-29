@@ -1,5 +1,5 @@
 error[E0277]: `T` doesn't implement `Debug`
-  --> $DIR/generic_duplicate_param_use6.rs:11:5
+  --> $DIR/generic_duplicate_param_use6.rs:12:5
    |
 LL |     (t, t)
    |     ^^^^^^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
@@ -11,7 +11,7 @@ LL | type Two<T: std::fmt::Debug, U> = impl Debug;
    |           +++++++++++++++++
 
 error[E0277]: `U` doesn't implement `Debug`
-  --> $DIR/generic_duplicate_param_use6.rs:16:5
+  --> $DIR/generic_duplicate_param_use6.rs:18:5
    |
 LL |     (u, t)
    |     ^^^^^^ `U` cannot be formatted using `{:?}` because it doesn't implement `Debug`
@@ -23,7 +23,7 @@ LL | type Two<T, U: std::fmt::Debug> = impl Debug;
    |              +++++++++++++++++
 
 error[E0277]: `T` doesn't implement `Debug`
-  --> $DIR/generic_duplicate_param_use6.rs:16:5
+  --> $DIR/generic_duplicate_param_use6.rs:18:5
    |
 LL |     (u, t)
    |     ^^^^^^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`

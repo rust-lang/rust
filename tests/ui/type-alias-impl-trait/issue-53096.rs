@@ -2,6 +2,7 @@
 #![feature(type_alias_impl_trait)]
 
 type Foo = impl Fn() -> usize;
+#[defines(Foo)]
 const fn bar() -> Foo {
     || 0usize
 }

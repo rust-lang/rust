@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `T: Clone` is not satisfied
-  --> $DIR/bounds-are-checked-2.rs:9:5
+  --> $DIR/bounds-are-checked-2.rs:10:5
    |
 LL |     t
    |     ^ the trait `Clone` is not implemented for `T`

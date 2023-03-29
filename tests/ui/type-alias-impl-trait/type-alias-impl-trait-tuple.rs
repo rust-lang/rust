@@ -23,6 +23,7 @@ impl Blah {
     }
 }
 
+#[defines(Foo)]
 fn make_foo() -> Foo {
     true
 }

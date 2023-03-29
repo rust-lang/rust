@@ -3,11 +3,13 @@
 type Foo = impl 'static;
 //~^ ERROR: at least one trait must be specified
 
+#[defines(Foo)]
 fn foo() -> Foo {
     "foo"
 }
 
-fn bar() -> impl 'static { //~ ERROR: at least one trait must be specified
+fn bar() -> impl 'static {
+    //~^ ERROR: at least one trait must be specified
     "foo"
 }
 

@@ -6,7 +6,10 @@ use std::fmt::Debug;
 
 fn main() {
     type Opaque = impl Debug;
-    fn _unused() -> Opaque { String::new() }
+    #[defines(Opaque)]
+    fn _unused() -> Opaque {
+        String::new()
+    }
     let null = || -> Opaque { 0 };
     //~^ ERROR: concrete type differs from previous defining opaque type use
     println!("{:?}", null());

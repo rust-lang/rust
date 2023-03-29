@@ -7,6 +7,7 @@ impl Baz for () {}
 
 type Qux = impl Baz;
 
+#[defines(Qux)]
 fn assign() -> Qux {}
 
 pub trait Foo {

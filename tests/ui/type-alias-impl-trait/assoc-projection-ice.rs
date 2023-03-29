@@ -11,6 +11,7 @@ impl<'a> T for &'a S {
     type Item = &'a ();
 }
 
+#[defines(Alias<'a>)]
 fn filter_positive<'a>() -> Alias<'a> {
     &S
 }

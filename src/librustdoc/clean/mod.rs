@@ -2305,10 +2305,10 @@ fn clean_maybe_renamed_item<'tcx>(
     let mut name = renamed.unwrap_or_else(|| cx.tcx.hir().name(item.hir_id()));
     cx.with_param_env(def_id, |cx| {
         let kind = match item.kind {
-            ItemKind::Static(ty, mutability, body_id) => {
+            ItemKind::Static(ty, mutability, body_id, _) => {
                 StaticItem(Static { type_: clean_ty(ty, cx), mutability, expr: Some(body_id) })
             }
-            ItemKind::Const(ty, body_id) => ConstantItem(Constant {
+            ItemKind::Const(ty, body_id, _) => ConstantItem(Constant {
                 type_: clean_ty(ty, cx),
                 kind: ConstantKind::Local { body: body_id, def_id },
             }),

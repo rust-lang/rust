@@ -7,6 +7,7 @@ impl<T: Copy> Copy for CopyIfEq<T, T> {}
 
 type E<'a, 'b> = impl Sized;
 
+#[defines(E<'a, 'b>)]
 fn foo<'a: 'b, 'b, 'c>(x: &'static i32, mut y: &'a i32) -> E<'b, 'c> {
     let v = CopyIfEq::<*mut _, *mut _>(&mut { x }, &mut y);
 

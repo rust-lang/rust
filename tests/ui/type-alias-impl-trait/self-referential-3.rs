@@ -3,6 +3,7 @@
 
 type Bar<'a, 'b> = impl PartialEq<Bar<'a, 'b>> + std::fmt::Debug;
 
+#[defines(Bar<'a, 'b>)]
 fn bar<'a, 'b>(i: &'a i32) -> Bar<'a, 'b> {
     i
 }

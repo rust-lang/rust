@@ -22,6 +22,7 @@ impl WithAssoc for MyStruct {
     type AssocType = MyParam;
 }
 
+#[defines(Return<A>)]
 fn my_fun<A>() -> Return<A> {
     MyStruct
 }

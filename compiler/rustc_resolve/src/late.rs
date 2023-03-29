@@ -973,6 +973,10 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
         for p in &generics.where_clause.predicates {
             self.visit_where_predicate(p);
         }
+        for (id, path) in &generics.defines_opaque_types {
+            self.smart_resolve_path(*id, &None, path, PathSource::Type);
+            self.visit_path(path, *id)
+        }
     }
 
     fn visit_closure_binder(&mut self, b: &'ast ClosureBinder) {
@@ -2346,12 +2350,27 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 });
             }
 
-            ItemKind::Static(box ast::StaticItem { ref ty, ref expr, .. })
-            | ItemKind::Const(box ast::ConstItem { ref ty, ref expr, .. }) => {
+            ItemKind::Static(box ast::StaticItem {
+                ref ty,
+                ref expr,
+                ref defines_opaque_types,
+                ..
+            })
+            | ItemKind::Const(box ast::ConstItem {
+                ref ty,
+                ref expr,
+                ref defines_opaque_types,
+                ..
+            }) => {
                 self.with_static_rib(|this| {
                     this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Static), |this| {
                         this.visit_ty(ty);
                     });
+
+                    for (id, path) in defines_opaque_types {
+                        this.smart_resolve_path(*id, &None, path, PathSource::Type);
+                        this.visit_path(path, *id)
+                    }
                     this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
                         if let Some(expr) = expr {
                             let constant_item_kind = match item.kind {

@@ -311,6 +311,20 @@ pub struct Error<O, E> {
 }
 
 impl<O: ForestObligation> ObligationForest<O> {
+    #[cfg(bootstrap)]
+    pub fn new() -> ObligationForest<O> {
+        ObligationForest {
+            nodes: vec![],
+            done_cache: Default::default(),
+            active_cache: Default::default(),
+            reused_node_vec: vec![],
+            obligation_tree_id_generator: (0..).map(ObligationTreeId),
+            error_cache: Default::default(),
+        }
+    }
+    #[cfg(not(bootstrap))]
+    // cannot use cfg_attr as `defines` does not support that yet.
+    #[defines(ObligationTreeIdGenerator)]
     pub fn new() -> ObligationForest<O> {
         ObligationForest {
             nodes: vec![],

@@ -228,7 +228,16 @@ impl<'a> Parser<'a> {
             self.bump(); // `static`
             let m = self.parse_mutability();
             let (ident, ty, expr) = self.parse_item_global(Some(m))?;
-            (ident, ItemKind::Static(Box::new(StaticItem { ty, mutability: m, expr })))
+            let defines_opaque_types = self.parse_defines(attrs)?;
+            (
+                ident,
+                ItemKind::Static(Box::new(StaticItem {
+                    ty,
+                    mutability: m,
+                    expr,
+                    defines_opaque_types,
+                })),
+            )
         } else if let Const::Yes(const_span) = self.parse_constness(Case::Sensitive) {
             // CONST ITEM
             if self.token.is_keyword(kw::Impl) {
@@ -237,7 +246,16 @@ impl<'a> Parser<'a> {
             } else {
                 self.recover_const_mut(const_span);
                 let (ident, ty, expr) = self.parse_item_global(None)?;
-                (ident, ItemKind::Const(Box::new(ConstItem { defaultness: def_(), ty, expr })))
+                let defines_opaque_types = self.parse_defines(attrs)?;
+                (
+                    ident,
+                    ItemKind::Const(Box::new(ConstItem {
+                        defaultness: def_(),
+                        ty,
+                        expr,
+                        defines_opaque_types,
+                    })),
+                )
             }
         } else if self.check_keyword(kw::Trait) || self.check_auto_or_unsafe_trait_item() {
             // TRAIT ITEM
@@ -254,17 +272,17 @@ impl<'a> Parser<'a> {
             self.parse_item_mod(attrs)?
         } else if self.eat_keyword(kw::Type) {
             // TYPE ITEM
-            self.parse_type_alias(def_())?
+            self.parse_type_alias(def_(), attrs)?
         } else if self.eat_keyword(kw::Enum) {
             // ENUM ITEM
-            self.parse_item_enum()?
+            self.parse_item_enum(attrs)?
         } else if self.eat_keyword(kw::Struct) {
             // STRUCT ITEM
-            self.parse_item_struct()?
+            self.parse_item_struct(attrs)?
         } else if self.is_kw_followed_by_ident(kw::Union) {
             // UNION ITEM
             self.bump(); // `union`
-            self.parse_item_union()?
+            self.parse_item_union(attrs)?
         } else if self.eat_keyword(kw::Macro) {
             // MACROS 2.0 ITEM
             self.parse_item_decl_macro(lo)?
@@ -537,13 +555,11 @@ impl<'a> Parser<'a> {
 
         // First, parse generic parameters if necessary.
         let mut generics = if self.choose_generics_over_qpath(0) {
-            self.parse_generics()?
+            self.parse_generics(&attrs[..])?
         } else {
-            let mut generics = Generics::default();
             // impl A for B {}
             //    /\ this is where `generics.span` should point when there are no type params.
-            generics.span = self.prev_token.span.shrink_to_hi();
-            generics
+            Generics::new(self.prev_token.span.shrink_to_hi(), self.parse_defines(attrs)?)
         };
 
         let constness = self.parse_constness(Case::Sensitive);
@@ -790,7 +806,7 @@ impl<'a> Parser<'a> {
 
         self.expect_keyword(kw::Trait)?;
         let ident = self.parse_ident()?;
-        let mut generics = self.parse_generics()?;
+        let mut generics = self.parse_generics(&attrs[..])?;
 
         // Parse optional colon and supertrait bounds.
         let had_colon = self.eat(&token::Colon);
@@ -863,12 +879,18 @@ impl<'a> Parser<'a> {
                 let kind = match AssocItemKind::try_from(kind) {
                     Ok(kind) => kind,
                     Err(kind) => match kind {
-                        ItemKind::Static(box StaticItem { ty, mutability: _, expr }) => {
+                        ItemKind::Static(box StaticItem {
+                            ty,
+                            mutability: _,
+                            expr,
+                            defines_opaque_types,
+                        }) => {
                             self.sess.emit_err(errors::AssociatedStaticItemNotAllowed { span });
                             AssocItemKind::Const(Box::new(ConstItem {
                                 defaultness: Defaultness::Final,
                                 ty,
                                 expr,
+                                defines_opaque_types,
                             }))
                         }
                         _ => return self.error_bad_item_kind(span, &kind, "`trait`s or `impl`s"),
@@ -884,9 +906,13 @@ impl<'a> Parser<'a> {
     /// TypeAlias = "type" Ident Generics {":" GenericBounds}? {"=" Ty}? ";" ;
     /// ```
     /// The `"type"` has already been eaten.
-    fn parse_type_alias(&mut self, defaultness: Defaultness) -> PResult<'a, ItemInfo> {
+    fn parse_type_alias(
+        &mut self,
+        defaultness: Defaultness,
+        attrs: &[Attribute],
+    ) -> PResult<'a, ItemInfo> {
         let ident = self.parse_ident()?;
-        let mut generics = self.parse_generics()?;
+        let mut generics = self.parse_generics(attrs)?;
 
         // Parse optional colon and param bounds.
         let bounds =
@@ -1270,7 +1296,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an enum declaration.
-    fn parse_item_enum(&mut self) -> PResult<'a, ItemInfo> {
+    fn parse_item_enum(&mut self, attrs: &[Attribute]) -> PResult<'a, ItemInfo> {
         if self.token.is_keyword(kw::Struct) {
             let span = self.prev_token.span.to(self.token.span);
             let err = errors::EnumStructMutuallyExclusive { span };
@@ -1283,7 +1309,7 @@ impl<'a> Parser<'a> {
         }
 
         let id = self.parse_ident()?;
-        let mut generics = self.parse_generics()?;
+        let mut generics = self.parse_generics(attrs)?;
         generics.where_clause = self.parse_where_clause()?;
 
         // Possibly recover `enum Foo;` instead of `enum Foo {}`
@@ -1355,10 +1381,10 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses `struct Foo { ... }`.
-    fn parse_item_struct(&mut self) -> PResult<'a, ItemInfo> {
+    fn parse_item_struct(&mut self, attrs: &[Attribute]) -> PResult<'a, ItemInfo> {
         let class_name = self.parse_ident()?;
 
-        let mut generics = self.parse_generics()?;
+        let mut generics = self.parse_generics(attrs)?;
 
         // There is a special case worth noting here, as reported in issue #17904.
         // If we are parsing a tuple struct it is the case that the where clause
@@ -1423,10 +1449,10 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses `union Foo { ... }`.
-    fn parse_item_union(&mut self) -> PResult<'a, ItemInfo> {
+    fn parse_item_union(&mut self, attrs: &[Attribute]) -> PResult<'a, ItemInfo> {
         let class_name = self.parse_ident()?;
 
-        let mut generics = self.parse_generics()?;
+        let mut generics = self.parse_generics(attrs)?;
 
         let vdata = if self.token.is_keyword(kw::Where) {
             generics.where_clause = self.parse_where_clause()?;
@@ -1785,7 +1811,7 @@ impl<'a> Parser<'a> {
                     }
                 }
             } else if self.eat_keyword(kw::Struct) {
-                match self.parse_item_struct() {
+                match self.parse_item_struct(&[]) {
                     Ok((ident, _)) => {
                         let mut err = self.struct_span_err(
                             lo.with_hi(ident.span.hi()),
@@ -2083,7 +2109,7 @@ impl<'a> Parser<'a> {
         let fn_span = self.token.span;
         let header = self.parse_fn_front_matter(vis, case)?; // `const ... fn`
         let ident = self.parse_ident()?; // `foo`
-        let mut generics = self.parse_generics()?; // `<'a, T, ...>`
+        let mut generics = self.parse_generics(&attrs[..])?; // `<'a, T, ...>`
         let decl = match self.parse_fn_decl(
             fn_parse_mode.req_name,
             AllowPlus::Yes,

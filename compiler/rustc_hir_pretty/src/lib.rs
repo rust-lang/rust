@@ -515,7 +515,7 @@ impl<'a> State<'a> {
                 self.end(); // end inner head-block
                 self.end(); // end outer head-block
             }
-            hir::ItemKind::Static(ty, m, expr) => {
+            hir::ItemKind::Static(ty, m, expr, _) => {
                 self.head("static");
                 if m.is_mut() {
                     self.word_space("mut");
@@ -531,7 +531,7 @@ impl<'a> State<'a> {
                 self.word(";");
                 self.end(); // end the outer cbox
             }
-            hir::ItemKind::Const(ty, expr) => {
+            hir::ItemKind::Const(ty, expr, _) => {
                 self.head("const");
                 self.print_ident(item.ident);
                 self.word_space(":");

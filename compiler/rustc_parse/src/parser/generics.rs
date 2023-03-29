@@ -7,13 +7,14 @@ use crate::errors::{
 use super::{ForceCollect, Parser, TrailingToken};
 
 use ast::token::Delimiter;
+use ast::Attribute;
 use rustc_ast::token;
 use rustc_ast::{
     self as ast, AttrVec, GenericBounds, GenericParam, GenericParamKind, TyKind, WhereClause,
 };
 use rustc_errors::{Applicability, PResult};
 use rustc_span::symbol::{kw, Ident};
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 use thin_vec::ThinVec;
 
 enum PredicateOrStructBody {
@@ -245,7 +246,10 @@ impl<'a> Parser<'a> {
     /// matches generics = ( ) | ( < > ) | ( < typaramseq ( , )? > ) | ( < lifetimes ( , )? > )
     ///                  | ( < lifetimes , typaramseq ( , )? > )
     /// where   typaramseq = ( typaram ) | ( typaram , typaramseq )
-    pub(super) fn parse_generics(&mut self) -> PResult<'a, ast::Generics> {
+    pub(super) fn parse_generics(
+        &mut self,
+        outer_attrs: &[Attribute],
+    ) -> PResult<'a, ast::Generics> {
         let span_lo = self.token.span;
         let (params, span) = if self.eat_lt() {
             let params = self.parse_generic_params()?;
@@ -254,6 +258,9 @@ impl<'a> Parser<'a> {
         } else {
             (ThinVec::new(), self.prev_token.span.shrink_to_hi())
         };
+
+        let defines_opaque_types = self.parse_defines(outer_attrs)?;
+
         Ok(ast::Generics {
             params,
             where_clause: WhereClause {
@@ -262,7 +269,30 @@ impl<'a> Parser<'a> {
                 span: self.prev_token.span.shrink_to_hi(),
             },
             span,
+            defines_opaque_types,
         })
+    }
+
+    #[instrument(level = "trace", skip(self), ret)]
+    pub(super) fn parse_defines(
+        &mut self,
+        outer_attrs: &[Attribute],
+    ) -> PResult<'a, ThinVec<(ast::NodeId, ast::Path)>> {
+        let mut defines_opaque_types = ThinVec::default();
+        for attr in outer_attrs {
+            if !attr.has_name(sym::defines) {
+                continue;
+            }
+            trace!("{:?}", attr.get_normal_item().args.inner_tokens());
+            let path = crate::parse_in(
+                self.sess,
+                attr.get_normal_item().args.inner_tokens(),
+                "defines attribute path",
+                |parser| parser.parse_path(super::PathStyle::Type),
+            )?;
+            defines_opaque_types.push((ast::DUMMY_NODE_ID, path));
+        }
+        Ok(defines_opaque_types)
     }
 
     /// Parses an optional where-clause.
@@ -303,7 +333,7 @@ impl<'a> Parser<'a> {
         // parameter syntax (as in `where<'a>` or `where<T>`. To avoid that being a breaking
         // change we parse those generics now, but report an error.
         if self.choose_generics_over_qpath(0) {
-            let generics = self.parse_generics()?;
+            let generics = self.parse_generics(&[])?;
             self.struct_span_err(
                 generics.span,
                 "generic parameters on `where` clauses are reserved for future use",

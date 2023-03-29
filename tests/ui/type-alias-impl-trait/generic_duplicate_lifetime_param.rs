@@ -8,6 +8,7 @@ impl<'a, T: ?Sized> Captures<'a> for T {}
 
 type Two<'a, 'b> = impl std::fmt::Debug + Captures<'a> + Captures<'b>;
 
+#[defines(Two<'a, 'a>)]
 fn one<'a>(t: &'a ()) -> Two<'a, 'a> {
     t
     //~^ ERROR non-defining opaque type use

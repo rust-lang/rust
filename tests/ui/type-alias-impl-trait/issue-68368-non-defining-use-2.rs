@@ -6,6 +6,7 @@
 trait Trait<T> {}
 type Alias<'a, U> = impl Trait<U>;
 
+#[defines(Alias<'a, ()>)]
 fn f<'a>() -> Alias<'a, ()> {}
 //~^ ERROR expected generic type parameter, found `()`
 

@@ -39,7 +39,7 @@ error: `collapse_debuginfo` attribute should be applied to macro definitions
    |
 LL |   #[collapse_debuginfo]
    |   ^^^^^^^^^^^^^^^^^^^^^
-LL |
+...
 LL | / fn foo() {
 LL | |     let _ = #[collapse_debuginfo] || { };
 LL | |
@@ -50,13 +50,13 @@ LL | | }
    | |_- not a macro definition
 
 error: `collapse_debuginfo` attribute should be applied to macro definitions
-  --> $DIR/collapse-debuginfo-invalid.rs:27:13
+  --> $DIR/collapse-debuginfo-invalid.rs:28:13
    |
 LL |     let _ = #[collapse_debuginfo] || { };
    |             ^^^^^^^^^^^^^^^^^^^^^ ------ not a macro definition
 
 error: `collapse_debuginfo` attribute should be applied to macro definitions
-  --> $DIR/collapse-debuginfo-invalid.rs:29:5
+  --> $DIR/collapse-debuginfo-invalid.rs:30:5
    |
 LL |     #[collapse_debuginfo]
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -65,13 +65,13 @@ LL |     let _ = 3;
    |     ---------- not a macro definition
 
 error: `collapse_debuginfo` attribute should be applied to macro definitions
-  --> $DIR/collapse-debuginfo-invalid.rs:32:13
+  --> $DIR/collapse-debuginfo-invalid.rs:33:13
    |
 LL |     let _ = #[collapse_debuginfo] 3;
    |             ^^^^^^^^^^^^^^^^^^^^^ - not a macro definition
 
 error: `collapse_debuginfo` attribute should be applied to macro definitions
-  --> $DIR/collapse-debuginfo-invalid.rs:35:9
+  --> $DIR/collapse-debuginfo-invalid.rs:36:9
    |
 LL |         #[collapse_debuginfo]
    |         ^^^^^^^^^^^^^^^^^^^^^
@@ -80,14 +80,13 @@ LL |         _ => (),
    |         ------- not a macro definition
 
 error: `collapse_debuginfo` attribute should be applied to macro definitions
-  --> $DIR/collapse-debuginfo-invalid.rs:41:1
+  --> $DIR/collapse-debuginfo-invalid.rs:42:1
    |
-LL |   #[collapse_debuginfo]
-   |   ^^^^^^^^^^^^^^^^^^^^^
+LL | #[collapse_debuginfo]
+   | ^^^^^^^^^^^^^^^^^^^^^
 LL |
-LL | / mod bar {
-LL | | }
-   | |_- not a macro definition
+LL | mod bar {}
+   | ---------- not a macro definition
 
 error: `collapse_debuginfo` attribute should be applied to macro definitions
   --> $DIR/collapse-debuginfo-invalid.rs:46:1
@@ -150,7 +149,7 @@ LL |   #[collapse_debuginfo]
 LL |
 LL | / union Qux {
 LL | |     a: u32,
-LL | |     b: u16
+LL | |     b: u16,
 LL | | }
    | |_- not a macro definition
 
@@ -177,7 +176,7 @@ LL | type AFoobar = impl Foobar;
    | --------------------------- not a macro definition
 
 error: `collapse_debuginfo` attribute should be applied to macro definitions
-  --> $DIR/collapse-debuginfo-invalid.rs:93:1
+  --> $DIR/collapse-debuginfo-invalid.rs:94:1
    |
 LL |   #[collapse_debuginfo]
    |   ^^^^^^^^^^^^^^^^^^^^^
@@ -201,7 +200,7 @@ LL |     type Bar;
    |     --------- not a macro definition
 
 error: `collapse_debuginfo` attribute should be applied to macro definitions
-  --> $DIR/collapse-debuginfo-invalid.rs:96:5
+  --> $DIR/collapse-debuginfo-invalid.rs:97:5
    |
 LL |     #[collapse_debuginfo]
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -210,7 +209,7 @@ LL |     const FOO: u32 = 3;
    |     ------------------- not a macro definition
 
 error: `collapse_debuginfo` attribute should be applied to macro definitions
-  --> $DIR/collapse-debuginfo-invalid.rs:100:5
+  --> $DIR/collapse-debuginfo-invalid.rs:101:5
    |
 LL |     #[collapse_debuginfo]
    |     ^^^^^^^^^^^^^^^^^^^^^

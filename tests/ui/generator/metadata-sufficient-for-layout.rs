@@ -17,6 +17,7 @@ type F = impl Generator<(), Yield = (), Return = ()>;
 // Static queries the layout of the generator.
 static A: Option<F> = None;
 
+#[defines(F)]
 fn f() -> F {
     metadata_sufficient_for_layout::g()
 }

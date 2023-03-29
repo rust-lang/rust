@@ -7,14 +7,14 @@ type Foo = impl Copy;
 
 enum Wrapper<T> {
     First(T),
-    Second
+    Second,
 }
 
 // This method constrains `Foo` to be `bool`
+#[defines(Foo)]
 fn constrained_foo() -> Foo {
     true
 }
-
 
 // This method does not constrain `Foo`.
 // Per RFC 2071, function bodies may either

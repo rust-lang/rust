@@ -18,11 +18,10 @@ impl<X: Trait> ProofForConversion<X> for () {
 
 type Converter<T> = impl ProofForConversion<T>;
 
+#[defines(Converter<T>)]
 fn _defining_use<T: Trait>() -> Converter<T> {
     ()
     //~^ ERROR the trait bound `T: Trait` is not satisfied
 }
 
-
-fn main() {
-}
+fn main() {}

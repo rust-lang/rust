@@ -1,0 +1,53 @@
+error: cannot register hidden type without a `#[defines(...)]` attribute
+  --> $DIR/defining-use-item-child.rs:10:9
+   |
+LL |         "foo"
+   |         ^^^^^
+   |
+help: "this opaque type needs to be in the `defines` attribute
+  --> $DIR/defining-use-item-child.rs:5:12
+   |
+LL | type Foo = impl std::fmt::Display;
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+note: "this item needs a `#[defines(...)]` attribute
+  --> $DIR/defining-use-item-child.rs:9:5
+   |
+LL |     pub fn foo() -> Foo {
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: cannot register hidden type without a `#[defines(...)]` attribute
+  --> $DIR/defining-use-item-child.rs:18:9
+   |
+LL |         "foo"
+   |         ^^^^^
+   |
+help: "this opaque type needs to be in the `defines` attribute
+  --> $DIR/defining-use-item-child.rs:5:12
+   |
+LL | type Foo = impl std::fmt::Display;
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+note: "this item needs a `#[defines(...)]` attribute
+  --> $DIR/defining-use-item-child.rs:17:5
+   |
+LL |     pub fn foo() -> Foo {
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: cannot register hidden type without a `#[defines(...)]` attribute
+  --> $DIR/defining-use-item-child.rs:28:13
+   |
+LL |             "blob"
+   |             ^^^^^^
+   |
+help: "this opaque type needs to be in the `defines` attribute
+  --> $DIR/defining-use-item-child.rs:5:12
+   |
+LL | type Foo = impl std::fmt::Display;
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+note: "this item needs a `#[defines(...)]` attribute
+  --> $DIR/defining-use-item-child.rs:27:9
+   |
+LL |         fn blob() -> Foo {
+   |         ^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

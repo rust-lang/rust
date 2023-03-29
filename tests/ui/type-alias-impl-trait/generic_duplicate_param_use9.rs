@@ -11,6 +11,7 @@ trait Foo {
     const BAR: Self::Bar;
 }
 
+#[defines(Two<T, U>)]
 fn two<T: Debug + Foo, U: Debug>(t: T, u: U) -> Two<T, U> {
     (t, u, T::BAR)
     //~^ ERROR the trait bound `A: Foo` is not satisfied
@@ -18,6 +19,7 @@ fn two<T: Debug + Foo, U: Debug>(t: T, u: U) -> Two<T, U> {
     //~| ERROR `B` doesn't implement `Debug`
 }
 
+#[defines(Two<T, U>)]
 fn three<T: Debug, U: Debug>(t: T, u: U) -> Two<T, U> {
     (t, u, 42)
     //~^ ERROR `A` doesn't implement `Debug`

@@ -12,14 +12,15 @@ impl AsyncRead for i32 {}
 
 type PendingReader<'a> = impl AsyncRead + 'a;
 
-type OpeningReadFuture<'a> =
-    impl std::future::Future<Output = Result<PendingReader<'a>, CantOpen>>;
+type OpeningReadFuture<'a> = impl std::future::Future<Output = Result<PendingReader<'a>, CantOpen>>;
 
 impl Pending {
     async fn read(&mut self) -> Result<impl AsyncRead + '_, CantOpen> {
         Ok(42)
     }
 
+    #[defines(OpeningReadFuture<'_>)]
+    #[defines(PendingReader<'_>)]
     fn read_fut(&mut self) -> OpeningReadFuture<'_> {
         self.read()
     }

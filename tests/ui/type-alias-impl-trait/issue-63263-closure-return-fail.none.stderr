@@ -1,0 +1,19 @@
+error: cannot register hidden type without a `#[defines(...)]` attribute
+  --> $DIR/issue-63263-closure-return-fail.rs:10:21
+   |
+LL |     || -> Closure { || () };
+   |                     ^^^^^
+   |
+help: "this opaque type needs to be in the `defines` attribute
+  --> $DIR/issue-63263-closure-return-fail.rs:5:20
+   |
+LL | pub type Closure = impl FnOnce();
+   |                    ^^^^^^^^^^^^^
+note: "this item needs a `#[defines(...)]` attribute
+  --> $DIR/issue-63263-closure-return-fail.rs:9:1
+   |
+LL | fn main() {
+   | ^^^^^^^^^
+
+error: aborting due to previous error
+

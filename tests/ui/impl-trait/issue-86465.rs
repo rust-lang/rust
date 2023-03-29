@@ -6,6 +6,8 @@ impl<'a, T: ?Sized> Captures<'a> for T {}
 
 type X<'a, 'b> = impl std::fmt::Debug + Captures<'a> + Captures<'b>;
 
+#[defines(X<'t, 'u>)]
+#[defines(X<'u, 't>)]
 fn f<'t, 'u>(a: &'t u32, b: &'u u32) -> (X<'t, 'u>, X<'u, 't>) {
     (a, a)
     //~^ ERROR concrete type differs from previous defining opaque type use

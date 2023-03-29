@@ -5,7 +5,7 @@ LL |     type Foo = impl std::fmt::Debug;
    |                ^^^^^^^^^^^^^^^^^^^^
    |
 note: ...which requires type-checking `m::bar`...
-  --> $DIR/auto-trait-leakage3.rs:15:9
+  --> $DIR/auto-trait-leakage3.rs:16:9
    |
 LL |         is_send(foo());
    |         ^^^^^^^

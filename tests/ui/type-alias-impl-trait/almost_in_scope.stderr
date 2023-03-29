@@ -1,0 +1,19 @@
+error: cannot register hidden type without a `#[defines(...)]` attribute
+  --> $DIR/almost_in_scope.rs:13:22
+   |
+LL |         let x: Foo = 22_u32;
+   |                      ^^^^^^
+   |
+help: "this opaque type needs to be in the `defines` attribute
+  --> $DIR/almost_in_scope.rs:3:12
+   |
+LL | type Foo = impl std::fmt::Debug;
+   |            ^^^^^^^^^^^^^^^^^^^^
+note: "this item needs a `#[defines(...)]` attribute
+  --> $DIR/almost_in_scope.rs:12:5
+   |
+LL |     fn method() {
+   |     ^^^^^^^^^^^
+
+error: aborting due to previous error
+

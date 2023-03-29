@@ -16,6 +16,7 @@ trait MyFrom<T>: Sized {
 trait F {}
 impl F for () {}
 type DummyT<T> = impl F;
+#[defines(DummyT<T>)]
 fn _dummy_t<T>() -> DummyT<T> {}
 
 struct Phantom1<T>(PhantomData<T>);

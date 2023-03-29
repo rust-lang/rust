@@ -7,6 +7,7 @@ use std::ops::{Generator, GeneratorState};
 use std::pin::Pin;
 
 type RandGenerator<'a> = impl Generator<Return = (), Yield = u64> + 'a;
+#[defines(RandGenerator<'a>)]
 fn rand_generator<'a>(rng: &'a ()) -> RandGenerator<'a> {
     move || {
         let _rng = rng;
@@ -17,6 +18,7 @@ fn rand_generator<'a>(rng: &'a ()) -> RandGenerator<'a> {
 }
 
 pub type RandGeneratorWithIndirection<'c> = impl Generator<Return = (), Yield = u64> + 'c;
+#[defines(RandGeneratorWithIndirection<'a>)]
 pub fn rand_generator_with_indirection<'a>(rng: &'a ()) -> RandGeneratorWithIndirection<'a> {
     fn helper<'b>(rng: &'b ()) -> impl 'b + Generator<Return = (), Yield = u64> {
         move || {

@@ -1,12 +1,13 @@
 error[E0700]: hidden type for `Opaque<'a, T>` captures lifetime that does not appear in bounds
-  --> $DIR/missing_lifetime_bound.rs:4:47
+  --> $DIR/missing_lifetime_bound.rs:6:5
    |
 LL | type Opaque<'a, T> = impl Sized;
    |                      ---------- opaque type defined here
-LL | fn defining<'a, T>(x: &'a i32) -> Opaque<T> { x }
-   |             --                                ^
-   |             |
-   |             hidden type `&'a i32` captures the lifetime `'a` as defined here
+LL | #[defines(Opaque<'a, T>)]
+LL | fn defining<'a, T>(x: &'a i32) -> Opaque<T> {
+   |             -- hidden type `&'a i32` captures the lifetime `'a` as defined here
+LL |     x
+   |     ^
 
 error: aborting due to previous error
 

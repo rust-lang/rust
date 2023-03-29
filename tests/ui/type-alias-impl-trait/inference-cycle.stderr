@@ -5,7 +5,7 @@ LL |     type Foo = impl std::fmt::Debug;
    |                ^^^^^^^^^^^^^^^^^^^^
    |
 note: ...which requires type-checking `m::bar`...
-  --> $DIR/inference-cycle.rs:15:9
+  --> $DIR/inference-cycle.rs:19:9
    |
 LL |         is_send(foo()); // Today: error
    |         ^^^^^^^

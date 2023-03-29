@@ -44,7 +44,13 @@ pub fn expand(
     // Generate anonymous constant serving as container for the allocator methods.
     let const_ty = ecx.ty(sig_span, TyKind::Tup(ThinVec::new()));
     let const_body = ecx.expr_block(ecx.block(span, stmts));
-    let const_item = ecx.item_const(span, Ident::new(kw::Underscore, span), const_ty, const_body);
+    let const_item = ecx.item_const(
+        span,
+        Ident::new(kw::Underscore, span),
+        const_ty,
+        const_body,
+        Default::default(),
+    );
     let const_item = if is_stmt {
         Annotatable::Stmt(P(ecx.stmt_item(span, const_item)))
     } else {
@@ -85,7 +91,7 @@ fn generate_handler(cx: &ExtCtxt<'_>, handler: Ident, span: Span, sig_span: Span
     let kind = ItemKind::Fn(Box::new(Fn {
         defaultness: ast::Defaultness::Final,
         sig,
-        generics: Generics::default(),
+        generics: Generics::new(span.shrink_to_hi(), Default::default()),
         body,
     }));
 

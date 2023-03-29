@@ -9,6 +9,25 @@ help: consider restricting type parameter `T`
 LL | type G<'a, T: Trait> = impl Future<Output = ()> + 'a;
    |             +++++++
 
-error: aborting due to previous error
+error: cannot register hidden type without a `#[defines(...)]` attribute
+  --> $DIR/issue-89686.rs:18:9
+   |
+LL |         async move { self.f().await }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: "this opaque type needs to be in the `defines` attribute
+  --> $DIR/issue-89686.rs:7:17
+   |
+LL | type G<'a, T> = impl Future<Output = ()> + 'a;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: "this item needs a `#[defines(...)]` attribute
+  --> $DIR/issue-89686.rs:14:5
+   |
+LL | /     fn g<'a>(&'a self) -> G<'a, Self>
+LL | |     where
+LL | |         Self: Sized,
+   | |____________________^
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

@@ -8,6 +8,7 @@ struct Send<T> {
 
 type InnerSend<T> = impl Sized;
 
+#[defines(InnerSend<T>)]
 fn constrain<T>() -> InnerSend<T> {
     ()
 }

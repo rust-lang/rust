@@ -328,7 +328,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     let main = ast::ItemKind::Fn(Box::new(ast::Fn {
         defaultness,
         sig,
-        generics: ast::Generics::default(),
+        generics: ast::Generics::new(sp.shrink_to_hi(), Default::default()),
         body: Some(main_body),
     }));
 

@@ -192,6 +192,7 @@ impl Bounds {
                 span,
             },
             span,
+            defines_opaque_types: ThinVec::new(),
         }
     }
 }

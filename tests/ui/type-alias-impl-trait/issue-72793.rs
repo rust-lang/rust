@@ -3,7 +3,9 @@
 
 #![feature(type_alias_impl_trait)]
 
-trait T { type Item; }
+trait T {
+    type Item;
+}
 
 type Alias<'a> = impl T<Item = &'a ()>;
 
@@ -12,6 +14,7 @@ impl<'a> T for &'a S {
     type Item = &'a ();
 }
 
+#[defines(Alias<'a>)]
 fn filter_positive<'a>() -> Alias<'a> {
     &S
 }

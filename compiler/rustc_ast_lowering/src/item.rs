@@ -229,13 +229,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 self.lower_use_tree(use_tree, &prefix, id, vis_span, ident, attrs)
             }
-            ItemKind::Static(box ast::StaticItem { ty: t, mutability: m, expr: e }) => {
+            ItemKind::Static(box ast::StaticItem {
+                ty: t,
+                mutability: m,
+                expr: e,
+                defines_opaque_types,
+            }) => {
                 let (ty, body_id) = self.lower_const_item(t, span, e.as_deref());
-                hir::ItemKind::Static(ty, *m, body_id)
+                let defines_opaque_types = self.lower_defines(defines_opaque_types);
+                hir::ItemKind::Static(ty, *m, body_id, defines_opaque_types)
             }
-            ItemKind::Const(box ast::ConstItem { ty, expr, .. }) => {
+            ItemKind::Const(box ast::ConstItem { ty, expr, defines_opaque_types, .. }) => {
                 let (ty, body_id) = self.lower_const_item(ty, span, expr.as_deref());
-                hir::ItemKind::Const(ty, body_id)
+                let defines_opaque_types = self.lower_defines(defines_opaque_types);
+                hir::ItemKind::Const(ty, body_id, defines_opaque_types)
             }
             ItemKind::Fn(box Fn {
                 sig: FnSig { decl, header, span: fn_sig_span },
@@ -1368,15 +1375,38 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let impl_trait_bounds = std::mem::take(&mut self.impl_trait_bounds);
         predicates.extend(impl_trait_bounds.into_iter());
 
+        let defines_opaque_types = self.lower_defines(&generics.defines_opaque_types);
+
         let lowered_generics = self.arena.alloc(hir::Generics {
             params: self.arena.alloc_from_iter(params),
             predicates: self.arena.alloc_from_iter(predicates),
             has_where_clause_predicates,
             where_clause_span,
             span,
+            defines_opaque_types,
         });
 
         (lowered_generics, res)
+    }
+
+    fn lower_defines(
+        &mut self,
+        defines_opaque_types: &[(NodeId, ast::Path)],
+    ) -> &'hir [&'hir hir::Path<'hir>] {
+        let arena = self.arena;
+
+        let defines_opaque_types = defines_opaque_types.iter().map(|(id, path)| {
+            let qpath = self.lower_qpath(
+                *id,
+                &None,
+                path,
+                ParamMode::Explicit,
+                &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+            );
+            let hir::QPath::Resolved(None, path) = qpath else { panic!("{qpath:?}") };
+            path
+        });
+        arena.alloc_from_iter(defines_opaque_types)
     }
 
     pub(super) fn lower_generic_bound_predicate(

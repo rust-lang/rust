@@ -4,6 +4,7 @@
 // check-pass
 
 type FunType = impl Fn<()>;
+#[defines(FunType)]
 static STATIC_FN: FunType = some_fn;
 
 fn some_fn() {}

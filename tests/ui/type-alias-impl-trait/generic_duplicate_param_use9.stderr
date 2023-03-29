@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `A: Foo` is not satisfied
-  --> $DIR/generic_duplicate_param_use9.rs:15:5
+  --> $DIR/generic_duplicate_param_use9.rs:16:5
    |
 LL |     (t, u, T::BAR)
    |     ^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `A`
@@ -10,7 +10,7 @@ LL | type Two<A: Foo, B> = impl Debug;
    |           +++++
 
 error[E0277]: `A` doesn't implement `Debug`
-  --> $DIR/generic_duplicate_param_use9.rs:15:5
+  --> $DIR/generic_duplicate_param_use9.rs:16:5
    |
 LL |     (t, u, T::BAR)
    |     ^^^^^^^^^^^^^^ `A` cannot be formatted using `{:?}` because it doesn't implement `Debug`
@@ -22,7 +22,7 @@ LL | type Two<A: std::fmt::Debug, B> = impl Debug;
    |           +++++++++++++++++
 
 error[E0277]: `B` doesn't implement `Debug`
-  --> $DIR/generic_duplicate_param_use9.rs:15:5
+  --> $DIR/generic_duplicate_param_use9.rs:16:5
    |
 LL |     (t, u, T::BAR)
    |     ^^^^^^^^^^^^^^ `B` cannot be formatted using `{:?}` because it doesn't implement `Debug`
@@ -34,7 +34,7 @@ LL | type Two<A, B: std::fmt::Debug> = impl Debug;
    |              +++++++++++++++++
 
 error[E0277]: `A` doesn't implement `Debug`
-  --> $DIR/generic_duplicate_param_use9.rs:22:5
+  --> $DIR/generic_duplicate_param_use9.rs:24:5
    |
 LL |     (t, u, 42)
    |     ^^^^^^^^^^ `A` cannot be formatted using `{:?}` because it doesn't implement `Debug`
@@ -46,7 +46,7 @@ LL | type Two<A: std::fmt::Debug, B> = impl Debug;
    |           +++++++++++++++++
 
 error[E0277]: `B` doesn't implement `Debug`
-  --> $DIR/generic_duplicate_param_use9.rs:22:5
+  --> $DIR/generic_duplicate_param_use9.rs:24:5
    |
 LL |     (t, u, 42)
    |     ^^^^^^^^^^ `B` cannot be formatted using `{:?}` because it doesn't implement `Debug`

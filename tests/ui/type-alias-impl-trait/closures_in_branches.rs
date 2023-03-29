@@ -10,8 +10,8 @@ fn foo(b: bool) -> Foo {
     }
 }
 
-
 type Foo1 = impl std::ops::FnOnce(String) -> usize;
+#[defines(Foo1)]
 fn foo1(b: bool) -> Foo1 {
     |x| x.len()
 }

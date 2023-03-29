@@ -2,7 +2,9 @@
 
 #![feature(array_windows)]
 #![feature(box_patterns)]
+#![feature(generators)]
 #![feature(if_let_guard)]
+#![feature(iter_from_generator)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(never_type)]
@@ -209,7 +211,8 @@ pub fn stream_to_parser<'a>(
 }
 
 /// Runs the given subparser `f` on the tokens of the given `attr`'s item.
-pub fn parse_in<'a, T>(
+#[instrument(level = "trace", skip(sess, f), ret)]
+pub fn parse_in<'a, T: std::fmt::Debug>(
     sess: &'a ParseSess,
     tts: TokenStream,
     name: &'static str,

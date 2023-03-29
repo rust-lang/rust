@@ -13,6 +13,7 @@ pub struct MyStruct {
 
 impl MyTrait for MyStruct {}
 
+#[defines(TE)]
 pub fn bla() -> TE {
     return MyStruct { v: 1 };
 }

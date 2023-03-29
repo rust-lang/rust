@@ -564,6 +564,7 @@ pub struct Generics<'hir> {
     pub has_where_clause_predicates: bool,
     pub where_clause_span: Span,
     pub span: Span,
+    pub defines_opaque_types: &'hir [&'hir Path<'hir>],
 }
 
 impl<'hir> Generics<'hir> {
@@ -574,6 +575,7 @@ impl<'hir> Generics<'hir> {
             has_where_clause_predicates: false,
             where_clause_span: DUMMY_SP,
             span: DUMMY_SP,
+            defines_opaque_types: &[],
         };
         &NOPE
     }
@@ -3094,15 +3096,15 @@ impl<'hir> Item<'hir> {
 
     /// Expect an [`ItemKind::Static`] or panic.
     #[track_caller]
-    pub fn expect_static(&self) -> (&'hir Ty<'hir>, Mutability, BodyId) {
-        let ItemKind::Static(ty, mutbl, body) = self.kind else { self.expect_failed("a static") };
-        (ty, mutbl, body)
+    pub fn expect_static(&self) -> (&'hir Ty<'hir>, Mutability, BodyId, &'hir [&'hir Path<'hir>]) {
+        let ItemKind::Static(ty, mutbl, body, defs) = self.kind else { self.expect_failed("a static") };
+        (ty, mutbl, body, defs)
     }
     /// Expect an [`ItemKind::Const`] or panic.
     #[track_caller]
-    pub fn expect_const(&self) -> (&'hir Ty<'hir>, BodyId) {
-        let ItemKind::Const(ty, body) = self.kind else { self.expect_failed("a constant") };
-        (ty, body)
+    pub fn expect_const(&self) -> (&'hir Ty<'hir>, BodyId, &'hir [&'hir Path<'hir>]) {
+        let ItemKind::Const(ty, body, defs) = self.kind else { self.expect_failed("a constant") };
+        (ty, body, defs)
     }
     /// Expect an [`ItemKind::Fn`] or panic.
     #[track_caller]
@@ -3283,9 +3285,9 @@ pub enum ItemKind<'hir> {
     Use(&'hir UsePath<'hir>, UseKind),
 
     /// A `static` item.
-    Static(&'hir Ty<'hir>, Mutability, BodyId),
+    Static(&'hir Ty<'hir>, Mutability, BodyId, &'hir [&'hir Path<'hir>]),
     /// A `const` item.
-    Const(&'hir Ty<'hir>, BodyId),
+    Const(&'hir Ty<'hir>, BodyId, &'hir [&'hir Path<'hir>]),
     /// A function declaration.
     Fn(FnSig<'hir>, &'hir Generics<'hir>, BodyId),
     /// A MBE macro definition (`macro_rules!` or `macro`).
@@ -3974,6 +3976,19 @@ impl<'hir> Node<'hir> {
     fn expect_failed(&self, expected: &'static str) -> ! {
         panic!("expected {expected} node, found {self:?}")
     }
+
+    pub fn defines_opaque_types(&self) -> &'hir [&'hir Path<'hir>] {
+        match self.generics() {
+            Some(generics) => generics.defines_opaque_types,
+            None => match self {
+                Node::Item(it) => match it.kind {
+                    ItemKind::Static(.., defs) | ItemKind::Const(.., defs) => defs,
+                    _ => &[],
+                },
+                _ => &[],
+            },
+        }
+    }
 }
 
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
@@ -3990,7 +4005,7 @@ mod size_asserts {
     static_assert_size!(ForeignItemKind<'_>, 40);
     static_assert_size!(GenericArg<'_>, 32);
     static_assert_size!(GenericBound<'_>, 48);
-    static_assert_size!(Generics<'_>, 56);
+    static_assert_size!(Generics<'_>, 72);
     static_assert_size!(Impl<'_>, 80);
     static_assert_size!(ImplItem<'_>, 80);
     static_assert_size!(ImplItemKind<'_>, 32);

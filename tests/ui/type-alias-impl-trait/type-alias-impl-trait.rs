@@ -17,6 +17,7 @@ fn main() {
 // single definition
 type Foo = impl std::fmt::Display;
 
+#[defines(Foo)]
 fn foo() -> Foo {
     "foo"
 }
@@ -24,30 +25,36 @@ fn foo() -> Foo {
 // two definitions
 type Bar = impl std::fmt::Display;
 
+#[defines(Bar)]
 fn bar1() -> Bar {
     "bar1"
 }
 
+#[defines(Bar)]
 fn bar2() -> Bar {
     "bar2"
 }
 
 type MyIter<T> = impl Iterator<Item = T>;
 
+#[defines(MyIter<T>)]
 fn my_iter<T>(t: T) -> MyIter<T> {
     std::iter::once(t)
 }
 
+#[defines(MyIter<T>)]
 fn my_iter2<T>(t: T) -> MyIter<T> {
     std::iter::once(t)
 }
 
 // param names should not have an effect!
+#[defines(MyIter<U>)]
 fn my_iter3<U>(u: U) -> MyIter<U> {
     std::iter::once(u)
 }
 
 // param position should not have an effect!
+#[defines(MyIter<V>)]
 fn my_iter4<U, V>(_: U, v: V) -> MyIter<V> {
     std::iter::once(v)
 }
@@ -55,6 +62,7 @@ fn my_iter4<U, V>(_: U, v: V) -> MyIter<V> {
 // param names should not have an effect!
 type MyOtherIter<T> = impl Iterator<Item = T>;
 
+#[defines(MyOtherIter<U>)]
 fn my_other_iter<U>(u: U) -> MyOtherIter<U> {
     std::iter::once(u)
 }
@@ -62,6 +70,7 @@ fn my_other_iter<U>(u: U) -> MyOtherIter<U> {
 trait Trait {}
 type GenericBound<'a, T: Trait + 'a> = impl Sized + 'a;
 
+#[defines(GenericBound<'a, T>)]
 fn generic_bound<'a, T: Trait + 'a>(t: T) -> GenericBound<'a, T> {
     t
 }
@@ -69,6 +78,7 @@ fn generic_bound<'a, T: Trait + 'a>(t: T) -> GenericBound<'a, T> {
 mod pass_through {
     pub type Passthrough<T: 'static> = impl Sized + 'static;
 
+    #[defines(Passthrough<T>)]
     fn define_passthrough<T: 'static>(t: T) -> Passthrough<T> {
         t
     }

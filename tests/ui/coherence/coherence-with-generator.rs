@@ -7,6 +7,7 @@
 // [specialized]check-pass
 
 type OpaqueGenerator = impl Sized;
+#[defines(OpaqueGenerator)]
 fn defining_use() -> OpaqueGenerator {
     || {
         for i in 0..10 {

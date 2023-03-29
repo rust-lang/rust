@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `T: Trait` is not satisfied
-  --> $DIR/underconstrained_generic.rs:22:5
+  --> $DIR/underconstrained_generic.rs:23:5
    |
 LL |     ()
    |     ^^ the trait `Trait` is not implemented for `T`

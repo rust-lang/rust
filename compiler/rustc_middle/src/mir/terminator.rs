@@ -105,7 +105,8 @@ pub struct Terminator<'tcx> {
     pub kind: TerminatorKind<'tcx>,
 }
 
-pub type Successors<'a> = impl Iterator<Item = BasicBlock> + 'a;
+pub type Successors<'a> =
+    iter::Chain<std::option::IntoIter<BasicBlock>, std::iter::Copied<slice::Iter<'a, BasicBlock>>>;
 pub type SuccessorsMut<'a> =
     iter::Chain<std::option::IntoIter<&'a mut BasicBlock>, slice::IterMut<'a, BasicBlock>>;
 

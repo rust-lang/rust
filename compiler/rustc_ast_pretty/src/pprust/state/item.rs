@@ -157,7 +157,12 @@ impl<'a> State<'a> {
                 self.print_use_tree(tree);
                 self.word(";");
             }
-            ast::ItemKind::Static(box StaticItem { ty, mutability: mutbl, expr: body }) => {
+            ast::ItemKind::Static(box StaticItem {
+                ty,
+                mutability: mutbl,
+                expr: body,
+                defines_opaque_types: _,
+            }) => {
                 let def = ast::Defaultness::Final;
                 self.print_item_const(
                     item.ident,
@@ -168,7 +173,12 @@ impl<'a> State<'a> {
                     def,
                 );
             }
-            ast::ItemKind::Const(box ast::ConstItem { defaultness, ty, expr }) => {
+            ast::ItemKind::Const(box ast::ConstItem {
+                defaultness,
+                ty,
+                expr,
+                defines_opaque_types: _,
+            }) => {
                 self.print_item_const(
                     item.ident,
                     None,
@@ -496,7 +506,7 @@ impl<'a> State<'a> {
     pub(crate) fn print_variant(&mut self, v: &ast::Variant) {
         self.head("");
         self.print_visibility(&v.vis);
-        let generics = ast::Generics::default();
+        let generics = ast::Generics::new(v.span, Default::default());
         self.print_struct(&v.data, &generics, v.ident, v.span, false);
         if let Some(d) = &v.disr_expr {
             self.space();
@@ -515,7 +525,12 @@ impl<'a> State<'a> {
             ast::AssocItemKind::Fn(box ast::Fn { defaultness, sig, generics, body }) => {
                 self.print_fn_full(sig, ident, generics, vis, *defaultness, body.as_deref(), attrs);
             }
-            ast::AssocItemKind::Const(box ast::ConstItem { defaultness, ty, expr }) => {
+            ast::AssocItemKind::Const(box ast::ConstItem {
+                defaultness,
+                ty,
+                expr,
+                defines_opaque_types: _,
+            }) => {
                 self.print_item_const(ident, None, ty, expr.as_deref(), vis, *defaultness);
             }
             ast::AssocItemKind::Type(box ast::TyAlias {

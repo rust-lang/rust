@@ -5,14 +5,18 @@ fn main() {}
 // two definitions with different types
 type Foo = impl std::fmt::Debug;
 
+#[defines(Foo)]
 fn foo() -> Foo {
     ""
 }
 
-fn bar() -> Foo { //~ ERROR: concrete type differs from previous defining opaque type use
+#[defines(Foo)]
+fn bar() -> Foo {
+    //~^ ERROR: concrete type differs from previous defining opaque type use
     panic!()
 }
 
+#[defines(Foo)]
 fn boo() -> Foo {
     loop {}
 }

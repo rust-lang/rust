@@ -225,6 +225,34 @@ pub type LazyFallbackBundle = Lrc<Lazy<FluentBundle, impl FnOnce() -> FluentBund
 
 /// Return the default `FluentBundle` with standard "en-US" diagnostic messages.
 #[instrument(level = "trace")]
+#[cfg(bootstrap)]
+pub fn fallback_fluent_bundle(
+    resources: Vec<&'static str>,
+    with_directionality_markers: bool,
+) -> LazyFallbackBundle {
+    Lrc::new(Lazy::new(move || {
+        let mut fallback_bundle = new_bundle(vec![langid!("en-US")]);
+
+        register_functions(&mut fallback_bundle);
+
+        // See comment in `fluent_bundle`.
+        fallback_bundle.set_use_isolating(with_directionality_markers);
+
+        for resource in resources {
+            let resource = FluentResource::try_new(resource.to_string())
+                .expect("failed to parse fallback fluent resource");
+            trace!(?resource);
+            fallback_bundle.add_resource_overriding(resource);
+        }
+
+        fallback_bundle
+    }))
+}
+
+/// Return the default `FluentBundle` with standard "en-US" diagnostic messages.
+#[instrument(level = "trace")]
+#[cfg(not(bootstrap))]
+#[defines(LazyFallbackBundle)]
 pub fn fallback_fluent_bundle(
     resources: Vec<&'static str>,
     with_directionality_markers: bool,

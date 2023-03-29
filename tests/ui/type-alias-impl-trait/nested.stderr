@@ -1,5 +1,5 @@
 error[E0277]: `Bar` doesn't implement `Debug`
-  --> $DIR/nested.rs:15:22
+  --> $DIR/nested.rs:16:22
    |
 LL |     println!("{:?}", bar());
    |                      ^^^^^ `Bar` cannot be formatted using `{:?}` because it doesn't implement `Debug`

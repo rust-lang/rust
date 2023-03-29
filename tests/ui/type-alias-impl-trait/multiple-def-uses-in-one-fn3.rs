@@ -6,10 +6,14 @@
 
 type X<A: ToString + Clone, B: ToString + Clone> = impl ToString;
 
+#[defines(X<A, B>)]
+#[defines(X<B, A>)]
 fn f<A: ToString + Clone, B: ToString + Clone>(a: A, b: B) -> (X<A, B>, X<B, A>) {
     (a, b)
 }
 
+#[defines(X<A, B>)]
+#[defines(X<B, A>)]
 fn g<A: ToString + Clone, B: ToString + Clone>(a: A, b: B) -> (X<A, B>, X<A, B>) {
     (a, b)
     //~^ ERROR mismatched types

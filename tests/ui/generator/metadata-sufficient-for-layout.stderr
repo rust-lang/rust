@@ -1,5 +1,5 @@
 error: fatal error triggered by #[rustc_error]
-  --> $DIR/metadata-sufficient-for-layout.rs:25:1
+  --> $DIR/metadata-sufficient-for-layout.rs:26:1
    |
 LL | fn main() {}
    | ^^^^^^^^^

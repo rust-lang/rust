@@ -3,10 +3,16 @@
 type Tait = impl Sized;
 
 struct One;
-fn one() -> Tait { One }
+#[defines(Tait)]
+fn one() -> Tait {
+    One
+}
 
 struct Two<T>(T);
-fn two() -> Tait { Two::<()>(todo!()) }
-//~^ ERROR concrete type differs from previous defining opaque type use
+#[defines(Tait)]
+fn two() -> Tait {
+    //~^ ERROR concrete type differs from previous defining opaque type use
+    Two::<()>(todo!())
+}
 
 fn main() {}

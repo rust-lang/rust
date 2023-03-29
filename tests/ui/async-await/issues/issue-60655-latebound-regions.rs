@@ -11,15 +11,17 @@ pub type Func = impl Sized;
 
 // Late bound region should be allowed to escape the function, since it's bound
 // in the type.
+#[defines(Func)]
 fn null_function_ptr() -> Func {
     None::<for<'a> fn(&'a ())>
 }
 
 async fn async_nop(_: &u8) {}
 
-pub type ServeFut = impl Future<Output=()>;
+pub type ServeFut = impl Future<Output = ()>;
 
 // Late bound regions occur in the generator witness type here.
+#[defines(ServeFut)]
 fn serve() -> ServeFut {
     async move {
         let x = 5;

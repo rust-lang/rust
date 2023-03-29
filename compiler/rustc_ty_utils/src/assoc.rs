@@ -336,6 +336,7 @@ fn associated_type_for_impl_trait_in_trait(
             param_def_id_to_index,
             has_self: false,
             has_late_bound_regions: opaque_ty_generics.has_late_bound_regions,
+            defines_opaque_types: vec![],
         }
     });
 
@@ -420,6 +421,7 @@ fn associated_type_for_impl_trait_in_impl(
             param_def_id_to_index,
             has_self: false,
             has_late_bound_regions: trait_assoc_generics.has_late_bound_regions,
+            defines_opaque_types: vec![],
         }
     });
 

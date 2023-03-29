@@ -133,6 +133,10 @@ pub struct Generics {
 
     pub has_self: bool,
     pub has_late_bound_regions: Option<Span>,
+
+    // FIXME(type_alias_impl_trait): remove this field when writing it to metadata, it
+    // is not useful for other crates.
+    pub defines_opaque_types: Vec<DefId>,
 }
 
 impl<'tcx> Generics {

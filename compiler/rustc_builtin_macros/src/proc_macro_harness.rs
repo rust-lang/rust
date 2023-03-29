@@ -362,6 +362,7 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
             ),
             ast::Mutability::Not,
             cx.expr_array_ref(span, decls),
+            Default::default(),
         )
         .map(|mut i| {
             i.attrs.push(cx.attr_word(sym::rustc_proc_macro_decls, span));
@@ -379,6 +380,7 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
         Ident::new(kw::Underscore, span),
         cx.ty(span, ast::TyKind::Tup(ThinVec::new())),
         block,
+        Default::default(),
     );
 
     // Integrate the new item into existing module structures.

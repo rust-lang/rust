@@ -305,10 +305,14 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
     match &item.kind {
         ItemKind::ExternCrate(_) => {}
         ItemKind::Use(use_tree) => visitor.visit_use_tree(use_tree, item.id, false),
-        ItemKind::Static(box StaticItem { ty, mutability: _, expr })
-        | ItemKind::Const(box ConstItem { ty, expr, .. }) => {
+        ItemKind::Static(box StaticItem { ty, mutability: _, expr, defines_opaque_types })
+        | ItemKind::Const(box ConstItem { ty, expr, defines_opaque_types, .. }) => {
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_expr, expr);
+
+            for (id, path) in defines_opaque_types {
+                visitor.visit_path(path, *id);
+            }
         }
         ItemKind::Fn(box Fn { defaultness: _, generics, sig, body }) => {
             let kind =
@@ -606,6 +610,9 @@ pub fn walk_generic_param<'a, V: Visitor<'a>>(visitor: &mut V, param: &'a Generi
 pub fn walk_generics<'a, V: Visitor<'a>>(visitor: &mut V, generics: &'a Generics) {
     walk_list!(visitor, visit_generic_param, &generics.params);
     walk_list!(visitor, visit_where_predicate, &generics.where_clause.predicates);
+    for (id, path) in &generics.defines_opaque_types {
+        visitor.visit_path(path, *id);
+    }
 }
 
 pub fn walk_closure_binder<'a, V: Visitor<'a>>(visitor: &mut V, binder: &'a ClosureBinder) {

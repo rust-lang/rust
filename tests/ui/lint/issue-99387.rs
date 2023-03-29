@@ -5,6 +5,7 @@
 
 pub type Successors<'a> = impl Iterator<Item = &'a ()>;
 
+#[defines(Successors<'a>)]
 pub fn f<'a>() -> Successors<'a> {
     None.into_iter()
 }
@@ -17,6 +18,7 @@ impl<'a> Tr for &'a () {
     type Item = Successors<'a>;
 }
 
+#[defines(Successors<'a>)]
 pub fn ohno<'a>() -> <&'a () as Tr>::Item {
     None.into_iter()
 }

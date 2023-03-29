@@ -622,12 +622,15 @@ impl<'a> ExtCtxt<'a> {
         ty: P<ast::Ty>,
         mutability: ast::Mutability,
         expr: P<ast::Expr>,
+        defines_opaque_types: ThinVec<(ast::NodeId, ast::Path)>,
     ) -> P<ast::Item> {
         self.item(
             span,
             name,
             AttrVec::new(),
-            ast::ItemKind::Static(ast::StaticItem { ty, mutability, expr: Some(expr) }.into()),
+            ast::ItemKind::Static(
+                ast::StaticItem { ty, mutability, expr: Some(expr), defines_opaque_types }.into(),
+            ),
         )
     }
 
@@ -637,13 +640,16 @@ impl<'a> ExtCtxt<'a> {
         name: Ident,
         ty: P<ast::Ty>,
         expr: P<ast::Expr>,
+        defines_opaque_types: ThinVec<(ast::NodeId, ast::Path)>,
     ) -> P<ast::Item> {
         let defaultness = ast::Defaultness::Final;
         self.item(
             span,
             name,
             AttrVec::new(),
-            ast::ItemKind::Const(ast::ConstItem { defaultness, ty, expr: Some(expr) }.into()),
+            ast::ItemKind::Const(
+                ast::ConstItem { defaultness, ty, expr: Some(expr), defines_opaque_types }.into(),
+            ),
         )
     }
 

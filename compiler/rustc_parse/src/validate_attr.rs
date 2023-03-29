@@ -21,8 +21,8 @@ pub fn check_attr(sess: &ParseSess, attr: &Attribute) {
 
     // Check input tokens for built-in and key-value attributes.
     match attr_info {
-        // `rustc_dummy` doesn't have any restrictions specific to built-in attributes.
-        Some(BuiltinAttribute { name, template, .. }) if *name != sym::rustc_dummy => {
+        // `rustc_dummy` and `defines` doesn't have any restrictions specific to built-in attributes.
+        Some(BuiltinAttribute { name, template, .. }) if *name != sym::rustc_dummy && *name != sym::defines => {
             check_builtin_attribute(sess, attr, *name, *template)
         }
         _ if let AttrArgs::Eq(..) = attr.get_normal_item().args => {

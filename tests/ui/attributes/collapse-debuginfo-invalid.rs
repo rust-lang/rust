@@ -23,25 +23,25 @@ const BAR: u32 = 3;
 
 #[collapse_debuginfo]
 //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
+#[rustfmt::skip]
 fn foo() {
     let _ = #[collapse_debuginfo] || { };
-//~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
+    //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
     #[collapse_debuginfo]
-//~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
+    //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
     let _ = 3;
     let _ = #[collapse_debuginfo] 3;
-//~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
+    //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
     match (3, 4) {
         #[collapse_debuginfo]
-//~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
+        //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
         _ => (),
     }
 }
 
 #[collapse_debuginfo]
 //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
-mod bar {
-}
+mod bar {}
 
 #[collapse_debuginfo]
 //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
@@ -51,7 +51,7 @@ type Map = HashMap<u32, u32>;
 //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
 enum Foo {
     #[collapse_debuginfo]
-//~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
+    //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
     Variant,
 }
 
@@ -59,7 +59,7 @@ enum Foo {
 //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
 struct Bar {
     #[collapse_debuginfo]
-//~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
+    //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
     field: u32,
 }
 
@@ -67,14 +67,14 @@ struct Bar {
 //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
 union Qux {
     a: u32,
-    b: u16
+    b: u16,
 }
 
 #[collapse_debuginfo]
 //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
 trait Foobar {
     #[collapse_debuginfo]
-//~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
+    //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
     type Bar;
 }
 
@@ -86,6 +86,7 @@ impl Foobar for Bar {
     type Bar = u32;
 }
 
+#[defines(AFoobar)]
 fn constraining() -> AFoobar {
     Bar { field: 3 }
 }
@@ -94,17 +95,19 @@ fn constraining() -> AFoobar {
 //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
 impl Bar {
     #[collapse_debuginfo]
-//~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
+    //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
     const FOO: u32 = 3;
 
     #[collapse_debuginfo]
-//~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
+    //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
     fn bar(&self) {}
 }
 
 #[collapse_debuginfo]
 macro_rules! finally {
-    ($e:expr) => { $e }
+    ($e:expr) => {
+        $e
+    };
 }
 
 fn main() {}

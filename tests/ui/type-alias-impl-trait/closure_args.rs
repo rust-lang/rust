@@ -11,6 +11,16 @@ fn run<F: FnOnce(Input) -> ()>(f: F, i: Input) {
     f(i);
 }
 
+#[defines(Input)]
+fn foo() {
+    run(
+        |x: u32| {
+            println!("{x}");
+        },
+        0,
+    );
+}
+
 fn main() {
-    run(|x: u32| {println!("{x}");}, 0);
+    foo();
 }

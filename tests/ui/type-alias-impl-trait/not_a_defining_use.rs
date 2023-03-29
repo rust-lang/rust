@@ -6,6 +6,7 @@ fn main() {}
 
 type Two<T, U> = impl Debug;
 
+#[defines(Two<T, U>)]
 fn three<T: Debug, U>(t: T) -> Two<T, U> {
     (t, 5i8)
     //~^ ERROR `T` doesn't implement `Debug`
@@ -21,6 +22,7 @@ impl Bar for u32 {
     const FOO: i32 = 42;
 }
 
+#[defines(Two<T, U>)]
 fn four<T: Debug, U: Bar>(t: T) -> Two<T, U> {
     (t, <U as Bar>::FOO)
     //~^ ERROR `U: Bar` is not satisfied

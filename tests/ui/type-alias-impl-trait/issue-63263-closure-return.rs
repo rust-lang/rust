@@ -6,8 +6,7 @@
 
 #![feature(type_alias_impl_trait)]
 
-pub type Closure = impl FnOnce();
-
 fn main() {
+    pub type Closure = impl FnOnce();
     || -> Closure { || () };
 }

@@ -6,6 +6,7 @@
 mod m {
     type Foo = impl std::fmt::Debug;
 
+    #[defines(Foo)]
     pub fn foo() -> Foo {
         22_u32
     }

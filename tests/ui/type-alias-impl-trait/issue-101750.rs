@@ -9,6 +9,7 @@ type TAIT = impl Trait;
 struct Concrete;
 impl Trait for Concrete {}
 
+#[defines(TAIT)]
 fn tait() -> TAIT {
     Concrete
 }
@@ -24,9 +25,7 @@ impl<T> OuterTrait for Dummy<T> {
 }
 
 fn tait_and_impl_trait() -> impl OuterTrait<Item = (TAIT, impl Trait)> {
-    Dummy {
-        t: (tait(), Concrete),
-    }
+    Dummy { t: (tait(), Concrete) }
 }
 
 fn tait_and_dyn_trait() -> impl OuterTrait<Item = (TAIT, Box<dyn Trait>)> {

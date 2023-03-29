@@ -926,10 +926,14 @@ fn noop_visit_lifetime<T: MutVisitor>(Lifetime { id, ident }: &mut Lifetime, vis
 }
 
 pub fn noop_visit_generics<T: MutVisitor>(generics: &mut Generics, vis: &mut T) {
-    let Generics { params, where_clause, span } = generics;
+    let Generics { params, where_clause, span, defines_opaque_types } = generics;
     params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
     vis.visit_where_clause(where_clause);
     vis.visit_span(span);
+    for (id, path) in defines_opaque_types {
+        vis.visit_id(id);
+        vis.visit_path(path);
+    }
 }
 
 pub fn noop_visit_where_clause<T: MutVisitor>(wc: &mut WhereClause, vis: &mut T) {
@@ -1030,9 +1034,13 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
     match kind {
         ItemKind::ExternCrate(_orig_name) => {}
         ItemKind::Use(use_tree) => vis.visit_use_tree(use_tree),
-        ItemKind::Static(box StaticItem { ty, mutability: _, expr }) => {
+        ItemKind::Static(box StaticItem { ty, mutability: _, expr, defines_opaque_types }) => {
             vis.visit_ty(ty);
             visit_opt(expr, |expr| vis.visit_expr(expr));
+            for (id, path) in defines_opaque_types {
+                vis.visit_id(id);
+                vis.visit_path(path);
+            }
         }
         ItemKind::Const(item) => {
             visit_const_item(item, vis);
@@ -1150,12 +1158,17 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
 }
 
 fn visit_const_item<T: MutVisitor>(
-    ConstItem { defaultness, ty, expr }: &mut ConstItem,
+    ConstItem { defaultness, ty, expr, defines_opaque_types }: &mut ConstItem,
     visitor: &mut T,
 ) {
     visit_defaultness(defaultness, visitor);
     visitor.visit_ty(ty);
     visit_opt(expr, |expr| visitor.visit_expr(expr));
+
+    for (id, path) in defines_opaque_types {
+        visitor.visit_id(id);
+        visitor.visit_path(path);
+    }
 }
 
 pub fn noop_visit_fn_header<T: MutVisitor>(header: &mut FnHeader, vis: &mut T) {

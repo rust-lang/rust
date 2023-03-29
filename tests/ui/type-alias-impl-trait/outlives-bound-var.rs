@@ -6,6 +6,7 @@
 #![feature(type_alias_impl_trait)]
 
 type Ty<'a> = impl Sized + 'a;
+#[defines(Ty<'a>)]
 fn define<'a>() -> Ty<'a> {}
 
 // Ty<'^0>: 'static

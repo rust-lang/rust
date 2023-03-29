@@ -7,6 +7,7 @@ mod m {
     type Foo = impl std::fmt::Debug;
     //~^ ERROR: cycle detected when computing type of `m::Foo::{opaque#0}` [E0391]
 
+    #[defines(Foo)]
     pub fn foo() -> Foo {
         22_u32
     }

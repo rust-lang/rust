@@ -24,6 +24,7 @@ fn bar() {
     // desugared
     type FooX<'a> = impl Sized;
     impl<'a> Foo<'a> {
+        #[defines(FooX<'a>)]
         fn foo(&self) -> FooX<'a> {}
     }
 

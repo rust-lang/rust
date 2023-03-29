@@ -390,13 +390,19 @@ impl GenericParam {
 pub struct Generics {
     pub params: ThinVec<GenericParam>,
     pub where_clause: WhereClause,
+    pub defines_opaque_types: ThinVec<(NodeId, Path)>,
     pub span: Span,
 }
 
-impl Default for Generics {
+impl Generics {
     /// Creates an instance of `Generics`.
-    fn default() -> Generics {
-        Generics { params: ThinVec::new(), where_clause: Default::default(), span: DUMMY_SP }
+    pub fn new(span: Span, defines_opaque_types: ThinVec<(NodeId, Path)>) -> Generics {
+        Generics {
+            params: ThinVec::new(),
+            defines_opaque_types,
+            where_clause: Default::default(),
+            span,
+        }
     }
 }
 
@@ -2895,6 +2901,7 @@ pub struct StaticItem {
     pub ty: P<Ty>,
     pub mutability: Mutability,
     pub expr: Option<P<Expr>>,
+    pub defines_opaque_types: ThinVec<(NodeId, Path)>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -2902,6 +2909,7 @@ pub struct ConstItem {
     pub defaultness: Defaultness,
     pub ty: P<Ty>,
     pub expr: Option<P<Expr>>,
+    pub defines_opaque_types: ThinVec<(NodeId, Path)>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -3098,9 +3106,15 @@ pub enum ForeignItemKind {
 impl From<ForeignItemKind> for ItemKind {
     fn from(foreign_item_kind: ForeignItemKind) -> ItemKind {
         match foreign_item_kind {
-            ForeignItemKind::Static(a, b, c) => {
-                ItemKind::Static(StaticItem { ty: a, mutability: b, expr: c }.into())
-            }
+            ForeignItemKind::Static(a, b, c) => ItemKind::Static(
+                StaticItem {
+                    ty: a,
+                    mutability: b,
+                    expr: c,
+                    defines_opaque_types: Default::default(),
+                }
+                .into(),
+            ),
             ForeignItemKind::Fn(fn_kind) => ItemKind::Fn(fn_kind),
             ForeignItemKind::TyAlias(ty_alias_kind) => ItemKind::TyAlias(ty_alias_kind),
             ForeignItemKind::MacCall(a) => ItemKind::MacCall(a),
@@ -3113,9 +3127,12 @@ impl TryFrom<ItemKind> for ForeignItemKind {
 
     fn try_from(item_kind: ItemKind) -> Result<ForeignItemKind, ItemKind> {
         Ok(match item_kind {
-            ItemKind::Static(box StaticItem { ty: a, mutability: b, expr: c }) => {
-                ForeignItemKind::Static(a, b, c)
-            }
+            ItemKind::Static(box StaticItem {
+                ty: a,
+                mutability: b,
+                expr: c,
+                defines_opaque_types,
+            }) if defines_opaque_types.is_empty() => ForeignItemKind::Static(a, b, c),
             ItemKind::Fn(fn_kind) => ForeignItemKind::Fn(fn_kind),
             ItemKind::TyAlias(ty_alias_kind) => ForeignItemKind::TyAlias(ty_alias_kind),
             ItemKind::MacCall(a) => ForeignItemKind::MacCall(a),
@@ -3138,15 +3155,15 @@ mod size_asserts {
     static_assert_size!(Block, 32);
     static_assert_size!(Expr, 72);
     static_assert_size!(ExprKind, 40);
-    static_assert_size!(Fn, 152);
+    static_assert_size!(Fn, 160);
     static_assert_size!(ForeignItem, 96);
     static_assert_size!(ForeignItemKind, 24);
     static_assert_size!(GenericArg, 24);
     static_assert_size!(GenericBound, 56);
-    static_assert_size!(Generics, 40);
-    static_assert_size!(Impl, 136);
-    static_assert_size!(Item, 136);
-    static_assert_size!(ItemKind, 64);
+    static_assert_size!(Generics, 48);
+    static_assert_size!(Impl, 144);
+    static_assert_size!(Item, 152);
+    static_assert_size!(ItemKind, 80);
     static_assert_size!(LitKind, 24);
     static_assert_size!(Local, 72);
     static_assert_size!(MetaItemLit, 40);

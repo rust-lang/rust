@@ -17,10 +17,12 @@ impl Iterator for Bar {
     }
 }
 
+#[defines(FooRet)]
 fn quux(st: FooArg) -> FooRet {
     Some(st.to_string())
 }
 
+#[defines(Foo)]
 fn ham() -> Foo {
     Bar(1)
 }

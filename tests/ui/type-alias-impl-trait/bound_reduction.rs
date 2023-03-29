@@ -3,17 +3,23 @@
 #![allow(warnings)]
 #![feature(type_alias_impl_trait)]
 
-fn main() {
-}
+fn main() {}
 
 type Foo<V> = impl std::fmt::Debug;
 
 trait Trait<U> {}
 
-fn foo_desugared<T: Trait<[u32; {
-    #[no_mangle]
-    static FOO: usize = 42;
-    3
-}]>>(_: T) -> Foo<T> {
+#[defines(Foo<T>)]
+fn foo_desugared<
+    T: Trait<
+        [u32; {
+            #[no_mangle]
+            static FOO: usize = 42;
+            3
+        }],
+    >,
+>(
+    _: T,
+) -> Foo<T> {
     (42, std::marker::PhantomData::<T>)
 }

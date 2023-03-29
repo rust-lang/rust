@@ -918,7 +918,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match opt_def_id {
             Some(def_id) => match self.tcx.hir().get_if_local(def_id) {
                 Some(hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Const(_, body_id), ..
+                    kind: hir::ItemKind::Const(_, body_id, _),
+                    ..
                 })) => match self.tcx.hir().get(body_id.hir_id) {
                     hir::Node::Expr(expr) => {
                         if hir::is_range_literal(expr) {

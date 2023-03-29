@@ -14,6 +14,7 @@ mod test1 {
     type Opaque<'a, 'b> = impl Sized + 'a + 'b;
     //~^ ERROR lifetime bound not satisfied
 
+    #[defines(Opaque<'a, 'b>)]
     fn define<'a, 'b>() -> Opaque<'a, 'b>
     where
         'a: 'b,
@@ -27,6 +28,7 @@ mod test2 {
     type Opaque<'a, 'b> = impl Sized + 'a + 'b;
     //~^ ERROR cannot infer an appropriate lifetime
 
+    #[defines(Opaque<'a, 'b>)]
     fn define<'a, 'b, 'x>() -> Opaque<'a, 'b>
     where
         'a: 'x,
@@ -40,6 +42,7 @@ mod test2 {
 mod test2_fixed {
     type Opaque<'a: 'b, 'b> = impl Sized + 'a + 'b;
 
+    #[defines(Opaque<'a, 'b>)]
     fn define<'a, 'b, 'x>() -> Opaque<'a, 'b>
     where
         'a: 'x,
@@ -54,6 +57,7 @@ mod test3 {
     type Opaque<T> = impl Sized;
     //~^ ERROR the parameter type `T` may not live long enough
 
+    #[defines(Opaque<T>)]
     fn define<T>() -> Opaque<T>
     where
         T: 'static,

@@ -363,7 +363,7 @@ impl<'a> Parser<'a> {
             if valid_prev_keywords.into_iter().any(|x| maybe_keyword.is_keyword(x)) {
                 // if we have a valid keyword, attempt to parse generics
                 // also obtain the keywords symbol
-                match self.parse_generics() {
+                match self.parse_generics(&[]) {
                     Ok(generic) => {
                         if let TokenKind::Ident(symbol, _) = maybe_keyword.kind {
                             let ident_name = symbol;

@@ -6,6 +6,7 @@
 
 type Opaque = impl std::future::Future;
 
+#[defines(Opaque)]
 fn opaque() -> Opaque {
     async {}
 }

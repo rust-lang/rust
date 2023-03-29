@@ -217,7 +217,7 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
             },
             (hir::ItemKind::Impl(_), _) => {},
             // const and static items only need a safety comment if their body is an unsafe block, lint otherwise
-            (&hir::ItemKind::Const(.., body) | &hir::ItemKind::Static(.., body), HasSafetyComment::Yes(pos)) => {
+            (&hir::ItemKind::Const(.., body, _) | &hir::ItemKind::Static(.., body, _), HasSafetyComment::Yes(pos)) => {
                 if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, body.hir_id) {
                     let body = cx.tcx.hir().body(body);
                     if !matches!(
