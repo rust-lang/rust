@@ -3,7 +3,7 @@ mod generated;
 mod sourcegen;
 
 use expect_test::expect;
-use hir::{db::DefDatabase, Semantics};
+use hir::Semantics;
 use ide_db::{
     base_db::{fixture::WithFixture, FileId, FileRange, SourceDatabaseExt},
     imports::insert_use::{ImportGranularity, InsertUseConfig},
@@ -161,7 +161,7 @@ fn check_with_config(
     assist_label: Option<&str>,
 ) {
     let (mut db, file_with_caret_id, range_or_offset) = RootDatabase::with_range_or_offset(before);
-    db.set_enable_proc_attr_macros(true);
+    db.enable_proc_attr_macros();
     let text_without_caret = db.file_text(file_with_caret_id).to_string();
 
     let frange = FileRange { file_id: file_with_caret_id, range: range_or_offset.into() };

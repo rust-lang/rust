@@ -19,8 +19,8 @@ use hir::db::DefDatabase;
 use ide::Change;
 use ide_db::{
     base_db::{
-        CrateGraph, Env, ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind,
-        ProcMacroLoadResult, ProcMacroPaths, ProcMacros, SourceRoot, VfsPath,
+        salsa::Durability, CrateGraph, Env, ProcMacro, ProcMacroExpander, ProcMacroExpansionError,
+        ProcMacroKind, ProcMacroLoadResult, ProcMacroPaths, ProcMacros, SourceRoot, VfsPath,
     },
     FxHashMap,
 };
@@ -88,12 +88,13 @@ impl GlobalState {
             self.reload_flycheck();
         }
 
-        if self.analysis_host.raw_database().enable_proc_attr_macros()
+        if self.analysis_host.raw_database().expand_proc_attr_macros()
             != self.config.expand_proc_attr_macros()
         {
-            self.analysis_host
-                .raw_database_mut()
-                .set_enable_proc_attr_macros(self.config.expand_proc_attr_macros());
+            self.analysis_host.raw_database_mut().set_expand_proc_attr_macros_with_durability(
+                self.config.expand_proc_attr_macros(),
+                Durability::HIGH,
+            );
         }
     }
 

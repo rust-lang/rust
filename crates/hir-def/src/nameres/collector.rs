@@ -1282,7 +1282,7 @@ impl DefCollector<'_> {
                     let loc: MacroCallLoc = self.db.lookup_intern_macro_call(call_id);
 
                     // If proc attribute macro expansion is disabled, skip expanding it here
-                    if !self.db.enable_proc_attr_macros() {
+                    if !self.db.expand_proc_attr_macros() {
                         self.def_map.diagnostics.push(DefDiagnostic::unresolved_proc_macro(
                             directive.module_id,
                             loc.kind,
