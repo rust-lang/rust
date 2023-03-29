@@ -11,7 +11,7 @@ use crate::solve::EvalCtxt;
 //
 // For types with an "existential" binder, i.e. generator witnesses, we also
 // instantiate the binder with placeholders eagerly.
-pub(super) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
+pub(crate) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
     ecx: &EvalCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
 ) -> Result<Vec<Ty<'tcx>>, NoSolution> {
@@ -87,7 +87,7 @@ pub(super) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
     }
 }
 
-fn replace_erased_lifetimes_with_bound_vars<'tcx>(
+pub(crate) fn replace_erased_lifetimes_with_bound_vars<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
 ) -> ty::Binder<'tcx, Ty<'tcx>> {
@@ -108,7 +108,7 @@ fn replace_erased_lifetimes_with_bound_vars<'tcx>(
     ty::Binder::bind_with_vars(ty, bound_vars)
 }
 
-pub(super) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
+pub(crate) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
     ecx: &EvalCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
 ) -> Result<Vec<Ty<'tcx>>, NoSolution> {
@@ -158,7 +158,7 @@ pub(super) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
     }
 }
 
-pub(super) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
+pub(crate) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
     ecx: &EvalCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
 ) -> Result<Vec<Ty<'tcx>>, NoSolution> {

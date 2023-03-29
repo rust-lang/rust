@@ -1,8 +1,6 @@
 //! Code shared by trait and projection goals for candidate assembly.
 
 use super::search_graph::OverflowHandler;
-#[cfg(doc)]
-use super::trait_goals::structural_traits::*;
 use super::{EvalCtxt, SolverMode};
 use crate::solve::CanonicalResponseExt;
 use crate::traits::coherence;
@@ -15,6 +13,8 @@ use rustc_middle::ty::fast_reject::TreatProjections;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use std::fmt::Debug;
+
+pub(super) mod structural_traits;
 
 /// A candidate is a possible way to prove a goal.
 ///

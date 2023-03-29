@@ -1,7 +1,6 @@
 use crate::traits::specialization_graph;
 
-use super::assembly;
-use super::trait_goals::structural_traits;
+use super::assembly::{self, structural_traits};
 use super::EvalCtxt;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
