@@ -214,9 +214,20 @@ pub(crate) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
         ty::Closure(_, substs) => {
             let closure_substs = substs.as_closure();
             match closure_substs.kind_ty().to_opt_closure_kind() {
-                Some(closure_kind) if closure_kind.extends(goal_kind) => {}
-                None => return Ok(None),
-                _ => return Err(NoSolution),
+                // If the closure's kind doesn't extend the goal kind,
+                // then the closure doesn't implement the trait.
+                Some(closure_kind) => {
+                    if !closure_kind.extends(goal_kind) {
+                        return Err(NoSolution);
+                    }
+                }
+                // Closure kind is not yet determined, so we return ambiguity unless
+                // the expected kind is `FnOnce` as that is always implemented.
+                None => {
+                    if goal_kind != ty::ClosureKind::FnOnce {
+                        return Ok(None);
+                    }
+                }
             }
             Ok(Some(closure_substs.sig().map_bound(|sig| (sig.inputs()[0], sig.output()))))
         }
