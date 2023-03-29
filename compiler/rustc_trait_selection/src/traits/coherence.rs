@@ -79,8 +79,9 @@ pub fn overlapping_impls(
     let impl1_ref = tcx.impl_trait_ref(impl1_def_id);
     let impl2_ref = tcx.impl_trait_ref(impl2_def_id);
     let may_overlap = match (impl1_ref, impl2_ref) {
-        (Some(a), Some(b)) => iter::zip(a.skip_binder().substs, b.skip_binder().substs)
-            .all(|(arg1, arg2)| drcx.generic_args_may_unify(arg1, arg2)),
+        (Some(a), Some(b)) => {
+            drcx.substs_refs_may_unify(a.skip_binder().substs, b.skip_binder().substs)
+        }
         (None, None) => {
             let self_ty1 = tcx.type_of(impl1_def_id).skip_binder();
             let self_ty2 = tcx.type_of(impl2_def_id).skip_binder();

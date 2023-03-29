@@ -202,7 +202,10 @@ impl AnnotateSnippetEmitterWriter {
                             annotations: annotations
                                 .iter()
                                 .map(|annotation| SourceAnnotation {
-                                    range: (annotation.start_col, annotation.end_col),
+                                    range: (
+                                        annotation.start_col.display,
+                                        annotation.end_col.display,
+                                    ),
                                     label: annotation.label.as_deref().unwrap_or_default(),
                                     annotation_type: annotation_type_for_level(*level),
                                 })
