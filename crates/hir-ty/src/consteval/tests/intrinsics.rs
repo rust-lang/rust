@@ -86,7 +86,7 @@ fn offset() {
             ];
             let ar: *const [(u8, u8, u8)] = ar;
             let ar = ar as *const (u8, u8, u8);
-            let element = offset(ar, 2);
+            let element = *offset(ar, 2);
             element.1
         };
         "#,
@@ -113,7 +113,7 @@ fn arith_offset() {
             ];
             let ar: *const [(u8, u8, u8)] = ar;
             let ar = ar as *const (u8, u8, u8);
-            let element = arith_offset(arith_offset(ar, 102), -100);
+            let element = *arith_offset(arith_offset(ar, 102), -100);
             element.1
         };
         "#,
