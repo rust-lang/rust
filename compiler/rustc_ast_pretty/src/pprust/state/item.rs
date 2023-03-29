@@ -168,8 +168,15 @@ impl<'a> State<'a> {
                     def,
                 );
             }
-            ast::ItemKind::Const(def, ty, body) => {
-                self.print_item_const(item.ident, None, ty, body.as_deref(), &item.vis, *def);
+            ast::ItemKind::Const(ast::ConstItem { defaultness, ty, expr }) => {
+                self.print_item_const(
+                    item.ident,
+                    None,
+                    ty,
+                    expr.as_deref(),
+                    &item.vis,
+                    *defaultness,
+                );
             }
             ast::ItemKind::Fn(box ast::Fn { defaultness, sig, generics, body }) => {
                 self.print_fn_full(
@@ -508,8 +515,8 @@ impl<'a> State<'a> {
             ast::AssocItemKind::Fn(box ast::Fn { defaultness, sig, generics, body }) => {
                 self.print_fn_full(sig, ident, generics, vis, *defaultness, body.as_deref(), attrs);
             }
-            ast::AssocItemKind::Const(def, ty, body) => {
-                self.print_item_const(ident, None, ty, body.as_deref(), vis, *def);
+            ast::AssocItemKind::Const(ast::ConstItem { defaultness, ty, expr }) => {
+                self.print_item_const(ident, None, ty, expr.as_deref(), vis, *defaultness);
             }
             ast::AssocItemKind::Type(box ast::TyAlias {
                 defaultness,

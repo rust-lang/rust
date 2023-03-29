@@ -305,9 +305,9 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
     match &item.kind {
         ItemKind::ExternCrate(_) => {}
         ItemKind::Use(use_tree) => visitor.visit_use_tree(use_tree, item.id, false),
-        ItemKind::Static(Static { ty: typ, mutability: _, expr })
-        | ItemKind::Const(_, typ, expr) => {
-            visitor.visit_ty(typ);
+        ItemKind::Static(Static { ty, mutability: _, expr })
+        | ItemKind::Const(ConstItem { ty, expr, .. }) => {
+            visitor.visit_ty(ty);
             walk_list!(visitor, visit_expr, expr);
         }
         ItemKind::Fn(box Fn { defaultness: _, generics, sig, body }) => {
@@ -675,7 +675,7 @@ pub fn walk_assoc_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a AssocItem,
     visitor.visit_ident(ident);
     walk_list!(visitor, visit_attribute, attrs);
     match kind {
-        AssocItemKind::Const(_, ty, expr) => {
+        AssocItemKind::Const(ConstItem { ty, expr, .. }) => {
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_expr, expr);
         }

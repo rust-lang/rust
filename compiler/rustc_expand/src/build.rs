@@ -638,8 +638,13 @@ impl<'a> ExtCtxt<'a> {
         ty: P<ast::Ty>,
         expr: P<ast::Expr>,
     ) -> P<ast::Item> {
-        let def = ast::Defaultness::Final;
-        self.item(span, name, AttrVec::new(), ast::ItemKind::Const(def, ty, Some(expr)))
+        let defaultness = ast::Defaultness::Final;
+        self.item(
+            span,
+            name,
+            AttrVec::new(),
+            ast::ItemKind::Const(ast::ConstItem { defaultness, ty, expr: Some(expr) }),
+        )
     }
 
     // Builds `#[name]`.

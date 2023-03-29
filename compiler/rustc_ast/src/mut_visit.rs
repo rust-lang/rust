@@ -1034,10 +1034,8 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
             vis.visit_ty(ty);
             visit_opt(expr, |expr| vis.visit_expr(expr));
         }
-        ItemKind::Const(defaultness, ty, expr) => {
-            visit_defaultness(defaultness, vis);
-            vis.visit_ty(ty);
-            visit_opt(expr, |expr| vis.visit_expr(expr));
+        ItemKind::Const(item) => {
+            visit_const_item(item, vis);
         }
         ItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
             visit_defaultness(defaultness, vis);
@@ -1120,10 +1118,8 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
     visitor.visit_vis(vis);
     visit_attrs(attrs, visitor);
     match kind {
-        AssocItemKind::Const(defaultness, ty, expr) => {
-            visit_defaultness(defaultness, visitor);
-            visitor.visit_ty(ty);
-            visit_opt(expr, |expr| visitor.visit_expr(expr));
+        AssocItemKind::Const(item) => {
+            visit_const_item(item, visitor);
         }
         AssocItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
             visit_defaultness(defaultness, visitor);
@@ -1151,6 +1147,15 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
     visitor.visit_span(span);
     visit_lazy_tts(tokens, visitor);
     smallvec![item]
+}
+
+fn visit_const_item<T: MutVisitor>(
+    ConstItem { defaultness, ty, expr }: &mut ConstItem,
+    visitor: &mut T,
+) {
+    visit_defaultness(defaultness, visitor);
+    visitor.visit_ty(ty);
+    visit_opt(expr, |expr| visitor.visit_expr(expr));
 }
 
 pub fn noop_visit_fn_header<T: MutVisitor>(header: &mut FnHeader, vis: &mut T) {

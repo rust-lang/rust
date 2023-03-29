@@ -237,7 +237,7 @@ impl<'a> Parser<'a> {
             } else {
                 self.recover_const_mut(const_span);
                 let (ident, ty, expr) = self.parse_item_global(None)?;
-                (ident, ItemKind::Const(def_(), ty, expr))
+                (ident, ItemKind::Const(ConstItem { defaultness: def_(), ty, expr }))
             }
         } else if self.check_keyword(kw::Trait) || self.check_auto_or_unsafe_trait_item() {
             // TRAIT ITEM
@@ -863,9 +863,13 @@ impl<'a> Parser<'a> {
                 let kind = match AssocItemKind::try_from(kind) {
                     Ok(kind) => kind,
                     Err(kind) => match kind {
-                        ItemKind::Static(Static { ty: a, mutability: _, expr: b }) => {
+                        ItemKind::Static(Static { ty, mutability: _, expr }) => {
                             self.sess.emit_err(errors::AssociatedStaticItemNotAllowed { span });
-                            AssocItemKind::Const(Defaultness::Final, a, b)
+                            AssocItemKind::Const(ConstItem {
+                                defaultness: Defaultness::Final,
+                                ty,
+                                expr,
+                            })
                         }
                         _ => return self.error_bad_item_kind(span, &kind, "`trait`s or `impl`s"),
                     },
@@ -1115,12 +1119,12 @@ impl<'a> Parser<'a> {
                 let kind = match ForeignItemKind::try_from(kind) {
                     Ok(kind) => kind,
                     Err(kind) => match kind {
-                        ItemKind::Const(_, a, b) => {
+                        ItemKind::Const(ConstItem { ty, expr, .. }) => {
                             self.sess.emit_err(errors::ExternItemCannotBeConst {
                                 ident_span: ident.span,
                                 const_span: span.with_hi(ident.span.lo()),
                             });
-                            ForeignItemKind::Static(a, Mutability::Not, b)
+                            ForeignItemKind::Static(ty, Mutability::Not, expr)
                         }
                         _ => return self.error_bad_item_kind(span, &kind, "`extern` blocks"),
                     },
