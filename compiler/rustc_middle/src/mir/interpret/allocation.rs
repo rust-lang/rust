@@ -2,8 +2,6 @@
 
 mod init_mask;
 mod provenance_map;
-#[cfg(test)]
-mod tests;
 
 use std::borrow::Cow;
 use std::fmt;
