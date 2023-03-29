@@ -22,15 +22,9 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-#[cfg(not(parallel_compiler))]
-use std::cell::LazyCell as Lazy;
-#[cfg(parallel_compiler)]
 use std::sync::LazyLock as Lazy;
 
-#[cfg(parallel_compiler)]
 use intl_memoizer::concurrent::IntlLangMemoizer;
-#[cfg(not(parallel_compiler))]
-use intl_memoizer::IntlLangMemoizer;
 
 pub use fluent_bundle::{self, types::FluentType, FluentArgs, FluentError, FluentValue};
 pub use unic_langid::{langid, LanguageIdentifier};
@@ -39,14 +33,8 @@ fluent_messages! { "../messages.ftl" }
 
 pub type FluentBundle = fluent_bundle::bundle::FluentBundle<FluentResource, IntlLangMemoizer>;
 
-#[cfg(parallel_compiler)]
 fn new_bundle(locales: Vec<LanguageIdentifier>) -> FluentBundle {
     FluentBundle::new_concurrent(locales)
-}
-
-#[cfg(not(parallel_compiler))]
-fn new_bundle(locales: Vec<LanguageIdentifier>) -> FluentBundle {
-    FluentBundle::new(locales)
 }
 
 #[derive(Debug)]
@@ -547,15 +535,6 @@ pub fn fluent_value_from_str_list_sep_by_and(l: Vec<Cow<'_, str>>) -> FluentValu
             Cow::Owned(result)
         }
 
-        #[cfg(not(parallel_compiler))]
-        fn as_string_threadsafe(
-            &self,
-            _intls: &intl_memoizer::concurrent::IntlLangMemoizer,
-        ) -> Cow<'static, str> {
-            unreachable!("`as_string_threadsafe` is not used in non-parallel rustc")
-        }
-
-        #[cfg(parallel_compiler)]
         fn as_string_threadsafe(
             &self,
             intls: &intl_memoizer::concurrent::IntlLangMemoizer,

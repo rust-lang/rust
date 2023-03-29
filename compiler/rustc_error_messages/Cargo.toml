@@ -9,7 +9,7 @@ edition = "2021"
 fluent-bundle = "0.15.2"
 fluent-syntax = "0.11"
 intl-memoizer = "0.5.1"
-rustc_baked_icu_data = { path = "../rustc_baked_icu_data" }
+rustc_baked_icu_data = { path = "../rustc_baked_icu_data", features = ["rustc_use_parallel_compiler"] }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_serialize = { path = "../rustc_serialize" }
@@ -22,4 +22,4 @@ icu_locid = "1.1.0"
 icu_provider_adapters = "1.1.0"
 
 [features]
-rustc_use_parallel_compiler = ['rustc_baked_icu_data/rustc_use_parallel_compiler']
+rustc_use_parallel_compiler = []
