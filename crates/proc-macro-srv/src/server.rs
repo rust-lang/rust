@@ -14,7 +14,7 @@ use proc_macro::{
 };
 
 mod token_stream;
-pub(crate) use token_stream::TokenStream;
+pub use token_stream::TokenStream;
 use token_stream::TokenStreamBuilder;
 
 mod symbol;
@@ -40,9 +40,9 @@ pub struct SourceFile {
 
 pub struct FreeFunctions;
 
-#[derive(Default)]
 pub struct RustAnalyzer {
     // FIXME: store span information here.
+    pub(crate) interner: SymbolInternerRef,
 }
 
 impl server::Types for RustAnalyzer {
@@ -67,7 +67,7 @@ impl server::FreeFunctions for RustAnalyzer {
         // FIXME: keep track of LitKind and Suffix
         Ok(bridge::Literal {
             kind: bridge::LitKind::Err,
-            symbol: Symbol::intern(s),
+            symbol: Symbol::intern(self.interner, s),
             suffix: None,
             span: tt::TokenId::unspecified(),
         })
@@ -108,7 +108,7 @@ impl server::TokenStream for RustAnalyzer {
             }
 
             bridge::TokenTree::Ident(ident) => {
-                let text = ident.sym.text();
+                let text = ident.sym.text(self.interner);
                 let text =
                     if ident.is_raw { ::tt::SmolStr::from_iter(["r#", &text]) } else { text };
                 let ident: tt::Ident = tt::Ident { text, span: ident.span };
@@ -119,8 +119,9 @@ impl server::TokenStream for RustAnalyzer {
 
             bridge::TokenTree::Literal(literal) => {
                 let literal = LiteralFormatter(literal);
-                let text = literal
-                    .with_stringify_parts(|parts| ::tt::SmolStr::from_iter(parts.iter().copied()));
+                let text = literal.with_stringify_parts(self.interner, |parts| {
+                    ::tt::SmolStr::from_iter(parts.iter().copied())
+                });
 
                 let literal = tt::Literal { text, span: literal.0.span };
                 let leaf = tt::Leaf::from(literal);
@@ -184,7 +185,7 @@ impl server::TokenStream for RustAnalyzer {
             .map(|tree| match tree {
                 tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
                     bridge::TokenTree::Ident(bridge::Ident {
-                        sym: Symbol::intern(ident.text.trim_start_matches("r#")),
+                        sym: Symbol::intern(self.interner, ident.text.trim_start_matches("r#")),
                         is_raw: ident.text.starts_with("r#"),
                         span: ident.span,
                     })
@@ -193,7 +194,7 @@ impl server::TokenStream for RustAnalyzer {
                     bridge::TokenTree::Literal(bridge::Literal {
                         // FIXME: handle literal kinds
                         kind: bridge::LitKind::Err,
-                        symbol: Symbol::intern(&lit.text),
+                        symbol: Symbol::intern(self.interner, &lit.text),
                         // FIXME: handle suffixes
                         suffix: None,
                         span: lit.span,
@@ -351,11 +352,13 @@ impl server::Server for RustAnalyzer {
     }
 
     fn intern_symbol(ident: &str) -> Self::Symbol {
-        Symbol::intern(&::tt::SmolStr::from(ident))
+        // FIXME: should be self.interner once the proc-macro api allows is
+        Symbol::intern(&SYMBOL_INTERNER, &::tt::SmolStr::from(ident))
     }
 
     fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str)) {
-        f(symbol.text().as_str())
+        // FIXME: should be self.interner once the proc-macro api allows is
+        f(symbol.text(&SYMBOL_INTERNER).as_str())
     }
 }
 
@@ -366,7 +369,11 @@ impl LiteralFormatter {
     /// literal's representation. This is done to allow the `ToString` and
     /// `Display` implementations to borrow references to symbol values, and
     /// both be optimized to reduce overhead.
-    fn with_stringify_parts<R>(&self, f: impl FnOnce(&[&str]) -> R) -> R {
+    fn with_stringify_parts<R>(
+        &self,
+        interner: SymbolInternerRef,
+        f: impl FnOnce(&[&str]) -> R,
+    ) -> R {
         /// Returns a string containing exactly `num` '#' characters.
         /// Uses a 256-character source string literal which is always safe to
         /// index with a `u8` index.
@@ -381,7 +388,7 @@ impl LiteralFormatter {
             &HASHES[..num as usize]
         }
 
-        self.with_symbol_and_suffix(|symbol, suffix| match self.0.kind {
+        self.with_symbol_and_suffix(interner, |symbol, suffix| match self.0.kind {
             bridge::LitKind::Byte => f(&["b'", symbol, "'", suffix]),
             bridge::LitKind::Char => f(&["'", symbol, "'", suffix]),
             bridge::LitKind::Str => f(&["\"", symbol, "\"", suffix]),
@@ -398,9 +405,13 @@ impl LiteralFormatter {
         })
     }
 
-    fn with_symbol_and_suffix<R>(&self, f: impl FnOnce(&str, &str) -> R) -> R {
-        let symbol = self.0.symbol.text();
-        let suffix = self.0.suffix.map(|s| s.text()).unwrap_or_default();
+    fn with_symbol_and_suffix<R>(
+        &self,
+        interner: SymbolInternerRef,
+        f: impl FnOnce(&str, &str) -> R,
+    ) -> R {
+        let symbol = self.0.symbol.text(interner);
+        let suffix = self.0.suffix.map(|s| s.text(interner)).unwrap_or_default();
         f(symbol.as_str(), suffix.as_str())
     }
 }

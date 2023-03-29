@@ -3,7 +3,7 @@
 use libloading::Library;
 use proc_macro_api::{ProcMacroKind, RustCInfo};
 
-use crate::{dylib::LoadProcMacroDylibError, tt};
+use crate::{dylib::LoadProcMacroDylibError, server::SYMBOL_INTERNER, tt};
 
 pub(crate) struct ProcMacros {
     exported_macros: Vec<proc_macro::bridge::client::ProcMacro>,
@@ -59,7 +59,7 @@ impl ProcMacros {
                 } if *trait_name == macro_name => {
                     let res = client.run(
                         &proc_macro::bridge::server::SameThread,
-                        crate::server::RustAnalyzer::default(),
+                        crate::server::RustAnalyzer { interner: &SYMBOL_INTERNER },
                         parsed_body,
                         true,
                     );
@@ -70,7 +70,7 @@ impl ProcMacros {
                 {
                     let res = client.run(
                         &proc_macro::bridge::server::SameThread,
-                        crate::server::RustAnalyzer::default(),
+                        crate::server::RustAnalyzer { interner: &SYMBOL_INTERNER },
                         parsed_body,
                         true,
                     );
@@ -81,7 +81,7 @@ impl ProcMacros {
                 {
                     let res = client.run(
                         &proc_macro::bridge::server::SameThread,
-                        crate::server::RustAnalyzer::default(),
+                        crate::server::RustAnalyzer { interner: &SYMBOL_INTERNER },
                         parsed_attributes,
                         parsed_body,
                         true,
