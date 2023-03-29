@@ -733,7 +733,7 @@ impl<'tcx> Cx<'tcx> {
             hir::ExprKind::Field(ref source, ..) => ExprKind::Field {
                 lhs: self.mirror_expr(source),
                 variant_index: FIRST_VARIANT,
-                name: FieldIdx::new(self.typeck_results.field_index(expr.hir_id)),
+                name: self.typeck_results.field_index(expr.hir_id),
             },
             hir::ExprKind::Cast(ref source, ref cast_ty) => {
                 // Check for a user-given type annotation on this `cast`
@@ -1053,7 +1053,7 @@ impl<'tcx> Cx<'tcx> {
                 HirProjectionKind::Field(field, variant_index) => ExprKind::Field {
                     lhs: self.thir.exprs.push(captured_place_expr),
                     variant_index,
-                    name: FieldIdx::new(field as usize),
+                    name: field,
                 },
                 HirProjectionKind::Index | HirProjectionKind::Subslice => {
                     // We don't capture these projections, so we can ignore them here
@@ -1107,7 +1107,7 @@ impl<'tcx> Cx<'tcx> {
         fields
             .iter()
             .map(|field| FieldExpr {
-                name: FieldIdx::new(self.typeck_results.field_index(field.hir_id)),
+                name: self.typeck_results.field_index(field.hir_id),
                 expr: self.mirror_expr(field.expr),
             })
             .collect()

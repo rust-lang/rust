@@ -61,7 +61,7 @@ use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::PatKind;
 use rustc_infer::infer::InferCtxt;
 use rustc_span::Span;
-use rustc_target::abi::{VariantIdx, FIRST_VARIANT};
+use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use rustc_trait_selection::infer::InferCtxtExt;
 
 pub(crate) trait HirNode {
@@ -330,7 +330,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                     expr,
                     base,
                     expr_ty,
-                    ProjectionKind::Field(field_idx as u32, FIRST_VARIANT),
+                    ProjectionKind::Field(field_idx, FIRST_VARIANT),
                 ))
             }
 
@@ -674,7 +674,8 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
                 for (i, subpat) in subpats.iter().enumerate_and_adjust(total_fields, dots_pos) {
                     let subpat_ty = self.pat_ty_adjusted(subpat)?;
-                    let projection_kind = ProjectionKind::Field(i as u32, FIRST_VARIANT);
+                    let projection_kind =
+                        ProjectionKind::Field(FieldIdx::from_usize(i), FIRST_VARIANT);
                     let sub_place =
                         self.cat_projection(pat, place_with_id.clone(), subpat_ty, projection_kind);
                     self.cat_pattern_(sub_place, subpat, op)?;
@@ -689,7 +690,8 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
                 for (i, subpat) in subpats.iter().enumerate_and_adjust(total_fields, dots_pos) {
                     let subpat_ty = self.pat_ty_adjusted(subpat)?;
-                    let projection_kind = ProjectionKind::Field(i as u32, variant_index);
+                    let projection_kind =
+                        ProjectionKind::Field(FieldIdx::from_usize(i), variant_index);
                     let sub_place =
                         self.cat_projection(pat, place_with_id.clone(), subpat_ty, projection_kind);
                     self.cat_pattern_(sub_place, subpat, op)?;
@@ -714,7 +716,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                         pat,
                         place_with_id.clone(),
                         field_ty,
-                        ProjectionKind::Field(field_index as u32, variant_index),
+                        ProjectionKind::Field(field_index, variant_index),
                     );
                     self.cat_pattern_(field_place, fp.pat, op)?;
                 }

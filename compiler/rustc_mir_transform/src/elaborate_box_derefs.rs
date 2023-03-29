@@ -92,13 +92,14 @@ pub struct ElaborateBoxDerefs;
 impl<'tcx> MirPass<'tcx> for ElaborateBoxDerefs {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         if let Some(def_id) = tcx.lang_items().owned_box() {
-            let unique_did = tcx.adt_def(def_id).non_enum_variant().fields[0].did;
+            let unique_did =
+                tcx.adt_def(def_id).non_enum_variant().fields[FieldIdx::from_u32(0)].did;
 
             let Some(nonnull_def) = tcx.type_of(unique_did).subst_identity().ty_adt_def() else {
                 span_bug!(tcx.def_span(unique_did), "expected Box to contain Unique")
             };
 
-            let nonnull_did = nonnull_def.non_enum_variant().fields[0].did;
+            let nonnull_did = nonnull_def.non_enum_variant().fields[FieldIdx::from_u32(0)].did;
 
             let patch = MirPatch::new(body);
 

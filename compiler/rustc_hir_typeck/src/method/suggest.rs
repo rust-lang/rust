@@ -1815,7 +1815,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .variants()
                     .iter()
                     .flat_map(|variant| {
-                        let [field] = &variant.fields[..] else { return None; };
+                        let [field] = &variant.fields.raw[..] else { return None; };
                         let field_ty = field.ty(tcx, substs);
 
                         // Skip `_`, since that'll just lead to ambiguity.

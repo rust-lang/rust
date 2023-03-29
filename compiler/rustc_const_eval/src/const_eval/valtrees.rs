@@ -8,7 +8,7 @@ use crate::interpret::{
 use crate::interpret::{MPlaceTy, Value};
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_span::source_map::DUMMY_SP;
-use rustc_target::abi::{Align, VariantIdx, FIRST_VARIANT};
+use rustc_target::abi::{Align, FieldIdx, VariantIdx, FIRST_VARIANT};
 
 #[instrument(skip(ecx), level = "debug")]
 fn branches<'tcx>(
@@ -412,6 +412,7 @@ fn valtree_into_mplace<'tcx>(
 
                         let inner_ty = match ty.kind() {
                             ty::Adt(def, substs) => {
+                                let i = FieldIdx::from_usize(i);
                                 def.variant(FIRST_VARIANT).fields[i].ty(tcx, substs)
                             }
                             ty::Tuple(inner_tys) => inner_tys[i],

@@ -19,6 +19,7 @@ use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::{self, Article, AssocItem, Ty, TypeAndMut, TypeVisitableExt};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{BytePos, Span};
+use rustc_target::abi::FieldIdx;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::method_chain::CollectAllMismatches;
 use rustc_trait_selection::traits::ObligationCause;
@@ -850,7 +851,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     variant.fields.len() == 1
                 })
                 .filter_map(|variant| {
-                    let sole_field = &variant.fields[0];
+                    let sole_field = &variant.fields[FieldIdx::from_u32(0)];
 
                     let field_is_local = sole_field.did.is_local();
                     let field_is_accessible =

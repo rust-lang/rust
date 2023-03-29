@@ -107,7 +107,7 @@ fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> &[Ty<'_>] {
     let result = tcx.mk_type_list_from_iter(
         def.variants()
             .iter()
-            .flat_map(|v| v.fields.last())
+            .filter_map(|v| v.fields.raw.last())
             .flat_map(|f| sized_constraint_for_ty(tcx, def, tcx.type_of(f.did).subst_identity())),
     );
 
@@ -542,7 +542,7 @@ fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> BitSet<u32
 
     // The last field of the structure has to exist and contain type/const parameters.
     let Some((tail_field, prefix_fields)) =
-        def.non_enum_variant().fields.split_last() else
+        def.non_enum_variant().fields.raw.split_last() else
     {
         return BitSet::new_empty(num_params);
     };

@@ -320,7 +320,7 @@ fn layout_of_uncached<'tcx>(
             }
 
             // Type of the first ADT field:
-            let f0_ty = def.non_enum_variant().fields[0].ty(tcx, substs);
+            let f0_ty = def.non_enum_variant().fields[FieldIdx::from_u32(0)].ty(tcx, substs);
 
             // Heterogeneous SIMD vectors are not supported:
             // (should be caught by typeck)
@@ -456,7 +456,8 @@ fn layout_of_uncached<'tcx>(
                     {
                         let param_env = tcx.param_env(def.did());
                         def.is_struct()
-                            && match def.variants().iter().next().and_then(|x| x.fields.last()) {
+                            && match def.variants().iter().next().and_then(|x| x.fields.raw.last())
+                            {
                                 Some(last_field) => tcx
                                     .type_of(last_field.did)
                                     .subst_identity()

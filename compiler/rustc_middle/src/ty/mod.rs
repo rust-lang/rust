@@ -50,7 +50,7 @@ pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{ExpnId, ExpnKind, Span};
-use rustc_target::abi::{Align, Integer, IntegerType, VariantIdx};
+use rustc_target::abi::{Align, FieldIdx, Integer, IntegerType, VariantIdx};
 pub use rustc_target::abi::{ReprFlags, ReprOptions};
 use rustc_type_ir::WithCachedTypeInfo;
 pub use subst::*;
@@ -1891,7 +1891,7 @@ pub struct VariantDef {
     /// Discriminant of this variant.
     pub discr: VariantDiscr,
     /// Fields of this variant.
-    pub fields: Vec<FieldDef>,
+    pub fields: IndexVec<FieldIdx, FieldDef>,
     /// Flags of the variant (e.g. is field list non-exhaustive)?
     flags: VariantFlags,
 }
@@ -1918,7 +1918,7 @@ impl VariantDef {
         variant_did: Option<DefId>,
         ctor: Option<(CtorKind, DefId)>,
         discr: VariantDiscr,
-        fields: Vec<FieldDef>,
+        fields: IndexVec<FieldIdx, FieldDef>,
         adt_kind: AdtKind,
         parent_did: DefId,
         recovered: bool,
@@ -2270,11 +2270,10 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn find_field_index(self, ident: Ident, variant: &VariantDef) -> Option<usize> {
-        variant
-            .fields
-            .iter()
-            .position(|field| self.hygienic_eq(ident, field.ident(self), variant.def_id))
+    pub fn find_field_index(self, ident: Ident, variant: &VariantDef) -> Option<FieldIdx> {
+        variant.fields.iter_enumerated().find_map(|(i, field)| {
+            self.hygienic_eq(ident, field.ident(self), variant.def_id).then_some(i)
+        })
     }
 
     /// Returns `true` if the impls are the same polarity and the trait either

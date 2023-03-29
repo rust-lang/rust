@@ -90,7 +90,7 @@ fn convert_to_hir_projections_and_truncate_for_capture(
             ProjectionElem::Deref => HirProjectionKind::Deref,
             ProjectionElem::Field(field, _) => {
                 let variant = variant.unwrap_or(FIRST_VARIANT);
-                HirProjectionKind::Field(field.index() as u32, variant)
+                HirProjectionKind::Field(*field, variant)
             }
             ProjectionElem::Downcast(.., idx) => {
                 // We don't expect to see multi-variant enums here, as earlier

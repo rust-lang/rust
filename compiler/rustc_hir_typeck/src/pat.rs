@@ -19,6 +19,7 @@ use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, DUMMY_SP};
+use rustc_target::abi::FieldIdx;
 use rustc_trait_selection::traits::{ObligationCause, Pattern};
 use ty::VariantDef;
 
@@ -1091,11 +1092,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 bug!("unexpected pattern type {:?}", pat_ty);
             };
             for (i, subpat) in subpats.iter().enumerate_and_adjust(variant.fields.len(), ddpos) {
-                let field_ty = self.field_ty(subpat.span, &variant.fields[i], substs);
+                let field = &variant.fields[FieldIdx::from_usize(i)];
+                let field_ty = self.field_ty(subpat.span, field, substs);
                 self.check_pat(subpat, field_ty, def_bm, ti);
 
                 self.tcx.check_stability(
-                    variant.fields[i].did,
+                    variant.fields[FieldIdx::from_usize(i)].did,
                     Some(pat.hir_id),
                     subpat.span,
                     None,
@@ -1103,7 +1105,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         } else {
             // Pattern has wrong number of fields.
-            let e = self.e0023(pat.span, res, qpath, subpats, &variant.fields, expected, had_err);
+            let e =
+                self.e0023(pat.span, res, qpath, subpats, &variant.fields.raw, expected, had_err);
             on_error(e);
             return tcx.ty_error(e);
         }
@@ -1333,8 +1336,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Index the struct fields' types.
         let field_map = variant
             .fields
-            .iter()
-            .enumerate()
+            .iter_enumerated()
             .map(|(i, field)| (field.ident(self.tcx).normalize_to_macros_2_0(), (i, field)))
             .collect::<FxHashMap<_, _>>();
 

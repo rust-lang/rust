@@ -235,7 +235,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     if !def.is_struct() {
                         break;
                     }
-                    match def.non_enum_variant().fields.last() {
+                    match def.non_enum_variant().fields.raw.last() {
                         Some(field) => {
                             f();
                             ty = field.ty(self, substs);
@@ -309,7 +309,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 (&ty::Adt(a_def, a_substs), &ty::Adt(b_def, b_substs))
                     if a_def == b_def && a_def.is_struct() =>
                 {
-                    if let Some(f) = a_def.non_enum_variant().fields.last() {
+                    if let Some(f) = a_def.non_enum_variant().fields.raw.last() {
                         a = f.ty(self, a_substs);
                         b = f.ty(self, b_substs);
                     } else {

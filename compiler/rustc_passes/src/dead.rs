@@ -16,6 +16,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{sym, Symbol};
+use rustc_target::abi::FieldIdx;
 use std::mem;
 
 use crate::errors::{
@@ -232,7 +233,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             if let PatKind::Wild = pat.kind {
                 continue;
             }
-            self.insert_def_id(variant.fields[idx].did);
+            self.insert_def_id(variant.fields[FieldIdx::from_usize(idx)].did);
         }
     }
 

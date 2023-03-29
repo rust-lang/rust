@@ -27,6 +27,7 @@ use rustc_middle::ty::{
 use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS};
 use rustc_span::symbol::sym;
 use rustc_span::{self, Span};
+use rustc_target::abi::FieldIdx;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::on_unimplemented::OnUnimplementedDirective;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
@@ -474,7 +475,7 @@ fn is_enum_of_nonnullable_ptr<'tcx>(
     let [var_one, var_two] = &adt_def.variants().raw[..] else {
         return false;
     };
-    let (([], [field]) | ([field], [])) = (&var_one.fields[..], &var_two.fields[..]) else {
+    let (([], [field]) | ([field], [])) = (&var_one.fields.raw[..], &var_two.fields.raw[..]) else {
         return false;
     };
     matches!(field.ty(tcx, substs).kind(), ty::FnPtr(..) | ty::Ref(..))
@@ -893,7 +894,7 @@ pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
             struct_span_err!(tcx.sess, sp, E0075, "SIMD vector cannot be empty").emit();
             return;
         }
-        let e = fields[0].ty(tcx, substs);
+        let e = fields[FieldIdx::from_u32(0)].ty(tcx, substs);
         if !fields.iter().all(|f| f.ty(tcx, substs) == e) {
             struct_span_err!(tcx.sess, sp, E0076, "SIMD vector should be homogeneous")
                 .span_label(sp, "SIMD elements must have the same type")

@@ -5,7 +5,6 @@ use crate::ty::{self, ReprOptions, Ty, TyCtxt, TypeVisitableExt};
 use rustc_errors::{DiagnosticBuilder, Handler, IntoDiagnostic};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_index::vec::Idx;
 use rustc_session::config::OptLevel;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -335,7 +334,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
 
                 // Get a zero-sized variant or a pointer newtype.
                 let zero_or_ptr_variant = |i| {
-                    let i = VariantIdx::new(i);
+                    let i = VariantIdx::from_usize(i);
                     let fields =
                         def.variant(i).fields.iter().map(|field| {
                             SizeSkeleton::compute(field.ty(tcx, substs), tcx, param_env)
@@ -798,7 +797,8 @@ where
                 ty::Adt(def, substs) => {
                     match this.variants {
                         Variants::Single { index } => {
-                            TyMaybeWithLayout::Ty(def.variant(index).fields[i].ty(tcx, substs))
+                            let field = &def.variant(index).fields[FieldIdx::from_usize(i)];
+                            TyMaybeWithLayout::Ty(field.ty(tcx, substs))
                         }
 
                         // Discriminant field for enums (where applicable).
