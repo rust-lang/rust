@@ -818,8 +818,7 @@ fn main() {
 }
 
 #[test]
-// FIXME: Re-enable once we can run proc-macro tests on rust-lang/rust-analyzer again
-#[cfg(any())]
+#[cfg(feature = "sysroot-abi")]
 fn resolve_proc_macro() {
     use expect_test::expect;
     if skip_slow_tests() {

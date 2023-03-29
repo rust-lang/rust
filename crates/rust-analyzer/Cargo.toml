@@ -95,8 +95,9 @@ mbe.workspace = true
 [features]
 jemalloc = ["jemallocator", "profile/jemalloc"]
 force-always-assert = ["always-assert/force"]
+sysroot-abi = ["proc-macro-srv-cli/sysroot-abi"]
 in-rust-tree = [
-    "proc-macro-srv-cli/sysroot-abi",
+    "sysroot-abi",
     "ide/in-rust-tree",
     "syntax/in-rust-tree",
 ]
