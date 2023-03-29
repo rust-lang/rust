@@ -8,9 +8,9 @@
 //!
 //! FIXME: No span and source file information is implemented yet
 
-use super::proc_macro::{
-    self,
+use proc_macro::{
     bridge::{self, server},
+    LineColumn,
 };
 
 mod token_stream;
@@ -26,8 +26,10 @@ use crate::tt;
 
 type Group = tt::Subtree;
 type TokenTree = tt::TokenTree;
+#[allow(unused)]
 type Punct = tt::Punct;
 type Spacing = tt::Spacing;
+#[allow(unused)]
 type Literal = tt::Literal;
 type Span = tt::TokenId;
 
@@ -35,9 +37,6 @@ type Span = tt::TokenId;
 pub struct SourceFile {
     // FIXME stub
 }
-
-type Level = super::proc_macro::Level;
-type LineColumn = super::proc_macro::LineColumn;
 
 pub struct FreeFunctions;
 
@@ -240,6 +239,7 @@ fn delim_to_external(d: tt::Delimiter) -> proc_macro::Delimiter {
     }
 }
 
+#[allow(unused)]
 fn spacing_to_internal(spacing: proc_macro::Spacing) -> Spacing {
     match spacing {
         proc_macro::Spacing::Alone => Spacing::Alone,
@@ -247,6 +247,7 @@ fn spacing_to_internal(spacing: proc_macro::Spacing) -> Spacing {
     }
 }
 
+#[allow(unused)]
 fn spacing_to_external(spacing: Spacing) -> proc_macro::Spacing {
     match spacing {
         Spacing::Alone => proc_macro::Spacing::Alone,
