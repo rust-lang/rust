@@ -3,6 +3,7 @@
 
 #![allow(unused)]
 #![allow(dead_code)]
+#![allow(drop_ref)]
 
 struct Int(i32);
 struct B<'a>(&'a i32);

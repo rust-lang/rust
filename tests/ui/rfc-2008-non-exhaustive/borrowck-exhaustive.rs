@@ -3,6 +3,8 @@
 
 // check-pass
 
+#![allow(drop_ref)]
+
 // aux-build:monovariants.rs
 extern crate monovariants;
 
