@@ -103,7 +103,7 @@ impl ImplTraitLoweringState {
 #[derive(Debug)]
 pub struct TyLoweringContext<'a> {
     pub db: &'a dyn HirDatabase,
-    pub resolver: &'a Resolver,
+    resolver: &'a Resolver,
     in_binders: DebruijnIndex,
     /// Note: Conceptually, it's thinkable that we could be in a location where
     /// some type params should be represented as placeholders, and others
