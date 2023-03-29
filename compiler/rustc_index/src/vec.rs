@@ -216,7 +216,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn last(&self) -> Option<I> {
+    pub fn last_index(&self) -> Option<I> {
         self.len().checked_sub(1).map(I::new)
     }
 

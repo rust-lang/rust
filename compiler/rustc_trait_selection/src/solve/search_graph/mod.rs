@@ -70,7 +70,7 @@ impl<'tcx> SearchGraph<'tcx> {
     /// Whether we're currently in a cycle. This should only be used
     /// for debug assertions.
     pub(super) fn in_cycle(&self) -> bool {
-        if let Some(stack_depth) = self.stack.last() {
+        if let Some(stack_depth) = self.stack.last_index() {
             // Either the current goal on the stack is the root of a cycle...
             if self.stack[stack_depth].has_been_used {
                 return true;

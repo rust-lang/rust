@@ -1,8 +1,8 @@
 error[E0015]: cannot call non-const formatting macro in constant functions
-  --> $DIR/format.rs:2:20
+  --> $DIR/format.rs:2:13
    |
 LL |     panic!("{:?}", 0);
-   |                    ^
+   |             ^^^^
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
    = note: this error originates in the macro `$crate::const_format_args` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
@@ -17,10 +17,10 @@ LL |     panic!("{:?}", 0);
    = note: this error originates in the macro `$crate::const_format_args` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0015]: cannot call non-const formatting macro in constant functions
-  --> $DIR/format.rs:8:22
+  --> $DIR/format.rs:8:15
    |
 LL |     println!("{:?}", 0);
-   |                      ^
+   |               ^^^^
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
