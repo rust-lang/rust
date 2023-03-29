@@ -133,7 +133,7 @@ const RUSTC_COVERAGE_DEBUG_OPTIONS: &str = "RUSTC_COVERAGE_DEBUG_OPTIONS";
 pub(super) fn debug_options<'a>() -> &'a DebugOptions {
     static DEBUG_OPTIONS: OnceLock<DebugOptions> = OnceLock::new();
 
-    &DEBUG_OPTIONS.get_or_init(DebugOptions::from_env)
+    &DEBUG_OPTIONS.get_or_init_with(DebugOptions::from_env)
 }
 
 /// Parses and maintains coverage-specific debug options captured from the environment variable

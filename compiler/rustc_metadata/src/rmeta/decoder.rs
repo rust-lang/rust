@@ -1297,7 +1297,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             // Slow path: We need to find out the new `DefIndex` of the provided
             // `DefPathHash`, if its still exists. This requires decoding every `DefPathHash`
             // stored in this crate.
-            let map = self.cdata.expn_hash_map.get_or_init(|| {
+            let map = self.cdata.expn_hash_map.get_or_init_with(|| {
                 let end_id = self.root.expn_hashes.size() as u32;
                 let mut map =
                     UnhashMap::with_capacity_and_hasher(end_id as usize, Default::default());

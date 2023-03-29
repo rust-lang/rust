@@ -77,7 +77,7 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     #[inline]
     #[unstable(feature = "once_cell", issue = "74465")]
     pub fn force(this: &LazyCell<T, F>) -> &T {
-        this.cell.get_or_init(|| match this.init.take() {
+        this.cell.get_or_init_with(|| match this.init.take() {
             Some(f) => f(),
             None => panic!("`Lazy` instance has previously been poisoned"),
         })

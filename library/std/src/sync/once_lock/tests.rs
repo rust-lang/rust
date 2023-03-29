@@ -20,11 +20,11 @@ fn sync_once_cell() {
     assert!(ONCE_CELL.get().is_none());
 
     spawn_and_wait(|| {
-        ONCE_CELL.get_or_init(|| 92);
+        ONCE_CELL.get_or_init_with(|| 92);
         assert_eq!(ONCE_CELL.get(), Some(&92));
     });
 
-    ONCE_CELL.get_or_init(|| panic!("Kabom!"));
+    ONCE_CELL.get_or_init_with(|| panic!("Kabom!"));
     assert_eq!(ONCE_CELL.get(), Some(&92));
 }
 
@@ -59,7 +59,7 @@ fn sync_once_cell_drop() {
 
     let x = OnceLock::new();
     spawn_and_wait(move || {
-        x.get_or_init(|| Dropper);
+        x.get_or_init_with(|| Dropper);
         assert_eq!(DROP_CNT.load(SeqCst), 0);
         drop(x);
     });
@@ -85,18 +85,21 @@ fn clone() {
 }
 
 #[test]
-fn get_or_try_init() {
+fn get_or_try_init_with() {
     let cell: OnceLock<String> = OnceLock::new();
     assert!(cell.get().is_none());
 
-    let res = panic::catch_unwind(|| cell.get_or_try_init(|| -> Result<_, ()> { panic!() }));
+    let res = panic::catch_unwind(|| cell.get_or_try_init_with(|| -> Result<_, ()> { panic!() }));
     assert!(res.is_err());
     assert!(!cell.is_initialized());
     assert!(cell.get().is_none());
 
-    assert_eq!(cell.get_or_try_init(|| Err(())), Err(()));
+    assert_eq!(cell.get_or_try_init_with(|| Err(())), Err(()));
 
-    assert_eq!(cell.get_or_try_init(|| Ok::<_, ()>("hello".to_string())), Ok(&"hello".to_string()));
+    assert_eq!(
+        cell.get_or_try_init_with(|| Ok::<_, ()>("hello".to_string())),
+        Ok(&"hello".to_string())
+    );
     assert_eq!(cell.get(), Some(&"hello".to_string()));
 }
 
@@ -140,7 +143,7 @@ fn eval_once_macro() {
             fn init() -> $ty {
                 $($body)*
             }
-            ONCE_CELL.get_or_init(init)
+            ONCE_CELL.get_or_init_with(init)
         }};
     }
 

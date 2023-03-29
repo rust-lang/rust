@@ -34,7 +34,7 @@ static WSA_CLEANUP: OnceLock<unsafe extern "system" fn() -> i32> = OnceLock::new
 /// Checks whether the Windows socket interface has been started already, and
 /// if not, starts it.
 pub fn init() {
-    let _ = WSA_CLEANUP.get_or_init(|| unsafe {
+    let _ = WSA_CLEANUP.get_or_init_with(|| unsafe {
         let mut data: c::WSADATA = mem::zeroed();
         let ret = c::WSAStartup(
             0x202, // version 2.2

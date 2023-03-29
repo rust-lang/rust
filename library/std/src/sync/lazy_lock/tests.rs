@@ -116,7 +116,7 @@ fn static_sync_lazy() {
 fn static_sync_lazy_via_fn() {
     fn xs() -> &'static Vec<i32> {
         static XS: OnceLock<Vec<i32>> = OnceLock::new();
-        XS.get_or_init(|| {
+        XS.get_or_init_with(|| {
             let mut xs = Vec::new();
             xs.push(1);
             xs.push(2);

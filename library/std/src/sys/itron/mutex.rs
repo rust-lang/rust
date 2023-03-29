@@ -31,7 +31,7 @@ impl Mutex {
 
     /// Get the inner mutex's ID, which is lazily created.
     fn raw(&self) -> abi::ID {
-        match self.mtx.get_or_try_init(|| new_mtx().map(|id| (id, ()))) {
+        match self.mtx.get_or_try_init_with(|| new_mtx().map(|id| (id, ()))) {
             Ok((id, ())) => id,
             Err(e) => fail(e, &"acre_mtx"),
         }

@@ -38,7 +38,7 @@ impl<'tcx> BasicBlocks<'tcx> {
     /// Returns true if control-flow graph contains a cycle reachable from the `START_BLOCK`.
     #[inline]
     pub fn is_cfg_cyclic(&self) -> bool {
-        *self.cache.is_cyclic.get_or_init(|| graph::is_cyclic(self))
+        *self.cache.is_cyclic.get_or_init_with(|| graph::is_cyclic(self))
     }
 
     pub fn dominators(&self) -> Dominators<BasicBlock> {
@@ -48,7 +48,7 @@ impl<'tcx> BasicBlocks<'tcx> {
     /// Returns predecessors for each basic block.
     #[inline]
     pub fn predecessors(&self) -> &Predecessors {
-        self.cache.predecessors.get_or_init(|| {
+        self.cache.predecessors.get_or_init_with(|| {
             let mut preds = IndexVec::from_elem(SmallVec::new(), &self.basic_blocks);
             for (bb, data) in self.basic_blocks.iter_enumerated() {
                 if let Some(term) = &data.terminator {
@@ -64,7 +64,7 @@ impl<'tcx> BasicBlocks<'tcx> {
     /// Returns basic blocks in a postorder.
     #[inline]
     pub fn postorder(&self) -> &[BasicBlock] {
-        self.cache.postorder.get_or_init(|| {
+        self.cache.postorder.get_or_init_with(|| {
             Postorder::new(&self.basic_blocks, START_BLOCK).map(|(bb, _)| bb).collect()
         })
     }
@@ -73,7 +73,7 @@ impl<'tcx> BasicBlocks<'tcx> {
     /// values that lead to a `target` block from a `switch` block.
     #[inline]
     pub fn switch_sources(&self) -> &SwitchSources {
-        self.cache.switch_sources.get_or_init(|| {
+        self.cache.switch_sources.get_or_init_with(|| {
             let mut switch_sources: SwitchSources = FxHashMap::default();
             for (bb, data) in self.basic_blocks.iter_enumerated() {
                 if let Some(Terminator {

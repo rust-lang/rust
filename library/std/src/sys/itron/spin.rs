@@ -113,7 +113,7 @@ impl<T> SpinIdOnceCell<T> {
     /// Warning: `f` must not perform a blocking operation, which
     /// includes panicking.
     #[inline]
-    pub fn get_or_try_init<F, E>(&self, f: F) -> Result<(abi::ID, &T), E>
+    pub fn get_or_try_init_with<F, E>(&self, f: F) -> Result<(abi::ID, &T), E>
     where
         F: FnOnce() -> Result<(abi::ID, T), E>,
     {

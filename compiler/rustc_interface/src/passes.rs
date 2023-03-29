@@ -693,12 +693,12 @@ pub fn create_global_ctxt<'tcx>(
         callback(sess, &mut local_providers, &mut extern_providers);
     }
 
-    let queries = queries.get_or_init(|| {
+    let queries = queries.get_or_init_with(|| {
         TcxQueries::new(local_providers, extern_providers, query_result_on_disk_cache)
     });
 
     sess.time("setup_global_ctxt", || {
-        gcx_cell.get_or_init(move || {
+        gcx_cell.get_or_init_with(move || {
             TyCtxt::create_global_ctxt(
                 sess,
                 lint_store,

@@ -23,7 +23,7 @@ use crate::mem;
 /// let cell = OnceCell::new();
 /// assert!(cell.get().is_none());
 ///
-/// let value: &String = cell.get_or_init(|| {
+/// let value: &String = cell.get_or_init_with(|| {
 ///     "Hello, World!".to_string()
 /// });
 /// assert_eq!(value, "Hello, World!");
@@ -122,18 +122,18 @@ impl<T> OnceCell<T> {
     /// use std::cell::OnceCell;
     ///
     /// let cell = OnceCell::new();
-    /// let value = cell.get_or_init(|| 92);
+    /// let value = cell.get_or_init_with(|| 92);
     /// assert_eq!(value, &92);
-    /// let value = cell.get_or_init(|| unreachable!());
+    /// let value = cell.get_or_init_with(|| unreachable!());
     /// assert_eq!(value, &92);
     /// ```
     #[inline]
     #[unstable(feature = "once_cell", issue = "74465")]
-    pub fn get_or_init<F>(&self, f: F) -> &T
+    pub fn get_or_init_with<F>(&self, f: F) -> &T
     where
         F: FnOnce() -> T,
     {
-        match self.get_or_try_init(|| Ok::<T, !>(f())) {
+        match self.get_or_try_init_with(|| Ok::<T, !>(f())) {
             Ok(val) => val,
         }
     }
@@ -158,16 +158,16 @@ impl<T> OnceCell<T> {
     /// use std::cell::OnceCell;
     ///
     /// let cell = OnceCell::new();
-    /// assert_eq!(cell.get_or_try_init(|| Err(())), Err(()));
+    /// assert_eq!(cell.get_or_try_init_with(|| Err(())), Err(()));
     /// assert!(cell.get().is_none());
-    /// let value = cell.get_or_try_init(|| -> Result<i32, ()> {
+    /// let value = cell.get_or_try_init_with(|| -> Result<i32, ()> {
     ///     Ok(92)
     /// });
     /// assert_eq!(value, Ok(&92));
     /// assert_eq!(cell.get(), Some(&92))
     /// ```
     #[unstable(feature = "once_cell", issue = "74465")]
-    pub fn get_or_try_init<F, E>(&self, f: F) -> Result<&T, E>
+    pub fn get_or_try_init_with<F, E>(&self, f: F) -> Result<&T, E>
     where
         F: FnOnce() -> Result<T, E>,
     {

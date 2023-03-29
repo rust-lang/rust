@@ -2318,7 +2318,7 @@ fn add_native_libs_from_crate(
                             cmd.link_whole_staticlib(
                                 name,
                                 verbatim,
-                                &search_paths.get_or_init(|| archive_search_paths(sess)),
+                                &search_paths.get_or_init_with(|| archive_search_paths(sess)),
                             );
                         } else {
                             cmd.link_staticlib(name, verbatim)

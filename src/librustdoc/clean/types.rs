@@ -1760,7 +1760,7 @@ impl PrimitiveType {
         static CELL: OnceCell<SimplifiedTypes> = OnceCell::new();
 
         let single = |x| iter::once(x).collect();
-        CELL.get_or_init(move || {
+        CELL.get_or_init_with(move || {
             map! {
                 Isize => single(IntSimplifiedType(IntTy::Isize)),
                 I8 => single(IntSimplifiedType(IntTy::I8)),
@@ -1855,7 +1855,7 @@ impl PrimitiveType {
     /// it's entirely random whether `std` or the other crate is picked. (no_std crates are usually fine unless multiple dependencies define a primitive.)
     pub(crate) fn primitive_locations(tcx: TyCtxt<'_>) -> &FxHashMap<PrimitiveType, DefId> {
         static PRIMITIVE_LOCATIONS: OnceCell<FxHashMap<PrimitiveType, DefId>> = OnceCell::new();
-        PRIMITIVE_LOCATIONS.get_or_init(|| {
+        PRIMITIVE_LOCATIONS.get_or_init_with(|| {
             let mut primitive_locations = FxHashMap::default();
             // NOTE: technically this misses crates that are only passed with `--extern` and not loaded when checking the crate.
             // This is a degenerate case that I don't plan to support.

@@ -322,7 +322,7 @@ pub struct StdinLock<'a> {
 pub fn stdin() -> Stdin {
     static INSTANCE: OnceLock<Mutex<BufReader<StdinRaw>>> = OnceLock::new();
     Stdin {
-        inner: INSTANCE.get_or_init(|| {
+        inner: INSTANCE.get_or_init_with(|| {
             Mutex::new(BufReader::with_capacity(stdio::STDIN_BUF_SIZE, stdin_raw()))
         }),
     }
@@ -614,7 +614,7 @@ static STDOUT: OnceLock<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> = OnceLo
 pub fn stdout() -> Stdout {
     Stdout {
         inner: STDOUT
-            .get_or_init(|| ReentrantMutex::new(RefCell::new(LineWriter::new(stdout_raw())))),
+            .get_or_init_with(|| ReentrantMutex::new(RefCell::new(LineWriter::new(stdout_raw())))),
     }
 }
 
@@ -623,7 +623,7 @@ pub fn stdout() -> Stdout {
 // buffering capacity.
 pub fn cleanup() {
     let mut initialized = false;
-    let stdout = STDOUT.get_or_init(|| {
+    let stdout = STDOUT.get_or_init_with(|| {
         initialized = true;
         ReentrantMutex::new(RefCell::new(LineWriter::with_capacity(0, stdout_raw())))
     });

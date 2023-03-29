@@ -239,7 +239,7 @@ pub fn get_codegen_backend(
 ) -> Box<dyn CodegenBackend> {
     static LOAD: OnceLock<unsafe fn() -> Box<dyn CodegenBackend>> = OnceLock::new();
 
-    let load = LOAD.get_or_init(|| {
+    let load = LOAD.get_or_init_with(|| {
         let default_codegen_backend = option_env!("CFG_DEFAULT_CODEGEN_BACKEND").unwrap_or("llvm");
 
         match backend_name.unwrap_or(default_codegen_backend) {
@@ -264,7 +264,7 @@ pub fn rustc_path<'a>() -> Option<&'a Path> {
 
     const BIN_PATH: &str = env!("RUSTC_INSTALL_BINDIR");
 
-    RUSTC_PATH.get_or_init(|| get_rustc_path_inner(BIN_PATH)).as_deref()
+    RUSTC_PATH.get_or_init_with(|| get_rustc_path_inner(BIN_PATH)).as_deref()
 }
 
 fn get_rustc_path_inner(bin_path: &str) -> Option<PathBuf> {

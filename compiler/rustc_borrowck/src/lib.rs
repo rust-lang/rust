@@ -2282,7 +2282,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     fn dominators(&self) -> &Dominators<BasicBlock> {
-        self.dominators.get_or_init(|| self.body.basic_blocks.dominators())
+        self.dominators.get_or_init_with(|| self.body.basic_blocks.dominators())
     }
 }
 

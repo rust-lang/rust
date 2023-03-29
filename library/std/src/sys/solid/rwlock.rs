@@ -28,7 +28,7 @@ impl RwLock {
 
     /// Get the inner mutex's ID, which is lazily created.
     fn raw(&self) -> abi::ID {
-        match self.rwl.get_or_try_init(|| new_rwl().map(|id| (id, ()))) {
+        match self.rwl.get_or_try_init_with(|| new_rwl().map(|id| (id, ()))) {
             Ok((id, ())) => id,
             Err(e) => fail(e, &"rwl_acre_rwl"),
         }

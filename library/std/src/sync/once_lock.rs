@@ -22,7 +22,7 @@ use crate::sync::Once;
 /// assert!(CELL.get().is_none());
 ///
 /// std::thread::spawn(|| {
-///     let value: &String = CELL.get_or_init(|| {
+///     let value: &String = CELL.get_or_init_with(|| {
 ///         "Hello, World!".to_string()
 ///     });
 ///     assert_eq!(value, "Hello, World!");
@@ -132,7 +132,7 @@ impl<T> OnceLock<T> {
     #[unstable(feature = "once_cell", issue = "74465")]
     pub fn set(&self, value: T) -> Result<(), T> {
         let mut value = Some(value);
-        self.get_or_init(|| value.take().unwrap());
+        self.get_or_init_with(|| value.take().unwrap());
         match value {
             None => Ok(()),
             Some(value) => Err(value),
@@ -142,7 +142,7 @@ impl<T> OnceLock<T> {
     /// Gets the contents of the cell, initializing it with `f` if the cell
     /// was empty.
     ///
-    /// Many threads may call `get_or_init` concurrently with different
+    /// Many threads may call `get_or_init_with` concurrently with different
     /// initializing functions, but it is guaranteed that only one function
     /// will be executed.
     ///
@@ -163,18 +163,18 @@ impl<T> OnceLock<T> {
     /// use std::sync::OnceLock;
     ///
     /// let cell = OnceLock::new();
-    /// let value = cell.get_or_init(|| 92);
+    /// let value = cell.get_or_init_with(|| 92);
     /// assert_eq!(value, &92);
-    /// let value = cell.get_or_init(|| unreachable!());
+    /// let value = cell.get_or_init_with(|| unreachable!());
     /// assert_eq!(value, &92);
     /// ```
     #[inline]
     #[unstable(feature = "once_cell", issue = "74465")]
-    pub fn get_or_init<F>(&self, f: F) -> &T
+    pub fn get_or_init_with<F>(&self, f: F) -> &T
     where
         F: FnOnce() -> T,
     {
-        match self.get_or_try_init(|| Ok::<T, !>(f())) {
+        match self.get_or_try_init_with(|| Ok::<T, !>(f())) {
             Ok(val) => val,
         }
     }
@@ -200,9 +200,9 @@ impl<T> OnceLock<T> {
     /// use std::sync::OnceLock;
     ///
     /// let cell = OnceLock::new();
-    /// assert_eq!(cell.get_or_try_init(|| Err(())), Err(()));
+    /// assert_eq!(cell.get_or_try_init_with(|| Err(())), Err(()));
     /// assert!(cell.get().is_none());
-    /// let value = cell.get_or_try_init(|| -> Result<i32, ()> {
+    /// let value = cell.get_or_try_init_with(|| -> Result<i32, ()> {
     ///     Ok(92)
     /// });
     /// assert_eq!(value, Ok(&92));
@@ -210,7 +210,7 @@ impl<T> OnceLock<T> {
     /// ```
     #[inline]
     #[unstable(feature = "once_cell", issue = "74465")]
-    pub fn get_or_try_init<F, E>(&self, f: F) -> Result<&T, E>
+    pub fn get_or_try_init_with<F, E>(&self, f: F) -> Result<&T, E>
     where
         F: FnOnce() -> Result<T, E>,
     {

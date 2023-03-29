@@ -107,7 +107,7 @@ impl Msrv {
     pub fn read(conf_msrv: &Option<String>, sess: &Session) -> &'static Self {
         static PARSED: OnceLock<Msrv> = OnceLock::new();
 
-        PARSED.get_or_init(|| Self::read_inner(conf_msrv, sess))
+        PARSED.get_or_init_with(|| Self::read_inner(conf_msrv, sess))
     }
 
     pub fn current(&self) -> Option<RustcVersion> {
