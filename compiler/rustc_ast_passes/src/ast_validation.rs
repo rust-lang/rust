@@ -983,14 +983,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.err_handler().emit_err(errors::FieldlessUnion { span: item.span });
                 }
             }
-            ItemKind::Const(ConstItem { defaultness, expr: None, .. }) => {
+            ItemKind::Const(box ConstItem { defaultness, expr: None, .. }) => {
                 self.check_defaultness(item.span, *defaultness);
                 self.session.emit_err(errors::ConstWithoutBody {
                     span: item.span,
                     replace_span: self.ending_semi_or_hi(item.span),
                 });
             }
-            ItemKind::Static(Static { expr: None, .. }) => {
+            ItemKind::Static(box Static { expr: None, .. }) => {
                 self.session.emit_err(errors::StaticWithoutBody {
                     span: item.span,
                     replace_span: self.ending_semi_or_hi(item.span),
@@ -1259,7 +1259,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         if ctxt == AssocCtxt::Impl {
             match &item.kind {
-                AssocItemKind::Const(ConstItem { expr: None, .. }) => {
+                AssocItemKind::Const(box ConstItem { expr: None, .. }) => {
                     self.session.emit_err(errors::AssocConstWithoutBody {
                         span: item.span,
                         replace_span: self.ending_semi_or_hi(item.span),

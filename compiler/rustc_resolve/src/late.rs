@@ -2346,8 +2346,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 });
             }
 
-            ItemKind::Static(ast::Static { ref ty, ref expr, .. })
-            | ItemKind::Const(ast::ConstItem { ref ty, ref expr, .. }) => {
+            ItemKind::Static(box ast::Static { ref ty, ref expr, .. })
+            | ItemKind::Const(box ast::ConstItem { ref ty, ref expr, .. }) => {
                 self.with_static_rib(|this| {
                     this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Static), |this| {
                         this.visit_ty(ty);
@@ -2625,7 +2625,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         for item in trait_items {
             self.resolve_doc_links(&item.attrs, MaybeExported::Ok(item.id));
             match &item.kind {
-                AssocItemKind::Const(ast::ConstItem { ty, expr, .. }) => {
+                AssocItemKind::Const(box ast::ConstItem { ty, expr, .. }) => {
                     self.visit_ty(ty);
                     // Only impose the restrictions of `ConstRibKind` for an
                     // actual constant expression in a provided default.
@@ -2800,7 +2800,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         use crate::ResolutionError::*;
         self.resolve_doc_links(&item.attrs, MaybeExported::ImplItem(trait_id.ok_or(&item.vis)));
         match &item.kind {
-            AssocItemKind::Const(ast::ConstItem { ty, expr, .. }) => {
+            AssocItemKind::Const(box ast::ConstItem { ty, expr, .. }) => {
                 debug!("resolve_implementation AssocItemKind::Const");
                 // If this is a trait impl, ensure the const
                 // exists in trait

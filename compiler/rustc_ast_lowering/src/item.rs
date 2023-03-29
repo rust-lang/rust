@@ -229,11 +229,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 self.lower_use_tree(use_tree, &prefix, id, vis_span, ident, attrs)
             }
-            ItemKind::Static(ast::Static { ty: t, mutability: m, expr: e }) => {
+            ItemKind::Static(box ast::Static { ty: t, mutability: m, expr: e }) => {
                 let (ty, body_id) = self.lower_const_item(t, span, e.as_deref());
                 hir::ItemKind::Static(ty, *m, body_id)
             }
-            ItemKind::Const(ast::ConstItem { ty, expr, .. }) => {
+            ItemKind::Const(box ast::ConstItem { ty, expr, .. }) => {
                 let (ty, body_id) = self.lower_const_item(ty, span, expr.as_deref());
                 hir::ItemKind::Const(ty, body_id)
             }
@@ -708,7 +708,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let trait_item_def_id = hir_id.expect_owner();
 
         let (generics, kind, has_default) = match &i.kind {
-            AssocItemKind::Const(ConstItem { ty, expr, .. }) => {
+            AssocItemKind::Const(box ConstItem { ty, expr, .. }) => {
                 let ty =
                     self.lower_ty(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
                 let body = expr.as_ref().map(|x| self.lower_const_body(i.span, Some(x)));
@@ -809,7 +809,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.lower_attrs(hir_id, &i.attrs);
 
         let (generics, kind) = match &i.kind {
-            AssocItemKind::Const(ConstItem { ty, expr, .. }) => {
+            AssocItemKind::Const(box ConstItem { ty, expr, .. }) => {
                 let ty =
                     self.lower_ty(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
                 (

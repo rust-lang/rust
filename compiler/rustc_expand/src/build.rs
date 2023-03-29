@@ -627,7 +627,7 @@ impl<'a> ExtCtxt<'a> {
             span,
             name,
             AttrVec::new(),
-            ast::ItemKind::Static(ast::Static { ty, mutability, expr: Some(expr) }),
+            ast::ItemKind::Static(ast::Static { ty, mutability, expr: Some(expr) }.into()),
         )
     }
 
@@ -643,7 +643,7 @@ impl<'a> ExtCtxt<'a> {
             span,
             name,
             AttrVec::new(),
-            ast::ItemKind::Const(ast::ConstItem { defaultness, ty, expr: Some(expr) }),
+            ast::ItemKind::Const(ast::ConstItem { defaultness, ty, expr: Some(expr) }.into()),
         )
     }
 

@@ -157,7 +157,7 @@ impl<'a> State<'a> {
                 self.print_use_tree(tree);
                 self.word(";");
             }
-            ast::ItemKind::Static(Static { ty, mutability: mutbl, expr: body }) => {
+            ast::ItemKind::Static(box Static { ty, mutability: mutbl, expr: body }) => {
                 let def = ast::Defaultness::Final;
                 self.print_item_const(
                     item.ident,
@@ -168,7 +168,7 @@ impl<'a> State<'a> {
                     def,
                 );
             }
-            ast::ItemKind::Const(ast::ConstItem { defaultness, ty, expr }) => {
+            ast::ItemKind::Const(box ast::ConstItem { defaultness, ty, expr }) => {
                 self.print_item_const(
                     item.ident,
                     None,
@@ -515,7 +515,7 @@ impl<'a> State<'a> {
             ast::AssocItemKind::Fn(box ast::Fn { defaultness, sig, generics, body }) => {
                 self.print_fn_full(sig, ident, generics, vis, *defaultness, body.as_deref(), attrs);
             }
-            ast::AssocItemKind::Const(ast::ConstItem { defaultness, ty, expr }) => {
+            ast::AssocItemKind::Const(box ast::ConstItem { defaultness, ty, expr }) => {
                 self.print_item_const(ident, None, ty, expr.as_deref(), vis, *defaultness);
             }
             ast::AssocItemKind::Type(box ast::TyAlias {

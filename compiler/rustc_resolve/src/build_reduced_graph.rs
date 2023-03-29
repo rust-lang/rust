@@ -688,7 +688,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             }
 
             // These items live in the value namespace.
-            ItemKind::Static(ast::Static { mutability, .. }) => {
+            ItemKind::Static(box ast::Static { mutability, .. }) => {
                 let res = Res::Def(DefKind::Static(mutability), def_id);
                 self.r.define(parent, ident, ValueNS, (res, vis, sp, expansion));
             }

@@ -228,7 +228,7 @@ impl<'a> Parser<'a> {
             self.bump(); // `static`
             let m = self.parse_mutability();
             let (ident, ty, expr) = self.parse_item_global(Some(m))?;
-            (ident, ItemKind::Static(Static { ty, mutability: m, expr }))
+            (ident, ItemKind::Static(Box::new(Static { ty, mutability: m, expr })))
         } else if let Const::Yes(const_span) = self.parse_constness(Case::Sensitive) {
             // CONST ITEM
             if self.token.is_keyword(kw::Impl) {
@@ -237,7 +237,7 @@ impl<'a> Parser<'a> {
             } else {
                 self.recover_const_mut(const_span);
                 let (ident, ty, expr) = self.parse_item_global(None)?;
-                (ident, ItemKind::Const(ConstItem { defaultness: def_(), ty, expr }))
+                (ident, ItemKind::Const(Box::new(ConstItem { defaultness: def_(), ty, expr })))
             }
         } else if self.check_keyword(kw::Trait) || self.check_auto_or_unsafe_trait_item() {
             // TRAIT ITEM
@@ -863,13 +863,13 @@ impl<'a> Parser<'a> {
                 let kind = match AssocItemKind::try_from(kind) {
                     Ok(kind) => kind,
                     Err(kind) => match kind {
-                        ItemKind::Static(Static { ty, mutability: _, expr }) => {
+                        ItemKind::Static(box Static { ty, mutability: _, expr }) => {
                             self.sess.emit_err(errors::AssociatedStaticItemNotAllowed { span });
-                            AssocItemKind::Const(ConstItem {
+                            AssocItemKind::Const(Box::new(ConstItem {
                                 defaultness: Defaultness::Final,
                                 ty,
                                 expr,
-                            })
+                            }))
                         }
                         _ => return self.error_bad_item_kind(span, &kind, "`trait`s or `impl`s"),
                     },
@@ -1119,7 +1119,7 @@ impl<'a> Parser<'a> {
                 let kind = match ForeignItemKind::try_from(kind) {
                     Ok(kind) => kind,
                     Err(kind) => match kind {
-                        ItemKind::Const(ConstItem { ty, expr, .. }) => {
+                        ItemKind::Const(box ConstItem { ty, expr, .. }) => {
                             self.sess.emit_err(errors::ExternItemCannotBeConst {
                                 ident_span: ident.span,
                                 const_span: span.with_hi(ident.span.lo()),
