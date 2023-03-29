@@ -1,0 +1,51 @@
+error[E0277]: `Option<{integer}>` doesn't implement `std::fmt::Display`
+  --> $DIR/format-args-argument-span.rs:13:21
+   |
+LL |     println!("{x:?} {x} {x:?}");
+   |                     ^^^ `Option<{integer}>` cannot be formatted with the default formatter
+   |
+   = help: the trait `std::fmt::Display` is not implemented for `Option<{integer}>`
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `Option<{integer}>` doesn't implement `std::fmt::Display`
+  --> $DIR/format-args-argument-span.rs:15:37
+   |
+LL |     println!("{x:?} {x} {x:?}", x = Some(1));
+   |                                     ^^^^^^^ `Option<{integer}>` cannot be formatted with the default formatter
+   |
+   = help: the trait `std::fmt::Display` is not implemented for `Option<{integer}>`
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `DisplayOnly` doesn't implement `Debug`
+  --> $DIR/format-args-argument-span.rs:18:19
+   |
+LL |     println!("{x} {x:?} {x}");
+   |                   ^^^^^ `DisplayOnly` cannot be formatted using `{:?}`
+   |
+   = help: the trait `Debug` is not implemented for `DisplayOnly`
+   = note: add `#[derive(Debug)]` to `DisplayOnly` or manually `impl Debug for DisplayOnly`
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider annotating `DisplayOnly` with `#[derive(Debug)]`
+   |
+LL | #[derive(Debug)]
+   |
+
+error[E0277]: `DisplayOnly` doesn't implement `Debug`
+  --> $DIR/format-args-argument-span.rs:20:35
+   |
+LL |     println!("{x} {x:?} {x}", x = DisplayOnly);
+   |                                   ^^^^^^^^^^^ `DisplayOnly` cannot be formatted using `{:?}`
+   |
+   = help: the trait `Debug` is not implemented for `DisplayOnly`
+   = note: add `#[derive(Debug)]` to `DisplayOnly` or manually `impl Debug for DisplayOnly`
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider annotating `DisplayOnly` with `#[derive(Debug)]`
+   |
+LL | #[derive(Debug)]
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
