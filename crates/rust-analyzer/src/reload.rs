@@ -251,7 +251,7 @@ impl GlobalState {
                     (
                         crate_id,
                         res.map_or_else(
-                            || Err("proc macro crate is missing dylib".to_owned()),
+                            |_| Err("proc macro crate is missing dylib".to_owned()),
                             |(crate_name, path)| {
                                 progress(path.display().to_string());
                                 load_proc_macro(
@@ -296,25 +296,11 @@ impl GlobalState {
         let workspaces =
             workspaces.iter().filter_map(|res| res.as_ref().ok().cloned()).collect::<Vec<_>>();
 
-        // `different_workspaces` is used to determine whether to spawn a a new proc macro server for
-        // a newly-added rust workspace (most commonly sourced from a `rust-project.json`). While the
-        // algorithm to find the new workspaces is quadratic, we generally expect that the number of total
-        // workspaces to remain in the low single digits. the `cloned_workspace` is needed for borrowck
-        // reasons.
-        let cloned_workspaces = workspaces.clone();
-        let different_workspaces = cloned_workspaces
-            .iter()
-            .filter(|ws| {
-                !self
-                    .workspaces
-                    .iter()
-                    .find(|existing_ws| ws.eq_ignore_build_data(&existing_ws))
-                    .is_some()
-            })
-            .collect::<Vec<_>>();
-        let same_workspaces = different_workspaces.is_empty();
-
-        tracing::debug!(current_workspaces = ?self.workspaces, new_workspaces = ?workspaces, ?same_workspaces, "comparing workspaces");
+        let same_workspaces = workspaces.len() == self.workspaces.len()
+            && workspaces
+                .iter()
+                .zip(self.workspaces.iter())
+                .all(|(l, r)| l.eq_ignore_build_data(r));
 
         if same_workspaces {
             let (workspaces, build_scripts) = self.fetch_build_data_queue.last_op_result();
@@ -384,7 +370,7 @@ impl GlobalState {
         let files_config = self.config.files();
         let project_folders = ProjectFolders::new(&self.workspaces, &files_config.exclude);
 
-        if self.proc_macro_clients.is_empty() || !different_workspaces.is_empty() {
+        if self.proc_macro_clients.is_empty() || !same_workspaces {
             if let Some((path, path_manually_set)) = self.config.proc_macro_srv() {
                 tracing::info!("Spawning proc-macro servers");
                 self.proc_macro_clients = self
@@ -462,31 +448,8 @@ impl GlobalState {
         };
         let mut change = Change::new();
 
-        // `self.fetch_proc_macros_queue.request_op(cause, proc_macro_paths)` is only called in
-        // when `switch_workspaces` is called _without_ changing workspaces. This typically occurs
-        // when build scripts have finishing building, but when rust-analyzer is used with a
-        // rust-project.json, the build scripts have already been built by the external build system
-        // that generated the `rust-project.json`.
-
-        // Therefore, in order to allow _new_ workspaces added via rust-project.json (e.g., after
-        // a workspace was already added), we check whether this is the same workspace _or_
-        // if any of the new workspaces is a `rust-project.json`.
-        //
-        // The else branch is used to provide better diagnostics to users while procedural macros
-        // are still being built.
-        if same_workspaces || different_workspaces.iter().any(|ws| ws.is_json()) {
-            if self.config.expand_proc_macros() {
-                self.fetch_proc_macros_queue.request_op(cause, proc_macro_paths);
-            }
-        } else {
-            // Set up errors for proc-macros upfront that we haven't run build scripts yet
-            let mut proc_macros = FxHashMap::default();
-            for paths in proc_macro_paths {
-                proc_macros.extend(paths.into_iter().map(move |(crate_id, _)| {
-                    (crate_id, Err("crate has not yet been build".to_owned()))
-                }));
-            }
-            change.set_proc_macros(proc_macros);
+        if self.config.expand_proc_macros() {
+            self.fetch_proc_macros_queue.request_op(cause, proc_macro_paths);
         }
         change.set_crate_graph(crate_graph);
         self.analysis_host.apply_change(change);

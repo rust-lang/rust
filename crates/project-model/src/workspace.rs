@@ -691,7 +691,7 @@ fn project_json_to_crate_graph(
     target_layout: TargetLayoutLoadResult,
 ) -> (CrateGraph, ProcMacroPaths) {
     let mut crate_graph = CrateGraph::default();
-    let mut proc_macros = FxHashMap::default();
+    let mut proc_macros: ProcMacroPaths = FxHashMap::default();
     let sysroot_deps = sysroot.as_ref().map(|sysroot| {
         sysroot_to_crate_graph(
             &mut crate_graph,
@@ -743,13 +743,11 @@ fn project_json_to_crate_graph(
             );
             if krate.is_proc_macro {
                 if let Some(path) = krate.proc_macro_dylib_path.clone() {
-                    proc_macros.insert(
-                        crate_graph_crate_id,
-                        Some((
-                            krate.display_name.as_ref().map(|it| it.canonical_name().to_owned()),
-                            path,
-                        )),
-                    );
+                    let node = Ok((
+                        krate.display_name.as_ref().map(|it| it.canonical_name().to_owned()),
+                        path,
+                    ));
+                    proc_macros.insert(crate_graph_crate_id, node);
                 }
             }
             (crate_id, crate_graph_crate_id)
@@ -1193,8 +1191,8 @@ fn add_target_crate_root(
     );
     if is_proc_macro {
         let proc_macro = match build_data.as_ref().map(|it| it.proc_macro_dylib_path.as_ref()) {
-            Some(it) => it.cloned().map(|path| Some((Some(cargo_name.to_owned()), path))),
-            None => Some(None),
+            Some(it) => it.cloned().map(|path| Ok((Some(cargo_name.to_owned()), path))),
+            None => Some(Err("crate has not yet been build".to_owned())),
         };
         if let Some(proc_macro) = proc_macro {
             proc_macros.insert(crate_id, proc_macro);
