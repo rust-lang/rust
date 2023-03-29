@@ -7,6 +7,7 @@ use rustc_span::{source_map::DUMMY_SP, SpanData, Symbol};
 use rustc_target::abi::{Align, Size};
 
 use crate::borrow_tracker::stacked_borrows::diagnostics::TagHistory;
+use crate::borrow_tracker::tree_borrows::diagnostics as tree_diagnostics;
 use crate::*;
 
 /// Details of premature program termination.
@@ -23,8 +24,10 @@ pub enum TerminationInfo {
         history: Option<TagHistory>,
     },
     TreeBorrowsUb {
-        msg: String,
-        // FIXME: incomplete
+        title: String,
+        relation: Option<String>,
+        problem: String,
+        history: tree_diagnostics::HistoryData,
     },
     Int2PtrWithStrictProvenance,
     Deadlock,
@@ -65,7 +68,7 @@ impl fmt::Display for TerminationInfo {
                     "integer-to-pointer casts and `ptr::from_exposed_addr` are not supported with `-Zmiri-strict-provenance`"
                 ),
             StackedBorrowsUb { msg, .. } => write!(f, "{msg}"),
-            TreeBorrowsUb { msg } => write!(f, "{msg}"),
+            TreeBorrowsUb { title, .. } => write!(f, "{title}"),
             Deadlock => write!(f, "the evaluated program deadlocked"),
             MultipleSymbolDefinitions { link_name, .. } =>
                 write!(f, "multiple definitions of symbol `{link_name}`"),
@@ -219,10 +222,16 @@ pub fn report_error<'tcx, 'mir>(
                 }
                 helps
             },
-            TreeBorrowsUb { .. } => {
-                let helps = vec![
-                    (None, format!("this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental")),
-                ];
+            TreeBorrowsUb { title: _, relation, problem, history } => {
+                let mut helps = Vec::new();
+                if let Some(relation) = relation {
+                    helps.push((None, relation.clone()));
+                }
+                helps.push((None, problem.clone()));
+                helps.push((None, format!("this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental")));
+                for event in history.events.clone() {
+                    helps.push(event);
+                }
                 helps
             }
             MultipleSymbolDefinitions { first, first_crate, second, second_crate, .. } =>
