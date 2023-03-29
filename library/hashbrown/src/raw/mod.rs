@@ -352,9 +352,9 @@ impl<T> Bucket<T> {
     /// [`<*mut T>::sub`]: https://doc.rust-lang.org/core/primitive.pointer.html#method.sub-1
     /// [`NonNull::new_unchecked`]: https://doc.rust-lang.org/stable/std/ptr/struct.NonNull.html#method.new_unchecked
     /// [`RawTable::data_end`]: crate::raw::RawTable::data_end
-    /// [`RawTableInner::data_end<T>`]: crate::raw::RawTableInner::data_end<T>
+    /// [`RawTableInner::data_end<T>`]: RawTableInner::data_end<T>
     /// [`RawTable::buckets`]: crate::raw::RawTable::buckets
-    /// [`RawTableInner::buckets`]: crate::raw::RawTableInner::buckets
+    /// [`RawTableInner::buckets`]: RawTableInner::buckets
     #[inline]
     unsafe fn from_base_index(base: NonNull<T>, index: usize) -> Self {
         // If mem::size_of::<T>() != 0 then return a pointer to an `element` in
@@ -424,9 +424,9 @@ impl<T> Bucket<T> {
     /// [`Bucket`]: crate::raw::Bucket
     /// [`from_base_index`]: crate::raw::Bucket::from_base_index
     /// [`RawTable::data_end`]: crate::raw::RawTable::data_end
-    /// [`RawTableInner::data_end<T>`]: crate::raw::RawTableInner::data_end<T>
+    /// [`RawTableInner::data_end<T>`]: RawTableInner::data_end<T>
     /// [`RawTable`]: crate::raw::RawTable
-    /// [`RawTableInner`]: crate::raw::RawTableInner
+    /// [`RawTableInner`]: RawTableInner
     /// [`<*const T>::offset_from`]: https://doc.rust-lang.org/nightly/core/primitive.pointer.html#method.offset_from
     #[inline]
     unsafe fn to_base_index(&self, base: NonNull<T>) -> usize {
@@ -560,7 +560,7 @@ impl<T> Bucket<T> {
     /// [`<*mut T>::sub`]: https://doc.rust-lang.org/core/primitive.pointer.html#method.sub-1
     /// [`NonNull::new_unchecked`]: https://doc.rust-lang.org/stable/std/ptr/struct.NonNull.html#method.new_unchecked
     /// [`RawTable::buckets`]: crate::raw::RawTable::buckets
-    /// [`RawTableInner::buckets`]: crate::raw::RawTableInner::buckets
+    /// [`RawTableInner::buckets`]: RawTableInner::buckets
     #[inline]
     unsafe fn next_n(&self, offset: usize) -> Self {
         let ptr = if Self::IS_ZERO_SIZED_TYPE {
@@ -1642,7 +1642,8 @@ impl<A: Allocator + Clone> RawTableInner<A> {
                     // of buckets is a power of two, and `self.bucket_mask = self.buckets() - 1`.
                     let result = (probe_seq.pos + bit) & self.bucket_mask;
 
-                    // In tables smaller than the group width, trailing control
+                    // In tables smaller than the group width
+                    // (self.buckets() < Group::WIDTH), trailing control
                     // bytes outside the range of the table are filled with
                     // EMPTY entries. These will unfortunately trigger a
                     // match, but once masked may point to a full bucket that
@@ -1663,8 +1664,9 @@ impl<A: Allocator + Clone> RawTableInner<A> {
                         //   and properly aligned, because the table is already allocated
                         //   (see `TableLayout::calculate_layout_for` and `ptr::read`);
                         //
-                        // * For tables larger than the group width, we will never end up in the given
-                        //   branch, since `(probe_seq.pos + bit) & self.bucket_mask` cannot return a
+                        // * For tables larger than the group width (self.buckets() >= Group::WIDTH),
+                        //   we will never end up in the given branch, since
+                        //   `(probe_seq.pos + bit) & self.bucket_mask` cannot return a
                         //   full bucket index. For tables smaller than the group width, calling the
                         //   `lowest_set_bit_nonzero` function (when `nightly` feature enabled) is also
                         //   safe, as the trailing control bytes outside the range of the table are filled
@@ -1731,12 +1733,49 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         }
     }
 
+    /// Prepares for rehashing data in place (that is, without allocating new memory).
+    /// Converts all full index `control bytes` to `DELETED` and all `DELETED` control
+    /// bytes to `EMPTY`, i.e. performs the following conversion:
+    ///
+    /// - `EMPTY` control bytes   -> `EMPTY`;
+    /// - `DELETED` control bytes -> `EMPTY`;
+    /// - `FULL` control bytes    -> `DELETED`.
+    ///
+    /// This function does not make any changes to the `data` parts of the table,
+    /// or any changes to the the `items` or `growth_left` field of the table.
+    ///
+    /// # Safety
+    ///
+    /// You must observe the following safety rules when calling this function:
+    ///
+    /// * The [`RawTableInner`] has already been allocated;
+    ///
+    /// * The caller of this function must convert the `DELETED` bytes back to `FULL`
+    ///   bytes when re-inserting them into their ideal position (which was impossible
+    ///   to do during the first insert due to tombstones). If the caller does not do
+    ///   this, then calling this function may result in a memory leak.
+    ///
+    /// Calling this function on a table that has not been allocated results in
+    /// [`undefined behavior`].
+    ///
+    /// See also [`Bucket::as_ptr`] method, for more information about of properly removing
+    /// or saving `data element` from / into the [`RawTable`] / [`RawTableInner`].
+    ///
+    /// [`Bucket::as_ptr`]: Bucket::as_ptr
+    /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[allow(clippy::mut_mut)]
     #[inline]
     unsafe fn prepare_rehash_in_place(&mut self) {
-        // Bulk convert all full control bytes to DELETED, and all DELETED
-        // control bytes to EMPTY. This effectively frees up all buckets
-        // containing a DELETED entry.
+        // Bulk convert all full control bytes to DELETED, and all DELETED control bytes to EMPTY.
+        // This effectively frees up all buckets containing a DELETED entry.
+        //
+        // SAFETY:
+        // 1. `i` is guaranteed to be within bounds since we are iterating from zero to `buckets - 1`;
+        // 2. Even if `i` will be `i == self.bucket_mask`, it is safe to call `Group::load_aligned`
+        //    due to the extended control bytes range, which is `self.bucket_mask + 1 + Group::WIDTH`;
+        // 3. The caller of this function guarantees that [`RawTableInner`] has already been allocated;
+        // 4. We can use `Group::load_aligned` and `Group::store_aligned` here since we start from 0
+        //    and go to the end with a step equal to `Group::WIDTH` (see TableLayout::calculate_layout_for).
         for i in (0..self.buckets()).step_by(Group::WIDTH) {
             let group = Group::load_aligned(self.ctrl(i));
             let group = group.convert_special_to_empty_and_full_to_deleted();
@@ -1745,10 +1784,19 @@ impl<A: Allocator + Clone> RawTableInner<A> {
 
         // Fix up the trailing control bytes. See the comments in set_ctrl
         // for the handling of tables smaller than the group width.
-        if self.buckets() < Group::WIDTH {
+        //
+        // SAFETY: The caller of this function guarantees that [`RawTableInner`]
+        // has already been allocated
+        if unlikely(self.buckets() < Group::WIDTH) {
+            // SAFETY: We have `self.bucket_mask + 1 + Group::WIDTH` number of control bytes,
+            // so copying `self.buckets() == self.bucket_mask + 1` bytes with offset equal to
+            // `Group::WIDTH` is safe
             self.ctrl(0)
                 .copy_to(self.ctrl(Group::WIDTH), self.buckets());
         } else {
+            // SAFETY: We have `self.bucket_mask + 1 + Group::WIDTH` number of
+            // control bytes,so copying `Group::WIDTH` bytes with offset equal
+            // to `self.buckets() == self.bucket_mask + 1` is safe
             self.ctrl(0)
                 .copy_to(self.ctrl(self.buckets()), Group::WIDTH);
         }
@@ -2248,27 +2296,95 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         self.growth_left = bucket_mask_to_capacity(self.bucket_mask);
     }
 
+    /// Erases the [`Bucket`]'s control byte at the given index so that it does not
+    /// triggered as full, decreases the `items` of the table and, if it can be done,
+    /// increases `self.growth_left`.
+    ///
+    /// This function does not actually erase / drop the [`Bucket`] itself, i.e. it
+    /// does not make any changes to the `data` parts of the table. The caller of this
+    /// function must take care to properly drop the `data`, otherwise calling this
+    /// function may result in a memory leak.
+    ///
+    /// # Safety
+    ///
+    /// You must observe the following safety rules when calling this function:
+    ///
+    /// * The [`RawTableInner`] has already been allocated;
+    ///
+    /// * It must be the full control byte at the given position;
+    ///
+    /// * The `index` must not be greater than the `RawTableInner.bucket_mask`, i.e.
+    ///   `index <= RawTableInner.bucket_mask` or, in other words, `(index + 1)` must
+    ///   be no greater than the number returned by the function [`RawTableInner::buckets`].
+    ///
+    /// Calling this function on a table that has not been allocated results in [`undefined behavior`].
+    ///
+    /// Calling this function on a table with no elements is unspecified, but calling subsequent
+    /// functions is likely to result in [`undefined behavior`] due to overflow subtraction
+    /// (`self.items -= 1 cause overflow when self.items == 0`).
+    ///
+    /// See also [`Bucket::as_ptr`] method, for more information about of properly removing
+    /// or saving `data element` from / into the [`RawTable`] / [`RawTableInner`].
+    ///
+    /// [`RawTableInner::buckets`]: RawTableInner::buckets
+    /// [`Bucket::as_ptr`]: Bucket::as_ptr
+    /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
     unsafe fn erase(&mut self, index: usize) {
         debug_assert!(self.is_bucket_full(index));
+
+        // This is the same as `index.wrapping_sub(Group::WIDTH) % self.buckets()` because
+        // the number of buckets is a power of two, and `self.bucket_mask = self.buckets() - 1`.
         let index_before = index.wrapping_sub(Group::WIDTH) & self.bucket_mask;
+        // SAFETY:
+        // - The caller must uphold the safety contract for `erase` method;
+        // - `index_before` is guaranteed to be in range due to masking with `self.bucket_mask`
         let empty_before = Group::load(self.ctrl(index_before)).match_empty();
         let empty_after = Group::load(self.ctrl(index)).match_empty();
 
-        // If we are inside a continuous block of Group::WIDTH full or deleted
-        // cells then a probe window may have seen a full block when trying to
-        // insert. We therefore need to keep that block non-empty so that
-        // lookups will continue searching to the next probe window.
+        // Inserting and searching in the map is performed by two key functions:
         //
-        // Note that in this context `leading_zeros` refers to the bytes at the
-        // end of a group, while `trailing_zeros` refers to the bytes at the
-        // beginning of a group.
+        // - The `find_insert_slot` function that looks up the index of any `EMPTY` or `DELETED`
+        //   slot in a group to be able to insert. If it doesn't find an `EMPTY` or `DELETED`
+        //   slot immediately in the first group, it jumps to the next `Group` looking for it,
+        //   and so on until it has gone through all the groups in the control bytes.
+        //
+        // - The `find_inner` function that looks for the index of the desired element by looking
+        //   at all the `FULL` bytes in the group. If it did not find the element right away, and
+        //   there is no `EMPTY` byte in the group, then this means that the `find_insert_slot`
+        //   function may have found a suitable slot in the next group. Therefore, `find_inner`
+        //   jumps further, and if it does not find the desired element and again there is no `EMPTY`
+        //   byte, then it jumps further, and so on. The search stops only if `find_inner` function
+        //   finds the desired element or hits an `EMPTY` slot/byte.
+        //
+        // Accordingly, this leads to two consequences:
+        //
+        // - The map must have `EMPTY` slots (bytes);
+        //
+        // - You can't just mark the byte to be erased as `EMPTY`, because otherwise the `find_inner`
+        //   function may stumble upon an `EMPTY` byte before finding the desired element and stop
+        //   searching.
+        //
+        // Thus it is necessary to check all bytes after and before the erased element. If we are in
+        // a contiguous `Group` of `FULL` or `DELETED` bytes (the number of `FULL` or `DELETED` bytes
+        // before and after is greater than or equal to `Group::WIDTH`), then we must mark our byte as
+        // `DELETED` in order for the `find_inner` function to go further. On the other hand, if there
+        // is at least one `EMPTY` slot in the `Group`, then the `find_inner` function will still stumble
+        // upon an `EMPTY` byte, so we can safely mark our erased byte as `EMPTY` as well.
+        //
+        // Finally, since `index_before == (index.wrapping_sub(Group::WIDTH) & self.bucket_mask) == index`
+        // and given all of the above, tables smaller than the group width (self.buckets() < Group::WIDTH)
+        // cannot have `DELETED` bytes.
+        //
+        // Note that in this context `leading_zeros` refers to the bytes at the end of a group, while
+        // `trailing_zeros` refers to the bytes at the beginning of a group.
         let ctrl = if empty_before.leading_zeros() + empty_after.trailing_zeros() >= Group::WIDTH {
             DELETED
         } else {
             self.growth_left += 1;
             EMPTY
         };
+        // SAFETY: the caller must uphold the safety contract for `erase` method.
         self.set_ctrl(index, ctrl);
         self.items -= 1;
     }
