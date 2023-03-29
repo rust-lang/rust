@@ -811,6 +811,117 @@ fn analyze_attr(attr: &Attribute, state: &mut AnalyzeAttrState) -> bool {
     should_encode
 }
 
+fn should_encode_span(def_kind: DefKind) -> bool {
+    match def_kind {
+        DefKind::Mod
+        | DefKind::Struct
+        | DefKind::Union
+        | DefKind::Enum
+        | DefKind::Variant
+        | DefKind::Trait
+        | DefKind::TyAlias
+        | DefKind::ForeignTy
+        | DefKind::TraitAlias
+        | DefKind::AssocTy
+        | DefKind::TyParam
+        | DefKind::Fn
+        | DefKind::Const
+        | DefKind::Static(_)
+        | DefKind::Ctor(..)
+        | DefKind::AssocFn
+        | DefKind::AssocConst
+        | DefKind::Macro(_)
+        | DefKind::AnonConst
+        | DefKind::InlineConst
+        | DefKind::OpaqueTy
+        | DefKind::Field
+        | DefKind::Impl { .. }
+        | DefKind::Closure
+        | DefKind::Generator => true,
+        DefKind::ConstParam
+        | DefKind::ExternCrate
+        | DefKind::Use
+        | DefKind::ForeignMod
+        | DefKind::ImplTraitPlaceholder
+        | DefKind::LifetimeParam
+        | DefKind::GlobalAsm => false,
+    }
+}
+
+fn should_encode_attrs(def_kind: DefKind) -> bool {
+    match def_kind {
+        DefKind::Mod
+        | DefKind::Struct
+        | DefKind::Union
+        | DefKind::Enum
+        | DefKind::Variant
+        | DefKind::Trait
+        | DefKind::TyAlias
+        | DefKind::ForeignTy
+        | DefKind::TraitAlias
+        | DefKind::AssocTy
+        | DefKind::Fn
+        | DefKind::Const
+        | DefKind::Static(_)
+        | DefKind::AssocFn
+        | DefKind::AssocConst
+        | DefKind::Macro(_)
+        | DefKind::Field
+        | DefKind::Impl { .. } => true,
+        DefKind::TyParam
+        | DefKind::ConstParam
+        | DefKind::Ctor(..)
+        | DefKind::ExternCrate
+        | DefKind::Use
+        | DefKind::ForeignMod
+        | DefKind::AnonConst
+        | DefKind::InlineConst
+        | DefKind::OpaqueTy
+        | DefKind::ImplTraitPlaceholder
+        | DefKind::LifetimeParam
+        | DefKind::GlobalAsm
+        | DefKind::Closure
+        | DefKind::Generator => false,
+    }
+}
+
+fn should_encode_expn_that_defined(def_kind: DefKind) -> bool {
+    match def_kind {
+        DefKind::Mod
+        | DefKind::Struct
+        | DefKind::Union
+        | DefKind::Enum
+        | DefKind::Variant
+        | DefKind::Trait
+        | DefKind::Impl { .. } => true,
+        DefKind::TyAlias
+        | DefKind::ForeignTy
+        | DefKind::TraitAlias
+        | DefKind::AssocTy
+        | DefKind::TyParam
+        | DefKind::Fn
+        | DefKind::Const
+        | DefKind::ConstParam
+        | DefKind::Static(_)
+        | DefKind::Ctor(..)
+        | DefKind::AssocFn
+        | DefKind::AssocConst
+        | DefKind::Macro(_)
+        | DefKind::ExternCrate
+        | DefKind::Use
+        | DefKind::ForeignMod
+        | DefKind::AnonConst
+        | DefKind::InlineConst
+        | DefKind::OpaqueTy
+        | DefKind::ImplTraitPlaceholder
+        | DefKind::Field
+        | DefKind::LifetimeParam
+        | DefKind::GlobalAsm
+        | DefKind::Closure
+        | DefKind::Generator => false,
+    }
+}
+
 fn should_encode_visibility(def_kind: DefKind) -> bool {
     match def_kind {
         DefKind::Mod
@@ -830,18 +941,18 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::AssocFn
         | DefKind::AssocConst
         | DefKind::Macro(..)
-        | DefKind::Use
-        | DefKind::ForeignMod
-        | DefKind::OpaqueTy
-        | DefKind::ImplTraitPlaceholder
-        | DefKind::Impl { .. }
         | DefKind::Field => true,
-        DefKind::TyParam
+        DefKind::Use
+        | DefKind::ForeignMod
+        | DefKind::TyParam
         | DefKind::ConstParam
         | DefKind::LifetimeParam
         | DefKind::AnonConst
         | DefKind::InlineConst
+        | DefKind::OpaqueTy
+        | DefKind::ImplTraitPlaceholder
         | DefKind::GlobalAsm
+        | DefKind::Impl { .. }
         | DefKind::Closure
         | DefKind::Generator
         | DefKind::ExternCrate => false,
@@ -1160,11 +1271,17 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let def_kind = tcx.opt_def_kind(local_id);
             let Some(def_kind) = def_kind else { continue };
             self.tables.opt_def_kind.set_some(def_id.index, def_kind);
-            let def_span = tcx.def_span(local_id);
-            record!(self.tables.def_span[def_id] <- def_span);
-            self.encode_attrs(local_id);
-            record!(self.tables.expn_that_defined[def_id] <- self.tcx.expn_that_defined(def_id));
-            if let Some(ident_span) = tcx.def_ident_span(def_id) {
+            if should_encode_span(def_kind) {
+                let def_span = tcx.def_span(local_id);
+                record!(self.tables.def_span[def_id] <- def_span);
+            }
+            if should_encode_attrs(def_kind) {
+                self.encode_attrs(local_id);
+            }
+            if should_encode_expn_that_defined(def_kind) {
+                record!(self.tables.expn_that_defined[def_id] <- self.tcx.expn_that_defined(def_id));
+            }
+            if should_encode_span(def_kind) && let Some(ident_span) = tcx.def_ident_span(def_id) {
                 record!(self.tables.def_ident_span[def_id] <- ident_span);
             }
             if def_kind.has_codegen_attrs() {

@@ -2580,7 +2580,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 tcx.all_impls(trait_def_id)
                     .filter(|impl_def_id| {
                         // Consider only accessible traits
-                        tcx.visibility(*impl_def_id).is_accessible_from(self.item_def_id(), tcx)
+                        tcx.visibility(trait_def_id).is_accessible_from(self.item_def_id(), tcx)
                             && tcx.impl_polarity(impl_def_id) != ty::ImplPolarity::Negative
                     })
                     .filter_map(|impl_def_id| tcx.impl_trait_ref(impl_def_id))
