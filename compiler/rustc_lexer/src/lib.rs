@@ -638,7 +638,7 @@ impl Cursor<'_> {
                 || self.first().is_digit(10)
                 // FIXME(#108019): `unic-emoji-char` seems to have data tables only up to Unicode
                 // 5.0, but Unicode is already newer than this.
-                || unic_emoji_char::is_emoji(self.first())
+                || !self.first().is_ascii() && unic_emoji_char::is_emoji(self.first())
         };
 
         if !can_be_a_lifetime {
@@ -658,7 +658,7 @@ impl Cursor<'_> {
 
         // FIXME(#108019): `unic-emoji-char` seems to have data tables only up to Unicode
         // 5.0, but Unicode is already newer than this.
-        if unic_emoji_char::is_emoji(self.first()) {
+        if !self.first().is_ascii() && unic_emoji_char::is_emoji(self.first()) {
             contains_emoji = true;
         } else {
             // Skip the literal contents.
@@ -671,7 +671,10 @@ impl Cursor<'_> {
                 true
             // FIXME(#108019): `unic-emoji-char` seems to have data tables only up to Unicode
             // 5.0, but Unicode is already newer than this.
-            } else if unic_emoji_char::is_emoji(c) {
+            // `#` ends an identifier, but is counted as an emoji because of
+            // https://github.com/open-i18n/rust-unic/issues/280. These can be common on macros, so
+            // we need to handle them properly. (#109746)
+            } else if !c.is_ascii() && unic_emoji_char::is_emoji(c) {
                 contains_emoji = true;
                 true
             } else {
