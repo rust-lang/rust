@@ -54,6 +54,7 @@ Please use that command to update the file and do not edit it by hand.
 | [allow-mixed-uninlined-format-args](#allow-mixed-uninlined-format-args) | `true` |
 | [suppress-restriction-lint-in-const](#suppress-restriction-lint-in-const) | `false` |
 | [missing-docs-in-crate-items](#missing-docs-in-crate-items) | `false` |
+| [future-size-threshold](#future-size-threshold) | `16384` |
 
 ### arithmetic-side-effects-allowed
 Suppress checking of the passed type names in all types of operations.
@@ -550,6 +551,14 @@ crate. For example, `pub(crate)` items.
 **Default Value:** `false` (`bool`)
 
 * [missing_docs_in_private_items](https://rust-lang.github.io/rust-clippy/master/index.html#missing_docs_in_private_items)
+
+
+### future-size-threshold
+The maximum byte size a `Future` can have, before it triggers the `clippy::large_futures` lint
+
+**Default Value:** `16384` (`u64`)
+
+* [large_futures](https://rust-lang.github.io/rust-clippy/master/index.html#large_futures)
 
 
 

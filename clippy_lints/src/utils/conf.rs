@@ -459,6 +459,10 @@ define_Conf! {
     /// Whether to **only** check for missing documentation in items visible within the current
     /// crate. For example, `pub(crate)` items.
     (missing_docs_in_crate_items: bool = false),
+    /// Lint: LARGE_FUTURES.
+    ///
+    /// The maximum byte size a `Future` can have, before it triggers the `clippy::large_futures` lint
+    (future_size_threshold: u64 = 16 * 1024),
 }
 
 /// Search for the configuration file.
