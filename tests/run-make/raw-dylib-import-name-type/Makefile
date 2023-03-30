@@ -3,7 +3,7 @@
 # only-x86
 # only-windows
 
--include ../../run-make-fulldeps/tools.mk
+include ../../run-make-fulldeps/tools.mk
 
 all:
 	$(RUSTC) --crate-type bin driver.rs -L "$(TMPDIR)"

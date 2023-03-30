@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../../run-make-fulldeps/tools.mk
 
 # ignore-msvc
 
