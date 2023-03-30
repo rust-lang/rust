@@ -480,6 +480,76 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         Some(())
     }
 
+    fn check_assertion(
+        &mut self,
+        expected: bool,
+        msg: &AssertKind<Operand<'tcx>>,
+        cond: &Operand<'tcx>,
+        location: Location,
+    ) -> Option<!> {
+        let ref value = self.eval_operand(&cond, location)?;
+        trace!("assertion on {:?} should be {:?}", value, expected);
+
+        let expected = Scalar::from_bool(expected);
+        let value_const = self.use_ecx(location, |this| this.ecx.read_scalar(&value))?;
+
+        if expected != value_const {
+            // Poison all places this operand references so that further code
+            // doesn't use the invalid value
+            match cond {
+                Operand::Move(ref place) | Operand::Copy(ref place) => {
+                    Self::remove_const(&mut self.ecx, place.local);
+                }
+                Operand::Constant(_) => {}
+            }
+            enum DbgVal<T> {
+                Val(T),
+                Underscore,
+            }
+            impl<T: std::fmt::Debug> std::fmt::Debug for DbgVal<T> {
+                fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                    match self {
+                        Self::Val(val) => val.fmt(fmt),
+                        Self::Underscore => fmt.write_str("_"),
+                    }
+                }
+            }
+            let mut eval_to_int = |op| {
+                // This can be `None` if the lhs wasn't const propagated and we just
+                // triggered the assert on the value of the rhs.
+                self.eval_operand(op, location)
+                    .and_then(|op| self.ecx.read_immediate(&op).ok())
+                    .map_or(DbgVal::Underscore, |op| DbgVal::Val(op.to_const_int()))
+            };
+            let msg = match msg {
+                AssertKind::DivisionByZero(op) => AssertKind::DivisionByZero(eval_to_int(op)),
+                AssertKind::RemainderByZero(op) => AssertKind::RemainderByZero(eval_to_int(op)),
+                AssertKind::Overflow(bin_op @ (BinOp::Div | BinOp::Rem), op1, op2) => {
+                    // Division overflow is *UB* in the MIR, and different than the
+                    // other overflow checks.
+                    AssertKind::Overflow(*bin_op, eval_to_int(op1), eval_to_int(op2))
+                }
+                AssertKind::BoundsCheck { ref len, ref index } => {
+                    let len = eval_to_int(len);
+                    let index = eval_to_int(index);
+                    AssertKind::BoundsCheck { len, index }
+                }
+                // Remaining overflow errors are already covered by checks on the binary operators.
+                AssertKind::Overflow(..) | AssertKind::OverflowNeg(_) => return None,
+                // Need proper const propagator for these.
+                _ => return None,
+            };
+            self.report_assert_as_lint(
+                lint::builtin::UNCONDITIONAL_PANIC,
+                location,
+                "this operation will panic at runtime",
+                msg,
+            );
+        }
+
+        None
+    }
+
     fn ensure_not_propagated(&self, local: Local) {
         if cfg!(debug_assertions) {
             assert!(
@@ -585,78 +655,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
         self.super_terminator(terminator, location);
         match &terminator.kind {
             TerminatorKind::Assert { expected, ref msg, ref cond, .. } => {
-                if let Some(ref value) = self.eval_operand(&cond, location) {
-                    trace!("assertion on {:?} should be {:?}", value, expected);
-                    let expected = Scalar::from_bool(*expected);
-                    let Ok(value_const) = self.ecx.read_scalar(&value) else {
-                        // FIXME should be used use_ecx rather than a local match... but we have
-                        // quite a few of these read_scalar/read_immediate that need fixing.
-                        return
-                    };
-                    if expected != value_const {
-                        enum DbgVal<T> {
-                            Val(T),
-                            Underscore,
-                        }
-                        impl<T: std::fmt::Debug> std::fmt::Debug for DbgVal<T> {
-                            fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                                match self {
-                                    Self::Val(val) => val.fmt(fmt),
-                                    Self::Underscore => fmt.write_str("_"),
-                                }
-                            }
-                        }
-                        let mut eval_to_int = |op| {
-                            // This can be `None` if the lhs wasn't const propagated and we just
-                            // triggered the assert on the value of the rhs.
-                            self.eval_operand(op, location)
-                                .and_then(|op| self.ecx.read_immediate(&op).ok())
-                                .map_or(DbgVal::Underscore, |op| DbgVal::Val(op.to_const_int()))
-                        };
-                        let msg = match msg {
-                            AssertKind::DivisionByZero(op) => {
-                                Some(AssertKind::DivisionByZero(eval_to_int(op)))
-                            }
-                            AssertKind::RemainderByZero(op) => {
-                                Some(AssertKind::RemainderByZero(eval_to_int(op)))
-                            }
-                            AssertKind::Overflow(bin_op @ (BinOp::Div | BinOp::Rem), op1, op2) => {
-                                // Division overflow is *UB* in the MIR, and different than the
-                                // other overflow checks.
-                                Some(AssertKind::Overflow(
-                                    *bin_op,
-                                    eval_to_int(op1),
-                                    eval_to_int(op2),
-                                ))
-                            }
-                            AssertKind::BoundsCheck { ref len, ref index } => {
-                                let len = eval_to_int(len);
-                                let index = eval_to_int(index);
-                                Some(AssertKind::BoundsCheck { len, index })
-                            }
-                            // Remaining overflow errors are already covered by checks on the binary operators.
-                            AssertKind::Overflow(..) | AssertKind::OverflowNeg(_) => None,
-                            // Need proper const propagator for these.
-                            _ => None,
-                        };
-                        // Poison all places this operand references so that further code
-                        // doesn't use the invalid value
-                        match cond {
-                            Operand::Move(ref place) | Operand::Copy(ref place) => {
-                                Self::remove_const(&mut self.ecx, place.local);
-                            }
-                            Operand::Constant(_) => {}
-                        }
-                        if let Some(msg) = msg {
-                            self.report_assert_as_lint(
-                                lint::builtin::UNCONDITIONAL_PANIC,
-                                location,
-                                "this operation will panic at runtime",
-                                msg,
-                            );
-                        }
-                    }
-                }
+                self.check_assertion(*expected, msg, cond, location);
             }
             // None of these have Operands to const-propagate.
             TerminatorKind::Goto { .. }
