@@ -118,8 +118,8 @@ async function getDebugConfiguration(
         return path.normalize(p).replace(wsFolder, "${workspaceFolder" + workspaceQualifier + "}");
     }
 
-    const executable = await getDebugExecutable(runnable);
     const env = prepareEnv(runnable, ctx.config.runnableEnv);
+    const executable = await getDebugExecutable(runnable, env);
     let sourceFileMap = debugOptions.sourceFileMap;
     if (sourceFileMap === "auto") {
         // let's try to use the default toolchain
@@ -156,8 +156,11 @@ async function getDebugConfiguration(
     return debugConfig;
 }
 
-async function getDebugExecutable(runnable: ra.Runnable): Promise<string> {
-    const cargo = new Cargo(runnable.args.workspaceRoot || ".", debugOutput);
+async function getDebugExecutable(
+    runnable: ra.Runnable,
+    env: Record<string, string>
+): Promise<string> {
+    const cargo = new Cargo(runnable.args.workspaceRoot || ".", debugOutput, env);
     const executable = await cargo.executableFromArgs(runnable.args.cargoArgs);
 
     // if we are here, there were no compilation errors.
