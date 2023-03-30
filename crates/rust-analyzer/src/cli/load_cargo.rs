@@ -102,7 +102,7 @@ pub fn load_workspace(
                 (
                     crate_id,
                     path.map_or_else(
-                        || Err("proc macro crate is missing dylib".to_owned()),
+                        |_| Err("proc macro crate is missing dylib".to_owned()),
                         |(_, path)| load_proc_macro(proc_macro_server, &path, &[]),
                     ),
                 )

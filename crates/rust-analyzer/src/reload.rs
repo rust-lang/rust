@@ -251,7 +251,7 @@ impl GlobalState {
                     (
                         crate_id,
                         res.map_or_else(
-                            || Err("proc macro crate is missing dylib".to_owned()),
+                            |_| Err("proc macro crate is missing dylib".to_owned()),
                             |(crate_name, path)| {
                                 progress(path.display().to_string());
                                 load_proc_macro(
@@ -370,7 +370,7 @@ impl GlobalState {
         let files_config = self.config.files();
         let project_folders = ProjectFolders::new(&self.workspaces, &files_config.exclude);
 
-        if self.proc_macro_clients.is_empty() {
+        if self.proc_macro_clients.is_empty() || !same_workspaces {
             if let Some((path, path_manually_set)) = self.config.proc_macro_srv() {
                 tracing::info!("Spawning proc-macro servers");
                 self.proc_macro_clients = self
@@ -448,19 +448,8 @@ impl GlobalState {
         };
         let mut change = Change::new();
 
-        if same_workspaces {
-            if self.config.expand_proc_macros() {
-                self.fetch_proc_macros_queue.request_op(cause, proc_macro_paths);
-            }
-        } else {
-            // Set up errors for proc-macros upfront that we haven't run build scripts yet
-            let mut proc_macros = FxHashMap::default();
-            for paths in proc_macro_paths {
-                proc_macros.extend(paths.into_iter().map(move |(crate_id, _)| {
-                    (crate_id, Err("crate has not yet been build".to_owned()))
-                }));
-            }
-            change.set_proc_macros(proc_macros);
+        if self.config.expand_proc_macros() {
+            self.fetch_proc_macros_queue.request_op(cause, proc_macro_paths);
         }
         change.set_crate_graph(crate_graph);
         self.analysis_host.apply_change(change);
