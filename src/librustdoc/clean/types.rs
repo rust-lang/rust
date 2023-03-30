@@ -1738,27 +1738,26 @@ impl PrimitiveType {
 
     pub(crate) fn simplified_types() -> &'static SimplifiedTypes {
         use ty::fast_reject::SimplifiedType::*;
-        use ty::{FloatTy, IntTy, UintTy};
         use PrimitiveType::*;
         static CELL: OnceCell<SimplifiedTypes> = OnceCell::new();
 
         let single = |x| iter::once(x).collect();
         CELL.get_or_init(move || {
             map! {
-                Isize => single(IntSimplifiedType(IntTy::Isize)),
-                I8 => single(IntSimplifiedType(IntTy::I8)),
-                I16 => single(IntSimplifiedType(IntTy::I16)),
-                I32 => single(IntSimplifiedType(IntTy::I32)),
-                I64 => single(IntSimplifiedType(IntTy::I64)),
-                I128 => single(IntSimplifiedType(IntTy::I128)),
-                Usize => single(UintSimplifiedType(UintTy::Usize)),
-                U8 => single(UintSimplifiedType(UintTy::U8)),
-                U16 => single(UintSimplifiedType(UintTy::U16)),
-                U32 => single(UintSimplifiedType(UintTy::U32)),
-                U64 => single(UintSimplifiedType(UintTy::U64)),
-                U128 => single(UintSimplifiedType(UintTy::U128)),
-                F32 => single(FloatSimplifiedType(FloatTy::F32)),
-                F64 => single(FloatSimplifiedType(FloatTy::F64)),
+                Isize => single(IntSimplifiedType),
+                I8 => single(IntSimplifiedType),
+                I16 => single(IntSimplifiedType),
+                I32 => single(IntSimplifiedType),
+                I64 => single(IntSimplifiedType),
+                I128 => single(IntSimplifiedType),
+                Usize => single(IntSimplifiedType),
+                U8 => single(IntSimplifiedType),
+                U16 => single(IntSimplifiedType),
+                U32 => single(IntSimplifiedType),
+                U64 => single(IntSimplifiedType),
+                U128 => single(FloatSimplifiedType),
+                F32 => single(FloatSimplifiedType),
+                F64 => single(FloatSimplifiedType),
                 Str => single(StrSimplifiedType),
                 Bool => single(BoolSimplifiedType),
                 Char => single(CharSimplifiedType),

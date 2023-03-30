@@ -101,12 +101,11 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::binding::BindingMode;
 use rustc_middle::ty::fast_reject::SimplifiedType::{
     ArraySimplifiedType, BoolSimplifiedType, CharSimplifiedType, FloatSimplifiedType, IntSimplifiedType,
-    PtrSimplifiedType, SliceSimplifiedType, StrSimplifiedType, UintSimplifiedType,
+    PtrSimplifiedType, SliceSimplifiedType, StrSimplifiedType,
 };
 use rustc_middle::ty::{
     layout::IntegerExt, BorrowKind, ClosureKind, Ty, TyCtxt, TypeAndMut, TypeVisitableExt, UpvarCapture,
 };
-use rustc_middle::ty::{FloatTy, IntTy, UintTy};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
 use rustc_span::sym;
@@ -524,20 +523,20 @@ fn find_primitive_impls<'tcx>(tcx: TyCtxt<'tcx>, name: &str) -> impl Iterator<It
         // Maybe this is something we should do here too.
         "const_ptr" => PtrSimplifiedType(Mutability::Not),
         "mut_ptr" => PtrSimplifiedType(Mutability::Mut),
-        "isize" => IntSimplifiedType(IntTy::Isize),
-        "i8" => IntSimplifiedType(IntTy::I8),
-        "i16" => IntSimplifiedType(IntTy::I16),
-        "i32" => IntSimplifiedType(IntTy::I32),
-        "i64" => IntSimplifiedType(IntTy::I64),
-        "i128" => IntSimplifiedType(IntTy::I128),
-        "usize" => UintSimplifiedType(UintTy::Usize),
-        "u8" => UintSimplifiedType(UintTy::U8),
-        "u16" => UintSimplifiedType(UintTy::U16),
-        "u32" => UintSimplifiedType(UintTy::U32),
-        "u64" => UintSimplifiedType(UintTy::U64),
-        "u128" => UintSimplifiedType(UintTy::U128),
-        "f32" => FloatSimplifiedType(FloatTy::F32),
-        "f64" => FloatSimplifiedType(FloatTy::F64),
+        "isize" => IntSimplifiedType,
+        "i8" => IntSimplifiedType,
+        "i16" => IntSimplifiedType,
+        "i32" => IntSimplifiedType,
+        "i64" => IntSimplifiedType,
+        "i128" => IntSimplifiedType,
+        "usize" => IntSimplifiedType,
+        "u8" => IntSimplifiedType,
+        "u16" => IntSimplifiedType,
+        "u32" => IntSimplifiedType,
+        "u64" => IntSimplifiedType,
+        "u128" => IntSimplifiedType,
+        "f32" => FloatSimplifiedType,
+        "f64" => FloatSimplifiedType,
         _ => return [].iter().copied(),
     };
 
