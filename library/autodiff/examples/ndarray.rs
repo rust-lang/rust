@@ -1,5 +1,4 @@
 #![feature(bench_black_box)]
-use std::hint::black_box;
 use autodiff::autodiff;
 
 use ndarray::Array1;

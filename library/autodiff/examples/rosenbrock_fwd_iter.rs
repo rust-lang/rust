@@ -1,8 +1,6 @@
 #![feature(bench_black_box)]
 use autodiff::autodiff;
 
-use std::ops::{Mul, Add};
-
 #[autodiff(d_rosenbrock, Forward, DuplicatedNoNeed)]
 fn rosenbrock(#[dup] x: &[f64; 2]) -> f64 {
     (0..x.len() - 1)
