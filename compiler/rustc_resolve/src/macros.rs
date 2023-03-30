@@ -549,7 +549,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             err.span_label(path.span, format!("not {} {}", article, expected));
 
             if kind == MacroKind::Derive && ext.macro_kind() != MacroKind::Derive {
-                // Suggest moving the macro our of the derive() as the macro isn't Derive
+                // Suggest moving the macro out of the derive() as the macro isn't Derive
                 err.span_help(path.span, "Remove from the surrounding `derive()`");
                 err.help(format!("Add as non-Derive macro\n`#[{}]`", path_str));
             }
