@@ -80,14 +80,16 @@ pub struct DebugStruct<'a, 'b: 'a> {
     fmt: &'a mut fmt::Formatter<'b>,
     result: fmt::Result,
     has_fields: bool,
+    has_name: bool,
 }
 
 pub(super) fn debug_struct_new<'a, 'b>(
     fmt: &'a mut fmt::Formatter<'b>,
     name: &str,
 ) -> DebugStruct<'a, 'b> {
-    let result = fmt.write_str(name);
-    DebugStruct { fmt, result, has_fields: false }
+    let has_name = !name.is_empty();
+    let result = if has_name { fmt.write_str(name) } else { Ok(()) };
+    DebugStruct { fmt, result, has_fields: false, has_name }
 }
 
 impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
@@ -124,7 +126,8 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
         self.result = self.result.and_then(|_| {
             if self.is_pretty() {
                 if !self.has_fields {
-                    self.fmt.write_str(" {\n")?;
+                    let prefix = if self.has_name { " {\n" } else { "{\n" };
+                    self.fmt.write_str(prefix)?;
                 }
                 let mut slot = None;
                 let mut state = Default::default();
@@ -134,7 +137,13 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
                 value.fmt(&mut writer)?;
                 writer.write_str(",\n")
             } else {
-                let prefix = if self.has_fields { ", " } else { " { " };
+                let prefix = if self.has_fields {
+                    ", "
+                } else if !self.has_name {
+                    "{ "
+                } else {
+                    " { "
+                };
                 self.fmt.write_str(prefix)?;
                 self.fmt.write_str(name)?;
                 self.fmt.write_str(": ")?;

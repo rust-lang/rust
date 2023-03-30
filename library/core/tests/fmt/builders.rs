@@ -16,6 +16,25 @@ mod debug_struct {
     }
 
     #[test]
+    fn test_empty_name() {
+        struct Foo {
+            field: ()
+        }
+
+        impl fmt::Debug for Foo {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt.debug_struct("").field("field", &self.field).finish()
+            }
+        }
+
+        assert_eq!("{ field: () }", format!("{:?}", Foo { field: () }));
+        assert_eq!(
+            "{
+    field: (),
+}", format!("{:#?}", Foo { field: () }));
+    }
+
+    #[test]
     fn test_single() {
         struct Foo;
 
