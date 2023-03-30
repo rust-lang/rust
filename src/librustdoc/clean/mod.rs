@@ -1671,8 +1671,7 @@ fn normalize<'tcx>(
 
     assert!(
         !ty.has_non_region_infer(),
-        "`ty`: {:?} has pre existing infer vars before `InferCtxt` creation",
-        ty
+        "`ty`: {ty:?} has pre existing infer vars before `InferCtxt` creation",
     );
 
     let infcx = cx.tcx.infer_ctxt().build();
