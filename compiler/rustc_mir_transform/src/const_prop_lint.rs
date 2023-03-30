@@ -1,7 +1,7 @@
 //! Propagates constants for early reporting of statically known
 //! assertion failures
 
-use either::{Left, Right};
+use either::Left;
 
 use rustc_const_eval::interpret::Immediate;
 use rustc_const_eval::interpret::{
@@ -129,9 +129,6 @@ struct ConstPropagator<'mir, 'tcx> {
     ecx: InterpCx<'mir, 'tcx, ConstPropMachine<'mir, 'tcx>>,
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
-    // Because we have `MutVisitor` we can't obtain the `SourceInfo` from a `Location`. So we store
-    // the last known `SourceInfo` here and just keep revisiting it.
-    source_info: Option<SourceInfo>,
 }
 
 impl<'tcx> LayoutOfHelpers<'tcx> for ConstPropagator<'_, 'tcx> {
@@ -206,7 +203,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         )
         .expect("failed to push initial stack frame");
 
-        ConstPropagator { ecx, tcx, param_env, source_info: None }
+        ConstPropagator { ecx, tcx, param_env }
     }
 
     fn body(&self) -> &'mir Body<'tcx> {
@@ -252,12 +249,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         source_info.scope.lint_root(&self.body().source_scopes)
     }
 
-    fn use_ecx<F, T>(&mut self, source_info: SourceInfo, f: F) -> Option<T>
+    fn use_ecx<F, T>(&mut self, location: Location, f: F) -> Option<T>
     where
         F: FnOnce(&mut Self) -> InterpResult<'tcx, T>,
     {
         // Overwrite the PC -- whatever the interpreter does to it does not make any sense anyway.
-        self.ecx.frame_mut().loc = Right(source_info.span);
+        self.ecx.frame_mut().loc = Left(location);
         match f(self) {
             Ok(val) => Some(val),
             Err(error) => {
@@ -276,7 +273,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     /// Returns the value, if any, of evaluating `c`.
-    fn eval_constant(&mut self, c: &Constant<'tcx>, source_info: SourceInfo) -> Option<OpTy<'tcx>> {
+    fn eval_constant(&mut self, c: &Constant<'tcx>, location: Location) -> Option<OpTy<'tcx>> {
         // FIXME we need to revisit this for #67176
         if c.needs_subst() {
             return None;
@@ -290,45 +287,41 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         // manually normalized.
         let val = self.tcx.try_normalize_erasing_regions(self.param_env, c.literal).ok()?;
 
-        self.use_ecx(source_info, |this| this.ecx.eval_mir_constant(&val, Some(c.span), None))
+        self.use_ecx(location, |this| this.ecx.eval_mir_constant(&val, Some(c.span), None))
     }
 
     /// Returns the value, if any, of evaluating `place`.
-    fn eval_place(&mut self, place: Place<'tcx>, source_info: SourceInfo) -> Option<OpTy<'tcx>> {
+    fn eval_place(&mut self, place: Place<'tcx>, location: Location) -> Option<OpTy<'tcx>> {
         trace!("eval_place(place={:?})", place);
-        self.use_ecx(source_info, |this| this.ecx.eval_place_to_op(place, None))
+        self.use_ecx(location, |this| this.ecx.eval_place_to_op(place, None))
     }
 
     /// Returns the value, if any, of evaluating `op`. Calls upon `eval_constant`
     /// or `eval_place`, depending on the variant of `Operand` used.
-    fn eval_operand(&mut self, op: &Operand<'tcx>, source_info: SourceInfo) -> Option<OpTy<'tcx>> {
+    fn eval_operand(&mut self, op: &Operand<'tcx>, location: Location) -> Option<OpTy<'tcx>> {
         match *op {
-            Operand::Constant(ref c) => self.eval_constant(c, source_info),
-            Operand::Move(place) | Operand::Copy(place) => self.eval_place(place, source_info),
+            Operand::Constant(ref c) => self.eval_constant(c, location),
+            Operand::Move(place) | Operand::Copy(place) => self.eval_place(place, location),
         }
     }
 
     fn report_assert_as_lint(
         &self,
         lint: &'static lint::Lint,
-        source_info: SourceInfo,
+        location: Location,
         message: &'static str,
         panic: AssertKind<impl std::fmt::Debug>,
     ) {
-        if let Some(lint_root) = self.lint_root(source_info) {
+        let source_info = self.body().source_info(location);
+        if let Some(lint_root) = self.lint_root(*source_info) {
             self.tcx.struct_span_lint_hir(lint, lint_root, source_info.span, message, |lint| {
                 lint.span_label(source_info.span, format!("{:?}", panic))
             });
         }
     }
 
-    fn check_unary_op(
-        &mut self,
-        op: UnOp,
-        arg: &Operand<'tcx>,
-        source_info: SourceInfo,
-    ) -> Option<()> {
-        if let (val, true) = self.use_ecx(source_info, |this| {
+    fn check_unary_op(&mut self, op: UnOp, arg: &Operand<'tcx>, location: Location) -> Option<()> {
+        if let (val, true) = self.use_ecx(location, |this| {
             let val = this.ecx.read_immediate(&this.ecx.eval_operand(arg, None)?)?;
             let (_res, overflow, _ty) = this.ecx.overflowing_unary_op(op, &val)?;
             Ok((val, overflow))
@@ -338,7 +331,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             assert_eq!(op, UnOp::Neg, "Neg is the only UnOp that can overflow");
             self.report_assert_as_lint(
                 lint::builtin::ARITHMETIC_OVERFLOW,
-                source_info,
+                location,
                 "this arithmetic operation will overflow",
                 AssertKind::OverflowNeg(val.to_const_int()),
             );
@@ -353,14 +346,13 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         op: BinOp,
         left: &Operand<'tcx>,
         right: &Operand<'tcx>,
-        source_info: SourceInfo,
+        location: Location,
     ) -> Option<()> {
-        let r = self.use_ecx(source_info, |this| {
+        let r = self.use_ecx(location, |this| {
             this.ecx.read_immediate(&this.ecx.eval_operand(right, None)?)
         });
-        let l = self.use_ecx(source_info, |this| {
-            this.ecx.read_immediate(&this.ecx.eval_operand(left, None)?)
-        });
+        let l = self
+            .use_ecx(location, |this| this.ecx.read_immediate(&this.ecx.eval_operand(left, None)?));
         // Check for exceeding shifts *even if* we cannot evaluate the LHS.
         if matches!(op, BinOp::Shr | BinOp::Shl) {
             let r = r.clone()?;
@@ -371,10 +363,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             let right_size = r.layout.size;
             let r_bits = r.to_scalar().to_bits(right_size).ok();
             if r_bits.map_or(false, |b| b >= left_size.bits() as u128) {
-                debug!("check_binary_op: reporting assert for {:?}", source_info);
+                debug!("check_binary_op: reporting assert for {:?}", location);
                 self.report_assert_as_lint(
                     lint::builtin::ARITHMETIC_OVERFLOW,
-                    source_info,
+                    location,
                     "this arithmetic operation will overflow",
                     AssertKind::Overflow(
                         op,
@@ -396,13 +388,13 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
         if let (Some(l), Some(r)) = (l, r) {
             // The remaining operators are handled through `overflowing_binary_op`.
-            if self.use_ecx(source_info, |this| {
+            if self.use_ecx(location, |this| {
                 let (_res, overflow, _ty) = this.ecx.overflowing_binary_op(op, &l, &r)?;
                 Ok(overflow)
             })? {
                 self.report_assert_as_lint(
                     lint::builtin::ARITHMETIC_OVERFLOW,
-                    source_info,
+                    location,
                     "this arithmetic operation will overflow",
                     AssertKind::Overflow(op, l.to_const_int(), r.to_const_int()),
                 );
@@ -412,7 +404,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         Some(())
     }
 
-    fn check_rvalue(&mut self, rvalue: &Rvalue<'tcx>, source_info: SourceInfo) -> Option<()> {
+    fn check_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) -> Option<()> {
         // Perform any special handling for specific Rvalue types.
         // Generally, checks here fall into one of two categories:
         //   1. Additional checking to provide useful lints to the user
@@ -427,11 +419,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             // lint.
             Rvalue::UnaryOp(op, arg) => {
                 trace!("checking UnaryOp(op = {:?}, arg = {:?})", op, arg);
-                self.check_unary_op(*op, arg, source_info)?;
+                self.check_unary_op(*op, arg, location)?;
             }
             Rvalue::BinaryOp(op, box (left, right)) => {
                 trace!("checking BinaryOp(op = {:?}, left = {:?}, right = {:?})", op, left, right);
-                self.check_binary_op(*op, left, right, source_info)?;
+                self.check_binary_op(*op, left, right, location)?;
             }
             Rvalue::CheckedBinaryOp(op, box (left, right)) => {
                 trace!(
@@ -440,7 +432,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     left,
                     right
                 );
-                self.check_binary_op(*op, left, right, source_info)?;
+                self.check_binary_op(*op, left, right, location)?;
             }
 
             // Do not try creating references (#67862)
@@ -516,14 +508,13 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
     fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
         trace!("visit_constant: {:?}", constant);
         self.super_constant(constant, location);
-        self.eval_constant(constant, self.source_info.unwrap());
+        self.eval_constant(constant, location);
     }
 
     fn visit_assign(&mut self, place: &Place<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
         self.super_assign(place, rvalue, location);
 
-        let source_info = self.source_info.unwrap();
-        let Some(()) = self.check_rvalue(rvalue, source_info) else { return };
+        let Some(()) = self.check_rvalue(rvalue, location) else { return };
 
         match self.ecx.machine.can_const_prop[place.local] {
             // Do nothing if the place is indirect.
@@ -531,7 +522,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
             ConstPropMode::NoPropagation => self.ensure_not_propagated(place.local),
             ConstPropMode::OnlyInsideOwnBlock | ConstPropMode::FullConstProp => {
                 if self
-                    .use_ecx(source_info, |this| this.ecx.eval_rvalue_into_place(rvalue, *place))
+                    .use_ecx(location, |this| this.ecx.eval_rvalue_into_place(rvalue, *place))
                     .is_none()
                 {
                     // Const prop failed, so erase the destination, ensuring that whatever happens
@@ -557,8 +548,6 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
 
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         trace!("visit_statement: {:?}", statement);
-        let source_info = statement.source_info;
-        self.source_info = Some(source_info);
 
         // We want to evaluate operands before any change to the assigned-to value,
         // so we recurse first.
@@ -571,8 +560,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
                     _ if place.is_indirect() => {}
                     ConstPropMode::NoPropagation => self.ensure_not_propagated(place.local),
                     ConstPropMode::FullConstProp | ConstPropMode::OnlyInsideOwnBlock => {
-                        if self.use_ecx(source_info, |this| this.ecx.statement(statement)).is_some()
-                        {
+                        if self.use_ecx(location, |this| this.ecx.statement(statement)).is_some() {
                             trace!("propped discriminant into {:?}", place);
                         } else {
                             Self::remove_const(&mut self.ecx, place.local);
@@ -594,12 +582,10 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
     }
 
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
-        let source_info = terminator.source_info;
-        self.source_info = Some(source_info);
         self.super_terminator(terminator, location);
         match &terminator.kind {
             TerminatorKind::Assert { expected, ref msg, ref cond, .. } => {
-                if let Some(ref value) = self.eval_operand(&cond, source_info) {
+                if let Some(ref value) = self.eval_operand(&cond, location) {
                     trace!("assertion on {:?} should be {:?}", value, expected);
                     let expected = Scalar::from_bool(*expected);
                     let Ok(value_const) = self.ecx.read_scalar(&value) else {
@@ -623,7 +609,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
                         let mut eval_to_int = |op| {
                             // This can be `None` if the lhs wasn't const propagated and we just
                             // triggered the assert on the value of the rhs.
-                            self.eval_operand(op, source_info)
+                            self.eval_operand(op, location)
                                 .and_then(|op| self.ecx.read_immediate(&op).ok())
                                 .map_or(DbgVal::Underscore, |op| DbgVal::Val(op.to_const_int()))
                         };
@@ -664,7 +650,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
                         if let Some(msg) = msg {
                             self.report_assert_as_lint(
                                 lint::builtin::UNCONDITIONAL_PANIC,
-                                source_info,
+                                location,
                                 "this operation will panic at runtime",
                                 msg,
                             );
