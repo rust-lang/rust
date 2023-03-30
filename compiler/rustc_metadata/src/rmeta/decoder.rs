@@ -1021,7 +1021,9 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             } else {
                 // Iterate over all children.
                 for child_index in self.root.tables.children.get(self, id).unwrap().decode(self) {
-                    yield self.get_mod_child(child_index, sess);
+                    if self.root.tables.opt_rpitit_info.get(self, child_index).is_none() {
+                        yield self.get_mod_child(child_index, sess);
+                    }
                 }
 
                 if let Some(reexports) = self.root.tables.module_reexports.get(self, id) {
@@ -1067,8 +1069,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn get_associated_item(self, id: DefIndex, sess: &'a Session) -> ty::AssocItem {
-        let name = self.item_name(id);
-
+        let name = if self.root.tables.opt_rpitit_info.get(self, id).is_some() {
+            kw::Empty
+        } else {
+            self.item_name(id)
+        };
         let (kind, has_self) = match self.def_kind(id) {
             DefKind::AssocConst => (ty::AssocKind::Const, false),
             DefKind::AssocFn => (ty::AssocKind::Fn, self.get_fn_has_self_parameter(id, sess)),
