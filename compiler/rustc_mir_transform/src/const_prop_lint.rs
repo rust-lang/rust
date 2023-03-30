@@ -9,6 +9,7 @@ use rustc_const_eval::interpret::{
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
+use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
@@ -129,6 +130,8 @@ struct ConstPropagator<'mir, 'tcx> {
     ecx: InterpCx<'mir, 'tcx, ConstPropMachine<'mir, 'tcx>>,
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
+    worklist: Vec<BasicBlock>,
+    visited_blocks: BitSet<BasicBlock>,
 }
 
 impl<'tcx> LayoutOfHelpers<'tcx> for ConstPropagator<'_, 'tcx> {
@@ -203,7 +206,13 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         )
         .expect("failed to push initial stack frame");
 
-        ConstPropagator { ecx, tcx, param_env }
+        ConstPropagator {
+            ecx,
+            tcx,
+            param_env,
+            worklist: vec![START_BLOCK],
+            visited_blocks: BitSet::new_empty(body.basic_blocks.len()),
+        }
     }
 
     fn body(&self) -> &'mir Body<'tcx> {
@@ -496,12 +505,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         if expected != value_const {
             // Poison all places this operand references so that further code
             // doesn't use the invalid value
-            match cond {
-                Operand::Move(ref place) | Operand::Copy(ref place) => {
-                    Self::remove_const(&mut self.ecx, place.local);
-                }
-                Operand::Constant(_) => {}
+            if let Some(place) = cond.place() {
+                Self::remove_const(&mut self.ecx, place.local);
             }
+
             enum DbgVal<T> {
                 Val(T),
                 Underscore,
@@ -566,7 +573,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
 impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
     fn visit_body(&mut self, body: &Body<'tcx>) {
-        for (bb, data) in body.basic_blocks.iter_enumerated() {
+        while let Some(bb) = self.worklist.pop() {
+            if !self.visited_blocks.insert(bb) {
+                continue;
+            }
+
+            let data = &body.basic_blocks[bb];
             self.visit_basic_block_data(bb, data);
         }
     }
@@ -657,6 +669,17 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
             TerminatorKind::Assert { expected, ref msg, ref cond, .. } => {
                 self.check_assertion(*expected, msg, cond, location);
             }
+            TerminatorKind::SwitchInt { ref discr, ref targets } => {
+                if let Some(ref value) = self.eval_operand(&discr, location)
+                  && let Some(value_const) = self.use_ecx(location, |this| this.ecx.read_scalar(&value))
+                  && let Ok(constant) = value_const.try_to_int()
+                  && let Ok(constant) = constant.to_bits(constant.size())
+                {
+                    let target = targets.target_for_value(constant);
+                    self.worklist.push(target);
+                    return;
+                }
+            }
             // None of these have Operands to const-propagate.
             TerminatorKind::Goto { .. }
             | TerminatorKind::Resume
@@ -668,10 +691,11 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
-            | TerminatorKind::SwitchInt { .. }
             | TerminatorKind::Call { .. }
             | TerminatorKind::InlineAsm { .. } => {}
         }
+
+        self.worklist.extend(terminator.successors());
     }
 
     fn visit_basic_block_data(&mut self, block: BasicBlock, data: &BasicBlockData<'tcx>) {
