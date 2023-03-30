@@ -732,7 +732,7 @@ a = MIN, -1, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0
 fixed = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 validate FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE
 
-aarch64 = cmge
+aarch64 = cmgt
 generate int8x8_t:uint8x8_t, int8x16_t:uint8x16_t, int16x4_t:uint16x4_t, int16x8_t:uint16x8_t, int32x2_t:uint32x2_t, int32x4_t:uint32x4_t, int64x1_t:uint64x1_t, int64x2_t:uint64x2_t
 
 /// Floating-point compare greater than or equal to zero
@@ -751,7 +751,7 @@ multi_fn = transmute, {vcgez-in_ntt-noext, {transmute, a}}
 a = -1
 validate 0
 
-aarch64 = eor
+aarch64 = nop
 generate i64:u64
 
 /// Floating-point compare greater than or equal to zero
@@ -5138,8 +5138,20 @@ b = 1
 c = 2
 validate 5
 
-aarch64 = sqdmull
-generate i32:i16:i16:i32, i64:i32:i32:i64
+aarch64 = sqdmlal
+generate i32:i16:i16:i32
+
+/// Signed saturating doubling multiply-add long
+name = vqdmlal
+multi_fn = vqadd-out-noext, x:out_t, a, {vqdmulls-in_ntt-noext, b, c}
+multi_fn = x as out_t
+a = 1
+b = 1
+c = 2
+validate 5
+
+aarch64 = sqdmlal
+generate i64:i32:i32:i64
 
 /// Signed saturating doubling multiply-add long
 name = vqdmlalh_lane
@@ -5156,7 +5168,7 @@ validate 5
 aarch64 = sqdmlal
 generate i32:i16:int16x4_t:i32, i32:i16:int16x8_t:i32
 name = vqdmlals_lane
-aarch64 = sqdmull
+aarch64 = sqdmlal
 generate i64:i32:int32x2_t:i64, i64:i32:int32x4_t:i64
 
 /// Signed saturating doubling multiply-subtract long
@@ -5250,8 +5262,20 @@ b = 1
 c = 2
 validate 6
 
-aarch64 = sqdmull
-generate i32:i16:i16:i32, i64:i32:i32:i64
+aarch64 = sqdmlsl
+generate i32:i16:i16:i32
+
+/// Signed saturating doubling multiply-subtract long
+name = vqdmlsl
+multi_fn = vqsub-out-noext, x:out_t, a, {vqdmulls-in_ntt-noext, b, c}
+multi_fn = x as out_t
+a = 10
+b = 1
+c = 2
+validate 6
+
+aarch64 = sqdmlsl
+generate i64:i32:i32:i64
 
 /// Signed saturating doubling multiply-subtract long
 name = vqdmlslh_lane
@@ -5268,7 +5292,7 @@ validate 6
 aarch64 = sqdmlsl
 generate i32:i16:int16x4_t:i32, i32:i16:int16x8_t:i32
 name = vqdmlsls_lane
-aarch64 = sqdmull
+aarch64 = sqdmlsl
 generate i64:i32:int32x2_t:i64, i64:i32:int32x4_t:i64
 
 /// Signed saturating doubling multiply returning high half
