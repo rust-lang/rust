@@ -321,6 +321,10 @@ impl DeepRejectCtxt {
                 TreatParams::AsCandidateKey => true,
             },
 
+            ty::Infer(ty::IntVar(_)) => impl_ty.is_integral(),
+
+            ty::Infer(ty::FloatVar(_)) => impl_ty.is_floating_point(),
+
             ty::Infer(_) => true,
 
             // As we're walking the whole type, it may encounter projections
