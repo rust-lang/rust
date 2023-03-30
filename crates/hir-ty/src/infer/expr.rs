@@ -23,7 +23,7 @@ use stdx::always;
 use syntax::ast::RangeOp;
 
 use crate::{
-    autoderef::{self, Autoderef},
+    autoderef::{builtin_deref, deref_by_trait, Autoderef},
     consteval,
     infer::{
         coerce::CoerceMany, find_continuable, pat::contains_explicit_ref_binding, BreakableKind,
@@ -675,12 +675,10 @@ impl<'a> InferenceContext<'a> {
                                 );
                             }
                         }
-                        if let Some(derefed) =
-                            autoderef::builtin_deref(&mut self.table, &inner_ty, true)
-                        {
+                        if let Some(derefed) = builtin_deref(&mut self.table, &inner_ty, true) {
                             self.resolve_ty_shallow(derefed)
                         } else {
-                            autoderef::deref_by_trait(&mut self.table, inner_ty)
+                            deref_by_trait(&mut self.table, inner_ty)
                                 .unwrap_or_else(|| self.err_ty())
                         }
                     }
@@ -793,7 +791,7 @@ impl<'a> InferenceContext<'a> {
                     let canonicalized = self.canonicalize(base_ty.clone());
                     let receiver_adjustments = method_resolution::resolve_indexing_op(
                         self.db,
-                        &mut self.table,
+                        self.table.trait_env.clone(),
                         canonicalized.value,
                         index_trait,
                     );

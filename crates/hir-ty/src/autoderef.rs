@@ -3,6 +3,8 @@
 //! reference to a type with the field `bar`. This is an approximation of the
 //! logic in rustc (which lives in rustc_hir_analysis/check/autoderef.rs).
 
+use std::sync::Arc;
+
 use chalk_ir::cast::Cast;
 use hir_def::{
     lang_item::{LangItem, LangItemTarget},
@@ -11,7 +13,10 @@ use hir_def::{
 use hir_expand::name::name;
 use limit::Limit;
 
-use crate::{infer::unify::InferenceTable, Goal, Interner, ProjectionTyExt, Ty, TyBuilder, TyKind};
+use crate::{
+    db::HirDatabase, infer::unify::InferenceTable, Canonical, Goal, Interner, ProjectionTyExt,
+    TraitEnvironment, Ty, TyBuilder, TyKind,
+};
 
 static AUTODEREF_RECURSION_LIMIT: Limit = Limit::new(10);
 
@@ -21,16 +26,31 @@ pub(crate) enum AutoderefKind {
     Overloaded,
 }
 
+pub fn autoderef(
+    db: &dyn HirDatabase,
+    env: Arc<TraitEnvironment>,
+    ty: Canonical<Ty>,
+) -> impl Iterator<Item = Canonical<Ty>> + '_ {
+    let mut table = InferenceTable::new(db, env);
+    let ty = table.instantiate_canonical(ty);
+    let mut autoderef = Autoderef::new(&mut table, ty);
+    let mut v = Vec::new();
+    while let Some((ty, _steps)) = autoderef.next() {
+        v.push(autoderef.table.canonicalize(ty).value);
+    }
+    v.into_iter()
+}
+
 #[derive(Debug)]
-pub struct Autoderef<'a, 'db> {
-    pub table: &'a mut InferenceTable<'db>,
+pub(crate) struct Autoderef<'a, 'db> {
+    pub(crate) table: &'a mut InferenceTable<'db>,
     ty: Ty,
     at_start: bool,
     steps: Vec<(AutoderefKind, Ty)>,
 }
 
 impl<'a, 'db> Autoderef<'a, 'db> {
-    pub fn new(table: &'a mut InferenceTable<'db>, ty: Ty) -> Self {
+    pub(crate) fn new(table: &'a mut InferenceTable<'db>, ty: Ty) -> Self {
         let ty = table.resolve_ty_shallow(&ty);
         Autoderef { table, ty, at_start: true, steps: Vec::new() }
     }
