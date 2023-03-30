@@ -12,6 +12,7 @@ use triomphe::Arc;
 use crate::{
     body::scope::{ExprScopes, ScopeId},
     builtin_type::BuiltinType,
+    data::ExternCrateDeclData,
     db::DefDatabase,
     generics::{GenericParams, TypeOrConstParamData},
     hir::{BindingId, ExprId, LabelId},
@@ -451,6 +452,7 @@ impl Resolver {
         def_map[module_id].scope.entries().for_each(|(name, def)| {
             res.add_per_ns(name, def);
         });
+
         def_map[module_id].scope.legacy_macros().for_each(|(name, macs)| {
             macs.iter().for_each(|&mac| {
                 res.add(name, ScopeDef::ModuleDef(ModuleDefId::MacroId(mac)));
@@ -472,6 +474,23 @@ impl Resolver {
             }
         }
         res.map
+    }
+
+    pub fn extern_crate_decls_in_scope<'a>(
+        &'a self,
+        db: &'a dyn DefDatabase,
+    ) -> impl Iterator<Item = Name> + 'a {
+        self.module_scope.def_map[self.module_scope.module_id]
+            .scope
+            .extern_crate_decls()
+            .map(|id| ExternCrateDeclData::extern_crate_decl_data_query(db, id).name.clone())
+    }
+
+    pub fn extern_crates_in_scope<'a>(&'a self) -> impl Iterator<Item = (Name, ModuleId)> + 'a {
+        self.module_scope
+            .def_map
+            .extern_prelude()
+            .map(|(name, module_id)| (name.clone(), module_id.0.into()))
     }
 
     pub fn traits_in_scope(&self, db: &dyn DefDatabase) -> FxHashSet<TraitId> {

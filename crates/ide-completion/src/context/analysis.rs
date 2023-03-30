@@ -624,6 +624,10 @@ fn classify_name_ref(
                 });
                 return Some(make_res(kind));
             },
+            ast::ExternCrate(_) => {
+                let kind = NameRefKind::ExternCrate;
+                return Some(make_res(kind));
+            },
             ast::MethodCallExpr(method) => {
                 let receiver = find_opt_node_in_file(original_file, method.receiver());
                 let kind = NameRefKind::DotAccess(DotAccess {
