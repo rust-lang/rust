@@ -1,4 +1,4 @@
-# `*-linux-ohos*`
+# `*-unknown-linux-ohos`
 
 **Tier: 3**
 
