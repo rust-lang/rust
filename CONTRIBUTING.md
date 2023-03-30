@@ -33,7 +33,6 @@ find a mentor! You can learn more about asking questions and getting help in the
 Did a compiler error message tell you to come here? If you want to create an ICE report,
 refer to [this section][contributing-bug-reports] and [open an issue][issue template].
 
-[Contributing to Rust]: https://rustc-dev-guide.rust-lang.org/contributing.html#contributing-to-rust
 [rustc-dev-guide]: https://rustc-dev-guide.rust-lang.org/
 [std-dev-guide]: https://std-dev-guide.rust-lang.org/
 [contributing-bug-reports]: https://rustc-dev-guide.rust-lang.org/contributing.html#bug-reports
