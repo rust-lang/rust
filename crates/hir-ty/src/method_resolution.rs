@@ -7,8 +7,9 @@ use std::{ops::ControlFlow, sync::Arc};
 use base_db::{CrateId, Edition};
 use chalk_ir::{cast::Cast, Mutability, TyKind, UniverseIndex, WhereClause};
 use hir_def::{
-    data::ImplData, item_scope::ItemScope, nameres::DefMap, AssocItemId, BlockId, ConstId,
-    FunctionId, HasModule, ImplId, ItemContainerId, Lookup, ModuleDefId, ModuleId, TraitId,
+    adt::StructFlags, data::ImplData, item_scope::ItemScope, nameres::DefMap, AssocItemId, BlockId,
+    ConstId, FunctionId, HasModule, ImplId, ItemContainerId, Lookup, ModuleDefId, ModuleId,
+    TraitId,
 };
 use hir_expand::name::Name;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -405,12 +406,14 @@ pub fn def_crates(
     match ty.kind(Interner) {
         &TyKind::Adt(AdtId(def_id), _) => {
             let rustc_has_incoherent_inherent_impls = match def_id {
-                hir_def::AdtId::StructId(id) => {
-                    db.struct_data(id).rustc_has_incoherent_inherent_impls
-                }
-                hir_def::AdtId::UnionId(id) => {
-                    db.union_data(id).rustc_has_incoherent_inherent_impls
-                }
+                hir_def::AdtId::StructId(id) => db
+                    .struct_data(id)
+                    .flags
+                    .contains(StructFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPL),
+                hir_def::AdtId::UnionId(id) => db
+                    .union_data(id)
+                    .flags
+                    .contains(StructFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPL),
                 hir_def::AdtId::EnumId(id) => db.enum_data(id).rustc_has_incoherent_inherent_impls,
             };
             Some(if rustc_has_incoherent_inherent_impls {
@@ -808,12 +811,14 @@ fn is_inherent_impl_coherent(
             | TyKind::Scalar(_) => true,
 
             &TyKind::Adt(AdtId(adt), _) => match adt {
-                hir_def::AdtId::StructId(it) => {
-                    db.struct_data(it).rustc_has_incoherent_inherent_impls
-                }
-                hir_def::AdtId::UnionId(it) => {
-                    db.union_data(it).rustc_has_incoherent_inherent_impls
-                }
+                hir_def::AdtId::StructId(id) => db
+                    .struct_data(id)
+                    .flags
+                    .contains(StructFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPL),
+                hir_def::AdtId::UnionId(id) => db
+                    .union_data(id)
+                    .flags
+                    .contains(StructFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPL),
                 hir_def::AdtId::EnumId(it) => db.enum_data(it).rustc_has_incoherent_inherent_impls,
             },
             TyKind::Dyn(it) => it.principal().map_or(false, |trait_ref| {

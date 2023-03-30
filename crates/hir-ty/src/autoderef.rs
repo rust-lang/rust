@@ -4,10 +4,7 @@
 //! logic in rustc (which lives in rustc_hir_analysis/check/autoderef.rs).
 
 use chalk_ir::cast::Cast;
-use hir_def::{
-    lang_item::{LangItem, LangItemTarget},
-    AdtId,
-};
+use hir_def::lang_item::LangItem;
 use hir_expand::name::name;
 use limit::Limit;
 
@@ -90,13 +87,8 @@ pub(crate) fn builtin_deref<'ty>(
         TyKind::Ref(.., ty) => Some(ty),
         // FIXME: Maybe accept this but diagnose if its not explicit?
         TyKind::Raw(.., ty) if explicit => Some(ty),
-        &TyKind::Adt(chalk_ir::AdtId(AdtId::StructId(strukt)), ref substs) => {
-            if Some(strukt)
-                == table
-                    .db
-                    .lang_item(table.trait_env.krate, LangItem::OwnedBox)
-                    .and_then(LangItemTarget::as_struct)
-            {
+        &TyKind::Adt(chalk_ir::AdtId(adt), ref substs) => {
+            if crate::lang_items::is_box(table.db, adt) {
                 substs.at(Interner, 0).ty(Interner)
             } else {
                 None

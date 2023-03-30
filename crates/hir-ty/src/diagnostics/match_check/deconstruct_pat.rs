@@ -384,7 +384,7 @@ impl Constructor {
                 TyKind::Tuple(arity, ..) => arity,
                 TyKind::Ref(..) => 1,
                 TyKind::Adt(adt, ..) => {
-                    if is_box(adt.0, pcx.cx.db) {
+                    if is_box(pcx.cx.db, adt.0) {
                         // The only legal patterns of type `Box` (outside `std`) are `_` and box
                         // patterns. If we're here we can assume this is a box pattern.
                         1
@@ -800,7 +800,7 @@ impl<'p> Fields<'p> {
                 }
                 TyKind::Ref(.., rty) => Fields::wildcards_from_tys(cx, once(rty.clone())),
                 &TyKind::Adt(AdtId(adt), ref substs) => {
-                    if is_box(adt, cx.db) {
+                    if is_box(cx.db, adt) {
                         // The only legal patterns of type `Box` (outside `std`) are `_` and box
                         // patterns. If we're here we can assume this is a box pattern.
                         let subst_ty = substs.at(Interner, 0).assert_ty_ref(Interner).clone();
@@ -905,7 +905,7 @@ impl<'p> DeconstructedPat<'p> {
                         }
                         fields = Fields::from_iter(cx, wilds)
                     }
-                    TyKind::Adt(adt, substs) if is_box(adt.0, cx.db) => {
+                    TyKind::Adt(adt, substs) if is_box(cx.db, adt.0) => {
                         // The only legal patterns of type `Box` (outside `std`) are `_` and box
                         // patterns. If we're here we can assume this is a box pattern.
                         // FIXME(Nadrieril): A `Box` can in theory be matched either with `Box(_,
@@ -992,7 +992,7 @@ impl<'p> DeconstructedPat<'p> {
                         })
                         .collect(),
                 },
-                TyKind::Adt(adt, _) if is_box(adt.0, cx.db) => {
+                TyKind::Adt(adt, _) if is_box(cx.db, adt.0) => {
                     // Without `box_patterns`, the only legal pattern of type `Box` is `_` (outside
                     // of `std`). So this branch is only reachable when the feature is enabled and
                     // the pattern is a box pattern.
