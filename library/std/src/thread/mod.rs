@@ -1158,12 +1158,14 @@ impl Inner {
 /// A handle to a thread.
 ///
 /// Threads are represented via the `Thread` type, which you can get in one of
-/// two ways:
+/// three ways:
 ///
 /// * By spawning a new thread, e.g., using the [`thread::spawn`][`spawn`]
 ///   function, and calling [`thread`][`JoinHandle::thread`] on the
 ///   [`JoinHandle`].
 /// * By requesting the current thread, using the [`thread::current`] function.
+/// * By constructing the thread from a raw pointer to it, using the [`from_raw`]
+///   function.
 ///
 /// The [`thread::current`] function is available even for threads not spawned
 /// by the APIs of this module.
@@ -1173,6 +1175,7 @@ impl Inner {
 /// docs of [`Builder`] and [`spawn`] for more details.
 ///
 /// [`thread::current`]: current
+/// [`from_raw`]: Thread::from_raw
 pub struct Thread {
     inner: Pin<Arc<Inner>>,
 }
@@ -1299,6 +1302,73 @@ impl Thread {
 
     fn cname(&self) -> Option<&CStr> {
         self.inner.name.as_deref()
+    }
+
+    /// Consumes the `Thread`, returning a raw pointer to it.
+    ///
+    /// This function consumes the `Thread` and returns a raw pointer to its internal
+    /// representation. The raw pointer can later be used to re-create the original `Thread`
+    /// using the [`Thread::from_raw`] function. This is particularly useful when you
+    /// need to pass the `Thread` across FFI boundaries or when working with low-level code.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::thread;
+    ///
+    /// let main_thread = thread::current().into_raw();
+    ///
+    /// let handle = thread::spawn(move || {
+    ///     let child_thread = thread::current().into_raw();
+    ///     assert_ne!(main_thread, child_thread);
+    /// });
+    /// ```
+    #[unstable(feature = "thread_pointer_conversion", issue = "none")]
+    #[must_use]
+    pub fn into_raw(self) -> *const () {
+        // SAFETY: we are converting the arc into raw pointer immediately,
+        // thus the inner variable is never moved.
+        let inner = unsafe { Pin::into_inner_unchecked(self.inner) };
+        Arc::into_raw(inner) as *const ()
+    }
+
+    /// Constructs a `Thread` from a raw pointer.
+    ///
+    /// The raw pointer should have been obtained by calling [`Thread::into_raw`].
+    ///
+    /// The user of `from_raw` has to make sure a specific `Thread` is only dropped once.
+    ///
+    /// This function is unsafe because improper use may lead to memory unsafety,
+    /// even if the returned `Thread` is never accessed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::thread;
+    /// use std::thread::Thread;
+    ///
+    /// let main_thread = thread::current().into_raw();
+    ///
+    /// let handle = thread::spawn(move || {
+    ///     let child_thread = thread::current().into_raw();
+    ///     (main_thread, child_thread)
+    /// });
+    ///
+    /// let (main, child) = handle.join().unwrap();
+    ///
+    /// // Convert back to `Thread` to prevent leak.
+    /// unsafe {
+    ///     let main_thread = Thread::from_raw(main);
+    ///     let child_thread = Thread::from_raw(child);
+    ///     assert_ne!(main_thread, child_thread);
+    ///     assert_eq!(main_thread, thread::current());
+    /// }
+    /// ```
+    #[unstable(feature = "thread_pointer_conversion", issue = "none")]
+    pub unsafe fn from_raw(raw: *const ()) -> Thread {
+        // SAFETY: the caller ensures the raw pointer corresponds to a valid Thread.
+        let inner = unsafe { Pin::new_unchecked(Arc::from_raw(raw as *const Inner)) };
+        Thread { inner }
     }
 }
 
