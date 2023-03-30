@@ -56,13 +56,13 @@ error: expected derive macro, found attribute macro `my_macro_attr`
   --> $DIR/macro-namespace-reserved-2.rs:53:10
    |
 LL | #[derive(my_macro_attr)]
-   |          ^^^^^^^^^^^^^ not a derive macro
+   |          ^^^^^^^^^^^^^
+   |          |
+   |          not a derive macro
+   |          help: Remove from the surrounding `derive()`
    |
-help: remove the surrounding "derive()":
-  --> $DIR/macro-namespace-reserved-2.rs:53:3
-   |
-LL | #[derive(my_macro_attr)]
-   |   ^^^^^^^             ^
+   = help: Add as non-Derive macro
+           `#[my_macro_attr]`
 
 error: can't use a procedural macro from the same crate that defines it
   --> $DIR/macro-namespace-reserved-2.rs:56:10
@@ -92,13 +92,13 @@ error: expected derive macro, found macro `crate::my_macro`
   --> $DIR/macro-namespace-reserved-2.rs:50:10
    |
 LL | #[derive(crate::my_macro)]
-   |          ^^^^^^^^^^^^^^^ not a derive macro
+   |          ^^^^^^^^^^^^^^^
+   |          |
+   |          not a derive macro
+   |          help: Remove from the surrounding `derive()`
    |
-help: remove the surrounding "derive()":
-  --> $DIR/macro-namespace-reserved-2.rs:50:3
-   |
-LL | #[derive(crate::my_macro)]
-   |   ^^^^^^^               ^
+   = help: Add as non-Derive macro
+           `#[crate::my_macro]`
 
 error: cannot find macro `my_macro_attr` in this scope
   --> $DIR/macro-namespace-reserved-2.rs:28:5
