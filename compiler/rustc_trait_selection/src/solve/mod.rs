@@ -341,7 +341,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             return Err(NoSolution);
         }
         let certainty = responses.iter().fold(Certainty::AMBIGUOUS, |certainty, response| {
-            certainty.unify_and(response.value.certainty)
+            certainty.unify_with(response.value.certainty)
         });
 
         let response = self.evaluate_added_goals_and_make_canonical_response(certainty);

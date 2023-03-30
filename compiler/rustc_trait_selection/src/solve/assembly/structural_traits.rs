@@ -11,7 +11,7 @@ use crate::solve::EvalCtxt;
 //
 // For types with an "existential" binder, i.e. generator witnesses, we also
 // instantiate the binder with placeholders eagerly.
-pub(crate) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
+pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
     ecx: &EvalCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
 ) -> Result<Vec<Ty<'tcx>>, NoSolution> {
@@ -87,7 +87,7 @@ pub(crate) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
     }
 }
 
-pub(crate) fn replace_erased_lifetimes_with_bound_vars<'tcx>(
+pub(in crate::solve) fn replace_erased_lifetimes_with_bound_vars<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
 ) -> ty::Binder<'tcx, Ty<'tcx>> {
@@ -108,7 +108,7 @@ pub(crate) fn replace_erased_lifetimes_with_bound_vars<'tcx>(
     ty::Binder::bind_with_vars(ty, bound_vars)
 }
 
-pub(crate) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
+pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
     ecx: &EvalCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
 ) -> Result<Vec<Ty<'tcx>>, NoSolution> {
@@ -158,7 +158,7 @@ pub(crate) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
     }
 }
 
-pub(crate) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
+pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
     ecx: &EvalCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
 ) -> Result<Vec<Ty<'tcx>>, NoSolution> {
@@ -224,7 +224,7 @@ pub(crate) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
 }
 
 // Returns a binder of the tupled inputs types and output type from a builtin callable type.
-pub(crate) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
+pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
     tcx: TyCtxt<'tcx>,
     self_ty: Ty<'tcx>,
     goal_kind: ty::ClosureKind,
@@ -337,7 +337,13 @@ pub(crate) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
 /// additional step of eagerly folding the associated types in the where
 /// clauses of the impl. In this example, that means replacing
 /// `<Self as Foo>::Bar` with `Ty` in the first impl.
-pub(crate) fn predicates_for_object_candidate<'tcx>(
+///
+// FIXME: This is only necessary as `<Self as Trait>::Assoc: ItemBound`
+// bounds in impls are trivially proven using the item bound candidates.
+// This is unsound in general and once that is fixed, we don't need to
+// normalize eagerly here. See https://github.com/lcnr/solver-woes/issues/9
+// for more details.
+pub(in crate::solve) fn predicates_for_object_candidate<'tcx>(
     ecx: &EvalCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
