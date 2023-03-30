@@ -4,7 +4,6 @@ use std::{convert::identity, path::Path, sync::Arc};
 
 use anyhow::Result;
 use crossbeam_channel::{unbounded, Receiver};
-use hir::db::DefDatabase;
 use ide::{AnalysisHost, Change};
 use ide_db::{
     base_db::{CrateGraph, ProcMacros},
@@ -143,7 +142,7 @@ fn load_crate_graph(
     let mut host = AnalysisHost::new(lru_cap);
     let mut analysis_change = Change::new();
 
-    host.raw_database_mut().set_enable_proc_attr_macros(true);
+    host.raw_database_mut().enable_proc_attr_macros();
 
     // wait until Vfs has loaded all roots
     for task in receiver {

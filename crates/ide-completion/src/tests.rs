@@ -23,7 +23,7 @@ mod type_pos;
 mod use_tree;
 mod visibility;
 
-use hir::{db::DefDatabase, PrefixKind};
+use hir::PrefixKind;
 use ide_db::{
     base_db::{fixture::ChangeFixture, FileLoader, FilePosition},
     imports::insert_use::{ImportGranularity, InsertUseConfig},
@@ -120,7 +120,7 @@ fn completion_list_with_config(
 pub(crate) fn position(ra_fixture: &str) -> (RootDatabase, FilePosition) {
     let change_fixture = ChangeFixture::parse(ra_fixture);
     let mut database = RootDatabase::default();
-    database.set_enable_proc_attr_macros(true);
+    database.enable_proc_attr_macros();
     database.apply_change(change_fixture.change);
     let (file_id, range_or_offset) = change_fixture.file_position.expect("expected a marker ($0)");
     let offset = range_or_offset.expect_offset();

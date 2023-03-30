@@ -6,8 +6,9 @@ use std::{
 };
 
 use base_db::{
-    salsa, AnchoredPath, CrateId, FileId, FileLoader, FileLoaderDelegate, FilePosition,
-    SourceDatabase, Upcast,
+    salsa::{self, Durability},
+    AnchoredPath, CrateId, FileId, FileLoader, FileLoaderDelegate, FilePosition, SourceDatabase,
+    Upcast,
 };
 use hir_expand::{db::ExpandDatabase, InFile};
 use stdx::hash::NoHashHashSet;
@@ -35,7 +36,7 @@ pub(crate) struct TestDB {
 impl Default for TestDB {
     fn default() -> Self {
         let mut this = Self { storage: Default::default(), events: Default::default() };
-        this.set_enable_proc_attr_macros(true);
+        this.set_expand_proc_attr_macros_with_durability(true, Durability::HIGH);
         this
     }
 }
