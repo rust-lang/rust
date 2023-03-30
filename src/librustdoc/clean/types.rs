@@ -262,20 +262,11 @@ impl ExternalCrate {
         // duplicately for the same primitive. This is handled later on when
         // rendering by delegating everything to a hash map.
         let as_primitive = |res: Res<!>| {
-            if let Res::Def(DefKind::Mod, def_id) = res {
-                let mut prim = None;
-                for attr in tcx.get_attrs(def_id, sym::rustc_doc_primitive) {
-                    if let Some(v) = attr.value_str() {
-                        prim = PrimitiveType::from_symbol(v);
-                        if prim.is_some() {
-                            break;
-                        }
-                        // FIXME: should warn on unknown primitives?
-                    }
-                }
-                return prim.map(|p| (def_id, p));
-            }
-            None
+            let Res::Def(DefKind::Mod, def_id) = res else { return None };
+            tcx.get_attrs(def_id, sym::rustc_doc_primitive).find_map(|attr| {
+                // FIXME: should warn on unknown primitives?
+                Some((def_id, PrimitiveType::from_symbol(attr.value_str()?)?))
+            })
         };
 
         if root.is_local() {
