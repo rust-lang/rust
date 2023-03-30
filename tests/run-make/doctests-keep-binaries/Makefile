@@ -1,3 +1,4 @@
+# ignore-cross-compile
 include ../tools.mk
 
 # Check that valid binaries are persisted by running them, regardless of whether the --run or --no-run option is used.

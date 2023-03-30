@@ -1,3 +1,4 @@
+# ignore-cross-compile
 # ignore-none no-std is not supported
 # ignore-wasm32 FIXME: don't attempt to compile C++ to WASM
 # ignore-wasm64 FIXME: don't attempt to compile C++ to WASM

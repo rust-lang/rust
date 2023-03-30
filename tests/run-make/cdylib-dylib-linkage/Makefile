@@ -1,3 +1,4 @@
+# ignore-cross-compile
 include ../tools.mk
 
 TARGET_SYSROOT := $(shell $(RUSTC) --print sysroot)/lib/rustlib/$(TARGET)/lib

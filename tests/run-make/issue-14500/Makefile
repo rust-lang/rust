@@ -1,5 +1,7 @@
 include ../tools.mk
 
+# ignore-cross-compile
+
 # Test to make sure that reachable extern fns are always available in final
 # productcs, including when LTO is used. In this test, the `foo` crate has a
 # reahable symbol, and is a dependency of the `bar` crate. When the `bar` crate

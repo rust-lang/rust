@@ -1,3 +1,4 @@
+# ignore-cross-compile
 include ../tools.mk
 
 # Different optimization levels imply different values for `-Zshare-generics`,

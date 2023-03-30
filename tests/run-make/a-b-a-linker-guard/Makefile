@@ -1,3 +1,4 @@
+# ignore-cross-compile
 include ../tools.mk
 
 # Test that if we build `b` against a version of `a` that has one set

@@ -1,3 +1,4 @@
+# ignore-cross-compile
 include ../tools.mk
 
 # FIXME: it would be good to check that it's actually the rightmost flags

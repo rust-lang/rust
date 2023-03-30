@@ -1,3 +1,4 @@
+# ignore-cross-compile
 include ../../run-make/tools.mk
 
 OUTPUT_DIR := "$(TMPDIR)/rustdoc"

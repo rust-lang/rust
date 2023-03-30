@@ -1,3 +1,4 @@
+# ignore-cross-compile
 # Regression test for issue #68794
 #
 # Verify that no text relocations are accidentally introduced by linking a

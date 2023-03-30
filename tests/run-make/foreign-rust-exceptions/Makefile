@@ -1,3 +1,4 @@
+# ignore-cross-compile
 # ignore-i686-pc-windows-gnu
 
 # This test doesn't work on 32-bit MinGW as cdylib has its own copy of unwinder

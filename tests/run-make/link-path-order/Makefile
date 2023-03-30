@@ -1,3 +1,4 @@
+# ignore-cross-compile
 include ../tools.mk
 
 # Verifies that the -L arguments given to the linker is in the same order

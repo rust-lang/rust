@@ -1,3 +1,4 @@
+# ignore-cross-compile
 # Test that allocator-related symbols don't show up as exported from a cdylib as
 # they're internal to Rust and not part of the public ABI.
 

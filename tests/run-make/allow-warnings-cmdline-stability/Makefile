@@ -1,3 +1,4 @@
+# ignore-cross-compile
 include ../tools.mk
 
 # Test that -A warnings makes the 'empty trait list for derive' warning go away

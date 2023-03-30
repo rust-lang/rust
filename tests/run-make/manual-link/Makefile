@@ -1,3 +1,4 @@
+# ignore-cross-compile
 include ../tools.mk
 
 all: $(TMPDIR)/libbar.a

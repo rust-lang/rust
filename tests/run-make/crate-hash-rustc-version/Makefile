@@ -1,3 +1,4 @@
+# ignore-cross-compile
 include ../tools.mk
 
 # Ensure that crates compiled with different rustc versions cannot

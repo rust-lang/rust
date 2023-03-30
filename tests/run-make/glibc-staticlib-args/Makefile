@@ -1,3 +1,4 @@
+# ignore-cross-compile
 # only-gnu
 # only-linux
 

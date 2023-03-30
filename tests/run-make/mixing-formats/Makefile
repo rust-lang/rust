@@ -1,3 +1,4 @@
+# ignore-cross-compile
 include ../tools.mk
 
 # Testing various mixings of rlibs and dylibs. Makes sure that it's possible to

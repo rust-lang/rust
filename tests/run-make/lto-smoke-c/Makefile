@@ -1,3 +1,4 @@
+# ignore-cross-compile
 include ../tools.mk
 
 # Apparently older versions of GCC segfault if -g is passed...

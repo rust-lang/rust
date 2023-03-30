@@ -1,3 +1,4 @@
+# ignore-cross-compile
 include ../tools.mk
 
 TO_LINK := $(call DYLIB,bar)

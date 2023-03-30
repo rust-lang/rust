@@ -1,3 +1,4 @@
+# ignore-cross-compile
 include ../tools.mk
 
 # rust-lang/rust#70924: Test that if we add rust-src component in between two

@@ -1,3 +1,4 @@
+# ignore-cross-compile
 include ../tools.mk
 
 # Test that previously triggered a linker failure with root cause

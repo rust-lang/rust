@@ -1,3 +1,4 @@
+# ignore-cross-compile
 include ../tools.mk
 
 all: noparam bool_true bool_false thin fat

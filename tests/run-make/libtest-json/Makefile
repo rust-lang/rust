@@ -1,3 +1,4 @@
+# ignore-cross-compile
 include ../tools.mk
 
 # Test expected libtest's JSON output

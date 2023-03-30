@@ -1,3 +1,4 @@
+# ignore-cross-compile
 include ../tools.mk
 
 # The rust crate foo will link to the native library foo, while the rust crate

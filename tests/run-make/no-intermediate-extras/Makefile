@@ -1,3 +1,4 @@
+# ignore-cross-compile
 # Regression test for issue #10973
 
 include ../tools.mk
