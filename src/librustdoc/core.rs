@@ -303,6 +303,9 @@ pub(crate) fn run_global_ctxt(
 
     // HACK(jynelson) this calls an _extremely_ limited subset of `typeck`
     // and might break if queries change their assumptions in the future.
+    tcx.sess.time("type_collecting", || {
+        tcx.hir().for_each_module(|module| tcx.ensure().collect_mod_item_types(module))
+    });
 
     // NOTE: This is copy/pasted from typeck/lib.rs and should be kept in sync with those changes.
     tcx.sess.time("item_types_checking", || {
