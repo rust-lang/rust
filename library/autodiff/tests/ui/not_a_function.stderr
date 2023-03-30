@@ -1,0 +1,7 @@
+error: item is not a function
+ --> tests/ui/not_a_function.rs:4:1
+  |
+4 | struct NotAFunction;
+  | ^^^^^^^^^^^^^^^^^^^^
+  |
+  = help: `#[autodiff]` can only be used on primal or adjoint functions

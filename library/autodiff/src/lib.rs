@@ -9,41 +9,23 @@ mod gen;
 #[proc_macro_error]
 pub fn autodiff(args: TokenStream, input: TokenStream) -> TokenStream {
     let mut params = parser::parse(args.into(), input.clone().into());
-    let (body, fnc_source) = gen::generate_body(input.into(), &params);
-    let header = gen::generate_header(&params);
+    let (primal, adjoint) = (gen::primal_fnc(&mut params), gen::adjoint_fnc(&params));
 
-    // generate function
+    let res = quote!(
+        #primal
+        #adjoint
+    );
 
-    let out = if params.block.is_none() {
-        let sig = &params.sig;
-        quote!(
-            #[autodiff_into]
-            #fnc_source
-
-            #header
-            #sig {
-                #body
-            }
-        )
-    } else {
-        params.sig.ident = params.header.name.get_ident().unwrap().clone();
-        let sig = &params.sig;
-
-        quote!(
-            #[autodiff_into]
-            #fnc_source
-
-            #header
-            #sig {
-                #body
-            }
-        )
-    };
-
-    out.into()
+    res.into()
 }
 
 #[test]
-pub fn expandtest() {
+pub fn expanding() {
     macrotest::expand("tests/expand/*.rs");
+}
+
+#[test]
+fn ui() {
+    let t = trybuild::TestCases::new();
+    t.compile_fail("tests/ui/*.rs");
 }

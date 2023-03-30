@@ -1,0 +1,31 @@
+error: type not behind reference
+ --> tests/ui/invalid_indirection.rs:4:40
+  |
+4 | fn duplicated_without_reference(#[dup] x: f32) {
+  |                                        ^^^^^^
+  |
+  = help: `#[autodiff]` duplicated parameters should be behind reference in reverse mode
+
+error: type behind reference
+ --> tests/ui/invalid_indirection.rs:8:36
+  |
+8 | fn active_with_reference(#[active] x: &f32) {
+  |                                    ^^^^^^^
+  |
+  = help: `#[autodiff]` active parameter should be concrete in reverse mode
+
+error: type not behind reference
+  --> tests/ui/invalid_indirection.rs:12:30
+   |
+12 | fn duplicated_forward(#[dup] x: f32) {
+   |                              ^^^^^^
+   |
+   = help: `#[autodiff]` duplicated types should be behind a reference
+
+error: should be mutable reference
+  --> tests/ui/invalid_indirection.rs:16:45
+   |
+16 | fn duplicated_no_need_forward(#[dup_noneed] x: &f32) {
+   |                                             ^^^^^^^
+   |
+   = help: `#[autodiff]` parameter should be output for DuplicatedNoNeed activity

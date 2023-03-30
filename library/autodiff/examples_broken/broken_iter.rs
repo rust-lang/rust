@@ -4,6 +4,7 @@ use std::ptr;
 
 #[autodiff(sin_vec, Reverse, Active)]
 fn cos_vec(#[dup] x: &Vec<f32>) -> f32 {
+    // uses enum internally and breaks 
     let res = x.into_iter().collect::<Vec<&f32>>();
 
     *res[0]

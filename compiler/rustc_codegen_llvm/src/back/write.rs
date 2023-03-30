@@ -599,7 +599,6 @@ pub(crate) unsafe fn extract_return_type<'a>(
     ) -> &'a Value {
     //let llmod = module.module_llvm.llmod();
     let context = llvm::LLVMGetModuleContext(llmod);
-    let _f_type = LLVMTypeOf(fnc);
     //dbg!("Unpacking", fnc_name.clone());
     //dbg!("From: ", f_type, " into ", u_type);
 

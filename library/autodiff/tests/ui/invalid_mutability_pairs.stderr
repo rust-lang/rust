@@ -1,0 +1,55 @@
+error: should be a mutable reference
+ --> tests/ui/invalid_mutability_pairs.rs:4:48
+  |
+4 | fn fwd_output_no_reference(#[dup] x: &mut f32, y: f32) -> f32;
+  |                                                ^^^^^^
+  |
+  = help: `#[autodiff]` output parameter should duplicate derivative into second parameter for forward mode
+
+error: should be a mutable reference
+ --> tests/ui/invalid_mutability_pairs.rs:7:41
+  |
+7 | fn output_immutable(#[dup] x: &mut f32, y: &f32) -> f32;
+  |                                         ^^^^^^^
+  |
+  = help: `#[autodiff]` output parameter should duplicate derivative into second parameter for forward mode
+
+error: should be a mutable reference
+  --> tests/ui/invalid_mutability_pairs.rs:10:43
+   |
+10 | fn rev_input_no_reference(#[dup] x: &f32, y: f32) -> f32;
+   |                                           ^^^^^^
+   |
+   = help: `#[autodiff]` input parameter should duplicate derivative into second parameter for reverse mode
+
+error: should be an immutable reference
+  --> tests/ui/invalid_mutability_pairs.rs:13:48
+   |
+13 | fn rev_output_no_reference(#[dup] x: &mut f32, y: f32) -> f32;
+   |                                                ^^^^^^
+   |
+   = help: `#[autodiff]` input parameter should duplicate derivative into second parameter for reverse mode
+
+error: should be a mutable reference
+  --> tests/ui/invalid_mutability_pairs.rs:16:36
+   |
+16 | fn input_immutable(#[dup] x: &f32, y: &f32) -> f32;
+   |                                    ^^^^^^^
+   |
+   = help: `#[autodiff]` input parameter should duplicate derivative into second parameter for reverse mode
+
+error: should be an immutable reference
+  --> tests/ui/invalid_mutability_pairs.rs:19:39
+   |
+19 | fn output_mutable(#[dup] x: &mut f32, y: &mut f32) -> f32;
+   |                                       ^^^^^^^^^^^
+   |
+   = help: `#[autodiff]` input parameter should duplicate derivative into second parameter for reverse mode
+
+error: use duplicated instead
+  --> tests/ui/invalid_mutability_pairs.rs:22:34
+   |
+22 | fn dupnoneed_input(#[dup_noneed] x: &f32, y: &f32) -> f32;
+   |                                  ^^^^^^^
+   |
+   = help: `#[autodiff]` input parameter cannot be declared as duplicatednoneed
