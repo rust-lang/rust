@@ -88,6 +88,7 @@ pub struct FilePermissions {
 pub struct FileTimes {
     accessed: Option<c::FILETIME>,
     modified: Option<c::FILETIME>,
+    created: Option<c::FILETIME>,
 }
 
 #[derive(Debug)]
@@ -567,7 +568,10 @@ impl File {
 
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
         let is_zero = |t: c::FILETIME| t.dwLowDateTime == 0 && t.dwHighDateTime == 0;
-        if times.accessed.map_or(false, is_zero) || times.modified.map_or(false, is_zero) {
+        if times.accessed.map_or(false, is_zero)
+            || times.modified.map_or(false, is_zero)
+            || times.created.map_or(false, is_zero)
+        {
             return Err(io::const_io_error!(
                 io::ErrorKind::InvalidInput,
                 "Cannot set file timestamp to 0",
@@ -575,14 +579,22 @@ impl File {
         }
         let is_max =
             |t: c::FILETIME| t.dwLowDateTime == c::DWORD::MAX && t.dwHighDateTime == c::DWORD::MAX;
-        if times.accessed.map_or(false, is_max) || times.modified.map_or(false, is_max) {
+        if times.accessed.map_or(false, is_max)
+            || times.modified.map_or(false, is_max)
+            || times.created.map_or(false, is_max)
+        {
             return Err(io::const_io_error!(
                 io::ErrorKind::InvalidInput,
                 "Cannot set file timestamp to 0xFFFF_FFFF_FFFF_FFFF",
             ));
         }
         cvt(unsafe {
-            c::SetFileTime(self.as_handle(), None, times.accessed.as_ref(), times.modified.as_ref())
+            c::SetFileTime(
+                self.as_handle(),
+                times.created.as_ref(),
+                times.accessed.as_ref(),
+                times.modified.as_ref(),
+            )
         })?;
         Ok(())
     }
@@ -984,6 +996,10 @@ impl FileTimes {
 
     pub fn set_modified(&mut self, t: SystemTime) {
         self.modified = Some(t.into_inner());
+    }
+
+    pub fn set_created(&mut self, t: SystemTime) {
+        self.created = Some(t.into_inner());
     }
 }
 

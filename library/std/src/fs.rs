@@ -15,6 +15,7 @@ use crate::ffi::OsString;
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
 use crate::path::{Path, PathBuf};
+use crate::sealed::Sealed;
 use crate::sys::fs as fs_imp;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 use crate::time::SystemTime;
@@ -1382,6 +1383,16 @@ impl FileTimes {
         self
     }
 }
+
+impl AsInnerMut<fs_imp::FileTimes> for FileTimes {
+    fn as_inner_mut(&mut self) -> &mut fs_imp::FileTimes {
+        &mut self.0
+    }
+}
+
+// For implementing OS extension traits in `std::os`
+#[unstable(feature = "file_set_times", issue = "98245")]
+impl Sealed for FileTimes {}
 
 impl Permissions {
     /// Returns `true` if these permissions describe a readonly (unwritable) file.
