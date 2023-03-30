@@ -6,7 +6,7 @@
 #                    (see dist-i586-gnu-i586-i686-musl Dockerfile)
 # ignore-sgx
 
-include ../../run-make-fulldeps/tools.mk
+include ../tools.mk
 
 all: foo
 	$(call RUN,foo)

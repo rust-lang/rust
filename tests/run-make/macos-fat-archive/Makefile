@@ -1,6 +1,6 @@
 # only-macos
 
-include ../../run-make-fulldeps/tools.mk
+include ../tools.mk
 
 "$(TMPDIR)"/libnative-library.a: native-library.c
 	$(CC) -arch arm64 -arch x86_64 native-library.c -c -o "$(TMPDIR)"/native-library.o

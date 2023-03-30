@@ -1,4 +1,4 @@
-include ../../run-make-fulldeps/tools.mk
+include ../tools.mk
 
 # Check that valid binaries are persisted by running them, regardless of whether the --run or --no-run option is used.
 

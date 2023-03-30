@@ -1,4 +1,4 @@
-include ../../run-make-fulldeps/tools.mk
+include ../tools.mk
 
 OUTPUT_DIR := "$(TMPDIR)/rustdoc"
 TMP_OUTPUT_DIR := "$(TMPDIR)/tmp-rustdoc"

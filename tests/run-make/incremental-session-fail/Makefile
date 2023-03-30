@@ -1,4 +1,4 @@
-include ../../run-make-fulldeps/tools.mk
+include ../tools.mk
 
 SESSION_DIR := $(TMPDIR)/session
 OUTPUT_FILE := $(TMPDIR)/build-output

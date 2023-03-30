@@ -1,4 +1,4 @@
-include ../../run-make-fulldeps/tools.mk
+include ../tools.mk
 
 # This test case creates a situation where the crate loader would run
 # into an ICE when confronted with an invalid setup where it cannot
