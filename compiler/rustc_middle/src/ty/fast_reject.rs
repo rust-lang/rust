@@ -312,6 +312,7 @@ impl DeepRejectCtxt {
             // Impls cannot contain these types as these cannot be named directly.
             ty::FnDef(..) | ty::Closure(..) | ty::Generator(..) => false,
 
+            // Placeholder types don't unify with anything on their own
             ty::Placeholder(..) | ty::Bound(..) => false,
 
             // Depending on the value of `treat_obligation_params`, we either
@@ -359,6 +360,9 @@ impl DeepRejectCtxt {
                 TreatParams::AsCandidateKey => true,
             },
 
+            // Placeholder consts don't unify with anything on their own
+            ty::ConstKind::Placeholder(_) => false,
+
             // As we don't necessarily eagerly evaluate constants,
             // they might unify with any value.
             ty::ConstKind::Expr(_) | ty::ConstKind::Unevaluated(_) | ty::ConstKind::Error(_) => {
@@ -371,7 +375,7 @@ impl DeepRejectCtxt {
 
             ty::ConstKind::Infer(_) => true,
 
-            ty::ConstKind::Bound(..) | ty::ConstKind::Placeholder(_) => {
+            ty::ConstKind::Bound(..) => {
                 bug!("unexpected obl const: {:?}", obligation_ct)
             }
         }
