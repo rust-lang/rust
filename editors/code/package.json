@@ -1252,6 +1252,11 @@
                     ],
                     "minimum": 0
                 },
+                "rust-analyzer.lru.query.capacities": {
+                    "markdownDescription": "Sets the LRU capacity of the specified queries.",
+                    "default": {},
+                    "type": "object"
+                },
                 "rust-analyzer.notifications.cargoTomlNotFound": {
                     "markdownDescription": "Whether to show `can't find Cargo.toml` error message.",
                     "default": true,

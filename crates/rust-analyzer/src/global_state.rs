@@ -141,7 +141,10 @@ impl GlobalState {
             Handle { handle, receiver }
         };
 
-        let analysis_host = AnalysisHost::new(config.lru_capacity());
+        let mut analysis_host = AnalysisHost::new(config.lru_parse_query_capacity());
+        if let Some(capacities) = config.lru_query_capacities() {
+            analysis_host.update_lru_capacities(capacities);
+        }
         let (flycheck_sender, flycheck_receiver) = unbounded();
         let mut this = GlobalState {
             sender,

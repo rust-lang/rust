@@ -88,6 +88,7 @@ impl Attrs {
         db: &dyn DefDatabase,
         e: EnumId,
     ) -> Arc<ArenaMap<LocalEnumVariantId, Attrs>> {
+        let _p = profile::span("variants_attrs_query");
         // FIXME: There should be some proper form of mapping between item tree enum variant ids and hir enum variant ids
         let mut res = ArenaMap::default();
 
@@ -114,6 +115,7 @@ impl Attrs {
         db: &dyn DefDatabase,
         v: VariantId,
     ) -> Arc<ArenaMap<LocalFieldId, Attrs>> {
+        let _p = profile::span("fields_attrs_query");
         // FIXME: There should be some proper form of mapping between item tree field ids and hir field ids
         let mut res = ArenaMap::default();
 
@@ -253,6 +255,7 @@ impl Attrs {
 
 impl AttrsWithOwner {
     pub(crate) fn attrs_query(db: &dyn DefDatabase, def: AttrDefId) -> Self {
+        let _p = profile::span("attrs_query");
         // FIXME: this should use `Trace` to avoid duplication in `source_map` below
         let raw_attrs = match def {
             AttrDefId::ModuleId(module) => {
