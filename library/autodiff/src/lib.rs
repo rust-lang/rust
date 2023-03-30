@@ -16,8 +16,6 @@ pub fn autodiff(args: TokenStream, input: TokenStream) -> TokenStream {
         #adjoint
     );
 
-    println!("{}", res);
-
     res.into()
 }
 

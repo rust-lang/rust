@@ -1,4 +1,4 @@
-use syn::{Item, ForeignItemFn, Block, parse::Parser, punctuated::Punctuated, Path, Token, Signature, Ident, FnArg, Attribute, Type, ReturnType, parse_quote, Generics};
+use syn::{Item, ForeignItemFn, Block, parse::Parser, punctuated::Punctuated, Path, Token, Signature, Ident, FnArg, Attribute, Type, ReturnType, parse_quote};
 use proc_macro2::TokenStream;
 use proc_macro_error::abort;
 use quote::{format_ident, quote};
@@ -132,7 +132,7 @@ impl Header {
         let args_parsed: Vec<_> = match Punctuated::<Path, Token![,]>::parse_terminated
             .parse(args.clone().into()) {
                 Ok(x) => x.into_iter().collect(),
-                Err(err) => 
+                Err(_) => 
                     abort!(
                         args,
                         "duplicated return for reverse mode";
@@ -246,7 +246,7 @@ pub(crate) fn reduce_params(mut sig: Signature, header_acts: Vec<Activity>, is_a
         }
 
         // parse current attribute macro
-        let mut attrs: Vec<_> = match arg {
+        let attrs: Vec<_> = match arg {
             FnArg::Typed(pat) => pat.attrs.drain(..).collect(),
             FnArg::Receiver(pat) => pat.attrs.drain(..).collect(),
         };
@@ -591,7 +591,7 @@ pub(crate) fn reduce_params(mut sig: Signature, header_acts: Vec<Activity>, is_a
 //}
 pub(crate) fn parse(args: TokenStream, input: TokenStream) -> DiffItem {
     // first parse function
-    let (_attrs, _, mut sig, block) = match syn::parse2::<Item>(input) {
+    let (_attrs, _, sig, block) = match syn::parse2::<Item>(input) {
         Ok(Item::Fn(item)) => (item.attrs, item.vis, item.sig, Some(item.block)),
         Ok(Item::Verbatim(x)) => {
             match syn::parse2::<ForeignItemFn>(x) {

@@ -1,9 +1,9 @@
 use quote::{quote, format_ident};
-use syn::{FnArg, ReturnType, ItemFn, Signature, Type, parse_quote, Pat, Ident};
+use syn::{FnArg, ReturnType, Type, parse_quote, Pat, Ident};
 use crate::parser::{DiffItem, Activity, Mode};
 use proc_macro_error::abort;
 use proc_macro2::TokenStream;
-use crate::{parser, parser::{PrimalSig, is_ref_mut}};
+use crate::parser::{PrimalSig, is_ref_mut};
 
 pub(crate) fn generate_header(item: &DiffItem) -> TokenStream {
     let mode = match item.header.mode {
@@ -113,7 +113,7 @@ pub(crate) fn adjoint_fnc(item: &DiffItem) -> TokenStream {
         };
 
     let PrimalSig {
-        ident, inputs, output
+        ident, inputs, ..
     } = &item.primal;
 
     for (input, activity) in inputs.iter().zip(item.params.iter()) {
