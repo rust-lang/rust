@@ -1,5 +1,8 @@
 //! A higher level attributes based on TokenTree, with also some shortcuts.
 
+#[cfg(test)]
+mod tests;
+
 use std::{hash::Hash, ops, sync::Arc};
 
 use base_db::CrateId;
@@ -238,12 +241,12 @@ impl Attrs {
         })
     }
 
-    pub fn doc_exprs(&self) -> Vec<DocExpr> {
-        self.by_key("doc").tt_values().map(DocExpr::parse).collect()
+    pub fn doc_exprs(&self) -> impl Iterator<Item = DocExpr> + '_ {
+        self.by_key("doc").tt_values().map(DocExpr::parse)
     }
 
-    pub fn doc_aliases(&self) -> Vec<SmolStr> {
-        self.doc_exprs().into_iter().flat_map(|doc_expr| doc_expr.aliases()).collect()
+    pub fn doc_aliases(&self) -> impl Iterator<Item = SmolStr> + '_ {
+        self.doc_exprs().flat_map(|doc_expr| doc_expr.aliases().to_vec())
     }
 
     pub fn is_proc_macro(&self) -> bool {
@@ -288,17 +291,17 @@ impl From<DocAtom> for DocExpr {
 }
 
 impl DocExpr {
-    pub fn parse<S>(tt: &tt::Subtree<S>) -> DocExpr {
+    fn parse<S>(tt: &tt::Subtree<S>) -> DocExpr {
         next_doc_expr(&mut tt.token_trees.iter()).unwrap_or(DocExpr::Invalid)
     }
 
-    pub fn aliases(self) -> Vec<SmolStr> {
+    pub fn aliases(&self) -> &[SmolStr] {
         match self {
             DocExpr::Atom(DocAtom::KeyValue { key, value }) if key == "alias" => {
-                vec![value]
+                std::slice::from_ref(value)
             }
             DocExpr::Alias(aliases) => aliases,
-            _ => vec![],
+            _ => &[],
         }
     }
 }

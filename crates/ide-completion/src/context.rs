@@ -549,7 +549,7 @@ impl<'a> CompletionContext<'a> {
 
     fn doc_aliases(&self, scope_def: ScopeDef) -> Vec<SmolStr> {
         if let Some(attrs) = scope_def.attrs(self.db) {
-            attrs.doc_aliases()
+            attrs.doc_aliases().collect()
         } else {
             vec![]
         }

@@ -53,8 +53,6 @@ pub mod import_map;
 mod test_db;
 #[cfg(test)]
 mod macro_expansion_tests;
-#[cfg(test)]
-mod attr_tests;
 mod pretty;
 
 use std::{

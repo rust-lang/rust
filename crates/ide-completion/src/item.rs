@@ -45,7 +45,7 @@ pub struct CompletionItem {
     ///
     /// That is, in `foo.bar$0` lookup of `abracadabra` will be accepted (it
     /// contains `bar` sub sequence), and `quux` will rejected.
-    pub lookup: Option<SmolStr>,
+    pub lookup: SmolStr,
 
     /// Additional info to show in the UI pop up.
     pub detail: Option<String>,
@@ -359,7 +359,7 @@ impl CompletionItem {
 
     /// What string is used for filtering.
     pub fn lookup(&self) -> &str {
-        self.lookup.as_deref().unwrap_or(&self.label)
+        self.lookup.as_str()
     }
 
     pub fn ref_match(&self) -> Option<(String, text_edit::Indel, CompletionRelevance)> {
@@ -415,19 +415,20 @@ impl Builder {
         let _p = profile::span("item::Builder::build");
 
         let mut label = self.label;
-        let mut lookup = self.lookup;
+        let mut lookup = self.lookup.unwrap_or_else(|| label.clone());
         let insert_text = self.insert_text.unwrap_or_else(|| label.to_string());
 
+        if let Some(doc_aliases) = self.doc_aliases {
+            label = SmolStr::from(format!("{label} (alias {doc_aliases})"));
+            lookup = SmolStr::from(format!("{lookup} {doc_aliases}"));
+        }
         if let [import_edit] = &*self.imports_to_add {
             // snippets can have multiple imports, but normal completions only have up to one
             if let Some(original_path) = import_edit.original_path.as_ref() {
-                lookup = lookup.or_else(|| Some(label.clone()));
                 label = SmolStr::from(format!("{label} (use {original_path})"));
             }
         } else if let Some(trait_name) = self.trait_name {
             label = SmolStr::from(format!("{label} (as {trait_name})"));
-        } else if let Some(doc_aliases) = self.doc_aliases {
-            label = SmolStr::from(format!("{label} (alias {doc_aliases})"));
         }
 
         let text_edit = match self.text_edit {
