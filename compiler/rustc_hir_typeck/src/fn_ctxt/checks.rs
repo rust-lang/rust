@@ -21,7 +21,7 @@ use rustc_hir_analysis::astconv::AstConv;
 use rustc_hir_analysis::check::intrinsicck::InlineAsmCtxt;
 use rustc_hir_analysis::check::potentially_plural_count;
 use rustc_hir_analysis::structured_errors::StructuredDiagnostic;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::error_reporting::{FailureCode, ObligationCauseExt};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::TypeTrace;
@@ -31,7 +31,7 @@ use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, IsSuggestable, Ty};
 use rustc_session::Session;
 use rustc_span::symbol::{kw, Ident};
-use rustc_span::{self, sym, Span};
+use rustc_span::{self, sym, BytePos, Span};
 use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext};
 
 use std::iter;
@@ -894,8 +894,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let mut errors = errors.into_iter().peekable();
+        let mut only_extras_so_far = errors
+            .peek()
+            .map_or(false, |first| matches!(first, Error::Extra(arg_idx) if arg_idx.index() == 0));
         let mut suggestions = vec![];
         while let Some(error) = errors.next() {
+            only_extras_so_far &= matches!(error, Error::Extra(_));
+
             match error {
                 Error::Invalid(provided_idx, expected_idx, compatibility) => {
                     let (formal_ty, expected_ty) = formal_and_expected_inputs[expected_idx];
@@ -941,10 +946,37 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if arg_idx.index() > 0
                         && let Some((_, prev)) = provided_arg_tys
                             .get(ProvidedIdx::from_usize(arg_idx.index() - 1)
-                    ) {
-                        // Include previous comma
-                        span = prev.shrink_to_hi().to(span);
-                    }
+                        ) {
+                            // Include previous comma
+                            span = prev.shrink_to_hi().to(span);
+                        }
+
+                        // Is last argument for deletion in a row starting from the 0-th argument?
+                        // Then delete the next comma, so we are not left with `f(, ...)`
+                        //
+                        //     fn f() {}
+                        //   - f(0, 1,)
+                        //   + f()
+                        if only_extras_so_far
+                            && errors
+                                .peek()
+                                .map_or(true, |next_error| !matches!(next_error, Error::Extra(_)))
+                        {
+                            let next = provided_arg_tys
+                                .get(arg_idx.plus(1))
+                                .map(|&(_, sp)| sp)
+                                .unwrap_or_else(|| {
+                                    // Subtract one to move before `)`
+                                    call_expr
+                                        .span
+                                        .shrink_to_hi()
+                                        .with_lo(call_expr.span.hi() - BytePos(1))
+                                });
+
+                            // Include next comma
+                            span = span.until(next);
+                        }
+
                         suggestions.push((span, String::new()));
 
                         suggestion_text = match suggestion_text {
