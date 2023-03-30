@@ -21,9 +21,6 @@ pub trait QueryCache: Sized {
     type Value: Copy + Debug;
 
     /// Checks if the query is already computed and in the cache.
-    /// It returns the shard index and a lock guard to the shard,
-    /// which will be used if the query is not in the cache and we need
-    /// to compute it.
     fn lookup(&self, key: &Self::Key) -> Option<(Self::Value, DepNodeIndex)>;
 
     fn complete(&self, key: Self::Key, value: Self::Value, index: DepNodeIndex);
