@@ -339,12 +339,14 @@ pub fn inner_docs(attrs: &[ast::Attribute]) -> bool {
     attrs.iter().find(|a| a.doc_str().is_some()).map_or(true, |a| a.style == ast::AttrStyle::Inner)
 }
 
-/// Has `#[doc(primitive)]` or `#[doc(keyword)]`.
+/// Has `#[rustc_doc_primitive]` or `#[doc(keyword)]`.
 pub fn has_primitive_or_keyword_docs(attrs: &[ast::Attribute]) -> bool {
     for attr in attrs {
-        if attr.has_name(sym::doc) && let Some(items) = attr.meta_item_list() {
+        if attr.has_name(sym::rustc_doc_primitive) {
+            return true;
+        } else if attr.has_name(sym::doc) && let Some(items) = attr.meta_item_list() {
             for item in items {
-                if item.has_name(sym::primitive) || item.has_name(sym::keyword) {
+                if item.has_name(sym::keyword) {
                     return true;
                 }
             }
