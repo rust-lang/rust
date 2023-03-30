@@ -62,7 +62,7 @@ impl HumanReadableErrorType {
         bundle: Option<Lrc<FluentBundle>>,
         fallback_bundle: Lrc<FluentBundle>,
         teach: bool,
-        terminal_width: Option<usize>,
+        diagnostic_width: Option<usize>,
         macro_backtrace: bool,
     ) -> EmitterWriter {
         let (short, color_config) = self.unzip();
@@ -75,7 +75,7 @@ impl HumanReadableErrorType {
             short,
             teach,
             color,
-            terminal_width,
+            diagnostic_width,
             macro_backtrace,
         )
     }
@@ -699,7 +699,7 @@ pub struct EmitterWriter {
     short_message: bool,
     teach: bool,
     ui_testing: bool,
-    terminal_width: Option<usize>,
+    diagnostic_width: Option<usize>,
 
     macro_backtrace: bool,
 }
@@ -719,7 +719,7 @@ impl EmitterWriter {
         fallback_bundle: Lrc<FluentBundle>,
         short_message: bool,
         teach: bool,
-        terminal_width: Option<usize>,
+        diagnostic_width: Option<usize>,
         macro_backtrace: bool,
     ) -> EmitterWriter {
         let dst = Destination::from_stderr(color_config);
@@ -731,7 +731,7 @@ impl EmitterWriter {
             short_message,
             teach,
             ui_testing: false,
-            terminal_width,
+            diagnostic_width,
             macro_backtrace,
         }
     }
@@ -744,7 +744,7 @@ impl EmitterWriter {
         short_message: bool,
         teach: bool,
         colored: bool,
-        terminal_width: Option<usize>,
+        diagnostic_width: Option<usize>,
         macro_backtrace: bool,
     ) -> EmitterWriter {
         EmitterWriter {
@@ -755,7 +755,7 @@ impl EmitterWriter {
             short_message,
             teach,
             ui_testing: false,
-            terminal_width,
+            diagnostic_width,
             macro_backtrace,
         }
     }
@@ -1593,7 +1593,7 @@ impl EmitterWriter {
                     width_offset + annotated_file.multiline_depth + 1
                 };
 
-                let column_width = if let Some(width) = self.terminal_width {
+                let column_width = if let Some(width) = self.diagnostic_width {
                     width.saturating_sub(code_offset)
                 } else if self.ui_testing {
                     DEFAULT_COLUMN_WIDTH

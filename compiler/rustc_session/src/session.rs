@@ -1106,7 +1106,7 @@ fn default_emitter(
                         fallback_bundle,
                         short,
                         sopts.debugging_opts.teach,
-                        sopts.debugging_opts.terminal_width,
+                        sopts.diagnostic_width,
                         macro_backtrace,
                     ),
                     Some(dst) => EmitterWriter::new(
@@ -1132,7 +1132,7 @@ fn default_emitter(
                 fallback_bundle,
                 pretty,
                 json_rendered,
-                sopts.debugging_opts.terminal_width,
+                sopts.diagnostic_width,
                 macro_backtrace,
             )
             .ui_testing(sopts.debugging_opts.ui_testing),
@@ -1146,7 +1146,7 @@ fn default_emitter(
                 fallback_bundle,
                 pretty,
                 json_rendered,
-                sopts.debugging_opts.terminal_width,
+                sopts.diagnostic_width,
                 macro_backtrace,
             )
             .ui_testing(sopts.debugging_opts.ui_testing),

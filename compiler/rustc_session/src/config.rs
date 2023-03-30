@@ -583,6 +583,7 @@ pub enum PrintRequest {
     NativeStaticLibs,
     StackProtectorStrategies,
     LinkArgs,
+    SplitDebuginfo,
 }
 
 #[derive(Copy, Clone)]
@@ -784,6 +785,7 @@ impl Default for Options {
             borrowck_mode: BorrowckMode::Migrate,
             cg: Default::default(),
             error_format: ErrorOutputType::default(),
+            diagnostic_width: None,
             externs: Externs(BTreeMap::new()),
             extern_dep_specs: ExternDepSpecs(BTreeMap::new()),
             crate_name: None,
@@ -1478,6 +1480,12 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
                                  never  = never colorize output",
             "auto|always|never",
         ),
+        opt::opt_s(
+            "",
+            "diagnostic-width",
+            "Inform rustc of the width of the terminal so that errors can be truncated",
+            "WIDTH",
+        ),
         opt::multi_s(
             "",
             "remap-path-prefix",
@@ -1830,6 +1838,7 @@ fn collect_print_requests(
             }
         }
         "link-args" => PrintRequest::LinkArgs,
+        "split-debuginfo" => PrintRequest::SplitDebuginfo,
         req => early_error(error_format, &format!("unknown print request `{req}`")),
     }));
 
@@ -2323,6 +2332,10 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let error_format = parse_error_format(matches, color, json_rendered);
 
+    let diagnostic_width = matches.opt_get("diagnostic-width").unwrap_or_else(|_| {
+        early_error(error_format, "`--diagnostic-width` must be an positive integer");
+    });
+
     let unparsed_crate_types = matches.opt_strs("crate-type");
     let crate_types = parse_crate_types_from_list(unparsed_crate_types)
         .unwrap_or_else(|e| early_error(error_format, &e));
@@ -2599,6 +2612,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         borrowck_mode,
         cg,
         error_format,
+        diagnostic_width,
         externs,
         unstable_features: UnstableFeatures::from_environment(crate_name.as_deref()),
         extern_dep_specs,

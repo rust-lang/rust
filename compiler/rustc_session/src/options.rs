@@ -170,6 +170,7 @@ top_level_options!(
 
         test: bool [TRACKED],
         error_format: ErrorOutputType [UNTRACKED],
+        diagnostic_width: Option<usize> [UNTRACKED],
 
         /// If `Some`, enable incremental compilation, using the given
         /// directory to store intermediate results.
@@ -1475,7 +1476,7 @@ options! {
         "show extended diagnostic help (default: no)"),
     temps_dir: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "the directory the intermediate files are written to"),
-    terminal_width: Option<usize> = (None, parse_opt_number, [UNTRACKED],
+    diagnostic_width: Option<usize> = (None, parse_opt_number, [UNTRACKED],
         "set the current terminal width"),
     // Diagnostics are considered side-effects of a query (see `QuerySideEffects`) and are saved
     // alongside query results and changes to translation options can affect diagnostics - so
