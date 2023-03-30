@@ -18,7 +18,7 @@ pub(crate) fn generate_header(item: &DiffItem) -> TokenStream {
 
 pub(crate) fn primal_fnc(item: &mut DiffItem) -> TokenStream {
     // construct body of primal if not given
-    let body = item.block.clone().map(|x| quote!(x)).unwrap_or_else(|| {
+    let body = item.block.clone().map(|x| quote!(#x)).unwrap_or_else(|| {
         let header_fnc = &item.header.name;
         //let primal_wrapper = format_ident!("primal_{}", item.primal.ident);
         //item.primal.ident = primal_wrapper.clone();
