@@ -117,7 +117,6 @@ rm tests/ui/simd/simd-bitmask.rs # crash
 # bugs in the test suite
 # ======================
 rm tests/ui/backtrace.rs # TODO warning
-rm tests/ui/simple_global_asm.rs # TODO add needs-asm-support
 rm tests/ui/process/nofile-limit.rs # TODO some AArch64 linking issue
 
 rm tests/ui/stdio-is-blocking.rs # really slow with unoptimized libstd
