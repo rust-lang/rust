@@ -4,6 +4,7 @@
 // ignore-stage-1
 // ignore-cross-compile
 // ignore-remote
+// edition: 2021
 
 #![feature(rustc_private)]
 
@@ -30,16 +31,34 @@ fn test_stable_mir(tcx: TyCtxt<'_>) {
 
     // Find items in the local crate.
     let items = stable_mir::all_local_items();
-    assert!(has_item(tcx, &items, (DefKind::Fn, "foo_bar")));
-    assert!(has_item(tcx, &items, (DefKind::Fn, "foo::bar")));
+    assert!(get_item(tcx, &items, (DefKind::Fn, "foo_bar")).is_some());
+    assert!(get_item(tcx, &items, (DefKind::Fn, "foo::bar")).is_some());
 
     // Find the `std` crate.
     assert!(stable_mir::find_crate("std").is_some());
+
+    let bar = get_item(tcx, &items, (DefKind::Fn, "bar")).unwrap();
+    let body = bar.body();
+    assert_eq!(body.blocks.len(), 1);
+    let block = &body.blocks[0];
+    assert_eq!(block.statements.len(), 1);
+    match &block.statements[0] {
+        stable_mir::mir::Statement::Assign(..) => {}
+        other => panic!("{other:?}"),
+    }
+    match &block.terminator {
+        stable_mir::mir::Terminator::Return => {}
+        other => panic!("{other:?}"),
+    }
 }
 
 // Use internal API to find a function in a crate.
-fn has_item(tcx: TyCtxt, items: &stable_mir::CrateItems, item: (DefKind, &str)) -> bool {
-    items.iter().any(|crate_item| {
+fn get_item<'a>(
+    tcx: TyCtxt,
+    items: &'a stable_mir::CrateItems,
+    item: (DefKind, &str),
+) -> Option<&'a stable_mir::CrateItem> {
+    items.iter().find(|crate_item| {
         let def_id = rustc_internal::item_def_id(crate_item);
         tcx.def_kind(def_id) == item.0 && tcx.def_path_str(def_id) == item.1
     })
@@ -92,6 +111,10 @@ fn generate_input(path: &str) -> std::io::Result<()> {
         pub fn bar(i: i32) -> i64 {{
             i as i64
         }}
+    }}
+
+    pub fn bar(x: i32) -> i32 {{
+        x
     }}
 
     pub fn foo_bar(x: i32, y: i32) -> i64 {{
