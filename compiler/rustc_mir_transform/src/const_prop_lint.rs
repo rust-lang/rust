@@ -9,7 +9,6 @@ use rustc_const_eval::interpret::{
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
-use rustc_index::vec::IndexSlice;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
@@ -130,8 +129,6 @@ struct ConstPropagator<'mir, 'tcx> {
     ecx: InterpCx<'mir, 'tcx, ConstPropMachine<'mir, 'tcx>>,
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
-    source_scopes: &'mir IndexSlice<SourceScope, SourceScopeData<'tcx>>,
-    local_decls: &'mir IndexSlice<Local, LocalDecl<'tcx>>,
     // Because we have `MutVisitor` we can't obtain the `SourceInfo` from a `Location`. So we store
     // the last known `SourceInfo` here and just keep revisiting it.
     source_info: Option<SourceInfo>,
@@ -209,14 +206,15 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         )
         .expect("failed to push initial stack frame");
 
-        ConstPropagator {
-            ecx,
-            tcx,
-            param_env,
-            source_scopes: &dummy_body.source_scopes,
-            local_decls: &dummy_body.local_decls,
-            source_info: None,
-        }
+        ConstPropagator { ecx, tcx, param_env, source_info: None }
+    }
+
+    fn body(&self) -> &'mir Body<'tcx> {
+        self.ecx.frame().body
+    }
+
+    fn local_decls(&self) -> &'mir LocalDecls<'tcx> {
+        &self.body().local_decls
     }
 
     fn get_const(&self, place: Place<'tcx>) -> Option<OpTy<'tcx>> {
@@ -251,7 +249,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     fn lint_root(&self, source_info: SourceInfo) -> Option<HirId> {
-        source_info.scope.lint_root(self.source_scopes)
+        source_info.scope.lint_root(&self.body().source_scopes)
     }
 
     fn use_ecx<F, T>(&mut self, source_info: SourceInfo, f: F) -> Option<T>
@@ -368,7 +366,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             let r = r.clone()?;
             // We need the type of the LHS. We cannot use `place_layout` as that is the type
             // of the result, which for checked binops is not the same!
-            let left_ty = left.ty(self.local_decls, self.tcx);
+            let left_ty = left.ty(self.local_decls(), self.tcx);
             let left_size = self.ecx.layout_of(left_ty).ok()?.size;
             let right_size = r.layout.size;
             let r_bits = r.to_scalar().to_bits(right_size).ok();
@@ -481,10 +479,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         if rvalue.needs_subst() {
             return None;
         }
-        if !rvalue
-            .ty(&self.ecx.frame().body.local_decls, *self.ecx.tcx)
-            .is_sized(*self.ecx.tcx, self.param_env)
-        {
+        if !rvalue.ty(self.local_decls(), self.tcx).is_sized(self.tcx, self.param_env) {
             // the interpreter doesn't support unsized locals (only unsized arguments),
             // but rustc does (in a kinda broken way), so we have to skip them here
             return None;
@@ -498,7 +493,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             assert!(
                 self.get_const(local.into()).is_none()
                     || self
-                        .layout_of(self.local_decls[local].ty)
+                        .layout_of(self.local_decls()[local].ty)
                         .map_or(true, |layout| layout.is_zst()),
                 "failed to remove values for `{local:?}`, value={:?}",
                 self.get_const(local.into()),
