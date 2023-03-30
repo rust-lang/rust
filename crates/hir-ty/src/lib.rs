@@ -7,12 +7,9 @@ macro_rules! eprintln {
     ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
 }
 
-mod autoderef;
 mod builder;
 mod chalk_db;
 mod chalk_ext;
-pub mod consteval;
-pub mod mir;
 mod infer;
 mod inhabitedness;
 mod interner;
@@ -20,14 +17,18 @@ mod lower;
 mod mapping;
 mod tls;
 mod utils;
+
+pub mod autoderef;
+pub mod consteval;
 pub mod db;
 pub mod diagnostics;
 pub mod display;
+pub mod lang_items;
+pub mod layout;
 pub mod method_resolution;
+pub mod mir;
 pub mod primitive;
 pub mod traits;
-pub mod layout;
-pub mod lang_items;
 
 #[cfg(test)]
 mod tests;
@@ -51,16 +52,14 @@ use rustc_hash::FxHashSet;
 use traits::FnTrait;
 use utils::Generics;
 
-use crate::{
-    consteval::unknown_const, db::HirDatabase, infer::unify::InferenceTable, utils::generics,
-};
+use crate::{consteval::unknown_const, db::HirDatabase, utils::generics};
 
-pub use autoderef::autoderef;
+pub use autoderef::Autoderef;
 pub use builder::{ParamKind, TyBuilder};
 pub use chalk_ext::*;
 pub use infer::{
-    could_coerce, could_unify, Adjust, Adjustment, AutoBorrow, BindingMode, InferenceDiagnostic,
-    InferenceResult, OverloadedDeref, PointerCast,
+    could_coerce, could_unify, unify::InferenceTable, Adjust, Adjustment, AutoBorrow, BindingMode,
+    InferenceDiagnostic, InferenceResult, OverloadedDeref, PointerCast,
 };
 pub use interner::Interner;
 pub use lower::{

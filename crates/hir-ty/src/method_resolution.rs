@@ -7,9 +7,8 @@ use std::{ops::ControlFlow, sync::Arc};
 use base_db::{CrateId, Edition};
 use chalk_ir::{cast::Cast, Mutability, TyKind, UniverseIndex, WhereClause};
 use hir_def::{
-    data::ImplData, item_scope::ItemScope, lang_item::LangItem, nameres::DefMap, AssocItemId,
-    BlockId, ConstId, FunctionId, HasModule, ImplId, ItemContainerId, Lookup, ModuleDefId,
-    ModuleId, TraitId,
+    data::ImplData, item_scope::ItemScope, nameres::DefMap, AssocItemId, BlockId, ConstId,
+    FunctionId, HasModule, ImplId, ItemContainerId, Lookup, ModuleDefId, ModuleId, TraitId,
 };
 use hir_expand::name::Name;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -449,55 +448,6 @@ pub fn def_crates(
         )),
         _ => None,
     }
-}
-
-pub fn lang_items_for_bin_op(op: syntax::ast::BinaryOp) -> Option<(Name, LangItem)> {
-    use hir_expand::name;
-    use syntax::ast::{ArithOp, BinaryOp, CmpOp, Ordering};
-    Some(match op {
-        BinaryOp::LogicOp(_) => return None,
-        BinaryOp::ArithOp(aop) => match aop {
-            ArithOp::Add => (name![add], LangItem::Add),
-            ArithOp::Mul => (name![mul], LangItem::Mul),
-            ArithOp::Sub => (name![sub], LangItem::Sub),
-            ArithOp::Div => (name![div], LangItem::Div),
-            ArithOp::Rem => (name![rem], LangItem::Rem),
-            ArithOp::Shl => (name![shl], LangItem::Shl),
-            ArithOp::Shr => (name![shr], LangItem::Shr),
-            ArithOp::BitXor => (name![bitxor], LangItem::BitXor),
-            ArithOp::BitOr => (name![bitor], LangItem::BitOr),
-            ArithOp::BitAnd => (name![bitand], LangItem::BitAnd),
-        },
-        BinaryOp::Assignment { op: Some(aop) } => match aop {
-            ArithOp::Add => (name![add_assign], LangItem::AddAssign),
-            ArithOp::Mul => (name![mul_assign], LangItem::MulAssign),
-            ArithOp::Sub => (name![sub_assign], LangItem::SubAssign),
-            ArithOp::Div => (name![div_assign], LangItem::DivAssign),
-            ArithOp::Rem => (name![rem_assign], LangItem::RemAssign),
-            ArithOp::Shl => (name![shl_assign], LangItem::ShlAssign),
-            ArithOp::Shr => (name![shr_assign], LangItem::ShrAssign),
-            ArithOp::BitXor => (name![bitxor_assign], LangItem::BitXorAssign),
-            ArithOp::BitOr => (name![bitor_assign], LangItem::BitOrAssign),
-            ArithOp::BitAnd => (name![bitand_assign], LangItem::BitAndAssign),
-        },
-        BinaryOp::CmpOp(cop) => match cop {
-            CmpOp::Eq { negated: false } => (name![eq], LangItem::PartialEq),
-            CmpOp::Eq { negated: true } => (name![ne], LangItem::PartialEq),
-            CmpOp::Ord { ordering: Ordering::Less, strict: false } => {
-                (name![le], LangItem::PartialOrd)
-            }
-            CmpOp::Ord { ordering: Ordering::Less, strict: true } => {
-                (name![lt], LangItem::PartialOrd)
-            }
-            CmpOp::Ord { ordering: Ordering::Greater, strict: false } => {
-                (name![ge], LangItem::PartialOrd)
-            }
-            CmpOp::Ord { ordering: Ordering::Greater, strict: true } => {
-                (name![gt], LangItem::PartialOrd)
-            }
-        },
-        BinaryOp::Assignment { op: None } => return None,
-    })
 }
 
 /// Look up the method with the given name.
@@ -1310,16 +1260,18 @@ fn iterate_inherent_methods(
 /// Returns the receiver type for the index trait call.
 pub fn resolve_indexing_op(
     db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+    table: &mut InferenceTable<'_>,
     ty: Canonical<Ty>,
     index_trait: TraitId,
 ) -> Option<ReceiverAdjustments> {
-    let mut table = InferenceTable::new(db, env.clone());
     let ty = table.instantiate_canonical(ty);
-    let deref_chain = autoderef_method_receiver(&mut table, ty);
+    let deref_chain = autoderef_method_receiver(table, ty);
     for (ty, adj) in deref_chain {
-        let goal = generic_implements_goal(db, env.clone(), index_trait, &ty);
-        if db.trait_solve(env.krate, env.block, goal.cast(Interner)).is_some() {
+        let goal = generic_implements_goal(db, table.trait_env.clone(), index_trait, &ty);
+        if db
+            .trait_solve(table.trait_env.krate, table.trait_env.block, goal.cast(Interner))
+            .is_some()
+        {
             return Some(adj);
         }
     }
