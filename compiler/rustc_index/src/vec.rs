@@ -5,7 +5,7 @@ use std::fmt;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
-use std::ops::{Index, IndexMut, RangeBounds};
+use std::ops::{Deref, DerefMut, Index, IndexMut, RangeBounds};
 use std::slice;
 use std::vec;
 
@@ -52,14 +52,26 @@ impl Idx for u32 {
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
+#[repr(transparent)]
 pub struct IndexVec<I: Idx, T> {
     pub raw: Vec<T>,
     _marker: PhantomData<fn(&I)>,
 }
 
+#[derive(PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct IndexSlice<I: Idx, T> {
+    _marker: PhantomData<fn(&I)>,
+    pub raw: [T],
+}
+
 // Whether `IndexVec` is `Send` depends only on the data,
 // not the phantom data.
 unsafe impl<I: Idx, T> Send for IndexVec<I, T> where T: Send {}
+
+// Whether `IndexSlice` is `Send` depends only on the data,
+// not the phantom data.
+unsafe impl<I: Idx, T> Send for IndexSlice<I, T> where T: Send {}
 
 #[cfg(feature = "rustc_serialize")]
 impl<S: Encoder, I: Idx, T: Encodable<S>> Encodable<S> for IndexVec<I, T> {
@@ -123,6 +135,16 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
+    pub fn as_slice(&self) -> &IndexSlice<I, T> {
+        IndexSlice::from_raw(&self.raw)
+    }
+
+    #[inline]
+    pub fn as_mut_slice(&mut self) -> &mut IndexSlice<I, T> {
+        IndexSlice::from_raw_mut(&mut self.raw)
+    }
+
+    #[inline]
     pub fn push(&mut self, d: T) -> I {
         let idx = I::new(self.len());
         self.raw.push(d);
@@ -135,23 +157,6 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn len(&self) -> usize {
-        self.raw.len()
-    }
-
-    /// Gives the next index that will be assigned when `push` is
-    /// called.
-    #[inline]
-    pub fn next_index(&self) -> I {
-        I::new(self.len())
-    }
-
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.raw.is_empty()
-    }
-
-    #[inline]
     pub fn into_iter(self) -> vec::IntoIter<T> {
         self.raw.into_iter()
     }
@@ -161,6 +166,110 @@ impl<I: Idx, T> IndexVec<I, T> {
         self,
     ) -> impl DoubleEndedIterator<Item = (I, T)> + ExactSizeIterator {
         self.raw.into_iter().enumerate().map(|(n, t)| (I::new(n), t))
+    }
+
+    #[inline]
+    pub fn drain<'a, R: RangeBounds<usize>>(
+        &'a mut self,
+        range: R,
+    ) -> impl Iterator<Item = T> + 'a {
+        self.raw.drain(range)
+    }
+
+    #[inline]
+    pub fn drain_enumerated<'a, R: RangeBounds<usize>>(
+        &'a mut self,
+        range: R,
+    ) -> impl Iterator<Item = (I, T)> + 'a {
+        let begin = match range.start_bound() {
+            std::ops::Bound::Included(i) => *i,
+            std::ops::Bound::Excluded(i) => i.checked_add(1).unwrap(),
+            std::ops::Bound::Unbounded => 0,
+        };
+        self.raw.drain(range).enumerate().map(move |(n, t)| (I::new(begin + n), t))
+    }
+
+    #[inline]
+    pub fn shrink_to_fit(&mut self) {
+        self.raw.shrink_to_fit()
+    }
+
+    #[inline]
+    pub fn truncate(&mut self, a: usize) {
+        self.raw.truncate(a)
+    }
+
+    pub fn convert_index_type<Ix: Idx>(self) -> IndexVec<Ix, T> {
+        IndexVec { raw: self.raw, _marker: PhantomData }
+    }
+
+    /// Grows the index vector so that it contains an entry for
+    /// `elem`; if that is already true, then has no
+    /// effect. Otherwise, inserts new values as needed by invoking
+    /// `fill_value`.
+    #[inline]
+    pub fn ensure_contains_elem(&mut self, elem: I, fill_value: impl FnMut() -> T) {
+        let min_new_len = elem.index() + 1;
+        if self.len() < min_new_len {
+            self.raw.resize_with(min_new_len, fill_value);
+        }
+    }
+
+    #[inline]
+    pub fn resize_to_elem(&mut self, elem: I, fill_value: impl FnMut() -> T) {
+        let min_new_len = elem.index() + 1;
+        self.raw.resize_with(min_new_len, fill_value);
+    }
+}
+
+impl<I: Idx, T> Deref for IndexVec<I, T> {
+    type Target = IndexSlice<I, T>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        self.as_slice()
+    }
+}
+
+impl<I: Idx, T> DerefMut for IndexVec<I, T> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.as_mut_slice()
+    }
+}
+
+impl<I: Idx, T> IndexSlice<I, T> {
+    #[inline]
+    pub fn from_raw(raw: &[T]) -> &Self {
+        let ptr: *const [T] = raw;
+        // SAFETY: `IndexSlice` is `repr(transparent)` over a normal slice
+        unsafe { &*(ptr as *const Self) }
+    }
+
+    #[inline]
+    pub fn from_raw_mut(raw: &mut [T]) -> &mut Self {
+        let ptr: *mut [T] = raw;
+        // SAFETY: `IndexSlice` is `repr(transparent)` over a normal slice
+        unsafe { &mut *(ptr as *mut Self) }
+    }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.raw.len()
+    }
+
+    /// Gives the next index that will be assigned when `push` is called.
+    ///
+    /// Manual bounds checks can be done using `idx < slice.next_index()`
+    /// (as opposed to `idx.index() < slice.len()`).
+    #[inline]
+    pub fn next_index(&self) -> I {
+        I::new(self.len())
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.raw.is_empty()
     }
 
     #[inline]
@@ -195,44 +304,13 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn drain<'a, R: RangeBounds<usize>>(
-        &'a mut self,
-        range: R,
-    ) -> impl Iterator<Item = T> + 'a {
-        self.raw.drain(range)
-    }
-
-    #[inline]
-    pub fn drain_enumerated<'a, R: RangeBounds<usize>>(
-        &'a mut self,
-        range: R,
-    ) -> impl Iterator<Item = (I, T)> + 'a {
-        let begin = match range.start_bound() {
-            std::ops::Bound::Included(i) => *i,
-            std::ops::Bound::Excluded(i) => i.checked_add(1).unwrap(),
-            std::ops::Bound::Unbounded => 0,
-        };
-        self.raw.drain(range).enumerate().map(move |(n, t)| (I::new(begin + n), t))
-    }
-
-    #[inline]
     pub fn last_index(&self) -> Option<I> {
         self.len().checked_sub(1).map(I::new)
     }
 
     #[inline]
-    pub fn shrink_to_fit(&mut self) {
-        self.raw.shrink_to_fit()
-    }
-
-    #[inline]
     pub fn swap(&mut self, a: I, b: I) {
         self.raw.swap(a.index(), b.index())
-    }
-
-    #[inline]
-    pub fn truncate(&mut self, a: usize) {
-        self.raw.truncate(a)
     }
 
     #[inline]
@@ -274,28 +352,6 @@ impl<I: Idx, T> IndexVec<I, T> {
         let ptr = self.raw.as_mut_ptr();
         unsafe { (&mut *ptr.add(ai), &mut *ptr.add(bi), &mut *ptr.add(ci)) }
     }
-
-    pub fn convert_index_type<Ix: Idx>(self) -> IndexVec<Ix, T> {
-        IndexVec { raw: self.raw, _marker: PhantomData }
-    }
-
-    /// Grows the index vector so that it contains an entry for
-    /// `elem`; if that is already true, then has no
-    /// effect. Otherwise, inserts new values as needed by invoking
-    /// `fill_value`.
-    #[inline]
-    pub fn ensure_contains_elem(&mut self, elem: I, fill_value: impl FnMut() -> T) {
-        let min_new_len = elem.index() + 1;
-        if self.len() < min_new_len {
-            self.raw.resize_with(min_new_len, fill_value);
-        }
-    }
-
-    #[inline]
-    pub fn resize_to_elem(&mut self, elem: I, fill_value: impl FnMut() -> T) {
-        let min_new_len = elem.index() + 1;
-        self.raw.resize_with(min_new_len, fill_value);
-    }
 }
 
 /// `IndexVec` is often used as a map, so it provides some map-like APIs.
@@ -336,7 +392,7 @@ impl<I: Idx, T: Ord> IndexVec<I, T> {
     }
 }
 
-impl<I: Idx, T> Index<I> for IndexVec<I, T> {
+impl<I: Idx, T> Index<I> for IndexSlice<I, T> {
     type Output = T;
 
     #[inline]
@@ -345,7 +401,7 @@ impl<I: Idx, T> Index<I> for IndexVec<I, T> {
     }
 }
 
-impl<I: Idx, T> IndexMut<I> for IndexVec<I, T> {
+impl<I: Idx, T> IndexMut<I> for IndexSlice<I, T> {
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut T {
         &mut self.raw[index.index()]
@@ -356,6 +412,20 @@ impl<I: Idx, T> Default for IndexVec<I, T> {
     #[inline]
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl<I: Idx, T> Default for &IndexSlice<I, T> {
+    #[inline]
+    fn default() -> Self {
+        IndexSlice::from_raw(Default::default())
+    }
+}
+
+impl<I: Idx, T> Default for &mut IndexSlice<I, T> {
+    #[inline]
+    fn default() -> Self {
+        IndexSlice::from_raw_mut(Default::default())
     }
 }
 
@@ -409,6 +479,26 @@ impl<'a, I: Idx, T> IntoIterator for &'a IndexVec<I, T> {
 }
 
 impl<'a, I: Idx, T> IntoIterator for &'a mut IndexVec<I, T> {
+    type Item = &'a mut T;
+    type IntoIter = slice::IterMut<'a, T>;
+
+    #[inline]
+    fn into_iter(self) -> slice::IterMut<'a, T> {
+        self.raw.iter_mut()
+    }
+}
+
+impl<'a, I: Idx, T> IntoIterator for &'a IndexSlice<I, T> {
+    type Item = &'a T;
+    type IntoIter = slice::Iter<'a, T>;
+
+    #[inline]
+    fn into_iter(self) -> slice::Iter<'a, T> {
+        self.raw.iter()
+    }
+}
+
+impl<'a, I: Idx, T> IntoIterator for &'a mut IndexSlice<I, T> {
     type Item = &'a mut T;
     type IntoIter = slice::IterMut<'a, T>;
 
