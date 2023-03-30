@@ -580,18 +580,6 @@ impl<T> RwLock<T> {
 
     #[cfg(not(parallel_compiler))]
     #[inline(always)]
-    pub fn clone_guard<'a>(rg: &ReadGuard<'a, T>) -> ReadGuard<'a, T> {
-        ReadGuard::clone(rg)
-    }
-
-    #[cfg(parallel_compiler)]
-    #[inline(always)]
-    pub fn clone_guard<'a>(rg: &ReadGuard<'a, T>) -> ReadGuard<'a, T> {
-        ReadGuard::rwlock(&rg).read()
-    }
-
-    #[cfg(not(parallel_compiler))]
-    #[inline(always)]
     pub fn leak(&self) -> &T {
         ReadGuard::leak(self.read())
     }
