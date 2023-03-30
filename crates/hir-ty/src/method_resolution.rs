@@ -1263,14 +1263,15 @@ fn iterate_inherent_methods(
 }
 
 /// Returns the receiver type for the index trait call.
-pub fn resolve_indexing_op(
+pub(crate) fn resolve_indexing_op(
     db: &dyn HirDatabase,
-    table: &mut InferenceTable<'_>,
+    env: Arc<TraitEnvironment>,
     ty: Canonical<Ty>,
     index_trait: TraitId,
 ) -> Option<ReceiverAdjustments> {
+    let mut table = InferenceTable::new(db, env.clone());
     let ty = table.instantiate_canonical(ty);
-    let deref_chain = autoderef_method_receiver(table, ty);
+    let deref_chain = autoderef_method_receiver(&mut table, ty);
     for (ty, adj) in deref_chain {
         let goal = generic_implements_goal(db, table.trait_env.clone(), index_trait, &ty);
         if db

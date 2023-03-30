@@ -52,14 +52,16 @@ use rustc_hash::FxHashSet;
 use traits::FnTrait;
 use utils::Generics;
 
-use crate::{consteval::unknown_const, db::HirDatabase, utils::generics};
+use crate::{
+    consteval::unknown_const, db::HirDatabase, infer::unify::InferenceTable, utils::generics,
+};
 
-pub use autoderef::Autoderef;
+pub use autoderef::autoderef;
 pub use builder::{ParamKind, TyBuilder};
 pub use chalk_ext::*;
 pub use infer::{
-    could_coerce, could_unify, unify::InferenceTable, Adjust, Adjustment, AutoBorrow, BindingMode,
-    InferenceDiagnostic, InferenceResult, OverloadedDeref, PointerCast,
+    could_coerce, could_unify, Adjust, Adjustment, AutoBorrow, BindingMode, InferenceDiagnostic,
+    InferenceResult, OverloadedDeref, PointerCast,
 };
 pub use interner::Interner;
 pub use lower::{

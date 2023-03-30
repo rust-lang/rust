@@ -57,7 +57,7 @@ use hir_def::{
 };
 use hir_expand::{name::name, MacroCallKind};
 use hir_ty::{
-    all_super_traits,
+    all_super_traits, autoderef,
     consteval::{try_const_usize, unknown_const_as_generic, ConstEvalError, ConstExt},
     diagnostics::BodyValidationDiagnostic,
     display::HexifiedConst,
@@ -66,10 +66,9 @@ use hir_ty::{
     mir::{self, interpret_mir},
     primitive::UintTy,
     traits::FnTrait,
-    AliasTy, Autoderef, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast, ClosureId,
-    GenericArgData, InferenceTable, Interner, ParamKind, QuantifiedWhereClause, Scalar,
-    Substitution, TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyDefId, TyExt, TyKind,
-    WhereClause,
+    AliasTy, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast, ClosureId,
+    GenericArgData, Interner, ParamKind, QuantifiedWhereClause, Scalar, Substitution,
+    TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyDefId, TyExt, TyKind, WhereClause,
 };
 use itertools::Itertools;
 use nameres::diagnostics::DefDiagnosticKind;
@@ -3518,15 +3517,7 @@ impl Type {
     fn autoderef_<'a>(&'a self, db: &'a dyn HirDatabase) -> impl Iterator<Item = Ty> + 'a {
         // There should be no inference vars in types passed here
         let canonical = hir_ty::replace_errors_with_variables(&self.ty);
-
-        let mut table = InferenceTable::new(db, self.env.clone());
-        let ty = table.instantiate_canonical(canonical);
-        let mut autoderef = Autoderef::new(&mut table, ty);
-        let mut v = Vec::new();
-        while let Some((ty, _steps)) = autoderef.next() {
-            v.push(autoderef.table.canonicalize(ty).value);
-        }
-        v.into_iter().map(|canonical| canonical.value)
+        autoderef(db, self.env.clone(), canonical).map(|canonical| canonical.value)
     }
 
     // This would be nicer if it just returned an iterator, but that runs into
