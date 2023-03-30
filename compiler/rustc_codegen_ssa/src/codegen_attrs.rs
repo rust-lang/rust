@@ -89,44 +89,39 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         };
 
         match name {
-            sym::cold => {
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD;
-            }
-            sym::rustc_allocator => {
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR;
-            }
+            sym::cold => codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD,
+            sym::rustc_allocator => codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR,
             sym::ffi_returns_twice => {
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_RETURNS_TWICE;
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_RETURNS_TWICE
             }
-            sym::ffi_pure => {
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_PURE;
-            }
-            sym::ffi_const => {
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_CONST;
-            }
-            sym::rustc_nounwind => {
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND;
-            }
-            sym::rustc_reallocator => {
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::REALLOCATOR;
-            }
-            sym::rustc_deallocator => {
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::DEALLOCATOR;
-            }
+            sym::ffi_pure => codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_PURE,
+            sym::ffi_const => codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_CONST,
+            sym::rustc_nounwind => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND,
+            sym::rustc_reallocator => codegen_fn_attrs.flags |= CodegenFnAttrFlags::REALLOCATOR,
+            sym::rustc_deallocator => codegen_fn_attrs.flags |= CodegenFnAttrFlags::DEALLOCATOR,
             sym::rustc_allocator_zeroed => {
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR_ZEROED;
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR_ZEROED
             }
-            sym::naked => {
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED;
-            }
+            sym::naked => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED,
             sym::no_mangle => {
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
+                if tcx.opt_item_name(did.to_def_id()).is_some() {
+                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE
+                } else {
+                    tcx.sess
+                        .struct_span_err(
+                            attr.span,
+                            format!(
+                                "`#[no_mangle]` cannot be used on {} {} as it has no name",
+                                tcx.def_descr_article(did.to_def_id()),
+                                tcx.def_descr(did.to_def_id()),
+                            ),
+                        )
+                        .emit();
+                }
             }
-            sym::no_coverage => {
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_COVERAGE;
-            }
+            sym::no_coverage => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_COVERAGE,
             sym::rustc_std_internal_symbol => {
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL
             }
             sym::used => {
                 let inner = attr.meta_item_list();
@@ -207,11 +202,9 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     struct_span_err!(tcx.sess, attr.span, E0775, "`#[cmse_nonsecure_entry]` is only valid for targets with the TrustZone-M extension")
                     .emit();
                 }
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::CMSE_NONSECURE_ENTRY;
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::CMSE_NONSECURE_ENTRY
             }
-            sym::thread_local => {
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL;
-            }
+            sym::thread_local => codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL,
             sym::track_caller => {
                 if !tcx.is_closure(did.to_def_id())
                     && let Some(fn_sig) = fn_sig()
@@ -229,7 +222,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     )
                     .emit();
                 }
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER
             }
             sym::export_name => {
                 if let Some(s) = attr.value_str() {
@@ -306,20 +299,14 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             sym::link_section => {
                 if let Some(val) = attr.value_str() {
                     if val.as_str().bytes().any(|b| b == 0) {
-                        let msg = format!(
-                            "illegal null byte in link_section \
-                             value: `{}`",
-                            &val
-                        );
+                        let msg = format!("illegal null byte in link_section value: `{}`", &val);
                         tcx.sess.span_err(attr.span, &msg);
                     } else {
                         codegen_fn_attrs.link_section = Some(val);
                     }
                 }
             }
-            sym::link_name => {
-                codegen_fn_attrs.link_name = attr.value_str();
-            }
+            sym::link_name => codegen_fn_attrs.link_name = attr.value_str(),
             sym::link_ordinal => {
                 link_ordinal_span = Some(attr.span);
                 if let ordinal @ Some(_) = check_link_ordinal(tcx, attr) {
@@ -330,37 +317,27 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 no_sanitize_span = Some(attr.span);
                 if let Some(list) = attr.meta_item_list() {
                     for item in list.iter() {
-                        match item.ident().map(|ident| ident.name) {
-                            Some(sym::address) => {
+                        match item.name_or_empty() {
+                            sym::address => {
                                 codegen_fn_attrs.no_sanitize |=
-                                    SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS;
+                                    SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS
                             }
-                            Some(sym::cfi) => {
-                                codegen_fn_attrs.no_sanitize |= SanitizerSet::CFI;
+                            sym::cfi => codegen_fn_attrs.no_sanitize |= SanitizerSet::CFI,
+                            sym::kcfi => codegen_fn_attrs.no_sanitize |= SanitizerSet::KCFI,
+                            sym::memory => codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMORY,
+                            sym::memtag => codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMTAG,
+                            sym::shadow_call_stack => {
+                                codegen_fn_attrs.no_sanitize |= SanitizerSet::SHADOWCALLSTACK
                             }
-                            Some(sym::kcfi) => {
-                                codegen_fn_attrs.no_sanitize |= SanitizerSet::KCFI;
-                            }
-                            Some(sym::memory) => {
-                                codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMORY;
-                            }
-                            Some(sym::memtag) => {
-                                codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMTAG;
-                            }
-                            Some(sym::shadow_call_stack) => {
-                                codegen_fn_attrs.no_sanitize |= SanitizerSet::SHADOWCALLSTACK;
-                            }
-                            Some(sym::thread) => {
-                                codegen_fn_attrs.no_sanitize |= SanitizerSet::THREAD;
-                            }
-                            Some(sym::hwaddress) => {
-                                codegen_fn_attrs.no_sanitize |= SanitizerSet::HWADDRESS;
+                            sym::thread => codegen_fn_attrs.no_sanitize |= SanitizerSet::THREAD,
+                            sym::hwaddress => {
+                                codegen_fn_attrs.no_sanitize |= SanitizerSet::HWADDRESS
                             }
                             _ => {
                                 tcx.sess
-                                .struct_span_err(item.span(), "invalid argument for `no_sanitize`")
-                                .note("expected one of: `address`, `cfi`, `hwaddress`, `kcfi`, `memory`, `memtag`, `shadow-call-stack`, or `thread`")
-                                .emit();
+                                    .struct_span_err(item.span(), "invalid argument for `no_sanitize`")
+                                    .note("expected one of: `address`, `cfi`, `hwaddress`, `kcfi`, `memory`, `memtag`, `shadow-call-stack`, or `thread`")
+                                    .emit();
                             }
                         }
                     }
