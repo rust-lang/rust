@@ -379,7 +379,7 @@ impl HirDisplay for Pat {
             }
             PatKind::Deref { subpattern } => {
                 match self.ty.kind(Interner) {
-                    TyKind::Adt(adt, _) if is_box(adt.0, f.db) => write!(f, "box ")?,
+                    TyKind::Adt(adt, _) if is_box(f.db, adt.0) => write!(f, "box ")?,
                     &TyKind::Ref(mutbl, ..) => {
                         write!(f, "&{}", if mutbl == Mutability::Mut { "mut " } else { "" })?
                     }

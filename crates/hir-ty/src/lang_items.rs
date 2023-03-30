@@ -1,22 +1,18 @@
 //! Functions to detect special lang items
 
-use hir_def::{lang_item::LangItem, AdtId, HasModule};
+use hir_def::{adt::StructFlags, lang_item::LangItem, AdtId};
 use hir_expand::name::Name;
 
 use crate::db::HirDatabase;
 
-pub fn is_box(adt: AdtId, db: &dyn HirDatabase) -> bool {
-    let krate = adt.module(db.upcast()).krate();
-    let box_adt =
-        db.lang_item(krate, LangItem::OwnedBox).and_then(|it| it.as_struct()).map(AdtId::from);
-    Some(adt) == box_adt
+pub fn is_box(db: &dyn HirDatabase, adt: AdtId) -> bool {
+    let AdtId::StructId(id) = adt else { return false };
+    db.struct_data(id).flags.contains(StructFlags::IS_UNSAFE_CELL)
 }
 
-pub fn is_unsafe_cell(adt: AdtId, db: &dyn HirDatabase) -> bool {
-    let krate = adt.module(db.upcast()).krate();
-    let box_adt =
-        db.lang_item(krate, LangItem::UnsafeCell).and_then(|it| it.as_struct()).map(AdtId::from);
-    Some(adt) == box_adt
+pub fn is_unsafe_cell(db: &dyn HirDatabase, adt: AdtId) -> bool {
+    let AdtId::StructId(id) = adt else { return false };
+    db.struct_data(id).flags.contains(StructFlags::IS_UNSAFE_CELL)
 }
 
 pub fn lang_items_for_bin_op(op: syntax::ast::BinaryOp) -> Option<(Name, LangItem)> {

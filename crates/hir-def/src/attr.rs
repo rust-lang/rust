@@ -20,6 +20,7 @@ use syntax::{
 use crate::{
     db::DefDatabase,
     item_tree::{AttrOwner, Fields, ItemTreeId, ItemTreeNode},
+    lang_item::LangItem,
     nameres::{ModuleOrigin, ModuleSource},
     src::{HasChildSource, HasSource},
     AdtId, AttrDefId, EnumId, GenericParamId, LocalEnumVariantId, LocalFieldId, Lookup, MacroId,
@@ -177,13 +178,13 @@ impl Attrs {
 
         Arc::new(res)
     }
-
-    pub fn by_key(&self, key: &'static str) -> AttrQuery<'_> {
-        AttrQuery { attrs: self, key }
-    }
 }
 
 impl Attrs {
+    pub fn by_key(&self, key: &'static str) -> AttrQuery<'_> {
+        AttrQuery { attrs: self, key }
+    }
+
     pub fn cfg(&self) -> Option<CfgExpr> {
         let mut cfgs = self.by_key("cfg").tt_values().map(CfgExpr::parse);
         let first = cfgs.next()?;
@@ -204,6 +205,10 @@ impl Attrs {
 
     pub fn lang(&self) -> Option<&SmolStr> {
         self.by_key("lang").string_value()
+    }
+
+    pub fn lang_item(&self) -> Option<LangItem> {
+        self.by_key("lang").string_value().and_then(|it| LangItem::from_str(it))
     }
 
     pub fn docs(&self) -> Option<Documentation> {

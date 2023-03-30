@@ -71,7 +71,7 @@ pub fn layout_of_adt_query(
             &repr,
             &variants,
             is_enum,
-            is_unsafe_cell(def, db),
+            is_unsafe_cell(db, def),
             layout_scalar_valid_range(db, def),
             |min, max| Integer::repr_discr(&dl, &repr, min, max).unwrap_or((Integer::I8, false)),
             variants.iter_enumerated().filter_map(|(id, _)| {
