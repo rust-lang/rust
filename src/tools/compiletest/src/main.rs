@@ -12,6 +12,7 @@ use build_helper::git::{get_git_modified_files, get_git_untracked_files};
 use core::panic;
 use getopts::Options;
 use lazycell::LazyCell;
+use std::collections::BTreeSet;
 use std::ffi::OsString;
 use std::fs;
 use std::io::{self, ErrorKind};
@@ -409,7 +410,9 @@ pub fn run_tests(config: Config) {
 
     let mut tests = Vec::new();
     for c in &configs {
-        make_tests(c, &mut tests);
+        let mut found_paths = BTreeSet::new();
+        make_tests(c, &mut tests, &mut found_paths);
+        check_overlapping_tests(&found_paths);
     }
 
     tests.sort_by(|a, b| a.desc.name.as_slice().cmp(&b.desc.name.as_slice()));
@@ -535,7 +538,11 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
     }
 }
 
-pub fn make_tests(config: &Config, tests: &mut Vec<test::TestDescAndFn>) {
+pub fn make_tests(
+    config: &Config,
+    tests: &mut Vec<test::TestDescAndFn>,
+    found_paths: &mut BTreeSet<PathBuf>,
+) {
     debug!("making tests from {:?}", config.src_base.display());
     let inputs = common_inputs_stamp(config);
     let modified_tests = modified_tests(config, &config.src_base).unwrap_or_else(|err| {
@@ -547,6 +554,7 @@ pub fn make_tests(config: &Config, tests: &mut Vec<test::TestDescAndFn>) {
         &PathBuf::new(),
         &inputs,
         tests,
+        found_paths,
         &modified_tests,
     )
     .unwrap_or_else(|_| panic!("Could not read tests from {}", config.src_base.display()));
@@ -617,6 +625,7 @@ fn collect_tests_from_dir(
     relative_dir_path: &Path,
     inputs: &Stamp,
     tests: &mut Vec<test::TestDescAndFn>,
+    found_paths: &mut BTreeSet<PathBuf>,
     modified_tests: &Vec<PathBuf>,
 ) -> io::Result<()> {
     // Ignore directories that contain a file named `compiletest-ignore-dir`.
@@ -650,6 +659,8 @@ fn collect_tests_from_dir(
         let file_name = file.file_name();
         if is_test(&file_name) && (!config.only_modified || modified_tests.contains(&file_path)) {
             debug!("found test file: {:?}", file_path.display());
+            let rel_test_path = relative_dir_path.join(file_path.file_stem().unwrap());
+            found_paths.insert(rel_test_path);
             let paths =
                 TestPaths { file: file_path, relative_dir: relative_dir_path.to_path_buf() };
 
@@ -664,6 +675,7 @@ fn collect_tests_from_dir(
                     &relative_file_path,
                     inputs,
                     tests,
+                    found_paths,
                     modified_tests,
                 )?;
             }
@@ -1078,4 +1090,25 @@ fn extract_lldb_version(full_version_line: &str) -> Option<(u32, bool)> {
 
 fn not_a_digit(c: char) -> bool {
     !c.is_digit(10)
+}
+
+fn check_overlapping_tests(found_paths: &BTreeSet<PathBuf>) {
+    let mut collisions = Vec::new();
+    for path in found_paths {
+        for ancestor in path.ancestors().skip(1) {
+            if found_paths.contains(ancestor) {
+                collisions.push((path, ancestor.clone()));
+            }
+        }
+    }
+    if !collisions.is_empty() {
+        let collisions: String = collisions
+            .into_iter()
+            .map(|(path, check_parent)| format!("test {path:?} clashes with {check_parent:?}\n"))
+            .collect();
+        panic!(
+            "{collisions}\n\
+            Tests cannot have overlapping names. Make sure they use unique prefixes."
+        );
+    }
 }

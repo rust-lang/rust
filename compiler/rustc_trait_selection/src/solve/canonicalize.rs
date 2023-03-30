@@ -291,7 +291,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
                 if nt != t {
                     return self.fold_ty(nt);
                 } else {
-                    CanonicalVarKind::Ty(CanonicalTyVarKind::Int)
+                    CanonicalVarKind::Ty(CanonicalTyVarKind::Float)
                 }
             }
             ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
