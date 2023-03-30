@@ -434,11 +434,6 @@ impl Step for Llvm {
             }
         }
 
-        // Workaround for ppc32 lld limitation
-        if target == "powerpc-unknown-freebsd" {
-            ldflags.exe.push(" -fuse-ld=bfd");
-        }
-
         // https://llvm.org/docs/HowToCrossCompileLLVM.html
         if target != builder.config.build {
             let LlvmResult { llvm_config, .. } =
