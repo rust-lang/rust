@@ -68,6 +68,7 @@ fn current_dll_path() -> Result<PathBuf, String> {
     use std::ffi::{CStr, OsStr};
     use std::os::unix::prelude::*;
 
+    #[cfg(not(target_os = "aix"))]
     unsafe {
         let addr = current_dll_path as usize as *mut _;
         let mut info = std::mem::zeroed();
@@ -80,6 +81,49 @@ fn current_dll_path() -> Result<PathBuf, String> {
         let bytes = CStr::from_ptr(info.dli_fname).to_bytes();
         let os = OsStr::from_bytes(bytes);
         Ok(PathBuf::from(os))
+    }
+
+    #[cfg(target_os = "aix")]
+    unsafe {
+        // On AIX, the symbol `current_dll_path` references a function descriptor.
+        // A function descriptor is consisted of (See https://reviews.llvm.org/D62532)
+        // * The address of the entry point of the function.
+        // * The TOC base address for the function.
+        // * The environment pointer.
+        // The function descriptor is in the data section.
+        let addr = current_dll_path as u64;
+        let mut buffer = vec![std::mem::zeroed::<libc::ld_info>(); 64];
+        loop {
+            if libc::loadquery(
+                libc::L_GETINFO,
+                buffer.as_mut_ptr() as *mut i8,
+                (std::mem::size_of::<libc::ld_info>() * buffer.len()) as u32,
+            ) >= 0
+            {
+                break;
+            } else {
+                if std::io::Error::last_os_error().raw_os_error().unwrap() != libc::ENOMEM {
+                    return Err("loadquery failed".into());
+                }
+                buffer.resize(buffer.len() * 2, std::mem::zeroed::<libc::ld_info>());
+            }
+        }
+        let mut current = buffer.as_mut_ptr() as *mut libc::ld_info;
+        loop {
+            let data_base = (*current).ldinfo_dataorg as u64;
+            let data_end = data_base + (*current).ldinfo_datasize;
+            if (data_base..data_end).contains(&addr) {
+                let bytes = CStr::from_ptr(&(*current).ldinfo_filename[0]).to_bytes();
+                let os = OsStr::from_bytes(bytes);
+                return Ok(PathBuf::from(os));
+            }
+            if (*current).ldinfo_next == 0 {
+                break;
+            }
+            current =
+                (current as *mut i8).offset((*current).ldinfo_next as isize) as *mut libc::ld_info;
+        }
+        return Err(format!("current dll's address {} is not in the load map", addr));
     }
 }
 
