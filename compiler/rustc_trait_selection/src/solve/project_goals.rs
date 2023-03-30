@@ -346,10 +346,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                         LangItem::Sized,
                         [ty::GenericArg::from(goal.predicate.self_ty())],
                     ));
-
                     ecx.add_goal(goal.with(tcx, sized_predicate));
-                    ecx.eq(goal.param_env, goal.predicate.term, tcx.types.unit.into())?;
-                    return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
+                    tcx.types.unit
                 }
 
                 ty::Adt(def, substs) if def.is_struct() => {
