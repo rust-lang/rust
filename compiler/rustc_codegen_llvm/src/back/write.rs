@@ -668,6 +668,8 @@ pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, item:
     let diff_primary_ret = false;
     let logic_ref: EnzymeLogicRef = CreateEnzymeLogic(opt as u8);
     let type_analysis: EnzymeTypeAnalysisRef = CreateTypeAnalysis(logic_ref, std::ptr::null_mut(), std::ptr::null_mut(), 0);
+
+    dbg!(&type_analysis);
     let mut res: &Value = match item.attrs.mode {
         DiffMode::Forward => enzyme_rust_forward_diff(logic_ref, type_analysis, src_fnc, args_activity, ret_activity, ret_primary_ret, input_tts, output_tt),
         DiffMode::Reverse => enzyme_rust_reverse_diff(logic_ref, type_analysis, src_fnc, args_activity, ret_activity, ret_primary_ret, diff_primary_ret, input_tts, output_tt),
