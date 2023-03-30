@@ -339,7 +339,7 @@
 #![feature(edition_panic)]
 #![feature(format_args_nl)]
 #![feature(log_syntax)]
-#![feature(once_cell)]
+#![feature(lazy_cell)]
 #![feature(saturating_int_impl)]
 #![feature(stdsimd)]
 #![feature(test)]

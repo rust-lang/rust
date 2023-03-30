@@ -11,7 +11,7 @@ use crate::ops::Deref;
 /// # Examples
 ///
 /// ```
-/// #![feature(once_cell)]
+/// #![feature(lazy_cell)]
 ///
 /// use std::cell::LazyCell;
 ///
@@ -29,7 +29,7 @@ use crate::ops::Deref;
 /// //   92
 /// //   92
 /// ```
-#[unstable(feature = "once_cell", issue = "74465")]
+#[unstable(feature = "lazy_cell", issue = "109736")]
 pub struct LazyCell<T, F = fn() -> T> {
     cell: OnceCell<T>,
     init: Cell<Option<F>>,
@@ -41,7 +41,7 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(once_cell)]
+    /// #![feature(lazy_cell)]
     ///
     /// use std::cell::LazyCell;
     ///
@@ -52,7 +52,7 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// assert_eq!(&*lazy, "HELLO, WORLD!");
     /// ```
     #[inline]
-    #[unstable(feature = "once_cell", issue = "74465")]
+    #[unstable(feature = "lazy_cell", issue = "109736")]
     pub const fn new(init: F) -> LazyCell<T, F> {
         LazyCell { cell: OnceCell::new(), init: Cell::new(Some(init)) }
     }
@@ -65,7 +65,7 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(once_cell)]
+    /// #![feature(lazy_cell)]
     ///
     /// use std::cell::LazyCell;
     ///
@@ -75,7 +75,7 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// assert_eq!(&*lazy, &92);
     /// ```
     #[inline]
-    #[unstable(feature = "once_cell", issue = "74465")]
+    #[unstable(feature = "lazy_cell", issue = "109736")]
     pub fn force(this: &LazyCell<T, F>) -> &T {
         this.cell.get_or_init(|| match this.init.take() {
             Some(f) => f(),
@@ -84,7 +84,7 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     }
 }
 
-#[unstable(feature = "once_cell", issue = "74465")]
+#[unstable(feature = "lazy_cell", issue = "109736")]
 impl<T, F: FnOnce() -> T> Deref for LazyCell<T, F> {
     type Target = T;
     #[inline]
@@ -93,7 +93,7 @@ impl<T, F: FnOnce() -> T> Deref for LazyCell<T, F> {
     }
 }
 
-#[unstable(feature = "once_cell", issue = "74465")]
+#[unstable(feature = "lazy_cell", issue = "109736")]
 impl<T: Default> Default for LazyCell<T> {
     /// Creates a new lazy value using `Default` as the initializing function.
     #[inline]
@@ -102,7 +102,7 @@ impl<T: Default> Default for LazyCell<T> {
     }
 }
 
-#[unstable(feature = "once_cell", issue = "74465")]
+#[unstable(feature = "lazy_cell", issue = "109736")]
 impl<T: fmt::Debug, F> fmt::Debug for LazyCell<T, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Lazy").field("cell", &self.cell).field("init", &"..").finish()

@@ -5,7 +5,6 @@
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
 #![feature(never_type)]
-#![feature(once_cell)]
 #![feature(option_get_or_insert_default)]
 #![feature(trusted_step)]
 #![feature(try_blocks)]

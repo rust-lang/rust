@@ -94,7 +94,7 @@
 #![feature(pointer_is_aligned)]
 #![feature(portable_simd)]
 #![feature(ptr_metadata)]
-#![feature(once_cell)]
+#![feature(lazy_cell)]
 #![feature(unsized_tuple_coercion)]
 #![feature(const_option)]
 #![feature(const_option_ext)]

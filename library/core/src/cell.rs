@@ -11,36 +11,77 @@
 //! mutate it.
 //!
 //! Shareable mutable containers exist to permit mutability in a controlled manner, even in the
-//! presence of aliasing. Both [`Cell<T>`] and [`RefCell<T>`] allow doing this in a single-threaded
-//! way. However, neither `Cell<T>` nor `RefCell<T>` are thread safe (they do not implement
-//! [`Sync`]). If you need to do aliasing and mutation between multiple threads it is possible to
-//! use [`Mutex<T>`], [`RwLock<T>`] or [`atomic`] types.
+//! presence of aliasing. [`Cell<T>`], [`RefCell<T>`], and [`OnceCell<T>`] allow doing this in
+//! a single-threaded way—they do not implement [`Sync`]. (If you need to do aliasing and
+//! mutation among multiple threads, [`Mutex<T>`], [`RwLock<T>`], [`OnceLock<T>`] or [`atomic`]
+//! types are the correct data structures to do so).
 //!
-//! Values of the `Cell<T>` and `RefCell<T>` types may be mutated through shared references (i.e.
-//! the common `&T` type), whereas most Rust types can only be mutated through unique (`&mut T`)
-//! references. We say that `Cell<T>` and `RefCell<T>` provide 'interior mutability', in contrast
-//! with typical Rust types that exhibit 'inherited mutability'.
+//! Values of the `Cell<T>`, `RefCell<T>`, and `OnceCell<T>` types may be mutated through shared
+//! references (i.e. the common `&T` type), whereas most Rust types can only be mutated through
+//! unique (`&mut T`) references. We say these cell types provide 'interior mutability'
+//! (mutable via `&T`), in contrast with typical Rust types that exhibit 'inherited mutability'
+//! (mutable only via `&mut T`).
 //!
-//! Cell types come in two flavors: `Cell<T>` and `RefCell<T>`. `Cell<T>` implements interior
-//! mutability by moving values in and out of the `Cell<T>`. To use references instead of values,
-//! one must use the `RefCell<T>` type, acquiring a write lock before mutating. `Cell<T>` provides
-//! methods to retrieve and change the current interior value:
+//! Cell types come in three flavors: `Cell<T>`, `RefCell<T>`, and `OnceCell<T>`. Each provides
+//! a different way of providing safe interior mutability.
+//!
+//! ## `Cell<T>`
+//!
+//! [`Cell<T>`] implements interior mutability by moving values in and out of the cell. That is, an
+//! `&mut T` to the inner value can never be obtained, and the value itself cannot be directly
+//! obtained without replacing it with something else. Both of these rules ensure that there is
+//! never more than one reference pointing to the inner value. This type provides the following
+//! methods:
 //!
 //!  - For types that implement [`Copy`], the [`get`](Cell::get) method retrieves the current
-//!    interior value.
+//!    interior value by duplicating it.
 //!  - For types that implement [`Default`], the [`take`](Cell::take) method replaces the current
 //!    interior value with [`Default::default()`] and returns the replaced value.
-//!  - For all types, the [`replace`](Cell::replace) method replaces the current interior value and
-//!    returns the replaced value and the [`into_inner`](Cell::into_inner) method consumes the
-//!    `Cell<T>` and returns the interior value. Additionally, the [`set`](Cell::set) method
-//!    replaces the interior value, dropping the replaced value.
+//!  - All types have:
+//!    - [`replace`](Cell::replace): replaces the current interior value and returns the replaced
+//!      value.
+//!    - [`into_inner`](Cell::into_inner): this method consumes the `Cell<T>` and returns the
+//!      interior value.
+//!    - [`set`](Cell::set): this method replaces the interior value, dropping the replaced value.
 //!
-//! `RefCell<T>` uses Rust's lifetimes to implement 'dynamic borrowing', a process whereby one can
+//! `Cell<T>` is typically used for more simple types where copying or moving values isn't too
+//! resource intensive (e.g. numbers), and should usually be preferred over other cell types when
+//! possible. For larger and non-copy types, `RefCell` provides some advantages.
+//!
+//! ## `RefCell<T>`
+//!
+//! [`RefCell<T>`] uses Rust's lifetimes to implement "dynamic borrowing", a process whereby one can
 //! claim temporary, exclusive, mutable access to the inner value. Borrows for `RefCell<T>`s are
-//! tracked 'at runtime', unlike Rust's native reference types which are entirely tracked
-//! statically, at compile time. Because `RefCell<T>` borrows are dynamic it is possible to attempt
-//! to borrow a value that is already mutably borrowed; when this happens it results in thread
-//! panic.
+//! tracked at _runtime_, unlike Rust's native reference types which are entirely tracked
+//! statically, at compile time.
+//!
+//! An immutable reference to a `RefCell`'s inner value (`&T`) can be obtained with
+//! [`borrow`](`RefCell::borrow`), and a mutable borrow (`&mut T`) can be obtained with
+//! [`borrow_mut`](`RefCell::borrow_mut`). When these functions are called, they first verify that
+//! Rust's borrow rules will be satisfied: any number of immutable borrows are allowed or a
+//! single immutable borrow is allowed, but never both. If a borrow is attempted that would violate
+//! these rules, the thread will panic.
+//!
+//! The corresponding [`Sync`] version of `RefCell<T>` is [`RwLock<T>`].
+//!
+//! ## `OnceCell<T>`
+//!
+//! [`OnceCell<T>`] is somewhat of a hybrid of `Cell` and `RefCell` that works for values that
+//! typically only need to be set once. This means that a reference `&T` can be obtained without
+//! moving or copying the inner value (unlike `Cell`) but also without runtime checks (unlike
+//! `RefCell`). However, its value can also not be updated once set unless you have a mutable
+//! reference to the `OnceCell`.
+//!
+//! `OnceCell` provides the following methods:
+//!
+//! - [`get`](OnceCell::get): obtain a reference to the inner value
+//! - [`set`](OnceCell::set): set the inner value if it is unset (returns a `Result`)
+//! - [`get_or_init`](OnceCell::get_or_init): return the inner value, initializing it if needed
+//! - [`get_mut`](OnceCell::get_mut): provide a mutable reference to the inner value, only available
+//!   if you have a mutable reference to the cell itself.
+//!
+//! The corresponding [`Sync`] version of `OnceCell<T>` is [`OnceLock<T>`].
+//!
 //!
 //! # When to choose interior mutability
 //!
@@ -188,6 +229,8 @@
 //! [`Rc<T>`]: ../../std/rc/struct.Rc.html
 //! [`RwLock<T>`]: ../../std/sync/struct.RwLock.html
 //! [`Mutex<T>`]: ../../std/sync/struct.Mutex.html
+//! [`OnceLock<T>`]: ../../std/sync/struct.OnceLock.html
+//! [`Sync`]: ../../std/marker/trait.Sync.html
 //! [`atomic`]: crate::sync::atomic
 
 #![stable(feature = "rust1", since = "1.0.0")]
@@ -202,9 +245,9 @@ use crate::ptr::{self, NonNull};
 mod lazy;
 mod once;
 
-#[unstable(feature = "once_cell", issue = "74465")]
+#[unstable(feature = "lazy_cell", issue = "109736")]
 pub use lazy::LazyCell;
-#[unstable(feature = "once_cell", issue = "74465")]
+#[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
 pub use once::OnceCell;
 
 /// A mutable memory location.
@@ -419,7 +462,7 @@ impl<T> Cell<T> {
         mem::replace(unsafe { &mut *self.value.get() }, val)
     }
 
-    /// Unwraps the value.
+    /// Unwraps the value, consuming the cell.
     ///
     /// # Examples
     ///
@@ -1969,7 +2012,7 @@ impl<T> UnsafeCell<T> {
         UnsafeCell { value }
     }
 
-    /// Unwraps the value.
+    /// Unwraps the value, consuming the cell.
     ///
     /// # Examples
     ///
@@ -2133,7 +2176,7 @@ impl<T> SyncUnsafeCell<T> {
         Self { value: UnsafeCell { value } }
     }
 
-    /// Unwraps the value.
+    /// Unwraps the value, consuming the cell.
     #[inline]
     pub const fn into_inner(self) -> T {
         self.value.into_inner()

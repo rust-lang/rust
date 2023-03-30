@@ -5,7 +5,6 @@
 #![feature(int_roundings)]
 #![feature(let_chains)]
 #![feature(never_type)]
-#![feature(once_cell)]
 #![feature(strict_provenance)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
