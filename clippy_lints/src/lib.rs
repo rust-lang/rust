@@ -300,6 +300,7 @@ mod uninit_vec;
 mod unit_return_expecting_ord;
 mod unit_types;
 mod unnamed_address;
+mod unnecessary_box_returns;
 mod unnecessary_owned_empty_strings;
 mod unnecessary_self_imports;
 mod unnecessary_struct_initialization;
@@ -940,6 +941,11 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(allow_attributes::AllowAttribute));
     store.register_late_pass(move |_| Box::new(manual_main_separator_str::ManualMainSeparatorStr::new(msrv())));
     store.register_late_pass(|_| Box::new(unnecessary_struct_initialization::UnnecessaryStruct));
+    store.register_late_pass(move |_| {
+        Box::new(unnecessary_box_returns::UnnecessaryBoxReturns::new(
+            avoid_breaking_exported_api,
+        ))
+    });
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
