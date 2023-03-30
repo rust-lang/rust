@@ -217,11 +217,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
       let section = file.add_section(segment, name, kind);
       
       let mut data:Vec<u8> = Vec::new();
-      //Emit the note header.
-      //.balign 8;
-      // OutStreamer.emitValueToAlignment(Align(8).value());
-      let _align = 8;
-
+      //Emit the note header
       /* Size of the n_name field
       .word   4;
       OutStreamer.emitIntValue(4, 4)
@@ -258,7 +254,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
       OutStreamer.emitIntValue(ELF::GNU_PROPERTY_AARCH64_FEATURE_1_AND, 4);
       pub const GNU_PROPERTY_AARCH64_FEATURE_1_AND: u32 = 3221225472;
       */
-      let pr_type =  (3221225472 as u32).to_ne_bytes();
+      let pr_type =  (0xc0000000 as u32).to_be_bytes();
       data.extend_from_slice(&pr_type);
       
       /* The size of the pr_data field
@@ -282,7 +278,8 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
       let pr_padding = (0 as u32).to_ne_bytes();    
       data.extend_from_slice(&pr_padding);
   
-  
+      let x = data.len();
+      assert_eq!(x, 32);
       let _ = file.append_section_data(section, &data, 8);   
     } 
     file.flags = FileFlags::Elf { os_abi, abi_version, e_flags };
