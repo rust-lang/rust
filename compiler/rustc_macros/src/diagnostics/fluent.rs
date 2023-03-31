@@ -97,9 +97,12 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
     let resource_contents = match read_to_string(absolute_ftl_path) {
         Ok(resource_contents) => resource_contents,
         Err(e) => {
-            Diagnostic::spanned(resource_span, Level::Error, "could not open Fluent resource")
-                .note(e.to_string())
-                .emit();
+            Diagnostic::spanned(
+                resource_span,
+                Level::Error,
+                format!("could not open Fluent resource: {}", e.to_string()),
+            )
+            .emit();
             return failed(&crate_name);
         }
     };
