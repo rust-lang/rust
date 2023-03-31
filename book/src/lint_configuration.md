@@ -195,7 +195,7 @@ The maximum cognitive complexity a function can have
 ### disallowed-names
 The list of disallowed names to lint about. NB: `bar` is not here since it has legitimate uses. The value
 `".."` can be used as part of the list to indicate, that the configured values should be appended to the
-default configuration of Clippy. By default any configuration will replace the default value.
+default configuration of Clippy. By default, any configuration will replace the default value.
 
 **Default Value:** `["foo", "baz", "quux"]` (`Vec<String>`)
 
@@ -205,7 +205,7 @@ default configuration of Clippy. By default any configuration will replace the d
 ### doc-valid-idents
 The list of words this lint should not consider as identifiers needing ticks. The value
 `".."` can be used as part of the list to indicate, that the configured values should be appended to the
-default configuration of Clippy. By default any configuraction will replace the default value. For example:
+default configuration of Clippy. By default, any configuration will replace the default value. For example:
 * `doc-valid-idents = ["ClipPy"]` would replace the default list with `["ClipPy"]`.
 * `doc-valid-idents = ["ClipPy", ".."]` would append `ClipPy` to the default list.
 
@@ -415,7 +415,7 @@ For internal testing only, ignores the current `publish` settings in the Cargo m
 Enforce the named macros always use the braces specified.
 
 A `MacroMatcher` can be added like so `{ name = "macro_name", brace = "(" }`. If the macro
-is could be used with a full path two `MacroMatcher`s have to be added one with the full path
+could be used with a full path two `MacroMatcher`s have to be added one with the full path
 `crate_name::macro_name` and one with just the macro name.
 
 **Default Value:** `[]` (`Vec<crate::nonstandard_macro_braces::MacroMatcher>`)
@@ -449,7 +449,7 @@ Whether to apply the raw pointer heuristic to determine if a type is `Send`.
 
 ### max-suggested-slice-pattern-length
 When Clippy suggests using a slice pattern, this is the maximum number of elements allowed in
-the slice pattern that is suggested. If more elements would be necessary, the lint is suppressed.
+the slice pattern that is suggested. If more elements are necessary, the lint is suppressed.
 For example, `[_, _, _, e, ..]` is a slice pattern with 4 elements.
 
 **Default Value:** `3` (`u64`)

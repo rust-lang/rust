@@ -125,7 +125,7 @@ We follow a rustc no merge-commit policy. See
 ## Common Abbreviations
 
 | Abbreviation | Meaning                                |
-| ------------ | -------------------------------------- |
+|--------------|----------------------------------------|
 | UB           | Undefined Behavior                     |
 | FP           | False Positive                         |
 | FN           | False Negative                         |
