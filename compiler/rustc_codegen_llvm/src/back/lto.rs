@@ -53,8 +53,17 @@ fn prepare_lto(
         Lto::No => panic!("didn't request LTO but we're doing LTO"),
     };
 
+    let export_for_undefined_symbols =
+        &|name: &str| match &cgcx.undefined_symbols_from_ignored_for_lto {
+            Some(undefined_symbols) => undefined_symbols.contains(name),
+            None => false,
+        };
+
     let symbol_filter = &|&(ref name, info): &(String, SymbolExportInfo)| {
-        if info.level.is_below_threshold(export_threshold) || info.used {
+        if info.level.is_below_threshold(export_threshold)
+            || info.used
+            || export_for_undefined_symbols(name)
+        {
             Some(CString::new(name.as_str()).unwrap())
         } else {
             None

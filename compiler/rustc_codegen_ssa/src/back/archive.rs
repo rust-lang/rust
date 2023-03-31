@@ -1,3 +1,4 @@
+use object::{Object, ObjectSymbol};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::memmap::Mmap;
 use rustc_session::cstore::DllImport;
@@ -307,4 +308,33 @@ impl<'a> ArArchiveBuilder<'a> {
 
 fn io_error_context(context: &str, err: io::Error) -> io::Error {
     io::Error::new(io::ErrorKind::Other, format!("{context}: {err}"))
+}
+
+pub fn read_archive_file_undefined_symbols(archive_path: &Path) -> io::Result<Vec<String>> {
+    let archive_map = unsafe { Mmap::map(File::open(&archive_path)?)? };
+    let archive = ArchiveFile::parse(&*archive_map)
+        .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
+    let mut undefined_symbols = Vec::new();
+    for entry in archive.members() {
+        let entry = entry.map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
+        if entry.name().ends_with(b".rmeta") {
+            continue;
+        }
+        let data = entry
+            .data(&*archive_map)
+            .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
+        let file = object::File::parse(&*data)
+            .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
+        for symbol in file.symbols() {
+            if symbol.is_undefined() {
+                undefined_symbols.push(
+                    symbol
+                        .name()
+                        .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?
+                        .to_string(),
+                );
+            }
+        }
+    }
+    Ok(undefined_symbols)
 }

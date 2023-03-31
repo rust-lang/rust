@@ -2,6 +2,7 @@ use super::link::{self, ensure_removed};
 use super::lto::{self, SerializedModule};
 use super::symbol_export::symbol_name_for_instance_in_crate;
 
+use crate::back::archive::read_archive_file_undefined_symbols;
 use crate::errors;
 use crate::traits::*;
 use crate::{
@@ -9,7 +10,7 @@ use crate::{
 };
 use jobserver::{Acquired, Client};
 use rustc_ast::attr;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::{SelfProfilerRef, VerboseTimingGuard};
 use rustc_data_structures::sync::Lrc;
@@ -327,6 +328,7 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub fewer_names: bool,
     pub time_trace: bool,
     pub exported_symbols: Option<Arc<ExportedSymbols>>,
+    pub undefined_symbols_from_ignored_for_lto: Option<FxHashSet<String>>,
     pub opts: Arc<config::Options>,
     pub crate_types: Vec<CrateType>,
     pub each_linked_rlib_for_lto: Vec<(CrateNum, PathBuf)>,
@@ -989,12 +991,35 @@ fn start_executing_work<B: ExtraBackendMethods>(
     let sess = tcx.sess;
 
     let mut each_linked_rlib_for_lto = Vec::new();
+    let mut ignored_cnum_for_lto = Vec::new();
     drop(link::each_linked_rlib(crate_info, None, &mut |cnum, path| {
         if link::ignored_for_lto(sess, crate_info, cnum) {
+            ignored_cnum_for_lto.push(cnum);
             return;
         }
         each_linked_rlib_for_lto.push((cnum, path.to_path_buf()));
     }));
+
+    let undefined_symbols_from_ignored_for_lto = {
+        match sess.lto() {
+            Lto::Fat | Lto::Thin => {
+                let mut undefined_symbols_from_ignored_for_lto = FxHashSet::default();
+                if !sess.target.is_like_wasm {
+                    // FIXME: Add an undefined symbol lookup for wasm. https://github.com/WebAssembly/tool-conventions/blob/main/Linking.md
+                    for cnum in ignored_cnum_for_lto {
+                        let c_src = tcx.used_crate_source(cnum);
+                        if let Some((path, _)) = &c_src.rlib {
+                            let undefined_symbols = read_archive_file_undefined_symbols(path)
+                                .expect("failed to read undefined symbols");
+                            undefined_symbols_from_ignored_for_lto.extend(undefined_symbols);
+                        }
+                    }
+                }
+                Some(undefined_symbols_from_ignored_for_lto)
+            }
+            Lto::No | Lto::ThinLocal => None,
+        }
+    };
 
     // Compute the set of symbols we need to retain when doing LTO (if we need to)
     let exported_symbols = {
@@ -1049,6 +1074,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         backend: backend.clone(),
         crate_types: sess.crate_types().to_vec(),
         each_linked_rlib_for_lto,
+        undefined_symbols_from_ignored_for_lto,
         lto: sess.lto(),
         fewer_names: sess.fewer_names(),
         save_temps: sess.opts.cg.save_temps,
