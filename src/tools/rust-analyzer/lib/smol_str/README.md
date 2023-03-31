@@ -7,7 +7,7 @@
 
 A `SmolStr` is a string type that has the following properties:
 
-* `size_of::<SmolStr>() == 24 (therefor == size_of::<String>() on 64 bit platforms)
+* `size_of::<SmolStr>() == 24 (therefore == size_of::<String>() on 64 bit platforms)
 * `Clone` is `O(1)`
 * Strings are stack-allocated if they are:
     * Up to 23 bytes long
