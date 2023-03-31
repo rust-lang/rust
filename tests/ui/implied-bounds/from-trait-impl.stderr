@@ -1,0 +1,74 @@
+warning: function is missing necessary lifetime bounds
+  --> $DIR/from-trait-impl.rs:13:1
+   |
+LL | fn func1(foo: Foo<(&str,)>) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #109628 <https://github.com/rust-lang/rust/issues/109628>
+   = note: to get more detailed errors, use `#[deny(implied_bounds_from_trait_impl)]`
+   = note: `#[warn(implied_bounds_from_trait_impl)]` on by default
+
+error: function is missing necessary lifetime bounds
+  --> $DIR/from-trait-impl.rs:20:1
+   |
+LL | fn func2(foo: Foo<(&str,)>) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #109628 <https://github.com/rust-lang/rust/issues/109628>
+   = note: more concrete lifetime errors are emitted below
+note: the lint level is defined here
+  --> $DIR/from-trait-impl.rs:19:8
+   |
+LL | #[deny(implied_bounds_from_trait_impl)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0477]: the type `&str` does not fulfill the required lifetime
+  --> $DIR/from-trait-impl.rs:20:15
+   |
+LL | fn func2(foo: Foo<(&str,)>) {
+   |               ^^^^^^^^^^^^
+   |
+   = note: type must satisfy the static lifetime
+
+warning: implementation is missing necessary lifetime bounds
+  --> $DIR/from-trait-impl.rs:29:1
+   |
+LL | impl<X> TestTrait for [Foo<(X,)>; 1] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #109628 <https://github.com/rust-lang/rust/issues/109628>
+   = note: to get more detailed errors, use `#[deny(implied_bounds_from_trait_impl)]`
+
+error: implementation is missing necessary lifetime bounds
+  --> $DIR/from-trait-impl.rs:34:1
+   |
+LL | impl<X> TestTrait for [Foo<(X,)>; 2] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #109628 <https://github.com/rust-lang/rust/issues/109628>
+   = note: more concrete lifetime errors are emitted below
+note: the lint level is defined here
+  --> $DIR/from-trait-impl.rs:33:8
+   |
+LL | #[deny(implied_bounds_from_trait_impl)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0310]: the parameter type `X` may not live long enough
+  --> $DIR/from-trait-impl.rs:34:23
+   |
+LL | impl<X> TestTrait for [Foo<(X,)>; 2] {}
+   |                       ^^^^^^^^^^^^^^ ...so that the type `X` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound...
+   |
+LL | impl<X: 'static> TestTrait for [Foo<(X,)>; 2] {}
+   |       +++++++++
+
+error: aborting due to 4 previous errors; 2 warnings emitted
+
+Some errors have detailed explanations: E0310, E0477.
+For more information about an error, try `rustc --explain E0310`.

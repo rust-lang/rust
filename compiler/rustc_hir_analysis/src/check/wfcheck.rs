@@ -113,10 +113,43 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
         return;
     }
 
-    let implied_bounds = infcx.implied_bounds_tys_v2(param_env, body_def_id, assumed_wf_types);
+    let infcx_v2 = infcx.fork();
+    let implied_bounds = infcx_v2.implied_bounds_tys_v2(param_env, &assumed_wf_types);
     let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
+    let errors_v2 = infcx_v2.resolve_regions(&outlives_env);
+    if errors_v2.is_empty() {
+        return;
+    }
 
-    let _ = wfcx.ocx.resolve_regions_and_report_errors(body_def_id, &outlives_env);
+    let implied_bounds = infcx.implied_bounds_tys(param_env, body_def_id, assumed_wf_types);
+    let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
+    let errors_v1 = infcx.resolve_regions(&outlives_env);
+    if !errors_v1.is_empty() {
+        infcx.err_ctxt().report_region_errors(body_def_id, &errors_v1);
+        return;
+    }
+
+    let hir_id = tcx.hir().local_def_id_to_hir_id(body_def_id);
+    let (lint_level, _) = tcx
+        .lint_level_at_node(rustc_session::lint::builtin::IMPLIED_BOUNDS_FROM_TRAIT_IMPL, hir_id);
+    tcx.struct_span_lint_hir(
+        rustc_session::lint::builtin::IMPLIED_BOUNDS_FROM_TRAIT_IMPL,
+        hir_id,
+        tcx.def_span(body_def_id),
+        format!("{} is missing necessary lifetime bounds", tcx.def_descr(body_def_id.into())),
+        |lint| {
+            if !lint_level.is_error() {
+                lint.note(
+                    "to get more detailed errors, use `#[deny(implied_bounds_from_trait_impl)]`",
+                )
+            } else {
+                lint.note("more concrete lifetime errors are emitted below")
+            }
+        },
+    );
+    if lint_level.is_error() {
+        infcx_v2.err_ctxt().report_region_errors(body_def_id, &errors_v2);
+    }
 }
 
 fn check_well_formed(tcx: TyCtxt<'_>, def_id: hir::OwnerId) {

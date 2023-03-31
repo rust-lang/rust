@@ -30,8 +30,7 @@ pub trait InferCtxtExt<'a, 'tcx> {
     fn implied_bounds_tys_v2(
         &'a self,
         param_env: ty::ParamEnv<'tcx>,
-        _body_id: LocalDefId,
-        tys: FxIndexSet<Ty<'tcx>>,
+        tys: &'a FxIndexSet<Ty<'tcx>>,
     ) -> BoundsV2<'a, 'tcx>;
 }
 
@@ -136,11 +135,10 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
     fn implied_bounds_tys_v2(
         &'a self,
         param_env: ParamEnv<'tcx>,
-        _body_id: LocalDefId,
-        tys: FxIndexSet<Ty<'tcx>>,
+        tys: &'a FxIndexSet<Ty<'tcx>>,
     ) -> BoundsV2<'a, 'tcx> {
-        tys.into_iter()
-            .flat_map(move |ty| {
+        tys.iter()
+            .flat_map(move |&ty| {
                 let ty = self.resolve_vars_if_possible(ty);
                 let ty = OpportunisticRegionResolver::new(self).fold_ty(ty);
                 if ty.has_infer() {
