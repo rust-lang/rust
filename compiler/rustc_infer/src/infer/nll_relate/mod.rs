@@ -946,7 +946,10 @@ where
                          placeholder in universe {:?}",
                         self.universe, placeholder.universe
                     );
-                    Err(TypeError::Mismatch)
+                    Err(TypeError::UniverseMismatch {
+                        variable: self.tcx().mk_ty_var(self.for_vid_sub_root).into(),
+                        placeholder: a.into(),
+                    })
                 } else {
                     Ok(a)
                 }
@@ -1010,6 +1013,21 @@ where
                         });
                         Ok(self.tcx().mk_const(new_var_id, a.ty()))
                     }
+                }
+            }
+            ty::ConstKind::Placeholder(placeholder) => {
+                if self.universe.cannot_name(placeholder.universe) {
+                    debug!(
+                        "TypeGeneralizer::tys: root universe {:?} cannot name\
+                         placeholder in universe {:?}",
+                        self.universe, placeholder.universe
+                    );
+                    Err(TypeError::UniverseMismatch {
+                        variable: self.tcx().mk_ty_var(self.for_vid_sub_root).into(),
+                        placeholder: a.into(),
+                    })
+                } else {
+                    Ok(a)
                 }
             }
             ty::ConstKind::Unevaluated(..) if self.tcx().lazy_normalization() => Ok(a),

@@ -303,6 +303,7 @@ impl<'tcx> InferCtxt<'tcx> {
             infcx: self,
             span,
             for_universe,
+            root_ct: ct,
             target_vid,
         })?;
 
@@ -659,6 +660,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
             return Ok(result);
         }
         debug!("generalize: t={:?}", t);
+        let tcx = self.infcx.tcx;
 
         // Check to see whether the type we are generalizing references
         // any other type variable related to `vid` via
@@ -707,7 +709,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                                 .borrow_mut()
                                 .type_variables()
                                 .new_var(self.for_universe, origin);
-                            let u = self.tcx().mk_ty_var(new_var_id);
+                            let u = tcx.mk_ty_var(new_var_id);
 
                             // Record that we replaced `vid` with `new_var_id` as part of a generalization
                             // operation. This is needed to detect cyclic types. To see why, see the
@@ -725,9 +727,25 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                 // relatable.
                 Ok(t)
             }
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
+            ty::Placeholder(placeholder) => {
+                if self.for_universe.can_name(placeholder.universe) {
+                    Ok(t)
+                } else {
+                    Err(TypeError::UniverseMismatch {
+                        variable: tcx.mk_ty_var(self.for_vid_sub_root).into(),
+                        placeholder: t.into(),
+                    })
+                }
+            }
+            // Need to manually relate aliases as `super_relate_tys` is not simply structural.
+            ty::Alias(kind, ty::AliasTy { def_id, substs, .. }) => {
                 let s = self.relate(substs, substs)?;
-                Ok(if s == substs { t } else { self.infcx.tcx.mk_opaque(def_id, s) })
+                Ok(if s == substs {
+                    t
+                } else {
+                    let alias_ty = self.infcx.tcx.mk_alias_ty(def_id, s);
+                    self.infcx.tcx.mk_alias(kind, alias_ty)
+                })
             }
             _ => relate::super_relate_tys(self, t, t),
         }?;
@@ -812,13 +830,19 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                     }
                 }
             }
+            ty::ConstKind::Placeholder(placeholder) => {
+                if self.for_universe.can_name(placeholder.universe) {
+                    Ok(c)
+                } else {
+                    Err(TypeError::UniverseMismatch {
+                        variable: self.tcx().mk_ty_var(self.for_vid_sub_root).into(),
+                        placeholder: c.into(),
+                    })
+                }
+            }
+            // Need to manually relate as `super_relate_consts` is not simply structural.
             ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, substs }) => {
-                let substs = self.relate_with_variance(
-                    ty::Variance::Invariant,
-                    ty::VarianceDiagInfo::default(),
-                    substs,
-                    substs,
-                )?;
+                let substs = self.relate(substs, substs)?;
                 Ok(self.tcx().mk_const(ty::UnevaluatedConst { def, substs }, c.ty()))
             }
             _ => relate::super_relate_consts(self, c, c),
@@ -886,6 +910,9 @@ struct ConstInferUnifier<'cx, 'tcx> {
 
     for_universe: ty::UniverseIndex,
 
+    // The const we're generalizing. Used for the cyclic const error.
+    root_ct: ty::Const<'tcx>,
+
     /// The vid of the const variable that is in the process of being
     /// instantiated; if we find this within the const we are folding,
     /// that means we would have created a cyclic const.
@@ -925,6 +952,16 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for ConstInferUnifier<'_, 'tcx> {
                             .new_var(self.for_universe, origin);
                         Ok(self.interner().mk_ty_var(new_var_id))
                     }
+                }
+            }
+            ty::Placeholder(placeholder) => {
+                if self.for_universe.can_name(placeholder.universe) {
+                    Ok(t)
+                } else {
+                    Err(TypeError::UniverseMismatch {
+                        variable: self.infcx.tcx.mk_const(self.target_vid, self.root_ct.ty()).into(),
+                        placeholder: t.into(),
+                    })
                 }
             }
             ty::Infer(ty::IntVar(_) | ty::FloatVar(_)) => Ok(t),
@@ -1001,9 +1038,19 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for ConstInferUnifier<'_, 'tcx> {
                                         },
                                     },
                                 );
-                            Ok(self.interner().mk_const(new_var_id, c.ty()))
+                            Ok(self.interner().mk_const(new_var_id, self.root_ct.ty()))
                         }
                     }
+                }
+            }
+            ty::ConstKind::Placeholder(placeholder) => {
+                if self.for_universe.can_name(placeholder.universe) {
+                    Ok(c)
+                } else {
+                    Err(TypeError::UniverseMismatch {
+                        variable: self.infcx.tcx.mk_const(self.target_vid, self.root_ct.ty()).into(),
+                        placeholder: c.into(),
+                    })
                 }
             }
             _ => c.try_super_fold_with(self),

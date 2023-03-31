@@ -32,6 +32,11 @@ impl<T> ExpectedFound<T> {
 #[rustc_pass_by_value]
 pub enum TypeError<'tcx> {
     Mismatch,
+    /// The existential `variable` cannot name the `placeholder`.
+    UniverseMismatch {
+        variable: ty::GenericArg<'tcx>,
+        placeholder: ty::GenericArg<'tcx>,
+    },
     ConstnessMismatch(ExpectedFound<ty::BoundConstness>),
     PolarityMismatch(ExpectedFound<ty::ImplPolarity>),
     UnsafetyMismatch(ExpectedFound<hir::Unsafety>),
@@ -107,6 +112,10 @@ impl<'tcx> TypeError<'tcx> {
             CyclicTy(_) => "cyclic type of infinite size".into(),
             CyclicConst(_) => "encountered a self-referencing constant".into(),
             Mismatch => "types differ".into(),
+            UniverseMismatch { variable, placeholder } => format!(
+                "the inference variable `{variable}` cannot name the placeholder `{placeholder}`"
+            )
+            .into(),
             ConstnessMismatch(values) => {
                 format!("expected {} bound, found {} bound", values.expected, values.found).into()
             }
@@ -216,10 +225,21 @@ impl<'tcx> TypeError<'tcx> {
     pub fn must_include_note(self) -> bool {
         use self::TypeError::*;
         match self {
-            CyclicTy(_) | CyclicConst(_) | UnsafetyMismatch(_) | ConstnessMismatch(_)
-            | PolarityMismatch(_) | Mismatch | AbiMismatch(_) | FixedArraySize(_)
-            | ArgumentSorts(..) | Sorts(_) | IntMismatch(_) | FloatMismatch(_)
-            | VariadicMismatch(_) | TargetFeatureCast(_) => false,
+            CyclicTy(_)
+            | CyclicConst(_)
+            | UnsafetyMismatch(_)
+            | ConstnessMismatch(_)
+            | PolarityMismatch(_)
+            | Mismatch
+            | AbiMismatch(_)
+            | FixedArraySize(_)
+            | ArgumentSorts(..)
+            | Sorts(_)
+            | IntMismatch(_)
+            | FloatMismatch(_)
+            | VariadicMismatch(_)
+            | TargetFeatureCast(_)
+            | UniverseMismatch { .. } => false,
 
             Mutability
             | ArgumentMutability(_)
