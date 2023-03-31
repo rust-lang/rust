@@ -230,9 +230,9 @@ impl CanonicalizeMode for CanonicalizeUserTypeAnnotation {
         r: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
         match *r {
-            ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReErased | ty::ReStatic => r,
+            ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReErased | ty::ReStatic | ty::ReError(_) => r,
             ty::ReVar(_) => canonicalizer.canonical_var_for_region_in_root_universe(r),
-            _ => {
+            ty::RePlaceholder(..) | ty::ReLateBound(..) => {
                 // We only expect region names that the user can type.
                 bug!("unexpected region in query response: `{:?}`", r)
             }
