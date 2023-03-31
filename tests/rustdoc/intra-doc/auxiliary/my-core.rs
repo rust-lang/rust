@@ -3,7 +3,7 @@
 #![rustc_coherence_is_core]
 #![crate_type="rlib"]
 
-#[doc(primitive = "char")]
+#[rustc_doc_primitive = "char"]
 /// Some char docs
 mod char {}
 

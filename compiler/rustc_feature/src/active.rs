@@ -225,7 +225,7 @@ declare_features! (
     (active, rustc_allow_const_fn_unstable, "1.49.0", Some(69399), None),
     /// Allows using compiler's own crates.
     (active, rustc_private, "1.0.0", Some(27812), None),
-    /// Allows using internal rustdoc features like `doc(primitive)` or `doc(keyword)`.
+    /// Allows using internal rustdoc features like `doc(keyword)`.
     (active, rustdoc_internals, "1.58.0", Some(90418), None),
     /// Allows using the `rustdoc::missing_doc_code_examples` lint
     (active, rustdoc_missing_doc_code_examples, "1.31.0", Some(101730), None),

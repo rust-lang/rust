@@ -15,8 +15,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use std::{
     collections::{HashMap, HashSet},
-    fs::File,
-    io::Read,
+    fs::read_to_string,
     path::{Path, PathBuf},
 };
 use syn::{parse_macro_input, Ident, LitStr};
@@ -95,22 +94,18 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
 
     // As this macro also outputs an `include_str!` for this file, the macro will always be
     // re-executed when the file changes.
-    let mut resource_file = match File::open(absolute_ftl_path) {
-        Ok(resource_file) => resource_file,
+    let resource_contents = match read_to_string(absolute_ftl_path) {
+        Ok(resource_contents) => resource_contents,
         Err(e) => {
-            Diagnostic::spanned(resource_span, Level::Error, "could not open Fluent resource")
-                .note(e.to_string())
-                .emit();
+            Diagnostic::spanned(
+                resource_span,
+                Level::Error,
+                format!("could not open Fluent resource: {}", e.to_string()),
+            )
+            .emit();
             return failed(&crate_name);
         }
     };
-    let mut resource_contents = String::new();
-    if let Err(e) = resource_file.read_to_string(&mut resource_contents) {
-        Diagnostic::spanned(resource_span, Level::Error, "could not read Fluent resource")
-            .note(e.to_string())
-            .emit();
-        return failed(&crate_name);
-    }
     let mut bad = false;
     for esc in ["\\n", "\\\"", "\\'"] {
         for _ in resource_contents.matches(esc) {

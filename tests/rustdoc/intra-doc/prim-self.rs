@@ -25,7 +25,7 @@ impl usize {
     pub type ME = usize;
 }
 
-#[doc(primitive = "usize")]
+#[rustc_doc_primitive = "usize"]
 /// This has some docs.
 mod usize {}
 

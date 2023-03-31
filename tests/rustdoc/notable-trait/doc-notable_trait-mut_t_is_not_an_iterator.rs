@@ -6,10 +6,10 @@
 //!
 //! [#80737]: https://github.com/rust-lang/rust/issues/80737
 
-#![feature(rustdoc_internals)]
+#![feature(rustc_attrs)]
 #![no_std]
 
-#[doc(primitive = "reference")]
+#[rustc_doc_primitive = "reference"]
 /// Some useless docs, wouhou!
 ///
 /// We need to put this in here, because notable traits
