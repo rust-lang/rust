@@ -237,7 +237,7 @@ impl Analysis {
             None,
             None,
             cfg_options.clone(),
-            cfg_options,
+            None,
             Env::default(),
             false,
             CrateOrigin::Local { repo: None, name: None },

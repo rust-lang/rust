@@ -253,7 +253,8 @@ impl Crate {
     }
 
     pub fn potential_cfg(&self, db: &dyn HirDatabase) -> CfgOptions {
-        db.crate_graph()[self.id].potential_cfg_options.clone()
+        let data = &db.crate_graph()[self.id];
+        data.potential_cfg_options.clone().unwrap_or_else(|| data.cfg_options.clone())
     }
 }
 
