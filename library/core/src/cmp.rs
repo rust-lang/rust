@@ -800,7 +800,10 @@ pub trait Ord: Eq + PartialOrd<Self> {
         Self: Sized,
         Self: ~const Destruct,
     {
-        max_by(self, other, Ord::cmp)
+        match self.cmp(&other) {
+            Ordering::Less | Ordering::Equal => other,
+            Ordering::Greater => self,
+        }
     }
 
     /// Compares and returns the minimum of two values.
@@ -821,7 +824,10 @@ pub trait Ord: Eq + PartialOrd<Self> {
         Self: Sized,
         Self: ~const Destruct,
     {
-        min_by(self, other, Ord::cmp)
+        match self.cmp(&other) {
+            Ordering::Less | Ordering::Equal => self,
+            Ordering::Greater => other,
+        }
     }
 
     /// Restrict a value to a certain interval.
