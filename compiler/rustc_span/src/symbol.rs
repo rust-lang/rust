@@ -1069,6 +1069,7 @@ symbols! {
         panic_implementation,
         panic_info,
         panic_location,
+        panic_misaligned_pointer_dereference,
         panic_nounwind,
         panic_runtime,
         panic_str,

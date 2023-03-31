@@ -1277,7 +1277,7 @@ impl<O> AssertKind<O> {
 
     /// Getting a description does not require `O` to be printable, and does not
     /// require allocation.
-    /// The caller is expected to handle `BoundsCheck` separately.
+    /// The caller is expected to handle `BoundsCheck` and `MisalignedPointerDereference` separately.
     pub fn description(&self) -> &'static str {
         use AssertKind::*;
         match self {
@@ -1296,7 +1296,9 @@ impl<O> AssertKind<O> {
             ResumedAfterReturn(GeneratorKind::Async(_)) => "`async fn` resumed after completion",
             ResumedAfterPanic(GeneratorKind::Gen) => "generator resumed after panicking",
             ResumedAfterPanic(GeneratorKind::Async(_)) => "`async fn` resumed after panicking",
-            BoundsCheck { .. } => bug!("Unexpected AssertKind"),
+            BoundsCheck { .. } | MisalignedPointerDereference { .. } => {
+                bug!("Unexpected AssertKind")
+            }
         }
     }
 
@@ -1353,6 +1355,13 @@ impl<O> AssertKind<O> {
             Overflow(BinOp::Shl, _, r) => {
                 write!(f, "\"attempt to shift left by `{{}}`, which would overflow\", {:?}", r)
             }
+            MisalignedPointerDereference { required, found } => {
+                write!(
+                    f,
+                    "\"misaligned pointer dereference: address must be a multiple of {{}} but is {{}}\", {:?}, {:?}",
+                    required, found
+                )
+            }
             _ => write!(f, "\"{}\"", self.description()),
         }
     }
@@ -1396,6 +1405,13 @@ impl<O: fmt::Debug> fmt::Debug for AssertKind<O> {
             }
             Overflow(BinOp::Shl, _, r) => {
                 write!(f, "attempt to shift left by `{:#?}`, which would overflow", r)
+            }
+            MisalignedPointerDereference { required, found } => {
+                write!(
+                    f,
+                    "misaligned pointer dereference: address must be a multiple of {:?} but is {:?}",
+                    required, found
+                )
             }
             _ => write!(f, "{}", self.description()),
         }

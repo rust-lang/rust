@@ -760,6 +760,7 @@ pub enum AssertKind<O> {
     RemainderByZero(O),
     ResumedAfterReturn(GeneratorKind),
     ResumedAfterPanic(GeneratorKind),
+    MisalignedPointerDereference { required: O, found: O },
 }
 
 #[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
