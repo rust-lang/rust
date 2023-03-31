@@ -66,9 +66,10 @@ pub(crate) fn convert_nested_function_to_closure(
 fn is_nested_function(function: &ast::Fn) -> bool {
     function
         .syntax()
-        .parent()
-        .map(|p| p.ancestors().any(|a| a.kind() == SyntaxKind::FN))
-        .unwrap_or(false)
+        .ancestors()
+        .skip(1)
+        .find_map(ast::Item::cast)
+        .map_or(false, |it| matches!(it, ast::Item::Fn(_)))
 }
 
 /// Returns whether the given nested function has generic parameters.
