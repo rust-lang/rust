@@ -80,13 +80,13 @@ error: unresolved link to `u8::not_found`
   --> $DIR/errors.rs:55:6
    |
 LL | /// [u8::not_found]
-   |      ^^^^^^^^^^^^^ the builtin type `u8` has no associated item named `not_found`
+   |      ^^^^^^^^^^^^^ the primitive type `u8` has no associated item named `not_found`
 
 error: unresolved link to `std::primitive::u8::not_found`
   --> $DIR/errors.rs:59:6
    |
 LL | /// [std::primitive::u8::not_found]
-   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the builtin type `u8` has no associated item named `not_found`
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the primitive type `u8` has no associated item named `not_found`
 
 error: unresolved link to `Vec::into_iter`
   --> $DIR/errors.rs:63:6
