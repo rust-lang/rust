@@ -461,9 +461,7 @@ function initSearch(rawSearchIndex) {
         if (parserState.pos < parserState.length &&
             parserState.userQuery[parserState.pos] === "<"
         ) {
-            if (isInGenerics) {
-                throw ["Unexpected ", "<", " after ", "<"];
-            } else if (start >= end) {
+            if (start >= end) {
                 throw ["Found generics without a path"];
             }
             parserState.pos += 1;
@@ -765,13 +763,10 @@ function initSearch(rawSearchIndex) {
      * ident = *(ALPHA / DIGIT / "_")
      * path = ident *(DOUBLE-COLON ident) [!]
      * arg = [type-filter *WS COLON *WS] path [generics]
-     * arg-without-generic = [type-filter *WS COLON *WS] path
      * type-sep = COMMA/WS *(COMMA/WS)
      * nonempty-arg-list = *(type-sep) arg *(type-sep arg) *(type-sep)
-     * nonempty-arg-list-without-generics = *(type-sep) arg-without-generic
-     *                                      *(type-sep arg-without-generic) *(type-sep)
-     * generics = OPEN-ANGLE-BRACKET [ nonempty-arg-list-without-generics ] *(type-sep)
-     *            CLOSE-ANGLE-BRACKET/EOF
+     * generics = OPEN-ANGLE-BRACKET [ nonempty-arg-list ] *(type-sep)
+     *            CLOSE-ANGLE-BRACKET
      * return-args = RETURN-ARROW *(type-sep) nonempty-arg-list
      *
      * exact-search = [type-filter *WS COLON] [ RETURN-ARROW ] *WS QUOTE ident QUOTE [ generics ]
@@ -1127,7 +1122,7 @@ function initSearch(rawSearchIndex) {
                         currentEntryElems = [];
                         elems.set(entry.name, currentEntryElems);
                     }
-                    currentEntryElems.push(entry.ty);
+                    currentEntryElems.push(entry);
                 }
                 // We need to find the type that matches the most to remove it in order
                 // to move forward.
@@ -1136,8 +1131,12 @@ function initSearch(rawSearchIndex) {
                         return false;
                     }
                     const matchElems = elems.get(generic.name);
-                    const matchIdx = matchElems.findIndex(tmp_elem =>
-                        typePassesFilter(generic.typeFilter, tmp_elem));
+                    const matchIdx = matchElems.findIndex(tmp_elem => {
+                        if (checkGenerics(tmp_elem, generic, 0, maxEditDistance) !== 0) {
+                            return false;
+                        }
+                        return typePassesFilter(generic.typeFilter, tmp_elem.ty);
+                    });
                     if (matchIdx === -1) {
                         return false;
                     }
