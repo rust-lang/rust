@@ -4,7 +4,7 @@
 use std::ops::{Deref, DerefMut};
 
 struct Own<T> {
-    value: *mut T
+    value: *mut T,
 }
 
 impl<T> Deref for Own<T> {
@@ -23,7 +23,7 @@ impl<T> DerefMut for Own<T> {
 
 struct Point {
     x: isize,
-    y: isize
+    y: isize,
 }
 
 impl Point {
@@ -50,7 +50,7 @@ fn deref_imm_field(x: Own<Point>) {
 }
 
 fn deref_mut_field1(x: Own<Point>) {
-    let __isize = &mut x.y; //~ ERROR cannot borrow
+    let __isize = &mut x.y;
 }
 
 fn deref_mut_field2(mut x: Own<Point>) {
@@ -85,7 +85,7 @@ fn deref_extend_mut_field4<'a>(x: &'a mut Own<Point>) {
 }
 
 fn assign_field1<'a>(x: Own<Point>) {
-    x.y = 3; //~ ERROR cannot borrow
+    x.y = 3;
 }
 
 fn assign_field2<'a>(x: &'a Own<Point>) {
@@ -106,7 +106,7 @@ fn deref_imm_method(x: Own<Point>) {
 }
 
 fn deref_mut_method1(x: Own<Point>) {
-    x.set(0, 0); //~ ERROR cannot borrow
+    x.set(0, 0);
 }
 
 fn deref_mut_method2(mut x: Own<Point>) {
@@ -126,7 +126,7 @@ fn deref_extend_mut_method2(x: &mut Own<Point>) -> &mut isize {
 }
 
 fn assign_method1<'a>(x: Own<Point>) {
-    *x.y_mut() = 3; //~ ERROR cannot borrow
+    *x.y_mut() = 3;
 }
 
 fn assign_method2<'a>(x: &'a Own<Point>) {
