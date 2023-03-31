@@ -289,7 +289,7 @@ pub trait LayoutCalculator {
     fn layout_of_struct_or_enum(
         &self,
         repr: &ReprOptions,
-        variants: &IndexVec<VariantIdx, Vec<Layout<'_>>>,
+        variants: &IndexSlice<VariantIdx, Vec<Layout<'_>>>,
         is_enum: bool,
         is_unsafe_cell: bool,
         scalar_valid_range: (Bound<u128>, Bound<u128>),
@@ -883,7 +883,7 @@ pub trait LayoutCalculator {
     fn layout_of_union(
         &self,
         repr: &ReprOptions,
-        variants: &IndexVec<VariantIdx, Vec<Layout<'_>>>,
+        variants: &IndexSlice<VariantIdx, Vec<Layout<'_>>>,
     ) -> Option<LayoutS> {
         let dl = self.current_data_layout();
         let dl = dl.borrow();

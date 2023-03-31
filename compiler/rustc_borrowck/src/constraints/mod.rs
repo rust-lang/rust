@@ -2,7 +2,7 @@
 #![deny(rustc::diagnostic_outside_of_impl)]
 
 use rustc_data_structures::graph::scc::Sccs;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::{IndexSlice, IndexVec};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::{RegionVid, VarianceDiagInfo};
 use rustc_span::Span;
@@ -60,7 +60,9 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
         Sccs::new(region_graph)
     }
 
-    pub(crate) fn outlives(&self) -> &IndexVec<OutlivesConstraintIndex, OutlivesConstraint<'tcx>> {
+    pub(crate) fn outlives(
+        &self,
+    ) -> &IndexSlice<OutlivesConstraintIndex, OutlivesConstraint<'tcx>> {
         &self.outlives
     }
 }

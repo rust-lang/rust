@@ -2,7 +2,7 @@
 #![deny(rustc::diagnostic_outside_of_impl)]
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::{IndexSlice, IndexVec};
 use rustc_middle::infer::MemberConstraint;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
@@ -215,7 +215,7 @@ where
 /// target_list: A -> B -> C -> D -> E -> F -> (None)
 /// ```
 fn append_list(
-    constraints: &mut IndexVec<NllMemberConstraintIndex, NllMemberConstraint<'_>>,
+    constraints: &mut IndexSlice<NllMemberConstraintIndex, NllMemberConstraint<'_>>,
     target_list: NllMemberConstraintIndex,
     source_list: NllMemberConstraintIndex,
 ) {

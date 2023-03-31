@@ -21,7 +21,7 @@ use rustc_ast::Attribute;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::{IndexSlice, IndexVec};
 use rustc_middle::{
     mir::*,
     thir::*,
@@ -37,7 +37,7 @@ pub(super) fn build_custom_mir<'tcx>(
     hir_id: HirId,
     thir: &Thir<'tcx>,
     expr: ExprId,
-    params: &IndexVec<ParamId, Param<'tcx>>,
+    params: &IndexSlice<ParamId, Param<'tcx>>,
     return_ty: Ty<'tcx>,
     return_ty_span: Span,
     span: Span,
@@ -49,7 +49,7 @@ pub(super) fn build_custom_mir<'tcx>(
         phase: MirPhase::Built,
         source_scopes: IndexVec::new(),
         generator: None,
-        local_decls: LocalDecls::new(),
+        local_decls: IndexVec::new(),
         user_type_annotations: IndexVec::new(),
         arg_count: params.len(),
         spread_arg: None,

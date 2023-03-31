@@ -101,7 +101,7 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
 ///
 /// A Postorder traversal of this graph is `D B C A` or `D C B A`
 pub struct Postorder<'a, 'tcx> {
-    basic_blocks: &'a IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+    basic_blocks: &'a IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
     visited: BitSet<BasicBlock>,
     visit_stack: Vec<(BasicBlock, Successors<'a>)>,
     root_is_start_block: bool,
@@ -109,7 +109,7 @@ pub struct Postorder<'a, 'tcx> {
 
 impl<'a, 'tcx> Postorder<'a, 'tcx> {
     pub fn new(
-        basic_blocks: &'a IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+        basic_blocks: &'a IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
         root: BasicBlock,
     ) -> Postorder<'a, 'tcx> {
         let mut po = Postorder {

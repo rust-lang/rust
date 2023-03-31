@@ -36,7 +36,7 @@ use std::fmt::{Debug, Formatter};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::{IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -1028,8 +1028,8 @@ where
 fn debug_with_context_rec<V: Debug + Eq>(
     place: PlaceIndex,
     place_str: &str,
-    new: &IndexVec<ValueIndex, V>,
-    old: Option<&IndexVec<ValueIndex, V>>,
+    new: &IndexSlice<ValueIndex, V>,
+    old: Option<&IndexSlice<ValueIndex, V>>,
     map: &Map,
     f: &mut Formatter<'_>,
 ) -> std::fmt::Result {
@@ -1069,8 +1069,8 @@ fn debug_with_context_rec<V: Debug + Eq>(
 }
 
 fn debug_with_context<V: Debug + Eq>(
-    new: &IndexVec<ValueIndex, V>,
-    old: Option<&IndexVec<ValueIndex, V>>,
+    new: &IndexSlice<ValueIndex, V>,
+    old: Option<&IndexSlice<ValueIndex, V>>,
     map: &Map,
     f: &mut Formatter<'_>,
 ) -> std::fmt::Result {

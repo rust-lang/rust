@@ -1,7 +1,7 @@
 use either::Either;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::{IndexSlice, IndexVec};
 use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
@@ -135,7 +135,7 @@ impl SsaLocals {
     ///   _d => _a // transitively through _c
     ///
     /// Exception: we do not see through the return place, as it cannot be substituted.
-    pub fn copy_classes(&self) -> &IndexVec<Local, Local> {
+    pub fn copy_classes(&self) -> &IndexSlice<Local, Local> {
         &self.copy_classes
     }
 

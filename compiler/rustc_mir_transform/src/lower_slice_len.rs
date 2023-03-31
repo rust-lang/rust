@@ -3,7 +3,7 @@
 
 use crate::MirPass;
 use rustc_hir::def_id::DefId;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::IndexSlice;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
 
@@ -42,7 +42,7 @@ struct SliceLenPatchInformation<'tcx> {
 fn lower_slice_len_call<'tcx>(
     tcx: TyCtxt<'tcx>,
     block: &mut BasicBlockData<'tcx>,
-    local_decls: &IndexVec<Local, LocalDecl<'tcx>>,
+    local_decls: &IndexSlice<Local, LocalDecl<'tcx>>,
     slice_len_fn_item_def_id: DefId,
 ) {
     let mut patch_found: Option<SliceLenPatchInformation<'_>> = None;

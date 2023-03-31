@@ -128,7 +128,7 @@ fn split_block(
 
 fn insert_alignment_check<'tcx>(
     tcx: TyCtxt<'tcx>,
-    local_decls: &mut LocalDecls<'tcx>,
+    local_decls: &mut IndexVec<Local, LocalDecl<'tcx>>,
     block_data: &mut BasicBlockData<'tcx>,
     pointer: Place<'tcx>,
     pointee_ty: Ty<'tcx>,

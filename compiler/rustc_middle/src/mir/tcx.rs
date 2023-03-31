@@ -116,7 +116,7 @@ impl<'tcx> PlaceTy<'tcx> {
 }
 
 impl<'tcx> Place<'tcx> {
-    pub fn ty_from<D>(
+    pub fn ty_from<D: ?Sized>(
         local: Local,
         projection: &[PlaceElem<'tcx>],
         local_decls: &D,
@@ -132,7 +132,7 @@ impl<'tcx> Place<'tcx> {
             })
     }
 
-    pub fn ty<D>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx>
+    pub fn ty<D: ?Sized>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx>
     where
         D: HasLocalDecls<'tcx>,
     {
@@ -141,7 +141,7 @@ impl<'tcx> Place<'tcx> {
 }
 
 impl<'tcx> PlaceRef<'tcx> {
-    pub fn ty<D>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx>
+    pub fn ty<D: ?Sized>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx>
     where
         D: HasLocalDecls<'tcx>,
     {
@@ -155,7 +155,7 @@ pub enum RvalueInitializationState {
 }
 
 impl<'tcx> Rvalue<'tcx> {
-    pub fn ty<D>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> Ty<'tcx>
+    pub fn ty<D: ?Sized>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> Ty<'tcx>
     where
         D: HasLocalDecls<'tcx>,
     {
@@ -217,7 +217,7 @@ impl<'tcx> Rvalue<'tcx> {
 }
 
 impl<'tcx> Operand<'tcx> {
-    pub fn ty<D>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> Ty<'tcx>
+    pub fn ty<D: ?Sized>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> Ty<'tcx>
     where
         D: HasLocalDecls<'tcx>,
     {

@@ -8,7 +8,7 @@
 use crate::fx::FxHashSet;
 use crate::graph::vec_graph::VecGraph;
 use crate::graph::{DirectedGraph, GraphSuccessors, WithNumEdges, WithNumNodes, WithSuccessors};
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::vec::{Idx, IndexSlice, IndexVec};
 use std::ops::Range;
 
 #[cfg(test)]
@@ -43,7 +43,7 @@ impl<N: Idx, S: Idx + Ord> Sccs<N, S> {
         SccsConstruction::construct(graph)
     }
 
-    pub fn scc_indices(&self) -> &IndexVec<N, S> {
+    pub fn scc_indices(&self) -> &IndexSlice<N, S> {
         &self.scc_indices
     }
 
@@ -123,7 +123,7 @@ impl<S: Idx> SccData<S> {
         self.ranges.len()
     }
 
-    pub fn ranges(&self) -> &IndexVec<S, Range<usize>> {
+    pub fn ranges(&self) -> &IndexSlice<S, Range<usize>> {
         &self.ranges
     }
 

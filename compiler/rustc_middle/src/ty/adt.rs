@@ -10,7 +10,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::{IndexSlice, IndexVec};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::DataTypeKind;
 use rustc_span::symbol::sym;
@@ -168,7 +168,7 @@ impl<'tcx> AdtDef<'tcx> {
     }
 
     #[inline]
-    pub fn variants(self) -> &'tcx IndexVec<VariantIdx, VariantDef> {
+    pub fn variants(self) -> &'tcx IndexSlice<VariantIdx, VariantDef> {
         &self.0.0.variants
     }
 

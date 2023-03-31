@@ -1,5 +1,5 @@
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::IndexSlice;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
@@ -102,7 +102,7 @@ struct Replacer<'a, 'tcx> {
     fully_moved: BitSet<Local>,
     storage_to_remove: BitSet<Local>,
     borrowed_locals: BitSet<Local>,
-    copy_classes: &'a IndexVec<Local, Local>,
+    copy_classes: &'a IndexSlice<Local, Local>,
 }
 
 impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {

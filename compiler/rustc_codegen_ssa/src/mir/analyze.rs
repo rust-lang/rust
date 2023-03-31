@@ -5,7 +5,7 @@ use super::FunctionCx;
 use crate::traits::*;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::{IndexSlice, IndexVec};
 use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, Location, TerminatorKind};
@@ -277,7 +277,7 @@ impl CleanupKind {
 /// Recover that structure in an analyze pass.
 pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKind> {
     fn discover_masters<'tcx>(
-        result: &mut IndexVec<mir::BasicBlock, CleanupKind>,
+        result: &mut IndexSlice<mir::BasicBlock, CleanupKind>,
         mir: &mir::Body<'tcx>,
     ) {
         for (bb, data) in mir.basic_blocks.iter_enumerated() {
@@ -308,7 +308,10 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
         }
     }
 
-    fn propagate<'tcx>(result: &mut IndexVec<mir::BasicBlock, CleanupKind>, mir: &mir::Body<'tcx>) {
+    fn propagate<'tcx>(
+        result: &mut IndexSlice<mir::BasicBlock, CleanupKind>,
+        mir: &mir::Body<'tcx>,
+    ) {
         let mut funclet_succs = IndexVec::from_elem(None, &mir.basic_blocks);
 
         let mut set_successor = |funclet: mir::BasicBlock, succ| match funclet_succs[funclet] {

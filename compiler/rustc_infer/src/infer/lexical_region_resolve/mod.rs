@@ -13,7 +13,7 @@ use rustc_data_structures::graph::implementation::{
     Direction, Graph, NodeIndex, INCOMING, OUTGOING,
 };
 use rustc_data_structures::intern::Interned;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::{IndexSlice, IndexVec};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::PlaceholderRegion;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -723,7 +723,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     fn collect_error_for_expanding_node(
         &self,
         graph: &RegionGraph<'tcx>,
-        dup_vec: &mut IndexVec<RegionVid, Option<RegionVid>>,
+        dup_vec: &mut IndexSlice<RegionVid, Option<RegionVid>>,
         node_idx: RegionVid,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
     ) {
@@ -846,7 +846,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         graph: &RegionGraph<'tcx>,
         orig_node_idx: RegionVid,
         dir: Direction,
-        mut dup_vec: Option<&mut IndexVec<RegionVid, Option<RegionVid>>>,
+        mut dup_vec: Option<&mut IndexSlice<RegionVid, Option<RegionVid>>>,
     ) -> (Vec<RegionAndOrigin<'tcx>>, FxHashSet<RegionVid>, bool) {
         struct WalkState<'tcx> {
             set: FxHashSet<RegionVid>,
