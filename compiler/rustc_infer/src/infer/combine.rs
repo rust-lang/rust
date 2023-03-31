@@ -959,7 +959,11 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for ConstInferUnifier<'_, 'tcx> {
                     Ok(t)
                 } else {
                     Err(TypeError::UniverseMismatch {
-                        variable: self.infcx.tcx.mk_const(self.target_vid, self.root_ct.ty()).into(),
+                        variable: self
+                            .infcx
+                            .tcx
+                            .mk_const(self.target_vid, self.root_ct.ty())
+                            .into(),
                         placeholder: t.into(),
                     })
                 }
@@ -1048,7 +1052,11 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for ConstInferUnifier<'_, 'tcx> {
                     Ok(c)
                 } else {
                     Err(TypeError::UniverseMismatch {
-                        variable: self.infcx.tcx.mk_const(self.target_vid, self.root_ct.ty()).into(),
+                        variable: self
+                            .infcx
+                            .tcx
+                            .mk_const(self.target_vid, self.root_ct.ty())
+                            .into(),
                         placeholder: c.into(),
                     })
                 }
