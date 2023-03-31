@@ -1,18 +1,14 @@
-error: could not open Fluent resource
+error: could not open Fluent resource: os-specific message
   --> $DIR/test.rs:24:24
    |
 LL |     fluent_messages! { "/definitely_does_not_exist.ftl" }
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: os-specific message
 
-error: could not open Fluent resource
+error: could not open Fluent resource: os-specific message
   --> $DIR/test.rs:31:24
    |
 LL |     fluent_messages! { "../definitely_does_not_exist.ftl" }
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: os-specific message
 
 error: could not parse Fluent resource
   --> $DIR/test.rs:38:24
@@ -89,7 +85,7 @@ error: invalid escape `\n` in Fluent resource
 LL |     fluent_messages! { "./invalid-escape.ftl" }
    |                        ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: os-specific message
+   = note: Fluent does not interpret these escape sequences (<https://projectfluent.org/fluent/guide/special.html>)
 
 error: invalid escape `\"` in Fluent resource
   --> $DIR/test.rs:99:24
@@ -97,7 +93,7 @@ error: invalid escape `\"` in Fluent resource
 LL |     fluent_messages! { "./invalid-escape.ftl" }
    |                        ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: os-specific message
+   = note: Fluent does not interpret these escape sequences (<https://projectfluent.org/fluent/guide/special.html>)
 
 error: invalid escape `\'` in Fluent resource
   --> $DIR/test.rs:99:24
@@ -105,7 +101,7 @@ error: invalid escape `\'` in Fluent resource
 LL |     fluent_messages! { "./invalid-escape.ftl" }
    |                        ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: os-specific message
+   = note: Fluent does not interpret these escape sequences (<https://projectfluent.org/fluent/guide/special.html>)
 
 error: aborting due to 13 previous errors
 
