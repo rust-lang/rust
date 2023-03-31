@@ -1184,12 +1184,7 @@ pub const fn min<T: ~const Ord + ~const Destruct>(v1: T, v2: T) -> T {
 #[inline]
 #[must_use]
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
-pub const fn min_by<T, F: ~const FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T
-where
-    T: ~const Destruct,
-    F: ~const Destruct,
-{
+pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
     match compare(&v1, &v2) {
         Ordering::Less | Ordering::Equal => v1,
         Ordering::Greater => v2,
@@ -1211,14 +1206,8 @@ where
 #[inline]
 #[must_use]
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
-pub const fn min_by_key<T, F: ~const FnMut(&T) -> K, K: ~const Ord>(v1: T, v2: T, mut f: F) -> T
-where
-    T: ~const Destruct,
-    F: ~const Destruct,
-    K: ~const Destruct,
-{
-    min_by(v1, v2, const |v1, v2| f(v1).cmp(&f(v2)))
+pub fn min_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
+    min_by(v1, v2, |v1, v2| f(v1).cmp(&f(v2)))
 }
 
 /// Compares and returns the maximum of two values.
@@ -1259,12 +1248,7 @@ pub const fn max<T: ~const Ord + ~const Destruct>(v1: T, v2: T) -> T {
 #[inline]
 #[must_use]
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
-pub const fn max_by<T, F: ~const FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T
-where
-    T: ~const Destruct,
-    F: ~const Destruct,
-{
+pub fn max_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
     match compare(&v1, &v2) {
         Ordering::Less | Ordering::Equal => v2,
         Ordering::Greater => v1,
@@ -1286,14 +1270,8 @@ where
 #[inline]
 #[must_use]
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
-pub const fn max_by_key<T, F: ~const FnMut(&T) -> K, K: ~const Ord>(v1: T, v2: T, mut f: F) -> T
-where
-    T: ~const Destruct,
-    F: ~const Destruct,
-    K: ~const Destruct,
-{
-    max_by(v1, v2, const |v1, v2| f(v1).cmp(&f(v2)))
+pub fn max_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
+    max_by(v1, v2, |v1, v2| f(v1).cmp(&f(v2)))
 }
 
 // Implementation of PartialEq, Eq, PartialOrd and Ord for primitive types
