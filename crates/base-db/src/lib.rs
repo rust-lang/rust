@@ -16,8 +16,8 @@ pub use crate::{
     input::{
         CrateData, CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency,
         Edition, Env, LangCrateOrigin, ProcMacro, ProcMacroExpander, ProcMacroExpansionError,
-        ProcMacroId, ProcMacroKind, ProcMacroLoadResult, ProcMacroPaths, ProcMacros, SourceRoot,
-        SourceRootId, TargetLayoutLoadResult,
+        ProcMacroId, ProcMacroKind, ProcMacroLoadResult, ProcMacroPaths, ProcMacros,
+        ReleaseChannel, SourceRoot, SourceRootId, TargetLayoutLoadResult,
     },
 };
 pub use salsa::{self, Cancelled};

@@ -245,10 +245,16 @@ pub(crate) fn def_to_moniker(
         kind: if krate == from_crate { MonikerKind::Export } else { MonikerKind::Import },
         package_information: {
             let (name, repo, version) = match krate.origin(db) {
-                CrateOrigin::CratesIo { repo, name } => (
+                CrateOrigin::Library { repo, name } => (name, repo, krate.version(db)),
+                CrateOrigin::Local { repo, name } => (
                     name.unwrap_or(krate.display_name(db)?.canonical_name().to_string()),
                     repo,
                     krate.version(db),
+                ),
+                CrateOrigin::Rustc { name } => (
+                    name.clone(),
+                    Some("https://github.com/rust-lang/rust/".to_string()),
+                    Some(format!("https://github.com/rust-lang/rust/compiler/{name}",)),
                 ),
                 CrateOrigin::Lang(lang) => (
                     krate.display_name(db)?.canonical_name().to_string(),

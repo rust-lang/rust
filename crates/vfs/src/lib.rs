@@ -160,7 +160,7 @@ impl Vfs {
     /// [`FileId`] for it.
     pub fn set_file_contents(&mut self, path: VfsPath, contents: Option<Vec<u8>>) -> bool {
         let file_id = self.alloc_file_id(path);
-        let change_kind = match (&self.get(file_id), &contents) {
+        let change_kind = match (self.get(file_id), &contents) {
             (None, None) => return false,
             (Some(old), Some(new)) if old == new => return false,
             (None, Some(_)) => ChangeKind::Create,

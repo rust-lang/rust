@@ -40,6 +40,7 @@ pub(crate) fn shuffle_crate_graph(db: &mut RootDatabase) {
             data.is_proc_macro,
             data.origin.clone(),
             data.target_layout.clone(),
+            data.channel,
         );
         new_proc_macros.insert(new_id, proc_macros[&old_id].clone());
         map.insert(old_id, new_id);

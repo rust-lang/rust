@@ -240,8 +240,9 @@ impl Analysis {
             cfg_options,
             Env::default(),
             false,
-            CrateOrigin::CratesIo { repo: None, name: None },
+            CrateOrigin::Local { repo: None, name: None },
             Err("Analysis::from_single_file has no target layout".into()),
+            None,
         );
         change.change_file(file_id, Some(Arc::new(text)));
         change.set_crate_graph(crate_graph);

@@ -41,7 +41,8 @@ fn load_rust_project(file: &str) -> (CrateGraph, ProcMacroPaths) {
     let data = get_test_json_file(file);
     let project = rooted_project_json(data);
     let sysroot = Ok(get_fake_sysroot());
-    let project_workspace = ProjectWorkspace::Json { project, sysroot, rustc_cfg: Vec::new() };
+    let project_workspace =
+        ProjectWorkspace::Json { project, sysroot, rustc_cfg: Vec::new(), toolchain: None };
     to_crate_graph(project_workspace)
 }
 
@@ -154,9 +155,6 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 "debug_assertions",
                             ],
                         ),
-                        target_layout: Err(
-                            "target_data_layout not loaded",
-                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -187,13 +185,14 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 prelude: true,
                             },
                         ],
-                        origin: CratesIo {
-                            repo: None,
-                            name: Some(
-                                "hello-world",
-                            ),
+                        origin: Rustc {
+                            name: "hello-world",
                         },
                         is_proc_macro: false,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
+                        channel: None,
                     },
                     CrateId(
                         1,
@@ -223,9 +222,6 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 "debug_assertions",
                             ],
                         ),
-                        target_layout: Err(
-                            "target_data_layout not loaded",
-                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -265,13 +261,14 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 prelude: true,
                             },
                         ],
-                        origin: CratesIo {
-                            repo: None,
-                            name: Some(
-                                "hello-world",
-                            ),
+                        origin: Rustc {
+                            name: "hello-world",
                         },
                         is_proc_macro: false,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
+                        channel: None,
                     },
                     CrateId(
                         2,
@@ -301,9 +298,6 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 "debug_assertions",
                             ],
                         ),
-                        target_layout: Err(
-                            "target_data_layout not loaded",
-                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -343,13 +337,14 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 prelude: true,
                             },
                         ],
-                        origin: CratesIo {
-                            repo: None,
-                            name: Some(
-                                "hello-world",
-                            ),
+                        origin: Rustc {
+                            name: "hello-world",
                         },
                         is_proc_macro: false,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
+                        channel: None,
                     },
                     CrateId(
                         3,
@@ -379,9 +374,6 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 "debug_assertions",
                             ],
                         ),
-                        target_layout: Err(
-                            "target_data_layout not loaded",
-                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -421,13 +413,14 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 prelude: true,
                             },
                         ],
-                        origin: CratesIo {
-                            repo: None,
-                            name: Some(
-                                "hello-world",
-                            ),
+                        origin: Rustc {
+                            name: "hello-world",
                         },
                         is_proc_macro: false,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
+                        channel: None,
                     },
                     CrateId(
                         4,
@@ -466,9 +459,6 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 "feature=use_std",
                             ],
                         ),
-                        target_layout: Err(
-                            "target_data_layout not loaded",
-                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -489,15 +479,14 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                             },
                         },
                         dependencies: [],
-                        origin: CratesIo {
-                            repo: Some(
-                                "https://github.com/rust-lang/libc",
-                            ),
-                            name: Some(
-                                "libc",
-                            ),
+                        origin: Rustc {
+                            name: "libc",
                         },
                         is_proc_macro: false,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
+                        channel: None,
                     },
                 },
             }"#]],
@@ -552,9 +541,6 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 "test",
                             ],
                         ),
-                        target_layout: Err(
-                            "target_data_layout not loaded",
-                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -585,13 +571,14 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 prelude: true,
                             },
                         ],
-                        origin: CratesIo {
-                            repo: None,
-                            name: Some(
-                                "hello-world",
-                            ),
+                        origin: Rustc {
+                            name: "hello-world",
                         },
                         is_proc_macro: false,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
+                        channel: None,
                     },
                     CrateId(
                         1,
@@ -623,9 +610,6 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 "test",
                             ],
                         ),
-                        target_layout: Err(
-                            "target_data_layout not loaded",
-                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -665,13 +649,14 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 prelude: true,
                             },
                         ],
-                        origin: CratesIo {
-                            repo: None,
-                            name: Some(
-                                "hello-world",
-                            ),
+                        origin: Rustc {
+                            name: "hello-world",
                         },
                         is_proc_macro: false,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
+                        channel: None,
                     },
                     CrateId(
                         2,
@@ -703,9 +688,6 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 "test",
                             ],
                         ),
-                        target_layout: Err(
-                            "target_data_layout not loaded",
-                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -745,13 +727,14 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 prelude: true,
                             },
                         ],
-                        origin: CratesIo {
-                            repo: None,
-                            name: Some(
-                                "hello-world",
-                            ),
+                        origin: Rustc {
+                            name: "hello-world",
                         },
                         is_proc_macro: false,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
+                        channel: None,
                     },
                     CrateId(
                         3,
@@ -783,9 +766,6 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 "test",
                             ],
                         ),
-                        target_layout: Err(
-                            "target_data_layout not loaded",
-                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -825,13 +805,14 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 prelude: true,
                             },
                         ],
-                        origin: CratesIo {
-                            repo: None,
-                            name: Some(
-                                "hello-world",
-                            ),
+                        origin: Rustc {
+                            name: "hello-world",
                         },
                         is_proc_macro: false,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
+                        channel: None,
                     },
                     CrateId(
                         4,
@@ -870,9 +851,6 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 "feature=use_std",
                             ],
                         ),
-                        target_layout: Err(
-                            "target_data_layout not loaded",
-                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -893,15 +871,14 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                             },
                         },
                         dependencies: [],
-                        origin: CratesIo {
-                            repo: Some(
-                                "https://github.com/rust-lang/libc",
-                            ),
-                            name: Some(
-                                "libc",
-                            ),
+                        origin: Rustc {
+                            name: "libc",
                         },
                         is_proc_macro: false,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
+                        channel: None,
                     },
                 },
             }"#]],
@@ -946,9 +923,6 @@ fn cargo_hello_world_project_model() {
                                 "test",
                             ],
                         ),
-                        target_layout: Err(
-                            "target_data_layout not loaded",
-                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -979,13 +953,14 @@ fn cargo_hello_world_project_model() {
                                 prelude: true,
                             },
                         ],
-                        origin: CratesIo {
-                            repo: None,
-                            name: Some(
-                                "hello-world",
-                            ),
+                        origin: Rustc {
+                            name: "hello-world",
                         },
                         is_proc_macro: false,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
+                        channel: None,
                     },
                     CrateId(
                         1,
@@ -1017,9 +992,6 @@ fn cargo_hello_world_project_model() {
                                 "test",
                             ],
                         ),
-                        target_layout: Err(
-                            "target_data_layout not loaded",
-                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -1059,13 +1031,14 @@ fn cargo_hello_world_project_model() {
                                 prelude: true,
                             },
                         ],
-                        origin: CratesIo {
-                            repo: None,
-                            name: Some(
-                                "hello-world",
-                            ),
+                        origin: Rustc {
+                            name: "hello-world",
                         },
                         is_proc_macro: false,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
+                        channel: None,
                     },
                     CrateId(
                         2,
@@ -1097,9 +1070,6 @@ fn cargo_hello_world_project_model() {
                                 "test",
                             ],
                         ),
-                        target_layout: Err(
-                            "target_data_layout not loaded",
-                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -1139,13 +1109,14 @@ fn cargo_hello_world_project_model() {
                                 prelude: true,
                             },
                         ],
-                        origin: CratesIo {
-                            repo: None,
-                            name: Some(
-                                "hello-world",
-                            ),
+                        origin: Rustc {
+                            name: "hello-world",
                         },
                         is_proc_macro: false,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
+                        channel: None,
                     },
                     CrateId(
                         3,
@@ -1177,9 +1148,6 @@ fn cargo_hello_world_project_model() {
                                 "test",
                             ],
                         ),
-                        target_layout: Err(
-                            "target_data_layout not loaded",
-                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -1219,13 +1187,14 @@ fn cargo_hello_world_project_model() {
                                 prelude: true,
                             },
                         ],
-                        origin: CratesIo {
-                            repo: None,
-                            name: Some(
-                                "hello-world",
-                            ),
+                        origin: Rustc {
+                            name: "hello-world",
                         },
                         is_proc_macro: false,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
+                        channel: None,
                     },
                     CrateId(
                         4,
@@ -1264,9 +1233,6 @@ fn cargo_hello_world_project_model() {
                                 "feature=use_std",
                             ],
                         ),
-                        target_layout: Err(
-                            "target_data_layout not loaded",
-                        ),
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -1287,15 +1253,14 @@ fn cargo_hello_world_project_model() {
                             },
                         },
                         dependencies: [],
-                        origin: CratesIo {
-                            repo: Some(
-                                "https://github.com/rust-lang/libc",
-                            ),
-                            name: Some(
-                                "libc",
-                            ),
+                        origin: Rustc {
+                            name: "libc",
                         },
                         is_proc_macro: false,
+                        target_layout: Err(
+                            "target_data_layout not loaded",
+                        ),
+                        channel: None,
                     },
                 },
             }"#]],
@@ -1332,9 +1297,6 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
-                        target_layout: Err(
-                            "rust-project.json projects have no target layout set",
-                        ),
                         env: Env {
                             entries: {},
                         },
@@ -1353,6 +1315,10 @@ fn rust_project_hello_world_project_model() {
                             Alloc,
                         ),
                         is_proc_macro: false,
+                        target_layout: Err(
+                            "rust-project.json projects have no target layout set",
+                        ),
+                        channel: None,
                     },
                     CrateId(
                         1,
@@ -1376,9 +1342,6 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
-                        target_layout: Err(
-                            "rust-project.json projects have no target layout set",
-                        ),
                         env: Env {
                             entries: {},
                         },
@@ -1387,6 +1350,10 @@ fn rust_project_hello_world_project_model() {
                             Core,
                         ),
                         is_proc_macro: false,
+                        target_layout: Err(
+                            "rust-project.json projects have no target layout set",
+                        ),
+                        channel: None,
                     },
                     CrateId(
                         2,
@@ -1410,9 +1377,6 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
-                        target_layout: Err(
-                            "rust-project.json projects have no target layout set",
-                        ),
                         env: Env {
                             entries: {},
                         },
@@ -1421,6 +1385,10 @@ fn rust_project_hello_world_project_model() {
                             Other,
                         ),
                         is_proc_macro: false,
+                        target_layout: Err(
+                            "rust-project.json projects have no target layout set",
+                        ),
+                        channel: None,
                     },
                     CrateId(
                         3,
@@ -1444,9 +1412,6 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
-                        target_layout: Err(
-                            "rust-project.json projects have no target layout set",
-                        ),
                         env: Env {
                             entries: {},
                         },
@@ -1455,6 +1420,10 @@ fn rust_project_hello_world_project_model() {
                             Other,
                         ),
                         is_proc_macro: false,
+                        target_layout: Err(
+                            "rust-project.json projects have no target layout set",
+                        ),
+                        channel: None,
                     },
                     CrateId(
                         4,
@@ -1477,9 +1446,6 @@ fn rust_project_hello_world_project_model() {
                         ),
                         potential_cfg_options: CfgOptions(
                             [],
-                        ),
-                        target_layout: Err(
-                            "rust-project.json projects have no target layout set",
                         ),
                         env: Env {
                             entries: {},
@@ -1508,6 +1474,10 @@ fn rust_project_hello_world_project_model() {
                             Other,
                         ),
                         is_proc_macro: false,
+                        target_layout: Err(
+                            "rust-project.json projects have no target layout set",
+                        ),
+                        channel: None,
                     },
                     CrateId(
                         5,
@@ -1531,9 +1501,6 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
-                        target_layout: Err(
-                            "rust-project.json projects have no target layout set",
-                        ),
                         env: Env {
                             entries: {},
                         },
@@ -1542,6 +1509,10 @@ fn rust_project_hello_world_project_model() {
                             Other,
                         ),
                         is_proc_macro: false,
+                        target_layout: Err(
+                            "rust-project.json projects have no target layout set",
+                        ),
+                        channel: None,
                     },
                     CrateId(
                         6,
@@ -1564,9 +1535,6 @@ fn rust_project_hello_world_project_model() {
                         ),
                         potential_cfg_options: CfgOptions(
                             [],
-                        ),
-                        target_layout: Err(
-                            "rust-project.json projects have no target layout set",
                         ),
                         env: Env {
                             entries: {},
@@ -1649,6 +1617,10 @@ fn rust_project_hello_world_project_model() {
                             Std,
                         ),
                         is_proc_macro: false,
+                        target_layout: Err(
+                            "rust-project.json projects have no target layout set",
+                        ),
+                        channel: None,
                     },
                     CrateId(
                         7,
@@ -1672,9 +1644,6 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
-                        target_layout: Err(
-                            "rust-project.json projects have no target layout set",
-                        ),
                         env: Env {
                             entries: {},
                         },
@@ -1683,6 +1652,10 @@ fn rust_project_hello_world_project_model() {
                             Other,
                         ),
                         is_proc_macro: false,
+                        target_layout: Err(
+                            "rust-project.json projects have no target layout set",
+                        ),
+                        channel: None,
                     },
                     CrateId(
                         8,
@@ -1706,9 +1679,6 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
-                        target_layout: Err(
-                            "rust-project.json projects have no target layout set",
-                        ),
                         env: Env {
                             entries: {},
                         },
@@ -1717,6 +1687,10 @@ fn rust_project_hello_world_project_model() {
                             Test,
                         ),
                         is_proc_macro: false,
+                        target_layout: Err(
+                            "rust-project.json projects have no target layout set",
+                        ),
+                        channel: None,
                     },
                     CrateId(
                         9,
@@ -1740,9 +1714,6 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
-                        target_layout: Err(
-                            "rust-project.json projects have no target layout set",
-                        ),
                         env: Env {
                             entries: {},
                         },
@@ -1751,6 +1722,10 @@ fn rust_project_hello_world_project_model() {
                             Other,
                         ),
                         is_proc_macro: false,
+                        target_layout: Err(
+                            "rust-project.json projects have no target layout set",
+                        ),
+                        channel: None,
                     },
                     CrateId(
                         10,
@@ -1773,9 +1748,6 @@ fn rust_project_hello_world_project_model() {
                         ),
                         potential_cfg_options: CfgOptions(
                             [],
-                        ),
-                        target_layout: Err(
-                            "rust-project.json projects have no target layout set",
                         ),
                         env: Env {
                             entries: {},
@@ -1818,13 +1790,17 @@ fn rust_project_hello_world_project_model() {
                                 prelude: false,
                             },
                         ],
-                        origin: CratesIo {
+                        origin: Local {
                             repo: None,
                             name: Some(
                                 "hello_world",
                             ),
                         },
                         is_proc_macro: false,
+                        target_layout: Err(
+                            "rust-project.json projects have no target layout set",
+                        ),
+                        channel: None,
                     },
                 },
             }"#]],
