@@ -6,7 +6,6 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_driver::print_flag_list;
 use rustc_session::config::{
     self, parse_crate_types_from_list, parse_externs, parse_target_triple, CrateType,
 };
@@ -328,14 +327,7 @@ impl Options {
             return Err(0);
         }
 
-        let z_flags = matches.opt_strs("Z");
-        if z_flags.iter().any(|x| *x == "help") {
-            print_flag_list("-Z", config::Z_OPTIONS);
-            return Err(0);
-        }
-        let c_flags = matches.opt_strs("C");
-        if c_flags.iter().any(|x| *x == "help") {
-            print_flag_list("-C", config::CG_OPTIONS);
+        if rustc_driver::describe_flag_categories(&matches) {
             return Err(0);
         }
 
