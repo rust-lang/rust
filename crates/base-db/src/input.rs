@@ -135,8 +135,12 @@ impl ops::Deref for CrateName {
 /// Origin of the crates. It is used in emitting monikers.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CrateOrigin {
-    /// Crates that are from crates.io official registry,
-    CratesIo { repo: Option<String>, name: Option<String> },
+    /// Crates that are from the rustc workspace
+    Rustc { name: String },
+    /// Crates that are workspace members,
+    Local { repo: Option<String>, name: Option<String> },
+    /// Crates that are non member libraries.
+    Library { repo: Option<String>, name: String },
     /// Crates that are provided by the language, like std, core, proc-macro, ...
     Lang(LangCrateOrigin),
 }
@@ -257,6 +261,32 @@ pub struct ProcMacro {
     pub expander: Arc<dyn ProcMacroExpander>,
 }
 
+#[derive(Debug, Copy, Clone)]
+pub enum ReleaseChannel {
+    Stable,
+    Beta,
+    Nightly,
+}
+
+impl ReleaseChannel {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ReleaseChannel::Stable => "stable",
+            ReleaseChannel::Beta => "beta",
+            ReleaseChannel::Nightly => "nightly",
+        }
+    }
+
+    pub fn from_str(str: &str) -> Option<Self> {
+        Some(match str {
+            "stable" => ReleaseChannel::Stable,
+            "beta" => ReleaseChannel::Beta,
+            "nightly" => ReleaseChannel::Nightly,
+            _ => return None,
+        })
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct CrateData {
     pub root_file_id: FileId,
@@ -271,11 +301,13 @@ pub struct CrateData {
     pub display_name: Option<CrateDisplayName>,
     pub cfg_options: CfgOptions,
     pub potential_cfg_options: CfgOptions,
-    pub target_layout: TargetLayoutLoadResult,
     pub env: Env,
     pub dependencies: Vec<Dependency>,
     pub origin: CrateOrigin,
     pub is_proc_macro: bool,
+    // FIXME: These things should not be per crate! These are more per workspace crate graph level things
+    pub target_layout: TargetLayoutLoadResult,
+    pub channel: Option<ReleaseChannel>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -329,6 +361,7 @@ impl CrateGraph {
         is_proc_macro: bool,
         origin: CrateOrigin,
         target_layout: Result<Arc<str>, Arc<str>>,
+        channel: Option<ReleaseChannel>,
     ) -> CrateId {
         let data = CrateData {
             root_file_id,
@@ -342,6 +375,7 @@ impl CrateGraph {
             origin,
             target_layout,
             is_proc_macro,
+            channel,
         };
         let crate_id = CrateId(self.arena.len() as u32);
         let prev = self.arena.insert(crate_id, data);
@@ -653,8 +687,9 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             false,
-            CrateOrigin::CratesIo { repo: None, name: None },
+            CrateOrigin::Local { repo: None, name: None },
             Err("".into()),
+            None,
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
@@ -665,8 +700,9 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             false,
-            CrateOrigin::CratesIo { repo: None, name: None },
+            CrateOrigin::Local { repo: None, name: None },
             Err("".into()),
+            None,
         );
         let crate3 = graph.add_crate_root(
             FileId(3u32),
@@ -677,8 +713,9 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             false,
-            CrateOrigin::CratesIo { repo: None, name: None },
+            CrateOrigin::Local { repo: None, name: None },
             Err("".into()),
+            None,
         );
         assert!(graph
             .add_dep(crate1, Dependency::new(CrateName::new("crate2").unwrap(), crate2))
@@ -703,8 +740,9 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             false,
-            CrateOrigin::CratesIo { repo: None, name: None },
+            CrateOrigin::Local { repo: None, name: None },
             Err("".into()),
+            None,
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
@@ -715,8 +753,9 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             false,
-            CrateOrigin::CratesIo { repo: None, name: None },
+            CrateOrigin::Local { repo: None, name: None },
             Err("".into()),
+            None,
         );
         assert!(graph
             .add_dep(crate1, Dependency::new(CrateName::new("crate2").unwrap(), crate2))
@@ -738,8 +777,9 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             false,
-            CrateOrigin::CratesIo { repo: None, name: None },
+            CrateOrigin::Local { repo: None, name: None },
             Err("".into()),
+            None,
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
@@ -750,8 +790,9 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             false,
-            CrateOrigin::CratesIo { repo: None, name: None },
+            CrateOrigin::Local { repo: None, name: None },
             Err("".into()),
+            None,
         );
         let crate3 = graph.add_crate_root(
             FileId(3u32),
@@ -762,8 +803,9 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             false,
-            CrateOrigin::CratesIo { repo: None, name: None },
+            CrateOrigin::Local { repo: None, name: None },
             Err("".into()),
+            None,
         );
         assert!(graph
             .add_dep(crate1, Dependency::new(CrateName::new("crate2").unwrap(), crate2))
@@ -785,8 +827,9 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             false,
-            CrateOrigin::CratesIo { repo: None, name: None },
+            CrateOrigin::Local { repo: None, name: None },
             Err("".into()),
+            None,
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
@@ -797,8 +840,9 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             false,
-            CrateOrigin::CratesIo { repo: None, name: None },
+            CrateOrigin::Local { repo: None, name: None },
             Err("".into()),
+            None,
         );
         assert!(graph
             .add_dep(

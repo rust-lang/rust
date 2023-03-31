@@ -192,6 +192,7 @@ impl GlobalState {
                                 it.clone(),
                                 cargo_config.target.as_deref(),
                                 &cargo_config.extra_env,
+                                None,
                             ))
                         }
                     })
@@ -427,19 +428,19 @@ impl GlobalState {
         let (crate_graph, proc_macro_paths) = {
             let vfs = &mut self.vfs.write().0;
             let loader = &mut self.loader;
-            let mem_docs = &self.mem_docs;
-            let mut load = move |path: &AbsPath| {
+            let mut load = |path: &AbsPath| {
                 let _p = profile::span("switch_workspaces::load");
                 let vfs_path = vfs::VfsPath::from(path.to_path_buf());
-                if !mem_docs.contains(&vfs_path) {
-                    let contents = loader.handle.load_sync(path);
-                    vfs.set_file_contents(vfs_path.clone(), contents);
+                match vfs.file_id(&vfs_path) {
+                    Some(file_id) => Some(file_id),
+                    None => {
+                        if !self.mem_docs.contains(&vfs_path) {
+                            let contents = loader.handle.load_sync(path);
+                            vfs.set_file_contents(vfs_path.clone(), contents);
+                        }
+                        vfs.file_id(&vfs_path)
+                    }
                 }
-                let res = vfs.file_id(&vfs_path);
-                if res.is_none() {
-                    tracing::warn!("failed to load {}", path.display())
-                }
-                res
             };
 
             let mut crate_graph = CrateGraph::default();

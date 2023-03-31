@@ -12,7 +12,7 @@ use url::Url;
 
 use hir::{db::HirDatabase, Adt, AsAssocItem, AssocItem, AssocItemContainer, HasAttrs};
 use ide_db::{
-    base_db::{CrateOrigin, LangCrateOrigin, SourceDatabase},
+    base_db::{CrateOrigin, LangCrateOrigin, ReleaseChannel, SourceDatabase},
     defs::{Definition, NameClass, NameRefClass},
     helpers::pick_best_token,
     RootDatabase,
@@ -436,8 +436,9 @@ fn get_doc_base_url(db: &RootDatabase, def: Definition) -> Option<Url> {
 
     let krate = def.krate(db)?;
     let display_name = krate.display_name(db)?;
-
-    let base = match db.crate_graph()[krate.into()].origin {
+    let crate_data = &db.crate_graph()[krate.into()];
+    let channel = crate_data.channel.map_or("nightly", ReleaseChannel::as_str);
+    let base = match &crate_data.origin {
         // std and co do not specify `html_root_url` any longer so we gotta handwrite this ourself.
         // FIXME: Use the toolchains channel instead of nightly
         CrateOrigin::Lang(
@@ -447,9 +448,14 @@ fn get_doc_base_url(db: &RootDatabase, def: Definition) -> Option<Url> {
             | LangCrateOrigin::Std
             | LangCrateOrigin::Test),
         ) => {
-            format!("https://doc.rust-lang.org/nightly/{origin}")
+            format!("https://doc.rust-lang.org/{channel}/{origin}")
         }
-        _ => {
+        CrateOrigin::Lang(_) => return None,
+        CrateOrigin::Rustc { name: _ } => {
+            format!("https://doc.rust-lang.org/{channel}/nightly-rustc/")
+        }
+        CrateOrigin::Local { repo: _, name: _ } => {
+            // FIXME: These should not attempt to link to docs.rs!
             krate.get_html_root_url(db).or_else(|| {
                 let version = krate.version(db);
                 // Fallback to docs.rs. This uses `display_name` and can never be
@@ -460,6 +466,21 @@ fn get_doc_base_url(db: &RootDatabase, def: Definition) -> Option<Url> {
                 Some(format!(
                     "https://docs.rs/{krate}/{version}/",
                     krate = display_name,
+                    version = version.as_deref().unwrap_or("*")
+                ))
+            })?
+        }
+        CrateOrigin::Library { repo: _, name } => {
+            krate.get_html_root_url(db).or_else(|| {
+                let version = krate.version(db);
+                // Fallback to docs.rs. This uses `display_name` and can never be
+                // correct, but that's what fallbacks are about.
+                //
+                // FIXME: clicking on the link should just open the file in the editor,
+                // instead of falling back to external urls.
+                Some(format!(
+                    "https://docs.rs/{krate}/{version}/",
+                    krate = name,
                     version = version.as_deref().unwrap_or("*")
                 ))
             })?

@@ -166,6 +166,7 @@ impl ChangeFixture {
                         .as_deref()
                         .map(Arc::from)
                         .ok_or_else(|| "target_data_layout unset".into()),
+                    None,
                 );
                 let prev = crates.insert(crate_name.clone(), crate_id);
                 assert!(prev.is_none());
@@ -200,10 +201,11 @@ impl ChangeFixture {
                 default_cfg,
                 Env::default(),
                 false,
-                CrateOrigin::CratesIo { repo: None, name: None },
+                CrateOrigin::Local { repo: None, name: None },
                 default_target_data_layout
                     .map(|x| x.into())
                     .ok_or_else(|| "target_data_layout unset".into()),
+                None,
             );
         } else {
             for (from, to, prelude) in crate_deps {
@@ -245,6 +247,7 @@ impl ChangeFixture {
                 false,
                 CrateOrigin::Lang(LangCrateOrigin::Core),
                 target_layout.clone(),
+                None,
             );
 
             for krate in all_crates {
@@ -281,8 +284,9 @@ impl ChangeFixture {
                 CfgOptions::default(),
                 Env::default(),
                 true,
-                CrateOrigin::CratesIo { repo: None, name: None },
+                CrateOrigin::Local { repo: None, name: None },
                 target_layout,
+                None,
             );
             proc_macros.insert(proc_macros_crate, Ok(proc_macro));
 
@@ -427,7 +431,7 @@ fn parse_crate(crate_str: String) -> (String, CrateOrigin, Option<String>) {
         let (version, origin) = match b.split_once(':') {
             Some(("CratesIo", data)) => match data.split_once(',') {
                 Some((version, url)) => {
-                    (version, CrateOrigin::CratesIo { repo: Some(url.to_owned()), name: None })
+                    (version, CrateOrigin::Local { repo: Some(url.to_owned()), name: None })
                 }
                 _ => panic!("Bad crates.io parameter: {data}"),
             },
@@ -435,10 +439,9 @@ fn parse_crate(crate_str: String) -> (String, CrateOrigin, Option<String>) {
         };
         (a.to_owned(), origin, Some(version.to_string()))
     } else {
-        let crate_origin = match &*crate_str {
-            "std" => CrateOrigin::Lang(LangCrateOrigin::Std),
-            "core" => CrateOrigin::Lang(LangCrateOrigin::Core),
-            _ => CrateOrigin::CratesIo { repo: None, name: None },
+        let crate_origin = match LangCrateOrigin::from(&*crate_str) {
+            LangCrateOrigin::Other => CrateOrigin::Local { repo: None, name: None },
+            origin => CrateOrigin::Lang(origin),
         };
         (crate_str, crate_origin, None)
     }
