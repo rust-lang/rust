@@ -150,11 +150,7 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 "debug_assertions",
                             ],
                         ),
-                        potential_cfg_options: CfgOptions(
-                            [
-                                "debug_assertions",
-                            ],
-                        ),
+                        potential_cfg_options: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -185,8 +181,11 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 prelude: true,
                             },
                         ],
-                        origin: Rustc {
-                            name: "hello-world",
+                        origin: Local {
+                            repo: None,
+                            name: Some(
+                                "hello-world",
+                            ),
                         },
                         is_proc_macro: false,
                         target_layout: Err(
@@ -217,11 +216,7 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 "debug_assertions",
                             ],
                         ),
-                        potential_cfg_options: CfgOptions(
-                            [
-                                "debug_assertions",
-                            ],
-                        ),
+                        potential_cfg_options: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -261,8 +256,11 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 prelude: true,
                             },
                         ],
-                        origin: Rustc {
-                            name: "hello-world",
+                        origin: Local {
+                            repo: None,
+                            name: Some(
+                                "hello-world",
+                            ),
                         },
                         is_proc_macro: false,
                         target_layout: Err(
@@ -293,11 +291,7 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 "debug_assertions",
                             ],
                         ),
-                        potential_cfg_options: CfgOptions(
-                            [
-                                "debug_assertions",
-                            ],
-                        ),
+                        potential_cfg_options: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -337,8 +331,11 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 prelude: true,
                             },
                         ],
-                        origin: Rustc {
-                            name: "hello-world",
+                        origin: Local {
+                            repo: None,
+                            name: Some(
+                                "hello-world",
+                            ),
                         },
                         is_proc_macro: false,
                         target_layout: Err(
@@ -369,11 +366,7 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 "debug_assertions",
                             ],
                         ),
-                        potential_cfg_options: CfgOptions(
-                            [
-                                "debug_assertions",
-                            ],
-                        ),
+                        potential_cfg_options: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -413,8 +406,11 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 prelude: true,
                             },
                         ],
-                        origin: Rustc {
-                            name: "hello-world",
+                        origin: Local {
+                            repo: None,
+                            name: Some(
+                                "hello-world",
+                            ),
                         },
                         is_proc_macro: false,
                         target_layout: Err(
@@ -447,17 +443,19 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 "feature=std",
                             ],
                         ),
-                        potential_cfg_options: CfgOptions(
-                            [
-                                "debug_assertions",
-                                "feature=align",
-                                "feature=const-extern-fn",
-                                "feature=default",
-                                "feature=extra_traits",
-                                "feature=rustc-dep-of-std",
-                                "feature=std",
-                                "feature=use_std",
-                            ],
+                        potential_cfg_options: Some(
+                            CfgOptions(
+                                [
+                                    "debug_assertions",
+                                    "feature=align",
+                                    "feature=const-extern-fn",
+                                    "feature=default",
+                                    "feature=extra_traits",
+                                    "feature=rustc-dep-of-std",
+                                    "feature=std",
+                                    "feature=use_std",
+                                ],
+                            ),
                         ),
                         env: Env {
                             entries: {
@@ -479,7 +477,10 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                             },
                         },
                         dependencies: [],
-                        origin: Rustc {
+                        origin: Library {
+                            repo: Some(
+                                "https://github.com/rust-lang/libc",
+                            ),
                             name: "libc",
                         },
                         is_proc_macro: false,
@@ -535,12 +536,7 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 "test",
                             ],
                         ),
-                        potential_cfg_options: CfgOptions(
-                            [
-                                "debug_assertions",
-                                "test",
-                            ],
-                        ),
+                        potential_cfg_options: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -571,8 +567,11 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 prelude: true,
                             },
                         ],
-                        origin: Rustc {
-                            name: "hello-world",
+                        origin: Local {
+                            repo: None,
+                            name: Some(
+                                "hello-world",
+                            ),
                         },
                         is_proc_macro: false,
                         target_layout: Err(
@@ -604,12 +603,7 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 "test",
                             ],
                         ),
-                        potential_cfg_options: CfgOptions(
-                            [
-                                "debug_assertions",
-                                "test",
-                            ],
-                        ),
+                        potential_cfg_options: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -649,8 +643,11 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 prelude: true,
                             },
                         ],
-                        origin: Rustc {
-                            name: "hello-world",
+                        origin: Local {
+                            repo: None,
+                            name: Some(
+                                "hello-world",
+                            ),
                         },
                         is_proc_macro: false,
                         target_layout: Err(
@@ -682,12 +679,7 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 "test",
                             ],
                         ),
-                        potential_cfg_options: CfgOptions(
-                            [
-                                "debug_assertions",
-                                "test",
-                            ],
-                        ),
+                        potential_cfg_options: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -727,8 +719,11 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 prelude: true,
                             },
                         ],
-                        origin: Rustc {
-                            name: "hello-world",
+                        origin: Local {
+                            repo: None,
+                            name: Some(
+                                "hello-world",
+                            ),
                         },
                         is_proc_macro: false,
                         target_layout: Err(
@@ -760,12 +755,7 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 "test",
                             ],
                         ),
-                        potential_cfg_options: CfgOptions(
-                            [
-                                "debug_assertions",
-                                "test",
-                            ],
-                        ),
+                        potential_cfg_options: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -805,8 +795,11 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 prelude: true,
                             },
                         ],
-                        origin: Rustc {
-                            name: "hello-world",
+                        origin: Local {
+                            repo: None,
+                            name: Some(
+                                "hello-world",
+                            ),
                         },
                         is_proc_macro: false,
                         target_layout: Err(
@@ -839,17 +832,19 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 "feature=std",
                             ],
                         ),
-                        potential_cfg_options: CfgOptions(
-                            [
-                                "debug_assertions",
-                                "feature=align",
-                                "feature=const-extern-fn",
-                                "feature=default",
-                                "feature=extra_traits",
-                                "feature=rustc-dep-of-std",
-                                "feature=std",
-                                "feature=use_std",
-                            ],
+                        potential_cfg_options: Some(
+                            CfgOptions(
+                                [
+                                    "debug_assertions",
+                                    "feature=align",
+                                    "feature=const-extern-fn",
+                                    "feature=default",
+                                    "feature=extra_traits",
+                                    "feature=rustc-dep-of-std",
+                                    "feature=std",
+                                    "feature=use_std",
+                                ],
+                            ),
                         ),
                         env: Env {
                             entries: {
@@ -871,7 +866,10 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                             },
                         },
                         dependencies: [],
-                        origin: Rustc {
+                        origin: Library {
+                            repo: Some(
+                                "https://github.com/rust-lang/libc",
+                            ),
                             name: "libc",
                         },
                         is_proc_macro: false,
@@ -917,12 +915,7 @@ fn cargo_hello_world_project_model() {
                                 "test",
                             ],
                         ),
-                        potential_cfg_options: CfgOptions(
-                            [
-                                "debug_assertions",
-                                "test",
-                            ],
-                        ),
+                        potential_cfg_options: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -953,8 +946,11 @@ fn cargo_hello_world_project_model() {
                                 prelude: true,
                             },
                         ],
-                        origin: Rustc {
-                            name: "hello-world",
+                        origin: Local {
+                            repo: None,
+                            name: Some(
+                                "hello-world",
+                            ),
                         },
                         is_proc_macro: false,
                         target_layout: Err(
@@ -986,12 +982,7 @@ fn cargo_hello_world_project_model() {
                                 "test",
                             ],
                         ),
-                        potential_cfg_options: CfgOptions(
-                            [
-                                "debug_assertions",
-                                "test",
-                            ],
-                        ),
+                        potential_cfg_options: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -1031,8 +1022,11 @@ fn cargo_hello_world_project_model() {
                                 prelude: true,
                             },
                         ],
-                        origin: Rustc {
-                            name: "hello-world",
+                        origin: Local {
+                            repo: None,
+                            name: Some(
+                                "hello-world",
+                            ),
                         },
                         is_proc_macro: false,
                         target_layout: Err(
@@ -1064,12 +1058,7 @@ fn cargo_hello_world_project_model() {
                                 "test",
                             ],
                         ),
-                        potential_cfg_options: CfgOptions(
-                            [
-                                "debug_assertions",
-                                "test",
-                            ],
-                        ),
+                        potential_cfg_options: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -1109,8 +1098,11 @@ fn cargo_hello_world_project_model() {
                                 prelude: true,
                             },
                         ],
-                        origin: Rustc {
-                            name: "hello-world",
+                        origin: Local {
+                            repo: None,
+                            name: Some(
+                                "hello-world",
+                            ),
                         },
                         is_proc_macro: false,
                         target_layout: Err(
@@ -1142,12 +1134,7 @@ fn cargo_hello_world_project_model() {
                                 "test",
                             ],
                         ),
-                        potential_cfg_options: CfgOptions(
-                            [
-                                "debug_assertions",
-                                "test",
-                            ],
-                        ),
+                        potential_cfg_options: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -1187,8 +1174,11 @@ fn cargo_hello_world_project_model() {
                                 prelude: true,
                             },
                         ],
-                        origin: Rustc {
-                            name: "hello-world",
+                        origin: Local {
+                            repo: None,
+                            name: Some(
+                                "hello-world",
+                            ),
                         },
                         is_proc_macro: false,
                         target_layout: Err(
@@ -1221,17 +1211,19 @@ fn cargo_hello_world_project_model() {
                                 "feature=std",
                             ],
                         ),
-                        potential_cfg_options: CfgOptions(
-                            [
-                                "debug_assertions",
-                                "feature=align",
-                                "feature=const-extern-fn",
-                                "feature=default",
-                                "feature=extra_traits",
-                                "feature=rustc-dep-of-std",
-                                "feature=std",
-                                "feature=use_std",
-                            ],
+                        potential_cfg_options: Some(
+                            CfgOptions(
+                                [
+                                    "debug_assertions",
+                                    "feature=align",
+                                    "feature=const-extern-fn",
+                                    "feature=default",
+                                    "feature=extra_traits",
+                                    "feature=rustc-dep-of-std",
+                                    "feature=std",
+                                    "feature=use_std",
+                                ],
+                            ),
                         ),
                         env: Env {
                             entries: {
@@ -1253,7 +1245,10 @@ fn cargo_hello_world_project_model() {
                             },
                         },
                         dependencies: [],
-                        origin: Rustc {
+                        origin: Library {
+                            repo: Some(
+                                "https://github.com/rust-lang/libc",
+                            ),
                             name: "libc",
                         },
                         is_proc_macro: false,
@@ -1294,9 +1289,7 @@ fn rust_project_hello_world_project_model() {
                         cfg_options: CfgOptions(
                             [],
                         ),
-                        potential_cfg_options: CfgOptions(
-                            [],
-                        ),
+                        potential_cfg_options: None,
                         env: Env {
                             entries: {},
                         },
@@ -1339,9 +1332,7 @@ fn rust_project_hello_world_project_model() {
                         cfg_options: CfgOptions(
                             [],
                         ),
-                        potential_cfg_options: CfgOptions(
-                            [],
-                        ),
+                        potential_cfg_options: None,
                         env: Env {
                             entries: {},
                         },
@@ -1374,9 +1365,7 @@ fn rust_project_hello_world_project_model() {
                         cfg_options: CfgOptions(
                             [],
                         ),
-                        potential_cfg_options: CfgOptions(
-                            [],
-                        ),
+                        potential_cfg_options: None,
                         env: Env {
                             entries: {},
                         },
@@ -1409,9 +1398,7 @@ fn rust_project_hello_world_project_model() {
                         cfg_options: CfgOptions(
                             [],
                         ),
-                        potential_cfg_options: CfgOptions(
-                            [],
-                        ),
+                        potential_cfg_options: None,
                         env: Env {
                             entries: {},
                         },
@@ -1444,9 +1431,7 @@ fn rust_project_hello_world_project_model() {
                         cfg_options: CfgOptions(
                             [],
                         ),
-                        potential_cfg_options: CfgOptions(
-                            [],
-                        ),
+                        potential_cfg_options: None,
                         env: Env {
                             entries: {},
                         },
@@ -1498,9 +1483,7 @@ fn rust_project_hello_world_project_model() {
                         cfg_options: CfgOptions(
                             [],
                         ),
-                        potential_cfg_options: CfgOptions(
-                            [],
-                        ),
+                        potential_cfg_options: None,
                         env: Env {
                             entries: {},
                         },
@@ -1533,9 +1516,7 @@ fn rust_project_hello_world_project_model() {
                         cfg_options: CfgOptions(
                             [],
                         ),
-                        potential_cfg_options: CfgOptions(
-                            [],
-                        ),
+                        potential_cfg_options: None,
                         env: Env {
                             entries: {},
                         },
@@ -1641,9 +1622,7 @@ fn rust_project_hello_world_project_model() {
                         cfg_options: CfgOptions(
                             [],
                         ),
-                        potential_cfg_options: CfgOptions(
-                            [],
-                        ),
+                        potential_cfg_options: None,
                         env: Env {
                             entries: {},
                         },
@@ -1676,9 +1655,7 @@ fn rust_project_hello_world_project_model() {
                         cfg_options: CfgOptions(
                             [],
                         ),
-                        potential_cfg_options: CfgOptions(
-                            [],
-                        ),
+                        potential_cfg_options: None,
                         env: Env {
                             entries: {},
                         },
@@ -1711,9 +1688,7 @@ fn rust_project_hello_world_project_model() {
                         cfg_options: CfgOptions(
                             [],
                         ),
-                        potential_cfg_options: CfgOptions(
-                            [],
-                        ),
+                        potential_cfg_options: None,
                         env: Env {
                             entries: {},
                         },
@@ -1746,9 +1721,7 @@ fn rust_project_hello_world_project_model() {
                         cfg_options: CfgOptions(
                             [],
                         ),
-                        potential_cfg_options: CfgOptions(
-                            [],
-                        ),
+                        potential_cfg_options: None,
                         env: Env {
                             entries: {},
                         },
@@ -1786,6 +1759,15 @@ fn rust_project_hello_world_project_model() {
                                 ),
                                 name: CrateName(
                                     "test",
+                                ),
+                                prelude: false,
+                            },
+                            Dependency {
+                                crate_id: CrateId(
+                                    4,
+                                ),
+                                name: CrateName(
+                                    "proc_macro",
                                 ),
                                 prelude: false,
                             },
