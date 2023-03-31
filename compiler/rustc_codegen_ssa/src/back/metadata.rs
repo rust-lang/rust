@@ -215,69 +215,43 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
       let segment:Vec<u8>  =  file.segment_name(StandardSegment::Data).to_vec();
       let kind = SectionKind::Note;
       let section = file.add_section(segment, name, kind);
-      
       let mut data:Vec<u8> = Vec::new();
-      //Emit the note header
-      /* Size of the n_name field
-      .word   4;
-      OutStreamer.emitIntValue(4, 4)
-      */
-      //let n_namsz:u32 = 4;
+      // Size of the n_name field
       let n_namsz = (4 as u32).to_ne_bytes();
       data.extend_from_slice(&n_namsz);
-       
-      /*Size of the n_desc field 
-      .word   16; /* n_descsz */
-      OutStreamer.emitIntValue(4 * 4, 4);
-      */
+      // Size of the n_desc field 
       let n_descz = (16 as u32).to_ne_bytes();
-      data.extend_from_slice(&n_descz);
-      
-      /*Type of note descriptor 
-      .word   5; /* n_type = NT_GNU_PROPERTY_TYPE_0 */
-      OutStreamer.emitIntValue(ELF::NT_GNU_PROPERTY_TYPE_0, 4);
-      */
+      data.extend_from_slice(&n_descz); 
+      // Type of note descriptor 
       let n_type = (NT_GNU_PROPERTY_TYPE_0 as u32).to_ne_bytes();
       data.extend_from_slice(&n_type);
-       
-      /* Owner of the program property note 
-      .asciz "GNU";  /* n_name */
-      OutStreamer.emitBytes(StringRef("GNU", 4)); // note name
-      */
+      // Owner of the program property note 
+      /*
+      data.push(0);
+      data.push(b'U');
+      data.push(b'N');
+      data.push(b'G');
+     */
       data.push(b'G');
       data.push(b'N');
       data.push(b'U');
-      data.push(0);
-     
+      data.push(0);    
       /* The type of program property 
       .word   0xc0000000; /* pr_type = GNU_PROPERTY_AARCH64_FEATURE_1_AND */
       OutStreamer.emitIntValue(ELF::GNU_PROPERTY_AARCH64_FEATURE_1_AND, 4);
       pub const GNU_PROPERTY_AARCH64_FEATURE_1_AND: u32 = 3221225472;
-      */
-      let pr_type =  (0xc0000000 as u32).to_be_bytes();
-      data.extend_from_slice(&pr_type);
-      
-      /* The size of the pr_data field
-      .word   4; /* pr_datasz */ 
-      OutStreamer.emitIntValue(4, 4);     // data size
-      */
+      */    
+      let pr_type =  (0xc0000000 as u32).to_ne_bytes();
+      data.extend_from_slice(&pr_type);      
+      // The size of the pr_data field
       let pr_datasz = (4 as u32).to_ne_bytes();
-      data.extend_from_slice(&pr_datasz);
-      
-      /* The program property descriptor
-      .word   features; /* pr_data = features */   
-      OutStreamer.emitIntValue(Flags, 4); // data
-      */
+      data.extend_from_slice(&pr_datasz);    
+      // The program property descriptor
       let pr_data = (e_flags as u32).to_ne_bytes();
-      data.extend_from_slice(&pr_data);
-      
-      /*The padding if necessary 
-      .word   0; /* pr_padding */
-      OutStreamer.emitIntValue(0, 4);     // pad
-      */
+      data.extend_from_slice(&pr_data);      
+      // The padding if necessary 
       let pr_padding = (0 as u32).to_ne_bytes();    
-      data.extend_from_slice(&pr_padding);
-  
+      data.extend_from_slice(&pr_padding); 
       let x = data.len();
       assert_eq!(x, 32);
       let _ = file.append_section_data(section, &data, 8);   
