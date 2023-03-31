@@ -34,7 +34,7 @@ pub(crate) fn convert_nested_function_to_closure(
     let name = ctx.find_node_at_offset::<ast::Name>()?;
     let function = name.syntax().parent().and_then(ast::Fn::cast)?;
 
-    if !is_nested_function(&function) || is_generic(&function) {
+    if !is_nested_function(&function) || is_generic(&function) || has_modifiers(&function) {
         return None;
     }
 
@@ -43,21 +43,21 @@ pub(crate) fn convert_nested_function_to_closure(
     let name = function.name()?;
     let params = function.param_list()?;
 
+    let params_text = params.syntax().text().to_string();
+    let closure_params = params_text.strip_prefix("(").and_then(|p| p.strip_suffix(")"))?;
+
     acc.add(
         AssistId("convert_nested_function_to_closure", AssistKind::RefactorRewrite),
         "Convert nested function to closure",
         target,
         |edit| {
             let has_semicolon = has_semicolon(&function);
-            let params_text = params.syntax().text().to_string();
-            let params_text_trimmed =
-                params_text.strip_prefix("(").and_then(|p| p.strip_suffix(")"));
 
-            if let Some(closure_params) = params_text_trimmed {
-                let body = body.to_string();
-                let body = if has_semicolon { body } else { format!("{};", body) };
-                edit.replace(target, format!("let {} = |{}| {}", name, closure_params, body));
+            let mut body = body.to_string();
+            if !has_semicolon {
+                body.push(';');
             }
+            edit.replace(target, format!("let {} = |{}| {}", name, closure_params, body));
         },
     )
 }
@@ -75,6 +75,17 @@ fn is_nested_function(function: &ast::Fn) -> bool {
 /// Returns whether the given nested function has generic parameters.
 fn is_generic(function: &ast::Fn) -> bool {
     function.generic_param_list().is_some()
+}
+
+/// Returns whether the given nested function has any modifiers:
+///
+/// - `async`,
+/// - `const` or
+/// - `unsafe`
+fn has_modifiers(function: &ast::Fn) -> bool {
+    function.async_token().is_some()
+        || function.const_token().is_some()
+        || function.unsafe_token().is_some()
 }
 
 /// Returns whether the given nested function has a trailing semicolon.
@@ -143,7 +154,7 @@ fn main() {
     }
 
     #[test]
-    fn convert_nested_function_to_closure_does_not_work_on_top_level_function() {
+    fn convert_nested_function_to_closure_is_not_suggested_on_top_level_function() {
         check_assist_not_applicable(
             convert_nested_function_to_closure,
             r#"
@@ -153,14 +164,14 @@ fn ma$0in() {}
     }
 
     #[test]
-    fn convert_nested_function_to_closure_does_not_work_when_cursor_off_name() {
+    fn convert_nested_function_to_closure_is_not_suggested_when_cursor_off_name() {
         check_assist_not_applicable(
             convert_nested_function_to_closure,
             r#"
 fn main() {
     fn foo(a: u64, $0b: u64) -> u64 {
         2 * (a + b)
-    };
+    }
 
     _ = foo(3, 4);
 }
@@ -169,14 +180,30 @@ fn main() {
     }
 
     #[test]
-    fn convert_nested_function_to_closure_does_not_work_if_function_has_generic_params() {
+    fn convert_nested_function_to_closure_is_not_suggested_if_function_has_generic_params() {
         check_assist_not_applicable(
             convert_nested_function_to_closure,
             r#"
 fn main() {
     fn fo$0o<S: Into<String>>(s: S) -> String {
         s.into()
-    };
+    }
+
+    _ = foo("hello");
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn convert_nested_function_to_closure_is_not_suggested_if_function_has_modifier() {
+        check_assist_not_applicable(
+            convert_nested_function_to_closure,
+            r#"
+fn main() {
+    const fn fo$0o(s: String) -> String {
+        s
+    }
 
     _ = foo("hello");
 }
