@@ -1110,6 +1110,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                         }
                     }
                 }
+                GenericArgs::ReturnTypeNotation(_span) => {}
             }
         }
     }

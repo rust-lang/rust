@@ -1059,8 +1059,11 @@ impl<'a> Parser<'a> {
             output,
         }
         .into();
-        *fn_path_segment =
-            ast::PathSegment { ident: fn_path_segment.ident, args, id: ast::DUMMY_NODE_ID };
+        *fn_path_segment = ast::PathSegment {
+            ident: fn_path_segment.ident,
+            args: Some(args),
+            id: ast::DUMMY_NODE_ID,
+        };
 
         // Convert parsed `<'a>` in `Fn<'a>` into `for<'a>`.
         let mut generic_params = lifetimes

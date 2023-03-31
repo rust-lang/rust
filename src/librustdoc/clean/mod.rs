@@ -2002,7 +2002,8 @@ fn clean_generic_args<'tcx>(
     generic_args: &hir::GenericArgs<'tcx>,
     cx: &mut DocContext<'tcx>,
 ) -> GenericArgs {
-    if generic_args.parenthesized {
+    // FIXME(return_type_notation): Fix RTN parens rendering
+    if generic_args.parenthesized == hir::GenericArgsParentheses::ParenSugar {
         let output = clean_ty(generic_args.bindings[0].ty(), cx);
         let output = if output != Type::Tuple(Vec::new()) { Some(Box::new(output)) } else { None };
         let inputs =

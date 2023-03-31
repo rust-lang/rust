@@ -36,7 +36,7 @@ impl<'a> ExtCtxt<'a> {
         );
         let args = if !args.is_empty() {
             let args = args.into_iter().map(ast::AngleBracketedArg::Arg).collect();
-            ast::AngleBracketedArgs { args, span }.into()
+            Some(ast::AngleBracketedArgs { args, span }.into())
         } else {
             None
         };

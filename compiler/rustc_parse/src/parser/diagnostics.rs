@@ -989,8 +989,7 @@ impl<'a> Parser<'a> {
                     }
                     if self.token.kind == token::OpenDelim(Delimiter::Parenthesis) {
                         // Recover from bad turbofish: `foo.collect::Vec<_>()`.
-                        let args = AngleBracketedArgs { args, span }.into();
-                        segment.args = args;
+                        segment.args = Some(AngleBracketedArgs { args, span }.into());
 
                         self.sess.emit_err(GenericParamsWithoutAngleBrackets {
                             span,

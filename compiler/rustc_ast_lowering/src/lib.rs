@@ -66,7 +66,7 @@ use rustc_middle::{
     span_bug,
     ty::{ResolverAstLowering, TyCtxt},
 };
-use rustc_session::parse::feature_err;
+use rustc_session::parse::{add_feature_diagnostics, feature_err};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -482,7 +482,7 @@ enum ParamMode {
 }
 
 enum ParenthesizedGenericArgs {
-    Ok,
+    ParenSugar,
     Err,
 }
 
@@ -987,14 +987,56 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 GenericArgs::AngleBracketed(data) => {
                     self.lower_angle_bracketed_parameter_data(data, ParamMode::Explicit, itctx).0
                 }
+                &GenericArgs::ReturnTypeNotation(span) => GenericArgsCtor {
+                    args: Default::default(),
+                    bindings: &[],
+                    parenthesized: hir::GenericArgsParentheses::ReturnTypeNotation,
+                    span,
+                },
                 GenericArgs::Parenthesized(data) => {
-                    self.emit_bad_parenthesized_trait_in_assoc_ty(data);
-                    self.lower_angle_bracketed_parameter_data(
-                        &data.as_angle_bracketed_args(),
-                        ParamMode::Explicit,
-                        itctx,
-                    )
-                    .0
+                    if let Some(start_char) = constraint.ident.as_str().chars().next()
+                        && start_char.is_ascii_lowercase()
+                    {
+                        let mut err = if !data.inputs.is_empty() {
+                            self.tcx.sess.create_err(errors::BadReturnTypeNotation::Inputs {
+                                span: data.inputs_span,
+                            })
+                        } else if let FnRetTy::Ty(ty) = &data.output {
+                            self.tcx.sess.create_err(errors::BadReturnTypeNotation::Output {
+                                span: data.inputs_span.shrink_to_hi().to(ty.span),
+                            })
+                        } else {
+                            self.tcx.sess.create_err(errors::BadReturnTypeNotation::NeedsDots {
+                                span: data.inputs_span,
+                            })
+                        };
+                        if !self.tcx.features().return_type_notation
+                            && self.tcx.sess.is_nightly_build()
+                        {
+                            add_feature_diagnostics(
+                                &mut err,
+                                &self.tcx.sess.parse_sess,
+                                sym::return_type_notation,
+                            );
+                        }
+                        err.emit();
+                        GenericArgsCtor {
+                            args: Default::default(),
+                            bindings: &[],
+                            parenthesized: hir::GenericArgsParentheses::ReturnTypeNotation,
+                            span: data.span,
+                        }
+                    } else {
+                        self.emit_bad_parenthesized_trait_in_assoc_ty(data);
+                        // FIXME(return_type_notation): we could issue a feature error
+                        // if the parens are empty and there's no return type.
+                        self.lower_angle_bracketed_parameter_data(
+                            &data.as_angle_bracketed_args(),
+                            ParamMode::Explicit,
+                            itctx,
+                        )
+                        .0
+                    }
                 }
             };
             gen_args_ctor.into_generic_args(self)
@@ -2075,7 +2117,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let future_args = self.arena.alloc(hir::GenericArgs {
             args: &[],
             bindings: arena_vec![self; self.output_ty_binding(span, output_ty)],
-            parenthesized: false,
+            parenthesized: hir::GenericArgsParentheses::No,
             span_ext: DUMMY_SP,
         });
 
@@ -2595,13 +2637,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 struct GenericArgsCtor<'hir> {
     args: SmallVec<[hir::GenericArg<'hir>; 4]>,
     bindings: &'hir [hir::TypeBinding<'hir>],
-    parenthesized: bool,
+    parenthesized: hir::GenericArgsParentheses,
     span: Span,
 }
 
 impl<'hir> GenericArgsCtor<'hir> {
     fn is_empty(&self) -> bool {
-        self.args.is_empty() && self.bindings.is_empty() && !self.parenthesized
+        self.args.is_empty()
+            && self.bindings.is_empty()
+            && self.parenthesized == hir::GenericArgsParentheses::No
     }
 
     fn into_generic_args(self, this: &LoweringContext<'_, 'hir>) -> &'hir hir::GenericArgs<'hir> {
