@@ -87,6 +87,14 @@ pub struct SessionGlobals {
     symbol_interner: symbol::Interner,
     span_interner: Lock<span_encoding::SpanInterner>,
     hygiene_data: Lock<hygiene::HygieneData>,
+
+    /// A reference to the source map in the `Session`. It's an `Option`
+    /// because it can't be initialized until `Session` is created, which
+    /// happens after `SessionGlobals`. `set_source_map` does the
+    /// initialization.
+    ///
+    /// This field should only be used in places where the `Session` is truly
+    /// not available, such as `<Span as Debug>::fmt`.
     source_map: Lock<Option<Lrc<SourceMap>>>,
 }
 
@@ -1013,16 +1021,9 @@ impl<D: Decoder> Decodable<D> for Span {
     }
 }
 
-/// Calls the provided closure, using the provided `SourceMap` to format
-/// any spans that are debug-printed during the closure's execution.
-///
-/// Normally, the global `TyCtxt` is used to retrieve the `SourceMap`
-/// (see `rustc_interface::callbacks::span_debug1`). However, some parts
-/// of the compiler (e.g. `rustc_parse`) may debug-print `Span`s before
-/// a `TyCtxt` is available. In this case, we fall back to
-/// the `SourceMap` provided to this function. If that is not available,
-/// we fall back to printing the raw `Span` field values.
-pub fn with_source_map<T, F: FnOnce() -> T>(source_map: Lrc<SourceMap>, f: F) -> T {
+/// Insert `source_map` into the session globals for the duration of the
+/// closure's execution.
+pub fn set_source_map<T, F: FnOnce() -> T>(source_map: Lrc<SourceMap>, f: F) -> T {
     with_session_globals(|session_globals| {
         *session_globals.source_map.borrow_mut() = Some(source_map);
     });
@@ -1041,6 +1042,8 @@ pub fn with_source_map<T, F: FnOnce() -> T>(source_map: Lrc<SourceMap>, f: F) ->
 
 impl fmt::Debug for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Use the global `SourceMap` to print the span. If that's not
+        // available, fall back to printing the raw values.
         with_session_globals(|session_globals| {
             if let Some(source_map) = &*session_globals.source_map.borrow() {
                 write!(f, "{} ({:?})", source_map.span_to_diagnostic_string(*self), self.ctxt())

@@ -292,7 +292,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 override_queries: config.override_queries,
             };
 
-            rustc_span::with_source_map(compiler.sess.parse_sess.clone_source_map(), move || {
+            rustc_span::set_source_map(compiler.sess.parse_sess.clone_source_map(), move || {
                 let r = {
                     let _sess_abort_error = OnDrop(|| {
                         compiler.sess.finish_diagnostics(registry);
