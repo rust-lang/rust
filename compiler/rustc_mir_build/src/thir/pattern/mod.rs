@@ -357,7 +357,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let subpatterns = fields
                     .iter()
                     .map(|field| FieldPat {
-                        field: FieldIdx::new(self.typeck_results.field_index(field.hir_id)),
+                        field: self.typeck_results.field_index(field.hir_id),
                         pattern: self.lower_pattern(&field.pat),
                     })
                     .collect();

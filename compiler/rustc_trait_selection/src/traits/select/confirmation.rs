@@ -1078,6 +1078,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let tail_field = def
                     .non_enum_variant()
                     .fields
+                    .raw
                     .last()
                     .expect("expected unsized ADT to have a tail field");
                 let tail_field_ty = tcx.type_of(tail_field.did);

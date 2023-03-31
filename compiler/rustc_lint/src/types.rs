@@ -770,7 +770,7 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
     debug!("is_repr_nullable_ptr(cx, ty = {:?})", ty);
     if let ty::Adt(ty_def, substs) = ty.kind() {
         let field_ty = match &ty_def.variants().raw[..] {
-            [var_one, var_two] => match (&var_one.fields[..], &var_two.fields[..]) {
+            [var_one, var_two] => match (&var_one.fields.raw[..], &var_two.fields.raw[..]) {
                 ([], [field]) | ([field], []) => field.ty(cx.tcx, substs),
                 _ => return None,
             },

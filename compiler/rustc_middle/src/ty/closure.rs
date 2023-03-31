@@ -158,12 +158,12 @@ impl<'tcx> CapturedPlace<'tcx> {
         for proj in self.place.projections.iter() {
             match proj.kind {
                 HirProjectionKind::Field(idx, variant) => match ty.kind() {
-                    ty::Tuple(_) => write!(&mut symbol, "__{}", idx).unwrap(),
+                    ty::Tuple(_) => write!(&mut symbol, "__{}", idx.index()).unwrap(),
                     ty::Adt(def, ..) => {
                         write!(
                             &mut symbol,
                             "__{}",
-                            def.variant(variant).fields[idx as usize].name.as_str(),
+                            def.variant(variant).fields[idx].name.as_str(),
                         )
                         .unwrap();
                     }
@@ -356,11 +356,11 @@ pub fn place_to_string_for_capture<'tcx>(tcx: TyCtxt<'tcx>, place: &HirPlace<'tc
                     curr_string = format!(
                         "{}.{}",
                         curr_string,
-                        def.variant(variant).fields[idx as usize].name.as_str()
+                        def.variant(variant).fields[idx].name.as_str()
                     );
                 }
                 ty::Tuple(_) => {
-                    curr_string = format!("{}.{}", curr_string, idx);
+                    curr_string = format!("{}.{}", curr_string, idx.index());
                 }
                 _ => {
                     bug!(

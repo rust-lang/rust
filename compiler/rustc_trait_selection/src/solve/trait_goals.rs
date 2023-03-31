@@ -407,6 +407,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                     let tail_field = a_def
                         .non_enum_variant()
                         .fields
+                        .raw
                         .last()
                         .expect("expected unsized ADT to have a tail field");
                     let tail_field_ty = tcx.type_of(tail_field.did);

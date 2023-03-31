@@ -22,7 +22,7 @@ use rustc_index::vec::Idx;
 use rustc_macros::HashStable;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
-use rustc_target::abi::{VariantIdx, FIRST_VARIANT};
+use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use rustc_target::spec::abi::{self, Abi};
 use std::borrow::Cow;
 use std::cmp::Ordering;
@@ -1903,7 +1903,7 @@ impl<'tcx> Ty<'tcx> {
             Adt(def, substs) => {
                 assert!(def.repr().simd(), "`simd_size_and_type` called on non-SIMD type");
                 let variant = def.non_enum_variant();
-                let f0_ty = variant.fields[0].ty(tcx, substs);
+                let f0_ty = variant.fields[FieldIdx::from_u32(0)].ty(tcx, substs);
 
                 match f0_ty.kind() {
                     // If the first field is an array, we assume it is the only field and its

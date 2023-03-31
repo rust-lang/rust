@@ -907,7 +907,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                 }
                 ty::Adt(adt_def, substs) => {
                     let var = parent_ty.variant_index.unwrap_or(FIRST_VARIANT);
-                    let Some(field) = adt_def.variant(var).fields.get(f.as_usize()) else {
+                    let Some(field) = adt_def.variant(var).fields.get(f) else {
                         self.validation = Err("malformed MIR");
                         return;
                     };

@@ -33,6 +33,7 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
+use rustc_target::abi::FieldIdx;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::{self, NormalizeExt, ObligationCauseCode, ObligationCtxt};
 
@@ -147,7 +148,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn write_field_index(&self, hir_id: hir::HirId, index: usize) {
+    pub fn write_field_index(&self, hir_id: hir::HirId, index: FieldIdx) {
         self.typeck_results.borrow_mut().field_indices_mut().insert(hir_id, index);
     }
 

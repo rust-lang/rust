@@ -1030,7 +1030,7 @@ fn check_type_defn<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'tcx>, all_sized: b
             // intermediate types must be sized.
             let needs_drop_copy = || {
                 packed && {
-                    let ty = tcx.type_of(variant.fields.last().unwrap().did).subst_identity();
+                    let ty = tcx.type_of(variant.fields.raw.last().unwrap().did).subst_identity();
                     let ty = tcx.erase_regions(ty);
                     if ty.needs_infer() {
                         tcx.sess
@@ -1046,7 +1046,7 @@ fn check_type_defn<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'tcx>, all_sized: b
             let all_sized = all_sized || variant.fields.is_empty() || needs_drop_copy();
             let unsized_len = if all_sized { 0 } else { 1 };
             for (idx, field) in
-                variant.fields[..variant.fields.len() - unsized_len].iter().enumerate()
+                variant.fields.raw[..variant.fields.len() - unsized_len].iter().enumerate()
             {
                 let last = idx == variant.fields.len() - 1;
                 let field_id = field.did.expect_local();

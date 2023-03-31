@@ -411,9 +411,9 @@ where
     fn open_drop_for_box(&mut self, adt: ty::AdtDef<'tcx>, substs: SubstsRef<'tcx>) -> BasicBlock {
         // drop glue is sent straight to codegen
         // box cannot be directly dereferenced
-        let unique_ty = adt.non_enum_variant().fields[0].ty(self.tcx(), substs);
-        let nonnull_ty =
-            unique_ty.ty_adt_def().unwrap().non_enum_variant().fields[0].ty(self.tcx(), substs);
+        let unique_ty = adt.non_enum_variant().fields[FieldIdx::new(0)].ty(self.tcx(), substs);
+        let unique_variant = unique_ty.ty_adt_def().unwrap().non_enum_variant();
+        let nonnull_ty = unique_variant.fields[FieldIdx::from_u32(0)].ty(self.tcx(), substs);
         let ptr_ty = self.tcx().mk_imm_ptr(substs[0].expect_ty());
 
         let unique_place = self.tcx().mk_place_field(self.place, FieldIdx::new(0), unique_ty);

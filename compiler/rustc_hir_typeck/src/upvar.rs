@@ -1405,7 +1405,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ProjectionKind::Field(..)
                     ))
                 );
-                def.variants().get(FIRST_VARIANT).unwrap().fields.iter().enumerate().any(
+                def.variants().get(FIRST_VARIANT).unwrap().fields.iter_enumerated().any(
                     |(i, field)| {
                         let paths_using_field = captured_by_move_projs
                             .iter()
@@ -1413,7 +1413,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 if let ProjectionKind::Field(field_idx, _) =
                                     projs.first().unwrap().kind
                                 {
-                                    if (field_idx as usize) == i { Some(&projs[1..]) } else { None }
+                                    if field_idx == i { Some(&projs[1..]) } else { None }
                                 } else {
                                     unreachable!();
                                 }
@@ -1446,7 +1446,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .filter_map(|projs| {
                             if let ProjectionKind::Field(field_idx, _) = projs.first().unwrap().kind
                             {
-                                if (field_idx as usize) == i { Some(&projs[1..]) } else { None }
+                                if field_idx.index() == i { Some(&projs[1..]) } else { None }
                             } else {
                                 unreachable!();
                             }

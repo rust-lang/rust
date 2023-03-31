@@ -784,7 +784,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                             if let PatKind::Wild = p.pattern.kind {
                                 continue;
                             }
-                            let name = variant.fields[p.field.index()].name;
+                            let name = variant.fields[p.field].name;
                             write!(f, "{}{}: {}", start_or_comma(), name, p.pattern)?;
                             printed += 1;
                         }

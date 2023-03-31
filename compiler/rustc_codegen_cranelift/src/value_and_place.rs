@@ -701,7 +701,8 @@ impl<'tcx> CPlace<'tcx> {
                     };
                 }
                 ty::Adt(adt_def, substs) if layout.ty.is_simd() => {
-                    let f0_ty = adt_def.non_enum_variant().fields[0].ty(fx.tcx, substs);
+                    let f0 = &adt_def.non_enum_variant().fields[FieldIdx::from_u32(0)];
+                    let f0_ty = f0.ty(fx.tcx, substs);
 
                     match f0_ty.kind() {
                         ty::Array(_, _) => {

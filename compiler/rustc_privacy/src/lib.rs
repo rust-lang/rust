@@ -1082,7 +1082,7 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
                 // If the expression uses FRU we need to make sure all the unmentioned fields
                 // are checked for privacy (RFC 736). Rather than computing the set of
                 // unmentioned fields, just check them all.
-                for (vf_index, variant_field) in variant.fields.iter().enumerate() {
+                for (vf_index, variant_field) in variant.fields.iter_enumerated() {
                     let field = fields
                         .iter()
                         .find(|f| self.typeck_results().field_index(f.hir_id) == vf_index);
