@@ -1,8 +1,8 @@
 // edition:2018
 
-#![feature(rustdoc_internals)]
+#![feature(rustc_attrs)]
 
-#[doc(primitive = "usize")]
+#[rustc_doc_primitive = "usize"]
 mod usize {}
 
 // @set local_crate_id = "$.index[*][?(@.name=='use_primitive')].crate_id"

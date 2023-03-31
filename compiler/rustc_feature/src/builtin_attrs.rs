@@ -778,6 +778,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         definition of a trait, it's currently in experimental form and should be changed before \
         being exposed outside of the std"
     ),
+    rustc_attr!(
+        rustc_doc_primitive, Normal, template!(NameValueStr: "primitive name"), ErrorFollowing,
+        r#"`rustc_doc_primitive` is a rustc internal attribute"#,
+    ),
 
     // ==========================================================================
     // Internal attributes, Testing:

@@ -1,6 +1,6 @@
 #![crate_name = "foo"]
 
-#![feature(rustdoc_internals)]
+#![feature(rustc_attrs)]
 
 // @has 'foo/all.html'
 // @has - '//*[@class="sidebar-elems"]//li' 'Structs'
@@ -31,5 +31,5 @@ macro_rules! foo {
 pub type Type = u8;
 pub const FOO: u8 = 0;
 pub static BAR: u8 = 0;
-#[doc(primitive = "u8")]
+#[rustc_doc_primitive = "u8"]
 mod u8 {}

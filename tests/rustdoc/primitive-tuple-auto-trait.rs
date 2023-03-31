@@ -1,7 +1,7 @@
 // compile-flags: --crate-type lib --edition 2018
 
 #![crate_name = "foo"]
-#![feature(rustdoc_internals)]
+#![feature(rustc_attrs)]
 
 // @has foo/primitive.tuple.html '//a[@class="primitive"]' 'tuple'
 // @has - '//h1' 'Primitive Type tuple'
@@ -9,7 +9,7 @@
 // @has - '//h2[@id="synthetic-implementations"]' 'Auto Trait Implementations'
 // @has - '//div[@id="synthetic-implementations-list"]//h3' 'Send'
 // @has - '//div[@id="synthetic-implementations-list"]//h3' 'Sync'
-#[doc(primitive = "tuple")]
+#[rustc_doc_primitive = "tuple"]
 /// this is a test!
 ///
 // Hardcoded anchor to header written in library/core/src/primitive_docs.rs

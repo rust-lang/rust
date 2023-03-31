@@ -1109,17 +1109,6 @@ impl CheckAttrVisitor<'_> {
                             }
                         }
 
-                        sym::primitive => {
-                            if !self.tcx.features().rustdoc_internals {
-                                self.tcx.emit_spanned_lint(
-                                    INVALID_DOC_ATTRIBUTES,
-                                    hir_id,
-                                    i_meta.span,
-                                    errors::DocPrimitive,
-                                );
-                            }
-                        }
-
                         _ => {
                             let path = rustc_ast_pretty::pprust::path_to_string(&i_meta.path);
                             if i_meta.has_name(sym::spotlight) {

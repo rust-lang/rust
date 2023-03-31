@@ -453,8 +453,8 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             })?;
 
         // FIXME(#83862): this arbitrarily gives precedence to primitives over modules to support
-        // links to primitives when `#[doc(primitive)]` is present. It should give an ambiguity
-        // error instead and special case *only* modules with `#[doc(primitive)]`, not all
+        // links to primitives when `#[rustc_doc_primitive]` is present. It should give an ambiguity
+        // error instead and special case *only* modules with `#[rustc_doc_primitive]`, not all
         // primitives.
         match resolve_primitive(&path_root, TypeNS)
             .or_else(|| self.resolve_path(&path_root, TypeNS, item_id, module_id))
@@ -1144,7 +1144,7 @@ impl LinkCollector<'_, '_> {
                 }
             }
 
-        // item can be non-local e.g. when using #[doc(primitive = "pointer")]
+        // item can be non-local e.g. when using `#[rustc_doc_primitive = "pointer"]`
         if let Some((src_id, dst_id)) = id.as_local().and_then(|dst_id| {
             item.item_id.expect_def_id().as_local().map(|src_id| (src_id, dst_id))
         }) {
