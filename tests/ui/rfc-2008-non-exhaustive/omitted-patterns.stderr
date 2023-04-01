@@ -198,6 +198,20 @@ help: you might want to use `let else` to handle the variant that isn't matched
 LL |     let local_refutable @ NonExhaustiveEnum::Unit = NonExhaustiveEnum::Unit else { todo!() };
    |                                                                             ++++++++++++++++
 
-error: aborting due to 9 previous errors; 6 warnings emitted
+error: some variants are not matched explicitly
+  --> $DIR/omitted-patterns.rs:202:9
+   |
+LL |         _ => {}
+   |         ^ pattern `NonExhaustiveEnum::Struct { .. }` not covered
+   |
+   = help: ensure that all variants are matched explicitly by adding the suggested match arms
+   = note: the matched value is of type `NonExhaustiveEnum` and the `non_exhaustive_omitted_patterns` attribute was found
+note: the lint level is defined here
+  --> $DIR/omitted-patterns.rs:198:12
+   |
+LL |     #[deny(non_exhaustive_omitted_patterns)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 10 previous errors; 6 warnings emitted
 
 For more information about this error, try `rustc --explain E0005`.
