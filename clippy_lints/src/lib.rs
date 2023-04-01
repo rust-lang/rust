@@ -171,6 +171,7 @@ mod let_if_seq;
 mod let_underscore;
 mod let_with_type_underscore;
 mod lifetimes;
+mod lines_filter_map_ok;
 mod literal_representation;
 mod loops;
 mod macro_use;
@@ -949,6 +950,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
             avoid_breaking_exported_api,
         ))
     });
+    store.register_late_pass(|_| Box::new(lines_filter_map_ok::LinesFilterMapOk));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
