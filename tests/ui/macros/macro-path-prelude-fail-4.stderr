@@ -2,11 +2,13 @@ error: expected derive macro, found built-in attribute `inline`
   --> $DIR/macro-path-prelude-fail-4.rs:1:10
    |
 LL | #[derive(inline)]
-   |          ^^^^^^
-   |          |
-   |          not a derive macro
-   |          help: Remove from the surrounding `derive()`
+   |          ^^^^^^ not a derive macro
    |
+help: Remove from the surrounding `derive()`
+  --> $DIR/macro-path-prelude-fail-4.rs:1:10
+   |
+LL | #[derive(inline)]
+   |          ^^^^^^
    = help: Add as non-Derive macro
            `#[inline]`
 
