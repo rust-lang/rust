@@ -311,7 +311,7 @@ fn rehash_in_place(b: &mut Bencher) {
 
         // Each loop triggers one rehash
         for _ in 0..10 {
-            for i in 0..224 {
+            for i in 0..223 {
                 set.insert(i);
             }
 
