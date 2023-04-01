@@ -30,14 +30,19 @@ run-time feature detection. When this feature is disabled, `std_detect` assumes
 that [`getauxval`] is linked to the binary. If that is not the case the behavior
 is undefined.
 
-  Note: This feature is ignored on `*-linux-gnu*` targets, since all `*-linux-gnu*` targets ([since Rust 1.64](https://blog.rust-lang.org/2022/08/01/Increasing-glibc-kernel-requirements.html)) have glibc requirements higher than [glibc 2.16 that added `getauxval`](https://sourceware.org/legacy-ml/libc-announce/2012/msg00000.html), and we can safely assume [`getauxval`] is linked to the binary.
+  Note: This feature is ignored on `*-linux-gnu*` and `*-android*` targets
+  because we can safely assume `getauxval` is linked to the binary.
+  * `*-linux-gnu*` targets ([since Rust 1.64](https://blog.rust-lang.org/2022/08/01/Increasing-glibc-kernel-requirements.html))
+  have glibc requirements higher than [glibc 2.16 that added `getauxval`](https://sourceware.org/legacy-ml/libc-announce/2012/msg00000.html).
+  * `*-android*` targets ([since Rust 1.68](https://blog.rust-lang.org/2023/01/09/android-ndk-update-r25.html))
+  have the minimum supported API level higher than [Android 4.3 (API level 18) that added `getauxval`](https://github.com/aosp-mirror/platform_bionic/blob/d3ebc2f7c49a9893b114124d4a6b315f3a328764/libc/include/sys/auxv.h#L49).
 
 * `std_detect_file_io` (enabled by default, requires `std`): Enable to perform run-time feature
 detection using file APIs (e.g. `/proc/cpuinfo`, etc.) if other more performant
 methods fail. This feature requires `libstd` as a dependency, preventing the
 crate from working on applications in which `std` is not available.
 
-[`getauxval`]: http://man7.org/linux/man-pages/man3/getauxval.3.html
+[`getauxval`]: https://man7.org/linux/man-pages/man3/getauxval.3.html
 
 # Platform support
 
