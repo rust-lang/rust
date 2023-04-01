@@ -608,7 +608,6 @@ pub struct Function {
     pub abi: Option<Interned<str>>,
     pub params: IdxRange<Param>,
     pub ret_type: Interned<TypeRef>,
-    pub async_ret_type: Option<Interned<TypeRef>>,
     pub ast_id: FileAstId<ast::Fn>,
     pub(crate) flags: FnFlags,
 }

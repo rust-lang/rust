@@ -30,7 +30,6 @@ pub struct FunctionData {
     pub name: Name,
     pub params: Vec<(Option<Name>, Interned<TypeRef>)>,
     pub ret_type: Interned<TypeRef>,
-    pub async_ret_type: Option<Interned<TypeRef>>,
     pub attrs: Attrs,
     pub visibility: RawVisibility,
     pub abi: Option<Interned<str>>,
@@ -104,7 +103,6 @@ impl FunctionData {
                 })
                 .collect(),
             ret_type: func.ret_type.clone(),
-            async_ret_type: func.async_ret_type.clone(),
             attrs: item_tree.attrs(db, krate, ModItem::from(loc.id.value).into()),
             visibility,
             abi: func.abi.clone(),
