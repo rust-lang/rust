@@ -184,5 +184,20 @@ note: the lint level is defined here
 LL |     #[deny(non_exhaustive_omitted_patterns)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 8 previous errors; 6 warnings emitted
+error[E0005]: refutable pattern in local binding
+  --> $DIR/omitted-patterns.rs:194:9
+   |
+LL |     let local_refutable @ NonExhaustiveEnum::Unit = NonExhaustiveEnum::Unit;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pattern `_` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: the matched value is of type `NonExhaustiveEnum`
+help: you might want to use `let else` to handle the variant that isn't matched
+   |
+LL |     let local_refutable @ NonExhaustiveEnum::Unit = NonExhaustiveEnum::Unit else { todo!() };
+   |                                                                             ++++++++++++++++
 
+error: aborting due to 9 previous errors; 6 warnings emitted
+
+For more information about this error, try `rustc --explain E0005`.
