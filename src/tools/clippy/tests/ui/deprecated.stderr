@@ -96,5 +96,11 @@ error: lint `clippy::wrong_pub_self_convention` has been removed: set the `avoid
 LL | #![warn(clippy::wrong_pub_self_convention)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 16 previous errors
+error: lint `clippy::clone_double_ref` has been renamed to `clone_double_ref`
+  --> $DIR/deprecated.rs:21:9
+   |
+LL | #![warn(clippy::clone_double_ref)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clone_double_ref`
+
+error: aborting due to 17 previous errors
 
