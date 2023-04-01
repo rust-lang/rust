@@ -1,0 +1,33 @@
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "T"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "S"
+          GENERIC_ARG_LIST
+            L_ANGLE "<"
+            RETURN_TYPE_ARG
+              IDENT "foo"
+              L_PAREN "("
+              DOT2 ".."
+              R_PAREN ")"
+              COLON ":"
+              WHITESPACE " "
+              TYPE_BOUND_LIST
+                TYPE_BOUND
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "Send"
+            R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n"
