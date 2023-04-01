@@ -808,6 +808,8 @@ define_config! {
 
 impl Config {
     pub fn default_opts() -> Config {
+        use is_terminal::IsTerminal;
+
         let mut config = Config::default();
         config.llvm_optimize = true;
         config.ninja_in_file = true;
@@ -828,8 +830,8 @@ impl Config {
         config.dist_include_mingw_linker = true;
         config.dist_compression_profile = "fast".into();
 
-        config.stdout_is_tty = atty::is(atty::Stream::Stdout);
-        config.stderr_is_tty = atty::is(atty::Stream::Stderr);
+        config.stdout_is_tty = std::io::stdout().is_terminal();
+        config.stderr_is_tty = std::io::stderr().is_terminal();
 
         // set by build.rs
         config.build = TargetSelection::from_user(&env!("BUILD_TRIPLE"));
