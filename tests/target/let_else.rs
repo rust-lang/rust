@@ -130,21 +130,22 @@ fn unbreakable_initializer_expr_pre_formatting_let_else_length_near_max_width() 
 
 fn unbreakable_initializer_expr_pre_formatting_length_up_to_opening_brace_near_max_width() {
     // Pre Formatting:
-    // The length of `(indent)let pat = init else {` is 100 (max_width)
+    // The length of `(indent)let pat = init else {` is 99 (< max_width)
     // Post Formatting:
     // The else keyword and opening brace remain on the same line as the initializer expr,
     // and the else block is formatted over multiple lines because we can't fit the
     // else block on the same line as the initializer expr.
-    let Some(x) = some_really_really_really_really_really_really_really_really_long_name____E else {
+    let Some(x) = some_really_really_really_really_really_really_really_really_long_name___E else {
         return;
     };
 
     // Pre Formatting:
     // The length of `(indent)let pat = init else {` is 101 (> max_width)
     // Post Formatting:
-    // The else keyword and opening brace remain on the same line as the initializer expr,
-    // which leads to the `{` exceeding the max width
-    let Some(x) = some_really_really_really_really_really_really_really_really_long_name_____F else {
+    // The else keyword and opening brace cannot fit on the same line as the initializer expr.
+    // They are formatted on the next line.
+    let Some(x) = some_really_really_really_really_really_really_really_really_long_name_____F
+    else {
         return;
     };
 }
@@ -153,9 +154,10 @@ fn unbreakable_initializer_expr_pre_formatting_length_through_initializer_expr_n
     // Pre Formatting:
     // The length of `(indent)let pat = init` is 99 (< max_width)
     // Post Formatting:
-    // The else keyword and opening brace remain on the same line as the initializer expr,
-    // which leads to the `else {` exceeding the max width
-    let Some(x) = some_really_really_really_really_really_really_really_really_really_long_name___G else {
+    // The else keyword and opening brace cannot fit on the same line as the initializer expr.
+    // They are formatted on the next line.
+    let Some(x) = some_really_really_really_really_really_really_really_really_really_long_name___G
+    else {
         return;
     };
 

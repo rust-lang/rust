@@ -175,8 +175,10 @@ fn same_line_else_kw_and_brace(
     init_shape: Shape,
 ) -> bool {
     if !init_str.contains('\n') {
-        // initializer expression is single lined so the "else {" should be placed on the same line
-        return true;
+        // initializer expression is single lined. The "else {" can only be placed on the same line
+        // as the initializer expression if there is enough room for it.
+        // 7 = ` else {`
+        return init_shape.width.saturating_sub(init_str.len()) >= 7;
     }
 
     // 1. The initializer expression ends with one or more `)`, `]`, `}`.
