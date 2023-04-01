@@ -565,6 +565,25 @@ fn f(x: [(i32, u8); 10]) {
     }
 
     #[test]
+    fn index() {
+        check_diagnostics(
+            r#"
+//- minicore: coerce_unsized, index, slice
+fn f() {
+    let x = [1, 2, 3];
+    x[2] = 5;
+  //^^^^^^^^ 💡 error: cannot mutate immutable variable `x`
+    let x = &mut x;
+          //^^^^^^ 💡 error: cannot mutate immutable variable `x`
+    let mut x = x;
+      //^^^^^ 💡 weak: variable does not need to be mutable
+    x[2] = 5;
+}
+"#,
+        );
+    }
+
+    #[test]
     fn overloaded_index() {
         check_diagnostics(
             r#"

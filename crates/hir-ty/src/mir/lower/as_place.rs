@@ -216,8 +216,15 @@ impl MirLowerCtx<'_> {
                         index_fn,
                     );
                 }
+                let adjusts = self
+                    .infer
+                    .expr_adjustments
+                    .get(base)
+                    .and_then(|x| x.split_last())
+                    .map(|x| x.1)
+                    .unwrap_or(&[]);
                 let Some((mut p_base, current)) =
-                    self.lower_expr_as_place_without_adjust(current, *base, true)?
+                    self.lower_expr_as_place_with_adjust(current, *base, true, adjusts)?
                 else {
                     return Ok(None);
                 };
