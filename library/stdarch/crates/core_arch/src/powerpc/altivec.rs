@@ -270,6 +270,8 @@ extern "C" {
 
     #[link_name = "llvm.ppc.altivec.vcmpgefp.p"]
     fn vcmpgefp_p(cr: i32, a: vector_float, b: vector_float) -> i32;
+    #[link_name = "llvm.ppc.altivec.vcmpgtfp.p"]
+    fn vcmpgtfp_p(cr: i32, a: vector_float, b: vector_float) -> i32;
 }
 
 macro_rules! s_t_l {
@@ -557,6 +559,8 @@ mod sealed {
         }
     }
 
+    // All/Any GreaterEqual
+
     #[inline]
     #[target_feature(enable = "altivec")]
     #[cfg_attr(test, assert_instr(vcmpgtsb.))]
@@ -691,6 +695,145 @@ mod sealed {
         #[inline]
         unsafe fn vec_any_ge(self, b: vector_float) -> Self::Result {
             vcmpgefp_any(self, b)
+        }
+    }
+
+    // All/Any Greater Than
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpgtsb.))]
+    unsafe fn vcmpgtsb_all(a: vector_signed_char, b: vector_signed_char) -> bool {
+        vcmpgtsb_p(2, a, b) != 0
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpgtsb.))]
+    unsafe fn vcmpgtsb_any(a: vector_signed_char, b: vector_signed_char) -> bool {
+        vcmpgtsb_p(1, a, b) != 0
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpgtsh.))]
+    unsafe fn vcmpgtsh_all(a: vector_signed_short, b: vector_signed_short) -> bool {
+        vcmpgtsh_p(2, a, b) != 0
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpgtsh.))]
+    unsafe fn vcmpgtsh_any(a: vector_signed_short, b: vector_signed_short) -> bool {
+        vcmpgtsh_p(1, a, b) != 0
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpgtsw.))]
+    unsafe fn vcmpgtsw_all(a: vector_signed_int, b: vector_signed_int) -> bool {
+        vcmpgtsw_p(2, a, b) != 0
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpgtsw.))]
+    unsafe fn vcmpgtsw_any(a: vector_signed_int, b: vector_signed_int) -> bool {
+        vcmpgtsw_p(1, a, b) != 0
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpgtub.))]
+    unsafe fn vcmpgtub_all(a: vector_unsigned_char, b: vector_unsigned_char) -> bool {
+        vcmpgtub_p(2, a, b) != 0
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpgtub.))]
+    unsafe fn vcmpgtub_any(a: vector_unsigned_char, b: vector_unsigned_char) -> bool {
+        vcmpgtub_p(1, a, b) != 0
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpgtuh.))]
+    unsafe fn vcmpgtuh_all(a: vector_unsigned_short, b: vector_unsigned_short) -> bool {
+        vcmpgtuh_p(2, a, b) != 0
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpgtuh.))]
+    unsafe fn vcmpgtuh_any(a: vector_unsigned_short, b: vector_unsigned_short) -> bool {
+        vcmpgtuh_p(1, a, b) != 0
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpgtuw.))]
+    unsafe fn vcmpgtuw_all(a: vector_unsigned_int, b: vector_unsigned_int) -> bool {
+        vcmpgtuw_p(2, a, b) != 0
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpgtuw.))]
+    unsafe fn vcmpgtuw_any(a: vector_unsigned_int, b: vector_unsigned_int) -> bool {
+        vcmpgtuw_p(1, a, b) != 0
+    }
+
+    pub trait VectorAllGt<Other> {
+        type Result;
+        unsafe fn vec_all_gt(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_any_all! { [VectorAllGt vec_all_gt] (
+        vcmpgtub_all, vcmpgtsb_all,
+        vcmpgtuh_all, vcmpgtsh_all,
+        vcmpgtuw_all, vcmpgtsw_all
+    ) }
+
+    // TODO: vsx encoding
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpgtfp.))]
+    unsafe fn vcmpgtfp_all(a: vector_float, b: vector_float) -> bool {
+        vcmpgtfp_p(2, a, b) != 0
+    }
+
+    impl VectorAllGt<vector_float> for vector_float {
+        type Result = bool;
+        #[inline]
+        unsafe fn vec_all_gt(self, b: vector_float) -> Self::Result {
+            vcmpgtfp_all(self, b)
+        }
+    }
+
+    pub trait VectorAnyGt<Other> {
+        type Result;
+        unsafe fn vec_any_gt(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_any_all! { [VectorAnyGt vec_any_gt] (
+        vcmpgtub_any, vcmpgtsb_any,
+        vcmpgtuh_any, vcmpgtsh_any,
+        vcmpgtuw_any, vcmpgtsw_any
+    ) }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpgtfp.))]
+    unsafe fn vcmpgtfp_any(a: vector_float, b: vector_float) -> bool {
+        vcmpgtfp_p(1, a, b) != 0
+    }
+
+    impl VectorAnyGt<vector_float> for vector_float {
+        type Result = bool;
+        #[inline]
+        unsafe fn vec_any_gt(self, b: vector_float) -> Self::Result {
+            vcmpgtfp_any(self, b)
         }
     }
 
@@ -2019,6 +2162,26 @@ where
     a.vec_any_ge(b)
 }
 
+/// Vector All Elements Greater Than
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_all_gt<T, U>(a: T, b: U) -> <T as sealed::VectorAllGt<U>>::Result
+where
+    T: sealed::VectorAllGt<U>,
+{
+    a.vec_all_gt(b)
+}
+
+/// Vector Any Element Greater Than
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_any_gt<T, U>(a: T, b: U) -> <T as sealed::VectorAnyGt<U>>::Result
+where
+    T: sealed::VectorAnyGt<U>,
+{
+    a.vec_any_gt(b)
+}
+
 #[cfg(target_endian = "big")]
 mod endian {
     use super::*;
@@ -2526,6 +2689,150 @@ mod tests {
     test_vec_2! { test_vec_any_ge_u32_true, vec_any_ge, u32x4 -> bool,
         [0, 255, 0, 1],
         [1, 255, 0, 1],
+        true
+    }
+
+    test_vec_2! { test_vec_all_gt_i8_false, vec_all_gt, i8x16 -> bool,
+        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        false
+    }
+
+    test_vec_2! { test_vec_all_gt_u8_false, vec_all_gt, u8x16 -> bool,
+        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 255, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        false
+    }
+
+    test_vec_2! { test_vec_all_gt_i16_false, vec_all_gt, i16x8 -> bool,
+        [1, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, -1, 1, 0, 0, 0, 0],
+        false
+    }
+
+    test_vec_2! { test_vec_all_gt_u16_false, vec_all_gt, u16x8 -> bool,
+        [1, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 255, 1, 0, 0, 0, 0],
+        false
+    }
+
+    test_vec_2! { test_vec_all_gt_i32_false, vec_all_gt, i32x4 -> bool,
+        [1, -1, 0, 0],
+        [0, -1, 0, 1],
+        false
+    }
+
+    test_vec_2! { test_vec_all_gt_u32_false, vec_all_gt, u32x4 -> bool,
+        [1, 255, 0, 0],
+        [0, 255,  1, 1],
+        false
+    }
+
+    test_vec_2! { test_vec_all_gt_i8_true, vec_all_gt, i8x16 -> bool,
+        [2, 1, -1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, -2, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
+        true
+    }
+
+    test_vec_2! { test_vec_all_gt_u8_true, vec_all_gt, u8x16 -> bool,
+        [1, 255, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        [0, 254, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_all_gt_i16_true, vec_all_gt, i16x8 -> bool,
+        [1, -1, 42, 1, 1, 1, 1, 1],
+        [0, -5, 2, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_all_gt_u16_true, vec_all_gt, u16x8 -> bool,
+        [42, 255, 1, 1, 1, 1, 1, 1],
+        [2, 254, 0, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_all_gt_i32_true, vec_all_gt, i32x4 -> bool,
+        [1, -1, 1, 1],
+        [0, -2, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_all_gt_u32_true, vec_all_gt, u32x4 -> bool,
+        [1, 255, 1, 1],
+        [0, 254, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_any_gt_i8_false, vec_any_gt, i8x16 -> bool,
+        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        false
+    }
+
+    test_vec_2! { test_vec_any_gt_u8_false, vec_any_gt, u8x16 -> bool,
+        [1, 254, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [42, 255, 255, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        false
+    }
+
+    test_vec_2! { test_vec_any_gt_i16_false, vec_any_gt, i16x8 -> bool,
+        [1, -1, -2, 0, 0, 0, 0, 0],
+        [2, 0, -1, 1, 1, 1, 1, 1],
+        false
+    }
+
+    test_vec_2! { test_vec_any_gt_u16_false, vec_any_gt, u16x8 -> bool,
+        [1, 2, 0, 0, 0, 0, 0, 0],
+        [2, 42, 255, 1, 1, 1, 1, 1],
+        false
+    }
+
+    test_vec_2! { test_vec_any_gt_i32_false, vec_any_gt, i32x4 -> bool,
+        [1, -1, 0, 0],
+        [2, 0, 1, 1],
+        false
+    }
+
+    test_vec_2! { test_vec_any_gt_u32_false, vec_any_gt, u32x4 -> bool,
+        [1, 2, 1, 0],
+        [4, 255,  4, 1],
+        false
+    }
+
+    test_vec_2! { test_vec_any_gt_i8_true, vec_any_gt, i8x16 -> bool,
+        [1, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_any_gt_u8_true, vec_any_gt, u8x16 -> bool,
+        [1, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_any_gt_i16_true, vec_any_gt, i16x8 -> bool,
+        [1, -1, 1, 0, 0, 0, 0, 0],
+        [0, -1, 1, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_any_gt_u16_true, vec_any_gt, u16x8 -> bool,
+        [1, 255, 1, 0, 0, 0, 0, 0],
+        [0, 255, 1, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_any_gt_i32_true, vec_any_gt, i32x4 -> bool,
+        [1, -1, 0, 1],
+        [0, -1, 0, 1],
+        true
+    }
+
+    test_vec_2! { test_vec_any_gt_u32_true, vec_any_gt, u32x4 -> bool,
+        [1, 255, 0, 1],
+        [0, 255, 0, 1],
         true
     }
 
