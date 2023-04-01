@@ -5,6 +5,13 @@ lint_array_into_iter =
     .use_explicit_into_iter_suggestion =
         or use `IntoIterator::into_iter(..)` instead of `.into_iter()` to explicitly iterate by value
 
+lint_clone_double_ref =
+    using `clone` on a double-reference, which copies the reference of type `{$ty}` instead of cloning the inner type
+
+lint_clone_double_ref_try_deref = try dereferencing it
+
+lint_clone_double_ref_sugg_explicit = or try being explicit if you are sure, that you want to clone a reference
+
 lint_enum_intrinsics_mem_discriminant =
     the return value of `mem::discriminant` is unspecified when called with a non-enum type
     .note = the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `{$ty_param}`, which is not an enum.

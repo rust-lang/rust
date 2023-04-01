@@ -1,0 +1,22 @@
+error: using `clone` on a double-reference, which copies the reference of type `Vec<i32>` instead of cloning the inner type
+  --> $DIR/clone-double-ref.rs:7:22
+   |
+LL |     let z: &Vec<_> = y.clone();
+   |                      ^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/clone-double-ref.rs:2:9
+   |
+LL | #![deny(clone_double_ref)]
+   |         ^^^^^^^^^^^^^^^^
+help: try dereferencing it
+   |
+LL |     let z: &Vec<_> = &(*y).clone();
+   |                      +++ ~~~~~~~~~
+help: or try being explicit if you are sure, that you want to clone a reference
+   |
+LL |     let z: &Vec<_> = <&Vec<i32>>::clone(y);
+   |                      +++++++++++++++++++ ~
+
+error: aborting due to previous error
+

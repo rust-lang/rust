@@ -50,6 +50,7 @@ extern crate tracing;
 
 mod array_into_iter;
 pub mod builtin;
+mod clone_double_ref;
 mod context;
 mod deref_into_dyn_supertrait;
 mod early;
@@ -95,6 +96,7 @@ use rustc_span::Span;
 
 use array_into_iter::ArrayIntoIter;
 use builtin::*;
+use clone_double_ref::CloneDoubleRef;
 use deref_into_dyn_supertrait::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
 use for_loops_over_fallibles::*;
@@ -199,6 +201,7 @@ late_lint_methods!(
     [
         BuiltinCombinedModuleLateLintPass,
         [
+            CloneDoubleRef: CloneDoubleRef,
             ForLoopsOverFallibles: ForLoopsOverFallibles,
             DerefIntoDynSupertrait: DerefIntoDynSupertrait,
             HardwiredLints: HardwiredLints,
