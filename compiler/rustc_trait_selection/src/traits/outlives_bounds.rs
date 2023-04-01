@@ -110,8 +110,6 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
         body_id: LocalDefId,
         tys: FxIndexSet<Ty<'tcx>>,
     ) -> Bounds<'a, 'tcx> {
-        tys.into_iter()
-            .map(move |ty| self.implied_outlives_bounds(param_env, body_id, ty))
-            .flatten()
+        tys.into_iter().flat_map(move |ty| self.implied_outlives_bounds(param_env, body_id, ty))
     }
 }
