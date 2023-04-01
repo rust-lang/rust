@@ -23,16 +23,13 @@ pub(crate) fn detect_features() -> cache::Initializer {
 
     if let Ok(auxv) = auxvec::auxv() {
         enable_feature(&mut value, Feature::neon, auxv.hwcap & HWCAP_NEON != 0);
-        let pmull = auxv.hwcap2 & HWCAP2_PMULL != 0;
-        enable_feature(&mut value, Feature::pmull, pmull);
+        enable_feature(&mut value, Feature::pmull, auxv.hwcap2 & HWCAP2_PMULL != 0);
         enable_feature(&mut value, Feature::crc, auxv.hwcap2 & HWCAP2_CRC32 != 0);
-        let aes = auxv.hwcap2 & HWCAP2_AES != 0;
-        enable_feature(&mut value, Feature::aes, aes);
+        enable_feature(&mut value, Feature::aes, auxv.hwcap2 & HWCAP2_AES != 0);
         // SHA2 requires SHA1 & SHA2 features
         let sha1 = auxv.hwcap2 & HWCAP2_SHA1 != 0;
         let sha2 = auxv.hwcap2 & HWCAP2_SHA2 != 0;
         enable_feature(&mut value, Feature::sha2, sha1 && sha2);
-        enable_feature(&mut value, Feature::crypto, aes && pmull && sha1 && sha2);
         return value;
     }
     value

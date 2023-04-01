@@ -28,7 +28,6 @@ fn arm_linux_or_freebsd() {
     println!("neon: {}", is_arm_feature_detected!("neon"));
     println!("pmull: {}", is_arm_feature_detected!("pmull"));
     println!("crc: {}", is_arm_feature_detected!("crc"));
-    println!("crypto: {}", is_arm_feature_detected!("crypto"));
     println!("aes: {}", is_arm_feature_detected!("aes"));
     println!("sha2: {}", is_arm_feature_detected!("sha2"));
 }
