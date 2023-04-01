@@ -400,7 +400,7 @@ fn get_location_info(cx: &ExtCtxt<'_>, item: &ast::Item) -> (Symbol, usize, usiz
         cx.sess.source_map().span_to_location_info(span);
 
     let file_name = match source_file {
-        Some(sf) => sf.name.display(FileNameDisplayPreference::Remapped).to_string(),
+        Some(sf) => sf.name.display(FileNameDisplayPreference::Remapped, false).to_string(),
         None => "no-location".to_string(),
     };
 

@@ -1202,7 +1202,10 @@ pub fn resolve_path(
             other => {
                 return Err(errors::ResolveRelativePath {
                     span,
-                    path: parse_sess.source_map().filename_for_diagnostics(&other).to_string(),
+                    path: parse_sess
+                        .source_map()
+                        .filename_for_diagnostics(&other, false)
+                        .to_string(),
                 }
                 .into_diagnostic(&parse_sess.span_diagnostic));
             }

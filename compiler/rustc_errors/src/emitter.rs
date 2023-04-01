@@ -1456,7 +1456,10 @@ impl EmitterWriter {
                                 line_idx,
                                 &format!(
                                     "{}:{}:{}",
-                                    sm.filename_for_diagnostics(&annotated_file.file.name),
+                                    sm.filename_for_diagnostics(
+                                        &annotated_file.file.name,
+                                        self.terminal_url == TerminalUrl::Yes
+                                    ),
                                     sm.doctest_offset_line(
                                         &annotated_file.file.name,
                                         line.line_index
@@ -1512,7 +1515,10 @@ impl EmitterWriter {
                         buffer_msg_line_offset,
                         &format!(
                             "{}:{}:{}",
-                            sm.filename_for_diagnostics(&loc.file.name),
+                            sm.filename_for_diagnostics(
+                                &loc.file.name,
+                                self.terminal_url == TerminalUrl::Yes
+                            ),
                             sm.doctest_offset_line(&loc.file.name, loc.line),
                             loc.col.0 + 1,
                         ),
@@ -1526,7 +1532,10 @@ impl EmitterWriter {
                         0,
                         &format!(
                             "{}:{}:{}: ",
-                            sm.filename_for_diagnostics(&loc.file.name),
+                            sm.filename_for_diagnostics(
+                                &loc.file.name,
+                                self.terminal_url == TerminalUrl::Yes
+                            ),
                             sm.doctest_offset_line(&loc.file.name, loc.line),
                             loc.col.0 + 1,
                         ),
@@ -1554,12 +1563,21 @@ impl EmitterWriter {
                     };
                     format!(
                         "{}:{}{}",
-                        sm.filename_for_diagnostics(&annotated_file.file.name),
+                        sm.filename_for_diagnostics(
+                            &annotated_file.file.name,
+                            self.terminal_url == TerminalUrl::Yes
+                        ),
                         sm.doctest_offset_line(&annotated_file.file.name, first_line.line_index),
                         col
                     )
                 } else {
-                    format!("{}", sm.filename_for_diagnostics(&annotated_file.file.name))
+                    format!(
+                        "{}",
+                        sm.filename_for_diagnostics(
+                            &annotated_file.file.name,
+                            self.terminal_url == TerminalUrl::Yes
+                        )
+                    )
                 };
                 buffer.append(buffer_msg_line_offset + 1, &loc, Style::LineAndColumn);
                 for _ in 0..max_line_num_len {
@@ -1815,7 +1833,10 @@ impl EmitterWriter {
                 if loc.file.name != sm.span_to_filename(span) && loc.file.name.is_real() {
                     let arrow = "--> ";
                     buffer.puts(row_num - 1, 0, arrow, Style::LineNumber);
-                    let filename = sm.filename_for_diagnostics(&loc.file.name);
+                    let filename = sm.filename_for_diagnostics(
+                        &loc.file.name,
+                        self.terminal_url == TerminalUrl::Yes,
+                    );
                     let offset = sm.doctest_offset_line(&loc.file.name, loc.line);
                     let message = format!("{}:{}:{}", filename, offset, loc.col.0 + 1);
                     if row_num == 2 {

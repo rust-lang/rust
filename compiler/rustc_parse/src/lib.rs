@@ -192,7 +192,7 @@ pub fn maybe_file_to_stream(
     let src = source_file.src.as_ref().unwrap_or_else(|| {
         sess.span_diagnostic.bug(&format!(
             "cannot lex `source_file` without source: {}",
-            sess.source_map().filename_for_diagnostics(&source_file.name)
+            sess.source_map().filename_for_diagnostics(&source_file.name, false)
         ));
     });
 

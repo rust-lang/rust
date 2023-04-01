@@ -323,6 +323,7 @@ pub enum FileNameDisplayPreference {
 pub struct FileNameDisplay<'a> {
     inner: &'a FileName,
     display_pref: FileNameDisplayPreference,
+    link: bool,
 }
 
 impl fmt::Display for FileNameDisplay<'_> {
@@ -330,7 +331,19 @@ impl fmt::Display for FileNameDisplay<'_> {
         use FileName::*;
         match *self.inner {
             Real(ref name) => {
-                write!(fmt, "{}", name.to_string_lossy(self.display_pref))
+                if self.link
+                    && let Some(path) = name.local_path()
+                    && let Ok(path) = std::fs::canonicalize(path)
+                    && let Some(path) = path.to_str() {
+                    write!(
+                        fmt,
+                        "\x1b]8;;file://{}\x07{}\x1b]8;;\x07",
+                        path,
+                        name.to_string_lossy(self.display_pref)
+                    )
+                } else {
+                    write!(fmt, "{}", name.to_string_lossy(self.display_pref))
+                }
             }
             QuoteExpansion(_) => write!(fmt, "<quote expansion>"),
             MacroExpansion(_) => write!(fmt, "<macro expansion>"),
@@ -372,17 +385,25 @@ impl FileName {
     }
 
     pub fn prefer_remapped(&self) -> FileNameDisplay<'_> {
-        FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Remapped }
+        FileNameDisplay {
+            inner: self,
+            display_pref: FileNameDisplayPreference::Remapped,
+            link: false,
+        }
     }
 
     /// This may include transient local filesystem information.
     /// Must not be embedded in build outputs.
     pub fn prefer_local(&self) -> FileNameDisplay<'_> {
-        FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Local }
+        FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Local, link: false }
     }
 
-    pub fn display(&self, display_pref: FileNameDisplayPreference) -> FileNameDisplay<'_> {
-        FileNameDisplay { inner: self, display_pref }
+    pub fn display(
+        &self,
+        display_pref: FileNameDisplayPreference,
+        link: bool,
+    ) -> FileNameDisplay<'_> {
+        FileNameDisplay { inner: self, display_pref, link }
     }
 
     pub fn macro_expansion_source_code(src: &str) -> FileName {

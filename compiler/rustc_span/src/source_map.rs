@@ -451,7 +451,7 @@ impl SourceMap {
         let (source_file, lo_line, lo_col, hi_line, hi_col) = self.span_to_location_info(sp);
 
         let file_name = match source_file {
-            Some(sf) => sf.name.display(filename_display_pref).to_string(),
+            Some(sf) => sf.name.display(filename_display_pref, false).to_string(),
             None => return "no-location".to_string(),
         };
 
@@ -502,7 +502,7 @@ impl SourceMap {
 
         format!(
             "{}:+{}:{}: +{}:{}",
-            lo.file.name.display(FileNameDisplayPreference::Remapped),
+            lo.file.name.display(FileNameDisplayPreference::Remapped, false),
             lo_line,
             lo.col.to_usize() + 1,
             hi_line,
@@ -521,8 +521,12 @@ impl SourceMap {
         self.lookup_char_pos(sp.lo()).file.name.clone()
     }
 
-    pub fn filename_for_diagnostics<'a>(&self, filename: &'a FileName) -> FileNameDisplay<'a> {
-        filename.display(self.path_mapping.filename_display_for_diagnostics)
+    pub fn filename_for_diagnostics<'a>(
+        &self,
+        filename: &'a FileName,
+        link: bool,
+    ) -> FileNameDisplay<'a> {
+        filename.display(self.path_mapping.filename_display_for_diagnostics, link)
     }
 
     pub fn is_multiline(&self, sp: Span) -> bool {

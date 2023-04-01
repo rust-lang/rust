@@ -1760,7 +1760,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 let pos = sm.lookup_char_pos(self.tcx.def_span(*def_id).lo());
                                 format!(
                                     " (opaque type at <{}:{}:{}>)",
-                                    sm.filename_for_diagnostics(&pos.file.name),
+                                    sm.filename_for_diagnostics(&pos.file.name, false),
                                     pos.line,
                                     pos.col.to_usize() + 1,
                                 )
@@ -1772,7 +1772,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 let pos = sm.lookup_char_pos(self.tcx.def_span(proj.def_id).lo());
                                 format!(
                                     " (trait associated opaque type at <{}:{}:{}>)",
-                                    sm.filename_for_diagnostics(&pos.file.name),
+                                    sm.filename_for_diagnostics(&pos.file.name, false),
                                     pos.line,
                                     pos.col.to_usize() + 1,
                                 )
