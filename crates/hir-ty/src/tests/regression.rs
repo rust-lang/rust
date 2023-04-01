@@ -1758,6 +1758,20 @@ const C: usize = 2 + 2;
 }
 
 #[test]
+fn regression_14456() {
+    check_no_mismatches(
+        r#"
+//- minicore: future
+async fn x() {}
+fn f() {
+    let fut = x();
+    let t = [0u8; 2 + 2];
+}
+"#,
+    );
+}
+
+#[test]
 fn regression_14164() {
     check_types(
         r#"
