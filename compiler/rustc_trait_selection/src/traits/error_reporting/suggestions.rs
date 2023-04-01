@@ -3888,8 +3888,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         if let Some(slice_ty) = candidate_impls
             .iter()
             .map(|trait_ref| trait_ref.trait_ref.self_ty())
-            .filter(|t| is_slice(*t))
-            .next()
+            .find(|t| is_slice(*t))
         {
             let msg = &format!("convert the array to a `{}` slice instead", slice_ty);
 
@@ -3936,7 +3935,7 @@ fn hint_missing_borrow<'tcx>(
     // This could be a variant constructor, for example.
     let Some(fn_decl) = found_node.fn_decl() else { return; };
 
-    let args = fn_decl.inputs.iter().map(|ty| ty);
+    let args = fn_decl.inputs.iter();
 
     fn get_deref_type_and_refs(mut ty: Ty<'_>) -> (Ty<'_>, Vec<hir::Mutability>) {
         let mut refs = vec![];
