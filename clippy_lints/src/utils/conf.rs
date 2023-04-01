@@ -478,7 +478,8 @@ pub fn lookup_conf_file() -> io::Result<(Option<PathBuf>, Vec<String>)> {
     // If neither of those exist, use ".".
     let mut current = env::var_os("CLIPPY_CONF_DIR")
         .or_else(|| env::var_os("CARGO_MANIFEST_DIR"))
-        .map_or_else(|| PathBuf::from("."), PathBuf::from);
+        .map_or_else(|| PathBuf::from("."), PathBuf::from)
+        .canonicalize()?;
 
     let mut found_config: Option<PathBuf> = None;
     let mut warnings = vec![];
