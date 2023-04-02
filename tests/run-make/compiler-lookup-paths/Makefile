@@ -1,5 +1,8 @@
 include ../tools.mk
 
+# ignore-wasm32 (need a C compiler)
+# ignore-wasm64 (need a C compiler)
+
 all: $(TMPDIR)/libnative.a
 	mkdir -p $(TMPDIR)/crate
 	mkdir -p $(TMPDIR)/native
