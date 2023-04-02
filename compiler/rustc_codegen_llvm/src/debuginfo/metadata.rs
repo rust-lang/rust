@@ -882,7 +882,7 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
 
         if tcx.sess.opts.unstable_opts.profile {
             let cu_desc_metadata =
-                llvm::LLVMRustMetadataAsValue(debug_context.llcontext, unit_metadata);
+                llvm::LLVMMetadataAsValue(debug_context.llcontext, unit_metadata);
             let default_gcda_path = &output_filenames.with_extension("gcda");
             let gcda_path =
                 tcx.sess.opts.unstable_opts.profile_emit.as_ref().unwrap_or(default_gcda_path);
