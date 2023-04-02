@@ -83,8 +83,10 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
             }
         }
         if let Some(mac) = ast::MacroCall::cast(node) {
+            let mut name = mac.path()?.segment()?.name_ref()?.to_string();
+            name.push('!');
             break (
-                mac.path()?.segment()?.name_ref()?.to_string(),
+                name,
                 expand_macro_recur(&sema, &mac)?,
                 mac.syntax().parent().map(|it| it.kind()).unwrap_or(SyntaxKind::MACRO_ITEMS),
             );
@@ -235,7 +237,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                bar
+                bar!
                 5i64 as _"#]],
         );
     }
@@ -252,7 +254,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                bar
+                bar!
                 for _ in 0..42{}"#]],
         );
     }
@@ -273,7 +275,7 @@ macro_rules! baz {
 f$0oo!();
 "#,
             expect![[r#"
-                foo
+                foo!
                 fn b(){}
             "#]],
         );
@@ -294,7 +296,7 @@ macro_rules! foo {
 f$0oo!();
         "#,
             expect![[r#"
-                foo
+                foo!
                 fn some_thing() -> u32 {
                   let a = 0;
                   a+10
@@ -328,16 +330,16 @@ fn main() {
 }
 "#,
             expect![[r#"
-       match_ast
-       {
-         if let Some(it) = ast::TraitDef::cast(container.clone()){}
-         else if let Some(it) = ast::ImplDef::cast(container.clone()){}
-         else {
-           {
-             continue
-           }
-         }
-       }"#]],
+                match_ast!
+                {
+                  if let Some(it) = ast::TraitDef::cast(container.clone()){}
+                  else if let Some(it) = ast::ImplDef::cast(container.clone()){}
+                  else {
+                    {
+                      continue
+                    }
+                  }
+                }"#]],
         );
     }
 
@@ -358,7 +360,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                match_ast
+                match_ast!
                 {}"#]],
         );
     }
@@ -383,7 +385,7 @@ fn main() {
 }
             "#,
             expect![[r#"
-                foo
+                foo!
                 {
                   macro_rules! bar {
                     () => {
@@ -411,7 +413,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                foo
+                foo!
             "#]],
         );
     }
@@ -433,7 +435,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                foo
+                foo!
                 0"#]],
         );
     }
@@ -451,7 +453,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                foo
+                foo!
                 fn f<T>(_: &dyn ::std::marker::Copy){}"#]],
         );
     }
