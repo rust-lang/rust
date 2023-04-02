@@ -21,7 +21,6 @@ use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs::{self, File};
 use std::io;
-use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::str;
@@ -505,16 +504,18 @@ impl Build {
         let build_triple = build.out.join(&build.build.triple);
         t!(fs::create_dir_all(&build_triple));
         let host = build.out.join("host");
-        if let Err(e) = symlink_dir(&build.config, &build_triple, &host) {
-            if e.kind() != ErrorKind::AlreadyExists {
-                panic!(
-                    "symlink_dir({} => {}) failed with {}",
-                    host.display(),
-                    build_triple.display(),
-                    e
-                );
-            }
+        if host.is_symlink() {
+            // Left over from a previous build; overwrite it.
+            // This matters if `build.build` has changed between invocations.
+            #[cfg(windows)]
+            t!(fs::remove_dir(&host));
+            #[cfg(not(windows))]
+            t!(fs::remove_file(&host));
         }
+        t!(
+            symlink_dir(&build.config, &build_triple, &host),
+            format!("symlink_dir({} => {}) failed", host.display(), build_triple.display())
+        );
 
         build
     }
