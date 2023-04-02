@@ -699,7 +699,7 @@ export function viewFullCrateGraph(ctx: CtxInit): Cmd {
 // The contents of the file come from the `TextDocumentContentProvider`
 export function expandMacro(ctx: CtxInit): Cmd {
     function codeFormat(expanded: ra.ExpandedMacro): string {
-        let result = `// Recursive expansion of ${expanded.name}! macro\n`;
+        let result = `// Recursive expansion of ${expanded.name} macro\n`;
         result += "// " + "=".repeat(result.length - 3);
         result += "\n\n";
         result += expanded.expansion;
