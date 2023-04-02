@@ -274,6 +274,7 @@ pub enum DocAtom {
     KeyValue { key: SmolStr, value: SmolStr },
 }
 
+// Adapted from `CfgExpr` parsing code
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 // #[cfg_attr(test, derive(derive_arbitrary::Arbitrary))]
 pub enum DocExpr {
