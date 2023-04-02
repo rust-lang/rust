@@ -209,8 +209,7 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
 
     fn set_dbg_loc(&mut self, dbg_loc: &'ll DILocation) {
         unsafe {
-            let dbg_loc_as_llval = llvm::LLVMRustMetadataAsValue(self.cx().llcx, dbg_loc);
-            llvm::LLVMSetCurrentDebugLocation(self.llbuilder, dbg_loc_as_llval);
+            llvm::LLVMSetCurrentDebugLocation2(self.llbuilder, dbg_loc);
         }
     }
 
