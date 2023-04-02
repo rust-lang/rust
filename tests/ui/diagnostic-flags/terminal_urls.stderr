@@ -1,5 +1,5 @@
 error[]8;;https://doc.rust-lang.org/error_codes/E0308.htmlE0308]8;;]: mismatched types
-  --> ]8;;file://$DIR/terminal_urls.rs$DIR/terminal_urls.rs]8;;:3:9
+  --> ]8;;file:///$DIR/terminal_urls.rs$DIR/terminal_urls.rs]8;;:3:9
    |
 LL |     let () = 4;
    |         ^^   - this expression has type `{integer}`

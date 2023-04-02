@@ -326,19 +326,53 @@ pub struct FileNameDisplay<'a> {
     link: bool,
 }
 
+fn resolve_file_uri(path: &Path) -> Option<String> {
+    fn uri_encode(str: &str) -> String {
+        let mut res = String::with_capacity(str.len());
+
+        for &x in str.as_bytes() {
+            // ascii characters are encoded directly.
+            // ':' and ';' are used as control sequences and so can't be used.
+            if (32..127).contains(&x) && x != ':' as u8 && x != ';' as u8 {
+                res.push(x as char)
+            } else {
+                res.push('%');
+                res.push_str(&format!("{x:02x}"));
+            }
+        }
+
+        res
+    }
+
+    // Absolute paths are never excepted.
+    let canonical_path = path.canonicalize().ok()?;
+    // But we can get away without a hostname.
+    let hostname = hostname::get().unwrap_or_default();
+
+    let canonical_path = uri_encode(canonical_path.to_str()?);
+    // Sometimes the canonical path starts with a slash otherwise we need to add one.
+    let separator = if canonical_path.starts_with("/") { "" } else { "/" };
+    let hostname = uri_encode(hostname.to_str()?);
+
+    Some(format!("file://{hostname}{separator}{canonical_path}"))
+}
+
 impl fmt::Display for FileNameDisplay<'_> {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use FileName::*;
         match *self.inner {
             Real(ref name) => {
-                if self.link
-                    && let Some(path) = name.local_path()
-                    && let Ok(path) = std::fs::canonicalize(path)
-                    && let Some(path) = path.to_str() {
+                let file_uri = if self.link && let Some(path) = name.local_path() {
+                    resolve_file_uri(path)
+                } else {
+                    None
+                };
+
+                if let Some(file_uri) = file_uri {
                     write!(
                         fmt,
-                        "\x1b]8;;file://{}\x07{}\x1b]8;;\x07",
-                        path,
+                        "\x1b]8;;{}\x07{}\x1b]8;;\x07",
+                        file_uri,
                         name.to_string_lossy(self.display_pref)
                     )
                 } else {

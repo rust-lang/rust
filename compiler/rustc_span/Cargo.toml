@@ -19,3 +19,4 @@ sha1 = "0.10.0"
 sha2 = "0.10.1"
 md5 = { package = "md-5", version = "0.10.0" }
 indexmap = { version = "1.9.3" }
+hostname = "0.3.1"
