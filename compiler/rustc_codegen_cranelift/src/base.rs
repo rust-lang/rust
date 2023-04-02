@@ -802,14 +802,15 @@ fn codegen_stmt<'tcx>(
                     if active_field_index.is_some() {
                         assert_eq!(operands.len(), 1);
                     }
-                    for (i, operand) in operands.iter().enumerate() {
+                    for (i, operand) in operands.iter_enumerated() {
                         let operand = codegen_operand(fx, operand);
                         let field_index = active_field_index.unwrap_or(i);
                         let to = if let mir::AggregateKind::Array(_) = **kind {
-                            let index = fx.bcx.ins().iconst(fx.pointer_type, field_index as i64);
+                            let array_index = i64::from(field_index.as_u32());
+                            let index = fx.bcx.ins().iconst(fx.pointer_type, array_index);
                             variant_dest.place_index(fx, index)
                         } else {
-                            variant_dest.place_field(fx, FieldIdx::new(field_index))
+                            variant_dest.place_field(fx, field_index)
                         };
                         to.write_cvalue(fx, operand);
                     }

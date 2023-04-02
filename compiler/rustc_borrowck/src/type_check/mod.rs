@@ -14,7 +14,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::{IndexSlice, IndexVec};
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::region_constraints::RegionConstraintData;
@@ -1716,7 +1716,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn aggregate_field_ty(
         &mut self,
         ak: &AggregateKind<'tcx>,
-        field_index: usize,
+        field_index: FieldIdx,
         location: Location,
     ) -> Result<Ty<'tcx>, FieldAccessError> {
         let tcx = self.tcx();
@@ -1725,8 +1725,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             AggregateKind::Adt(adt_did, variant_index, substs, _, active_field_index) => {
                 let def = tcx.adt_def(adt_did);
                 let variant = &def.variant(variant_index);
-                let adj_field_index =
-                    FieldIdx::from_usize(active_field_index.unwrap_or(field_index));
+                let adj_field_index = active_field_index.unwrap_or(field_index);
                 if let Some(field) = variant.fields.get(adj_field_index) {
                     Ok(self.normalize(field.ty(tcx, substs), location))
                 } else {
@@ -1734,7 +1733,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
             AggregateKind::Closure(_, substs) => {
-                match substs.as_closure().upvar_tys().nth(field_index) {
+                match substs.as_closure().upvar_tys().nth(field_index.as_usize()) {
                     Some(ty) => Ok(ty),
                     None => Err(FieldAccessError::OutOfRange {
                         field_count: substs.as_closure().upvar_tys().count(),
@@ -1745,7 +1744,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // It doesn't make sense to look at a field beyond the prefix;
                 // these require a variant index, and are not initialized in
                 // aggregate rvalues.
-                match substs.as_generator().prefix_tys().nth(field_index) {
+                match substs.as_generator().prefix_tys().nth(field_index.as_usize()) {
                     Some(ty) => Ok(ty),
                     None => Err(FieldAccessError::OutOfRange {
                         field_count: substs.as_generator().prefix_tys().count(),
@@ -2350,7 +2349,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         body: &Body<'tcx>,
         rvalue: &Rvalue<'tcx>,
         aggregate_kind: &AggregateKind<'tcx>,
-        operands: &[Operand<'tcx>],
+        operands: &IndexSlice<FieldIdx, Operand<'tcx>>,
         location: Location,
     ) {
         let tcx = self.tcx();
@@ -2362,7 +2361,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             return;
         }
 
-        for (i, operand) in operands.iter().enumerate() {
+        for (i, operand) in operands.iter_enumerated() {
             let field_ty = match self.aggregate_field_ty(aggregate_kind, i, location) {
                 Ok(field_ty) => field_ty,
                 Err(FieldAccessError::OutOfRange { field_count }) => {
@@ -2370,8 +2369,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         self,
                         rvalue,
                         "accessed field #{} but variant only has {}",
-                        i,
-                        field_count
+                        i.as_u32(),
+                        field_count,
                     );
                     continue;
                 }

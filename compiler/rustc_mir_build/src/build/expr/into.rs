@@ -6,11 +6,9 @@ use rustc_ast::InlineAsmOptions;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
-use rustc_index::vec::Idx;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::CanonicalUserTypeAnnotation;
-use rustc_target::abi::FieldIdx;
 use std::iter;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -320,7 +318,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // See the notes for `ExprKind::Array` in `as_rvalue` and for
                 // `ExprKind::Borrow` above.
                 let is_union = adt_def.is_union();
-                let active_field_index = is_union.then(|| fields[0].name.index());
+                let active_field_index = is_union.then(|| fields[0].name);
 
                 let scope = this.local_scope();
 
@@ -344,10 +342,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     })
                     .collect();
 
-                let field_names: Vec<_> =
-                    (0..adt_def.variant(variant_index).fields.len()).map(FieldIdx::new).collect();
+                let field_names = adt_def.variant(variant_index).fields.indices();
 
-                let fields: Vec<_> = if let Some(FruInfo { base, field_types }) = base {
+                let fields = if let Some(FruInfo { base, field_types }) = base {
                     let place_builder =
                         unpack!(block = this.as_place_builder(block, &this.thir[*base]));
 
@@ -364,7 +361,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         })
                         .collect()
                 } else {
-                    field_names.iter().filter_map(|n| fields_map.get(n).cloned()).collect()
+                    field_names.filter_map(|n| fields_map.get(&n).cloned()).collect()
                 };
 
                 let inferred_ty = expr.ty;

@@ -1343,7 +1343,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             self.infcx.tcx.mir_borrowck(def_id);
                         debug!("{:?} used_mut_upvars={:?}", def_id, used_mut_upvars);
                         for field in used_mut_upvars {
-                            self.propagate_closure_used_mut_upvar(&operands[field.index()]);
+                            self.propagate_closure_used_mut_upvar(&operands[*field]);
                         }
                     }
                     AggregateKind::Adt(..)

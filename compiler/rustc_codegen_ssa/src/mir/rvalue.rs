@@ -123,16 +123,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 if active_field_index.is_some() {
                     assert_eq!(operands.len(), 1);
                 }
-                for (i, operand) in operands.iter().enumerate() {
+                for (i, operand) in operands.iter_enumerated() {
                     let op = self.codegen_operand(bx, operand);
                     // Do not generate stores and GEPis for zero-sized fields.
                     if !op.layout.is_zst() {
                         let field_index = active_field_index.unwrap_or(i);
                         let field = if let mir::AggregateKind::Array(_) = **kind {
-                            let llindex = bx.cx().const_usize(field_index as u64);
+                            let llindex = bx.cx().const_usize(field_index.as_u32().into());
                             variant_dest.project_index(bx, llindex)
                         } else {
-                            variant_dest.project_field(bx, field_index)
+                            variant_dest.project_field(bx, field_index.as_usize())
                         };
                         op.val.store(bx, field);
                     }
