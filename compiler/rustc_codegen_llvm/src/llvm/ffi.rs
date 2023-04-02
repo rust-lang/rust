@@ -1006,7 +1006,7 @@ extern "C" {
     pub fn LLVMSetDataLayout(M: &Module, Triple: *const c_char);
 
     /// See Module::setModuleInlineAsm.
-    pub fn LLVMRustAppendModuleInlineAsm(M: &Module, Asm: *const c_char, AsmLen: size_t);
+    pub fn LLVMAppendModuleInlineAsm(M: &Module, Asm: *const c_char, Len: size_t);
 
     /// See llvm::LLVMTypeKind::getTypeID.
     pub fn LLVMRustGetTypeKind(Ty: &Type) -> TypeKind;
@@ -1053,7 +1053,7 @@ extern "C" {
 
     // Operations on other types
     pub fn LLVMVoidTypeInContext(C: &Context) -> &Type;
-    pub fn LLVMRustMetadataTypeInContext(C: &Context) -> &Type;
+    pub fn LLVMMetadataTypeInContext(C: &Context) -> &Type;
 
     // Operations on all values
     pub fn LLVMTypeOf(Val: &Value) -> &Type;

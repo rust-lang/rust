@@ -152,10 +152,6 @@ LLVMRustInsertPrivateGlobal(LLVMModuleRef M, LLVMTypeRef Ty) {
                                  nullptr));
 }
 
-extern "C" LLVMTypeRef LLVMRustMetadataTypeInContext(LLVMContextRef C) {
-  return wrap(Type::getMetadataTy(*unwrap(C)));
-}
-
 static Attribute::AttrKind fromRust(LLVMRustAttribute Kind) {
   switch (Kind) {
   case AlwaysInline:
@@ -478,11 +474,6 @@ extern "C" bool LLVMRustInlineAsmVerify(LLVMTypeRef Ty, char *Constraints,
   return !llvm::errorToBool(InlineAsm::verify(
       unwrap<FunctionType>(Ty), StringRef(Constraints, ConstraintsLen)));
 #endif
-}
-
-extern "C" void LLVMRustAppendModuleInlineAsm(LLVMModuleRef M, const char *Asm,
-                                              size_t AsmLen) {
-  unwrap(M)->appendModuleInlineAsm(StringRef(Asm, AsmLen));
 }
 
 typedef DIBuilder *LLVMRustDIBuilderRef;

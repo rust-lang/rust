@@ -53,7 +53,7 @@ impl<'ll> CodegenCx<'ll, '_> {
     }
 
     pub(crate) fn type_metadata(&self) -> &'ll Type {
-        unsafe { llvm::LLVMRustMetadataTypeInContext(self.llcx) }
+        unsafe { llvm::LLVMMetadataTypeInContext(self.llcx) }
     }
 
     ///x Creates an integer type with the given number of bits, e.g., i24
