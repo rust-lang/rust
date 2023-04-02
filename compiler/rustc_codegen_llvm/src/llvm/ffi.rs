@@ -1072,7 +1072,13 @@ extern "C" {
     pub fn LLVMGetPoison(Ty: &Type) -> &Value;
 
     // Operations on metadata
+    // FIXME: deprecated, replace with LLVMMDStringInContext2
     pub fn LLVMMDStringInContext(C: &Context, Str: *const c_char, SLen: c_uint) -> &Value;
+
+    // LLVMMDStringInContext but don't own string
+    pub fn LLVMMDStringInContext2(C: &Context, Str: *const c_char, SLen: size_t) -> &Metadata;
+
+    // FIXME: deprecated, replace with LLVMMDNodeInContext2
     pub fn LLVMMDNodeInContext<'a>(
         C: &'a Context,
         Vals: *const &'a Value,
@@ -1111,6 +1117,8 @@ extern "C" {
         Packed: Bool,
     ) -> &'a Value;
 
+    // FIXME: replace with LLVMConstArray2
+    // https://github.com/llvm/llvm-project/commit/35276f16e5a2cae0dfb49c0fbf874d4d2f177acc
     pub fn LLVMConstArray<'a>(
         ElementTy: &'a Type,
         ConstantVals: *const &'a Value,
