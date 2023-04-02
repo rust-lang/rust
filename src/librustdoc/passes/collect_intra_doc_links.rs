@@ -810,7 +810,7 @@ fn trait_impls_for<'a>(
 ///
 /// These are common and we should just resolve to the trait in that case.
 fn is_derive_trait_collision<T>(ns: &PerNS<Result<Vec<(Res, T)>, ResolutionFailure<'_>>>) -> bool {
-    if let (&Ok(ref type_ns), &Ok(ref macro_ns)) = (&ns.type_ns, &ns.macro_ns) {
+    if let (Ok(type_ns), Ok(macro_ns)) = (&ns.type_ns, &ns.macro_ns) {
         type_ns.iter().any(|(res, _)| matches!(res, Res::Def(DefKind::Trait, _)))
             && macro_ns
                 .iter()

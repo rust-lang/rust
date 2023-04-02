@@ -113,11 +113,8 @@ pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buf
     } else {
         ("", "")
     };
-    let version = if it.is_crate() {
-        cx.cache().crate_version.as_ref().map(String::as_str).unwrap_or_default()
-    } else {
-        ""
-    };
+    let version =
+        if it.is_crate() { cx.cache().crate_version.as_deref().unwrap_or_default() } else { "" };
     let path: String = if !it.is_mod() {
         cx.current.iter().map(|s| s.as_str()).intersperse("::").collect()
     } else {
