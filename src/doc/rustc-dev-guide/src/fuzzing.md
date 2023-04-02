@@ -87,7 +87,7 @@ Here are a few things you can do to help the Rust project after filing an ICE.
 - Minimize the test case (see below)
 - Add the minimal test case to [Glacier][glacier]
 
-[bisect]: https://github.com/rust-lang/cargo-bisect-rustc/blob/master/TUTORIAL.md
+[bisect]: https://rust-lang.github.io/cargo-bisect-rustc/
 
 ## Minimization
 
