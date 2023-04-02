@@ -184,4 +184,20 @@ fn main() {
     // OK: both unstable and stable fields are matched with feature on
     #[warn(non_exhaustive_omitted_patterns)]
     let UnstableStruct { stable, stable2, unstable, .. } = UnstableStruct::default();
+
+    // Ok: local bindings are allowed
+    #[deny(non_exhaustive_omitted_patterns)]
+    let local = NonExhaustiveEnum::Unit;
+
+    // Ok: missing patterns will be blocked by the pattern being refutable
+    #[deny(non_exhaustive_omitted_patterns)]
+    let local_refutable @ NonExhaustiveEnum::Unit = NonExhaustiveEnum::Unit;
+    //~^ refutable pattern in local binding
+
+}
+
+#[deny(non_exhaustive_omitted_patterns)]
+// Ok: Pattern in a param is always wildcard
+pub fn takes_non_exhaustive(_: NonExhaustiveEnum) {
+    let _closure = |_: NonExhaustiveEnum| {};
 }
