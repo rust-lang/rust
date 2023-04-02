@@ -92,3 +92,21 @@ fn issue_10523_2() {
     }
     if a!() {}
 }
+
+fn issue_10435() {
+    let x = vec![0];
+    let y = vec![1];
+    let z = vec![2];
+
+    // vvv Should not lint
+    #[allow(clippy::nonminimal_bool)]
+    if !x.is_empty() && !(y.is_empty() || z.is_empty()) {
+        println!("{}", line!());
+    }
+
+    // vvv Should not lint (#10435 talks about a bug where it lints)
+    #[allow(clippy::nonminimal_bool)]
+    if !(x == [0]) {
+        println!("{}", line!());
+    }
+}
