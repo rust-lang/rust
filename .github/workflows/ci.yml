@@ -34,7 +34,7 @@ jobs:
   pr:
     permissions:
       actions: write
-    name: PR
+    name: "PR - ${{ matrix.name }}"
     env:
       CI_JOB_NAME: "${{ matrix.name }}"
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
@@ -159,7 +159,7 @@ jobs:
   auto:
     permissions:
       actions: write
-    name: auto
+    name: "auto - ${{ matrix.name }}"
     env:
       CI_JOB_NAME: "${{ matrix.name }}"
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
@@ -578,7 +578,7 @@ jobs:
   try:
     permissions:
       actions: write
-    name: try
+    name: "try - ${{ matrix.name }}"
     env:
       CI_JOB_NAME: "${{ matrix.name }}"
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
