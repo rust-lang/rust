@@ -677,8 +677,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
                 if let Rvalue::CopyForDeref(place) = rvalue {
-                    if !place.ty(&self.body.local_decls, self.tcx).ty.builtin_deref(true).is_some()
-                    {
+                    if place.ty(&self.body.local_decls, self.tcx).ty.builtin_deref(true).is_none() {
                         self.fail(
                             location,
                             "`CopyForDeref` should only be used for dereferenceable types",

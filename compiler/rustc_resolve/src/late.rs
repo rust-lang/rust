@@ -2421,8 +2421,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     .iter()
                     .rfind(|r| matches!(r.kind, ItemRibKind(_)))
                     .expect("associated item outside of an item");
-                seen_bindings
-                    .extend(parent_rib.bindings.iter().map(|(ident, _)| (*ident, ident.span)));
+                seen_bindings.extend(parent_rib.bindings.keys().map(|ident| (*ident, ident.span)));
             };
             add_bindings_for_ns(ValueNS);
             add_bindings_for_ns(TypeNS);
