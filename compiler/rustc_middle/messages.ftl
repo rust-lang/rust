@@ -16,6 +16,10 @@ middle_limit_invalid =
     `limit` must be a non-negative integer
     .label = {$error_str}
 
+middle_recursion_limit_reached =
+    reached the recursion limit finding the struct tail for `{$ty}`
+    .help = consider increasing the recursion limit by adding a `#![recursion_limit = "{$suggested_limit}"]`
+
 middle_const_eval_non_int =
     constant evaluation of enum discriminant resulted in non-integer
 
