@@ -27,7 +27,9 @@ fn main() {
     if args.len() > 0 {
         match &args[0][..] {
             "main-recurse" => overflow_recurse(),
+            "main-tls-recurse" => tls_recurse(),
             "child-recurse" => thread::spawn(overflow_recurse).join().unwrap(),
+            "child-tls-recurse" => thread::spawn(tls_recurse).join().unwrap(),
             "child-frame" => overflow_frame(),
             _ => panic!(),
         }
@@ -42,8 +44,10 @@ fn main() {
     // details
     if cfg!(not(target_os = "linux")) {
         assert_overflow(Command::new(&me).arg("main-recurse"));
+        assert_overflow(Command::new(&me).arg("main-tls-recurse"));
     }
     assert_overflow(Command::new(&me).arg("child-recurse"));
+    assert_overflow(Command::new(&me).arg("child-tls-recurse"));
     assert_overflow(Command::new(&me).arg("child-frame"));
 }
 
@@ -54,6 +58,20 @@ fn recurse(array: &MaybeUninit<[u64; 1024]>) {
     }
     let local: MaybeUninit<[u64; 1024]> = MaybeUninit::uninit();
     recurse(&local);
+}
+
+fn tls_recurse() {
+    struct RecursiveDrop;
+
+    impl Drop for RecursiveDrop {
+        fn drop(&mut self) {
+            overflow_recurse();
+        }
+    }
+
+    thread_local!(static LOCAL: RecursiveDrop = const { RecursiveDrop });
+
+    LOCAL.with(|_| {});
 }
 
 #[inline(never)]
