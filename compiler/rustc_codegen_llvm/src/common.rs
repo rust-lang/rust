@@ -378,8 +378,7 @@ pub(crate) fn get_dllimport<'tcx>(
     name: &str,
 ) -> Option<&'tcx DllImport> {
     tcx.native_library(id)
-        .map(|lib| lib.dll_imports.iter().find(|di| di.name.as_str() == name))
-        .flatten()
+        .and_then(|lib| lib.dll_imports.iter().find(|di| di.name.as_str() == name))
 }
 
 pub(crate) fn is_mingw_gnu_toolchain(target: &Target) -> bool {

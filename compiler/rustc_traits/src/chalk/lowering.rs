@@ -909,8 +909,7 @@ pub(crate) fn collect_bound_vars<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
             .or_else(|| bug!("Skipped bound var index: parameters={:?}", parameters));
     });
 
-    let binders =
-        chalk_ir::VariableKinds::from_iter(interner, parameters.into_iter().map(|(_, v)| v));
+    let binders = chalk_ir::VariableKinds::from_iter(interner, parameters.into_values());
 
     (new_ty, binders, named_parameters)
 }

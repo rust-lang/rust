@@ -2235,7 +2235,7 @@ impl EmitterWriter {
             }
         } else if is_multiline {
             buffer.puts(*row_num, 0, &self.maybe_anonymized(line_num), Style::LineNumber);
-            match &highlight_parts[..] {
+            match &highlight_parts {
                 [SubstitutionHighlight { start: 0, end }] if *end == line_to_add.len() => {
                     buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
                 }

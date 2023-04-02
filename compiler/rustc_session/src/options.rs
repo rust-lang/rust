@@ -911,7 +911,7 @@ mod parse {
         let mut seen_instruction_threshold = false;
         let mut seen_skip_entry = false;
         let mut seen_skip_exit = false;
-        for option in v.into_iter().map(|v| v.split(',')).flatten() {
+        for option in v.into_iter().flat_map(|v| v.split(',')) {
             match option {
                 "always" if !seen_always && !seen_never => {
                     options.always = true;

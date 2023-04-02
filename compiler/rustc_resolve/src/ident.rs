@@ -389,7 +389,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
-        assert!(force || !finalize.is_some()); // `finalize` implies `force`
+        assert!(force || finalize.is_none()); // `finalize` implies `force`
 
         // Make sure `self`, `super` etc produce an error when passed to here.
         if orig_ident.is_path_segment_keyword() {

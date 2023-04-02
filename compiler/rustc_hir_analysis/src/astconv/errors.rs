@@ -483,8 +483,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 [segment] if segment.args.is_none() => {
                     trait_bound_spans = vec![segment.ident.span];
                     associated_types = associated_types
-                        .into_iter()
-                        .map(|(_, items)| (segment.ident.span, items))
+                        .into_values()
+                        .map(|items| (segment.ident.span, items))
                         .collect();
                 }
                 _ => {}

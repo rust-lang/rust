@@ -89,10 +89,7 @@ impl<'tcx> Partitioner<'tcx> for DefaultPartitioning {
         }
 
         PreInliningPartitioning {
-            codegen_units: codegen_units
-                .into_iter()
-                .map(|(_, codegen_unit)| codegen_unit)
-                .collect(),
+            codegen_units: codegen_units.into_values().map(|codegen_unit| codegen_unit).collect(),
             roots,
             internalization_candidates,
         }

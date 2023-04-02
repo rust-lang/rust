@@ -1190,8 +1190,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         // Set KCFI operand bundle
         let is_indirect_call = unsafe { llvm::LLVMIsAFunction(llfn).is_none() };
         let kcfi_bundle =
-            if self.tcx.sess.is_sanitizer_kcfi_enabled() && fn_abi.is_some() && is_indirect_call {
-                let kcfi_typeid = kcfi_typeid_for_fnabi(self.tcx, fn_abi.unwrap());
+            if let Some(fn_abi) = fn_abi && self.tcx.sess.is_sanitizer_kcfi_enabled() && is_indirect_call {
+                let kcfi_typeid = kcfi_typeid_for_fnabi(self.tcx, fn_abi);
                 Some(llvm::OperandBundleDef::new("kcfi", &[self.const_u32(kcfi_typeid)]))
             } else {
                 None
