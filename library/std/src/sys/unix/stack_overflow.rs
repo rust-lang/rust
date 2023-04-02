@@ -42,7 +42,7 @@ mod imp {
     use crate::io;
     use crate::mem;
     use crate::ptr;
-    use crate::thread;
+    use crate::sys_common::thread_info::current_thread;
 
     use libc::MAP_FAILED;
     #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
@@ -89,10 +89,9 @@ mod imp {
         // If the faulting address is within the guard page, then we print a
         // message saying so and abort.
         if guard.start <= addr && addr < guard.end {
-            rtprintpanic!(
-                "\nthread '{}' has overflowed its stack\n",
-                thread::current().name().unwrap_or("<unknown>")
-            );
+            let thread = current_thread();
+            let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unknown>");
+            rtprintpanic!("\nthread '{}' has overflowed its stack\n", name);
             rtabort!("stack overflow");
         } else {
             // Unregister ourselves by reverting back to the default behavior.
