@@ -1,5 +1,5 @@
 error[E0412]: cannot find type `C` in this scope
-  --> $DIR/109831.rs:4:24
+  --> $DIR/issue-109831.rs:4:24
    |
 LL | struct A;
    | --------- similarly named struct `A` defined here
@@ -17,7 +17,7 @@ LL | fn f<C>(b1: B, b2: B, a2: C) {}
    |     +++
 
 error[E0425]: cannot find value `C` in this scope
-  --> $DIR/109831.rs:7:16
+  --> $DIR/issue-109831.rs:7:16
    |
 LL | struct A;
    | --------- similarly named unit struct `A` defined here
@@ -26,7 +26,7 @@ LL |     f(A, A, B, C);
    |                ^ help: a unit struct with a similar name exists: `A`
 
 error[E0061]: this function takes 3 arguments but 4 arguments were supplied
-  --> $DIR/109831.rs:7:5
+  --> $DIR/issue-109831.rs:7:5
    |
 LL |     f(A, A, B, C);
    |     ^ -  -     - unexpected argument
@@ -35,7 +35,7 @@ LL |     f(A, A, B, C);
    |       expected `B`, found `A`
    |
 note: function defined here
-  --> $DIR/109831.rs:4:4
+  --> $DIR/issue-109831.rs:4:4
    |
 LL | fn f(b1: B, b2: B, a2: C) {}
    |    ^ -----  -----  -----

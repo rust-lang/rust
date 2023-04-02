@@ -1156,18 +1156,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // ```
         // which includes the replacement of the first two `()` for the correct type, and the
         // removal of the last `()`.
-        let mut idx = -1;
+        let mut prev = -1;
         for (expected_idx, provided_idx) in matched_inputs.iter_enumerated() {
             // We want to point not at the *current* argument expression index, but rather at the
             // index position where it *should have been*, which is *after* the previous one.
-            idx = match provided_idx {
-                Some(provided_idx) => provided_idx.index() as i64 + 1,
-                None => idx + 1,
-            };
-            let idx = ProvidedIdx::from_usize(idx as usize);
-            if let None = provided_idx
-                && let Some((_, arg_span)) = provided_arg_tys.get(idx)
-            {
+            if let Some(provided_idx) = provided_idx {
+                prev = provided_idx.index() as i64;
+                continue;
+            }
+            let idx = ProvidedIdx::from_usize((prev + 1) as usize);
+            if let Some((_, arg_span)) = provided_arg_tys.get(idx) {
+                prev += 1;
                 // There is a type that was *not* found anywhere, so it isn't a move, but a
                 // replacement and we look at what type it should have been. This will allow us
                 // To suggest a multipart suggestion when encountering `foo(1, "")` where the def
