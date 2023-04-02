@@ -2120,8 +2120,8 @@ pub trait Iterator {
     ///
     /// # Current implementation
     ///
-    /// Current algorithms tries finding the first element for which the predicate evaluates
-    /// to false, and the last element for which it evaluates to true and repeatedly swaps them.
+    /// The current algorithm tries to find the first element for which the predicate evaluates
+    /// to false and the last element for which it evaluates to true, and repeatedly swaps them.
     ///
     /// Time complexity: *O*(*n*)
     ///
