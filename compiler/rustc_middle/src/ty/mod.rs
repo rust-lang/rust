@@ -1325,7 +1325,8 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
 impl<'tcx> IntoIterator for InstantiatedPredicates<'tcx> {
     type Item = (Predicate<'tcx>, Span);
 
-    type IntoIter = std::iter::Zip<smallvec::IntoIter<[Predicate<'tcx>; 4]>, smallvec::IntoIter<[Span; 4]>>;
+    type IntoIter =
+        std::iter::Zip<smallvec::IntoIter<[Predicate<'tcx>; 4]>, smallvec::IntoIter<[Span; 4]>>;
 
     fn into_iter(self) -> Self::IntoIter {
         debug_assert_eq!(self.predicates.len(), self.spans.len());
