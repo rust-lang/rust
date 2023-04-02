@@ -51,28 +51,35 @@ macro_rules! impl_read_unsigned_leb128 {
     ($fn_name:ident, $int_ty:ty) => {
         #[inline]
         pub fn $fn_name(slice: &[u8], position: &mut usize) -> $int_ty {
-            // The first iteration of this loop is unpeeled. This is a
-            // performance win because this code is hot and integer values less
-            // than 128 are very common, typically occurring 50-80% or more of
-            // the time, even for u64 and u128.
-            let byte = slice[*position];
-            *position += 1;
-            if (byte & 0x80) == 0 {
-                return byte as $int_ty;
-            }
-            let mut result = (byte & 0x7F) as $int_ty;
-            let mut shift = 7;
-            loop {
-                let byte = slice[*position];
-                *position += 1;
+            #[inline]
+            fn inner(slice: &[u8], position: &mut usize) -> Option<$int_ty> {
+                let mut pos = *position;
+                // The first iteration of this loop is unpeeled. This is a
+                // performance win because this code is hot and integer values less
+                // than 128 are very common, typically occurring 50-80% or more of
+                // the time, even for u64 and u128.
+                let byte = *slice.get(pos)?;
+                pos += 1;
                 if (byte & 0x80) == 0 {
-                    result |= (byte as $int_ty) << shift;
-                    return result;
-                } else {
-                    result |= ((byte & 0x7F) as $int_ty) << shift;
+                    *position = pos;
+                    return Some(byte as $int_ty);
                 }
-                shift += 7;
+                let mut result = (byte & 0x7F) as $int_ty;
+                let mut shift = 7;
+                loop {
+                    let byte = *slice.get(pos)?;
+                    pos += 1;
+                    if (byte & 0x80) == 0 {
+                        result |= (byte as $int_ty) << shift;
+                        *position = pos;
+                        return Some(result);
+                    } else {
+                        result |= ((byte & 0x7F) as $int_ty) << shift;
+                    }
+                    shift += 7;
+                }
             }
+            inner(slice, position).unwrap()
         }
     };
 }
