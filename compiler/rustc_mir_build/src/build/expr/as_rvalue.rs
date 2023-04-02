@@ -1,8 +1,8 @@
 //! See docs in `build/expr/mod.rs`.
 
-use rustc_index::vec::Idx;
+use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::ty::util::IntTypeExt;
-use rustc_target::abi::{Abi, Primitive};
+use rustc_target::abi::{Abi, FieldIdx, Primitive};
 
 use crate::build::expr::as_place::PlaceBase;
 use crate::build::expr::category::{Category, RvalueFunc};
@@ -17,7 +17,6 @@ use rustc_middle::thir::*;
 use rustc_middle::ty::cast::{mir_cast_kind, CastTy};
 use rustc_middle::ty::{self, Ty, UpvarSubsts};
 use rustc_span::Span;
-use rustc_target::abi::FieldIdx;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Returns an rvalue suitable for use until the end of the current
@@ -327,7 +326,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 // first process the set of fields
                 let el_ty = expr.ty.sequence_element_type(this.tcx);
-                let fields: Vec<_> = fields
+                let fields: IndexVec<FieldIdx, _> = fields
                     .into_iter()
                     .copied()
                     .map(|f| {
@@ -348,7 +347,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Tuple { ref fields } => {
                 // see (*) above
                 // first process the set of fields
-                let fields: Vec<_> = fields
+                let fields: IndexVec<FieldIdx, _> = fields
                     .into_iter()
                     .copied()
                     .map(|f| {
@@ -402,7 +401,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
 
                 // see (*) above
-                let operands: Vec<_> = upvars
+                let operands: IndexVec<FieldIdx, _> = upvars
                     .into_iter()
                     .copied()
                     .map(|upvar| {
@@ -710,7 +709,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             this.record_operands_moved(&[value_operand]);
         }
-        block.and(Rvalue::Aggregate(Box::new(AggregateKind::Array(elem_ty)), Vec::new()))
+        block.and(Rvalue::Aggregate(Box::new(AggregateKind::Array(elem_ty)), IndexVec::new()))
     }
 
     fn limit_capture_mutability(

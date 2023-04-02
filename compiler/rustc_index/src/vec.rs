@@ -93,6 +93,12 @@ impl<I: Idx, T: fmt::Debug> fmt::Debug for IndexVec<I, T> {
     }
 }
 
+impl<I: Idx, T: fmt::Debug> fmt::Debug for IndexSlice<I, T> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.raw, fmt)
+    }
+}
+
 impl<I: Idx, T> IndexVec<I, T> {
     #[inline]
     pub fn new() -> Self {

@@ -274,7 +274,7 @@ impl<'tcx> TransformVisitor<'tcx> {
             statements.push(Statement {
                 kind: StatementKind::Assign(Box::new((
                     Place::return_place(),
-                    Rvalue::Aggregate(Box::new(kind), vec![]),
+                    Rvalue::Aggregate(Box::new(kind), IndexVec::new()),
                 ))),
                 source_info,
             });
@@ -287,7 +287,7 @@ impl<'tcx> TransformVisitor<'tcx> {
         statements.push(Statement {
             kind: StatementKind::Assign(Box::new((
                 Place::return_place(),
-                Rvalue::Aggregate(Box::new(kind), vec![val]),
+                Rvalue::Aggregate(Box::new(kind), IndexVec::from_iter([val])),
             ))),
             source_info,
         });

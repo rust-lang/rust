@@ -185,7 +185,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             },
             ExprKind::Adt(box AdtExpr{ adt_def, variant_index, substs, fields, .. }) => {
                 let is_union = adt_def.is_union();
-                let active_field_index = is_union.then(|| fields[0].name.index());
+                let active_field_index = is_union.then(|| fields[0].name);
 
                 Ok(Rvalue::Aggregate(
                     Box::new(AggregateKind::Adt(adt_def.did(), *variant_index, substs, None, active_field_index)),

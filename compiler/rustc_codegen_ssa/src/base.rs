@@ -306,9 +306,9 @@ pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
             assert_eq!(def_a, def_b);
 
-            for i in 0..def_a.variant(FIRST_VARIANT).fields.len() {
-                let src_f = src.project_field(bx, i);
-                let dst_f = dst.project_field(bx, i);
+            for i in def_a.variant(FIRST_VARIANT).fields.indices() {
+                let src_f = src.project_field(bx, i.as_usize());
+                let dst_f = dst.project_field(bx, i.as_usize());
 
                 if dst_f.layout.is_zst() {
                     continue;

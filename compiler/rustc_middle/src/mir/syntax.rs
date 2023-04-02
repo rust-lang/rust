@@ -16,6 +16,7 @@ use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir};
 use rustc_hir::{self, GeneratorKind};
+use rustc_index::vec::IndexVec;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
 use rustc_ast::Mutability;
@@ -1125,7 +1126,7 @@ pub enum Rvalue<'tcx> {
     ///
     /// Disallowed after deaggregation for all aggregate kinds except `Array` and `Generator`. After
     /// generator lowering, `Generator` aggregate kinds are disallowed too.
-    Aggregate(Box<AggregateKind<'tcx>>, Vec<Operand<'tcx>>),
+    Aggregate(Box<AggregateKind<'tcx>>, IndexVec<FieldIdx, Operand<'tcx>>),
 
     /// Transmutes a `*mut u8` into shallow-initialized `Box<T>`.
     ///
@@ -1186,7 +1187,7 @@ pub enum AggregateKind<'tcx> {
     /// active field number and is present only for union expressions
     /// -- e.g., for a union expression `SomeUnion { c: .. }`, the
     /// active field index would identity the field `c`
-    Adt(DefId, VariantIdx, SubstsRef<'tcx>, Option<UserTypeAnnotationIndex>, Option<usize>),
+    Adt(DefId, VariantIdx, SubstsRef<'tcx>, Option<UserTypeAnnotationIndex>, Option<FieldIdx>),
 
     Closure(DefId, SubstsRef<'tcx>),
     Generator(DefId, SubstsRef<'tcx>, hir::Movability),
@@ -1263,7 +1264,7 @@ pub enum BinOp {
 mod size_asserts {
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(AggregateKind<'_>, 40);
+    static_assert_size!(AggregateKind<'_>, 32);
     static_assert_size!(Operand<'_>, 24);
     static_assert_size!(Place<'_>, 16);
     static_assert_size!(PlaceElem<'_>, 24);
