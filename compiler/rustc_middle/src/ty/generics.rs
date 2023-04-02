@@ -376,7 +376,7 @@ impl<'tcx> GenericPredicates<'tcx> {
         if let Some(def_id) = self.parent {
             tcx.predicates_of(def_id).instantiate_identity_into(tcx, instantiated);
         }
-        instantiated.predicates.extend(self.predicates.iter().map(|(p, _)| p));
-        instantiated.spans.extend(self.predicates.iter().map(|(_, s)| s));
+        instantiated.predicates.extend(self.predicates.iter().map(|(p, _)| *p));
+        instantiated.spans.extend(self.predicates.iter().map(|(_, s)| *s));
     }
 }

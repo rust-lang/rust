@@ -144,6 +144,18 @@ impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Vec<T> {
     }
 }
 
+impl<const N: usize, I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for smallvec::SmallVec<[T; N]> {
+    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        self.into_iter().map(|t| t.try_fold_with(folder)).collect()
+    }
+}
+
+impl<const N: usize, I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for smallvec::SmallVec<[T; N]> {
+    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        self.iter().try_for_each(|t| t.visit_with(visitor))
+    }
+}
+
 impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for &[T] {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|t| t.visit_with(visitor))
