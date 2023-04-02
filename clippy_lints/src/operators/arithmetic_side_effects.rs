@@ -154,10 +154,18 @@ impl ArithmeticSideEffects {
                 Self::literal_integer(cx, actual_rhs),
             ) {
                 (None, None) => false,
-                (None, Some(n)) | (Some(n), None) => match (&op.node, n) {
+                (None, Some(n)) => match (&op.node, n) {
                     // Division and module are always valid if applied to non-zero integers
                     (hir::BinOpKind::Div | hir::BinOpKind::Rem, local_n) if local_n != 0 => true,
-                    // Addition or subtracting zeros is always a no-op
+                    // Adding or subtracting zeros is always a no-op
+                    (hir::BinOpKind::Add | hir::BinOpKind::Sub, 0)
+                    // Multiplication by 1 or 0 will never overflow
+                    | (hir::BinOpKind::Mul, 0 | 1)
+                    => true,
+                    _ => false,
+                },
+                (Some(n), None) => match (&op.node, n) {
+                    // Adding or subtracting zeros is always a no-op
                     (hir::BinOpKind::Add | hir::BinOpKind::Sub, 0)
                     // Multiplication by 1 or 0 will never overflow
                     | (hir::BinOpKind::Mul, 0 | 1)
