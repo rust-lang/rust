@@ -21,6 +21,12 @@ pub fn must_use_with_note() -> Result<(), ()> {
     unimplemented!();
 }
 
+// vvvv Should not lint (#10486)
+#[must_use]
+async fn async_must_use() -> usize {
+    unimplemented!();
+}
+
 fn main() {
     must_use_result();
     must_use_tuple();
