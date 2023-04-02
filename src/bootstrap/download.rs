@@ -367,26 +367,70 @@ impl Config {
 
     pub(crate) fn download_ci_rustc(&self, commit: &str) {
         self.verbose(&format!("using downloaded stage2 artifacts from CI (commit {commit})"));
+
         let version = self.artifact_version_part(commit);
+        // download-rustc doesn't need its own cargo, it can just use beta's. But it does need the
+        // `rustc_private` crates for tools.
+        let extra_components = ["rustc-dev"];
+
+        self.download_toolchain(
+            &version,
+            "ci-rustc",
+            commit,
+            &extra_components,
+            Self::download_ci_component,
+        );
+    }
+
+    pub(crate) fn download_beta_toolchain(&self) {
+        self.verbose(&format!("downloading stage0 beta artifacts"));
+
+        let date = &self.stage0_metadata.compiler.date;
+        let version = &self.stage0_metadata.compiler.version;
+        let extra_components = ["cargo"];
+
+        let download_beta_component = |config: &Config, filename, prefix: &_, date: &_| {
+            config.download_component(DownloadSource::Dist, filename, prefix, date, "stage0")
+        };
+
+        self.download_toolchain(
+            version,
+            "stage0",
+            date,
+            &extra_components,
+            download_beta_component,
+        );
+    }
+
+    fn download_toolchain(
+        &self,
+        // FIXME(ozkanonur) use CompilerMetadata instead of `version: &str`
+        version: &str,
+        sysroot: &str,
+        stamp_key: &str,
+        extra_components: &[&str],
+        download_component: fn(&Config, String, &str, &str),
+    ) {
         let host = self.build.triple;
-        let bin_root = self.out.join(host).join("ci-rustc");
+        let bin_root = self.out.join(host).join(sysroot);
         let rustc_stamp = bin_root.join(".rustc-stamp");
 
-        if !bin_root.join("bin").join("rustc").exists() || program_out_of_date(&rustc_stamp, commit)
+        if !bin_root.join("bin").join("rustc").exists()
+            || program_out_of_date(&rustc_stamp, stamp_key)
         {
             if bin_root.exists() {
                 t!(fs::remove_dir_all(&bin_root));
             }
             let filename = format!("rust-std-{version}-{host}.tar.xz");
             let pattern = format!("rust-std-{host}");
-            self.download_ci_component(filename, &pattern, commit);
+            download_component(self, filename, &pattern, stamp_key);
             let filename = format!("rustc-{version}-{host}.tar.xz");
-            self.download_ci_component(filename, "rustc", commit);
-            // download-rustc doesn't need its own cargo, it can just use beta's.
-            let filename = format!("rustc-dev-{version}-{host}.tar.xz");
-            self.download_ci_component(filename, "rustc-dev", commit);
-            let filename = format!("rust-src-{version}.tar.xz");
-            self.download_ci_component(filename, "rust-src", commit);
+            download_component(self, filename, "rustc", stamp_key);
+
+            for component in extra_components {
+                let filename = format!("{component}-{version}-{host}.tar.xz");
+                download_component(self, filename, component, stamp_key);
+            }
 
             if self.should_fix_bins_and_dylibs() {
                 self.fix_bin_or_dylib(&bin_root.join("bin").join("rustc"));
@@ -403,7 +447,7 @@ impl Config {
                 }
             }
 
-            t!(fs::write(rustc_stamp, commit));
+            t!(fs::write(rustc_stamp, stamp_key));
         }
     }
 
