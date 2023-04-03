@@ -18,9 +18,11 @@ mod foo {
 fn main() {
     let _: <foo::Baz as crate::foo::Foo>::Bar = ();
     //~^ ERROR absolute paths must start with
-    //~| this is accepted in the current edition
+    //~| WARN this is accepted in the current edition
+    //~| ERROR absolute paths must start with
+    //~| WARN this is accepted in the current edition
 
     let _: <crate::foo::Baz as foo::Foo>::Bar = ();
     //~^ ERROR absolute paths must start with
-    //~| this is accepted in the current edition
+    //~| WARN this is accepted in the current edition
 }
