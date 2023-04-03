@@ -14,6 +14,7 @@
     - [Basics](development/basics.md)
     - [Adding Lints](development/adding_lints.md)
     - [Defining Lints](development/defining_lints.md)
+    - [Writing tests](development/writing_tests.md)
     - [Lint Passes](development/lint_passes.md)
     - [Type Checking](development/type_checking.md)
     - [Method Checking](development/method_checking.md)
