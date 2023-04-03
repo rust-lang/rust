@@ -136,7 +136,7 @@ fn with_fresh_ty_vars<'cx, 'tcx>(
             .predicates_of(impl_def_id)
             .instantiate(tcx, impl_substs)
             .predicates
-            .to_vec(),
+            .into_vec(),
     };
 
     let InferOk { value: mut header, obligations } =

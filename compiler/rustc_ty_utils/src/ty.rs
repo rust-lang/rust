@@ -137,7 +137,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     }
 
     // Convert from a smallvec::SmallVec to a Vec.
-    let mut predicates = predicates.to_vec();
+    let mut predicates = predicates.into_vec();
 
     // Finally, we have to normalize the bounds in the environment, in
     // case they contain any associated type projections. This process
