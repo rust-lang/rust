@@ -236,11 +236,9 @@ fn _var(key: &OsStr) -> Result<String, VarError> {
 }
 
 /// Fetches the environment variable `key` from the current process, returning
-/// [`None`] in the following situations:
-///
-///  - the environment variable isn't set
-///  - the environment variable's name contains
-/// the equal sign character (`=`) or the NUL character
+/// [`None`] if the environment variable isn't set. It may return `None` also
+/// if the environment variable's name contains
+/// the equal sign character (`=`) or the NUL character.
 ///
 /// Note that the method will not check if the environment variable
 /// is valid Unicode. If you want to have an error on invalid UTF-8,
