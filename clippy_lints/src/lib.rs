@@ -348,13 +348,17 @@ pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore, sess: &Se
 }
 
 #[doc(hidden)]
-pub fn read_conf(sess: &Session, path: &io::Result<Option<PathBuf>>) -> Conf {
+pub fn read_conf(sess: &Session, path: &io::Result<(Option<PathBuf>, Vec<String>)>) -> Conf {
+    if let Ok((_, warnings)) = path {
+        for warning in warnings {
+            sess.warn(warning);
+        }
+    }
     let file_name = match path {
-        Ok(Some(path)) => path,
-        Ok(None) => return Conf::default(),
+        Ok((Some(path), _)) => path,
+        Ok((None, _)) => return Conf::default(),
         Err(error) => {
-            sess.struct_err(format!("error finding Clippy's configuration file: {error}"))
-                .emit();
+            sess.err(format!("error finding Clippy's configuration file: {error}"));
             return Conf::default();
         },
     };

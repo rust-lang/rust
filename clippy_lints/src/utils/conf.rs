@@ -470,7 +470,7 @@ define_Conf! {
 /// # Errors
 ///
 /// Returns any unexpected filesystem error encountered when searching for the config file
-pub fn lookup_conf_file() -> io::Result<Option<PathBuf>> {
+pub fn lookup_conf_file() -> io::Result<(Option<PathBuf>, Vec<String>)> {
     /// Possible filename to search for.
     const CONFIG_FILE_NAMES: [&str; 2] = [".clippy.toml", "clippy.toml"];
 
@@ -481,6 +481,7 @@ pub fn lookup_conf_file() -> io::Result<Option<PathBuf>> {
         .map_or_else(|| PathBuf::from("."), PathBuf::from);
 
     let mut found_config: Option<PathBuf> = None;
+    let mut warnings = vec![];
 
     loop {
         for config_file_name in &CONFIG_FILE_NAMES {
@@ -491,12 +492,12 @@ pub fn lookup_conf_file() -> io::Result<Option<PathBuf>> {
                     Ok(md) if md.is_dir() => {},
                     Ok(_) => {
                         // warn if we happen to find two config files #8323
-                        if let Some(ref found_config_) = found_config {
-                            eprintln!(
-                                "Using config file `{}`\nWarning: `{}` will be ignored.",
-                                found_config_.display(),
-                                config_file.display(),
-                            );
+                        if let Some(ref found_config) = found_config {
+                            warnings.push(format!(
+                                "using config file `{}`, `{}` will be ignored",
+                                found_config.display(),
+                                config_file.display()
+                            ));
                         } else {
                             found_config = Some(config_file);
                         }
@@ -506,12 +507,12 @@ pub fn lookup_conf_file() -> io::Result<Option<PathBuf>> {
         }
 
         if found_config.is_some() {
-            return Ok(found_config);
+            return Ok((found_config, warnings));
         }
 
         // If the current directory has no parent, we're done searching.
         if !current.pop() {
-            return Ok(None);
+            return Ok((None, warnings));
         }
     }
 }
