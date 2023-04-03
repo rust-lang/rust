@@ -137,6 +137,28 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 /// # fn main() {}
 /// ```
 ///
+/// This macro also supports wrapping initializing expression in `const` block
+/// if it can be evaluated in const context:
+///
+/// ```
+/// use std::cell::Cell;
+/// thread_local! {
+///     static INIT_FLAG: Cell<bool> = const { Cell::new(false) };
+/// }
+/// ```
+///
+/// Doing so does not change the behavior, but might enable more efficient implementation
+/// of [`LocalKey`][`std::thread::LocalKey`] on supported platforms.
+///
+/// If initializing expression can not be evaluated in const context, wrapping it in
+/// `const` block is a compile error.
+///
+/// ```compile_fail
+/// thread_local! {
+///     static FOO: Vec<i32> = const { vec![0] };
+/// }
+/// ```
+///
 /// See [`LocalKey` documentation][`std::thread::LocalKey`] for more
 /// information.
 ///
