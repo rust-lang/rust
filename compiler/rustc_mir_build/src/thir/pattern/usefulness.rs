@@ -300,7 +300,6 @@ use rustc_arena::TypedArena;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
-use rustc_hir::Node;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_span::{Span, DUMMY_SP};
@@ -319,6 +318,8 @@ pub(crate) struct MatchCheckCtxt<'p, 'tcx> {
     pub(crate) module: DefId,
     pub(crate) param_env: ty::ParamEnv<'tcx>,
     pub(crate) pattern_arena: &'p TypedArena<DeconstructedPat<'p, 'tcx>>,
+    /// Only produce `NON_EXHAUSTIVE_OMITTED_PATTERNS` lint on refutable patterns.
+    pub(crate) refutable: bool,
 }
 
 impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
@@ -860,6 +861,8 @@ fn is_useful<'p, 'tcx>(
             // that has the potential to trigger the `non_exhaustive_omitted_patterns` lint.
             // To understand the workings checkout `Constructor::split` and `SplitWildcard::new/into_ctors`
             if is_non_exhaustive_and_wild
+                // Only emit a lint on refutable patterns.
+                && cx.refutable
                 // We check that the match has a wildcard pattern and that wildcard is useful,
                 // meaning there are variants that are covered by the wildcard. Without the check
                 // for `witness_preference` the lint would trigger on `if let NonExhaustiveEnum::A = foo {}`
@@ -868,8 +871,6 @@ fn is_useful<'p, 'tcx>(
                     &ctor,
                     Constructor::Missing { nonexhaustive_enum_missing_real_variants: true }
                 )
-                // We don't want to lint patterns which are function arguments or locals
-                && !matches!(cx.tcx.hir().find_parent(hir_id), Some(Node::Param(_)|Node::Local(_)))
             {
                 let patterns = {
                     let mut split_wildcard = SplitWildcard::new(pcx);

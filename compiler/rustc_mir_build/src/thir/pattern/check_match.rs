@@ -199,12 +199,13 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         cx.pattern_arena.alloc(DeconstructedPat::from_pat(cx, &pattern))
     }
 
-    fn new_cx(&self, hir_id: HirId) -> MatchCheckCtxt<'p, 'tcx> {
+    fn new_cx(&self, hir_id: HirId, refutable: bool) -> MatchCheckCtxt<'p, 'tcx> {
         MatchCheckCtxt {
             tcx: self.tcx,
             param_env: self.param_env,
             module: self.tcx.parent_module(hir_id).to_def_id(),
             pattern_arena: &self.pattern_arena,
+            refutable,
         }
     }
 
@@ -214,7 +215,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             return;
         }
         self.check_patterns(pat, Refutable);
-        let mut cx = self.new_cx(self.lint_level);
+        let mut cx = self.new_cx(self.lint_level, true);
         let tpat = self.lower_pattern(&mut cx, pat);
         self.check_let_reachability(&mut cx, self.lint_level, source, tpat, span);
     }
@@ -226,7 +227,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         source: hir::MatchSource,
         expr_span: Span,
     ) {
-        let mut cx = self.new_cx(self.lint_level);
+        let mut cx = self.new_cx(self.lint_level, true);
 
         for &arm in arms {
             // Check the arm for some things unrelated to exhaustiveness.
@@ -328,7 +329,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             debug!(?expr, ?local_lint_level, "after scopes");
             match expr.kind {
                 ExprKind::Let { box ref pat, expr: _ } => {
-                    let mut ncx = self.new_cx(local_lint_level);
+                    let mut ncx = self.new_cx(local_lint_level, true);
                     let tpat = self.lower_pattern(&mut ncx, pat);
                     let refutable = !is_let_irrefutable(&mut ncx, local_lint_level, tpat);
                     Some((expr.span, refutable))
@@ -409,7 +410,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
 
     #[instrument(level = "trace", skip(self))]
     fn check_irrefutable(&self, pat: &Pat<'tcx>, origin: &str, sp: Option<Span>) {
-        let mut cx = self.new_cx(self.lint_level);
+        let mut cx = self.new_cx(self.lint_level, false);
 
         let pattern = self.lower_pattern(&mut cx, pat);
         let pattern_ty = pattern.ty();
