@@ -1,6 +1,7 @@
 #[cfg(feature = "rustc_serialize")]
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
+use std::borrow::{Borrow, BorrowMut};
 use std::fmt;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -51,6 +52,12 @@ impl Idx for u32 {
     }
 }
 
+/// An owned contiguous collection of `T`s, indexed by `I` rather than by `usize`.
+///
+/// While it's possible to use `u32` or `usize` directly for `I`,
+/// you almost certainly want to use a [`newtype_index!`]-generated type instead.
+///
+/// [`newtype_index!`]: ../macro.newtype_index.html
 #[derive(Clone, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 pub struct IndexVec<I: Idx, T> {
@@ -58,6 +65,13 @@ pub struct IndexVec<I: Idx, T> {
     _marker: PhantomData<fn(&I)>,
 }
 
+/// A view into contiguous `T`s, indexed by `I` rather than by `usize`.
+///
+/// One common pattern you'll see is code that uses [`IndexVec::from_elem`]
+/// to create the storage needed for a particular "universe" (aka the set of all
+/// the possible keys that need an associated value) then passes that working
+/// area as `&mut IndexSlice<I, T>` to clarify that nothing will be added nor
+/// removed during processing (and, as a bonus, to chase fewer pointers).
 #[derive(PartialEq, Eq, Hash)]
 #[repr(transparent)]
 pub struct IndexSlice<I: Idx, T> {
@@ -116,7 +130,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn from_elem<S>(elem: T, universe: &IndexVec<I, S>) -> Self
+    pub fn from_elem<S>(elem: T, universe: &IndexSlice<I, S>) -> Self
     where
         T: Clone,
     {
@@ -241,6 +255,30 @@ impl<I: Idx, T> DerefMut for IndexVec<I, T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.as_mut_slice()
+    }
+}
+
+impl<I: Idx, T> Borrow<IndexSlice<I, T>> for IndexVec<I, T> {
+    fn borrow(&self) -> &IndexSlice<I, T> {
+        self
+    }
+}
+
+impl<I: Idx, T> BorrowMut<IndexSlice<I, T>> for IndexVec<I, T> {
+    fn borrow_mut(&mut self) -> &mut IndexSlice<I, T> {
+        self
+    }
+}
+
+impl<I: Idx, T: Clone> ToOwned for IndexSlice<I, T> {
+    type Owned = IndexVec<I, T>;
+
+    fn to_owned(&self) -> IndexVec<I, T> {
+        IndexVec::from_raw(self.raw.to_owned())
+    }
+
+    fn clone_into(&self, target: &mut IndexVec<I, T>) {
+        self.raw.clone_into(&mut target.raw)
     }
 }
 
@@ -388,7 +426,7 @@ impl<I: Idx, T: Clone> IndexVec<I, T> {
     }
 }
 
-impl<I: Idx, T: Ord> IndexVec<I, T> {
+impl<I: Idx, T: Ord> IndexSlice<I, T> {
     #[inline]
     pub fn binary_search(&self, value: &T) -> Result<I, I> {
         match self.raw.binary_search(value) {

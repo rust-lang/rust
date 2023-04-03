@@ -1,6 +1,6 @@
 use crate::move_paths::builder::MoveDat;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::{IndexSlice, IndexVec};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_span::Span;
@@ -64,7 +64,7 @@ impl<'tcx> MovePath<'tcx> {
     /// Returns an iterator over the parents of `self`.
     pub fn parents<'a>(
         &self,
-        move_paths: &'a IndexVec<MovePathIndex, MovePath<'tcx>>,
+        move_paths: &'a IndexSlice<MovePathIndex, MovePath<'tcx>>,
     ) -> impl 'a + Iterator<Item = (MovePathIndex, &'a MovePath<'tcx>)> {
         let first = self.parent.map(|mpi| (mpi, &move_paths[mpi]));
         MovePathLinearIter {
@@ -78,7 +78,7 @@ impl<'tcx> MovePath<'tcx> {
     /// Returns an iterator over the immediate children of `self`.
     pub fn children<'a>(
         &self,
-        move_paths: &'a IndexVec<MovePathIndex, MovePath<'tcx>>,
+        move_paths: &'a IndexSlice<MovePathIndex, MovePath<'tcx>>,
     ) -> impl 'a + Iterator<Item = (MovePathIndex, &'a MovePath<'tcx>)> {
         let first = self.first_child.map(|mpi| (mpi, &move_paths[mpi]));
         MovePathLinearIter {
@@ -95,7 +95,7 @@ impl<'tcx> MovePath<'tcx> {
     /// `f` will **not** be called on `self`.
     pub fn find_descendant(
         &self,
-        move_paths: &IndexVec<MovePathIndex, MovePath<'_>>,
+        move_paths: &IndexSlice<MovePathIndex, MovePath<'_>>,
         f: impl Fn(MovePathIndex) -> bool,
     ) -> Option<MovePathIndex> {
         let mut todo = if let Some(child) = self.first_child {

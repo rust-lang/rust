@@ -27,7 +27,7 @@ use polonius_engine::Atom;
 pub use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::vec::{Idx, IndexSlice, IndexVec};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
@@ -70,10 +70,17 @@ pub use self::pretty::{
 };
 
 /// Types for locals
-pub type LocalDecls<'tcx> = IndexVec<Local, LocalDecl<'tcx>>;
+pub type LocalDecls<'tcx> = IndexSlice<Local, LocalDecl<'tcx>>;
 
 pub trait HasLocalDecls<'tcx> {
     fn local_decls(&self) -> &LocalDecls<'tcx>;
+}
+
+impl<'tcx> HasLocalDecls<'tcx> for IndexVec<Local, LocalDecl<'tcx>> {
+    #[inline]
+    fn local_decls(&self) -> &LocalDecls<'tcx> {
+        self
+    }
 }
 
 impl<'tcx> HasLocalDecls<'tcx> for LocalDecls<'tcx> {
@@ -250,7 +257,7 @@ pub struct Body<'tcx> {
     /// The first local is the return value pointer, followed by `arg_count`
     /// locals for the function arguments, followed by any user-declared
     /// variables and temporaries.
-    pub local_decls: LocalDecls<'tcx>,
+    pub local_decls: IndexVec<Local, LocalDecl<'tcx>>,
 
     /// User type annotations.
     pub user_type_annotations: ty::CanonicalUserTypeAnnotations<'tcx>,
@@ -311,7 +318,7 @@ impl<'tcx> Body<'tcx> {
         source: MirSource<'tcx>,
         basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
         source_scopes: IndexVec<SourceScope, SourceScopeData<'tcx>>,
-        local_decls: LocalDecls<'tcx>,
+        local_decls: IndexVec<Local, LocalDecl<'tcx>>,
         user_type_annotations: ty::CanonicalUserTypeAnnotations<'tcx>,
         arg_count: usize,
         var_debug_info: Vec<VarDebugInfo<'tcx>>,
@@ -1779,7 +1786,7 @@ impl SourceScope {
     /// from the function that was inlined instead of the function call site.
     pub fn lint_root(
         self,
-        source_scopes: &IndexVec<SourceScope, SourceScopeData<'_>>,
+        source_scopes: &IndexSlice<SourceScope, SourceScopeData<'_>>,
     ) -> Option<HirId> {
         let mut data = &source_scopes[self];
         // FIXME(oli-obk): we should be able to just walk the `inlined_parent_scope`, but it
@@ -1799,7 +1806,7 @@ impl SourceScope {
     #[inline]
     pub fn inlined_instance<'tcx>(
         self,
-        source_scopes: &IndexVec<SourceScope, SourceScopeData<'tcx>>,
+        source_scopes: &IndexSlice<SourceScope, SourceScopeData<'tcx>>,
     ) -> Option<ty::Instance<'tcx>> {
         let scope_data = &source_scopes[self];
         if let Some((inlined_instance, _)) = scope_data.inlined {

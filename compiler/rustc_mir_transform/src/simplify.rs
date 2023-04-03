@@ -29,7 +29,7 @@
 
 use crate::MirPass;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::vec::{Idx, IndexSlice, IndexVec};
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -67,7 +67,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyCfg {
 }
 
 pub struct CfgSimplifier<'a, 'tcx> {
-    basic_blocks: &'a mut IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+    basic_blocks: &'a mut IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
     pred_count: IndexVec<BasicBlock, u32>,
 }
 
@@ -369,8 +369,8 @@ pub fn remove_dead_blocks<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 /// instances in a single body, so the strategy described above is applied to
 /// coverage counters from each instance individually.
 fn save_unreachable_coverage(
-    basic_blocks: &mut IndexVec<BasicBlock, BasicBlockData<'_>>,
-    source_scopes: &IndexVec<SourceScope, SourceScopeData<'_>>,
+    basic_blocks: &mut IndexSlice<BasicBlock, BasicBlockData<'_>>,
+    source_scopes: &IndexSlice<SourceScope, SourceScopeData<'_>>,
     first_dead_block: usize,
 ) {
     // Identify instances that still have some live coverage counters left.
@@ -489,7 +489,7 @@ fn make_local_map<V>(
     local_decls: &mut IndexVec<Local, V>,
     used_locals: &UsedLocals,
 ) -> IndexVec<Local, Option<Local>> {
-    let mut map: IndexVec<Local, Option<Local>> = IndexVec::from_elem(None, &*local_decls);
+    let mut map: IndexVec<Local, Option<Local>> = IndexVec::from_elem(None, local_decls);
     let mut used = Local::new(0);
 
     for alive_index in local_decls.indices() {

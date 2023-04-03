@@ -3,7 +3,7 @@
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::IndexSlice;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::mir::{
     Body, CastKind, ConstraintCategory, FakeReadCause, Local, LocalInfo, Location, Operand, Place,
@@ -60,7 +60,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
-        local_names: &IndexVec<Local, Option<Symbol>>,
+        local_names: &IndexSlice<Local, Option<Symbol>>,
         err: &mut Diagnostic,
         borrow_desc: &str,
         borrow_span: Option<Span>,

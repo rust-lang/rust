@@ -3,7 +3,7 @@ use rustc_codegen_ssa::debuginfo::{
     wants_c_like_enum_debuginfo,
 };
 use rustc_hir::def::CtorKind;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::IndexSlice;
 use rustc_middle::{
     bug,
     mir::{GeneratorLayout, GeneratorSavedLocal},
@@ -323,7 +323,7 @@ pub fn build_generator_variant_struct_type_di_node<'ll, 'tcx>(
     generator_type_and_layout: TyAndLayout<'tcx>,
     generator_type_di_node: &'ll DIType,
     generator_layout: &GeneratorLayout<'tcx>,
-    state_specific_upvar_names: &IndexVec<GeneratorSavedLocal, Option<Symbol>>,
+    state_specific_upvar_names: &IndexSlice<GeneratorSavedLocal, Option<Symbol>>,
     common_upvar_names: &[String],
 ) -> &'ll DIType {
     let variant_name = GeneratorSubsts::variant_name(variant_index);

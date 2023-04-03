@@ -7,7 +7,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::CRATE_DEF_ID;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::{IndexSlice, IndexVec};
 use rustc_infer::infer::outlives::test_type_match;
 use rustc_infer::infer::region_constraints::{GenericKind, VarInfos, VerifyBound, VerifyIfEq};
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin};
@@ -399,7 +399,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// the minimum, or narrowest, universe.
     fn compute_scc_universes(
         constraint_sccs: &Sccs<RegionVid, ConstraintSccIndex>,
-        definitions: &IndexVec<RegionVid, RegionDefinition<'tcx>>,
+        definitions: &IndexSlice<RegionVid, RegionDefinition<'tcx>>,
     ) -> IndexVec<ConstraintSccIndex, ty::UniverseIndex> {
         let num_sccs = constraint_sccs.num_sccs();
         let mut scc_universes = IndexVec::from_elem_n(ty::UniverseIndex::MAX, num_sccs);
@@ -486,7 +486,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// more details.
     fn compute_scc_representatives(
         constraints_scc: &Sccs<RegionVid, ConstraintSccIndex>,
-        definitions: &IndexVec<RegionVid, RegionDefinition<'tcx>>,
+        definitions: &IndexSlice<RegionVid, RegionDefinition<'tcx>>,
     ) -> IndexVec<ConstraintSccIndex, ty::RegionVid> {
         let num_sccs = constraints_scc.num_sccs();
         let next_region_vid = definitions.next_index();
