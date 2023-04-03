@@ -13,6 +13,7 @@
 - [Development](development/README.md)
     - [Basics](development/basics.md)
     - [Adding Lints](development/adding_lints.md)
+    - [Defining Lints](development/defining_lints.md)
     - [Lint Passes](development/lint_passes.md)
     - [Type Checking](development/type_checking.md)
     - [Macro Expansions](development/macro_expansions.md)
