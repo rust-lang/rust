@@ -766,13 +766,13 @@ impl<'p, 'tcx> Witness<'p, 'tcx> {
 /// `is_under_guard` is used to inform if the pattern has a guard. If it
 /// has one it must not be inserted into the matrix. This shouldn't be
 /// relied on for soundness.
-#[instrument(level = "debug", skip(cx, matrix, hir_id), ret)]
+#[instrument(level = "debug", skip(cx, matrix, lint_root), ret)]
 fn is_useful<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     matrix: &Matrix<'p, 'tcx>,
     v: &PatStack<'p, 'tcx>,
     witness_preference: ArmType,
-    hir_id: HirId,
+    lint_root: HirId,
     is_under_guard: bool,
     is_top_level: bool,
 ) -> Usefulness<'p, 'tcx> {
@@ -805,7 +805,7 @@ fn is_useful<'p, 'tcx>(
         for v in v.expand_or_pat() {
             debug!(?v);
             let usefulness = ensure_sufficient_stack(|| {
-                is_useful(cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false)
+                is_useful(cx, &matrix, &v, witness_preference, lint_root, is_under_guard, false)
             });
             debug!(?usefulness);
             ret.extend(usefulness);
@@ -838,7 +838,7 @@ fn is_useful<'p, 'tcx>(
                 pcx,
                 matrix.heads(),
                 matrix.column_count().unwrap_or(0),
-                hir_id,
+                lint_root,
             )
         }
         // We split the head constructor of `v`.
@@ -853,7 +853,15 @@ fn is_useful<'p, 'tcx>(
             let spec_matrix = start_matrix.specialize_constructor(pcx, &ctor);
             let v = v.pop_head_constructor(pcx, &ctor);
             let usefulness = ensure_sufficient_stack(|| {
-                is_useful(cx, &spec_matrix, &v, witness_preference, hir_id, is_under_guard, false)
+                is_useful(
+                    cx,
+                    &spec_matrix,
+                    &v,
+                    witness_preference,
+                    lint_root,
+                    is_under_guard,
+                    false,
+                )
             });
             let usefulness = usefulness.apply_constructor(pcx, start_matrix, &ctor);
 
@@ -897,7 +905,7 @@ fn is_useful<'p, 'tcx>(
                 // NB: The partner lint for structs lives in `compiler/rustc_hir_analysis/src/check/pat.rs`.
                 cx.tcx.emit_spanned_lint(
                     NON_EXHAUSTIVE_OMITTED_PATTERNS,
-                    hir_id,
+                    lint_root,
                     pcx.span,
                     NonExhaustiveOmittedPattern {
                         scrut_ty: pcx.ty,
@@ -955,7 +963,7 @@ pub(crate) struct UsefulnessReport<'p, 'tcx> {
 pub(crate) fn compute_match_usefulness<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     arms: &[MatchArm<'p, 'tcx>],
-    scrut_hir_id: HirId,
+    lint_root: HirId,
     scrut_ty: Ty<'tcx>,
 ) -> UsefulnessReport<'p, 'tcx> {
     let mut matrix = Matrix::empty();
@@ -980,7 +988,7 @@ pub(crate) fn compute_match_usefulness<'p, 'tcx>(
 
     let wild_pattern = cx.pattern_arena.alloc(DeconstructedPat::wildcard(scrut_ty));
     let v = PatStack::from_pattern(wild_pattern);
-    let usefulness = is_useful(cx, &matrix, &v, FakeExtraWildcard, scrut_hir_id, false, true);
+    let usefulness = is_useful(cx, &matrix, &v, FakeExtraWildcard, lint_root, false, true);
     let non_exhaustiveness_witnesses = match usefulness {
         WithWitnesses(pats) => pats.into_iter().map(|w| w.single_pattern()).collect(),
         NoWitnesses { .. } => bug!(),
