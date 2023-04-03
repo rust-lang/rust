@@ -91,7 +91,8 @@ const CTXT_TAG: u32 = 0b1111_1111_1111_1111;
 const MAX_CTXT: u32 = CTXT_TAG - 1;
 
 /// Dummy span, both position and length are zero, syntax context is zero as well.
-pub const DUMMY_SP: Span = Span { base_or_index: unsafe { NonMaxU32(0) }, len_or_tag: 0, ctxt_or_tag: 0 };
+pub const DUMMY_SP: Span =
+    Span { base_or_index: unsafe { NonMaxU32(0) }, len_or_tag: 0, ctxt_or_tag: 0 };
 
 impl Span {
     #[inline]
@@ -121,7 +122,11 @@ impl Span {
                     && len_or_tag < LEN_TAG
                 {
                     debug_assert_ne!(len_or_tag, LEN_TAG);
-                    return Span { base_or_index: unsafe { NonMaxU32(base) }, len_or_tag, ctxt_or_tag: parent2 as u16 };
+                    return Span {
+                        base_or_index: unsafe { NonMaxU32(base) },
+                        len_or_tag,
+                        ctxt_or_tag: parent2 as u16,
+                    };
                 }
             } else {
                 // Inline format with ctxt.
