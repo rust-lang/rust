@@ -78,6 +78,11 @@ pub trait Decoder {
     fn read_char(&mut self) -> char;
     fn read_str(&mut self) -> &str;
     fn read_raw_bytes(&mut self, len: usize) -> &[u8];
+
+    #[inline]
+    fn read_raw_bytes_array<const N: usize>(&mut self) -> &[u8; N] {
+        self.read_raw_bytes(N).try_into().unwrap()
+    }
 }
 
 /// Trait for types that can be serialized

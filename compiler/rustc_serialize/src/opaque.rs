@@ -535,34 +535,55 @@ impl Encoder for FileEncoder {
 // -----------------------------------------------------------------------------
 
 pub struct MemDecoder<'a> {
+    // Previously this type stored `position: usize`, but because it's staying
+    // safe code, that meant that reading `n` bytes meant a bounds check both
+    // for `position + n` *and* `position`, since there's nothing saying that
+    // the additions didn't wrap. Storing an iterator like this instead means
+    // there's no offsetting needed to get to the data, and the iterator instead
+    // of a slice means only increasing the start pointer on reads, rather than
+    // also needing to decrease the count in a slice.
+    // This field is first because it's touched more than `data`.
+    reader: std::slice::Iter<'a, u8>,
     pub data: &'a [u8],
-    position: usize,
 }
 
 impl<'a> MemDecoder<'a> {
     #[inline]
     pub fn new(data: &'a [u8], position: usize) -> MemDecoder<'a> {
-        MemDecoder { data, position }
+        let reader = data[position..].iter();
+        MemDecoder { data, reader }
     }
 
     #[inline]
     pub fn position(&self) -> usize {
-        self.position
+        self.data.len() - self.reader.len()
     }
 
     #[inline]
     pub fn set_position(&mut self, pos: usize) {
-        self.position = pos
+        self.reader = self.data[pos..].iter();
     }
 
     #[inline]
     pub fn advance(&mut self, bytes: usize) {
-        self.position += bytes;
+        self.reader.advance_by(bytes).unwrap();
+    }
+
+    #[cold]
+    fn panic_insufficient_data(&self) -> ! {
+        let pos = self.position();
+        let len = self.data.len();
+        panic!("Insufficient remaining data at position {pos} (length {len})");
     }
 }
 
 macro_rules! read_leb128 {
-    ($dec:expr, $fun:ident) => {{ leb128::$fun($dec.data, &mut $dec.position) }};
+    ($dec:expr, $fun:ident) => {{
+        let mut position = 0_usize;
+        let val = leb128::$fun($dec.reader.as_slice(), &mut position);
+        let _ = $dec.reader.advance_by(position);
+        val
+    }};
 }
 
 impl<'a> Decoder for MemDecoder<'a> {
@@ -583,17 +604,14 @@ impl<'a> Decoder for MemDecoder<'a> {
 
     #[inline]
     fn read_u16(&mut self) -> u16 {
-        let bytes = [self.data[self.position], self.data[self.position + 1]];
-        let value = u16::from_le_bytes(bytes);
-        self.position += 2;
-        value
+        let bytes = self.read_raw_bytes_array::<2>();
+        u16::from_le_bytes(*bytes)
     }
 
     #[inline]
     fn read_u8(&mut self) -> u8 {
-        let value = self.data[self.position];
-        self.position += 1;
-        value
+        let bytes = self.read_raw_bytes_array::<1>();
+        u8::from_le_bytes(*bytes)
     }
 
     #[inline]
@@ -618,17 +636,14 @@ impl<'a> Decoder for MemDecoder<'a> {
 
     #[inline]
     fn read_i16(&mut self) -> i16 {
-        let bytes = [self.data[self.position], self.data[self.position + 1]];
-        let value = i16::from_le_bytes(bytes);
-        self.position += 2;
-        value
+        let bytes = self.read_raw_bytes_array::<2>();
+        i16::from_le_bytes(*bytes)
     }
 
     #[inline]
     fn read_i8(&mut self) -> i8 {
-        let value = self.data[self.position];
-        self.position += 1;
-        value as i8
+        let bytes = self.read_raw_bytes_array::<1>();
+        i8::from_le_bytes(*bytes)
     }
 
     #[inline]
@@ -663,20 +678,26 @@ impl<'a> Decoder for MemDecoder<'a> {
     #[inline]
     fn read_str(&mut self) -> &'a str {
         let len = self.read_usize();
-        let sentinel = self.data[self.position + len];
-        assert!(sentinel == STR_SENTINEL);
-        let s = unsafe {
-            std::str::from_utf8_unchecked(&self.data[self.position..self.position + len])
-        };
-        self.position += len + 1;
-        s
+
+        // This cannot reuse `read_raw_bytes` as that runs into lifetime issues
+        // where the slice gets tied to `'b` instead of just to `'a`.
+        if self.reader.len() <= len {
+            self.panic_insufficient_data();
+        }
+        let slice = self.reader.as_slice();
+        assert!(slice[len] == STR_SENTINEL);
+        self.reader.advance_by(len + 1).unwrap();
+        unsafe { std::str::from_utf8_unchecked(&slice[..len]) }
     }
 
     #[inline]
     fn read_raw_bytes(&mut self, bytes: usize) -> &'a [u8] {
-        let start = self.position;
-        self.position += bytes;
-        &self.data[start..self.position]
+        if self.reader.len() < bytes {
+            self.panic_insufficient_data();
+        }
+        let slice = self.reader.as_slice();
+        self.reader.advance_by(bytes).unwrap();
+        &slice[..bytes]
     }
 }
 
