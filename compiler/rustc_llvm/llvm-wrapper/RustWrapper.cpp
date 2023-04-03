@@ -1394,55 +1394,6 @@ extern "C" bool LLVMRustUnpackSMDiagnostic(LLVMSMDiagnosticRef DRef,
   return true;
 }
 
-extern "C" LLVMValueRef LLVMRustBuildCleanupPad(LLVMBuilderRef B,
-                                                LLVMValueRef ParentPad,
-                                                unsigned ArgCount,
-                                                LLVMValueRef *LLArgs,
-                                                const char *Name) {
-  Value **Args = unwrap(LLArgs);
-  if (ParentPad == nullptr) {
-    Type *Ty = Type::getTokenTy(unwrap(B)->getContext());
-    ParentPad = wrap(Constant::getNullValue(Ty));
-  }
-  return wrap(unwrap(B)->CreateCleanupPad(
-      unwrap(ParentPad), ArrayRef<Value *>(Args, ArgCount), Name));
-}
-
-extern "C" LLVMValueRef LLVMRustBuildCleanupRet(LLVMBuilderRef B,
-                                                LLVMValueRef CleanupPad,
-                                                LLVMBasicBlockRef UnwindBB) {
-  CleanupPadInst *Inst = cast<CleanupPadInst>(unwrap(CleanupPad));
-  return wrap(unwrap(B)->CreateCleanupRet(Inst, unwrap(UnwindBB)));
-}
-
-extern "C" LLVMValueRef
-LLVMRustBuildCatchPad(LLVMBuilderRef B, LLVMValueRef ParentPad,
-                      unsigned ArgCount, LLVMValueRef *LLArgs, const char *Name) {
-  Value **Args = unwrap(LLArgs);
-  return wrap(unwrap(B)->CreateCatchPad(
-      unwrap(ParentPad), ArrayRef<Value *>(Args, ArgCount), Name));
-}
-
-extern "C" LLVMValueRef LLVMRustBuildCatchRet(LLVMBuilderRef B,
-                                              LLVMValueRef Pad,
-                                              LLVMBasicBlockRef BB) {
-  return wrap(unwrap(B)->CreateCatchRet(cast<CatchPadInst>(unwrap(Pad)),
-                                              unwrap(BB)));
-}
-
-extern "C" LLVMValueRef LLVMRustBuildCatchSwitch(LLVMBuilderRef B,
-                                                 LLVMValueRef ParentPad,
-                                                 LLVMBasicBlockRef BB,
-                                                 unsigned NumHandlers,
-                                                 const char *Name) {
-  if (ParentPad == nullptr) {
-    Type *Ty = Type::getTokenTy(unwrap(B)->getContext());
-    ParentPad = wrap(Constant::getNullValue(Ty));
-  }
-  return wrap(unwrap(B)->CreateCatchSwitch(unwrap(ParentPad), unwrap(BB),
-                                                 NumHandlers, Name));
-}
-
 extern "C" void LLVMRustAddHandler(LLVMValueRef CatchSwitchRef,
                                    LLVMBasicBlockRef Handler) {
   Value *CatchSwitch = unwrap(CatchSwitchRef);

@@ -1298,34 +1298,34 @@ extern "C" {
     pub fn LLVMBuildResume<'a>(B: &Builder<'a>, Exn: &'a Value) -> &'a Value;
     pub fn LLVMBuildUnreachable<'a>(B: &Builder<'a>) -> &'a Value;
 
-    pub fn LLVMRustBuildCleanupPad<'a>(
+    pub fn LLVMBuildCleanupPad<'a>(
         B: &Builder<'a>,
         ParentPad: Option<&'a Value>,
-        ArgCnt: c_uint,
         Args: *const &'a Value,
+        NumArgs: c_uint,
         Name: *const c_char,
     ) -> Option<&'a Value>;
-    pub fn LLVMRustBuildCleanupRet<'a>(
+    pub fn LLVMBuildCleanupRet<'a>(
         B: &Builder<'a>,
         CleanupPad: &'a Value,
-        UnwindBB: Option<&'a BasicBlock>,
+        BB: Option<&'a BasicBlock>,
     ) -> Option<&'a Value>;
-    pub fn LLVMRustBuildCatchPad<'a>(
+    pub fn LLVMBuildCatchPad<'a>(
         B: &Builder<'a>,
         ParentPad: &'a Value,
-        ArgCnt: c_uint,
         Args: *const &'a Value,
+        NumArgs: c_uint,
         Name: *const c_char,
     ) -> Option<&'a Value>;
-    pub fn LLVMRustBuildCatchRet<'a>(
+    pub fn LLVMBuildCatchRet<'a>(
         B: &Builder<'a>,
-        Pad: &'a Value,
+        CatchPad: &'a Value,
         BB: &'a BasicBlock,
     ) -> Option<&'a Value>;
-    pub fn LLVMRustBuildCatchSwitch<'a>(
+    pub fn LLVMBuildCatchSwitch<'a>(
         Builder: &Builder<'a>,
         ParentPad: Option<&'a Value>,
-        BB: Option<&'a BasicBlock>,
+        UnwindBB: Option<&'a BasicBlock>,
         NumHandlers: c_uint,
         Name: *const c_char,
     ) -> Option<&'a Value>;

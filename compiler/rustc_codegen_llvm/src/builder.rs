@@ -1001,11 +1001,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn cleanup_pad(&mut self, parent: Option<&'ll Value>, args: &[&'ll Value]) -> Funclet<'ll> {
         let name = cstr!("cleanuppad");
         let ret = unsafe {
-            llvm::LLVMRustBuildCleanupPad(
+            llvm::LLVMBuildCleanupPad(
                 self.llbuilder,
                 parent,
-                args.len() as c_uint,
                 args.as_ptr(),
+                args.len() as c_uint,
                 name.as_ptr(),
             )
         };
@@ -1014,7 +1014,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn cleanup_ret(&mut self, funclet: &Funclet<'ll>, unwind: Option<&'ll BasicBlock>) {
         unsafe {
-            llvm::LLVMRustBuildCleanupRet(self.llbuilder, funclet.cleanuppad(), unwind)
+            llvm::LLVMBuildCleanupRet(self.llbuilder, funclet.cleanuppad(), unwind)
                 .expect("LLVM does not have support for cleanupret");
         }
     }
@@ -1022,11 +1022,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn catch_pad(&mut self, parent: &'ll Value, args: &[&'ll Value]) -> Funclet<'ll> {
         let name = cstr!("catchpad");
         let ret = unsafe {
-            llvm::LLVMRustBuildCatchPad(
+            llvm::LLVMBuildCatchPad(
                 self.llbuilder,
                 parent,
-                args.len() as c_uint,
                 args.as_ptr(),
+                args.len() as c_uint,
                 name.as_ptr(),
             )
         };
@@ -1041,7 +1041,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     ) -> &'ll Value {
         let name = cstr!("catchswitch");
         let ret = unsafe {
-            llvm::LLVMRustBuildCatchSwitch(
+            llvm::LLVMBuildCatchSwitch(
                 self.llbuilder,
                 parent,
                 unwind,
@@ -1376,8 +1376,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     }
 
     pub fn catch_ret(&mut self, funclet: &Funclet<'ll>, unwind: &'ll BasicBlock) -> &'ll Value {
-        let ret =
-            unsafe { llvm::LLVMRustBuildCatchRet(self.llbuilder, funclet.cleanuppad(), unwind) };
+        let ret = unsafe { llvm::LLVMBuildCatchRet(self.llbuilder, funclet.cleanuppad(), unwind) };
         ret.expect("LLVM does not have support for catchret")
     }
 
