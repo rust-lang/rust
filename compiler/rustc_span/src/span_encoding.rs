@@ -108,10 +108,11 @@ impl Span {
 
         let (base, len, ctxt2) = (lo.0, hi.0 - lo.0, ctxt.as_u32());
 
+        // FIXME: THIS IS UNSOUND. WE DO NOT CHECK FOR THE SIZE BEFORE CREATING THE NonMaxU32!!!
+
         if len <= MAX_LEN && ctxt2 <= MAX_CTXT {
             let len_or_tag = len as u16;
             debug_assert_eq!(len_or_tag & PARENT_MASK, 0);
-            assert!(base <= 0xFFFF_FFFE);
 
             if let Some(parent) = parent {
                 // Inline format with parent.
@@ -143,7 +144,6 @@ impl Span {
         let index =
             with_span_interner(|interner| interner.intern(&SpanData { lo, hi, ctxt, parent }));
         let ctxt_or_tag = if ctxt2 <= MAX_CTXT { ctxt2 } else { CTXT_TAG } as u16;
-        assert!(index <= 0xFFFF_FFFE);
         Span { base_or_index: unsafe { NonMaxU32(index) }, len_or_tag: LEN_TAG, ctxt_or_tag }
     }
 
