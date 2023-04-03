@@ -851,3 +851,26 @@ export interface Diagnostic {
         rendered?: string;
     };
 }
+```
+
+## Dependency Tree
+
+**Method:** `rust-analyzer/fetchDependencyGraph`
+
+**Request:**
+
+```typescript
+export interface FetchDependencyGraphParams {}
+```
+
+**Response:** 
+```typescript
+export interface FetchDependencyGraphResult {
+    crates: {
+        name: string;
+        version: string;
+        path: string;
+    }[];
+}
+```
+Returns all crates from this workspace, so it can be used create a viewTree to help navigate the dependency tree.
