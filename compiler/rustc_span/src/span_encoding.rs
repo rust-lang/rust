@@ -81,7 +81,7 @@ pub struct Span {
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash)]
 #[rustc_layout_scalar_valid_range_start(0)]
-#[rustc_layout_scalar_valid_range_end(0xFFFF_FFFF_FFFF_FFFE)]
+#[rustc_layout_scalar_valid_range_end(0xFFFF_FFFE)]
 struct NonMaxU32(u32);
 
 const LEN_TAG: u16 = 0b1111_1111_1111_1111;
@@ -110,6 +110,7 @@ impl Span {
         if len <= MAX_LEN && ctxt2 <= MAX_CTXT {
             let len_or_tag = len as u16;
             debug_assert_eq!(len_or_tag & PARENT_MASK, 0);
+            assert!(base <= 0xFFFF_FFFF_FFFF_FFFE);
 
             if let Some(parent) = parent {
                 // Inline format with parent.
@@ -120,14 +121,13 @@ impl Span {
                     && len_or_tag < LEN_TAG
                 {
                     debug_assert_ne!(len_or_tag, LEN_TAG);
-                    assert!(base <= 0xFFFF_FFFF_FFFF_FFFE);
                     return Span { base_or_index: unsafe { NonMaxU32(base) }, len_or_tag, ctxt_or_tag: parent2 as u16 };
                 }
             } else {
                 // Inline format with ctxt.
                 debug_assert_ne!(len_or_tag, LEN_TAG);
                 return Span {
-                    base_or_index: base,
+                    base_or_index: unsafe { NonMaxU32(base) },
                     len_or_tag: len as u16,
                     ctxt_or_tag: ctxt2 as u16,
                 };
@@ -160,8 +160,8 @@ impl Span {
             if self.len_or_tag & PARENT_MASK == 0 {
                 debug_assert!(self.len_or_tag as u32 <= MAX_LEN);
                 SpanData {
-                    lo: BytePos(self.base_or_index),
-                    hi: BytePos(self.base_or_index + self.len_or_tag as u32),
+                    lo: BytePos(self.base_or_index.0),
+                    hi: BytePos(self.base_or_index.0 + self.len_or_tag as u32),
                     ctxt: SyntaxContext::from_u32(self.ctxt_or_tag as u32),
                     parent: None,
                 }
@@ -171,15 +171,15 @@ impl Span {
                 let parent =
                     LocalDefId { local_def_index: DefIndex::from_u32(self.ctxt_or_tag as u32) };
                 SpanData {
-                    lo: BytePos(self.base_or_index),
-                    hi: BytePos(self.base_or_index + len as u32),
+                    lo: BytePos(self.base_or_index.0),
+                    hi: BytePos(self.base_or_index.0 + len as u32),
                     ctxt: SyntaxContext::root(),
                     parent: Some(parent),
                 }
             }
         } else {
             // Interned format.
-            let index = self.base_or_index;
+            let index = self.base_or_index.0;
             with_span_interner(|interner| interner.spans[index as usize])
         }
     }
@@ -199,7 +199,7 @@ impl Span {
             }
         } else {
             // Interned format.
-            let index = self.base_or_index;
+            let index = self.base_or_index.0;
             with_span_interner(|interner| interner.spans[index as usize].ctxt)
         }
     }
