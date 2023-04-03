@@ -3991,7 +3991,7 @@ mod size_asserts {
     static_assert_size!(GenericArg<'_>, 32);
     static_assert_size!(GenericBound<'_>, 48);
     static_assert_size!(Generics<'_>, 56);
-    static_assert_size!(Impl<'_>, 80);
+    static_assert_size!(Impl<'_>, 72);
     static_assert_size!(ImplItem<'_>, 80);
     static_assert_size!(ImplItemKind<'_>, 32);
     static_assert_size!(Item<'_>, 80);
