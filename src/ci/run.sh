@@ -58,7 +58,12 @@ RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-manage-submodules"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-locked-deps"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-cargo-native-static"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-units-std=1"
-RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set dist.compression-profile=best"
+# rust-lang/promote-release will recompress CI artifacts, and while we care
+# about the per-commit artifact sizes, it's not as important that they're
+# highly compressed as it is that the process is fast. Best compression
+# generally implies single-threaded compression which results in wasting most
+# of our CPU resources.
+RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set dist.compression-profile=balanced"
 
 # When building for mingw, limit the number of parallel linker jobs during
 # the LLVM build, as not to run out of memory.
