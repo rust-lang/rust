@@ -28,12 +28,12 @@ macro_rules! impl_test_unsigned_leb128 {
                 stream.extend($write_fn_name(&mut buf, x));
             }
 
-            let mut position = 0;
+            let mut reader = stream.iter();
             for &expected in &values {
-                let actual = $read_fn_name(&stream, &mut position);
+                let actual = $read_fn_name(&mut reader).unwrap();
                 assert_eq!(expected, actual);
             }
-            assert_eq!(stream.len(), position);
+            assert_eq!(reader.len(), 0);
         }
     };
 }
@@ -74,12 +74,12 @@ macro_rules! impl_test_signed_leb128 {
                 stream.extend($write_fn_name(&mut buf, x));
             }
 
-            let mut position = 0;
+            let mut reader = stream.iter();
             for &expected in &values {
-                let actual = $read_fn_name(&stream, &mut position);
+                let actual = $read_fn_name(&mut reader).unwrap();
                 assert_eq!(expected, actual);
             }
-            assert_eq!(stream.len(), position);
+            assert_eq!(reader.len(), 0);
         }
     };
 }

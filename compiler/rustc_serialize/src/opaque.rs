@@ -538,7 +538,7 @@ pub struct MemDecoder<'a> {
     // Previously this type stored `position: usize`, but because it's staying
     // safe code, that meant that reading `n` bytes meant a bounds check both
     // for `position + n` *and* `position`, since there's nothing saying that
-    // the additions didn't wrap.  Storing an iterator like this instead means
+    // the additions didn't wrap. Storing an iterator like this instead means
     // there's no offsetting needed to get to the data, and the iterator instead
     // of a slice means only increasing the start pointer on reads, rather than
     // also needing to decrease the count in a slice.
@@ -579,10 +579,11 @@ impl<'a> MemDecoder<'a> {
 
 macro_rules! read_leb128 {
     ($dec:expr, $fun:ident) => {{
-        let mut position = 0_usize;
-        let val = leb128::$fun($dec.reader.as_slice(), &mut position);
-        let _ = $dec.reader.advance_by(position);
-        val
+        if let Some(val) = leb128::$fun(&mut $dec.reader) {
+            val
+        } else {
+            $dec.panic_insufficient_data()
+        }
     }};
 }
 
@@ -685,9 +686,7 @@ impl<'a> Decoder for MemDecoder<'a> {
         let slice = self.reader.as_slice();
         assert!(slice[len] == STR_SENTINEL);
         self.reader.advance_by(len + 1).unwrap();
-        unsafe {
-            std::str::from_utf8_unchecked(&slice[..len])
-        }
+        unsafe { std::str::from_utf8_unchecked(&slice[..len]) }
     }
 
     #[inline]

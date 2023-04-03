@@ -49,25 +49,25 @@ impl_write_unsigned_leb128!(write_usize_leb128, usize);
 
 macro_rules! impl_read_unsigned_leb128 {
     ($fn_name:ident, $int_ty:ty) => {
+        // This returns `Option` to avoid needing to emit the panic paths here.
+        // Letting the caller do it instead helps keep our code size small.
         #[inline]
-        pub fn $fn_name(slice: &[u8], position: &mut usize) -> $int_ty {
+        pub fn $fn_name(slice: &mut std::slice::Iter<'_, u8>) -> Option<$int_ty> {
             // The first iteration of this loop is unpeeled. This is a
             // performance win because this code is hot and integer values less
             // than 128 are very common, typically occurring 50-80% or more of
             // the time, even for u64 and u128.
-            let byte = slice[*position];
-            *position += 1;
+            let byte = *(slice.next()?);
             if (byte & 0x80) == 0 {
-                return byte as $int_ty;
+                return Some(byte as $int_ty);
             }
             let mut result = (byte & 0x7F) as $int_ty;
             let mut shift = 7;
             loop {
-                let byte = slice[*position];
-                *position += 1;
+                let byte = *(slice.next()?);
                 if (byte & 0x80) == 0 {
                     result |= (byte as $int_ty) << shift;
-                    return result;
+                    return Some(result);
                 } else {
                     result |= ((byte & 0x7F) as $int_ty) << shift;
                 }
@@ -126,15 +126,16 @@ impl_write_signed_leb128!(write_isize_leb128, isize);
 
 macro_rules! impl_read_signed_leb128 {
     ($fn_name:ident, $int_ty:ty) => {
+        // This returns `Option` to avoid needing to emit the panic paths here.
+        // Letting the caller do it instead helps keep our code size small.
         #[inline]
-        pub fn $fn_name(slice: &[u8], position: &mut usize) -> $int_ty {
+        pub fn $fn_name(slice: &mut std::slice::Iter<'_, u8>) -> Option<$int_ty> {
             let mut result = 0;
             let mut shift = 0;
             let mut byte;
 
             loop {
-                byte = slice[*position];
-                *position += 1;
+                byte = *(slice.next()?);
                 result |= <$int_ty>::from(byte & 0x7F) << shift;
                 shift += 7;
 
@@ -148,7 +149,7 @@ macro_rules! impl_read_signed_leb128 {
                 result |= (!0 << shift);
             }
 
-            result
+            Some(result)
         }
     };
 }
