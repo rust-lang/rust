@@ -544,12 +544,12 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
         f.decl.output.as_return().and_then(|output| notable_traits_button(output, cx));
 
     wrap_item(w, |w| {
-        render_attributes_in_pre(w, it, "");
         w.reserve(header_len);
         write!(
             w,
-            "{vis}{constness}{asyncness}{unsafety}{abi}fn \
+            "{attrs}{vis}{constness}{asyncness}{unsafety}{abi}fn \
                 {name}{generics}{decl}{notable_traits}{where_clause}",
+            attrs = render_attributes_in_pre(it, ""),
             vis = visibility,
             constness = constness,
             asyncness = asyncness,
@@ -581,16 +581,16 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
 
     // Output the trait definition
     wrap_item(w, |w| {
-        render_attributes_in_pre(w, it, "");
         write!(
             w,
-            "{}{}{}trait {}{}{}",
+            "{attrs}{}{}{}trait {}{}{}",
             visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
             t.unsafety(tcx).print_with_space(),
             if t.is_auto(tcx) { "auto " } else { "" },
             it.name.unwrap(),
             t.generics.print(cx),
-            bounds
+            bounds,
+            attrs = render_attributes_in_pre(it, ""),
         );
 
         if !t.generics.where_predicates.is_empty() {
@@ -1057,14 +1057,14 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
 
 fn item_trait_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::TraitAlias) {
     wrap_item(w, |w| {
-        render_attributes_in_pre(w, it, "");
         write!(
             w,
-            "trait {}{}{} = {};",
+            "{attrs}trait {}{}{} = {};",
             it.name.unwrap(),
             t.generics.print(cx),
             print_where_clause(&t.generics, cx, 0, Ending::Newline),
-            bounds(&t.bounds, true, cx)
+            bounds(&t.bounds, true, cx),
+            attrs = render_attributes_in_pre(it, ""),
         );
     });
 
@@ -1079,14 +1079,14 @@ fn item_trait_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &
 
 fn item_opaque_ty(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::OpaqueTy) {
     wrap_item(w, |w| {
-        render_attributes_in_pre(w, it, "");
         write!(
             w,
-            "type {}{}{where_clause} = impl {bounds};",
+            "{attrs}type {}{}{where_clause} = impl {bounds};",
             it.name.unwrap(),
             t.generics.print(cx),
             where_clause = print_where_clause(&t.generics, cx, 0, Ending::Newline),
             bounds = bounds(&t.bounds, false, cx),
+            attrs = render_attributes_in_pre(it, ""),
         );
     });
 
@@ -1102,15 +1102,15 @@ fn item_opaque_ty(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &cl
 fn item_typedef(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::Typedef) {
     fn write_content(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Typedef) {
         wrap_item(w, |w| {
-            render_attributes_in_pre(w, it, "");
             write!(
                 w,
-                "{}type {}{}{where_clause} = {type_};",
+                "{attrs}{}type {}{}{where_clause} = {type_};",
                 visibility_print_with_space(it.visibility(cx.tcx()), it.item_id, cx),
                 it.name.unwrap(),
                 t.generics.print(cx),
                 where_clause = print_where_clause(&t.generics, cx, 0, Ending::Newline),
                 type_ = t.type_.print(cx),
+                attrs = render_attributes_in_pre(it, ""),
             );
         });
     }
@@ -1130,7 +1130,7 @@ fn item_typedef(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clea
 
 fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Union) {
     wrap_item(w, |w| {
-        render_attributes_in_pre(w, it, "");
+        write!(w, "{}", render_attributes_in_pre(it, ""));
         render_union(w, it, Some(&s.generics), &s.fields, cx);
     });
 
@@ -1197,13 +1197,13 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
     let tcx = cx.tcx();
     let count_variants = e.variants().count();
     wrap_item(w, |w| {
-        render_attributes_in_pre(w, it, "");
         write!(
             w,
-            "{}enum {}{}",
+            "{attrs}{}enum {}{}",
             visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
             it.name.unwrap(),
             e.generics.print(cx),
+            attrs = render_attributes_in_pre(it, ""),
         );
         if !print_where_clause_and_check(w, &e.generics, cx) {
             // If there wasn't a `where` clause, we add a whitespace.

@@ -50,6 +50,7 @@ use std::string::ToString;
 use askama::Template;
 use rustc_ast_pretty::pprust;
 use rustc_attr::{ConstStability, Deprecation, StabilityLevel};
+use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::Mutability;
@@ -842,7 +843,7 @@ fn assoc_method(
     let (indent, indent_str, end_newline) = if parent == ItemType::Trait {
         header_len += 4;
         let indent_str = "    ";
-        render_attributes_in_pre(w, meth, indent_str);
+        write!(w, "{}", render_attributes_in_pre(meth, indent_str));
         (4, indent_str, Ending::NoNewline)
     } else {
         render_attributes_in_code(w, meth);
@@ -1038,10 +1039,16 @@ fn attributes(it: &clean::Item) -> Vec<String> {
 
 // When an attribute is rendered inside a `<pre>` tag, it is formatted using
 // a whitespace prefix and newline.
-fn render_attributes_in_pre(w: &mut Buffer, it: &clean::Item, prefix: &str) {
-    for a in attributes(it) {
-        writeln!(w, "{}{}", prefix, a);
-    }
+fn render_attributes_in_pre<'a>(
+    it: &'a clean::Item,
+    prefix: &'a str,
+) -> impl fmt::Display + Captures<'a> {
+    crate::html::format::display_fn(move |f| {
+        for a in attributes(it) {
+            writeln!(f, "{}{}", prefix, a)?;
+        }
+        Ok(())
+    })
 }
 
 // When an attribute is rendered inside a <code> tag, it is formatted using
