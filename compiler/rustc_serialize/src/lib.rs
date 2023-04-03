@@ -11,6 +11,7 @@ Core encoding and decoding interfaces.
 )]
 #![feature(never_type)]
 #![feature(associated_type_bounds)]
+#![feature(iter_advance_by)]
 #![feature(min_specialization)]
 #![feature(core_intrinsics)]
 #![feature(maybe_uninit_slice)]
