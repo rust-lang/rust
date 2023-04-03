@@ -522,7 +522,7 @@ fn generator_saved_local_eligibility(
     use SavedLocalEligibility::*;
 
     let mut assignments: IndexVec<GeneratorSavedLocal, SavedLocalEligibility> =
-        IndexVec::from_elem_n(Unassigned, info.field_tys.len());
+        IndexVec::from_elem(Unassigned, &info.field_tys);
 
     // The saved locals not eligible for overlap. These will get
     // "promoted" to the prefix of our generator.

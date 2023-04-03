@@ -129,6 +129,17 @@ impl<I: Idx, T> IndexVec<I, T> {
         IndexVec { raw: Vec::with_capacity(capacity), _marker: PhantomData }
     }
 
+    /// Creates a new vector with a copy of `elem` for each index in `universe`.
+    ///
+    /// Thus `IndexVec::from_elem(elem, &universe)` is equivalent to
+    /// `IndexVec::<I, _>::from_elem_n(elem, universe.len())`. That can help
+    /// type inference as it ensures that the resulting vector uses the same
+    /// index type as `universe`, rather than something potentially surprising.
+    ///
+    /// For example, if you want to store data for each local in a MIR body,
+    /// using `let mut uses = IndexVec::from_elem(vec![], &body.local_decls);`
+    /// ensures that `uses` is an `IndexVec<Local, _>`, and thus can give
+    /// better error messages later if one accidentally mismatches indices.
     #[inline]
     pub fn from_elem<S>(elem: T, universe: &IndexSlice<I, S>) -> Self
     where
