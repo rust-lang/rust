@@ -3,7 +3,7 @@ import * as os from "os";
 import * as path from "path";
 import * as readline from "readline";
 import * as vscode from "vscode";
-import {execute, log, memoizeAsync} from "./util";
+import { execute, log, memoizeAsync } from "./util";
 
 interface CompilationArtifact {
     fileName: string;
@@ -42,7 +42,7 @@ export class Cargo {
             }
         }
 
-        const result: ArtifactSpec = {cargoArgs: cargoArgs};
+        const result: ArtifactSpec = { cargoArgs: cargoArgs };
         if (cargoArgs[0] === "test" || cargoArgs[0] === "bench") {
             // for instance, `crates\rust-analyzer\tests\heavy_tests\main.rs` tests
             // produce 2 artifacts: {"kind": "bin"} and {"kind": "test"}
@@ -147,7 +147,7 @@ export class Cargo {
 
             cargo.stderr.on("data", (chunk) => onStderrString(chunk.toString()));
 
-            const rl = readline.createInterface({input: cargo.stdout});
+            const rl = readline.createInterface({ input: cargo.stdout });
             rl.on("line", (line) => {
                 const message = JSON.parse(line);
                 onStdoutJson(message);
@@ -189,14 +189,14 @@ export async function getSysroot(dir: string): Promise<string> {
     const rustcPath = await getPathForExecutable("rustc");
 
     // do not memoize the result because the toolchain may change between runs
-    return await execute(`${rustcPath} --print sysroot`, {cwd: dir});
+    return await execute(`${rustcPath} --print sysroot`, { cwd: dir });
 }
 
 export async function getRustcId(dir: string): Promise<string> {
     const rustcPath = await getPathForExecutable("rustc");
 
     // do not memoize the result because the toolchain may change between runs
-    const data = await execute(`${rustcPath} -V -v`, {cwd: dir});
+    const data = await execute(`${rustcPath} -V -v`, { cwd: dir });
     const rx = /commit-hash:\s(.*)$/m;
 
     return rx.exec(data)![1];

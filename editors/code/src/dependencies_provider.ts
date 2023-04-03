@@ -13,8 +13,8 @@ import * as ra from "./lsp_ext";
 export class RustDependenciesProvider
     implements vscode.TreeDataProvider<Dependency | DependencyFile>
 {
-
-    dependenciesMap: { [id: string]: Dependency | DependencyFile };ctx: CtxInit;
+    dependenciesMap: { [id: string]: Dependency | DependencyFile };
+    ctx: CtxInit;
 
     constructor(private readonly workspaceRoot: string,ctx: CtxInit) {
         this.dependenciesMap = {};
@@ -82,7 +82,10 @@ export class RustDependenciesProvider
     private async getRootDependencies(): Promise<Dependency[]> {
         const crates = await this.ctx.client.sendRequest(ra.fetchDependencyGraph, {});
 
-        const dependenciesResult: FetchDependencyGraphResult = await this.ctx.client.sendRequest(ra.fetchDependencyGraph, {});
+        const dependenciesResult: FetchDependencyGraphResult = await this.ctx.client.sendRequest(
+            ra.fetchDependencyGraph,
+            {}
+        );
         const crates = dependenciesResult.crates;
         const deps = crates.map((crate) => {
         const dep = this.toDep(crate.name, crate.version, crate.path);
@@ -93,15 +96,10 @@ export class RustDependenciesProvider
         return deps;
     }
 
-    private toDep(moduleName: string, version: string, path: string): Dependency  {
-            //const cratePath = fspath.join(basePath, `${moduleName}-${version}`);
-            return new Dependency(
-                moduleName,
-                version,
-                path,
-                vscode.TreeItemCollapsibleState.Collapsed
-            );
-        }
+    private toDep(moduleName: string, version: string, path: string): Dependency {
+        // const cratePath = fspath.join(basePath, `${moduleName}-${version}`);
+        return new Dependency(moduleName, version, path, vscode.TreeItemCollapsibleState.Collapsed);
+    }
 }
 
 export class Dependency extends vscode.TreeItem {

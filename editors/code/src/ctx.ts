@@ -3,8 +3,8 @@ import * as lc from "vscode-languageclient/node";
 import * as ra from "./lsp_ext";
 import * as path from "path";
 
-import {Config, prepareVSCodeConfig} from "./config";
-import {createClient} from "./client";
+import { Config, prepareVSCodeConfig } from "./config";
+import { createClient } from "./client";
 import {
     executeDiscoverProject,
     isRustDocument,
@@ -13,7 +13,7 @@ import {
     log,
     RustEditor,
 } from "./util";
-import {ServerStatusParams} from "./lsp_ext";
+import { ServerStatusParams } from "./lsp_ext";
 import {
     Dependency,
     DependencyFile,
@@ -27,10 +27,10 @@ import {
     RustDependenciesProvider,
     DependencyId,
 } from "./dependencies_provider";
-import {execRevealDependency} from "./commands";
-import {PersistentState} from "./persistent_state";
-import {bootstrap} from "./bootstrap";
-import {ExecOptions} from "child_process";
+import { execRevealDependency } from "./commands";
+import { PersistentState } from "./persistent_state";
+import { bootstrap } from "./bootstrap";
+import { ExecOptions } from "child_process";
 
 // We only support local folders, not eg. Live Share (`vlsl:` scheme), so don't activate if
 // only those are in use. We use "Empty" to represent these scenarios
@@ -39,12 +39,12 @@ import {ExecOptions} from "child_process";
 export type Workspace =
     | { kind: "Empty" }
     | {
-    kind: "Workspace Folder";
-}
+          kind: "Workspace Folder";
+      }
     | {
-    kind: "Detached Files";
-    files: vscode.TextDocument[];
-};
+          kind: "Detached Files";
+          files: vscode.TextDocument[];
+      };
 
 export function fetchWorkspace(): Workspace {
     const folders = (vscode.workspace.workspaceFolders || []).filter(
@@ -56,12 +56,12 @@ export function fetchWorkspace(): Workspace {
 
     return folders.length === 0
         ? rustDocuments.length === 0
-            ? {kind: "Empty"}
+            ? { kind: "Empty" }
             : {
-                kind: "Detached Files",
-                files: rustDocuments,
-            }
-        : {kind: "Workspace Folder"};
+                  kind: "Detached Files",
+                  files: rustDocuments,
+              }
+        : { kind: "Workspace Folder" };
 }
 
 export async function discoverWorkspace(
@@ -116,7 +116,7 @@ export class Ctx {
     constructor(
         readonly extCtx: vscode.ExtensionContext,
         commandFactories: Record<string, CommandFactory>,
-        workspace: Workspace,
+        workspace: Workspace
     ) {
         extCtx.subscriptions.push(this);
         this.statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
@@ -128,8 +128,7 @@ export class Ctx {
         this.state = new PersistentState(extCtx.globalState);
         this.config = new Config(extCtx);
 
-        this.updateCommands("disable"
-        );
+        this.updateCommands("disable");
         this.setServerStatus({
             health: "stopped",
         });
@@ -198,7 +197,7 @@ export class Ctx {
             const newEnv = Object.assign({}, process.env, this.config.serverExtraEnv);
             const run: lc.Executable = {
                 command: this._serverPath,
-                options: {env: newEnv},
+                options: { env: newEnv },
             };
             const serverOptions = {
                 run,
@@ -276,7 +275,7 @@ export class Ctx {
     private prepareTreeDependenciesView(client: lc.LanguageClient) {
         const ctxInit: CtxInit = {
             ...this,
-            client: client
+            client: client,
         };
         const rootPath = vscode.workspace.workspaceFolders![0].uri.fsPath;
         this._dependencies = new RustDependenciesProvider(rootPath, ctxInit);
