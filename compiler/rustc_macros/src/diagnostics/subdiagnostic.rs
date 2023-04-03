@@ -422,6 +422,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                 list.parse_nested_meta(|nested| {
                     if nested.path.is_ident("code") {
                         let code_field = new_code_ident();
+                        let span = nested.path.span().unwrap();
                         let formatting_init = build_suggestion_code(
                             &code_field,
                             nested,

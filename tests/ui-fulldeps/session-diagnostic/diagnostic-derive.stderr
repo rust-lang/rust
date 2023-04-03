@@ -435,16 +435,16 @@ LL | | struct LintAttributeOnLintDiag {}
    = help: specify the slug as the first argument to the attribute, such as `#[diag(compiletest_example)]`
 
 error: specified multiple times
-  --> $DIR/diagnostic-derive.rs:608:5
+  --> $DIR/diagnostic-derive.rs:608:53
    |
 LL |     #[suggestion(no_crate_suggestion, code = "...", code = ",,,")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                                     ^^^^
    |
 note: previously specified here
-  --> $DIR/diagnostic-derive.rs:608:5
+  --> $DIR/diagnostic-derive.rs:608:39
    |
 LL |     #[suggestion(no_crate_suggestion, code = "...", code = ",,,")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                       ^^^^
 
 error: wrong types for suggestion
   --> $DIR/diagnostic-derive.rs:617:24

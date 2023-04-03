@@ -727,7 +727,7 @@ impl SubdiagnosticKind {
                         fields,
                         AllowMultipleAlternatives::Yes,
                     );
-                    code.set_once(code_init, span);
+                    code.set_once(code_init, path_span);
                 }
                 (
                     "applicability",
