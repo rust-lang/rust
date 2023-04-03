@@ -566,8 +566,6 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &separate_const_switch::SeparateConstSwitch,
             &simplify::SimplifyLocals::new("before-const-prop"),
             &copy_prop::CopyProp,
-            //
-            // FIXME(#70073): This pass is responsible for both optimization as well as some lints.
             &const_prop::ConstProp,
             &dataflow_const_prop::DataflowConstProp,
             //
