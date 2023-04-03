@@ -218,7 +218,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
       let mut data:Vec<u8> = Vec::new();
       let n_namsz:u32 = 4; // Size of the n_name field
       let n_descz:u32 = 16; // Size of the n_desc field       
-      let n_type:u32 = 5; // Type of note descriptor 
+      let n_type:u32 = NT_GNU_PROPERTY_TYPE_0;// Type of note descriptor 
       let values = [n_namsz, n_descz, n_type];
       values.map(|v| data.extend_from_slice(&(v.to_ne_bytes())));
       data.push(b'G'); // Owner of the program property note
@@ -226,9 +226,9 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
       data.push(b'U');
       data.push(0);       
       let pr_type:u32 = 0xc0000002;
-      let pr_datasz:u32 = 4 ;//size of the pr_data field 
+      let pr_datasz:u32 = 4 ; //size of the pr_data field 
       let pr_data:u32 = 3; //program property descriptor
-      let pr_padding:u32 = 3;//padding
+      let pr_padding:u32 = 3; //padding
       let values = [pr_type, pr_datasz, pr_data, pr_padding];
       values.map(|v| data.extend_from_slice(&(v.to_ne_bytes())));    
       let x = data.len();
