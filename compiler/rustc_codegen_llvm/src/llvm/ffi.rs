@@ -1329,7 +1329,7 @@ extern "C" {
         NumHandlers: c_uint,
         Name: *const c_char,
     ) -> Option<&'a Value>;
-    pub fn LLVMRustAddHandler<'a>(CatchSwitch: &'a Value, Handler: &'a BasicBlock);
+    pub fn LLVMAddHandler<'a>(CatchSwitch: &'a Value, Dest: &'a BasicBlock);
     pub fn LLVMSetPersonalityFn<'a>(Func: &'a Value, Pers: &'a Value);
 
     // Add a case to the switch instruction
@@ -1623,11 +1623,12 @@ extern "C" {
         DestTy: &'a Type,
         Name: *const c_char,
     ) -> &'a Value;
-    pub fn LLVMRustBuildIntCast<'a>(
+    pub fn LLVMBuildIntCast2<'a>(
         B: &Builder<'a>,
         Val: &'a Value,
         DestTy: &'a Type,
         IsSigned: bool,
+        Name: *const c_char,
     ) -> &'a Value;
 
     // Comparisons

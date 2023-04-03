@@ -1394,12 +1394,6 @@ extern "C" bool LLVMRustUnpackSMDiagnostic(LLVMSMDiagnosticRef DRef,
   return true;
 }
 
-extern "C" void LLVMRustAddHandler(LLVMValueRef CatchSwitchRef,
-                                   LLVMBasicBlockRef Handler) {
-  Value *CatchSwitch = unwrap(CatchSwitchRef);
-  cast<CatchSwitchInst>(CatchSwitch)->addHandler(unwrap(Handler));
-}
-
 extern "C" OperandBundleDef *LLVMRustBuildOperandBundleDef(const char *Name,
                                                            LLVMValueRef *Inputs,
                                                            unsigned NumInputs) {
@@ -1564,6 +1558,7 @@ extern "C" void LLVMRustSetLinkage(LLVMValueRef V,
   LLVMSetLinkage(V, fromRust(RustLinkage));
 }
 
+// FIXME: replace with LLVMConstInBoundsGEP2 when bumped minimal version to llvm-14
 extern "C" LLVMValueRef LLVMRustConstInBoundsGEP2(LLVMTypeRef Ty,
                                                   LLVMValueRef ConstantVal,
                                                   LLVMValueRef *ConstantIndices,
@@ -1639,12 +1634,6 @@ static LLVMVisibility fromRust(LLVMRustVisibility Vis) {
 
 extern "C" LLVMRustVisibility LLVMRustGetVisibility(LLVMValueRef V) {
   return toRust(LLVMGetVisibility(V));
-}
-
-// Oh hey, a binding that makes sense for once? (because LLVM’s own do not)
-extern "C" LLVMValueRef LLVMRustBuildIntCast(LLVMBuilderRef B, LLVMValueRef Val,
-                                             LLVMTypeRef DestTy, bool isSigned) {
-  return wrap(unwrap(B)->CreateIntCast(unwrap(Val), unwrap(DestTy), isSigned, ""));
 }
 
 extern "C" void LLVMRustSetVisibility(LLVMValueRef V,

@@ -841,7 +841,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn intcast(&mut self, val: &'ll Value, dest_ty: &'ll Type, is_signed: bool) -> &'ll Value {
-        unsafe { llvm::LLVMRustBuildIntCast(self.llbuilder, val, dest_ty, is_signed) }
+        unsafe { llvm::LLVMBuildIntCast2(self.llbuilder, val, dest_ty, is_signed, UNNAMED) }
     }
 
     fn pointercast(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
@@ -1052,7 +1052,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let ret = ret.expect("LLVM does not have support for catchswitch");
         for handler in handlers {
             unsafe {
-                llvm::LLVMRustAddHandler(ret, handler);
+                llvm::LLVMAddHandler(ret, handler);
             }
         }
         ret
