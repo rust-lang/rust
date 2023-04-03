@@ -177,14 +177,14 @@ struct TraitObligationStack<'prev, 'tcx> {
 }
 
 struct SelectionCandidateSet<'tcx> {
-    // A list of candidates that definitely apply to the current
-    // obligation (meaning: types unify).
+    /// A list of candidates that definitely apply to the current
+    /// obligation (meaning: types unify).
     vec: Vec<SelectionCandidate<'tcx>>,
 
-    // If `true`, then there were candidates that might or might
-    // not have applied, but we couldn't tell. This occurs when some
-    // of the input types are type variables, in which case there are
-    // various "builtin" rules that might or might not trigger.
+    /// If `true`, then there were candidates that might or might
+    /// not have applied, but we couldn't tell. This occurs when some
+    /// of the input types are type variables, in which case there are
+    /// various "builtin" rules that might or might not trigger.
     ambiguous: bool,
 }
 

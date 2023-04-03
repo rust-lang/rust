@@ -998,8 +998,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Alias(..)
             | ty::Param(..)
             | ty::Bound(..)
-            | ty::Error(_) => {}
-            ty::Infer(_) => {
+            | ty::Error(_)
+            | ty::Infer(
+                ty::InferTy::IntVar(_)
+                | ty::InferTy::FloatVar(_)
+                | ty::InferTy::FreshIntTy(_)
+                | ty::InferTy::FreshFloatTy(_),
+            ) => {}
+            ty::Infer(ty::InferTy::TyVar(_) | ty::InferTy::FreshTy(_)) => {
                 candidates.ambiguous = true;
             }
         }
