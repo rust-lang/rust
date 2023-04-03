@@ -19,8 +19,7 @@ to beta. For reference, the first sync following this cadence was performed the
 2020-08-27.
 
 This process is described in detail in the following sections. For general
-information about `subtree`s in the Rust repository see [Rust's
-`CONTRIBUTING.md`][subtree].
+information about `subtree`s in the Rust repository see [the rustc-dev-guide][subtree].
 
 ## Patching git-subtree to work with big repos
 
@@ -118,5 +117,5 @@ All the following commands have to be run inside the `rust` directory.
 3. Open a PR to [`rust-lang/rust`]
 
 [gitgitgadget-pr]: https://github.com/gitgitgadget/git/pull/493
-[subtree]: https://rustc-dev-guide.rust-lang.org/contributing.html#external-dependencies-subtree
+[subtree]: https://rustc-dev-guide.rust-lang.org/external-repos.html#external-dependencies-subtree
 [`rust-lang/rust`]: https://github.com/rust-lang/rust
