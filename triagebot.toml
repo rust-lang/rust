@@ -482,7 +482,7 @@ message = "This PR changes src/bootstrap/defaults/config.codegen.toml. If approp
 
 [assign]
 warn_non_default_branch = true
-contributing_url = "https://rustc-dev-guide.rust-lang.org/contributing.html"
+contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
 
 [assign.adhoc_groups]
 compiler-team = [
