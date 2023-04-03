@@ -5,13 +5,7 @@ import * as readline from "readline";
 import * as vscode from "vscode";
 import { execute, log, memoizeAsync } from "./util";
 
-const TREE_LINE_PATTERN = new RegExp(/(.+)\sv(\d+\.\d+\.\d+)(?:\s\((.+)\))?/);
 const TOOLCHAIN_PATTERN = new RegExp(/(.*)\s\(.*\)/);
-
-export interface Crate {
-    name: string;
-    version: string;
-}
 
 interface CompilationArtifact {
     fileName: string;
@@ -30,7 +24,7 @@ export class Cargo {
         readonly rootFolder: string,
         readonly output: vscode.OutputChannel,
         readonly env: Record<string, string>
-    ) {}
+    ) { }
 
     // Made public for testing purposes
     static artifactSpec(args: readonly string[]): ArtifactSpec {
@@ -104,40 +98,6 @@ export class Cargo {
         return artifacts[0].fileName;
     }
 
-    async crates(): Promise<Crate[]> {
-        const pathToCargo = await cargoPath();
-        return await new Promise((resolve, reject) => {
-            const crates: Crate[] = [];
-
-            const cargo = cp.spawn(pathToCargo, ["tree", "--prefix", "none"], {
-                stdio: ["ignore", "pipe", "pipe"],
-                cwd: this.rootFolder,
-            });
-            const rl = readline.createInterface({ input: cargo.stdout });
-            rl.on("line", (line) => {
-                const match = line.match(TREE_LINE_PATTERN);
-                if (match) {
-                    const name = match[1];
-                    const version = match[2];
-                    const extraInfo = match[3];
-                    // ignore duplicates '(*)' and path dependencies
-                    if (this.shouldIgnore(extraInfo)) {
-                        return;
-                    }
-                    crates.push({ name, version });
-                }
-            });
-            cargo.on("exit", (exitCode, _) => {
-                if (exitCode === 0) resolve(crates);
-                else reject(new Error(`exit code: ${exitCode}.`));
-            });
-        });
-    }
-
-    private shouldIgnore(extraInfo: string): boolean {
-        return extraInfo !== undefined && (extraInfo === "*" || path.isAbsolute(extraInfo));
-    }
-
     private async runCargo(
         cargoArgs: string[],
         onStdoutJson: (obj: any) => void,
@@ -169,29 +129,6 @@ export class Cargo {
     }
 }
 
-export async function activeToolchain(): Promise<string> {
-    const pathToRustup = await rustupPath();
-    return await new Promise((resolve, reject) => {
-        const execution = cp.spawn(pathToRustup, ["show", "active-toolchain"], {
-            stdio: ["ignore", "pipe", "pipe"],
-            cwd: os.homedir(),
-        });
-        const rl = readline.createInterface({ input: execution.stdout });
-
-        let currToolchain: string | undefined = undefined;
-        rl.on("line", (line) => {
-            const match = line.match(TOOLCHAIN_PATTERN);
-            if (match) {
-                currToolchain = match[1];
-            }
-        });
-        execution.on("exit", (exitCode, _) => {
-            if (exitCode === 0 && currToolchain) resolve(currToolchain);
-            else reject(new Error(`exit code: ${exitCode}.`));
-        });
-    });
-}
-
 /** Mirrors `project_model::sysroot::discover_sysroot_dir()` implementation*/
 export async function getSysroot(dir: string): Promise<string> {
     const rustcPath = await getPathForExecutable("rustc");
@@ -206,16 +143,6 @@ export async function getRustcId(dir: string): Promise<string> {
     // do not memoize the result because the toolchain may change between runs
     const data = await execute(`${rustcPath} -V -v`, { cwd: dir });
     const rx = /commit-hash:\s(.*)$/m;
-
-    return rx.exec(data)![1];
-}
-
-export async function getRustcVersion(dir: string): Promise<string> {
-    const rustcPath = await getPathForExecutable("rustc");
-
-    // do not memoize the result because the toolchain may change between runs
-    const data = await execute(`${rustcPath} -V`, { cwd: dir });
-    const rx = /(\d\.\d+\.\d+)/;
 
     return rx.exec(data)![1];
 }

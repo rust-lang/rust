@@ -1,23 +1,16 @@
 import * as vscode from "vscode";
 import * as fspath from "path";
 import * as fs from "fs";
-import * as os from "os";
-import { activeToolchain, Cargo, Crate, getRustcVersion } from "./toolchain";
-import { Ctx } from "./ctx";
-import { setFlagsFromString } from "v8";
+import { CtxInit } from "./ctx";
 import * as ra from "./lsp_ext";
-
-const debugOutput = vscode.window.createOutputChannel("Debug");
+import { FetchDependencyGraphResult } from "./lsp_ext";
 
 export class RustDependenciesProvider
-    implements vscode.TreeDataProvider<Dependency | DependencyFile>
-{
-    cargo: Cargo;
+    implements vscode.TreeDataProvider<Dependency | DependencyFile> {
     dependenciesMap: { [id: string]: Dependency | DependencyFile };
-    ctx: Ctx;
+    ctx: CtxInit;
 
-    constructor(private readonly workspaceRoot: string, ctx: Ctx) {
-        this.cargo = new Cargo(this.workspaceRoot || ".", debugOutput);
+    constructor(private readonly workspaceRoot: string, ctx: CtxInit) {
         this.dependenciesMap = {};
         this.ctx = ctx;
     }
@@ -62,7 +55,6 @@ export class RustDependenciesProvider
                 void vscode.window.showInformationMessage("No dependency in empty workspace");
                 return Promise.resolve([]);
             }
-
             if (element) {
                 const files = fs.readdirSync(element.dependencyPath).map((fileName) => {
                     const filePath = fspath.join(element.dependencyPath, fileName);
@@ -81,58 +73,25 @@ export class RustDependenciesProvider
     }
 
     private async getRootDependencies(): Promise<Dependency[]> {
-        const crates = await this.ctx.client.sendRequest(ra.fetchDependencyGraph, {});
-
-        const registryDir = fspath.join(os.homedir(), ".cargo", "registry", "src");
-        const basePath = fspath.join(registryDir, fs.readdirSync(registryDir)[0]);
-        const deps = await this.getDepsInCartoTree(basePath);
-        const stdlib = await this.getStdLib();
-        this.dependenciesMap[stdlib.dependencyPath.toLowerCase()] = stdlib;
-        return [stdlib].concat(deps);
-    }
-
-    private async getStdLib(): Promise<Dependency> {
-        const toolchain = await activeToolchain();
-        const rustVersion = await getRustcVersion(os.homedir());
-        const stdlibPath = fspath.join(
-            os.homedir(),
-            ".rustup",
-            "toolchains",
-            toolchain,
-            "lib",
-            "rustlib",
-            "src",
-            "rust",
-            "library"
-        );
-        const stdlib = new Dependency(
-            "stdlib",
-            rustVersion,
-            stdlibPath,
-            vscode.TreeItemCollapsibleState.Collapsed
-        );
-
-        return stdlib;
-    }
-
-    private async getDepsInCartoTree(basePath: string): Promise<Dependency[]> {
-        const crates: Crate[] = await this.cargo.crates();
-        const toDep = (moduleName: string, version: string): Dependency => {
-            const cratePath = fspath.join(basePath, `${moduleName}-${version}`);
-            return new Dependency(
-                moduleName,
-                version,
-                cratePath,
-                vscode.TreeItemCollapsibleState.Collapsed
-            );
-        };
+        const dependenciesResult: FetchDependencyGraphResult = await this.ctx.client.sendRequest(ra.fetchDependencyGraph, {});
+        const crates = dependenciesResult.crates;
 
         const deps = crates.map((crate) => {
-            const dep = toDep(crate.name, crate.version);
+            const dep = this.toDep(crate.name, crate.version, crate.path);
             this.dependenciesMap[dep.dependencyPath.toLowerCase()] = dep;
             return dep;
         });
         return deps;
+    }
+
+    private toDep(moduleName: string, version: string, path: string): Dependency {
+        // const cratePath = fspath.join(basePath, `${moduleName}-${version}`);
+        return new Dependency(
+            moduleName,
+            version,
+            path,
+            vscode.TreeItemCollapsibleState.Collapsed
+        );
     }
 }
 

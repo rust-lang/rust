@@ -91,19 +91,25 @@ export class Ctx {
     private commandFactories: Record<string, CommandFactory>;
     private commandDisposables: Disposable[];
     private unlinkedFiles: vscode.Uri[];
-    readonly dependencies: RustDependenciesProvider;
-    readonly treeView: vscode.TreeView<Dependency | DependencyFile | DependencyId>;
+    private _dependencies: RustDependenciesProvider | undefined;
+    private _treeView: vscode.TreeView<Dependency | DependencyFile | DependencyId> | undefined;
 
     get client() {
         return this._client;
+    }
+
+    get treeView() {
+        return this._treeView;
+    }
+
+    get dependencies() {
+        return this._dependencies;
     }
 
     constructor(
         readonly extCtx: vscode.ExtensionContext,
         commandFactories: Record<string, CommandFactory>,
         workspace: Workspace,
-        dependencies: RustDependenciesProvider,
-        treeView: vscode.TreeView<Dependency | DependencyFile | DependencyId>
     ) {
         extCtx.subscriptions.push(this);
         this.statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
@@ -112,9 +118,6 @@ export class Ctx {
         this.commandDisposables = [];
         this.commandFactories = commandFactories;
         this.unlinkedFiles = [];
-        this.dependencies = dependencies;
-        this.treeView = treeView;
-
         this.state = new PersistentState(extCtx.globalState);
         this.config = new Config(extCtx);
 
@@ -122,13 +125,6 @@ export class Ctx {
         );
         this.setServerStatus({
             health: "stopped",
-        });
-        vscode.window.onDidChangeActiveTextEditor((e) => {
-            if (e && isRustEditor(e)) {
-                execRevealDependency(e).catch((reason) => {
-                    void vscode.window.showErrorMessage(`Dependency error: ${reason}`);
-                });
-            }
         });
     }
 
@@ -267,6 +263,28 @@ export class Ctx {
         }
         await client.start();
         this.updateCommands();
+        this.prepareTreeDependenciesView(client);
+    }
+
+    private prepareTreeDependenciesView(client: lc.LanguageClient) {
+        const ctxInit: CtxInit = {
+            ...this,
+            client: client
+        };
+        const rootPath = vscode.workspace.workspaceFolders![0].uri.fsPath;
+        this._dependencies = new RustDependenciesProvider(rootPath, ctxInit);
+        this._treeView = vscode.window.createTreeView("rustDependencies", {
+            treeDataProvider: this._dependencies,
+            showCollapseAll: true,
+        });
+
+        vscode.window.onDidChangeActiveTextEditor((e) => {
+            if (e && isRustEditor(e)) {
+                execRevealDependency(e).catch((reason) => {
+                    void vscode.window.showErrorMessage(`Dependency error: ${reason}`);
+                });
+            }
+        });
     }
 
     async restart() {
@@ -369,7 +387,7 @@ export class Ctx {
                 statusBar.color = undefined;
                 statusBar.backgroundColor = undefined;
                 statusBar.command = "rust-analyzer.stopServer";
-                this.dependencies.refresh();
+                this.dependencies?.refresh();
                 break;
             case "warning":
                 if (status.message) {

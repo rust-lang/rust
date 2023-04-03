@@ -6,7 +6,13 @@ use ide::AssistResolveStrategy;
 use lsp_types::{Diagnostic, DiagnosticTag, NumberOrString};
 use vfs::FileId;
 
-use crate::{global_state::GlobalStateSnapshot, to_proto, Result};
+use crate::{
+    global_state::GlobalStateSnapshot, to_proto, Result,
+    lsp_ext::{
+        CrateInfoResult, FetchDependencyGraphResult, FetchDependencyGraphParams,
+    },
+};
+
 
 pub(crate) mod request;
 pub(crate) mod notification;
@@ -31,7 +37,7 @@ pub(crate) fn publish_diagnostics(
                     "https://rust-analyzer.github.io/manual.html#{}",
                     d.code.as_str()
                 ))
-                .unwrap(),
+                    .unwrap(),
             }),
             source: Some("rust-analyzer".to_string()),
             message: d.message,
@@ -41,4 +47,17 @@ pub(crate) fn publish_diagnostics(
         })
         .collect();
     Ok(diagnostics)
+}
+
+pub(crate) fn fetch_dependency_graph(
+    state: GlobalStateSnapshot,
+    _params: FetchDependencyGraphParams,
+) -> Result<FetchDependencyGraphResult> {
+    let crates = state.analysis.fetch_crates()?;
+    Ok(FetchDependencyGraphResult {
+        crates: crates
+            .into_iter()
+            .map(|it| CrateInfoResult { name: it.name, version: it.version, path: it.path })
+            .collect(),
+    })
 }

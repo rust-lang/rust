@@ -272,19 +272,19 @@ export function revealDependency(ctx: CtxInit): Cmd {
         const rootPath = vscode.workspace.workspaceFolders![0].uri.fsPath;
         const documentPath = editor.document.uri.fsPath;
         if (documentPath.startsWith(rootPath)) return;
-        const dep = ctx.dependencies.getDependency(documentPath);
+        const dep = ctx.dependencies?.getDependency(documentPath);
         if (dep) {
-            await ctx.treeView.reveal(dep, { select: true, expand: true });
+            await ctx.treeView?.reveal(dep, { select: true, expand: true });
         } else {
             let documentPath = editor.document.uri.fsPath;
             const parentChain: DependencyId[] = [{ id: documentPath.toLowerCase() }];
             do {
                 documentPath = path.dirname(documentPath);
                 parentChain.push({ id: documentPath.toLowerCase() });
-            } while (!ctx.dependencies.contains(documentPath));
+            } while (!ctx.dependencies?.contains(documentPath));
             parentChain.reverse();
             for (const idx in parentChain) {
-                await ctx.treeView.reveal(parentChain[idx], { select: true, expand: true });
+                await ctx.treeView?.reveal(parentChain[idx], { select: true, expand: true });
             }
         }
     };

@@ -27,6 +27,13 @@ pub struct AnalyzerStatusParams {
     pub text_document: Option<TextDocumentIdentifier>,
 }
 
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CrateInfoResult {
+    pub name: String,
+    pub version: String,
+    pub path: String,
+}
 pub enum FetchDependencyGraph {}
 
 impl Request for FetchDependencyGraph {
@@ -38,9 +45,12 @@ impl Request for FetchDependencyGraph {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct FetchDependencyGraphParams {}
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct FetchDependencyGraphResult {}
+pub struct FetchDependencyGraphResult {
+    pub crates: Vec<CrateInfoResult>,
+}
 
 pub enum MemoryUsage {}
 
@@ -374,6 +384,7 @@ impl Request for CodeActionRequest {
 }
 
 pub enum CodeActionResolveRequest {}
+
 impl Request for CodeActionResolveRequest {
     type Params = CodeAction;
     type Result = CodeAction;
