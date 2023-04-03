@@ -1,5 +1,5 @@
 error: this operation will panic at runtime
-  --> $DIR/index_out_of_bounds_propagated.rs:5:5
+  --> $DIR/index_out_of_bounds_propagated.rs:3:5
    |
 LL |     array[1];
    |     ^^^^^^^^ index out of bounds: the length is 1 but the index is 1

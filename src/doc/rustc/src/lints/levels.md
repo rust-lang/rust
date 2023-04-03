@@ -69,9 +69,10 @@ level is capped via cap-lints.
 ## deny
 
 A 'deny' lint produces an error if you violate it. For example, this code
-runs into the `exceeding_bitshifts` lint.
+runs into the `arithmetic_overflow` lint.
 
 ```rust,no_run
+#![warn(arithmetic_overflow)]
 fn main() {
     100u8 << 10;
 }
@@ -79,13 +80,13 @@ fn main() {
 
 ```bash
 $ rustc main.rs
-error: bitshift exceeds the type's number of bits
+error: this arithmetic operation will overflow
  --> main.rs:2:13
   |
 2 |     100u8 << 10;
-  |     ^^^^^^^^^^^
+  |     ^^^^^^^^^^^ attempt to shift left by `10_i32`, which would overflow
   |
-  = note: `#[deny(exceeding_bitshifts)]` on by default
+  = note: `#[deny(arithmetic_overflow)]` on by default
 ```
 
 What's the difference between an error from a lint and a regular old error?
@@ -247,6 +248,7 @@ This is the maximum level for all lints. So for example, if we take our
 code sample from the "deny" lint level above:
 
 ```rust,no_run
+##![allow(arithmetic_overflow)]
 fn main() {
     100u8 << 10;
 }
@@ -256,19 +258,13 @@ And we compile it, capping lints to warn:
 
 ```bash
 $ rustc lib.rs --cap-lints warn
-warning: bitshift exceeds the type's number of bits
+warning: this arithmetic operation will overflow
  --> lib.rs:2:5
   |
 2 |     100u8 << 10;
-  |     ^^^^^^^^^^^
+  |     ^^^^^^^^^^^ attempt to shift left by `10_i32`, which would overflow
   |
-  = note: `#[warn(exceeding_bitshifts)]` on by default
-
-warning: this expression will panic at run-time
- --> lib.rs:2:5
-  |
-2 |     100u8 << 10;
-  |     ^^^^^^^^^^^ attempt to shift left with overflow
+  = note: `#[warn(arithmetic_overflow)]` on by default
 ```
 
 It now only warns, rather than errors. We can go further and allow all lints:

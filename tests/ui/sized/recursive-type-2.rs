@@ -1,7 +1,8 @@
-// build-fail
-//~^ ERROR cycle detected when computing layout of `Foo<()>`
+//~ ERROR cycle detected when computing layout of `Foo<()>`
 
-trait A { type Assoc: ?Sized; }
+trait A {
+    type Assoc: ?Sized;
+}
 
 impl A for () {
     type Assoc = Foo<()>;

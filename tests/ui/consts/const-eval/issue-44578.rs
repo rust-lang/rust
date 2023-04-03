@@ -1,5 +1,3 @@
-// build-fail
-
 trait Foo {
     const AMT: usize;
 }

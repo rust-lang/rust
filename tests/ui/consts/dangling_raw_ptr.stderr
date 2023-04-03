@@ -4,5 +4,17 @@ error: encountered dangling pointer in final constant
 LL | const FOO: *const u32 = {
    | ^^^^^^^^^^^^^^^^^^^^^
 
+note: erroneous constant used
+  --> $DIR/dangling_raw_ptr.rs:7:13
+   |
+LL |     let x = FOO;
+   |             ^^^
+
+note: erroneous constant used
+  --> $DIR/dangling_raw_ptr.rs:7:13
+   |
+LL |     let x = FOO;
+   |             ^^^
+
 error: aborting due to previous error
 

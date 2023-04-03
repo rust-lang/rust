@@ -4,6 +4,18 @@ error[E0080]: evaluation of constant value failed
 LL | const BAR: u32 = FOO[5];
    |                  ^^^^^^ index out of bounds: the length is 3 but the index is 5
 
+note: erroneous constant used
+  --> $DIR/const-slice-oob.rs:7:13
+   |
+LL |     let _ = BAR;
+   |             ^^^
+
+note: erroneous constant used
+  --> $DIR/const-slice-oob.rs:7:13
+   |
+LL |     let _ = BAR;
+   |             ^^^
+
 error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0080`.

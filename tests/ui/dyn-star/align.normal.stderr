@@ -1,5 +1,5 @@
 warning: the feature `dyn_star` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/align.rs:4:12
+  --> $DIR/align.rs:8:12
    |
 LL | #![feature(dyn_star)]
    |            ^^^^^^^^
@@ -7,5 +7,18 @@ LL | #![feature(dyn_star)]
    = note: see issue #102425 <https://github.com/rust-lang/rust/issues/102425> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-warning: 1 warning emitted
+error: internal compiler error: $COMPILER_DIR/rustc_const_eval/src/interpret/operand.rs:407:13: primitive read not possible for type: AlignedUsize
+  --> $DIR/align.rs:20:13
+   |
+LL |     let x = AlignedUsize(12) as dyn *Debug;
+   |             ^^^^^^^^^^^^^^^^
+
+
+stack backtrace:
+
+query stack during panic:
+#0 [mir_drops_elaborated_and_const_checked] elaborating drops for `main`
+#1 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to previous error; 1 warning emitted
 

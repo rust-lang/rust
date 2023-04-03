@@ -15,6 +15,28 @@ note: inside `Y`
 LL | const Y: usize = bar(X, 2); // FIXME: should fail to typeck someday
    |                  ^^^^^^^^^
 
+note: erroneous constant used
+  --> $DIR/const_fn_ptr_fail2.rs:18:16
+   |
+LL |     assert_eq!(Y, 4);
+   |                ^
+
+note: erroneous constant used
+  --> $DIR/const_fn_ptr_fail2.rs:18:5
+   |
+LL |     assert_eq!(Y, 4);
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: this note originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: erroneous constant used
+  --> $DIR/const_fn_ptr_fail2.rs:18:5
+   |
+LL |     assert_eq!(Y, 4);
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: this note originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error[E0080]: evaluation of constant value failed
   --> $DIR/const_fn_ptr_fail2.rs:9:5
    |
@@ -31,6 +53,28 @@ note: inside `Z`
    |
 LL | const Z: usize = bar(double, 2); // FIXME: should fail to typeck someday
    |                  ^^^^^^^^^^^^^^
+
+note: erroneous constant used
+  --> $DIR/const_fn_ptr_fail2.rs:19:16
+   |
+LL |     assert_eq!(Z, 4);
+   |                ^
+
+note: erroneous constant used
+  --> $DIR/const_fn_ptr_fail2.rs:19:5
+   |
+LL |     assert_eq!(Z, 4);
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: this note originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: erroneous constant used
+  --> $DIR/const_fn_ptr_fail2.rs:19:5
+   |
+LL |     assert_eq!(Z, 4);
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: this note originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: skipping const checks
    |

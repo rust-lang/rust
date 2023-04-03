@@ -4,7 +4,7 @@ use std::cell::RefCell;
 fn main() {
     let mut r = 0;
     let s = 0;
-    let x = RefCell::new((&mut r,s));
+    let x = RefCell::new((&mut r, s));
 
     let val: &_ = x.borrow().0;
     //~^ ERROR temporary value dropped while borrowed [E0716]

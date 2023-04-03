@@ -6,7 +6,6 @@
 // If for some reason this approach no longer works, it is should be fine to
 // remove the test case.
 //
-// build-fail
 // stderr-per-bitwidth
 #![feature(const_mut_refs)]
 
@@ -22,7 +21,7 @@ struct S {
 #[repr(u32)]
 enum E {
     A,
-    B(U)
+    B(U),
 }
 
 union U {
@@ -38,7 +37,8 @@ const C: S = {
     s
 };
 
-fn main() { //~ ERROR it is undefined behavior to use this value
+fn main() {
+    //~^ ERROR it is undefined behavior to use this value
     // FIXME the span here is wrong, sould be pointing at the line below, not above.
     let _: &'static _ = &C;
 }

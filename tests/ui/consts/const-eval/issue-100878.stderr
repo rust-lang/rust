@@ -1,0 +1,10 @@
+error: this arithmetic operation will overflow
+  --> $DIR/issue-100878.rs:3:5
+   |
+LL |     data[0] << 8
+   |     ^^^^^^^^^^^^ attempt to shift left by `8_i32`, which would overflow
+   |
+   = note: `#[deny(arithmetic_overflow)]` on by default
+
+error: aborting due to previous error
+
