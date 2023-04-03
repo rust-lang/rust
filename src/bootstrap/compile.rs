@@ -1346,6 +1346,13 @@ impl Step for Assemble {
         // when not performing a full bootstrap).
         builder.ensure(Rustc::new(build_compiler, target_compiler.host));
 
+        // FIXME: For now patch over problems noted in #90244 by early returning here, even though
+        // we've not properly assembled the target sysroot. A full fix is pending further investigation,
+        // for now full bootstrap usage is rare enough that this is OK.
+        if target_compiler.stage >= 3 && !builder.config.full_bootstrap {
+            return target_compiler;
+        }
+
         for &backend in builder.config.rust_codegen_backends.iter() {
             if backend == "llvm" {
                 continue; // Already built as part of rustc
