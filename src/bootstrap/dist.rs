@@ -1488,7 +1488,7 @@ impl Step for Extended {
 
         let xform = |p: &Path| {
             let mut contents = t!(fs::read_to_string(p));
-            for tool in &["rust-demangler", "miri"] {
+            for tool in &["rust-demangler", "miri", "rust-docs"] {
                 if !built_tools.contains(tool) {
                     contents = filter(&contents, tool);
                 }
