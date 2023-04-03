@@ -952,7 +952,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         ))
     });
     store.register_late_pass(|_| Box::new(lines_filter_map_ok::LinesFilterMapOk));
-    store.register_late_pass(|_| Box::new(tests_outside_test_module::TestsOutsideTestModule::new()));
+    store.register_late_pass(|_| Box::new(tests_outside_test_module::TestsOutsideTestModule));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
