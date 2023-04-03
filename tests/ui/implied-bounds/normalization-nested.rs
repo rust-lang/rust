@@ -5,7 +5,7 @@
 // revisions: param_ty lifetime
 // [param_ty] check-pass
 // [lifetime] check-fail
-// [lifetime] known-bug: #109799
+// [lifetime] issue: #109799
 
 pub trait Iter {
     type Item;
@@ -32,8 +32,12 @@ where
     I: Iter,
     I::Item: 'static;
 
-pub fn test<'x>(_: Map<Vec<&'x ()>>, s: &'x str) -> &'static str {
+// passes for lifetime and type paramters.
+pub fn test_wfcheck<'x>(_: Map<Vec<&'x ()>>) {}
+
+pub fn test_borrowck<'x>(_: Map<Vec<&'x ()>>, s: &'x str) -> &'static str {
     s
+    //[lifetime]~^ ERROR lifetime may not live long enough
 }
 
 fn main() {}

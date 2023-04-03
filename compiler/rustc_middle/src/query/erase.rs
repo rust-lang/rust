@@ -59,6 +59,10 @@ impl<T> EraseType for Result<&'_ T, traits::query::NoSolution> {
     type Result = [u8; size_of::<Result<&'static (), traits::query::NoSolution>>()];
 }
 
+impl<T> EraseType for Result<&'_ [T], traits::query::NoSolution> {
+    type Result = [u8; size_of::<Result<&'static [()], traits::query::NoSolution>>()];
+}
+
 impl<T> EraseType for Result<&'_ T, rustc_errors::ErrorGuaranteed> {
     type Result = [u8; size_of::<Result<&'static (), rustc_errors::ErrorGuaranteed>>()];
 }

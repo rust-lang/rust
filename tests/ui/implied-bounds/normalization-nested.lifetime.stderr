@@ -1,18 +1,10 @@
-error[E0759]: `fn` parameter has lifetime `'x` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/normalization-nested.rs:35:20
+error: lifetime may not live long enough
+  --> $DIR/normalization-nested.rs:39:5
    |
-LL | pub fn test<'x>(_: Map<Vec<&'x ()>>, s: &'x str) -> &'static str {
-   |                    ^^^^^^^^^^^^^^^^
-   |                    |
-   |                    this data with lifetime `'x`...
-   |                    ...is used and required to live as long as `'static` here
-   |
-note: `'static` lifetime requirement introduced by this bound
-  --> $DIR/normalization-nested.rs:33:14
-   |
-LL |     I::Item: 'static;
-   |              ^^^^^^^
+LL | pub fn test_borrowck<'x>(_: Map<Vec<&'x ()>>, s: &'x str) -> &'static str {
+   |                      -- lifetime `'x` defined here
+LL |     s
+   |     ^ returning this value requires that `'x` must outlive `'static`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0759`.

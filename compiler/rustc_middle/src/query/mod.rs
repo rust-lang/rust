@@ -1837,6 +1837,12 @@ rustc_queries! {
         desc { "computing implied outlives bounds for `{}`", goal.value.value }
     }
 
+    query implied_outlives_bounds_v2(
+        goal: ParamEnvAnd<'tcx, Ty<'tcx>>
+    ) -> Result<&'tcx [OutlivesBound<'tcx>], NoSolution> {
+        desc { "computing implied outlives bounds v2 for `{}`", goal.value }
+    }
+
     /// Do not call this query directly:
     /// invoke `DropckOutlives::new(dropped_ty)).fully_perform(typeck.infcx)` instead.
     query dropck_outlives(

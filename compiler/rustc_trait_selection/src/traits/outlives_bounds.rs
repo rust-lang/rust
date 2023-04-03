@@ -3,13 +3,15 @@ use crate::traits::query::type_op::{self, TypeOp, TypeOpOutput};
 use crate::traits::query::NoSolution;
 use crate::traits::{ObligationCause, ObligationCtxt};
 use rustc_data_structures::fx::FxIndexSet;
+use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_middle::ty::{self, ParamEnv, Ty, TypeFolder, TypeVisitableExt};
-use rustc_span::def_id::LocalDefId;
+use rustc_span::DUMMY_SP;
 
 pub use rustc_middle::traits::query::OutlivesBound;
 
 type Bounds<'a, 'tcx: 'a> = impl Iterator<Item = OutlivesBound<'tcx>> + 'a;
+type BoundsV2<'a, 'tcx: 'a> = impl Iterator<Item = OutlivesBound<'tcx>> + 'a;
 pub trait InferCtxtExt<'a, 'tcx> {
     fn implied_outlives_bounds(
         &self,
@@ -24,6 +26,13 @@ pub trait InferCtxtExt<'a, 'tcx> {
         body_id: LocalDefId,
         tys: FxIndexSet<Ty<'tcx>>,
     ) -> Bounds<'a, 'tcx>;
+
+    fn implied_bounds_tys_v2(
+        &'a self,
+        param_env: ty::ParamEnv<'tcx>,
+        _body_id: LocalDefId,
+        tys: FxIndexSet<Ty<'tcx>>,
+    ) -> BoundsV2<'a, 'tcx>;
 }
 
 impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
@@ -122,5 +131,26 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
         tys: FxIndexSet<Ty<'tcx>>,
     ) -> Bounds<'a, 'tcx> {
         tys.into_iter().flat_map(move |ty| self.implied_outlives_bounds(param_env, body_id, ty))
+    }
+
+    fn implied_bounds_tys_v2(
+        &'a self,
+        param_env: ParamEnv<'tcx>,
+        _body_id: LocalDefId,
+        tys: FxIndexSet<Ty<'tcx>>,
+    ) -> BoundsV2<'a, 'tcx> {
+        tys.into_iter()
+            .flat_map(move |ty| {
+                let ty = self.resolve_vars_if_possible(ty);
+                let ty = OpportunisticRegionResolver::new(self).fold_ty(ty);
+                if ty.has_infer() {
+                    // Infer vars can appear only in invalid code. See #110161.
+                    self.tcx.sess.delay_span_bug(DUMMY_SP, "infer vars in implied bounds");
+                    return &[] as &[OutlivesBound<'_>];
+                }
+
+                self.tcx.implied_outlives_bounds_v2(param_env.and(ty)).unwrap_or(&[])
+            })
+            .copied()
     }
 }

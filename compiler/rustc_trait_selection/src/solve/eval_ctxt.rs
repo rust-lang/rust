@@ -658,8 +658,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         arg: ty::GenericArg<'tcx>,
     ) -> Option<impl Iterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>> {
-        crate::traits::wf::unnormalized_obligations(self.infcx, param_env, arg)
-            .map(|obligations| obligations.into_iter().map(|obligation| obligation.into()))
+        debug_assert_eq!(arg, self.infcx.resolve_vars_if_possible(arg));
+        // FIXME: useless `Option` in return type?
+        Some(
+            crate::traits::wf::unnormalized_obligations(self.tcx(), param_env, arg)
+                .into_iter()
+                .map(|obligation| obligation.into()),
+        )
     }
 
     pub(super) fn is_transmutable(
