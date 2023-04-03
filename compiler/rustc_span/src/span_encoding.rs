@@ -74,10 +74,15 @@ use rustc_data_structures::fx::FxIndexSet;
 #[derive(Clone, Copy, Eq, PartialEq, Hash)]
 #[rustc_pass_by_value]
 pub struct Span {
-    base_or_index: u32,
+    base_or_index: NonMaxU32,
     len_or_tag: u16,
     ctxt_or_tag: u16,
 }
+
+#[derive(Clone, Copy, Eq, PartialEq, Hash)]
+#[rustc_layout_scalar_valid_range_start(0)]
+#[rustc_layout_scalar_valid_range_end(0xFFFF_FFFF_FFFF_FFFE)]
+struct NonMaxU32(u32);
 
 const LEN_TAG: u16 = 0b1111_1111_1111_1111;
 const PARENT_MASK: u16 = 0b1000_0000_0000_0000;
@@ -86,7 +91,7 @@ const CTXT_TAG: u32 = 0b1111_1111_1111_1111;
 const MAX_CTXT: u32 = CTXT_TAG - 1;
 
 /// Dummy span, both position and length are zero, syntax context is zero as well.
-pub const DUMMY_SP: Span = Span { base_or_index: 0, len_or_tag: 0, ctxt_or_tag: 0 };
+pub const DUMMY_SP: Span = Span { base_or_index: unsafe { NonMaxU32(0) }, len_or_tag: 0, ctxt_or_tag: 0 };
 
 impl Span {
     #[inline]
@@ -115,7 +120,8 @@ impl Span {
                     && len_or_tag < LEN_TAG
                 {
                     debug_assert_ne!(len_or_tag, LEN_TAG);
-                    return Span { base_or_index: base, len_or_tag, ctxt_or_tag: parent2 as u16 };
+                    assert!(base <= 0xFFFF_FFFF_FFFF_FFFE);
+                    return Span { base_or_index: unsafe { NonMaxU32(base) }, len_or_tag, ctxt_or_tag: parent2 as u16 };
                 }
             } else {
                 // Inline format with ctxt.
@@ -132,7 +138,8 @@ impl Span {
         let index =
             with_span_interner(|interner| interner.intern(&SpanData { lo, hi, ctxt, parent }));
         let ctxt_or_tag = if ctxt2 <= MAX_CTXT { ctxt2 } else { CTXT_TAG } as u16;
-        Span { base_or_index: index, len_or_tag: LEN_TAG, ctxt_or_tag }
+        assert!(index <= 0xFFFF_FFFF_FFFF_FFFE);
+        Span { base_or_index: unsafe { NonMaxU32(index) }, len_or_tag: LEN_TAG, ctxt_or_tag }
     }
 
     #[inline]
