@@ -1816,7 +1816,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// `UnsafeCell<T>` opts-out of the immutability guarantee for `&T`: a shared reference
 /// `&UnsafeCell<T>` may point to data that is being mutated. This is called "interior mutability".
 ///
-/// All other types that allow internal mutability, such as `Cell<T>` and `RefCell<T>`, internally
+/// All other types that allow internal mutability, such as [`Cell<T>`] and [`RefCell<T>`], internally
 /// use `UnsafeCell` to wrap their data.
 ///
 /// Note that only the immutability guarantee for shared references is affected by `UnsafeCell`. The
