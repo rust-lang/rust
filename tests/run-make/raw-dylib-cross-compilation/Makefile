@@ -7,7 +7,7 @@
 # i686 dlltool.exe can't product x64 binaries.
 # ignore-i686-pc-windows-gnu
 
-include ../../run-make-fulldeps/tools.mk
+include ../tools.mk
 
 all:
 	# Build as x86 and make sure that we have x86 objects only.
