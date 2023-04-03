@@ -127,9 +127,7 @@ impl LateLintPass<'_> for WildcardImports {
             .display(rustc_span::FileNameDisplayPreference::Local)
             .to_string();
 
-        if filename.ends_with("test.rs") || filename.ends_with("tests.rs") {
-            self.ignore = true;
-        }
+        self.ignore = filename.ends_with("test.rs") || filename.ends_with("tests.rs");
     }
 
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
