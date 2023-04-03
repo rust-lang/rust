@@ -148,10 +148,9 @@ pub fn is_enabled(
 pub fn is_stable(name: &str) -> Result<(), AbiDisabled> {
     match name {
         // Stable
-        "Rust" | "C" | "cdecl" | "stdcall" | "fastcall" | "aapcs" | "win64" | "sysv64"
-        | "system" | "efiapi" | "C-unwind" | "cdecl-unwind" | "stdcall-unwind"
-        | "fastcall-unwind" | "aapcs-unwind" | "win64-unwind" | "sysv64-unwind"
-        | "system-unwind" => Ok(()),
+        "Rust" | "C" | "C-unwind" | "cdecl" | "cdecl-unwind" | "stdcall" | "stdcall-unwind"
+        | "fastcall" | "fastcall-unwind" | "aapcs" | "aapcs-unwind" | "win64" | "win64-unwind"
+        | "sysv64" | "sysv64-unwind" | "system" | "system-unwind" | "efiapi" => Ok(()),
         "rust-intrinsic" => Err(AbiDisabled::Unstable {
             feature: sym::intrinsics,
             explain: "intrinsics are subject to change",
@@ -164,9 +163,17 @@ pub fn is_stable(name: &str) -> Result<(), AbiDisabled> {
             feature: sym::abi_vectorcall,
             explain: "vectorcall is experimental and subject to change",
         }),
+        "vectorcall-unwind" => Err(AbiDisabled::Unstable {
+            feature: sym::abi_vectorcall,
+            explain: "vectorcall-unwind ABI is experimental and subject to change",
+        }),
         "thiscall" => Err(AbiDisabled::Unstable {
             feature: sym::abi_thiscall,
             explain: "thiscall is experimental and subject to change",
+        }),
+        "thiscall-unwind" => Err(AbiDisabled::Unstable {
+            feature: sym::abi_thiscall,
+            explain: "thiscall-unwind ABI is experimental and subject to change",
         }),
         "rust-call" => Err(AbiDisabled::Unstable {
             feature: sym::unboxed_closures,
@@ -203,14 +210,6 @@ pub fn is_stable(name: &str) -> Result<(), AbiDisabled> {
         "C-cmse-nonsecure-call" => Err(AbiDisabled::Unstable {
             feature: sym::abi_c_cmse_nonsecure_call,
             explain: "C-cmse-nonsecure-call ABI is experimental and subject to change",
-        }),
-        "thiscall-unwind" => Err(AbiDisabled::Unstable {
-            feature: sym::abi_thiscall,
-            explain: "thiscall-unwind ABI is experimental and subject to change",
-        }),
-        "vectorcall-unwind" => Err(AbiDisabled::Unstable {
-            feature: sym::abi_vectorcall,
-            explain: "vectorcall-unwind ABI is experimental and subject to change",
         }),
         "wasm" => Err(AbiDisabled::Unstable {
             feature: sym::wasm_abi,
