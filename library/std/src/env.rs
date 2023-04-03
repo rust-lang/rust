@@ -242,7 +242,6 @@ fn _var(key: &OsStr) -> Result<String, VarError> {
 ///  - the environment variable's name contains
 /// the equal sign character (`=`) or the NUL character
 ///
-///
 /// Note that the method will not check if the environment variable
 /// is valid Unicode. If you want to have an error on invalid UTF-8,
 /// use the [`var`] function instead.
