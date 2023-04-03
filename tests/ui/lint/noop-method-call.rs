@@ -1,7 +1,7 @@
 // check-pass
 
 #![allow(unused)]
-#![warn(noop_method_call)]
+#![warn(noop_method_call, clone_double_ref)]
 
 use std::borrow::Borrow;
 use std::ops::Deref;
@@ -15,6 +15,7 @@ fn main() {
     let non_clone_type_ref = &PlainType(1u32);
     let non_clone_type_ref_clone: &PlainType<u32> = non_clone_type_ref.clone();
     //~^ WARNING call to `.clone()` on a reference in this situation does nothing
+    //~| WARNING using `clone` on a double-reference, which copies the reference of type `PlainType<u32>`
 
     let clone_type_ref = &CloneType(1u32);
     let clone_type_ref_clone: CloneType<u32> = clone_type_ref.clone();
@@ -23,6 +24,7 @@ fn main() {
     // peels the outer reference off
     let clone_type_ref = &&CloneType(1u32);
     let clone_type_ref_clone: &CloneType<u32> = clone_type_ref.clone();
+    //~^ WARNING using `clone` on a double-reference, which copies the reference of type `CloneType<u32>`
 
     let non_deref_type = &PlainType(1u32);
     let non_deref_type_deref: &PlainType<u32> = non_deref_type.deref();
@@ -42,6 +44,7 @@ fn main() {
 
     let xs = ["a", "b", "c"];
     let _v: Vec<&str> = xs.iter().map(|x| x.clone()).collect(); // ok, but could use `*x` instead
+    //~^ WARNING using `clone` on a double-reference, which copies the reference of type `str`
 }
 
 fn generic<T>(non_clone_type: &PlainType<T>) {

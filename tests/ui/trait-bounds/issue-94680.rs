@@ -1,5 +1,7 @@
 // check-pass
 
+#![allow(clone_double_ref)]
+
 fn main() {
     println!("{:?}", {
         type T = ();
