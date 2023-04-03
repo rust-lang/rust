@@ -1174,17 +1174,23 @@ fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean:
     document_type_layout(w, cx, def_id);
 }
 
-fn print_tuple_struct_fields(w: &mut Buffer, cx: &Context<'_>, s: &[clean::Item]) {
-    for (i, ty) in s.iter().enumerate() {
-        if i > 0 {
-            w.write_str(", ");
+fn print_tuple_struct_fields<'a, 'cx: 'a>(
+    cx: &'a Context<'cx>,
+    s: &'a [clean::Item],
+) -> impl fmt::Display + 'a + Captures<'cx> {
+    display_fn(|f| {
+        for (i, ty) in s.iter().enumerate() {
+            if i > 0 {
+                f.write_str(", ")?;
+            }
+            match *ty.kind {
+                clean::StrippedItem(box clean::StructFieldItem(_)) => f.write_str("_")?,
+                clean::StructFieldItem(ref ty) => write!(f, "{}", ty.print(cx))?,
+                _ => unreachable!(),
+            }
         }
-        match *ty.kind {
-            clean::StrippedItem(box clean::StructFieldItem(_)) => w.write_str("_"),
-            clean::StructFieldItem(ref ty) => write!(w, "{}", ty.print(cx)),
-            _ => unreachable!(),
-        }
-    }
+        Ok(())
+    })
 }
 
 fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::Enum) {
@@ -1221,9 +1227,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
                     clean::VariantItem(ref var) => match var.kind {
                         clean::VariantKind::CLike => write!(w, "{}", name),
                         clean::VariantKind::Tuple(ref s) => {
-                            write!(w, "{}(", name);
-                            print_tuple_struct_fields(w, cx, s);
-                            w.write_str(")");
+                            write!(w, "{name}({})", print_tuple_struct_fields(cx, s),);
                         }
                         clean::VariantKind::Struct(ref s) => {
                             render_struct(w, v, None, None, &s.fields, "    ", false, cx);
@@ -1276,9 +1280,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
             let clean::VariantItem(variant_data) = &*variant.kind else { unreachable!() };
 
             if let clean::VariantKind::Tuple(ref s) = variant_data.kind {
-                w.write_str("(");
-                print_tuple_struct_fields(w, cx, s);
-                w.write_str(")");
+                write!(w, "({})", print_tuple_struct_fields(cx, s),);
             }
             w.write_str("</h3></section>");
 
