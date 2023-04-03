@@ -214,10 +214,15 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
                 if path.is_ident("code") {
                     self.code.set_once((), path.span().unwrap());
 
-                    let code = nested.parse::<TokenStream>()?;
+                    let code = nested.parse::<syn::LitStr>()?;
                     tokens.extend(quote! {
                         #diag.code(rustc_errors::DiagnosticId::Error(#code.to_string()));
                     });
+                } else {
+                    span_err(path.span().unwrap(), "unknown argument").note("only the `code` parameter is valid after the slug").emit();
+
+                    // consume the buffer so we don't have syntax errors from syn
+                    let _ = nested.parse::<TokenStream>();
                 }
                 Ok(())
             })?;

@@ -716,6 +716,9 @@ impl SubdiagnosticKind {
                 }
             }
 
+            let mut has_errors = false;
+            let input = nested.input;
+
             match (nested_name, &mut kind) {
                 ("code", SubdiagnosticKind::Suggestion { code_field, .. }) => {
                     let code_init = build_suggestion_code(
@@ -734,6 +737,7 @@ impl SubdiagnosticKind {
                     let value = get_string!();
                     let value = Applicability::from_str(&value.value()).unwrap_or_else(|()| {
                         span_err(value.span().unwrap(), "invalid applicability").emit();
+                        has_errors = true;
                         Applicability::Unspecified
                     });
                     applicability.set_once(value, span);
@@ -749,6 +753,7 @@ impl SubdiagnosticKind {
                         span_err(value.span().unwrap(), "invalid suggestion style")
                             .help("valid styles are `normal`, `short`, `hidden`, `verbose` and `tool-only`")
                             .emit();
+                        has_errors = true;
                         SuggestionKind::Normal
                     });
 
@@ -762,15 +767,23 @@ impl SubdiagnosticKind {
                             "only `style`, `code` and `applicability` are valid nested attributes",
                         )
                         .emit();
+                    has_errors = true;
                 }
                 (_, SubdiagnosticKind::MultipartSuggestion { .. }) => {
                     span_err(path_span, "invalid nested attribute")
                         .help("only `style` and `applicability` are valid nested attributes")
                         .emit();
+                    has_errors = true;
                 }
                 _ => {
                     span_err(path_span, "invalid nested attribute").emit();
+                    has_errors = true;
                 }
+            }
+
+            if has_errors {
+                // Consume the rest of the input to avoid spamming errors
+                let _ = input.parse::<TokenStream>();
             }
 
             Ok(())
