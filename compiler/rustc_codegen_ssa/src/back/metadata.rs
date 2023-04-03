@@ -22,7 +22,7 @@ use rustc_session::cstore::MetadataLoader;
 use rustc_session::Session;
 use rustc_target::abi::Endian;
 use rustc_target::spec::{RelocModel, Target};
-use object::elf::NT_GNU_PROPERTY_TYPE_0;
+//use object::elf::NT_GNU_PROPERTY_TYPE_0;
 
 
 /// The default metadata loader. This is used by cg_llvm and cg_clif.
@@ -216,45 +216,24 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
       let kind = SectionKind::Note;
       let section = file.add_section(segment, name, kind);
       let mut data:Vec<u8> = Vec::new();
-      // Size of the n_name field
-      let n_namsz = (4 as u32).to_ne_bytes();
-      data.extend_from_slice(&n_namsz);
-      // Size of the n_desc field 
-      let n_descz = (16 as u32).to_ne_bytes();
-      data.extend_from_slice(&n_descz); 
-      // Type of note descriptor 
-      let n_type = (NT_GNU_PROPERTY_TYPE_0 as u32).to_ne_bytes();
-      data.extend_from_slice(&n_type);
-      // Owner of the program property note 
-      /*
-      data.push(0);
-      data.push(b'U');
-      data.push(b'N');
-      data.push(b'G');
-     */
-      data.push(b'G');
+      let n_namsz:u32 = 4; // Size of the n_name field
+      let n_descz:u32 = 16; // Size of the n_desc field       
+      let n_type:u32 = 5; // Type of note descriptor 
+      let values = [n_namsz, n_descz, n_type];
+      values.map(|v| data.extend_from_slice(&(v.to_ne_bytes())));
+      data.push(b'G'); // Owner of the program property note
       data.push(b'N');
       data.push(b'U');
-      data.push(0);    
-      /* The type of program property 
-      .word   0xc0000000; /* pr_type = GNU_PROPERTY_AARCH64_FEATURE_1_AND */
-      OutStreamer.emitIntValue(ELF::GNU_PROPERTY_AARCH64_FEATURE_1_AND, 4);
-      pub const GNU_PROPERTY_AARCH64_FEATURE_1_AND: u32 = 3221225472;
-      */    
-      let pr_type =  (0xc0000000 as u32).to_ne_bytes();
-      data.extend_from_slice(&pr_type);      
-      // The size of the pr_data field
-      let pr_datasz = (4 as u32).to_ne_bytes();
-      data.extend_from_slice(&pr_datasz);    
-      // The program property descriptor
-      let pr_data = (e_flags as u32).to_ne_bytes();
-      data.extend_from_slice(&pr_data);      
-      // The padding if necessary 
-      let pr_padding = (0 as u32).to_ne_bytes();    
-      data.extend_from_slice(&pr_padding); 
+      data.push(0);       
+      let pr_type:u32 = 0xc0000002;
+      let pr_datasz:u32 = 4 ;//size of the pr_data field 
+      let pr_data:u32 = 3; //program property descriptor
+      let pr_padding:u32 = 3;//padding
+      let values = [pr_type, pr_datasz, pr_data, pr_padding];
+      values.map(|v| data.extend_from_slice(&(v.to_ne_bytes())));    
       let x = data.len();
       assert_eq!(x, 32);
-      let _ = file.append_section_data(section, &data, 8);   
+      let _ = file.append_section_data(section, &data, 3);   
     } 
     file.flags = FileFlags::Elf { os_abi, abi_version, e_flags };
     Some(file)
