@@ -3,6 +3,7 @@ use rustc_ast::ast::Attribute;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefIdSet;
 use rustc_hir::{self as hir, def::Res, QPath};
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::{
     lint::in_external_macro,
@@ -113,7 +114,16 @@ fn check_needless_must_use(
                 diag.span_suggestion(attr.span, "remove the attribute", "", Applicability::MachineApplicable);
             },
         );
-    } else if attr.value_str().is_none() && is_must_use_ty(cx, return_ty(cx, item_id)) && !sig.header.is_async() {
+    } else if attr.value_str().is_none() && is_must_use_ty(cx, return_ty(cx, item_id)) {
+        // Ignore async functions unless Future::Output type is a must_use type
+        if sig.header.is_async() {
+            let infcx = cx.tcx.infer_ctxt().build();
+            if let Some(future_ty) = infcx.get_impl_future_output_ty(return_ty(cx, item_id))
+			&& !is_must_use_ty(cx, future_ty) {
+				return;
+			}
+        }
+
         span_lint_and_help(
             cx,
             DOUBLE_MUST_USE,
