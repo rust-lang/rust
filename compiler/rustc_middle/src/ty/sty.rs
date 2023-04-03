@@ -60,7 +60,7 @@ pub struct FreeRegion {
 #[derive(HashStable)]
 pub enum BoundRegionKind {
     /// An anonymous region parameter for a given fn (&T)
-    BrAnon(u32, Option<Span>),
+    BrAnon(BoundVar, Option<Span>),
 
     /// Named region parameters for functions (a in &'a T)
     ///
@@ -108,12 +108,12 @@ impl BoundRegionKind {
         }
     }
 
-    pub fn expect_anon(&self) -> u32 {
+    pub fn expect_anon(&self) -> BoundVar {
         match *self {
             BoundRegionKind::BrNamed(_, _) | BoundRegionKind::BrEnv => {
                 bug!("expected anon region: {self:?}")
             }
-            BoundRegionKind::BrAnon(idx, _) => idx,
+            BoundRegionKind::BrAnon(var, _) => var,
         }
     }
 }
@@ -1529,12 +1529,12 @@ pub struct BoundTy {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub enum BoundTyKind {
-    Anon(u32),
+    Anon(BoundVar),
     Param(DefId, Symbol),
 }
 
 impl BoundTyKind {
-    pub fn expect_anon(self) -> u32 {
+    pub fn expect_anon(self) -> BoundVar {
         match self {
             BoundTyKind::Anon(i) => i,
             _ => bug!(),
@@ -1544,7 +1544,7 @@ impl BoundTyKind {
 
 impl From<BoundVar> for BoundTy {
     fn from(var: BoundVar) -> Self {
-        BoundTy { var, kind: BoundTyKind::Anon(var.as_u32()) }
+        BoundTy { var, kind: BoundTyKind::Anon(var) }
     }
 }
 

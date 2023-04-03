@@ -772,7 +772,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         r: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
         let var = self.canonical_var(info, r.into());
-        let br = ty::BoundRegion { var, kind: ty::BrAnon(var.as_u32(), None) };
+        let br = ty::BoundRegion { var, kind: ty::BrAnon(var, None) };
         self.interner().mk_re_late_bound(self.binder_index, br)
     }
 

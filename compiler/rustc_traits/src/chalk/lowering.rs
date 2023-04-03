@@ -376,7 +376,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
             ty::Placeholder(_placeholder) => {
                 chalk_ir::TyKind::Placeholder(chalk_ir::PlaceholderIndex {
                     ui: chalk_ir::UniverseIndex { counter: _placeholder.universe.as_usize() },
-                    idx: _placeholder.name.expect_anon() as usize,
+                    idx: _placeholder.name.expect_anon().as_usize(),
                 })
             }
             ty::Infer(_infer) => unimplemented!(),
@@ -475,16 +475,16 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
                 ),
             },
             TyKind::Function(_quantified_ty) => unimplemented!(),
-            TyKind::BoundVar(bound) => ty::Bound(
-                ty::DebruijnIndex::from_usize(bound.debruijn.depth() as usize),
-                ty::BoundTy {
-                    var: ty::BoundVar::from_usize(bound.index),
-                    kind: ty::BoundTyKind::Anon(bound.index as u32),
-                },
-            ),
+            TyKind::BoundVar(bound) => {
+                let var = ty::BoundVar::from_usize(bound.index);
+                ty::Bound(
+                    ty::DebruijnIndex::from_usize(bound.debruijn.depth() as usize),
+                    ty::BoundTy { var, kind: ty::BoundTyKind::Anon(var) },
+                )
+            }
             TyKind::Placeholder(placeholder) => ty::Placeholder(ty::Placeholder {
                 universe: ty::UniverseIndex::from_usize(placeholder.ui.counter),
-                name: ty::BoundTyKind::Anon(placeholder.idx as u32),
+                name: ty::BoundTyKind::Anon(ty::BoundVar::from_usize(placeholder.idx)),
             }),
             TyKind::InferenceVar(_, _) => unimplemented!(),
             TyKind::Dyn(_) => unimplemented!(),
@@ -526,17 +526,17 @@ impl<'tcx> LowerInto<'tcx, Region<'tcx>> for &chalk_ir::Lifetime<RustInterner<'t
     fn lower_into(self, interner: RustInterner<'tcx>) -> Region<'tcx> {
         let tcx = interner.tcx;
         match self.data(interner) {
-            chalk_ir::LifetimeData::BoundVar(var) => tcx.mk_re_late_bound(
-                ty::DebruijnIndex::from_u32(var.debruijn.depth()),
-                ty::BoundRegion {
-                    var: ty::BoundVar::from_usize(var.index),
-                    kind: ty::BrAnon(var.index as u32, None),
-                },
-            ),
+            chalk_ir::LifetimeData::BoundVar(var) => {
+                let v = ty::BoundVar::from_usize(var.index);
+                tcx.mk_re_late_bound(
+                    ty::DebruijnIndex::from_u32(var.debruijn.depth()),
+                    ty::BoundRegion { var: v, kind: ty::BrAnon(v, None) },
+                )
+            }
             chalk_ir::LifetimeData::InferenceVar(_var) => unimplemented!(),
             chalk_ir::LifetimeData::Placeholder(p) => tcx.mk_re_placeholder(ty::Placeholder {
                 universe: ty::UniverseIndex::from_usize(p.ui.counter),
-                name: ty::BoundRegionKind::BrAnon(p.idx as u32, None),
+                name: ty::BrAnon(ty::BoundVar::from_usize(p.idx), None),
             }),
             chalk_ir::LifetimeData::Static => tcx.lifetimes.re_static,
             chalk_ir::LifetimeData::Erased => tcx.lifetimes.re_erased,
@@ -682,10 +682,11 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
         // shifted in by one so that they are still escaping.
         let predicates = ty::fold::shift_vars(interner.tcx, self, 1);
 
+        let var = ty::BoundVar::from_usize(0);
         let self_ty = interner.tcx.mk_bound(
             // This is going to be wrapped in a binder
             ty::DebruijnIndex::from_usize(1),
-            ty::BoundTy { var: ty::BoundVar::from_usize(0), kind: ty::BoundTyKind::Anon(0) },
+            ty::BoundTy { var, kind: ty::BoundTyKind::Anon(var) },
         );
         let where_clauses = predicates.into_iter().map(|predicate| {
             let (predicate, binders, _named_regions) =
@@ -885,15 +886,15 @@ pub(crate) fn collect_bound_vars<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
     interner: RustInterner<'tcx>,
     tcx: TyCtxt<'tcx>,
     ty: Binder<'tcx, T>,
-) -> (T, chalk_ir::VariableKinds<RustInterner<'tcx>>, BTreeMap<DefId, u32>) {
+) -> (T, chalk_ir::VariableKinds<RustInterner<'tcx>>, BTreeMap<DefId, ty::BoundVar>) {
     let mut bound_vars_collector = BoundVarsCollector::new();
     ty.as_ref().skip_binder().visit_with(&mut bound_vars_collector);
     let mut parameters = bound_vars_collector.parameters;
-    let named_parameters: BTreeMap<DefId, u32> = bound_vars_collector
+    let named_parameters: BTreeMap<DefId, ty::BoundVar> = bound_vars_collector
         .named_parameters
         .into_iter()
         .enumerate()
-        .map(|(i, def_id)| (def_id, (i + parameters.len()) as u32))
+        .map(|(i, def_id)| (def_id, ty::BoundVar::from_usize(i + parameters.len())))
         .collect();
 
     let mut bound_var_substitutor = NamedBoundVarSubstitutor::new(tcx, &named_parameters);
@@ -905,7 +906,7 @@ pub(crate) fn collect_bound_vars<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
 
     (0..parameters.len()).for_each(|i| {
         parameters
-            .get(&(i as u32))
+            .get(&ty::BoundVar::from_usize(i))
             .or_else(|| bug!("Skipped bound var index: parameters={:?}", parameters));
     });
 
@@ -916,7 +917,7 @@ pub(crate) fn collect_bound_vars<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
 
 pub(crate) struct BoundVarsCollector<'tcx> {
     binder_index: ty::DebruijnIndex,
-    pub(crate) parameters: BTreeMap<u32, chalk_ir::VariableKind<RustInterner<'tcx>>>,
+    pub(crate) parameters: BTreeMap<ty::BoundVar, chalk_ir::VariableKind<RustInterner<'tcx>>>,
     pub(crate) named_parameters: Vec<DefId>,
 }
 
@@ -944,7 +945,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for BoundVarsCollector<'tcx> {
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         match *t.kind() {
             ty::Bound(debruijn, bound_ty) if debruijn == self.binder_index => {
-                match self.parameters.entry(bound_ty.var.as_u32()) {
+                match self.parameters.entry(bound_ty.var) {
                     Entry::Vacant(entry) => {
                         entry.insert(chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General));
                     }
@@ -1002,11 +1003,11 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for BoundVarsCollector<'tcx> {
 struct NamedBoundVarSubstitutor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     binder_index: ty::DebruijnIndex,
-    named_parameters: &'a BTreeMap<DefId, u32>,
+    named_parameters: &'a BTreeMap<DefId, ty::BoundVar>,
 }
 
 impl<'a, 'tcx> NamedBoundVarSubstitutor<'a, 'tcx> {
-    fn new(tcx: TyCtxt<'tcx>, named_parameters: &'a BTreeMap<DefId, u32>) -> Self {
+    fn new(tcx: TyCtxt<'tcx>, named_parameters: &'a BTreeMap<DefId, ty::BoundVar>) -> Self {
         NamedBoundVarSubstitutor { tcx, binder_index: ty::INNERMOST, named_parameters }
     }
 }
@@ -1030,8 +1031,10 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for NamedBoundVarSubstitutor<'a, 'tcx> {
         match *r {
             ty::ReLateBound(index, br) if index == self.binder_index => match br.kind {
                 ty::BrNamed(def_id, _name) => match self.named_parameters.get(&def_id) {
-                    Some(idx) => {
-                        let new_br = ty::BoundRegion { var: br.var, kind: ty::BrAnon(*idx, None) };
+                    Some(&var) => {
+                        // njn: can the two vars differ here? Seemingly not
+                        assert_eq!(br.var, var);
+                        let new_br = ty::BoundRegion { var: br.var, kind: ty::BrAnon(var, None) };
                         return self.tcx.mk_re_late_bound(index, new_br);
                     }
                     None => panic!("Missing `BrNamed`."),
@@ -1053,8 +1056,9 @@ pub(crate) struct ParamsSubstitutor<'tcx> {
     binder_index: ty::DebruijnIndex,
     list: Vec<rustc_middle::ty::ParamTy>,
     next_ty_placeholder: usize,
-    pub(crate) params: rustc_data_structures::fx::FxHashMap<u32, rustc_middle::ty::ParamTy>,
-    pub(crate) named_regions: BTreeMap<DefId, u32>,
+    pub(crate) params:
+        rustc_data_structures::fx::FxHashMap<ty::BoundVar, rustc_middle::ty::ParamTy>,
+    pub(crate) named_regions: BTreeMap<DefId, ty::BoundVar>,
 }
 
 impl<'tcx> ParamsSubstitutor<'tcx> {
@@ -1090,15 +1094,16 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ParamsSubstitutor<'tcx> {
             ty::Param(param) => match self.list.iter().position(|r| r == &param) {
                 Some(idx) => self.tcx.mk_placeholder(ty::PlaceholderType {
                     universe: ty::UniverseIndex::from_usize(0),
-                    name: ty::BoundTyKind::Anon(idx as u32),
+                    name: ty::BoundTyKind::Anon(ty::BoundVar::from_usize(idx)),
                 }),
                 None => {
                     self.list.push(param);
                     let idx = self.list.len() - 1 + self.next_ty_placeholder;
-                    self.params.insert(idx as u32, param);
+                    let var = ty::BoundVar::from_usize(idx);
+                    self.params.insert(var, param);
                     self.tcx.mk_placeholder(ty::PlaceholderType {
                         universe: ty::UniverseIndex::from_usize(0),
-                        name: ty::BoundTyKind::Anon(idx as u32),
+                        name: ty::BoundTyKind::Anon(var),
                     })
                 }
             },
@@ -1112,20 +1117,14 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ParamsSubstitutor<'tcx> {
             // since canonicalization will already change these to canonical
             // variables (ty::ReLateBound).
             ty::ReEarlyBound(_re) => match self.named_regions.get(&_re.def_id) {
-                Some(idx) => {
-                    let br = ty::BoundRegion {
-                        var: ty::BoundVar::from_u32(*idx),
-                        kind: ty::BrAnon(*idx, None),
-                    };
+                Some(&var) => {
+                    let br = ty::BoundRegion { var, kind: ty::BrAnon(var, None) };
                     self.tcx.mk_re_late_bound(self.binder_index, br)
                 }
                 None => {
-                    let idx = self.named_regions.len() as u32;
-                    let br = ty::BoundRegion {
-                        var: ty::BoundVar::from_u32(idx),
-                        kind: ty::BrAnon(idx, None),
-                    };
-                    self.named_regions.insert(_re.def_id, idx);
+                    let var = ty::BoundVar::from_usize(self.named_regions.len());
+                    let br = ty::BoundRegion { var, kind: ty::BrAnon(var, None) };
+                    self.named_regions.insert(_re.def_id, var);
                     self.tcx.mk_re_late_bound(self.binder_index, br)
                 }
             },
@@ -1137,13 +1136,13 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ParamsSubstitutor<'tcx> {
 
 pub(crate) struct ReverseParamsSubstitutor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    params: rustc_data_structures::fx::FxHashMap<u32, rustc_middle::ty::ParamTy>,
+    params: rustc_data_structures::fx::FxHashMap<ty::BoundVar, rustc_middle::ty::ParamTy>,
 }
 
 impl<'tcx> ReverseParamsSubstitutor<'tcx> {
     pub(crate) fn new(
         tcx: TyCtxt<'tcx>,
-        params: rustc_data_structures::fx::FxHashMap<u32, rustc_middle::ty::ParamTy>,
+        params: rustc_data_structures::fx::FxHashMap<ty::BoundVar, rustc_middle::ty::ParamTy>,
     ) -> Self {
         Self { tcx, params }
     }
@@ -1190,7 +1189,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for PlaceholdersCollector {
         match t.kind() {
             ty::Placeholder(p) if p.universe == self.universe_index => {
                 self.next_ty_placeholder =
-                    self.next_ty_placeholder.max(p.name.expect_anon() as usize + 1);
+                    self.next_ty_placeholder.max(p.name.expect_anon().as_usize() + 1);
             }
 
             _ => (),
@@ -1203,7 +1202,8 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for PlaceholdersCollector {
         match *r {
             ty::RePlaceholder(p) if p.universe == self.universe_index => {
                 if let ty::BoundRegionKind::BrAnon(anon, _) = p.name {
-                    self.next_anon_region_placeholder = self.next_anon_region_placeholder.max(anon);
+                    self.next_anon_region_placeholder =
+                        self.next_anon_region_placeholder.max(anon.as_u32());
                 }
                 // FIXME: This doesn't seem to handle BrNamed at all?
             }

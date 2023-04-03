@@ -188,7 +188,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 } else {
                     // For placeholders which were already part of the input, we simply map this
                     // universal bound variable back the placeholder of the input.
-                    original_values[info.expect_anon_placeholder() as usize]
+                    original_values[info.expect_anon_placeholder().as_usize()]
                 }
             },
         ));

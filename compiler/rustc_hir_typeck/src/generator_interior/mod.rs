@@ -240,8 +240,8 @@ pub fn resolve_interior<'a, 'tcx>(
 
             let mut counter = 0;
             let mut mk_bound_region = |span| {
-                let kind = ty::BrAnon(counter, span);
                 let var = ty::BoundVar::from_u32(counter);
+                let kind = ty::BrAnon(var, span);
                 counter += 1;
                 ty::BoundRegion { var, kind }
             };
@@ -282,7 +282,6 @@ pub fn resolve_interior<'a, 'tcx>(
         .collect();
 
     let mut bound_vars: SmallVec<[BoundVariableKind; 4]> = smallvec![];
-    let mut counter = 0;
     // Optimization: If there is only one captured type, then we don't actually
     // need to fold and reindex (since the first type doesn't change).
     let type_causes = if captured_tys.len() > 0 {
@@ -293,13 +292,12 @@ pub fn resolve_interior<'a, 'tcx>(
             type_causes,
             FnMutDelegate {
                 regions: &mut |br| {
+                    let var = ty::BoundVar::from_usize(bound_vars.len());
                     let kind = match br.kind {
-                        ty::BrAnon(_, span) => ty::BrAnon(counter, span),
+                        ty::BrAnon(_, span) => ty::BrAnon(var, span),
                         _ => br.kind,
                     };
-                    let var = ty::BoundVar::from_usize(bound_vars.len());
                     bound_vars.push(ty::BoundVariableKind::Region(kind));
-                    counter += 1;
                     fcx.tcx.mk_re_late_bound(ty::INNERMOST, ty::BoundRegion { var, kind })
                 },
                 types: &mut |b| bug!("unexpected bound ty in binder: {b:?}"),

@@ -257,7 +257,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
             self.primitive_var_infos.push(CanonicalVarInfo { kind });
             var
         });
-        let br = ty::BoundRegion { var, kind: BrAnon(var.as_u32(), None) };
+        let br = ty::BoundRegion { var, kind: BrAnon(var, None) };
         self.interner().mk_re_late_bound(self.binder_index, br)
     }
 
@@ -300,14 +300,14 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
             ty::Placeholder(placeholder) => match self.canonicalize_mode {
                 CanonicalizeMode::Input => CanonicalVarKind::PlaceholderTy(ty::Placeholder {
                     universe: placeholder.universe,
-                    name: BoundTyKind::Anon(self.variables.len() as u32),
+                    name: BoundTyKind::Anon(ty::BoundVar::from_usize(self.variables.len())),
                 }),
                 CanonicalizeMode::Response { .. } => CanonicalVarKind::PlaceholderTy(placeholder),
             },
             ty::Param(_) => match self.canonicalize_mode {
                 CanonicalizeMode::Input => CanonicalVarKind::PlaceholderTy(ty::Placeholder {
                     universe: ty::UniverseIndex::ROOT,
-                    name: ty::BoundTyKind::Anon(self.variables.len() as u32),
+                    name: ty::BoundTyKind::Anon(ty::BoundVar::from(self.variables.len())),
                 }),
                 CanonicalizeMode::Response { .. } => bug!("param ty in response: {t:?}"),
             },
@@ -345,7 +345,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
                 var
             }),
         );
-        let bt = ty::BoundTy { var, kind: BoundTyKind::Anon(var.index() as u32) };
+        let bt = ty::BoundTy { var, kind: BoundTyKind::Anon(var) };
         self.interner().mk_bound(self.binder_index, bt)
     }
 

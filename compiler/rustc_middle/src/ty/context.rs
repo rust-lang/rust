@@ -384,12 +384,10 @@ impl<'tcx> CommonLifetimes<'tcx> {
             .map(|i| {
                 (0..NUM_PREINTERNED_RE_LATE_BOUNDS_V)
                     .map(|v| {
+                        let var = ty::BoundVar::from_u32(v);
                         mk(ty::ReLateBound(
-                            ty::DebruijnIndex::from(i),
-                            ty::BoundRegion {
-                                var: ty::BoundVar::from(v),
-                                kind: ty::BrAnon(v, None),
-                            },
+                            ty::DebruijnIndex::from_u32(i),
+                            ty::BoundRegion { var, kind: ty::BrAnon(var, None) },
                         ))
                     })
                     .collect()
@@ -2076,9 +2074,9 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> Region<'tcx> {
         // Use a pre-interned one when possible.
         if let ty::BoundRegion { var, kind: ty::BrAnon(v, None) } = bound_region
-            && var.as_u32() == v
+            && var == v
             && let Some(inner) = self.lifetimes.re_late_bounds.get(debruijn.as_usize())
-            && let Some(re) = inner.get(v as usize).copied()
+            && let Some(re) = inner.get(v.as_usize()).copied()
         {
             re
         } else {

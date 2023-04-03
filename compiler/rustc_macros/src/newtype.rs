@@ -254,6 +254,12 @@ impl Parse for Newtype {
                 }
             }
 
+            impl std::ops::AddAssign<usize> for #name {
+                fn add_assign(&mut self, rhs: usize) {
+                    *self = Self::from_usize(self.as_usize() + rhs)
+                }
+            }
+
             impl rustc_index::vec::Idx for #name {
                 #[inline]
                 fn new(value: usize) -> Self {

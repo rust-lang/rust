@@ -411,10 +411,8 @@ impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
     pub fn bind(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Self {
         let inner = tcx.fold_regions(ty, |r, depth| match r.kind() {
             ty::ReVar(vid) => {
-                let br = ty::BoundRegion {
-                    var: ty::BoundVar::new(vid.index()),
-                    kind: ty::BrAnon(vid.as_u32(), None),
-                };
+                let var = ty::BoundVar::new(vid.index());
+                let br = ty::BoundRegion { var, kind: ty::BrAnon(var, None) };
                 tcx.mk_re_late_bound(depth, br)
             }
             _ => bug!("unexpected region in ClosureOutlivesSubjectTy: {r:?}"),

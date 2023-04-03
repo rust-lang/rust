@@ -3001,7 +3001,7 @@ fn bind_generator_hidden_types_above<'tcx>(
 
     let considering_regions = infcx.considering_regions;
 
-    let num_bound_variables = bound_vars.len() as u32;
+    let num_bound_variables = bound_vars.len();
     let mut counter = num_bound_variables;
 
     let hidden_types: Vec<_> = tcx
@@ -3015,10 +3015,8 @@ fn bind_generator_hidden_types_above<'tcx>(
             if considering_regions {
                 ty = tcx.fold_regions(ty, |mut r, current_depth| {
                     if let ty::ReErased = r.kind() {
-                        let br = ty::BoundRegion {
-                            var: ty::BoundVar::from_u32(counter),
-                            kind: ty::BrAnon(counter, None),
-                        };
+                        let var = ty::BoundVar::from_usize(counter);
+                        let br = ty::BoundRegion { var, kind: ty::BrAnon(var, None) };
                         counter += 1;
                         r = tcx.mk_re_late_bound(current_depth, br);
                     }
@@ -3032,8 +3030,11 @@ fn bind_generator_hidden_types_above<'tcx>(
     if considering_regions {
         debug_assert!(!hidden_types.has_erased_regions());
     }
-    let bound_vars = tcx.mk_bound_variable_kinds_from_iter(bound_vars.iter().chain(
-        (num_bound_variables..counter).map(|i| ty::BoundVariableKind::Region(ty::BrAnon(i, None))),
-    ));
+    let bound_vars =
+        tcx.mk_bound_variable_kinds_from_iter(bound_vars.iter().chain(
+            (num_bound_variables..counter).map(|i| {
+                ty::BoundVariableKind::Region(ty::BrAnon(ty::BoundVar::from_usize(i), None))
+            }),
+        ));
     ty::Binder::bind_with_vars(hidden_types, bound_vars)
 }
