@@ -19,7 +19,8 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
-use rustc_span::{sym, DUMMY_SP};
+use rustc_session::Limit;
+use rustc_span::sym;
 use rustc_target::abi::{Integer, IntegerType, Size, TargetDataLayout};
 use rustc_target::spec::abi::Abi;
 use smallvec::SmallVec;
@@ -225,10 +226,13 @@ impl<'tcx> TyCtxt<'tcx> {
         let recursion_limit = self.recursion_limit();
         for iteration in 0.. {
             if !recursion_limit.value_within_limit(iteration) {
-                return self.ty_error_with_message(
-                    DUMMY_SP,
-                    &format!("reached the recursion limit finding the struct tail for {}", ty),
-                );
+                let suggested_limit = match recursion_limit {
+                    Limit(0) => Limit(2),
+                    limit => limit * 2,
+                };
+                let reported =
+                    self.sess.emit_err(crate::error::RecursionLimitReached { ty, suggested_limit });
+                return self.ty_error(reported);
             }
             match *ty.kind() {
                 ty::Adt(def, substs) => {

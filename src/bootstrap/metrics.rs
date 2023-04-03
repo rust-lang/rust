@@ -11,7 +11,7 @@ use serde_derive::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::fs::File;
 use std::io::BufWriter;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 use sysinfo::{CpuExt, System, SystemExt};
 
 pub(crate) struct BuildMetrics {
@@ -27,6 +27,7 @@ impl BuildMetrics {
             system_info: System::new(),
             timer_start: None,
             invocation_timer_start: Instant::now(),
+            invocation_start: SystemTime::now(),
         });
 
         BuildMetrics { state }
@@ -124,6 +125,11 @@ impl BuildMetrics {
             }
         };
         invocations.push(JsonInvocation {
+            start_time: state
+                .invocation_start
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
             duration_including_children_sec: state.invocation_timer_start.elapsed().as_secs_f64(),
             children: steps.into_iter().map(|step| self.prepare_json_step(step)).collect(),
         });
@@ -166,6 +172,7 @@ struct MetricsState {
     system_info: System,
     timer_start: Option<Instant>,
     invocation_timer_start: Instant,
+    invocation_start: SystemTime,
 }
 
 struct StepMetrics {
@@ -194,6 +201,10 @@ struct JsonRoot {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 struct JsonInvocation {
+    // Unix timestamp in seconds
+    //
+    // This is necessary to easily correlate this invocation with logs or other data.
+    start_time: u64,
     duration_including_children_sec: f64,
     children: Vec<JsonNode>,
 }
