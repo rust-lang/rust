@@ -1928,7 +1928,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         use crate::traits::ObligationCauseCode::MatchExpressionArm;
         let mut suggestions = Vec::new();
         let span = trace.cause.span();
-        if let Some((expected, found)) = trace.values.ty() {
+        let values = self.resolve_vars_if_possible(trace.values);
+        if let Some((expected, found)) = values.ty() {
             match (expected.kind(), found.kind()) {
                 (ty::Tuple(_), ty::Tuple(_)) => {}
                 // If a tuple of length one was expected and the found expression has
