@@ -203,7 +203,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
         // Tracks the `VarSubVar` constraints generated for each region vid. We
         // later use this to expand across vids.
-        let mut constraints = IndexVec::from_elem_n(Vec::new(), var_values.values.len());
+        let mut constraints = IndexVec::from_elem(Vec::new(), &var_values.values);
         // Tracks the changed region vids.
         let mut changes = Vec::new();
         for constraint in self.data.constraints.keys() {

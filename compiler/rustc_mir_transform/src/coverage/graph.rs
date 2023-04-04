@@ -37,8 +37,7 @@ impl CoverageGraph {
         // `SwitchInt` to have multiple targets to the same destination `BasicBlock`, so
         // de-duplication is required. This is done without reordering the successors.
 
-        let bcbs_len = bcbs.len();
-        let mut seen = IndexVec::from_elem_n(false, bcbs_len);
+        let mut seen = IndexVec::from_elem(false, &bcbs);
         let successors = IndexVec::from_fn_n(
             |bcb| {
                 for b in seen.iter_mut() {
@@ -60,7 +59,7 @@ impl CoverageGraph {
             bcbs.len(),
         );
 
-        let mut predecessors = IndexVec::from_elem_n(Vec::new(), bcbs.len());
+        let mut predecessors = IndexVec::from_elem(Vec::new(), &bcbs);
         for (bcb, bcb_successors) in successors.iter_enumerated() {
             for &successor in bcb_successors {
                 predecessors[successor].push(bcb);
