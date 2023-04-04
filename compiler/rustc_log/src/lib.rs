@@ -83,7 +83,7 @@ pub fn init_env_logger(env: &str) -> Result<(), Error> {
         .with_verbose_exit(verbose_entry_exit)
         .with_verbose_entry(verbose_entry_exit)
         .with_indent_amount(2);
-    #[cfg(parallel_compiler)]
+    #[cfg(all(parallel_compiler, debug_assertions))]
     let layer = layer.with_thread_ids(true).with_thread_names(true);
 
     let subscriber = tracing_subscriber::Registry::default().with(filter).with(layer);
