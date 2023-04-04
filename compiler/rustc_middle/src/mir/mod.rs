@@ -1036,8 +1036,7 @@ impl<'tcx> LocalDecl<'tcx> {
 
 #[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub enum VarDebugInfoContents<'tcx> {
-    /// NOTE(eddyb) There's an unenforced invariant that this `Place` is
-    /// based on a `Local`, not a `Static`, and contains no indexing.
+    /// This `Place` only contains projection which satisfy `can_use_in_debuginfo`.
     Place(Place<'tcx>),
     Const(Constant<'tcx>),
     /// The user variable's data is split across several fragments,
@@ -1047,6 +1046,7 @@ pub enum VarDebugInfoContents<'tcx> {
     /// the underlying debuginfo feature this relies on.
     Composite {
         /// Type of the original user variable.
+        /// This cannot contain a union or an enum.
         ty: Ty<'tcx>,
         /// All the parts of the original user variable, which ended
         /// up in disjoint places, due to optimizations.
@@ -1075,17 +1075,16 @@ pub struct VarDebugInfoFragment<'tcx> {
     /// Where in the composite user variable this fragment is,
     /// represented as a "projection" into the composite variable.
     /// At lower levels, this corresponds to a byte/bit range.
-    // NOTE(eddyb) there's an unenforced invariant that this contains
-    // only `Field`s, and not into `enum` variants or `union`s.
-    // FIXME(eddyb) support this for `enum`s by either using DWARF's
+    ///
+    /// This can only contain `PlaceElem::Field`.
+    // FIXME support this for `enum`s by either using DWARF's
     // more advanced control-flow features (unsupported by LLVM?)
     // to match on the discriminant, or by using custom type debuginfo
     // with non-overlapping variants for the composite variable.
     pub projection: Vec<PlaceElem<'tcx>>,
 
     /// Where the data for this fragment can be found.
-    // NOTE(eddyb) There's an unenforced invariant that this `Place` is
-    // contains no indexing (with a non-constant index).
+    /// This `Place` only contains projection which satisfy `can_use_in_debuginfo`.
     pub contents: Place<'tcx>,
 }
 
@@ -1537,6 +1536,17 @@ impl<V, T> ProjectionElem<V, T> {
     /// Returns `true` if this is a `Field` projection with the given index.
     pub fn is_field_to(&self, f: FieldIdx) -> bool {
         matches!(*self, Self::Field(x, _) if x == f)
+    }
+
+    /// Returns `true` if this is accepted inside `VarDebugInfoContents::Place`.
+    pub fn can_use_in_debuginfo(&self) -> bool {
+        match self {
+            Self::Deref | Self::Downcast(_, _) | Self::Field(_, _) => true,
+            Self::ConstantIndex { .. }
+            | Self::Index(_)
+            | Self::OpaqueCast(_)
+            | Self::Subslice { .. } => false,
+        }
     }
 }
 

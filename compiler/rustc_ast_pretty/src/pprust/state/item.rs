@@ -2,6 +2,7 @@ use crate::pp::Breaks::Inconsistent;
 use crate::pprust::state::delimited::IterDelimited;
 use crate::pprust::state::{AnnNode, PrintState, State, INDENT_UNIT};
 
+use ast::StaticItem;
 use rustc_ast as ast;
 use rustc_ast::GenericBound;
 use rustc_ast::ModKind;
@@ -156,7 +157,7 @@ impl<'a> State<'a> {
                 self.print_use_tree(tree);
                 self.word(";");
             }
-            ast::ItemKind::Static(ty, mutbl, body) => {
+            ast::ItemKind::Static(box StaticItem { ty, mutability: mutbl, expr: body }) => {
                 let def = ast::Defaultness::Final;
                 self.print_item_const(
                     item.ident,
@@ -167,8 +168,15 @@ impl<'a> State<'a> {
                     def,
                 );
             }
-            ast::ItemKind::Const(def, ty, body) => {
-                self.print_item_const(item.ident, None, ty, body.as_deref(), &item.vis, *def);
+            ast::ItemKind::Const(box ast::ConstItem { defaultness, ty, expr }) => {
+                self.print_item_const(
+                    item.ident,
+                    None,
+                    ty,
+                    expr.as_deref(),
+                    &item.vis,
+                    *defaultness,
+                );
             }
             ast::ItemKind::Fn(box ast::Fn { defaultness, sig, generics, body }) => {
                 self.print_fn_full(
@@ -507,8 +515,8 @@ impl<'a> State<'a> {
             ast::AssocItemKind::Fn(box ast::Fn { defaultness, sig, generics, body }) => {
                 self.print_fn_full(sig, ident, generics, vis, *defaultness, body.as_deref(), attrs);
             }
-            ast::AssocItemKind::Const(def, ty, body) => {
-                self.print_item_const(ident, None, ty, body.as_deref(), vis, *def);
+            ast::AssocItemKind::Const(box ast::ConstItem { defaultness, ty, expr }) => {
+                self.print_item_const(ident, None, ty, expr.as_deref(), vis, *defaultness);
             }
             ast::AssocItemKind::Type(box ast::TyAlias {
                 defaultness,

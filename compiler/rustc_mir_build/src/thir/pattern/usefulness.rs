@@ -604,7 +604,7 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
                     let new_patterns = if pcx.is_non_exhaustive {
                         // Here we don't want the user to try to list all variants, we want them to add
                         // a wildcard, so we only suggest that.
-                        vec![DeconstructedPat::wildcard(pcx.ty)]
+                        vec![DeconstructedPat::wildcard(pcx.ty, pcx.span)]
                     } else {
                         let mut split_wildcard = SplitWildcard::new(pcx);
                         split_wildcard.split(pcx, matrix.heads().map(DeconstructedPat::ctor));
@@ -631,7 +631,7 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
                             .collect();
 
                         if hide_variant_show_wild {
-                            new.push(DeconstructedPat::wildcard(pcx.ty));
+                            new.push(DeconstructedPat::wildcard(pcx.ty, pcx.span));
                         }
 
                         new
@@ -734,7 +734,7 @@ impl<'p, 'tcx> Witness<'p, 'tcx> {
             let arity = ctor.arity(pcx);
             let pats = self.0.drain((len - arity)..).rev();
             let fields = Fields::from_iter(pcx.cx, pats);
-            DeconstructedPat::new(ctor.clone(), fields, pcx.ty, DUMMY_SP)
+            DeconstructedPat::new(ctor.clone(), fields, pcx.ty, pcx.span)
         };
 
         self.0.push(pat);
@@ -977,7 +977,7 @@ pub(crate) fn compute_match_usefulness<'p, 'tcx>(
         })
         .collect();
 
-    let wild_pattern = cx.pattern_arena.alloc(DeconstructedPat::wildcard(scrut_ty));
+    let wild_pattern = cx.pattern_arena.alloc(DeconstructedPat::wildcard(scrut_ty, DUMMY_SP));
     let v = PatStack::from_pattern(wild_pattern);
     let usefulness = is_useful(cx, &matrix, &v, FakeExtraWildcard, scrut_hir_id, false, true);
     let non_exhaustiveness_witnesses = match usefulness {

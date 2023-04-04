@@ -5,13 +5,12 @@ use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_infer::traits::Reveal;
 use rustc_middle::mir::interpret::Scalar;
-use rustc_middle::mir::visit::NonUseContext::VarDebugInfo;
-use rustc_middle::mir::visit::{PlaceContext, Visitor};
+use rustc_middle::mir::visit::{NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{
     traversal, BasicBlock, BinOp, Body, BorrowKind, CastKind, CopyNonOverlapping, Local, Location,
     MirPass, MirPhase, NonDivergingIntrinsic, Operand, Place, PlaceElem, PlaceRef, ProjectionElem,
     RetagKind, RuntimePhase, Rvalue, SourceScope, Statement, StatementKind, Terminator,
-    TerminatorKind, UnOp, START_BLOCK,
+    TerminatorKind, UnOp, VarDebugInfo, VarDebugInfoContents, START_BLOCK,
 };
 use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeVisitableExt};
 use rustc_mir_dataflow::impls::MaybeStorageLive;
@@ -419,13 +418,49 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         self.super_projection_elem(local, proj_base, elem, context, location);
     }
 
+    fn visit_var_debug_info(&mut self, debuginfo: &VarDebugInfo<'tcx>) {
+        let check_place = |place: Place<'_>| {
+            if place.projection.iter().any(|p| !p.can_use_in_debuginfo()) {
+                self.fail(
+                    START_BLOCK.start_location(),
+                    format!("illegal place {:?} in debuginfo for {:?}", place, debuginfo.name),
+                );
+            }
+        };
+        match debuginfo.value {
+            VarDebugInfoContents::Const(_) => {}
+            VarDebugInfoContents::Place(place) => check_place(place),
+            VarDebugInfoContents::Composite { ty, ref fragments } => {
+                for f in fragments {
+                    check_place(f.contents);
+                    if ty.is_union() || ty.is_enum() {
+                        self.fail(
+                            START_BLOCK.start_location(),
+                            format!("invalid type {:?} for composite debuginfo", ty),
+                        );
+                    }
+                    if f.projection.iter().any(|p| !matches!(p, PlaceElem::Field(..))) {
+                        self.fail(
+                            START_BLOCK.start_location(),
+                            format!(
+                                "illegal projection {:?} in debuginfo for {:?}",
+                                f.projection, debuginfo.name
+                            ),
+                        );
+                    }
+                }
+            }
+        }
+        self.super_var_debug_info(debuginfo);
+    }
+
     fn visit_place(&mut self, place: &Place<'tcx>, cntxt: PlaceContext, location: Location) {
         // Set off any `bug!`s in the type computation code
         let _ = place.ty(&self.body.local_decls, self.tcx);
 
         if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial)
             && place.projection.len() > 1
-            && cntxt != PlaceContext::NonUse(VarDebugInfo)
+            && cntxt != PlaceContext::NonUse(NonUseContext::VarDebugInfo)
             && place.projection[1..].contains(&ProjectionElem::Deref)
         {
             self.fail(location, format!("{:?}, has deref at the wrong place", place));
