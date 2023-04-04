@@ -660,7 +660,7 @@ fn short_item_info(
 // "Auto Trait Implementations," "Blanket Trait Implementations" (on struct/enum pages).
 pub(crate) fn render_impls(
     cx: &mut Context<'_>,
-    w: &mut Buffer,
+    mut w: impl Write,
     impls: &[&Impl],
     containing_item: &clean::Item,
     toggle_open_by_default: bool,
@@ -672,7 +672,7 @@ pub(crate) fn render_impls(
             let did = i.trait_did().unwrap();
             let provided_trait_methods = i.inner_impl().provided_trait_methods(tcx);
             let assoc_link = AssocItemLink::GotoSource(did.into(), &provided_trait_methods);
-            let mut buffer = if w.is_for_html() { Buffer::html() } else { Buffer::new() };
+            let mut buffer = Buffer::new();
             render_impl(
                 &mut buffer,
                 cx,
@@ -693,7 +693,7 @@ pub(crate) fn render_impls(
         })
         .collect::<Vec<_>>();
     rendered_impls.sort();
-    w.write_str(&rendered_impls.join(""));
+    w.write_str(&rendered_impls.join("")).unwrap();
 }
 
 /// Build a (possibly empty) `href` attribute (a key-value pair) for the given associated item.
@@ -1080,61 +1080,68 @@ impl<'a> AssocItemLink<'a> {
     }
 }
 
-fn write_impl_section_heading(w: &mut Buffer, title: &str, id: &str) {
+fn write_impl_section_heading(mut w: impl fmt::Write, title: &str, id: &str) {
     write!(
         w,
         "<h2 id=\"{id}\" class=\"small-section-header\">\
             {title}\
             <a href=\"#{id}\" class=\"anchor\">§</a>\
          </h2>"
-    );
+    )
+    .unwrap();
 }
 
 pub(crate) fn render_all_impls(
-    w: &mut Buffer,
+    mut w: impl Write,
     cx: &mut Context<'_>,
     containing_item: &clean::Item,
     concrete: &[&Impl],
     synthetic: &[&Impl],
     blanket_impl: &[&Impl],
 ) {
-    let mut impls = Buffer::empty_from(w);
+    let mut impls = Buffer::html();
     render_impls(cx, &mut impls, concrete, containing_item, true);
     let impls = impls.into_inner();
     if !impls.is_empty() {
-        write_impl_section_heading(w, "Trait Implementations", "trait-implementations");
-        write!(w, "<div id=\"trait-implementations-list\">{}</div>", impls);
+        write_impl_section_heading(&mut w, "Trait Implementations", "trait-implementations");
+        write!(w, "<div id=\"trait-implementations-list\">{}</div>", impls).unwrap();
     }
 
     if !synthetic.is_empty() {
-        write_impl_section_heading(w, "Auto Trait Implementations", "synthetic-implementations");
-        w.write_str("<div id=\"synthetic-implementations-list\">");
-        render_impls(cx, w, synthetic, containing_item, false);
-        w.write_str("</div>");
+        write_impl_section_heading(
+            &mut w,
+            "Auto Trait Implementations",
+            "synthetic-implementations",
+        );
+        w.write_str("<div id=\"synthetic-implementations-list\">").unwrap();
+        render_impls(cx, &mut w, synthetic, containing_item, false);
+        w.write_str("</div>").unwrap();
     }
 
     if !blanket_impl.is_empty() {
-        write_impl_section_heading(w, "Blanket Implementations", "blanket-implementations");
-        w.write_str("<div id=\"blanket-implementations-list\">");
-        render_impls(cx, w, blanket_impl, containing_item, false);
-        w.write_str("</div>");
+        write_impl_section_heading(&mut w, "Blanket Implementations", "blanket-implementations");
+        w.write_str("<div id=\"blanket-implementations-list\">").unwrap();
+        render_impls(cx, &mut w, blanket_impl, containing_item, false);
+        w.write_str("</div>").unwrap();
     }
 }
 
-fn render_assoc_items(
-    w: &mut Buffer,
-    cx: &mut Context<'_>,
-    containing_item: &clean::Item,
+fn render_assoc_items<'a, 'cx: 'a>(
+    cx: &'a mut Context<'cx>,
+    containing_item: &'a clean::Item,
     it: DefId,
-    what: AssocItemRender<'_>,
-) {
+    what: AssocItemRender<'a>,
+) -> impl fmt::Display + 'a + Captures<'cx> {
     let mut derefs = DefIdSet::default();
     derefs.insert(it);
-    render_assoc_items_inner(w, cx, containing_item, it, what, &mut derefs)
+    display_fn(move |f| {
+        render_assoc_items_inner(f, cx, containing_item, it, what, &mut derefs);
+        Ok(())
+    })
 }
 
 fn render_assoc_items_inner(
-    w: &mut Buffer,
+    mut w: &mut dyn fmt::Write,
     cx: &mut Context<'_>,
     containing_item: &clean::Item,
     it: DefId,
@@ -1147,7 +1154,7 @@ fn render_assoc_items_inner(
     let Some(v) = cache.impls.get(&it) else { return };
     let (non_trait, traits): (Vec<_>, _) = v.iter().partition(|i| i.inner_impl().trait_.is_none());
     if !non_trait.is_empty() {
-        let mut tmp_buf = Buffer::empty_from(w);
+        let mut tmp_buf = Buffer::html();
         let (render_mode, id) = match what {
             AssocItemRender::All => {
                 write_impl_section_heading(&mut tmp_buf, "Implementations", "implementations");
@@ -1171,7 +1178,7 @@ fn render_assoc_items_inner(
                 (RenderMode::ForDeref { mut_: deref_mut_ }, cx.derive_id(id))
             }
         };
-        let mut impls_buf = Buffer::empty_from(w);
+        let mut impls_buf = Buffer::html();
         for i in &non_trait {
             render_impl(
                 &mut impls_buf,
@@ -1191,10 +1198,10 @@ fn render_assoc_items_inner(
             );
         }
         if !impls_buf.is_empty() {
-            w.push_buffer(tmp_buf);
-            write!(w, "<div id=\"{}\">", id);
-            w.push_buffer(impls_buf);
-            w.write_str("</div>");
+            write!(w, "{}", tmp_buf.into_inner()).unwrap();
+            write!(w, "<div id=\"{}\">", id).unwrap();
+            write!(w, "{}", impls_buf.into_inner()).unwrap();
+            w.write_str("</div>").unwrap();
         }
     }
 
@@ -1204,7 +1211,7 @@ fn render_assoc_items_inner(
         if let Some(impl_) = deref_impl {
             let has_deref_mut =
                 traits.iter().any(|t| t.trait_did() == cx.tcx().lang_items().deref_mut_trait());
-            render_deref_methods(w, cx, impl_, containing_item, has_deref_mut, derefs);
+            render_deref_methods(&mut w, cx, impl_, containing_item, has_deref_mut, derefs);
         }
 
         // If we were already one level into rendering deref methods, we don't want to render
@@ -1223,7 +1230,7 @@ fn render_assoc_items_inner(
 }
 
 fn render_deref_methods(
-    w: &mut Buffer,
+    mut w: impl Write,
     cx: &mut Context<'_>,
     impl_: &Impl,
     container_item: &clean::Item,
@@ -1255,10 +1262,10 @@ fn render_deref_methods(
                 return;
             }
         }
-        render_assoc_items_inner(w, cx, container_item, did, what, derefs);
+        render_assoc_items_inner(&mut w, cx, container_item, did, what, derefs);
     } else if let Some(prim) = target.primitive_type() {
         if let Some(&did) = cache.primitive_locations.get(&prim) {
-            render_assoc_items_inner(w, cx, container_item, did, what, derefs);
+            render_assoc_items_inner(&mut w, cx, container_item, did, what, derefs);
         }
     }
 }
