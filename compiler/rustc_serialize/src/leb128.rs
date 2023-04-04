@@ -51,35 +51,42 @@ macro_rules! impl_read_unsigned_leb128 {
     ($fn_name:ident, $int_ty:ty) => {
         #[inline]
         pub fn $fn_name(slice: &[u8], position: &mut usize) -> $int_ty {
+            #[inline(never)]
+            fn slow_path(slice: &[u8], position: &mut usize) -> Option<$int_ty> {
+                let mut result = 0;
+                let mut shift = 0;
+                for consumed in 0..20 {
+                    let byte = slice[*position + consumed];
+                    result |= ((byte & 0x7F) as $int_ty) << shift;
+                    if (byte & 0x80) == 0 {
+                        *position += consumed + 1;
+                        return Some(result);
+                    }
+                    shift += 7;
+                }
+                None
+            }
+
             #[inline]
-            fn inner(slice: &[u8], position: &mut usize) -> Option<$int_ty> {
-                let mut pos = *position;
+            fn fast_path(slice: &[u8], position: &mut usize) -> Option<$int_ty> {
+                let pos = *position;
                 // The first iteration of this loop is unpeeled. This is a
                 // performance win because this code is hot and integer values less
                 // than 128 are very common, typically occurring 50-80% or more of
                 // the time, even for u64 and u128.
-                let byte = *slice.get(pos)?;
-                pos += 1;
-                if (byte & 0x80) == 0 {
-                    *position = pos;
-                    return Some(byte as $int_ty);
-                }
-                let mut result = (byte & 0x7F) as $int_ty;
-                let mut shift = 7;
-                loop {
-                    let byte = *slice.get(pos)?;
-                    pos += 1;
-                    if (byte & 0x80) == 0 {
-                        result |= (byte as $int_ty) << shift;
-                        *position = pos;
-                        return Some(result);
-                    } else {
-                        result |= ((byte & 0x7F) as $int_ty) << shift;
-                    }
-                    shift += 7;
+                if *slice.get(pos)? & 0x80 == 0 {
+                    *position += 1;
+                    Some(slice[pos] as $int_ty)
+                } else if *slice.get(pos + 1)? & 0x80 == 0 {
+                    *position += 2;
+                    Some(((slice[pos] & 0x7F) as $int_ty) | (slice[pos + 1] as $int_ty << 7))
+
+                } else {
+                    slow_path(slice, position)
                 }
             }
-            inner(slice, position).unwrap()
+
+            fast_path(slice, position).unwrap()
         }
     };
 }
