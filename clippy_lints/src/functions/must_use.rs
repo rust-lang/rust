@@ -1,7 +1,9 @@
+use hir::FnSig;
 use rustc_ast::ast::Attribute;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefIdSet;
 use rustc_hir::{self as hir, def::Res, QPath};
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::{
     lint::in_external_macro,
@@ -27,7 +29,7 @@ pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>
         let is_public = cx.effective_visibilities.is_exported(item.owner_id.def_id);
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
         if let Some(attr) = attr {
-            check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, attr);
+            check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, attr, sig);
         } else if is_public && !is_proc_macro(attrs) && !attrs.iter().any(|a| a.has_name(sym::no_mangle)) {
             check_must_use_candidate(
                 cx,
@@ -49,7 +51,7 @@ pub(super) fn check_impl_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Imp
         let attrs = cx.tcx.hir().attrs(item.hir_id());
         let attr = cx.tcx.get_attr(item.owner_id, sym::must_use);
         if let Some(attr) = attr {
-            check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, attr);
+            check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, attr, sig);
         } else if is_public && !is_proc_macro(attrs) && trait_ref_of_method(cx, item.owner_id.def_id).is_none() {
             check_must_use_candidate(
                 cx,
@@ -72,7 +74,7 @@ pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Tr
         let attrs = cx.tcx.hir().attrs(item.hir_id());
         let attr = cx.tcx.get_attr(item.owner_id, sym::must_use);
         if let Some(attr) = attr {
-            check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, attr);
+            check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, attr, sig);
         } else if let hir::TraitFn::Provided(eid) = *eid {
             let body = cx.tcx.hir().body(eid);
             if attr.is_none() && is_public && !is_proc_macro(attrs) {
@@ -97,6 +99,7 @@ fn check_needless_must_use(
     item_span: Span,
     fn_header_span: Span,
     attr: &Attribute,
+    sig: &FnSig<'_>,
 ) {
     if in_external_macro(cx.sess(), item_span) {
         return;
@@ -112,6 +115,15 @@ fn check_needless_must_use(
             },
         );
     } else if attr.value_str().is_none() && is_must_use_ty(cx, return_ty(cx, item_id)) {
+        // Ignore async functions unless Future::Output type is a must_use type
+        if sig.header.is_async() {
+            let infcx = cx.tcx.infer_ctxt().build();
+            if let Some(future_ty) = infcx.get_impl_future_output_ty(return_ty(cx, item_id))
+			&& !is_must_use_ty(cx, future_ty) {
+				return;
+			}
+        }
+
         span_lint_and_help(
             cx,
             DOUBLE_MUST_USE,
