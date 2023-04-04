@@ -109,6 +109,23 @@ the problem. A nice side-effect of this style is that you are left
 with a fairly fine-grained set of commits at the end, all of which
 build and pass tests. This often helps reviewing.
 
+## `x suggest`
+
+The `x suggest` subcommand suggests (and runs) a subset of the extensive
+`rust-lang/rust` tests based on files you have changed. This is especially useful
+for new contributors who have not mastered the arcane `x` flags yet and more
+experienced contributors as a shorthand for reducing mental effort. In all cases
+it is useful not to run the full tests (which can take on the order of tens of
+minutes) and just run a subset which are relevant to your changes. For example,
+running `tidy` and `linkchecker` is useful when editing Markdown files, whereas UI
+tests are much less likely to be helpful. While `x suggest` is a useful tool, it
+does not guarantee perfect coverage (just as PR CI isn't a substitute for bors).
+See the [dedicated chapter](../tests/suggest-tests.md) for more information and
+contribution instructions. 
+
+Please note that `x suggest` is in a beta state currently and the tests that it
+will suggest are limited.
+
 ## Configuring `rustup` to use nightly
 
 Some parts of the bootstrap process uses pinned, nightly versions of tools like

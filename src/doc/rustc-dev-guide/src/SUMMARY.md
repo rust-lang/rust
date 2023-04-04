@@ -24,6 +24,7 @@
         - [Test headers](./tests/headers.md)
     - [Performance testing](./tests/perf.md)
     - [Crater](./tests/crater.md)
+    - [Suggest tests tool](./tests/suggest-tests.md)
 - [Debugging the compiler](./compiler-debugging.md)
     - [Using the tracing/logging instrumentation](./tracing.md)
 - [Profiling the compiler](./profiling.md)
