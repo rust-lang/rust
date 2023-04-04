@@ -5,13 +5,15 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
+use rustc_index::vec::IndexVec;
 use rustc_middle::middle::stability;
 use rustc_middle::span_bug;
-use rustc_middle::ty::layout::LayoutError;
+use rustc_middle::ty::layout::{LayoutError, TyAndLayout};
 use rustc_middle::ty::{self, Adt, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_target::abi::{LayoutS, Primitive, TagEncoding, Variants};
+use rustc_target::abi::{LayoutS, Primitive, TagEncoding, VariantIdx, Variants};
+use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::fmt;
 use std::rc::Rc;
@@ -1936,111 +1938,77 @@ fn document_type_layout<'a, 'cx: 'a>(
     cx: &'a Context<'cx>,
     ty_def_id: DefId,
 ) -> impl fmt::Display + 'a + Captures<'cx> {
-    fn write_size_of_layout(mut w: impl fmt::Write, layout: &LayoutS, tag_size: u64) {
-        if layout.abi.is_unsized() {
-            write!(w, "(unsized)").unwrap();
-        } else {
-            let size = layout.size.bytes() - tag_size;
-            write!(w, "{size} byte{pl}", pl = if size == 1 { "" } else { "s" }).unwrap();
-            if layout.abi.is_uninhabited() {
-                write!(
-                    w,
-                    " (<a href=\"https://doc.rust-lang.org/stable/reference/glossary.html#uninhabited\">uninhabited</a>)"
-                ).unwrap();
+    #[derive(Template)]
+    #[template(path = "type_layout.html")]
+    struct TypeLayout<'a, 'cx> {
+        cx: &'a Context<'cx>,
+        ty_def_id: DefId,
+    }
+
+    impl<'a, 'cx: 'a> TypeLayout<'a, 'cx> {
+        fn variants<'b: 'a>(&'b self) -> Option<&'b IndexVec<VariantIdx, LayoutS>> {
+            if let Variants::Multiple { variants, .. } =
+                    self.type_layout().unwrap().layout.variants() && !variants.is_empty() {
+                Some(&variants)
+            } else {
+                None
             }
+        }
+        fn type_layout<'b: 'a>(&'b self) -> Result<TyAndLayout<'cx>, LayoutError<'cx>> {
+            let tcx = self.cx.tcx();
+            let param_env = tcx.param_env(self.ty_def_id);
+            let ty = tcx.type_of(self.ty_def_id).subst_identity();
+            tcx.layout_of(param_env.and(ty))
+        }
+        fn variant_name<'b: 'a>(&'b self, index: VariantIdx) -> Symbol {
+            let Adt(adt, _) = self.type_layout().unwrap().ty.kind() else {
+                span_bug!(self.cx.tcx().def_span(self.ty_def_id), "not an adt")
+            };
+            adt.variant(index).name
+        }
+        fn tag_size<'b: 'a>(&'b self) -> u64 {
+            if let Variants::Multiple { variants, tag, tag_encoding, .. } =
+                    self.type_layout().unwrap().layout.variants() && !variants.is_empty() {
+                if let TagEncoding::Niche { .. } = tag_encoding {
+                    0
+                } else if let Primitive::Int(i, _) = tag.primitive() {
+                    i.size().bytes()
+                } else {
+                    span_bug!(self.cx.tcx().def_span(self.ty_def_id), "tag is neither niche nor int")
+                }
+            } else {
+                0
+            }
+        }
+        fn write_size<'b: 'a>(
+            &'b self,
+            layout: &'b LayoutS,
+            tag_size: u64,
+        ) -> impl fmt::Display + Captures<'cx> + Captures<'b> {
+            display_fn(move |f| {
+                if layout.abi.is_unsized() {
+                    write!(f, "(unsized)")?;
+                } else {
+                    let size = layout.size.bytes() - tag_size;
+                    write!(f, "{size} byte{pl}", pl = if size == 1 { "" } else { "s" })?;
+                    if layout.abi.is_uninhabited() {
+                        write!(
+                            f,
+                            " (<a href=\"https://doc.rust-lang.org/stable/reference/glossary.html#uninhabited\">uninhabited</a>)"
+                        )?;
+                    }
+                }
+                Ok(())
+            })
         }
     }
 
-    display_fn(move |mut f| {
+    display_fn(move |f| {
         if !cx.shared.show_type_layout {
             return Ok(());
         }
 
-        writeln!(
-            f,
-            "<h2 id=\"layout\" class=\"small-section-header\"> \
-            Layout<a href=\"#layout\" class=\"anchor\">§</a></h2>"
-        )?;
-        writeln!(f, "<div class=\"docblock\">")?;
-
-        let tcx = cx.tcx();
-        let param_env = tcx.param_env(ty_def_id);
-        let ty = tcx.type_of(ty_def_id).subst_identity();
-        match tcx.layout_of(param_env.and(ty)) {
-            Ok(ty_layout) => {
-                writeln!(
-                    f,
-                    "<div class=\"warning\"><p><strong>Note:</strong> Most layout information is \
-                    <strong>completely unstable</strong> and may even differ between compilations. \
-                    The only exception is types with certain <code>repr(...)</code> attributes. \
-                    Please see the Rust Reference’s \
-                    <a href=\"https://doc.rust-lang.org/reference/type-layout.html\">“Type Layout”</a> \
-                    chapter for details on type layout guarantees.</p></div>"
-                )?;
-                f.write_str("<p><strong>Size:</strong> ")?;
-                write_size_of_layout(&mut f, &ty_layout.layout.0, 0);
-                writeln!(f, "</p>")?;
-                if let Variants::Multiple { variants, tag, tag_encoding, .. } =
-                    &ty_layout.layout.variants()
-                {
-                    if !variants.is_empty() {
-                        f.write_str(
-                            "<p><strong>Size for each variant:</strong></p>\
-                                <ul>",
-                        )?;
-
-                        let Adt(adt, _) = ty_layout.ty.kind() else {
-                            span_bug!(tcx.def_span(ty_def_id), "not an adt")
-                        };
-
-                        let tag_size = if let TagEncoding::Niche { .. } = tag_encoding {
-                            0
-                        } else if let Primitive::Int(i, _) = tag.primitive() {
-                            i.size().bytes()
-                        } else {
-                            span_bug!(tcx.def_span(ty_def_id), "tag is neither niche nor int")
-                        };
-
-                        for (index, layout) in variants.iter_enumerated() {
-                            let name = adt.variant(index).name;
-                            write!(&mut f, "<li><code>{name}</code>: ")?;
-                            write_size_of_layout(&mut f, layout, tag_size);
-                            writeln!(&mut f, "</li>")?;
-                        }
-                        f.write_str("</ul>")?;
-                    }
-                }
-            }
-            // This kind of layout error can occur with valid code, e.g. if you try to
-            // get the layout of a generic type such as `Vec<T>`.
-            Err(LayoutError::Unknown(_)) => {
-                writeln!(
-                    f,
-                    "<p><strong>Note:</strong> Unable to compute type layout, \
-                    possibly due to this type having generic parameters. \
-                    Layout can only be computed for concrete, fully-instantiated types.</p>"
-                )?;
-            }
-            // This kind of error probably can't happen with valid code, but we don't
-            // want to panic and prevent the docs from building, so we just let the
-            // user know that we couldn't compute the layout.
-            Err(LayoutError::SizeOverflow(_)) => {
-                writeln!(
-                    f,
-                    "<p><strong>Note:</strong> Encountered an error during type layout; \
-                    the type was too big.</p>"
-                )?;
-            }
-            Err(LayoutError::NormalizationFailure(_, _)) => {
-                writeln!(
-                    f,
-                    "<p><strong>Note:</strong> Encountered an error during type layout; \
-                    the type failed to be normalized.</p>"
-                )?;
-            }
-        }
-
-        writeln!(f, "</div>")
+        Ok(TypeLayout { cx, ty_def_id }.render_into(f).unwrap())
     })
 }
 
