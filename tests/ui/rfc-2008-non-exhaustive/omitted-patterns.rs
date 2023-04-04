@@ -194,6 +194,14 @@ fn main() {
     let local_refutable @ NonExhaustiveEnum::Unit = NonExhaustiveEnum::Unit;
     //~^ refutable pattern in local binding
 
+    // Check that matching on a reference results in a correctly spanned diagnostic
+    #[deny(non_exhaustive_omitted_patterns)]
+    match &non_enum {
+        NonExhaustiveEnum::Unit => {}
+        NonExhaustiveEnum::Tuple(_) => {}
+        _ => {}
+    }
+    //~^^ some variants are not matched explicitly
 }
 
 #[deny(non_exhaustive_omitted_patterns)]
