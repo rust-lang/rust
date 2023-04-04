@@ -12,6 +12,7 @@ use object::{
 
 use snap::write::FrameEncoder;
 
+use object::elf::NT_GNU_PROPERTY_TYPE_0;
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::rustc_erase_owner;
@@ -22,8 +23,6 @@ use rustc_session::cstore::MetadataLoader;
 use rustc_session::Session;
 use rustc_target::abi::Endian;
 use rustc_target::spec::{RelocModel, Target};
-use object::elf::NT_GNU_PROPERTY_TYPE_0;
-
 
 /// The default metadata loader. This is used by cg_llvm and cg_clif.
 ///
@@ -203,39 +202,40 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         _ => elf::ELFOSABI_NONE,
     };
     let abi_version = 0;
-   
+
     // check bti protection
     let mut check_cfprotection = false;
-    if architecture == Architecture::X86_64 && 
+    if architecture == Architecture::X86_64 &&
     let rustc_session::config::CFProtection::Branch | rustc_session::config::CFProtection::Full = sess.opts.unstable_opts.cf_protection {check_cfprotection =true;}
     else if sess.opts.unstable_opts.branch_protection.is_some() && sess.target.arch == "aarch64" 
       {check_cfprotection =true;}
-    if check_cfprotection && binary_format == BinaryFormat::Elf{
-      let name:Vec<u8> =  b".note.gnu.property".to_vec();  
-      let segment:Vec<u8>  =  file.segment_name(StandardSegment::Data).to_vec();
-      let kind = SectionKind::Note;
-      let section = file.add_section(segment, name, kind);
-      let mut data:Vec<u8> = Vec::new();
-      let n_namsz:u32 = 4; // Size of the n_name field
-      let n_descz:u32 = 16; // Size of the n_desc field       
-      let n_type:u32 = NT_GNU_PROPERTY_TYPE_0;// Type of note descriptor 
-      let values = [n_namsz, n_descz, n_type];
-      values.map(|v| data.extend_from_slice(&(v.to_ne_bytes())));
-      data.push(b'G'); // Owner of the program property note
-      data.push(b'N');
-      data.push(b'U');
-      data.push(0);       
-      let pr_type:u32 = if architecture == Architecture::X86_64 {0xc0000002} else {0xc0000000};
-      let pr_datasz:u32 = 4 ; //size of the pr_data field 
-      let pr_data:u32 = 3; //program property descriptor
-      let pr_padding:u32 = if architecture == Architecture::X86_64 {3} else {0};
-      let values = [pr_type, pr_datasz, pr_data, pr_padding];
-      values.map(|v| data.extend_from_slice(&(v.to_ne_bytes())));    
-      let x = data.len();
-      assert_eq!(x, 32);
-      let align = if architecture == Architecture::X86_64 {3} else {8};
-      let _ = file.append_section_data(section, &data, align);   
-    } 
+    if check_cfprotection && binary_format == BinaryFormat::Elf {
+        let name: Vec<u8> = b".note.gnu.property".to_vec();
+        let segment: Vec<u8> = file.segment_name(StandardSegment::Data).to_vec();
+        let kind = SectionKind::Note;
+        let section = file.add_section(segment, name, kind);
+        let mut data: Vec<u8> = Vec::new();
+        let n_namsz: u32 = 4; // Size of the n_name field
+        let n_descz: u32 = 16; // Size of the n_desc field       
+        let n_type: u32 = NT_GNU_PROPERTY_TYPE_0; // Type of note descriptor 
+        let values = [n_namsz, n_descz, n_type];
+        values.map(|v| data.extend_from_slice(&(v.to_ne_bytes())));
+        data.push(b'G'); // Owner of the program property note
+        data.push(b'N');
+        data.push(b'U');
+        data.push(0);
+        let pr_type: u32 =
+            if architecture == Architecture::X86_64 { 0xc0000002 } else { 0xc0000000 };
+        let pr_datasz: u32 = 4; //size of the pr_data field 
+        let pr_data: u32 = 3; //program property descriptor
+        let pr_padding: u32 = if architecture == Architecture::X86_64 { 3 } else { 0 };
+        let values = [pr_type, pr_datasz, pr_data, pr_padding];
+        values.map(|v| data.extend_from_slice(&(v.to_ne_bytes())));
+        let x = data.len();
+        assert_eq!(x, 32);
+        let align = if architecture == Architecture::X86_64 { 4 } else { 8 };
+        let _ = file.append_section_data(section, &data, align);
+    }
     file.flags = FileFlags::Elf { os_abi, abi_version, e_flags };
     Some(file)
 }
