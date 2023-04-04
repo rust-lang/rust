@@ -8,34 +8,34 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 
 pub fn check_crate(tcx: TyCtxt<'_>) {
-    tcx.dep_graph.assert_ignored();
-
-    if tcx.sess.opts.unstable_opts.hir_stats {
-        crate::hir_stats::print_hir_stats(tcx);
-    }
-
-    #[cfg(debug_assertions)]
-    {
-        let errors = Lock::new(Vec::new());
-
-        tcx.hir().par_for_each_module(|module_id| {
-            let mut v = HirIdValidator {
-                tcx,
-                owner: None,
-                hir_ids_seen: Default::default(),
-                errors: &errors,
-            };
-
-            tcx.hir().visit_item_likes_in_module(module_id, &mut v);
-        });
-
-        let errors = errors.into_inner();
-
-        if !errors.is_empty() {
-            let message = errors.iter().fold(String::new(), |s1, s2| s1 + "\n" + s2);
-            tcx.sess.delay_span_bug(rustc_span::DUMMY_SP, &message);
+    tcx.dep_graph.with_ignore(|| {
+        if tcx.sess.opts.unstable_opts.hir_stats {
+            crate::hir_stats::print_hir_stats(tcx);
         }
-    }
+
+        #[cfg(debug_assertions)]
+        {
+            let errors = Lock::new(Vec::new());
+
+            tcx.hir().par_for_each_module(|module_id| {
+                let mut v = HirIdValidator {
+                    tcx,
+                    owner: None,
+                    hir_ids_seen: Default::default(),
+                    errors: &errors,
+                };
+
+                tcx.hir().visit_item_likes_in_module(module_id, &mut v);
+            });
+
+            let errors = errors.into_inner();
+
+            if !errors.is_empty() {
+                let message = errors.iter().fold(String::new(), |s1, s2| s1 + "\n" + s2);
+                tcx.sess.delay_span_bug(rustc_span::DUMMY_SP, &message);
+            }
+        }
+    })
 }
 
 struct HirIdValidator<'a, 'hir> {
