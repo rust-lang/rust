@@ -5,17 +5,21 @@ and registration of the lint in Clippy's codebase.
 We can use the Clippy dev tools to handle this step since setting up the 
 lint involves some boilerplate code.
 
-In our example, we're going to create a lint to detect functions named `foo` because it is a highly non-descriptive name for a function, so we want to trigger this and fix it early in the development process.
+In our example, we're going to create a lint to detect functions named `foo` because it is a highly non-descriptive
+name for a function, so we want to trigger this and fix it early in the development process.
 
 ## Lint name
 
-A good lint name is important, it is usually given by the issue you're fixing (in the **Lint name** field). If you're unsure if the name you chose fits the lint, you can check the [lint naming guidelines][lint_naming]. Don't worry, if the lint name doesn't fit, a Clippy team member will alert you in the PR process.
+A good lint name is important, it is usually given by the issue you're fixing (in the **Lint name** field). If you're
+unsure if the name you chose fits the lint, you can check the [lint naming guidelines][lint_naming]. Don't worry, if
+the lint name doesn't fit, a Clippy team member will alert you in the PR process.
 
 If you're still unsure, you can ask on the [Zulip] or on the Github issue / PR.
 
 ---
 
-We'll name our example lint that detects functions named "foo" `foo_functions`. Check the [lint naming guidelines][lint_naming] to see why this name makes sense.
+We'll name our example lint that detects functions named "foo" `foo_functions`. Check the
+[lint naming guidelines][lint_naming] to see why this name makes sense.
 
 ## Add and Register the Lint
 
@@ -157,5 +161,4 @@ ask one of the maintainers.
 
 [all_lints]: https://rust-lang.github.io/rust-clippy/master/
 [lint_naming]: https://rust-lang.github.io/rfcs/0344-conventions-galore.html#lints
-[clippy_team_members]: https://www.rust-lang.org/governance/teams/dev-tools#Clippy%20team
 [Zulip]: https://rust-lang.zulipchat.com/#narrow/stream/257328-clippy
