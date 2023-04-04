@@ -1093,10 +1093,18 @@ version = "0.0.0"
 
 //- /bar/src/lib.rs
 pub fn bar() {}
+
+//- /baz/Cargo.toml
+[package]
+name = "baz"
+version = "0.0.0"
+
+//- /baz/src/lib.rs
 "#,
     )
     .root("foo")
     .root("bar")
+    .root("baz")
     .with_config(json!({
        "files": {
            "excludeDirs": ["foo", "bar"]

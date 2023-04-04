@@ -255,6 +255,9 @@ impl Server {
                     .clone()
                     .extract::<lsp_ext::ServerStatusParams>("experimental/serverStatus")
                     .unwrap();
+                if status.health == lsp_ext::Health::Error {
+                    panic!("server errored while loading workspace: {:?}", status.message);
+                }
                 status.quiescent
             }
             _ => false,
