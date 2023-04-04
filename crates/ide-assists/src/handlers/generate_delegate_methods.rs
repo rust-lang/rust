@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use hir::{self, HasCrate, HasSource, HasVisibility};
 use syntax::ast::{self, make, AstNode, HasGenericParams, HasName, HasVisibility as _};
 
@@ -64,12 +66,16 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
 
     let sema_field_ty = ctx.sema.resolve_type(&field_ty)?;
     let mut methods = vec![];
+    let mut seen_names = HashSet::new();
 
     for ty in sema_field_ty.autoderef(ctx.db()) {
         let krate = ty.krate(ctx.db());
         ty.iterate_assoc_items(ctx.db(), krate, |item| {
             if let hir::AssocItem::Function(f) = item {
-                if f.self_param(ctx.db()).is_some() && f.is_visible_from(ctx.db(), current_module) {
+                if f.self_param(ctx.db()).is_some()
+                    && f.is_visible_from(ctx.db(), current_module)
+                    && seen_names.insert(f.name(ctx.db()))
+                {
                     methods.push(f)
                 }
             }
