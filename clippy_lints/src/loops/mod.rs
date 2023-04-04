@@ -25,6 +25,8 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use utils::{make_iterator_snippet, IncrementVisitor, InitializeVisitor};
 
+use crate::while_pop_unwrap;
+
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for for-loops that manually copy items between
@@ -643,6 +645,7 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
         if let Some(higher::While { condition, body }) = higher::While::hir(expr) {
             while_immutable_condition::check(cx, condition, body);
             missing_spin_loop::check(cx, condition, body);
+            while_pop_unwrap::check(cx, condition, body);
         }
     }
 }

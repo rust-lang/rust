@@ -645,6 +645,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::useless_conversion::USELESS_CONVERSION_INFO,
     crate::vec::USELESS_VEC_INFO,
     crate::vec_init_then_push::VEC_INIT_THEN_PUSH_INFO,
+    crate::while_pop_unwrap::WHILE_POP_UNWRAP_INFO,
     crate::wildcard_imports::ENUM_GLOB_USE_INFO,
     crate::wildcard_imports::WILDCARD_IMPORTS_INFO,
     crate::write::PRINTLN_EMPTY_STRING_INFO,
