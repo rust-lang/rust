@@ -1,6 +1,6 @@
 use std::mem;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Symbol;
@@ -118,7 +118,7 @@ pub(crate) struct Cache {
     /// All intra-doc links resolved so far.
     ///
     /// Links are indexed by the DefId of the item they document.
-    pub(crate) intra_doc_links: FxHashMap<ItemId, Vec<clean::ItemLink>>,
+    pub(crate) intra_doc_links: FxHashMap<ItemId, FxIndexSet<clean::ItemLink>>,
     /// Cfg that have been hidden via #![doc(cfg_hide(...))]
     pub(crate) hidden_cfg: FxHashSet<clean::cfg::Cfg>,
 }

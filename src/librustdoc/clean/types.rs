@@ -452,10 +452,12 @@ impl Item {
     pub(crate) fn links(&self, cx: &Context<'_>) -> Vec<RenderedLink> {
         use crate::html::format::{href, link_tooltip};
 
-        cx.cache()
+        let Some(links) = cx.cache()
             .intra_doc_links
-            .get(&self.item_id)
-            .map_or(&[][..], |v| v.as_slice())
+            .get(&self.item_id) else {
+                return vec![]
+            };
+        links
             .iter()
             .filter_map(|ItemLink { link: s, link_text, page_id: id, ref fragment }| {
                 debug!(?id);
@@ -483,10 +485,12 @@ impl Item {
     /// the link text, but does need to know which `[]`-bracketed names
     /// are actually links.
     pub(crate) fn link_names(&self, cache: &Cache) -> Vec<RenderedLink> {
-        cache
+        let Some(links) = cache
             .intra_doc_links
-            .get(&self.item_id)
-            .map_or(&[][..], |v| v.as_slice())
+            .get(&self.item_id) else {
+                return vec![];
+            };
+        links
             .iter()
             .map(|ItemLink { link: s, link_text, .. }| RenderedLink {
                 original_text: s.clone(),
@@ -1006,7 +1010,7 @@ pub(crate) fn collapse_doc_fragments(doc_strings: &[DocFragment]) -> String {
 /// A link that has not yet been rendered.
 ///
 /// This link will be turned into a rendered link by [`Item::links`].
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct ItemLink {
     /// The original link written in the markdown
     pub(crate) link: Box<str>,
