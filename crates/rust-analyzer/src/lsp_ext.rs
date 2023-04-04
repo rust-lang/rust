@@ -34,21 +34,21 @@ pub struct CrateInfoResult {
     pub version: String,
     pub path: String,
 }
-pub enum FetchDependencyGraph {}
+pub enum FetchDependencyList {}
 
-impl Request for FetchDependencyGraph {
-    type Params = FetchDependencyGraphParams;
-    type Result = FetchDependencyGraphResult;
-    const METHOD: &'static str = "rust-analyzer/fetchDependencyGraph";
+impl Request for FetchDependencyList {
+    type Params = FetchDependencyListParams;
+    type Result = FetchDependencyListResult;
+    const METHOD: &'static str = "rust-analyzer/fetchDependencyList";
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct FetchDependencyGraphParams {}
+pub struct FetchDependencyListParams {}
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct FetchDependencyGraphResult {
+pub struct FetchDependencyListResult {
     pub crates: Vec<CrateInfoResult>,
 }
 

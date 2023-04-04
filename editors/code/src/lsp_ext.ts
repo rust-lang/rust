@@ -70,9 +70,9 @@ export const viewItemTree = new lc.RequestType<ViewItemTreeParams, string, void>
 
 export type AnalyzerStatusParams = { textDocument?: lc.TextDocumentIdentifier };
 
-export interface FetchDependencyGraphParams {}
+export interface FetchDependencyListParams {}
 
-export interface FetchDependencyGraphResult {
+export interface FetchDependencyListResult {
     crates: {
         name: string;
         version: string;
@@ -80,11 +80,11 @@ export interface FetchDependencyGraphResult {
     }[];
 }
 
-export const fetchDependencyGraph = new lc.RequestType<
-    FetchDependencyGraphParams,
-    FetchDependencyGraphResult,
+export const fetchDependencyList = new lc.RequestType<
+    FetchDependencyListParams,
+    FetchDependencyListResult,
     void
->("rust-analyzer/fetchDependencyGraph");
+>("rust-analyzer/fetchDependencyList");
 
 export interface FetchDependencyGraphParams {}
 

@@ -9,7 +9,7 @@ use vfs::FileId;
 use crate::{
     global_state::GlobalStateSnapshot, to_proto, Result,
     lsp_ext::{
-        CrateInfoResult, FetchDependencyGraphResult, FetchDependencyGraphParams,
+        CrateInfoResult, FetchDependencyListResult, FetchDependencyListParams,
     },
 };
 
@@ -49,12 +49,12 @@ pub(crate) fn publish_diagnostics(
     Ok(diagnostics)
 }
 
-pub(crate) fn fetch_dependency_graph(
+pub(crate) fn fetch_dependency_list(
     state: GlobalStateSnapshot,
-    _params: FetchDependencyGraphParams,
-) -> Result<FetchDependencyGraphResult> {
+    _params: FetchDependencyListParams,
+) -> Result<FetchDependencyListResult> {
     let crates = state.analysis.fetch_crates()?;
-    Ok(FetchDependencyGraphResult {
+    Ok(FetchDependencyListResult {
         crates: crates
             .into_iter()
             .map(|it| CrateInfoResult { name: it.name, version: it.version, path: it.path })

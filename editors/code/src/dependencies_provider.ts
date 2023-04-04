@@ -3,11 +3,10 @@ import * as fspath from "path";
 import * as fs from "fs";
 import { CtxInit } from "./ctx";
 import * as ra from "./lsp_ext";
-import { FetchDependencyGraphResult } from "./lsp_ext";
+import { FetchDependencyListResult } from "./lsp_ext";
 import { Ctx } from "./ctx";
 import { setFlagsFromString } from "v8";
 import * as ra from "./lsp_ext";
-
 
 
 export class RustDependenciesProvider
@@ -82,8 +81,8 @@ export class RustDependenciesProvider
     private async getRootDependencies(): Promise<Dependency[]> {
         const crates = await this.ctx.client.sendRequest(ra.fetchDependencyGraph, {});
 
-        const dependenciesResult: FetchDependencyGraphResult = await this.ctx.client.sendRequest(
-            ra.fetchDependencyGraph,
+        const dependenciesResult: FetchDependencyListResult = await this.ctx.client.sendRequest(
+            ra.fetchDependencyList,
             {}
         );
         const crates = dependenciesResult.crates;
@@ -97,7 +96,6 @@ export class RustDependenciesProvider
     }
 
     private toDep(moduleName: string, version: string, path: string): Dependency {
-        // const cratePath = fspath.join(basePath, `${moduleName}-${version}`);
         return new Dependency(moduleName, version, path, vscode.TreeItemCollapsibleState.Collapsed);
     }
 }

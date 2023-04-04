@@ -855,7 +855,7 @@ export interface Diagnostic {
 
 ## Dependency Tree
 
-**Method:** `rust-analyzer/fetchDependencyGraph`
+**Method:** `rust-analyzer/fetchDependencyList`
 
 **Request:**
 
