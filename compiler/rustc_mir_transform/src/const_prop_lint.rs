@@ -675,10 +675,13 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
                   && let Ok(constant) = value_const.try_to_int()
                   && let Ok(constant) = constant.to_bits(constant.size())
                 {
+                    // We managed to evaluate the discriminant, so we know we only need to visit
+                    // one target.
                     let target = targets.target_for_value(constant);
                     self.worklist.push(target);
                     return;
                 }
+                // We failed to evaluate the discriminant, fallback to visiting all successors.
             }
             // None of these have Operands to const-propagate.
             TerminatorKind::Goto { .. }
