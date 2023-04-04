@@ -65,14 +65,17 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
     let sema_field_ty = ctx.sema.resolve_type(&field_ty)?;
     let krate = sema_field_ty.krate(ctx.db());
     let mut methods = vec![];
-    sema_field_ty.iterate_assoc_items(ctx.db(), krate, |item| {
-        if let hir::AssocItem::Function(f) = item {
-            if f.self_param(ctx.db()).is_some() && f.is_visible_from(ctx.db(), current_module) {
-                methods.push(f)
+
+    for ty in sema_field_ty.autoderef(ctx.db()) {
+        ty.iterate_assoc_items(ctx.db(), krate, |item| {
+            if let hir::AssocItem::Function(f) = item {
+                if f.self_param(ctx.db()).is_some() && f.is_visible_from(ctx.db(), current_module) {
+                    methods.push(f)
+                }
             }
-        }
-        Option::<()>::None
-    });
+            Option::<()>::None
+        });
+    }
 
     for method in methods {
         let adt = ast::Adt::Struct(strukt.clone());
@@ -309,6 +312,44 @@ struct Person<T> {
 impl<T> Person<T> {
     $0pub(crate) async fn age<J, 'a>(&'a mut self, ty: T, arg: J) -> T {
         self.age.age(ty, arg).await
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_generates_delegate_autoderef() {
+        check_assist(
+            generate_delegate_methods,
+            r#"
+//- minicore: deref
+struct Age(u8);
+impl Age {
+    fn age(&self) -> u8 {
+        self.0
+    }
+}
+struct AgeDeref(Age);
+impl core::ops::Deref for AgeDeref { type Target = Age; }
+struct Person {
+    ag$0e: AgeDeref,
+}
+impl Person {}"#,
+            r#"
+struct Age(u8);
+impl Age {
+    fn age(&self) -> u8 {
+        self.0
+    }
+}
+struct AgeDeref(Age);
+impl core::ops::Deref for AgeDeref { type Target = Age; }
+struct Person {
+    age: AgeDeref,
+}
+impl Person {
+    $0fn age(&self) -> u8 {
+        self.age.age()
     }
 }"#,
         );
