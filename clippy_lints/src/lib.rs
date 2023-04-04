@@ -291,6 +291,7 @@ mod swap;
 mod swap_ptr_to_ref;
 mod tabs_in_doc_comments;
 mod temporary_assignment;
+mod tests_outside_test_module;
 mod to_digit_is_some;
 mod trailing_empty_array;
 mod trait_bounds;
@@ -955,6 +956,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         ))
     });
     store.register_late_pass(|_| Box::new(lines_filter_map_ok::LinesFilterMapOk));
+    store.register_late_pass(|_| Box::new(tests_outside_test_module::TestsOutsideTestModule));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
