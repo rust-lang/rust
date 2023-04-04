@@ -37,8 +37,12 @@ impl<'a> Project<'a> {
                     "sysroot": null,
                     // Can't use test binary as rustc wrapper.
                     "buildScripts": {
-                        "useRustcWrapper": false
+                        "useRustcWrapper": false,
+                        "enable": false,
                     },
+                },
+                "procMacro": {
+                    "enable": false,
                 }
             }),
         }

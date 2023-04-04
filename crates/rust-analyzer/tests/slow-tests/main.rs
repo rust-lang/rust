@@ -60,9 +60,6 @@ use std::collections::Spam;
     )
     .with_config(serde_json::json!({
         "cargo": { "sysroot": "discover" },
-        "procMacro": {
-            "enable": false,
-        }
     }))
     .server()
     .wait_until_workspace_is_loaded();
@@ -616,9 +613,6 @@ fn main() {{}}
     ))
     .with_config(serde_json::json!({
         "cargo": { "sysroot": "discover" },
-        "procMacro": {
-            "enable": false,
-        }
     }))
     .server()
     .wait_until_workspace_is_loaded();
