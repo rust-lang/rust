@@ -142,23 +142,27 @@ export async function createClient(
                                     );
                                     void vscode.workspace.fs.stat(path).then(async () => {
                                         const choice = await vscode.window.showInformationMessage(
-                                            `This rust file does not belong to a loaded cargo project. It looks like it might belong to the workspace at ${path}, do you want to add it to the linked Projects?`,
+                                            `This rust file does not belong to a loaded cargo project. It looks like it might belong to the workspace at ${path.path}, do you want to add it to the linked Projects?`,
                                             "Yes",
                                             "No",
                                             "Don't show this again"
                                         );
                                         switch (choice) {
+                                            case undefined:
+                                                break;
                                             case "No":
                                                 break;
                                             case "Yes":
+                                                const pathToInsert =
+                                                    "." +
+                                                    parent.substring(folder.length) +
+                                                    pathSeparator +
+                                                    "Cargo.toml";
                                                 await config.update(
                                                     "linkedProjects",
                                                     config
                                                         .get<any[]>("linkedProjects")
-                                                        ?.concat(
-                                                            "." +
-                                                                path.fsPath.substring(folder.length)
-                                                        ),
+                                                        ?.concat(pathToInsert),
                                                     false
                                                 );
                                                 break;
