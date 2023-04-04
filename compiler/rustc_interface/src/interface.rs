@@ -62,7 +62,7 @@ impl Compiler {
 
 #[allow(rustc::bad_opt_access)]
 pub fn set_parallel_mode(sopts: &config::UnstableOptions) {
-    rustc_data_structures::sync::set(sopts.threads > 1);
+    rustc_data_structures::sync::set_dyn_thread_safe_mode(sopts.threads > 1);
 }
 
 /// Converts strings provided as `--cfg [cfgspec]` into a `crate_cfg`.

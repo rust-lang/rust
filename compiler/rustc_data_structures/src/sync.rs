@@ -61,32 +61,37 @@ mod mode {
     use std::sync::atomic::AtomicU8;
 
     const UNINITIALIZED: u8 = 0;
-    const INACTIVE: u8 = 1;
-    const ACTIVE: u8 = 2;
+    const DYN_NOT_SYNC: u8 = 1;
+    const DYN_SYNC: u8 = 2;
 
-    static MODE: AtomicU8 = AtomicU8::new(UNINITIALIZED);
+    static DYN_SYNC_MODE: AtomicU8 = AtomicU8::new(UNINITIALIZED);
 
+    // Weather control thread safety dynamically
     #[inline]
-    pub fn active() -> bool {
-        match MODE.load(Ordering::Relaxed) {
-            INACTIVE => false,
-            ACTIVE => true,
+    pub fn is_dyn_thread_safe() -> bool {
+        match DYN_SYNC_MODE.load(Ordering::Relaxed) {
+            DYN_NOT_SYNC => false,
+            DYN_SYNC => true,
             _ => panic!("uninitialized parallel mode!"),
         }
     }
 
     // Only set by the `-Z threads` compile option
-    pub fn set(parallel: bool) {
-        let set: u8 = if parallel { ACTIVE } else { INACTIVE };
-        let previous =
-            MODE.compare_exchange(UNINITIALIZED, set, Ordering::Relaxed, Ordering::Relaxed);
+    pub fn set_dyn_thread_safe_mode(parallel: bool) {
+        let set: u8 = if parallel { DYN_SYNC } else { DYN_NOT_SYNC };
+        let previous = DYN_SYNC_MODE.compare_exchange(
+            UNINITIALIZED,
+            set,
+            Ordering::Relaxed,
+            Ordering::Relaxed,
+        );
 
         // Check that the mode was either uninitialized or was already set to the requested mode.
         assert!(previous.is_ok() || previous == Err(set));
     }
 }
 
-pub use mode::{active, set};
+pub use mode::{is_dyn_thread_safe, set_dyn_thread_safe_mode};
 cfg_if! {
     if #[cfg(not(parallel_compiler))] {
         pub unsafe auto trait Send {}
@@ -358,7 +363,7 @@ cfg_if! {
             A: FnOnce() -> RA + DynSend,
             B: FnOnce() -> RB + DynSend,
         {
-            if mode::active() {
+            if mode::is_dyn_thread_safe() {
                 let oper_a = FromDyn::from(oper_a);
                 let oper_b = FromDyn::from(oper_b);
                 let (a, b) = rayon::join(move || FromDyn::from(oper_a.into_inner()()), move || FromDyn::from(oper_b.into_inner()()));
@@ -368,7 +373,7 @@ cfg_if! {
             }
         }
 
-        // This function only works when `mode::active()`.
+        // This function only works when `mode::is_dyn_thread_safe()`.
         pub fn scope<'scope, OP, R>(op: OP) -> R
         where
             OP: FnOnce(&rayon::Scope<'scope>) -> R + DynSend,
@@ -393,7 +398,7 @@ cfg_if! {
                 });
             };
             ($fblock:block, $($blocks:block),*) => {
-                if rustc_data_structures::sync::active() {
+                if rustc_data_structures::sync::is_dyn_thread_safe() {
                     // Reverse the order of the later blocks since Rayon executes them in reverse order
                     // when using a single thread. This ensures the execution order matches that
                     // of a single threaded rustc
@@ -431,7 +436,7 @@ cfg_if! {
             t: T,
             for_each: impl Fn(I) + DynSync + DynSend
         ) {
-            if mode::active() {
+            if mode::is_dyn_thread_safe() {
                 let for_each = FromDyn::from(for_each);
                 let panic: Lock<Option<_>> = Lock::new(None);
                 t.into_par_iter().for_each(|i| if let Err(p) = catch_unwind(AssertUnwindSafe(|| for_each(i))) {
@@ -470,7 +475,7 @@ cfg_if! {
             t: T,
             map: impl Fn(I) -> R + DynSync + DynSend
         ) -> C {
-            if mode::active() {
+            if mode::is_dyn_thread_safe() {
                 let panic: Lock<Option<_>> = Lock::new(None);
                 let map = FromDyn::from(map);
                 // We catch panics here ensuring that all the loop iterations execute.

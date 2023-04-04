@@ -10,7 +10,7 @@ cfg_if!(
             message = "`{Self}` doesn't implement `DynSend`. \
             Add it to `rustc_data_structures::marker` or use `IntoDyn` if it's already `Send`"
         )]
-        // This is an auto trait for types which can be sent across threads if `sync::active()`
+        // This is an auto trait for types which can be sent across threads if `sync::is_dyn_thread_safe()`
         // is true. These types can be wrapped in a `FromDyn` to get a `Send` type. Wrapping a
         // `Send` type in `IntoDyn` will create a `DynSend` type.
         pub unsafe auto trait DynSend {}
@@ -19,7 +19,7 @@ cfg_if!(
             message = "`{Self}` doesn't implement `DynSync`. \
             Add it to `rustc_data_structures::marker` or use `IntoDyn` if it's already `Sync`"
         )]
-        // This is an auto trait for types which can be shared across threads if `sync::active()`
+        // This is an auto trait for types which can be shared across threads if `sync::is_dyn_thread_safe()`
         // is true. These types can be wrapped in a `FromDyn` to get a `Sync` type. Wrapping a
         // `Sync` type in `IntoDyn` will create a `DynSync` type.
         pub unsafe auto trait DynSync {}
@@ -204,11 +204,11 @@ pub struct FromDyn<T>(T);
 impl<T> FromDyn<T> {
     #[inline(always)]
     pub fn from(val: T) -> Self {
-        // Check that `sync::active()` is true on creation so we can
+        // Check that `sync::is_dyn_thread_safe()` is true on creation so we can
         // implement `Send` and `Sync` for this structure when `T`
         // implements `DynSend` and `DynSync` respectively.
         #[cfg(parallel_compiler)]
-        assert!(crate::sync::active());
+        assert!(crate::sync::is_dyn_thread_safe());
         FromDyn(val)
     }
 
@@ -218,11 +218,11 @@ impl<T> FromDyn<T> {
     }
 }
 
-// `FromDyn` is `Send` if `T` is `DynSend`, since it ensures that sync::active() is true.
+// `FromDyn` is `Send` if `T` is `DynSend`, since it ensures that sync::is_dyn_thread_safe() is true.
 #[cfg(parallel_compiler)]
 unsafe impl<T: DynSend> Send for FromDyn<T> {}
 
-// `FromDyn` is `Sync` if `T` is `DynSync`, since it ensures that sync::active() is true.
+// `FromDyn` is `Sync` if `T` is `DynSync`, since it ensures that sync::is_dyn_thread_safe() is true.
 #[cfg(parallel_compiler)]
 unsafe impl<T: DynSync> Sync for FromDyn<T> {}
 
