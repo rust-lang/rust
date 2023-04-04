@@ -63,10 +63,10 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
     };
 
     let sema_field_ty = ctx.sema.resolve_type(&field_ty)?;
-    let krate = sema_field_ty.krate(ctx.db());
     let mut methods = vec![];
 
     for ty in sema_field_ty.autoderef(ctx.db()) {
+        let krate = ty.krate(ctx.db());
         ty.iterate_assoc_items(ctx.db(), krate, |item| {
             if let hir::AssocItem::Function(f) = item {
                 if f.self_param(ctx.db()).is_some() && f.is_visible_from(ctx.db(), current_module) {
