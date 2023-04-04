@@ -218,7 +218,7 @@ fn toggle_close(w: &mut Buffer) {
 }
 
 fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: &[clean::Item]) {
-    document(w, cx, item, None, HeadingOffset::H2);
+    write!(w, "{}", document(cx, item, None, HeadingOffset::H2));
 
     let mut indices = (0..items.len()).filter(|i| !items[*i].is_stripped()).collect::<Vec<usize>>();
 
@@ -562,7 +562,7 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
             notable_traits = notable_traits.unwrap_or_default(),
         );
     });
-    document(w, cx, it, None, HeadingOffset::H2);
+    write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
 }
 
 fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::Trait) {
@@ -717,7 +717,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     });
 
     // Trait documentation
-    document(w, cx, it, None, HeadingOffset::H2);
+    write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
 
     fn write_small_section_header(w: &mut Buffer, id: &str, title: &str, extra_content: &str) {
         write!(
@@ -735,7 +735,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         let item_type = m.type_();
         let id = cx.derive_id(format!("{}.{}", item_type, name));
         let mut content = Buffer::empty_from(w);
-        document(&mut content, cx, m, Some(t), HeadingOffset::H5);
+        write!(&mut content, "{}", document(cx, m, Some(t), HeadingOffset::H5));
         let toggled = !content.is_empty();
         if toggled {
             let method_toggle_class = if item_type.is_method() { " method-toggle" } else { "" };
@@ -1068,7 +1068,7 @@ fn item_trait_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &
         );
     });
 
-    document(w, cx, it, None, HeadingOffset::H2);
+    write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
 
     // Render any items associated directly to this alias, as otherwise they
     // won't be visible anywhere in the docs. It would be nice to also show
@@ -1090,7 +1090,7 @@ fn item_opaque_ty(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &cl
         );
     });
 
-    document(w, cx, it, None, HeadingOffset::H2);
+    write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
 
     // Render any items associated directly to this alias, as otherwise they
     // won't be visible anywhere in the docs. It would be nice to also show
@@ -1117,7 +1117,7 @@ fn item_typedef(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clea
 
     write_content(w, cx, it, t);
 
-    document(w, cx, it, None, HeadingOffset::H2);
+    write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
 
     let def_id = it.item_id.expect_def_id();
     // Render any items associated directly to this alias, as otherwise they
@@ -1134,7 +1134,7 @@ fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean:
         render_union(w, it, Some(&s.generics), &s.fields, cx);
     });
 
-    document(w, cx, it, None, HeadingOffset::H2);
+    write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
 
     let mut fields = s
         .fields
@@ -1166,7 +1166,7 @@ fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean:
             if let Some(stability_class) = field.stability_class(cx.tcx()) {
                 write!(w, "<span class=\"stab {stability_class}\"></span>");
             }
-            document(w, cx, field, Some(it), HeadingOffset::H3);
+            write!(w, "{}", document(cx, field, Some(it), HeadingOffset::H3));
         }
     }
     let def_id = it.item_id.expect_def_id();
@@ -1248,7 +1248,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
         }
     });
 
-    document(w, cx, it, None, HeadingOffset::H2);
+    write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
 
     if count_variants != 0 {
         write!(
@@ -1324,10 +1324,13 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
                                      <code>{f}: {t}</code>\
                                  </span>",
                                 f = field.name.unwrap(),
-                                t = ty.print(cx)
+                                t = ty.print(cx),
                             );
-                            document(w, cx, field, Some(variant), HeadingOffset::H5);
-                            write!(w, "</div>");
+                            write!(
+                                w,
+                                "{}</div>",
+                                document(cx, field, Some(variant), HeadingOffset::H5)
+                            );
                         }
                         _ => unreachable!(),
                     }
@@ -1335,7 +1338,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
                 w.write_str("</div>");
             }
 
-            document(w, cx, variant, Some(it), HeadingOffset::H4);
+            write!(w, "{}", document(cx, variant, Some(it), HeadingOffset::H4));
         }
         write!(w, "</div>");
     }
@@ -1346,7 +1349,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
 
 fn item_macro(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::Macro) {
     highlight::render_item_decl_with_highlighting(&t.source, w);
-    document(w, cx, it, None, HeadingOffset::H2)
+    write!(w, "{}", document(cx, it, None, HeadingOffset::H2))
 }
 
 fn item_proc_macro(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, m: &clean::ProcMacro) {
@@ -1372,12 +1375,12 @@ fn item_proc_macro(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, m: &c
             }
         }
     });
-    document(w, cx, it, None, HeadingOffset::H2)
+    write!(w, "{}", document(cx, it, None, HeadingOffset::H2))
 }
 
 fn item_primitive(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
     let def_id = it.item_id.expect_def_id();
-    document(w, cx, it, None, HeadingOffset::H2);
+    write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
     if it.name.map(|n| n.as_str() != "reference").unwrap_or(false) {
         render_assoc_items(w, cx, it, def_id, AssocItemRender::All);
     } else {
@@ -1435,7 +1438,7 @@ fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &cle
         }
     });
 
-    document(w, cx, it, None, HeadingOffset::H2)
+    write!(w, "{}", document(cx, it, None, HeadingOffset::H2))
 }
 
 fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Struct) {
@@ -1444,7 +1447,7 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
         render_struct(w, it, Some(&s.generics), s.ctor_kind, &s.fields, "", true, cx);
     });
 
-    document(w, cx, it, None, HeadingOffset::H2);
+    write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
 
     let mut fields = s
         .fields
@@ -1478,7 +1481,7 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
                     item_type = ItemType::StructField,
                     ty = ty.print(cx)
                 );
-                document(w, cx, field, Some(it), HeadingOffset::H3);
+                write!(w, "{}", document(cx, field, Some(it), HeadingOffset::H3));
             }
         }
     }
@@ -1499,7 +1502,7 @@ fn item_static(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
             typ = s.type_.print(cx)
         );
     });
-    document(w, cx, it, None, HeadingOffset::H2)
+    write!(w, "{}", document(cx, it, None, HeadingOffset::H2))
 }
 
 fn item_foreign_type(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
@@ -1514,13 +1517,13 @@ fn item_foreign_type(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
         );
     });
 
-    document(w, cx, it, None, HeadingOffset::H2);
+    write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
 
     render_assoc_items(w, cx, it, it.item_id.expect_def_id(), AssocItemRender::All)
 }
 
 fn item_keyword(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
-    document(w, cx, it, None, HeadingOffset::H2)
+    write!(w, "{}", document(cx, it, None, HeadingOffset::H2))
 }
 
 /// Compare two strings treating multi-digit numbers as single units (i.e. natural sort order).

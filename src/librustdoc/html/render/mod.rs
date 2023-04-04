@@ -70,7 +70,7 @@ use crate::formats::item_type::ItemType;
 use crate::formats::{AssocItemRender, Impl, RenderMode};
 use crate::html::escape::Escape;
 use crate::html::format::{
-    href, join_with_double_colon, print_abi_with_space, print_constness_with_space,
+    display_fn, href, join_with_double_colon, print_abi_with_space, print_constness_with_space,
     print_default_space, print_generic_bounds, print_where_clause, visibility_print_with_space,
     Buffer, Ending, HrefError, PrintWithSpace,
 };
@@ -409,128 +409,134 @@ fn scrape_examples_help(shared: &SharedContext<'_>) -> String {
     )
 }
 
-fn document(
-    w: &mut Buffer,
-    cx: &mut Context<'_>,
-    item: &clean::Item,
-    parent: Option<&clean::Item>,
+fn document<'a, 'cx: 'a>(
+    cx: &'a mut Context<'cx>,
+    item: &'a clean::Item,
+    parent: Option<&'a clean::Item>,
     heading_offset: HeadingOffset,
-) {
+) -> impl fmt::Display + 'a + Captures<'cx> {
     if let Some(ref name) = item.name {
         info!("Documenting {}", name);
     }
-    document_item_info(cx, item, parent).render_into(w).unwrap();
-    if parent.is_none() {
-        document_full_collapsible(w, item, cx, heading_offset);
-    } else {
-        document_full(w, item, cx, heading_offset);
-    }
+
+    display_fn(move |f| {
+        document_item_info(cx, item, parent).render_into(f).unwrap();
+        if parent.is_none() {
+            write!(f, "{}", document_full_collapsible(item, cx, heading_offset))?;
+        } else {
+            write!(f, "{}", document_full(item, cx, heading_offset))?;
+        }
+        Ok(())
+    })
 }
 
 /// Render md_text as markdown.
-fn render_markdown(
-    w: &mut Buffer,
-    cx: &mut Context<'_>,
-    md_text: &str,
+fn render_markdown<'a, 'cx: 'a>(
+    cx: &'a mut Context<'cx>,
+    md_text: &'a str,
     links: Vec<RenderedLink>,
     heading_offset: HeadingOffset,
-) {
-    write!(
-        w,
-        "<div class=\"docblock\">{}</div>",
-        Markdown {
-            content: md_text,
-            links: &links,
-            ids: &mut cx.id_map,
-            error_codes: cx.shared.codes,
-            edition: cx.shared.edition(),
-            playground: &cx.shared.playground,
-            heading_offset,
-        }
-        .into_string()
-    )
+) -> impl fmt::Display + 'a + Captures<'cx> {
+    display_fn(move |f| {
+        write!(
+            f,
+            "<div class=\"docblock\">{}</div>",
+            Markdown {
+                content: md_text,
+                links: &links,
+                ids: &mut cx.id_map,
+                error_codes: cx.shared.codes,
+                edition: cx.shared.edition(),
+                playground: &cx.shared.playground,
+                heading_offset,
+            }
+            .into_string()
+        )
+    })
 }
 
 /// Writes a documentation block containing only the first paragraph of the documentation. If the
 /// docs are longer, a "Read more" link is appended to the end.
-fn document_short(
-    w: &mut Buffer,
-    item: &clean::Item,
-    cx: &mut Context<'_>,
-    link: AssocItemLink<'_>,
-    parent: &clean::Item,
+fn document_short<'a, 'cx: 'a>(
+    item: &'a clean::Item,
+    cx: &'a mut Context<'cx>,
+    link: AssocItemLink<'a>,
+    parent: &'a clean::Item,
     show_def_docs: bool,
-) {
-    document_item_info(cx, item, Some(parent)).render_into(w).unwrap();
-    if !show_def_docs {
-        return;
-    }
-    if let Some(s) = item.doc_value() {
-        let (mut summary_html, has_more_content) =
-            MarkdownSummaryLine(&s, &item.links(cx)).into_string_with_has_more_content();
+) -> impl fmt::Display + 'a + Captures<'cx> {
+    display_fn(move |f| {
+        document_item_info(cx, item, Some(parent)).render_into(f).unwrap();
+        if !show_def_docs {
+            return Ok(());
+        }
+        if let Some(s) = item.doc_value() {
+            let (mut summary_html, has_more_content) =
+                MarkdownSummaryLine(&s, &item.links(cx)).into_string_with_has_more_content();
 
-        if has_more_content {
-            let link = format!(r#" <a{}>Read more</a>"#, assoc_href_attr(item, link, cx));
+            if has_more_content {
+                let link = format!(r#" <a{}>Read more</a>"#, assoc_href_attr(item, link, cx));
 
-            if let Some(idx) = summary_html.rfind("</p>") {
-                summary_html.insert_str(idx, &link);
+                if let Some(idx) = summary_html.rfind("</p>") {
+                    summary_html.insert_str(idx, &link);
+                } else {
+                    summary_html.push_str(&link);
+                }
+            }
+
+            write!(f, "<div class='docblock'>{}</div>", summary_html)?;
+        }
+        Ok(())
+    })
+}
+
+fn document_full_collapsible<'a, 'cx: 'a>(
+    item: &'a clean::Item,
+    cx: &'a mut Context<'cx>,
+    heading_offset: HeadingOffset,
+) -> impl fmt::Display + 'a + Captures<'cx> {
+    document_full_inner(item, cx, true, heading_offset)
+}
+
+fn document_full<'a, 'cx: 'a>(
+    item: &'a clean::Item,
+    cx: &'a mut Context<'cx>,
+    heading_offset: HeadingOffset,
+) -> impl fmt::Display + 'a + Captures<'cx> {
+    document_full_inner(item, cx, false, heading_offset)
+}
+
+fn document_full_inner<'a, 'cx: 'a>(
+    item: &'a clean::Item,
+    cx: &'a mut Context<'cx>,
+    is_collapsible: bool,
+    heading_offset: HeadingOffset,
+) -> impl fmt::Display + 'a + Captures<'cx> {
+    display_fn(move |f| {
+        if let Some(s) = item.collapsed_doc_value() {
+            debug!("Doc block: =====\n{}\n=====", s);
+            if is_collapsible {
+                write!(
+                    f,
+                    "<details class=\"toggle top-doc\" open>\
+                    <summary class=\"hideme\">\
+                        <span>Expand description</span>\
+                    </summary>{}</details>",
+                    render_markdown(cx, &s, item.links(cx), heading_offset)
+                )?;
             } else {
-                summary_html.push_str(&link);
+                write!(f, "{}", render_markdown(cx, &s, item.links(cx), heading_offset))?;
             }
         }
 
-        write!(w, "<div class='docblock'>{}</div>", summary_html,);
-    }
-}
+        let kind = match &*item.kind {
+            clean::ItemKind::StrippedItem(box kind) | kind => kind,
+        };
 
-fn document_full_collapsible(
-    w: &mut Buffer,
-    item: &clean::Item,
-    cx: &mut Context<'_>,
-    heading_offset: HeadingOffset,
-) {
-    document_full_inner(w, item, cx, true, heading_offset);
-}
-
-fn document_full(
-    w: &mut Buffer,
-    item: &clean::Item,
-    cx: &mut Context<'_>,
-    heading_offset: HeadingOffset,
-) {
-    document_full_inner(w, item, cx, false, heading_offset);
-}
-
-fn document_full_inner(
-    w: &mut Buffer,
-    item: &clean::Item,
-    cx: &mut Context<'_>,
-    is_collapsible: bool,
-    heading_offset: HeadingOffset,
-) {
-    if let Some(s) = item.collapsed_doc_value() {
-        debug!("Doc block: =====\n{}\n=====", s);
-        if is_collapsible {
-            w.write_str(
-                "<details class=\"toggle top-doc\" open>\
-                <summary class=\"hideme\">\
-                     <span>Expand description</span>\
-                </summary>",
-            );
-            render_markdown(w, cx, &s, item.links(cx), heading_offset);
-            w.write_str("</details>");
-        } else {
-            render_markdown(w, cx, &s, item.links(cx), heading_offset);
+        if let clean::ItemKind::FunctionItem(..) | clean::ItemKind::MethodItem(..) = kind {
+            render_call_locations(f, cx, item);
         }
-    }
-
-    let kind = match &*item.kind {
-        clean::ItemKind::StrippedItem(box kind) | kind => kind,
-    };
-
-    if let clean::ItemKind::FunctionItem(..) | clean::ItemKind::MethodItem(..) = kind {
-        render_call_locations(w, cx, item);
-    }
+        Ok(())
+    })
 }
 
 #[derive(Template)]
@@ -1485,18 +1491,25 @@ fn render_impl(
                             document_item_info(cx, it, Some(parent))
                                 .render_into(&mut info_buffer)
                                 .unwrap();
-                            document_full(&mut doc_buffer, item, cx, HeadingOffset::H5);
+                            write!(
+                                &mut doc_buffer,
+                                "{}",
+                                document_full(item, cx, HeadingOffset::H5)
+                            );
                             short_documented = false;
                         } else {
                             // In case the item isn't documented,
                             // provide short documentation from the trait.
-                            document_short(
+                            write!(
                                 &mut doc_buffer,
-                                it,
-                                cx,
-                                link,
-                                parent,
-                                rendering_params.show_def_docs,
+                                "{}",
+                                document_short(
+                                    it,
+                                    cx,
+                                    link,
+                                    parent,
+                                    rendering_params.show_def_docs,
+                                )
                             );
                         }
                     }
@@ -1505,18 +1518,15 @@ fn render_impl(
                         .render_into(&mut info_buffer)
                         .unwrap();
                     if rendering_params.show_def_docs {
-                        document_full(&mut doc_buffer, item, cx, HeadingOffset::H5);
+                        write!(&mut doc_buffer, "{}", document_full(item, cx, HeadingOffset::H5));
                         short_documented = false;
                     }
                 }
             } else {
-                document_short(
+                write!(
                     &mut doc_buffer,
-                    item,
-                    cx,
-                    link,
-                    parent,
-                    rendering_params.show_def_docs,
+                    "{}",
+                    document_short(item, cx, link, parent, rendering_params.show_def_docs,)
                 );
             }
         }
@@ -2213,7 +2223,7 @@ const MAX_FULL_EXAMPLES: usize = 5;
 const NUM_VISIBLE_LINES: usize = 10;
 
 /// Generates the HTML for example call locations generated via the --scrape-examples flag.
-fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item) {
+fn render_call_locations<W: fmt::Write>(mut w: W, cx: &mut Context<'_>, item: &clean::Item) {
     let tcx = cx.tcx();
     let def_id = item.item_id.expect_def_id();
     let key = tcx.def_path_hash(def_id);
@@ -2222,7 +2232,7 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
     // Generate a unique ID so users can link to this section for a given method
     let id = cx.id_map.derive("scraped-examples");
     write!(
-        w,
+        &mut w,
         "<div class=\"docblock scraped-example-list\">\
           <span></span>\
           <h5 id=\"{id}\">\
@@ -2231,7 +2241,8 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
           </h5>",
         root_path = cx.root_path(),
         id = id
-    );
+    )
+    .unwrap();
 
     // Create a URL to a particular location in a reverse-dependency's source file
     let link_to_loc = |call_data: &CallData, loc: &CallLocation| -> (String, String) {
@@ -2249,7 +2260,7 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
     };
 
     // Generate the HTML for a single example, being the title and code block
-    let write_example = |w: &mut Buffer, (path, call_data): (&PathBuf, &CallData)| -> bool {
+    let write_example = |mut w: &mut W, (path, call_data): (&PathBuf, &CallData)| -> bool {
         let contents = match fs::read_to_string(&path) {
             Ok(contents) => contents,
             Err(err) => {
@@ -2297,7 +2308,7 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
         let locations_encoded = serde_json::to_string(&line_ranges).unwrap();
 
         write!(
-            w,
+            &mut w,
             "<div class=\"scraped-example {expanded_cls}\" data-locs=\"{locations}\">\
                 <div class=\"scraped-example-title\">\
                    {name} (<a href=\"{url}\">{title}</a>)\
@@ -2310,10 +2321,12 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
             // The locations are encoded as a data attribute, so they can be read
             // later by the JS for interactions.
             locations = Escape(&locations_encoded)
-        );
+        )
+        .unwrap();
 
         if line_ranges.len() > 1 {
-            write!(w, r#"<button class="prev">&pr;</button> <button class="next">&sc;</button>"#);
+            write!(w, r#"<button class="prev">&pr;</button> <button class="next">&sc;</button>"#)
+                .unwrap();
         }
 
         // Look for the example file in the source map if it exists, otherwise return a dummy span
@@ -2340,7 +2353,7 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
         decoration_info.insert("highlight", byte_ranges);
 
         sources::print_src(
-            w,
+            &mut w,
             contents_subset,
             file_span,
             cx,
@@ -2348,7 +2361,7 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
             highlight::DecorationInfo(decoration_info),
             sources::SourceContext::Embedded { offset: line_min, needs_expansion },
         );
-        write!(w, "</div></div>");
+        write!(w, "</div></div>").unwrap();
 
         true
     };
@@ -2382,7 +2395,7 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
 
     // An example may fail to write if its source can't be read for some reason, so this method
     // continues iterating until a write succeeds
-    let write_and_skip_failure = |w: &mut Buffer, it: &mut Peekable<_>| {
+    let write_and_skip_failure = |w: &mut W, it: &mut Peekable<_>| {
         while let Some(example) = it.next() {
             if write_example(&mut *w, example) {
                 break;
@@ -2391,7 +2404,7 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
     };
 
     // Write just one example that's visible by default in the method's description.
-    write_and_skip_failure(w, &mut it);
+    write_and_skip_failure(&mut w, &mut it);
 
     // Then add the remaining examples in a hidden section.
     if it.peek().is_some() {
@@ -2404,17 +2417,19 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
                   <div class=\"hide-more\">Hide additional examples</div>\
                   <div class=\"more-scraped-examples\">\
                     <div class=\"toggle-line\"><div class=\"toggle-line-inner\"></div></div>"
-        );
+        )
+        .unwrap();
 
         // Only generate inline code for MAX_FULL_EXAMPLES number of examples. Otherwise we could
         // make the page arbitrarily huge!
         for _ in 0..MAX_FULL_EXAMPLES {
-            write_and_skip_failure(w, &mut it);
+            write_and_skip_failure(&mut w, &mut it);
         }
 
         // For the remaining examples, generate a <ul> containing links to the source files.
         if it.peek().is_some() {
-            write!(w, r#"<div class="example-links">Additional examples can be found in:<br><ul>"#);
+            write!(w, r#"<div class="example-links">Additional examples can be found in:<br><ul>"#)
+                .unwrap();
             it.for_each(|(_, call_data)| {
                 let (url, _) = link_to_loc(call_data, &call_data.locations[0]);
                 write!(
@@ -2422,13 +2437,14 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
                     r#"<li><a href="{url}">{name}</a></li>"#,
                     url = url,
                     name = call_data.display_name
-                );
+                )
+                .unwrap();
             });
-            write!(w, "</ul></div>");
+            write!(w, "</ul></div>").unwrap();
         }
 
-        write!(w, "</div></details>");
+        write!(w, "</div></details>").unwrap();
     }
 
-    write!(w, "</div>");
+    write!(w, "</div>").unwrap();
 }
