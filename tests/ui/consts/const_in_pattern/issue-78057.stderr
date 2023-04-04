@@ -3,6 +3,9 @@ error: to use a constant of type `Opaque` in a pattern, `Opaque` must be annotat
    |
 LL |         FOO => {},
    |         ^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: unreachable pattern
   --> $DIR/issue-78057.rs:14:9

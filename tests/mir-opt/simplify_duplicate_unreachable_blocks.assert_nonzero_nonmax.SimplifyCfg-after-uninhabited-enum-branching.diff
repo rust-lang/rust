@@ -1,0 +1,25 @@
+- // MIR for `assert_nonzero_nonmax` before SimplifyCfg-after-uninhabited-enum-branching
++ // MIR for `assert_nonzero_nonmax` after SimplifyCfg-after-uninhabited-enum-branching
+  
+  fn assert_nonzero_nonmax(_1: u8) -> u8 {
+      let mut _0: u8;                      // return place in scope 0 at $DIR/simplify_duplicate_unreachable_blocks.rs:+0:47: +0:49
+  
+      bb0: {
+-         switchInt(_1) -> [0: bb1, 255: bb2, otherwise: bb3]; // scope 0 at $DIR/simplify_duplicate_unreachable_blocks.rs:+3:13: +7:14
++         switchInt(_1) -> [0: bb1, 255: bb1, otherwise: bb2]; // scope 0 at $DIR/simplify_duplicate_unreachable_blocks.rs:+3:13: +7:14
+      }
+  
+      bb1: {
+          unreachable;                     // scope 0 at $DIR/simplify_duplicate_unreachable_blocks.rs:+10:13: +10:26
+      }
+  
+      bb2: {
+-         unreachable;                     // scope 0 at $DIR/simplify_duplicate_unreachable_blocks.rs:+13:13: +13:26
+-     }
+- 
+-     bb3: {
+          _0 = _1;                         // scope 0 at $DIR/simplify_duplicate_unreachable_blocks.rs:+16:13: +16:20
+          return;                          // scope 0 at $DIR/simplify_duplicate_unreachable_blocks.rs:+17:13: +17:21
+      }
+  }
+  

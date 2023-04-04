@@ -978,7 +978,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             let (_, sig, reg) = ty::print::FmtPrinter::new(self.tcx, Namespace::TypeNS)
                 .name_all_regions(sig)
                 .unwrap();
-            let lts: Vec<String> = reg.into_iter().map(|(_, kind)| kind.to_string()).collect();
+            let lts: Vec<String> = reg.into_values().map(|kind| kind.to_string()).collect();
             (if lts.is_empty() { String::new() } else { format!("for<{}> ", lts.join(", ")) }, sig)
         };
 
@@ -1942,7 +1942,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     escaped
                 }
                 let mut err = struct_span_err!(self.tcx.sess, span, E0308, "{}", failure_str);
-                if let Some((expected, found)) = trace.values.ty() {
+                let values = self.resolve_vars_if_possible(trace.values);
+                if let Some((expected, found)) = values.ty() {
                     match (expected.kind(), found.kind()) {
                         (ty::Tuple(_), ty::Tuple(_)) => {}
                         // If a tuple of length one was expected and the found expression has
@@ -2398,10 +2399,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let suggestion =
                     if has_lifetimes { format!(" + {}", sub) } else { format!(": {}", sub) };
                 let mut suggestions = vec![(sp, suggestion)];
-                for add_lt_sugg in add_lt_suggs {
-                    if let Some(add_lt_sugg) = add_lt_sugg {
-                        suggestions.push(add_lt_sugg);
-                    }
+                for add_lt_sugg in add_lt_suggs.into_iter().flatten() {
+                    suggestions.push(add_lt_sugg);
                 }
                 err.multipart_suggestion_verbose(
                     format!("{msg}..."),
@@ -2425,11 +2424,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     };
                     let mut sugg =
                         vec![(sp, suggestion), (span.shrink_to_hi(), format!(" + {}", new_lt))];
-                    for add_lt_sugg in add_lt_suggs.clone() {
-                        if let Some(lt) = add_lt_sugg {
-                            sugg.push(lt);
-                            sugg.rotate_right(1);
-                        }
+                    for lt in add_lt_suggs.clone().into_iter().flatten() {
+                        sugg.push(lt);
+                        sugg.rotate_right(1);
                     }
                     // `MaybeIncorrect` due to issue #41966.
                     err.multipart_suggestion(msg, sugg, Applicability::MaybeIncorrect);

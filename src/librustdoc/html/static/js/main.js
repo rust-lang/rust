@@ -4,6 +4,11 @@
 
 "use strict";
 
+// WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY
+// If you update this line, then you also need to update the media query with the same
+// warning in rustdoc.css
+window.RUSTDOC_MOBILE_BREAKPOINT = 700;
+
 // Given a basename (e.g. "storage") and an extension (e.g. ".js"), return a URL
 // for a resource under the root-path, with the resource-suffix.
 function resourcePath(basename, extension) {
@@ -1011,9 +1016,7 @@ function preLoadCss(cssUrl) {
              <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, \
              and <code>const</code>.",
             "Search functions by type signature (e.g., <code>vec -&gt; usize</code> or \
-             <code>-&gt; vec</code>)",
-            "Search multiple things at once by splitting your query with comma (e.g., \
-             <code>str,u8</code> or <code>String,struct:Vec,test</code>)",
+             <code>-&gt; vec</code> or <code>String, enum:Cow -&gt; bool</code>)",
             "You can look for items with an exact name by putting double quotes around \
              your request: <code>\"string\"</code>",
             "Look for items inside another one by searching for a path: <code>vec::Vec</code>",

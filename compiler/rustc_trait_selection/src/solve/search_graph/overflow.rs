@@ -73,6 +73,27 @@ pub(in crate::solve) trait OverflowHandler<'tcx> {
         self.search_graph().overflow_data.deal_with_overflow();
         on_overflow(self)
     }
+
+    // Increment the `additional_depth` by one and evaluate `body`, or `on_overflow`
+    // if the depth is overflown.
+    fn with_incremented_depth<T>(
+        &mut self,
+        on_overflow: impl FnOnce(&mut Self) -> T,
+        body: impl FnOnce(&mut Self) -> T,
+    ) -> T {
+        let depth = self.search_graph().stack.len();
+        self.search_graph().overflow_data.additional_depth += 1;
+
+        let result = if self.search_graph().overflow_data.has_overflow(depth) {
+            self.search_graph().overflow_data.deal_with_overflow();
+            on_overflow(self)
+        } else {
+            body(self)
+        };
+
+        self.search_graph().overflow_data.additional_depth -= 1;
+        result
+    }
 }
 
 impl<'tcx> OverflowHandler<'tcx> for EvalCtxt<'_, 'tcx> {

@@ -1,6 +1,7 @@
 use core::cell::Cell;
 use core::cmp::Ordering;
 use core::mem::MaybeUninit;
+use core::num::NonZeroUsize;
 use core::result::Result::{Err, Ok};
 use core::slice;
 
@@ -142,20 +143,20 @@ fn test_iterator_advance_by() {
 
     for i in 0..=v.len() {
         let mut iter = v.iter();
-        iter.advance_by(i).unwrap();
+        assert_eq!(iter.advance_by(i), Ok(()));
         assert_eq!(iter.as_slice(), &v[i..]);
     }
 
     let mut iter = v.iter();
-    assert_eq!(iter.advance_by(v.len() + 1), Err(v.len()));
+    assert_eq!(iter.advance_by(v.len() + 1), Err(NonZeroUsize::new(1).unwrap()));
     assert_eq!(iter.as_slice(), &[]);
 
     let mut iter = v.iter();
-    iter.advance_by(3).unwrap();
+    assert_eq!(iter.advance_by(3), Ok(()));
     assert_eq!(iter.as_slice(), &v[3..]);
-    iter.advance_by(2).unwrap();
+    assert_eq!(iter.advance_by(2), Ok(()));
     assert_eq!(iter.as_slice(), &[]);
-    iter.advance_by(0).unwrap();
+    assert_eq!(iter.advance_by(0), Ok(()));
 }
 
 #[test]
@@ -164,20 +165,20 @@ fn test_iterator_advance_back_by() {
 
     for i in 0..=v.len() {
         let mut iter = v.iter();
-        iter.advance_back_by(i).unwrap();
+        assert_eq!(iter.advance_back_by(i), Ok(()));
         assert_eq!(iter.as_slice(), &v[..v.len() - i]);
     }
 
     let mut iter = v.iter();
-    assert_eq!(iter.advance_back_by(v.len() + 1), Err(v.len()));
+    assert_eq!(iter.advance_back_by(v.len() + 1), Err(NonZeroUsize::new(1).unwrap()));
     assert_eq!(iter.as_slice(), &[]);
 
     let mut iter = v.iter();
-    iter.advance_back_by(3).unwrap();
+    assert_eq!(iter.advance_back_by(3), Ok(()));
     assert_eq!(iter.as_slice(), &v[..v.len() - 3]);
-    iter.advance_back_by(2).unwrap();
+    assert_eq!(iter.advance_back_by(2), Ok(()));
     assert_eq!(iter.as_slice(), &[]);
-    iter.advance_back_by(0).unwrap();
+    assert_eq!(iter.advance_back_by(0), Ok(()));
 }
 
 #[test]

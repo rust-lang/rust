@@ -5,10 +5,11 @@
 use either::{Either, Left, Right};
 
 use rustc_ast::Mutability;
+use rustc_index::vec::IndexSlice;
 use rustc_middle::mir;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
-use rustc_target::abi::{self, Abi, Align, HasDataLayout, Size, VariantIdx};
+use rustc_target::abi::{self, Abi, Align, FieldIdx, HasDataLayout, Size, FIRST_VARIANT};
 
 use super::{
     alloc_range, mir_assign_valid_types, AllocId, AllocRef, AllocRefMut, CheckInAllocMsg,
@@ -787,7 +788,7 @@ where
     pub fn write_aggregate(
         &mut self,
         kind: &mir::AggregateKind<'tcx>,
-        operands: &[mir::Operand<'tcx>],
+        operands: &IndexSlice<FieldIdx, mir::Operand<'tcx>>,
         dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         self.write_uninit(&dest)?;
@@ -796,14 +797,14 @@ where
                 let variant_dest = self.place_downcast(&dest, variant_index)?;
                 (variant_index, variant_dest, active_field_index)
             }
-            _ => (VariantIdx::from_u32(0), dest.clone(), None),
+            _ => (FIRST_VARIANT, dest.clone(), None),
         };
         if active_field_index.is_some() {
             assert_eq!(operands.len(), 1);
         }
-        for (field_index, operand) in operands.iter().enumerate() {
+        for (field_index, operand) in operands.iter_enumerated() {
             let field_index = active_field_index.unwrap_or(field_index);
-            let field_dest = self.place_field(&variant_dest, field_index)?;
+            let field_dest = self.place_field(&variant_dest, field_index.as_usize())?;
             let op = self.eval_operand(operand, Some(field_dest.layout))?;
             self.copy_op(&op, &field_dest, /*allow_transmute*/ false)?;
         }

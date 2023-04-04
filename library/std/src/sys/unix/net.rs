@@ -443,6 +443,17 @@ impl Socket {
         Ok(passcred != 0)
     }
 
+    #[cfg(target_os = "freebsd")]
+    pub fn set_passcred(&self, passcred: bool) -> io::Result<()> {
+        setsockopt(self, libc::AF_LOCAL, libc::LOCAL_CREDS_PERSISTENT, passcred as libc::c_int)
+    }
+
+    #[cfg(target_os = "freebsd")]
+    pub fn passcred(&self) -> io::Result<bool> {
+        let passcred: libc::c_int = getsockopt(self, libc::AF_LOCAL, libc::LOCAL_CREDS_PERSISTENT)?;
+        Ok(passcred != 0)
+    }
+
     #[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         let mut nonblocking = nonblocking as libc::c_int;

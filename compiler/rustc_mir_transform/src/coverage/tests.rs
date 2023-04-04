@@ -65,7 +65,7 @@ impl<'tcx> MockBlocks<'tcx> {
     }
 
     fn push(&mut self, kind: TerminatorKind<'tcx>) -> BasicBlock {
-        let next_lo = if let Some(last) = self.blocks.last() {
+        let next_lo = if let Some(last) = self.blocks.last_index() {
             self.blocks[last].terminator().source_info.span.hi()
         } else {
             BytePos(1)

@@ -73,6 +73,11 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         }
     }
 
+    fn const_poison(&self, typ: Type<'gcc>) -> RValue<'gcc> {
+        // No distinction between undef and poison.
+        self.const_undef(typ)
+    }
+
     fn const_int(&self, typ: Type<'gcc>, int: i64) -> RValue<'gcc> {
         self.gcc_int(typ, int)
     }

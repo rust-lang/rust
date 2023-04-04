@@ -1,6 +1,6 @@
 use crate::mir::Mutability;
 use crate::ty::subst::GenericArgKind;
-use crate::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use crate::ty::{self, SubstsRef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_hir::def_id::DefId;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -188,22 +188,24 @@ pub struct DeepRejectCtxt {
 }
 
 impl DeepRejectCtxt {
-    pub fn generic_args_may_unify<'tcx>(
+    pub fn substs_refs_may_unify<'tcx>(
         self,
-        obligation_arg: ty::GenericArg<'tcx>,
-        impl_arg: ty::GenericArg<'tcx>,
+        obligation_substs: SubstsRef<'tcx>,
+        impl_substs: SubstsRef<'tcx>,
     ) -> bool {
-        match (obligation_arg.unpack(), impl_arg.unpack()) {
-            // We don't fast reject based on regions for now.
-            (GenericArgKind::Lifetime(_), GenericArgKind::Lifetime(_)) => true,
-            (GenericArgKind::Type(obl), GenericArgKind::Type(imp)) => {
-                self.types_may_unify(obl, imp)
+        iter::zip(obligation_substs, impl_substs).all(|(obl, imp)| {
+            match (obl.unpack(), imp.unpack()) {
+                // We don't fast reject based on regions for now.
+                (GenericArgKind::Lifetime(_), GenericArgKind::Lifetime(_)) => true,
+                (GenericArgKind::Type(obl), GenericArgKind::Type(imp)) => {
+                    self.types_may_unify(obl, imp)
+                }
+                (GenericArgKind::Const(obl), GenericArgKind::Const(imp)) => {
+                    self.consts_may_unify(obl, imp)
+                }
+                _ => bug!("kind mismatch: {obl} {imp}"),
             }
-            (GenericArgKind::Const(obl), GenericArgKind::Const(imp)) => {
-                self.consts_may_unify(obl, imp)
-            }
-            _ => bug!("kind mismatch: {obligation_arg} {impl_arg}"),
-        }
+        })
     }
 
     pub fn types_may_unify<'tcx>(self, obligation_ty: Ty<'tcx>, impl_ty: Ty<'tcx>) -> bool {
@@ -258,9 +260,7 @@ impl DeepRejectCtxt {
             },
             ty::Adt(obl_def, obl_substs) => match k {
                 &ty::Adt(impl_def, impl_substs) => {
-                    obl_def == impl_def
-                        && iter::zip(obl_substs, impl_substs)
-                            .all(|(obl, imp)| self.generic_args_may_unify(obl, imp))
+                    obl_def == impl_def && self.substs_refs_may_unify(obl_substs, impl_substs)
                 }
                 _ => false,
             },
@@ -312,6 +312,7 @@ impl DeepRejectCtxt {
             // Impls cannot contain these types as these cannot be named directly.
             ty::FnDef(..) | ty::Closure(..) | ty::Generator(..) => false,
 
+            // Placeholder types don't unify with anything on their own
             ty::Placeholder(..) | ty::Bound(..) => false,
 
             // Depending on the value of `treat_obligation_params`, we either
@@ -320,6 +321,10 @@ impl DeepRejectCtxt {
                 TreatParams::ForLookup | TreatParams::NextSolverLookup => false,
                 TreatParams::AsCandidateKey => true,
             },
+
+            ty::Infer(ty::IntVar(_)) => impl_ty.is_integral(),
+
+            ty::Infer(ty::FloatVar(_)) => impl_ty.is_floating_point(),
 
             ty::Infer(_) => true,
 
@@ -359,6 +364,9 @@ impl DeepRejectCtxt {
                 TreatParams::AsCandidateKey => true,
             },
 
+            // Placeholder consts don't unify with anything on their own
+            ty::ConstKind::Placeholder(_) => false,
+
             // As we don't necessarily eagerly evaluate constants,
             // they might unify with any value.
             ty::ConstKind::Expr(_) | ty::ConstKind::Unevaluated(_) | ty::ConstKind::Error(_) => {
@@ -371,7 +379,7 @@ impl DeepRejectCtxt {
 
             ty::ConstKind::Infer(_) => true,
 
-            ty::ConstKind::Bound(..) | ty::ConstKind::Placeholder(_) => {
+            ty::ConstKind::Bound(..) => {
                 bug!("unexpected obl const: {:?}", obligation_ct)
             }
         }

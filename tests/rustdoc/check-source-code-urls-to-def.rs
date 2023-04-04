@@ -2,7 +2,7 @@
 // aux-build:source_code.rs
 // build-aux-docs
 
-#![feature(rustdoc_internals)]
+#![feature(rustc_attrs)]
 
 #![crate_name = "foo"]
 
@@ -65,5 +65,5 @@ pub fn foo4() {
 }
 
 // @has - '//pre[@class="rust"]//a[@href="../../foo/primitive.bool.html"]' 'bool'
-#[doc(primitive = "bool")]
+#[rustc_doc_primitive = "bool"]
 mod whatever {}

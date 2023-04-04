@@ -5,7 +5,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::dominators::{self, Dominators};
 use rustc_data_structures::graph::{self, GraphSuccessors, WithNumNodes, WithStartNode};
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::{IndexSlice, IndexVec};
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::{self, BasicBlock, BasicBlockData, Terminator, TerminatorKind};
 
@@ -176,10 +176,10 @@ impl CoverageGraph {
 
     fn add_basic_coverage_block(
         bcbs: &mut IndexVec<BasicCoverageBlock, BasicCoverageBlockData>,
-        bb_to_bcb: &mut IndexVec<BasicBlock, Option<BasicCoverageBlock>>,
+        bb_to_bcb: &mut IndexSlice<BasicBlock, Option<BasicCoverageBlock>>,
         basic_blocks: Vec<BasicBlock>,
     ) {
-        let bcb = BasicCoverageBlock::from_usize(bcbs.len());
+        let bcb = bcbs.next_index();
         for &bb in basic_blocks.iter() {
             bb_to_bcb[bb] = Some(bcb);
         }

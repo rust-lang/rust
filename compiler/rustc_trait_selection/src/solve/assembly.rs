@@ -1,10 +1,12 @@
 //! Code shared by trait and projection goals for candidate assembly.
 
+use super::search_graph::OverflowHandler;
 #[cfg(doc)]
 use super::trait_goals::structural_traits::*;
 use super::{EvalCtxt, SolverMode};
 use crate::traits::coherence;
 use itertools::Itertools;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::util::elaborate_predicates;
@@ -153,6 +155,12 @@ pub(super) trait GoalKind<'tcx>: TypeFoldable<TyCtxt<'tcx>> + Copy + Eq {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
+    // A type is a `FnPtr` if it is of `FnPtr` type.
+    fn consider_builtin_fn_ptr_trait_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
+
     // A callable type (a closure, fn def, or fn ptr) is known to implement the `Fn<A>`
     // family of traits where `A` is given by the signature of the type.
     fn consider_builtin_fn_trait_candidates(
@@ -212,6 +220,11 @@ pub(super) trait GoalKind<'tcx>: TypeFoldable<TyCtxt<'tcx>> + Copy + Eq {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
+
+    fn consider_builtin_destruct_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
@@ -268,25 +281,38 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             return
         };
 
-        self.probe(|ecx| {
-            let normalized_ty = ecx.next_ty_infer();
-            let normalizes_to_goal = goal.with(
-                tcx,
-                ty::Binder::dummy(ty::ProjectionPredicate {
-                    projection_ty,
-                    term: normalized_ty.into(),
-                }),
-            );
-            ecx.add_goal(normalizes_to_goal);
-            if let Ok(_) = ecx.try_evaluate_added_goals() {
-                let normalized_ty = ecx.resolve_vars_if_possible(normalized_ty);
-
-                // NOTE: Alternatively we could call `evaluate_goal` here and only have a `Normalized` candidate.
-                // This doesn't work as long as we use `CandidateSource` in winnowing.
-                let goal = goal.with(tcx, goal.predicate.with_self_ty(tcx, normalized_ty));
-                candidates.extend(ecx.assemble_and_evaluate_candidates(goal));
-            }
+        let normalized_self_candidates: Result<_, NoSolution> = self.probe(|ecx| {
+            ecx.with_incremented_depth(
+                |ecx| {
+                    let result = ecx.evaluate_added_goals_and_make_canonical_response(
+                        Certainty::Maybe(MaybeCause::Overflow),
+                    )?;
+                    Ok(vec![Candidate { source: CandidateSource::BuiltinImpl, result }])
+                },
+                |ecx| {
+                    let normalized_ty = ecx.next_ty_infer();
+                    let normalizes_to_goal = goal.with(
+                        tcx,
+                        ty::Binder::dummy(ty::ProjectionPredicate {
+                            projection_ty,
+                            term: normalized_ty.into(),
+                        }),
+                    );
+                    ecx.add_goal(normalizes_to_goal);
+                    let _ = ecx.try_evaluate_added_goals()?;
+                    let normalized_ty = ecx.resolve_vars_if_possible(normalized_ty);
+                    // NOTE: Alternatively we could call `evaluate_goal` here and only
+                    // have a `Normalized` candidate. This doesn't work as long as we
+                    // use `CandidateSource` in winnowing.
+                    let goal = goal.with(tcx, goal.predicate.with_self_ty(tcx, normalized_ty));
+                    Ok(ecx.assemble_and_evaluate_candidates(goal))
+                },
+            )
         });
+
+        if let Ok(normalized_self_candidates) = normalized_self_candidates {
+            candidates.extend(normalized_self_candidates);
+        }
     }
 
     fn assemble_impl_candidates<G: GoalKind<'tcx>>(
@@ -326,6 +352,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             G::consider_builtin_copy_clone_candidate(self, goal)
         } else if lang_items.pointer_like() == Some(trait_def_id) {
             G::consider_builtin_pointer_like_candidate(self, goal)
+        } else if lang_items.fn_ptr_trait() == Some(trait_def_id) {
+            G::consider_builtin_fn_ptr_trait_candidate(self, goal)
         } else if let Some(kind) = self.tcx().fn_trait_kind_from_def_id(trait_def_id) {
             G::consider_builtin_fn_trait_candidates(self, goal, kind)
         } else if lang_items.tuple_trait() == Some(trait_def_id) {
@@ -340,6 +368,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             G::consider_builtin_unsize_candidate(self, goal)
         } else if lang_items.discriminant_kind_trait() == Some(trait_def_id) {
             G::consider_builtin_discriminant_kind_candidate(self, goal)
+        } else if lang_items.destruct_trait() == Some(trait_def_id) {
+            G::consider_builtin_destruct_candidate(self, goal)
         } else {
             Err(NoSolution)
         };
@@ -460,10 +490,22 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         };
 
         let tcx = self.tcx();
-        for assumption in
-            elaborate_predicates(tcx, bounds.iter().map(|bound| bound.with_self_ty(tcx, self_ty)))
-        {
-            match G::consider_object_bound_candidate(self, goal, assumption.predicate) {
+        let own_bounds: FxIndexSet<_> =
+            bounds.iter().map(|bound| bound.with_self_ty(tcx, self_ty)).collect();
+        for assumption in elaborate_predicates(tcx, own_bounds.iter().copied()) {
+            // FIXME: Predicates are fully elaborated in the object type's existential bounds
+            // list. We want to only consider these pre-elaborated projections, and not other
+            // projection predicates that we reach by elaborating the principal trait ref,
+            // since that'll cause ambiguity.
+            //
+            // We can remove this when we have implemented intersections in responses.
+            if assumption.to_opt_poly_projection_pred().is_some()
+                && !own_bounds.contains(&assumption)
+            {
+                continue;
+            }
+
+            match G::consider_object_bound_candidate(self, goal, assumption) {
                 Ok(result) => {
                     candidates.push(Candidate { source: CandidateSource::BuiltinImpl, result })
                 }

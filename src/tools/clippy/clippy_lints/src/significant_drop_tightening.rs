@@ -1,9 +1,9 @@
-use crate::FxHashSet;
 use clippy_utils::{
     diagnostics::span_lint_and_then,
     get_attr,
     source::{indent_of, snippet},
 };
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir::{
     self as hir,
@@ -58,6 +58,7 @@ impl_lint_pass!(SignificantDropTightening<'_> => [SIGNIFICANT_DROP_TIGHTENING]);
 pub struct SignificantDropTightening<'tcx> {
     /// Auxiliary structure used to avoid having to verify the same type multiple times.
     seen_types: FxHashSet<Ty<'tcx>>,
+    type_cache: FxHashMap<Ty<'tcx>, bool>,
 }
 
 impl<'tcx> SignificantDropTightening<'tcx> {
@@ -118,7 +119,7 @@ impl<'tcx> SignificantDropTightening<'tcx> {
         stmt: &hir::Stmt<'_>,
         cb: impl Fn(&mut SigDropAuxParams),
     ) {
-        let mut sig_drop_finder = SigDropFinder::new(cx, &mut self.seen_types);
+        let mut sig_drop_finder = SigDropFinder::new(cx, &mut self.seen_types, &mut self.type_cache);
         sig_drop_finder.visit_expr(expr);
         if sig_drop_finder.has_sig_drop {
             cb(sdap);
@@ -296,15 +297,24 @@ impl Default for SigDropAuxParams {
 struct SigDropChecker<'cx, 'sdt, 'tcx> {
     cx: &'cx LateContext<'tcx>,
     seen_types: &'sdt mut FxHashSet<Ty<'tcx>>,
+    type_cache: &'sdt mut FxHashMap<Ty<'tcx>, bool>,
 }
 
 impl<'cx, 'sdt, 'tcx> SigDropChecker<'cx, 'sdt, 'tcx> {
-    pub(crate) fn new(cx: &'cx LateContext<'tcx>, seen_types: &'sdt mut FxHashSet<Ty<'tcx>>) -> Self {
+    pub(crate) fn new(
+        cx: &'cx LateContext<'tcx>,
+        seen_types: &'sdt mut FxHashSet<Ty<'tcx>>,
+        type_cache: &'sdt mut FxHashMap<Ty<'tcx>, bool>,
+    ) -> Self {
         seen_types.clear();
-        Self { cx, seen_types }
+        Self {
+            cx,
+            seen_types,
+            type_cache,
+        }
     }
 
-    pub(crate) fn has_sig_drop_attr(&mut self, ty: Ty<'tcx>) -> bool {
+    pub(crate) fn has_sig_drop_attr_uncached(&mut self, ty: Ty<'tcx>) -> bool {
         if let Some(adt) = ty.ty_adt_def() {
             let mut iter = get_attr(
                 self.cx.sess(),
@@ -340,6 +350,16 @@ impl<'cx, 'sdt, 'tcx> SigDropChecker<'cx, 'sdt, 'tcx> {
         }
     }
 
+    pub(crate) fn has_sig_drop_attr(&mut self, ty: Ty<'tcx>) -> bool {
+        // The borrow checker prevents us from using something fancier like or_insert_with.
+        if let Some(ty) = self.type_cache.get(&ty) {
+            return *ty;
+        }
+        let value = self.has_sig_drop_attr_uncached(ty);
+        self.type_cache.insert(ty, value);
+        value
+    }
+
     fn has_seen_ty(&mut self, ty: Ty<'tcx>) -> bool {
         !self.seen_types.insert(ty)
     }
@@ -353,11 +373,15 @@ struct SigDropFinder<'cx, 'sdt, 'tcx> {
 }
 
 impl<'cx, 'sdt, 'tcx> SigDropFinder<'cx, 'sdt, 'tcx> {
-    fn new(cx: &'cx LateContext<'tcx>, seen_types: &'sdt mut FxHashSet<Ty<'tcx>>) -> Self {
+    fn new(
+        cx: &'cx LateContext<'tcx>,
+        seen_types: &'sdt mut FxHashSet<Ty<'tcx>>,
+        type_cache: &'sdt mut FxHashMap<Ty<'tcx>, bool>,
+    ) -> Self {
         Self {
             cx,
             has_sig_drop: false,
-            sig_drop_checker: SigDropChecker::new(cx, seen_types),
+            sig_drop_checker: SigDropChecker::new(cx, seen_types, type_cache),
         }
     }
 }

@@ -3,10 +3,10 @@ use rustc_codegen_ssa::debuginfo::{
     wants_c_like_enum_debuginfo,
 };
 use rustc_hir::def::CtorKind;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::IndexSlice;
 use rustc_middle::{
     bug,
-    mir::{Field, GeneratorLayout, GeneratorSavedLocal},
+    mir::{GeneratorLayout, GeneratorSavedLocal},
     ty::{
         self,
         layout::{IntegerExt, LayoutOf, PrimitiveExt, TyAndLayout},
@@ -14,7 +14,9 @@ use rustc_middle::{
     },
 };
 use rustc_span::Symbol;
-use rustc_target::abi::{HasDataLayout, Integer, Primitive, TagEncoding, VariantIdx, Variants};
+use rustc_target::abi::{
+    FieldIdx, HasDataLayout, Integer, Primitive, TagEncoding, VariantIdx, Variants,
+};
 use std::borrow::Cow;
 
 use crate::{
@@ -272,7 +274,8 @@ fn build_enum_variant_struct_type_di_node<'ll, 'tcx>(
                 .map(|field_index| {
                     let field_name = if variant_def.ctor_kind() != Some(CtorKind::Fn) {
                         // Fields have names
-                        Cow::from(variant_def.fields[field_index].name.as_str())
+                        let field = &variant_def.fields[FieldIdx::from_usize(field_index)];
+                        Cow::from(field.name.as_str())
                     } else {
                         // Tuple-like
                         super::tuple_field_name(field_index)
@@ -320,7 +323,7 @@ pub fn build_generator_variant_struct_type_di_node<'ll, 'tcx>(
     generator_type_and_layout: TyAndLayout<'tcx>,
     generator_type_di_node: &'ll DIType,
     generator_layout: &GeneratorLayout<'tcx>,
-    state_specific_upvar_names: &IndexVec<GeneratorSavedLocal, Option<Symbol>>,
+    state_specific_upvar_names: &IndexSlice<GeneratorSavedLocal, Option<Symbol>>,
     common_upvar_names: &[String],
 ) -> &'ll DIType {
     let variant_name = GeneratorSubsts::variant_name(variant_index);
@@ -353,7 +356,7 @@ pub fn build_generator_variant_struct_type_di_node<'ll, 'tcx>(
             let state_specific_fields: SmallVec<_> = (0..variant_layout.fields.count())
                 .map(|field_index| {
                     let generator_saved_local = generator_layout.variant_fields[variant_index]
-                        [Field::from_usize(field_index)];
+                        [FieldIdx::from_usize(field_index)];
                     let field_name_maybe = state_specific_upvar_names[generator_saved_local];
                     let field_name = field_name_maybe
                         .as_ref()

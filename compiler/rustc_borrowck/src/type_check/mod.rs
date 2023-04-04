@@ -14,7 +14,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::vec::{IndexSlice, IndexVec};
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::region_constraints::RegionConstraintData;
@@ -36,7 +36,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
 use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
@@ -125,7 +125,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
     infcx: &BorrowckInferCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body: &Body<'tcx>,
-    promoted: &IndexVec<Promoted, Body<'tcx>>,
+    promoted: &IndexSlice<Promoted, Body<'tcx>>,
     universal_regions: &Rc<UniversalRegions<'tcx>>,
     location_table: &LocationTable,
     borrow_set: &BorrowSet<'tcx>,
@@ -292,7 +292,7 @@ enum FieldAccessError {
 /// is a problem.
 struct TypeVerifier<'a, 'b, 'tcx> {
     cx: &'a mut TypeChecker<'b, 'tcx>,
-    promoted: &'b IndexVec<Promoted, Body<'tcx>>,
+    promoted: &'b IndexSlice<Promoted, Body<'tcx>>,
     last_span: Span,
     errors_reported: bool,
 }
@@ -493,7 +493,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
 impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
     fn new(
         cx: &'a mut TypeChecker<'b, 'tcx>,
-        promoted: &'b IndexVec<Promoted, Body<'tcx>>,
+        promoted: &'b IndexSlice<Promoted, Body<'tcx>>,
     ) -> Self {
         TypeVerifier { promoted, last_span: cx.body.span, cx, errors_reported: false }
     }
@@ -786,7 +786,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         &mut self,
         parent: &dyn fmt::Debug,
         base_ty: PlaceTy<'tcx>,
-        field: Field,
+        field: FieldIdx,
         location: Location,
     ) -> Result<Ty<'tcx>, FieldAccessError> {
         let tcx = self.tcx();
@@ -812,7 +812,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             },
             PlaceTy { ty, variant_index: None } => match *ty.kind() {
                 ty::Adt(adt_def, substs) if !adt_def.is_enum() => {
-                    (adt_def.variant(VariantIdx::new(0)), substs)
+                    (adt_def.variant(FIRST_VARIANT), substs)
                 }
                 ty::Closure(_, substs) => {
                     return match substs
@@ -854,7 +854,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             },
         };
 
-        if let Some(field) = variant.fields.get(field.index()) {
+        if let Some(field) = variant.fields.get(field) {
             Ok(self.cx.normalize(field.ty(tcx, substs), location))
         } else {
             Err(FieldAccessError::OutOfRange { field_count: variant.fields.len() })
@@ -1716,7 +1716,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn aggregate_field_ty(
         &mut self,
         ak: &AggregateKind<'tcx>,
-        field_index: usize,
+        field_index: FieldIdx,
         location: Location,
     ) -> Result<Ty<'tcx>, FieldAccessError> {
         let tcx = self.tcx();
@@ -1733,7 +1733,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
             AggregateKind::Closure(_, substs) => {
-                match substs.as_closure().upvar_tys().nth(field_index) {
+                match substs.as_closure().upvar_tys().nth(field_index.as_usize()) {
                     Some(ty) => Ok(ty),
                     None => Err(FieldAccessError::OutOfRange {
                         field_count: substs.as_closure().upvar_tys().count(),
@@ -1744,7 +1744,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // It doesn't make sense to look at a field beyond the prefix;
                 // these require a variant index, and are not initialized in
                 // aggregate rvalues.
-                match substs.as_generator().prefix_tys().nth(field_index) {
+                match substs.as_generator().prefix_tys().nth(field_index.as_usize()) {
                     Some(ty) => Ok(ty),
                     None => Err(FieldAccessError::OutOfRange {
                         field_count: substs.as_generator().prefix_tys().count(),
@@ -2349,7 +2349,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         body: &Body<'tcx>,
         rvalue: &Rvalue<'tcx>,
         aggregate_kind: &AggregateKind<'tcx>,
-        operands: &[Operand<'tcx>],
+        operands: &IndexSlice<FieldIdx, Operand<'tcx>>,
         location: Location,
     ) {
         let tcx = self.tcx();
@@ -2361,7 +2361,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             return;
         }
 
-        for (i, operand) in operands.iter().enumerate() {
+        for (i, operand) in operands.iter_enumerated() {
             let field_ty = match self.aggregate_field_ty(aggregate_kind, i, location) {
                 Ok(field_ty) => field_ty,
                 Err(FieldAccessError::OutOfRange { field_count }) => {
@@ -2369,8 +2369,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         self,
                         rvalue,
                         "accessed field #{} but variant only has {}",
-                        i,
-                        field_count
+                        i.as_u32(),
+                        field_count,
                     );
                     continue;
                 }

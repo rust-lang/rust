@@ -1,9 +1,13 @@
 // run-rustfix
+// aux-build:proc_macros.rs
+
 #![warn(clippy::inconsistent_struct_constructor)]
 #![allow(clippy::redundant_field_names)]
 #![allow(clippy::unnecessary_operation)]
 #![allow(clippy::no_effect)]
 #![allow(dead_code)]
+
+extern crate proc_macros;
 
 #[derive(Default)]
 struct Foo {
@@ -12,18 +16,10 @@ struct Foo {
     z: i32,
 }
 
-macro_rules! new_foo {
-    () => {
-        let x = 1;
-        let y = 1;
-        let z = 1;
-        Foo { y, x, z }
-    };
-}
-
 mod without_base {
     use super::Foo;
 
+    #[proc_macros::inline_macros]
     fn test() {
         let x = 1;
         let y = 1;
@@ -34,7 +30,12 @@ mod without_base {
 
         // Should NOT lint.
         // issue #7069.
-        new_foo!();
+        inline!({
+            let x = 1;
+            let y = 1;
+            let z = 1;
+            Foo { y, x, z }
+        });
 
         // Should NOT lint because the order is the same as in the definition.
         Foo { x, y, z };

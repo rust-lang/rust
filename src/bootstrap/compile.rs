@@ -20,11 +20,11 @@ use serde_derive::Deserialize;
 
 use crate::builder::crate_description;
 use crate::builder::Cargo;
-use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
+use crate::builder::{Builder, Kind, PathSet, RunConfig, ShouldRun, Step, TaskPath};
 use crate::cache::{Interned, INTERNER};
 use crate::config::{LlvmLibunwind, RustcLto, TargetSelection};
 use crate::dist;
-use crate::native;
+use crate::llvm;
 use crate::tool::SourceType;
 use crate::util::get_clang_cl_resource_dir;
 use crate::util::{exe, is_debug_info, is_dylib, output, symlink_dir, t, up_to_date};
@@ -191,7 +191,7 @@ fn copy_and_stamp(
 }
 
 fn copy_llvm_libunwind(builder: &Builder<'_>, target: TargetSelection, libdir: &Path) -> PathBuf {
-    let libunwind_path = builder.ensure(native::Libunwind { target });
+    let libunwind_path = builder.ensure(llvm::Libunwind { target });
     let libunwind_source = libunwind_path.join("libunwind.a");
     let libunwind_target = libdir.join("libunwind.a");
     builder.copy(&libunwind_source, &libunwind_target);
@@ -266,7 +266,7 @@ fn copy_self_contained_objects(
                 DependencyType::TargetSelfContained,
             );
         }
-        let crt_path = builder.ensure(native::CrtBeginEnd { target });
+        let crt_path = builder.ensure(llvm::CrtBeginEnd { target });
         for &obj in &["crtbegin.o", "crtbeginS.o", "crtend.o", "crtendS.o"] {
             let src = crt_path.join(obj);
             let target = libdir_self_contained.join(obj);
@@ -474,7 +474,7 @@ fn copy_sanitizers(
     compiler: &Compiler,
     target: TargetSelection,
 ) -> Vec<PathBuf> {
-    let runtimes: Vec<native::SanitizerRuntime> = builder.ensure(native::Sanitizers { target });
+    let runtimes: Vec<llvm::SanitizerRuntime> = builder.ensure(llvm::Sanitizers { target });
 
     if builder.config.dry_run() {
         return Vec::new();
@@ -876,12 +876,12 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
     // busting caches (e.g. like #71152).
     if builder.config.llvm_enabled()
         && (builder.kind != Kind::Check
-            || crate::native::prebuilt_llvm_config(builder, target).is_ok())
+            || crate::llvm::prebuilt_llvm_config(builder, target).is_ok())
     {
         if builder.is_rust_llvm(target) {
             cargo.env("LLVM_RUSTLLVM", "1");
         }
-        let native::LlvmResult { llvm_config, .. } = builder.ensure(native::Llvm { target });
+        let llvm::LlvmResult { llvm_config, .. } = builder.ensure(llvm::Llvm { target });
         cargo.env("LLVM_CONFIG", &llvm_config);
         if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
             cargo.env("CFG_LLVM_ROOT", s);
@@ -995,6 +995,44 @@ pub struct CodegenBackend {
     pub backend: Interned<String>,
 }
 
+fn needs_codegen_config(run: &RunConfig<'_>) -> bool {
+    let mut needs_codegen_cfg = false;
+    for path_set in &run.paths {
+        needs_codegen_cfg = match path_set {
+            PathSet::Set(set) => set.iter().any(|p| is_codegen_cfg_needed(p, run)),
+            PathSet::Suite(suite) => is_codegen_cfg_needed(&suite, run),
+        }
+    }
+    needs_codegen_cfg
+}
+
+const CODEGEN_BACKEND_PREFIX: &str = "rustc_codegen_";
+
+fn is_codegen_cfg_needed(path: &TaskPath, run: &RunConfig<'_>) -> bool {
+    if path.path.to_str().unwrap().contains(&CODEGEN_BACKEND_PREFIX) {
+        let mut needs_codegen_backend_config = true;
+        for &backend in &run.builder.config.rust_codegen_backends {
+            if path
+                .path
+                .to_str()
+                .unwrap()
+                .ends_with(&(CODEGEN_BACKEND_PREFIX.to_owned() + &backend))
+            {
+                needs_codegen_backend_config = false;
+            }
+        }
+        if needs_codegen_backend_config {
+            run.builder.info(
+                "Warning: no codegen-backends config matched the requested path to build a codegen backend. \
+                Help: add backend to codegen-backends in config.toml.",
+            );
+            return true;
+        }
+    }
+
+    return false;
+}
+
 impl Step for CodegenBackend {
     type Output = ();
     const ONLY_HOSTS: bool = true;
@@ -1006,6 +1044,10 @@ impl Step for CodegenBackend {
     }
 
     fn make_run(run: RunConfig<'_>) {
+        if needs_codegen_config(&run) {
+            return;
+        }
+
         for &backend in &run.builder.config.rust_codegen_backends {
             if backend == "llvm" {
                 continue; // Already built as part of rustc
@@ -1346,6 +1388,13 @@ impl Step for Assemble {
         // when not performing a full bootstrap).
         builder.ensure(Rustc::new(build_compiler, target_compiler.host));
 
+        // FIXME: For now patch over problems noted in #90244 by early returning here, even though
+        // we've not properly assembled the target sysroot. A full fix is pending further investigation,
+        // for now full bootstrap usage is rare enough that this is OK.
+        if target_compiler.stage >= 3 && !builder.config.full_bootstrap {
+            return target_compiler;
+        }
+
         for &backend in builder.config.rust_codegen_backends.iter() {
             if backend == "llvm" {
                 continue; // Already built as part of rustc
@@ -1359,7 +1408,7 @@ impl Step for Assemble {
         }
 
         let lld_install = if builder.config.lld_enabled {
-            Some(builder.ensure(native::Lld { target: target_compiler.host }))
+            Some(builder.ensure(llvm::Lld { target: target_compiler.host }))
         } else {
             None
         };
@@ -1423,8 +1472,8 @@ impl Step for Assemble {
         }
 
         if builder.config.rust_codegen_backends.contains(&INTERNER.intern_str("llvm")) {
-            let native::LlvmResult { llvm_config, .. } =
-                builder.ensure(native::Llvm { target: target_compiler.host });
+            let llvm::LlvmResult { llvm_config, .. } =
+                builder.ensure(llvm::Llvm { target: target_compiler.host });
             if !builder.config.dry_run() {
                 let llvm_bin_dir = output(Command::new(llvm_config).arg("--bindir"));
                 let llvm_bin_dir = Path::new(llvm_bin_dir.trim());

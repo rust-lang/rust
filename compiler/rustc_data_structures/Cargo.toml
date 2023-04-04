@@ -10,12 +10,12 @@ arrayvec = { version = "0.7", default-features = false }
 bitflags = "1.2.1"
 cfg-if = "1.0"
 ena = "0.14.2"
-indexmap = { version = "1.9.1" }
+indexmap = { version = "1.9.3" }
 jobserver_crate = { version = "0.1.13", package = "jobserver" }
 libc = "0.2"
 measureme = "10.0.0"
-rayon-core = { version = "0.4.0", package = "rustc-rayon-core", optional = true }
-rayon = { version = "0.4.0", package = "rustc-rayon", optional = true }
+rustc-rayon-core = { version = "0.5.0", optional = true }
+rustc-rayon = { version = "0.5.0", optional = true }
 rustc_graphviz = { path = "../rustc_graphviz" }
 rustc-hash = "1.1.0"
 rustc_index = { path = "../rustc_index", package = "rustc_index" }
@@ -51,4 +51,4 @@ features = [
 memmap2 = "0.2.1"
 
 [features]
-rustc_use_parallel_compiler = ["indexmap/rustc-rayon", "rayon", "rayon-core"]
+rustc_use_parallel_compiler = ["indexmap/rustc-rayon", "rustc-rayon", "rustc-rayon-core"]

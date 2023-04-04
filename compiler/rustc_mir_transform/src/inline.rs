@@ -10,7 +10,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 use rustc_span::{hygiene::ExpnKind, ExpnData, LocalExpnId, Span};
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 use rustc_target::spec::abi::Abi;
 
 use crate::simplify::{remove_dead_blocks, CfgSimplifier};
@@ -270,7 +270,9 @@ impl<'tcx> Inliner<'tcx> {
             | InstanceDef::FnPtrShim(..)
             | InstanceDef::ClosureOnceShim { .. }
             | InstanceDef::DropGlue(..)
-            | InstanceDef::CloneShim(..) => return Ok(()),
+            | InstanceDef::CloneShim(..)
+            | InstanceDef::ThreadLocalShim(..)
+            | InstanceDef::FnPtrAddrShim(..) => return Ok(()),
         }
 
         if self.tcx.is_constructor(callee_def_id) {
@@ -424,13 +426,6 @@ impl<'tcx> Inliner<'tcx> {
         debug!("    final inline threshold = {}", threshold);
 
         // FIXME: Give a bonus to functions with only a single caller
-        let diverges = matches!(
-            callee_body.basic_blocks[START_BLOCK].terminator().kind,
-            TerminatorKind::Unreachable | TerminatorKind::Call { target: None, .. }
-        );
-        if diverges && !matches!(callee_attrs.inline, InlineAttr::Always) {
-            return Err("callee diverges unconditionally");
-        }
 
         let mut checker = CostChecker {
             tcx: self.tcx,
@@ -706,7 +701,7 @@ impl<'tcx> Inliner<'tcx> {
             // The `tmp0`, `tmp1`, and `tmp2` in our example above.
             let tuple_tmp_args = tuple_tys.iter().enumerate().map(|(i, ty)| {
                 // This is e.g., `tuple_tmp.0` in our example above.
-                let tuple_field = Operand::Move(tcx.mk_place_field(tuple, Field::new(i), ty));
+                let tuple_field = Operand::Move(tcx.mk_place_field(tuple, FieldIdx::new(i), ty));
 
                 // Spill to a local to make e.g., `tmp0`.
                 self.create_temp_if_necessary(tuple_field, callsite, caller_body)
@@ -911,8 +906,8 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                     check_equal(self, *f_ty);
                 }
                 ty::Adt(adt_def, substs) => {
-                    let var = parent_ty.variant_index.unwrap_or(VariantIdx::from_u32(0));
-                    let Some(field) = adt_def.variant(var).fields.get(f.as_usize()) else {
+                    let var = parent_ty.variant_index.unwrap_or(FIRST_VARIANT);
+                    let Some(field) = adt_def.variant(var).fields.get(f) else {
                         self.validation = Err("malformed MIR");
                         return;
                     };

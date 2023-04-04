@@ -3,69 +3,101 @@ error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be ann
    |
 LL |     match Derive::Some(NoDerive) { ENUM => dbg!(ENUM), _ => panic!("whoops"), };
    |                                    ^^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:44:28
+  --> $DIR/reject_non_structural.rs:46:28
    |
 LL |     match Some(NoDerive) { FIELD => dbg!(FIELD), _ => panic!("whoops"), };
    |                            ^^^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:49:27
+  --> $DIR/reject_non_structural.rs:53:27
    |
 LL |     match Some(NoDerive) {INDIRECT => dbg!(INDIRECT), _ => panic!("whoops"), };
    |                           ^^^^^^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:53:36
+  --> $DIR/reject_non_structural.rs:59:36
    |
 LL |     match (None, Some(NoDerive)) { TUPLE => dbg!(TUPLE), _ => panic!("whoops"), };
    |                                    ^^^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:57:28
+  --> $DIR/reject_non_structural.rs:65:28
    |
 LL |     match Some(NoDerive) { TYPE_ASCRIPTION => dbg!(TYPE_ASCRIPTION), _ => panic!("whoops"), };
    |                            ^^^^^^^^^^^^^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:61:36
+  --> $DIR/reject_non_structural.rs:71:36
    |
 LL |     match [None, Some(NoDerive)] { ARRAY => dbg!(ARRAY), _ => panic!("whoops"), };
    |                                    ^^^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:65:33
+  --> $DIR/reject_non_structural.rs:77:33
    |
 LL |     match [Some(NoDerive); 2] { REPEAT => dbg!(REPEAT), _ => panic!("whoops"), };
    |                                 ^^^^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:65:33
+  --> $DIR/reject_non_structural.rs:77:33
    |
 LL |     match [Some(NoDerive); 2] { REPEAT => dbg!(REPEAT), _ => panic!("whoops"), };
    |                                 ^^^^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:71:28
+  --> $DIR/reject_non_structural.rs:87:28
    |
 LL |     match Some(NoDerive) { NoDerive::ASSOC => dbg!(NoDerive::ASSOC), _ => panic!("whoops"), };
    |                            ^^^^^^^^^^^^^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:75:28
+  --> $DIR/reject_non_structural.rs:93:28
    |
 LL |     match Some(NoDerive) { BLOCK => dbg!(BLOCK), _ => panic!("whoops"), };
    |                            ^^^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 warning: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/reject_non_structural.rs:79:29
+  --> $DIR/reject_non_structural.rs:99:29
    |
 LL |     match &Some(NoDerive) { ADDR_OF => dbg!(ADDR_OF), _ => panic!("whoops"), };
    |                             ^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/62411>
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 note: the lint level is defined here
   --> $DIR/reject_non_structural.rs:12:9
    |

@@ -10,9 +10,9 @@ use rustc_middle::ty;
 
 use super::MATCH_BOOL;
 
-pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
+pub(crate) fn check(cx: &LateContext<'_>, scrutinee: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     // Type of expression is `bool`.
-    if *cx.typeck_results().expr_ty(ex).kind() == ty::Bool {
+    if *cx.typeck_results().expr_ty(scrutinee).kind() == ty::Bool {
         span_lint_and_then(
             cx,
             MATCH_BOOL,
@@ -36,24 +36,26 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr:
                     };
 
                     if let Some((true_expr, false_expr)) = exprs {
+                        let mut app = Applicability::HasPlaceholders;
+                        let ctxt = expr.span.ctxt();
                         let sugg = match (is_unit_expr(true_expr), is_unit_expr(false_expr)) {
                             (false, false) => Some(format!(
                                 "if {} {} else {}",
-                                snippet(cx, ex.span, "b"),
-                                expr_block(cx, true_expr, None, "..", Some(expr.span)),
-                                expr_block(cx, false_expr, None, "..", Some(expr.span))
+                                snippet(cx, scrutinee.span, "b"),
+                                expr_block(cx, true_expr, ctxt, "..", Some(expr.span), &mut app),
+                                expr_block(cx, false_expr, ctxt, "..", Some(expr.span), &mut app)
                             )),
                             (false, true) => Some(format!(
                                 "if {} {}",
-                                snippet(cx, ex.span, "b"),
-                                expr_block(cx, true_expr, None, "..", Some(expr.span))
+                                snippet(cx, scrutinee.span, "b"),
+                                expr_block(cx, true_expr, ctxt, "..", Some(expr.span), &mut app)
                             )),
                             (true, false) => {
-                                let test = Sugg::hir(cx, ex, "..");
+                                let test = Sugg::hir(cx, scrutinee, "..");
                                 Some(format!(
                                     "if {} {}",
                                     !test,
-                                    expr_block(cx, false_expr, None, "..", Some(expr.span))
+                                    expr_block(cx, false_expr, ctxt, "..", Some(expr.span), &mut app)
                                 ))
                             },
                             (true, true) => None,

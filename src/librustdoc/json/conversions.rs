@@ -249,9 +249,7 @@ pub(crate) fn id_from_item_inner(
                     // instead, we directly get the primitive symbol and convert it to u32 to
                     // generate the ID.
                     if matches!(tcx.def_kind(def_id), DefKind::Mod) &&
-                        let Some(prim) = tcx.get_attrs(*def_id, sym::doc)
-                            .flat_map(|attr| attr.meta_item_list().unwrap_or_default())
-                            .filter(|attr| attr.has_name(sym::primitive))
+                        let Some(prim) = tcx.get_attrs(*def_id, sym::rustc_doc_primitive)
                             .find_map(|attr| attr.value_str()) {
                         format!(":{}", prim.as_u32())
                     } else {
@@ -456,7 +454,7 @@ impl FromWithTcx<clean::GenericParamDefKind> for GenericParamDefKind {
                 default: default.map(|x| (*x).into_tcx(tcx)),
                 synthetic,
             },
-            Const { did: _, ty, default } => GenericParamDefKind::Const {
+            Const { ty, default } => GenericParamDefKind::Const {
                 type_: (*ty).into_tcx(tcx),
                 default: default.map(|x| *x),
             },
@@ -473,9 +471,35 @@ impl FromWithTcx<clean::WherePredicate> for WherePredicate {
                 bounds: bounds.into_tcx(tcx),
                 generic_params: bound_params
                     .into_iter()
-                    .map(|x| GenericParamDef {
-                        name: x.0.to_string(),
-                        kind: GenericParamDefKind::Lifetime { outlives: vec![] },
+                    .map(|x| {
+                        let name = x.name.to_string();
+                        let kind = match x.kind {
+                            clean::GenericParamDefKind::Lifetime { outlives } => {
+                                GenericParamDefKind::Lifetime {
+                                    outlives: outlives.iter().map(|lt| lt.0.to_string()).collect(),
+                                }
+                            }
+                            clean::GenericParamDefKind::Type {
+                                did: _,
+                                bounds,
+                                default,
+                                synthetic,
+                            } => GenericParamDefKind::Type {
+                                bounds: bounds
+                                    .into_iter()
+                                    .map(|bound| bound.into_tcx(tcx))
+                                    .collect(),
+                                default: default.map(|ty| (*ty).into_tcx(tcx)),
+                                synthetic,
+                            },
+                            clean::GenericParamDefKind::Const { ty, default } => {
+                                GenericParamDefKind::Const {
+                                    type_: (*ty).into_tcx(tcx),
+                                    default: default.map(|d| *d),
+                                }
+                            }
+                        };
+                        GenericParamDef { name, kind }
                     })
                     .collect(),
             },

@@ -204,15 +204,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut expected_sig = None;
         let mut expected_kind = None;
 
-        for obligation in traits::elaborate_predicates_with_span(
+        for (pred, span) in traits::elaborate_predicates_with_span(
             self.tcx,
             // Reverse the obligations here, since `elaborate_*` uses a stack,
             // and we want to keep inference generally in the same order of
             // the registered obligations.
             predicates.rev(),
         ) {
-            debug!(?obligation.predicate);
-            let bound_predicate = obligation.predicate.kind();
+            debug!(?pred);
+            let bound_predicate = pred.kind();
 
             // Given a Projection predicate, we can potentially infer
             // the complete signature.
@@ -220,9 +220,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && let ty::PredicateKind::Clause(ty::Clause::Projection(proj_predicate)) = bound_predicate.skip_binder()
             {
                 let inferred_sig = self.normalize(
-                    obligation.cause.span,
+                    span,
                     self.deduce_sig_from_projection(
-                    Some(obligation.cause.span),
+                    Some(span),
                         bound_predicate.rebind(proj_predicate),
                     ),
                 );

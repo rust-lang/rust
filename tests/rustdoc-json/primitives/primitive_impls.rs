@@ -25,7 +25,7 @@ pub trait Trait {}
 impl Trait for i32 {}
 
 /// i32
-#[doc(primitive = "i32")]
+#[rustc_doc_primitive = "i32"]
 mod prim_i32 {}
 
 // @set i32 = "$.index[*][?(@.docs=='i32')].id"

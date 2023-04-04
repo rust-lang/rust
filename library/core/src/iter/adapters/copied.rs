@@ -4,6 +4,7 @@ use crate::iter::adapters::{
 use crate::iter::{FusedIterator, TrustedLen};
 use crate::mem::MaybeUninit;
 use crate::mem::SizedTypeProperties;
+use crate::num::NonZeroUsize;
 use crate::ops::Try;
 use crate::{array, ptr};
 
@@ -89,7 +90,7 @@ where
     }
 
     #[inline]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         self.it.advance_by(n)
     }
 
@@ -130,7 +131,7 @@ where
     }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         self.it.advance_back_by(n)
     }
 }
@@ -238,5 +239,19 @@ where
             let _ = self.advance_by(N);
             Ok(MaybeUninit::array_assume_init(raw_array))
         }
+    }
+}
+
+#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+impl<I: Default> Default for Copied<I> {
+    /// Creates a `Copied` iterator from the default value of `I`
+    /// ```
+    /// # use core::slice;
+    /// # use core::iter::Copied;
+    /// let iter: Copied<slice::Iter<'_, u8>> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
+    fn default() -> Self {
+        Self::new(Default::default())
     }
 }

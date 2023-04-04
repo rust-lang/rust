@@ -7,6 +7,11 @@ struct MyVec {
     vec: Vec<u8>,
 }
 
+union MyOwnMaybeUninit {
+    value: u8,
+    uninit: (),
+}
+
 fn main() {
     // with_capacity() -> set_len() should be detected
     let mut vec: Vec<u8> = Vec::with_capacity(1000);
@@ -96,5 +101,27 @@ fn main() {
     let mut vec: Vec<u8> = Vec::with_capacity(1000);
     unsafe {
         vec.set_len(0);
+    }
+
+    // ZSTs should not be detected
+    let mut vec: Vec<()> = Vec::with_capacity(1000);
+    unsafe {
+        vec.set_len(10);
+    }
+
+    // unions should not be detected
+    let mut vec: Vec<MyOwnMaybeUninit> = Vec::with_capacity(1000);
+    unsafe {
+        vec.set_len(10);
+    }
+
+    polymorphic::<()>();
+
+    fn polymorphic<T>() {
+        // We are conservative around polymorphic types.
+        let mut vec: Vec<T> = Vec::with_capacity(1000);
+        unsafe {
+            vec.set_len(10);
+        }
     }
 }

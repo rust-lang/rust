@@ -1,6 +1,6 @@
 use super::{DirectedGraph, WithNumNodes, WithStartNode, WithSuccessors};
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::{IndexSlice, IndexVec};
 use std::ops::ControlFlow;
 
 #[cfg(test)]
@@ -31,7 +31,7 @@ fn post_order_walk<G: DirectedGraph + WithSuccessors + WithNumNodes>(
     graph: &G,
     node: G::Node,
     result: &mut Vec<G::Node>,
-    visited: &mut IndexVec<G::Node, bool>,
+    visited: &mut IndexSlice<G::Node, bool>,
 ) {
     struct PostOrderFrame<Node, Iter> {
         node: Node,

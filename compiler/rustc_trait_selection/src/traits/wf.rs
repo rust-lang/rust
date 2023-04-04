@@ -921,9 +921,9 @@ pub(crate) fn required_region_bounds<'tcx>(
     assert!(!erased_self_ty.has_escaping_bound_vars());
 
     traits::elaborate_predicates(tcx, predicates)
-        .filter_map(|obligation| {
-            debug!(?obligation);
-            match obligation.predicate.kind().skip_binder() {
+        .filter_map(|pred| {
+            debug!(?pred);
+            match pred.kind().skip_binder() {
                 ty::PredicateKind::Clause(ty::Clause::Projection(..))
                 | ty::PredicateKind::Clause(ty::Clause::Trait(..))
                 | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))

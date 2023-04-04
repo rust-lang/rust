@@ -225,7 +225,7 @@ declare_features! (
     (active, rustc_allow_const_fn_unstable, "1.49.0", Some(69399), None),
     /// Allows using compiler's own crates.
     (active, rustc_private, "1.0.0", Some(27812), None),
-    /// Allows using internal rustdoc features like `doc(primitive)` or `doc(keyword)`.
+    /// Allows using internal rustdoc features like `doc(keyword)`.
     (active, rustdoc_internals, "1.58.0", Some(90418), None),
     /// Allows using the `rustdoc::missing_doc_code_examples` lint
     (active, rustdoc_missing_doc_code_examples, "1.31.0", Some(101730), None),
@@ -495,6 +495,8 @@ declare_features! (
     (active, repr_simd, "1.4.0", Some(27731), None),
     /// Allows return-position `impl Trait` in traits.
     (incomplete, return_position_impl_trait_in_trait, "1.65.0", Some(91611), None),
+    /// Allows bounding the return type of AFIT/RPITIT.
+    (incomplete, return_type_notation, "CURRENT_RUSTC_VERSION", Some(109417), None),
     /// Allows `extern "rust-cold"`.
     (active, rust_cold_cc, "1.63.0", Some(97544), None),
     /// Allows the use of SIMD types in functions declared in `extern` blocks.

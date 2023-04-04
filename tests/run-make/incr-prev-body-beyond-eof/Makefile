@@ -1,7 +1,7 @@
 # ignore-none no-std is not supported
 # ignore-nvptx64-nvidia-cuda FIXME: can't find crate for `std`
 
-include ../../run-make-fulldeps/tools.mk
+include ../tools.mk
 
 # Tests that we don't ICE during incremental compilation after modifying a
 # function span such that its previous end line exceeds the number of lines

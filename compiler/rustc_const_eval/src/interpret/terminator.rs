@@ -382,6 +382,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | ty::InstanceDef::FnPtrShim(..)
             | ty::InstanceDef::DropGlue(..)
             | ty::InstanceDef::CloneShim(..)
+            | ty::InstanceDef::FnPtrAddrShim(..)
+            | ty::InstanceDef::ThreadLocalShim(..)
             | ty::InstanceDef::Item(_) => {
                 // We need MIR for this fn
                 let Some((body, instance)) =
@@ -539,7 +541,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let mut receiver = args[0].clone();
                 let receiver_place = loop {
                     match receiver.layout.ty.kind() {
-                        ty::Ref(..) | ty::RawPtr(..) => break self.deref_operand(&receiver)?,
+                        ty::Ref(..) | ty::RawPtr(..) => {
+                            // We do *not* use `deref_operand` here: we don't want to conceptually
+                            // create a place that must be dereferenceable, since the receiver might
+                            // be a raw pointer and (for `*const dyn Trait`) we don't need to
+                            // actually access memory to resolve this method.
+                            // Also see <https://github.com/rust-lang/miri/issues/2786>.
+                            let val = self.read_immediate(&receiver)?;
+                            break self.ref_to_mplace(&val)?;
+                        }
                         ty::Dynamic(.., ty::Dyn) => break receiver.assert_mem_place(), // no immediate unsized values
                         ty::Dynamic(.., ty::DynStar) => {
                             // Not clear how to handle this, so far we assume the receiver is always a pointer.

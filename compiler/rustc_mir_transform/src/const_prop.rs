@@ -7,7 +7,7 @@ use rustc_const_eval::const_eval::CheckAlignment;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::{IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{
     MutVisitor, MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor,
 };
@@ -117,7 +117,7 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
             .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
         if traits::impossible_predicates(
             tcx,
-            traits::elaborate_predicates(tcx, predicates).map(|o| o.predicate).collect(),
+            traits::elaborate_predicates(tcx, predicates).collect(),
         ) {
             trace!("ConstProp skipped for {:?}: found unsatisfiable predicates", def_id);
             return;
@@ -127,7 +127,7 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
 
         let dummy_body = &Body::new(
             body.source,
-            (*body.basic_blocks).clone(),
+            (*body.basic_blocks).to_owned(),
             body.source_scopes.clone(),
             body.local_decls.clone(),
             Default::default(),
@@ -319,7 +319,7 @@ struct ConstPropagator<'mir, 'tcx> {
     ecx: InterpCx<'mir, 'tcx, ConstPropMachine<'mir, 'tcx>>,
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
-    local_decls: &'mir IndexVec<Local, LocalDecl<'tcx>>,
+    local_decls: &'mir IndexSlice<Local, LocalDecl<'tcx>>,
 }
 
 impl<'tcx> LayoutOfHelpers<'tcx> for ConstPropagator<'_, 'tcx> {

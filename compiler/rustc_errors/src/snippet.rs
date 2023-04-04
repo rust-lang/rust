@@ -1,6 +1,6 @@
 // Code for annotating snippets.
 
-use crate::Level;
+use crate::{Level, Loc};
 
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Line {
@@ -8,13 +8,39 @@ pub struct Line {
     pub annotations: Vec<Annotation>,
 }
 
+#[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Default)]
+pub struct AnnotationColumn {
+    /// the (0-indexed) column for *display* purposes, counted in characters, not utf-8 bytes
+    pub display: usize,
+    /// the (0-indexed) column in the file, counted in characters, not utf-8 bytes.
+    ///
+    /// this may be different from `self.display`,
+    /// e.g. if the file contains hard tabs, because we convert tabs to spaces for error messages.
+    ///
+    /// for example:
+    /// ```text
+    /// (hard tab)hello
+    ///           ^ this is display column 4, but file column 1
+    /// ```
+    ///
+    /// we want to keep around the correct file offset so that column numbers in error messages
+    /// are correct. (motivated by <https://github.com/rust-lang/rust/issues/109537>)
+    pub file: usize,
+}
+
+impl AnnotationColumn {
+    pub fn from_loc(loc: &Loc) -> AnnotationColumn {
+        AnnotationColumn { display: loc.col_display, file: loc.col.0 }
+    }
+}
+
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub struct MultilineAnnotation {
     pub depth: usize,
     pub line_start: usize,
     pub line_end: usize,
-    pub start_col: usize,
-    pub end_col: usize,
+    pub start_col: AnnotationColumn,
+    pub end_col: AnnotationColumn,
     pub is_primary: bool,
     pub label: Option<String>,
     pub overlaps_exactly: bool,
@@ -36,7 +62,12 @@ impl MultilineAnnotation {
     pub fn as_start(&self) -> Annotation {
         Annotation {
             start_col: self.start_col,
-            end_col: self.start_col + 1,
+            end_col: AnnotationColumn {
+                // these might not correspond to the same place anymore,
+                // but that's okay for our purposes
+                display: self.start_col.display + 1,
+                file: self.start_col.file + 1,
+            },
             is_primary: self.is_primary,
             label: None,
             annotation_type: AnnotationType::MultilineStart(self.depth),
@@ -45,7 +76,12 @@ impl MultilineAnnotation {
 
     pub fn as_end(&self) -> Annotation {
         Annotation {
-            start_col: self.end_col.saturating_sub(1),
+            start_col: AnnotationColumn {
+                // these might not correspond to the same place anymore,
+                // but that's okay for our purposes
+                display: self.end_col.display.saturating_sub(1),
+                file: self.end_col.file.saturating_sub(1),
+            },
             end_col: self.end_col,
             is_primary: self.is_primary,
             label: self.label.clone(),
@@ -55,8 +91,8 @@ impl MultilineAnnotation {
 
     pub fn as_line(&self) -> Annotation {
         Annotation {
-            start_col: 0,
-            end_col: 0,
+            start_col: Default::default(),
+            end_col: Default::default(),
             is_primary: self.is_primary,
             label: None,
             annotation_type: AnnotationType::MultilineLine(self.depth),
@@ -92,14 +128,14 @@ pub enum AnnotationType {
 
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Annotation {
-    /// Start column, 0-based indexing -- counting *characters*, not
-    /// utf-8 bytes. Note that it is important that this field goes
+    /// Start column.
+    /// Note that it is important that this field goes
     /// first, so that when we sort, we sort orderings by start
     /// column.
-    pub start_col: usize,
+    pub start_col: AnnotationColumn,
 
     /// End column within the line (exclusive)
-    pub end_col: usize,
+    pub end_col: AnnotationColumn,
 
     /// Is this annotation derived from primary span
     pub is_primary: bool,
@@ -118,12 +154,13 @@ impl Annotation {
         matches!(self.annotation_type, AnnotationType::MultilineLine(_))
     }
 
+    /// Length of this annotation as displayed in the stderr output
     pub fn len(&self) -> usize {
         // Account for usize underflows
-        if self.end_col > self.start_col {
-            self.end_col - self.start_col
+        if self.end_col.display > self.start_col.display {
+            self.end_col.display - self.start_col.display
         } else {
-            self.start_col - self.end_col
+            self.start_col.display - self.end_col.display
         }
     }
 

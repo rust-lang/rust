@@ -328,7 +328,7 @@ pub struct GenericArgs<'hir> {
     /// Were arguments written in parenthesized form `Fn(T) -> U`?
     /// This is required mostly for pretty-printing and diagnostics,
     /// but also for changing lifetime elision rules to be "function-like".
-    pub parenthesized: bool,
+    pub parenthesized: GenericArgsParentheses,
     /// The span encompassing arguments and the surrounding brackets `<>` or `()`
     ///       Foo<A, B, AssocTy = D>           Fn(T, U, V) -> W
     ///          ^^^^^^^^^^^^^^^^^^^             ^^^^^^^^^
@@ -340,11 +340,16 @@ pub struct GenericArgs<'hir> {
 
 impl<'hir> GenericArgs<'hir> {
     pub const fn none() -> Self {
-        Self { args: &[], bindings: &[], parenthesized: false, span_ext: DUMMY_SP }
+        Self {
+            args: &[],
+            bindings: &[],
+            parenthesized: GenericArgsParentheses::No,
+            span_ext: DUMMY_SP,
+        }
     }
 
     pub fn inputs(&self) -> &[Ty<'hir>] {
-        if self.parenthesized {
+        if self.parenthesized == GenericArgsParentheses::ParenSugar {
             for arg in self.args {
                 match arg {
                     GenericArg::Lifetime(_) => {}
@@ -415,6 +420,17 @@ impl<'hir> GenericArgs<'hir> {
     pub fn is_empty(&self) -> bool {
         self.args.is_empty()
     }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Hash, Debug)]
+#[derive(HashStable_Generic)]
+pub enum GenericArgsParentheses {
+    No,
+    /// Bounds for `feature(return_type_notation)`, like `T: Trait<method(..): Send>`,
+    /// where the args are explicitly elided with `..`
+    ReturnTypeNotation,
+    /// parenthesized function-family traits, like `T: Fn(u32) -> i32`
+    ParenSugar,
 }
 
 /// A modifier on a bound, currently this is only used for `?Sized`, where the

@@ -11,7 +11,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{GeneratorKind, Node};
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::vec::{Idx, IndexSlice, IndexVec};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::middle::region;
@@ -25,6 +25,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_span::Symbol;
+use rustc_target::abi::FieldIdx;
 use rustc_target::spec::abi::Abi;
 
 use super::lints;
@@ -793,7 +794,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let mutability = captured_place.mutability;
 
                 let mut projs = closure_env_projs.clone();
-                projs.push(ProjectionElem::Field(Field::new(i), ty));
+                projs.push(ProjectionElem::Field(FieldIdx::new(i), ty));
                 match capture {
                     ty::UpvarCapture::ByValue => {}
                     ty::UpvarCapture::ByRef(..) => {
@@ -820,7 +821,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn args_and_body(
         &mut self,
         mut block: BasicBlock,
-        arguments: &IndexVec<ParamId, Param<'tcx>>,
+        arguments: &IndexSlice<ParamId, Param<'tcx>>,
         argument_scope: region::Scope,
         expr: &Expr<'tcx>,
     ) -> BlockAnd<()> {

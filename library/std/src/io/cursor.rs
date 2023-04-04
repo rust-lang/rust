@@ -34,7 +34,7 @@ use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut, SeekFrom};
 /// use std::fs::File;
 ///
 /// // a library function we've written
-/// fn write_ten_bytes_at_end<W: Write + Seek>(writer: &mut W) -> io::Result<()> {
+/// fn write_ten_bytes_at_end<W: Write + Seek>(mut writer: W) -> io::Result<()> {
 ///     writer.seek(SeekFrom::End(-10))?;
 ///
 ///     for i in 0..10 {

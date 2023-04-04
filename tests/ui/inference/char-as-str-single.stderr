@@ -37,6 +37,19 @@ help: if you meant to write a `char` literal, use single quotes
 LL |     let _: char = '\'';
    |                   ~~~~
 
-error: aborting due to 3 previous errors
+error[E0308]: mismatched types
+  --> $DIR/char-as-str-single.rs:18:9
+   |
+LL |     match c {
+   |           - this expression has type `char`
+LL |         "A" => {}
+   |         ^^^ expected `char`, found `&str`
+   |
+help: if you meant to write a `char` literal, use single quotes
+   |
+LL |         'A' => {}
+   |         ~~~
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

@@ -12,13 +12,6 @@ use crate::ops::{BitAnd, BitOr, BitXor, Sub};
 
 use super::map::{map_try_reserve_error, RandomState};
 
-// Future Optimization (FIXME!)
-// ============================
-//
-// Iteration over zero sized values is a noop. There is no need
-// for `bucket.val` in the case of HashSet. I suppose we would need HKT
-// to get rid of it properly.
-
 /// A [hash set] implemented as a `HashMap` where the value is `()`.
 ///
 /// As with the [`HashMap`] type, a `HashSet` requires that the elements

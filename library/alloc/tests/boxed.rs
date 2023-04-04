@@ -179,18 +179,3 @@ unsafe impl const Allocator for ConstAllocator {
         self
     }
 }
-
-#[test]
-fn const_box() {
-    const VALUE: u32 = {
-        let mut boxed = Box::new_in(1u32, ConstAllocator);
-        assert!(*boxed == 1);
-
-        *boxed = 42;
-        assert!(*boxed == 42);
-
-        *Box::leak(boxed)
-    };
-
-    assert!(VALUE == 42);
-}

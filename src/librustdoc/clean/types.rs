@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::default::Default;
 use std::hash::Hash;
@@ -231,14 +232,6 @@ impl ExternalCrate {
                         hir::ItemKind::Mod(_) => {
                             as_keyword(Res::Def(DefKind::Mod, id.owner_id.to_def_id()))
                         }
-                        hir::ItemKind::Use(path, hir::UseKind::Single)
-                            if tcx.visibility(id.owner_id).is_public() =>
-                        {
-                            path.res
-                                .iter()
-                                .find_map(|res| as_keyword(res.expect_non_local()))
-                                .map(|(_, prim)| (id.owner_id.to_def_id(), prim))
-                        }
                         _ => None,
                     }
                 })
@@ -256,38 +249,24 @@ impl ExternalCrate {
         //
         // Note that this loop only searches the top-level items of the crate,
         // and this is intentional. If we were to search the entire crate for an
-        // item tagged with `#[doc(primitive)]` then we would also have to
+        // item tagged with `#[rustc_doc_primitive]` then we would also have to
         // search the entirety of external modules for items tagged
-        // `#[doc(primitive)]`, which is a pretty inefficient process (decoding
+        // `#[rustc_doc_primitive]`, which is a pretty inefficient process (decoding
         // all that metadata unconditionally).
         //
         // In order to keep the metadata load under control, the
-        // `#[doc(primitive)]` feature is explicitly designed to only allow the
+        // `#[rustc_doc_primitive]` feature is explicitly designed to only allow the
         // primitive tags to show up as the top level items in a crate.
         //
         // Also note that this does not attempt to deal with modules tagged
         // duplicately for the same primitive. This is handled later on when
         // rendering by delegating everything to a hash map.
         let as_primitive = |res: Res<!>| {
-            if let Res::Def(DefKind::Mod, def_id) = res {
-                let mut prim = None;
-                let meta_items = tcx
-                    .get_attrs(def_id, sym::doc)
-                    .flat_map(|attr| attr.meta_item_list().unwrap_or_default());
-                for meta in meta_items {
-                    if let Some(v) = meta.value_str() {
-                        if meta.has_name(sym::primitive) {
-                            prim = PrimitiveType::from_symbol(v);
-                            if prim.is_some() {
-                                break;
-                            }
-                            // FIXME: should warn on unknown primitives?
-                        }
-                    }
-                }
-                return prim.map(|p| (def_id, p));
-            }
-            None
+            let Res::Def(DefKind::Mod, def_id) = res else { return None };
+            tcx.get_attrs(def_id, sym::rustc_doc_primitive).find_map(|attr| {
+                // FIXME: should warn on unknown primitives?
+                Some((def_id, PrimitiveType::from_symbol(attr.value_str()?)?))
+            })
         };
 
         if root.is_local() {
@@ -300,15 +279,6 @@ impl ExternalCrate {
                     match item.kind {
                         hir::ItemKind::Mod(_) => {
                             as_primitive(Res::Def(DefKind::Mod, id.owner_id.to_def_id()))
-                        }
-                        hir::ItemKind::Use(path, hir::UseKind::Single)
-                            if tcx.visibility(id.owner_id).is_public() =>
-                        {
-                            path.res
-                                .iter()
-                                .find_map(|res| as_primitive(res.expect_non_local()))
-                                // Pretend the primitive is local.
-                                .map(|(_, prim)| (id.owner_id.to_def_id(), prim))
                         }
                         _ => None,
                     }
@@ -873,28 +843,13 @@ pub(crate) trait AttributesExt {
     type AttributeIterator<'a>: Iterator<Item = ast::NestedMetaItem>
     where
         Self: 'a;
+    type Attributes<'a>: Iterator<Item = &'a ast::Attribute>
+    where
+        Self: 'a;
 
     fn lists<'a>(&'a self, name: Symbol) -> Self::AttributeIterator<'a>;
 
-    fn span(&self) -> Option<rustc_span::Span>;
-
-    fn cfg(&self, tcx: TyCtxt<'_>, hidden_cfg: &FxHashSet<Cfg>) -> Option<Arc<Cfg>>;
-}
-
-impl AttributesExt for [ast::Attribute] {
-    type AttributeIterator<'a> = impl Iterator<Item = ast::NestedMetaItem> + 'a;
-
-    fn lists<'a>(&'a self, name: Symbol) -> Self::AttributeIterator<'a> {
-        self.iter()
-            .filter(move |attr| attr.has_name(name))
-            .filter_map(ast::Attribute::meta_item_list)
-            .flatten()
-    }
-
-    /// Return the span of the first doc-comment, if it exists.
-    fn span(&self) -> Option<rustc_span::Span> {
-        self.iter().find(|attr| attr.doc_str().is_some()).map(|attr| attr.span)
-    }
+    fn iter<'a>(&'a self) -> Self::Attributes<'a>;
 
     fn cfg(&self, tcx: TyCtxt<'_>, hidden_cfg: &FxHashSet<Cfg>) -> Option<Arc<Cfg>> {
         let sess = tcx.sess;
@@ -981,6 +936,43 @@ impl AttributesExt for [ast::Attribute] {
         }
 
         if cfg == Cfg::True { None } else { Some(Arc::new(cfg)) }
+    }
+}
+
+impl AttributesExt for [ast::Attribute] {
+    type AttributeIterator<'a> = impl Iterator<Item = ast::NestedMetaItem> + 'a;
+    type Attributes<'a> = impl Iterator<Item = &'a ast::Attribute> + 'a;
+
+    fn lists<'a>(&'a self, name: Symbol) -> Self::AttributeIterator<'a> {
+        self.iter()
+            .filter(move |attr| attr.has_name(name))
+            .filter_map(ast::Attribute::meta_item_list)
+            .flatten()
+    }
+
+    fn iter<'a>(&'a self) -> Self::Attributes<'a> {
+        self.into_iter()
+    }
+}
+
+impl AttributesExt for [(Cow<'_, ast::Attribute>, Option<DefId>)] {
+    type AttributeIterator<'a> = impl Iterator<Item = ast::NestedMetaItem> + 'a
+        where Self: 'a;
+    type Attributes<'a> = impl Iterator<Item = &'a ast::Attribute> + 'a
+        where Self: 'a;
+
+    fn lists<'a>(&'a self, name: Symbol) -> Self::AttributeIterator<'a> {
+        AttributesExt::iter(self)
+            .filter(move |attr| attr.has_name(name))
+            .filter_map(ast::Attribute::meta_item_list)
+            .flatten()
+    }
+
+    fn iter<'a>(&'a self) -> Self::Attributes<'a> {
+        self.into_iter().map(move |(attr, _)| match attr {
+            Cow::Borrowed(attr) => *attr,
+            Cow::Owned(attr) => attr,
+        })
     }
 }
 
@@ -1217,9 +1209,9 @@ impl Lifetime {
 
 #[derive(Clone, Debug)]
 pub(crate) enum WherePredicate {
-    BoundPredicate { ty: Type, bounds: Vec<GenericBound>, bound_params: Vec<Lifetime> },
+    BoundPredicate { ty: Type, bounds: Vec<GenericBound>, bound_params: Vec<GenericParamDef> },
     RegionPredicate { lifetime: Lifetime, bounds: Vec<GenericBound> },
-    EqPredicate { lhs: Box<Type>, rhs: Box<Term>, bound_params: Vec<Lifetime> },
+    EqPredicate { lhs: Box<Type>, rhs: Box<Term>, bound_params: Vec<GenericParamDef> },
 }
 
 impl WherePredicate {
@@ -1231,7 +1223,7 @@ impl WherePredicate {
         }
     }
 
-    pub(crate) fn get_bound_params(&self) -> Option<&[Lifetime]> {
+    pub(crate) fn get_bound_params(&self) -> Option<&[GenericParamDef]> {
         match self {
             Self::BoundPredicate { bound_params, .. } | Self::EqPredicate { bound_params, .. } => {
                 Some(bound_params)
@@ -1245,7 +1237,7 @@ impl WherePredicate {
 pub(crate) enum GenericParamDefKind {
     Lifetime { outlives: Vec<Lifetime> },
     Type { did: DefId, bounds: Vec<GenericBound>, default: Option<Box<Type>>, synthetic: bool },
-    Const { did: DefId, ty: Box<Type>, default: Option<Box<String>> },
+    Const { ty: Box<Type>, default: Option<Box<String>> },
 }
 
 impl GenericParamDefKind {
@@ -1827,13 +1819,17 @@ impl PrimitiveType {
         }
     }
 
-    /// Returns the DefId of the module with `doc(primitive)` for this primitive type.
+    /// Returns the DefId of the module with `rustc_doc_primitive` for this primitive type.
     /// Panics if there is no such module.
     ///
-    /// This gives precedence to primitives defined in the current crate, and deprioritizes primitives defined in `core`,
-    /// but otherwise, if multiple crates define the same primitive, there is no guarantee of which will be picked.
-    /// In particular, if a crate depends on both `std` and another crate that also defines `doc(primitive)`, then
-    /// it's entirely random whether `std` or the other crate is picked. (no_std crates are usually fine unless multiple dependencies define a primitive.)
+    /// This gives precedence to primitives defined in the current crate, and deprioritizes
+    /// primitives defined in `core`,
+    /// but otherwise, if multiple crates define the same primitive, there is no guarantee of which
+    /// will be picked.
+    ///
+    /// In particular, if a crate depends on both `std` and another crate that also defines
+    /// `rustc_doc_primitive`, then it's entirely random whether `std` or the other crate is picked.
+    /// (no_std crates are usually fine unless multiple dependencies define a primitive.)
     pub(crate) fn primitive_locations(tcx: TyCtxt<'_>) -> &FxHashMap<PrimitiveType, DefId> {
         static PRIMITIVE_LOCATIONS: OnceCell<FxHashMap<PrimitiveType, DefId>> = OnceCell::new();
         PRIMITIVE_LOCATIONS.get_or_init(|| {

@@ -153,3 +153,17 @@ where
         item.clone()
     }
 }
+
+#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+impl<I: Default> Default for Cloned<I> {
+    /// Creates a `Cloned` iterator from the default value of `I`
+    /// ```
+    /// # use core::slice;
+    /// # use core::iter::Cloned;
+    /// let iter: Cloned<slice::Iter<'_, u8>> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
+    fn default() -> Self {
+        Self::new(Default::default())
+    }
+}

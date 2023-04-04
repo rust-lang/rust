@@ -31,16 +31,11 @@ use crate::passes::{self, Condition};
 use crate::scrape_examples::{AllCallLocations, ScrapeExamplesOptions};
 use crate::theme;
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub(crate) enum OutputFormat {
     Json,
+    #[default]
     Html,
-}
-
-impl Default for OutputFormat {
-    fn default() -> OutputFormat {
-        OutputFormat::Html
-    }
 }
 
 impl OutputFormat {

@@ -5,7 +5,6 @@
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
 #![feature(never_type)]
-#![feature(once_cell)]
 #![feature(option_get_or_insert_default)]
 #![feature(trusted_step)]
 #![feature(try_blocks)]
@@ -91,6 +90,7 @@ mod separate_const_switch;
 mod shim;
 mod ssa;
 // This pass is public to allow external drivers to perform MIR cleanup
+mod check_alignment;
 pub mod simplify;
 mod simplify_branches;
 mod simplify_comparison_integral;
@@ -546,6 +546,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         tcx,
         body,
         &[
+            &check_alignment::CheckAlignment,
             &reveal_all::RevealAll, // has to be done before inlining, since inlined code is in RevealAll mode.
             &lower_slice_len::LowerSliceLenCalls, // has to be done before inlining, otherwise actual call will be almost always inlined. Also simple, so can just do first
             &unreachable_prop::UnreachablePropagation,

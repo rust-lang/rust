@@ -177,9 +177,9 @@ Book][unstable-masked] and [its tracking issue][issue-masked].
 This is for Rust compiler internal use only.
 
 Since primitive types are defined in the compiler, there's no place to attach documentation
-attributes. The `#[doc(primitive)]` attribute is used by the standard library to provide a way
-to generate documentation for primitive types, and requires `#![feature(rustdoc_internals)]` to
-enable.
+attributes. The `#[rustc_doc_primitive = "..."]` attribute is used by the standard library to
+provide a way to generate documentation for primitive types, and requires `#![feature(rustc_attrs)]`
+to enable.
 
 ### Document keywords
 

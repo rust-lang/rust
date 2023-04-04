@@ -486,8 +486,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) -> Coe
             // U` can be coerced to `*mut V` if `U: Unsize<V>`.
             let fields = &def_a.non_enum_variant().fields;
             let diff_fields = fields
-                .iter()
-                .enumerate()
+                .iter_enumerated()
                 .filter_map(|(i, f)| {
                     let (a, b) = (f.ty(tcx, substs_a), f.ty(tcx, substs_b));
 

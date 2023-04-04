@@ -6,6 +6,7 @@ use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::value_analysis::{excluded_locals, iter_fields};
+use rustc_target::abi::FieldIdx;
 
 pub struct ScalarReplacementOfAggregates;
 
@@ -115,7 +116,7 @@ fn escaping_locals(excluded: &BitSet<Local>, body: &Body<'_>) -> BitSet<Local> {
 struct ReplacementMap<'tcx> {
     /// Pre-computed list of all "new" locals for each "old" local. This is used to expand storage
     /// and deinit statement and debuginfo.
-    fragments: IndexVec<Local, Option<IndexVec<Field, Option<(Ty<'tcx>, Local)>>>>,
+    fragments: IndexVec<Local, Option<IndexVec<FieldIdx, Option<(Ty<'tcx>, Local)>>>>,
 }
 
 impl<'tcx> ReplacementMap<'tcx> {
@@ -129,7 +130,7 @@ impl<'tcx> ReplacementMap<'tcx> {
     fn place_fragments(
         &self,
         place: Place<'tcx>,
-    ) -> Option<impl Iterator<Item = (Field, Ty<'tcx>, Local)> + '_> {
+    ) -> Option<impl Iterator<Item = (FieldIdx, Ty<'tcx>, Local)> + '_> {
         let local = place.as_local()?;
         let fields = self.fragments[local].as_ref()?;
         Some(fields.iter_enumerated().filter_map(|(field, &opt_ty_local)| {

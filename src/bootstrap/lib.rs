@@ -21,7 +21,6 @@ use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs::{self, File};
 use std::io;
-use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::str;
@@ -53,8 +52,8 @@ mod download;
 mod flags;
 mod format;
 mod install;
+mod llvm;
 mod metadata;
-mod native;
 mod render_tests;
 mod run;
 mod sanity;
@@ -125,6 +124,7 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)]
     (Some(Mode::Std), "no_rc", None),
     (Some(Mode::Std), "no_sync", None),
     (Some(Mode::Std), "freebsd12", None),
+    (Some(Mode::Std), "freebsd13", None),
     (Some(Mode::Std), "backtrace_in_libstd", None),
     /* Extra values not defined in the built-in targets yet, but used in std */
     (Some(Mode::Std), "target_env", Some(&["libnx"])),
@@ -149,6 +149,8 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)]
     // Needed to avoid the need to copy windows.lib into the sysroot.
     (Some(Mode::Rustc), "windows_raw_dylib", None),
     (Some(Mode::ToolRustc), "windows_raw_dylib", None),
+    // #[cfg(bootstrap)] ohos
+    (Some(Mode::Std), "target_env", Some(&["ohos"])),
 ];
 
 /// A structure representing a Rust compiler.
@@ -502,16 +504,18 @@ impl Build {
         let build_triple = build.out.join(&build.build.triple);
         t!(fs::create_dir_all(&build_triple));
         let host = build.out.join("host");
-        if let Err(e) = symlink_dir(&build.config, &build_triple, &host) {
-            if e.kind() != ErrorKind::AlreadyExists {
-                panic!(
-                    "symlink_dir({} => {}) failed with {}",
-                    host.display(),
-                    build_triple.display(),
-                    e
-                );
-            }
+        if host.is_symlink() {
+            // Left over from a previous build; overwrite it.
+            // This matters if `build.build` has changed between invocations.
+            #[cfg(windows)]
+            t!(fs::remove_dir(&host));
+            #[cfg(not(windows))]
+            t!(fs::remove_file(&host));
         }
+        t!(
+            symlink_dir(&build.config, &build_triple, &host),
+            format!("symlink_dir({} => {}) failed", host.display(), build_triple.display())
+        );
 
         build
     }

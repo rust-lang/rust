@@ -27,7 +27,7 @@ use crate::channel;
 use crate::compile;
 use crate::config::TargetSelection;
 use crate::doc::DocumentationFormat;
-use crate::native;
+use crate::llvm;
 use crate::tarball::{GeneratedTarball, OverlayKind, Tarball};
 use crate::tool::{self, Tool};
 use crate::util::{exe, is_dylib, output, t, timeit};
@@ -1965,8 +1965,8 @@ fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir
             builder.install(&llvm_dylib_path, dst_libdir, 0o644);
         }
         !builder.config.dry_run()
-    } else if let Ok(native::LlvmResult { llvm_config, .. }) =
-        native::prebuilt_llvm_config(builder, target)
+    } else if let Ok(llvm::LlvmResult { llvm_config, .. }) =
+        llvm::prebuilt_llvm_config(builder, target)
     {
         let mut cmd = Command::new(llvm_config);
         cmd.arg("--libfiles");
@@ -2154,7 +2154,7 @@ impl Step for LlvmTools {
             }
         }
 
-        builder.ensure(crate::native::Llvm { target });
+        builder.ensure(crate::llvm::Llvm { target });
 
         let mut tarball = Tarball::new(builder, "llvm-tools", &target.triple);
         tarball.set_overlay(OverlayKind::LLVM);
@@ -2213,10 +2213,10 @@ impl Step for RustDev {
         let mut tarball = Tarball::new(builder, "rust-dev", &target.triple);
         tarball.set_overlay(OverlayKind::LLVM);
 
-        builder.ensure(crate::native::Llvm { target });
+        builder.ensure(crate::llvm::Llvm { target });
 
         // We want to package `lld` to use it with `download-ci-llvm`.
-        builder.ensure(crate::native::Lld { target });
+        builder.ensure(crate::llvm::Lld { target });
 
         let src_bindir = builder.llvm_out(target).join("bin");
         // If updating this list, you likely want to change

@@ -6,6 +6,8 @@ LL |         RR_B1 => { println!("CLAIM RR0: {:?} matches {:?}", RR_B1, RR_B0); 
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/62411>
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 note: the lint level is defined here
   --> $DIR/issue-62307-match-ref-ref-forbidden-without-eq.rs:13:9
    |
@@ -20,6 +22,8 @@ LL |         RR_B1 => { println!("CLAIM RR1: {:?} matches {:?}", RR_B1, RR_B1); 
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/62411>
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 warning: 2 warnings emitted
 

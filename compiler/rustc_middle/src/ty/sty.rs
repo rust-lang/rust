@@ -22,7 +22,7 @@ use rustc_index::vec::Idx;
 use rustc_macros::HashStable;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use rustc_target::spec::abi::{self, Abi};
 use std::borrow::Cow;
 use std::cmp::Ordering;
@@ -517,8 +517,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
     #[inline]
     pub fn variant_range(&self, def_id: DefId, tcx: TyCtxt<'tcx>) -> Range<VariantIdx> {
         // FIXME requires optimized MIR
-        let num_variants = tcx.generator_layout(def_id).unwrap().variant_fields.len();
-        VariantIdx::new(0)..VariantIdx::new(num_variants)
+        FIRST_VARIANT..tcx.generator_layout(def_id).unwrap().variant_fields.next_index()
     }
 
     /// The discriminant for the given variant. Panics if the `variant_index` is
@@ -1904,7 +1903,7 @@ impl<'tcx> Ty<'tcx> {
             Adt(def, substs) => {
                 assert!(def.repr().simd(), "`simd_size_and_type` called on non-SIMD type");
                 let variant = def.non_enum_variant();
-                let f0_ty = variant.fields[0].ty(tcx, substs);
+                let f0_ty = variant.fields[FieldIdx::from_u32(0)].ty(tcx, substs);
 
                 match f0_ty.kind() {
                     // If the first field is an array, we assume it is the only field and its

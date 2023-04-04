@@ -39,17 +39,25 @@ const_eval_unstable_const_fn = `{$def_path}` is not yet stable as a const fn
 const_eval_unallowed_mutable_refs =
     mutable references are not allowed in the final value of {$kind}s
     .teach_note =
-        References in statics and constants may only refer to immutable values.\n\n
+        References in statics and constants may only refer to immutable values.
+
+
         Statics are shared everywhere, and if they refer to mutable data one might violate memory
-        safety since holding multiple mutable references to shared data is not allowed.\n\n
+        safety since holding multiple mutable references to shared data is not allowed.
+
+
         If you really want global mutable state, try using static mut or a global UnsafeCell.
 
 const_eval_unallowed_mutable_refs_raw =
     raw mutable references are not allowed in the final value of {$kind}s
     .teach_note =
-        References in statics and constants may only refer to immutable values.\n\n
+        References in statics and constants may only refer to immutable values.
+
+
         Statics are shared everywhere, and if they refer to mutable data one might violate memory
-        safety since holding multiple mutable references to shared data is not allowed.\n\n
+        safety since holding multiple mutable references to shared data is not allowed.
+
+
         If you really want global mutable state, try using static mut or a global UnsafeCell.
 
 const_eval_non_const_fmt_macro_call =

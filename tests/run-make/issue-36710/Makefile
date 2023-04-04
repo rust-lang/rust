@@ -1,3 +1,4 @@
+# ignore-cross-compile
 # ignore-none no-std is not supported
 # ignore-wasm32 FIXME: don't attempt to compile C++ to WASM
 # ignore-wasm64 FIXME: don't attempt to compile C++ to WASM
@@ -6,7 +7,7 @@
 #                    (see dist-i586-gnu-i586-i686-musl Dockerfile)
 # ignore-sgx
 
-include ../../run-make-fulldeps/tools.mk
+include ../tools.mk
 
 all: foo
 	$(call RUN,foo)

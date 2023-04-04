@@ -1,31 +1,66 @@
-error: attribute #[no_mangle] set on a Rust ABI function
-  --> $DIR/no_mangle_with_rust_abi.rs:7:1
+error: `#[no_mangle]` set on a function with the default (`Rust`) ABI
+  --> $DIR/no_mangle_with_rust_abi.rs:5:1
    |
 LL | fn rust_abi_fn_one(arg_one: u32, arg_two: usize) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `extern "C" fn rust_abi_fn_one(arg_one: u32, arg_two: usize)`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::no-mangle-with-rust-abi` implied by `-D warnings`
+help: set an ABI
+   |
+LL | extern "C" fn rust_abi_fn_one(arg_one: u32, arg_two: usize) {}
+   | ++++++++++
+help: or explicitly set the default
+   |
+LL | extern "Rust" fn rust_abi_fn_one(arg_one: u32, arg_two: usize) {}
+   | +++++++++++++
 
-error: attribute #[no_mangle] set on a Rust ABI function
-  --> $DIR/no_mangle_with_rust_abi.rs:10:1
+error: `#[no_mangle]` set on a function with the default (`Rust`) ABI
+  --> $DIR/no_mangle_with_rust_abi.rs:8:1
    |
 LL | pub fn rust_abi_fn_two(arg_one: u32, arg_two: usize) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `pub extern "C" fn rust_abi_fn_two(arg_one: u32, arg_two: usize)`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: set an ABI
+   |
+LL | pub extern "C" fn rust_abi_fn_two(arg_one: u32, arg_two: usize) {}
+   |     ++++++++++
+help: or explicitly set the default
+   |
+LL | pub extern "Rust" fn rust_abi_fn_two(arg_one: u32, arg_two: usize) {}
+   |     +++++++++++++
 
-error: attribute #[no_mangle] set on a Rust ABI function
-  --> $DIR/no_mangle_with_rust_abi.rs:15:1
+error: `#[no_mangle]` set on a function with the default (`Rust`) ABI
+  --> $DIR/no_mangle_with_rust_abi.rs:13:1
    |
 LL | pub unsafe fn rust_abi_fn_three(arg_one: u32, arg_two: usize) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `pub unsafe extern "C" fn rust_abi_fn_three(arg_one: u32, arg_two: usize)`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: set an ABI
+   |
+LL | pub unsafe extern "C" fn rust_abi_fn_three(arg_one: u32, arg_two: usize) {}
+   |            ++++++++++
+help: or explicitly set the default
+   |
+LL | pub unsafe extern "Rust" fn rust_abi_fn_three(arg_one: u32, arg_two: usize) {}
+   |            +++++++++++++
 
-error: attribute #[no_mangle] set on a Rust ABI function
-  --> $DIR/no_mangle_with_rust_abi.rs:20:1
+error: `#[no_mangle]` set on a function with the default (`Rust`) ABI
+  --> $DIR/no_mangle_with_rust_abi.rs:18:1
    |
 LL | unsafe fn rust_abi_fn_four(arg_one: u32, arg_two: usize) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unsafe extern "C" fn rust_abi_fn_four(arg_one: u32, arg_two: usize)`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: set an ABI
+   |
+LL | unsafe extern "C" fn rust_abi_fn_four(arg_one: u32, arg_two: usize) {}
+   |        ++++++++++
+help: or explicitly set the default
+   |
+LL | unsafe extern "Rust" fn rust_abi_fn_four(arg_one: u32, arg_two: usize) {}
+   |        +++++++++++++
 
-error: attribute #[no_mangle] set on a Rust ABI function
-  --> $DIR/no_mangle_with_rust_abi.rs:23:1
+error: `#[no_mangle]` set on a function with the default (`Rust`) ABI
+  --> $DIR/no_mangle_with_rust_abi.rs:21:1
    |
 LL | / fn rust_abi_multiline_function_really_long_name_to_overflow_args_to_multiple_lines(
 LL | |     arg_one: u32,
@@ -33,13 +68,14 @@ LL | |     arg_two: usize,
 LL | | ) -> u32 {
    | |________^
    |
-help: try
+help: set an ABI
    |
-LL + extern "C" fn rust_abi_multiline_function_really_long_name_to_overflow_args_to_multiple_lines(
-LL +     arg_one: u32,
-LL +     arg_two: usize,
-LL ~ ) -> u32 {
+LL | extern "C" fn rust_abi_multiline_function_really_long_name_to_overflow_args_to_multiple_lines(
+   | ++++++++++
+help: or explicitly set the default
    |
+LL | extern "Rust" fn rust_abi_multiline_function_really_long_name_to_overflow_args_to_multiple_lines(
+   | +++++++++++++
 
 error: aborting due to 5 previous errors
 

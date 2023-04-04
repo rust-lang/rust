@@ -58,7 +58,6 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdSet, CRATE_DEF_ID};
 use rustc_hir::intravisit::FnKind as HirFnKind;
 use rustc_hir::{Body, FnDecl, ForeignItemKind, GenericParamKind, Node, PatKind, PredicateOrigin};
-use rustc_index::vec::Idx;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf};
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -69,7 +68,7 @@ use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, InnerSpan, Span};
-use rustc_target::abi::{Abi, VariantIdx};
+use rustc_target::abi::{Abi, FIRST_VARIANT};
 use rustc_trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
 use rustc_trait_selection::traits::{self, misc::type_allowed_to_implement_copy};
 
@@ -2788,7 +2787,7 @@ impl ClashingExternDeclarations {
                         );
                         if is_transparent && !is_non_null {
                             debug_assert_eq!(def.variants().len(), 1);
-                            let v = &def.variant(VariantIdx::new(0));
+                            let v = &def.variant(FIRST_VARIANT);
                             // continue with `ty`'s non-ZST field,
                             // otherwise `ty` is a ZST and we can return
                             if let Some(field) = transparent_newtype_field(tcx, v) {

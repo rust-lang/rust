@@ -1,17 +1,12 @@
 // run-rustfix
-// aux-build:macro_rules.rs
+// aux-build:proc_macros.rs
 #![warn(clippy::toplevel_ref_arg)]
-#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::uninlined_format_args, unused)]
 
-#[macro_use]
-extern crate macro_rules;
+extern crate proc_macros;
+use proc_macros::{external, inline_macros};
 
-macro_rules! gen_binding {
-    () => {
-        let _y = &42;
-    };
-}
-
+#[inline_macros]
 fn main() {
     // Closures should not warn
     let y = |ref x| println!("{:?}", x);
@@ -38,13 +33,8 @@ fn main() {
     for ref _x in 0..10 {}
 
     // lint in macro
-    #[allow(unused)]
-    {
-        gen_binding!();
-    }
+    inline!(let _y = &42;);
 
     // do not lint in external macro
-    {
-        ref_arg_binding!();
-    }
+    external!(let ref _y = 42;);
 }

@@ -50,6 +50,14 @@ pub struct LimitInvalid<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag(middle_recursion_limit_reached)]
+#[help]
+pub struct RecursionLimitReached<'tcx> {
+    pub ty: Ty<'tcx>,
+    pub suggested_limit: rustc_session::Limit,
+}
+
+#[derive(Diagnostic)]
 #[diag(middle_const_eval_non_int)]
 pub struct ConstEvalNonIntError {
     #[primary_span]

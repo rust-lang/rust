@@ -174,7 +174,7 @@
 //! regardless of whether it is actually needed or not.
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::sync::{par_for_each_in, MTLock, MTRef};
+use rustc_data_structures::sync::{par_for_each_in, MTLock, MTLockRef};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
@@ -190,7 +190,8 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::query::TyCtxtAt;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::{
-    self, GenericParamDefKind, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, VtblEntry,
+    self, GenericParamDefKind, Instance, InstanceDef, Ty, TyCtxt, TypeFoldable, TypeVisitableExt,
+    VtblEntry,
 };
 use rustc_middle::{middle::codegen_fn_attrs::CodegenFnAttrFlags, mir::visit::TyContext};
 use rustc_session::config::EntryFnType;
@@ -340,8 +341,8 @@ pub fn collect_crate_mono_items(
     let recursion_limit = tcx.recursion_limit();
 
     {
-        let visited: MTRef<'_, _> = &mut visited;
-        let inlining_map: MTRef<'_, _> = &mut inlining_map;
+        let visited: MTLockRef<'_, _> = &mut visited;
+        let inlining_map: MTLockRef<'_, _> = &mut inlining_map;
 
         tcx.sess.time("monomorphization_collector_graph_walk", || {
             par_for_each_in(roots, |root| {
@@ -406,10 +407,10 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionMode) -> Vec<MonoItem<
 fn collect_items_rec<'tcx>(
     tcx: TyCtxt<'tcx>,
     starting_point: Spanned<MonoItem<'tcx>>,
-    visited: MTRef<'_, MTLock<FxHashSet<MonoItem<'tcx>>>>,
+    visited: MTLockRef<'_, FxHashSet<MonoItem<'tcx>>>,
     recursion_depths: &mut DefIdMap<usize>,
     recursion_limit: Limit,
-    inlining_map: MTRef<'_, MTLock<InliningMap<'tcx>>>,
+    inlining_map: MTLockRef<'_, InliningMap<'tcx>>,
 ) {
     if !visited.lock_mut().insert(starting_point.node) {
         // We've been here already, no need to search again.
@@ -461,6 +462,16 @@ fn collect_items_rec<'tcx>(
                 for &id in alloc.inner().provenance().ptrs().values() {
                     collect_miri(tcx, id, &mut neighbors);
                 }
+            }
+
+            if tcx.needs_thread_local_shim(def_id) {
+                neighbors.push(respan(
+                    starting_point.span,
+                    MonoItem::Fn(Instance {
+                        def: InstanceDef::ThreadLocalShim(def_id),
+                        substs: InternalSubsts::empty(),
+                    }),
+                ));
             }
         }
         MonoItem::Fn(instance) => {
@@ -640,8 +651,8 @@ fn check_type_length_limit<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
         let (shrunk, written_to_path) = shrunk_instance_name(tcx, &instance);
         let span = tcx.def_span(instance.def_id());
         let mut path = PathBuf::new();
-        let was_written = if written_to_path.is_some() {
-            path = written_to_path.unwrap();
+        let was_written = if let Some(path2) = written_to_path {
+            path = path2;
             Some(())
         } else {
             None
@@ -962,6 +973,9 @@ fn visit_instance_use<'tcx>(
                 bug!("{:?} being reified", instance);
             }
         }
+        ty::InstanceDef::ThreadLocalShim(..) => {
+            bug!("{:?} being reified", instance);
+        }
         ty::InstanceDef::DropGlue(_, None) => {
             // Don't need to emit noop drop glue if we are calling directly.
             if !is_direct_call {
@@ -974,7 +988,8 @@ fn visit_instance_use<'tcx>(
         | ty::InstanceDef::ClosureOnceShim { .. }
         | ty::InstanceDef::Item(..)
         | ty::InstanceDef::FnPtrShim(..)
-        | ty::InstanceDef::CloneShim(..) => {
+        | ty::InstanceDef::CloneShim(..)
+        | ty::InstanceDef::FnPtrAddrShim(..) => {
             output.push(create_fn_mono_item(tcx, instance, source));
         }
     }
@@ -1104,7 +1119,8 @@ fn find_vtable_types_for_unsizing<'tcx>(
             let target_fields = &target_adt_def.non_enum_variant().fields;
 
             assert!(
-                coerce_index < source_fields.len() && source_fields.len() == target_fields.len()
+                coerce_index.index() < source_fields.len()
+                    && source_fields.len() == target_fields.len()
             );
 
             find_vtable_types_for_unsizing(
@@ -1209,11 +1225,9 @@ impl<'v> RootCollector<'_, 'v> {
                 self.output.push(dummy_spanned(MonoItem::GlobalAsm(id)));
             }
             DefKind::Static(..) => {
-                debug!(
-                    "RootCollector: ItemKind::Static({})",
-                    self.tcx.def_path_str(id.owner_id.to_def_id())
-                );
-                self.output.push(dummy_spanned(MonoItem::Static(id.owner_id.to_def_id())));
+                let def_id = id.owner_id.to_def_id();
+                debug!("RootCollector: ItemKind::Static({})", self.tcx.def_path_str(def_id));
+                self.output.push(dummy_spanned(MonoItem::Static(def_id)));
             }
             DefKind::Const => {
                 // const items only generate mono items if they are
@@ -1326,26 +1340,39 @@ fn create_mono_items_for_default_impls<'tcx>(
         return;
     }
 
+    let Some(trait_ref) = tcx.impl_trait_ref(item.owner_id) else {
+        return;
+    };
+
+    // Lifetimes never affect trait selection, so we are allowed to eagerly
+    // instantiate an instance of an impl method if the impl (and method,
+    // which we check below) is only parameterized over lifetime. In that case,
+    // we use the ReErased, which has no lifetime information associated with
+    // it, to validate whether or not the impl is legal to instantiate at all.
+    let only_region_params = |param: &ty::GenericParamDef, _: &_| match param.kind {
+        GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
+        GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
+            unreachable!(
+                "`own_requires_monomorphization` check means that \
+                we should have no type/const params"
+            )
+        }
+    };
+    let impl_substs = InternalSubsts::for_item(tcx, item.owner_id.to_def_id(), only_region_params);
+    let trait_ref = trait_ref.subst(tcx, impl_substs);
+
     // Unlike 'lazy' monomorphization that begins by collecting items transitively
     // called by `main` or other global items, when eagerly monomorphizing impl
     // items, we never actually check that the predicates of this impl are satisfied
     // in a empty reveal-all param env (i.e. with no assumptions).
     //
-    // Even though this impl has no substitutions, because we don't consider higher-
-    // ranked predicates such as `for<'a> &'a mut [u8]: Copy` to be trivially false,
-    // we must now check that the impl has no impossible-to-satisfy predicates.
-    if tcx.subst_and_check_impossible_predicates((
-        item.owner_id.to_def_id(),
-        &InternalSubsts::identity_for_item(tcx, item.owner_id.to_def_id()),
-    )) {
+    // Even though this impl has no type or const substitutions, because we don't
+    // consider higher-ranked predicates such as `for<'a> &'a mut [u8]: Copy` to
+    // be trivially false. We must now check that the impl has no impossible-to-satisfy
+    // predicates.
+    if tcx.subst_and_check_impossible_predicates((item.owner_id.to_def_id(), impl_substs)) {
         return;
     }
-
-    let Some(trait_ref) = tcx.impl_trait_ref(item.owner_id) else {
-        return;
-    };
-
-    let trait_ref = trait_ref.subst_identity();
 
     let param_env = ty::ParamEnv::reveal_all();
     let trait_ref = tcx.normalize_erasing_regions(param_env, trait_ref);
@@ -1359,12 +1386,9 @@ fn create_mono_items_for_default_impls<'tcx>(
             continue;
         }
 
-        let substs = InternalSubsts::for_item(tcx, method.def_id, |param, _| match param.kind {
-            GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
-            GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
-                trait_ref.substs[param.index as usize]
-            }
-        });
+        // As mentioned above, the method is legal to eagerly instantiate if it
+        // only has lifetime substitutions. This is validated by
+        let substs = trait_ref.substs.extend_to(tcx, method.def_id, only_region_params);
         let instance = ty::Instance::expect_resolve(tcx, param_env, method.def_id, substs);
 
         let mono_item = create_fn_mono_item(tcx, instance, DUMMY_SP);

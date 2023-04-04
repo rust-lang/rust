@@ -55,7 +55,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let trait_def = self.tcx().trait_def(trait_def_id);
         if !trait_def.paren_sugar {
-            if trait_segment.args().parenthesized {
+            if trait_segment.args().parenthesized == hir::GenericArgsParentheses::ParenSugar {
                 // For now, require that parenthetical notation be used only with `Fn()` etc.
                 let mut err = feature_err(
                     &self.tcx().sess.parse_sess,
@@ -71,7 +71,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let sess = self.tcx().sess;
 
-        if !trait_segment.args().parenthesized {
+        if trait_segment.args().parenthesized != hir::GenericArgsParentheses::ParenSugar {
             // For now, require that parenthetical notation be used only with `Fn()` etc.
             let mut err = feature_err(
                 &sess.parse_sess,
@@ -483,8 +483,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 [segment] if segment.args.is_none() => {
                     trait_bound_spans = vec![segment.ident.span];
                     associated_types = associated_types
-                        .into_iter()
-                        .map(|(_, items)| (segment.ident.span, items))
+                        .into_values()
+                        .map(|items| (segment.ident.span, items))
                         .collect();
                 }
                 _ => {}
@@ -607,11 +607,19 @@ pub fn prohibit_assoc_ty_binding(
     span: Span,
     segment: Option<(&hir::PathSegment<'_>, Span)>,
 ) {
-    tcx.sess.emit_err(AssocTypeBindingNotAllowed { span, fn_trait_expansion: if let Some((segment, span)) = segment && segment.args().parenthesized {
-        Some(ParenthesizedFnTraitExpansion { span, expanded_type: fn_trait_to_string(tcx, segment, false) })
-    } else {
-        None
-    }});
+    tcx.sess.emit_err(AssocTypeBindingNotAllowed {
+        span,
+        fn_trait_expansion: if let Some((segment, span)) = segment
+            && segment.args().parenthesized == hir::GenericArgsParentheses::ParenSugar
+        {
+            Some(ParenthesizedFnTraitExpansion {
+                span,
+                expanded_type: fn_trait_to_string(tcx, segment, false),
+            })
+        } else {
+            None
+        },
+    });
 }
 
 pub(crate) fn fn_trait_to_string(

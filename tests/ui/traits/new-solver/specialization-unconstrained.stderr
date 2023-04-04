@@ -1,0 +1,25 @@
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/specialization-unconstrained.rs:3:12
+   |
+LL | #![feature(specialization)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+   = help: consider using `min_specialization` instead, which is more stable and complete
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0284]: type annotations needed: cannot satisfy `<u32 as Default>::Id == ()`
+  --> $DIR/specialization-unconstrained.rs:20:5
+   |
+LL |     test::<u32, ()>();
+   |     ^^^^^^^^^^^^^^^ cannot satisfy `<u32 as Default>::Id == ()`
+   |
+note: required by a bound in `test`
+  --> $DIR/specialization-unconstrained.rs:17:20
+   |
+LL | fn test<T: Default<Id = U>, U>() {}
+   |                    ^^^^^^ required by this bound in `test`
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0284`.

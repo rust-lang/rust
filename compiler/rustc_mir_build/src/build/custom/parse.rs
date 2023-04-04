@@ -1,4 +1,4 @@
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::IndexSlice;
 use rustc_middle::{mir::*, thir::*, ty::Ty};
 use rustc_span::Span;
 
@@ -81,7 +81,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
         }
     }
 
-    pub fn parse_args(&mut self, params: &IndexVec<ParamId, Param<'tcx>>) -> PResult<()> {
+    pub fn parse_args(&mut self, params: &IndexSlice<ParamId, Param<'tcx>>) -> PResult<()> {
         for param in params.iter() {
             let (var, span) = {
                 let pat = param.pat.as_ref().unwrap();

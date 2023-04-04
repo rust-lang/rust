@@ -133,7 +133,9 @@
 //! - [`Mutex`]: Mutual Exclusion mechanism, which ensures that at
 //!   most one thread at a time is able to access some data.
 //!
-//! - [`Once`]: Used for thread-safe, one-time initialization of a
+//! - [`Once`]: Used for a thread-safe, one-time global initialization routine
+//!
+//! - [`OnceLock`]: Used for thread-safe, one-time initialization of a
 //!   global variable.
 //!
 //! - [`RwLock`]: Provides a mutual exclusion mechanism which allows
@@ -147,6 +149,7 @@
 //! [`mpsc`]: crate::sync::mpsc
 //! [`Mutex`]: crate::sync::Mutex
 //! [`Once`]: crate::sync::Once
+//! [`OnceLock`]: crate::sync::OnceLock
 //! [`RwLock`]: crate::sync::RwLock
 
 #![stable(feature = "rust1", since = "1.0.0")]
@@ -172,9 +175,9 @@ pub use self::poison::{LockResult, PoisonError, TryLockError, TryLockResult};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::rwlock::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-#[unstable(feature = "once_cell", issue = "74465")]
+#[unstable(feature = "lazy_cell", issue = "109736")]
 pub use self::lazy_lock::LazyLock;
-#[unstable(feature = "once_cell", issue = "74465")]
+#[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
 pub use self::once_lock::OnceLock;
 
 pub(crate) use self::remutex::{ReentrantMutex, ReentrantMutexGuard};

@@ -60,7 +60,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
     ) -> OperandRef<'tcx, V> {
         assert!(layout.is_zst());
         OperandRef {
-            val: OperandValue::Immediate(bx.const_undef(bx.immediate_backend_type(layout))),
+            val: OperandValue::Immediate(bx.const_poison(bx.immediate_backend_type(layout))),
             layout,
         }
     }
@@ -145,7 +145,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             let llty = bx.cx().backend_type(self.layout);
             debug!("Operand::immediate_or_packed_pair: packing {:?} into {:?}", self, llty);
             // Reconstruct the immediate aggregate.
-            let mut llpair = bx.cx().const_undef(llty);
+            let mut llpair = bx.cx().const_poison(llty);
             let imm_a = bx.from_immediate(a);
             let imm_b = bx.from_immediate(b);
             llpair = bx.insert_value(llpair, imm_a, 0);
@@ -370,7 +370,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         debug!("maybe_codegen_consume_direct(place_ref={:?})", place_ref);
 
         match self.locals[place_ref.local] {
-            LocalRef::Operand(Some(mut o)) => {
+            LocalRef::Operand(mut o) => {
                 // Moves out of scalar and scalar pair fields are trivial.
                 for elem in place_ref.projection.iter() {
                     match elem {
@@ -395,7 +395,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 Some(o)
             }
-            LocalRef::Operand(None) => {
+            LocalRef::PendingOperand => {
                 bug!("use of {:?} before def", place_ref);
             }
             LocalRef::Place(..) | LocalRef::UnsizedPlace(..) => {

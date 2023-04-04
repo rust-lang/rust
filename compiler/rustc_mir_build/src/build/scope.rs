@@ -86,7 +86,7 @@ use std::mem;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::HirId;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::{IndexSlice, IndexVec};
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{Expr, LintLevel};
@@ -360,7 +360,7 @@ impl DropTree {
     fn link_blocks<'tcx>(
         &self,
         cfg: &mut CFG<'tcx>,
-        blocks: &IndexVec<DropIdx, Option<BasicBlock>>,
+        blocks: &IndexSlice<DropIdx, Option<BasicBlock>>,
     ) {
         for (drop_idx, drop_data) in self.drops.iter_enumerated().rev() {
             let Some(block) = blocks[drop_idx] else { continue };

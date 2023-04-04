@@ -3,7 +3,7 @@ use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::ty::cast::mir_cast_kind;
 use rustc_middle::{mir::*, thir::*, ty};
 use rustc_span::Span;
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{FieldIdx, VariantIdx};
 
 use crate::build::custom::ParseError;
 use crate::build::expr::as_constant::as_constant_inner;
@@ -185,7 +185,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             },
             ExprKind::Adt(box AdtExpr{ adt_def, variant_index, substs, fields, .. }) => {
                 let is_union = adt_def.is_union();
-                let active_field_index = is_union.then(|| fields[0].name.index());
+                let active_field_index = is_union.then(|| fields[0].name);
 
                 Ok(Rvalue::Aggregate(
                     Box::new(AggregateKind::Adt(adt_def.did(), *variant_index, substs, None, active_field_index)),
@@ -223,7 +223,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
         let (parent, proj) = parse_by_kind!(self, expr_id, expr, "place",
             @call("mir_field", args) => {
                 let (parent, ty) = self.parse_place_inner(args[0])?;
-                let field = Field::from_u32(self.parse_integer_literal(args[1])? as u32);
+                let field = FieldIdx::from_u32(self.parse_integer_literal(args[1])? as u32);
                 let field_ty = ty.field_ty(self.tcx, field);
                 let proj = PlaceElem::Field(field, field_ty);
                 let place = parent.project_deeper(&[proj], self.tcx);

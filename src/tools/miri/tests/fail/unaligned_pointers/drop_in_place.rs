@@ -1,3 +1,5 @@
+//@compile-flags: -Cdebug-assertions=no
+
 #[repr(transparent)]
 struct HasDrop(u8);
 

@@ -3,6 +3,7 @@ use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_macros::HashStable;
 use rustc_span::Span;
+use rustc_target::abi::FieldIdx;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum PointerCast {
@@ -208,5 +209,5 @@ pub struct CoerceUnsizedInfo {
 #[derive(Clone, Copy, TyEncodable, TyDecodable, Debug, HashStable)]
 pub enum CustomCoerceUnsized {
     /// Records the index of the field being coerced.
-    Struct(usize),
+    Struct(FieldIdx),
 }

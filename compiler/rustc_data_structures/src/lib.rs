@@ -20,7 +20,7 @@
 #![feature(never_type)]
 #![feature(type_alias_impl_trait)]
 #![feature(new_uninit)]
-#![feature(once_cell)]
+#![feature(lazy_cell)]
 #![feature(rustc_attrs)]
 #![feature(negative_impls)]
 #![feature(test)]

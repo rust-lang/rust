@@ -379,6 +379,18 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                             source_info.span,
                         );
                     }
+                    AssertKind::MisalignedPointerDereference { ref required, ref found } => {
+                        let required = codegen_operand(fx, required).load_scalar(fx);
+                        let found = codegen_operand(fx, found).load_scalar(fx);
+                        let location = fx.get_caller_location(source_info).load_scalar(fx);
+
+                        codegen_panic_inner(
+                            fx,
+                            rustc_hir::LangItem::PanicBoundsCheck,
+                            &[required, found, location],
+                            source_info.span,
+                        );
+                    }
                     _ => {
                         let msg_str = msg.description();
                         codegen_panic(fx, msg_str, source_info);
@@ -785,19 +797,20 @@ fn codegen_stmt<'tcx>(
                             let variant_dest = lval.downcast_variant(fx, variant_index);
                             (variant_index, variant_dest, active_field_index)
                         }
-                        _ => (VariantIdx::from_u32(0), lval, None),
+                        _ => (FIRST_VARIANT, lval, None),
                     };
                     if active_field_index.is_some() {
                         assert_eq!(operands.len(), 1);
                     }
-                    for (i, operand) in operands.iter().enumerate() {
+                    for (i, operand) in operands.iter_enumerated() {
                         let operand = codegen_operand(fx, operand);
                         let field_index = active_field_index.unwrap_or(i);
                         let to = if let mir::AggregateKind::Array(_) = **kind {
-                            let index = fx.bcx.ins().iconst(fx.pointer_type, field_index as i64);
+                            let array_index = i64::from(field_index.as_u32());
+                            let index = fx.bcx.ins().iconst(fx.pointer_type, array_index);
                             variant_dest.place_index(fx, index)
                         } else {
-                            variant_dest.place_field(fx, mir::Field::new(field_index))
+                            variant_dest.place_field(fx, field_index)
                         };
                         to.write_cvalue(fx, operand);
                     }

@@ -922,3 +922,18 @@ mod copy_impls {
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized> Copy for &T {}
 }
+
+/// A common trait implemented by all function pointers.
+#[unstable(
+    feature = "fn_ptr_trait",
+    issue = "none",
+    reason = "internal trait for implementing various traits for all function pointers"
+)]
+#[lang = "fn_ptr_trait"]
+#[cfg(not(bootstrap))]
+#[rustc_deny_explicit_impl]
+pub trait FnPtr: Copy + Clone {
+    /// Returns the address of the function pointer.
+    #[lang = "fn_ptr_addr"]
+    fn addr(self) -> *const ();
+}

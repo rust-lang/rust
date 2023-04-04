@@ -39,7 +39,7 @@ mod a {
         let v: ty_macro!() = Vec::default();
 
         inner::try_err!();
-        inner::foofoo!();
+        inner::mut_mut!();
         nested::string_add!();
     }
 }

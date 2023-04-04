@@ -1,3 +1,26 @@
+Version 1.68.2 (2023-03-28)
+===========================
+
+- [Update the GitHub RSA host key bundled within Cargo](https://github.com/rust-lang/cargo/pull/11883).
+  The key was [rotated by GitHub](https://github.blog/2023-03-23-we-updated-our-rsa-ssh-host-key/)
+  on 2023-03-24 after the old one leaked.
+- [Mark the old GitHub RSA host key as revoked](https://github.com/rust-lang/cargo/pull/11889).
+  This will prevent Cargo from accepting the leaked key even when trusted by
+  the system.
+- [Add support for `@revoked` and a better error message for `@cert-authority` in Cargo's SSH host key verification](https://github.com/rust-lang/cargo/pull/11635)
+
+Version 1.68.1 (2023-03-23)
+===========================
+
+- [Fix miscompilation in produced Windows MSVC artifacts](https://github.com/rust-lang/rust/pull/109094)
+  This was introduced by enabling ThinLTO for the distributed rustc which led
+  to miscompilations in the resulting binary. Currently this is believed to be
+  limited to the -Zdylib-lto flag used for rustc compilation, rather than a
+  general bug in ThinLTO, so only rustc artifacts should be affected.
+- [Fix --enable-local-rust builds](https://github.com/rust-lang/rust/pull/109111/)
+- [Treat `$prefix-clang` as `clang` in linker detection code](https://github.com/rust-lang/rust/pull/109156)
+- [Fix panic in compiler code](https://github.com/rust-lang/rust/pull/108162)
+
 Version 1.68.0 (2023-03-09)
 ==========================
 
@@ -71,6 +94,7 @@ Misc
 Compatibility Notes
 -------------------
 
+- [Only support Android NDK 25 or newer](https://blog.rust-lang.org/2023/01/09/android-ndk-update-r25.html)
 - [Add `SEMICOLON_IN_EXPRESSIONS_FROM_MACROS` to future-incompat report](https://github.com/rust-lang/rust/pull/103418/)
 - [Only specify `--target` by default for `-Zgcc-ld=lld` on wasm](https://github.com/rust-lang/rust/pull/101792/)
 - [Bump `IMPLIED_BOUNDS_ENTAILMENT` to Deny + ReportNow](https://github.com/rust-lang/rust/pull/106465/)

@@ -228,7 +228,7 @@ pub fn spin_loop() {
 /// This _immediately_ precludes any direct use of this function for cryptographic or security
 /// purposes.
 ///
-/// While not suitable in those mission-critical cases, `back_box`'s functionality can generally be
+/// While not suitable in those mission-critical cases, `black_box`'s functionality can generally be
 /// relied upon for benchmarking, and should be used there. It will try to ensure that the
 /// compiler doesn't optimize away part of the intended test code based on context. For
 /// example:

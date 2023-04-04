@@ -1,5 +1,6 @@
 use crate::fmt;
 use crate::iter::{DoubleEndedIterator, Fuse, FusedIterator, Iterator, Map, TrustedLen};
+use crate::num::NonZeroUsize;
 use crate::ops::{ControlFlow, Try};
 
 /// An iterator that maps each element to an iterator, and yields the elements
@@ -75,7 +76,7 @@ where
     }
 
     #[inline]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         self.inner.advance_by(n)
     }
 
@@ -120,7 +121,7 @@ where
     }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         self.inner.advance_back_by(n)
     }
 }
@@ -236,7 +237,7 @@ where
     }
 
     #[inline]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         self.inner.advance_by(n)
     }
 
@@ -281,7 +282,7 @@ where
     }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         self.inner.advance_back_by(n)
     }
 }
@@ -300,6 +301,24 @@ where
     I: TrustedLen,
     <I as Iterator>::Item: TrustedConstSize,
 {
+}
+
+#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+impl<I> Default for Flatten<I>
+where
+    I: Default + Iterator<Item: IntoIterator>,
+{
+    /// Creates a `Flatten` iterator from the default value of `I`.
+    ///
+    /// ```
+    /// # use core::slice;
+    /// # use std::iter::Flatten;
+    /// let iter: Flatten<slice::Iter<'_, [u8; 4]>> = Default::default();
+    /// assert_eq!(iter.count(), 0);
+    /// ```
+    fn default() -> Self {
+        Flatten::new(Default::default())
+    }
 }
 
 /// Real logic of both `Flatten` and `FlatMap` which simply delegate to
@@ -534,18 +553,18 @@ where
 
     #[inline]
     #[rustc_inherit_overflow_checks]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         #[inline]
         #[rustc_inherit_overflow_checks]
         fn advance<U: Iterator>(n: usize, iter: &mut U) -> ControlFlow<(), usize> {
             match iter.advance_by(n) {
                 Ok(()) => ControlFlow::Break(()),
-                Err(advanced) => ControlFlow::Continue(n - advanced),
+                Err(remaining) => ControlFlow::Continue(remaining.get()),
             }
         }
 
         match self.iter_try_fold(n, advance) {
-            ControlFlow::Continue(remaining) if remaining > 0 => Err(n - remaining),
+            ControlFlow::Continue(remaining) => NonZeroUsize::new(remaining).map_or(Ok(()), Err),
             _ => Ok(()),
         }
     }
@@ -624,18 +643,18 @@ where
 
     #[inline]
     #[rustc_inherit_overflow_checks]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         #[inline]
         #[rustc_inherit_overflow_checks]
         fn advance<U: DoubleEndedIterator>(n: usize, iter: &mut U) -> ControlFlow<(), usize> {
             match iter.advance_back_by(n) {
                 Ok(()) => ControlFlow::Break(()),
-                Err(advanced) => ControlFlow::Continue(n - advanced),
+                Err(remaining) => ControlFlow::Continue(remaining.get()),
             }
         }
 
         match self.iter_try_rfold(n, advance) {
-            ControlFlow::Continue(remaining) if remaining > 0 => Err(n - remaining),
+            ControlFlow::Continue(remaining) => NonZeroUsize::new(remaining).map_or(Ok(()), Err),
             _ => Ok(()),
         }
     }

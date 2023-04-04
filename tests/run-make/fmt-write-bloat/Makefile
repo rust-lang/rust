@@ -1,4 +1,4 @@
-include ../../run-make-fulldeps/tools.mk
+include ../tools.mk
 
 # ignore-windows
 
@@ -11,11 +11,11 @@ else
 
 NM = nm
 
-PANIC_SYMS = panic_bounds_check pad_integral Display Debug
+PANIC_SYMS = panic_bounds_check Debug
 
 # Allow for debug_assert!() in debug builds of std.
 ifdef NO_DEBUG_ASSERTIONS
-PANIC_SYMS += panicking panic_fmt
+PANIC_SYMS += panicking panic_fmt pad_integral Display Debug
 endif
 
 all: main.rs

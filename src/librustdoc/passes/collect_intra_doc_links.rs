@@ -15,8 +15,8 @@ use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::Mutability;
 use rustc_middle::ty::{fast_reject::TreatProjections, Ty, TyCtxt};
 use rustc_middle::{bug, ty};
-use rustc_resolve::rustdoc::MalformedGenerics;
-use rustc_resolve::rustdoc::{prepare_to_doc_link_resolution, strip_generics_from_path};
+use rustc_resolve::rustdoc::{has_primitive_or_keyword_docs, prepare_to_doc_link_resolution};
+use rustc_resolve::rustdoc::{strip_generics_from_path, MalformedGenerics};
 use rustc_session::lint::Lint;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -453,8 +453,8 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             })?;
 
         // FIXME(#83862): this arbitrarily gives precedence to primitives over modules to support
-        // links to primitives when `#[doc(primitive)]` is present. It should give an ambiguity
-        // error instead and special case *only* modules with `#[doc(primitive)]`, not all
+        // links to primitives when `#[rustc_doc_primitive]` is present. It should give an ambiguity
+        // error instead and special case *only* modules with `#[rustc_doc_primitive]`, not all
         // primitives.
         match resolve_primitive(&path_root, TypeNS)
             .or_else(|| self.resolve_path(&path_root, TypeNS, item_id, module_id))
@@ -810,7 +810,7 @@ fn trait_impls_for<'a>(
 ///
 /// These are common and we should just resolve to the trait in that case.
 fn is_derive_trait_collision<T>(ns: &PerNS<Result<Vec<(Res, T)>, ResolutionFailure<'_>>>) -> bool {
-    if let (&Ok(ref type_ns), &Ok(ref macro_ns)) = (&ns.type_ns, &ns.macro_ns) {
+    if let (Ok(type_ns), Ok(macro_ns)) = (&ns.type_ns, &ns.macro_ns) {
         type_ns.iter().any(|(res, _)| matches!(res, Res::Def(DefKind::Trait, _)))
             && macro_ns
                 .iter()
@@ -950,6 +950,15 @@ fn preprocessed_markdown_links(s: &str) -> Vec<PreprocessedMarkdownLink> {
 
 impl LinkCollector<'_, '_> {
     fn resolve_links(&mut self, item: &Item) {
+        if !self.cx.render_options.document_private
+            && let Some(def_id) = item.item_id.as_def_id()
+            && let Some(def_id) = def_id.as_local()
+            && !self.cx.tcx.effective_visibilities(()).is_exported(def_id)
+            && !has_primitive_or_keyword_docs(&item.attrs.other_attrs) {
+            // Skip link resolution for non-exported items.
+            return;
+        }
+
         // We want to resolve in the lexical scope of the documentation.
         // In the presence of re-exports, this is not the same as the module of the item.
         // Rather than merging all documentation into one, resolve it one attribute at a time
@@ -1135,7 +1144,7 @@ impl LinkCollector<'_, '_> {
                 }
             }
 
-        // item can be non-local e.g. when using #[doc(primitive = "pointer")]
+        // item can be non-local e.g. when using `#[rustc_doc_primitive = "pointer"]`
         if let Some((src_id, dst_id)) = id.as_local().and_then(|dst_id| {
             item.item_id.expect_def_id().as_local().map(|src_id| (src_id, dst_id))
         }) {

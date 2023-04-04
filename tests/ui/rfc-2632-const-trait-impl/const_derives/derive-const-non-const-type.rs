@@ -9,5 +9,6 @@ impl Default for A {
 #[derive_const(Default)]
 pub struct S(A);
 //~^ cannot call non-const fn
+//~| the trait bound
 
 fn main() {}

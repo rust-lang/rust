@@ -349,8 +349,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             let normalized_preds = elaborate_predicates(
                 tcx,
                 computed_preds.clone().chain(user_computed_preds.iter().cloned()),
-            )
-            .map(|o| o.predicate);
+            );
             new_env = ty::ParamEnv::new(
                 tcx.mk_predicates_from_iter(normalized_preds),
                 param_env.reveal(),

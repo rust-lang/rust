@@ -1,0 +1,37 @@
+error: return type not allowed with return type notation
+  --> $DIR/bad-inputs-and-output.rs:14:28
+   |
+LL | fn bar<T: Trait<method(..) -> (): Send>>() {}
+   |                            ^^^^^ help: remove the return type
+
+warning: the feature `return_type_notation` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/bad-inputs-and-output.rs:3:12
+   |
+LL | #![feature(return_type_notation, async_fn_in_trait)]
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #109417 <https://github.com/rust-lang/rust/issues/109417> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+warning: the feature `async_fn_in_trait` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/bad-inputs-and-output.rs:3:34
+   |
+LL | #![feature(return_type_notation, async_fn_in_trait)]
+   |                                  ^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+
+error: argument types not allowed with return type notation
+  --> $DIR/bad-inputs-and-output.rs:11:23
+   |
+LL | fn foo<T: Trait<method(i32): Send>>() {}
+   |                       ^^^^^ help: remove the input types: `(..)`
+
+error: return type notation arguments must be elided with `..`
+  --> $DIR/bad-inputs-and-output.rs:17:23
+   |
+LL | fn baz<T: Trait<method(): Send>>() {}
+   |                       ^^ help: add `..`: `(..)`
+
+error: aborting due to 3 previous errors; 2 warnings emitted
+

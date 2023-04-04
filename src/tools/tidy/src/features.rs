@@ -102,7 +102,7 @@ pub fn check(
             &tests_path.join("rustdoc-ui"),
             &tests_path.join("rustdoc"),
         ],
-        |path| {
+        |path, _is_dir| {
             filter_dirs(path)
                 || filter_not_rust(path)
                 || path.file_name() == Some(OsStr::new("features.rs"))
@@ -478,7 +478,7 @@ fn map_lib_features(
 ) {
     walk(
         base_src_path,
-        |path| filter_dirs(path) || path.ends_with("tests"),
+        |path, _is_dir| filter_dirs(path) || path.ends_with("tests"),
         &mut |entry, contents| {
             let file = entry.path();
             let filename = file.file_name().unwrap().to_string_lossy();

@@ -11,7 +11,7 @@ fn check_unused_files(path: &Path, bless: bool, bad: &mut bool) {
 
     walk_no_read(
         &[&path.join("mir-opt")],
-        |path| path.file_name() == Some("README.md".as_ref()),
+        |path, _is_dir| path.file_name() == Some("README.md".as_ref()),
         &mut |file| {
             let filepath = file.path();
             if filepath.extension() == Some("rs".as_ref()) {

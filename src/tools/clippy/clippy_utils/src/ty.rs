@@ -16,9 +16,9 @@ use rustc_infer::infer::{
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::{
-    self, AdtDef, AliasTy, AssocKind, Binder, BoundRegion, FnSig, IntTy, List, ParamEnv, Predicate, PredicateKind,
-    Region, RegionKind, SubstsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
-    UintTy, VariantDef, VariantDiscr,
+    self, layout::ValidityRequirement, AdtDef, AliasTy, AssocKind, Binder, BoundRegion, FnSig, IntTy, List, ParamEnv,
+    Predicate, PredicateKind, Region, RegionKind, SubstsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, UintTy, VariantDef, VariantDiscr,
 };
 use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_span::symbol::Ident;
@@ -538,13 +538,12 @@ pub fn same_type_and_consts<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
 }
 
 /// Checks if a given type looks safe to be uninitialized.
-pub fn is_uninit_value_valid_for_ty(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
-    match *ty.kind() {
-        ty::Array(component, _) => is_uninit_value_valid_for_ty(cx, component),
-        ty::Tuple(types) => types.iter().all(|ty| is_uninit_value_valid_for_ty(cx, ty)),
-        ty::Adt(adt, _) => cx.tcx.lang_items().maybe_uninit() == Some(adt.did()),
-        _ => false,
-    }
+pub fn is_uninit_value_valid_for_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    cx.tcx
+        .check_validity_requirement((ValidityRequirement::Uninit, cx.param_env.and(ty)))
+        // For types containing generic parameters we cannot get a layout to check.
+        // Therefore, we are conservative and assume that they don't allow uninit.
+        .unwrap_or(false)
 }
 
 /// Gets an iterator over all predicates which apply to the given item.
@@ -1120,4 +1119,48 @@ pub fn make_normalized_projection<'tcx>(
         }
     }
     helper(tcx, param_env, make_projection(tcx, container_id, assoc_ty, substs)?)
+}
+
+/// Check if given type has inner mutability such as [`std::cell::Cell`] or [`std::cell::RefCell`]
+/// etc.
+pub fn is_interior_mut_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    match *ty.kind() {
+        ty::Ref(_, inner_ty, mutbl) => mutbl == Mutability::Mut || is_interior_mut_ty(cx, inner_ty),
+        ty::Slice(inner_ty) => is_interior_mut_ty(cx, inner_ty),
+        ty::Array(inner_ty, size) => {
+            size.try_eval_target_usize(cx.tcx, cx.param_env)
+                .map_or(true, |u| u != 0)
+                && is_interior_mut_ty(cx, inner_ty)
+        },
+        ty::Tuple(fields) => fields.iter().any(|ty| is_interior_mut_ty(cx, ty)),
+        ty::Adt(def, substs) => {
+            // Special case for collections in `std` who's impl of `Hash` or `Ord` delegates to
+            // that of their type parameters.  Note: we don't include `HashSet` and `HashMap`
+            // because they have no impl for `Hash` or `Ord`.
+            let def_id = def.did();
+            let is_std_collection = [
+                sym::Option,
+                sym::Result,
+                sym::LinkedList,
+                sym::Vec,
+                sym::VecDeque,
+                sym::BTreeMap,
+                sym::BTreeSet,
+                sym::Rc,
+                sym::Arc,
+            ]
+            .iter()
+            .any(|diag_item| cx.tcx.is_diagnostic_item(*diag_item, def_id));
+            let is_box = Some(def_id) == cx.tcx.lang_items().owned_box();
+            if is_std_collection || is_box {
+                // The type is mutable if any of its type parameters are
+                substs.types().any(|ty| is_interior_mut_ty(cx, ty))
+            } else {
+                !ty.has_escaping_bound_vars()
+                    && cx.tcx.layout_of(cx.param_env.and(ty)).is_ok()
+                    && !ty.is_freeze(cx.tcx, cx.param_env)
+            }
+        },
+        _ => false,
+    }
 }

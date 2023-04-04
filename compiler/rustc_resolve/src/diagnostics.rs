@@ -1669,8 +1669,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     ) -> Option<Symbol> {
         let mut candidates = self
             .extern_prelude
-            .iter()
-            .map(|(ident, _)| ident.name)
+            .keys()
+            .map(|ident| ident.name)
             .chain(
                 self.module_map
                     .iter()
@@ -2007,7 +2007,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // 1) some consistent ordering for emitted diagnostics, and
         // 2) `std` suggestions before `core` suggestions.
         let mut extern_crate_names =
-            self.extern_prelude.iter().map(|(ident, _)| ident.name).collect::<Vec<_>>();
+            self.extern_prelude.keys().map(|ident| ident.name).collect::<Vec<_>>();
         extern_crate_names.sort_by(|a, b| b.as_str().partial_cmp(a.as_str()).unwrap());
 
         for name in extern_crate_names.into_iter() {

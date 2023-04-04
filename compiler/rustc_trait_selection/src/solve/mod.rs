@@ -9,24 +9,19 @@
 //! FIXME(@lcnr): Write that section. If you read this before then ask me
 //! about it on zulip.
 
-// FIXME: uses of `infcx.at` need to enable deferred projection equality once that's implemented.
-
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::traits::solve::{
-    CanonicalGoal, CanonicalResponse, Certainty, ExternalConstraints, ExternalConstraintsData,
-    Goal, QueryResult, Response,
+    CanonicalResponse, Certainty, ExternalConstraintsData, Goal, QueryResult, Response,
 };
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{
     CoercePredicate, RegionOutlivesPredicate, SubtypePredicate, TypeOutlivesPredicate,
 };
 
-use crate::traits::ObligationCause;
-
 mod assembly;
-mod canonical;
+mod canonicalize;
 mod eval_ctxt;
 mod fulfill;
 mod project_goals;
@@ -68,7 +63,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         goal: Goal<'tcx, TypeOutlivesPredicate<'tcx>>,
     ) -> QueryResult<'tcx> {
         let ty::OutlivesPredicate(ty, lt) = goal.predicate;
-        self.infcx.register_region_obligation_with_cause(ty, lt, &ObligationCause::dummy());
+        self.register_ty_outlives(ty, lt);
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 
@@ -77,10 +72,8 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         &mut self,
         goal: Goal<'tcx, RegionOutlivesPredicate<'tcx>>,
     ) -> QueryResult<'tcx> {
-        self.infcx.region_outlives_predicate(
-            &ObligationCause::dummy(),
-            ty::Binder::dummy(goal.predicate),
-        );
+        let ty::OutlivesPredicate(a, b) = goal.predicate;
+        self.register_region_outlives(a, b);
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 
@@ -105,8 +98,6 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         goal: Goal<'tcx, SubtypePredicate<'tcx>>,
     ) -> QueryResult<'tcx> {
         if goal.predicate.a.is_ty_var() && goal.predicate.b.is_ty_var() {
-            // FIXME: Do we want to register a subtype relation between these vars?
-            // That won't actually reflect in the query response, so it seems moot.
             self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
         } else {
             self.sub(goal.param_env, goal.predicate.a, goal.predicate.b)?;
@@ -146,13 +137,9 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         &mut self,
         goal: Goal<'tcx, ty::GenericArg<'tcx>>,
     ) -> QueryResult<'tcx> {
-        match crate::traits::wf::unnormalized_obligations(
-            self.infcx,
-            goal.param_env,
-            goal.predicate,
-        ) {
-            Some(obligations) => {
-                self.add_goals(obligations.into_iter().map(|o| o.into()));
+        match self.well_formed_goals(goal.param_env, goal.predicate) {
+            Some(goals) => {
+                self.add_goals(goals);
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
             None => self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS),

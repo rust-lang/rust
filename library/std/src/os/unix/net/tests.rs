@@ -646,7 +646,7 @@ fn test_send_vectored_fds_unix_stream() {
     }
 }
 
-#[cfg(any(target_os = "android", target_os = "linux",))]
+#[cfg(any(target_os = "android", target_os = "linux", target_os = "freebsd"))]
 #[test]
 fn test_send_vectored_with_ancillary_to_unix_datagram() {
     fn getpid() -> libc::pid_t {

@@ -495,18 +495,19 @@ struct NotSimplificationVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for NotSimplificationVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if let ExprKind::Unary(UnOp::Not, inner) = &expr.kind {
-            if let Some(suggestion) = simplify_not(self.cx, inner) {
-                span_lint_and_sugg(
-                    self.cx,
-                    NONMINIMAL_BOOL,
-                    expr.span,
-                    "this boolean expression can be simplified",
-                    "try",
-                    suggestion,
-                    Applicability::MachineApplicable,
-                );
-            }
+        if let ExprKind::Unary(UnOp::Not, inner) = &expr.kind &&
+            !inner.span.from_expansion() &&
+            let Some(suggestion) = simplify_not(self.cx, inner)
+        {
+            span_lint_and_sugg(
+                self.cx,
+                NONMINIMAL_BOOL,
+                expr.span,
+                "this boolean expression can be simplified",
+                "try",
+                suggestion,
+                Applicability::MachineApplicable,
+            );
         }
 
         walk_expr(self, expr);

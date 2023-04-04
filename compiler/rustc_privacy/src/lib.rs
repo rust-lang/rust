@@ -1082,7 +1082,7 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
                 // If the expression uses FRU we need to make sure all the unmentioned fields
                 // are checked for privacy (RFC 736). Rather than computing the set of
                 // unmentioned fields, just check them all.
-                for (vf_index, variant_field) in variant.fields.iter().enumerate() {
+                for (vf_index, variant_field) in variant.fields.iter_enumerated() {
                     let field = fields
                         .iter()
                         .find(|f| self.typeck_results().field_index(f.hir_id) == vf_index);
@@ -2149,6 +2149,7 @@ fn effective_visibilities(tcx: TyCtxt<'_>, (): ()) -> &EffectiveVisibilities {
 
     let mut check_visitor =
         TestReachabilityVisitor { tcx, effective_visibilities: &visitor.effective_visibilities };
+    check_visitor.effective_visibility_diagnostic(CRATE_DEF_ID);
     tcx.hir().visit_all_item_likes_in_crate(&mut check_visitor);
 
     tcx.arena.alloc(visitor.effective_visibilities)

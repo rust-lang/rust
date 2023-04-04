@@ -1,9 +1,7 @@
 //! Contains utility functions to generate suggestions.
 #![deny(clippy::missing_docs_in_private_items)]
 
-use crate::source::{
-    snippet, snippet_opt, snippet_with_applicability, snippet_with_context, snippet_with_macro_callsite,
-};
+use crate::source::{snippet, snippet_opt, snippet_with_applicability, snippet_with_context};
 use crate::ty::expr_sig;
 use crate::{get_parent_expr_for_hir, higher};
 use rustc_ast::util::parser::AssocOp;
@@ -87,12 +85,6 @@ impl<'a> Sugg<'a> {
             }
             Sugg::NonParen(Cow::Borrowed(default))
         })
-    }
-
-    /// Same as `hir`, but will use the pre expansion span if the `expr` was in a macro.
-    pub fn hir_with_macro_callsite(cx: &LateContext<'_>, expr: &hir::Expr<'_>, default: &'a str) -> Self {
-        let get_snippet = |span| snippet_with_macro_callsite(cx, span, default);
-        Self::hir_from_snippet(expr, get_snippet)
     }
 
     /// Same as `hir`, but first walks the span up to the given context. This will result in the

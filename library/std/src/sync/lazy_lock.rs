@@ -26,7 +26,7 @@ union Data<T, F> {
 /// # Examples
 ///
 /// ```
-/// #![feature(once_cell)]
+/// #![feature(lazy_cell)]
 ///
 /// use std::collections::HashMap;
 ///
@@ -54,7 +54,7 @@ union Data<T, F> {
 ///     //   Some("Hoyten")
 /// }
 /// ```
-#[unstable(feature = "once_cell", issue = "74465")]
+#[unstable(feature = "lazy_cell", issue = "109736")]
 pub struct LazyLock<T, F = fn() -> T> {
     once: Once,
     data: UnsafeCell<Data<T, F>>,
@@ -64,7 +64,7 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
     /// Creates a new lazy value with the given initializing
     /// function.
     #[inline]
-    #[unstable(feature = "once_cell", issue = "74465")]
+    #[unstable(feature = "lazy_cell", issue = "109736")]
     pub const fn new(f: F) -> LazyLock<T, F> {
         LazyLock { once: Once::new(), data: UnsafeCell::new(Data { f: ManuallyDrop::new(f) }) }
     }
@@ -76,7 +76,7 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(once_cell)]
+    /// #![feature(lazy_cell)]
     ///
     /// use std::sync::LazyLock;
     ///
@@ -86,7 +86,7 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
     /// assert_eq!(&*lazy, &92);
     /// ```
     #[inline]
-    #[unstable(feature = "once_cell", issue = "74465")]
+    #[unstable(feature = "lazy_cell", issue = "109736")]
     pub fn force(this: &LazyLock<T, F>) -> &T {
         this.once.call_once(|| {
             // SAFETY: `call_once` only runs this closure once, ever.
@@ -122,7 +122,7 @@ impl<T, F> LazyLock<T, F> {
     }
 }
 
-#[unstable(feature = "once_cell", issue = "74465")]
+#[unstable(feature = "lazy_cell", issue = "109736")]
 impl<T, F> Drop for LazyLock<T, F> {
     fn drop(&mut self) {
         match self.once.state() {
@@ -135,7 +135,7 @@ impl<T, F> Drop for LazyLock<T, F> {
     }
 }
 
-#[unstable(feature = "once_cell", issue = "74465")]
+#[unstable(feature = "lazy_cell", issue = "109736")]
 impl<T, F: FnOnce() -> T> Deref for LazyLock<T, F> {
     type Target = T;
 
@@ -145,7 +145,7 @@ impl<T, F: FnOnce() -> T> Deref for LazyLock<T, F> {
     }
 }
 
-#[unstable(feature = "once_cell", issue = "74465")]
+#[unstable(feature = "lazy_cell", issue = "109736")]
 impl<T: Default> Default for LazyLock<T> {
     /// Creates a new lazy value using `Default` as the initializing function.
     #[inline]
@@ -154,7 +154,7 @@ impl<T: Default> Default for LazyLock<T> {
     }
 }
 
-#[unstable(feature = "once_cell", issue = "74465")]
+#[unstable(feature = "lazy_cell", issue = "109736")]
 impl<T: fmt::Debug, F> fmt::Debug for LazyLock<T, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.get() {
@@ -166,13 +166,13 @@ impl<T: fmt::Debug, F> fmt::Debug for LazyLock<T, F> {
 
 // We never create a `&F` from a `&LazyLock<T, F>` so it is fine
 // to not impl `Sync` for `F`
-#[unstable(feature = "once_cell", issue = "74465")]
+#[unstable(feature = "lazy_cell", issue = "109736")]
 unsafe impl<T: Sync + Send, F: Send> Sync for LazyLock<T, F> {}
 // auto-derived `Send` impl is OK.
 
-#[unstable(feature = "once_cell", issue = "74465")]
+#[unstable(feature = "lazy_cell", issue = "109736")]
 impl<T: RefUnwindSafe + UnwindSafe, F: UnwindSafe> RefUnwindSafe for LazyLock<T, F> {}
-#[unstable(feature = "once_cell", issue = "74465")]
+#[unstable(feature = "lazy_cell", issue = "109736")]
 impl<T: UnwindSafe, F: UnwindSafe> UnwindSafe for LazyLock<T, F> {}
 
 #[cfg(test)]

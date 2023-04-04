@@ -5,7 +5,7 @@ use std::collections::hash_map::RawEntryMut;
 use std::hash::{Hash, Hasher};
 use std::mem;
 
-#[derive(Clone, Default)]
+#[derive(Default)]
 #[cfg_attr(parallel_compiler, repr(align(64)))]
 struct CacheAligned<T>(T);
 
@@ -21,7 +21,6 @@ const SHARD_BITS: usize = 0;
 pub const SHARDS: usize = 1 << SHARD_BITS;
 
 /// An array of cache-line aligned inner locked structures with convenience methods.
-#[derive(Clone)]
 pub struct Sharded<T> {
     shards: [CacheAligned<Lock<T>>; SHARDS],
 }

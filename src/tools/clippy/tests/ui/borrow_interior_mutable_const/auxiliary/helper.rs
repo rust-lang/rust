@@ -1,5 +1,5 @@
 // this file solely exists to test constants defined in foreign crates.
-// As the most common case is the `http` crate, it replicates `http::HeadewrName`'s structure.
+// As the most common case is the `http` crate, it replicates `http::HeaderName`'s structure.
 
 #![allow(clippy::declare_interior_mutable_const)]
 #![allow(unused_tuple_struct_fields)]

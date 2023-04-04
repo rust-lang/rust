@@ -1,10 +1,9 @@
-error[E0283]: type annotations needed: cannot satisfy `dyn Trait<A = A, B = B>: Trait`
-  --> $DIR/more-object-bound.rs:12:5
+error[E0277]: the trait bound `dyn Trait<A = A, B = B>: Trait` is not satisfied
+  --> $DIR/more-object-bound.rs:12:17
    |
 LL |     foo::<A, B, dyn Trait<A = A, B = B>>(x)
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `dyn Trait<A = A, B = B>`
    |
-   = note: cannot satisfy `dyn Trait<A = A, B = B>: Trait`
 note: required by a bound in `foo`
   --> $DIR/more-object-bound.rs:18:8
    |
@@ -13,7 +12,11 @@ LL | fn foo<A, B, T: ?Sized>(x: T::A) -> B
 LL | where
 LL |     T: Trait<B = B>,
    |        ^^^^^^^^^^^^ required by this bound in `foo`
+help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
+   |
+LL | fn transmute<A, B>(x: A) -> B where dyn Trait<A = A, B = B>: Trait {
+   |                               ++++++++++++++++++++++++++++++++++++
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0283`.
+For more information about this error, try `rustc --explain E0277`.

@@ -3,6 +3,9 @@ error: to use a constant of type `MyType` in a pattern, `MyType` must be annotat
    |
 LL |     if let CONSTANT = &&MyType {
    |            ^^^^^^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: aborting due to previous error
 

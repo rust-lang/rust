@@ -1,6 +1,6 @@
 CHECK: unw_getcontext
 CHECK:      lfence
 CHECK:      lfence
-CHECK:      shlq    $0, (%rsp)
+CHECK:      shlq    $0x0, (%rsp)
 CHECK-NEXT: lfence
 CHECK-NEXT: retq

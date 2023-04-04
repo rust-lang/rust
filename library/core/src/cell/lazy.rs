@@ -1,6 +1,13 @@
-use crate::cell::{Cell, OnceCell};
-use crate::fmt;
 use crate::ops::Deref;
+use crate::{fmt, mem};
+
+use super::UnsafeCell;
+
+enum State<T, F> {
+    Uninit(F),
+    Init(T),
+    Poisoned,
+}
 
 /// A value which is initialized on the first access.
 ///
@@ -11,7 +18,7 @@ use crate::ops::Deref;
 /// # Examples
 ///
 /// ```
-/// #![feature(once_cell)]
+/// #![feature(lazy_cell)]
 ///
 /// use std::cell::LazyCell;
 ///
@@ -29,10 +36,9 @@ use crate::ops::Deref;
 /// //   92
 /// //   92
 /// ```
-#[unstable(feature = "once_cell", issue = "74465")]
+#[unstable(feature = "lazy_cell", issue = "109736")]
 pub struct LazyCell<T, F = fn() -> T> {
-    cell: OnceCell<T>,
-    init: Cell<Option<F>>,
+    state: UnsafeCell<State<T, F>>,
 }
 
 impl<T, F: FnOnce() -> T> LazyCell<T, F> {
@@ -41,7 +47,7 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(once_cell)]
+    /// #![feature(lazy_cell)]
     ///
     /// use std::cell::LazyCell;
     ///
@@ -52,9 +58,9 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// assert_eq!(&*lazy, "HELLO, WORLD!");
     /// ```
     #[inline]
-    #[unstable(feature = "once_cell", issue = "74465")]
-    pub const fn new(init: F) -> LazyCell<T, F> {
-        LazyCell { cell: OnceCell::new(), init: Cell::new(Some(init)) }
+    #[unstable(feature = "lazy_cell", issue = "109736")]
+    pub const fn new(f: F) -> LazyCell<T, F> {
+        LazyCell { state: UnsafeCell::new(State::Uninit(f)) }
     }
 
     /// Forces the evaluation of this lazy value and returns a reference to
@@ -65,7 +71,7 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(once_cell)]
+    /// #![feature(lazy_cell)]
     ///
     /// use std::cell::LazyCell;
     ///
@@ -75,16 +81,71 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// assert_eq!(&*lazy, &92);
     /// ```
     #[inline]
-    #[unstable(feature = "once_cell", issue = "74465")]
+    #[unstable(feature = "lazy_cell", issue = "109736")]
     pub fn force(this: &LazyCell<T, F>) -> &T {
-        this.cell.get_or_init(|| match this.init.take() {
-            Some(f) => f(),
-            None => panic!("`Lazy` instance has previously been poisoned"),
-        })
+        // SAFETY:
+        // This invalidates any mutable references to the data. The resulting
+        // reference lives either until the end of the borrow of `this` (in the
+        // initialized case) or is invalidated in `really_init` (in the
+        // uninitialized case; `really_init` will create and return a fresh reference).
+        let state = unsafe { &*this.state.get() };
+        match state {
+            State::Init(data) => data,
+            // SAFETY: The state is uninitialized.
+            State::Uninit(_) => unsafe { LazyCell::really_init(this) },
+            State::Poisoned => panic!("LazyCell has previously been poisoned"),
+        }
+    }
+
+    /// # Safety
+    /// May only be called when the state is `Uninit`.
+    #[cold]
+    unsafe fn really_init(this: &LazyCell<T, F>) -> &T {
+        // SAFETY:
+        // This function is only called when the state is uninitialized,
+        // so no references to `state` can exist except for the reference
+        // in `force`, which is invalidated here and not accessed again.
+        let state = unsafe { &mut *this.state.get() };
+        // Temporarily mark the state as poisoned. This prevents reentrant
+        // accesses and correctly poisons the cell if the closure panicked.
+        let State::Uninit(f) = mem::replace(state, State::Poisoned) else { unreachable!() };
+
+        let data = f();
+
+        // SAFETY:
+        // If the closure accessed the cell through something like a reentrant
+        // mutex, but caught the panic resulting from the state being poisoned,
+        // the mutable borrow for `state` will be invalidated, so we need to
+        // go through the `UnsafeCell` pointer here. The state can only be
+        // poisoned at this point, so using `write` to skip the destructor
+        // of `State` should help the optimizer.
+        unsafe { this.state.get().write(State::Init(data)) };
+
+        // SAFETY:
+        // The previous references were invalidated by the `write` call above,
+        // so do a new shared borrow of the state instead.
+        let state = unsafe { &*this.state.get() };
+        let State::Init(data) = state else { unreachable!() };
+        data
     }
 }
 
-#[unstable(feature = "once_cell", issue = "74465")]
+impl<T, F> LazyCell<T, F> {
+    #[inline]
+    fn get(&self) -> Option<&T> {
+        // SAFETY:
+        // This is sound for the same reason as in `force`: once the state is
+        // initialized, it will not be mutably accessed again, so this reference
+        // will stay valid for the duration of the borrow to `self`.
+        let state = unsafe { &*self.state.get() };
+        match state {
+            State::Init(data) => Some(data),
+            _ => None,
+        }
+    }
+}
+
+#[unstable(feature = "lazy_cell", issue = "109736")]
 impl<T, F: FnOnce() -> T> Deref for LazyCell<T, F> {
     type Target = T;
     #[inline]
@@ -93,7 +154,7 @@ impl<T, F: FnOnce() -> T> Deref for LazyCell<T, F> {
     }
 }
 
-#[unstable(feature = "once_cell", issue = "74465")]
+#[unstable(feature = "lazy_cell", issue = "109736")]
 impl<T: Default> Default for LazyCell<T> {
     /// Creates a new lazy value using `Default` as the initializing function.
     #[inline]
@@ -102,9 +163,14 @@ impl<T: Default> Default for LazyCell<T> {
     }
 }
 
-#[unstable(feature = "once_cell", issue = "74465")]
+#[unstable(feature = "lazy_cell", issue = "109736")]
 impl<T: fmt::Debug, F> fmt::Debug for LazyCell<T, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Lazy").field("cell", &self.cell).field("init", &"..").finish()
+        let mut d = f.debug_tuple("LazyCell");
+        match self.get() {
+            Some(data) => d.field(data),
+            None => d.field(&format_args!("<uninit>")),
+        };
+        d.finish()
     }
 }

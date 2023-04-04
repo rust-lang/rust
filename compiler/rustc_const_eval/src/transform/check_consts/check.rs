@@ -722,6 +722,32 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     }
                 };
 
+                // Check that all trait bounds that are marked as `~const` can be satisfied.
+                //
+                // Typeck only does a "non-const" check since it operates on HIR and cannot distinguish
+                // which path expressions are getting called on and which path expressions are only used
+                // as function pointers. This is required for correctness.
+                let infcx = tcx.infer_ctxt().build();
+                let ocx = ObligationCtxt::new(&infcx);
+
+                let predicates = tcx.predicates_of(callee).instantiate(tcx, substs);
+                let cause = ObligationCause::new(
+                    terminator.source_info.span,
+                    self.body.source.def_id().expect_local(),
+                    ObligationCauseCode::ItemObligation(callee),
+                );
+                let normalized_predicates = ocx.normalize(&cause, param_env, predicates);
+                ocx.register_obligations(traits::predicates_for_generics(
+                    |_, _| cause.clone(),
+                    self.param_env,
+                    normalized_predicates,
+                ));
+
+                let errors = ocx.select_all_or_error();
+                if !errors.is_empty() {
+                    infcx.err_ctxt().report_fulfillment_errors(&errors);
+                }
+
                 // Attempting to call a trait method?
                 if let Some(trait_id) = tcx.trait_of_item(callee) {
                     trace!("attempting to call a trait method");
@@ -748,31 +774,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         let mut selcx = SelectionContext::new(&infcx);
                         selcx.select(&obligation)
                     };
-
-                    // do a well-formedness check on the trait method being called. This is because typeck only does a
-                    // "non-const" check. This is required for correctness here.
-                    {
-                        let infcx = tcx.infer_ctxt().build();
-                        let ocx = ObligationCtxt::new(&infcx);
-
-                        let predicates = tcx.predicates_of(callee).instantiate(tcx, substs);
-                        let cause = ObligationCause::new(
-                            terminator.source_info.span,
-                            self.body.source.def_id().expect_local(),
-                            ObligationCauseCode::ItemObligation(callee),
-                        );
-                        let normalized_predicates = ocx.normalize(&cause, param_env, predicates);
-                        ocx.register_obligations(traits::predicates_for_generics(
-                            |_, _| cause.clone(),
-                            self.param_env,
-                            normalized_predicates,
-                        ));
-
-                        let errors = ocx.select_all_or_error();
-                        if !errors.is_empty() {
-                            infcx.err_ctxt().report_fulfillment_errors(&errors);
-                        }
-                    }
 
                     match implsrc {
                         Ok(Some(ImplSource::Param(_, ty::BoundConstness::ConstIfConst))) => {

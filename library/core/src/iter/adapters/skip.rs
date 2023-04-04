@@ -1,5 +1,6 @@
 use crate::intrinsics::unlikely;
 use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable};
+use crate::num::NonZeroUsize;
 use crate::ops::{ControlFlow, Try};
 
 /// An iterator that skips over `n` elements of `iter`.
@@ -128,34 +129,27 @@ where
 
     #[inline]
     #[rustc_inherit_overflow_checks]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
-        let mut rem = n;
-        let step_one = self.n.saturating_add(rem);
+    fn advance_by(&mut self, mut n: usize) -> Result<(), NonZeroUsize> {
+        let skip_inner = self.n;
+        let skip_and_advance = skip_inner.saturating_add(n);
 
-        match self.iter.advance_by(step_one) {
-            Ok(_) => {
-                rem -= step_one - self.n;
-                self.n = 0;
-            }
-            Err(advanced) => {
-                let advanced_without_skip = advanced.saturating_sub(self.n);
-                self.n = self.n.saturating_sub(advanced);
-                return if n == 0 { Ok(()) } else { Err(advanced_without_skip) };
+        let remainder = match self.iter.advance_by(skip_and_advance) {
+            Ok(()) => 0,
+            Err(n) => n.get(),
+        };
+        let advanced_inner = skip_and_advance - remainder;
+        n -= advanced_inner.saturating_sub(skip_inner);
+        self.n = self.n.saturating_sub(advanced_inner);
+
+        // skip_and_advance may have saturated
+        if unlikely(remainder == 0 && n > 0) {
+            n = match self.iter.advance_by(n) {
+                Ok(()) => 0,
+                Err(n) => n.get(),
             }
         }
 
-        // step_one calculation may have saturated
-        if unlikely(rem > 0) {
-            return match self.iter.advance_by(rem) {
-                ret @ Ok(_) => ret,
-                Err(advanced) => {
-                    rem -= advanced;
-                    Err(n - rem)
-                }
-            };
-        }
-
-        Ok(())
+        NonZeroUsize::new(n).map_or(Ok(()), Err)
     }
 }
 
@@ -209,13 +203,11 @@ where
     impl_fold_via_try_fold! { rfold -> try_rfold }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         let min = crate::cmp::min(self.len(), n);
-        return match self.iter.advance_back_by(min) {
-            ret @ Ok(_) if n <= min => ret,
-            Ok(_) => Err(min),
-            _ => panic!("ExactSizeIterator contract violation"),
-        };
+        let rem = self.iter.advance_back_by(min);
+        assert!(rem.is_ok(), "ExactSizeIterator contract violation");
+        NonZeroUsize::new(n - min).map_or(Ok(()), Err)
     }
 }
 

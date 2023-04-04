@@ -3,12 +3,18 @@ error: to use a constant of type `CustomEq` in a pattern, `CustomEq` must be ann
    |
 LL |         consts::SOME => panic!(),
    |         ^^^^^^^^^^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: to use a constant of type `CustomEq` in a pattern, `CustomEq` must be annotated with `#[derive(PartialEq, Eq)]`
   --> $DIR/cross-crate-fail.rs:20:9
    |
 LL |         <Defaulted as consts::AssocConst>::SOME  => panic!(),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: aborting due to 2 previous errors
 

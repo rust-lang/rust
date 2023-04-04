@@ -28,6 +28,8 @@ fn main() {
     match Foo::Qux(CustomEq) {
         BAR_BAZ => panic!(),
         //~^ WARN must be annotated with `#[derive(PartialEq, Eq)]`
+        //~| NOTE the traits must be derived
+        //~| NOTE StructuralEq.html for details
         //~| WARN this was previously accepted
         //~| NOTE see issue #73448
         //~| NOTE `#[warn(nontrivial_structural_match)]` on by default
