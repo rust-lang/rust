@@ -3,9 +3,9 @@
 /*!
 # An owning reference.
 
-This crate provides the _owning reference_ types `OwningRef` and `OwningRefMut`
+This module provides the _owning reference_ types [`OwningRef`] and [`OwningRefMut`]
 that enables it to bundle a reference together with the owner of the data it points to.
-This allows moving and dropping of an `OwningRef` without needing to recreate the reference.
+This allows moving and dropping of an [`OwningRef`] without needing to recreate the reference.
 
 This can sometimes be useful because Rust borrowing rules normally prevent
 moving a type that has been moved from. For example, this kind of code gets rejected:
@@ -39,16 +39,16 @@ fn return_owned_and_referenced() -> OwningRef<Vec<u8>, [u8]> {
 
 It works by requiring owner types to dereference to stable memory locations
 and preventing mutable access to root containers, which in practice requires heap allocation
-as provided by `Box<T>`, `Rc<T>`, etc.
+as provided by [`Box<T>`], [`Rc<T>`], etc.
 
-Also provided are typedefs for common owner type combinations,
+Also provided are type aliases for common owner type combinations,
 which allow for less verbose type signatures.
-For example, `BoxRef<T>` instead of `OwningRef<Box<T>, T>`.
+For example, [`BoxRef<T>`] instead of [`OwningRef<Box<T>, T>`].
 
-The crate also provides the more advanced `OwningHandle` type,
+The module also provides the more advanced [`OwningHandle`] type,
 which allows more freedom in bundling a dependent handle object
 along with the data it depends on, at the cost of some unsafe needed in the API.
-See the documentation around `OwningHandle` for more details.
+See the documentation around [`OwningHandle`] for more details.
 
 # Examples
 
@@ -324,12 +324,12 @@ impl<O, T: ?Sized> OwningRef<O, T> {
     ///     assert_eq!(*owning_ref, 42);
     /// }
     /// ```
-    pub fn new(o: O) -> Self
+    pub fn new(owner: O) -> Self
     where
         O: StableAddress,
         O: Deref<Target = T>,
     {
-        OwningRef { reference: &*o, owner: o }
+        OwningRef { reference: &*owner, owner }
     }
 
     /// Like `new`, but doesn’t require `O` to implement the `StableAddress` trait.
@@ -337,11 +337,11 @@ impl<O, T: ?Sized> OwningRef<O, T> {
     ///
     /// This is useful for cases where coherence rules prevents implementing the trait
     /// without adding a dependency to this crate in a third-party library.
-    pub unsafe fn new_assert_stable_address(o: O) -> Self
+    pub unsafe fn new_assert_stable_address(owner: O) -> Self
     where
         O: Deref<Target = T>,
     {
-        OwningRef { reference: &*o, owner: o }
+        OwningRef { reference: &*owner, owner }
     }
 
     /// Converts `self` into a new owning reference that points at something reachable
@@ -482,15 +482,11 @@ impl<O, T: ?Sized> OwningRef<O, T> {
         OwningRef { reference: self.reference, owner: self.owner.into_erased_send_sync() }
     }
 
-    // UNIMPLEMENTED: wrap_owner
-
-    // FIXME: Naming convention?
     /// A getter for the underlying owner.
     pub fn owner(&self) -> &O {
         &self.owner
     }
 
-    // FIXME: Naming convention?
     /// Discards the reference and retrieves the owner.
     pub fn into_inner(self) -> O {
         self.owner
@@ -510,12 +506,12 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
     ///     assert_eq!(*owning_ref_mut, 42);
     /// }
     /// ```
-    pub fn new(mut o: O) -> Self
+    pub fn new(mut owner: O) -> Self
     where
         O: StableAddress,
         O: DerefMut<Target = T>,
     {
-        OwningRefMut { reference: &mut *o, owner: o }
+        OwningRefMut { reference: &mut *owner, owner }
     }
 
     /// Like `new`, but doesn’t require `O` to implement the `StableAddress` trait.
@@ -523,11 +519,11 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
     ///
     /// This is useful for cases where coherence rules prevents implementing the trait
     /// without adding a dependency to this crate in a third-party library.
-    pub unsafe fn new_assert_stable_address(mut o: O) -> Self
+    pub unsafe fn new_assert_stable_address(mut owner: O) -> Self
     where
         O: DerefMut<Target = T>,
     {
-        OwningRefMut { reference: &mut *o, owner: o }
+        OwningRefMut { reference: &mut *owner, owner }
     }
 
     /// Converts `self` into a new _shared_ owning reference that points at
@@ -703,15 +699,11 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
         OwningRefMut { reference: self.reference, owner: self.owner.into_erased() }
     }
 
-    // UNIMPLEMENTED: wrap_owner
-
-    // FIXME: Naming convention?
     /// A getter for the underlying owner.
     pub fn owner(&self) -> &O {
         &self.owner
     }
 
-    // FIXME: Naming convention?
     /// Discards the reference and retrieves the owner.
     pub fn into_inner(self) -> O {
         self.owner
@@ -724,12 +716,12 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
 
 use std::ops::{Deref, DerefMut};
 
-/// `OwningHandle` is a complement to `OwningRef`. Where `OwningRef` allows
+/// `OwningHandle` is a complement to [`OwningRef`]. Where [`OwningRef`] allows
 /// consumers to pass around an owned object and a dependent reference,
 /// `OwningHandle` contains an owned object and a dependent _object_.
 ///
-/// `OwningHandle` can encapsulate a `RefMut` along with its associated
-/// `RefCell`, or an `RwLockReadGuard` along with its associated `RwLock`.
+/// `OwningHandle` can encapsulate a [`cell::RefMut`](RefMut) along with its associated
+/// [`RefCell`], or an [`RwLockReadGuard`] along with its associated [`RwLock`](std::sync::RwLock).
 /// However, the API is completely generic and there are no restrictions on
 /// what types of owning and dependent objects may be used.
 ///
@@ -740,8 +732,8 @@ use std::ops::{Deref, DerefMut};
 /// not outlive the referent of the pointer.
 ///
 /// Since the callback needs to dereference a raw pointer, it requires `unsafe`
-/// code. To avoid forcing this unsafety on most callers, the `ToHandle` trait is
-/// implemented for common data structures. Types that implement `ToHandle` can
+/// code. To avoid forcing this unsafety on most callers, the [`ToHandle`] trait is
+/// implemented for common data structures. Types that implement [`ToHandle`] can
 /// be wrapped into an `OwningHandle` without passing a callback.
 pub struct OwningHandle<O, H>
 where
@@ -808,8 +800,8 @@ where
     /// Creates a new `OwningHandle` for a type that implements `ToHandle`. For types
     /// that don't implement `ToHandle`, callers may invoke `new_with_fn`, which accepts
     /// a callback to perform the conversion.
-    pub fn new(o: O) -> Self {
-        OwningHandle::new_with_fn(o, |x| unsafe { O::Target::to_handle(x) })
+    pub fn new(owner: O) -> Self {
+        OwningHandle::new_with_fn(owner, |x| unsafe { O::Target::to_handle(x) })
     }
 }
 
@@ -819,8 +811,8 @@ where
     H: DerefMut,
 {
     /// Creates a new mutable `OwningHandle` for a type that implements `ToHandleMut`.
-    pub fn new_mut(o: O) -> Self {
-        OwningHandle::new_with_fn(o, |x| unsafe { O::Target::to_handle_mut(x) })
+    pub fn new_mut(owner: O) -> Self {
+        OwningHandle::new_with_fn(owner, |x| unsafe { O::Target::to_handle_mut(x) })
     }
 }
 
@@ -833,32 +825,32 @@ where
     /// a pointer to the object owned by `o`, and the returned value is stored
     /// as the object to which this `OwningHandle` will forward `Deref` and
     /// `DerefMut`.
-    pub fn new_with_fn<F>(o: O, f: F) -> Self
+    pub fn new_with_fn<F>(owner: O, f: F) -> Self
     where
         F: FnOnce(*const O::Target) -> H,
     {
         let h: H;
         {
-            h = f(o.deref() as *const O::Target);
+            h = f(owner.deref() as *const O::Target);
         }
 
-        OwningHandle { handle: h, _owner: o }
+        OwningHandle { handle: h, _owner: owner }
     }
 
     /// Creates a new OwningHandle. The provided callback will be invoked with
     /// a pointer to the object owned by `o`, and the returned value is stored
     /// as the object to which this `OwningHandle` will forward `Deref` and
     /// `DerefMut`.
-    pub fn try_new<F, E>(o: O, f: F) -> Result<Self, E>
+    pub fn try_new<F, E>(owner: O, f: F) -> Result<Self, E>
     where
         F: FnOnce(*const O::Target) -> Result<H, E>,
     {
         let h: H;
         {
-            h = f(o.deref() as *const O::Target)?;
+            h = f(owner.deref() as *const O::Target)?;
         }
 
-        Ok(OwningHandle { handle: h, _owner: o })
+        Ok(OwningHandle { handle: h, _owner: owner })
     }
 }
 
@@ -948,8 +940,6 @@ where
         OwningRef { owner: other.owner, reference: other.reference }
     }
 }
-
-// ^ FIXME: Is an Into impl for calling into_inner() possible as well?
 
 impl<O, T: ?Sized> Debug for OwningRef<O, T>
 where
@@ -1091,7 +1081,7 @@ where
 }
 
 /////////////////////////////////////////////////////////////////////////////
-// std types integration and convenience type defs
+// std types integration and convenience type aliases
 /////////////////////////////////////////////////////////////////////////////
 
 use std::cell::{Ref, RefCell, RefMut};
@@ -1117,41 +1107,41 @@ impl<T: 'static> ToHandleMut for RefCell<T> {
 // about which handle creation to use (i.e., read() vs try_read()) as well as
 // what to do with error results.
 
-/// Typedef of an owning reference that uses a `Box` as the owner.
+/// Type alias of an owning reference that uses a [`Box`] as the owner.
 pub type BoxRef<T, U = T> = OwningRef<Box<T>, U>;
-/// Typedef of an owning reference that uses a `Vec` as the owner.
+/// Typedef of an owning reference that uses a [`Vec`] as the owner.
 pub type VecRef<T, U = T> = OwningRef<Vec<T>, U>;
-/// Typedef of an owning reference that uses a `String` as the owner.
+/// Typedef of an owning reference that uses a [`String`] as the owner.
 pub type StringRef = OwningRef<String, str>;
 
-/// Typedef of an owning reference that uses an `Rc` as the owner.
+/// Type alias of an owning reference that uses an [`Rc`] as the owner.
 pub type RcRef<T, U = T> = OwningRef<Rc<T>, U>;
-/// Typedef of an owning reference that uses an `Arc` as the owner.
+/// Type alias of an owning reference that uses an [`Arc`] as the owner.
 pub type ArcRef<T, U = T> = OwningRef<Arc<T>, U>;
 
-/// Typedef of an owning reference that uses a `Ref` as the owner.
+/// Type alias of an owning reference that uses a [`cell::Ref`](Ref) as the owner.
 pub type RefRef<'a, T, U = T> = OwningRef<Ref<'a, T>, U>;
-/// Typedef of an owning reference that uses a `RefMut` as the owner.
+/// Type alias of an owning reference that uses a [`cell::RefMut`](RefMut) as the owner.
 pub type RefMutRef<'a, T, U = T> = OwningRef<RefMut<'a, T>, U>;
-/// Typedef of an owning reference that uses a `MutexGuard` as the owner.
+/// Type alias of an owning reference that uses a [`MutexGuard`] as the owner.
 pub type MutexGuardRef<'a, T, U = T> = OwningRef<MutexGuard<'a, T>, U>;
-/// Typedef of an owning reference that uses an `RwLockReadGuard` as the owner.
+/// Type alias of an owning reference that uses an [`RwLockReadGuard`] as the owner.
 pub type RwLockReadGuardRef<'a, T, U = T> = OwningRef<RwLockReadGuard<'a, T>, U>;
-/// Typedef of an owning reference that uses an `RwLockWriteGuard` as the owner.
+/// Type alias of an owning reference that uses an [`RwLockWriteGuard`] as the owner.
 pub type RwLockWriteGuardRef<'a, T, U = T> = OwningRef<RwLockWriteGuard<'a, T>, U>;
 
-/// Typedef of a mutable owning reference that uses a `Box` as the owner.
+/// Type alias of a mutable owning reference that uses a [`Box`] as the owner.
 pub type BoxRefMut<T, U = T> = OwningRefMut<Box<T>, U>;
-/// Typedef of a mutable owning reference that uses a `Vec` as the owner.
+/// Type alias of a mutable owning reference that uses a [`Vec`] as the owner.
 pub type VecRefMut<T, U = T> = OwningRefMut<Vec<T>, U>;
-/// Typedef of a mutable owning reference that uses a `String` as the owner.
+/// Typedef of a mutable owning reference that uses a [`String`] as the owner.
 pub type StringRefMut = OwningRefMut<String, str>;
 
-/// Typedef of a mutable owning reference that uses a `RefMut` as the owner.
+/// Type alias of a mutable owning reference that uses a [`RefMut`] as the owner.
 pub type RefMutRefMut<'a, T, U = T> = OwningRefMut<RefMut<'a, T>, U>;
-/// Typedef of a mutable owning reference that uses a `MutexGuard` as the owner.
+/// Type alias of a mutable owning reference that uses a [`MutexGuard`] as the owner.
 pub type MutexGuardRefMut<'a, T, U = T> = OwningRefMut<MutexGuard<'a, T>, U>;
-/// Typedef of a mutable owning reference that uses an `RwLockWriteGuard` as the owner.
+/// Type alias of a mutable owning reference that uses an [`RwLockWriteGuard`] as the owner.
 pub type RwLockWriteGuardRefMut<'a, T, U = T> = OwningRef<RwLockWriteGuard<'a, T>, U>;
 
 unsafe impl<'a, T: 'a> IntoErased<'a> for Box<T> {
@@ -1197,14 +1187,14 @@ unsafe impl<'a, T: Send + Sync + 'a> IntoErasedSendSync<'a> for Arc<T> {
     }
 }
 
-/// Typedef of an owning reference that uses an erased `Box` as the owner.
+/// Typedef of an owning reference that uses an erased [`Box`] as the owner.
 pub type ErasedBoxRef<U> = OwningRef<Box<dyn Erased>, U>;
-/// Typedef of an owning reference that uses an erased `Rc` as the owner.
+/// Typedef of an owning reference that uses an erased [`Rc`] as the owner.
 pub type ErasedRcRef<U> = OwningRef<Rc<dyn Erased>, U>;
-/// Typedef of an owning reference that uses an erased `Arc` as the owner.
+/// Typedef of an owning reference that uses an erased [`Arc`] as the owner.
 pub type ErasedArcRef<U> = OwningRef<Arc<dyn Erased>, U>;
 
-/// Typedef of a mutable owning reference that uses an erased `Box` as the owner.
+/// Typedef of a mutable owning reference that uses an erased [`Box`] as the owner.
 pub type ErasedBoxRefMut<U> = OwningRefMut<Box<dyn Erased>, U>;
 
 #[cfg(test)]
