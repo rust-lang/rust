@@ -6,13 +6,11 @@ use rustc_span::{def_id::LocalDefId, Span};
 
 declare_clippy_lint! {
     /// ### What it does
-    ///
-    /// Triggers when a testing function (marked with the `#[test]` attribute) isn't inside a testing module (marked with `#[cfg(test)]`).
-    ///
+    /// Triggers when a testing function (marked with the `#[test]` attribute) isn't inside a testing module
+    /// (marked with `#[cfg(test)]`).
     /// ### Why is this bad?
-    ///
-    /// The idiomatic (and more performant) way of writing tests is inside a testing module (flagged with `#[cfg(test)]`), having test functions outside of this module is confusing and may lead to them being "hidden".
-    ///
+    /// The idiomatic (and more performant) way of writing tests is inside a testing module (flagged with `#[cfg(test)]`),
+    /// having test functions outside of this module is confusing and may lead to them being "hidden".
     /// ### Example
     /// ```rust
     /// #[test]
@@ -39,7 +37,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.70.0"]
     pub TESTS_OUTSIDE_TEST_MODULE,
     restriction,
-    "The test function `my_cool_test` is outside the testing module `tests`."
+    "A test function is outside the testing module."
 }
 
 declare_lint_pass!(TestsOutsideTestModule => [TESTS_OUTSIDE_TEST_MODULE]);
