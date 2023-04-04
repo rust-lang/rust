@@ -253,10 +253,6 @@ impl<'tcx> TypeRelation<'tcx> for SimpleEqRelation<'tcx> {
         self.tcx
     }
 
-    fn intercrate(&self) -> bool {
-        false
-    }
-
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env
     }
@@ -267,10 +263,6 @@ impl<'tcx> TypeRelation<'tcx> for SimpleEqRelation<'tcx> {
 
     fn a_is_expected(&self) -> bool {
         true
-    }
-
-    fn mark_ambiguous(&mut self) {
-        bug!()
     }
 
     fn relate_with_variance<T: Relate<'tcx>>(

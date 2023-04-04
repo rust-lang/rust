@@ -443,10 +443,6 @@ where
         self.infcx.tcx
     }
 
-    fn intercrate(&self) -> bool {
-        self.infcx.intercrate
-    }
-
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.delegate.param_env()
     }
@@ -457,17 +453,6 @@ where
 
     fn a_is_expected(&self) -> bool {
         true
-    }
-
-    fn mark_ambiguous(&mut self) {
-        let cause = ObligationCause::dummy_with_span(self.delegate.span());
-        let param_env = self.delegate.param_env();
-        self.delegate.register_obligations(vec![Obligation::new(
-            self.tcx(),
-            cause,
-            param_env,
-            ty::Binder::dummy(ty::PredicateKind::Ambiguous),
-        )]);
     }
 
     #[instrument(skip(self, info), level = "trace", ret)]
@@ -834,11 +819,6 @@ where
         self.infcx.tcx
     }
 
-    fn intercrate(&self) -> bool {
-        assert!(!self.infcx.intercrate);
-        false
-    }
-
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.delegate.param_env()
     }
@@ -849,10 +829,6 @@ where
 
     fn a_is_expected(&self) -> bool {
         true
-    }
-
-    fn mark_ambiguous(&mut self) {
-        bug!()
     }
 
     fn relate_with_variance<T: Relate<'tcx>>(
