@@ -17,11 +17,13 @@ LL |     default pub fn foo<T: Default>() -> T { T::default() }
 LL | }
    | - item list ends here
 
-error[E0449]: unnecessary visibility qualifier
+error[E0449]: visibility qualifiers are not permitted here
   --> $DIR/default.rs:17:5
    |
 LL |     pub default fn foo<T: Default>() -> T {
-   |     ^^^ `pub` not permitted here because it's implied
+   |     ^^^
+   |
+   = note: trait items always share the visibility of their trait
 
 warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/default.rs:3:12
