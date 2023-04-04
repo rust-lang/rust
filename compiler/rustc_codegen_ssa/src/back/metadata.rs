@@ -225,15 +225,16 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
       data.push(b'N');
       data.push(b'U');
       data.push(0);       
-      let pr_type:u32 = 0xc0000002;
+      let pr_type:u32 = if architecture == Architecture::X86_64 {0xc0000002} else {0xc0000000};
       let pr_datasz:u32 = 4 ; //size of the pr_data field 
       let pr_data:u32 = 3; //program property descriptor
-      let pr_padding:u32 = 3; //padding
+      let pr_padding:u32 = if architecture == Architecture::X86_64 {3} else {0};
       let values = [pr_type, pr_datasz, pr_data, pr_padding];
       values.map(|v| data.extend_from_slice(&(v.to_ne_bytes())));    
       let x = data.len();
       assert_eq!(x, 32);
-      let _ = file.append_section_data(section, &data, 3);   
+      let align = if architecture == Architecture::X86_64 {3} else {8};
+      let _ = file.append_section_data(section, &data, align);   
     } 
     file.flags = FileFlags::Elf { os_abi, abi_version, e_flags };
     Some(file)
