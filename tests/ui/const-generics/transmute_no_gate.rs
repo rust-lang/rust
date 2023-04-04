@@ -1,11 +1,11 @@
-// run-pass
+// gate-test-transmute_generic_consts
 #![feature(generic_const_exprs)]
-#![feature(transmute_generic_consts)]
 #![allow(incomplete_features)]
 
 fn transpose<const W: usize, const H: usize>(v: [[u32;H]; W]) -> [[u32; W]; H] {
   unsafe {
     std::mem::transmute(v)
+    //~^ ERROR cannot transmute
   }
 }
 
@@ -18,12 +18,14 @@ fn ident<const W: usize, const H: usize>(v: [[u32; H]; W]) -> [[u32; H]; W] {
 fn flatten<const W: usize, const H: usize>(v: [[u32; H]; W]) -> [u32; W * H] {
   unsafe {
     std::mem::transmute(v)
+    //~^ ERROR cannot transmute
   }
 }
 
 fn coagulate<const W: usize, const H: usize>(v: [u32; H*W]) -> [[u32; W];H] {
   unsafe {
     std::mem::transmute(v)
+    //~^ ERROR cannot transmute
   }
 }
 
@@ -32,6 +34,7 @@ fn flatten_3d<const W: usize, const H: usize, const D: usize>(
 ) -> [u32; D * W * H] {
   unsafe {
     std::mem::transmute(v)
+    //~^ ERROR cannot transmute
   }
 }
 
@@ -40,24 +43,28 @@ fn flatten_somewhat<const W: usize, const H: usize, const D: usize>(
 ) -> [[u32; D * W]; H] {
   unsafe {
     std::mem::transmute(v)
+    //~^ ERROR cannot transmute
   }
 }
 
 fn known_size<const L: usize>(v: [u16; L]) -> [u8; L * 2] {
   unsafe {
     std::mem::transmute(v)
+    //~^ ERROR cannot transmute
   }
 }
 
 fn condense_bytes<const L: usize>(v: [u8; L * 2]) -> [u16; L] {
   unsafe {
     std::mem::transmute(v)
+    //~^ ERROR cannot transmute
   }
 }
 
 fn singleton_each<const L: usize>(v: [u8; L]) -> [[u8;1]; L] {
   unsafe {
     std::mem::transmute(v)
+    //~^ ERROR cannot transmute
   }
 }
 
@@ -66,6 +73,7 @@ fn transpose_with_const<const W: usize, const H: usize>(
 ) -> [[u32; W + W]; 2 * H] {
   unsafe {
     std::mem::transmute(v)
+    //~^ ERROR cannot transmute
   }
 }
 

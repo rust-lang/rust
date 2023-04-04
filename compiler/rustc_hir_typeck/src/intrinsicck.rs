@@ -88,7 +88,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Some(size) = size.try_eval_target_usize(tcx, self.param_env) {
                     format!("{size} bytes")
                 } else {
-                    format!("generic size")
+                    format!("generic size {size}")
                 }
             }
             Err(LayoutError::Unknown(bad)) => {

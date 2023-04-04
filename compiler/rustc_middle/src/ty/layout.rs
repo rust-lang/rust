@@ -332,7 +332,9 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     ),
                 }
             }
-            ty::Array(inner, len) if len.ty() == tcx.types.usize => {
+            ty::Array(inner, len)
+                if len.ty() == tcx.types.usize && tcx.features().transmute_generic_consts =>
+            {
                 match SizeSkeleton::compute(inner, tcx, param_env)? {
                     // This may succeed because the multiplication of two types may overflow
                     // but a single size of a nested array will not.
@@ -483,17 +485,17 @@ fn mul_sorted_consts<'tcx>(
     }
     let mut k = 1;
     let mut overflow = false;
-    for _ in done.drain_filter(|c| {
+    done.retain(|c| {
         let Some(c) = c.try_eval_target_usize(tcx, param_env) else {
-            return false;
+            return true;
         };
         let Some(next) = c.checked_mul(k) else {
             overflow = true;
-            return true;
+            return false;
         };
-        k *= next;
-        true
-    }) {}
+        k = next;
+        false
+    });
     if overflow {
         return None;
     }

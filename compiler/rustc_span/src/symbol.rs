@@ -1493,6 +1493,7 @@ symbols! {
         trait_alias,
         trait_upcasting,
         transmute,
+        transmute_generic_consts,
         transmute_opts,
         transmute_trait,
         transparent,

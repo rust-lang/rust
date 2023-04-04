@@ -1,3 +1,4 @@
+#![feature(transmute_generic_consts)]
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 
