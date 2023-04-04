@@ -72,7 +72,7 @@ using namespace llvm;
 
 extern "C" {
 llvm::cl::opt<bool>
-    EnzymePrint("enzyme-print", cl::init(false), cl::Hidden,
+    EnzymePrint("enzyme-print", cl::init(true), cl::Hidden,
                 cl::desc("Print before and after fns for autodiff"));
 
 llvm::cl::opt<bool>

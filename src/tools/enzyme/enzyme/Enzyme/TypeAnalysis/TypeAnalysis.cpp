@@ -63,7 +63,7 @@ llvm::cl::opt<int> MaxIntOffset("enzyme-max-int-offset", cl::init(100),
                                 cl::Hidden,
                                 cl::desc("Maximum type tree offset"));
 
-llvm::cl::opt<bool> EnzymePrintType("enzyme-print-type", cl::init(false),
+llvm::cl::opt<bool> EnzymePrintType("enzyme-print-type", cl::init(true),
                                     cl::Hidden,
                                     cl::desc("Print type analysis algorithm"));
 
@@ -72,7 +72,7 @@ llvm::cl::opt<bool> RustTypeRules("enzyme-rust-type", cl::init(false),
                                   cl::desc("Enable rust-specific type rules"));
 
 llvm::cl::opt<bool> EnzymeStrictAliasing(
-    "enzyme-strict-aliasing", cl::init(true), cl::Hidden,
+    "enzyme-strict-aliasing", cl::init(false), cl::Hidden,
     cl::desc("Assume strict aliasing of types / type stability"));
 }
 
