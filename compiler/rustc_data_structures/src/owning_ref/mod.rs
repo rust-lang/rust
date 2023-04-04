@@ -1004,22 +1004,22 @@ impl Debug for dyn Erased {
     }
 }
 
-impl<O, T: ?Sized> PartialEq for OwningRef<O, T>
+impl<O, T: ?Sized, O2, T2: ?Sized> PartialEq<OwningRef<O2, T2>> for OwningRef<O, T>
 where
-    T: PartialEq,
+    T: PartialEq<T2>,
 {
-    fn eq(&self, other: &Self) -> bool {
+    fn eq(&self, other: &OwningRef<O2, T2>) -> bool {
         self.deref().eq(other.deref())
     }
 }
 
 impl<O, T: ?Sized> Eq for OwningRef<O, T> where T: Eq {}
 
-impl<O, T: ?Sized> PartialOrd for OwningRef<O, T>
+impl<O, T: ?Sized, O2, T2: ?Sized> PartialOrd<OwningRef<O2, T2>> for OwningRef<O, T>
 where
-    T: PartialOrd,
+    T: PartialOrd<T2>,
 {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &OwningRef<O2, T2>) -> Option<Ordering> {
         self.deref().partial_cmp(other.deref())
     }
 }
@@ -1042,22 +1042,22 @@ where
     }
 }
 
-impl<O, T: ?Sized> PartialEq for OwningRefMut<O, T>
+impl<O, T: ?Sized, O2, T2: ?Sized> PartialEq<OwningRefMut<O2, T2>> for OwningRefMut<O, T>
 where
-    T: PartialEq,
+    T: PartialEq<T2>,
 {
-    fn eq(&self, other: &Self) -> bool {
+    fn eq(&self, other: &OwningRefMut<O2, T2>) -> bool {
         self.deref().eq(other.deref())
     }
 }
 
 impl<O, T: ?Sized> Eq for OwningRefMut<O, T> where T: Eq {}
 
-impl<O, T: ?Sized> PartialOrd for OwningRefMut<O, T>
+impl<O, T: ?Sized, O2, T2: ?Sized> PartialOrd<OwningRefMut<O2, T2>> for OwningRefMut<O, T>
 where
-    T: PartialOrd,
+    T: PartialOrd<T2>,
 {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &OwningRefMut<O2, T2>) -> Option<Ordering> {
         self.deref().partial_cmp(other.deref())
     }
 }
