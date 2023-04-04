@@ -947,7 +947,10 @@ where
     T: Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "OwningRef {{ owner: {:?}, reference: {:?} }}", self.owner(), &**self)
+        f.debug_struct("OwningRef")
+            .field("owner", self.owner())
+            .field("reference", &&**self)
+            .finish()
     }
 }
 
@@ -957,7 +960,10 @@ where
     T: Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "OwningRefMut {{ owner: {:?}, reference: {:?} }}", self.owner(), &**self)
+        f.debug_struct("OwningRefMut")
+            .field("owner", self.owner())
+            .field("reference", &&**self)
+            .finish()
     }
 }
 
@@ -1000,7 +1006,7 @@ where
 
 impl Debug for dyn Erased {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "<Erased>",)
+        f.write_str("<Erased>")
     }
 }
 
