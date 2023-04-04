@@ -471,6 +471,18 @@ pub(crate) struct InvalidUnionField {
     pub note: (),
 }
 
+#[derive(Diagnostic)]
+#[diag(hir_analysis_return_type_notation_on_non_rpitit)]
+pub(crate) struct ReturnTypeNotationOnNonRpitit<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+    #[label]
+    pub fn_span: Option<Span>,
+    #[note]
+    pub note: (),
+}
+
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(hir_analysis_invalid_union_field_sugg, applicability = "machine-applicable")]
 pub(crate) struct InvalidUnionFieldSuggestion {
@@ -478,4 +490,20 @@ pub(crate) struct InvalidUnionFieldSuggestion {
     pub lo: Span,
     #[suggestion_part(code = ">")]
     pub hi: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_return_type_notation_equality_bound)]
+pub(crate) struct ReturnTypeNotationEqualityBound {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_return_type_notation_missing_method)]
+pub(crate) struct ReturnTypeNotationMissingMethod {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: Symbol,
+    pub assoc_name: Symbol,
 }

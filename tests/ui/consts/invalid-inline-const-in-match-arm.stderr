@@ -1,3 +1,17 @@
+error[E0277]: the trait bound `[closure@$DIR/invalid-inline-const-in-match-arm.rs:6:18: 6:20]: Fn<()>` is not satisfied
+  --> $DIR/invalid-inline-const-in-match-arm.rs:6:17
+   |
+LL |         const { (|| {})() } => {}
+   |                 ^^^^^^^^^ expected an `Fn<()>` closure, found `[closure@$DIR/invalid-inline-const-in-match-arm.rs:6:18: 6:20]`
+   |
+   = help: the trait `~const Fn<()>` is not implemented for closure `[closure@$DIR/invalid-inline-const-in-match-arm.rs:6:18: 6:20]`
+note: the trait `Fn<()>` is implemented for `[closure@$DIR/invalid-inline-const-in-match-arm.rs:6:18: 6:20]`, but that implementation is not `const`
+  --> $DIR/invalid-inline-const-in-match-arm.rs:6:17
+   |
+LL |         const { (|| {})() } => {}
+   |                 ^^^^^^^^^
+   = note: wrap the `[closure@$DIR/invalid-inline-const-in-match-arm.rs:6:18: 6:20]` in a closure with no arguments: `|| { /* code */ }`
+
 error[E0015]: cannot call non-const closure in constants
   --> $DIR/invalid-inline-const-in-match-arm.rs:6:17
    |
@@ -8,6 +22,7 @@ LL |         const { (|| {})() } => {}
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0015`.
+Some errors have detailed explanations: E0015, E0277.
+For more information about an error, try `rustc --explain E0015`.

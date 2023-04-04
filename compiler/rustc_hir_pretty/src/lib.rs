@@ -1652,61 +1652,65 @@ impl<'a> State<'a> {
         generic_args: &hir::GenericArgs<'_>,
         colons_before_params: bool,
     ) {
-        if generic_args.parenthesized {
-            self.word("(");
-            self.commasep(Inconsistent, generic_args.inputs(), |s, ty| s.print_type(ty));
-            self.word(")");
+        match generic_args.parenthesized {
+            hir::GenericArgsParentheses::No => {
+                let start = if colons_before_params { "::<" } else { "<" };
+                let empty = Cell::new(true);
+                let start_or_comma = |this: &mut Self| {
+                    if empty.get() {
+                        empty.set(false);
+                        this.word(start)
+                    } else {
+                        this.word_space(",")
+                    }
+                };
 
-            self.space_if_not_bol();
-            self.word_space("->");
-            self.print_type(generic_args.bindings[0].ty());
-        } else {
-            let start = if colons_before_params { "::<" } else { "<" };
-            let empty = Cell::new(true);
-            let start_or_comma = |this: &mut Self| {
-                if empty.get() {
-                    empty.set(false);
-                    this.word(start)
-                } else {
-                    this.word_space(",")
-                }
-            };
+                let mut nonelided_generic_args: bool = false;
+                let elide_lifetimes = generic_args.args.iter().all(|arg| match arg {
+                    GenericArg::Lifetime(lt) if lt.is_elided() => true,
+                    GenericArg::Lifetime(_) => {
+                        nonelided_generic_args = true;
+                        false
+                    }
+                    _ => {
+                        nonelided_generic_args = true;
+                        true
+                    }
+                });
 
-            let mut nonelided_generic_args: bool = false;
-            let elide_lifetimes = generic_args.args.iter().all(|arg| match arg {
-                GenericArg::Lifetime(lt) if lt.is_elided() => true,
-                GenericArg::Lifetime(_) => {
-                    nonelided_generic_args = true;
-                    false
+                if nonelided_generic_args {
+                    start_or_comma(self);
+                    self.commasep(Inconsistent, generic_args.args, |s, generic_arg| {
+                        match generic_arg {
+                            GenericArg::Lifetime(lt) if !elide_lifetimes => s.print_lifetime(lt),
+                            GenericArg::Lifetime(_) => {}
+                            GenericArg::Type(ty) => s.print_type(ty),
+                            GenericArg::Const(ct) => s.print_anon_const(&ct.value),
+                            GenericArg::Infer(_inf) => s.word("_"),
+                        }
+                    });
                 }
-                _ => {
-                    nonelided_generic_args = true;
-                    true
-                }
-            });
 
-            if nonelided_generic_args {
-                start_or_comma(self);
-                self.commasep(
-                    Inconsistent,
-                    generic_args.args,
-                    |s, generic_arg| match generic_arg {
-                        GenericArg::Lifetime(lt) if !elide_lifetimes => s.print_lifetime(lt),
-                        GenericArg::Lifetime(_) => {}
-                        GenericArg::Type(ty) => s.print_type(ty),
-                        GenericArg::Const(ct) => s.print_anon_const(&ct.value),
-                        GenericArg::Infer(_inf) => s.word("_"),
-                    },
-                );
+                for binding in generic_args.bindings {
+                    start_or_comma(self);
+                    self.print_type_binding(binding);
+                }
+
+                if !empty.get() {
+                    self.word(">")
+                }
             }
+            hir::GenericArgsParentheses::ParenSugar => {
+                self.word("(");
+                self.commasep(Inconsistent, generic_args.inputs(), |s, ty| s.print_type(ty));
+                self.word(")");
 
-            for binding in generic_args.bindings {
-                start_or_comma(self);
-                self.print_type_binding(binding);
+                self.space_if_not_bol();
+                self.word_space("->");
+                self.print_type(generic_args.bindings[0].ty());
             }
-
-            if !empty.get() {
-                self.word(">")
+            hir::GenericArgsParentheses::ReturnTypeNotation => {
+                self.word("(..)");
             }
         }
     }

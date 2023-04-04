@@ -1,10 +1,10 @@
-// aux-build:doc_unsafe_macros.rs
+// aux-build:proc_macros.rs
 
 #![allow(clippy::let_unit_value)]
 #![warn(clippy::unnecessary_safety_doc)]
 
-#[macro_use]
-extern crate doc_unsafe_macros;
+extern crate proc_macros;
+use proc_macros::external;
 
 /// This is has no safety section, and does not need one either
 pub fn destroy_the_planet() {
@@ -129,7 +129,11 @@ macro_rules! very_safe {
 very_safe!();
 
 // we don't lint code from external macros
-undocd_safe!();
+external!(
+    pub fn vey_oy() {
+        unimplemented!();
+    }
+);
 
 fn main() {}
 

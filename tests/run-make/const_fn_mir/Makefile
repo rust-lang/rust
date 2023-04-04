@@ -1,4 +1,4 @@
-include ../../run-make-fulldeps/tools.mk
+include ../tools.mk
 
 all:
 	$(RUSTC) main.rs --emit=mir -o "$(TMPDIR)"/dump.mir

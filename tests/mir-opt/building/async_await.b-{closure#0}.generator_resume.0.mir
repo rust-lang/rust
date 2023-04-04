@@ -90,7 +90,7 @@ fn b::{closure#0}(_1: Pin<&mut [async fn body@$DIR/async_await.rs:14:18: 17:2]>,
 
     bb0: {
         _39 = discriminant((*(_1.0: &mut [async fn body@$DIR/async_await.rs:14:18: 17:2]))); // scope 0 at $DIR/async_await.rs:+0:18: +3:2
-        switchInt(move _39) -> [0: bb1, 1: bb29, 3: bb27, 4: bb28, otherwise: bb30]; // scope 0 at $DIR/async_await.rs:+0:18: +3:2
+        switchInt(move _39) -> [0: bb1, 1: bb28, 3: bb26, 4: bb27, otherwise: bb29]; // scope 0 at $DIR/async_await.rs:+0:18: +3:2
     }
 
     bb1: {
@@ -263,7 +263,7 @@ fn b::{closure#0}(_1: Pin<&mut [async fn body@$DIR/async_await.rs:14:18: 17:2]>,
         StorageDead(_29);                // scope 5 at $DIR/async_await.rs:+2:13: +2:14
         StorageDead(_26);                // scope 5 at $DIR/async_await.rs:+2:13: +2:14
         _32 = discriminant(_25);         // scope 4 at $DIR/async_await.rs:+2:8: +2:14
-        switchInt(move _32) -> [0: bb22, 1: bb20, otherwise: bb21]; // scope 4 at $DIR/async_await.rs:+2:8: +2:14
+        switchInt(move _32) -> [0: bb21, 1: bb20, otherwise: bb9]; // scope 4 at $DIR/async_await.rs:+2:8: +2:14
     }
 
     bb20: {
@@ -281,10 +281,6 @@ fn b::{closure#0}(_1: Pin<&mut [async fn body@$DIR/async_await.rs:14:18: 17:2]>,
     }
 
     bb21: {
-        unreachable;                     // scope 4 at $DIR/async_await.rs:+2:8: +2:14
-    }
-
-    bb22: {
         StorageLive(_33);                // scope 4 at $DIR/async_await.rs:+2:5: +2:14
         _33 = ((_25 as Ready).0: ());    // scope 4 at $DIR/async_await.rs:+2:5: +2:14
         _37 = _33;                       // scope 6 at $DIR/async_await.rs:+2:5: +2:14
@@ -293,10 +289,10 @@ fn b::{closure#0}(_1: Pin<&mut [async fn body@$DIR/async_await.rs:14:18: 17:2]>,
         StorageDead(_28);                // scope 4 at $DIR/async_await.rs:+2:13: +2:14
         StorageDead(_25);                // scope 4 at $DIR/async_await.rs:+2:13: +2:14
         StorageDead(_24);                // scope 4 at $DIR/async_await.rs:+2:13: +2:14
-        goto -> bb24;                    // scope 0 at $DIR/async_await.rs:+2:13: +2:14
+        goto -> bb23;                    // scope 0 at $DIR/async_await.rs:+2:13: +2:14
     }
 
-    bb23: {
+    bb22: {
         StorageDead(_36);                // scope 4 at $DIR/async_await.rs:+2:13: +2:14
         _38 = move _35;                  // scope 4 at $DIR/async_await.rs:+2:8: +2:14
         StorageDead(_35);                // scope 4 at $DIR/async_await.rs:+2:13: +2:14
@@ -304,23 +300,23 @@ fn b::{closure#0}(_1: Pin<&mut [async fn body@$DIR/async_await.rs:14:18: 17:2]>,
         goto -> bb16;                    // scope 4 at $DIR/async_await.rs:+2:8: +2:14
     }
 
-    bb24: {
+    bb23: {
         nop;                             // scope 0 at $DIR/async_await.rs:+2:13: +2:14
+        goto -> bb24;                    // scope 0 at $DIR/async_await.rs:+3:1: +3:2
+    }
+
+    bb24: {
+        StorageDead(_21);                // scope 0 at $DIR/async_await.rs:+3:1: +3:2
         goto -> bb25;                    // scope 0 at $DIR/async_await.rs:+3:1: +3:2
     }
 
     bb25: {
-        StorageDead(_21);                // scope 0 at $DIR/async_await.rs:+3:1: +3:2
-        goto -> bb26;                    // scope 0 at $DIR/async_await.rs:+3:1: +3:2
-    }
-
-    bb26: {
         _0 = Poll::<()>::Ready(move _37); // scope 0 at $DIR/async_await.rs:+3:2: +3:2
         discriminant((*(_1.0: &mut [async fn body@$DIR/async_await.rs:14:18: 17:2]))) = 1; // scope 0 at $DIR/async_await.rs:+3:2: +3:2
         return;                          // scope 0 at $DIR/async_await.rs:+3:2: +3:2
     }
 
-    bb27: {
+    bb26: {
         StorageLive(_3);                 // scope 0 at $DIR/async_await.rs:+0:18: +3:2
         StorageLive(_4);                 // scope 0 at $DIR/async_await.rs:+0:18: +3:2
         StorageLive(_19);                // scope 0 at $DIR/async_await.rs:+0:18: +3:2
@@ -329,19 +325,19 @@ fn b::{closure#0}(_1: Pin<&mut [async fn body@$DIR/async_await.rs:14:18: 17:2]>,
         goto -> bb11;                    // scope 0 at $DIR/async_await.rs:+0:18: +3:2
     }
 
-    bb28: {
+    bb27: {
         StorageLive(_21);                // scope 0 at $DIR/async_await.rs:+0:18: +3:2
         StorageLive(_35);                // scope 0 at $DIR/async_await.rs:+0:18: +3:2
         StorageLive(_36);                // scope 0 at $DIR/async_await.rs:+0:18: +3:2
         _35 = move _2;                   // scope 0 at $DIR/async_await.rs:+0:18: +3:2
-        goto -> bb23;                    // scope 0 at $DIR/async_await.rs:+0:18: +3:2
+        goto -> bb22;                    // scope 0 at $DIR/async_await.rs:+0:18: +3:2
+    }
+
+    bb28: {
+        assert(const false, "`async fn` resumed after completion") -> bb28; // scope 0 at $DIR/async_await.rs:+0:18: +3:2
     }
 
     bb29: {
-        assert(const false, "`async fn` resumed after completion") -> bb29; // scope 0 at $DIR/async_await.rs:+0:18: +3:2
-    }
-
-    bb30: {
         unreachable;                     // scope 0 at $DIR/async_await.rs:+0:18: +3:2
     }
 }

@@ -176,9 +176,10 @@ fn check_rvalue<'tcx>(
             // FIXME(dyn-star)
             unimplemented!()
         },
-        Rvalue::Cast(CastKind::Transmute, _, _) => {
-            Err((span, "transmute can attempt to turn pointers into integers, so is unstable in const fn".into()))
-        },
+        Rvalue::Cast(CastKind::Transmute, _, _) => Err((
+            span,
+            "transmute can attempt to turn pointers into integers, so is unstable in const fn".into(),
+        )),
         // binops are fine on integers
         Rvalue::BinaryOp(_, box (lhs, rhs)) | Rvalue::CheckedBinaryOp(_, box (lhs, rhs)) => {
             check_operand(tcx, lhs, span, body)?;

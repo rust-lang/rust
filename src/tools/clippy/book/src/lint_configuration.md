@@ -519,6 +519,7 @@ for the generic parameters for determining interior mutability
 **Default Value:** `["bytes::Bytes"]` (`Vec<String>`)
 
 * [mutable_key_type](https://rust-lang.github.io/rust-clippy/master/index.html#mutable_key_type)
+* [ifs_same_cond](https://rust-lang.github.io/rust-clippy/master/index.html#ifs_same_cond)
 
 
 ### allow-mixed-uninlined-format-args

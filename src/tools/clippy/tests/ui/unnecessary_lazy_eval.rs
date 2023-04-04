@@ -1,12 +1,12 @@
 // run-rustfix
-// aux-build: proc_macro_with_span.rs
+// aux-build: proc_macros.rs
 #![warn(clippy::unnecessary_lazy_evaluations)]
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::bind_instead_of_map)]
 #![allow(clippy::map_identity)]
 
-extern crate proc_macro_with_span;
-use proc_macro_with_span::with_span;
+extern crate proc_macros;
+use proc_macros::with_span;
 
 struct Deep(Option<usize>);
 

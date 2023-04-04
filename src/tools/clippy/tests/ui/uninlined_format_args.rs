@@ -1,11 +1,11 @@
-// aux-build:proc_macro_with_span.rs
+// aux-build:proc_macros.rs
 // run-rustfix
 #![warn(clippy::uninlined_format_args)]
 #![allow(named_arguments_used_positionally, unused_imports, unused_macros, unused_variables)]
 #![allow(clippy::eq_op, clippy::format_in_format_args, clippy::print_literal)]
 
-extern crate proc_macro_with_span;
-use proc_macro_with_span::with_span;
+extern crate proc_macros;
+use proc_macros::with_span;
 
 macro_rules! no_param_str {
     () => {

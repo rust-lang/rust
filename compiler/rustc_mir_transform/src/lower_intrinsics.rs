@@ -6,7 +6,7 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{FieldIdx, VariantIdx};
 
 pub struct LowerIntrinsics;
 
@@ -211,7 +211,7 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                                                     Some(sym::Some),
                                                     VariantIdx::from_u32(1),
                                                 ),
-                                                PlaceElem::Field(Field::from_u32(0), *dest_ty),
+                                                PlaceElem::Field(FieldIdx::from_u32(0), *dest_ty),
                                             ],
                                             tcx,
                                         ),

@@ -227,7 +227,7 @@ fn is_unexplained_ignore(extension: &str, line: &str) -> bool {
 }
 
 pub fn check(path: &Path, bad: &mut bool) {
-    fn skip(path: &Path) -> bool {
+    fn skip(path: &Path, is_dir: bool) -> bool {
         if path.file_name().map_or(false, |name| name.to_string_lossy().starts_with(".#")) {
             // vim or emacs temporary file
             return true;
@@ -237,8 +237,15 @@ pub fn check(path: &Path, bad: &mut bool) {
             return true;
         }
 
+        // Don't check extensions for directories
+        if is_dir {
+            return false;
+        }
+
         let extensions = ["rs", "py", "js", "sh", "c", "cpp", "h", "md", "css", "ftl", "goml"];
-        if extensions.iter().all(|e| path.extension() != Some(OsStr::new(e))) {
+
+        // NB: don't skip paths without extensions (or else we'll skip all directories and will only check top level files)
+        if path.extension().map_or(true, |ext| !extensions.iter().any(|e| ext == OsStr::new(e))) {
             return true;
         }
 

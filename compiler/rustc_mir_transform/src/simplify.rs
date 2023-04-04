@@ -28,8 +28,8 @@
 //! return.
 
 use crate::MirPass;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_index::vec::{Idx, IndexSlice, IndexVec};
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -48,6 +48,7 @@ impl SimplifyCfg {
 
 pub fn simplify_cfg<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     CfgSimplifier::new(body).simplify();
+    remove_duplicate_unreachable_blocks(tcx, body);
     remove_dead_blocks(tcx, body);
 
     // FIXME: Should probably be moved into some kind of pass manager
@@ -66,7 +67,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyCfg {
 }
 
 pub struct CfgSimplifier<'a, 'tcx> {
-    basic_blocks: &'a mut IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+    basic_blocks: &'a mut IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
     pred_count: IndexVec<BasicBlock, u32>,
 }
 
@@ -259,6 +260,49 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
     }
 }
 
+pub fn remove_duplicate_unreachable_blocks<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+    struct OptApplier<'tcx> {
+        tcx: TyCtxt<'tcx>,
+        duplicates: FxIndexSet<BasicBlock>,
+    }
+
+    impl<'tcx> MutVisitor<'tcx> for OptApplier<'tcx> {
+        fn tcx(&self) -> TyCtxt<'tcx> {
+            self.tcx
+        }
+
+        fn visit_terminator(&mut self, terminator: &mut Terminator<'tcx>, location: Location) {
+            for target in terminator.successors_mut() {
+                // We don't have to check whether `target` is a cleanup block, because have
+                // entirely excluded cleanup blocks in building the set of duplicates.
+                if self.duplicates.contains(target) {
+                    *target = self.duplicates[0];
+                }
+            }
+
+            self.super_terminator(terminator, location);
+        }
+    }
+
+    let unreachable_blocks = body
+        .basic_blocks
+        .iter_enumerated()
+        .filter(|(_, bb)| {
+            // CfgSimplifier::simplify leaves behind some unreachable basic blocks without a
+            // terminator. Those blocks will be deleted by remove_dead_blocks, but we run just
+            // before then so we need to handle missing terminators.
+            // We also need to prevent confusing cleanup and non-cleanup blocks. In practice we
+            // don't emit empty unreachable cleanup blocks, so this simple check suffices.
+            bb.terminator.is_some() && bb.is_empty_unreachable() && !bb.is_cleanup
+        })
+        .map(|(block, _)| block)
+        .collect::<FxIndexSet<_>>();
+
+    if unreachable_blocks.len() > 1 {
+        OptApplier { tcx, duplicates: unreachable_blocks }.visit_body(body);
+    }
+}
+
 pub fn remove_dead_blocks<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let reachable = traversal::reachable_as_bitset(body);
     let num_blocks = body.basic_blocks.len();
@@ -325,8 +369,8 @@ pub fn remove_dead_blocks<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 /// instances in a single body, so the strategy described above is applied to
 /// coverage counters from each instance individually.
 fn save_unreachable_coverage(
-    basic_blocks: &mut IndexVec<BasicBlock, BasicBlockData<'_>>,
-    source_scopes: &IndexVec<SourceScope, SourceScopeData<'_>>,
+    basic_blocks: &mut IndexSlice<BasicBlock, BasicBlockData<'_>>,
+    source_scopes: &IndexSlice<SourceScope, SourceScopeData<'_>>,
     first_dead_block: usize,
 ) {
     // Identify instances that still have some live coverage counters left.
@@ -445,7 +489,7 @@ fn make_local_map<V>(
     local_decls: &mut IndexVec<Local, V>,
     used_locals: &UsedLocals,
 ) -> IndexVec<Local, Option<Local>> {
-    let mut map: IndexVec<Local, Option<Local>> = IndexVec::from_elem(None, &*local_decls);
+    let mut map: IndexVec<Local, Option<Local>> = IndexVec::from_elem(None, local_decls);
     let mut used = Local::new(0);
 
     for alive_index in local_decls.indices() {

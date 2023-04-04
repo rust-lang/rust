@@ -1,3 +1,7 @@
+error: reached the recursion limit finding the struct tail for `Bottom`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "20"]`
+
 error[E0055]: reached the recursion limit while auto-dereferencing `J`
   --> $DIR/recursion_limit_deref.rs:51:22
    |
@@ -17,7 +21,7 @@ LL |     let x: &Bottom = &t;
    = note: expected reference `&Bottom`
               found reference `&Top`
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0055, E0308.
 For more information about an error, try `rustc --explain E0055`.

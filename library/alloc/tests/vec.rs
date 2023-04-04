@@ -1,5 +1,7 @@
 use core::alloc::{Allocator, Layout};
+use core::assert_eq;
 use core::iter::IntoIterator;
+use core::num::NonZeroUsize;
 use core::ptr::NonNull;
 use std::alloc::System;
 use std::assert_matches::assert_matches;
@@ -1062,21 +1064,21 @@ fn test_into_iter_leak() {
 
 #[test]
 fn test_into_iter_advance_by() {
-    let mut i = [1, 2, 3, 4, 5].into_iter();
-    i.advance_by(0).unwrap();
-    i.advance_back_by(0).unwrap();
+    let mut i = vec![1, 2, 3, 4, 5].into_iter();
+    assert_eq!(i.advance_by(0), Ok(()));
+    assert_eq!(i.advance_back_by(0), Ok(()));
     assert_eq!(i.as_slice(), [1, 2, 3, 4, 5]);
 
-    i.advance_by(1).unwrap();
-    i.advance_back_by(1).unwrap();
+    assert_eq!(i.advance_by(1), Ok(()));
+    assert_eq!(i.advance_back_by(1), Ok(()));
     assert_eq!(i.as_slice(), [2, 3, 4]);
 
-    assert_eq!(i.advance_back_by(usize::MAX), Err(3));
+    assert_eq!(i.advance_back_by(usize::MAX), Err(NonZeroUsize::new(usize::MAX - 3).unwrap()));
 
-    assert_eq!(i.advance_by(usize::MAX), Err(0));
+    assert_eq!(i.advance_by(usize::MAX), Err(NonZeroUsize::new(usize::MAX).unwrap()));
 
-    i.advance_by(0).unwrap();
-    i.advance_back_by(0).unwrap();
+    assert_eq!(i.advance_by(0), Ok(()));
+    assert_eq!(i.advance_back_by(0), Ok(()));
 
     assert_eq!(i.len(), 0);
 }
@@ -1124,7 +1126,7 @@ fn test_into_iter_zst() {
     for _ in vec![C; 5].into_iter().rev() {}
 
     let mut it = vec![C, C].into_iter();
-    it.advance_by(1).unwrap();
+    assert_eq!(it.advance_by(1), Ok(()));
     drop(it);
 
     let mut it = vec![C, C].into_iter();

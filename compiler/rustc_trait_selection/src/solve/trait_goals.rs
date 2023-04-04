@@ -1,7 +1,5 @@
 //! Dealing with trait goals, i.e. `T: Trait<'a, U>`.
 
-use std::iter;
-
 use super::{assembly, EvalCtxt, SolverMode};
 use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
@@ -41,9 +39,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
         let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::ForLookup };
-        if iter::zip(goal.predicate.trait_ref.substs, impl_trait_ref.skip_binder().substs)
-            .any(|(goal, imp)| !drcx.generic_args_may_unify(goal, imp))
-        {
+        if !drcx.substs_refs_may_unify(
+            goal.predicate.trait_ref.substs,
+            impl_trait_ref.skip_binder().substs,
+        ) {
             return Err(NoSolution);
         }
 
@@ -222,11 +221,21 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         let self_ty = tcx.erase_regions(goal.predicate.self_ty());
 
         if let Ok(layout) = tcx.layout_of(goal.param_env.and(self_ty))
-            &&  let usize_layout = tcx.layout_of(ty::ParamEnv::empty().and(tcx.types.usize)).unwrap().layout
-            && layout.layout.size() == usize_layout.size()
-            && layout.layout.align().abi == usize_layout.align().abi
+            && layout.layout.size() == tcx.data_layout.pointer_size
+            && layout.layout.align().abi == tcx.data_layout.pointer_align.abi
         {
             // FIXME: We could make this faster by making a no-constraints response
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        } else {
+            Err(NoSolution)
+        }
+    }
+
+    fn consider_builtin_fn_ptr_trait_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        if let ty::FnPtr(..) = goal.predicate.self_ty().kind() {
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         } else {
             Err(NoSolution)
@@ -398,6 +407,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                     let tail_field = a_def
                         .non_enum_variant()
                         .fields
+                        .raw
                         .last()
                         .expect("expected unsized ADT to have a tail field");
                     let tail_field_ty = tcx.type_of(tail_field.did);
@@ -533,6 +543,20 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
     ) -> QueryResult<'tcx> {
         // `DiscriminantKind` is automatically implemented for every type.
         ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+    }
+
+    fn consider_builtin_destruct_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        if !goal.param_env.is_const() {
+            // `Destruct` is automatically implemented for every type in
+            // non-const environments.
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        } else {
+            // FIXME(-Ztrait-solver=next): Implement this when we get const working in the new solver
+            Err(NoSolution)
+        }
     }
 }
 

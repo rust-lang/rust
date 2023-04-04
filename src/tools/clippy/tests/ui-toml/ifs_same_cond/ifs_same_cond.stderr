@@ -1,0 +1,15 @@
+error: this `if` has the same condition as a previous `if`
+  --> $DIR/ifs_same_cond.rs:15:15
+   |
+LL |     } else if x.get() {
+   |               ^^^^^^^
+   |
+note: same as this
+  --> $DIR/ifs_same_cond.rs:13:8
+   |
+LL |     if x.get() {
+   |        ^^^^^^^
+   = note: `-D clippy::ifs-same-cond` implied by `-D warnings`
+
+error: aborting due to previous error
+

@@ -154,8 +154,6 @@ use crate::collections::TryReserveError;
 use crate::slice;
 use crate::vec::{self, AsVecIntoIter, Vec};
 
-use super::SpecExtend;
-
 #[cfg(test)]
 mod tests;
 
@@ -397,6 +395,17 @@ impl<T: Ord> Default for BinaryHeap<T> {
 impl<T: fmt::Debug> fmt::Debug for BinaryHeap<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.iter()).finish()
+    }
+}
+
+struct RebuildOnDrop<'a, T: Ord> {
+    heap: &'a mut BinaryHeap<T>,
+    rebuild_from: usize,
+}
+
+impl<'a, T: Ord> Drop for RebuildOnDrop<'a, T> {
+    fn drop(&mut self) {
+        self.heap.rebuild_tail(self.rebuild_from);
     }
 }
 
@@ -837,7 +846,6 @@ impl<T: Ord> BinaryHeap<T> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(binary_heap_retain)]
     /// use std::collections::BinaryHeap;
     ///
     /// let mut heap = BinaryHeap::from([-10, -5, 1, 2, 4, 13]);
@@ -846,35 +854,24 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// assert_eq!(heap.into_sorted_vec(), [-10, 2, 4])
     /// ```
-    #[unstable(feature = "binary_heap_retain", issue = "71503")]
+    #[stable(feature = "binary_heap_retain", since = "CURRENT_RUSTC_VERSION")]
     pub fn retain<F>(&mut self, mut f: F)
     where
         F: FnMut(&T) -> bool,
     {
-        struct RebuildOnDrop<'a, T: Ord> {
-            heap: &'a mut BinaryHeap<T>,
-            first_removed: usize,
-        }
-
-        let mut guard = RebuildOnDrop { first_removed: self.len(), heap: self };
-
+        // rebuild_start will be updated to the first touched element below, and the rebuild will
+        // only be done for the tail.
+        let mut guard = RebuildOnDrop { rebuild_from: self.len(), heap: self };
         let mut i = 0;
+
         guard.heap.data.retain(|e| {
             let keep = f(e);
-            if !keep && i < guard.first_removed {
-                guard.first_removed = i;
+            if !keep && i < guard.rebuild_from {
+                guard.rebuild_from = i;
             }
             i += 1;
             keep
         });
-
-        impl<'a, T: Ord> Drop for RebuildOnDrop<'a, T> {
-            fn drop(&mut self) {
-                // data[..first_removed] is untouched, so we only need to
-                // rebuild the tail:
-                self.heap.rebuild_tail(self.first_removed);
-            }
-        }
     }
 }
 
@@ -1468,6 +1465,20 @@ impl<T> ExactSizeIterator for IntoIter<T> {
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for IntoIter<T> {}
 
+#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+impl<T> Default for IntoIter<T> {
+    /// Creates an empty `binary_heap::IntoIter`.
+    ///
+    /// ```
+    /// # use std::collections::binary_heap;
+    /// let iter: binary_heap::IntoIter<u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
+    fn default() -> Self {
+        IntoIter { iter: Default::default() }
+    }
+}
+
 // In addition to the SAFETY invariants of the following three unsafe traits
 // also refer to the vec::in_place_collect module documentation to get an overview
 #[unstable(issue = "none", feature = "inplace_iteration")]
@@ -1715,7 +1726,8 @@ impl<'a, T> IntoIterator for &'a BinaryHeap<T> {
 impl<T: Ord> Extend<T> for BinaryHeap<T> {
     #[inline]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        <Self as SpecExtend<I>>::spec_extend(self, iter);
+        let guard = RebuildOnDrop { rebuild_from: self.len(), heap: self };
+        guard.heap.data.extend(iter);
     }
 
     #[inline]
@@ -1726,37 +1738,6 @@ impl<T: Ord> Extend<T> for BinaryHeap<T> {
     #[inline]
     fn extend_reserve(&mut self, additional: usize) {
         self.reserve(additional);
-    }
-}
-
-impl<T: Ord, I: IntoIterator<Item = T>> SpecExtend<I> for BinaryHeap<T> {
-    default fn spec_extend(&mut self, iter: I) {
-        self.extend_desugared(iter.into_iter());
-    }
-}
-
-impl<T: Ord> SpecExtend<Vec<T>> for BinaryHeap<T> {
-    fn spec_extend(&mut self, ref mut other: Vec<T>) {
-        let start = self.data.len();
-        self.data.append(other);
-        self.rebuild_tail(start);
-    }
-}
-
-impl<T: Ord> SpecExtend<BinaryHeap<T>> for BinaryHeap<T> {
-    fn spec_extend(&mut self, ref mut other: BinaryHeap<T>) {
-        self.append(other);
-    }
-}
-
-impl<T: Ord> BinaryHeap<T> {
-    fn extend_desugared<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        let iterator = iter.into_iter();
-        let (lower, _) = iterator.size_hint();
-
-        self.reserve(lower);
-
-        iterator.for_each(move |elem| self.push(elem));
     }
 }
 

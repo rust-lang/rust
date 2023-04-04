@@ -66,7 +66,7 @@ pub use self::util::{expand_trait_aliases, TraitAliasExpander};
 pub use self::util::{get_vtable_index_of_object_method, impl_item_is_final, upcast_choices};
 pub use self::util::{
     supertrait_def_ids, supertraits, transitive_bounds, transitive_bounds_that_define_assoc_type,
-    SupertraitDefIds, Supertraits,
+    SupertraitDefIds,
 };
 
 pub use self::chalk_fulfill::FulfillmentContext as ChalkFulfillmentContext;
@@ -267,9 +267,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     // and errors will get reported then; so outside of type inference we
     // can be sure that no errors should occur.
     let mut predicates: Vec<_> =
-        util::elaborate_predicates(tcx, unnormalized_env.caller_bounds().into_iter())
-            .map(|obligation| obligation.predicate)
-            .collect();
+        util::elaborate_predicates(tcx, unnormalized_env.caller_bounds().into_iter()).collect();
 
     debug!("normalize_param_env_or_error: elaborated-predicates={:?}", predicates);
 

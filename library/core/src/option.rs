@@ -1274,6 +1274,7 @@ impl<T> Option<T> {
     /// let x: Option<String> = None;
     /// assert_eq!(x.as_deref(), None);
     /// ```
+    #[inline]
     #[stable(feature = "option_deref", since = "1.40.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn as_deref(&self) -> Option<&T::Target>
@@ -1300,6 +1301,7 @@ impl<T> Option<T> {
     ///     x
     /// }), Some("HEY".to_owned().as_mut_str()));
     /// ```
+    #[inline]
     #[stable(feature = "option_deref", since = "1.40.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn as_deref_mut(&mut self) -> Option<&mut T::Target>
@@ -1776,36 +1778,6 @@ impl<T> Option<T> {
     #[stable(feature = "option_replace", since = "1.31.0")]
     pub const fn replace(&mut self, value: T) -> Option<T> {
         mem::replace(self, Some(value))
-    }
-
-    /// Returns `true` if the option is a [`Some`] value containing the given value.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(option_result_contains)]
-    ///
-    /// let x: Option<u32> = Some(2);
-    /// assert_eq!(x.contains(&2), true);
-    ///
-    /// let x: Option<u32> = Some(3);
-    /// assert_eq!(x.contains(&2), false);
-    ///
-    /// let x: Option<u32> = None;
-    /// assert_eq!(x.contains(&2), false);
-    /// ```
-    #[must_use]
-    #[inline]
-    #[unstable(feature = "option_result_contains", issue = "62358")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
-    pub const fn contains<U>(&self, x: &U) -> bool
-    where
-        U: ~const PartialEq<T>,
-    {
-        match self {
-            Some(y) => x.eq(y),
-            None => false,
-        }
     }
 
     /// Zips `self` with another `Option`.

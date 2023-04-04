@@ -17,7 +17,7 @@ const fn to_usize<T: 'static>() -> usize {
     match TypeId::of::<T>() {
         WHAT_A_TYPE => 0,
         _ => 1000,
-    } 
+    }
 }
 impl<T: 'static> AssocCt for T {
     const ASSOC: usize = to_usize::<T>();

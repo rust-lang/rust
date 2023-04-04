@@ -89,43 +89,11 @@ impl CompressionFormat {
                         xz2::stream::MtStreamBuilder::new().threads(6).preset(6).encoder().unwrap()
                     }
                     CompressionProfile::Best => {
-                        let mut filters = xz2::stream::Filters::new();
-                        // the preset is overridden by the other options so it doesn't matter
-                        let mut lzma_ops = xz2::stream::LzmaOptions::new_preset(9).unwrap();
-                        // This sets the overall dictionary size, which is also how much memory (baseline)
-                        // is needed for decompression.
-                        lzma_ops.dict_size(64 * 1024 * 1024);
-                        // Use the best match finder for compression ratio.
-                        lzma_ops.match_finder(xz2::stream::MatchFinder::BinaryTree4);
-                        lzma_ops.mode(xz2::stream::Mode::Normal);
-                        // Set nice len to the maximum for best compression ratio
-                        lzma_ops.nice_len(273);
-                        // Set depth to a reasonable value, 0 means auto, 1000 is somwhat high but gives
-                        // good results.
-                        lzma_ops.depth(1000);
-                        // 2 is the default and does well for most files
-                        lzma_ops.position_bits(2);
-                        // 0 is the default and does well for most files
-                        lzma_ops.literal_position_bits(0);
-                        // 3 is the default and does well for most files
-                        lzma_ops.literal_context_bits(3);
-
-                        filters.lzma2(&lzma_ops);
-
-                        let mut builder = xz2::stream::MtStreamBuilder::new();
-                        builder.filters(filters);
-
-                        // On 32-bit platforms limit ourselves to 3 threads, otherwise we exceed memory
-                        // usage this process can take. In the future we'll likely only do super-fast
-                        // compression in CI and move this heavyweight processing to promote-release (which
-                        // is always 64-bit and can run on big-memory machines) but for now this lets us
-                        // move forward.
-                        if std::mem::size_of::<usize>() == 4 {
-                            builder.threads(3);
-                        } else {
-                            builder.threads(6);
-                        }
-                        builder.encoder().unwrap()
+                        // Note that this isn't actually the best compression settings for the
+                        // produced artifacts, the production artifacts on static.rust-lang.org are
+                        // produced by rust-lang/promote-release which hosts recompression logic
+                        // and is tuned for optimal compression.
+                        xz2::stream::MtStreamBuilder::new().threads(6).preset(9).encoder().unwrap()
                     }
                 };
 
@@ -245,20 +213,14 @@ impl Write for CombinedEncoder {
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
-        self.encoders
-            .par_iter_mut()
-            .map(|w| w.flush())
-            .collect::<std::io::Result<Vec<()>>>()?;
+        self.encoders.par_iter_mut().map(|w| w.flush()).collect::<std::io::Result<Vec<()>>>()?;
         Ok(())
     }
 }
 
 impl Encoder for CombinedEncoder {
     fn finish(self: Box<Self>) -> Result<(), Error> {
-        self.encoders
-            .into_par_iter()
-            .map(|e| e.finish())
-            .collect::<Result<Vec<()>, Error>>()?;
+        self.encoders.into_par_iter().map(|e| e.finish()).collect::<Result<Vec<()>, Error>>()?;
         Ok(())
     }
 }

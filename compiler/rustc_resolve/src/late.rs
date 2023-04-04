@@ -1110,6 +1110,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                         }
                     }
                 }
+                GenericArgs::ReturnTypeNotation(_span) => {}
             }
         }
     }
@@ -2420,8 +2421,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     .iter()
                     .rfind(|r| matches!(r.kind, ItemRibKind(_)))
                     .expect("associated item outside of an item");
-                seen_bindings
-                    .extend(parent_rib.bindings.iter().map(|(ident, _)| (*ident, ident.span)));
+                seen_bindings.extend(parent_rib.bindings.keys().map(|ident| (*ident, ident.span)));
             };
             add_bindings_for_ns(ValueNS);
             add_bindings_for_ns(TypeNS);
@@ -4236,7 +4236,10 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             {
                 return;
             }
-            ResolveDocLinks::Exported if !maybe_exported.eval(self.r) => {
+            ResolveDocLinks::Exported
+                if !maybe_exported.eval(self.r)
+                    && !rustdoc::has_primitive_or_keyword_docs(attrs) =>
+            {
                 return;
             }
             ResolveDocLinks::ExportedMetadata

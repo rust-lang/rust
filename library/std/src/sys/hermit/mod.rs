@@ -75,9 +75,18 @@ pub fn abort_internal() -> ! {
     }
 }
 
-// FIXME: just a workaround to test the system
 pub fn hashmap_random_keys() -> (u64, u64) {
-    (1, 2)
+    let mut buf = [0; 16];
+    let mut slice = &mut buf[..];
+    while !slice.is_empty() {
+        let res = cvt(unsafe { abi::read_entropy(slice.as_mut_ptr(), slice.len(), 0) })
+            .expect("failed to generate random hashmap keys");
+        slice = &mut slice[res as usize..];
+    }
+
+    let key1 = buf[..8].try_into().unwrap();
+    let key2 = buf[8..].try_into().unwrap();
+    (u64::from_ne_bytes(key1), u64::from_ne_bytes(key2))
 }
 
 // This function is needed by the panic runtime. The symbol is named in

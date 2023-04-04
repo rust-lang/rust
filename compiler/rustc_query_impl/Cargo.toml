@@ -16,7 +16,7 @@ rustc_index = { path = "../rustc_index" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_middle = { path = "../rustc_middle" }
 rustc_query_system = { path = "../rustc_query_system" }
-rustc-rayon-core = { version = "0.4.0", optional = true }
+rustc-rayon-core = { version = "0.5.0", optional = true }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }

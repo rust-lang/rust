@@ -16,7 +16,9 @@ use rustc_middle::mir::interpret::InterpError;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_target::abi::{Abi, Scalar as ScalarAbi, Size, VariantIdx, Variants, WrappingRange};
+use rustc_target::abi::{
+    Abi, FieldIdx, Scalar as ScalarAbi, Size, VariantIdx, Variants, WrappingRange,
+};
 
 use std::hash::Hash;
 
@@ -269,14 +271,16 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 match layout.variants {
                     Variants::Single { index } => {
                         // Inside a variant
-                        PathElem::Field(def.variant(index).fields[field].name)
+                        PathElem::Field(def.variant(index).fields[FieldIdx::from_usize(field)].name)
                     }
                     Variants::Multiple { .. } => bug!("we handled variants above"),
                 }
             }
 
             // other ADTs
-            ty::Adt(def, _) => PathElem::Field(def.non_enum_variant().fields[field].name),
+            ty::Adt(def, _) => {
+                PathElem::Field(def.non_enum_variant().fields[FieldIdx::from_usize(field)].name)
+            }
 
             // arrays/slices
             ty::Array(..) | ty::Slice(..) => PathElem::ArrayElem(field),

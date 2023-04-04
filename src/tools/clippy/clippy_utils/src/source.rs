@@ -12,24 +12,21 @@ use rustc_span::{BytePos, Pos, Span, SpanData, SyntaxContext, DUMMY_SP};
 use std::borrow::Cow;
 
 /// Like `snippet_block`, but add braces if the expr is not an `ExprKind::Block`.
-/// Also takes an `Option<String>` which can be put inside the braces.
-pub fn expr_block<'a, T: LintContext>(
+pub fn expr_block<T: LintContext>(
     cx: &T,
     expr: &Expr<'_>,
-    option: Option<String>,
-    default: &'a str,
+    outer: SyntaxContext,
+    default: &str,
     indent_relative_to: Option<Span>,
-) -> Cow<'a, str> {
-    let code = snippet_block(cx, expr.span, default, indent_relative_to);
-    let string = option.unwrap_or_default();
-    if expr.span.from_expansion() {
-        Cow::Owned(format!("{{ {} }}", snippet_with_macro_callsite(cx, expr.span, default)))
+    app: &mut Applicability,
+) -> String {
+    let (code, from_macro) = snippet_block_with_context(cx, expr.span, outer, default, indent_relative_to, app);
+    if from_macro {
+        format!("{{ {code} }}")
     } else if let ExprKind::Block(_, _) = expr.kind {
-        Cow::Owned(format!("{code}{string}"))
-    } else if string.is_empty() {
-        Cow::Owned(format!("{{ {code} }}"))
+        format!("{code}")
     } else {
-        Cow::Owned(format!("{{\n{code};\n{string}\n}}"))
+        format!("{{ {code} }}")
     }
 }
 
@@ -229,12 +226,6 @@ fn snippet_with_applicability_sess<'a>(
     )
 }
 
-/// Same as `snippet`, but should only be used when it's clear that the input span is
-/// not a macro argument.
-pub fn snippet_with_macro_callsite<'a, T: LintContext>(cx: &T, span: Span, default: &'a str) -> Cow<'a, str> {
-    snippet(cx, span.source_callsite(), default)
-}
-
 /// Converts a span to a code snippet. Returns `None` if not available.
 pub fn snippet_opt(cx: &impl LintContext, span: Span) -> Option<String> {
     snippet_opt_sess(cx.sess(), span)
@@ -301,6 +292,19 @@ pub fn snippet_block_with_applicability<'a>(
     let snip = snippet_with_applicability(cx, span, default, applicability);
     let indent = indent_relative_to.and_then(|s| indent_of(cx, s));
     reindent_multiline(snip, true, indent)
+}
+
+pub fn snippet_block_with_context<'a>(
+    cx: &impl LintContext,
+    span: Span,
+    outer: SyntaxContext,
+    default: &'a str,
+    indent_relative_to: Option<Span>,
+    app: &mut Applicability,
+) -> (Cow<'a, str>, bool) {
+    let (snip, from_macro) = snippet_with_context(cx, span, outer, default, app);
+    let indent = indent_relative_to.and_then(|s| indent_of(cx, s));
+    (reindent_multiline(snip, true, indent), from_macro)
 }
 
 /// Same as `snippet_with_applicability`, but first walks the span up to the given context. This

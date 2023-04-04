@@ -307,13 +307,13 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
                                 write!(
                                     f,
                                     "for<{:#}> {ty_cx:#}: {generic_bounds:#}",
-                                    comma_sep(bound_params.iter().map(|lt| lt.print()), true)
+                                    comma_sep(bound_params.iter().map(|lt| lt.print(cx)), true)
                                 )
                             } else {
                                 write!(
                                     f,
                                     "for&lt;{}&gt; {ty_cx}: {generic_bounds}",
-                                    comma_sep(bound_params.iter().map(|lt| lt.print()), true)
+                                    comma_sep(bound_params.iter().map(|lt| lt.print(cx)), true)
                                 )
                             }
                         }

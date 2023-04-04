@@ -18,12 +18,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         LocalRef::UnsizedPlace(cg_indirect_dest) => {
                             self.codegen_rvalue_unsized(bx, cg_indirect_dest, rvalue)
                         }
-                        LocalRef::Operand(None) => {
+                        LocalRef::PendingOperand => {
                             let operand = self.codegen_rvalue_operand(bx, rvalue);
-                            self.locals[index] = LocalRef::Operand(Some(operand));
+                            self.locals[index] = LocalRef::Operand(operand);
                             self.debug_introduce_local(bx, index);
                         }
-                        LocalRef::Operand(Some(op)) => {
+                        LocalRef::Operand(op) => {
                             if !op.layout.is_zst() {
                                 span_bug!(
                                     statement.source_info.span,

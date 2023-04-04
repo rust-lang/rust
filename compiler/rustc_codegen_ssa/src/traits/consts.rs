@@ -8,6 +8,7 @@ pub trait ConstMethods<'tcx>: BackendTypes {
     // Constant constructors
     fn const_null(&self, t: Self::Type) -> Self::Value;
     fn const_undef(&self, t: Self::Type) -> Self::Value;
+    fn const_poison(&self, t: Self::Type) -> Self::Value;
     fn const_int(&self, t: Self::Type, i: i64) -> Self::Value;
     fn const_uint(&self, t: Self::Type, i: u64) -> Self::Value;
     fn const_uint_big(&self, t: Self::Type, u: u128) -> Self::Value;

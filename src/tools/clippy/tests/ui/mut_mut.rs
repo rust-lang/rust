@@ -1,10 +1,10 @@
-// aux-build:macro_rules.rs
+// aux-build:proc_macros.rs
 #![warn(clippy::mut_mut)]
 #![allow(unused)]
 #![allow(clippy::no_effect, clippy::uninlined_format_args, clippy::unnecessary_operation)]
 
-#[macro_use]
-extern crate macro_rules;
+extern crate proc_macros;
+use proc_macros::{external, inline_macros};
 
 fn fun(x: &mut &mut u32) -> bool {
     **x > 0
@@ -21,6 +21,7 @@ macro_rules! mut_ptr {
 }
 
 #[allow(unused_mut, unused_variables)]
+#[inline_macros]
 fn main() {
     let mut x = &mut &mut 1u32;
     {
@@ -37,7 +38,7 @@ fn main() {
         ***y + **x;
     }
 
-    let mut z = mut_ptr!(&mut 3u32);
+    let mut z = inline!(&mut $(&mut 3u32));
 }
 
 fn issue939() {
@@ -55,7 +56,7 @@ fn issue939() {
 
 fn issue6922() {
     // do not lint from an external macro
-    mut_mut!();
+    external!(let mut_mut_ty: &mut &mut u32 = &mut &mut 1u32;);
 }
 
 mod issue9035 {

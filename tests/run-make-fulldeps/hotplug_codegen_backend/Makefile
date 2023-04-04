@@ -1,4 +1,4 @@
-include ../tools.mk
+include ../../run-make/tools.mk
 
 # ignore-stage1
 

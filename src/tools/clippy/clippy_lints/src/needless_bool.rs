@@ -340,18 +340,11 @@ fn suggest_bool_comparison<'a, 'tcx>(
     cx: &LateContext<'tcx>,
     e: &'tcx Expr<'_>,
     expr: &Expr<'_>,
-    mut applicability: Applicability,
+    mut app: Applicability,
     message: &str,
     conv_hint: impl FnOnce(Sugg<'a>) -> Sugg<'a>,
 ) {
-    let hint = if expr.span.from_expansion() {
-        if applicability != Applicability::Unspecified {
-            applicability = Applicability::MaybeIncorrect;
-        }
-        Sugg::hir_with_macro_callsite(cx, expr, "..")
-    } else {
-        Sugg::hir_with_applicability(cx, expr, "..", &mut applicability)
-    };
+    let hint = Sugg::hir_with_context(cx, expr, e.span.ctxt(), "..", &mut app);
     span_lint_and_sugg(
         cx,
         BOOL_COMPARISON,
@@ -359,7 +352,7 @@ fn suggest_bool_comparison<'a, 'tcx>(
         message,
         "try simplifying it as shown",
         conv_hint(hint).to_string(),
-        applicability,
+        app,
     );
 }
 

@@ -50,7 +50,7 @@ pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{ExpnId, ExpnKind, Span};
-use rustc_target::abi::{Align, Integer, IntegerType, VariantIdx};
+use rustc_target::abi::{Align, FieldIdx, Integer, IntegerType, VariantIdx};
 pub use rustc_target::abi::{ReprFlags, ReprOptions};
 use rustc_type_ir::WithCachedTypeInfo;
 pub use subst::*;
@@ -653,8 +653,8 @@ pub enum AliasRelationDirection {
 impl std::fmt::Display for AliasRelationDirection {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AliasRelationDirection::Equate => write!(f, " == "),
-            AliasRelationDirection::Subtype => write!(f, " <: "),
+            AliasRelationDirection::Equate => write!(f, "=="),
+            AliasRelationDirection::Subtype => write!(f, "<:"),
         }
     }
 }
@@ -1891,7 +1891,7 @@ pub struct VariantDef {
     /// Discriminant of this variant.
     pub discr: VariantDiscr,
     /// Fields of this variant.
-    pub fields: Vec<FieldDef>,
+    pub fields: IndexVec<FieldIdx, FieldDef>,
     /// Flags of the variant (e.g. is field list non-exhaustive)?
     flags: VariantFlags,
 }
@@ -1918,7 +1918,7 @@ impl VariantDef {
         variant_did: Option<DefId>,
         ctor: Option<(CtorKind, DefId)>,
         discr: VariantDiscr,
-        fields: Vec<FieldDef>,
+        fields: IndexVec<FieldIdx, FieldDef>,
         adt_kind: AdtKind,
         parent_did: DefId,
         recovered: bool,
@@ -2270,26 +2270,26 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn find_field_index(self, ident: Ident, variant: &VariantDef) -> Option<usize> {
-        variant
-            .fields
-            .iter()
-            .position(|field| self.hygienic_eq(ident, field.ident(self), variant.def_id))
+    pub fn find_field_index(self, ident: Ident, variant: &VariantDef) -> Option<FieldIdx> {
+        variant.fields.iter_enumerated().find_map(|(i, field)| {
+            self.hygienic_eq(ident, field.ident(self), variant.def_id).then_some(i)
+        })
     }
 
     /// Returns `true` if the impls are the same polarity and the trait either
     /// has no items or is annotated `#[marker]` and prevents item overrides.
+    #[instrument(level = "debug", skip(self), ret)]
     pub fn impls_are_allowed_to_overlap(
         self,
         def_id1: DefId,
         def_id2: DefId,
     ) -> Option<ImplOverlapKind> {
+        let impl_trait_ref1 = self.impl_trait_ref(def_id1);
+        let impl_trait_ref2 = self.impl_trait_ref(def_id2);
         // If either trait impl references an error, they're allowed to overlap,
         // as one of them essentially doesn't exist.
-        if self.impl_trait_ref(def_id1).map_or(false, |tr| tr.subst_identity().references_error())
-            || self
-                .impl_trait_ref(def_id2)
-                .map_or(false, |tr| tr.subst_identity().references_error())
+        if impl_trait_ref1.map_or(false, |tr| tr.subst_identity().references_error())
+            || impl_trait_ref2.map_or(false, |tr| tr.subst_identity().references_error())
         {
             return Some(ImplOverlapKind::Permitted { marker: false });
         }
@@ -2297,19 +2297,11 @@ impl<'tcx> TyCtxt<'tcx> {
         match (self.impl_polarity(def_id1), self.impl_polarity(def_id2)) {
             (ImplPolarity::Reservation, _) | (_, ImplPolarity::Reservation) => {
                 // `#[rustc_reservation_impl]` impls don't overlap with anything
-                debug!(
-                    "impls_are_allowed_to_overlap({:?}, {:?}) = Some(Permitted) (reservations)",
-                    def_id1, def_id2
-                );
                 return Some(ImplOverlapKind::Permitted { marker: false });
             }
             (ImplPolarity::Positive, ImplPolarity::Negative)
             | (ImplPolarity::Negative, ImplPolarity::Positive) => {
                 // `impl AutoTrait for Type` + `impl !AutoTrait for Type`
-                debug!(
-                    "impls_are_allowed_to_overlap({:?}, {:?}) - None (differing polarities)",
-                    def_id1, def_id2
-                );
                 return None;
             }
             (ImplPolarity::Positive, ImplPolarity::Positive)
@@ -2317,38 +2309,25 @@ impl<'tcx> TyCtxt<'tcx> {
         };
 
         let is_marker_overlap = {
-            let is_marker_impl = |def_id: DefId| -> bool {
-                let trait_ref = self.impl_trait_ref(def_id);
+            let is_marker_impl = |trait_ref: Option<EarlyBinder<TraitRef<'_>>>| -> bool {
                 trait_ref.map_or(false, |tr| self.trait_def(tr.skip_binder().def_id).is_marker)
             };
-            is_marker_impl(def_id1) && is_marker_impl(def_id2)
+            is_marker_impl(impl_trait_ref1) && is_marker_impl(impl_trait_ref2)
         };
 
         if is_marker_overlap {
-            debug!(
-                "impls_are_allowed_to_overlap({:?}, {:?}) = Some(Permitted) (marker overlap)",
-                def_id1, def_id2
-            );
             Some(ImplOverlapKind::Permitted { marker: true })
         } else {
             if let Some(self_ty1) = self.issue33140_self_ty(def_id1) {
                 if let Some(self_ty2) = self.issue33140_self_ty(def_id2) {
                     if self_ty1 == self_ty2 {
-                        debug!(
-                            "impls_are_allowed_to_overlap({:?}, {:?}) - issue #33140 HACK",
-                            def_id1, def_id2
-                        );
                         return Some(ImplOverlapKind::Issue33140);
                     } else {
-                        debug!(
-                            "impls_are_allowed_to_overlap({:?}, {:?}) - found {:?} != {:?}",
-                            def_id1, def_id2, self_ty1, self_ty2
-                        );
+                        debug!("found {self_ty1:?} != {self_ty2:?}");
                     }
                 }
             }
 
-            debug!("impls_are_allowed_to_overlap({:?}, {:?}) = None", def_id1, def_id2);
             None
         }
     }
@@ -2405,7 +2384,9 @@ impl<'tcx> TyCtxt<'tcx> {
             | ty::InstanceDef::Virtual(..)
             | ty::InstanceDef::ClosureOnceShim { .. }
             | ty::InstanceDef::DropGlue(..)
-            | ty::InstanceDef::CloneShim(..) => self.mir_shims(instance),
+            | ty::InstanceDef::CloneShim(..)
+            | ty::InstanceDef::ThreadLocalShim(..)
+            | ty::InstanceDef::FnPtrAddrShim(..) => self.mir_shims(instance),
         }
     }
 

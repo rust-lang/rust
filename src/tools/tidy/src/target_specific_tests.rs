@@ -37,7 +37,7 @@ struct RevisionInfo<'a> {
 }
 
 pub fn check(path: &Path, bad: &mut bool) {
-    crate::walk::walk(path, filter_not_rust, &mut |entry, content| {
+    crate::walk::walk(path, |path, _is_dir| filter_not_rust(path), &mut |entry, content| {
         let file = entry.path().display();
         let mut header_map = BTreeMap::new();
         iter_header(content, &mut |cfg, directive| {

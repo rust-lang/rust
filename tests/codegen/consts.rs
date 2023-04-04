@@ -9,7 +9,7 @@
 // CHECK: @STATIC = {{.*}}, align 4
 
 // This checks the constants from inline_enum_const
-// CHECK: @alloc_76bfe2f13a3e3b01074971d122eac57e = {{.*}}, align 2
+// CHECK: @alloc_701ed935fbda2002838d0a2cbbc171e5 = {{.*}}, align 2
 
 // This checks the constants from {low,high}_align_const, they share the same
 // constant, but the alignment differs, so the higher one should be used

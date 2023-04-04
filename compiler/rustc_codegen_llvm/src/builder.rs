@@ -990,7 +990,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn resume(&mut self, exn0: &'ll Value, exn1: &'ll Value) {
         let ty = self.type_struct(&[self.type_i8p(), self.type_i32()], false);
-        let mut exn = self.const_undef(ty);
+        let mut exn = self.const_poison(ty);
         exn = self.insert_value(exn, exn0, 0);
         exn = self.insert_value(exn, exn1, 1);
         unsafe {
@@ -1190,8 +1190,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         // Set KCFI operand bundle
         let is_indirect_call = unsafe { llvm::LLVMIsAFunction(llfn).is_none() };
         let kcfi_bundle =
-            if self.tcx.sess.is_sanitizer_kcfi_enabled() && fn_abi.is_some() && is_indirect_call {
-                let kcfi_typeid = kcfi_typeid_for_fnabi(self.tcx, fn_abi.unwrap());
+            if let Some(fn_abi) = fn_abi && self.tcx.sess.is_sanitizer_kcfi_enabled() && is_indirect_call {
+                let kcfi_typeid = kcfi_typeid_for_fnabi(self.tcx, fn_abi);
                 Some(llvm::OperandBundleDef::new("kcfi", &[self.const_u32(kcfi_typeid)]))
             } else {
                 None

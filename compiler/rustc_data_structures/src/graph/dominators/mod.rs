@@ -10,7 +10,7 @@
 //! <https://www.cs.princeton.edu/courses/archive/spr03/cs423/download/dominators.pdf>
 
 use super::ControlFlowGraph;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::vec::{Idx, IndexSlice, IndexVec};
 use std::cmp::Ordering;
 
 #[cfg(test)]
@@ -256,10 +256,10 @@ pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
 /// where `+>` is a proper ancestor and `*>` is just an ancestor.
 #[inline]
 fn eval(
-    ancestor: &mut IndexVec<PreorderIndex, PreorderIndex>,
+    ancestor: &mut IndexSlice<PreorderIndex, PreorderIndex>,
     lastlinked: Option<PreorderIndex>,
-    semi: &IndexVec<PreorderIndex, PreorderIndex>,
-    label: &mut IndexVec<PreorderIndex, PreorderIndex>,
+    semi: &IndexSlice<PreorderIndex, PreorderIndex>,
+    label: &mut IndexSlice<PreorderIndex, PreorderIndex>,
     node: PreorderIndex,
 ) -> PreorderIndex {
     if is_processed(node, lastlinked) {
@@ -277,10 +277,10 @@ fn is_processed(v: PreorderIndex, lastlinked: Option<PreorderIndex>) -> bool {
 
 #[inline]
 fn compress(
-    ancestor: &mut IndexVec<PreorderIndex, PreorderIndex>,
+    ancestor: &mut IndexSlice<PreorderIndex, PreorderIndex>,
     lastlinked: Option<PreorderIndex>,
-    semi: &IndexVec<PreorderIndex, PreorderIndex>,
-    label: &mut IndexVec<PreorderIndex, PreorderIndex>,
+    semi: &IndexSlice<PreorderIndex, PreorderIndex>,
+    label: &mut IndexSlice<PreorderIndex, PreorderIndex>,
     v: PreorderIndex,
 ) {
     assert!(is_processed(v, lastlinked));

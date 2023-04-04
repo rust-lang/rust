@@ -62,21 +62,21 @@ pub fn as_constant_inner<'tcx>(
             Constant { span, user_ty: None, literal }
         }
         ExprKind::NonHirLiteral { lit, ref user_ty } => {
-            let user_ty = user_ty.as_ref().map(push_cuta).flatten();
+            let user_ty = user_ty.as_ref().and_then(push_cuta);
 
             let literal = ConstantKind::Val(ConstValue::Scalar(Scalar::Int(lit)), ty);
 
             Constant { span, user_ty, literal }
         }
         ExprKind::ZstLiteral { ref user_ty } => {
-            let user_ty = user_ty.as_ref().map(push_cuta).flatten();
+            let user_ty = user_ty.as_ref().and_then(push_cuta);
 
             let literal = ConstantKind::Val(ConstValue::ZeroSized, ty);
 
             Constant { span, user_ty, literal }
         }
         ExprKind::NamedConst { def_id, substs, ref user_ty } => {
-            let user_ty = user_ty.as_ref().map(push_cuta).flatten();
+            let user_ty = user_ty.as_ref().and_then(push_cuta);
 
             let uneval = mir::UnevaluatedConst::new(ty::WithOptConstParam::unknown(def_id), substs);
             let literal = ConstantKind::Unevaluated(uneval, ty);

@@ -424,9 +424,6 @@ impl<'tcx> MiniGraph<'tcx> {
                 &AddConstraint(Constraint::RegSubReg(a, b)) => {
                     each_edge(a, b);
                 }
-                &AddGiven(a, b) => {
-                    each_edge(a, tcx.mk_re_var(b));
-                }
                 &AddVerify(i) => span_bug!(
                     verifys[i].origin.span(),
                     "we never add verifications while doing higher-ranked things",

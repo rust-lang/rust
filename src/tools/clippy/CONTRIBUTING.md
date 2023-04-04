@@ -50,7 +50,7 @@ a [developer guide] and is a good place to start your journey.
 All issues on Clippy are mentored, if you want help simply ask someone from the
 Clippy team directly by mentioning them in the issue or over on [Zulip]. All
 currently active team members can be found
-[here](https://github.com/rust-lang/highfive/blob/master/highfive/configs/rust-lang/rust-clippy.json#L3)
+[here](https://github.com/rust-lang/rust-clippy/blob/master/triagebot.toml#L18)
 
 Some issues are easier than others. The [`good-first-issue`] label can be used to find the easy
 issues. You can use `@rustbot claim` to assign the issue to yourself.

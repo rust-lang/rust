@@ -214,7 +214,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         let cast_to_size = cast_to_layout.layout.size();
         let cast_to = bx.cx().immediate_backend_type(cast_to_layout);
         if self.layout.abi.is_uninhabited() {
-            return bx.cx().const_undef(cast_to);
+            return bx.cx().const_poison(cast_to);
         }
         let (tag_scalar, tag_encoding, tag_field) = match self.layout.variants {
             Variants::Single { index } => {
@@ -557,6 +557,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 } else {
                     bug!("using operand local {:?} as place", place_ref);
                 }
+            }
+            LocalRef::PendingOperand => {
+                bug!("using still-pending operand local {:?} as place", place_ref);
             }
         };
         for elem in place_ref.projection[base..].iter() {

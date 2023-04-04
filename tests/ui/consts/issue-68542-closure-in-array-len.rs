@@ -4,6 +4,7 @@
 
 struct Bug {
     a: [(); (|| { 0 })()] //~ ERROR cannot call non-const closure
+    //~^ ERROR the trait bound
 }
 
 fn main() {}

@@ -6,6 +6,8 @@ LL |         BAR_BAZ => panic!(),
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #73448 <https://github.com/rust-lang/rust/issues/73448>
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
    = note: `#[warn(nontrivial_structural_match)]` on by default
 
 warning: 1 warning emitted

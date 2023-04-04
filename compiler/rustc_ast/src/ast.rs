@@ -167,6 +167,9 @@ pub enum GenericArgs {
     AngleBracketed(AngleBracketedArgs),
     /// The `(A, B)` and `C` in `Foo(A, B) -> C`.
     Parenthesized(ParenthesizedArgs),
+    /// Associated return type bounds, like `T: Trait<method(..): Send>`
+    /// which applies the `Send` bound to the return-type of `method`.
+    ReturnTypeNotation(Span),
 }
 
 impl GenericArgs {
@@ -178,6 +181,7 @@ impl GenericArgs {
         match self {
             AngleBracketed(data) => data.span,
             Parenthesized(data) => data.span,
+            ReturnTypeNotation(span) => *span,
         }
     }
 }
@@ -231,15 +235,15 @@ impl AngleBracketedArg {
     }
 }
 
-impl Into<Option<P<GenericArgs>>> for AngleBracketedArgs {
-    fn into(self) -> Option<P<GenericArgs>> {
-        Some(P(GenericArgs::AngleBracketed(self)))
+impl Into<P<GenericArgs>> for AngleBracketedArgs {
+    fn into(self) -> P<GenericArgs> {
+        P(GenericArgs::AngleBracketed(self))
     }
 }
 
-impl Into<Option<P<GenericArgs>>> for ParenthesizedArgs {
-    fn into(self) -> Option<P<GenericArgs>> {
-        Some(P(GenericArgs::Parenthesized(self)))
+impl Into<P<GenericArgs>> for ParenthesizedArgs {
+    fn into(self) -> P<GenericArgs> {
+        P(GenericArgs::Parenthesized(self))
     }
 }
 
@@ -2570,7 +2574,7 @@ pub enum AttrStyle {
 
 rustc_index::newtype_index! {
     #[custom_encodable]
-    #[debug_format = "AttrId({})]"]
+    #[debug_format = "AttrId({})"]
     pub struct AttrId {}
 }
 

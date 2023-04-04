@@ -1,5 +1,5 @@
 #![feature(test)] // compiletest_rs requires this attribute
-#![feature(once_cell)]
+#![feature(lazy_cell)]
 #![feature(is_sorted)]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![warn(rust_2018_idioms, unused_lifetimes)]

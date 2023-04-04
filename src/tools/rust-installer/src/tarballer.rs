@@ -1,6 +1,6 @@
 use anyhow::{bail, Context, Result};
 use std::fs::{read_link, symlink_metadata};
-use std::io::{empty, BufWriter, Write};
+use std::io::{BufWriter, Write};
 use std::path::Path;
 use tar::{Builder, Header};
 use walkdir::WalkDir;
@@ -93,8 +93,7 @@ fn append_path<W: Write>(builder: &mut Builder<W>, src: &Path, path: &String) ->
     header.set_metadata(&stat);
     if stat.file_type().is_symlink() {
         let link = read_link(src)?;
-        header.set_link_name(&link)?;
-        builder.append_data(&mut header, path, &mut empty())?;
+        builder.append_link(&mut header, path, &link)?;
     } else {
         if cfg!(windows) {
             // Windows doesn't really have a mode, so `tar` never marks files executable.

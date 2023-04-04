@@ -1,10 +1,11 @@
 use clippy_utils::diagnostics::span_lint;
+use clippy_utils::ty::is_interior_mut_ty;
 use clippy_utils::{def_path_def_ids, trait_ref_of_method};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::TypeVisitableExt;
-use rustc_middle::ty::{Adt, Array, Ref, Slice, Tuple, Ty};
+use rustc_middle::query::Key;
+use rustc_middle::ty::{Adt, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Span;
@@ -153,53 +154,18 @@ impl MutableKeyType {
             let is_keyed_type = [sym::HashMap, sym::BTreeMap, sym::HashSet, sym::BTreeSet]
                 .iter()
                 .any(|diag_item| cx.tcx.is_diagnostic_item(*diag_item, def.did()));
-            if is_keyed_type && self.is_interior_mutable_type(cx, substs.type_at(0)) {
+            if !is_keyed_type {
+                return;
+            }
+
+            let subst_ty = substs.type_at(0);
+            // Determines if a type contains interior mutability which would affect its implementation of
+            // [`Hash`] or [`Ord`].
+            if is_interior_mut_ty(cx, subst_ty)
+                && !matches!(subst_ty.ty_adt_id(), Some(adt_id) if self.ignore_mut_def_ids.contains(&adt_id))
+            {
                 span_lint(cx, MUTABLE_KEY_TYPE, span, "mutable key type");
             }
-        }
-    }
-
-    /// Determines if a type contains interior mutability which would affect its implementation of
-    /// [`Hash`] or [`Ord`].
-    fn is_interior_mutable_type<'tcx>(&self, cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-        match *ty.kind() {
-            Ref(_, inner_ty, mutbl) => mutbl == hir::Mutability::Mut || self.is_interior_mutable_type(cx, inner_ty),
-            Slice(inner_ty) => self.is_interior_mutable_type(cx, inner_ty),
-            Array(inner_ty, size) => {
-                size.try_eval_target_usize(cx.tcx, cx.param_env)
-                    .map_or(true, |u| u != 0)
-                    && self.is_interior_mutable_type(cx, inner_ty)
-            },
-            Tuple(fields) => fields.iter().any(|ty| self.is_interior_mutable_type(cx, ty)),
-            Adt(def, substs) => {
-                // Special case for collections in `std` who's impl of `Hash` or `Ord` delegates to
-                // that of their type parameters.  Note: we don't include `HashSet` and `HashMap`
-                // because they have no impl for `Hash` or `Ord`.
-                let def_id = def.did();
-                let is_std_collection = [
-                    sym::Option,
-                    sym::Result,
-                    sym::LinkedList,
-                    sym::Vec,
-                    sym::VecDeque,
-                    sym::BTreeMap,
-                    sym::BTreeSet,
-                    sym::Rc,
-                    sym::Arc,
-                ]
-                .iter()
-                .any(|diag_item| cx.tcx.is_diagnostic_item(*diag_item, def_id));
-                let is_box = Some(def_id) == cx.tcx.lang_items().owned_box();
-                if is_std_collection || is_box || self.ignore_mut_def_ids.contains(&def_id) {
-                    // The type is mutable if any of its type parameters are
-                    substs.types().any(|ty| self.is_interior_mutable_type(cx, ty))
-                } else {
-                    !ty.has_escaping_bound_vars()
-                        && cx.tcx.layout_of(cx.param_env.and(ty)).is_ok()
-                        && !ty.is_freeze(cx.tcx, cx.param_env)
-                }
-            },
-            _ => false,
         }
     }
 }

@@ -5,7 +5,7 @@
 #![feature(let_chains)]
 #![feature(min_specialization)]
 #![feature(never_type)]
-#![feature(once_cell)]
+#![feature(lazy_cell)]
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]
 #![feature(trusted_step)]
@@ -23,7 +23,7 @@ use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticMessage, Subdiagnost
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::ChunkedBitSet;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::{IndexSlice, IndexVec};
 use rustc_infer::infer::{
     DefiningAnchor, InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin, TyCtxtInferExt,
 };
@@ -33,12 +33,13 @@ use rustc_middle::mir::{
     Place, PlaceElem, PlaceRef, VarDebugInfoContents,
 };
 use rustc_middle::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
-use rustc_middle::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
 use rustc_middle::mir::{InlineAsmOperand, Terminator, TerminatorKind};
+use rustc_middle::mir::{ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, CapturedPlace, ParamEnv, RegionVid, TyCtxt};
 use rustc_session::lint::builtin::UNUSED_MUT;
 use rustc_span::{Span, Symbol};
+use rustc_target::abi::FieldIdx;
 
 use either::Either;
 use smallvec::SmallVec;
@@ -153,7 +154,7 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> &Bor
     let infcx =
         tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bind(hir_owner.def_id)).build();
     let input_body: &Body<'_> = &input_body.borrow();
-    let promoted: &IndexVec<_, _> = &promoted.borrow();
+    let promoted: &IndexSlice<_, _> = &promoted.borrow();
     let opt_closure_req = do_mir_borrowck(&infcx, input_body, promoted, false).0;
     debug!("mir_borrowck done");
 
@@ -169,7 +170,7 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> &Bor
 fn do_mir_borrowck<'tcx>(
     infcx: &InferCtxt<'tcx>,
     input_body: &Body<'tcx>,
-    input_promoted: &IndexVec<Promoted, Body<'tcx>>,
+    input_promoted: &IndexSlice<Promoted, Body<'tcx>>,
     return_body_with_facts: bool,
 ) -> (BorrowCheckResult<'tcx>, Option<Box<BodyWithBorrowckFacts<'tcx>>>) {
     let def = input_body.source.with_opt_param().as_local().unwrap();
@@ -222,7 +223,7 @@ fn do_mir_borrowck<'tcx>(
     // be modified (in place) to contain non-lexical lifetimes. It
     // will have a lifetime tied to the inference context.
     let mut body_owned = input_body.clone();
-    let mut promoted = input_promoted.clone();
+    let mut promoted = input_promoted.to_owned();
     let free_regions =
         nll::replace_regions_in_mir(&infcx, param_env, &mut body_owned, &mut promoted);
     let body = &body_owned; // no further changes
@@ -597,7 +598,7 @@ struct MirBorrowckCtxt<'cx, 'tcx> {
     used_mut: FxIndexSet<Local>,
     /// If the function we're checking is a closure, then we'll need to report back the list of
     /// mutable upvars that have been used. This field keeps track of them.
-    used_mut_upvars: SmallVec<[Field; 8]>,
+    used_mut_upvars: SmallVec<[FieldIdx; 8]>,
     /// Region inference context. This contains the results from region inference and lets us e.g.
     /// find out which CFG points are contained in each borrow region.
     regioncx: Rc<RegionInferenceContext<'tcx>>,
@@ -1342,7 +1343,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             self.infcx.tcx.mir_borrowck(def_id);
                         debug!("{:?} used_mut_upvars={:?}", def_id, used_mut_upvars);
                         for field in used_mut_upvars {
-                            self.propagate_closure_used_mut_upvar(&operands[field.index()]);
+                            self.propagate_closure_used_mut_upvar(&operands[*field]);
                         }
                     }
                     AggregateKind::Adt(..)
@@ -2277,7 +2278,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// then returns the index of the field being projected. Note that this closure will always
     /// be `self` in the current MIR, because that is the only time we directly access the fields
     /// of a closure type.
-    fn is_upvar_field_projection(&self, place_ref: PlaceRef<'tcx>) -> Option<Field> {
+    fn is_upvar_field_projection(&self, place_ref: PlaceRef<'tcx>) -> Option<FieldIdx> {
         path_utils::is_upvar_field_projection(self.infcx.tcx, &self.upvars, place_ref, self.body())
     }
 

@@ -1,6 +1,6 @@
 pub use super::ffi::*;
 
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::{IndexSlice, IndexVec};
 use rustc_middle::mir::coverage::{
     CodeRegion, CounterValueReference, ExpressionOperandId, InjectedExpressionId,
     InjectedExpressionIndex, MappedExpressionIndex, Op,
@@ -205,7 +205,7 @@ impl<'tcx> FunctionCoverage<'tcx> {
         // `expression_index`s lower than the referencing `Expression`. Therefore, it is
         // reasonable to look up the new index of an expression operand while the `new_indexes`
         // vector is only complete up to the current `ExpressionIndex`.
-        let id_to_counter = |new_indexes: &IndexVec<
+        let id_to_counter = |new_indexes: &IndexSlice<
             InjectedExpressionIndex,
             Option<MappedExpressionIndex>,
         >,

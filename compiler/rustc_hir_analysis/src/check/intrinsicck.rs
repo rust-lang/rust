@@ -5,6 +5,7 @@ use rustc_middle::ty::{self, Article, FloatTy, IntTy, Ty, TyCtxt, TypeVisitableE
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Symbol, DUMMY_SP};
+use rustc_target::abi::FieldIdx;
 use rustc_target::asm::{InlineAsmReg, InlineAsmRegClass, InlineAsmRegOrRegClass, InlineAsmType};
 
 pub struct InlineAsmCtxt<'a, 'tcx> {
@@ -82,7 +83,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             }
             ty::Adt(adt, substs) if adt.repr().simd() => {
                 let fields = &adt.non_enum_variant().fields;
-                let elem_ty = fields[0].ty(self.tcx, substs);
+                let elem_ty = fields[FieldIdx::from_u32(0)].ty(self.tcx, substs);
                 match elem_ty.kind() {
                     ty::Never | ty::Error(_) => return None,
                     ty::Int(IntTy::I8) | ty::Uint(UintTy::U8) => {

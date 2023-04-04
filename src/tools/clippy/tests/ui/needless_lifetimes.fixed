@@ -1,5 +1,5 @@
 // run-rustfix
-// aux-build:macro_rules.rs
+// aux-build:proc_macros.rs
 
 #![warn(clippy::needless_lifetimes)]
 #![allow(
@@ -12,8 +12,8 @@
     clippy::get_first
 )]
 
-#[macro_use]
-extern crate macro_rules;
+extern crate proc_macros;
+use proc_macros::inline_macros;
 
 fn distinct_lifetimes(_x: &u8, _y: &u8, _z: u8) {}
 
@@ -502,30 +502,29 @@ mod pr_9743_output_lifetime_checks {
     }
 }
 
+#[inline_macros]
 mod in_macro {
-    macro_rules! local_one_input_macro {
-        () => {
-            fn one_input(x: &u8) -> &u8 {
-                unimplemented!()
-            }
-        };
-    }
+    use proc_macros::external;
 
     // lint local macro expands to function with needless lifetimes
-    local_one_input_macro!();
-
-    // no lint on external macro
-    macro_rules::needless_lifetime!();
-
-    macro_rules! expanded_lifetime {
-        ($l:lifetime) => {
-            fn f<$l>(arg: &$l str) -> &$l str {
-                arg
-            }
+    inline! {
+        fn one_input(x: &u8) -> &u8 {
+            unimplemented!()
         }
     }
 
-    expanded_lifetime!('a);
+    // no lint on external macro
+    external! {
+        fn needless_lifetime<'a>(x: &'a u8) -> &'a u8 {
+            unimplemented!()
+        }
+    }
+
+    inline! {
+        fn f<$'a>(arg: &$'a str) -> &$'a str {
+            arg
+        }
+    }
 }
 
 mod issue5787 {

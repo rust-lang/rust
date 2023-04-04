@@ -8,7 +8,7 @@
 
 //! Link to [i32][prim@i32] [i64][prim@i64]
 
-#[doc(primitive = "i32")]
+#[rustc_doc_primitive = "i32"]
 mod prim_i32 {}
 
 // @set local_i32 = "$.index[*][?(@.name=='i32')].id"

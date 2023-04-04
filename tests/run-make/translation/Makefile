@@ -1,4 +1,4 @@
-include ../../run-make-fulldeps/tools.mk
+include ../tools.mk
 
 # This test uses `ln -s` rather than copying to save testing time, but its
 # usage doesn't work on Windows.

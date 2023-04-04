@@ -7,7 +7,7 @@ use rustc_middle::traits::Reveal;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use std::{fmt, iter};
 
 /// The value of an inserted drop flag.
@@ -129,7 +129,7 @@ pub trait DropElaborator<'a, 'tcx>: fmt::Debug {
     /// Returns the subpath of a field of `path` (or `None` if there is no dedicated subpath).
     ///
     /// If this returns `None`, `field` will not get a dedicated drop flag.
-    fn field_subpath(&self, path: Self::Path, field: Field) -> Option<Self::Path>;
+    fn field_subpath(&self, path: Self::Path, field: FieldIdx) -> Option<Self::Path>;
 
     /// Returns the subpath of a dereference of `path` (or `None` if there is no dedicated subpath).
     ///
@@ -269,7 +269,7 @@ where
             .iter()
             .enumerate()
             .map(|(i, f)| {
-                let field = Field::new(i);
+                let field = FieldIdx::new(i);
                 let subpath = self.elaborator.field_subpath(variant_path, field);
                 let tcx = self.tcx();
 
@@ -397,8 +397,8 @@ where
             .enumerate()
             .map(|(i, &ty)| {
                 (
-                    self.tcx().mk_place_field(self.place, Field::new(i), ty),
-                    self.elaborator.field_subpath(self.path, Field::new(i)),
+                    self.tcx().mk_place_field(self.place, FieldIdx::new(i), ty),
+                    self.elaborator.field_subpath(self.path, FieldIdx::new(i)),
                 )
             })
             .collect();
@@ -411,14 +411,14 @@ where
     fn open_drop_for_box(&mut self, adt: ty::AdtDef<'tcx>, substs: SubstsRef<'tcx>) -> BasicBlock {
         // drop glue is sent straight to codegen
         // box cannot be directly dereferenced
-        let unique_ty = adt.non_enum_variant().fields[0].ty(self.tcx(), substs);
-        let nonnull_ty =
-            unique_ty.ty_adt_def().unwrap().non_enum_variant().fields[0].ty(self.tcx(), substs);
+        let unique_ty = adt.non_enum_variant().fields[FieldIdx::new(0)].ty(self.tcx(), substs);
+        let unique_variant = unique_ty.ty_adt_def().unwrap().non_enum_variant();
+        let nonnull_ty = unique_variant.fields[FieldIdx::from_u32(0)].ty(self.tcx(), substs);
         let ptr_ty = self.tcx().mk_imm_ptr(substs[0].expect_ty());
 
-        let unique_place = self.tcx().mk_place_field(self.place, Field::new(0), unique_ty);
-        let nonnull_place = self.tcx().mk_place_field(unique_place, Field::new(0), nonnull_ty);
-        let ptr_place = self.tcx().mk_place_field(nonnull_place, Field::new(0), ptr_ty);
+        let unique_place = self.tcx().mk_place_field(self.place, FieldIdx::new(0), unique_ty);
+        let nonnull_place = self.tcx().mk_place_field(unique_place, FieldIdx::new(0), nonnull_ty);
+        let ptr_place = self.tcx().mk_place_field(nonnull_place, FieldIdx::new(0), ptr_ty);
         let interior = self.tcx().mk_place_deref(ptr_place);
 
         let interior_path = self.elaborator.deref_subpath(self.path);
@@ -468,7 +468,7 @@ where
             let fields = self.move_paths_for_fields(
                 self.place,
                 self.path,
-                &adt.variant(VariantIdx::new(0)),
+                &adt.variant(FIRST_VARIANT),
                 substs,
             );
             self.drop_ladder(fields, succ, unwind)
@@ -729,23 +729,59 @@ where
         let tcx = self.tcx();
 
         if let Some(size) = opt_size {
-            let fields: Vec<(Place<'tcx>, Option<D::Path>)> = (0..size)
-                .map(|i| {
-                    (
-                        tcx.mk_place_elem(
-                            self.place,
-                            ProjectionElem::ConstantIndex {
-                                offset: i,
-                                min_length: size,
-                                from_end: false,
-                            },
-                        ),
-                        self.elaborator.array_subpath(self.path, i, size),
-                    )
-                })
-                .collect();
-
-            if fields.iter().any(|(_, path)| path.is_some()) {
+            enum ProjectionKind<Path> {
+                Drop(std::ops::Range<u64>),
+                Keep(u64, Path),
+            }
+            // Previously, we'd make a projection for every element in the array and create a drop
+            // ladder if any `array_subpath` was `Some`, i.e. moving out with an array pattern.
+            // This caused huge memory usage when generating the drops for large arrays, so we instead
+            // record the *subslices* which are dropped and the *indexes* which are kept
+            let mut drop_ranges = vec![];
+            let mut dropping = true;
+            let mut start = 0;
+            for i in 0..size {
+                let path = self.elaborator.array_subpath(self.path, i, size);
+                if dropping && path.is_some() {
+                    drop_ranges.push(ProjectionKind::Drop(start..i));
+                    dropping = false;
+                } else if !dropping && path.is_none() {
+                    dropping = true;
+                    start = i;
+                }
+                if let Some(path) = path {
+                    drop_ranges.push(ProjectionKind::Keep(i, path));
+                }
+            }
+            if !drop_ranges.is_empty() {
+                if dropping {
+                    drop_ranges.push(ProjectionKind::Drop(start..size));
+                }
+                let fields = drop_ranges
+                    .iter()
+                    .rev()
+                    .map(|p| {
+                        let (project, path) = match p {
+                            ProjectionKind::Drop(r) => (
+                                ProjectionElem::Subslice {
+                                    from: r.start,
+                                    to: r.end,
+                                    from_end: false,
+                                },
+                                None,
+                            ),
+                            &ProjectionKind::Keep(offset, path) => (
+                                ProjectionElem::ConstantIndex {
+                                    offset,
+                                    min_length: size,
+                                    from_end: false,
+                                },
+                                Some(path),
+                            ),
+                        };
+                        (tcx.mk_place_elem(self.place, project), path)
+                    })
+                    .collect::<Vec<_>>();
                 let (succ, unwind) = self.drop_ladder_bottom();
                 return self.drop_ladder(fields, succ, unwind).0;
             }
@@ -824,7 +860,7 @@ where
                 let size = size.try_eval_target_usize(self.tcx(), self.elaborator.param_env());
                 self.open_drop_for_array(*ety, size)
             }
-            ty::Slice(ety) => self.open_drop_for_array(*ety, None),
+            ty::Slice(ety) => self.drop_loop_pair(*ety),
 
             _ => span_bug!(self.source_info.span, "open drop from non-ADT `{:?}`", ty),
         }
@@ -894,12 +930,12 @@ where
         let unit_temp = Place::from(self.new_temp(tcx.mk_unit()));
         let free_func = tcx.require_lang_item(LangItem::BoxFree, Some(self.source_info.span));
         let args = adt
-            .variant(VariantIdx::new(0))
+            .variant(FIRST_VARIANT)
             .fields
             .iter()
             .enumerate()
             .map(|(i, f)| {
-                let field = Field::new(i);
+                let field = FieldIdx::new(i);
                 let field_ty = f.ty(tcx, substs);
                 Operand::Move(tcx.mk_place_field(self.place, field, field_ty))
             })

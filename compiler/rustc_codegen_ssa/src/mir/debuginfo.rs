@@ -8,7 +8,7 @@ use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_session::config::DebugInfo;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{BytePos, Span};
-use rustc_target::abi::{Abi, Size, VariantIdx};
+use rustc_target::abi::{Abi, FieldIdx, Size, VariantIdx};
 
 use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
@@ -79,7 +79,7 @@ impl<'tcx, S: Copy, L: Copy> DebugScope<S, L> {
 trait DebugInfoOffsetLocation<'tcx, Bx> {
     fn deref(&self, bx: &mut Bx) -> Self;
     fn layout(&self) -> TyAndLayout<'tcx>;
-    fn project_field(&self, bx: &mut Bx, field: mir::Field) -> Self;
+    fn project_field(&self, bx: &mut Bx, field: FieldIdx) -> Self;
     fn downcast(&self, bx: &mut Bx, variant: VariantIdx) -> Self;
 }
 
@@ -94,7 +94,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> DebugInfoOffsetLocation<'tcx, Bx>
         self.layout
     }
 
-    fn project_field(&self, bx: &mut Bx, field: mir::Field) -> Self {
+    fn project_field(&self, bx: &mut Bx, field: FieldIdx) -> Self {
         PlaceRef::project_field(*self, bx, field.index())
     }
 
@@ -116,7 +116,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> DebugInfoOffsetLocation<'tcx, Bx>
         *self
     }
 
-    fn project_field(&self, bx: &mut Bx, field: mir::Field) -> Self {
+    fn project_field(&self, bx: &mut Bx, field: FieldIdx) -> Self {
         self.field(bx.cx(), field.index())
     }
 
@@ -312,7 +312,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 LocalRef::Place(place) | LocalRef::UnsizedPlace(place) => {
                     bx.set_var_name(place.llval, name);
                 }
-                LocalRef::Operand(Some(operand)) => match operand.val {
+                LocalRef::Operand(operand) => match operand.val {
                     OperandValue::Ref(x, ..) | OperandValue::Immediate(x) => {
                         bx.set_var_name(x, name);
                     }
@@ -323,7 +323,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         bx.set_var_name(b, &(name.clone() + ".1"));
                     }
                 },
-                LocalRef::Operand(None) => {}
+                LocalRef::PendingOperand => {}
             }
         }
 
@@ -332,9 +332,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         let base = match local_ref {
-            LocalRef::Operand(None) => return,
+            LocalRef::PendingOperand => return,
 
-            LocalRef::Operand(Some(operand)) => {
+            LocalRef::Operand(operand) => {
                 // Don't spill operands onto the stack in naked functions.
                 // See: https://github.com/rust-lang/rust/issues/42779
                 let attrs = bx.tcx().codegen_fn_attrs(self.instance.def_id());

@@ -1946,11 +1946,7 @@ function initSearch(rawSearchIndex) {
     function showResults(results, go_to_first, filterCrates) {
         const search = searchState.outputElement();
         if (go_to_first || (results.others.length === 1
-            && getSettingValue("go-to-only-result") === "true"
-            // By default, the search DOM element is "empty" (meaning it has no children not
-            // text content). Once a search has been run, it won't be empty, even if you press
-            // ESC or empty the search input (which also "cancels" the search).
-            && (!search.firstChild || search.firstChild.innerText !== searchState.loadingText))
+            && getSettingValue("go-to-only-result") === "true")
         ) {
             const elem = document.createElement("a");
             elem.href = results.others[0].href;

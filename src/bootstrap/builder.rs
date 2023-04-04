@@ -16,7 +16,7 @@ use crate::config::{SplitDebuginfo, TargetSelection};
 use crate::doc;
 use crate::flags::{Color, Subcommand};
 use crate::install;
-use crate::native;
+use crate::llvm;
 use crate::run;
 use crate::setup;
 use crate::test;
@@ -636,13 +636,13 @@ impl<'a> Builder<'a> {
                 tool::Rustdoc,
                 tool::Clippy,
                 tool::CargoClippy,
-                native::Llvm,
-                native::Sanitizers,
+                llvm::Llvm,
+                llvm::Sanitizers,
                 tool::Rustfmt,
                 tool::Miri,
                 tool::CargoMiri,
-                native::Lld,
-                native::CrtBeginEnd
+                llvm::Lld,
+                llvm::CrtBeginEnd
             ),
             Kind::Check | Kind::Clippy | Kind::Fix => describe!(
                 check::Std,
@@ -1101,7 +1101,7 @@ impl<'a> Builder<'a> {
     /// check build or dry-run, where there's no need to build all of LLVM.
     fn llvm_config(&self, target: TargetSelection) -> Option<PathBuf> {
         if self.config.llvm_enabled() && self.kind != Kind::Check && !self.config.dry_run() {
-            let native::LlvmResult { llvm_config, .. } = self.ensure(native::Llvm { target });
+            let llvm::LlvmResult { llvm_config, .. } = self.ensure(llvm::Llvm { target });
             if llvm_config.is_file() {
                 return Some(llvm_config);
             }
@@ -1227,7 +1227,7 @@ impl<'a> Builder<'a> {
             // rustc_llvm. But if LLVM is stale, that'll be a tiny amount
             // of work comparatively, and we'd likely need to rebuild it anyway,
             // so that's okay.
-            if crate::native::prebuilt_llvm_config(self, target).is_err() {
+            if crate::llvm::prebuilt_llvm_config(self, target).is_err() {
                 cargo.env("RUST_CHECK", "1");
             }
         }
@@ -1941,6 +1941,12 @@ impl<'a> Builder<'a> {
                 rustflags.arg("-Zvalidate-mir");
                 rustflags.arg(&format!("-Zmir-opt-level={}", mir_opt_level));
             }
+            // Always enable inlining MIR when building the standard library.
+            // Without this flag, MIR inlining is disabled when incremental compilation is enabled.
+            // That causes some mir-opt tests which inline functions from the standard library to
+            // break when incremental compilation is enabled. So this overrides the "no inlining
+            // during incremental builds" heuristic for the standard library.
+            rustflags.arg("-Zinline-mir");
         }
 
         Cargo { command: cargo, rustflags, rustdocflags, allow_features }

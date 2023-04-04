@@ -50,10 +50,7 @@ pub(super) fn check_impl_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Imp
         let attr = cx.tcx.get_attr(item.owner_id, sym::must_use);
         if let Some(attr) = attr {
             check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, attr);
-        } else if is_public
-            && !is_proc_macro(attrs)
-            && trait_ref_of_method(cx, item.owner_id.def_id).is_none()
-        {
+        } else if is_public && !is_proc_macro(attrs) && trait_ref_of_method(cx, item.owner_id.def_id).is_none() {
             check_must_use_candidate(
                 cx,
                 sig.decl,

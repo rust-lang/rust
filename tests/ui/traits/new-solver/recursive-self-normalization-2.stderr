@@ -1,0 +1,9 @@
+error[E0282]: type annotations needed
+  --> $DIR/recursive-self-normalization-2.rs:15:5
+   |
+LL |     needs_bar::<T::Assoc1>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `S` declared on the function `needs_bar`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

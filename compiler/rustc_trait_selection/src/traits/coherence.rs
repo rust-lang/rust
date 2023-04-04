@@ -79,8 +79,9 @@ pub fn overlapping_impls(
     let impl1_ref = tcx.impl_trait_ref(impl1_def_id);
     let impl2_ref = tcx.impl_trait_ref(impl2_def_id);
     let may_overlap = match (impl1_ref, impl2_ref) {
-        (Some(a), Some(b)) => iter::zip(a.skip_binder().substs, b.skip_binder().substs)
-            .all(|(arg1, arg2)| drcx.generic_args_may_unify(arg1, arg2)),
+        (Some(a), Some(b)) => {
+            drcx.substs_refs_may_unify(a.skip_binder().substs, b.skip_binder().substs)
+        }
         (None, None) => {
             let self_ty1 = tcx.type_of(impl1_def_id).skip_binder();
             let self_ty2 = tcx.type_of(impl2_def_id).skip_binder();
@@ -367,8 +368,8 @@ fn negative_impl_exists<'tcx>(
     }
 
     // Try to prove a negative obligation exists for super predicates
-    for o in util::elaborate_predicates(infcx.tcx, iter::once(o.predicate)) {
-        if resolve_negative_obligation(infcx.fork(), &o, body_def_id) {
+    for pred in util::elaborate_predicates(infcx.tcx, iter::once(o.predicate)) {
+        if resolve_negative_obligation(infcx.fork(), &o.with(infcx.tcx, pred), body_def_id) {
             return true;
         }
     }
@@ -402,7 +403,6 @@ fn resolve_negative_obligation<'tcx>(
     let wf_tys = ocx.assumed_wf_types(param_env, DUMMY_SP, body_def_id);
     let outlives_env = OutlivesEnvironment::with_bounds(
         param_env,
-        Some(&infcx),
         infcx.implied_bounds_tys(param_env, body_def_id, wf_tys),
     );
 
@@ -411,11 +411,24 @@ fn resolve_negative_obligation<'tcx>(
     infcx.resolve_regions(&outlives_env).is_empty()
 }
 
+/// Returns whether all impls which would apply to the `trait_ref`
+/// e.g. `Ty: Trait<Arg>` are already known in the local crate.
+///
+/// This both checks whether any downstream or sibling crates could
+/// implement it and whether an upstream crate can add this impl
+/// without breaking backwards compatibility.
 #[instrument(level = "debug", skip(tcx), ret)]
 pub fn trait_ref_is_knowable<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), Conflict> {
+    if Some(trait_ref.def_id) == tcx.lang_items().fn_ptr_trait() {
+        // The only types implementing `FnPtr` are function pointers,
+        // so if there's no impl of `FnPtr` in the current crate,
+        // then such an impl will never be added in the future.
+        return Ok(());
+    }
+
     if orphan_check_trait_ref(trait_ref, InCrate::Remote).is_ok() {
         // A downstream or cousin crate is allowed to implement some
         // substitution of this trait-ref.

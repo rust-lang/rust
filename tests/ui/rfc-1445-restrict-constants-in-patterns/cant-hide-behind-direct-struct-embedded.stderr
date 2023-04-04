@@ -3,6 +3,9 @@ error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be ann
    |
 LL |         WRAP_DIRECT_INLINE => { panic!("WRAP_DIRECT_INLINE matched itself"); }
    |         ^^^^^^^^^^^^^^^^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
 error: aborting due to previous error
 

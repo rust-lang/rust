@@ -397,8 +397,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             PassMode::Cast(cast_ty, _) => {
                 let op = match self.locals[mir::RETURN_PLACE] {
-                    LocalRef::Operand(Some(op)) => op,
-                    LocalRef::Operand(None) => bug!("use of return before def"),
+                    LocalRef::Operand(op) => op,
+                    LocalRef::PendingOperand => bug!("use of return before def"),
                     LocalRef::Place(cg_place) => OperandRef {
                         val: Ref(cg_place.llval, None, cg_place.align),
                         layout: cg_place.layout,
@@ -599,6 +599,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // It's `fn panic_bounds_check(index: usize, len: usize)`,
                 // and `#[track_caller]` adds an implicit third argument.
                 (LangItem::PanicBoundsCheck, vec![index, len, location])
+            }
+            AssertKind::MisalignedPointerDereference { ref required, ref found } => {
+                let required = self.codegen_operand(bx, required).immediate();
+                let found = self.codegen_operand(bx, found).immediate();
+                // It's `fn panic_bounds_check(index: usize, len: usize)`,
+                // and `#[track_caller]` adds an implicit third argument.
+                (LangItem::PanicMisalignedPointerDereference, vec![required, found, location])
             }
             _ => {
                 let msg = bx.const_str(msg.description());
@@ -1673,7 +1680,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             match self.locals[index] {
                 LocalRef::Place(dest) => dest,
                 LocalRef::UnsizedPlace(_) => bug!("return type must be sized"),
-                LocalRef::Operand(None) => {
+                LocalRef::PendingOperand => {
                     // Handle temporary places, specifically `Operand` ones, as
                     // they don't have `alloca`s.
                     return if fn_ret.is_indirect() {
@@ -1694,7 +1701,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         ReturnDest::DirectOperand(index)
                     };
                 }
-                LocalRef::Operand(Some(_)) => {
+                LocalRef::Operand(_) => {
                     bug!("place local already assigned to");
                 }
             }
@@ -1737,7 +1744,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             IndirectOperand(tmp, index) => {
                 let op = bx.load_operand(tmp);
                 tmp.storage_dead(bx);
-                self.locals[index] = LocalRef::Operand(Some(op));
+                self.locals[index] = LocalRef::Operand(op);
                 self.debug_introduce_local(bx, index);
             }
             DirectOperand(index) => {
@@ -1752,7 +1759,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 } else {
                     OperandRef::from_immediate_or_packed_pair(bx, llval, ret_abi.layout)
                 };
-                self.locals[index] = LocalRef::Operand(Some(op));
+                self.locals[index] = LocalRef::Operand(op);
                 self.debug_introduce_local(bx, index);
             }
         }

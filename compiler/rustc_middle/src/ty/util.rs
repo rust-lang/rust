@@ -19,7 +19,8 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
-use rustc_span::{sym, DUMMY_SP};
+use rustc_session::Limit;
+use rustc_span::sym;
 use rustc_target::abi::{Integer, IntegerType, Size, TargetDataLayout};
 use rustc_target::spec::abi::Abi;
 use smallvec::SmallVec;
@@ -225,17 +226,20 @@ impl<'tcx> TyCtxt<'tcx> {
         let recursion_limit = self.recursion_limit();
         for iteration in 0.. {
             if !recursion_limit.value_within_limit(iteration) {
-                return self.ty_error_with_message(
-                    DUMMY_SP,
-                    &format!("reached the recursion limit finding the struct tail for {}", ty),
-                );
+                let suggested_limit = match recursion_limit {
+                    Limit(0) => Limit(2),
+                    limit => limit * 2,
+                };
+                let reported =
+                    self.sess.emit_err(crate::error::RecursionLimitReached { ty, suggested_limit });
+                return self.ty_error(reported);
             }
             match *ty.kind() {
                 ty::Adt(def, substs) => {
                     if !def.is_struct() {
                         break;
                     }
-                    match def.non_enum_variant().fields.last() {
+                    match def.non_enum_variant().fields.raw.last() {
                         Some(field) => {
                             f();
                             ty = field.ty(self, substs);
@@ -309,7 +313,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 (&ty::Adt(a_def, a_substs), &ty::Adt(b_def, b_substs))
                     if a_def == b_def && a_def.is_struct() =>
                 {
-                    if let Some(f) = a_def.non_enum_variant().fields.last() {
+                    if let Some(f) = a_def.non_enum_variant().fields.raw.last() {
                         a = f.ty(self, a_substs);
                         b = f.ty(self, b_substs);
                     } else {
@@ -595,6 +599,28 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn is_mutable_static(self, def_id: DefId) -> bool {
         self.static_mutability(def_id) == Some(hir::Mutability::Mut)
+    }
+
+    /// Returns `true` if the item pointed to by `def_id` is a thread local which needs a
+    /// thread local shim generated.
+    #[inline]
+    pub fn needs_thread_local_shim(self, def_id: DefId) -> bool {
+        !self.sess.target.dll_tls_export
+            && self.is_thread_local_static(def_id)
+            && !self.is_foreign_item(def_id)
+    }
+
+    /// Returns the type a reference to the thread local takes in MIR.
+    pub fn thread_local_ptr_ty(self, def_id: DefId) -> Ty<'tcx> {
+        let static_ty = self.type_of(def_id).subst_identity();
+        if self.is_mutable_static(def_id) {
+            self.mk_mut_ptr(static_ty)
+        } else if self.is_foreign_item(def_id) {
+            self.mk_imm_ptr(static_ty)
+        } else {
+            // FIXME: These things don't *really* have 'static lifetime.
+            self.mk_imm_ref(self.lifetimes.re_static, static_ty)
+        }
     }
 
     /// Get the type of the pointer to the static that we use in MIR.

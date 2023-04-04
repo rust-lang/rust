@@ -1,8 +1,8 @@
 //! See docs in `build/expr/mod.rs`.
 
-use rustc_index::vec::Idx;
+use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::ty::util::IntTypeExt;
-use rustc_target::abi::{Abi, Primitive};
+use rustc_target::abi::{Abi, FieldIdx, Primitive};
 
 use crate::build::expr::as_place::PlaceBase;
 use crate::build::expr::category::{Category, RvalueFunc};
@@ -326,7 +326,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 // first process the set of fields
                 let el_ty = expr.ty.sequence_element_type(this.tcx);
-                let fields: Vec<_> = fields
+                let fields: IndexVec<FieldIdx, _> = fields
                     .into_iter()
                     .copied()
                     .map(|f| {
@@ -347,7 +347,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Tuple { ref fields } => {
                 // see (*) above
                 // first process the set of fields
-                let fields: Vec<_> = fields
+                let fields: IndexVec<FieldIdx, _> = fields
                     .into_iter()
                     .copied()
                     .map(|f| {
@@ -401,7 +401,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
 
                 // see (*) above
-                let operands: Vec<_> = upvars
+                let operands: IndexVec<FieldIdx, _> = upvars
                     .into_iter()
                     .copied()
                     .map(|upvar| {
@@ -553,8 +553,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     result_value,
                     Rvalue::CheckedBinaryOp(op, Box::new((lhs.to_copy(), rhs.to_copy()))),
                 );
-                let val_fld = Field::new(0);
-                let of_fld = Field::new(1);
+                let val_fld = FieldIdx::new(0);
+                let of_fld = FieldIdx::new(1);
 
                 let tcx = self.tcx;
                 let val = tcx.mk_place_field(result_value, val_fld, ty);
@@ -568,7 +568,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             BinOp::Shl | BinOp::Shr if self.check_overflow && ty.is_integral() => {
                 // For an unsigned RHS, the shift is in-range for `rhs < bits`.
                 // For a signed RHS, `IntToInt` cast to the equivalent unsigned
-                // type and do that same comparison.  Because the type is the
+                // type and do that same comparison. Because the type is the
                 // same size, there's no negative shift amount that ends up
                 // overlapping with valid ones, thus it catches negatives too.
                 let (lhs_size, _) = ty.int_size_and_signed(self.tcx);
@@ -709,7 +709,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             this.record_operands_moved(&[value_operand]);
         }
-        block.and(Rvalue::Aggregate(Box::new(AggregateKind::Array(elem_ty)), Vec::new()))
+        block.and(Rvalue::Aggregate(Box::new(AggregateKind::Array(elem_ty)), IndexVec::new()))
     }
 
     fn limit_capture_mutability(

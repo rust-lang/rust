@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_hir_and_then};
-use clippy_utils::source::{snippet, snippet_opt};
+use clippy_utils::source::{snippet, snippet_opt, snippet_with_context};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
@@ -181,20 +181,17 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
             if let PatKind::Binding(BindingAnnotation(ByRef::Yes, mutabl), .., name, None) = local.pat.kind;
             if let Some(init) = local.init;
             then {
-                // use the macro callsite when the init span (but not the whole local span)
-                // comes from an expansion like `vec![1, 2, 3]` in `let ref _ = vec![1, 2, 3];`
-                let sugg_init = if init.span.from_expansion() && !local.span.from_expansion() {
-                    Sugg::hir_with_macro_callsite(cx, init, "..")
-                } else {
-                    Sugg::hir(cx, init, "..")
-                };
+                let ctxt = local.span.ctxt();
+                let mut app = Applicability::MachineApplicable;
+                let sugg_init = Sugg::hir_with_context(cx, init, ctxt, "..", &mut app);
                 let (mutopt, initref) = if mutabl == Mutability::Mut {
                     ("mut ", sugg_init.mut_addr())
                 } else {
                     ("", sugg_init.addr())
                 };
                 let tyopt = if let Some(ty) = local.ty {
-                    format!(": &{mutopt}{ty}", ty=snippet(cx, ty.span, ".."))
+                    let ty_snip = snippet_with_context(cx, ty.span, ctxt, "_", &mut app).0;
+                    format!(": &{mutopt}{ty_snip}")
                 } else {
                     String::new()
                 };
@@ -212,7 +209,7 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
                                 "let {name}{tyopt} = {initref};",
                                 name=snippet(cx, name.span, ".."),
                             ),
-                            Applicability::MachineApplicable,
+                            app,
                         );
                     }
                 );

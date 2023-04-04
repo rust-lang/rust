@@ -1261,6 +1261,9 @@ supported_targets! {
 
     ("aarch64-unknown-nto-qnx710", aarch64_unknown_nto_qnx_710),
     ("x86_64-pc-nto-qnx710", x86_64_pc_nto_qnx710),
+
+    ("aarch64-unknown-linux-ohos", aarch64_unknown_linux_ohos),
+    ("armv7-unknown-linux-ohos", armv7_unknown_linux_ohos),
 }
 
 /// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>
@@ -1468,6 +1471,8 @@ pub struct TargetOptions {
     pub features: StaticCow<str>,
     /// Whether dynamic linking is available on this target. Defaults to false.
     pub dynamic_linking: bool,
+    /// Whether dynamic linking can export TLS globals. Defaults to true.
+    pub dll_tls_export: bool,
     /// If dynamic linking is available, whether only cdylibs are supported.
     pub only_cdylib: bool,
     /// Whether executables are available on this target. Defaults to true.
@@ -1734,6 +1739,9 @@ pub struct TargetOptions {
 
     /// Whether the target supports XRay instrumentation.
     pub supports_xray: bool,
+
+    /// Forces the use of emulated TLS (__emutls_get_address)
+    pub force_emulated_tls: bool,
 }
 
 /// Add arguments for the given flavor and also for its "twin" flavors
@@ -1859,6 +1867,7 @@ impl Default for TargetOptions {
             cpu: "generic".into(),
             features: "".into(),
             dynamic_linking: false,
+            dll_tls_export: true,
             only_cdylib: false,
             executables: true,
             relocation_model: RelocModel::Pic,
@@ -1954,6 +1963,7 @@ impl Default for TargetOptions {
             entry_name: "main".into(),
             entry_abi: Conv::C,
             supports_xray: false,
+            force_emulated_tls: false,
         }
     }
 }
@@ -2530,6 +2540,7 @@ impl Target {
         key!(cpu);
         key!(features);
         key!(dynamic_linking, bool);
+        key!(dll_tls_export, bool);
         key!(only_cdylib, bool);
         key!(executables, bool);
         key!(relocation_model, RelocModel)?;
@@ -2605,6 +2616,7 @@ impl Target {
         key!(entry_name);
         key!(entry_abi, Conv)?;
         key!(supports_xray, bool);
+        key!(force_emulated_tls, bool);
 
         if base.is_builtin {
             // This can cause unfortunate ICEs later down the line.
@@ -2783,6 +2795,7 @@ impl ToJson for Target {
         target_option_val!(cpu);
         target_option_val!(features);
         target_option_val!(dynamic_linking);
+        target_option_val!(dll_tls_export);
         target_option_val!(only_cdylib);
         target_option_val!(executables);
         target_option_val!(relocation_model);
@@ -2859,6 +2872,7 @@ impl ToJson for Target {
         target_option_val!(entry_name);
         target_option_val!(entry_abi);
         target_option_val!(supports_xray);
+        target_option_val!(force_emulated_tls);
 
         if let Some(abi) = self.default_adjusted_cabi {
             d.insert("default-adjusted-cabi".into(), Abi::name(abi).to_json());

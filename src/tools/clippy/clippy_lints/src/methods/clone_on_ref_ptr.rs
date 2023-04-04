@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::paths;
-use clippy_utils::source::snippet_with_macro_callsite;
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{is_type_diagnostic_item, match_type};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -33,7 +33,9 @@ pub(super) fn check(
             return;
         };
 
-        let snippet = snippet_with_macro_callsite(cx, receiver.span, "..");
+        // Sometimes unnecessary ::<_> after Rc/Arc/Weak
+        let mut app = Applicability::Unspecified;
+        let snippet = snippet_with_context(cx, receiver.span, expr.span.ctxt(), "..", &mut app).0;
 
         span_lint_and_sugg(
             cx,
@@ -42,7 +44,7 @@ pub(super) fn check(
             "using `.clone()` on a ref-counted pointer",
             "try this",
             format!("{caller_type}::<{}>::clone(&{snippet})", subst.type_at(0)),
-            Applicability::Unspecified, // Sometimes unnecessary ::<_> after Rc/Arc/Weak
+            app,
         );
     }
 }

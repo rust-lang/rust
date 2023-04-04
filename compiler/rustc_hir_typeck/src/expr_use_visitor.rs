@@ -14,12 +14,11 @@ use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::PatKind;
-use rustc_index::vec::Idx;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::hir::place::ProjectionKind;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, adjustment, AdtKind, Ty, TyCtxt};
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::FIRST_VARIANT;
 use ty::BorrowKind::ImmBorrow;
 
 use crate::mem_categorization as mc;
@@ -540,7 +539,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         match with_place.place.ty().kind() {
             ty::Adt(adt, substs) if adt.is_struct() => {
                 // Consume those fields of the with expression that are needed.
-                for (f_index, with_field) in adt.non_enum_variant().fields.iter().enumerate() {
+                for (f_index, with_field) in adt.non_enum_variant().fields.iter_enumerated() {
                     let is_mentioned = fields
                         .iter()
                         .any(|f| self.mc.typeck_results.opt_field_index(f.hir_id) == Some(f_index));
@@ -549,7 +548,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                             &*with_expr,
                             with_place.clone(),
                             with_field.ty(self.tcx(), substs),
-                            ProjectionKind::Field(f_index as u32, VariantIdx::new(0)),
+                            ProjectionKind::Field(f_index, FIRST_VARIANT),
                         );
                         self.delegate_consume(&field_place, field_place.hir_id);
                     }
@@ -560,7 +559,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 // struct; however, when EUV is run during typeck, it
                 // may not. This will generate an error earlier in typeck,
                 // so we can just ignore it.
-                if !self.tcx().sess.has_errors().is_some() {
+                if self.tcx().sess.has_errors().is_none() {
                     span_bug!(with_expr.span, "with expression doesn't evaluate to a struct");
                 }
             }

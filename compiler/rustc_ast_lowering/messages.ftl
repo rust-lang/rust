@@ -139,3 +139,15 @@ ast_lowering_trait_fn_async =
     .label = `async` because of this
     .note = `async` trait functions are not currently supported
     .note2 = consider using the `async-trait` crate: https://crates.io/crates/async-trait
+
+ast_lowering_bad_return_type_notation_inputs =
+    argument types not allowed with return type notation
+    .suggestion = remove the input types
+
+ast_lowering_bad_return_type_notation_needs_dots =
+    return type notation arguments must be elided with `..`
+    .suggestion = add `..`
+
+ast_lowering_bad_return_type_notation_output =
+    return type not allowed with return type notation
+    .suggestion = remove the return type

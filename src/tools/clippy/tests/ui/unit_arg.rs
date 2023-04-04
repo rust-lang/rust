@@ -1,4 +1,4 @@
-// aux-build: proc_macro_with_span.rs
+// aux-build: proc_macros.rs
 #![warn(clippy::unit_arg)]
 #![allow(unused_must_use, unused_variables)]
 #![allow(
@@ -13,9 +13,9 @@
     clippy::unused_unit
 )]
 
-extern crate proc_macro_with_span;
+extern crate proc_macros;
 
-use proc_macro_with_span::with_span;
+use proc_macros::with_span;
 use std::fmt::Debug;
 
 fn foo<T: Debug>(t: T) {

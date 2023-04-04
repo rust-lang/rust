@@ -67,7 +67,7 @@ This API is completely unstable and subject to change.
 #![feature(let_chains)]
 #![feature(min_specialization)]
 #![feature(never_type)]
-#![feature(once_cell)]
+#![feature(lazy_cell)]
 #![feature(slice_partition_dedup)]
 #![feature(try_blocks)]
 #![feature(is_some_and)]

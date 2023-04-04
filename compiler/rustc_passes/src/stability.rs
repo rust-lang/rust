@@ -159,7 +159,9 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             return;
         }
 
-        let (stab, const_stab, body_stab) = attr::find_stability(&self.tcx.sess, attrs, item_sp);
+        let stab = attr::find_stability(&self.tcx.sess, attrs, item_sp);
+        let const_stab = attr::find_const_stability(&self.tcx.sess, attrs, item_sp);
+        let body_stab = attr::find_body_stability(&self.tcx.sess, attrs);
         let mut const_span = None;
 
         let const_stab = const_stab.map(|(const_stab, const_span_node)| {
@@ -742,8 +744,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 let features = self.tcx.features();
                 if features.staged_api {
                     let attrs = self.tcx.hir().attrs(item.hir_id());
-                    let (stab, const_stab, _) =
-                        attr::find_stability(&self.tcx.sess, attrs, item.span);
+                    let stab = attr::find_stability(&self.tcx.sess, attrs, item.span);
+                    let const_stab = attr::find_const_stability(&self.tcx.sess, attrs, item.span);
 
                     // If this impl block has an #[unstable] attribute, give an
                     // error if all involved types and traits are stable, because

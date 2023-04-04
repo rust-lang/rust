@@ -1,5 +1,5 @@
 // This should fail even without validation/SB
-//@compile-flags: -Zmiri-disable-validation -Zmiri-disable-stacked-borrows
+//@compile-flags: -Zmiri-disable-validation -Zmiri-disable-stacked-borrows -Cdebug-assertions=no
 
 #![allow(dead_code, unused_variables)]
 

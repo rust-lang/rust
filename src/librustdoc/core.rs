@@ -217,13 +217,8 @@ pub(crate) fn create_config(
 
     let crate_types =
         if proc_macro_crate { vec![CrateType::ProcMacro] } else { vec![CrateType::Rlib] };
-    let resolve_doc_links = if *document_private {
-        ResolveDocLinks::All
-    } else {
-        // Should be `ResolveDocLinks::Exported` in theory, but for some reason rustdoc
-        // still tries to request resolutions for links on private items.
-        ResolveDocLinks::All
-    };
+    let resolve_doc_links =
+        if *document_private { ResolveDocLinks::All } else { ResolveDocLinks::Exported };
     let test = scrape_examples_options.map(|opts| opts.scrape_tests).unwrap_or(false);
     // plays with error output here!
     let sessopts = config::Options {
@@ -308,6 +303,9 @@ pub(crate) fn run_global_ctxt(
 
     // HACK(jynelson) this calls an _extremely_ limited subset of `typeck`
     // and might break if queries change their assumptions in the future.
+    tcx.sess.time("type_collecting", || {
+        tcx.hir().for_each_module(|module| tcx.ensure().collect_mod_item_types(module))
+    });
 
     // NOTE: This is copy/pasted from typeck/lib.rs and should be kept in sync with those changes.
     tcx.sess.time("item_types_checking", || {

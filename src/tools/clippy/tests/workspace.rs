@@ -1,4 +1,4 @@
-#![feature(once_cell)]
+#![feature(lazy_cell)]
 
 use std::path::PathBuf;
 use std::process::Command;

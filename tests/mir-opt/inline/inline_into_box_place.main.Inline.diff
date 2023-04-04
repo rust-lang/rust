@@ -8,10 +8,10 @@
       scope 1 {
           debug _x => _1;                  // in scope 1 at $DIR/inline_into_box_place.rs:+1:9: +1:11
       }
-+     scope 2 (inlined Vec::<u32>::new) {  // at $DIR/inline_into_box_place.rs:7:38: 7:48
++     scope 2 (inlined Vec::<u32>::new) {  // at $DIR/inline_into_box_place.rs:8:38: 8:48
 +         let mut _3: alloc::raw_vec::RawVec<u32>; // in scope 2 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 +     }
-+     scope 3 (inlined Box::<Vec<u32>>::new) { // at $DIR/inline_into_box_place.rs:7:29: 7:49
++     scope 3 (inlined Box::<Vec<u32>>::new) { // at $DIR/inline_into_box_place.rs:8:29: 8:49
 +         debug x => _2;                   // in scope 3 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
 +         let mut _4: usize;               // in scope 3 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
 +         let mut _5: usize;               // in scope 3 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
@@ -28,7 +28,7 @@
 +         StorageLive(_3);                 // scope 2 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 +         _3 = const _;                    // scope 2 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
                                            // mir::Constant
--                                          // + span: $DIR/inline_into_box_place.rs:7:38: 7:46
+-                                          // + span: $DIR/inline_into_box_place.rs:8:38: 8:46
 -                                          // + user_ty: UserType(2)
 -                                          // + literal: Const { ty: fn() -> Vec<u32> {Vec::<u32>::new}, val: Value(<ZST>) }
 +                                          // + span: $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
@@ -47,7 +47,7 @@
       bb1: {
 -         _1 = Box::<Vec<u32>>::new(move _2) -> [return: bb2, unwind: bb4]; // scope 0 at $DIR/inline_into_box_place.rs:+1:29: +1:49
 -                                          // mir::Constant
--                                          // + span: $DIR/inline_into_box_place.rs:7:29: 7:37
+-                                          // + span: $DIR/inline_into_box_place.rs:8:29: 8:37
 -                                          // + user_ty: UserType(1)
 -                                          // + literal: Const { ty: fn(Vec<u32>) -> Box<Vec<u32>> {Box::<Vec<u32>>::new}, val: Value(<ZST>) }
 +         StorageDead(_1);                 // scope 0 at $DIR/inline_into_box_place.rs:+2:1: +2:2

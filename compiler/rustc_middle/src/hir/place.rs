@@ -2,7 +2,7 @@ use crate::ty;
 use crate::ty::Ty;
 
 use rustc_hir::HirId;
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{FieldIdx, VariantIdx};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]
 #[derive(TypeFoldable, TypeVisitable)]
@@ -27,7 +27,7 @@ pub enum ProjectionKind {
     /// the field. The field is identified by which variant
     /// it appears in along with a field index. The variant
     /// is used for enums.
-    Field(u32, VariantIdx),
+    Field(FieldIdx, VariantIdx),
 
     /// Some index like `B[x]`, where `B` is the base
     /// expression. We don't preserve the index `x` because

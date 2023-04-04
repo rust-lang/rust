@@ -21,7 +21,7 @@ use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, List, TyCtxt, TypeVisitableExt};
 use rustc_span::Span;
 
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::vec::{Idx, IndexSlice, IndexVec};
 
 use std::cell::Cell;
 use std::{cmp, iter, mem};
@@ -184,7 +184,7 @@ pub fn collect_temps_and_candidates<'tcx>(
 /// This wraps an `Item`, and has access to all fields of that `Item` via `Deref` coercion.
 struct Validator<'a, 'tcx> {
     ccx: &'a ConstCx<'a, 'tcx>,
-    temps: &'a mut IndexVec<Local, TempState>,
+    temps: &'a mut IndexSlice<Local, TempState>,
 }
 
 impl<'a, 'tcx> std::ops::Deref for Validator<'a, 'tcx> {
@@ -669,7 +669,7 @@ impl<'tcx> Validator<'_, 'tcx> {
 // FIXME(eddyb) remove the differences for promotability in `static`, `const`, `const fn`.
 pub fn validate_candidates(
     ccx: &ConstCx<'_, '_>,
-    temps: &mut IndexVec<Local, TempState>,
+    temps: &mut IndexSlice<Local, TempState>,
     candidates: &[Candidate],
 ) -> Vec<Candidate> {
     let mut validator = Validator { ccx, temps };
@@ -707,7 +707,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
     }
 
     fn assign(&mut self, dest: Local, rvalue: Rvalue<'tcx>, span: Span) {
-        let last = self.promoted.basic_blocks.last().unwrap();
+        let last = self.promoted.basic_blocks.last_index().unwrap();
         let data = &mut self.promoted[last];
         data.statements.push(Statement {
             source_info: SourceInfo::outermost(span),
@@ -800,7 +800,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         self.visit_operand(arg, loc);
                     }
 
-                    let last = self.promoted.basic_blocks.last().unwrap();
+                    let last = self.promoted.basic_blocks.last_index().unwrap();
                     let new_target = self.new_block();
 
                     *self.promoted[last].terminator_mut() = Terminator {

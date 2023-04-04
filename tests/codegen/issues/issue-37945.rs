@@ -4,6 +4,7 @@
 // ignore-emscripten
 // ignore-gnux32
 // ignore 32-bit platforms (LLVM has a bug with them)
+// ignore-debug
 
 // Check that LLVM understands that `Iter` pointer is not null. Issue #37945.
 

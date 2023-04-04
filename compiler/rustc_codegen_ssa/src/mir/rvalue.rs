@@ -13,7 +13,7 @@ use rustc_middle::ty::cast::{CastTy, IntTy};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::ty::{self, adjustment::PointerCast, Instance, Ty, TyCtxt};
 use rustc_span::source_map::{Span, DUMMY_SP};
-use rustc_target::abi::{self, VariantIdx};
+use rustc_target::abi::{self, FIRST_VARIANT};
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     #[instrument(level = "trace", skip(self, bx))]
@@ -118,21 +118,21 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let variant_dest = dest.project_downcast(bx, variant_index);
                         (variant_index, variant_dest, active_field_index)
                     }
-                    _ => (VariantIdx::from_u32(0), dest, None),
+                    _ => (FIRST_VARIANT, dest, None),
                 };
                 if active_field_index.is_some() {
                     assert_eq!(operands.len(), 1);
                 }
-                for (i, operand) in operands.iter().enumerate() {
+                for (i, operand) in operands.iter_enumerated() {
                     let op = self.codegen_operand(bx, operand);
                     // Do not generate stores and GEPis for zero-sized fields.
                     if !op.layout.is_zst() {
                         let field_index = active_field_index.unwrap_or(i);
                         let field = if let mir::AggregateKind::Array(_) = **kind {
-                            let llindex = bx.cx().const_usize(field_index as u64);
+                            let llindex = bx.cx().const_usize(field_index.as_u32().into());
                             variant_dest.project_index(bx, llindex)
                         } else {
-                            variant_dest.project_field(bx, field_index)
+                            variant_dest.project_field(bx, field_index.as_usize())
                         };
                         op.val.store(bx, field);
                     }
@@ -346,7 +346,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         assert!(bx.cx().is_backend_immediate(cast));
                         let ll_t_out = bx.cx().immediate_backend_type(cast);
                         if operand.layout.abi.is_uninhabited() {
-                            let val = OperandValue::Immediate(bx.cx().const_undef(ll_t_out));
+                            let val = OperandValue::Immediate(bx.cx().const_poison(ll_t_out));
                             return OperandRef { val, layout: cast };
                         }
                         let r_t_in =
@@ -516,8 +516,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             mir::Rvalue::ThreadLocalRef(def_id) => {
                 assert!(bx.cx().tcx().is_static(def_id));
-                let static_ = bx.get_static(def_id);
                 let layout = bx.layout_of(bx.cx().tcx().static_ptr_ty(def_id));
+                let static_ = if !def_id.is_local() && bx.cx().tcx().needs_thread_local_shim(def_id)
+                {
+                    let instance = ty::Instance {
+                        def: ty::InstanceDef::ThreadLocalShim(def_id),
+                        substs: ty::InternalSubsts::empty(),
+                    };
+                    let fn_ptr = bx.get_fn_addr(instance);
+                    let fn_abi = bx.fn_abi_of_instance(instance, ty::List::empty());
+                    let fn_ty = bx.fn_decl_backend_type(&fn_abi);
+                    bx.call(fn_ty, Some(fn_abi), fn_ptr, &[], None)
+                } else {
+                    bx.get_static(def_id)
+                };
                 OperandRef { val: OperandValue::Immediate(static_), layout }
             }
             mir::Rvalue::Use(ref operand) => self.codegen_operand(bx, operand),
@@ -545,7 +557,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // ZST are passed as operands and require special handling
         // because codegen_place() panics if Local is operand.
         if let Some(index) = place.as_local() {
-            if let LocalRef::Operand(Some(op)) = self.locals[index] {
+            if let LocalRef::Operand(op) = self.locals[index] {
                 if let ty::Array(_, n) = op.layout.ty.kind() {
                     let n = n.eval_target_usize(bx.cx().tcx(), ty::ParamEnv::reveal_all());
                     return bx.cx().const_usize(n);

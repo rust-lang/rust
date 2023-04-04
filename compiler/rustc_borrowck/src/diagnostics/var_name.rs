@@ -3,7 +3,7 @@
 
 use crate::Upvar;
 use crate::{nll::ToRegionVid, region_infer::RegionInferenceContext};
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::vec::{Idx, IndexSlice};
 use rustc_middle::mir::{Body, Local};
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_span::source_map::Span;
@@ -14,7 +14,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
-        local_names: &IndexVec<Local, Option<Symbol>>,
+        local_names: &IndexSlice<Local, Option<Symbol>>,
         upvars: &[Upvar<'tcx>],
         fr: RegionVid,
     ) -> Option<(Option<Symbol>, Span)> {
@@ -113,7 +113,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(crate) fn get_argument_name_and_span_for_region(
         &self,
         body: &Body<'tcx>,
-        local_names: &IndexVec<Local, Option<Symbol>>,
+        local_names: &IndexSlice<Local, Option<Symbol>>,
         argument_index: usize,
     ) -> (Option<Symbol>, Span) {
         let implicit_inputs = self.universal_regions().defining_ty.implicit_inputs();

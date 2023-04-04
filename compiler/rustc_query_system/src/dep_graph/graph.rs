@@ -535,16 +535,22 @@ impl<K: DepKind> DepGraph<K> {
             // value to an existing node.
             //
             // For sanity, we still check that the loaded stable hash and the new one match.
-            if let Some(dep_node_index) = data.dep_node_index_of_opt(&node) {
-                let _current_fingerprint =
-                    crate::query::incremental_verify_ich(cx, data, result, &node, hash_result);
+            if let Some(prev_index) = data.previous.node_to_index_opt(&node) {
+                let dep_node_index = data.current.prev_index_to_index.lock()[prev_index];
+                if let Some(dep_node_index) = dep_node_index {
+                    crate::query::incremental_verify_ich(cx, data, result, prev_index, hash_result);
 
-                #[cfg(debug_assertions)]
-                if hash_result.is_some() {
-                    data.current.record_edge(dep_node_index, node, _current_fingerprint);
+                    #[cfg(debug_assertions)]
+                    if hash_result.is_some() {
+                        data.current.record_edge(
+                            dep_node_index,
+                            node,
+                            data.prev_fingerprint_of(prev_index),
+                        );
+                    }
+
+                    return dep_node_index;
                 }
-
-                return dep_node_index;
             }
 
             let mut edges = SmallVec::new();
@@ -626,13 +632,19 @@ impl<K: DepKind> DepGraphData<K> {
 
     /// Returns true if the given node has been marked as green during the
     /// current compilation session. Used in various assertions
-    pub fn is_green(&self, dep_node: &DepNode<K>) -> bool {
-        self.node_color(dep_node).map_or(false, |c| c.is_green())
+    #[inline]
+    pub fn is_index_green(&self, prev_index: SerializedDepNodeIndex) -> bool {
+        self.colors.get(prev_index).map_or(false, |c| c.is_green())
     }
 
     #[inline]
-    pub fn prev_fingerprint_of(&self, dep_node: &DepNode<K>) -> Option<Fingerprint> {
-        self.previous.fingerprint_of(dep_node)
+    pub fn prev_fingerprint_of(&self, prev_index: SerializedDepNodeIndex) -> Fingerprint {
+        self.previous.fingerprint_by_index(prev_index)
+    }
+
+    #[inline]
+    pub fn prev_node_of(&self, prev_index: SerializedDepNodeIndex) -> DepNode<K> {
+        self.previous.index_to_node(prev_index)
     }
 
     pub fn mark_debug_loaded_from_disk(&self, dep_node: DepNode<K>) {
@@ -643,7 +655,7 @@ impl<K: DepKind> DepGraphData<K> {
 impl<K: DepKind> DepGraph<K> {
     #[inline]
     pub fn dep_node_exists(&self, dep_node: &DepNode<K>) -> bool {
-        self.data.as_ref().and_then(|data| data.dep_node_index_of_opt(dep_node)).is_some()
+        self.data.as_ref().map_or(false, |data| data.dep_node_exists(dep_node))
     }
 
     /// Checks whether a previous work product exists for `v` and, if
@@ -1053,7 +1065,7 @@ pub(super) struct CurrentDepGraph<K: DepKind> {
     /// This is used to verify that fingerprints do not change between the creation of a node
     /// and its recomputation.
     #[cfg(debug_assertions)]
-    fingerprints: Lock<FxHashMap<DepNode<K>, Fingerprint>>,
+    fingerprints: Lock<IndexVec<DepNodeIndex, Option<Fingerprint>>>,
 
     /// Used to trap when a specific edge is added to the graph.
     /// This is used for debug purposes and is only active with `debug_assertions`.
@@ -1139,7 +1151,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
             #[cfg(debug_assertions)]
             forbidden_edge,
             #[cfg(debug_assertions)]
-            fingerprints: Lock::new(Default::default()),
+            fingerprints: Lock::new(IndexVec::from_elem_n(None, new_node_count_estimate)),
             total_read_count: AtomicU64::new(0),
             total_duplicate_read_count: AtomicU64::new(0),
             node_intern_event_id,
@@ -1151,14 +1163,8 @@ impl<K: DepKind> CurrentDepGraph<K> {
         if let Some(forbidden_edge) = &self.forbidden_edge {
             forbidden_edge.index_to_node.lock().insert(dep_node_index, key);
         }
-        match self.fingerprints.lock().entry(key) {
-            Entry::Vacant(v) => {
-                v.insert(fingerprint);
-            }
-            Entry::Occupied(o) => {
-                assert_eq!(*o.get(), fingerprint, "Unstable fingerprints for {:?}", key);
-            }
-        }
+        let previous = *self.fingerprints.lock().get_or_insert_with(dep_node_index, || fingerprint);
+        assert_eq!(previous, fingerprint, "Unstable fingerprints for {:?}", key);
     }
 
     /// Writes the node to the current dep-graph and allocates a `DepNodeIndex` for it.

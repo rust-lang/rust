@@ -2,7 +2,7 @@
 #![feature(decl_macro)]
 #![feature(internal_output_capture)]
 #![feature(thread_spawn_unchecked)]
-#![feature(once_cell)]
+#![feature(lazy_cell)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]

@@ -13,6 +13,7 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, Span, DUMMY_SP};
 
 use smallvec::{smallvec, SmallVec};
+use thin_vec::ThinVec;
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     #[instrument(level = "trace", skip(self))]
@@ -51,7 +52,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     let parenthesized_generic_args = match base_res {
                         // `a::b::Trait(Args)`
                         Res::Def(DefKind::Trait, _) if i + 1 == proj_start => {
-                            ParenthesizedGenericArgs::Ok
+                            ParenthesizedGenericArgs::ParenSugar
                         }
                         // `a::b::Trait(Args)::TraitItem`
                         Res::Def(DefKind::AssocFn, _)
@@ -59,10 +60,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         | Res::Def(DefKind::AssocTy, _)
                             if i + 2 == proj_start =>
                         {
-                            ParenthesizedGenericArgs::Ok
+                            ParenthesizedGenericArgs::ParenSugar
                         }
                         // Avoid duplicated errors.
-                        Res::Err => ParenthesizedGenericArgs::Ok,
+                        Res::Err => ParenthesizedGenericArgs::ParenSugar,
                         // An error
                         _ => ParenthesizedGenericArgs::Err,
                     };
@@ -180,7 +181,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     self.lower_angle_bracketed_parameter_data(data, param_mode, itctx)
                 }
                 GenericArgs::Parenthesized(data) => match parenthesized_generic_args {
-                    ParenthesizedGenericArgs::Ok => {
+                    ParenthesizedGenericArgs::ParenSugar => {
                         self.lower_parenthesized_parameter_data(data, itctx)
                     }
                     ParenthesizedGenericArgs::Err => {
@@ -218,13 +219,25 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         )
                     }
                 },
+                &GenericArgs::ReturnTypeNotation(span) => {
+                    self.tcx.sess.emit_err(GenericTypeWithParentheses { span, sub: None });
+                    (
+                        self.lower_angle_bracketed_parameter_data(
+                            &AngleBracketedArgs { span, args: ThinVec::default() },
+                            param_mode,
+                            itctx,
+                        )
+                        .0,
+                        false,
+                    )
+                }
             }
         } else {
             (
                 GenericArgsCtor {
                     args: Default::default(),
                     bindings: &[],
-                    parenthesized: false,
+                    parenthesized: hir::GenericArgsParentheses::No,
                     span: path_span.shrink_to_hi(),
                 },
                 param_mode == ParamMode::Optional,
@@ -233,7 +246,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let has_lifetimes =
             generic_args.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)));
-        if !generic_args.parenthesized && !has_lifetimes {
+
+        // FIXME(return_type_notation): Is this correct? I think so.
+        if generic_args.parenthesized != hir::GenericArgsParentheses::ParenSugar && !has_lifetimes {
             self.maybe_insert_elided_lifetimes_in_path(
                 path_span,
                 segment.id,
@@ -328,7 +343,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             AngleBracketedArg::Constraint(c) => Some(self.lower_assoc_ty_constraint(c, itctx)),
             AngleBracketedArg::Arg(_) => None,
         }));
-        let ctor = GenericArgsCtor { args, bindings, parenthesized: false, span: data.span };
+        let ctor = GenericArgsCtor {
+            args,
+            bindings,
+            parenthesized: hir::GenericArgsParentheses::No,
+            span: data.span,
+        };
         (ctor, !has_non_lt_args && param_mode == ParamMode::Optional)
     }
 
@@ -376,7 +396,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             GenericArgsCtor {
                 args,
                 bindings: arena_vec![self; binding],
-                parenthesized: true,
+                parenthesized: hir::GenericArgsParentheses::ParenSugar,
                 span: data.inputs_span,
             },
             false,
@@ -396,7 +416,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let gen_args = self.arena.alloc(hir::GenericArgs {
             args,
             bindings,
-            parenthesized: false,
+            parenthesized: hir::GenericArgsParentheses::No,
             span_ext: DUMMY_SP,
         });
         hir::TypeBinding {

@@ -30,7 +30,7 @@ fn main() {
         #[rustfmt::skip]
         Some((first, _second)) => {
             let (a, b) = get_tup();
-            println!("a {:?} and b {:?}", a, b);
+            println!("a {:?} and b {:?}", a, b)
         },
         None => println!("nothing"),
     }
@@ -49,5 +49,5 @@ fn main() {
         0 => 1,
         _ => 2,
     };
-    println!("Single branch");
+    println!("Single branch")
 }

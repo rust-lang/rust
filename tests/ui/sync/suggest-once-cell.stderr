@@ -1,5 +1,5 @@
 error[E0277]: `OnceCell<()>` cannot be shared between threads safely
-  --> $DIR/suggest-once-cell.rs:8:20
+  --> $DIR/suggest-once-cell.rs:6:20
    |
 LL |     require_sync::<std::cell::OnceCell<()>>();
    |                    ^^^^^^^^^^^^^^^^^^^^^^^ `OnceCell<()>` cannot be shared between threads safely
@@ -7,7 +7,7 @@ LL |     require_sync::<std::cell::OnceCell<()>>();
    = help: the trait `Sync` is not implemented for `OnceCell<()>`
    = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::OnceLock` instead
 note: required by a bound in `require_sync`
-  --> $DIR/suggest-once-cell.rs:3:20
+  --> $DIR/suggest-once-cell.rs:1:20
    |
 LL | fn require_sync<T: Sync>() {}
    |                    ^^^^ required by this bound in `require_sync`

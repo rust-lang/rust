@@ -121,9 +121,14 @@ impl<'a, 'tcx> DocFolder for Stripper<'a, 'tcx> {
                 // strip things like impl methods but when doing so
                 // we must not add any items to the `retained` set.
                 let old = mem::replace(&mut self.update_retained, false);
-                let ret = strip_item(self.set_is_in_hidden_item_and_fold(true, i));
+                let ret = self.set_is_in_hidden_item_and_fold(true, i);
                 self.update_retained = old;
-                Some(ret)
+                if ret.is_crate() {
+                    // We don't strip the crate, even if it has `#[doc(hidden)]`.
+                    Some(ret)
+                } else {
+                    Some(strip_item(ret))
+                }
             }
             _ => {
                 let ret = self.set_is_in_hidden_item_and_fold(true, i);

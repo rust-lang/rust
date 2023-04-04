@@ -1,5 +1,6 @@
 use crate::iter::{FusedIterator, TrustedLen};
 use crate::mem::ManuallyDrop;
+use crate::num::NonZeroUsize;
 
 /// Creates a new iterator that repeats a single element a given number of times.
 ///
@@ -137,7 +138,7 @@ impl<A: Clone> Iterator for RepeatN<A> {
     }
 
     #[inline]
-    fn advance_by(&mut self, skip: usize) -> Result<(), usize> {
+    fn advance_by(&mut self, skip: usize) -> Result<(), NonZeroUsize> {
         let len = self.count;
 
         if skip >= len {
@@ -145,7 +146,8 @@ impl<A: Clone> Iterator for RepeatN<A> {
         }
 
         if skip > len {
-            Err(len)
+            // SAFETY: we just checked that the difference is positive
+            Err(unsafe { NonZeroUsize::new_unchecked(skip - len) })
         } else {
             self.count = len - skip;
             Ok(())
@@ -178,7 +180,7 @@ impl<A: Clone> DoubleEndedIterator for RepeatN<A> {
     }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         self.advance_by(n)
     }
 

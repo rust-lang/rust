@@ -6,9 +6,9 @@ use rustc_infer::infer::{
     DefineOpaqueTypes, InferCtxt, InferOk, LateBoundRegionConversionTime, TyCtxtInferExt,
 };
 use rustc_infer::traits::query::NoSolution;
-use rustc_infer::traits::solve::{CanonicalGoal, Certainty, MaybeCause, QueryResult};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
+use rustc_middle::traits::solve::{CanonicalGoal, Certainty, MaybeCause, QueryResult};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
     TypeVisitor,
@@ -16,13 +16,32 @@ use rustc_middle::ty::{
 use rustc_span::DUMMY_SP;
 use std::ops::ControlFlow;
 
+use crate::traits::specialization_graph;
+
 use super::search_graph::{self, OverflowHandler};
 use super::SolverMode;
 use super::{search_graph::SearchGraph, Goal};
 
+mod canonical;
+
 pub struct EvalCtxt<'a, 'tcx> {
-    // FIXME: should be private.
-    pub(super) infcx: &'a InferCtxt<'tcx>,
+    /// The inference context that backs (mostly) inference and placeholder terms
+    /// instantiated while solving goals.
+    ///
+    /// NOTE: The `InferCtxt` that backs the `EvalCtxt` is intentionally private,
+    /// because the `InferCtxt` is much more general than `EvalCtxt`. Methods such
+    /// as  `take_registered_region_obligations` can mess up query responses,
+    /// using `At::normalize` is totally wrong, calling `evaluate_root_goal` can
+    /// cause coinductive unsoundness, etc.
+    ///
+    /// Methods that are generally of use for trait solving are *intentionally*
+    /// re-declared through the `EvalCtxt` below, often with cleaner signatures
+    /// since we don't care about things like `ObligationCause`s and `Span`s here.
+    /// If some `InferCtxt` method is missing, please first think defensively about
+    /// the method's compatibility with this solver, or if an existing one does
+    /// the job already.
+    infcx: &'a InferCtxt<'tcx>,
+
     pub(super) var_values: CanonicalVarValues<'tcx>,
     /// The highest universe index nameable by the caller.
     ///
@@ -48,7 +67,20 @@ pub(super) enum IsNormalizesToHack {
 
 #[derive(Debug, Clone)]
 pub(super) struct NestedGoals<'tcx> {
+    /// This normalizes-to goal that is treated specially during the evaluation
+    /// loop. In each iteration we take the RHS of the projection, replace it with
+    /// a fresh inference variable, and only after evaluating that goal do we
+    /// equate the fresh inference variable with the actual RHS of the predicate.
+    ///
+    /// This is both to improve caching, and to avoid using the RHS of the
+    /// projection predicate to influence the normalizes-to candidate we select.
+    ///
+    /// This is not a 'real' nested goal. We must not forget to replace the RHS
+    /// with a fresh inference variable when we evaluate this goal. That can result
+    /// in a trait solver cycle. This would currently result in overflow but can be
+    /// can be unsound with more powerful coinduction in the future.
     pub(super) normalizes_to_hack_goal: Option<Goal<'tcx, ty::ProjectionPredicate<'tcx>>>,
+    /// The rest of the goals which have not yet processed or remain ambiguous.
     pub(super) goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
 }
 
@@ -163,6 +195,10 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             canonical_response,
         )?;
 
+        if !has_changed && !nested_goals.is_empty() {
+            bug!("an unchanged goal shouldn't have any side-effects on instantiation");
+        }
+
         // Check that rerunning this query with its inference constraints applied
         // doesn't result in new inference constraints and has the same result.
         //
@@ -180,9 +216,17 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             let canonical_response =
                 EvalCtxt::evaluate_canonical_goal(self.tcx(), self.search_graph, canonical_goal)?;
             if !canonical_response.value.var_values.is_identity() {
-                bug!("unstable result: {goal:?} {canonical_goal:?} {canonical_response:?}");
+                bug!(
+                    "unstable result: re-canonicalized goal={canonical_goal:#?} \
+                     response={canonical_response:#?}"
+                );
             }
-            assert_eq!(certainty, canonical_response.value.certainty);
+            if certainty != canonical_response.value.certainty {
+                bug!(
+                    "unstable certainty: {certainty:#?} re-canonicalized goal={canonical_goal:#?} \
+                     response={canonical_response:#?}"
+                );
+            }
         }
 
         Ok((has_changed, certainty, nested_goals))
@@ -262,15 +306,44 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 let mut has_changed = Err(Certainty::Yes);
 
                 if let Some(goal) = goals.normalizes_to_hack_goal.take() {
-                    let (_, certainty, nested_goals) = match this.evaluate_goal(
-                        IsNormalizesToHack::Yes,
-                        goal.with(this.tcx(), ty::Binder::dummy(goal.predicate)),
+                    // Replace the goal with an unconstrained infer var, so the
+                    // RHS does not affect projection candidate assembly.
+                    let unconstrained_rhs = this.next_term_infer_of_kind(goal.predicate.term);
+                    let unconstrained_goal = goal.with(
+                        this.tcx(),
+                        ty::Binder::dummy(ty::ProjectionPredicate {
+                            projection_ty: goal.predicate.projection_ty,
+                            term: unconstrained_rhs,
+                        }),
+                    );
+
+                    let (_, certainty, instantiate_goals) =
+                        match this.evaluate_goal(IsNormalizesToHack::Yes, unconstrained_goal) {
+                            Ok(r) => r,
+                            Err(NoSolution) => return Some(Err(NoSolution)),
+                        };
+                    new_goals.goals.extend(instantiate_goals);
+
+                    // Finally, equate the goal's RHS with the unconstrained var.
+                    // We put the nested goals from this into goals instead of
+                    // next_goals to avoid needing to process the loop one extra
+                    // time if this goal returns something -- I don't think this
+                    // matters in practice, though.
+                    match this.eq_and_get_goals(
+                        goal.param_env,
+                        goal.predicate.term,
+                        unconstrained_rhs,
                     ) {
-                        Ok(r) => r,
+                        Ok(eq_goals) => {
+                            goals.goals.extend(eq_goals);
+                        }
                         Err(NoSolution) => return Some(Err(NoSolution)),
                     };
-                    new_goals.goals.extend(nested_goals);
 
+                    // We only look at the `projection_ty` part here rather than
+                    // looking at the "has changed" return from evaluate_goal,
+                    // because we expect the `unconstrained_rhs` part of the predicate
+                    // to have changed -- that means we actually normalized successfully!
                     if goal.predicate.projection_ty
                         != this.resolve_vars_if_possible(goal.predicate.projection_ty)
                     {
@@ -280,40 +353,22 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                     match certainty {
                         Certainty::Yes => {}
                         Certainty::Maybe(_) => {
-                            let goal = this.resolve_vars_if_possible(goal);
-
-                            // The rhs of this `normalizes-to` must always be an unconstrained infer var as it is
-                            // the hack used by `normalizes-to` to ensure that every `normalizes-to` behaves the same
-                            // regardless of the rhs.
-                            //
-                            // However it is important not to unconditionally replace the rhs with a new infer var
-                            // as otherwise we may replace the original unconstrained infer var with a new infer var
-                            // and never propagate any constraints on the new var back to the original var.
-                            let term = this
-                                .term_is_fully_unconstrained(goal)
-                                .then_some(goal.predicate.term)
-                                .unwrap_or_else(|| {
-                                    this.next_term_infer_of_kind(goal.predicate.term)
-                                });
-                            let projection_pred = ty::ProjectionPredicate {
-                                term,
-                                projection_ty: goal.predicate.projection_ty,
-                            };
+                            // We need to resolve vars here so that we correctly
+                            // deal with `has_changed` in the next iteration.
                             new_goals.normalizes_to_hack_goal =
-                                Some(goal.with(this.tcx(), projection_pred));
-
+                                Some(this.resolve_vars_if_possible(goal));
                             has_changed = has_changed.map_err(|c| c.unify_and(certainty));
                         }
                     }
                 }
 
-                for nested_goal in goals.goals.drain(..) {
-                    let (changed, certainty, nested_goals) =
-                        match this.evaluate_goal(IsNormalizesToHack::No, nested_goal) {
+                for goal in goals.goals.drain(..) {
+                    let (changed, certainty, instantiate_goals) =
+                        match this.evaluate_goal(IsNormalizesToHack::No, goal) {
                             Ok(result) => result,
                             Err(NoSolution) => return Some(Err(NoSolution)),
                         };
-                    new_goals.goals.extend(nested_goals);
+                    new_goals.goals.extend(instantiate_goals);
 
                     if changed {
                         has_changed = Ok(());
@@ -322,7 +377,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                     match certainty {
                         Certainty::Yes => {}
                         Certainty::Maybe(_) => {
-                            new_goals.goals.push(nested_goal);
+                            new_goals.goals.push(goal);
                             has_changed = has_changed.map_err(|c| c.unify_and(certainty));
                         }
                     }
@@ -393,7 +448,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 if let &ty::Infer(ty::TyVar(vid)) = ty.kind() {
                     match self.infcx.probe_ty_var(vid) {
                         Ok(value) => bug!("resolved var in query: {goal:?} {value:?}"),
-                        Err(universe) => universe == self.universe(),
+                        Err(universe) => universe == self.infcx.universe(),
                     }
                 } else {
                     false
@@ -403,7 +458,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 if let ty::ConstKind::Infer(ty::InferConst::Var(vid)) = ct.kind() {
                     match self.infcx.probe_const_var(vid) {
                         Ok(value) => bug!("resolved var in query: {goal:?} {value:?}"),
-                        Err(universe) => universe == self.universe(),
+                        Err(universe) => universe == self.infcx.universe(),
                     }
                 } else {
                     false
@@ -545,7 +600,43 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         self.infcx.fresh_substs_for_item(DUMMY_SP, def_id)
     }
 
-    pub(super) fn universe(&self) -> ty::UniverseIndex {
-        self.infcx.universe()
+    pub(super) fn translate_substs(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        source_impl: DefId,
+        source_substs: ty::SubstsRef<'tcx>,
+        target_node: specialization_graph::Node,
+    ) -> ty::SubstsRef<'tcx> {
+        crate::traits::translate_substs(
+            self.infcx,
+            param_env,
+            source_impl,
+            source_substs,
+            target_node,
+        )
+    }
+
+    pub(super) fn register_ty_outlives(&self, ty: Ty<'tcx>, lt: ty::Region<'tcx>) {
+        self.infcx.register_region_obligation_with_cause(ty, lt, &ObligationCause::dummy());
+    }
+
+    pub(super) fn register_region_outlives(&self, a: ty::Region<'tcx>, b: ty::Region<'tcx>) {
+        // `b : a` ==> `a <= b`
+        // (inlined from `InferCtxt::region_outlives_predicate`)
+        self.infcx.sub_regions(
+            rustc_infer::infer::SubregionOrigin::RelateRegionParamBound(DUMMY_SP),
+            b,
+            a,
+        );
+    }
+
+    /// Computes the list of goals required for `arg` to be well-formed
+    pub(super) fn well_formed_goals(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        arg: ty::GenericArg<'tcx>,
+    ) -> Option<impl Iterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>> {
+        crate::traits::wf::unnormalized_obligations(self.infcx, param_env, arg)
+            .map(|obligations| obligations.into_iter().map(|obligation| obligation.into()))
     }
 }

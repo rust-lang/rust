@@ -49,8 +49,7 @@ use rustc_span::{BytePos, Pos, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_index::vec::Idx;
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::FIRST_VARIANT;
 
 use std::iter;
 
@@ -712,10 +711,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                unreachable!(
-                    "we captured two identical projections: capture1 = {:?}, capture2 = {:?}",
-                    capture1, capture2
+                self.tcx.sess.delay_span_bug(
+                    closure_span,
+                    &format!(
+                        "two identical projections: ({:?}, {:?})",
+                        capture1.place.projections, capture2.place.projections
+                    ),
                 );
+                std::cmp::Ordering::Equal
             });
         }
 
@@ -1402,7 +1405,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ProjectionKind::Field(..)
                     ))
                 );
-                def.variants().get(VariantIdx::new(0)).unwrap().fields.iter().enumerate().any(
+                def.variants().get(FIRST_VARIANT).unwrap().fields.iter_enumerated().any(
                     |(i, field)| {
                         let paths_using_field = captured_by_move_projs
                             .iter()
@@ -1410,7 +1413,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 if let ProjectionKind::Field(field_idx, _) =
                                     projs.first().unwrap().kind
                                 {
-                                    if (field_idx as usize) == i { Some(&projs[1..]) } else { None }
+                                    if field_idx == i { Some(&projs[1..]) } else { None }
                                 } else {
                                     unreachable!();
                                 }
@@ -1443,7 +1446,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .filter_map(|projs| {
                             if let ProjectionKind::Field(field_idx, _) = projs.first().unwrap().kind
                             {
-                                if (field_idx as usize) == i { Some(&projs[1..]) } else { None }
+                                if field_idx.index() == i { Some(&projs[1..]) } else { None }
                             } else {
                                 unreachable!();
                             }
@@ -1890,14 +1893,13 @@ fn restrict_capture_precision(
 
     for (i, proj) in place.projections.iter().enumerate() {
         match proj.kind {
-            ProjectionKind::Index => {
-                // Arrays are completely captured, so we drop Index projections
+            ProjectionKind::Index | ProjectionKind::Subslice => {
+                // Arrays are completely captured, so we drop Index and Subslice projections
                 truncate_place_to_len_and_update_capture_kind(&mut place, &mut curr_mode, i);
                 return (place, curr_mode);
             }
             ProjectionKind::Deref => {}
             ProjectionKind::Field(..) => {} // ignore
-            ProjectionKind::Subslice => {}  // We never capture this
         }
     }
 

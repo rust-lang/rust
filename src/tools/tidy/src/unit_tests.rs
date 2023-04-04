@@ -20,9 +20,9 @@ pub fn check(root_path: &Path, bad: &mut bool) {
             && !(path.starts_with(&core_tests) || path.starts_with(&core_benches))
     };
 
-    let skip = move |path: &Path| {
+    let skip = move |path: &Path, is_dir| {
         let file_name = path.file_name().unwrap_or_default();
-        if path.is_dir() {
+        if is_dir {
             filter_dirs(path)
                 || path.ends_with("src/doc")
                 || (file_name == "tests" || file_name == "benches") && !is_core(path)

@@ -206,7 +206,7 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_>) {
     // The file may be empty, which leads to the diagnostic machinery not emitting this
     // note. This is a relatively simple way to detect that case and emit a span-less
     // note instead.
-    let file_empty = !tcx.sess.source_map().lookup_line(sp.hi()).is_ok();
+    let file_empty = tcx.sess.source_map().lookup_line(sp.hi()).is_err();
 
     tcx.sess.emit_err(NoMainErr {
         sp,

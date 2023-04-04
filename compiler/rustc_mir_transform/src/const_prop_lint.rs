@@ -9,7 +9,7 @@ use rustc_const_eval::interpret::{
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::IndexSlice;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
@@ -93,7 +93,7 @@ impl<'tcx> MirLint<'tcx> for ConstProp {
             .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
         if traits::impossible_predicates(
             tcx,
-            traits::elaborate_predicates(tcx, predicates).map(|o| o.predicate).collect(),
+            traits::elaborate_predicates(tcx, predicates).collect(),
         ) {
             trace!("ConstProp skipped for {:?}: found unsatisfiable predicates", def_id);
             return;
@@ -103,7 +103,7 @@ impl<'tcx> MirLint<'tcx> for ConstProp {
 
         let dummy_body = &Body::new(
             body.source,
-            (*body.basic_blocks).clone(),
+            (*body.basic_blocks).to_owned(),
             body.source_scopes.clone(),
             body.local_decls.clone(),
             Default::default(),
@@ -130,8 +130,8 @@ struct ConstPropagator<'mir, 'tcx> {
     ecx: InterpCx<'mir, 'tcx, ConstPropMachine<'mir, 'tcx>>,
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
-    source_scopes: &'mir IndexVec<SourceScope, SourceScopeData<'tcx>>,
-    local_decls: &'mir IndexVec<Local, LocalDecl<'tcx>>,
+    source_scopes: &'mir IndexSlice<SourceScope, SourceScopeData<'tcx>>,
+    local_decls: &'mir IndexSlice<Local, LocalDecl<'tcx>>,
     // Because we have `MutVisitor` we can't obtain the `SourceInfo` from a `Location`. So we store
     // the last known `SourceInfo` here and just keep revisiting it.
     source_info: Option<SourceInfo>,

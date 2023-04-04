@@ -89,10 +89,7 @@ impl<'tcx> Partitioner<'tcx> for DefaultPartitioning {
         }
 
         PreInliningPartitioning {
-            codegen_units: codegen_units
-                .into_iter()
-                .map(|(_, codegen_unit)| codegen_unit)
-                .collect(),
+            codegen_units: codegen_units.into_values().map(|codegen_unit| codegen_unit).collect(),
             roots,
             internalization_candidates,
         }
@@ -278,7 +275,9 @@ fn characteristic_def_id_of_mono_item<'tcx>(
                 | ty::InstanceDef::Intrinsic(..)
                 | ty::InstanceDef::DropGlue(..)
                 | ty::InstanceDef::Virtual(..)
-                | ty::InstanceDef::CloneShim(..) => return None,
+                | ty::InstanceDef::CloneShim(..)
+                | ty::InstanceDef::ThreadLocalShim(..)
+                | ty::InstanceDef::FnPtrAddrShim(..) => return None,
             };
 
             // If this is a method, we want to put it into the same module as
@@ -391,6 +390,19 @@ fn mono_item_linkage_and_visibility<'tcx>(
 
 type CguNameCache = FxHashMap<(DefId, bool), Symbol>;
 
+fn static_visibility<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    can_be_internalized: &mut bool,
+    def_id: DefId,
+) -> Visibility {
+    if tcx.is_reachable_non_generic(def_id) {
+        *can_be_internalized = false;
+        default_visibility(tcx, def_id, false)
+    } else {
+        Visibility::Hidden
+    }
+}
+
 fn mono_item_visibility<'tcx>(
     tcx: TyCtxt<'tcx>,
     mono_item: &MonoItem<'tcx>,
@@ -402,27 +414,20 @@ fn mono_item_visibility<'tcx>(
         MonoItem::Fn(instance) => instance,
 
         // Misc handling for generics and such, but otherwise:
-        MonoItem::Static(def_id) => {
-            return if tcx.is_reachable_non_generic(*def_id) {
-                *can_be_internalized = false;
-                default_visibility(tcx, *def_id, false)
-            } else {
-                Visibility::Hidden
-            };
-        }
+        MonoItem::Static(def_id) => return static_visibility(tcx, can_be_internalized, *def_id),
         MonoItem::GlobalAsm(item_id) => {
-            return if tcx.is_reachable_non_generic(item_id.owner_id) {
-                *can_be_internalized = false;
-                default_visibility(tcx, item_id.owner_id.to_def_id(), false)
-            } else {
-                Visibility::Hidden
-            };
+            return static_visibility(tcx, can_be_internalized, item_id.owner_id.to_def_id());
         }
     };
 
     let def_id = match instance.def {
         InstanceDef::Item(def) => def.did,
         InstanceDef::DropGlue(def_id, Some(_)) => def_id,
+
+        // We match the visiblity of statics here
+        InstanceDef::ThreadLocalShim(def_id) => {
+            return static_visibility(tcx, can_be_internalized, def_id);
+        }
 
         // These are all compiler glue and such, never exported, always hidden.
         InstanceDef::VTableShim(..)
@@ -432,7 +437,8 @@ fn mono_item_visibility<'tcx>(
         | InstanceDef::Intrinsic(..)
         | InstanceDef::ClosureOnceShim { .. }
         | InstanceDef::DropGlue(..)
-        | InstanceDef::CloneShim(..) => return Visibility::Hidden,
+        | InstanceDef::CloneShim(..)
+        | InstanceDef::FnPtrAddrShim(..) => return Visibility::Hidden,
     };
 
     // The `start_fn` lang item is actually a monomorphized instance of a

@@ -1,5 +1,5 @@
 error: this pattern matching can be expressed using equality
-  --> $DIR/equatable_if_let.rs:59:8
+  --> $DIR/equatable_if_let.rs:60:8
    |
 LL |     if let 2 = a {}
    |        ^^^^^^^^^ help: try: `a == 2`
@@ -7,82 +7,82 @@ LL |     if let 2 = a {}
    = note: `-D clippy::equatable-if-let` implied by `-D warnings`
 
 error: this pattern matching can be expressed using equality
-  --> $DIR/equatable_if_let.rs:60:8
+  --> $DIR/equatable_if_let.rs:61:8
    |
 LL |     if let Ordering::Greater = a.cmp(&b) {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `a.cmp(&b) == Ordering::Greater`
 
 error: this pattern matching can be expressed using equality
-  --> $DIR/equatable_if_let.rs:61:8
+  --> $DIR/equatable_if_let.rs:62:8
    |
 LL |     if let Some(2) = c {}
    |        ^^^^^^^^^^^^^^^ help: try: `c == Some(2)`
 
 error: this pattern matching can be expressed using equality
-  --> $DIR/equatable_if_let.rs:62:8
+  --> $DIR/equatable_if_let.rs:63:8
    |
 LL |     if let Struct { a: 2, b: false } = d {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `d == (Struct { a: 2, b: false })`
 
 error: this pattern matching can be expressed using equality
-  --> $DIR/equatable_if_let.rs:63:8
+  --> $DIR/equatable_if_let.rs:64:8
    |
 LL |     if let Enum::TupleVariant(32, 64) = e {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `e == Enum::TupleVariant(32, 64)`
 
 error: this pattern matching can be expressed using equality
-  --> $DIR/equatable_if_let.rs:64:8
+  --> $DIR/equatable_if_let.rs:65:8
    |
 LL |     if let Enum::RecordVariant { a: 64, b: 32 } = e {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `e == (Enum::RecordVariant { a: 64, b: 32 })`
 
 error: this pattern matching can be expressed using equality
-  --> $DIR/equatable_if_let.rs:65:8
+  --> $DIR/equatable_if_let.rs:66:8
    |
 LL |     if let Enum::UnitVariant = e {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `e == Enum::UnitVariant`
 
 error: this pattern matching can be expressed using equality
-  --> $DIR/equatable_if_let.rs:66:8
+  --> $DIR/equatable_if_let.rs:67:8
    |
 LL |     if let (Enum::UnitVariant, &Struct { a: 2, b: false }) = (e, &d) {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(e, &d) == (Enum::UnitVariant, &Struct { a: 2, b: false })`
 
 error: this pattern matching can be expressed using `matches!`
-  --> $DIR/equatable_if_let.rs:75:8
+  --> $DIR/equatable_if_let.rs:76:8
    |
 LL |     if let NotPartialEq::A = f {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `matches!(f, NotPartialEq::A)`
 
 error: this pattern matching can be expressed using equality
-  --> $DIR/equatable_if_let.rs:76:8
+  --> $DIR/equatable_if_let.rs:77:8
    |
 LL |     if let NotStructuralEq::A = g {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `g == NotStructuralEq::A`
 
 error: this pattern matching can be expressed using `matches!`
-  --> $DIR/equatable_if_let.rs:77:8
+  --> $DIR/equatable_if_let.rs:78:8
    |
 LL |     if let Some(NotPartialEq::A) = Some(f) {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `matches!(Some(f), Some(NotPartialEq::A))`
 
 error: this pattern matching can be expressed using equality
-  --> $DIR/equatable_if_let.rs:78:8
+  --> $DIR/equatable_if_let.rs:79:8
    |
 LL |     if let Some(NotStructuralEq::A) = Some(g) {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Some(g) == Some(NotStructuralEq::A)`
 
 error: this pattern matching can be expressed using `matches!`
-  --> $DIR/equatable_if_let.rs:79:8
+  --> $DIR/equatable_if_let.rs:80:8
    |
 LL |     if let NoPartialEqStruct { a: 2, b: false } = h {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `matches!(h, NoPartialEqStruct { a: 2, b: false })`
 
 error: this pattern matching can be expressed using equality
-  --> $DIR/equatable_if_let.rs:86:8
+  --> $DIR/equatable_if_let.rs:82:8
    |
-LL |     if let m1!(x) = "abc" {
-   |        ^^^^^^^^^^^^^^^^^^ help: try: `"abc" == m1!(x)`
+LL |     if let inline!("abc") = "abc" {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"abc" == inline!("abc")`
 
 error: aborting due to 14 previous errors
 

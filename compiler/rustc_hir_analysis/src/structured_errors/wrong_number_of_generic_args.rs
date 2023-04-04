@@ -565,7 +565,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     /// type Map = HashMap<String>;
     /// ```
     fn suggest_adding_args(&self, err: &mut Diagnostic) {
-        if self.gen_args.parenthesized {
+        if self.gen_args.parenthesized != hir::GenericArgsParentheses::No {
             return;
         }
 
@@ -962,7 +962,11 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
             let msg = format!(
                 "remove these {}generics",
-                if self.gen_args.parenthesized { "parenthetical " } else { "" },
+                if self.gen_args.parenthesized == hir::GenericArgsParentheses::ParenSugar {
+                    "parenthetical "
+                } else {
+                    ""
+                },
             );
 
             err.span_suggestion(span, &msg, "", Applicability::MaybeIncorrect);

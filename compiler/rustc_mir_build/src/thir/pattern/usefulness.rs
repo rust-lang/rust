@@ -300,6 +300,7 @@ use rustc_arena::TypedArena;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
+use rustc_hir::Node;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_span::{Span, DUMMY_SP};
@@ -867,6 +868,8 @@ fn is_useful<'p, 'tcx>(
                     &ctor,
                     Constructor::Missing { nonexhaustive_enum_missing_real_variants: true }
                 )
+                // We don't want to lint patterns which are function arguments or locals
+                && !matches!(cx.tcx.hir().find_parent(hir_id), Some(Node::Param(_)|Node::Local(_)))
             {
                 let patterns = {
                     let mut split_wildcard = SplitWildcard::new(pcx);

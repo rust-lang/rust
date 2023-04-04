@@ -3,6 +3,8 @@
 #![allow(unused)]
 #![warn(clippy::redundant_async_block)]
 
+use std::future::Future;
+
 async fn func1(n: usize) -> usize {
     n + 1
 }
@@ -61,4 +63,49 @@ fn main() {
 
     let fut = async_await_parameter_in_macro!(func2());
     let fut = async_await_in_macro!(std::convert::identity);
+}
+
+#[allow(clippy::let_and_return)]
+fn capture_local() -> impl Future<Output = i32> {
+    // Lint
+    let fut = async { 17 };
+    fut
+}
+
+fn capture_local_closure(s: &str) -> impl Future<Output = &str> {
+    let f = move || std::future::ready(s);
+    // Do not lint: `f` would not live long enough
+    async move { f().await }
+}
+
+#[allow(clippy::let_and_return)]
+fn capture_arg(s: &str) -> impl Future<Output = &str> {
+    // Lint
+    let fut = async move { s };
+    fut
+}
+
+#[derive(Debug, Clone)]
+struct F {}
+
+impl F {
+    async fn run(&self) {}
+}
+
+pub async fn run() {
+    let f = F {};
+    let c = f.clone();
+    // Do not lint: `c` would not live long enough
+    spawn(async move { c.run().await });
+    let _f = f;
+}
+
+fn spawn<F: Future + 'static>(_: F) {}
+
+async fn work(_: &str) {}
+
+fn capture() {
+    let val = "Hello World".to_owned();
+    // Do not lint: `val` would not live long enough
+    spawn(async { work(&{ val }).await });
 }

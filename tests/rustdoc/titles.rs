@@ -1,5 +1,5 @@
 #![crate_name = "foo"]
-#![feature(rustdoc_internals)]
+#![feature(rustc_attrs)]
 
 // @matches 'foo/index.html' '//h1' 'Crate foo'
 // @matches 'foo/index.html' '//h2[@class="location"]' 'Crate foo'
@@ -41,7 +41,7 @@ macro_rules! foo_macro {
 }
 
 // @matches 'foo/primitive.bool.html' '//h1' 'Primitive Type bool'
-#[doc(primitive = "bool")]
+#[rustc_doc_primitive = "bool"]
 mod bool {}
 
 // @matches 'foo/static.FOO_STATIC.html' '//h1' 'Static foo::FOO_STATIC'

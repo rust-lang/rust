@@ -172,6 +172,7 @@ impl fmt::Debug for CStr {
 
 #[stable(feature = "cstr_default", since = "1.10.0")]
 impl Default for &CStr {
+    #[inline]
     fn default() -> Self {
         const SLICE: &[c_char] = &[0];
         // SAFETY: `SLICE` is indeed pointing to a valid nul-terminated string.
@@ -623,6 +624,7 @@ impl CStr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq for CStr {
+    #[inline]
     fn eq(&self, other: &CStr) -> bool {
         self.to_bytes().eq(other.to_bytes())
     }
@@ -631,12 +633,14 @@ impl PartialEq for CStr {
 impl Eq for CStr {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialOrd for CStr {
+    #[inline]
     fn partial_cmp(&self, other: &CStr) -> Option<Ordering> {
         self.to_bytes().partial_cmp(&other.to_bytes())
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for CStr {
+    #[inline]
     fn cmp(&self, other: &CStr) -> Ordering {
         self.to_bytes().cmp(&other.to_bytes())
     }
@@ -646,6 +650,7 @@ impl Ord for CStr {
 impl ops::Index<ops::RangeFrom<usize>> for CStr {
     type Output = CStr;
 
+    #[inline]
     fn index(&self, index: ops::RangeFrom<usize>) -> &CStr {
         let bytes = self.to_bytes_with_nul();
         // we need to manually check the starting index to account for the null

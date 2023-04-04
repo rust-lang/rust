@@ -330,7 +330,6 @@ fn compare_method_predicate_entailment<'tcx>(
     // lifetime parameters.
     let outlives_env = OutlivesEnvironment::with_bounds(
         param_env,
-        Some(infcx),
         infcx.implied_bounds_tys(param_env, impl_m_def_id, wf_tys.clone()),
     );
     infcx.process_registered_region_obligations(
@@ -727,7 +726,6 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     // lifetime parameters.
     let outlives_environment = OutlivesEnvironment::with_bounds(
         param_env,
-        Some(infcx),
         infcx.implied_bounds_tys(param_env, impl_m_def_id, wf_tys),
     );
     infcx
@@ -1876,14 +1874,17 @@ pub(super) fn check_type_bounds<'tcx>(
     impl_ty: ty::AssocItem,
     impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
+    let param_env = tcx.param_env(impl_ty.def_id);
+    let container_id = impl_ty.container_id(tcx);
     // Given
     //
     // impl<A, B> Foo<u32> for (A, B) {
-    //     type Bar<C> =...
+    //     type Bar<C> = Wrapper<A, B, C>
     // }
     //
     // - `impl_trait_ref` would be `<(A, B) as Foo<u32>>`
-    // - `impl_ty_substs` would be `[A, B, ^0.0]` (`^0.0` here is the bound var with db 0 and index 0)
+    // - `normalize_impl_ty_substs` would be `[A, B, ^0.0]` (`^0.0` here is the bound var with db 0 and index 0)
+    // - `normalize_impl_ty` would be `Wrapper<A, B, ^0.0>`
     // - `rebased_substs` would be `[(A, B), u32, ^0.0]`, combining the substs from
     //    the *trait* with the generic associated type parameters (as bound vars).
     //
@@ -1912,56 +1913,46 @@ pub(super) fn check_type_bounds<'tcx>(
     // Member<C: Eq> = .... That type would fail a well-formedness check that we ought to be doing
     // elsewhere, which would check that any <T as Family>::Member<X> meets the bounds declared in
     // the trait (notably, that X: Eq and T: Family).
-    let defs: &ty::Generics = tcx.generics_of(impl_ty.def_id);
-    let mut substs = smallvec::SmallVec::with_capacity(defs.count());
-    if let Some(def_id) = defs.parent {
-        let parent_defs = tcx.generics_of(def_id);
-        InternalSubsts::fill_item(&mut substs, tcx, parent_defs, &mut |param, _| {
-            tcx.mk_param_from_def(param)
-        });
-    }
     let mut bound_vars: smallvec::SmallVec<[ty::BoundVariableKind; 8]> =
-        smallvec::SmallVec::with_capacity(defs.count());
-    InternalSubsts::fill_single(&mut substs, defs, &mut |param, _| match param.kind {
-        GenericParamDefKind::Type { .. } => {
-            let kind = ty::BoundTyKind::Param(param.def_id, param.name);
-            let bound_var = ty::BoundVariableKind::Ty(kind);
-            bound_vars.push(bound_var);
-            tcx.mk_bound(
-                ty::INNERMOST,
-                ty::BoundTy { var: ty::BoundVar::from_usize(bound_vars.len() - 1), kind },
-            )
-            .into()
-        }
-        GenericParamDefKind::Lifetime => {
-            let kind = ty::BoundRegionKind::BrNamed(param.def_id, param.name);
-            let bound_var = ty::BoundVariableKind::Region(kind);
-            bound_vars.push(bound_var);
-            tcx.mk_re_late_bound(
-                ty::INNERMOST,
-                ty::BoundRegion { var: ty::BoundVar::from_usize(bound_vars.len() - 1), kind },
-            )
-            .into()
-        }
-        GenericParamDefKind::Const { .. } => {
-            let bound_var = ty::BoundVariableKind::Const;
-            bound_vars.push(bound_var);
-            tcx.mk_const(
-                ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from_usize(bound_vars.len() - 1)),
-                tcx.type_of(param.def_id).subst_identity(),
-            )
-            .into()
-        }
-    });
-    let bound_vars = tcx.mk_bound_variable_kinds(&bound_vars);
-    let impl_ty_substs = tcx.mk_substs(&substs);
-    let container_id = impl_ty.container_id(tcx);
-
-    let rebased_substs = impl_ty_substs.rebase_onto(tcx, container_id, impl_trait_ref.substs);
-    let impl_ty_value = tcx.type_of(impl_ty.def_id).subst_identity();
-
-    let param_env = tcx.param_env(impl_ty.def_id);
-
+        smallvec::SmallVec::with_capacity(tcx.generics_of(impl_ty.def_id).params.len());
+    // Extend the impl's identity substs with late-bound GAT vars
+    let normalize_impl_ty_substs = ty::InternalSubsts::identity_for_item(tcx, container_id)
+        .extend_to(tcx, impl_ty.def_id, |param, _| match param.kind {
+            GenericParamDefKind::Type { .. } => {
+                let kind = ty::BoundTyKind::Param(param.def_id, param.name);
+                let bound_var = ty::BoundVariableKind::Ty(kind);
+                bound_vars.push(bound_var);
+                tcx.mk_bound(
+                    ty::INNERMOST,
+                    ty::BoundTy { var: ty::BoundVar::from_usize(bound_vars.len() - 1), kind },
+                )
+                .into()
+            }
+            GenericParamDefKind::Lifetime => {
+                let kind = ty::BoundRegionKind::BrNamed(param.def_id, param.name);
+                let bound_var = ty::BoundVariableKind::Region(kind);
+                bound_vars.push(bound_var);
+                tcx.mk_re_late_bound(
+                    ty::INNERMOST,
+                    ty::BoundRegion { var: ty::BoundVar::from_usize(bound_vars.len() - 1), kind },
+                )
+                .into()
+            }
+            GenericParamDefKind::Const { .. } => {
+                let bound_var = ty::BoundVariableKind::Const;
+                bound_vars.push(bound_var);
+                tcx.mk_const(
+                    ty::ConstKind::Bound(
+                        ty::INNERMOST,
+                        ty::BoundVar::from_usize(bound_vars.len() - 1),
+                    ),
+                    tcx.type_of(param.def_id)
+                        .no_bound_vars()
+                        .expect("const parameter types cannot be generic"),
+                )
+                .into()
+            }
+        });
     // When checking something like
     //
     // trait X { type Y: PartialEq<<Self as X>::Y> }
@@ -1971,9 +1962,13 @@ pub(super) fn check_type_bounds<'tcx>(
     // we want <T as X>::Y to normalize to S. This is valid because we are
     // checking the default value specifically here. Add this equality to the
     // ParamEnv for normalization specifically.
+    let normalize_impl_ty = tcx.type_of(impl_ty.def_id).subst(tcx, normalize_impl_ty_substs);
+    let rebased_substs =
+        normalize_impl_ty_substs.rebase_onto(tcx, container_id, impl_trait_ref.substs);
+    let bound_vars = tcx.mk_bound_variable_kinds(&bound_vars);
     let normalize_param_env = {
         let mut predicates = param_env.caller_bounds().iter().collect::<Vec<_>>();
-        match impl_ty_value.kind() {
+        match normalize_impl_ty.kind() {
             ty::Alias(ty::Projection, proj)
                 if proj.def_id == trait_ty.def_id && proj.substs == rebased_substs =>
             {
@@ -1987,7 +1982,7 @@ pub(super) fn check_type_bounds<'tcx>(
                 ty::Binder::bind_with_vars(
                     ty::ProjectionPredicate {
                         projection_ty: tcx.mk_alias_ty(trait_ty.def_id, rebased_substs),
-                        term: impl_ty_value.into(),
+                        term: normalize_impl_ty.into(),
                     },
                     bound_vars,
                 )
@@ -2068,8 +2063,7 @@ pub(super) fn check_type_bounds<'tcx>(
     // Finally, resolve all regions. This catches wily misuses of
     // lifetime parameters.
     let implied_bounds = infcx.implied_bounds_tys(param_env, impl_ty_def_id, assumed_wf_types);
-    let outlives_environment =
-        OutlivesEnvironment::with_bounds(param_env, Some(&infcx), implied_bounds);
+    let outlives_environment = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
 
     infcx.err_ctxt().check_region_obligations_and_report_errors(
         impl_ty.def_id.expect_local(),

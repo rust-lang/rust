@@ -1621,7 +1621,7 @@ impl<'a> Linker for AixLinker<'a> {
         let path = tmpdir.join("list.exp");
         let res: io::Result<()> = try {
             let mut f = BufWriter::new(File::create(&path)?);
-            // TODO: use llvm-nm to generate export list.
+            // FIXME: use llvm-nm to generate export list.
             for symbol in symbols {
                 debug!("  _{}", symbol);
                 writeln!(f, "  {}", symbol)?;

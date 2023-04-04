@@ -1,99 +1,58 @@
 error[E0277]: can't drop `NonTrivialDrop` in const contexts
-  --> $DIR/const-drop-fail.rs:44:5
+  --> $DIR/const-drop-fail.rs:26:23
    |
-LL |         const _: () = check($exp);
-   |                       ----- required by a bound introduced by this call
+LL |           const _: () = check($exp);
+   |                         ^^^^^^^^^^^ the trait `~const Destruct` is not implemented for `NonTrivialDrop`
 ...
-LL |     NonTrivialDrop,
-   |     ^^^^^^^^^^^^^^ the trait `~const Destruct` is not implemented for `NonTrivialDrop`
-   |
-   = note: the trait bound `NonTrivialDrop: ~const Destruct` is not satisfied
-note: required by a bound in `check`
-  --> $DIR/const-drop-fail.rs:35:19
-   |
-LL | const fn check<T: ~const Destruct>(_: T) {}
-   |                   ^^^^^^^^^^^^^^^ required by this bound in `check`
-help: consider borrowing here
-   |
-LL |     &NonTrivialDrop,
-   |     +
-LL |     &mut NonTrivialDrop,
-   |     ++++
-
-error[E0277]: can't drop `NonTrivialDrop` in const contexts
-  --> $DIR/const-drop-fail.rs:46:5
-   |
-LL |         const _: () = check($exp);
-   |                       ----- required by a bound introduced by this call
-...
-LL |     ConstImplWithDropGlue(NonTrivialDrop),
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ within `ConstImplWithDropGlue`, the trait `~const Destruct` is not implemented for `NonTrivialDrop`
+LL | / check_all! {
+LL | |     NonTrivialDrop,
+LL | |     ConstImplWithDropGlue(NonTrivialDrop),
+LL | | }
+   | |_- in this macro invocation
    |
 note: the trait `Destruct` is implemented for `NonTrivialDrop`, but that implementation is not `const`
-  --> $DIR/const-drop-fail.rs:46:5
+  --> $DIR/const-drop-fail.rs:26:23
    |
-LL |     ConstImplWithDropGlue(NonTrivialDrop),
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |           const _: () = check($exp);
+   |                         ^^^^^^^^^^^
+...
+LL | / check_all! {
+LL | |     NonTrivialDrop,
+LL | |     ConstImplWithDropGlue(NonTrivialDrop),
+LL | | }
+   | |_- in this macro invocation
+   = note: this error originates in the macro `check_all` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: can't drop `NonTrivialDrop` in const contexts
+  --> $DIR/const-drop-fail.rs:26:23
+   |
+LL |           const _: () = check($exp);
+   |                         ^^^^^^^^^^^ within `ConstImplWithDropGlue`, the trait `~const Destruct` is not implemented for `NonTrivialDrop`
+...
+LL | / check_all! {
+LL | |     NonTrivialDrop,
+LL | |     ConstImplWithDropGlue(NonTrivialDrop),
+LL | | }
+   | |_- in this macro invocation
+   |
+note: the trait `Destruct` is implemented for `NonTrivialDrop`, but that implementation is not `const`
+  --> $DIR/const-drop-fail.rs:26:23
+   |
+LL |           const _: () = check($exp);
+   |                         ^^^^^^^^^^^
+...
+LL | / check_all! {
+LL | |     NonTrivialDrop,
+LL | |     ConstImplWithDropGlue(NonTrivialDrop),
+LL | | }
+   | |_- in this macro invocation
 note: required because it appears within the type `ConstImplWithDropGlue`
   --> $DIR/const-drop-fail.rs:16:8
    |
 LL | struct ConstImplWithDropGlue(NonTrivialDrop);
    |        ^^^^^^^^^^^^^^^^^^^^^
-note: required by a bound in `check`
-  --> $DIR/const-drop-fail.rs:35:19
-   |
-LL | const fn check<T: ~const Destruct>(_: T) {}
-   |                   ^^^^^^^^^^^^^^^ required by this bound in `check`
+   = note: this error originates in the macro `check_all` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0277]: the trait bound `NonTrivialDrop: ~const A` is not satisfied
-  --> $DIR/const-drop-fail.rs:48:47
-   |
-LL |     ConstDropImplWithBounds::<NonTrivialDrop>(PhantomData),
-   |     ----------------------------------------- ^^^^^^^^^^^ the trait `~const A` is not implemented for `NonTrivialDrop`
-   |     |
-   |     required by a bound introduced by this call
-   |
-note: the trait `A` is implemented for `NonTrivialDrop`, but that implementation is not `const`
-  --> $DIR/const-drop-fail.rs:48:47
-   |
-LL |     ConstDropImplWithBounds::<NonTrivialDrop>(PhantomData),
-   |                                               ^^^^^^^^^^^
-note: required by a bound in `ConstDropImplWithBounds`
-  --> $DIR/const-drop-fail.rs:27:35
-   |
-LL | struct ConstDropImplWithBounds<T: ~const A>(PhantomData<T>);
-   |                                   ^^^^^^^^ required by this bound in `ConstDropImplWithBounds`
+error: aborting due to 2 previous errors
 
-error[E0277]: the trait bound `NonTrivialDrop: ~const A` is not satisfied
-  --> $DIR/const-drop-fail.rs:48:5
-   |
-LL |     ConstDropImplWithBounds::<NonTrivialDrop>(PhantomData),
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `~const A` is not implemented for `NonTrivialDrop`
-   |
-note: the trait `A` is implemented for `NonTrivialDrop`, but that implementation is not `const`
-  --> $DIR/const-drop-fail.rs:48:5
-   |
-LL |     ConstDropImplWithBounds::<NonTrivialDrop>(PhantomData),
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: required by a bound in `ConstDropImplWithBounds`
-  --> $DIR/const-drop-fail.rs:27:35
-   |
-LL | struct ConstDropImplWithBounds<T: ~const A>(PhantomData<T>);
-   |                                   ^^^^^^^^ required by this bound in `ConstDropImplWithBounds`
-
-error[E0367]: `Drop` impl requires `T: ~const A` but the struct it is implemented for does not
-  --> $DIR/const-drop-fail.rs:55:9
-   |
-LL | impl<T: ~const A> const Drop for ConstDropImplWithNonConstBounds<T> {
-   |         ^^^^^^^^
-   |
-note: the implementor must specify the same requirement
-  --> $DIR/const-drop-fail.rs:53:1
-   |
-LL | struct ConstDropImplWithNonConstBounds<T: A>(PhantomData<T>);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 5 previous errors
-
-Some errors have detailed explanations: E0277, E0367.
-For more information about an error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0277`.

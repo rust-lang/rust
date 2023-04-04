@@ -177,8 +177,8 @@ impl<'a, 'tcx, F: Write> TokenHandler<'a, 'tcx, F> {
         } else {
             // We only want to "open" the tag ourselves if we have more than one pending and if the
             // current parent tag is not the same as our pending content.
-            let close_tag = if self.pending_elems.len() > 1 && current_class.is_some() {
-                Some(enter_span(self.out, current_class.unwrap(), &self.href_context))
+            let close_tag = if self.pending_elems.len() > 1 && let Some(current_class) = current_class {
+                Some(enter_span(self.out, current_class, &self.href_context))
             } else {
                 None
             };

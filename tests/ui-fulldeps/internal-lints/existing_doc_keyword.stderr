@@ -1,4 +1,4 @@
-error: found non-existing keyword `tadam` used in `#[doc(keyword = \"...\")]`
+error: found non-existing keyword `tadam` used in `#[doc(keyword = "...")]`
   --> $DIR/existing_doc_keyword.rs:10:1
    |
 LL | #[doc(keyword = "tadam")]

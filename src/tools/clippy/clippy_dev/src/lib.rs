@@ -1,5 +1,4 @@
 #![feature(let_chains)]
-#![feature(once_cell)]
 #![feature(rustc_private)]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 // warn on lints, that are included in `rust-lang/rust`s bootstrap

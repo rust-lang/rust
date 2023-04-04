@@ -284,7 +284,7 @@ jobs:
     permissions:
       actions: write # for rust-lang/simpleinfra/github-actions/cancel-outdated-builds
     <<: *base-ci-job
-    name: PR
+    name: PR - ${{ matrix.name }}
     env:
       <<: [*shared-ci-variables, *public-variables]
     if: github.event_name == 'pull_request'
@@ -312,7 +312,7 @@ jobs:
     permissions:
       actions: write # for rust-lang/simpleinfra/github-actions/cancel-outdated-builds
     <<: *base-ci-job
-    name: auto
+    name: auto - ${{ matrix.name }}
     env:
       <<: [*shared-ci-variables, *prod-variables]
     if: github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'
@@ -741,7 +741,7 @@ jobs:
     permissions:
       actions: write # for rust-lang/simpleinfra/github-actions/cancel-outdated-builds
     <<: *base-ci-job
-    name: try
+    name: try - ${{ matrix.name }}
     env:
       <<: [*shared-ci-variables, *prod-variables]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'

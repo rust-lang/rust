@@ -1,0 +1,102 @@
+// MIR for `unchecked_shl_unsigned_smaller` after PreCodegen
+
+fn unchecked_shl_unsigned_smaller(_1: u16, _2: u32) -> u16 {
+    debug a => _1;                       // in scope 0 at $DIR/unchecked_shifts.rs:+0:46: +0:47
+    debug b => _2;                       // in scope 0 at $DIR/unchecked_shifts.rs:+0:54: +0:55
+    let mut _0: u16;                     // return place in scope 0 at $DIR/unchecked_shifts.rs:+0:65: +0:68
+    scope 1 (inlined core::num::<impl u16>::unchecked_shl) { // at $DIR/unchecked_shifts.rs:10:7: 10:23
+        debug self => _1;                // in scope 1 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        debug rhs => _2;                 // in scope 1 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        let mut _3: u16;                 // in scope 1 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        let mut _4: std::option::Option<u16>; // in scope 1 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        let mut _5: std::result::Result<u16, std::num::TryFromIntError>; // in scope 1 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        scope 2 {
+            scope 3 (inlined Result::<u16, TryFromIntError>::ok) { // at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+                debug self => _5;        // in scope 3 at $SRC_DIR/core/src/result.rs:LL:COL
+                let mut _6: isize;       // in scope 3 at $SRC_DIR/core/src/result.rs:LL:COL
+                let _7: u16;             // in scope 3 at $SRC_DIR/core/src/result.rs:LL:COL
+                scope 4 {
+                    debug x => _7;       // in scope 4 at $SRC_DIR/core/src/result.rs:LL:COL
+                }
+                scope 5 {
+                    scope 6 {
+                        debug x => const TryFromIntError(()); // in scope 6 at $SRC_DIR/core/src/result.rs:LL:COL
+                    }
+                }
+            }
+            scope 7 (inlined #[track_caller] Option::<u16>::unwrap_unchecked) { // at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+                debug self => _4;        // in scope 7 at $SRC_DIR/core/src/option.rs:LL:COL
+                let mut _8: &std::option::Option<u16>; // in scope 7 at $SRC_DIR/core/src/option.rs:LL:COL
+                let mut _9: isize;       // in scope 7 at $SRC_DIR/core/src/option.rs:LL:COL
+                scope 8 {
+                    debug val => _3;     // in scope 8 at $SRC_DIR/core/src/option.rs:LL:COL
+                }
+                scope 9 {
+                    scope 11 (inlined unreachable_unchecked) { // at $SRC_DIR/core/src/option.rs:LL:COL
+                        scope 12 {
+                            scope 13 (inlined unreachable_unchecked::runtime) { // at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                            }
+                        }
+                    }
+                }
+                scope 10 (inlined Option::<u16>::is_some) { // at $SRC_DIR/core/src/option.rs:LL:COL
+                    debug self => _8;    // in scope 10 at $SRC_DIR/core/src/option.rs:LL:COL
+                }
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_3);                 // scope 2 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        StorageLive(_4);                 // scope 2 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        StorageLive(_5);                 // scope 2 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        _5 = <u32 as TryInto<u16>>::try_into(_2) -> bb1; // scope 2 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+                                         // mir::Constant
+                                         // + span: $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+                                         // + literal: Const { ty: fn(u32) -> Result<u16, <u32 as TryInto<u16>>::Error> {<u32 as TryInto<u16>>::try_into}, val: Value(<ZST>) }
+    }
+
+    bb1: {
+        StorageLive(_7);                 // scope 2 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        _6 = discriminant(_5);           // scope 3 at $SRC_DIR/core/src/result.rs:LL:COL
+        switchInt(move _6) -> [0: bb6, 1: bb4, otherwise: bb5]; // scope 3 at $SRC_DIR/core/src/result.rs:LL:COL
+    }
+
+    bb2: {
+        StorageDead(_7);                 // scope 2 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        StorageDead(_5);                 // scope 2 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        StorageLive(_8);                 // scope 2 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        _9 = discriminant(_4);           // scope 7 at $SRC_DIR/core/src/option.rs:LL:COL
+        switchInt(move _9) -> [1: bb7, otherwise: bb5]; // scope 7 at $SRC_DIR/core/src/option.rs:LL:COL
+    }
+
+    bb3: {
+        StorageDead(_3);                 // scope 2 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        return;                          // scope 0 at $DIR/unchecked_shifts.rs:+2:2: +2:2
+    }
+
+    bb4: {
+        _4 = Option::<u16>::None;        // scope 6 at $SRC_DIR/core/src/result.rs:LL:COL
+        goto -> bb2;                     // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
+    }
+
+    bb5: {
+        unreachable;                     // scope 3 at $SRC_DIR/core/src/result.rs:LL:COL
+    }
+
+    bb6: {
+        _7 = move ((_5 as Ok).0: u16);   // scope 3 at $SRC_DIR/core/src/result.rs:LL:COL
+        _4 = Option::<u16>::Some(move _7); // scope 4 at $SRC_DIR/core/src/result.rs:LL:COL
+        goto -> bb2;                     // scope 3 at $SRC_DIR/core/src/result.rs:LL:COL
+    }
+
+    bb7: {
+        _3 = move ((_4 as Some).0: u16); // scope 7 at $SRC_DIR/core/src/option.rs:LL:COL
+        StorageDead(_8);                 // scope 2 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        StorageDead(_4);                 // scope 2 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        _0 = unchecked_shl::<u16>(_1, move _3) -> bb3; // scope 2 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+                                         // mir::Constant
+                                         // + span: $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+                                         // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(u16, u16) -> u16 {unchecked_shl::<u16>}, val: Value(<ZST>) }
+    }
+}

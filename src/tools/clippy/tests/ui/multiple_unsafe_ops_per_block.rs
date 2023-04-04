@@ -1,12 +1,12 @@
-// aux-build:macro_rules.rs
+// aux-build:proc_macros.rs
 #![allow(unused)]
 #![allow(deref_nullptr)]
 #![allow(clippy::unnecessary_operation)]
 #![allow(clippy::drop_copy)]
 #![warn(clippy::multiple_unsafe_ops_per_block)]
 
-#[macro_use]
-extern crate macro_rules;
+extern crate proc_macros;
+use proc_macros::external;
 
 use core::arch::asm;
 
@@ -113,7 +113,10 @@ unsafe fn read_char_good(ptr: *const u8) -> char {
 
 // no lint
 fn issue10259() {
-    unsafe_macro!();
+    external!(unsafe {
+        *core::ptr::null::<()>();
+        *core::ptr::null::<()>();
+    });
 }
 
 fn _fn_ptr(x: unsafe fn()) {
