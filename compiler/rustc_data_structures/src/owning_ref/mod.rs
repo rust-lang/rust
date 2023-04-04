@@ -1188,14 +1188,14 @@ unsafe impl<'a, T: Send + Sync + 'a> IntoErasedSendSync<'a> for Arc<T> {
 }
 
 /// Typedef of an owning reference that uses an erased [`Box`] as the owner.
-pub type ErasedBoxRef<U> = OwningRef<Box<dyn Erased>, U>;
+pub type ErasedBoxRef<U> = BoxRef<dyn Erased, U>;
 /// Typedef of an owning reference that uses an erased [`Rc`] as the owner.
-pub type ErasedRcRef<U> = OwningRef<Rc<dyn Erased>, U>;
+pub type ErasedRcRef<U> = RcRef<dyn Erased, U>;
 /// Typedef of an owning reference that uses an erased [`Arc`] as the owner.
-pub type ErasedArcRef<U> = OwningRef<Arc<dyn Erased>, U>;
+pub type ErasedArcRef<U> = ArcRef<dyn Erased, U>;
 
 /// Typedef of a mutable owning reference that uses an erased [`Box`] as the owner.
-pub type ErasedBoxRefMut<U> = OwningRefMut<Box<dyn Erased>, U>;
+pub type ErasedBoxRefMut<U> = BoxRefMut<dyn Erased, U>;
 
 #[cfg(test)]
 mod tests;
