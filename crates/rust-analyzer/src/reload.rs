@@ -108,6 +108,10 @@ impl GlobalState {
             status.health = lsp_ext::Health::Warning;
             message.push_str("Failed to run build scripts of some packages.\n\n");
         }
+        if self.proc_macro_clients.iter().any(|it| it.is_err()) {
+            status.health = lsp_ext::Health::Warning;
+            message.push_str("Failed to spawn one or more proc-macro servers.\n\n");
+        }
         if !self.config.cargo_autoreload()
             && self.is_quiescent()
             && self.fetch_workspaces_queue.op_requested()
