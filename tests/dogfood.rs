@@ -3,7 +3,7 @@
 //!
 //! See [Eating your own dog food](https://en.wikipedia.org/wiki/Eating_your_own_dog_food) for context
 
-#![feature(once_cell)]
+#![feature(lazy_cell)]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
@@ -37,10 +37,10 @@ fn dogfood_clippy() {
     }
 
     assert!(
-        !failed_packages.is_empty(),
+        failed_packages.is_empty(),
         "Dogfood failed for packages `{}`",
         failed_packages.iter().format(", "),
-    )
+    );
 }
 
 #[test]

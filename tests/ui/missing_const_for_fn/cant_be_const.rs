@@ -3,15 +3,15 @@
 //! The .stderr output of this test should be empty. Otherwise it's a bug somewhere.
 
 // aux-build:helper.rs
-// aux-build:../../auxiliary/proc_macro_with_span.rs
+// aux-build:../../auxiliary/proc_macros.rs
 
 #![warn(clippy::missing_const_for_fn)]
 #![feature(start)]
 
 extern crate helper;
-extern crate proc_macro_with_span;
+extern crate proc_macros;
 
-use proc_macro_with_span::with_span;
+use proc_macros::with_span;
 
 struct Game;
 

@@ -35,6 +35,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::utils::internal_lints::produce_ice::PRODUCE_ICE_INFO,
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::unnecessary_def_path::UNNECESSARY_DEF_PATH_INFO,
+    crate::allow_attributes::ALLOW_ATTRIBUTES_INFO,
     crate::almost_complete_range::ALMOST_COMPLETE_RANGE_INFO,
     crate::approx_const::APPROX_CONSTANT_INFO,
     crate::as_conversions::AS_CONVERSIONS_INFO,
@@ -262,6 +263,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::manual_clamp::MANUAL_CLAMP_INFO,
     crate::manual_is_ascii_check::MANUAL_IS_ASCII_CHECK_INFO,
     crate::manual_let_else::MANUAL_LET_ELSE_INFO,
+    crate::manual_main_separator_str::MANUAL_MAIN_SEPARATOR_STR_INFO,
     crate::manual_non_exhaustive::MANUAL_NON_EXHAUSTIVE_INFO,
     crate::manual_rem_euclid::MANUAL_REM_EUCLID_INFO,
     crate::manual_retain::MANUAL_RETAIN_INFO,
@@ -616,6 +618,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::unnamed_address::VTABLE_ADDRESS_COMPARISONS_INFO,
     crate::unnecessary_owned_empty_strings::UNNECESSARY_OWNED_EMPTY_STRINGS_INFO,
     crate::unnecessary_self_imports::UNNECESSARY_SELF_IMPORTS_INFO,
+    crate::unnecessary_struct_initialization::UNNECESSARY_STRUCT_INITIALIZATION_INFO,
     crate::unnecessary_wraps::UNNECESSARY_WRAPS_INFO,
     crate::unnested_or_patterns::UNNESTED_OR_PATTERNS_INFO,
     crate::unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME_INFO,

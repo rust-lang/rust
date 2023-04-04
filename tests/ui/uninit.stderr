@@ -1,5 +1,5 @@
 error: this call for this type may be undefined behavior
-  --> $DIR/uninit.rs:7:29
+  --> $DIR/uninit.rs:12:29
    |
 LL |     let _: usize = unsafe { MaybeUninit::uninit().assume_init() };
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,15 +7,15 @@ LL |     let _: usize = unsafe { MaybeUninit::uninit().assume_init() };
    = note: `#[deny(clippy::uninit_assumed_init)]` on by default
 
 error: this call for this type may be undefined behavior
-  --> $DIR/uninit.rs:10:31
-   |
-LL |     let _: [u8; 0] = unsafe { MaybeUninit::uninit().assume_init() };
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: this call for this type may be undefined behavior
-  --> $DIR/uninit.rs:25:29
+  --> $DIR/uninit.rs:33:29
    |
 LL |     let _: usize = unsafe { mem::MaybeUninit::uninit().assume_init() };
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this call for this type may be undefined behavior
+  --> $DIR/uninit.rs:39:29
+   |
+LL |         let _: T = unsafe { mem::MaybeUninit::uninit().assume_init() };
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors

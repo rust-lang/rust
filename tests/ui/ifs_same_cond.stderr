@@ -35,5 +35,17 @@ note: same as this
 LL |     if 2 * a == 1 {
    |        ^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: this `if` has the same condition as a previous `if`
+  --> $DIR/ifs_same_cond.rs:49:15
+   |
+LL |     } else if a.contains("ah") {
+   |               ^^^^^^^^^^^^^^^^
+   |
+note: same as this
+  --> $DIR/ifs_same_cond.rs:48:8
+   |
+LL |     if a.contains("ah") {
+   |        ^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
 

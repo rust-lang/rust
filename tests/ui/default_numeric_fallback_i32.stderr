@@ -151,15 +151,12 @@ LL |         s.generic_arg(1);
    |                       ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:173:21
+  --> $DIR/default_numeric_fallback_i32.rs:176:25
    |
-LL |             let x = 22;
-   |                     ^^ help: consider adding suffix: `22_i32`
-...
-LL |         internal_macro!();
-   |         ----------------- in this macro invocation
+LL |         inline!(let x = 22;);
+   |                         ^^ help: consider adding suffix: `22_i32`
    |
-   = note: this error originates in the macro `internal_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `__inline_mac_fn_internal` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 26 previous errors
 

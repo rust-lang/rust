@@ -1,9 +1,9 @@
-// aux-build: proc_macro_with_span.rs
+// aux-build: proc_macros.rs
 #![warn(clippy::single_match_else)]
 #![allow(clippy::needless_return, clippy::no_effect, clippy::uninlined_format_args)]
 
-extern crate proc_macro_with_span;
-use proc_macro_with_span::with_span;
+extern crate proc_macros;
+use proc_macros::with_span;
 
 enum ExprNode {
     ExprAddrOf,

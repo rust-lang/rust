@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::eager_or_lazy::switch_to_lazy_eval;
-use clippy_utils::source::{snippet, snippet_with_macro_callsite};
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use clippy_utils::{contains_return, is_trait_item, last_path_segment};
 use if_chain::if_chain;
@@ -9,7 +9,6 @@ use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym, Symbol};
-use std::borrow::Cow;
 
 use super::OR_FUN_CALL;
 
@@ -111,37 +110,24 @@ pub(super) fn check<'tcx>(
             if poss.contains(&name);
 
             then {
+                let ctxt = span.ctxt();
+                let mut app = Applicability::HasPlaceholders;
                 let sugg = {
                     let (snippet_span, use_lambda) = match (fn_has_arguments, fun_span) {
                         (false, Some(fun_span)) => (fun_span, false),
                         _ => (arg.span, true),
                     };
 
-                    let format_span = |span: Span| {
-                        let not_macro_argument_snippet = snippet_with_macro_callsite(cx, span, "..");
-                        let snip = if not_macro_argument_snippet == "vec![]" {
-                            let macro_expanded_snipped = snippet(cx, snippet_span, "..");
-                            match macro_expanded_snipped.strip_prefix("$crate::vec::") {
-                                Some(stripped) => Cow::Owned(stripped.to_owned()),
-                                None => macro_expanded_snipped,
-                            }
-                        } else {
-                            not_macro_argument_snippet
-                        };
-
-                        snip.to_string()
-                    };
-
-                    let snip = format_span(snippet_span);
+                    let snip = snippet_with_context(cx, snippet_span, ctxt, "..", &mut app).0;
                     let snip = if use_lambda {
                         let l_arg = if fn_has_arguments { "_" } else { "" };
                         format!("|{l_arg}| {snip}")
                     } else {
-                        snip
+                        snip.into_owned()
                     };
 
                     if let Some(f) = second_arg {
-                        let f = format_span(f.span);
+                        let f = snippet_with_context(cx, f.span, ctxt, "..", &mut app).0;
                         format!("{snip}, {f}")
                     } else {
                         snip
@@ -155,7 +141,7 @@ pub(super) fn check<'tcx>(
                     &format!("use of `{name}` followed by a function call"),
                     "try this",
                     format!("{name}_{suffix}({sugg})"),
-                    Applicability::HasPlaceholders,
+                    app,
                 );
             }
         }

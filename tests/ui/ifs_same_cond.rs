@@ -43,4 +43,30 @@ fn ifs_same_cond() {
     }
 }
 
+fn issue10272() {
+    let a = String::from("ha");
+    if a.contains("ah") {
+    } else if a.contains("ah") {
+        // Trigger this lint
+    } else if a.contains("ha") {
+    } else if a == "wow" {
+    }
+
+    let p: *mut i8 = std::ptr::null_mut();
+    if p.is_null() {
+    } else if p.align_offset(0) == 0 {
+    } else if p.is_null() {
+        // ok, p is mutable pointer
+    } else {
+    }
+
+    let x = std::cell::Cell::new(true);
+    if x.get() {
+    } else if !x.take() {
+    } else if x.get() {
+        // ok, x is interior mutable type
+    } else {
+    }
+}
+
 fn main() {}

@@ -158,12 +158,10 @@ impl LateLintPass<'_> for WildcardImports {
                 let mut imports = used_imports.items().map(ToString::to_string).into_sorted_stable_ord(false);
                 let imports_string = if imports.len() == 1 {
                     imports.pop().unwrap()
+                } else if braced_glob {
+                    imports.join(", ")
                 } else {
-                    if braced_glob {
-                        imports.join(", ")
-                    } else {
-                        format!("{{{}}}", imports.join(", "))
-                    }
+                    format!("{{{}}}", imports.join(", "))
                 };
 
                 let sugg = if braced_glob {
