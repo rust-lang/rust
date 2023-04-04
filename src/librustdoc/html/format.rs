@@ -1142,22 +1142,21 @@ fn fmt_type<'cx>(
             //        the ugliness comes from inlining across crates where
             //        everything comes in as a fully resolved QPath (hard to
             //        look at).
-            match href(trait_.def_id(), cx) {
-                Ok((ref url, _, ref path)) if !f.alternate() => {
-                    write!(
-                        f,
-                        "<a class=\"associatedtype\" href=\"{url}#{shortty}.{name}\" \
-                                    title=\"type {path}::{name}\">{name}</a>{args}",
-                        url = url,
-                        shortty = ItemType::AssocType,
-                        name = assoc.name,
-                        path = join_with_double_colon(path),
-                        args = assoc.args.print(cx),
-                    )?;
-                }
-                _ => write!(f, "{}{:#}", assoc.name, assoc.args.print(cx))?,
-            }
-            Ok(())
+            if !f.alternate() && let Ok((url, _, path)) = href(trait_.def_id(), cx) {
+                write!(
+                    f,
+                    "<a class=\"associatedtype\" href=\"{url}#{shortty}.{name}\" \
+                                title=\"type {path}::{name}\">{name}</a>",
+                    shortty = ItemType::AssocType,
+                    name = assoc.name,
+                    path = join_with_double_colon(&path),
+                )
+            } else {
+                write!(f, "{}", assoc.name)
+            }?;
+
+            // Carry `f.alternate()` into this display w/o branching manually.
+            fmt::Display::fmt(&assoc.args.print(cx), f)
         }
     }
 }
