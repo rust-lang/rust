@@ -21,20 +21,12 @@ impl<'a, 'tcx> TypeRelation<'tcx> for CollectAllMismatches<'a, 'tcx> {
         self.infcx.tcx
     }
 
-    fn intercrate(&self) -> bool {
-        false
-    }
-
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env
     }
 
     fn a_is_expected(&self) -> bool {
         true
-    }
-
-    fn mark_ambiguous(&mut self) {
-        bug!()
     }
 
     fn relate_with_variance<T: Relate<'tcx>>(

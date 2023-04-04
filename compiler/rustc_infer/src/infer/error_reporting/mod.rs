@@ -2697,11 +2697,6 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
         self.0.tcx
     }
 
-    fn intercrate(&self) -> bool {
-        assert!(!self.0.intercrate);
-        false
-    }
-
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         // Unused, only for consts which we treat as always equal
         ty::ParamEnv::empty()
@@ -2713,10 +2708,6 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
 
     fn a_is_expected(&self) -> bool {
         true
-    }
-
-    fn mark_ambiguous(&mut self) {
-        bug!()
     }
 
     fn relate_with_variance<T: relate::Relate<'tcx>>(
