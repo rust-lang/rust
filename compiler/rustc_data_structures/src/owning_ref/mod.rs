@@ -981,26 +981,26 @@ unsafe impl<O, T: ?Sized> CloneStableAddress for OwningRef<O, T> where O: CloneS
 unsafe impl<O, T: ?Sized> Send for OwningRef<O, T>
 where
     O: Send,
-    for<'a> &'a T: Send,
+    T: Sync,
 {
 }
 unsafe impl<O, T: ?Sized> Sync for OwningRef<O, T>
 where
     O: Sync,
-    for<'a> &'a T: Sync,
+    T: Sync,
 {
 }
 
 unsafe impl<O, T: ?Sized> Send for OwningRefMut<O, T>
 where
     O: Send,
-    for<'a> &'a mut T: Send,
+    T: Send,
 {
 }
 unsafe impl<O, T: ?Sized> Sync for OwningRefMut<O, T>
 where
     O: Sync,
-    for<'a> &'a mut T: Sync,
+    T: Sync,
 {
 }
 
