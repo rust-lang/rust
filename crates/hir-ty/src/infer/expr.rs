@@ -293,7 +293,6 @@ impl<'a> InferenceContext<'a> {
 
                 // FIXME: lift these out into a struct
                 let prev_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
-                let prev_is_async_fn = mem::replace(&mut self.is_async_fn, false);
                 let prev_ret_ty = mem::replace(&mut self.return_ty, ret_ty.clone());
                 let prev_ret_coercion =
                     mem::replace(&mut self.return_coercion, Some(CoerceMany::new(ret_ty)));
@@ -307,7 +306,6 @@ impl<'a> InferenceContext<'a> {
                 self.diverges = prev_diverges;
                 self.return_ty = prev_ret_ty;
                 self.return_coercion = prev_ret_coercion;
-                self.is_async_fn = prev_is_async_fn;
                 self.resume_yield_tys = prev_resume_yield_tys;
 
                 ty
@@ -963,11 +961,7 @@ impl<'a> InferenceContext<'a> {
             .as_mut()
             .expect("infer_return called outside function body")
             .expected_ty();
-        let return_expr_ty = if self.is_async_fn {
-            self.infer_async_block(expr, &None, &[], &Some(expr))
-        } else {
-            self.infer_expr_inner(expr, &Expectation::HasType(ret_ty))
-        };
+        let return_expr_ty = self.infer_expr_inner(expr, &Expectation::HasType(ret_ty));
         let mut coerce_many = self.return_coercion.take().unwrap();
         coerce_many.coerce(self, Some(expr), &return_expr_ty);
         self.return_coercion = Some(coerce_many);

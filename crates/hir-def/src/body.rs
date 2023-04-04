@@ -353,8 +353,9 @@ impl Body {
         let _p = profile::span("body_with_source_map_query");
         let mut params = None;
 
-        let (file_id, module, body) = match def {
+        let (file_id, module, body, is_async_fn) = match def {
             DefWithBodyId::FunctionId(f) => {
+                let data = db.function_data(f);
                 let f = f.lookup(db);
                 let src = f.source(db);
                 params = src.value.param_list().map(|param_list| {
@@ -371,27 +372,33 @@ impl Body {
                         }),
                     )
                 });
-                (src.file_id, f.module(db), src.value.body().map(ast::Expr::from))
+                (
+                    src.file_id,
+                    f.module(db),
+                    src.value.body().map(ast::Expr::from),
+                    data.has_async_kw(),
+                )
             }
             DefWithBodyId::ConstId(c) => {
                 let c = c.lookup(db);
                 let src = c.source(db);
-                (src.file_id, c.module(db), src.value.body())
+                (src.file_id, c.module(db), src.value.body(), false)
             }
             DefWithBodyId::StaticId(s) => {
                 let s = s.lookup(db);
                 let src = s.source(db);
-                (src.file_id, s.module(db), src.value.body())
+                (src.file_id, s.module(db), src.value.body(), false)
             }
             DefWithBodyId::VariantId(v) => {
                 let e = v.parent.lookup(db);
                 let src = v.parent.child_source(db);
                 let variant = &src.value[v.local_id];
-                (src.file_id, e.container, variant.expr())
+                (src.file_id, e.container, variant.expr(), false)
             }
         };
         let expander = Expander::new(db, file_id, module);
-        let (mut body, source_map) = Body::new(db, expander, params, body, module.krate);
+        let (mut body, source_map) =
+            Body::new(db, expander, params, body, module.krate, is_async_fn);
         body.shrink_to_fit();
 
         (Arc::new(body), Arc::new(source_map))
@@ -421,8 +428,9 @@ impl Body {
         params: Option<(ast::ParamList, impl Iterator<Item = bool>)>,
         body: Option<ast::Expr>,
         krate: CrateId,
+        is_async_fn: bool,
     ) -> (Body, BodySourceMap) {
-        lower::lower(db, expander, params, body, krate)
+        lower::lower(db, expander, params, body, krate, is_async_fn)
     }
 
     fn shrink_to_fit(&mut self) {
