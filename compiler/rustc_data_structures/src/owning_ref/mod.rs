@@ -1110,9 +1110,9 @@ impl<T: 'static> ToHandleMut for RefCell<T> {
 /// Type alias of an owning reference that uses a [`Box`] as the owner.
 pub type BoxRef<T, U = T> = OwningRef<Box<T>, U>;
 /// Typedef of an owning reference that uses a [`Vec`] as the owner.
-pub type VecRef<T, U = T> = OwningRef<Vec<T>, U>;
+pub type VecRef<T, U = [T]> = OwningRef<Vec<T>, U>;
 /// Typedef of an owning reference that uses a [`String`] as the owner.
-pub type StringRef = OwningRef<String, str>;
+pub type StringRef<T = str> = OwningRef<String, T>;
 
 /// Type alias of an owning reference that uses an [`Rc`] as the owner.
 pub type RcRef<T, U = T> = OwningRef<Rc<T>, U>;
