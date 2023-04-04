@@ -250,6 +250,9 @@ use std::mem;
 ///
 /// For more details and examples, see the module and method docs.
 pub struct OwningRef<O, T: ?Sized> {
+    // Invariants:
+    // - `O` implements `StableAddress` or satisfies its safety requirements
+    // - `reference` is valid as long as `owner` is alive
     owner: O,
     reference: *const T,
 }
@@ -264,6 +267,9 @@ pub struct OwningRef<O, T: ?Sized> {
 ///
 /// For more details and examples, see the module and method docs.
 pub struct OwningRefMut<O, T: ?Sized> {
+    // Invariants:
+    // - `O` implements `StableAddress` or satisfies its safety requirements
+    // - `reference` is valid as long as `owner` is alive
     owner: O,
     reference: *mut T,
 }
@@ -365,7 +371,6 @@ impl<O, T: ?Sized> OwningRef<O, T> {
     /// ```
     pub fn map<F, U: ?Sized>(self, f: F) -> OwningRef<O, U>
     where
-        O: StableAddress,
         F: FnOnce(&T) -> &U,
     {
         OwningRef { reference: f(&self), owner: self.owner }
@@ -394,7 +399,6 @@ impl<O, T: ?Sized> OwningRef<O, T> {
     /// ```
     pub fn try_map<F, U: ?Sized, E>(self, f: F) -> Result<OwningRef<O, U>, E>
     where
-        O: StableAddress,
         F: FnOnce(&T) -> Result<&U, E>,
     {
         Ok(OwningRef { reference: f(&self)?, owner: self.owner })
@@ -407,7 +411,6 @@ impl<O, T: ?Sized> OwningRef<O, T> {
     /// because the user needs to manually uphold this guarantee.
     pub unsafe fn map_owner<F, P>(self, f: F) -> OwningRef<P, T>
     where
-        O: StableAddress,
         P: StableAddress,
         F: FnOnce(O) -> P,
     {
@@ -547,7 +550,6 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
     /// ```
     pub fn map<F, U: ?Sized>(mut self, f: F) -> OwningRef<O, U>
     where
-        O: StableAddress,
         F: FnOnce(&mut T) -> &U,
     {
         OwningRef { reference: f(&mut self), owner: self.owner }
@@ -574,7 +576,6 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
     /// ```
     pub fn map_mut<F, U: ?Sized>(mut self, f: F) -> OwningRefMut<O, U>
     where
-        O: StableAddress,
         F: FnOnce(&mut T) -> &mut U,
     {
         OwningRefMut { reference: f(&mut self), owner: self.owner }
@@ -603,7 +604,6 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
     /// ```
     pub fn try_map<F, U: ?Sized, E>(mut self, f: F) -> Result<OwningRef<O, U>, E>
     where
-        O: StableAddress,
         F: FnOnce(&mut T) -> Result<&U, E>,
     {
         Ok(OwningRef { reference: f(&mut self)?, owner: self.owner })
@@ -632,7 +632,6 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
     /// ```
     pub fn try_map_mut<F, U: ?Sized, E>(mut self, f: F) -> Result<OwningRefMut<O, U>, E>
     where
-        O: StableAddress,
         F: FnOnce(&mut T) -> Result<&mut U, E>,
     {
         Ok(OwningRefMut { reference: f(&mut self)?, owner: self.owner })
@@ -645,7 +644,6 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
     /// because the user needs to manually uphold this guarantee.
     pub unsafe fn map_owner<F, P>(self, f: F) -> OwningRefMut<P, T>
     where
-        O: StableAddress,
         P: StableAddress,
         F: FnOnce(O) -> P,
     {
