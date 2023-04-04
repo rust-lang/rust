@@ -105,12 +105,17 @@ fn as_ref_mut(arg: &FnArg, name: &str, mutable: bool) -> FnArg {
 pub(crate) fn adjoint_fnc(item: &DiffItem) -> TokenStream {
     let mut res_inputs: Vec<FnArg> = Vec::new();
     let mut add_inputs: Vec<FnArg> = Vec::new();
-    let mut outputs: Vec<Type> = Vec::new();
     let out_type = 
         match &item.primal.output {
             ReturnType::Type(_, x) => Some(*x.clone()),
             _ => None,
         };
+
+    let mut outputs = if item.header.ret_act == Activity::Duplicated {
+        vec![out_type.clone().unwrap()]
+    } else {
+        vec![]
+    };
 
     let PrimalSig {
         ident, inputs, ..
@@ -125,8 +130,8 @@ pub(crate) fn adjoint_fnc(item: &DiffItem) -> TokenStream {
                 add_inputs.push(as_ref_mut(&input, "grad", true));
             },
             (Mode::Forward, Activity::Duplicated, Some(false)) => {
-                res_inputs.push(as_ref_mut(&input, "grad", false));
-                add_inputs.push(as_ref_mut(&input, "grad", false));
+                res_inputs.push(as_ref_mut(&input, "dual", false));
+                add_inputs.push(as_ref_mut(&input, "dual", false));
                 out_type.clone().map(|x| outputs.push(x));
             },
             (Mode::Forward, Activity::Duplicated, None) => outputs.push(only_type(&input)),

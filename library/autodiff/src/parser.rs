@@ -212,7 +212,7 @@ pub(crate) fn reduce_params(mut sig: Signature, header_acts: Vec<Activity>, is_a
 
     while let Some(arg) = arg_it.next() {
         // Compare current with last argument when parsing duplicated rules. This only
-        // happens when we parse the signature of adjoint function
+        // happens when we parse the signature of adjoint/augmented primal function
         if let Some(prev_arg) = last_arg.take() {
             match (header.mode, is_ref_mut(&prev_arg), is_ref_mut(&arg)) {
                 (Mode::Forward, Some(false), Some(true) | None) => 
@@ -296,9 +296,10 @@ pub(crate) fn reduce_params(mut sig: Signature, header_acts: Vec<Activity>, is_a
                     "use duplicated instead";
                     help = "`#[autodiff]` input parameter cannot be declared as duplicatednoneed"
                 ),
-            (Mode::Forward, Some(false), Activity::Duplicated) |
-                (Mode::Reverse, None, Activity::Active) => ret.push(ret_arg(&arg)),
-            (Mode::Forward, Some(true), Activity::Duplicated | Activity::DuplicatedNoNeed) |
+            (Mode::Forward, Some(false), Activity::Duplicated) if header.ret_act != Activity::Const =>
+                ret.push(ret_arg(&arg)),
+            (Mode::Reverse, None, Activity::Active) => ret.push(ret_arg(&arg)),
+            (Mode::Forward, Some(_), Activity::Duplicated | Activity::DuplicatedNoNeed) |
                 (Mode::Reverse, _, Activity::Duplicated | Activity::DuplicatedNoNeed) if is_adjoint =>
                     last_arg = Some(arg.clone()),
             _ => {}
@@ -401,7 +402,7 @@ pub(crate) fn reduce_params(mut sig: Signature, header_acts: Vec<Activity>, is_a
             (_, Activity::Const) if ret.len() > 0 => {
                 abort!(
                     ret[0],
-                    "active argument but no return value";
+                    "constant return but more than one return";
                     help = "`#[autodiff]` adjoint should have a return type when active"
                 )
             },
