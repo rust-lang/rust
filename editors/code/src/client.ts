@@ -148,15 +148,16 @@ export async function createClient(
                                             "Don't show this again"
                                         );
                                         switch (choice) {
-                                            case "Yes":
-                                                break;
                                             case "No":
+                                                break;
+                                            case "Yes":
                                                 await config.update(
                                                     "linkedProjects",
                                                     config
                                                         .get<any[]>("linkedProjects")
                                                         ?.concat(
-                                                            path.fsPath.substring(folder.length)
+                                                            "." +
+                                                                path.fsPath.substring(folder.length)
                                                         ),
                                                     false
                                                 );
