@@ -45,8 +45,6 @@ pub fn optimize_with_bolt(path: &Path, profile_path: &Path, output_path: &Path) 
         .arg("-split-all-cold")
         // Move jump tables to a separate section
         .arg("-jump-tables=move")
-        // Use GNU_STACK program header for new segment (workaround for issues with strip/objcopy)
-        .arg("-use-gnu-stack")
         // Fold functions with identical code
         .arg("-icf=1")
         // Update DWARF debug info in the final binary
