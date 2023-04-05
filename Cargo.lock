@@ -1418,9 +1418,9 @@ dependencies = [
 
 [[package]]
 name = "elsa"
-version = "1.8.0"
+version = "1.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f74077c3c3aedb99a2683919698285596662518ea13e5eedcf8bdd43b0d0453b"
+checksum = "848fe615fbb0a74d9ae68dcaa510106d32e37d9416207bbea4bd008bd89c47ed"
 dependencies = [
  "stable_deref_trait",
 ]
