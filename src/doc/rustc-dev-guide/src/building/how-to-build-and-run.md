@@ -28,10 +28,12 @@ cd rust
 
 Due to the size of the repository, cloning on a slower internet connection can take a long time.
 To sidestep this, you can use the `--depth N` option with the `git clone` command.
-This instructs `git` to perform a "shallow clone", cloning the repository but truncating it to the last `N` commits.
+This instructs `git` to perform a "shallow clone", cloning the repository but truncating it to
+the last `N` commits.
 
-Passing `--depth 1` tells `git` to clone the repository but truncate the history to the latest commit
-that is on the `master` branch, which is usually fine for browsing the source code or building the compiler.
+Passing `--depth 1` tells `git` to clone the repository but truncate the history to the latest
+commit that is on the `master` branch, which is usually fine for browsing the source code or
+building the compiler.
 
 ```bash
 git clone --depth 1 https://github.com/rust-lang/rust.git
