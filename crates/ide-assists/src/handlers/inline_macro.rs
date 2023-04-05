@@ -254,4 +254,49 @@ fn f() { if true{}; }
 "#,
         )
     }
+
+    #[test]
+    fn whitespace_between_text_and_pound() {
+        check_assist(
+            inline_macro,
+            r#"
+macro_rules! foo {
+    () => {
+        cfg_if! {
+            if #[cfg(test)] {
+                1;
+            } else {
+                1;
+            }
+        }
+    }
+}
+fn main() {
+    $0foo!();
+}
+"#,
+            r#"
+macro_rules! foo {
+    () => {
+        cfg_if! {
+            if #[cfg(test)] {
+                1;
+            } else {
+                1;
+            }
+        }
+    }
+}
+fn main() {
+    cfg_if!{
+  if #[cfg(test)]{
+    1;
+  }else {
+    1;
+  }
+};
+}
+"#,
+        );
+    }
 }
