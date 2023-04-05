@@ -21,4 +21,3 @@ pub fn main() {
 
     dummy(test1.get_mut()); //~ ERROR E0277
 }
-
