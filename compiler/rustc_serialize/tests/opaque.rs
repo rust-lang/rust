@@ -22,8 +22,6 @@ struct Struct {
 
     l: char,
     m: String,
-    n: f32,
-    o: f64,
     p: bool,
     q: Option<u32>,
 }
@@ -120,24 +118,6 @@ fn test_bool() {
 }
 
 #[test]
-fn test_f32() {
-    let mut vec = vec![];
-    for i in -100..100 {
-        vec.push((i as f32) / 3.0);
-    }
-    check_round_trip(vec);
-}
-
-#[test]
-fn test_f64() {
-    let mut vec = vec![];
-    for i in -100..100 {
-        vec.push((i as f64) / 3.0);
-    }
-    check_round_trip(vec);
-}
-
-#[test]
 fn test_char() {
     let vec = vec!['a', 'b', 'c', 'd', 'A', 'X', ' ', '#', 'Ö', 'Ä', 'µ', '€'];
     check_round_trip(vec);
@@ -200,8 +180,6 @@ fn test_struct() {
 
         l: 'x',
         m: "abc".to_string(),
-        n: 20.5,
-        o: 21.5,
         p: false,
         q: None,
     }]);
@@ -222,8 +200,6 @@ fn test_struct() {
 
         l: 'y',
         m: "def".to_string(),
-        n: -20.5,
-        o: -21.5,
         p: true,
         q: Some(1234567),
     }]);
@@ -232,7 +208,7 @@ fn test_struct() {
 #[derive(PartialEq, Clone, Debug, Encodable, Decodable)]
 enum Enum {
     Variant1,
-    Variant2(usize, f32),
+    Variant2(usize, u32),
     Variant3 { a: i32, b: char, c: bool },
 }
 
@@ -240,7 +216,7 @@ enum Enum {
 fn test_enum() {
     check_round_trip(vec![
         Enum::Variant1,
-        Enum::Variant2(1, 2.5),
+        Enum::Variant2(1, 25),
         Enum::Variant3 { a: 3, b: 'b', c: false },
         Enum::Variant3 { a: -4, b: 'f', c: true },
     ]);
@@ -269,8 +245,8 @@ fn test_hash_map() {
 
 #[test]
 fn test_tuples() {
-    check_round_trip(vec![('x', (), false, 0.5f32)]);
-    check_round_trip(vec![(9i8, 10u16, 1.5f64)]);
+    check_round_trip(vec![('x', (), false, 5u32)]);
+    check_round_trip(vec![(9i8, 10u16, 15i64)]);
     check_round_trip(vec![(-12i16, 11u8, 12usize)]);
     check_round_trip(vec![(1234567isize, 100000000000000u64, 99999999999999i64)]);
     check_round_trip(vec![(String::new(), "some string".to_string())]);

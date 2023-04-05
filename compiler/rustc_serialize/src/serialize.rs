@@ -22,6 +22,11 @@ use std::sync::Arc;
 /// be processed or ignored, whichever is appropriate. Then they should provide
 /// a `finish` method that finishes up encoding. If the encoder is fallible,
 /// `finish` should return a `Result` that indicates success or failure.
+///
+/// This current does not support `f32` nor `f64`, as they're not needed in any
+/// serialized data structures. That could be changed, but consider whether it
+/// really makes sense to store floating-point values at all.
+/// (If you need it, revert <https://github.com/rust-lang/rust/pull/109984>.)
 pub trait Encoder {
     // Primitive types:
     fn emit_usize(&mut self, v: usize);
@@ -37,8 +42,6 @@ pub trait Encoder {
     fn emit_i16(&mut self, v: i16);
     fn emit_i8(&mut self, v: i8);
     fn emit_bool(&mut self, v: bool);
-    fn emit_f64(&mut self, v: f64);
-    fn emit_f32(&mut self, v: f32);
     fn emit_char(&mut self, v: char);
     fn emit_str(&mut self, v: &str);
     fn emit_raw_bytes(&mut self, s: &[u8]);
@@ -58,6 +61,11 @@ pub trait Encoder {
 // top-level invocation would also just panic on failure. Switching to
 // infallibility made things faster and lots of code a little simpler and more
 // concise.
+///
+/// This current does not support `f32` nor `f64`, as they're not needed in any
+/// serialized data structures. That could be changed, but consider whether it
+/// really makes sense to store floating-point values at all.
+/// (If you need it, revert <https://github.com/rust-lang/rust/pull/109984>.)
 pub trait Decoder {
     // Primitive types:
     fn read_usize(&mut self) -> usize;
@@ -73,8 +81,6 @@ pub trait Decoder {
     fn read_i16(&mut self) -> i16;
     fn read_i8(&mut self) -> i8;
     fn read_bool(&mut self) -> bool;
-    fn read_f64(&mut self) -> f64;
-    fn read_f32(&mut self) -> f32;
     fn read_char(&mut self) -> char;
     fn read_str(&mut self) -> &str;
     fn read_raw_bytes(&mut self, len: usize) -> &[u8];
@@ -143,8 +149,6 @@ direct_serialize_impls! {
     i64 emit_i64 read_i64,
     i128 emit_i128 read_i128,
 
-    f32 emit_f32 read_f32,
-    f64 emit_f64 read_f64,
     bool emit_bool read_bool,
     char emit_char read_char
 }
