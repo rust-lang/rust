@@ -1075,7 +1075,6 @@ extern "C" {
     // FIXME: deprecated, replace with LLVMMDStringInContext2
     pub fn LLVMMDStringInContext(C: &Context, Str: *const c_char, SLen: c_uint) -> &Value;
 
-    // LLVMMDStringInContext but don't own string
     pub fn LLVMMDStringInContext2(C: &Context, Str: *const c_char, SLen: size_t) -> &Metadata;
 
     // FIXME: deprecated, replace with LLVMMDNodeInContext2
@@ -1117,7 +1116,7 @@ extern "C" {
         Packed: Bool,
     ) -> &'a Value;
 
-    // FIXME: replace with LLVMConstArray2
+    // FIXME: replace with LLVMConstArray2 when bumped minimal version to llvm-17
     // https://github.com/llvm/llvm-project/commit/35276f16e5a2cae0dfb49c0fbf874d4d2f177acc
     pub fn LLVMConstArray<'a>(
         ElementTy: &'a Type,

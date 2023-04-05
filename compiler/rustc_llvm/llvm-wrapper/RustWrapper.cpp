@@ -1137,7 +1137,7 @@ extern "C" void LLVMRustWriteValueToString(LLVMValueRef V,
 }
 
 // LLVMArrayType function does not support 64-bit ElementCount
-// FIXME: replace with LLVMArrayType2
+// FIXME: replace with LLVMArrayType2 when bumped minimal version to llvm-17
 // https://github.com/llvm/llvm-project/commit/35276f16e5a2cae0dfb49c0fbf874d4d2f177acc
 extern "C" LLVMTypeRef LLVMRustArrayType(LLVMTypeRef ElementTy,
                                          uint64_t ElementCount) {
