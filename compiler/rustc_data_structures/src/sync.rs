@@ -57,11 +57,8 @@ mod vec;
 
 cfg_if! {
     if #[cfg(not(parallel_compiler))] {
-        pub auto trait Send {}
-        pub auto trait Sync {}
-
-        impl<T> Send for T {}
-        impl<T> Sync for T {}
+        pub unsafe auto trait Send {}
+        pub unsafe auto trait Sync {}
 
         #[macro_export]
         macro_rules! rustc_erase_owner {
@@ -69,6 +66,8 @@ cfg_if! {
                 $v.erase_owner()
             }
         }
+        unsafe impl<T> Send for T {}
+        unsafe impl<T> Sync for T {}
 
         use std::ops::Add;
 
