@@ -97,6 +97,10 @@ impl<'tcx> ConstValue<'tcx> {
         ConstValue::Scalar(Scalar::from_u64(i))
     }
 
+    pub fn from_u128(i: u128) -> Self {
+        ConstValue::Scalar(Scalar::from_u128(i))
+    }
+
     pub fn from_target_usize(i: u64, cx: &impl HasDataLayout) -> Self {
         ConstValue::Scalar(Scalar::from_target_usize(i, cx))
     }
@@ -237,6 +241,11 @@ impl<Prov> Scalar<Prov> {
 
     #[inline]
     pub fn from_u64(i: u64) -> Self {
+        Scalar::Int(i.into())
+    }
+
+    #[inline]
+    pub fn from_u128(i: u128) -> Self {
         Scalar::Int(i.into())
     }
 
