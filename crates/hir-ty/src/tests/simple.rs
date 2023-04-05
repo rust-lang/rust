@@ -2094,6 +2094,24 @@ async fn main() {
         "#]],
     )
 }
+
+#[test]
+fn async_fn_and_try_operator() {
+    check_no_mismatches(
+        r#"
+//- minicore: future, result, fn, try, from
+async fn foo() -> Result<(), ()> {
+    Ok(())
+}
+
+async fn bar() -> Result<(), ()> {
+    let x = foo().await?;
+    Ok(x)
+}
+        "#,
+    )
+}
+
 #[test]
 fn async_block_early_return() {
     check_infer(

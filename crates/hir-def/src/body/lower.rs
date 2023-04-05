@@ -84,6 +84,7 @@ pub(super) fn lower(
     params: Option<(ast::ParamList, impl Iterator<Item = bool>)>,
     body: Option<ast::Expr>,
     krate: CrateId,
+    is_async_fn: bool,
 ) -> (Body, BodySourceMap) {
     ExprCollector {
         db,
@@ -105,7 +106,7 @@ pub(super) fn lower(
         is_lowering_assignee_expr: false,
         is_lowering_generator: false,
     }
-    .collect(params, body)
+    .collect(params, body, is_async_fn)
 }
 
 struct ExprCollector<'a> {
@@ -141,6 +142,7 @@ impl ExprCollector<'_> {
         mut self,
         param_list: Option<(ast::ParamList, impl Iterator<Item = bool>)>,
         body: Option<ast::Expr>,
+        is_async_fn: bool,
     ) -> (Body, BodySourceMap) {
         if let Some((param_list, mut attr_enabled)) = param_list {
             if let Some(self_param) =
@@ -170,7 +172,25 @@ impl ExprCollector<'_> {
             }
         };
 
-        self.body.body_expr = self.collect_expr_opt(body);
+        self.body.body_expr = if is_async_fn {
+            self.current_try_block =
+                Some(self.alloc_label_desugared(Label { name: Name::generate_new_name() }));
+            let expr = self.collect_expr_opt(body);
+            let expr = self.alloc_expr_desugared(Expr::Block {
+                id: None,
+                statements: Box::new([]),
+                tail: Some(expr),
+                label: self.current_try_block,
+            });
+            let expr = self.alloc_expr_desugared(Expr::Async {
+                id: None,
+                statements: Box::new([]),
+                tail: Some(expr),
+            });
+            expr
+        } else {
+            self.collect_expr_opt(body)
+        };
         (self.body, self.source_map)
     }
 

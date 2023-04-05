@@ -459,7 +459,6 @@ pub(crate) struct InferenceContext<'a> {
     resume_yield_tys: Option<(Ty, Ty)>,
     diverges: Diverges,
     breakables: Vec<BreakableContext>,
-    is_async_fn: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -527,7 +526,6 @@ impl<'a> InferenceContext<'a> {
             resolver,
             diverges: Diverges::Maybe,
             breakables: Vec::new(),
-            is_async_fn: false,
         }
     }
 
@@ -639,9 +637,6 @@ impl<'a> InferenceContext<'a> {
             self.infer_top_pat(*pat, &ty);
         }
         let return_ty = &*data.ret_type;
-        if data.has_async_kw() {
-            self.is_async_fn = true;
-        }
 
         let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver)
             .with_impl_trait_mode(ImplTraitLoweringMode::Opaque);
