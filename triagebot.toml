@@ -186,13 +186,17 @@ trigger_files = [
     "configure",
     "Cargo.toml",
     "config.example.toml",
-    "src/stage0.json"
+    "src/stage0.json",
+    "src/tools/compiletest",
+    "src/tools/tidy",
 ]
 
 [autolabel."T-infra"]
 trigger_files = [
     "src/ci",
     "src/tools/bump-stage0",
+    "src/tools/cargotest",
+    "src/tools/tier-check",
 ]
 
 [autolabel."T-style"]
