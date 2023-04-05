@@ -823,7 +823,7 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 /// [`pin` module]: crate::pin
 #[stable(feature = "pin", since = "1.33.0")]
 #[rustc_on_unimplemented(
-    note = "consider using `Box::pin`",
+    note = "consider using `core::pin::pin!`\nconsider using `Box::pin` if you want ownership of the pinned value",
     message = "`{Self}` cannot be unpinned"
 )]
 #[lang = "unpin"]
