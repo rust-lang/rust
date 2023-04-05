@@ -7,7 +7,6 @@ use rustc_hir::{
     def::{DefKind, Res},
     Item, ItemKind, PathSegment, UseKind,
 };
-use rustc_hir::{HirId, Mod};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -119,15 +118,10 @@ impl WildcardImports {
 impl_lint_pass!(WildcardImports => [ENUM_GLOB_USE, WILDCARD_IMPORTS]);
 
 impl LateLintPass<'_> for WildcardImports {
-    fn check_mod(&mut self, cx: &LateContext<'_>, module: &Mod<'_>, _: HirId) {
-        let filename = cx
-            .sess()
-            .source_map()
-            .span_to_filename(module.spans.inner_span)
-            .display(rustc_span::FileNameDisplayPreference::Local)
-            .to_string();
-
-        self.ignore = filename.ends_with("test.rs") || filename.ends_with("tests.rs");
+    fn check_crate(&mut self, cx: &LateContext<'_>) {
+        if cx.sess().opts.test {
+            self.ignore = true;
+        }
     }
 
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
