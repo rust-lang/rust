@@ -1105,3 +1105,48 @@ fn here_we_go() {
         "#]],
     );
 }
+
+#[test]
+fn completes_fn_name_via_doc_alias_in_fn_body() {
+    check(
+        r#"
+#[doc(alias = "qux")]
+fn foo() {}
+fn bar() { qu$0 }
+"#,
+        expect![[r#"
+            fn bar()             fn()
+            fn foo() (alias qux) fn()
+            bt u32
+            kw const
+            kw crate::
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw let
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+}

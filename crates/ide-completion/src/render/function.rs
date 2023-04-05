@@ -147,6 +147,8 @@ fn render(
             }
         }
     }
+
+    item.doc_aliases(ctx.doc_aliases);
     item
 }
 
