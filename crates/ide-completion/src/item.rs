@@ -409,7 +409,8 @@ impl Builder {
         local_name: hir::Name,
         resolution: hir::ScopeDef,
     ) -> Self {
-        render_path_resolution(RenderContext::new(ctx), path_ctx, local_name, resolution)
+        let doc_aliases = ctx.doc_aliases_in_scope(resolution);
+        render_path_resolution(RenderContext::new(ctx).doc_aliases(doc_aliases), path_ctx, local_name, resolution)
     }
 
     pub(crate) fn build(self) -> CompletionItem {

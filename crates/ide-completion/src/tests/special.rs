@@ -1150,3 +1150,42 @@ fn bar() { qu$0 }
         "#]],
     );
 }
+
+#[test]
+fn completes_struct_name_via_doc_alias_in_another_mod() {
+    check(
+        r#"
+mod foo {
+    #[doc(alias = "Qux")]
+    pub struct Bar(u8);
+}
+
+fn here_we_go() {
+    use foo;
+    let foo = foo::Q$0
+}
+"#,
+        expect![[r#"
+            st Bar (alias Qux)
+        "#]],
+    );
+}
+
+#[test]
+fn completes_use_via_doc_alias_in_another_mod() {
+    check(
+        r#"
+mod foo {
+    #[doc(alias = "Qux")]
+    pub struct Bar(u8);
+}
+
+fn here_we_go() {
+    use foo::Q$0;
+}
+"#,
+        expect![[r#"
+            st Bar (alias Qux)
+        "#]],
+    );
+}
