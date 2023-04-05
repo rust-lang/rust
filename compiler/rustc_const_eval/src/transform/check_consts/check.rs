@@ -553,7 +553,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             }
 
             Rvalue::Cast(CastKind::DynStar, _, _) => {
-                unimplemented!()
+                // `dyn*` coercion is implemented for CTFE.
             }
 
             Rvalue::Cast(_, _, _) => {}

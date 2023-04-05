@@ -6,6 +6,10 @@
 	3. Copy the filenames with updated suffixes from the directory.
 */
 
+:root {
+	--nav-sub-mobile-padding: 8px;
+}
+
 /* See FiraSans-LICENSE.txt for the Fira Sans license. */
 @font-face {
 	font-family: 'Fira Sans';
@@ -1726,7 +1730,7 @@ in main.js
 
 	.source nav.sub {
 		margin: 0;
-		padding: 8px;
+		padding: var(--nav-sub-mobile-padding);
 	}
 }
 
@@ -1783,6 +1787,7 @@ in main.js
 	.sub-logo-container > img {
 		height: 35px;
 		width: 35px;
+		margin-bottom: var(--nav-sub-mobile-padding);
 	}
 }
 

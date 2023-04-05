@@ -18,4 +18,6 @@ size: (1280, 1024)
 assert-property: (".sub-logo-container", {"offsetWidth": "60", "offsetHeight": 60})
 
 size: (400, 600)
-assert-property: (".sub-logo-container", {"offsetWidth": "35", "offsetHeight": 35})
+// 43 because 35px + 8px of margin
+assert-css: (".sub-logo-container > img", {"margin-bottom": "8px"})
+assert-property: (".sub-logo-container", {"offsetWidth": "35", "offsetHeight": 43})
