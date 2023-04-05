@@ -27,8 +27,8 @@ if [ "${CROSS}" = "1" ]; then
 fi
 
 # Make sure we can compile without the default hasher
-"${CARGO}" -vv build --target="${TARGET}" --no-default-features
-"${CARGO}" -vv build --target="${TARGET}" --release --no-default-features
+"${CARGO}" -vv build --target="${TARGET}" --no-default-features --features=allocator-api2
+"${CARGO}" -vv build --target="${TARGET}" --release --no-default-features --features=allocator-api2
 
 "${CARGO}" -vv ${OP} --target="${TARGET}"
 "${CARGO}" -vv ${OP} --target="${TARGET}" --features "${FEATURES}"
