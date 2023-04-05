@@ -11,7 +11,7 @@ use base_db::{
     Upcast,
 };
 use hir_expand::{db::ExpandDatabase, InFile};
-use stdx::hash::NoHashHashSet;
+use rustc_hash::FxHashSet;
 use syntax::{algo, ast, AstNode};
 
 use crate::{
@@ -77,7 +77,7 @@ impl FileLoader for TestDB {
     fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId> {
         FileLoaderDelegate(self).resolve_path(path)
     }
-    fn relevant_crates(&self, file_id: FileId) -> Arc<NoHashHashSet<CrateId>> {
+    fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>> {
         FileLoaderDelegate(self).relevant_crates(file_id)
     }
 }

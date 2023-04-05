@@ -11,7 +11,8 @@ use base_db::{
 };
 use hir_def::{db::DefDatabase, ModuleId};
 use hir_expand::db::ExpandDatabase;
-use stdx::hash::{NoHashHashMap, NoHashHashSet};
+use rustc_hash::FxHashSet;
+use stdx::hash::NoHashHashMap;
 use syntax::TextRange;
 use test_utils::extract_annotations;
 
@@ -81,7 +82,7 @@ impl FileLoader for TestDB {
     fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId> {
         FileLoaderDelegate(self).resolve_path(path)
     }
-    fn relevant_crates(&self, file_id: FileId) -> Arc<NoHashHashSet<CrateId>> {
+    fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>> {
         FileLoaderDelegate(self).relevant_crates(file_id)
     }
 }

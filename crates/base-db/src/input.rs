@@ -9,8 +9,8 @@
 use std::{fmt, mem, ops, panic::RefUnwindSafe, str::FromStr, sync::Arc};
 
 use cfg::CfgOptions;
-use rustc_hash::FxHashMap;
-use stdx::hash::{NoHashHashMap, NoHashHashSet};
+use la_arena::{Arena, Idx, RawIdx};
+use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::SmolStr;
 use tt::token_id::Subtree;
 use vfs::{file_set::FileSet, AbsPathBuf, AnchoredPath, FileId, VfsPath};
@@ -84,17 +84,22 @@ impl SourceRoot {
 ///
 /// `CrateGraph` is `!Serialize` by design, see
 /// <https://github.com/rust-lang/rust-analyzer/blob/master/docs/dev/architecture.md#serialization>
-#[derive(Debug, Clone, Default /* Serialize, Deserialize */)]
+#[derive(Clone, Default)]
 pub struct CrateGraph {
-    arena: NoHashHashMap<CrateId, CrateData>,
+    arena: Arena<CrateData>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct CrateId(pub u32);
+impl fmt::Debug for CrateGraph {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_map()
+            .entries(self.arena.iter().map(|(id, data)| (u32::from(id.into_raw()), data)))
+            .finish()
+    }
+}
 
-impl stdx::hash::NoHashHashable for CrateId {}
+pub type CrateId = Idx<CrateData>;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct CrateName(SmolStr);
 
 impl CrateName {
@@ -182,7 +187,7 @@ impl fmt::Display for LangCrateOrigin {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct CrateDisplayName {
     // The name we use to display various paths (with `_`).
     crate_name: CrateName,
@@ -261,7 +266,7 @@ pub struct ProcMacro {
     pub expander: Arc<dyn ProcMacroExpander>,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ReleaseChannel {
     Stable,
     Beta,
@@ -287,7 +292,7 @@ impl ReleaseChannel {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CrateData {
     pub root_file_id: FileId,
     pub edition: Edition,
@@ -327,7 +332,7 @@ pub struct Env {
     entries: FxHashMap<String, String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Dependency {
     pub crate_id: CrateId,
     pub name: CrateName,
@@ -378,10 +383,7 @@ impl CrateGraph {
             is_proc_macro,
             channel,
         };
-        let crate_id = CrateId(self.arena.len() as u32);
-        let prev = self.arena.insert(crate_id, data);
-        assert!(prev.is_none());
-        crate_id
+        self.arena.alloc(data)
     }
 
     pub fn add_dep(
@@ -394,14 +396,14 @@ impl CrateGraph {
         // Check if adding a dep from `from` to `to` creates a cycle. To figure
         // that out, look for a  path in the *opposite* direction, from `to` to
         // `from`.
-        if let Some(path) = self.find_path(&mut NoHashHashSet::default(), dep.crate_id, from) {
+        if let Some(path) = self.find_path(&mut FxHashSet::default(), dep.crate_id, from) {
             let path = path.into_iter().map(|it| (it, self[it].display_name.clone())).collect();
             let err = CyclicDependenciesError { path };
             assert!(err.from().0 == from && err.to().0 == dep.crate_id);
             return Err(err);
         }
 
-        self.arena.get_mut(&from).unwrap().add_dep(dep);
+        self.arena[from].add_dep(dep);
         Ok(())
     }
 
@@ -410,14 +412,14 @@ impl CrateGraph {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = CrateId> + '_ {
-        self.arena.keys().copied()
+        self.arena.iter().map(|(idx, _)| idx)
     }
 
     /// Returns an iterator over all transitive dependencies of the given crate,
     /// including the crate itself.
     pub fn transitive_deps(&self, of: CrateId) -> impl Iterator<Item = CrateId> {
         let mut worklist = vec![of];
-        let mut deps = NoHashHashSet::default();
+        let mut deps = FxHashSet::default();
 
         while let Some(krate) = worklist.pop() {
             if !deps.insert(krate) {
@@ -434,11 +436,11 @@ impl CrateGraph {
     /// including the crate itself.
     pub fn transitive_rev_deps(&self, of: CrateId) -> impl Iterator<Item = CrateId> {
         let mut worklist = vec![of];
-        let mut rev_deps = NoHashHashSet::default();
+        let mut rev_deps = FxHashSet::default();
         rev_deps.insert(of);
 
-        let mut inverted_graph = NoHashHashMap::<_, Vec<_>>::default();
-        self.arena.iter().for_each(|(&krate, data)| {
+        let mut inverted_graph = FxHashMap::<_, Vec<_>>::default();
+        self.arena.iter().for_each(|(krate, data)| {
             data.dependencies
                 .iter()
                 .for_each(|dep| inverted_graph.entry(dep.crate_id).or_default().push(krate))
@@ -461,9 +463,9 @@ impl CrateGraph {
     /// come before the crate itself).
     pub fn crates_in_topological_order(&self) -> Vec<CrateId> {
         let mut res = Vec::new();
-        let mut visited = NoHashHashSet::default();
+        let mut visited = FxHashSet::default();
 
-        for krate in self.arena.keys().copied() {
+        for krate in self.iter() {
             go(self, &mut visited, &mut res, krate);
         }
 
@@ -471,7 +473,7 @@ impl CrateGraph {
 
         fn go(
             graph: &CrateGraph,
-            visited: &mut NoHashHashSet<CrateId>,
+            visited: &mut FxHashSet<CrateId>,
             res: &mut Vec<CrateId>,
             source: CrateId,
         ) {
@@ -487,7 +489,7 @@ impl CrateGraph {
 
     // FIXME: this only finds one crate with the given root; we could have multiple
     pub fn crate_id_for_crate_root(&self, file_id: FileId) -> Option<CrateId> {
-        let (&crate_id, _) =
+        let (crate_id, _) =
             self.arena.iter().find(|(_crate_id, data)| data.root_file_id == file_id)?;
         Some(crate_id)
     }
@@ -499,24 +501,26 @@ impl CrateGraph {
     /// amount.
     pub fn extend(&mut self, other: CrateGraph, proc_macros: &mut ProcMacroPaths) -> u32 {
         let start = self.arena.len() as u32;
-        self.arena.extend(other.arena.into_iter().map(|(id, mut data)| {
-            let new_id = id.shift(start);
+        self.arena.extend(other.arena.into_iter().map(|(_, mut data)| {
             for dep in &mut data.dependencies {
-                dep.crate_id = dep.crate_id.shift(start);
+                dep.crate_id =
+                    CrateId::from_raw(RawIdx::from(u32::from(dep.crate_id.into_raw()) + start));
             }
-            (new_id, data)
+            data
         }));
 
         *proc_macros = mem::take(proc_macros)
             .into_iter()
-            .map(|(id, macros)| (id.shift(start), macros))
+            .map(|(id, macros)| {
+                (CrateId::from_raw(RawIdx::from(u32::from(id.into_raw()) + start)), macros)
+            })
             .collect();
         start
     }
 
     fn find_path(
         &self,
-        visited: &mut NoHashHashSet<CrateId>,
+        visited: &mut FxHashSet<CrateId>,
         from: CrateId,
         to: CrateId,
     ) -> Option<Vec<CrateId>> {
@@ -546,10 +550,8 @@ impl CrateGraph {
         let std = self.hacky_find_crate("std");
         match (cfg_if, std) {
             (Some(cfg_if), Some(std)) => {
-                self.arena.get_mut(&cfg_if).unwrap().dependencies.clear();
-                self.arena
-                    .get_mut(&std)
-                    .unwrap()
+                self.arena[cfg_if].dependencies.clear();
+                self.arena[std]
                     .dependencies
                     .push(Dependency::new(CrateName::new("cfg_if").unwrap(), cfg_if));
                 true
@@ -566,13 +568,7 @@ impl CrateGraph {
 impl ops::Index<CrateId> for CrateGraph {
     type Output = CrateData;
     fn index(&self, crate_id: CrateId) -> &CrateData {
-        &self.arena[&crate_id]
-    }
-}
-
-impl CrateId {
-    fn shift(self, amount: u32) -> CrateId {
-        CrateId(self.0 + amount)
+        &self.arena[crate_id]
     }
 }
 

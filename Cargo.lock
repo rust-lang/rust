@@ -87,6 +87,7 @@ name = "base-db"
 version = "0.0.0"
 dependencies = [
  "cfg",
+ "la-arena",
  "profile",
  "rustc-hash",
  "salsa",

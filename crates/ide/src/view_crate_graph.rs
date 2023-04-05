@@ -3,9 +3,8 @@ use std::sync::Arc;
 use dot::{Id, LabelText};
 use ide_db::{
     base_db::{CrateGraph, CrateId, Dependency, SourceDatabase, SourceDatabaseExt},
-    RootDatabase,
+    FxHashSet, RootDatabase,
 };
-use stdx::hash::NoHashHashSet;
 
 // Feature: View Crate Graph
 //
@@ -42,7 +41,7 @@ pub(crate) fn view_crate_graph(db: &RootDatabase, full: bool) -> Result<String, 
 
 struct DotCrateGraph {
     graph: Arc<CrateGraph>,
-    crates_to_render: NoHashHashSet<CrateId>,
+    crates_to_render: FxHashSet<CrateId>,
 }
 
 type Edge<'a> = (CrateId, &'a Dependency);
@@ -80,7 +79,7 @@ impl<'a> dot::Labeller<'a, CrateId, Edge<'a>> for DotCrateGraph {
     }
 
     fn node_id(&'a self, n: &CrateId) -> Id<'a> {
-        Id::new(format!("_{}", n.0)).unwrap()
+        Id::new(format!("_{}", u32::from(n.into_raw()))).unwrap()
     }
 
     fn node_shape(&'a self, _node: &CrateId) -> Option<LabelText<'a>> {
