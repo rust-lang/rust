@@ -35,9 +35,9 @@ use std::ops::Index;
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyDecodable, TyEncodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct Canonical<'tcx, V> {
+    pub value: V,
     pub max_universe: ty::UniverseIndex,
     pub variables: CanonicalVarInfos<'tcx>,
-    pub value: V,
 }
 
 pub type CanonicalVarInfos<'tcx> = &'tcx List<CanonicalVarInfo<'tcx>>;
