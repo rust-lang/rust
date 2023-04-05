@@ -26,10 +26,10 @@ pub struct OwnedSlice {
     // | touch the owner — otherwise the owner |
     // | could invalidate out `bytes` pointer  |
     // |                                       |
-    // | so be quite                           |
+    // | so be quiet                           |
     // +----+  +-------------------------------+
     //       \/
-    //      ⊂(´･◡･⊂ )∘˚˳°
+    //      ⊂(´･◡･⊂ )∘˚˳° (I am the phantom remnant of #97770)
     #[expect(dead_code)]
     owner: Box<dyn Send + Sync>,
 }
