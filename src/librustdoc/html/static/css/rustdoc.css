@@ -392,6 +392,7 @@ img {
 	overflow-x: hidden;
 	/* The sidebar is by default hidden  */
 	overflow-y: hidden;
+	z-index: 1;
 }
 
 .sidebar, .mobile-topbar, .sidebar-menu-toggle,
@@ -535,6 +536,9 @@ ul.block, .block li {
 .rustdoc .example-wrap > pre {
 	margin: 0;
 	flex-grow: 1;
+}
+
+.rustdoc:not(.source) .example-wrap > pre {
 	overflow: auto hidden;
 }
 
