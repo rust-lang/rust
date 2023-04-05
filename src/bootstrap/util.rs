@@ -212,18 +212,35 @@ pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
             struct Align8<T>(T);
             let mut data = Align8([0u8; MAXIMUM_REPARSE_DATA_BUFFER_SIZE as usize]);
             let db = data.0.as_mut_ptr() as *mut REPARSE_MOUNTPOINT_DATA_BUFFER;
-            let buf = core::ptr::addr_of_mut!((*db).ReparseTarget) as *mut u16;
-            let mut i = 0;
+            let end = db.cast::<u8>().add(MAXIMUM_REPARSE_DATA_BUFFER_SIZE as usize);
+            let reparse_target_slice = {
+                let buf_start = core::ptr::addr_of_mut!((*db).ReparseTarget).cast::<u16>();
+                // Compute offset in bytes and then divide so that we round down
+                // rather than hit any UB (admittedly this arithmetic should work
+                // out so that this isn't necessary)
+                let buf_len_bytes =
+                    usize::try_from(end.offset_from(buf_start.cast::<u8>())).unwrap();
+                let buf_len_wchars = buf_len_bytes / core::mem::size_of::<u16>();
+                core::slice::from_raw_parts_mut(buf_start, buf_len_wchars)
+            };
+
             // FIXME: this conversion is very hacky
-            let v = br"\??\";
-            let v = v.iter().map(|x| *x as u16);
-            for c in v.chain(target.as_os_str().encode_wide().skip(4)) {
-                *buf.offset(i) = c;
+            let iter = br"\??\"
+                .iter()
+                .map(|x| *x as u16)
+                .chain(path.iter().copied())
+                .chain(core::iter::once(0));
+            let mut i = 0;
+            for c in iter {
+                if i >= reparse_target_slice.len() {
+                    return Err(io::Error::new(
+                        io::ErrorKind::Other,
+                        format!("path too long for reparse target: {target:?}"),
+                    ));
+                }
+                reparse_target_slice[i] = c;
                 i += 1;
             }
-            *buf.offset(i) = 0;
-            i += 1;
-
             (*db).ReparseTag = IO_REPARSE_TAG_MOUNT_POINT;
             (*db).ReparseTargetMaximumLength = (i * 2) as u16;
             (*db).ReparseTargetLength = ((i - 1) * 2) as u16;
