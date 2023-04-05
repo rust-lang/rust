@@ -4,7 +4,7 @@ fn unchecked_shr_signed_smaller(_1: i16, _2: u32) -> i16 {
     debug a => _1;                       // in scope 0 at $DIR/unchecked_shifts.rs:+0:44: +0:45
     debug b => _2;                       // in scope 0 at $DIR/unchecked_shifts.rs:+0:52: +0:53
     let mut _0: i16;                     // return place in scope 0 at $DIR/unchecked_shifts.rs:+0:63: +0:66
-    scope 1 (inlined core::num::<impl i16>::unchecked_shr) { // at $DIR/unchecked_shifts.rs:16:7: 16:23
+    scope 1 (inlined core::num::<impl i16>::unchecked_shr) { // at $DIR/unchecked_shifts.rs:17:7: 17:23
         debug self => _1;                // in scope 1 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
         debug rhs => _2;                 // in scope 1 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
         let mut _3: i16;                 // in scope 1 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL

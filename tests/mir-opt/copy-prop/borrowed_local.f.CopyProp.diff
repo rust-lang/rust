@@ -15,7 +15,7 @@
           _4 = &_3;                        // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
           _0 = cmp_ref(_2, _4) -> bb1;     // scope 0 at $DIR/borrowed_local.rs:+8:13: +8:45
                                            // mir::Constant
-                                           // + span: $DIR/borrowed_local.rs:23:29: 23:36
+                                           // + span: $DIR/borrowed_local.rs:24:29: 24:36
                                            // + literal: Const { ty: for<'a, 'b> fn(&'a u8, &'b u8) -> bool {cmp_ref}, val: Value(<ZST>) }
       }
   
@@ -23,7 +23,7 @@
 -         _0 = opaque::<u8>(_3) -> bb2;    // scope 0 at $DIR/borrowed_local.rs:+12:13: +12:38
 +         _0 = opaque::<u8>(_1) -> bb2;    // scope 0 at $DIR/borrowed_local.rs:+12:13: +12:38
                                            // mir::Constant
-                                           // + span: $DIR/borrowed_local.rs:27:28: 27:34
+                                           // + span: $DIR/borrowed_local.rs:28:28: 28:34
                                            // + literal: Const { ty: fn(u8) -> bool {opaque::<u8>}, val: Value(<ZST>) }
       }
   

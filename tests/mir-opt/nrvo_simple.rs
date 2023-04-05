@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 // unit-test: RenameReturnPlace
 
 // EMIT_MIR nrvo_simple.nrvo.RenameReturnPlace.diff

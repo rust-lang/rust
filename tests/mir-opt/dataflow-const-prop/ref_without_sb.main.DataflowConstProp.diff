@@ -26,7 +26,7 @@
           _3 = &(*_4);                     // scope 1 at $DIR/ref_without_sb.rs:+2:12: +2:14
           _2 = escape::<i32>(move _3) -> bb1; // scope 1 at $DIR/ref_without_sb.rs:+2:5: +2:15
                                            // mir::Constant
-                                           // + span: $DIR/ref_without_sb.rs:12:5: 12:11
+                                           // + span: $DIR/ref_without_sb.rs:13:5: 13:11
                                            // + literal: Const { ty: for<'a> fn(&'a i32) {escape::<i32>}, val: Value(<ZST>) }
       }
   
@@ -38,7 +38,7 @@
           StorageLive(_5);                 // scope 1 at $DIR/ref_without_sb.rs:+4:5: +4:20
           _5 = some_function() -> bb2;     // scope 1 at $DIR/ref_without_sb.rs:+4:5: +4:20
                                            // mir::Constant
-                                           // + span: $DIR/ref_without_sb.rs:14:5: 14:18
+                                           // + span: $DIR/ref_without_sb.rs:15:5: 15:18
                                            // + literal: Const { ty: fn() {some_function}, val: Value(<ZST>) }
       }
   

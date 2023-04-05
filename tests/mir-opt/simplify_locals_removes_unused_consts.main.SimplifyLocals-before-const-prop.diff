@@ -56,7 +56,7 @@
 +         StorageDead(_3);                 // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:20: +2:21
 +         _1 = use_zst(move _2) -> bb1;    // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:5: +2:22
                                            // mir::Constant
-                                           // + span: $DIR/simplify_locals_removes_unused_consts.rs:15:5: 15:12
+                                           // + span: $DIR/simplify_locals_removes_unused_consts.rs:16:5: 16:12
                                            // + literal: Const { ty: fn(((), ())) {use_zst}, val: Value(<ZST>) }
       }
   
@@ -84,7 +84,7 @@
 +         StorageDead(_7);                 // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+4:33: +4:34
 +         _5 = use_u8(move _6) -> bb2;     // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+4:5: +4:35
                                            // mir::Constant
-                                           // + span: $DIR/simplify_locals_removes_unused_consts.rs:17:5: 17:11
+                                           // + span: $DIR/simplify_locals_removes_unused_consts.rs:18:5: 18:11
                                            // + literal: Const { ty: fn(u8) {use_u8}, val: Value(<ZST>) }
       }
   

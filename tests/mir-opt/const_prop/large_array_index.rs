@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 
 // EMIT_MIR large_array_index.main.ConstProp.diff

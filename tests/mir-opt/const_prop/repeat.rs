@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 // compile-flags: -O
 
 // EMIT_MIR_FOR_EACH_BIT_WIDTH

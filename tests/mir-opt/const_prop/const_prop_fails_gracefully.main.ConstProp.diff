@@ -18,7 +18,7 @@
           StorageLive(_3);                 // scope 0 at $DIR/const_prop_fails_gracefully.rs:+2:13: +2:16
           _3 = const _;                    // scope 0 at $DIR/const_prop_fails_gracefully.rs:+2:13: +2:16
                                            // mir::Constant
-                                           // + span: $DIR/const_prop_fails_gracefully.rs:8:13: 8:16
+                                           // + span: $DIR/const_prop_fails_gracefully.rs:9:13: 9:16
                                            // + literal: Const { ty: &i32, val: Unevaluated(FOO, [], None) }
           _2 = &raw const (*_3);           // scope 0 at $DIR/const_prop_fails_gracefully.rs:+2:13: +2:16
           _1 = move _2 as usize (PointerExposeAddress); // scope 0 at $DIR/const_prop_fails_gracefully.rs:+2:13: +2:39
@@ -29,7 +29,7 @@
           _5 = _1;                         // scope 1 at $DIR/const_prop_fails_gracefully.rs:+3:10: +3:11
           _4 = read(move _5) -> bb1;       // scope 1 at $DIR/const_prop_fails_gracefully.rs:+3:5: +3:12
                                            // mir::Constant
-                                           // + span: $DIR/const_prop_fails_gracefully.rs:9:5: 9:9
+                                           // + span: $DIR/const_prop_fails_gracefully.rs:10:5: 10:9
                                            // + literal: Const { ty: fn(usize) {read}, val: Value(<ZST>) }
       }
   

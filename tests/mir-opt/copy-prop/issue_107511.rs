@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 // unit-test: CopyProp
 
 // EMIT_MIR issue_107511.main.CopyProp.diff

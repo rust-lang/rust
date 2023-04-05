@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 // Test that we do not move multiple times from the same local.
 // unit-test: CopyProp
 

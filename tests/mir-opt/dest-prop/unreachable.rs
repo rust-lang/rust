@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 // Check that unreachable code is removed after the destination propagation.
 // Regression test for issue #105428.
 //

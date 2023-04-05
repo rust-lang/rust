@@ -7,7 +7,7 @@
       let mut _0: u16;                     // return place in scope 0 at $DIR/unchecked_shifts.rs:+0:65: +0:68
       let mut _3: u16;                     // in scope 0 at $DIR/unchecked_shifts.rs:+1:5: +1:6
       let mut _4: u32;                     // in scope 0 at $DIR/unchecked_shifts.rs:+1:21: +1:22
-+     scope 1 (inlined core::num::<impl u16>::unchecked_shl) { // at $DIR/unchecked_shifts.rs:10:7: 10:23
++     scope 1 (inlined core::num::<impl u16>::unchecked_shl) { // at $DIR/unchecked_shifts.rs:11:7: 11:23
 +         debug self => _3;                // in scope 1 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
 +         debug rhs => _4;                 // in scope 1 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
 +         let mut _5: u16;                 // in scope 1 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
@@ -60,7 +60,7 @@
 +         StorageLive(_7);                 // scope 2 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
 +         _7 = <u32 as TryInto<u16>>::try_into(_4) -> bb1; // scope 2 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
                                            // mir::Constant
--                                          // + span: $DIR/unchecked_shifts.rs:10:7: 10:20
+-                                          // + span: $DIR/unchecked_shifts.rs:11:7: 11:20
 -                                          // + literal: Const { ty: unsafe fn(u16, u32) -> u16 {core::num::<impl u16>::unchecked_shl}, val: Value(<ZST>) }
 +                                          // + span: $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
 +                                          // + literal: Const { ty: fn(u32) -> Result<u16, <u32 as TryInto<u16>>::Error> {<u32 as TryInto<u16>>::try_into}, val: Value(<ZST>) }

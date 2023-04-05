@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 // Checks that inlining threshold can be controlled with
 // inline-mir-threshold and inline-hint-threshold options.
 //
