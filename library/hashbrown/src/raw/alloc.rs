@@ -33,6 +33,9 @@ mod inner {
     use crate::alloc::alloc::Layout;
     use core::ptr::NonNull;
 
+    #[cfg(feature = "bumpalo")]
+    use allocator_api2::alloc::AllocError;
+
     pub use allocator_api2::alloc::{Allocator, Global};
 
     pub(crate) fn do_alloc<A: Allocator>(alloc: &A, layout: Layout) -> Result<NonNull<u8>, ()> {
@@ -45,8 +48,16 @@ mod inner {
     #[cfg(feature = "bumpalo")]
     unsafe impl Allocator for crate::BumpWrapper<'_> {
         #[allow(clippy::map_err_ignore)]
-        fn allocate(&self, layout: Layout) -> Result<NonNull<u8>, ()> {
-            self.0.try_alloc_layout(layout).map_err(|_| ())
+        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+            match self.0.try_alloc_layout(layout) {
+                Ok(ptr) => Ok(unsafe {
+                    NonNull::new_unchecked(core::ptr::slice_from_raw_parts_mut(
+                        ptr.as_ptr(),
+                        layout.size(),
+                    ))
+                }),
+                Err(_) => Err(AllocError),
+            }
         }
         unsafe fn deallocate(&self, _ptr: NonNull<u8>, _layout: Layout) {}
     }
