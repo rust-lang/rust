@@ -60,7 +60,9 @@ pub fn insert_ws_into(syn: SyntaxNode) -> SyntaxNode {
             |f: fn(SyntaxKind) -> bool, default| -> bool { last.map(f).unwrap_or(default) };
 
         match tok.kind() {
-            k if is_text(k) && is_next(|it| !it.is_punct() || it == UNDERSCORE, false) => {
+            k if is_text(k)
+                && is_next(|it| !it.is_punct() || matches!(it, T![_] | T![#]), false) =>
+            {
                 mods.push(do_ws(after, tok));
             }
             L_CURLY if is_next(|it| it != R_CURLY, true) => {
