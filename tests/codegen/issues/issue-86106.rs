@@ -1,4 +1,5 @@
 // min-llvm-version: 15.0
+// only-64bit llvm appears to use stores instead of memset on 32bit
 // compile-flags: -C opt-level=3 -Z merge-functions=disabled
 
 // The below two functions ensure that both `String::new()` and `"".to_string()`
@@ -19,9 +20,9 @@ pub fn string_new() -> String {
 // CHECK-LABEL: define void @empty_to_string
 #[no_mangle]
 pub fn empty_to_string() -> String {
-    // CHECK: getelementptr
+    // CHECK: store ptr inttoptr
+    // CHECK-NEXT: getelementptr
     // CHECK-NEXT: call void @llvm.memset
-    // CHECK-NEXT: store ptr inttoptr
     // CHECK-NEXT: ret void
     "".to_string()
 }
