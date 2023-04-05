@@ -470,5 +470,14 @@ pub(crate) struct ExpectedFound {
 pub(crate) struct Indeterminate(#[primary_span] pub(crate) Span);
 
 #[derive(Diagnostic)]
+#[diag(resolve_tool_module_imported)]
+pub(crate) struct ToolModuleImported {
+    #[primary_span]
+    pub(crate) span: Span,
+    #[note]
+    pub(crate) import: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(resolve_module_only)]
 pub(crate) struct ModuleOnly(#[primary_span] pub(crate) Span);
