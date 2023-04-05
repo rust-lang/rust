@@ -25,6 +25,9 @@ core = { version = "1.0.0", optional = true, package = "rustc-std-workspace-core
 compiler_builtins = { version = "0.1.2", optional = true }
 alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-alloc" }
 
+# Support for allocators that use allocator-api2
+allocator-api2 = { version = "0.2.6", optional = true }
+
 # Optional support for bumpalo
 bumpalo = { version = "3.5.0", optional = true }
 
@@ -37,7 +40,7 @@ serde_test = "1.0"
 doc-comment = "0.3.1"
 
 [features]
-default = ["ahash", "inline-more"]
+default = ["ahash", "inline-more", "allocator-api2"]
 
 nightly = []
 rustc-internal-api = []

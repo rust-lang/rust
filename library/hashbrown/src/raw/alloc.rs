@@ -30,36 +30,16 @@ mod inner {
 
 #[cfg(not(feature = "nightly"))]
 mod inner {
-    use crate::alloc::alloc::{alloc, dealloc, Layout};
+    use crate::alloc::alloc::Layout;
     use core::ptr::NonNull;
 
-    #[allow(clippy::missing_safety_doc)] // not exposed outside of this crate
-    pub unsafe trait Allocator {
-        fn allocate(&self, layout: Layout) -> Result<NonNull<u8>, ()>;
-        unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout);
-    }
-
-    #[derive(Copy, Clone)]
-    pub struct Global;
-    unsafe impl Allocator for Global {
-        #[inline]
-        fn allocate(&self, layout: Layout) -> Result<NonNull<u8>, ()> {
-            unsafe { NonNull::new(alloc(layout)).ok_or(()) }
-        }
-        #[inline]
-        unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-            dealloc(ptr.as_ptr(), layout);
-        }
-    }
-    impl Default for Global {
-        #[inline]
-        fn default() -> Self {
-            Global
-        }
-    }
+    pub use allocator_api2::alloc::{Allocator, Global};
 
     pub(crate) fn do_alloc<A: Allocator>(alloc: &A, layout: Layout) -> Result<NonNull<u8>, ()> {
-        alloc.allocate(layout)
+        match alloc.allocate(layout) {
+            Ok(ptr) => Ok(ptr.cast()),
+            Err(_) => Err(()),
+        }
     }
 
     #[cfg(feature = "bumpalo")]
