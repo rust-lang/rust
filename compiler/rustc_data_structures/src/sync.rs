@@ -7,9 +7,6 @@
 //! while the serial versions degenerate straightforwardly to serial execution.
 //! The operations include `join`, `parallel`, `par_iter`, and `par_for_each`.
 //!
-//! `rustc_erase_owner!` erases an `OwningRef` owner into `Erased` for the
-//! serial version and `Erased + Send + Sync` for the parallel version.
-//!
 //! Types
 //! -----
 //! The parallel versions of types provide various kinds of synchronization,
@@ -60,12 +57,6 @@ cfg_if! {
         pub unsafe auto trait Send {}
         pub unsafe auto trait Sync {}
 
-        #[macro_export]
-        macro_rules! rustc_erase_owner {
-            ($v:expr) => {
-                $v.erase_owner()
-            }
-        }
         unsafe impl<T> Send for T {}
         unsafe impl<T> Sync for T {}
 
@@ -376,15 +367,6 @@ cfg_if! {
         /// This makes locks panic if they are already held.
         /// It is only useful when you are running in a single thread
         const ERROR_CHECKING: bool = false;
-
-        #[macro_export]
-        macro_rules! rustc_erase_owner {
-            ($v:expr) => {{
-                let v = $v;
-                ::rustc_data_structures::sync::assert_send_val(&v);
-                v.erase_send_sync_owner()
-            }}
-        }
     }
 }
 

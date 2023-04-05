@@ -61,7 +61,6 @@ pub mod intern;
 pub mod jobserver;
 pub mod macros;
 pub mod obligation_forest;
-pub mod owning_ref;
 pub mod sip128;
 pub mod small_c_str;
 pub mod small_str;
