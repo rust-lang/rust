@@ -307,4 +307,13 @@ mod issue10049 {
     }
 }
 
+fn test_match_as_stmt() {
+    let x = 9;
+    match x {
+        1 => 2,
+        2 => return,
+        _ => 0,
+    };
+}
+
 fn main() {}
