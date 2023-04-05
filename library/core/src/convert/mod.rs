@@ -764,6 +764,7 @@ where
 {
     type Error = U::Error;
 
+    #[inline]
     fn try_into(self) -> Result<U, U::Error> {
         U::try_from(self)
     }
@@ -779,6 +780,7 @@ where
 {
     type Error = Infallible;
 
+    #[inline]
     fn try_from(value: U) -> Result<Self, Self::Error> {
         Ok(U::into(value))
     }
