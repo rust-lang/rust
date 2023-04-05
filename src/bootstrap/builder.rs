@@ -1673,7 +1673,15 @@ impl<'a> Builder<'a> {
                 self.config.rust_debuginfo_level_tools
             }
         };
-        cargo.env(profile_var("DEBUG"), debuginfo_level.to_string());
+        if debuginfo_level == 1 {
+            // Use less debuginfo than the default to save on disk space.
+            cargo.env(profile_var("DEBUG"), "line-tables-only");
+        } else {
+            cargo.env(profile_var("DEBUG"), debuginfo_level.to_string());
+        };
+        if self.cc[&target].args().iter().any(|arg| arg == "-gz") {
+            rustflags.arg("-Clink-arg=-gz");
+        }
         cargo.env(
             profile_var("DEBUG_ASSERTIONS"),
             if mode == Mode::Std {
