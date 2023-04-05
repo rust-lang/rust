@@ -155,10 +155,6 @@ impl<'r, 'a, 'tcx> EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
         }
     }
 
-    fn cheap_private_vis(&self, parent_id: ParentId<'_>) -> Option<Visibility> {
-        matches!(parent_id, ParentId::Def(_)).then_some(self.current_private_vis)
-    }
-
     fn effective_vis_or_private(&mut self, parent_id: ParentId<'a>) -> EffectiveVisibility {
         // Private nodes are only added to the table for caching, they could be added or removed at
         // any moment without consequences, so we don't set `changed` to true when adding them.
@@ -172,15 +168,39 @@ impl<'r, 'a, 'tcx> EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
         }
     }
 
+    /// All effective visibilities for a node are larger or equal than private visibility
+    /// for that node (see `check_invariants` in middle/privacy.rs).
+    /// So if either parent or nominal visibility is the same as private visibility, then
+    /// `min(parent_vis, nominal_vis) <= private_vis`, and the update logic is guaranteed
+    /// to not update anything and we can skip it.
+    ///
+    /// We are checking this condition only if the correct value of private visibility is
+    /// cheaply available, otherwise it does't make sense performance-wise.
+    ///
+    /// `None` is returned if the update can be skipped,
+    /// and cheap private visibility is returned otherwise.
+    fn may_update(
+        &self,
+        nominal_vis: Visibility,
+        parent_id: ParentId<'_>,
+    ) -> Option<Option<Visibility>> {
+        match parent_id {
+            ParentId::Def(def_id) => (nominal_vis != self.current_private_vis
+                && self.r.visibilities[&def_id] != self.current_private_vis)
+                .then_some(Some(self.current_private_vis)),
+            ParentId::Import(_) => Some(None),
+        }
+    }
+
     fn update_import(&mut self, binding: ImportId<'a>, parent_id: ParentId<'a>) {
         let nominal_vis = binding.vis.expect_local();
-        let private_vis = self.cheap_private_vis(parent_id);
+        let Some(cheap_private_vis) = self.may_update(nominal_vis, parent_id) else { return };
         let inherited_eff_vis = self.effective_vis_or_private(parent_id);
         let tcx = self.r.tcx;
         self.changed |= self.import_effective_visibilities.update(
             binding,
             nominal_vis,
-            || private_vis.unwrap_or_else(|| self.r.private_vis_import(binding)),
+            || cheap_private_vis.unwrap_or_else(|| self.r.private_vis_import(binding)),
             inherited_eff_vis,
             parent_id.level(),
             tcx,
@@ -188,13 +208,13 @@ impl<'r, 'a, 'tcx> EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
     }
 
     fn update_def(&mut self, def_id: LocalDefId, nominal_vis: Visibility, parent_id: ParentId<'a>) {
-        let private_vis = self.cheap_private_vis(parent_id);
+        let Some(cheap_private_vis) = self.may_update(nominal_vis, parent_id) else { return };
         let inherited_eff_vis = self.effective_vis_or_private(parent_id);
         let tcx = self.r.tcx;
         self.changed |= self.def_effective_visibilities.update(
             def_id,
             nominal_vis,
-            || private_vis.unwrap_or_else(|| self.r.private_vis_def(def_id)),
+            || cheap_private_vis.unwrap_or_else(|| self.r.private_vis_def(def_id)),
             inherited_eff_vis,
             parent_id.level(),
             tcx,

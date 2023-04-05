@@ -18,13 +18,13 @@ mod outer { //~ ERROR Direct: pub(crate), Reexported: pub(crate), Reachable: pub
         }
 
         #[rustc_effective_visibility]
-        struct PrivStruct; //~ ERROR Direct: pub(self), Reexported: pub(self), Reachable: pub(self), ReachableThroughImplTrait: pub(self)
-                           //~| ERROR Direct: pub(self), Reexported: pub(self), Reachable: pub(self), ReachableThroughImplTrait: pub(self)
+        struct PrivStruct; //~ ERROR not in the table
+                           //~| ERROR not in the table
 
         #[rustc_effective_visibility]
         pub union PubUnion { //~ ERROR Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
             #[rustc_effective_visibility]
-            a: u8, //~ ERROR Direct: pub(self), Reexported: pub(self), Reachable: pub(self), ReachableThroughImplTrait: pub(self)
+            a: u8, //~ ERROR not in the table
             #[rustc_effective_visibility]
             pub b: u8, //~ ERROR Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
         }
