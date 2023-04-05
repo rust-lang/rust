@@ -13,7 +13,7 @@ use cfg::{CfgDiff, CfgOptions};
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
 use semver::Version;
-use stdx::{always, hash::NoHashHashMap};
+use stdx::always;
 
 use crate::{
     build_scripts::BuildScriptOutput,
@@ -732,7 +732,7 @@ fn project_json_to_crate_graph(
     });
 
     let mut cfg_cache: FxHashMap<&str, Vec<CfgFlag>> = FxHashMap::default();
-    let crates: NoHashHashMap<CrateId, CrateId> = project
+    let crates: FxHashMap<CrateId, CrateId> = project
         .crates()
         .filter_map(|(crate_id, krate)| Some((crate_id, krate, load(&krate.root_module)?)))
         .map(

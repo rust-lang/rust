@@ -12,9 +12,8 @@ use ide_db::{
         salsa::{Database, ParallelDatabase, Snapshot},
         Cancelled, CrateGraph, CrateId, SourceDatabase, SourceDatabaseExt,
     },
-    FxIndexMap,
+    FxHashSet, FxIndexMap,
 };
-use stdx::hash::NoHashHashSet;
 
 use crate::RootDatabase;
 
@@ -142,7 +141,7 @@ pub(crate) fn parallel_prime_caches(
     }
 }
 
-fn compute_crates_to_prime(db: &RootDatabase, graph: &CrateGraph) -> NoHashHashSet<CrateId> {
+fn compute_crates_to_prime(db: &RootDatabase, graph: &CrateGraph) -> FxHashSet<CrateId> {
     // We're only interested in the workspace crates and the `ImportMap`s of their direct
     // dependencies, though in practice the latter also compute the `DefMap`s.
     // We don't prime transitive dependencies because they're generally not visible in

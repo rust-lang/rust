@@ -52,6 +52,7 @@
 use std::path::PathBuf;
 
 use base_db::{CrateDisplayName, CrateId, CrateName, Dependency, Edition};
+use la_arena::RawIdx;
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
 use serde::{de, Deserialize};
@@ -135,7 +136,10 @@ impl ProjectJson {
                             .deps
                             .into_iter()
                             .map(|dep_data| {
-                                Dependency::new(dep_data.name, CrateId(dep_data.krate as u32))
+                                Dependency::new(
+                                    dep_data.name,
+                                    CrateId::from_raw(RawIdx::from(dep_data.krate as u32)),
+                                )
                             })
                             .collect::<Vec<_>>(),
                         cfg: crate_data.cfg,
@@ -162,7 +166,10 @@ impl ProjectJson {
 
     /// Returns an iterator over the crates in the project.
     pub fn crates(&self) -> impl Iterator<Item = (CrateId, &Crate)> + '_ {
-        self.crates.iter().enumerate().map(|(idx, krate)| (CrateId(idx as u32), krate))
+        self.crates
+            .iter()
+            .enumerate()
+            .map(|(idx, krate)| (CrateId::from_raw(RawIdx::from(idx as u32)), krate))
     }
 
     /// Returns the path to the project's root folder.

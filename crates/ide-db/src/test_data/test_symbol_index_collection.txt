@@ -2,9 +2,7 @@
     (
         Module {
             id: ModuleId {
-                krate: CrateId(
-                    0,
-                ),
+                krate: Idx::<CrateData>(0),
                 block: None,
                 local_id: Idx::<ModuleData>(0),
             },
@@ -381,9 +379,7 @@
     (
         Module {
             id: ModuleId {
-                krate: CrateId(
-                    0,
-                ),
+                krate: Idx::<CrateData>(0),
                 block: None,
                 local_id: Idx::<ModuleData>(1),
             },
@@ -412,9 +408,7 @@
     (
         Module {
             id: ModuleId {
-                krate: CrateId(
-                    0,
-                ),
+                krate: Idx::<CrateData>(0),
                 block: None,
                 local_id: Idx::<ModuleData>(2),
             },

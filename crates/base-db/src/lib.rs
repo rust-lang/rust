@@ -8,7 +8,7 @@ pub mod fixture;
 
 use std::{panic, sync::Arc};
 
-use stdx::hash::NoHashHashSet;
+use rustc_hash::FxHashSet;
 use syntax::{ast, Parse, SourceFile, TextRange, TextSize};
 
 pub use crate::{
@@ -59,7 +59,7 @@ pub trait FileLoader {
     /// Text of the file.
     fn file_text(&self, file_id: FileId) -> Arc<String>;
     fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId>;
-    fn relevant_crates(&self, file_id: FileId) -> Arc<NoHashHashSet<CrateId>>;
+    fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>>;
 }
 
 /// Database which stores all significant input facts: source code and project
@@ -99,10 +99,10 @@ pub trait SourceDatabaseExt: SourceDatabase {
     #[salsa::input]
     fn source_root(&self, id: SourceRootId) -> Arc<SourceRoot>;
 
-    fn source_root_crates(&self, id: SourceRootId) -> Arc<NoHashHashSet<CrateId>>;
+    fn source_root_crates(&self, id: SourceRootId) -> Arc<FxHashSet<CrateId>>;
 }
 
-fn source_root_crates(db: &dyn SourceDatabaseExt, id: SourceRootId) -> Arc<NoHashHashSet<CrateId>> {
+fn source_root_crates(db: &dyn SourceDatabaseExt, id: SourceRootId) -> Arc<FxHashSet<CrateId>> {
     let graph = db.crate_graph();
     let res = graph
         .iter()
@@ -128,7 +128,7 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
         source_root.resolve_path(path)
     }
 
-    fn relevant_crates(&self, file_id: FileId) -> Arc<NoHashHashSet<CrateId>> {
+    fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>> {
         let _p = profile::span("relevant_crates");
         let source_root = self.0.file_source_root(file_id);
         self.0.source_root_crates(source_root)
