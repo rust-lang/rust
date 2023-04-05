@@ -30,11 +30,18 @@ impl<'a> InferenceContext<'a> {
 
     fn resolve_value_path(&mut self, path: &Path, id: ExprOrPatId) -> Option<Ty> {
         let (value, self_subst) = if let Some(type_ref) = path.type_anchor() {
-            let Some(last) = path.segments().last() else { return None };
-            let ty = self.make_ty(type_ref);
-            let remaining_segments_for_ty = path.segments().take(path.segments().len() - 1);
+            let last = path.segments().last()?;
+
+            // Don't use `self.make_ty()` here as we need `orig_ns`.
             let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
-            let (ty, _) = ctx.lower_ty_relative_path(ty, None, remaining_segments_for_ty);
+            let (ty, orig_ns) = ctx.lower_ty_ext(type_ref);
+            let ty = self.table.insert_type_vars(ty);
+            let ty = self.table.normalize_associated_types_in(ty);
+
+            let remaining_segments_for_ty = path.segments().take(path.segments().len() - 1);
+            let (ty, _) = ctx.lower_ty_relative_path(ty, orig_ns, remaining_segments_for_ty);
+            let ty = self.table.insert_type_vars(ty);
+            let ty = self.table.normalize_associated_types_in(ty);
             self.resolve_ty_assoc_item(ty, last.name, id).map(|(it, substs)| (it, Some(substs)))?
         } else {
             // FIXME: report error, unresolved first path segment
@@ -169,7 +176,7 @@ impl<'a> InferenceContext<'a> {
     ) -> Option<(ValueNs, Substitution)> {
         let trait_ = trait_ref.hir_trait_id();
         let item =
-            self.db.trait_data(trait_).items.iter().map(|(_name, id)| (*id)).find_map(|item| {
+            self.db.trait_data(trait_).items.iter().map(|(_name, id)| *id).find_map(|item| {
                 match item {
                     AssocItemId::FunctionId(func) => {
                         if segment.name == &self.db.function_data(func).name {
@@ -288,7 +295,7 @@ impl<'a> InferenceContext<'a> {
         name: &Name,
         id: ExprOrPatId,
     ) -> Option<(ValueNs, Substitution)> {
-        let ty = self.resolve_ty_shallow(ty);
+        let ty = self.resolve_ty_shallow(&ty);
         let (enum_id, subst) = match ty.as_adt() {
             Some((AdtId::EnumId(e), subst)) => (e, subst),
             _ => return None,

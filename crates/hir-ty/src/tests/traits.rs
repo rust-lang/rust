@@ -4183,3 +4183,106 @@ fn test() {
 "#,
     );
 }
+
+#[test]
+fn associated_type_in_struct_expr_path() {
+    // FIXME: All annotation should be resolvable.
+    // For lines marked as unstable, see rust-lang/rust#86935.
+    // FIXME: Remove the comments once stablized.
+    check_types(
+        r#"
+trait Trait {
+    type Assoc;
+    fn f();
+}
+
+struct S { x: u32 }
+
+impl Trait for () {
+    type Assoc = S;
+
+    fn f() {
+        let x = 42;
+        let a = Self::Assoc { x };
+      //    ^ S
+        let a = <Self>::Assoc { x }; // unstable
+      //    ^ {unknown}
+
+        // should be `Copy` but we don't track ownership anyway.
+        let value = S { x };
+        if let Self::Assoc { x } = value {}
+      //                     ^ u32
+        if let <Self>::Assoc { x } = value {} // unstable
+      //                       ^ {unknown}
+    }
+}
+    "#,
+    );
+}
+
+#[test]
+fn associted_type_in_struct_expr_path_enum() {
+    // FIXME: All annotation should be resolvable.
+    // For lines marked as unstable, see rust-lang/rust#86935.
+    // FIXME: Remove the comments once stablized.
+    check_types(
+        r#"
+trait Trait {
+    type Assoc;
+    fn f();
+}
+
+enum E {
+    Unit,
+    Struct { x: u32 },
+}
+
+impl Trait for () {
+    type Assoc = E;
+
+    fn f() {
+        let a = Self::Assoc::Unit;
+      //    ^ E
+        let a = <Self>::Assoc::Unit;
+      //    ^ E
+        let a = <Self::Assoc>::Unit;
+      //    ^ E
+        let a = <<Self>::Assoc>::Unit;
+      //    ^ E
+
+        // should be `Copy` but we don't track ownership anyway.
+        let value = E::Unit;
+        if let Self::Assoc::Unit = value {}
+      //       ^^^^^^^^^^^^^^^^^ E
+        if let <Self>::Assoc::Unit = value {}
+      //       ^^^^^^^^^^^^^^^^^^^ E
+        if let <Self::Assoc>::Unit = value {}
+      //       ^^^^^^^^^^^^^^^^^^^ E
+        if let <<Self>::Assoc>::Unit = value {}
+      //       ^^^^^^^^^^^^^^^^^^^^^ E
+
+        let x = 42;
+        let a = Self::Assoc::Struct { x };
+      //    ^ E
+        let a = <Self>::Assoc::Struct { x }; // unstable
+      //    ^ {unknown}
+        let a = <Self::Assoc>::Struct { x }; // unstable
+      //    ^ {unknown}
+        let a = <<Self>::Assoc>::Struct { x }; // unstable
+      //    ^ {unknown}
+
+        // should be `Copy` but we don't track ownership anyway.
+        let value = E::Struct { x: 42 };
+        if let Self::Assoc::Struct { x } = value {}
+      //                             ^ u32
+        if let <Self>::Assoc::Struct { x } = value {} // unstable
+      //                               ^ {unknown}
+        if let <Self::Assoc>::Struct { x } = value {} // unstable
+      //                               ^ {unknown}
+        if let <<Self>::Assoc>::Struct { x } = value {} // unstable
+      //                                 ^ {unknown}
+    }
+}
+    "#,
+    );
+}

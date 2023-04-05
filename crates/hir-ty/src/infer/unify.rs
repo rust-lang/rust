@@ -7,16 +7,18 @@ use chalk_ir::{
     IntTy, TyVariableKind, UniverseIndex,
 };
 use chalk_solve::infer::ParameterEnaVariableExt;
+use either::Either;
 use ena::unify::UnifyKey;
 use hir_expand::name;
 use stdx::never;
 
 use super::{InferOk, InferResult, InferenceContext, TypeError};
 use crate::{
-    db::HirDatabase, fold_tys, static_lifetime, to_chalk_trait_id, traits::FnTrait, AliasEq,
-    AliasTy, BoundVar, Canonical, Const, DebruijnIndex, GenericArg, GenericArgData, Goal, Guidance,
-    InEnvironment, InferenceVar, Interner, Lifetime, ParamKind, ProjectionTy, ProjectionTyExt,
-    Scalar, Solution, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind, VariableKind,
+    db::HirDatabase, fold_tys, fold_tys_and_consts, static_lifetime, to_chalk_trait_id,
+    traits::FnTrait, AliasEq, AliasTy, BoundVar, Canonical, Const, ConstValue, DebruijnIndex,
+    GenericArg, GenericArgData, Goal, Guidance, InEnvironment, InferenceVar, Interner, Lifetime,
+    ParamKind, ProjectionTy, ProjectionTyExt, Scalar, Solution, Substitution, TraitEnvironment, Ty,
+    TyBuilder, TyExt, TyKind, VariableKind,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -715,6 +717,45 @@ impl<'a> InferenceTable<'a> {
             unreachable!("It should at least implement FnOnce at this point");
         } else {
             None
+        }
+    }
+
+    pub(super) fn insert_type_vars(&mut self, ty: Ty) -> Ty {
+        fold_tys_and_consts(
+            ty,
+            |x, _| match x {
+                Either::Left(ty) => Either::Left(self.insert_type_vars_shallow(ty)),
+                Either::Right(c) => Either::Right(self.insert_const_vars_shallow(c)),
+            },
+            DebruijnIndex::INNERMOST,
+        )
+    }
+
+    /// Replaces `Ty::Error` by a new type var, so we can maybe still infer it.
+    pub(super) fn insert_type_vars_shallow(&mut self, ty: Ty) -> Ty {
+        match ty.kind(Interner) {
+            TyKind::Error => self.new_type_var(),
+            TyKind::InferenceVar(..) => {
+                let ty_resolved = self.resolve_ty_shallow(&ty);
+                if ty_resolved.is_unknown() {
+                    self.new_type_var()
+                } else {
+                    ty
+                }
+            }
+            _ => ty,
+        }
+    }
+
+    /// Replaces ConstScalar::Unknown by a new type var, so we can maybe still infer it.
+    pub(super) fn insert_const_vars_shallow(&mut self, c: Const) -> Const {
+        let data = c.data(Interner);
+        match &data.value {
+            ConstValue::Concrete(cc) => match cc.interned {
+                crate::ConstScalar::Unknown => self.new_const_var(data.ty.clone()),
+                _ => c,
+            },
+            _ => c,
         }
     }
 }
