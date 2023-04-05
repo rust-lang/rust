@@ -21,7 +21,7 @@ use rustc_hir_analysis::astconv::AstConv;
 use rustc_hir_analysis::check::intrinsicck::InlineAsmCtxt;
 use rustc_hir_analysis::check::potentially_plural_count;
 use rustc_hir_analysis::structured_errors::StructuredDiagnostic;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::vec::IndexVec;
 use rustc_infer::infer::error_reporting::{FailureCode, ObligationCauseExt};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::TypeTrace;
@@ -963,14 +963,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 .map_or(true, |next_error| !matches!(next_error, Error::Extra(_)))
                         {
                             let next = provided_arg_tys
-                                .get(arg_idx.plus(1))
+                                .get(arg_idx + 1)
                                 .map(|&(_, sp)| sp)
                                 .unwrap_or_else(|| {
                                     // Subtract one to move before `)`
-                                    call_expr
-                                        .span
-                                        .shrink_to_hi()
-                                        .with_lo(call_expr.span.hi() - BytePos(1))
+                                    call_expr.span.with_lo(call_expr.span.hi() - BytePos(1))
                                 });
 
                             // Include next comma
