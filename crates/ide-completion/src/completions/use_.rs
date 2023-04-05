@@ -91,10 +91,10 @@ pub(crate) fn complete_use_path(
         // only show modules and non-std enum in a fresh UseTree
         Qualified::No => {
             cov_mark::hit!(unqualified_path_selected_only);
-            ctx.process_all_names(&mut |name, res| {
+            ctx.process_all_names(&mut |name, res, doc_aliases| {
                 match res {
                     ScopeDef::ModuleDef(hir::ModuleDef::Module(module)) => {
-                        acc.add_module(ctx, path_ctx, module, name);
+                        acc.add_module(ctx, path_ctx, module, name, doc_aliases);
                     }
                     ScopeDef::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Enum(e))) => {
                         // exclude prelude enum

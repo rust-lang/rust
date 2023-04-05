@@ -1644,6 +1644,7 @@ impl<'a> SemanticsScope<'a> {
         VisibleTraits(resolver.traits_in_scope(self.db.upcast()))
     }
 
+    /// Calls the passed closure `f` on all names in scope.
     pub fn process_all_names(&self, f: &mut dyn FnMut(Name, ScopeDef)) {
         let scope = self.resolver.names_in_scope(self.db.upcast());
         for (name, entries) in scope {

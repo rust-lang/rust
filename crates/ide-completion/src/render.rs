@@ -14,6 +14,7 @@ use hir::{AsAssocItem, HasAttrs, HirDisplay, ScopeDef};
 use ide_db::{
     helpers::item_name, imports::import_assets::LocatedImport, RootDatabase, SnippetCap, SymbolKind,
 };
+use itertools::Itertools;
 use syntax::{AstNode, SmolStr, SyntaxKind, TextRange};
 
 use crate::{
@@ -32,11 +33,17 @@ pub(crate) struct RenderContext<'a> {
     completion: &'a CompletionContext<'a>,
     is_private_editable: bool,
     import_to_add: Option<LocatedImport>,
+    doc_aliases: Vec<SmolStr>,
 }
 
 impl<'a> RenderContext<'a> {
     pub(crate) fn new(completion: &'a CompletionContext<'a>) -> RenderContext<'a> {
-        RenderContext { completion, is_private_editable: false, import_to_add: None }
+        RenderContext {
+            completion,
+            is_private_editable: false,
+            import_to_add: None,
+            doc_aliases: vec![],
+        }
     }
 
     pub(crate) fn private_editable(mut self, private_editable: bool) -> Self {
@@ -46,6 +53,11 @@ impl<'a> RenderContext<'a> {
 
     pub(crate) fn import_to_add(mut self, import_to_add: Option<LocatedImport>) -> Self {
         self.import_to_add = import_to_add;
+        self
+    }
+
+    pub(crate) fn doc_aliases(mut self, doc_aliases: Vec<SmolStr>) -> Self {
+        self.doc_aliases = doc_aliases;
         self
     }
 
@@ -347,6 +359,12 @@ fn render_resolution_simple_(
 
     if let Some(import_to_add) = ctx.import_to_add {
         item.add_import(import_to_add);
+    }
+
+    let doc_aliases = ctx.doc_aliases;
+    if !doc_aliases.is_empty() {
+        let doc_aliases = doc_aliases.into_iter().join(", ").into();
+        item.doc_aliases(doc_aliases);
     }
     item
 }

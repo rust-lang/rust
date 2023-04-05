@@ -23,7 +23,7 @@ pub(crate) fn complete_vis_path(
             if let Some(next) = next_towards_current {
                 if let Some(name) = next.name(ctx.db) {
                     cov_mark::hit!(visibility_qualified);
-                    acc.add_module(ctx, path_ctx, next, name);
+                    acc.add_module(ctx, path_ctx, next, name, vec![]);
                 }
             }
 

@@ -1,5 +1,8 @@
 //! A higher level attributes based on TokenTree, with also some shortcuts.
 
+#[cfg(test)]
+mod tests;
+
 use std::{hash::Hash, ops, sync::Arc};
 
 use base_db::CrateId;
@@ -245,6 +248,14 @@ impl Attrs {
         })
     }
 
+    pub fn doc_exprs(&self) -> impl Iterator<Item = DocExpr> + '_ {
+        self.by_key("doc").tt_values().map(DocExpr::parse)
+    }
+
+    pub fn doc_aliases(&self) -> impl Iterator<Item = SmolStr> + '_ {
+        self.doc_exprs().flat_map(|doc_expr| doc_expr.aliases().to_vec())
+    }
+
     pub fn is_proc_macro(&self) -> bool {
         self.by_key("proc_macro").exists()
     }
@@ -256,6 +267,107 @@ impl Attrs {
     pub fn is_proc_macro_derive(&self) -> bool {
         self.by_key("proc_macro_derive").exists()
     }
+}
+
+use std::slice::Iter as SliceIter;
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub enum DocAtom {
+    /// eg. `#[doc(hidden)]`
+    Flag(SmolStr),
+    /// eg. `#[doc(alias = "x")]`
+    ///
+    /// Note that a key can have multiple values that are all considered "active" at the same time.
+    /// For example, `#[doc(alias = "x")]` and `#[doc(alias = "y")]`.
+    KeyValue { key: SmolStr, value: SmolStr },
+}
+
+// Adapted from `CfgExpr` parsing code
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+// #[cfg_attr(test, derive(derive_arbitrary::Arbitrary))]
+pub enum DocExpr {
+    Invalid,
+    /// eg. `#[doc(hidden)]`, `#[doc(alias = "x")]`
+    Atom(DocAtom),
+    /// eg. `#[doc(alias("x", "y"))]`
+    Alias(Vec<SmolStr>),
+}
+
+impl From<DocAtom> for DocExpr {
+    fn from(atom: DocAtom) -> Self {
+        DocExpr::Atom(atom)
+    }
+}
+
+impl DocExpr {
+    fn parse<S>(tt: &tt::Subtree<S>) -> DocExpr {
+        next_doc_expr(&mut tt.token_trees.iter()).unwrap_or(DocExpr::Invalid)
+    }
+
+    pub fn aliases(&self) -> &[SmolStr] {
+        match self {
+            DocExpr::Atom(DocAtom::KeyValue { key, value }) if key == "alias" => {
+                std::slice::from_ref(value)
+            }
+            DocExpr::Alias(aliases) => aliases,
+            _ => &[],
+        }
+    }
+}
+
+fn next_doc_expr<S>(it: &mut SliceIter<'_, tt::TokenTree<S>>) -> Option<DocExpr> {
+    let name = match it.next() {
+        None => return None,
+        Some(tt::TokenTree::Leaf(tt::Leaf::Ident(ident))) => ident.text.clone(),
+        Some(_) => return Some(DocExpr::Invalid),
+    };
+
+    // Peek
+    let ret = match it.as_slice().first() {
+        Some(tt::TokenTree::Leaf(tt::Leaf::Punct(punct))) if punct.char == '=' => {
+            match it.as_slice().get(1) {
+                Some(tt::TokenTree::Leaf(tt::Leaf::Literal(literal))) => {
+                    it.next();
+                    it.next();
+                    // FIXME: escape? raw string?
+                    let value =
+                        SmolStr::new(literal.text.trim_start_matches('"').trim_end_matches('"'));
+                    DocAtom::KeyValue { key: name, value }.into()
+                }
+                _ => return Some(DocExpr::Invalid),
+            }
+        }
+        Some(tt::TokenTree::Subtree(subtree)) => {
+            it.next();
+            let subs = parse_comma_sep(subtree);
+            match name.as_str() {
+                "alias" => DocExpr::Alias(subs),
+                _ => DocExpr::Invalid,
+            }
+        }
+        _ => DocAtom::Flag(name).into(),
+    };
+
+    // Eat comma separator
+    if let Some(tt::TokenTree::Leaf(tt::Leaf::Punct(punct))) = it.as_slice().first() {
+        if punct.char == ',' {
+            it.next();
+        }
+    }
+    Some(ret)
+}
+
+fn parse_comma_sep<S>(subtree: &tt::Subtree<S>) -> Vec<SmolStr> {
+    subtree
+        .token_trees
+        .iter()
+        .filter_map(|tt| match tt {
+            tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => {
+                // FIXME: escape? raw string?
+                Some(SmolStr::new(lit.text.trim_start_matches('"').trim_end_matches('"')))
+            }
+            _ => None,
+        })
+        .collect()
 }
 
 impl AttrsWithOwner {

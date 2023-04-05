@@ -989,3 +989,100 @@ fn foo { crate::::$0 }
         expect![""],
     )
 }
+
+#[test]
+fn completes_struct_via_doc_alias_in_fn_body() {
+    check(
+        r#"
+#[doc(alias = "Bar")]
+struct Foo;
+
+fn here_we_go() {
+    $0
+}
+"#,
+        expect![[r#"
+            fn here_we_go()    fn()
+            st Foo (alias Bar)
+            bt u32
+            kw const
+            kw crate::
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw let
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+}
+
+#[test]
+fn completes_struct_via_multiple_doc_aliases_in_fn_body() {
+    check(
+        r#"
+#[doc(alias("Bar", "Qux"))]
+#[doc(alias = "Baz")]
+struct Foo;
+
+fn here_we_go() {
+    B$0
+}
+"#,
+        expect![[r#"
+            fn here_we_go()           fn()
+            st Foo (alias Bar, Qux, Baz)
+            bt u32
+            kw const
+            kw crate::
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw let
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+}
