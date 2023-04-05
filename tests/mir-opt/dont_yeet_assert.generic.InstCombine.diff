@@ -7,7 +7,7 @@
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/dont_yeet_assert.rs:+1:5: +1:61
-          _1 = assert_mem_uninitialized_valid::<&T>() -> bb1; // scope 0 at $DIR/dont_yeet_assert.rs:+1:5: +1:61
+          _1 = assert_mem_uninitialized_valid::<&T>() -> [return: bb1, unwind unreachable]; // scope 0 at $DIR/dont_yeet_assert.rs:+1:5: +1:61
                                            // mir::Constant
                                            // + span: $DIR/dont_yeet_assert.rs:10:5: 10:59
                                            // + user_ty: UserType(0)

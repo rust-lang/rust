@@ -17,7 +17,7 @@ fn main() -> () {
     }
 
     bb1: {
-        falseUnwind -> [real: bb2, cleanup: bb11]; // scope 0 at $DIR/issue_49232.rs:+1:5: +9:6
+        falseUnwind -> [real: bb2, unwind: bb11]; // scope 0 at $DIR/issue_49232.rs:+1:5: +9:6
     }
 
     bb2: {

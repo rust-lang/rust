@@ -109,11 +109,11 @@ fn test() -> Option<Box<u32>> {
     }
 
     bb11 (cleanup): {
-        drop(_1) -> bb13;                // scope 0 at $DIR/issue_62289.rs:+4:5: +4:6
+        drop(_1) -> [return: bb13, unwind terminate]; // scope 0 at $DIR/issue_62289.rs:+4:5: +4:6
     }
 
     bb12 (cleanup): {
-        drop(_5) -> bb13;                // scope 0 at $DIR/issue_62289.rs:+3:23: +3:24
+        drop(_5) -> [return: bb13, unwind terminate]; // scope 0 at $DIR/issue_62289.rs:+3:23: +3:24
     }
 
     bb13 (cleanup): {

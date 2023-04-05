@@ -106,7 +106,7 @@
 +         _5 = move ((_6 as Some).0: i16); // scope 7 at $SRC_DIR/core/src/option.rs:LL:COL
 +         StorageDead(_10);                // scope 2 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
 +         StorageDead(_6);                 // scope 2 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
-+         _0 = unchecked_shr::<i16>(_3, move _5) -> bb3; // scope 2 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
++         _0 = unchecked_shr::<i16>(_3, move _5) -> [return: bb3, unwind unreachable]; // scope 2 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
 +                                          // mir::Constant
 +                                          // + span: $SRC_DIR/core/src/num/int_macros.rs:LL:COL
 +                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(i16, i16) -> i16 {unchecked_shr::<i16>}, val: Value(<ZST>) }

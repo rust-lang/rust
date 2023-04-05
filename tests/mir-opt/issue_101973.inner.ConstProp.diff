@@ -66,7 +66,7 @@
       bb2: {
           _6 = Shl(move _7, const 1_i32);  // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
           StorageDead(_7);                 // scope 0 at $DIR/issue_101973.rs:+1:56: +1:57
-          _3 = rotate_right::<u32>(_4, _6) -> bb3; // scope 3 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+          _3 = rotate_right::<u32>(_4, _6) -> [return: bb3, unwind unreachable]; // scope 3 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
                                            // mir::Constant
                                            // + span: $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
                                            // + literal: Const { ty: extern "rust-intrinsic" fn(u32, u32) -> u32 {rotate_right::<u32>}, val: Value(<ZST>) }

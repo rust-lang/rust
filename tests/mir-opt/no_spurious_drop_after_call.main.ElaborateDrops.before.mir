@@ -40,7 +40,7 @@ fn main() -> () {
     }
 
     bb3 (cleanup): {
-        drop(_2) -> bb4;                 // scope 0 at $DIR/no_spurious_drop_after_call.rs:+1:34: +1:35
+        drop(_2) -> [return: bb4, unwind terminate]; // scope 0 at $DIR/no_spurious_drop_after_call.rs:+1:34: +1:35
     }
 
     bb4 (cleanup): {

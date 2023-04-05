@@ -243,7 +243,7 @@
       }
   
 -     bb25 (cleanup): {
--         drop(_2) -> bb26;                // scope 0 at $DIR/match_arm_scopes.rs:+5:1: +5:2
+-         drop(_2) -> [return: bb26, unwind terminate]; // scope 0 at $DIR/match_arm_scopes.rs:+5:1: +5:2
 +     bb22 (cleanup): {
 +         goto -> bb27;                    // scope 0 at $DIR/match_arm_scopes.rs:+5:1: +5:2
       }

@@ -95,15 +95,15 @@ fn move_out_by_subslice() -> () {
     }
 
     bb9 (cleanup): {
-        drop(_1) -> bb12;                // scope 0 at $DIR/uniform_array_move_out.rs:+8:1: +8:2
+        drop(_1) -> [return: bb12, unwind terminate]; // scope 0 at $DIR/uniform_array_move_out.rs:+8:1: +8:2
     }
 
     bb10 (cleanup): {
-        drop(_7) -> bb11;                // scope 0 at $DIR/uniform_array_move_out.rs:+6:5: +6:6
+        drop(_7) -> [return: bb11, unwind terminate]; // scope 0 at $DIR/uniform_array_move_out.rs:+6:5: +6:6
     }
 
     bb11 (cleanup): {
-        drop(_2) -> bb12;                // scope 0 at $DIR/uniform_array_move_out.rs:+6:5: +6:6
+        drop(_2) -> [return: bb12, unwind terminate]; // scope 0 at $DIR/uniform_array_move_out.rs:+6:5: +6:6
     }
 
     bb12 (cleanup): {

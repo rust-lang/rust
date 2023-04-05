@@ -14,7 +14,7 @@
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/inline_instruction_set.rs:+1:5: +1:26
-          _1 = instruction_set_a32() -> bb1; // scope 0 at $DIR/inline_instruction_set.rs:+1:5: +1:26
+          _1 = instruction_set_a32() -> [return: bb1, unwind unreachable]; // scope 0 at $DIR/inline_instruction_set.rs:+1:5: +1:26
                                            // mir::Constant
                                            // + span: $DIR/inline_instruction_set.rs:49:5: 49:24
                                            // + literal: Const { ty: fn() {instruction_set_a32}, val: Value(<ZST>) }
@@ -23,7 +23,7 @@
       bb1: {
           StorageDead(_1);                 // scope 0 at $DIR/inline_instruction_set.rs:+1:26: +1:27
           StorageLive(_2);                 // scope 0 at $DIR/inline_instruction_set.rs:+2:5: +2:26
--         _2 = instruction_set_t32() -> bb2; // scope 0 at $DIR/inline_instruction_set.rs:+2:5: +2:26
+-         _2 = instruction_set_t32() -> [return: bb2, unwind unreachable]; // scope 0 at $DIR/inline_instruction_set.rs:+2:5: +2:26
 -                                          // mir::Constant
 -                                          // + span: $DIR/inline_instruction_set.rs:50:5: 50:24
 -                                          // + literal: Const { ty: fn() {instruction_set_t32}, val: Value(<ZST>) }
@@ -32,7 +32,7 @@
 -     bb2: {
           StorageDead(_2);                 // scope 0 at $DIR/inline_instruction_set.rs:+2:26: +2:27
           StorageLive(_3);                 // scope 0 at $DIR/inline_instruction_set.rs:+3:5: +3:30
--         _3 = instruction_set_default() -> bb3; // scope 0 at $DIR/inline_instruction_set.rs:+3:5: +3:30
+-         _3 = instruction_set_default() -> [return: bb3, unwind unreachable]; // scope 0 at $DIR/inline_instruction_set.rs:+3:5: +3:30
 -                                          // mir::Constant
 -                                          // + span: $DIR/inline_instruction_set.rs:51:5: 51:28
 -                                          // + literal: Const { ty: fn() {instruction_set_default}, val: Value(<ZST>) }
@@ -41,8 +41,8 @@
 -     bb3: {
           StorageDead(_3);                 // scope 0 at $DIR/inline_instruction_set.rs:+3:30: +3:31
           StorageLive(_4);                 // scope 0 at $DIR/inline_instruction_set.rs:+4:5: +4:41
--         _4 = inline_always_and_using_inline_asm() -> bb4; // scope 0 at $DIR/inline_instruction_set.rs:+4:5: +4:41
-+         _4 = inline_always_and_using_inline_asm() -> bb2; // scope 0 at $DIR/inline_instruction_set.rs:+4:5: +4:41
+-         _4 = inline_always_and_using_inline_asm() -> [return: bb4, unwind unreachable]; // scope 0 at $DIR/inline_instruction_set.rs:+4:5: +4:41
++         _4 = inline_always_and_using_inline_asm() -> [return: bb2, unwind unreachable]; // scope 0 at $DIR/inline_instruction_set.rs:+4:5: +4:41
                                            // mir::Constant
                                            // + span: $DIR/inline_instruction_set.rs:52:5: 52:39
                                            // + literal: Const { ty: fn() {inline_always_and_using_inline_asm}, val: Value(<ZST>) }

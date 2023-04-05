@@ -46,11 +46,11 @@
 -     bb3: {
 -         return;                          // scope 0 at $DIR/issue_78442.rs:+5:2: +5:2
 +     bb3 (cleanup): {
-+         drop(_1) -> bb4;                 // scope 0 at $DIR/issue_78442.rs:+5:1: +5:2
++         drop(_1) -> [return: bb4, unwind terminate]; // scope 0 at $DIR/issue_78442.rs:+5:1: +5:2
       }
   
       bb4 (cleanup): {
--         drop(_1) -> bb5;                 // scope 0 at $DIR/issue_78442.rs:+5:1: +5:2
+-         drop(_1) -> [return: bb5, unwind terminate]; // scope 0 at $DIR/issue_78442.rs:+5:1: +5:2
 +         resume;                          // scope 0 at $DIR/issue_78442.rs:+0:1: +5:2
       }
   

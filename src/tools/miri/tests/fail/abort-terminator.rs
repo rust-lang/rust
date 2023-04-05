@@ -1,7 +1,7 @@
 #![feature(c_unwind)]
 
 extern "C" fn panic_abort() {
-    //~^ ERROR: the program aborted
+    //~^ ERROR: panic in a function that cannot unwind
     panic!()
 }
 
