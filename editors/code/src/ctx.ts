@@ -7,6 +7,7 @@ import { Config, prepareVSCodeConfig } from "./config";
 import { createClient } from "./client";
 import {
     executeDiscoverProject,
+    isDocumentInWorkspace,
     isRustDocument,
     isRustEditor,
     LazyOutputChannel,
@@ -277,15 +278,16 @@ export class Ctx {
             ...this,
             client: client,
         };
-        const rootPath = vscode.workspace.workspaceFolders![0].uri.fsPath;
-        this._dependencies = new RustDependenciesProvider(rootPath, ctxInit);
+        this._dependencies = new RustDependenciesProvider(ctxInit);
         this._treeView = vscode.window.createTreeView("rustDependencies", {
             treeDataProvider: this._dependencies,
             showCollapseAll: true,
         });
 
+        this.pushExtCleanup(this._treeView);
         vscode.window.onDidChangeActiveTextEditor((e) => {
-            if (e && isRustEditor(e)) {
+            // we should skip documents that belong to the current workspace
+            if (e && isRustEditor(e) && !isDocumentInWorkspace(e.document)) {
                 execRevealDependency(e).catch((reason) => {
                     void vscode.window.showErrorMessage(`Dependency error: ${reason}`);
                 });

@@ -15,7 +15,7 @@ export class RustDependenciesProvider
     dependenciesMap: { [id: string]: Dependency | DependencyFile };
     ctx: CtxInit;
 
-    constructor(private readonly workspaceRoot: string,ctx: CtxInit) {
+    constructor(ctx: CtxInit) {
         this.dependenciesMap = {};
         this.ctx = ctx;
     }
@@ -37,6 +37,7 @@ export class RustDependenciesProvider
     }
 
     refresh(): void {
+        this.dependenciesMap = {};
         this._onDidChangeTreeData.fire();
     }
 
@@ -56,7 +57,7 @@ export class RustDependenciesProvider
         element?: Dependency | DependencyFile
     ): vscode.ProviderResult<Dependency[] | DependencyFile[]> {
         return new Promise((resolve, _reject) => {
-            if (!this.workspaceRoot) {
+            if (!vscode.workspace.workspaceFolders) {
                 void vscode.window.showInformationMessage("No dependency in empty workspace");
                 return Promise.resolve([]);
             }
@@ -108,6 +109,7 @@ export class Dependency extends vscode.TreeItem {
         public readonly collapsibleState: vscode.TreeItemCollapsibleState
     ) {
         super(label, collapsibleState);
+        this.id = this.dependencyPath.toLowerCase();
         this.tooltip = `${this.label}-${this.version}`;
         this.description = this.version;
         this.resourceUri = vscode.Uri.file(dependencyPath);

@@ -8,7 +8,15 @@ import { applySnippetWorkspaceEdit, applySnippetTextEdits } from "./snippets";
 import { spawnSync } from "child_process";
 import { RunnableQuickPick, selectRunnable, createTask, createArgs } from "./run";
 import { AstInspector } from "./ast_inspector";
-import { isRustDocument, isCargoTomlDocument, sleep, isRustEditor, RustEditor } from "./util";
+import {
+    isRustDocument,
+    isCargoTomlDocument,
+    sleep,
+    isRustEditor,
+    RustEditor,
+    RustDocument,
+    closeDocument,
+} from "./util";
 import { startDebugSession, makeDebugConfig } from "./debug";
 import { LanguageClient } from "vscode-languageclient/node";
 import { LINKED_COMMANDS } from "./client";
@@ -269,25 +277,61 @@ export function openCargoToml(ctx: CtxInit): Cmd {
 
 export function revealDependency(ctx: CtxInit): Cmd {
     return async (editor: RustEditor) => {
-        const rootPath = vscode.workspace.workspaceFolders![0].uri.fsPath;
         const documentPath = editor.document.uri.fsPath;
-        if (documentPath.startsWith(rootPath)) return;
         const dep = ctx.dependencies?.getDependency(documentPath);
         if (dep) {
             await ctx.treeView?.reveal(dep, { select: true, expand: true });
         } else {
-            let documentPath = editor.document.uri.fsPath;
-            const parentChain: DependencyId[] = [{ id: documentPath.toLowerCase() }];
-            do {
-                documentPath = path.dirname(documentPath);
-                parentChain.push({ id: documentPath.toLowerCase() });
-            } while (!ctx.dependencies?.contains(documentPath));
-            parentChain.reverse();
-            for (const idx in parentChain) {
-                await ctx.treeView?.reveal(parentChain[idx], { select: true, expand: true });
-            }
+            await revealParentChain(editor.document, ctx);
         }
     };
+}
+
+/**
+ * This function calculates the parent chain of a given file until it reaches it crate root contained in ctx.dependencies.
+ * This is need because the TreeView is Lazy, so at first it only has the root dependencies: For example if we have the following crates:
+ * - core
+ * - alloc
+ * - std
+ *
+ * if I want to reveal alloc/src/str.rs, I have to:
+
+ * 1. reveal every children of alloc
+ * - core
+ * - alloc\
+ * &emsp;|-beches\
+ * &emsp;|-src\
+ * &emsp;|- ...
+ * - std
+ * 2. reveal every children of src:
+ * core
+ * alloc\
+ * &emsp;|-beches\
+ * &emsp;|-src\
+ * &emsp;&emsp;|- lib.rs\
+ * &emsp;&emsp;|- str.rs <------- FOUND IT!\
+ * &emsp;&emsp;|- ...\
+ * &emsp;|- ...\
+ * std
+ */
+async function revealParentChain(document: RustDocument, ctx: CtxInit) {
+    let documentPath = document.uri.fsPath;
+    const maxDepth = documentPath.split(path.sep).length - 1;
+    const parentChain: DependencyId[] = [{ id: documentPath.toLowerCase() }];
+    do {
+        documentPath = path.dirname(documentPath);
+        parentChain.push({ id: documentPath.toLowerCase() });
+        if (parentChain.length >= maxDepth) {
+            // this is an odd case that can happen when we change a crate version but we'd still have
+            // a open file referencing the old version
+            await closeDocument(document);
+            return;
+        }
+    } while (!ctx.dependencies?.contains(documentPath));
+    parentChain.reverse();
+    for (const idx in parentChain) {
+        await ctx.treeView?.reveal(parentChain[idx], { select: true, expand: true });
+    }
 }
 
 export async function execRevealDependency(e: RustEditor): Promise<void> {

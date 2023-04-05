@@ -70,7 +70,7 @@ use ide_db::{
         salsa::{self, ParallelDatabase},
         CrateOrigin, Env, FileLoader, FileSet, SourceDatabase, VfsPath,
     },
-    symbol_index, FxHashMap, LineIndexDatabase,
+    symbol_index, FxHashMap, FxIndexSet, LineIndexDatabase,
 };
 use syntax::SourceFile;
 
@@ -333,7 +333,7 @@ impl Analysis {
         self.with_db(|db| view_crate_graph::view_crate_graph(db, full))
     }
 
-    pub fn fetch_crates(&self) -> Cancellable<Vec<CrateInfo>> {
+    pub fn fetch_crates(&self) -> Cancellable<FxIndexSet<CrateInfo>> {
         self.with_db(|db| fetch_crates::fetch_crates(db))
     }
 

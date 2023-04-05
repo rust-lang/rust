@@ -1,9 +1,9 @@
 use ide_db::{
     base_db::{CrateOrigin, SourceDatabase, SourceDatabaseExt},
-    RootDatabase,
+    FxIndexSet, RootDatabase,
 };
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CrateInfo {
     pub name: String,
     pub version: String,
@@ -16,7 +16,7 @@ pub struct CrateInfo {
 //
 // |===
 // image::https://user-images.githubusercontent.com/5748995/229394139-2625beab-f4c9-484b-84ed-ad5dee0b1e1a.png[]
-pub(crate) fn fetch_crates(db: &RootDatabase) -> Vec<CrateInfo> {
+pub(crate) fn fetch_crates(db: &RootDatabase) -> FxIndexSet<CrateInfo> {
     let crate_graph = db.crate_graph();
     crate_graph
         .iter()
