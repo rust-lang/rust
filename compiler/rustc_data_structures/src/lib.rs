@@ -1,5 +1,5 @@
 //! Various data structures used by the Rust compiler. The intention
-//! is that code in here should be not be *specific* to rustc, so that
+//! is that code in here should not be *specific* to rustc, so that
 //! it can be easily unit tested and so forth.
 //!
 //! # Note
