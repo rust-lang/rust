@@ -1191,11 +1191,14 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                 have_turbofish,
             } = args;
             let generics = tcx.generics_of(generics_def_id);
-            if let Some(argument_index) = generics
+            if let Some(mut argument_index) = generics
                 .own_substs(substs)
                 .iter()
                 .position(|&arg| self.generic_arg_contains_target(arg))
             {
+                if generics.parent.is_none() && generics.has_self {
+                    argument_index += 1;
+                }
                 let substs = self.infcx.resolve_vars_if_possible(substs);
                 let generic_args = &generics.own_substs_no_defaults(tcx, substs)
                     [generics.own_counts().lifetimes..];
