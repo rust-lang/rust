@@ -42,7 +42,7 @@
 //!
 //! [^2] `MTLockRef` is a typedef.
 
-use crate::owning_ref::{Erased, OwningRef};
+use crate::owned_slice::OwnedSlice;
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
 use std::ops::{Deref, DerefMut};
@@ -188,7 +188,7 @@ cfg_if! {
             }
         }
 
-        pub type MetadataRef = OwningRef<Box<dyn Erased>, [u8]>;
+        pub type MetadataRef = OwnedSlice;
 
         pub use std::rc::Rc as Lrc;
         pub use std::rc::Weak as Weak;
@@ -371,7 +371,7 @@ cfg_if! {
             });
         }
 
-        pub type MetadataRef = OwningRef<Box<dyn Erased + Send + Sync>, [u8]>;
+        pub type MetadataRef = OwnedSlice;
 
         /// This makes locks panic if they are already held.
         /// It is only useful when you are running in a single thread
