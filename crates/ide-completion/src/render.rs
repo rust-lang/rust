@@ -152,6 +152,7 @@ pub(crate) fn render_field(
             }
         }
     }
+    item.doc_aliases(ctx.doc_aliases);
     item.build()
 }
 
@@ -361,11 +362,7 @@ fn render_resolution_simple_(
         item.add_import(import_to_add);
     }
 
-    let doc_aliases = ctx.doc_aliases;
-    if !doc_aliases.is_empty() {
-        let doc_aliases = doc_aliases.into_iter().join(", ").into();
-        item.doc_aliases(doc_aliases);
-    }
+    item.doc_aliases(ctx.doc_aliases);
     item
 }
 

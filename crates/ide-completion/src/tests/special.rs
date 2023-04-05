@@ -1086,3 +1086,22 @@ fn here_we_go() {
         "#]],
     );
 }
+
+#[test]
+fn completes_field_name_via_doc_alias_in_fn_body() {
+    check(
+        r#"
+struct Foo {
+    #[doc(alias = "qux")]
+    bar: u8
+};
+
+fn here_we_go() {
+    let foo = Foo { q$0 }
+}
+"#,
+        expect![[r#"
+            fd bar (alias qux) u8
+        "#]],
+    );
+}

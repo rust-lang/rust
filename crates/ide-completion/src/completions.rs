@@ -430,8 +430,9 @@ impl Completions {
             Visible::Editable => true,
             Visible::No => return,
         };
+        let doc_aliases = ctx.doc_aliases(&field);
         let item = render_field(
-            RenderContext::new(ctx).private_editable(is_private_editable),
+            RenderContext::new(ctx).private_editable(is_private_editable).doc_aliases(doc_aliases),
             dot_access,
             receiver,
             field,

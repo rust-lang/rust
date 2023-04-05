@@ -4,6 +4,7 @@ use std::fmt;
 
 use hir::{Documentation, Mutability};
 use ide_db::{imports::import_assets::LocatedImport, SnippetCap, SymbolKind};
+use itertools::Itertools;
 use smallvec::SmallVec;
 use stdx::{impl_from, never};
 use syntax::{SmolStr, TextRange, TextSize};
@@ -353,7 +354,7 @@ impl CompletionItem {
             relevance: CompletionRelevance::default(),
             ref_match: None,
             imports_to_add: Default::default(),
-            doc_aliases: None,
+            doc_aliases: vec![],
         }
     }
 
@@ -386,7 +387,7 @@ pub(crate) struct Builder {
     source_range: TextRange,
     imports_to_add: SmallVec<[LocatedImport; 1]>,
     trait_name: Option<SmolStr>,
-    doc_aliases: Option<SmolStr>,
+    doc_aliases: Vec<SmolStr>,
     label: SmolStr,
     insert_text: Option<String>,
     is_snippet: bool,
@@ -418,7 +419,8 @@ impl Builder {
         let mut lookup = self.lookup.unwrap_or_else(|| label.clone());
         let insert_text = self.insert_text.unwrap_or_else(|| label.to_string());
 
-        if let Some(doc_aliases) = self.doc_aliases {
+        if !self.doc_aliases.is_empty() {
+            let doc_aliases = self.doc_aliases.into_iter().join(", ");
             label = SmolStr::from(format!("{label} (alias {doc_aliases})"));
             lookup = SmolStr::from(format!("{lookup} {doc_aliases}"));
         }
@@ -464,8 +466,8 @@ impl Builder {
         self.trait_name = Some(trait_name);
         self
     }
-    pub(crate) fn doc_aliases(&mut self, doc_aliases: SmolStr) -> &mut Builder {
-        self.doc_aliases = Some(doc_aliases);
+    pub(crate) fn doc_aliases(&mut self, doc_aliases: Vec<SmolStr>) -> &mut Builder {
+        self.doc_aliases = doc_aliases;
         self
     }
     pub(crate) fn insert_text(&mut self, insert_text: impl Into<String>) -> &mut Builder {

@@ -441,6 +441,14 @@ impl<'a> CompletionContext<'a> {
         self.is_visible_impl(&vis, &attrs, item.krate(self.db))
     }
 
+    pub(crate) fn doc_aliases<I>(&self, item: &I) -> Vec<SmolStr>
+    where
+        I: hir::HasAttrs + Copy,
+    {
+        let attrs = item.attrs(self.db);
+        attrs.doc_aliases().collect()
+    }
+
     /// Check if an item is `#[doc(hidden)]`.
     pub(crate) fn is_item_hidden(&self, item: &hir::ItemInNs) -> bool {
         let attrs = item.attrs(self.db);
@@ -499,7 +507,7 @@ impl<'a> CompletionContext<'a> {
             if self.is_scope_def_hidden(def) {
                 return;
             }
-            let doc_aliases = self.doc_aliases(def);
+            let doc_aliases = self.doc_aliases_in_scope(def);
             f(name, def, doc_aliases);
         });
     }
@@ -547,7 +555,7 @@ impl<'a> CompletionContext<'a> {
         self.krate != defining_crate && attrs.has_doc_hidden()
     }
 
-    fn doc_aliases(&self, scope_def: ScopeDef) -> Vec<SmolStr> {
+    fn doc_aliases_in_scope(&self, scope_def: ScopeDef) -> Vec<SmolStr> {
         if let Some(attrs) = scope_def.attrs(self.db) {
             attrs.doc_aliases().collect()
         } else {
