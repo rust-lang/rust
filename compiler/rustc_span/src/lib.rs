@@ -1318,7 +1318,6 @@ pub struct SourceFileDiffs {
 }
 
 /// A single source in the [`SourceMap`].
-#[derive(Clone)]
 pub struct SourceFile {
     /// The name of the file that the source came from. Source that doesn't
     /// originate from files has names between angle brackets by convention
@@ -1347,6 +1346,25 @@ pub struct SourceFile {
     pub name_hash: u128,
     /// Indicates which crate this `SourceFile` was imported from.
     pub cnum: CrateNum,
+}
+
+impl Clone for SourceFile {
+    fn clone(&self) -> Self {
+        Self {
+            name: self.name.clone(),
+            src: self.src.clone(),
+            src_hash: self.src_hash.clone(),
+            external_src: Lock::new(self.external_src.borrow().clone()),
+            start_pos: self.start_pos.clone(),
+            end_pos: self.end_pos.clone(),
+            lines: Lock::new(self.lines.borrow().clone()),
+            multibyte_chars: self.multibyte_chars.clone(),
+            non_narrow_chars: self.non_narrow_chars.clone(),
+            normalized_pos: self.normalized_pos.clone(),
+            name_hash: self.name_hash.clone(),
+            cnum: self.cnum.clone(),
+        }
+    }
 }
 
 impl<S: Encoder> Encodable<S> for SourceFile {

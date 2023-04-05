@@ -8,7 +8,7 @@ use crate::lint::{
 };
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_data_structures::sync::{Lock, Lrc};
+use rustc_data_structures::sync::{AppendOnlyVec, AtomicBool, Lock, Lrc};
 use rustc_errors::{emitter::SilentEmitter, ColorConfig, Handler};
 use rustc_errors::{
     fallback_fluent_bundle, Diagnostic, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
@@ -194,7 +194,7 @@ pub struct ParseSess {
     pub edition: Edition,
     /// Places where raw identifiers were used. This is used to avoid complaining about idents
     /// clashing with keywords in new editions.
-    pub raw_identifier_spans: Lock<Vec<Span>>,
+    pub raw_identifier_spans: AppendOnlyVec<Span>,
     /// Places where identifiers that contain invalid Unicode codepoints but that look like they
     /// should be. Useful to avoid bad tokenization when encountering emoji. We group them to
     /// provide a single error per unique incorrect identifier.
@@ -208,7 +208,7 @@ pub struct ParseSess {
     pub gated_spans: GatedSpans,
     pub symbol_gallery: SymbolGallery,
     /// The parser has reached `Eof` due to an unclosed brace. Used to silence unnecessary errors.
-    pub reached_eof: Lock<bool>,
+    pub reached_eof: AtomicBool,
     /// Environment variables accessed during the build and their values when they exist.
     pub env_depinfo: Lock<FxHashSet<(Symbol, Option<Symbol>)>>,
     /// File paths accessed during the build.
@@ -219,7 +219,7 @@ pub struct ParseSess {
     pub assume_incomplete_release: bool,
     /// Spans passed to `proc_macro::quote_span`. Each span has a numerical
     /// identifier represented by its position in the vector.
-    pub proc_macro_quoted_spans: Lock<Vec<Span>>,
+    pub proc_macro_quoted_spans: AppendOnlyVec<Span>,
     /// Used to generate new `AttrId`s. Every `AttrId` is unique.
     pub attr_id_generator: AttrIdGenerator,
 }
@@ -247,14 +247,14 @@ impl ParseSess {
             config: FxIndexSet::default(),
             check_config: CrateCheckConfig::default(),
             edition: ExpnId::root().expn_data().edition,
-            raw_identifier_spans: Lock::new(Vec::new()),
+            raw_identifier_spans: Default::default(),
             bad_unicode_identifiers: Lock::new(Default::default()),
             source_map,
             buffered_lints: Lock::new(vec![]),
             ambiguous_block_expr_parse: Lock::new(FxHashMap::default()),
             gated_spans: GatedSpans::default(),
             symbol_gallery: SymbolGallery::default(),
-            reached_eof: Lock::new(false),
+            reached_eof: AtomicBool::new(false),
             env_depinfo: Default::default(),
             file_depinfo: Default::default(),
             type_ascription_path_suggestions: Default::default(),
@@ -324,13 +324,13 @@ impl ParseSess {
     }
 
     pub fn save_proc_macro_span(&self, span: Span) -> usize {
-        let mut spans = self.proc_macro_quoted_spans.lock();
-        spans.push(span);
-        return spans.len() - 1;
+        self.proc_macro_quoted_spans.push(span)
     }
 
-    pub fn proc_macro_quoted_spans(&self) -> Vec<Span> {
-        self.proc_macro_quoted_spans.lock().clone()
+    pub fn proc_macro_quoted_spans(&self) -> impl Iterator<Item = (usize, Span)> + '_ {
+        // This is equivalent to `.iter().copied().enumerate()`, but that isn't possible for
+        // AppendOnlyVec, so we resort to this scheme.
+        self.proc_macro_quoted_spans.iter_enumerated()
     }
 
     #[track_caller]

@@ -51,7 +51,7 @@ use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
 pub use std::sync::atomic::Ordering;
 pub use std::sync::atomic::Ordering::SeqCst;
 
-pub use vec::AppendOnlyVec;
+pub use vec::{AppendOnlyIndexVec, AppendOnlyVec};
 
 mod vec;
 
@@ -104,6 +104,14 @@ cfg_if! {
             #[inline]
             pub fn swap(&self, val: T, _: Ordering) -> T {
                 self.0.replace(val)
+            }
+        }
+
+        impl Atomic<bool> {
+            pub fn fetch_or(&self, val: bool, _: Ordering) -> bool {
+                let result = self.0.get() | val;
+                self.0.set(val);
+                result
             }
         }
 
@@ -478,14 +486,6 @@ impl<T: Default> Default for Lock<T> {
     #[inline]
     fn default() -> Self {
         Lock::new(T::default())
-    }
-}
-
-// FIXME: Probably a bad idea
-impl<T: Clone> Clone for Lock<T> {
-    #[inline]
-    fn clone(&self) -> Self {
-        Lock::new(self.borrow().clone())
     }
 }
 

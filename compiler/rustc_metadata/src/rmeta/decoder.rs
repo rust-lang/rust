@@ -7,7 +7,7 @@ use rustc_ast as ast;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{Lock, LockGuard, Lrc, OnceCell};
+use rustc_data_structures::sync::{AppendOnlyVec, Lock, Lrc, OnceCell};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, DeriveProcMacro};
@@ -109,7 +109,7 @@ pub(crate) struct CrateMetadata {
     /// IDs as they are seen from the current compilation session.
     cnum_map: CrateNumMap,
     /// Same ID set as `cnum_map` plus maybe some injected crates like panic runtime.
-    dependencies: Lock<Vec<CrateNum>>,
+    dependencies: AppendOnlyVec<CrateNum>,
     /// How to link (or not link) this crate to the currently compiled crate.
     dep_kind: Lock<CrateDepKind>,
     /// Filesystem location of this crate.
@@ -1594,7 +1594,7 @@ impl CrateMetadata {
             .collect();
         let alloc_decoding_state =
             AllocDecodingState::new(root.interpret_alloc_index.decode(&blob).collect());
-        let dependencies = Lock::new(cnum_map.iter().cloned().collect());
+        let dependencies = cnum_map.iter().copied().collect();
 
         // Pre-decode the DefPathHash->DefIndex table. This is a cheap operation
         // that does not copy any data. It just does some data verification.
@@ -1634,12 +1634,12 @@ impl CrateMetadata {
         cdata
     }
 
-    pub(crate) fn dependencies(&self) -> LockGuard<'_, Vec<CrateNum>> {
-        self.dependencies.borrow()
+    pub(crate) fn dependencies(&self) -> impl Iterator<Item = CrateNum> + '_ {
+        self.dependencies.iter()
     }
 
     pub(crate) fn add_dependency(&self, cnum: CrateNum) {
-        self.dependencies.borrow_mut().push(cnum);
+        self.dependencies.push(cnum);
     }
 
     pub(crate) fn update_extern_crate(&self, new_extern_crate: ExternCrate) -> bool {
