@@ -1613,7 +1613,7 @@ options! {
     plt: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "whether to use the PLT when calling into shared libraries;
         only has effect for PIC code on systems with ELF binaries
-        (default: PLT is disabled if full relro is enabled)"),
+        (default: PLT is disabled if full relro is enabled on x86_64)"),
     polonius: bool = (false, parse_bool, [TRACKED],
         "enable polonius-based borrow-checker (default: no)"),
     polymorphize: bool = (false, parse_bool, [TRACKED],

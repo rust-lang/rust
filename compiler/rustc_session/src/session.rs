@@ -1013,7 +1013,7 @@ impl Session {
     pub fn needs_plt(&self) -> bool {
         // Check if the current target usually needs PLT to be enabled.
         // The user can use the command line flag to override it.
-        let needs_plt = self.target.needs_plt;
+        let needs_plt = self.target.arch != "x86_64";
 
         let dbg_opts = &self.opts.unstable_opts;
 
