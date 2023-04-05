@@ -1596,7 +1596,7 @@ fn doctest_introduce_named_generic() {
 fn foo(bar: $0impl Bar) {}
 "#####,
         r#####"
-fn foo<B: Bar>(bar: B) {}
+fn foo<$0B: Bar>(bar: B) {}
 "#####,
     )
 }
