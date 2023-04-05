@@ -218,6 +218,9 @@ fn find_best_match_for_name_impl(
         }
     }
 
+    // We have a tie among several candidates, try to select the best among them ignoring substrings.
+    // For example, the candidates list `force_capture`, `capture`, and user inputed `forced_capture`,
+    // we select `force_capture` with a extra round of edit distance calculation.
     if next_candidates.len() > 1 {
         debug_assert!(use_substring_score);
         best = find_best_match_for_name_impl(
