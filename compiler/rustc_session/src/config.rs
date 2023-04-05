@@ -582,6 +582,7 @@ pub enum PrintRequest {
     CodeModels,
     TlsModels,
     TargetSpec,
+    AllTargetSpecs,
     NativeStaticLibs,
     StackProtectorStrategies,
     LinkArgs,
@@ -1441,8 +1442,8 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
             "Compiler information to print on stdout",
             "[crate-name|file-names|sysroot|target-libdir|cfg|calling-conventions|\
              target-list|target-cpus|target-features|relocation-models|code-models|\
-             tls-models|target-spec-json|native-static-libs|stack-protector-strategies|\
-             link-args]",
+             tls-models|target-spec-json|all-target-specs-json|native-static-libs|\
+             stack-protector-strategies|link-args]",
         ),
         opt::flagmulti_s("g", "", "Equivalent to -C debuginfo=2"),
         opt::flagmulti_s("O", "", "Equivalent to -C opt-level=2"),
@@ -1889,6 +1890,7 @@ fn collect_print_requests(
         ("native-static-libs", PrintRequest::NativeStaticLibs),
         ("stack-protector-strategies", PrintRequest::StackProtectorStrategies),
         ("target-spec-json", PrintRequest::TargetSpec),
+        ("all-target-specs-json", PrintRequest::AllTargetSpecs),
         ("link-args", PrintRequest::LinkArgs),
         ("split-debuginfo", PrintRequest::SplitDebuginfo),
     ];
@@ -1902,7 +1904,18 @@ fn collect_print_requests(
                     early_error(
                         error_format,
                         "the `-Z unstable-options` flag must also be passed to \
-                     enable the target-spec-json print option",
+                         enable the target-spec-json print option",
+                    );
+                }
+            }
+            Some((_, PrintRequest::AllTargetSpecs)) => {
+                if unstable_opts.unstable_options {
+                    PrintRequest::AllTargetSpecs
+                } else {
+                    early_error(
+                        error_format,
+                        "the `-Z unstable-options` flag must also be passed to \
+                         enable the all-target-specs-json print option",
                     );
                 }
             }

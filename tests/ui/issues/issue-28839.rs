@@ -1,5 +1,4 @@
 // run-pass
-// ignore-pretty issue #37199
 
 pub struct Foo;
 

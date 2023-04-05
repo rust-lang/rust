@@ -6,7 +6,6 @@
 // ignore-mips64
 // ignore-powerpc
 // ignore-powerpc64
-// ignore-powerpc64le
 // ignore-riscv64 see codegen/riscv-abi
 // ignore-s390x
 // ignore-sparc
