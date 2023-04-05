@@ -205,7 +205,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
 
     // check bti protection
     let mut check_cfprotection = false;
-    let mut pr_type: u32 = 0xc0000002;
+    let mut pr_type: u32 = 0;
     if architecture == Architecture::X86_64 && let rustc_session::config::CFProtection::Branch | rustc_session::config::CFProtection::Full = sess.opts.unstable_opts.cf_protection {
       check_cfprotection =true;
       pr_type = 0xc0000002;
@@ -221,19 +221,19 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         let kind = SectionKind::Note;
         let section = file.add_section(segment, name, kind);
         let mut data: Vec<u8> = Vec::new();
-        let n_name_sz: u32 = 4; // Size of the n_name field
-        let n_desc_sz: u32 = 16; // Size of the n_desc field       
+        let n_namsz: u32 = 4; // Size of the n_name field
+        let n_descsz: u32 = 16; // Size of the n_desc field       
         let n_type: u32 = NT_GNU_PROPERTY_TYPE_0; // Type of note descriptor 
-        let values = [n_name_sz, n_desc_sz, n_type];
+        let values = [n_namsz, n_descsz, n_type];
         values.map(|v| data.extend_from_slice(&(v.to_ne_bytes())));
         data.push(b'G'); // Owner of the program property note
         data.push(b'N');
         data.push(b'U');
         data.push(0);
-        let pr_data_sz: u32 = 4; //size of the pr_data field 
+        let pr_datasz: u32 = 4; //size of the pr_data field 
         let pr_data: u32 = 3; //program property descriptor
         let pr_padding: u32 = 3;
-        let values = [pr_type, pr_data_sz, pr_data, pr_padding];
+        let values = [pr_type, pr_datasz, pr_data, pr_padding];
         values.map(|v| data.extend_from_slice(&(v.to_ne_bytes())));
         let x = data.len();
         assert_eq!(x, 32);
