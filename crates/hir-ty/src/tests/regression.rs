@@ -1802,3 +1802,21 @@ where
 "#,
     );
 }
+
+#[test]
+fn match_ergonomics_with_binding_modes_interaction() {
+    check_types(
+        r"
+enum E { A }
+fn foo() {
+    match &E::A {
+        b @ (x @ E::A | x) => {
+            b;
+          //^ &E
+            x;
+          //^ &E
+        }
+    }
+}",
+    );
+}
