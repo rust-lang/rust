@@ -41,35 +41,31 @@ pub(crate) fn convert_nested_function_to_closure(
     let target = function.syntax().text_range();
     let body = function.body()?;
     let name = function.name()?;
-    let params = function.param_list()?;
-
-    let params_text = params.syntax().text().to_string();
-    let closure_params = params_text.strip_prefix("(").and_then(|p| p.strip_suffix(")"))?;
+    let param_list = function.param_list()?;
 
     acc.add(
         AssistId("convert_nested_function_to_closure", AssistKind::RefactorRewrite),
         "Convert nested function to closure",
         target,
         |edit| {
-            let has_semicolon = has_semicolon(&function);
+            let params = &param_list.syntax().text().to_string();
+            let params = params.strip_prefix("(").unwrap_or(params);
+            let params = params.strip_suffix(")").unwrap_or(params);
 
             let mut body = body.to_string();
-            if !has_semicolon {
+            if !has_semicolon(&function) {
                 body.push(';');
             }
-            edit.replace(target, format!("let {} = |{}| {}", name, closure_params, body));
+            edit.replace(target, format!("let {name} = |{params}| {body}"));
         },
     )
 }
 
 /// Returns whether the given function is nested within the body of another function.
 fn is_nested_function(function: &ast::Fn) -> bool {
-    function
-        .syntax()
-        .ancestors()
-        .skip(1)
-        .find_map(ast::Item::cast)
-        .map_or(false, |it| matches!(it, ast::Item::Fn(_)))
+    function.syntax().ancestors().skip(1).find_map(ast::Item::cast).map_or(false, |it| {
+        matches!(it, ast::Item::Fn(_) | ast::Item::Static(_) | ast::Item::Const(_))
+    })
 }
 
 /// Returns whether the given nested function has generic parameters.
