@@ -81,7 +81,7 @@ fn test_void_if_fun(b: bool) {
 fn test_void_match(x: u32) {
     match x {
         0 => (),
-        _ =>(),
+        _ => (),
     }
 }
 
@@ -91,7 +91,7 @@ fn test_nested_match(x: u32) {
         1 => {
             let _ = 42;
         },
-        _ =>(),
+        _ => (),
     }
 }
 
@@ -196,7 +196,7 @@ async fn async_test_void_if_fun(b: bool) {
 async fn async_test_void_match(x: u32) {
     match x {
         0 => (),
-        _ =>(),
+        _ => (),
     }
 }
 

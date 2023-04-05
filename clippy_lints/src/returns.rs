@@ -286,7 +286,7 @@ fn check_final_expr<'tcx>(
         ExprKind::Match(_, arms, MatchSource::Normal) => {
             let match_ty = cx.typeck_results().expr_ty(peeled_drop_expr);
             for arm in arms.iter() {
-                check_final_expr(cx, arm.body, semi_spans.clone(), RetReplacement::Empty, Some(match_ty));
+                check_final_expr(cx, arm.body, semi_spans.clone(), RetReplacement::Unit, Some(match_ty));
             }
         },
         // if it's a whole block, check it

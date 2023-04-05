@@ -118,10 +118,10 @@ LL | |         return;
    = help: remove `return`
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:87:13
+  --> $DIR/needless_return.rs:87:14
    |
 LL |         _ => return,
-   |             ^^^^^^^
+   |              ^^^^^^
    |
    = help: replace `return` with a unit value
 
@@ -136,10 +136,10 @@ LL | |             return;
    = help: remove `return`
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:98:13
+  --> $DIR/needless_return.rs:98:14
    |
 LL |         _ => return,
-   |             ^^^^^^^
+   |              ^^^^^^
    |
    = help: replace `return` with a unit value
 
@@ -296,10 +296,10 @@ LL | |         return;
    = help: remove `return`
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:207:13
+  --> $DIR/needless_return.rs:207:14
    |
 LL |         _ => return,
-   |             ^^^^^^^
+   |              ^^^^^^
    |
    = help: replace `return` with a unit value
 
