@@ -6,11 +6,11 @@ use rustc_errors::{
     error_code, AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
     Handler, IntoDiagnostic, MultiSpan, SubdiagnosticMessage,
 };
-use rustc_hir::def::Res;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::thir::Pat;
 use rustc_middle::ty::{self, Ty};
-use rustc_span::{symbol::Ident, Span};
+use rustc_span::symbol::Symbol;
+use rustc_span::Span;
 
 #[derive(LintDiagnostic)]
 #[diag(mir_build_unconditional_recursion)]
@@ -534,18 +534,10 @@ pub struct TrailingIrrefutableLetPatterns {
 #[derive(LintDiagnostic)]
 #[diag(mir_build_bindings_with_variant_name, code = "E0170")]
 pub struct BindingsWithVariantName {
-    #[suggestion(code = "{ty_path}::{ident}", applicability = "machine-applicable")]
+    #[suggestion(code = "{ty_path}::{name}", applicability = "machine-applicable")]
     pub suggestion: Option<Span>,
     pub ty_path: String,
-    pub ident: Ident,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(mir_build_irrefutable_let_patterns_generic_let)]
-#[note]
-#[help]
-pub struct IrrefutableLetPatternsGenericLet {
-    pub count: usize,
+    pub name: Symbol,
 }
 
 #[derive(LintDiagnostic)]
@@ -584,13 +576,12 @@ pub struct IrrefutableLetPatternsWhileLet {
 #[diag(mir_build_borrow_of_moved_value)]
 pub struct BorrowOfMovedValue<'tcx> {
     #[primary_span]
-    pub span: Span,
     #[label]
     #[label(mir_build_occurs_because_label)]
     pub binding_span: Span,
     #[label(mir_build_value_borrowed_label)]
     pub conflicts_ref: Vec<Span>,
-    pub name: Ident,
+    pub name: Symbol,
     pub ty: Ty<'tcx>,
     #[suggestion(code = "ref ", applicability = "machine-applicable")]
     pub suggest_borrowing: Option<Span>,
@@ -638,19 +629,19 @@ pub enum Conflict {
     Mut {
         #[primary_span]
         span: Span,
-        name: Ident,
+        name: Symbol,
     },
     #[label(mir_build_borrow)]
     Ref {
         #[primary_span]
         span: Span,
-        name: Ident,
+        name: Symbol,
     },
     #[label(mir_build_moved)]
     Moved {
         #[primary_span]
         span: Span,
-        name: Ident,
+        name: Symbol,
     },
 }
 
@@ -802,8 +793,6 @@ pub(crate) struct PatternNotCovered<'s, 'tcx> {
     pub let_suggestion: Option<SuggestLet>,
     #[subdiagnostic]
     pub misc_suggestion: Option<MiscPatternSuggestion>,
-    #[subdiagnostic]
-    pub res_defined_here: Option<ResDefinedHere>,
 }
 
 #[derive(Subdiagnostic)]
@@ -838,14 +827,6 @@ impl<'tcx> AddToDiagnostic for AdtDefinedHere<'tcx> {
 }
 
 #[derive(Subdiagnostic)]
-#[label(mir_build_res_defined_here)]
-pub struct ResDefinedHere {
-    #[primary_span]
-    pub def_span: Span,
-    pub res: Res,
-}
-
-#[derive(Subdiagnostic)]
 #[suggestion(
     mir_build_interpreted_as_const,
     code = "{variable}_var",
@@ -855,9 +836,7 @@ pub struct ResDefinedHere {
 pub struct InterpretedAsConst {
     #[primary_span]
     pub span: Span,
-    pub article: &'static str,
     pub variable: String,
-    pub res: Res,
 }
 
 #[derive(Subdiagnostic)]

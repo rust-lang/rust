@@ -94,7 +94,7 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
     }
 
     #[inline]
-    fn dep_kind_info(&self, dep_kind: DepKind) -> &DepKindStruct<'tcx> {
-        &self.query_kinds[dep_kind as usize]
+    fn dep_kind_info(&self, dk: DepKind) -> &DepKindStruct<'tcx> {
+        &self.query_kinds[dk as usize]
     }
 }

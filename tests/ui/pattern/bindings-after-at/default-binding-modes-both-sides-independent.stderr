@@ -2,36 +2,32 @@ error: cannot move out of value because it is borrowed
   --> $DIR/default-binding-modes-both-sides-independent.rs:26:9
    |
 LL |     let ref a @ b = NotCopy;
-   |         -----^^^-
-   |         |       |
-   |         |       value is moved into `b` here
+   |         ^^^^^   - value is moved into `b` here
+   |         |
    |         value is borrowed by `a` here
 
 error: cannot move out of value because it is borrowed
   --> $DIR/default-binding-modes-both-sides-independent.rs:29:9
    |
 LL |     let ref mut a @ b = NotCopy;
-   |         ---------^^^-
-   |         |           |
-   |         |           value is moved into `b` here
+   |         ^^^^^^^^^   - value is moved into `b` here
+   |         |
    |         value is mutably borrowed by `a` here
 
 error: cannot move out of value because it is borrowed
   --> $DIR/default-binding-modes-both-sides-independent.rs:34:12
    |
 LL |         Ok(ref a @ b) | Err(b @ ref a) => {
-   |            -----^^^-
-   |            |       |
-   |            |       value is moved into `b` here
+   |            ^^^^^   - value is moved into `b` here
+   |            |
    |            value is borrowed by `a` here
 
 error: borrow of moved value
   --> $DIR/default-binding-modes-both-sides-independent.rs:34:29
    |
 LL |         Ok(ref a @ b) | Err(b @ ref a) => {
-   |                             -^^^-----
-   |                             |   |
-   |                             |   value borrowed here after move
+   |                             ^   ----- value borrowed here after move
+   |                             |
    |                             value moved into `b` here
    |                             move occurs because `b` has type `NotCopy` which does not implement the `Copy` trait
    |
@@ -44,9 +40,8 @@ error: cannot move out of value because it is borrowed
   --> $DIR/default-binding-modes-both-sides-independent.rs:42:9
    |
 LL |         ref a @ b => {
-   |         -----^^^-
-   |         |       |
-   |         |       value is moved into `b` here
+   |         ^^^^^   - value is moved into `b` here
+   |         |
    |         value is borrowed by `a` here
 
 error[E0382]: borrow of moved value

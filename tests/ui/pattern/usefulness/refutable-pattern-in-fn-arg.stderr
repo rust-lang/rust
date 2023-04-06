@@ -5,6 +5,10 @@ LL |     let f = |3: isize| println!("hello");
    |              ^ pattern `_` not covered
    |
    = note: the matched value is of type `isize`
+help: alternatively, you could prepend the pattern with an underscore to define a new named variable; identifiers cannot begin with digits
+   |
+LL |     let f = |_3: isize| println!("hello");
+   |              +
 
 error: aborting due to previous error
 

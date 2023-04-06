@@ -239,18 +239,8 @@ mir_build_trailing_irrefutable_let_patterns = trailing irrefutable {$count ->
     } into the body
 
 mir_build_bindings_with_variant_name =
-    pattern binding `{$ident}` is named the same as one of the variants of the type `{$ty_path}`
+    pattern binding `{$name}` is named the same as one of the variants of the type `{$ty_path}`
     .suggestion = to match on the variant, qualify the path
-
-mir_build_irrefutable_let_patterns_generic_let = irrefutable `let` {$count ->
-        [one] pattern
-        *[other] patterns
-    }
-    .note = {$count ->
-        [one] this pattern
-        *[other] these patterns
-    } will always match, so the `let` is useless
-    .help = consider removing `let`
 
 mir_build_irrefutable_let_patterns_if_let = irrefutable `if let` {$count ->
         [one] pattern
@@ -357,15 +347,13 @@ mir_build_inform_irrefutable = `let` bindings require an "irrefutable pattern", 
 
 mir_build_more_information = for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
 
-mir_build_res_defined_here = {$res} defined here
-
 mir_build_adt_defined_here = `{$ty}` defined here
 
 mir_build_variant_defined_here = not covered
 
 mir_build_interpreted_as_const = introduce a variable instead
 
-mir_build_confused = missing patterns are not covered because `{$variable}` is interpreted as {$article} {$res} pattern, not a new variable
+mir_build_confused = missing patterns are not covered because `{$variable}` is interpreted as a constant pattern, not a new variable
 
 mir_build_suggest_if_let = you might want to use `if let` to ignore the {$count ->
         [one] variant that isn't
