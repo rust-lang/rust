@@ -24,7 +24,7 @@ because that's clearly a non-descriptive name.
   - [Lint passes](#lint-passes)
   - [Emitting a lint](#emitting-a-lint)
   - [Adding the lint logic](#adding-the-lint-logic)
-  - [Specifying the lint's minimum supported Rust version (MSRV)](#specifying-the-lints-minimum-supported-rust-version--msrv-)
+  - [Specifying the lint's minimum supported Rust version (MSRV)](#specifying-the-lints-minimum-supported-rust-version-msrv)
   - [Author lint](#author-lint)
   - [Print HIR lint](#print-hir-lint)
   - [Documentation](#documentation)
