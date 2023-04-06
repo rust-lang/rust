@@ -4,6 +4,11 @@ error[E0603]: tuple variant `Tuple` is private
 LL |     let variant_tuple = NonExhaustiveVariants::Tuple(640);
    |                                                ^^^^^ private tuple variant
    |
+  ::: $DIR/auxiliary/variants.rs:5:5
+   |
+LL |     #[non_exhaustive] Tuple(u32),
+   |     ----------------- the tuple variant is `#[non_exhaustive]`
+   |
 note: the tuple variant `Tuple` is defined here
   --> $DIR/auxiliary/variants.rs:5:23
    |
@@ -15,6 +20,11 @@ error[E0603]: unit variant `Unit` is private
    |
 LL |     let variant_unit = NonExhaustiveVariants::Unit;
    |                                               ^^^^ private unit variant
+   |
+  ::: $DIR/auxiliary/variants.rs:4:5
+   |
+LL |     #[non_exhaustive] Unit,
+   |     ----------------- the unit variant is `#[non_exhaustive]`
    |
 note: the unit variant `Unit` is defined here
   --> $DIR/auxiliary/variants.rs:4:23
@@ -28,6 +38,11 @@ error[E0603]: unit variant `Unit` is private
 LL |         NonExhaustiveVariants::Unit => "",
    |                                ^^^^ private unit variant
    |
+  ::: $DIR/auxiliary/variants.rs:4:5
+   |
+LL |     #[non_exhaustive] Unit,
+   |     ----------------- the unit variant is `#[non_exhaustive]`
+   |
 note: the unit variant `Unit` is defined here
   --> $DIR/auxiliary/variants.rs:4:23
    |
@@ -40,6 +55,11 @@ error[E0603]: tuple variant `Tuple` is private
 LL |         NonExhaustiveVariants::Tuple(fe_tpl) => "",
    |                                ^^^^^ private tuple variant
    |
+  ::: $DIR/auxiliary/variants.rs:5:5
+   |
+LL |     #[non_exhaustive] Tuple(u32),
+   |     ----------------- the tuple variant is `#[non_exhaustive]`
+   |
 note: the tuple variant `Tuple` is defined here
   --> $DIR/auxiliary/variants.rs:5:23
    |
@@ -51,6 +71,11 @@ error[E0603]: tuple variant `Tuple` is private
    |
 LL |     if let NonExhaustiveVariants::Tuple(fe_tpl) = variant_struct {
    |                                   ^^^^^ private tuple variant
+   |
+  ::: $DIR/auxiliary/variants.rs:5:5
+   |
+LL |     #[non_exhaustive] Tuple(u32),
+   |     ----------------- the tuple variant is `#[non_exhaustive]`
    |
 note: the tuple variant `Tuple` is defined here
   --> $DIR/auxiliary/variants.rs:5:23

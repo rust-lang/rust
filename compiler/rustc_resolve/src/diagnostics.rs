@@ -1607,7 +1607,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let mut err =
             struct_span_err!(self.tcx.sess, ident.span, E0603, "{} `{}` is private", descr, ident);
         err.span_label(ident.span, &format!("private {}", descr));
-        if let Some(span) = ctor_fields_span {
+
+        if let Some(def_id) = res.opt_def_id()
+            && !def_id.is_local()
+            && let Some(attr) = self.tcx.get_attr(def_id, sym::non_exhaustive)
+        {
+            err.span_label(attr.span, format!("the {nonimport_descr} is `#[non_exhaustive]`"));
+        } else if let Some(span) = ctor_fields_span {
             err.span_label(span, "a constructor is private if any of the fields is private");
             if let Res::Def(_, d) = res && let Some(fields) = self.field_visibility_spans.get(&d) {
                 err.multipart_suggestion_verbose(
