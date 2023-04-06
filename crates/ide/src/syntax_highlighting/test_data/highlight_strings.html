@@ -93,6 +93,16 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="brace">}</span>
 
 <span class="keyword">fn</span> <span class="function declaration">main</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
+    <span class="keyword">let</span> <span class="variable declaration">a</span> <span class="operator">=</span> <span class="char_literal">'</span><span class="escape_sequence">\n</span><span class="char_literal">'</span><span class="semicolon">;</span>
+    <span class="keyword">let</span> <span class="variable declaration">a</span> <span class="operator">=</span> <span class="char_literal">'</span><span class="escape_sequence">\t</span><span class="char_literal">'</span><span class="semicolon">;</span>
+    <span class="keyword">let</span> <span class="variable declaration">a</span> <span class="operator">=</span> <span class="char_literal">'\e'</span><span class="semicolon">;</span> <span class="comment">// invalid escape</span>
+    <span class="keyword">let</span> <span class="variable declaration">a</span> <span class="operator">=</span> <span class="char_literal">'e'</span><span class="semicolon">;</span>
+    <span class="keyword">let</span> <span class="variable declaration">a</span> <span class="operator">=</span> <span class="char_literal">' '</span><span class="semicolon">;</span>
+    <span class="keyword">let</span> <span class="variable declaration">a</span> <span class="operator">=</span> <span class="char_literal">'</span><span class="escape_sequence">\u{48}</span><span class="char_literal">'</span><span class="semicolon">;</span>
+    <span class="keyword">let</span> <span class="variable declaration">a</span> <span class="operator">=</span> <span class="char_literal">'</span><span class="escape_sequence">\u{4823}</span><span class="char_literal">'</span><span class="semicolon">;</span>
+    <span class="keyword">let</span> <span class="variable declaration">a</span> <span class="operator">=</span> <span class="char_literal">'</span><span class="escape_sequence">\x65</span><span class="char_literal">'</span><span class="semicolon">;</span>
+    <span class="keyword">let</span> <span class="variable declaration">a</span> <span class="operator">=</span> <span class="char_literal">'</span><span class="escape_sequence">\x00</span><span class="char_literal">'</span><span class="semicolon">;</span>
+
     <span class="macro">println</span><span class="macro_bang">!</span><span class="parenthesis">(</span><span class="string_literal">"Hello </span><span class="escape_sequence">{{</span><span class="string_literal">Hello</span><span class="escape_sequence">}}</span><span class="string_literal">"</span><span class="parenthesis">)</span><span class="semicolon">;</span>
     <span class="comment">// from https://doc.rust-lang.org/std/fmt/index.html</span>
     <span class="macro">println</span><span class="macro_bang">!</span><span class="parenthesis">(</span><span class="string_literal">"Hello"</span><span class="parenthesis">)</span><span class="semicolon">;</span>                 <span class="comment">// =&gt; "Hello"</span>
