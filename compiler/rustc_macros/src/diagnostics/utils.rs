@@ -420,6 +420,51 @@ pub(super) enum AllowMultipleAlternatives {
     Yes,
 }
 
+fn parse_suggestion_values(
+    nested: ParseNestedMeta<'_>,
+    allow_multiple: AllowMultipleAlternatives,
+) -> syn::Result<Vec<LitStr>> {
+    let values = if let Ok(val) = nested.value() {
+        vec![val.parse()?]
+    } else {
+        let content;
+        parenthesized!(content in nested.input);
+
+        if let AllowMultipleAlternatives::No = allow_multiple {
+            span_err(
+                nested.input.span().unwrap(),
+                "expected exactly one string literal for `code = ...`",
+            )
+            .emit();
+            vec![]
+        } else {
+            let literals = Punctuated::<LitStr, Token![,]>::parse_terminated(&content);
+
+            match literals {
+                Ok(p) if p.is_empty() => {
+                    span_err(
+                        content.span().unwrap(),
+                        "expected at least one string literal for `code(...)`",
+                    )
+                    .emit();
+                    vec![]
+                }
+                Ok(p) => p.into_iter().collect(),
+                Err(_) => {
+                    span_err(
+                        content.span().unwrap(),
+                        "`code(...)` must contain only string literals",
+                    )
+                    .emit();
+                    vec![]
+                }
+            }
+        }
+    };
+
+    Ok(values)
+}
+
 /// Constructs the `format!()` invocation(s) necessary for a `#[suggestion*(code = "foo")]` or
 /// `#[suggestion*(code("foo", "bar"))]` attribute field
 pub(super) fn build_suggestion_code(
@@ -428,47 +473,7 @@ pub(super) fn build_suggestion_code(
     fields: &impl HasFieldMap,
     allow_multiple: AllowMultipleAlternatives,
 ) -> TokenStream {
-    let values = match (|| {
-        let values: Vec<LitStr> = if let Ok(val) = nested.value() {
-            vec![val.parse()?]
-        } else {
-            let content;
-            parenthesized!(content in nested.input);
-
-            if let AllowMultipleAlternatives::No = allow_multiple {
-                span_err(
-                    nested.input.span().unwrap(),
-                    "expected exactly one string literal for `code = ...`",
-                )
-                .emit();
-                vec![]
-            } else {
-                let literals = Punctuated::<LitStr, Token![,]>::parse_terminated(&content);
-
-                match literals {
-                    Ok(p) if p.is_empty() => {
-                        span_err(
-                            content.span().unwrap(),
-                            "expected at least one string literal for `code(...)`",
-                        )
-                        .emit();
-                        vec![]
-                    }
-                    Ok(p) => p.into_iter().collect(),
-                    Err(_) => {
-                        span_err(
-                            content.span().unwrap(),
-                            "`code(...)` must contain only string literals",
-                        )
-                        .emit();
-                        vec![]
-                    }
-                }
-            }
-        };
-
-        Ok(values)
-    })() {
+    let values = match parse_suggestion_values(nested, allow_multiple) {
         Ok(x) => x,
         Err(e) => return e.into_compile_error(),
     };
@@ -706,14 +711,14 @@ impl SubdiagnosticKind {
             let path_span = nested.path.span().unwrap();
             let val_span = nested.input.span().unwrap();
 
-            macro get_string() {
-                {
+            macro_rules! get_string {
+                () => {{
                     let Ok(value) = nested.value().and_then(|x| x.parse::<LitStr>()) else {
                         span_err(val_span, "expected `= \"xxx\"`").emit();
                         return Ok(());
                     };
                     value
-                }
+                }};
             }
 
             let mut has_errors = false;
