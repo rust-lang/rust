@@ -385,11 +385,11 @@ impl<'tcx> ConstToPat<'tcx> {
                     self.behind_reference.set(old);
                     val
                 }
-                // Backwards compatibility hack: support references to non-structural types.
-                // We'll lower
-                // this pattern to a `PartialEq::eq` comparison and `PartialEq::eq` takes a
-                // reference. This makes the rest of the matching logic simpler as it doesn't have
-                // to figure out how to get a reference again.
+                // Backwards compatibility hack: support references to non-structural types,
+                // but hard error if we aren't behind a double reference. We could just use
+                // the fallback code path below, but that would allow *more* of this fishy
+                // code to compile, as then it only goes through the future incompat lint
+                // instead of a hard error.
                 ty::Adt(_, _) if !self.type_marked_structural(*pointee_ty) => {
                     if self.behind_reference.get() {
                         if !self.saw_const_match_error.get()
@@ -427,10 +427,6 @@ impl<'tcx> ConstToPat<'tcx> {
                         PatKind::Wild
                     } else {
                         let old = self.behind_reference.replace(true);
-                        // In case there are structural-match violations somewhere in this subpattern,
-                        // we fall back to a const pattern. If we do not do this, we may end up with
-                        // a !structural-match constant that is not of reference type, which makes it
-                        // very hard to invoke `PartialEq::eq` on it as a fallback.
                         let subpattern = self.recur(tcx.deref_mir_constant(self.param_env.and(cv)), false)?;
                         self.behind_reference.set(old);
                         PatKind::Deref { subpattern }
