@@ -2,7 +2,7 @@ use colored::*;
 use regex::bytes::Regex;
 use std::path::{Path, PathBuf};
 use std::{env, process::Command};
-use ui_test::{color_eyre::Result, Config, Mode, OutputConflictHandling};
+use ui_test::{color_eyre::Result, Config, Match, Mode, OutputConflictHandling};
 
 fn miri_path() -> PathBuf {
     PathBuf::from(option_env!("MIRI").unwrap_or(env!("CARGO_BIN_EXE_miri")))
@@ -52,14 +52,13 @@ fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> R
         mode,
         program: miri_path(),
         quiet: false,
+        edition: Some("2018".into()),
         ..Config::default()
     };
 
     let in_rustc_test_suite = option_env!("RUSTC_STAGE").is_some();
 
     // Add some flags we always want.
-    config.args.push("--edition".into());
-    config.args.push("2018".into());
     if in_rustc_test_suite {
         // Less aggressive warnings to make the rustc toolstate management less painful.
         // (We often get warnings when e.g. a feature gets stabilized or some lint gets added/improved.)
@@ -129,8 +128,8 @@ fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> R
 
 macro_rules! regexes {
     ($name:ident: $($regex:expr => $replacement:expr,)*) => {lazy_static::lazy_static! {
-        static ref $name: Vec<(Regex, &'static [u8])> = vec![
-            $((Regex::new($regex).unwrap(), $replacement.as_bytes()),)*
+        static ref $name: Vec<(Match, &'static [u8])> = vec![
+            $((Regex::new($regex).unwrap().into(), $replacement.as_bytes()),)*
         ];
     }};
 }
