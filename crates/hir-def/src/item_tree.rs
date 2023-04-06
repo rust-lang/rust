@@ -152,14 +152,6 @@ impl ItemTree {
         &self.top_level
     }
 
-    pub fn block_has_items(
-        db: &dyn DefDatabase,
-        file_id: HirFileId,
-        block: &ast::BlockExpr,
-    ) -> bool {
-        lower::Ctx::new(db, file_id).block_has_items(block)
-    }
-
     /// Returns the inner attributes of the source file.
     pub fn top_level_attrs(&self, db: &dyn DefDatabase, krate: CrateId) -> Attrs {
         Attrs::filter(

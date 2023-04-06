@@ -18,7 +18,7 @@ use chalk_ir::{
 
 use either::Either;
 use hir_def::{
-    body::{Expander, LowerCtx},
+    body::Expander,
     builtin_type::BuiltinType,
     data::adt::StructKind,
     generics::{
@@ -380,7 +380,7 @@ impl<'a> TyLoweringContext<'a> {
                     let macro_call = macro_call.to_node(self.db.upcast());
                     match expander.enter_expand::<ast::Type>(self.db.upcast(), macro_call) {
                         Ok(ExpandResult { value: Some((mark, expanded)), .. }) => {
-                            let ctx = LowerCtx::new(self.db.upcast(), expander.current_file_id());
+                            let ctx = expander.ctx(self.db.upcast());
                             let type_ref = TypeRef::from_ast(&ctx, expanded);
 
                             drop(expander);

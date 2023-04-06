@@ -1065,7 +1065,7 @@ impl<'db> SemanticsImpl<'db> {
 
     fn resolve_type(&self, ty: &ast::Type) -> Option<Type> {
         let analyze = self.analyze(ty.syntax())?;
-        let ctx = body::LowerCtx::new(self.db.upcast(), analyze.file_id);
+        let ctx = body::LowerCtx::with_file_id(self.db.upcast(), analyze.file_id);
         let ty = hir_ty::TyLoweringContext::new(self.db, &analyze.resolver)
             .lower_ty(&crate::TypeRef::from_ast(&ctx, ty.clone()));
         Some(Type::new_with_resolver(self.db, &analyze.resolver, ty))
@@ -1672,7 +1672,7 @@ impl<'a> SemanticsScope<'a> {
     /// Resolve a path as-if it was written at the given scope. This is
     /// necessary a heuristic, as it doesn't take hygiene into account.
     pub fn speculative_resolve(&self, path: &ast::Path) -> Option<PathResolution> {
-        let ctx = body::LowerCtx::new(self.db.upcast(), self.file_id);
+        let ctx = body::LowerCtx::with_file_id(self.db.upcast(), self.file_id);
         let path = Path::from_src(path.clone(), &ctx)?;
         resolve_hir_path(self.db, &self.resolver, &path)
     }
