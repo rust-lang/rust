@@ -902,3 +902,32 @@ fn test() {
 }",
     );
 }
+
+#[test]
+fn regression_14443_dyn_coercion_block_impls() {
+    check_no_mismatches(
+        r#"
+//- minicore: coerce_unsized
+trait T {}
+
+fn dyn_t(d: &dyn T) {}
+
+fn main() {
+    struct A;
+    impl T for A {}
+
+    let a = A;
+
+    let b = {
+        struct B;
+        impl T for B {}
+
+        B
+    };
+
+    dyn_t(&a);
+    dyn_t(&b);
+}
+"#,
+    )
+}

@@ -3812,6 +3812,35 @@ fn f() {
 }
 
 #[test]
+fn regression_14443_trait_solve() {
+    check_no_mismatches(
+        r#"
+trait T {
+    fn f(&self) {}
+}
+
+
+fn main() {
+    struct A;
+    impl T for A {}
+
+    let a = A;
+
+    let b = {
+        struct B;
+        impl T for B {}
+
+        B
+    };
+
+    a.f();
+    b.f();
+}
+"#,
+    )
+}
+
+#[test]
 fn associated_type_sized_bounds() {
     check_infer(
         r#"
