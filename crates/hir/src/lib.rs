@@ -85,13 +85,13 @@ use crate::db::{DefDatabase, HirDatabase};
 pub use crate::{
     attrs::{HasAttrs, Namespace},
     diagnostics::{
-        AnyDiagnostic, ExpectedFunction, InactiveCode, IncoherentImpl, IncorrectCase,
-        InvalidDeriveTarget, MacroError, MalformedDerive, MismatchedArgCount, MissingFields,
-        MissingMatchArms, MissingUnsafe, NeedMut, NoSuchField, PrivateAssocItem, PrivateField,
-        ReplaceFilterMapNextWithFindMap, TypeMismatch, UndeclaredLabel, UnimplementedBuiltinMacro,
-        UnreachableLabel, UnresolvedExternCrate, UnresolvedField, UnresolvedImport,
-        UnresolvedMacroCall, UnresolvedMethodCall, UnresolvedModule, UnresolvedProcMacro,
-        UnusedMut,
+        AnyDiagnostic, BreakOutsideOfLoop, ExpectedFunction, InactiveCode, IncoherentImpl,
+        IncorrectCase, InvalidDeriveTarget, MacroError, MalformedDerive, MismatchedArgCount,
+        MissingFields, MissingMatchArms, MissingUnsafe, NeedMut, NoSuchField, PrivateAssocItem,
+        PrivateField, ReplaceFilterMapNextWithFindMap, TypeMismatch, UndeclaredLabel,
+        UnimplementedBuiltinMacro, UnreachableLabel, UnresolvedExternCrate, UnresolvedField,
+        UnresolvedImport, UnresolvedMacroCall, UnresolvedMethodCall, UnresolvedModule,
+        UnresolvedProcMacro, UnusedMut,
     },
     has_source::HasSource,
     semantics::{PathResolution, Semantics, SemanticsScope, TypeInfo, VisibleTraits},
@@ -1482,6 +1482,14 @@ impl DefWithBody {
                         }
                         .into(),
                     )
+                }
+                &hir_ty::InferenceDiagnostic::BreakOutsideOfLoop {
+                    expr,
+                    is_break,
+                    bad_value_break,
+                } => {
+                    let expr = expr_syntax(expr);
+                    acc.push(BreakOutsideOfLoop { expr, is_break, bad_value_break }.into())
                 }
             }
         }

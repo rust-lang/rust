@@ -189,6 +189,12 @@ pub enum InferenceDiagnostic {
         /// Contains the type the field resolves to
         field_with_same_name: Option<Ty>,
     },
+    // FIXME: This should be emitted in body lowering
+    BreakOutsideOfLoop {
+        expr: ExprId,
+        is_break: bool,
+        bad_value_break: bool,
+    },
     MismatchedArgCount {
         call_expr: ExprId,
         expected: usize,
@@ -487,6 +493,16 @@ fn find_breakable<'c>(
     match label {
         Some(_) => ctxs.find(|ctx| ctx.label == label),
         None => ctxs.find(|ctx| matches!(ctx.kind, BreakableKind::Loop)),
+    }
+}
+
+fn find_continuable<'c>(
+    ctxs: &'c mut [BreakableContext],
+    label: Option<LabelId>,
+) -> Option<&'c mut BreakableContext> {
+    match label {
+        Some(_) => find_breakable(ctxs, label).filter(|it| matches!(it.kind, BreakableKind::Loop)),
+        None => find_breakable(ctxs, label),
     }
 }
 

@@ -25,8 +25,10 @@ fn foo() {
     'a: loop {
         async {
             break 'a;
+          //^^^^^^^^ error: break outside of loop
                // ^^ error: use of unreachable label `'a`
             continue 'a;
+          //^^^^^^^^^^^ error: continue outside of loop
                   // ^^ error: use of unreachable label `'a`
         };
     }
@@ -43,8 +45,10 @@ fn foo() {
     'a: loop {
         || {
             break 'a;
+          //^^^^^^^^ error: break outside of loop
                // ^^ error: use of unreachable label `'a`
             continue 'a;
+          //^^^^^^^^^^^ error: continue outside of loop
                   // ^^ error: use of unreachable label `'a`
         };
     }

@@ -23,8 +23,10 @@ mod tests {
             r#"
 fn foo() {
     break 'a;
+  //^^^^^^^^ error: break outside of loop
         //^^ error: use of undeclared label `'a`
     continue 'a;
+  //^^^^^^^^^^^ error: continue outside of loop
            //^^ error: use of undeclared label `'a`
 }
 "#,

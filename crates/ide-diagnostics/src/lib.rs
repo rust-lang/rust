@@ -26,6 +26,7 @@
 #![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
 
 mod handlers {
+    pub(crate) mod break_outside_of_loop;
     pub(crate) mod expected_function;
     pub(crate) mod inactive_code;
     pub(crate) mod incoherent_impl;
@@ -285,7 +286,7 @@ pub fn diagnostics(
             AnyDiagnostic::UnresolvedModule(d) => handlers::unresolved_module::unresolved_module(&ctx, &d),
             AnyDiagnostic::UnresolvedProcMacro(d) => handlers::unresolved_proc_macro::unresolved_proc_macro(&ctx, &d, config.proc_macros_enabled, config.proc_attr_macros_enabled),
             AnyDiagnostic::UnusedMut(d) => handlers::mutability_errors::unused_mut(&ctx, &d),
-
+            AnyDiagnostic::BreakOutsideOfLoop(d) => handlers::break_outside_of_loop::break_outside_of_loop(&ctx, &d),
         };
         res.push(d)
     }

@@ -25,7 +25,9 @@ use syntax::ast::RangeOp;
 use crate::{
     autoderef::{builtin_deref, deref_by_trait, Autoderef},
     consteval,
-    infer::{coerce::CoerceMany, pat::contains_explicit_ref_binding, BreakableKind},
+    infer::{
+        coerce::CoerceMany, find_continuable, pat::contains_explicit_ref_binding, BreakableKind,
+    },
     lang_items::lang_items_for_bin_op,
     lower::{
         const_or_path_to_chalk, generic_arg_to_chalk, lower_to_chalk_mutability, ParamLoweringMode,
@@ -457,13 +459,29 @@ impl<'a> InferenceContext<'a> {
                 self.resolver.reset_to_guard(g);
                 ty
             }
-            Expr::Continue { .. } => self.result.standard_types.never.clone(),
+            &Expr::Continue { label } => {
+                if let None = find_continuable(&mut self.breakables, label) {
+                    self.push_diagnostic(InferenceDiagnostic::BreakOutsideOfLoop {
+                        expr: tgt_expr,
+                        is_break: false,
+                        bad_value_break: false,
+                    });
+                };
+                self.result.standard_types.never.clone()
+            }
             &Expr::Break { expr, label } => {
                 let val_ty = if let Some(expr) = expr {
                     let opt_coerce_to = match find_breakable(&mut self.breakables, label) {
                         Some(ctxt) => match &ctxt.coerce {
                             Some(coerce) => coerce.expected_ty(),
-                            None => self.err_ty(),
+                            None => {
+                                self.push_diagnostic(InferenceDiagnostic::BreakOutsideOfLoop {
+                                    expr: tgt_expr,
+                                    is_break: true,
+                                    bad_value_break: true,
+                                });
+                                self.err_ty()
+                            }
                         },
                         None => self.err_ty(),
                     };
@@ -485,7 +503,13 @@ impl<'a> InferenceContext<'a> {
                         }
                         None => ctxt.may_break = true,
                     },
-                    None => {}
+                    None => {
+                        self.push_diagnostic(InferenceDiagnostic::BreakOutsideOfLoop {
+                            expr: tgt_expr,
+                            is_break: true,
+                            bad_value_break: false,
+                        });
+                    }
                 }
                 self.result.standard_types.never.clone()
             }

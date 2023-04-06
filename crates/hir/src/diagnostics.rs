@@ -32,6 +32,7 @@ macro_rules! diagnostics {
 }
 
 diagnostics![
+    BreakOutsideOfLoop,
     ExpectedFunction,
     InactiveCode,
     IncorrectCase,
@@ -61,6 +62,13 @@ diagnostics![
     UnresolvedProcMacro,
     UnusedMut,
 ];
+
+#[derive(Debug)]
+pub struct BreakOutsideOfLoop {
+    pub expr: InFile<AstPtr<ast::Expr>>,
+    pub is_break: bool,
+    pub bad_value_break: bool,
+}
 
 #[derive(Debug)]
 pub struct UnresolvedModule {
