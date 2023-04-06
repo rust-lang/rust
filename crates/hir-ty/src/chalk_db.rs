@@ -18,9 +18,10 @@ use hir_expand::name::name;
 use crate::{
     db::HirDatabase,
     display::HirDisplay,
-    from_assoc_type_id, from_chalk_trait_id, make_binders, make_single_type_binders,
+    from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id, make_binders,
+    make_single_type_binders,
     mapping::{from_chalk, ToChalk, TypeAliasAsValue},
-    method_resolution::{TyFingerprint, ALL_FLOAT_FPS, ALL_INT_FPS},
+    method_resolution::{TraitImpls, TyFingerprint, ALL_FLOAT_FPS, ALL_INT_FPS},
     to_assoc_type_id, to_chalk_trait_id,
     traits::ChalkContext,
     utils::generics,
@@ -106,6 +107,19 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
             _ => self_ty_fp.as_ref().map(std::slice::from_ref).unwrap_or(&[]),
         };
 
+        let trait_module = trait_.module(self.db.upcast());
+        let type_module = match self_ty_fp {
+            Some(TyFingerprint::Adt(adt_id)) => Some(adt_id.module(self.db.upcast())),
+            Some(TyFingerprint::ForeignType(type_id)) => {
+                Some(from_foreign_def_id(type_id).module(self.db.upcast()))
+            }
+            Some(TyFingerprint::Dyn(trait_id)) => Some(trait_id.module(self.db.upcast())),
+            _ => None,
+        };
+
+        let mut def_blocks =
+            [trait_module.containing_block(), type_module.and_then(|it| it.containing_block())];
+
         // Note: Since we're using impls_for_trait, only impls where the trait
         // can be resolved should ever reach Chalk. impl_datum relies on that
         // and will panic if the trait can't be resolved.
@@ -120,6 +134,14 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                 .and_then(|map| map.parent())
                 .and_then(|module| module.containing_block())
         })
+        .inspect(|&block_id| {
+            // make sure we don't search the same block twice
+            def_blocks.iter_mut().for_each(|block| {
+                if *block == Some(block_id) {
+                    *block = None;
+                }
+            });
+        })
         .filter_map(|block_id| self.db.trait_impls_in_block(block_id));
 
         let id_to_chalk = |id: hir_def::ImplId| id.to_chalk(self.db);
@@ -127,18 +149,27 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         match fps {
             [] => {
                 debug!("Unrestricted search for {:?} impls...", trait_);
-                impl_maps.into_iter().chain(block_impls).for_each(|impls| {
+                let mut f = |impls: Arc<TraitImpls>| {
                     result.extend(impls.for_trait(trait_).map(id_to_chalk));
-                });
+                };
+                impl_maps.into_iter().chain(block_impls).for_each(&mut f);
+                def_blocks
+                    .into_iter()
+                    .filter_map(|it| self.db.trait_impls_in_block(it?))
+                    .for_each(f);
             }
             fps => {
-                impl_maps.into_iter().chain(block_impls).for_each(|impls| {
-                    result.extend(
-                        fps.iter().flat_map(|fp| {
+                let mut f =
+                    |impls: Arc<TraitImpls>| {
+                        result.extend(fps.iter().flat_map(|fp| {
                             impls.for_trait_and_self_ty(trait_, *fp).map(id_to_chalk)
-                        }),
-                    );
-                });
+                        }));
+                    };
+                impl_maps.into_iter().chain(block_impls).for_each(&mut f);
+                def_blocks
+                    .into_iter()
+                    .filter_map(|it| self.db.trait_impls_in_block(it?))
+                    .for_each(f);
             }
         }
 

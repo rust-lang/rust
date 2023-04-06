@@ -447,7 +447,7 @@ impl GlobalState {
             let mut proc_macros = Vec::default();
             for ws in &**self.workspaces {
                 let (other, mut crate_proc_macros) =
-                    ws.to_crate_graph(&mut load, &self.config.cargo().extra_env);
+                    ws.to_crate_graph(&mut load, &self.config.extra_env());
                 crate_graph.extend(other, &mut crate_proc_macros);
                 proc_macros.push(crate_proc_macros);
             }
