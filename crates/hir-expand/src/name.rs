@@ -120,8 +120,7 @@ impl Name {
         use std::sync::atomic::{AtomicUsize, Ordering};
         static CNT: AtomicUsize = AtomicUsize::new(0);
         let c = CNT.fetch_add(1, Ordering::Relaxed);
-        // FIXME: Currently a `__RA_generated_name` in user code will break our analysis
-        Name::new_text(format!("__RA_geneated_name_{c}").into())
+        Name::new_text(format!("<ra@gennew>{c}").into())
     }
 
     /// Returns the tuple index this name represents if it is a tuple field.

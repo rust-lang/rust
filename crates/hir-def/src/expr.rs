@@ -168,11 +168,11 @@ pub enum Expr {
         arms: Box<[MatchArm]>,
     },
     Continue {
-        label: Option<Name>,
+        label: Option<LabelId>,
     },
     Break {
         expr: Option<ExprId>,
-        label: Option<Name>,
+        label: Option<LabelId>,
     },
     Return {
         expr: Option<ExprId>,

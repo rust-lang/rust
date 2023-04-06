@@ -85,12 +85,13 @@ use crate::db::{DefDatabase, HirDatabase};
 pub use crate::{
     attrs::{HasAttrs, Namespace},
     diagnostics::{
-        AnyDiagnostic, BreakOutsideOfLoop, ExpectedFunction, InactiveCode, IncoherentImpl,
-        IncorrectCase, InvalidDeriveTarget, MacroError, MalformedDerive, MismatchedArgCount,
-        MissingFields, MissingMatchArms, MissingUnsafe, NeedMut, NoSuchField, PrivateAssocItem,
-        PrivateField, ReplaceFilterMapNextWithFindMap, TypeMismatch, UnimplementedBuiltinMacro,
-        UnresolvedExternCrate, UnresolvedField, UnresolvedImport, UnresolvedMacroCall,
-        UnresolvedMethodCall, UnresolvedModule, UnresolvedProcMacro, UnusedMut,
+        AnyDiagnostic, ExpectedFunction, InactiveCode, IncoherentImpl, IncorrectCase,
+        InvalidDeriveTarget, MacroError, MalformedDerive, MismatchedArgCount, MissingFields,
+        MissingMatchArms, MissingUnsafe, NeedMut, NoSuchField, PrivateAssocItem, PrivateField,
+        ReplaceFilterMapNextWithFindMap, TypeMismatch, UndeclaredLabel, UnimplementedBuiltinMacro,
+        UnreachableLabel, UnresolvedExternCrate, UnresolvedField, UnresolvedImport,
+        UnresolvedMacroCall, UnresolvedMethodCall, UnresolvedModule, UnresolvedProcMacro,
+        UnusedMut,
     },
     has_source::HasSource,
     semantics::{PathResolution, Semantics, SemanticsScope, TypeInfo, VisibleTraits},
@@ -1393,6 +1394,12 @@ impl DefWithBody {
                     }
                     .into(),
                 ),
+                BodyDiagnostic::UnreachableLabel { node, name } => {
+                    acc.push(UnreachableLabel { node: node.clone(), name: name.clone() }.into())
+                }
+                BodyDiagnostic::UndeclaredLabel { node, name } => {
+                    acc.push(UndeclaredLabel { node: node.clone(), name: name.clone() }.into())
+                }
             }
         }
 
@@ -1404,14 +1411,6 @@ impl DefWithBody {
                 &hir_ty::InferenceDiagnostic::NoSuchField { expr } => {
                     let field = source_map.field_syntax(expr);
                     acc.push(NoSuchField { field }.into())
-                }
-                &hir_ty::InferenceDiagnostic::BreakOutsideOfLoop {
-                    expr,
-                    is_break,
-                    bad_value_break,
-                } => {
-                    let expr = expr_syntax(expr);
-                    acc.push(BreakOutsideOfLoop { expr, is_break, bad_value_break }.into())
                 }
                 &hir_ty::InferenceDiagnostic::MismatchedArgCount { call_expr, expected, found } => {
                     acc.push(

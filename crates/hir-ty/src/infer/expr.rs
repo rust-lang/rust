@@ -25,9 +25,7 @@ use syntax::ast::RangeOp;
 use crate::{
     autoderef::{builtin_deref, deref_by_trait, Autoderef},
     consteval,
-    infer::{
-        coerce::CoerceMany, find_continuable, pat::contains_explicit_ref_binding, BreakableKind,
-    },
+    infer::{coerce::CoerceMany, pat::contains_explicit_ref_binding, BreakableKind},
     lang_items::lang_items_for_bin_op,
     lower::{
         const_or_path_to_chalk, generic_arg_to_chalk, lower_to_chalk_mutability, ParamLoweringMode,
@@ -459,29 +457,13 @@ impl<'a> InferenceContext<'a> {
                 self.resolver.reset_to_guard(g);
                 ty
             }
-            Expr::Continue { label } => {
-                if let None = find_continuable(&mut self.breakables, label.as_ref()) {
-                    self.push_diagnostic(InferenceDiagnostic::BreakOutsideOfLoop {
-                        expr: tgt_expr,
-                        is_break: false,
-                        bad_value_break: false,
-                    });
-                };
-                self.result.standard_types.never.clone()
-            }
-            Expr::Break { expr, label } => {
-                let val_ty = if let Some(expr) = *expr {
-                    let opt_coerce_to = match find_breakable(&mut self.breakables, label.as_ref()) {
+            Expr::Continue { .. } => self.result.standard_types.never.clone(),
+            &Expr::Break { expr, label } => {
+                let val_ty = if let Some(expr) = expr {
+                    let opt_coerce_to = match find_breakable(&mut self.breakables, label) {
                         Some(ctxt) => match &ctxt.coerce {
                             Some(coerce) => coerce.expected_ty(),
-                            None => {
-                                self.push_diagnostic(InferenceDiagnostic::BreakOutsideOfLoop {
-                                    expr: tgt_expr,
-                                    is_break: true,
-                                    bad_value_break: true,
-                                });
-                                self.err_ty()
-                            }
+                            None => self.err_ty(),
                         },
                         None => self.err_ty(),
                     };
@@ -490,26 +472,20 @@ impl<'a> InferenceContext<'a> {
                     TyBuilder::unit()
                 };
 
-                match find_breakable(&mut self.breakables, label.as_ref()) {
+                match find_breakable(&mut self.breakables, label) {
                     Some(ctxt) => match ctxt.coerce.take() {
                         Some(mut coerce) => {
-                            coerce.coerce(self, *expr, &val_ty);
+                            coerce.coerce(self, expr, &val_ty);
 
                             // Avoiding borrowck
-                            let ctxt = find_breakable(&mut self.breakables, label.as_ref())
+                            let ctxt = find_breakable(&mut self.breakables, label)
                                 .expect("breakable stack changed during coercion");
                             ctxt.may_break = true;
                             ctxt.coerce = Some(coerce);
                         }
                         None => ctxt.may_break = true,
                     },
-                    None => {
-                        self.push_diagnostic(InferenceDiagnostic::BreakOutsideOfLoop {
-                            expr: tgt_expr,
-                            is_break: true,
-                            bad_value_break: false,
-                        });
-                    }
+                    None => {}
                 }
                 self.result.standard_types.never.clone()
             }
@@ -1900,7 +1876,6 @@ impl<'a> InferenceContext<'a> {
         cb: impl FnOnce(&mut Self) -> T,
     ) -> (Option<Ty>, T) {
         self.breakables.push({
-            let label = label.map(|label| self.body[label].name.clone());
             BreakableContext { kind, may_break: false, coerce: ty.map(CoerceMany::new), label }
         });
         let res = cb(self);

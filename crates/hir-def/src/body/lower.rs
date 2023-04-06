@@ -102,9 +102,10 @@ pub(super) fn lower(
             _c: Count::new(),
         },
         expander,
-        current_try_block: None,
+        current_try_block_label: None,
         is_lowering_assignee_expr: false,
         is_lowering_generator: false,
+        label_ribs: Vec::new(),
     }
     .collect(params, body, is_async_fn)
 }
@@ -116,9 +117,43 @@ struct ExprCollector<'a> {
     body: Body,
     krate: CrateId,
     source_map: BodySourceMap,
-    current_try_block: Option<LabelId>,
+    current_try_block_label: Option<LabelId>,
     is_lowering_assignee_expr: bool,
     is_lowering_generator: bool,
+    label_ribs: Vec<LabelRib>,
+}
+
+#[derive(Clone, Debug)]
+struct LabelRib {
+    kind: RibKind,
+    // Once we handle macro hygiene this will need to be a map
+    label: Option<(Name, LabelId)>,
+}
+
+impl LabelRib {
+    fn new(kind: RibKind) -> Self {
+        LabelRib { kind, label: None }
+    }
+    fn new_normal(label: (Name, LabelId)) -> Self {
+        LabelRib { kind: RibKind::Normal, label: Some(label) }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum RibKind {
+    Normal,
+    Closure,
+    Constant,
+}
+
+impl RibKind {
+    /// This rib forbids referring to labels defined in upwards ribs.
+    fn is_label_barrier(self) -> bool {
+        match self {
+            RibKind::Normal => false,
+            RibKind::Closure | RibKind::Constant => true,
+        }
+    }
 }
 
 #[derive(Debug, Default)]
@@ -171,26 +206,24 @@ impl ExprCollector<'_> {
                 self.body.params.push(param_pat);
             }
         };
+        self.body.body_expr = self.with_label_rib(RibKind::Closure, |this| {
+            if is_async_fn {
+                match body {
+                    Some(e) => {
+                        let expr = this.collect_expr(e);
+                        this.alloc_expr_desugared(Expr::Async {
+                            id: None,
+                            statements: Box::new([]),
+                            tail: Some(expr),
+                        })
+                    }
+                    None => this.missing_expr(),
+                }
+            } else {
+                this.collect_expr_opt(body)
+            }
+        });
 
-        self.body.body_expr = if is_async_fn {
-            self.current_try_block =
-                Some(self.alloc_label_desugared(Label { name: Name::generate_new_name() }));
-            let expr = self.collect_expr_opt(body);
-            let expr = self.alloc_expr_desugared(Expr::Block {
-                id: None,
-                statements: Box::new([]),
-                tail: Some(expr),
-                label: self.current_try_block,
-            });
-            let expr = self.alloc_expr_desugared(Expr::Async {
-                id: None,
-                statements: Box::new([]),
-                tail: Some(expr),
-            });
-            expr
-        } else {
-            self.collect_expr_opt(body)
-        };
         (self.body, self.source_map)
     }
 
@@ -264,6 +297,7 @@ impl ExprCollector<'_> {
         let syntax_ptr = AstPtr::new(&expr);
         self.check_cfg(&expr)?;
 
+        // FIXME: Move some of these arms out into separate methods for clarity
         Some(match expr {
             ast::Expr::IfExpr(e) => {
                 let then_branch = self.collect_block_opt(e.then_branch());
@@ -286,7 +320,7 @@ impl ExprCollector<'_> {
                 self.alloc_expr(Expr::Let { pat, expr }, syntax_ptr)
             }
             ast::Expr::BlockExpr(e) => match e.modifier() {
-                Some(ast::BlockModifier::Try(_)) => self.collect_try_block(e),
+                Some(ast::BlockModifier::Try(_)) => self.desugar_try_block(e),
                 Some(ast::BlockModifier::Unsafe(_)) => {
                     self.collect_block_(e, |id, statements, tail| Expr::Unsafe {
                         id,
@@ -296,28 +330,43 @@ impl ExprCollector<'_> {
                 }
                 Some(ast::BlockModifier::Label(label)) => {
                     let label = self.collect_label(label);
-                    self.collect_block_(e, |id, statements, tail| Expr::Block {
-                        id,
-                        statements,
-                        tail,
-                        label: Some(label),
+                    self.with_labeled_rib(label, |this| {
+                        this.collect_block_(e, |id, statements, tail| Expr::Block {
+                            id,
+                            statements,
+                            tail,
+                            label: Some(label),
+                        })
                     })
                 }
-                Some(ast::BlockModifier::Async(_)) => self
-                    .collect_block_(e, |id, statements, tail| Expr::Async { id, statements, tail }),
-                Some(ast::BlockModifier::Const(_)) => self
-                    .collect_block_(e, |id, statements, tail| Expr::Const { id, statements, tail }),
+                Some(ast::BlockModifier::Async(_)) => {
+                    self.with_label_rib(RibKind::Closure, |this| {
+                        this.collect_block_(e, |id, statements, tail| Expr::Async {
+                            id,
+                            statements,
+                            tail,
+                        })
+                    })
+                }
+                Some(ast::BlockModifier::Const(_)) => {
+                    self.with_label_rib(RibKind::Constant, |this| {
+                        this.collect_block_(e, |id, statements, tail| Expr::Const {
+                            id,
+                            statements,
+                            tail,
+                        })
+                    })
+                }
                 None => self.collect_block(e),
             },
             ast::Expr::LoopExpr(e) => {
                 let label = e.label().map(|label| self.collect_label(label));
-                let body = self.collect_block_opt(e.loop_body());
+                let body = self.collect_labelled_block_opt(label, e.loop_body());
                 self.alloc_expr(Expr::Loop { body, label }, syntax_ptr)
             }
             ast::Expr::WhileExpr(e) => {
                 let label = e.label().map(|label| self.collect_label(label));
-                let body = self.collect_block_opt(e.loop_body());
-
+                let body = self.collect_labelled_block_opt(label, e.loop_body());
                 let condition = self.collect_expr_opt(e.condition());
 
                 self.alloc_expr(Expr::While { condition, body, label }, syntax_ptr)
@@ -326,7 +375,7 @@ impl ExprCollector<'_> {
                 let label = e.label().map(|label| self.collect_label(label));
                 let iterable = self.collect_expr_opt(e.iterable());
                 let pat = self.collect_pat_opt(e.pat());
-                let body = self.collect_block_opt(e.loop_body());
+                let body = self.collect_labelled_block_opt(label, e.loop_body());
                 self.alloc_expr(Expr::For { iterable, pat, body, label }, syntax_ptr)
             }
             ast::Expr::CallExpr(e) => {
@@ -386,16 +435,20 @@ impl ExprCollector<'_> {
                     .unwrap_or(Expr::Missing);
                 self.alloc_expr(path, syntax_ptr)
             }
-            ast::Expr::ContinueExpr(e) => self.alloc_expr(
-                Expr::Continue { label: e.lifetime().map(|l| Name::new_lifetime(&l)) },
-                syntax_ptr,
-            ),
+            ast::Expr::ContinueExpr(e) => {
+                let label = self.resolve_label(e.lifetime()).unwrap_or_else(|e| {
+                    self.source_map.diagnostics.push(e);
+                    None
+                });
+                self.alloc_expr(Expr::Continue { label }, syntax_ptr)
+            }
             ast::Expr::BreakExpr(e) => {
+                let label = self.resolve_label(e.lifetime()).unwrap_or_else(|e| {
+                    self.source_map.diagnostics.push(e);
+                    None
+                });
                 let expr = e.expr().map(|e| self.collect_expr(e));
-                self.alloc_expr(
-                    Expr::Break { expr, label: e.lifetime().map(|l| Name::new_lifetime(&l)) },
-                    syntax_ptr,
-                )
+                self.alloc_expr(Expr::Break { expr, label }, syntax_ptr)
             }
             ast::Expr::ParenExpr(e) => {
                 let inner = self.collect_expr_opt(e.expr());
@@ -496,14 +549,14 @@ impl ExprCollector<'_> {
                     None => self.alloc_expr(Expr::Missing, syntax_ptr),
                 }
             }
-            ast::Expr::ClosureExpr(e) => {
+            ast::Expr::ClosureExpr(e) => self.with_label_rib(RibKind::Closure, |this| {
                 let mut args = Vec::new();
                 let mut arg_types = Vec::new();
                 if let Some(pl) = e.param_list() {
                     for param in pl.params() {
-                        let pat = self.collect_pat_opt(param.pat());
+                        let pat = this.collect_pat_opt(param.pat());
                         let type_ref =
-                            param.ty().map(|it| Interned::new(TypeRef::from_ast(&self.ctx(), it)));
+                            param.ty().map(|it| Interned::new(TypeRef::from_ast(&this.ctx(), it)));
                         args.push(pat);
                         arg_types.push(type_ref);
                     }
@@ -511,14 +564,14 @@ impl ExprCollector<'_> {
                 let ret_type = e
                     .ret_type()
                     .and_then(|r| r.ty())
-                    .map(|it| Interned::new(TypeRef::from_ast(&self.ctx(), it)));
+                    .map(|it| Interned::new(TypeRef::from_ast(&this.ctx(), it)));
 
-                let prev_is_lowering_generator = self.is_lowering_generator;
-                self.is_lowering_generator = false;
+                let prev_is_lowering_generator = this.is_lowering_generator;
+                this.is_lowering_generator = false;
 
-                let body = self.collect_expr_opt(e.body());
+                let body = this.collect_expr_opt(e.body());
 
-                let closure_kind = if self.is_lowering_generator {
+                let closure_kind = if this.is_lowering_generator {
                     let movability = if e.static_token().is_some() {
                         Movability::Static
                     } else {
@@ -530,9 +583,9 @@ impl ExprCollector<'_> {
                 } else {
                     ClosureKind::Closure
                 };
-                self.is_lowering_generator = prev_is_lowering_generator;
+                this.is_lowering_generator = prev_is_lowering_generator;
 
-                self.alloc_expr(
+                this.alloc_expr(
                     Expr::Closure {
                         args: args.into(),
                         arg_types: arg_types.into(),
@@ -542,7 +595,7 @@ impl ExprCollector<'_> {
                     },
                     syntax_ptr,
                 )
-            }
+            }),
             ast::Expr::BinExpr(e) => {
                 let op = e.op_kind();
                 if let Some(ast::BinaryOp::Assignment { op: None }) = op {
@@ -581,7 +634,9 @@ impl ExprCollector<'_> {
                     }
                     ArrayExprKind::Repeat { initializer, repeat } => {
                         let initializer = self.collect_expr_opt(initializer);
-                        let repeat = self.collect_expr_opt(repeat);
+                        let repeat = self.with_label_rib(RibKind::Constant, |this| {
+                            this.collect_expr_opt(repeat)
+                        });
                         self.alloc_expr(
                             Expr::Array(Array::Repeat { initializer, repeat }),
                             syntax_ptr,
@@ -630,20 +685,24 @@ impl ExprCollector<'_> {
     /// Desugar `try { <stmts>; <expr> }` into `'<new_label>: { <stmts>; ::std::ops::Try::from_output(<expr>) }`,
     /// `try { <stmts>; }` into `'<new_label>: { <stmts>; ::std::ops::Try::from_output(()) }`
     /// and save the `<new_label>` to use it as a break target for desugaring of the `?` operator.
-    fn collect_try_block(&mut self, e: BlockExpr) -> ExprId {
+    fn desugar_try_block(&mut self, e: BlockExpr) -> ExprId {
         let Some(try_from_output) = LangItem::TryTraitFromOutput.path(self.db, self.krate) else {
-            return self.alloc_expr_desugared(Expr::Missing);
+            return self.collect_block(e);
         };
-        let prev_try_block = self.current_try_block.take();
-        self.current_try_block =
-            Some(self.alloc_label_desugared(Label { name: Name::generate_new_name() }));
-        let expr_id = self.collect_block(e);
+        let label = self.alloc_label_desugared(Label { name: Name::generate_new_name() });
+        let old_label = self.current_try_block_label.replace(label);
+
+        let (btail, expr_id) = self.with_labeled_rib(label, |this| {
+            let mut btail = None;
+            let block = this.collect_block_(e, |id, statements, tail| {
+                btail = tail;
+                Expr::Block { id, statements, tail, label: Some(label) }
+            });
+            (btail, block)
+        });
+
         let callee = self.alloc_expr_desugared(Expr::Path(try_from_output));
-        let Expr::Block { label, tail, .. } = &mut self.body.exprs[expr_id] else {
-            unreachable!("It is the output of collect block");
-        };
-        *label = self.current_try_block;
-        let next_tail = match *tail {
+        let next_tail = match btail {
             Some(tail) => self.alloc_expr_desugared(Expr::Call {
                 callee,
                 args: Box::new([tail]),
@@ -662,10 +721,10 @@ impl ExprCollector<'_> {
             }
         };
         let Expr::Block { tail, .. } = &mut self.body.exprs[expr_id] else {
-            unreachable!("It is the output of collect block");
+            unreachable!("block was lowered to non-block");
         };
         *tail = Some(next_tail);
-        self.current_try_block = prev_try_block;
+        self.current_try_block_label = old_label;
         expr_id
     }
 
@@ -735,12 +794,13 @@ impl ExprCollector<'_> {
                     Expr::Call { callee, args: Box::new([x]), is_assignee_expr: false },
                     syntax_ptr.clone(),
                 );
-                if let Some(label) = self.current_try_block {
-                    let label = Some(self.body.labels[label].name.clone());
-                    self.alloc_expr(Expr::Break { expr: Some(result), label }, syntax_ptr.clone())
-                } else {
-                    self.alloc_expr(Expr::Return { expr: Some(result) }, syntax_ptr.clone())
-                }
+                self.alloc_expr(
+                    match self.current_try_block_label {
+                        Some(label) => Expr::Break { expr: Some(result), label: Some(label) },
+                        None => Expr::Return { expr: Some(result) },
+                    },
+                    syntax_ptr.clone(),
+                )
             },
         };
         let arms = Box::new([continue_arm, break_arm]);
@@ -966,6 +1026,17 @@ impl ExprCollector<'_> {
         }
     }
 
+    fn collect_labelled_block_opt(
+        &mut self,
+        label: Option<LabelId>,
+        expr: Option<ast::BlockExpr>,
+    ) -> ExprId {
+        match label {
+            Some(label) => self.with_labeled_rib(label, |this| this.collect_block_opt(expr)),
+            None => self.collect_block_opt(expr),
+        }
+    }
+
     fn collect_label(&mut self, ast_label: ast::Label) -> LabelId {
         let label = Label {
             name: ast_label.lifetime().as_ref().map_or_else(Name::missing, Name::new_lifetime),
@@ -1135,8 +1206,9 @@ impl ExprCollector<'_> {
                 Pat::Box { inner }
             }
             ast::Pat::ConstBlockPat(const_block_pat) => {
-                if let Some(expr) = const_block_pat.block_expr() {
-                    let expr_id = self.collect_block(expr);
+                if let Some(block) = const_block_pat.block_expr() {
+                    let expr_id =
+                        self.with_label_rib(RibKind::Constant, |this| this.collect_block(block));
                     Pat::ConstBlock(expr_id)
                 } else {
                     Pat::Missing
@@ -1212,6 +1284,57 @@ impl ExprCollector<'_> {
 
     fn add_definition_to_binding(&mut self, binding_id: BindingId, pat_id: PatId) {
         self.body.bindings[binding_id].definitions.push(pat_id);
+    }
+
+    fn resolve_label(
+        &self,
+        lifetime: Option<ast::Lifetime>,
+    ) -> Result<Option<LabelId>, BodyDiagnostic> {
+        let Some(lifetime) = lifetime else {
+            return Ok(None)
+        };
+        let name = Name::new_lifetime(&lifetime);
+
+        for (rib_idx, rib) in self.label_ribs.iter().enumerate().rev() {
+            if let Some((label_name, id)) = &rib.label {
+                if *label_name == name {
+                    return if self.is_label_valid_from_rib(rib_idx) {
+                        Ok(Some(*id))
+                    } else {
+                        Err(BodyDiagnostic::UnreachableLabel {
+                            name,
+                            node: InFile::new(
+                                self.expander.current_file_id,
+                                AstPtr::new(&lifetime),
+                            ),
+                        })
+                    };
+                }
+            }
+        }
+
+        Err(BodyDiagnostic::UndeclaredLabel {
+            name,
+            node: InFile::new(self.expander.current_file_id, AstPtr::new(&lifetime)),
+        })
+    }
+
+    fn is_label_valid_from_rib(&self, rib_index: usize) -> bool {
+        !self.label_ribs[rib_index + 1..].iter().any(|rib| rib.kind.is_label_barrier())
+    }
+
+    fn with_label_rib<T>(&mut self, kind: RibKind, f: impl FnOnce(&mut Self) -> T) -> T {
+        self.label_ribs.push(LabelRib::new(kind));
+        let res = f(self);
+        self.label_ribs.pop();
+        res
+    }
+
+    fn with_labeled_rib<T>(&mut self, label: LabelId, f: impl FnOnce(&mut Self) -> T) -> T {
+        self.label_ribs.push(LabelRib::new_normal((self.body[label].name.clone(), label)));
+        let res = f(self);
+        self.label_ribs.pop();
+        res
     }
 }
 

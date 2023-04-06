@@ -13,7 +13,8 @@ use cfg::{CfgExpr, CfgOptions};
 use drop_bomb::DropBomb;
 use either::Either;
 use hir_expand::{
-    attrs::RawAttrs, hygiene::Hygiene, ExpandError, ExpandResult, HirFileId, InFile, MacroCallId,
+    attrs::RawAttrs, hygiene::Hygiene, name::Name, ExpandError, ExpandResult, HirFileId, InFile,
+    MacroCallId,
 };
 use la_arena::{Arena, ArenaMap};
 use limit::Limit;
@@ -343,6 +344,8 @@ pub enum BodyDiagnostic {
     MacroError { node: InFile<AstPtr<ast::MacroCall>>, message: String },
     UnresolvedProcMacro { node: InFile<AstPtr<ast::MacroCall>>, krate: CrateId },
     UnresolvedMacroCall { node: InFile<AstPtr<ast::MacroCall>>, path: ModPath },
+    UnreachableLabel { node: InFile<AstPtr<ast::Lifetime>>, name: Name },
+    UndeclaredLabel { node: InFile<AstPtr<ast::Lifetime>>, name: Name },
 }
 
 impl Body {
