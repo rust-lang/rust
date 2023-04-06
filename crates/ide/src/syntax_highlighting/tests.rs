@@ -439,6 +439,16 @@ macro_rules! toho {
 }
 
 fn main() {
+    let a = '\n';
+    let a = '\t';
+    let a = '\e'; // invalid escape
+    let a = 'e';
+    let a = ' ';
+    let a = '\u{48}';
+    let a = '\u{4823}';
+    let a = '\x65';
+    let a = '\x00';
+
     println!("Hello {{Hello}}");
     // from https://doc.rust-lang.org/std/fmt/index.html
     println!("Hello");                 // => "Hello"
