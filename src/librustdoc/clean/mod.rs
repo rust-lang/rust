@@ -1666,22 +1666,45 @@ fn normalize<'tcx>(
     }
 
     use crate::rustc_trait_selection::infer::TyCtxtInferExt;
-    use crate::rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
+    use crate::rustc_trait_selection::traits::ObligationCtxt;
     use rustc_middle::traits::ObligationCause;
 
-    // Try to normalize `<X as Y>::T` to a type
+    assert!(
+        !ty.has_non_region_infer(),
+        "`ty`: {ty:?} has pre existing infer vars before `InferCtxt` creation",
+    );
+
     let infcx = cx.tcx.infer_ctxt().build();
-    let normalized = infcx
-        .at(&ObligationCause::dummy(), cx.param_env)
-        .query_normalize(ty)
-        .map(|resolved| infcx.resolve_vars_if_possible(resolved.value));
-    match normalized {
-        Ok(normalized_value) => {
-            debug!("normalized {:?} to {:?}", ty, normalized_value);
-            Some(normalized_value)
+    // use an `ObligationCtxt` as it has a nice API for dealing with returned obligations from normalization
+    // and does not expect us to be inside of typeck. It also does not ICE when the projection could not be
+    // normalized like some other normalization routines (`QueryNormalizer`, `normalize_erasing_regions`, etc)
+    let ocx = ObligationCtxt::new(&infcx);
+
+    // Try to normalize `<X as Y>::T` to a type
+    let normalized = ocx.normalize(&ObligationCause::dummy(), cx.param_env, ty);
+    // We have to ensure that we deal with nested obligations from attempting to normalize as `ty`
+    // normalizing to `normalized` is only the case if the nested obligations hold.
+    let errs = ocx.select_all_or_error();
+    // Evaluating nested obligations might constrain infer vars that were created during normalization
+    // so we should resolve any infer vars in `normalized` to their new values.
+    let normalized = infcx.resolve_vars_if_possible(normalized);
+
+    match errs.as_slice() {
+        [] if normalized == ty => {
+            debug!("normalizing {:?} did not make progress", ty);
+            None
         }
-        Err(err) => {
-            debug!("failed to normalize {:?}: {:?}", ty, err);
+        [] => {
+            debug!("normalized {:?} to {:?}", ty, normalized);
+
+            assert!(
+                !normalized.has_non_region_infer(),
+                "`normalized` has infer vars which would escape the `InferCtxt` they were created in"
+            );
+            Some(normalized)
+        }
+        errs => {
+            debug!("failed to normalize {:?}: {:?}", ty, errs);
             None
         }
     }

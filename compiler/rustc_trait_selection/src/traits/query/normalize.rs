@@ -284,14 +284,10 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                 let result = tcx.normalize_projection_ty(c_data)?;
                 // We don't expect ambiguity.
                 if result.is_ambiguous() {
-                    // Rustdoc normalizes possibly not well-formed types, so only
-                    // treat this as a bug if we're not in rustdoc.
-                    if !tcx.sess.opts.actually_rustdoc {
-                        tcx.sess.delay_span_bug(
-                            DUMMY_SP,
-                            format!("unexpected ambiguity: {:?} {:?}", c_data, result),
-                        );
-                    }
+                    tcx.sess.delay_span_bug(
+                        DUMMY_SP,
+                        format!("unexpected ambiguity: {:?} {:?}", c_data, result),
+                    );
                     return Err(NoSolution);
                 }
                 let InferOk { value: result, obligations } =
