@@ -223,13 +223,21 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let OperandValueKind::Immediate(in_scalar) = operand_kind else {
                     bug!("Found {operand_kind:?} for operand {operand:?}");
                 };
-                if let OperandValueKind::Immediate(out_scalar) = cast_kind
-                    && in_scalar.size(self.cx) == out_scalar.size(self.cx)
-                {
-                    let cast_bty = bx.backend_type(cast);
-                    Some(OperandValue::Immediate(
-                        self.transmute_immediate(bx, imm, in_scalar, out_scalar, cast_bty),
-                    ))
+                if let OperandValueKind::Immediate(out_scalar) = cast_kind {
+                    match (in_scalar, out_scalar) {
+                        (ScalarOrZst::Zst, ScalarOrZst::Zst) => {
+                            Some(OperandRef::new_zst(bx, cast).val)
+                        }
+                        (ScalarOrZst::Scalar(in_scalar), ScalarOrZst::Scalar(out_scalar))
+                            if in_scalar.size(self.cx) == out_scalar.size(self.cx) =>
+                        {
+                            let cast_bty = bx.backend_type(cast);
+                            Some(OperandValue::Immediate(
+                                self.transmute_immediate(bx, imm, in_scalar, out_scalar, cast_bty),
+                            ))
+                        }
+                        _ => None,
+                    }
                 } else {
                     None
                 }
@@ -892,13 +900,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if self.cx.is_backend_immediate(layout) {
             debug_assert!(!self.cx.is_backend_scalar_pair(layout));
             OperandValueKind::Immediate(match layout.abi {
-                abi::Abi::Scalar(s) => s,
-                abi::Abi::Vector { element, .. } => element,
-                x => bug!("Couldn't translate {x:?} as backend immediate"),
+                abi::Abi::Scalar(s) => ScalarOrZst::Scalar(s),
+                abi::Abi::Vector { element, .. } => ScalarOrZst::Scalar(element),
+                _ if layout.is_zst() => ScalarOrZst::Zst,
+                x => span_bug!(self.mir.span, "Couldn't translate {x:?} as backend immediate"),
             })
         } else if self.cx.is_backend_scalar_pair(layout) {
             let abi::Abi::ScalarPair(s1, s2) = layout.abi else {
-                bug!("Couldn't translate {:?} as backend scalar pair", layout.abi)
+                span_bug!(
+                    self.mir.span,
+                    "Couldn't translate {:?} as backend scalar pair",
+                    layout.abi,
+                );
             };
             OperandValueKind::Pair(s1, s2)
         } else {
@@ -907,9 +920,26 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 }
 
+/// The variants of this match [`OperandValue`], giving details about the
+/// backend values that will be held in that other type.
 #[derive(Debug, Copy, Clone)]
 enum OperandValueKind {
     Ref,
-    Immediate(abi::Scalar),
+    Immediate(ScalarOrZst),
     Pair(abi::Scalar, abi::Scalar),
+}
+
+#[derive(Debug, Copy, Clone)]
+enum ScalarOrZst {
+    Zst,
+    Scalar(abi::Scalar),
+}
+
+impl ScalarOrZst {
+    pub fn size(self, cx: &impl abi::HasDataLayout) -> abi::Size {
+        match self {
+            ScalarOrZst::Zst => abi::Size::ZERO,
+            ScalarOrZst::Scalar(s) => s.size(cx),
+        }
+    }
 }

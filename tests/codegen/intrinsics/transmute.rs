@@ -8,7 +8,7 @@
 #![feature(inline_const)]
 #![allow(unreachable_code)]
 
-use std::mem::transmute;
+use std::mem::{transmute, MaybeUninit};
 
 // Some of the cases here are statically rejected by `mem::transmute`, so
 // we need to generate custom MIR for those cases to get to codegen.
@@ -371,5 +371,61 @@ pub unsafe fn check_pair_to_dst_ref<'a>(x: (usize, usize)) -> &'a [u8] {
     // CHECK: %1 = insertvalue { ptr, i64 } poison, ptr %0, 0
     // CHECK: %2 = insertvalue { ptr, i64 } %1, i64 %x.1, 1
     // CHECK: ret { ptr, i64 } %2
+    transmute(x)
+}
+
+// CHECK-LABEL: @check_issue_109992(
+#[no_mangle]
+#[custom_mir(dialect = "runtime", phase = "optimized")]
+pub unsafe fn check_issue_109992(x: ()) -> [(); 1] {
+    // This uses custom MIR to avoid MIR optimizations having removed ZST ops.
+
+    // CHECK: start
+    // CHECK-NEXT: ret void
+    mir!{
+        {
+            RET = CastTransmute(x);
+            Return()
+        }
+    }
+}
+
+// CHECK-LABEL: @check_maybe_uninit_pair(i16 %x.0, i64 %x.1)
+#[no_mangle]
+pub unsafe fn check_maybe_uninit_pair(
+    x: (MaybeUninit<u16>, MaybeUninit<u64>),
+) -> (MaybeUninit<i64>, MaybeUninit<i16>) {
+    // Thanks to `MaybeUninit` this is actually defined behaviour,
+    // unlike the examples above with pairs of primitives.
+
+    // CHECK: store i16 %x.0
+    // CHECK: store i64 %x.1
+    // CHECK: load i64
+    // CHECK-NOT: noundef
+    // CHECK: load i16
+    // CHECK-NOT: noundef
+    // CHECK: ret { i64, i16 }
+    transmute(x)
+}
+
+#[repr(align(8))]
+pub struct HighAlignScalar(u8);
+
+// CHECK-LABEL: @check_to_overalign(
+#[no_mangle]
+pub unsafe fn check_to_overalign(x: u64) -> HighAlignScalar {
+    // CHECK: %0 = alloca %HighAlignScalar, align 8
+    // CHECK: store i64 %x, ptr %0, align 8
+    // CHECK: %1 = load i64, ptr %0, align 8
+    // CHECK: ret i64 %1
+    transmute(x)
+}
+
+// CHECK-LABEL: @check_from_overalign(
+#[no_mangle]
+pub unsafe fn check_from_overalign(x: HighAlignScalar) -> u64 {
+    // CHECK: %x = alloca %HighAlignScalar, align 8
+    // CHECK: %[[VAL:.+]] = load i64, ptr %x, align 8
+    // CHECK: ret i64 %[[VAL]]
     transmute(x)
 }
