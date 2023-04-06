@@ -17,10 +17,7 @@ impl<'a> IoSlice<'a> {
     pub fn new(buf: &'a [u8]) -> IoSlice<'a> {
         assert!(buf.len() <= c::ULONG::MAX as usize);
         IoSlice {
-            vec: c::WSABUF {
-                len: buf.len() as c::ULONG,
-                buf: buf.as_ptr() as *mut u8 as *mut c::CHAR,
-            },
+            vec: c::WSABUF { len: buf.len() as c::ULONG, buf: buf.as_ptr() as *mut u8 },
             _p: PhantomData,
         }
     }
@@ -54,7 +51,7 @@ impl<'a> IoSliceMut<'a> {
     pub fn new(buf: &'a mut [u8]) -> IoSliceMut<'a> {
         assert!(buf.len() <= c::ULONG::MAX as usize);
         IoSliceMut {
-            vec: c::WSABUF { len: buf.len() as c::ULONG, buf: buf.as_mut_ptr() as *mut c::CHAR },
+            vec: c::WSABUF { len: buf.len() as c::ULONG, buf: buf.as_mut_ptr() },
             _p: PhantomData,
         }
     }

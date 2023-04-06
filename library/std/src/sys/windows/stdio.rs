@@ -180,7 +180,7 @@ fn write_valid_utf8_to_console(handle: c::HANDLE, utf8: &str) -> io::Result<usiz
         let result = c::MultiByteToWideChar(
             c::CP_UTF8,                      // CodePage
             c::MB_ERR_INVALID_CHARS,         // dwFlags
-            utf8.as_ptr() as c::LPCCH,       // lpMultiByteStr
+            utf8.as_ptr(),                   // lpMultiByteStr
             utf8.len() as c::c_int,          // cbMultiByte
             utf16.as_mut_ptr() as c::LPWSTR, // lpWideCharStr
             utf16.len() as c::c_int,         // cchWideChar
@@ -344,7 +344,7 @@ fn read_u16s(handle: c::HANDLE, buf: &mut [MaybeUninit<u16>]) -> io::Result<usiz
     // See #38274 and https://stackoverflow.com/questions/43836040/win-api-readconsole.
     const CTRL_Z: u16 = 0x1A;
     const CTRL_Z_MASK: c::ULONG = 1 << CTRL_Z;
-    let mut input_control = c::CONSOLE_READCONSOLE_CONTROL {
+    let input_control = c::CONSOLE_READCONSOLE_CONTROL {
         nLength: crate::mem::size_of::<c::CONSOLE_READCONSOLE_CONTROL>() as c::ULONG,
         nInitialChars: 0,
         dwCtrlWakeupMask: CTRL_Z_MASK,
@@ -360,7 +360,7 @@ fn read_u16s(handle: c::HANDLE, buf: &mut [MaybeUninit<u16>]) -> io::Result<usiz
                 buf.as_mut_ptr() as c::LPVOID,
                 buf.len() as u32,
                 &mut amount,
-                &mut input_control as c::PCONSOLE_READCONSOLE_CONTROL,
+                &input_control,
             )
         })?;
 
@@ -385,14 +385,14 @@ fn utf16_to_utf8(utf16: &[u16], utf8: &mut [u8]) -> io::Result<usize> {
 
     let result = unsafe {
         c::WideCharToMultiByte(
-            c::CP_UTF8,                    // CodePage
-            c::WC_ERR_INVALID_CHARS,       // dwFlags
-            utf16.as_ptr(),                // lpWideCharStr
-            utf16.len() as c::c_int,       // cchWideChar
-            utf8.as_mut_ptr() as c::LPSTR, // lpMultiByteStr
-            utf8.len() as c::c_int,        // cbMultiByte
-            ptr::null(),                   // lpDefaultChar
-            ptr::null_mut(),               // lpUsedDefaultChar
+            c::CP_UTF8,              // CodePage
+            c::WC_ERR_INVALID_CHARS, // dwFlags
+            utf16.as_ptr(),          // lpWideCharStr
+            utf16.len() as c::c_int, // cchWideChar
+            utf8.as_mut_ptr(),       // lpMultiByteStr
+            utf8.len() as c::c_int,  // cbMultiByte
+            ptr::null(),             // lpDefaultChar
+            ptr::null_mut(),         // lpUsedDefaultChar
         )
     };
     if result == 0 {
