@@ -12,6 +12,7 @@ impl AsyncRead for i32 {}
 
 type PendingReader<'a> = impl AsyncRead + 'a;
 
+#[defines(PendingReader<'a>)]
 type OpeningReadFuture<'a> = impl std::future::Future<Output = Result<PendingReader<'a>, CantOpen>>;
 
 impl Pending {

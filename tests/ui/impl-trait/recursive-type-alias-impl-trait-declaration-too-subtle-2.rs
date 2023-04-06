@@ -10,6 +10,7 @@ impl PartialEq<(Foo, i32)> for Bar {
     }
 }
 
+#[defines(Foo)]
 fn foo() -> Foo {
     //~^ ERROR can't compare `Bar` with `(Bar, i32)`
     Bar

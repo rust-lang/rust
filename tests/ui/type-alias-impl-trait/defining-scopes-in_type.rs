@@ -6,6 +6,7 @@ type Foo = impl Send;
 //~^ ERROR unconstrained opaque type
 
 #[rustfmt::skip]
+#[defines(Foo)]
 struct Struct<
     const C: usize = {
         let _: Foo = ();

@@ -507,14 +507,3 @@ pub(crate) struct ReturnTypeNotationMissingMethod {
     pub trait_name: Symbol,
     pub assoc_name: Symbol,
 }
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_missing_define)]
-pub(crate) struct MissingDefine {
-    #[help]
-    pub opaque_type: Span,
-    #[note]
-    pub item: Span,
-    #[primary_span]
-    pub definition: Span,
-}

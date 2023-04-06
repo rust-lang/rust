@@ -353,7 +353,9 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         .defines_opaque_types()
         .iter()
         .filter_map(|&path| {
-            assert!(path.res.opt_def_id().is_some(), "{path:#?}");
+            if path.res.opt_def_id().is_none() {
+                tcx.sess.delay_span_bug(tcx.def_span(def_id), format!("unresolved path {path:#?}"));
+            }
             let id = path.res.opt_def_id()?;
             if id.is_local() {
                 // FIXME: not using LocalDefId here, see `Generics::defines_opaque_types`, too

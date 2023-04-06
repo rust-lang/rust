@@ -4,20 +4,18 @@ use std::fmt::Debug;
 
 type Foo = impl Debug;
 //~^ ERROR cycle detected
-//~| ERROR cycle detected
 
 fn is_send<T: Send>() {}
 
+#[defines(Foo)]
 fn not_good() {
     // Error: this function does not constrain `Foo` to any particular
     // hidden type, so it cannot rely on `Send` being true.
     is_send::<Foo>();
 }
 
-fn not_gooder()
-where
-    Foo: Debug,
-{
+#[defines(Foo)]
+fn not_gooder() {
     // Constrain `Foo = u32`
     let x: Foo = 22_u32;
 

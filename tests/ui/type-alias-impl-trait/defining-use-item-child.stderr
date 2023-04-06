@@ -1,49 +1,55 @@
-error: cannot register hidden type without a `#[defines(...)]` attribute
+error[E0308]: mismatched types
   --> $DIR/defining-use-item-child.rs:10:9
    |
-LL |         "foo"
-   |         ^^^^^
-   |
-help: "this opaque type needs to be in the `defines` attribute
-  --> $DIR/defining-use-item-child.rs:5:12
-   |
 LL | type Foo = impl std::fmt::Display;
-   |            ^^^^^^^^^^^^^^^^^^^^^^
-note: "this item needs a `#[defines(...)]` attribute
+   |            ---------------------- the expected opaque type
+...
+LL |     pub fn foo() -> Foo {
+   |                     --- expected `Foo` because of return type
+LL |         "foo"
+   |         ^^^^^ expected opaque type, found `&str`
+   |
+   = note: expected opaque type `Foo`
+                found reference `&'static str`
+note: this item cannot register hidden type without a `#[defines(Foo)]` attribute
   --> $DIR/defining-use-item-child.rs:9:5
    |
 LL |     pub fn foo() -> Foo {
    |     ^^^^^^^^^^^^^^^^^^^
 
-error: cannot register hidden type without a `#[defines(...)]` attribute
+error[E0308]: mismatched types
   --> $DIR/defining-use-item-child.rs:18:9
    |
-LL |         "foo"
-   |         ^^^^^
-   |
-help: "this opaque type needs to be in the `defines` attribute
-  --> $DIR/defining-use-item-child.rs:5:12
-   |
 LL | type Foo = impl std::fmt::Display;
-   |            ^^^^^^^^^^^^^^^^^^^^^^
-note: "this item needs a `#[defines(...)]` attribute
+   |            ---------------------- the expected opaque type
+...
+LL |     pub fn foo() -> Foo {
+   |                     --- expected `Foo` because of return type
+LL |         "foo"
+   |         ^^^^^ expected opaque type, found `&str`
+   |
+   = note: expected opaque type `Foo`
+                found reference `&'static str`
+note: this item cannot register hidden type without a `#[defines(Foo)]` attribute
   --> $DIR/defining-use-item-child.rs:17:5
    |
 LL |     pub fn foo() -> Foo {
    |     ^^^^^^^^^^^^^^^^^^^
 
-error: cannot register hidden type without a `#[defines(...)]` attribute
+error[E0308]: mismatched types
   --> $DIR/defining-use-item-child.rs:28:13
    |
-LL |             "blob"
-   |             ^^^^^^
-   |
-help: "this opaque type needs to be in the `defines` attribute
-  --> $DIR/defining-use-item-child.rs:5:12
-   |
 LL | type Foo = impl std::fmt::Display;
-   |            ^^^^^^^^^^^^^^^^^^^^^^
-note: "this item needs a `#[defines(...)]` attribute
+   |            ---------------------- the expected opaque type
+...
+LL |         fn blob() -> Foo {
+   |                      --- expected `Foo` because of return type
+LL |             "blob"
+   |             ^^^^^^ expected opaque type, found `&str`
+   |
+   = note: expected opaque type `Foo`
+                found reference `&'static str`
+note: this item cannot register hidden type without a `#[defines(Foo)]` attribute
   --> $DIR/defining-use-item-child.rs:27:9
    |
 LL |         fn blob() -> Foo {
@@ -51,3 +57,4 @@ LL |         fn blob() -> Foo {
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0308`.

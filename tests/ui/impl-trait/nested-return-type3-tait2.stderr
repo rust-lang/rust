@@ -1,5 +1,5 @@
 warning: opaque type `Traitable` does not satisfy its associated type bounds
-  --> $DIR/nested-return-type3-tait2.rs:18:29
+  --> $DIR/nested-return-type3-tait2.rs:19:29
    |
 LL |     type Assoc: Duh;
    |                 --- this associated type bound is unsatisfied for `Sendable`

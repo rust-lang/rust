@@ -1,0 +1,29 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-78722_global.rs:15:20
+   |
+LL | type F = impl core::future::Future<Output = u8>;
+   |          -------------------------------------- the expected future
+...
+LL |         let f: F = async { 1 };
+   |                -   ^^^^^^^^^^^ expected future, found `async` block
+   |                |
+   |                expected due to this
+   |
+   = note: expected opaque type `F`
+            found `async` block `[async block@$DIR/issue-78722_global.rs:15:20: 15:31]`
+note: this item cannot register hidden type without a `#[defines(F)]` attribute
+  --> $DIR/issue-78722_global.rs:10:14
+   |
+LL |       V1: [(); {
+   |  ______________^
+LL | |         #[defines(F)]
+LL | |         fn concrete_use() -> F {
+LL | |             async {}
+...  |
+LL | |         1
+LL | |     }],
+   | |_____^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

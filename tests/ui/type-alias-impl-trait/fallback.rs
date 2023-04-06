@@ -20,6 +20,7 @@ fn constrained_foo() -> Foo {
 // Per RFC 2071, function bodies may either
 // fully constrain an opaque type, or place no
 // constraints on it.
+#[defines(Foo)]
 fn unconstrained_foo() -> Wrapper<Foo> {
     Wrapper::Second
     //~^ ERROR: type annotations needed

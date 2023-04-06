@@ -22,6 +22,7 @@ where
 
 type AliasA = impl TraitA<Assoc = u32>;
 
+#[defines(AliasA)]
 type AliasB = impl TraitB<Assoc = AliasA>;
 
 #[defines(AliasA)]

@@ -1,15 +1,17 @@
-error: cannot register hidden type without a `#[defines(...)]` attribute
+error[E0308]: mismatched types
   --> $DIR/almost_in_scope.rs:13:22
    |
-LL |         let x: Foo = 22_u32;
-   |                      ^^^^^^
-   |
-help: "this opaque type needs to be in the `defines` attribute
-  --> $DIR/almost_in_scope.rs:3:12
-   |
 LL | type Foo = impl std::fmt::Debug;
-   |            ^^^^^^^^^^^^^^^^^^^^
-note: "this item needs a `#[defines(...)]` attribute
+   |            -------------------- the expected opaque type
+...
+LL |         let x: Foo = 22_u32;
+   |                ---   ^^^^^^ expected opaque type, found `u32`
+   |                |
+   |                expected due to this
+   |
+   = note: expected opaque type `Foo`
+                     found type `u32`
+note: this item cannot register hidden type without a `#[defines(Foo)]` attribute
   --> $DIR/almost_in_scope.rs:12:5
    |
 LL |     fn method() {
@@ -17,3 +19,4 @@ LL |     fn method() {
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0308`.

@@ -8,7 +8,7 @@ type Foo = impl std::fmt::Display;
 fn bar() {
     pub fn foo() -> Foo {
         "foo"
-        //~^ ERROR: cannot register hidden type without a `#[defines
+        //~^ ERROR: mismatched types
     }
 }
 
@@ -16,7 +16,7 @@ fn bar() {
 fn baz() -> Foo {
     pub fn foo() -> Foo {
         "foo"
-        //~^ ERROR: cannot register hidden type without a `#[defines
+        //~^ ERROR: mismatched types
     }
     "baz"
 }
@@ -26,7 +26,7 @@ struct Bak {
     x: [u8; {
         fn blob() -> Foo {
             "blob"
-            //~^ ERROR: cannot register hidden type without a `#[defines
+            //~^ ERROR: mismatched types
         }
         5
     }],

@@ -27,6 +27,8 @@ fn ham() -> Foo {
     Bar(1)
 }
 
+#[defines(FooRet)]
+#[defines(Foo)]
 fn oof() -> impl std::fmt::Debug {
     let mut bar = ham();
     let func = bar.next().unwrap();

@@ -2,8 +2,9 @@
 
 type Foo = impl Fn() -> Foo;
 
+#[defines(Foo)]
 fn foo() -> Foo {
-//~^ ERROR: overflow evaluating the requirement
+    //~^ ERROR: overflow evaluating the requirement
     foo
 }
 

@@ -3,6 +3,7 @@ use super::{DefineOpaqueTypes, InferResult};
 use crate::errors::OpaqueHiddenTypeDiag;
 use crate::infer::{DefiningAnchor, InferCtxt, InferOk};
 use crate::traits;
+use hir::def::DefKind;
 use hir::def_id::{DefId, LocalDefId};
 use hir::OpaqueTyOrigin;
 use rustc_data_structures::fx::FxIndexMap;
@@ -368,7 +369,6 @@ impl<'tcx> InferCtxt<'tcx> {
     /// in its defining scope.
     #[instrument(skip(self), level = "trace", ret)]
     pub fn opaque_type_origin(&self, def_id: LocalDefId) -> Option<OpaqueTyOrigin> {
-        let opaque_hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
         let parent_def_id = match self.defining_use_anchor {
             DefiningAnchor::Bubble | DefiningAnchor::Error => return None,
             DefiningAnchor::Bind(bind) => bind,
@@ -381,9 +381,7 @@ impl<'tcx> InferCtxt<'tcx> {
             // Anonymous `impl Trait`
             hir::OpaqueTyOrigin::FnReturn(parent) => parent == parent_def_id,
             // Named `type Foo = impl Bar;`
-            hir::OpaqueTyOrigin::TyAlias => {
-                may_define_opaque_type(self.tcx, parent_def_id, opaque_hir_id)
-            }
+            hir::OpaqueTyOrigin::TyAlias => may_define_opaque_type(self.tcx, parent_def_id, def_id),
         };
         in_definition_scope.then_some(origin)
     }
@@ -626,22 +624,72 @@ impl<'tcx> InferCtxt<'tcx> {
 /// Here, `def_id` is the `LocalDefId` of the defining use of the opaque type (e.g., `f1` or `f2`),
 /// and `opaque_hir_id` is the `HirId` of the definition of the opaque type `Baz`.
 /// For the above example, this function returns `true` for `f1` and `false` for `f2`.
-fn may_define_opaque_type(tcx: TyCtxt<'_>, def_id: LocalDefId, opaque_hir_id: hir::HirId) -> bool {
-    let mut hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-
-    // Named opaque types can be defined by any siblings or children of siblings.
-    let scope = tcx.hir().get_defining_scope(opaque_hir_id);
-    // We walk up the node tree until we hit the root or the scope of the opaque type.
-    while hir_id != scope && hir_id != hir::CRATE_HIR_ID {
-        hir_id = tcx.hir().get_parent_item(hir_id).into();
+#[instrument(level = "trace", skip(tcx), ret)]
+pub fn may_define_opaque_type(
+    tcx: TyCtxt<'_>,
+    item_def_id: LocalDefId,
+    opaque_def_id: LocalDefId,
+) -> bool {
+    // Used for check_opaque_meets_bounds
+    if item_def_id == opaque_def_id {
+        return true;
     }
-    // Syntactically, we are allowed to define the concrete type if:
-    let res = hir_id == scope;
-    trace!(
-        "may_define_opaque_type(def={:?}, opaque_node={:?}) = {}",
-        tcx.hir().find(hir_id),
-        tcx.hir().get(opaque_hir_id),
-        res
-    );
-    res
+
+    // The parent is usually the type alias or associated type.
+    let mut parent = tcx.local_parent(opaque_def_id);
+    // But sometimes the parent is another opaque type, so skip all these opaque types.
+    while let DefKind::OpaqueTy = tcx.def_kind(parent) {
+        // Used for check_opaque_meets_bounds
+        if item_def_id == parent {
+            return true;
+        }
+        trace!(?parent);
+        parent = tcx.local_parent(parent);
+    }
+    trace!(?parent);
+
+    let surrounding_module_or_item = tcx.local_parent(parent);
+
+    trace!(?surrounding_module_or_item);
+
+    let mut item_to_check = item_def_id;
+    loop {
+        match tcx.def_kind(item_to_check) {
+            DefKind::AnonConst
+            | DefKind::InlineConst
+            | DefKind::Closure
+            | DefKind::Generator
+            | DefKind::OpaqueTy => {
+                trace!(?item_to_check);
+
+                if surrounding_module_or_item == item_to_check {
+                    // Type alias impl trait defined within a const block or closure is usable within that.
+                    return true;
+                }
+
+                item_to_check = tcx.local_parent(item_to_check);
+            }
+            _ => break,
+        }
+    }
+    trace!(?item_to_check);
+
+    // Type alias impl trait defined within the body of a function is usable within that body
+    if surrounding_module_or_item == item_to_check {
+        return true;
+    }
+    // Methods may use `impl Trait` from associated types
+    let kind = tcx.def_kind(item_to_check);
+    trace!(?kind);
+    if let DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy = kind {
+        let parent = tcx.local_parent(item_to_check);
+        trace!(?parent);
+        if surrounding_module_or_item == parent {
+            return true;
+        }
+    }
+    // Everything else needs the `#[defines]` attribute
+    let defines = &tcx.generics_of(item_to_check).defines_opaque_types;
+    trace!(?defines);
+    defines.contains(&parent.to_def_id())
 }

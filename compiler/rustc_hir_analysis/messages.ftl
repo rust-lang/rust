@@ -189,8 +189,3 @@ hir_analysis_return_type_notation_equality_bound =
 
 hir_analysis_return_type_notation_missing_method =
     cannot find associated function `{$assoc_name}` in trait `{$trait_name}`
-
-hir_analysis_missing_define =
-    cannot register hidden type without a `#[defines(...)]` attribute
-    .note = "this item needs a `#[defines(...)]` attribute
-    .help = "this opaque type needs to be in the `defines` attribute

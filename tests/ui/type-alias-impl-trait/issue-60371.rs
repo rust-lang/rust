@@ -1,3 +1,5 @@
+#![feature(type_alias_impl_trait)]
+
 trait Bug {
     type Item: Bug;
 
@@ -5,7 +7,7 @@ trait Bug {
 }
 
 impl Bug for &() {
-    type Item = impl Bug; //~ ERROR `impl Trait` in type aliases is unstable
+    type Item = impl Bug;
 
     const FUN: fn() -> Self::Item = || ();
     //~^ ERROR the trait bound `(): Bug` is not satisfied

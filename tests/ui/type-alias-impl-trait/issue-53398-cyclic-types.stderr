@@ -1,5 +1,5 @@
 error[E0275]: overflow evaluating the requirement `Foo: Sized`
-  --> $DIR/issue-53398-cyclic-types.rs:5:13
+  --> $DIR/issue-53398-cyclic-types.rs:6:13
    |
 LL | fn foo() -> Foo {
    |             ^^^

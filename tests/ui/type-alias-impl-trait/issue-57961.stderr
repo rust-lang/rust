@@ -9,6 +9,11 @@ LL |     type Bar = std::vec::IntoIter<u32>;
    |
    = note: expected opaque type `X`
                      found type `u32`
+note: this item cannot register hidden type without a `#[defines(X)]` attribute
+  --> $DIR/issue-57961.rs:10:5
+   |
+LL |     type Bar = std::vec::IntoIter<u32>;
+   |     ^^^^^^^^
 note: required by a bound in `Foo::Bar`
   --> $DIR/issue-57961.rs:6:24
    |

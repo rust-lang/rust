@@ -2,16 +2,18 @@
 
 #![feature(type_alias_impl_trait)]
 
+type F = impl core::future::Future<Output = u8>;
+
+// FIXME(type_alias_impl_trait): this attribute can be added, but is useless
+#[defines(F)]
 struct Bug {
     V1: [(); {
-        type F = impl core::future::Future<Output = u8>;
         #[defines(F)]
         fn concrete_use() -> F {
-            //~^ ERROR to be a future that resolves to `u8`, but it resolves to `()`
             async {}
         }
         let f: F = async { 1 };
-        //~^ ERROR `async` blocks are not allowed in constants
+        //~^ ERROR: mismatched types
         1
     }],
 }

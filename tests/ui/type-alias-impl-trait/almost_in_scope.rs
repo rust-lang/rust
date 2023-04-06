@@ -11,7 +11,7 @@ impl Blah for u32 {
     type Output = Foo;
     fn method() {
         let x: Foo = 22_u32;
-        //~^ ERROR: cannot register hidden type without a `#[defines
+        //~^ ERROR: mismatched types
     }
 }
 

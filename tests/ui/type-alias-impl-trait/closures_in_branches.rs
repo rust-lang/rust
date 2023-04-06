@@ -2,6 +2,7 @@
 
 type Foo = impl std::ops::FnOnce(String) -> usize;
 
+#[defines(Foo)]
 fn foo(b: bool) -> Foo {
     if b {
         |x| x.len() //~ ERROR type annotations needed

@@ -11,6 +11,7 @@ fn make_foo() -> Foo {
 }
 
 type Bar = impl Send;
+#[defines(Bar)]
 type Baz = impl Iterator<Item = Bar>;
 
 #[defines(Bar)]

@@ -5,6 +5,7 @@ use rustc_hir as hir;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::Printer;
+use rustc_middle::ty::AliasTy;
 use rustc_middle::{
     traits::ObligationCause,
     ty::{self, error::TypeError, print::FmtPrinter, suggest_constraining_type_param, Ty},
@@ -25,6 +26,19 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         let tcx = self.tcx;
 
+        let is_tait = |alias: &AliasTy<'_>| {
+            alias.def_id.is_local() && tcx.is_type_alias_impl_trait(alias.def_id)
+        };
+        let mut opaque_defines = |ty| {
+            let sp = self.tcx.def_span(body_owner_def_id);
+            diag.span_note(
+                sp,
+                format!(
+                    "this item cannot register hidden type without a `#[defines({ty})]` attribute"
+                ),
+            );
+        };
+
         match err {
             ArgumentSorts(values, _) | Sorts(values) => {
                 match (values.expected.kind(), values.found.kind()) {
@@ -36,6 +50,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         // Issue #63167
                         diag.note("distinct uses of `impl Trait` result in different opaque types");
                     }
+                    (ty::Alias(ty::Opaque, alias), _) if is_tait(alias) => opaque_defines(values.expected),
+                    (_, ty::Alias(ty::Opaque, alias)) if is_tait(alias) =>  opaque_defines(values.found),
                     (ty::Float(_), ty::Infer(ty::IntVar(_)))
                         if let Ok(
                             // Issue #53280

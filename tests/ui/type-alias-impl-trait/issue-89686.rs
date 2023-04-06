@@ -11,13 +11,13 @@ trait Trait {
 
     fn f(&self) -> Self::F;
 
+    #[defines(G<'a, Self>)]
     fn g<'a>(&'a self) -> G<'a, Self>
     where
         Self: Sized,
     {
         async move { self.f().await }
         //~^ ERROR: the trait bound `T: Trait` is not satisfied
-        //~| ERROR: cannot register hidden type without
     }
 }
 

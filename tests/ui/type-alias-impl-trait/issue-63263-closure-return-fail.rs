@@ -8,5 +8,5 @@ pub type Closure = impl FnOnce();
 #[cfg_attr(attr, defines(Closure))]
 fn main() {
     || -> Closure { || () };
-    //~^ ERROR: cannot register hidden type without a `#[defines(...)]` attribute
+    //~^ ERROR: mismatched types
 }

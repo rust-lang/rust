@@ -1,5 +1,5 @@
 error[E0283]: type annotations needed
-  --> $DIR/fallback.rs:24:5
+  --> $DIR/fallback.rs:25:5
    |
 LL | fn unconstrained_foo() -> Wrapper<Foo> {
    |                           ------------ type must be known at this point

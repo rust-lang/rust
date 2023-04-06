@@ -1,10 +1,10 @@
-use hir::def::DefKind;
 use rustc_errors::{Applicability, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{HirId, Node};
+use rustc_infer::infer::opaque_types::may_define_opaque_type;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::subst::InternalSubsts;
@@ -18,7 +18,7 @@ use rustc_span::{Span, DUMMY_SP};
 
 use super::ItemCtxt;
 use super::{bad_placeholder, is_suggestable_infer_ty};
-use crate::errors::{MissingDefine, UnconstrainedOpaqueType};
+use crate::errors::UnconstrainedOpaqueType;
 
 /// Computes the relevant generic parameter for a potential generic const argument.
 ///
@@ -615,35 +615,7 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
     impl ConstraintLocator<'_> {
         #[instrument(skip(self), level = "debug")]
         fn check(&mut self, item_def_id: LocalDefId) {
-            // The parent is usually the type alias or associated type.
-            let mut parent = self.tcx.local_parent(self.def_id);
-            // But sometimes the parent is another opaque type, so skip all these opaque types.
-            while let DefKind::OpaqueTy = self.tcx.def_kind(parent) {
-                parent = self.tcx.local_parent(parent);
-            }
-
-            let surrounding_module_or_item = self.tcx.local_parent(parent);
-
-            let mut item_to_check = item_def_id;
-            loop {
-                match self.tcx.def_kind(item_to_check) {
-                    DefKind::AnonConst
-                    | DefKind::InlineConst
-                    | DefKind::Closure
-                    | DefKind::Generator => {
-                        item_to_check = self.tcx.local_parent(item_to_check);
-                    }
-                    _ => break,
-                }
-            }
-
-            // Type alias impl trait defined within the body of a function is usable within that body
-            let may_define = surrounding_module_or_item == item_to_check
-            // Methods may use `impl Trait` from associated types
-                || (self.tcx.def_kind(item_def_id) == DefKind::AssocFn
-                    && surrounding_module_or_item == self.tcx.local_parent(item_to_check))
-            // Everything else needs the `#[defines]` attribute
-                || self.tcx.generics_of(item_to_check).defines_opaque_types.contains(&parent.to_def_id());
+            let may_define = may_define_opaque_type(self.tcx, item_def_id, self.def_id);
             // Don't try to check items that cannot possibly constrain the type.
             if !self.tcx.has_typeck_results(item_def_id) {
                 debug!("no constraint: no typeck results");
@@ -679,11 +651,10 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
             debug!(?concrete_opaque_types);
             if let Some(&concrete_type) = concrete_opaque_types.get(&self.def_id) {
                 if !may_define {
-                    self.tcx.sess.emit_err(MissingDefine {
-                        item: self.tcx.def_span(item_to_check),
-                        opaque_type: self.tcx.def_span(self.def_id),
-                        definition: concrete_type.span,
-                    });
+                    span_bug!(
+                        concrete_type.span,
+                        "hidden type registered even though no `#[define]` was found"
+                    );
                 }
                 debug!(?concrete_type, "found constraint");
                 if let Some(prev) = &mut self.found {

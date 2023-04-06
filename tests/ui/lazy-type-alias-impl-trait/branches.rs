@@ -9,6 +9,7 @@ fn foo(b: bool) -> Foo {
 
 type Bar = impl std::fmt::Debug;
 
+#[defines(Bar)]
 fn bar(b: bool) -> Bar {
     let x: Bar = if b {
         vec![42_i32]
