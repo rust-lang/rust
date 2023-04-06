@@ -22,6 +22,12 @@ fn main() {
     // False negatives:
     let _ = 5 * size_of::<i32>() * s_i32.len(); // Ok (MISSED OPPORTUNITY)
     let _ = size_of::<i32>() * 5 * s_i32.len(); // Ok (MISSED OPPORTUNITY)
+
+    let len = s_i32.len();
+    let size = size_of::<i32>();
+    let _ = len * size_of::<i32>(); // Ok (MISSED OPPORTUNITY)
+    let _ = s_i32.len() * size; // Ok (MISSED OPPORTUNITY)
+    let _ = len * size; // Ok (MISSED OPPORTUNITY)
 }
 
 const fn _const(s_i32: &[i32]) {
