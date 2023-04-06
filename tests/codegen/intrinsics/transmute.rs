@@ -169,8 +169,8 @@ pub unsafe fn check_aggregate_from_bool(x: bool) -> Aggregate8 {
 #[no_mangle]
 pub unsafe fn check_byte_to_bool(x: u8) -> bool {
     // CHECK-NOT: alloca
-    // CHECK: %0 = trunc i8 %x to i1
-    // CHECK: ret i1 %0
+    // CHECK: %[[R:.+]] = trunc i8 %x to i1
+    // CHECK: ret i1 %[[R]]
     transmute(x)
 }
 
@@ -178,8 +178,8 @@ pub unsafe fn check_byte_to_bool(x: u8) -> bool {
 #[no_mangle]
 pub unsafe fn check_byte_from_bool(x: bool) -> u8 {
     // CHECK-NOT: alloca
-    // CHECK: %0 = zext i1 %x to i8
-    // CHECK: ret i8 %0
+    // CHECK: %[[R:.+]] = zext i1 %x to i8
+    // CHECK: ret i8 %[[R:.+]]
     transmute(x)
 }
 
