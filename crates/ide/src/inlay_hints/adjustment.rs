@@ -315,6 +315,8 @@ fn main() {
     (&Struct).consume();
    //^^^^^^^*
     (&Struct).by_ref();
+   //^^^^^^^&
+   //^^^^^^^*
 
     (&mut Struct).consume();
    //^^^^^^^^^^^*
@@ -322,6 +324,8 @@ fn main() {
    //^^^^^^^^^^^&
    //^^^^^^^^^^^*
     (&mut Struct).by_ref_mut();
+   //^^^^^^^^^^^&mut $
+   //^^^^^^^^^^^*
 
     // Check that block-like expressions don't duplicate hints
     let _: &mut [u32] = (&mut []);
@@ -414,6 +418,10 @@ fn main() {
    //^^^^^^^)
    //^^^^^^^.*
     (&Struct).by_ref();
+   //^^^^^^^(
+   //^^^^^^^)
+   //^^^^^^^.*
+   //^^^^^^^.&
 
     (&mut Struct).consume();
    //^^^^^^^^^^^(
@@ -425,6 +433,10 @@ fn main() {
    //^^^^^^^^^^^.*
    //^^^^^^^^^^^.&
     (&mut Struct).by_ref_mut();
+   //^^^^^^^^^^^(
+   //^^^^^^^^^^^)
+   //^^^^^^^^^^^.*
+   //^^^^^^^^^^^.&mut
 
     // Check that block-like expressions don't duplicate hints
     let _: &mut [u32] = (&mut []);
