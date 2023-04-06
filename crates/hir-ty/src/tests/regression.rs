@@ -270,7 +270,7 @@ fn infer_std_crash_5() {
             61..320 '{     ...     }': ()
             75..79 'name': &{unknown}
             82..166 'if doe...     }': &{unknown}
-            85..98 'doesnt_matter': {unknown}
+            85..98 'doesnt_matter': bool
             99..128 '{     ...     }': &{unknown}
             113..118 'first': &{unknown}
             134..166 '{     ...     }': &{unknown}
@@ -279,7 +279,7 @@ fn infer_std_crash_5() {
             181..188 'content': &{unknown}
             191..313 'if ICE...     }': &{unknown}
             194..231 'ICE_RE..._VALUE': {unknown}
-            194..247 'ICE_RE...&name)': {unknown}
+            194..247 'ICE_RE...&name)': bool
             241..246 '&name': &&{unknown}
             242..246 'name': &{unknown}
             248..276 '{     ...     }': &{unknown}
