@@ -5,7 +5,9 @@ use std::fmt::{self, Write};
 use syntax::ast::HasName;
 
 use crate::{
-    hir::{Array, BindingAnnotation, BindingId, ClosureKind, Literal, Movability, Statement},
+    hir::{
+        Array, BindingAnnotation, BindingId, CaptureBy, ClosureKind, Literal, Movability, Statement,
+    },
     pretty::{print_generic_args, print_path, print_type_ref},
     type_ref::TypeRef,
 };
@@ -360,7 +362,7 @@ impl<'a> Printer<'a> {
                 self.print_expr(*index);
                 w!(self, "]");
             }
-            Expr::Closure { args, arg_types, ret_type, body, closure_kind } => {
+            Expr::Closure { args, arg_types, ret_type, body, closure_kind, capture_by } => {
                 match closure_kind {
                     ClosureKind::Generator(Movability::Static) => {
                         w!(self, "static ");
@@ -369,6 +371,12 @@ impl<'a> Printer<'a> {
                         w!(self, "async ");
                     }
                     _ => (),
+                }
+                match capture_by {
+                    CaptureBy::Value => {
+                        w!(self, "move ");
+                    }
+                    CaptureBy::Ref => (),
                 }
                 w!(self, "|");
                 for (i, (pat, ty)) in args.iter().zip(arg_types.iter()).enumerate() {

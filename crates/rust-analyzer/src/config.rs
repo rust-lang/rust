@@ -338,6 +338,8 @@ config_data! {
         inlayHints_closingBraceHints_minLines: usize               = "25",
         /// Whether to show inlay type hints for return types of closures.
         inlayHints_closureReturnTypeHints_enable: ClosureReturnTypeHintsDef  = "\"never\"",
+        /// Closure notation in type and chaining inaly hints.
+        inlayHints_closureStyle: ClosureStyle                                = "\"impl_fn\"",
         /// Whether to show enum variant discriminant hints.
         inlayHints_discriminantHints_enable: DiscriminantHintsDef            = "\"never\"",
         /// Whether to show inlay hints for type adjustments.
@@ -1301,6 +1303,12 @@ impl Config {
             hide_closure_initialization_hints: self
                 .data
                 .inlayHints_typeHints_hideClosureInitialization,
+            closure_style: match self.data.inlayHints_closureStyle {
+                ClosureStyle::ImplFn => hir::ClosureStyle::ImplFn,
+                ClosureStyle::RustAnalyzer => hir::ClosureStyle::RANotation,
+                ClosureStyle::WithId => hir::ClosureStyle::ClosureWithId,
+                ClosureStyle::Hide => hir::ClosureStyle::Hide,
+            },
             adjustment_hints: match self.data.inlayHints_expressionAdjustmentHints_enable {
                 AdjustmentHintsDef::Always => ide::AdjustmentHints::Always,
                 AdjustmentHintsDef::Never => match self.data.inlayHints_reborrowHints_enable {
@@ -1808,6 +1816,15 @@ enum ClosureReturnTypeHintsDef {
 }
 
 #[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+enum ClosureStyle {
+    ImplFn,
+    RustAnalyzer,
+    WithId,
+    Hide,
+}
+
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 enum ReborrowHintsDef {
     #[serde(deserialize_with = "true_or_always")]
@@ -2286,6 +2303,16 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                     "type": "array",
                     "items": { "type": "string" }
                 },
+            ],
+        },
+        "ClosureStyle" => set! {
+            "type": "string",
+            "enum": ["impl_fn", "rust_analyzer", "with_id", "hide"],
+            "enumDescriptions": [
+                "`impl_fn`: `impl FnMut(i32, u64) -> i8`",
+                "`rust_analyzer`: `|i32, u64| -> i8`",
+                "`with_id`: `{closure#14352}`, where that id is the unique number of the closure in r-a internals",
+                "`hide`: Shows `...` for every closure type",
             ],
         },
         _ => panic!("missing entry for {ty}: {default}"),

@@ -39,9 +39,9 @@ use stdx::{always, never};
 
 use crate::{
     db::HirDatabase, fold_tys, infer::coerce::CoerceMany, lower::ImplTraitLoweringMode,
-    static_lifetime, to_assoc_type_id, AliasEq, AliasTy, DomainGoal, GenericArg, Goal, ImplTraitId,
-    InEnvironment, Interner, ProjectionTy, RpitId, Substitution, TraitRef, Ty, TyBuilder, TyExt,
-    TyKind,
+    static_lifetime, to_assoc_type_id, traits::FnTrait, AliasEq, AliasTy, ClosureId, DomainGoal,
+    GenericArg, Goal, ImplTraitId, InEnvironment, Interner, ProjectionTy, RpitId, Substitution,
+    TraitRef, Ty, TyBuilder, TyExt, TyKind,
 };
 
 // This lint has a false positive here. See the link below for details.
@@ -51,6 +51,8 @@ use crate::{
 pub use coerce::could_coerce;
 #[allow(unreachable_pub)]
 pub use unify::could_unify;
+
+pub(crate) use self::closure::{CaptureKind, CapturedItem, CapturedItemWithoutTy};
 
 pub(crate) mod unify;
 mod path;
@@ -102,6 +104,8 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
     ctx.infer_body();
 
     ctx.infer_mut_body();
+
+    ctx.infer_closures();
 
     Arc::new(ctx.resolve_all())
 }
@@ -312,6 +316,13 @@ pub enum AutoBorrow {
     RawPtr(Mutability),
 }
 
+impl AutoBorrow {
+    fn mutability(self) -> Mutability {
+        let (AutoBorrow::Ref(m) | AutoBorrow::RawPtr(m)) = self;
+        m
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PointerCast {
     /// Go from a fn-item type to a fn-pointer type.
@@ -373,6 +384,9 @@ pub struct InferenceResult {
     pub pat_adjustments: FxHashMap<PatId, Vec<Ty>>,
     pub pat_binding_modes: FxHashMap<PatId, BindingMode>,
     pub expr_adjustments: FxHashMap<ExprId, Vec<Adjustment>>,
+    pub(crate) closure_info: FxHashMap<ClosureId, (Vec<CapturedItem>, FnTrait)>,
+    // FIXME: remove this field
+    pub mutated_bindings_in_closure: FxHashSet<BindingId>,
 }
 
 impl InferenceResult {
@@ -408,6 +422,9 @@ impl InferenceResult {
             ExprOrPatId::ExprId(expr) => Some((expr, mismatch)),
             _ => None,
         })
+    }
+    pub(crate) fn closure_info(&self, closure: &ClosureId) -> &(Vec<CapturedItem>, FnTrait) {
+        self.closure_info.get(closure).unwrap()
     }
 }
 
@@ -460,6 +477,14 @@ pub(crate) struct InferenceContext<'a> {
     resume_yield_tys: Option<(Ty, Ty)>,
     diverges: Diverges,
     breakables: Vec<BreakableContext>,
+
+    // fields related to closure capture
+    current_captures: Vec<CapturedItemWithoutTy>,
+    current_closure: Option<ClosureId>,
+    /// Stores the list of closure ids that need to be analyzed before this closure. See the
+    /// comment on `InferenceContext::sort_closures`
+    closure_dependecies: FxHashMap<ClosureId, Vec<ClosureId>>,
+    deferred_closures: FxHashMap<ClosureId, Vec<(Ty, Ty, Vec<Ty>, ExprId)>>,
 }
 
 #[derive(Clone, Debug)]
@@ -527,6 +552,10 @@ impl<'a> InferenceContext<'a> {
             resolver,
             diverges: Diverges::Maybe,
             breakables: Vec::new(),
+            current_captures: vec![],
+            current_closure: None,
+            deferred_closures: FxHashMap::default(),
+            closure_dependecies: FxHashMap::default(),
         }
     }
 

@@ -1910,7 +1910,6 @@ fn bar(new: fn) ${0:-> _} {
 
     #[test]
     fn add_function_with_closure_arg() {
-        // FIXME: The argument in `bar` is wrong.
         check_assist(
             generate_function,
             r"
@@ -1925,7 +1924,7 @@ fn foo() {
     bar(closure)
 }
 
-fn bar(closure: _) {
+fn bar(closure: impl Fn(i64) -> i64) {
     ${0:todo!()}
 }
 ",

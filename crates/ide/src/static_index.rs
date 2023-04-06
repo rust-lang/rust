@@ -118,6 +118,7 @@ impl StaticIndex<'_> {
                     adjustment_hints_hide_outside_unsafe: false,
                     hide_named_constructor_hints: false,
                     hide_closure_initialization_hints: false,
+                    closure_style: hir::ClosureStyle::ImplFn,
                     param_names_for_lifetime_elision_hints: false,
                     binding_mode_hints: false,
                     max_length: Some(25),

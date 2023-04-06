@@ -1106,6 +1106,81 @@ fn try_block() {
 }
 
 #[test]
+fn closures() {
+    check_number(
+        r#"
+    //- minicore: fn, copy
+    const GOAL: i32 = {
+        let y = 5;
+        let c = |x| x + y;
+        c(2)
+    };
+        "#,
+        7,
+    );
+    check_number(
+        r#"
+    //- minicore: fn, copy
+    const GOAL: i32 = {
+        let y = 5;
+        let c = |(a, b): &(i32, i32)| *a + *b + y;
+        c(&(2, 3))
+    };
+        "#,
+        10,
+    );
+    check_number(
+        r#"
+    //- minicore: fn, copy
+    const GOAL: i32 = {
+        let mut y = 5;
+        let c = |x| {
+            y = y + x;
+        };
+        c(2);
+        c(3);
+        y
+    };
+        "#,
+        10,
+    );
+    check_number(
+        r#"
+    //- minicore: fn, copy
+    struct X(i32);
+    impl X {
+        fn mult(&mut self, n: i32) {
+            self.0 = self.0 * n
+        }
+    }
+    const GOAL: i32 = {
+        let x = X(1);
+        let c = || {
+            x.mult(2);
+            || {
+                x.mult(3);
+                || {
+                    || {
+                        x.mult(4);
+                        || {
+                            x.mult(x.0);
+                            || {
+                                x.0
+                            }
+                        }
+                    }
+                }
+            }
+        };
+        let r = c()()()()()();
+        r + x.0
+    };
+        "#,
+        24 * 24 * 2,
+    );
+}
+
+#[test]
 fn or_pattern() {
     check_number(
         r#"

@@ -11,6 +11,8 @@ use crate::{db::HirDatabase, test_db::TestDB, Interner, Substitution};
 
 use super::layout_of_ty;
 
+mod closure;
+
 fn current_machine_data_layout() -> String {
     project_model::target_data_layout::get(None, None, &HashMap::default()).unwrap()
 }
@@ -81,8 +83,8 @@ fn check_size_and_align(ra_fixture: &str, minicore: &str, size: u64, align: u64)
 #[track_caller]
 fn check_size_and_align_expr(ra_fixture: &str, minicore: &str, size: u64, align: u64) {
     let l = eval_expr(ra_fixture, minicore).unwrap();
-    assert_eq!(l.size.bytes(), size);
-    assert_eq!(l.align.abi.bytes(), align);
+    assert_eq!(l.size.bytes(), size, "size mismatch");
+    assert_eq!(l.align.abi.bytes(), align, "align mismatch");
 }
 
 #[track_caller]
@@ -118,13 +120,31 @@ macro_rules! size_and_align {
     };
 }
 
+#[macro_export]
 macro_rules! size_and_align_expr {
+    (minicore: $($x:tt),*; stmts: [$($s:tt)*] $($t:tt)*) => {
+        {
+            #[allow(dead_code)]
+            #[allow(unused_must_use)]
+            #[allow(path_statements)]
+            {
+                $($s)*
+                let val = { $($t)* };
+                $crate::layout::tests::check_size_and_align_expr(
+                    &format!("{{ {} let val = {{ {} }}; val }}", stringify!($($s)*), stringify!($($t)*)),
+                    &format!("//- minicore: {}\n", stringify!($($x),*)),
+                    ::std::mem::size_of_val(&val) as u64,
+                    ::std::mem::align_of_val(&val) as u64,
+                );
+            }
+        }
+    };
     ($($t:tt)*) => {
         {
             #[allow(dead_code)]
             {
                 let val = { $($t)* };
-                check_size_and_align_expr(
+                $crate::layout::tests::check_size_and_align_expr(
                     stringify!($($t)*),
                     "",
                     ::std::mem::size_of_val(&val) as u64,

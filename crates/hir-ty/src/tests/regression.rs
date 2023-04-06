@@ -805,19 +805,19 @@ fn issue_4966() {
             225..229 'iter': T
             244..246 '{}': Vec<A>
             258..402 '{     ...r(); }': ()
-            268..273 'inner': Map<|&f64| -> f64>
-            276..300 'Map { ... 0.0 }': Map<|&f64| -> f64>
-            285..298 '|_: &f64| 0.0': |&f64| -> f64
+            268..273 'inner': Map<impl Fn(&f64) -> f64>
+            276..300 'Map { ... 0.0 }': Map<impl Fn(&f64) -> f64>
+            285..298 '|_: &f64| 0.0': impl Fn(&f64) -> f64
             286..287 '_': &f64
             295..298 '0.0': f64
-            311..317 'repeat': Repeat<Map<|&f64| -> f64>>
-            320..345 'Repeat...nner }': Repeat<Map<|&f64| -> f64>>
-            338..343 'inner': Map<|&f64| -> f64>
-            356..359 'vec': Vec<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>>
-            362..371 'from_iter': fn from_iter<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>, Repeat<Map<|&f64| -> f64>>>(Repeat<Map<|&f64| -> f64>>) -> Vec<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>>
-            362..379 'from_i...epeat)': Vec<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>>
-            372..378 'repeat': Repeat<Map<|&f64| -> f64>>
-            386..389 'vec': Vec<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>>
+            311..317 'repeat': Repeat<Map<impl Fn(&f64) -> f64>>
+            320..345 'Repeat...nner }': Repeat<Map<impl Fn(&f64) -> f64>>
+            338..343 'inner': Map<impl Fn(&f64) -> f64>
+            356..359 'vec': Vec<IntoIterator::Item<Repeat<Map<impl Fn(&f64) -> f64>>>>
+            362..371 'from_iter': fn from_iter<IntoIterator::Item<Repeat<Map<impl Fn(&f64) -> f64>>>, Repeat<Map<impl Fn(&f64) -> f64>>>(Repeat<Map<impl Fn(&f64) -> f64>>) -> Vec<IntoIterator::Item<Repeat<Map<impl Fn(&f64) -> f64>>>>
+            362..379 'from_i...epeat)': Vec<IntoIterator::Item<Repeat<Map<impl Fn(&f64) -> f64>>>>
+            372..378 'repeat': Repeat<Map<impl Fn(&f64) -> f64>>
+            386..389 'vec': Vec<IntoIterator::Item<Repeat<Map<impl Fn(&f64) -> f64>>>>
             386..399 'vec.foo_bar()': {unknown}
         "#]],
     );
@@ -852,7 +852,7 @@ fn main() {
             123..126 'S()': S<i32>
             132..133 's': S<i32>
             132..144 's.g(|_x| {})': ()
-            136..143 '|_x| {}': |&i32| -> ()
+            136..143 '|_x| {}': impl Fn(&i32)
             137..139 '_x': &i32
             141..143 '{}': ()
             150..151 's': S<i32>
@@ -1759,13 +1759,14 @@ const C: usize = 2 + 2;
 
 #[test]
 fn regression_14456() {
-    check_no_mismatches(
+    check_types(
         r#"
 //- minicore: future
 async fn x() {}
 fn f() {
     let fut = x();
-    let t = [0u8; 2 + 2];
+    let t = [0u8; { let a = 2 + 2; a }];
+      //^ [u8; 4]
 }
 "#,
     );

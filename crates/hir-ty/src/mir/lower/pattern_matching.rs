@@ -1,5 +1,7 @@
 //! MIR lowering for patterns
 
+use crate::utils::pattern_matching_dereference_count;
+
 use super::*;
 
 macro_rules! not_supported {
@@ -52,7 +54,7 @@ impl MirLowerCtx<'_> {
                     args,
                     *ellipsis,
                     subst.iter(Interner).enumerate().map(|(i, x)| {
-                        (PlaceElem::TupleField(i), x.assert_ty_ref(Interner).clone())
+                        (PlaceElem::TupleOrClosureField(i), x.assert_ty_ref(Interner).clone())
                     }),
                     &cond_place,
                     binding_mode,
@@ -142,7 +144,7 @@ impl MirLowerCtx<'_> {
                 if matches!(mode, BindingAnnotation::Ref | BindingAnnotation::RefMut) {
                     binding_mode = mode;
                 }
-                self.push_storage_live(*id, current);
+                self.push_storage_live(*id, current)?;
                 self.push_assignment(
                     current,
                     target_place.into(),
@@ -387,13 +389,6 @@ fn pattern_matching_dereference(
     binding_mode: &mut BindingAnnotation,
     cond_place: &mut Place,
 ) {
-    while let Some((ty, _, mu)) = cond_ty.as_reference() {
-        if mu == Mutability::Mut && *binding_mode != BindingAnnotation::Ref {
-            *binding_mode = BindingAnnotation::RefMut;
-        } else {
-            *binding_mode = BindingAnnotation::Ref;
-        }
-        *cond_ty = ty.clone();
-        cond_place.projection.push(ProjectionElem::Deref);
-    }
+    let cnt = pattern_matching_dereference_count(cond_ty, binding_mode);
+    cond_place.projection.extend((0..cnt).map(|_| ProjectionElem::Deref));
 }

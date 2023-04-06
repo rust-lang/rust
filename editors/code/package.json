@@ -1028,6 +1028,23 @@
                         "Only show type hints for return types of closures with blocks."
                     ]
                 },
+                "rust-analyzer.inlayHints.closureStyle": {
+                    "markdownDescription": "Closure notation in type and chaining inaly hints.",
+                    "default": "impl_fn",
+                    "type": "string",
+                    "enum": [
+                        "impl_fn",
+                        "rust_analyzer",
+                        "with_id",
+                        "hide"
+                    ],
+                    "enumDescriptions": [
+                        "`impl_fn`: `impl FnMut(i32, u64) -> i8`",
+                        "`rust_analyzer`: `|i32, u64| -> i8`",
+                        "`with_id`: `{closure#14352}`, where that id is the unique number of the closure in r-a internals",
+                        "`hide`: Shows `...` for every closure type"
+                    ]
+                },
                 "rust-analyzer.inlayHints.discriminantHints.enable": {
                     "markdownDescription": "Whether to show enum variant discriminant hints.",
                     "default": "never",

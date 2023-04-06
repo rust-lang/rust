@@ -198,7 +198,7 @@ fn expr_macro_def_expanded_in_various_places() {
             100..119 'for _ ...!() {}': ()
             104..105 '_': {unknown}
             117..119 '{}': ()
-            124..134 '|| spam!()': || -> isize
+            124..134 '|| spam!()': impl Fn() -> isize
             140..156 'while ...!() {}': ()
             154..156 '{}': ()
             161..174 'break spam!()': !
@@ -279,7 +279,7 @@ fn expr_macro_rules_expanded_in_various_places() {
             114..133 'for _ ...!() {}': ()
             118..119 '_': {unknown}
             131..133 '{}': ()
-            138..148 '|| spam!()': || -> isize
+            138..148 '|| spam!()': impl Fn() -> isize
             154..170 'while ...!() {}': ()
             168..170 '{}': ()
             175..188 'break spam!()': !

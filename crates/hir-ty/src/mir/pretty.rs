@@ -1,6 +1,9 @@
 //! A pretty-printer for MIR.
 
-use std::fmt::{Debug, Display, Write};
+use std::{
+    fmt::{Debug, Display, Write},
+    mem,
+};
 
 use hir_def::{body::Body, hir::BindingId};
 use hir_expand::name::Name;
@@ -20,7 +23,7 @@ impl MirBody {
     pub fn pretty_print(&self, db: &dyn HirDatabase) -> String {
         let hir_body = db.body(self.owner);
         let mut ctx = MirPrettyCtx::new(self, &hir_body, db);
-        ctx.for_body();
+        ctx.for_body(ctx.body.owner);
         ctx.result
     }
 
@@ -42,7 +45,7 @@ struct MirPrettyCtx<'a> {
     hir_body: &'a Body,
     db: &'a dyn HirDatabase,
     result: String,
-    ident: String,
+    indent: String,
     local_to_binding: ArenaMap<LocalId, BindingId>,
 }
 
@@ -88,22 +91,43 @@ impl Display for LocalName {
 }
 
 impl<'a> MirPrettyCtx<'a> {
-    fn for_body(&mut self) {
-        wln!(self, "// {:?}", self.body.owner);
+    fn for_body(&mut self, name: impl Debug) {
+        wln!(self, "// {:?}", name);
         self.with_block(|this| {
             this.locals();
             wln!(this);
             this.blocks();
         });
+        for &closure in &self.body.closures {
+            let body = match self.db.mir_body_for_closure(closure) {
+                Ok(x) => x,
+                Err(e) => {
+                    wln!(self, "// error in {closure:?}: {e:?}");
+                    continue;
+                }
+            };
+            let result = mem::take(&mut self.result);
+            let indent = mem::take(&mut self.indent);
+            let mut ctx = MirPrettyCtx {
+                body: &body,
+                local_to_binding: body.binding_locals.iter().map(|(x, y)| (*y, x)).collect(),
+                result,
+                indent,
+                ..*self
+            };
+            ctx.for_body(closure);
+            self.result = ctx.result;
+            self.indent = ctx.indent;
+        }
     }
 
     fn with_block(&mut self, f: impl FnOnce(&mut MirPrettyCtx<'_>)) {
-        self.ident += "    ";
+        self.indent += "    ";
         wln!(self, "{{");
         f(self);
         for _ in 0..4 {
             self.result.pop();
-            self.ident.pop();
+            self.indent.pop();
         }
         wln!(self, "}}");
     }
@@ -114,7 +138,7 @@ impl<'a> MirPrettyCtx<'a> {
             body,
             db,
             result: String::new(),
-            ident: String::new(),
+            indent: String::new(),
             local_to_binding,
             hir_body,
         }
@@ -122,7 +146,7 @@ impl<'a> MirPrettyCtx<'a> {
 
     fn write_line(&mut self) {
         self.result.push('\n');
-        self.result += &self.ident;
+        self.result += &self.indent;
     }
 
     fn write(&mut self, line: &str) {
@@ -247,7 +271,7 @@ impl<'a> MirPrettyCtx<'a> {
                         }
                     }
                 }
-                ProjectionElem::TupleField(x) => {
+                ProjectionElem::TupleOrClosureField(x) => {
                     f(this, local, head);
                     w!(this, ".{}", x);
                 }
@@ -299,6 +323,11 @@ impl<'a> MirPrettyCtx<'a> {
             }
             Rvalue::Aggregate(AggregateKind::Adt(_, _), x) => {
                 w!(self, "Adt(");
+                self.operand_list(x);
+                w!(self, ")");
+            }
+            Rvalue::Aggregate(AggregateKind::Closure(_), x) => {
+                w!(self, "Closure(");
                 self.operand_list(x);
                 w!(self, ")");
             }

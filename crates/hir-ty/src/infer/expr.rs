@@ -221,7 +221,7 @@ impl<'a> InferenceContext<'a> {
                 self.diverges = Diverges::Maybe;
                 TyBuilder::unit()
             }
-            Expr::Closure { body, args, ret_type, arg_types, closure_kind } => {
+            Expr::Closure { body, args, ret_type, arg_types, closure_kind, capture_by: _ } => {
                 assert_eq!(args.len(), arg_types.len());
 
                 let mut sig_tys = Vec::with_capacity(arg_types.len() + 1);
@@ -256,7 +256,7 @@ impl<'a> InferenceContext<'a> {
                 })
                 .intern(Interner);
 
-                let (ty, resume_yield_tys) = match closure_kind {
+                let (id, ty, resume_yield_tys) = match closure_kind {
                     ClosureKind::Generator(_) => {
                         // FIXME: report error when there are more than 1 parameter.
                         let resume_ty = match sig_tys.first() {
@@ -276,7 +276,7 @@ impl<'a> InferenceContext<'a> {
                         let generator_id = self.db.intern_generator((self.owner, tgt_expr)).into();
                         let generator_ty = TyKind::Generator(generator_id, subst).intern(Interner);
 
-                        (generator_ty, Some((resume_ty, yield_ty)))
+                        (None, generator_ty, Some((resume_ty, yield_ty)))
                     }
                     ClosureKind::Closure | ClosureKind::Async => {
                         let closure_id = self.db.intern_closure((self.owner, tgt_expr)).into();
@@ -285,8 +285,11 @@ impl<'a> InferenceContext<'a> {
                             Substitution::from1(Interner, sig_ty.clone()),
                         )
                         .intern(Interner);
-
-                        (closure_ty, None)
+                        self.deferred_closures.entry(closure_id).or_default();
+                        if let Some(c) = self.current_closure {
+                            self.closure_dependecies.entry(c).or_default().push(closure_id);
+                        }
+                        (Some(closure_id), closure_ty, None)
                     }
                 };
 
@@ -302,6 +305,7 @@ impl<'a> InferenceContext<'a> {
 
                 // FIXME: lift these out into a struct
                 let prev_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
+                let prev_closure = mem::replace(&mut self.current_closure, id);
                 let prev_ret_ty = mem::replace(&mut self.return_ty, ret_ty.clone());
                 let prev_ret_coercion =
                     mem::replace(&mut self.return_coercion, Some(CoerceMany::new(ret_ty)));
@@ -315,6 +319,7 @@ impl<'a> InferenceContext<'a> {
                 self.diverges = prev_diverges;
                 self.return_ty = prev_ret_ty;
                 self.return_coercion = prev_ret_coercion;
+                self.current_closure = prev_closure;
                 self.resume_yield_tys = prev_resume_yield_tys;
 
                 ty
@@ -340,43 +345,28 @@ impl<'a> InferenceContext<'a> {
                 let (param_tys, ret_ty) = match res {
                     Some((func, params, ret_ty)) => {
                         let mut adjustments = auto_deref_adjust_steps(&derefs);
+                        if let TyKind::Closure(c, _) =
+                            self.table.resolve_completely(callee_ty.clone()).kind(Interner)
+                        {
+                            if let Some(par) = self.current_closure {
+                                self.closure_dependecies.entry(par).or_default().push(*c);
+                            }
+                            self.deferred_closures.entry(*c).or_default().push((
+                                derefed_callee.clone(),
+                                callee_ty.clone(),
+                                params.clone(),
+                                tgt_expr,
+                            ));
+                        }
                         if let Some(fn_x) = func {
-                            match fn_x {
-                                FnTrait::FnOnce => (),
-                                FnTrait::FnMut => {
-                                    if !matches!(
-                                        derefed_callee.kind(Interner),
-                                        TyKind::Ref(Mutability::Mut, _, _)
-                                    ) {
-                                        adjustments.push(Adjustment::borrow(
-                                            Mutability::Mut,
-                                            derefed_callee.clone(),
-                                        ));
-                                    }
-                                }
-                                FnTrait::Fn => {
-                                    if !matches!(
-                                        derefed_callee.kind(Interner),
-                                        TyKind::Ref(Mutability::Not, _, _)
-                                    ) {
-                                        adjustments.push(Adjustment::borrow(
-                                            Mutability::Not,
-                                            derefed_callee.clone(),
-                                        ));
-                                    }
-                                }
-                            }
-                            let trait_ = fn_x
-                                .get_id(self.db, self.table.trait_env.krate)
-                                .expect("We just used it");
-                            let trait_data = self.db.trait_data(trait_);
-                            if let Some(func) = trait_data.method_by_name(&fn_x.method_name()) {
-                                let subst = TyBuilder::subst_for_def(self.db, trait_, None)
-                                    .push(callee_ty.clone())
-                                    .push(TyBuilder::tuple_with(params.iter().cloned()))
-                                    .build();
-                                self.write_method_resolution(tgt_expr, func, subst)
-                            }
+                            self.write_fn_trait_method_resolution(
+                                fn_x,
+                                &derefed_callee,
+                                &mut adjustments,
+                                &callee_ty,
+                                &params,
+                                tgt_expr,
+                            );
                         }
                         self.write_expr_adj(*callee, adjustments);
                         (params, ret_ty)
@@ -904,6 +894,41 @@ impl<'a> InferenceContext<'a> {
         let impl_trait_id = crate::ImplTraitId::AsyncBlockTypeImplTrait(self.owner, tgt_expr);
         let opaque_ty_id = self.db.intern_impl_trait_id(impl_trait_id).into();
         TyKind::OpaqueType(opaque_ty_id, Substitution::from1(Interner, inner_ty)).intern(Interner)
+    }
+
+    pub(crate) fn write_fn_trait_method_resolution(
+        &mut self,
+        fn_x: FnTrait,
+        derefed_callee: &Ty,
+        adjustments: &mut Vec<Adjustment>,
+        callee_ty: &Ty,
+        params: &Vec<Ty>,
+        tgt_expr: ExprId,
+    ) {
+        match fn_x {
+            FnTrait::FnOnce => (),
+            FnTrait::FnMut => {
+                if !matches!(derefed_callee.kind(Interner), TyKind::Ref(Mutability::Mut, _, _)) {
+                    adjustments.push(Adjustment::borrow(Mutability::Mut, derefed_callee.clone()));
+                }
+            }
+            FnTrait::Fn => {
+                if !matches!(derefed_callee.kind(Interner), TyKind::Ref(Mutability::Not, _, _)) {
+                    adjustments.push(Adjustment::borrow(Mutability::Not, derefed_callee.clone()));
+                }
+            }
+        }
+        let Some(trait_) = fn_x.get_id(self.db, self.table.trait_env.krate) else {
+            return;
+        };
+        let trait_data = self.db.trait_data(trait_);
+        if let Some(func) = trait_data.method_by_name(&fn_x.method_name()) {
+            let subst = TyBuilder::subst_for_def(self.db, trait_, None)
+                .push(callee_ty.clone())
+                .push(TyBuilder::tuple_with(params.iter().cloned()))
+                .build();
+            self.write_method_resolution(tgt_expr, func, subst.clone());
+        }
     }
 
     fn infer_expr_array(

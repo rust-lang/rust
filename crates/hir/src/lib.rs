@@ -129,7 +129,7 @@ pub use {
         ExpandResult, HirFileId, InFile, MacroFile, Origin,
     },
     hir_ty::{
-        display::{HirDisplay, HirDisplayError, HirWrite},
+        display::{ClosureStyle, HirDisplay, HirDisplayError, HirWrite},
         mir::MirEvalError,
         PointerCast, Safety,
     },
@@ -1530,35 +1530,44 @@ impl DefWithBody {
 
         let hir_body = db.body(self.into());
 
-        if let Ok(borrowck_result) = db.borrowck(self.into()) {
-            let mir_body = &borrowck_result.mir_body;
-            let mol = &borrowck_result.mutability_of_locals;
-            for (binding_id, _) in hir_body.bindings.iter() {
-                let need_mut = &mol[mir_body.binding_locals[binding_id]];
-                let local = Local { parent: self.into(), binding_id };
-                match (need_mut, local.is_mut(db)) {
-                    (mir::MutabilityReason::Mut { .. }, true)
-                    | (mir::MutabilityReason::Not, false) => (),
-                    (mir::MutabilityReason::Mut { spans }, false) => {
-                        for span in spans {
-                            let span: InFile<SyntaxNodePtr> = match span {
-                                mir::MirSpan::ExprId(e) => match source_map.expr_syntax(*e) {
-                                    Ok(s) => s.map(|x| x.into()),
-                                    Err(_) => continue,
-                                },
-                                mir::MirSpan::PatId(p) => match source_map.pat_syntax(*p) {
-                                    Ok(s) => s.map(|x| match x {
-                                        Either::Left(e) => e.into(),
-                                        Either::Right(e) => e.into(),
-                                    }),
-                                    Err(_) => continue,
-                                },
-                                mir::MirSpan::Unknown => continue,
-                            };
-                            acc.push(NeedMut { local, span }.into());
+        if let Ok(borrowck_results) = db.borrowck(self.into()) {
+            for borrowck_result in borrowck_results.iter() {
+                let mir_body = &borrowck_result.mir_body;
+                let mol = &borrowck_result.mutability_of_locals;
+                for (binding_id, _) in hir_body.bindings.iter() {
+                    let Some(&local) = mir_body.binding_locals.get(binding_id) else {
+                        continue;
+                    };
+                    let need_mut = &mol[local];
+                    let local = Local { parent: self.into(), binding_id };
+                    match (need_mut, local.is_mut(db)) {
+                        (mir::MutabilityReason::Mut { .. }, true)
+                        | (mir::MutabilityReason::Not, false) => (),
+                        (mir::MutabilityReason::Mut { spans }, false) => {
+                            for span in spans {
+                                let span: InFile<SyntaxNodePtr> = match span {
+                                    mir::MirSpan::ExprId(e) => match source_map.expr_syntax(*e) {
+                                        Ok(s) => s.map(|x| x.into()),
+                                        Err(_) => continue,
+                                    },
+                                    mir::MirSpan::PatId(p) => match source_map.pat_syntax(*p) {
+                                        Ok(s) => s.map(|x| match x {
+                                            Either::Left(e) => e.into(),
+                                            Either::Right(e) => e.into(),
+                                        }),
+                                        Err(_) => continue,
+                                    },
+                                    mir::MirSpan::Unknown => continue,
+                                };
+                                acc.push(NeedMut { local, span }.into());
+                            }
+                        }
+                        (mir::MutabilityReason::Not, true) => {
+                            if !infer.mutated_bindings_in_closure.contains(&binding_id) {
+                                acc.push(UnusedMut { local }.into())
+                            }
                         }
                     }
-                    (mir::MutabilityReason::Not, true) => acc.push(UnusedMut { local }.into()),
                 }
             }
         }
@@ -3383,7 +3392,12 @@ impl Type {
     }
 
     pub fn as_callable(&self, db: &dyn HirDatabase) -> Option<Callable> {
+        let mut the_ty = &self.ty;
         let callee = match self.ty.kind(Interner) {
+            TyKind::Ref(_, _, ty) if ty.as_closure().is_some() => {
+                the_ty = ty;
+                Callee::Closure(ty.as_closure().unwrap())
+            }
             TyKind::Closure(id, _) => Callee::Closure(*id),
             TyKind::Function(_) => Callee::FnPtr,
             TyKind::FnDef(..) => Callee::Def(self.ty.callable_def(db)?),
@@ -3398,7 +3412,7 @@ impl Type {
             }
         };
 
-        let sig = self.ty.callable_sig(db)?;
+        let sig = the_ty.callable_sig(db)?;
         Some(Callable { ty: self.clone(), sig, callee, is_bound_method: false })
     }
 

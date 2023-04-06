@@ -3,7 +3,8 @@
 use std::{fmt::Display, iter};
 
 use crate::{
-    infer::PointerCast, Const, ConstScalar, InferenceResult, Interner, MemoryMap, Substitution, Ty,
+    db::HirDatabase, infer::PointerCast, ClosureId, Const, ConstScalar, InferenceResult, Interner,
+    MemoryMap, Substitution, Ty, TyKind,
 };
 use chalk_ir::Mutability;
 use hir_def::{
@@ -19,9 +20,11 @@ mod pretty;
 
 pub use borrowck::{borrowck_query, BorrowckResult, MutabilityReason};
 pub use eval::{interpret_mir, pad16, Evaluator, MirEvalError};
-pub use lower::{lower_to_mir, mir_body_query, mir_body_recover, MirLowerError};
+pub use lower::{
+    lower_to_mir, mir_body_for_closure_query, mir_body_query, mir_body_recover, MirLowerError,
+};
 use smallvec::{smallvec, SmallVec};
-use stdx::impl_from;
+use stdx::{impl_from, never};
 
 use super::consteval::{intern_const_scalar, try_const_usize};
 
@@ -89,16 +92,74 @@ impl Operand {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ProjectionElem<V, T> {
     Deref,
     Field(FieldId),
-    TupleField(usize),
+    // FIXME: get rid of this, and use FieldId for tuples and closures
+    TupleOrClosureField(usize),
     Index(V),
     ConstantIndex { offset: u64, min_length: u64, from_end: bool },
     Subslice { from: u64, to: u64, from_end: bool },
     //Downcast(Option<Symbol>, VariantIdx),
     OpaqueCast(T),
+}
+
+impl<V, T> ProjectionElem<V, T> {
+    pub fn projected_ty(
+        &self,
+        base: Ty,
+        db: &dyn HirDatabase,
+        closure_field: impl FnOnce(ClosureId, usize) -> Ty,
+    ) -> Ty {
+        match self {
+            ProjectionElem::Deref => match &base.data(Interner).kind {
+                TyKind::Raw(_, inner) | TyKind::Ref(_, _, inner) => inner.clone(),
+                _ => {
+                    never!("Overloaded deref is not a projection");
+                    return TyKind::Error.intern(Interner);
+                }
+            },
+            ProjectionElem::Field(f) => match &base.data(Interner).kind {
+                TyKind::Adt(_, subst) => {
+                    db.field_types(f.parent)[f.local_id].clone().substitute(Interner, subst)
+                }
+                _ => {
+                    never!("Only adt has field");
+                    return TyKind::Error.intern(Interner);
+                }
+            },
+            ProjectionElem::TupleOrClosureField(f) => match &base.data(Interner).kind {
+                TyKind::Tuple(_, subst) => subst
+                    .as_slice(Interner)
+                    .get(*f)
+                    .map(|x| x.assert_ty_ref(Interner))
+                    .cloned()
+                    .unwrap_or_else(|| {
+                        never!("Out of bound tuple field");
+                        TyKind::Error.intern(Interner)
+                    }),
+                TyKind::Closure(id, _) => closure_field(*id, *f),
+                _ => {
+                    never!("Only tuple or closure has tuple or closure field");
+                    return TyKind::Error.intern(Interner);
+                }
+            },
+            ProjectionElem::Index(_) => match &base.data(Interner).kind {
+                TyKind::Array(inner, _) | TyKind::Slice(inner) => inner.clone(),
+                _ => {
+                    never!("Overloaded index is not a projection");
+                    return TyKind::Error.intern(Interner);
+                }
+            },
+            ProjectionElem::ConstantIndex { .. }
+            | ProjectionElem::Subslice { .. }
+            | ProjectionElem::OpaqueCast(_) => {
+                never!("We don't emit these yet");
+                return TyKind::Error.intern(Interner);
+            }
+        }
+    }
 }
 
 type PlaceElem = ProjectionElem<LocalId, Ty>;
@@ -123,7 +184,7 @@ pub enum AggregateKind {
     Tuple(Ty),
     Adt(VariantId, Substitution),
     Union(UnionId, FieldId),
-    //Closure(LocalDefId, SubstsRef),
+    Closure(Ty),
     //Generator(LocalDefId, SubstsRef, Movability),
 }
 
@@ -418,7 +479,7 @@ pub enum Terminator {
     },
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     Shared,
@@ -847,6 +908,87 @@ pub struct MirBody {
     pub arg_count: usize,
     pub binding_locals: ArenaMap<BindingId, LocalId>,
     pub param_locals: Vec<LocalId>,
+    /// This field stores the closures directly owned by this body. It is used
+    /// in traversing every mir body.
+    pub closures: Vec<ClosureId>,
+}
+
+impl MirBody {
+    fn walk_places(&mut self, mut f: impl FnMut(&mut Place)) {
+        fn for_operand(op: &mut Operand, f: &mut impl FnMut(&mut Place)) {
+            match op {
+                Operand::Copy(p) | Operand::Move(p) => {
+                    f(p);
+                }
+                Operand::Constant(_) => (),
+            }
+        }
+        for (_, block) in self.basic_blocks.iter_mut() {
+            for statement in &mut block.statements {
+                match &mut statement.kind {
+                    StatementKind::Assign(p, r) => {
+                        f(p);
+                        match r {
+                            Rvalue::ShallowInitBox(o, _)
+                            | Rvalue::UnaryOp(_, o)
+                            | Rvalue::Cast(_, o, _)
+                            | Rvalue::Use(o) => for_operand(o, &mut f),
+                            Rvalue::CopyForDeref(p)
+                            | Rvalue::Discriminant(p)
+                            | Rvalue::Len(p)
+                            | Rvalue::Ref(_, p) => f(p),
+                            Rvalue::CheckedBinaryOp(_, o1, o2) => {
+                                for_operand(o1, &mut f);
+                                for_operand(o2, &mut f);
+                            }
+                            Rvalue::Aggregate(_, ops) => {
+                                for op in ops {
+                                    for_operand(op, &mut f);
+                                }
+                            }
+                        }
+                    }
+                    StatementKind::Deinit(p) => f(p),
+                    StatementKind::StorageLive(_)
+                    | StatementKind::StorageDead(_)
+                    | StatementKind::Nop => (),
+                }
+            }
+            match &mut block.terminator {
+                Some(x) => match x {
+                    Terminator::SwitchInt { discr, .. } => for_operand(discr, &mut f),
+                    Terminator::FalseEdge { .. }
+                    | Terminator::FalseUnwind { .. }
+                    | Terminator::Goto { .. }
+                    | Terminator::Resume
+                    | Terminator::GeneratorDrop
+                    | Terminator::Abort
+                    | Terminator::Return
+                    | Terminator::Unreachable => (),
+                    Terminator::Drop { place, .. } => {
+                        f(place);
+                    }
+                    Terminator::DropAndReplace { place, value, .. } => {
+                        f(place);
+                        for_operand(value, &mut f);
+                    }
+                    Terminator::Call { func, args, destination, .. } => {
+                        for_operand(func, &mut f);
+                        args.iter_mut().for_each(|x| for_operand(x, &mut f));
+                        f(destination);
+                    }
+                    Terminator::Assert { cond, .. } => {
+                        for_operand(cond, &mut f);
+                    }
+                    Terminator::Yield { value, resume_arg, .. } => {
+                        for_operand(value, &mut f);
+                        f(resume_arg);
+                    }
+                },
+                None => (),
+            }
+        }
+    }
 }
 
 fn const_as_usize(c: &Const) -> usize {
