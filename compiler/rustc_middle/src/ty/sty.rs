@@ -136,10 +136,6 @@ impl<'tcx> Article for TyKind<'tcx> {
     }
 }
 
-// `TyKind` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(TyKind<'_>, 32);
-
 /// A closure can be modeled as a struct that looks like:
 /// ```ignore (illustrative)
 /// struct Closure<'l0...'li, T0...Tj, CK, CS, U>(...U);
@@ -2513,4 +2509,15 @@ impl<'tcx> VarianceDiagInfo<'tcx> {
             VarianceDiagInfo::Invariant { .. } => self,
         }
     }
+}
+
+// Some types are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+mod size_asserts {
+    use super::*;
+    use rustc_data_structures::static_assert_size;
+    // tidy-alphabetical-start
+    static_assert_size!(RegionKind<'_>, 32);
+    static_assert_size!(TyKind<'_>, 32);
+    // tidy-alphabetical-end
 }
