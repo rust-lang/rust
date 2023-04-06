@@ -20,6 +20,9 @@ differently from other crates that are directly in this repo:
 * [rustfmt](https://github.com/rust-lang/rustfmt)
 * [rust-analyzer](https://github.com/rust-lang/rust-analyzer)
 
+[Miri]: https://github.com/rust-lang/miri
+[Cargo]: https://github.com/rust-lang/cargo
+
 In contrast to `submodule` dependencies
 (see below for those), the `subtree` dependencies are just regular files and directories which can
 be updated in tree. However, if possible, enhancements, bug fixes, etc. specific
@@ -88,7 +91,7 @@ subtrees) actually needs to use `git subtree`.
 Building Rust will also use external git repositories tracked using [git
 submodules]. The complete list may be found in the [`.gitmodules`] file. Some
 of these projects are required (like `stdarch` for the standard library) and
-some of them are optional (like [Miri]).
+some of them are optional (like `src/doc/book`).
 
 Usage of submodules is discussed more in the [Using Git
 chapter](git.md#git-submodules).
@@ -114,7 +117,7 @@ the week leading up to the beta cut.
 
 Rust's build system builds a number of tools that make use of the internals of
 the compiler and that are hosted in a separate repository, and included in Rust
-via git submodules (such as [Miri]). If these tools break because of your
+via git submodules (such as [Cargo]). If these tools break because of your
 changes, you may run into a sort of "chicken and egg" problem. These tools rely
 on the latest compiler to be built so you can't update them (in their own
 repositories) to reflect your changes to the compiler until those changes are
