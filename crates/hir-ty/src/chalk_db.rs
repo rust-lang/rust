@@ -9,7 +9,7 @@ use chalk_solve::rust_ir::{self, OpaqueTyDatumBound, WellKnownTrait};
 
 use base_db::CrateId;
 use hir_def::{
-    expr::Movability,
+    hir::Movability,
     lang_item::{lang_attr, LangItem, LangItemTarget},
     AssocItemId, BlockId, GenericDefId, HasModule, ItemContainerId, Lookup, TypeAliasId,
 };
@@ -415,8 +415,8 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         let input_output = crate::make_type_and_const_binders(it, input_output);
 
         let movability = match self.db.body(parent)[expr] {
-            hir_def::expr::Expr::Closure {
-                closure_kind: hir_def::expr::ClosureKind::Generator(movability),
+            hir_def::hir::Expr::Closure {
+                closure_kind: hir_def::hir::ClosureKind::Generator(movability),
                 ..
             } => movability,
             _ => unreachable!("non generator expression interned as generator"),

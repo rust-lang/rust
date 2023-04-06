@@ -44,7 +44,7 @@ use chalk_ir::{
     NoSolution, TyData,
 };
 use either::Either;
-use hir_def::{expr::ExprId, type_ref::Rawness, TypeOrConstParamId};
+use hir_def::{hir::ExprId, type_ref::Rawness, TypeOrConstParamId};
 use hir_expand::name;
 use la_arena::{Arena, Idx};
 use mir::MirEvalError;

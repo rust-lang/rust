@@ -6,7 +6,7 @@ use std::sync::Arc;
 use base_db::{impl_intern_key, salsa, CrateId, Upcast};
 use hir_def::{
     db::DefDatabase,
-    expr::ExprId,
+    hir::ExprId,
     layout::{Layout, LayoutError, TargetDataLayout},
     AdtId, BlockId, ConstId, ConstParamId, DefWithBodyId, EnumVariantId, FunctionId, GenericDefId,
     ImplId, LifetimeParamId, LocalFieldId, TypeOrConstParamId, VariantId,

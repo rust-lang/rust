@@ -1,5 +1,7 @@
 //! A higher level attributes based on TokenTree, with also some shortcuts.
 
+pub mod builtin;
+
 #[cfg(test)]
 mod tests;
 

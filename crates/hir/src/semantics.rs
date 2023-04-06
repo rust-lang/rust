@@ -8,7 +8,7 @@ use base_db::{FileId, FileRange};
 use either::Either;
 use hir_def::{
     body,
-    expr::Expr,
+    hir::Expr,
     macro_id_to_def_id,
     resolver::{self, HasResolver, Resolver, TypeNs},
     type_ref::Mutability,

@@ -1,6 +1,6 @@
 //! HirDisplay implementations for various hir types.
 use hir_def::{
-    adt::VariantData,
+    data::adt::VariantData,
     generics::{
         TypeOrConstParamData, TypeParamProvenance, WherePredicate, WherePredicateTypeTarget,
     },

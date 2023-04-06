@@ -7,9 +7,11 @@ use std::{ops::ControlFlow, sync::Arc};
 use base_db::{CrateId, Edition};
 use chalk_ir::{cast::Cast, Mutability, TyKind, UniverseIndex, WhereClause};
 use hir_def::{
-    adt::StructFlags, data::ImplData, item_scope::ItemScope, nameres::DefMap, AssocItemId, BlockId,
-    ConstId, FunctionId, HasModule, ImplId, ItemContainerId, Lookup, ModuleDefId, ModuleId,
-    TraitId,
+    data::{adt::StructFlags, ImplData},
+    item_scope::ItemScope,
+    nameres::DefMap,
+    AssocItemId, BlockId, ConstId, FunctionId, HasModule, ImplId, ItemContainerId, Lookup,
+    ModuleDefId, ModuleId, TraitId,
 };
 use hir_expand::name::Name;
 use rustc_hash::{FxHashMap, FxHashSet};

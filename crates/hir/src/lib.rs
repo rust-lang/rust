@@ -39,10 +39,10 @@ use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateId, CrateOrigin, Edition, FileId, ProcMacroKind};
 use either::Either;
 use hir_def::{
-    adt::VariantData,
     body::{BodyDiagnostic, SyntheticSyntax},
-    expr::{BindingAnnotation, BindingId, ExprOrPatId, LabelId, Pat},
+    data::adt::VariantData,
     generics::{LifetimeParamData, TypeOrConstParamData, TypeParamProvenance},
+    hir::{BindingAnnotation, BindingId, ExprOrPatId, LabelId, Pat},
     item_tree::ItemTreeNode,
     lang_item::{LangItem, LangItemTarget},
     layout::{Layout, LayoutError, ReprOptions},
@@ -109,9 +109,8 @@ pub use crate::{
 pub use {
     cfg::{CfgAtom, CfgExpr, CfgOptions},
     hir_def::{
-        adt::StructKind,
-        attr::{Attrs, AttrsWithOwner, Documentation},
-        builtin_attr::AttributeTemplate,
+        attr::{builtin::AttributeTemplate, Attrs, AttrsWithOwner, Documentation},
+        data::adt::StructKind,
         find_path::PrefixKind,
         import_map,
         nameres::ModuleSource,
@@ -2697,9 +2696,7 @@ impl BuiltinAttr {
     }
 
     fn builtin(name: &str) -> Option<Self> {
-        hir_def::builtin_attr::INERT_ATTRIBUTES
-            .iter()
-            .position(|tool| tool.name == name)
+        hir_def::attr::builtin::find_builtin_attr_idx(name)
             .map(|idx| BuiltinAttr { krate: None, idx: idx as u32 })
     }
 
@@ -2707,14 +2704,14 @@ impl BuiltinAttr {
         // FIXME: Return a `Name` here
         match self.krate {
             Some(krate) => db.crate_def_map(krate).registered_attrs()[self.idx as usize].clone(),
-            None => SmolStr::new(hir_def::builtin_attr::INERT_ATTRIBUTES[self.idx as usize].name),
+            None => SmolStr::new(hir_def::attr::builtin::INERT_ATTRIBUTES[self.idx as usize].name),
         }
     }
 
     pub fn template(&self, _: &dyn HirDatabase) -> Option<AttributeTemplate> {
         match self.krate {
             Some(_) => None,
-            None => Some(hir_def::builtin_attr::INERT_ATTRIBUTES[self.idx as usize].template),
+            None => Some(hir_def::attr::builtin::INERT_ATTRIBUTES[self.idx as usize].template),
         }
     }
 }
@@ -2737,7 +2734,7 @@ impl ToolModule {
     }
 
     fn builtin(name: &str) -> Option<Self> {
-        hir_def::builtin_attr::TOOL_MODULES
+        hir_def::attr::builtin::TOOL_MODULES
             .iter()
             .position(|&tool| tool == name)
             .map(|idx| ToolModule { krate: None, idx: idx as u32 })
@@ -2747,7 +2744,7 @@ impl ToolModule {
         // FIXME: Return a `Name` here
         match self.krate {
             Some(krate) => db.crate_def_map(krate).registered_tools()[self.idx as usize].clone(),
-            None => SmolStr::new(hir_def::builtin_attr::TOOL_MODULES[self.idx as usize]),
+            None => SmolStr::new(hir_def::attr::builtin::TOOL_MODULES[self.idx as usize]),
         }
     }
 }

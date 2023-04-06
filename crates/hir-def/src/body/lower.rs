@@ -26,12 +26,14 @@ use syntax::{
 };
 
 use crate::{
-    adt::StructKind,
-    body::{Body, BodySourceMap, Expander, ExprPtr, LabelPtr, LabelSource, PatPtr},
-    body::{BodyDiagnostic, ExprSource, PatSource},
+    body::{
+        Body, BodyDiagnostic, BodySourceMap, Expander, ExprPtr, ExprSource, LabelPtr, LabelSource,
+        PatPtr, PatSource,
+    },
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinUint},
+    data::adt::StructKind,
     db::DefDatabase,
-    expr::{
+    hir::{
         dummy_expr_id, Array, Binding, BindingAnnotation, BindingId, ClosureKind, Expr, ExprId,
         FloatTypeWrapper, Label, LabelId, Literal, MatchArm, Movability, Pat, PatId,
         RecordFieldPat, RecordLitField, Statement,

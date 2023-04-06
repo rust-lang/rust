@@ -17,7 +17,7 @@ use hir_def::{
         scope::{ExprScopes, ScopeId},
         Body, BodySourceMap,
     },
-    expr::{ExprId, Pat, PatId},
+    hir::{ExprId, Pat, PatId},
     lang_item::LangItem,
     macro_id_to_def_id,
     path::{ModPath, Path, PathKind},

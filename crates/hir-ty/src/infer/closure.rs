@@ -1,7 +1,7 @@
 //! Inference of closure parameter types based on the closure's expected type.
 
 use chalk_ir::{cast::Cast, AliasEq, AliasTy, FnSubst, WhereClause};
-use hir_def::{expr::ExprId, HasModule};
+use hir_def::{hir::ExprId, HasModule};
 use smallvec::SmallVec;
 
 use crate::{

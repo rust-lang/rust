@@ -25,7 +25,7 @@ use syntax::{ast, AstPtr, SyntaxNode, SyntaxNodePtr};
 use crate::{
     attr::Attrs,
     db::DefDatabase,
-    expr::{
+    hir::{
         dummy_expr_id, Binding, BindingId, Expr, ExprId, Label, LabelId, Pat, PatId, RecordFieldPat,
     },
     item_scope::BuiltinShadowMode,

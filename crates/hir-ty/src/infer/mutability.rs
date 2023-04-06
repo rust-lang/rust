@@ -3,7 +3,7 @@
 
 use chalk_ir::Mutability;
 use hir_def::{
-    expr::{Array, BindingAnnotation, Expr, ExprId, PatId, Statement, UnaryOp},
+    hir::{Array, BindingAnnotation, Expr, ExprId, PatId, Statement, UnaryOp},
     lang_item::LangItem,
 };
 use hir_expand::name;
