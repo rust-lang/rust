@@ -37,7 +37,7 @@ pub struct DefaultMetadataLoader;
 
 fn load_metadata_with(
     path: &Path,
-    f: impl for<'a> Fn(&'a [u8]) -> Result<&'a [u8], String>,
+    f: impl for<'a> FnOnce(&'a [u8]) -> Result<&'a [u8], String>,
 ) -> Result<MetadataRef, String> {
     let file =
         File::open(path).map_err(|e| format!("failed to open file '{}': {}", path.display(), e))?;

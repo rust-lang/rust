@@ -59,7 +59,7 @@ pub struct OwnedSlice {
 pub fn slice_owned<O, F>(owner: O, slicer: F) -> OwnedSlice
 where
     O: Send + Sync + 'static,
-    F: Fn(&O) -> &[u8],
+    F: FnOnce(&O) -> &[u8],
 {
     try_slice_owned(owner, |x| Ok::<_, !>(slicer(x))).into_ok()
 }
@@ -70,7 +70,7 @@ where
 pub fn try_slice_owned<O, F, E>(owner: O, slicer: F) -> Result<OwnedSlice, E>
 where
     O: Send + Sync + 'static,
-    F: Fn(&O) -> Result<&[u8], E>,
+    F: FnOnce(&O) -> Result<&[u8], E>,
 {
     // We box the owner of the bytes, so it doesn't move.
     //
