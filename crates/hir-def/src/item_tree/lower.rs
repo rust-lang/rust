@@ -29,7 +29,7 @@ impl<'a> Ctx<'a> {
             db,
             tree: ItemTree::default(),
             source_ast_id_map: db.ast_id_map(file),
-            body_ctx: crate::body::LowerCtx::new(db, file),
+            body_ctx: crate::body::LowerCtx::with_file_id(db, file),
         }
     }
 
@@ -99,34 +99,6 @@ impl<'a> Ctx<'a> {
         }
 
         self.tree
-    }
-
-    pub(super) fn block_has_items(mut self, block: &ast::BlockExpr) -> bool {
-        let statement_has_item = block
-            .statements()
-            .find_map(|stmt| match stmt {
-                ast::Stmt::Item(item) => self.lower_mod_item(&item),
-                // Macro calls can be both items and expressions. The syntax library always treats
-                // them as expressions here, so we undo that.
-                ast::Stmt::ExprStmt(es) => match es.expr()? {
-                    ast::Expr::MacroExpr(expr) => self.lower_mod_item(&expr.macro_call()?.into()),
-                    _ => None,
-                },
-                _ => None,
-            })
-            .is_some();
-        if statement_has_item {
-            return true;
-        }
-
-        if let Some(ast::Expr::MacroExpr(expr)) = block.tail_expr() {
-            if let Some(call) = expr.macro_call() {
-                if let Some(_) = self.lower_mod_item(&call.into()) {
-                    return true;
-                }
-            }
-        }
-        false
     }
 
     fn data(&mut self) -> &mut ItemTreeData {

@@ -77,6 +77,10 @@ impl CfgExpander {
         let attrs = self.parse_attrs(db, owner);
         attrs.is_cfg_enabled(&self.cfg_options)
     }
+
+    pub(crate) fn hygiene(&self) -> &Hygiene {
+        &self.hygiene
+    }
 }
 
 impl Expander {
@@ -179,6 +183,10 @@ impl Expander {
             self.recursion_depth -= 1;
         }
         mark.bomb.defuse();
+    }
+
+    pub fn ctx<'a>(&self, db: &'a dyn DefDatabase) -> LowerCtx<'a> {
+        LowerCtx::new(db, &self.cfg_expander.hygiene, self.current_file_id)
     }
 
     pub(crate) fn to_source<T>(&self, value: T) -> InFile<T> {

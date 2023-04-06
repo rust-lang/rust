@@ -39,7 +39,6 @@ use crate::{
         RecordFieldPat, RecordLitField, Statement,
     },
     item_scope::BuiltinShadowMode,
-    item_tree::ItemTree,
     lang_item::LangItem,
     path::{GenericArgs, Path},
     type_ref::{Mutability, Rawness, TypeRef},
@@ -53,7 +52,11 @@ pub struct LowerCtx<'a> {
 }
 
 impl<'a> LowerCtx<'a> {
-    pub fn new(db: &'a dyn DefDatabase, file_id: HirFileId) -> Self {
+    pub fn new(db: &'a dyn DefDatabase, hygiene: &Hygiene, file_id: HirFileId) -> Self {
+        LowerCtx { db, hygiene: hygiene.clone(), ast_id_map: Some((file_id, OnceCell::new())) }
+    }
+
+    pub fn with_file_id(db: &'a dyn DefDatabase, file_id: HirFileId) -> Self {
         LowerCtx {
             db,
             hygiene: Hygiene::new(db.upcast(), file_id),
@@ -230,7 +233,7 @@ impl ExprCollector<'_> {
     }
 
     fn ctx(&self) -> LowerCtx<'_> {
-        LowerCtx::new(self.db, self.expander.current_file_id)
+        self.expander.ctx(self.db)
     }
 
     fn alloc_expr(&mut self, expr: Expr, ptr: ExprPtr) -> ExprId {
@@ -973,8 +976,18 @@ impl ExprCollector<'_> {
         block: ast::BlockExpr,
         mk_block: impl FnOnce(Option<BlockId>, Box<[Statement]>, Option<ExprId>) -> Expr,
     ) -> ExprId {
-        let block_id = if ItemTree::block_has_items(self.db, self.expander.current_file_id, &block)
-        {
+        let block_has_items = {
+            let statement_has_item = block.statements().any(|stmt| match stmt {
+                ast::Stmt::Item(_) => true,
+                // Macro calls can be both items and expressions. The syntax library always treats
+                // them as expressions here, so we undo that.
+                ast::Stmt::ExprStmt(es) => matches!(es.expr(), Some(ast::Expr::MacroExpr(_))),
+                _ => false,
+            });
+            statement_has_item || matches!(block.tail_expr(), Some(ast::Expr::MacroExpr(_)))
+        };
+
+        let block_id = if block_has_items {
             let file_local_id = self.ast_id_map.ast_id(&block);
             let ast_id = AstId::new(self.expander.current_file_id, file_local_id);
             Some(self.db.intern_block(BlockLoc {
