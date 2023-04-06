@@ -16,6 +16,7 @@ use syntax::{
     ast::{self, AstNode},
     match_ast, NodeOrToken, SyntaxNode, TextRange,
 };
+use text_edit::TextEdit;
 
 use crate::{navigation_target::TryToNav, FileId};
 
@@ -113,14 +114,26 @@ pub struct InlayHint {
     pub kind: InlayKind,
     /// The actual label to show in the inlay hint.
     pub label: InlayHintLabel,
+    /// Text edit to apply when "accepting" this inlay hint.
+    pub text_edit: Option<TextEdit>,
 }
 
 impl InlayHint {
     fn closing_paren(range: TextRange) -> InlayHint {
-        InlayHint { range, kind: InlayKind::ClosingParenthesis, label: InlayHintLabel::from(")") }
+        InlayHint {
+            range,
+            kind: InlayKind::ClosingParenthesis,
+            label: InlayHintLabel::from(")"),
+            text_edit: None,
+        }
     }
     fn opening_paren(range: TextRange) -> InlayHint {
-        InlayHint { range, kind: InlayKind::OpeningParenthesis, label: InlayHintLabel::from("(") }
+        InlayHint {
+            range,
+            kind: InlayKind::OpeningParenthesis,
+            label: InlayHintLabel::from("("),
+            text_edit: None,
+        }
     }
 }
 

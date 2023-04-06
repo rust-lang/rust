@@ -61,6 +61,7 @@ pub(super) fn hints(
                 range: expr.syntax().text_range(),
                 kind: InlayKind::Chaining,
                 label: label_of_ty(famous_defs, config, ty)?,
+                text_edit: None,
             });
         }
     }
@@ -120,6 +121,7 @@ fn main() {
                             },
                             "",
                         ],
+                        text_edit: None,
                     },
                     InlayHint {
                         range: 147..154,
@@ -140,6 +142,7 @@ fn main() {
                             },
                             "",
                         ],
+                        text_edit: None,
                     },
                 ]
             "#]],
@@ -205,6 +208,7 @@ fn main() {
                             },
                             "",
                         ],
+                        text_edit: None,
                     },
                     InlayHint {
                         range: 143..179,
@@ -225,6 +229,7 @@ fn main() {
                             },
                             "",
                         ],
+                        text_edit: None,
                     },
                 ]
             "#]],
@@ -274,6 +279,7 @@ fn main() {
                             },
                             "",
                         ],
+                        text_edit: None,
                     },
                     InlayHint {
                         range: 143..179,
@@ -294,6 +300,7 @@ fn main() {
                             },
                             "",
                         ],
+                        text_edit: None,
                     },
                 ]
             "#]],
@@ -357,6 +364,7 @@ fn main() {
                             },
                             "<i32, bool>>",
                         ],
+                        text_edit: None,
                     },
                     InlayHint {
                         range: 246..265,
@@ -390,6 +398,7 @@ fn main() {
                             },
                             "<i32, bool>>",
                         ],
+                        text_edit: None,
                     },
                 ]
             "#]],
@@ -455,6 +464,7 @@ fn main() {
                             },
                             " = ()>",
                         ],
+                        text_edit: None,
                     },
                     InlayHint {
                         range: 174..224,
@@ -488,6 +498,7 @@ fn main() {
                             },
                             " = ()>",
                         ],
+                        text_edit: None,
                     },
                     InlayHint {
                         range: 174..206,
@@ -521,6 +532,7 @@ fn main() {
                             },
                             " = ()>",
                         ],
+                        text_edit: None,
                     },
                     InlayHint {
                         range: 174..189,
@@ -541,6 +553,7 @@ fn main() {
                             },
                             "",
                         ],
+                        text_edit: None,
                     },
                 ]
             "#]],
@@ -590,6 +603,7 @@ fn main() {
                             },
                             "",
                         ],
+                        text_edit: None,
                     },
                     InlayHint {
                         range: 145..185,
@@ -610,6 +624,7 @@ fn main() {
                             },
                             "",
                         ],
+                        text_edit: None,
                     },
                     InlayHint {
                         range: 145..168,
@@ -630,6 +645,7 @@ fn main() {
                             },
                             "",
                         ],
+                        text_edit: None,
                     },
                     InlayHint {
                         range: 222..228,
@@ -648,6 +664,7 @@ fn main() {
                                 tooltip: "",
                             },
                         ],
+                        text_edit: None,
                     },
                 ]
             "#]],

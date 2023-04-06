@@ -12,9 +12,10 @@ use syntax::{
     match_ast,
 };
 
-use crate::{inlay_hints::closure_has_block_body, InlayHint, InlayHintsConfig, InlayKind};
-
-use super::label_of_ty;
+use crate::{
+    inlay_hints::{closure_has_block_body, label_of_ty},
+    InlayHint, InlayHintsConfig, InlayKind,
+};
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
@@ -50,6 +51,7 @@ pub(super) fn hints(
         },
         kind: InlayKind::Type,
         label,
+        text_edit: None,
     });
 
     Some(())

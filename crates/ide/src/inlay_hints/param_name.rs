@@ -57,6 +57,7 @@ pub(super) fn hints(
                 range,
                 kind: InlayKind::Parameter,
                 label: InlayHintLabel::simple(param_name, None, linked_location),
+                text_edit: None,
             }
         });
 

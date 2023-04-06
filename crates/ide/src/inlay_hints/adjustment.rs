@@ -135,6 +135,7 @@ pub(super) fn hints(
                 ))),
                 None,
             ),
+            text_edit: None,
         });
     }
     if !postfix && needs_inner_parens {

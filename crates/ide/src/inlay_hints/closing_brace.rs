@@ -112,6 +112,7 @@ pub(super) fn hints(
         range: closing_token.text_range(),
         kind: InlayKind::ClosingBrace,
         label: InlayHintLabel::simple(label, None, linked_location),
+        text_edit: None,
     });
 
     None

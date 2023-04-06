@@ -43,6 +43,7 @@ pub(super) fn hints(
         range: param_list.syntax().text_range(),
         kind: InlayKind::ClosureReturnType,
         label: label_of_ty(famous_defs, config, ty)?,
+        text_edit: None,
     });
     Some(())
 }

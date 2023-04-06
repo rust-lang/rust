@@ -25,6 +25,7 @@ pub(super) fn hints(
         range: t.text_range(),
         kind: InlayKind::Lifetime,
         label: label.into(),
+        text_edit: None,
     };
 
     let param_list = func.param_list()?;
@@ -189,12 +190,14 @@ pub(super) fn hints(
                     if is_empty { "" } else { ", " }
                 )
                 .into(),
+                text_edit: None,
             });
         }
         (None, allocated_lifetimes) => acc.push(InlayHint {
             range: func.name()?.syntax().text_range(),
             kind: InlayKind::GenericParamList,
             label: format!("<{}>", allocated_lifetimes.iter().format(", "),).into(),
+            text_edit: None,
         }),
     }
     Some(())
