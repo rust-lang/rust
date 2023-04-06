@@ -176,7 +176,7 @@ impl GenericParams {
                 // Don't create an `Expander` nor call `loc.source(db)` if not needed since this
                 // causes a reparse after the `ItemTree` has been created.
                 let mut expander = Lazy::new(|| Expander::new(db, loc.source(db).file_id, module));
-                for (_, param) in &func_data.params {
+                for param in &func_data.params {
                     generic_params.fill_implicit_impl_trait_args(db, &mut expander, param);
                 }
 

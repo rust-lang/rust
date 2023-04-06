@@ -1844,7 +1844,7 @@ impl Param {
     }
 
     pub fn name(&self, db: &dyn HirDatabase) -> Option<Name> {
-        db.function_data(self.func.id).params[self.idx].0.clone()
+        Some(self.as_local(db)?.name(db))
     }
 
     pub fn as_local(&self, db: &dyn HirDatabase) -> Option<Local> {
@@ -1885,7 +1885,7 @@ impl SelfParam {
         func_data
             .params
             .first()
-            .map(|(_, param)| match &**param {
+            .map(|param| match &**param {
                 TypeRef::Reference(.., mutability) => match mutability {
                     hir_def::type_ref::Mutability::Shared => Access::Shared,
                     hir_def::type_ref::Mutability::Mut => Access::Exclusive,

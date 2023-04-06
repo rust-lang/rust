@@ -30,7 +30,7 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunctionData {
     pub name: Name,
-    pub params: Vec<(Option<Name>, Interned<TypeRef>)>,
+    pub params: Vec<Interned<TypeRef>>,
     pub ret_type: Interned<TypeRef>,
     pub attrs: Attrs,
     pub visibility: RawVisibility,
@@ -100,7 +100,7 @@ impl FunctionData {
             params: enabled_params
                 .clone()
                 .filter_map(|id| match &item_tree[id] {
-                    Param::Normal(name, ty) => Some((name.clone(), ty.clone())),
+                    Param::Normal(_, ty) => Some(ty.clone()),
                     Param::Varargs => None,
                 })
                 .collect(),

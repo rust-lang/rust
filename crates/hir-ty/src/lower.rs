@@ -1634,7 +1634,7 @@ fn fn_sig_for_fn(db: &dyn HirDatabase, def: FunctionId) -> PolyFnSig {
     let ctx_params = TyLoweringContext::new(db, &resolver)
         .with_impl_trait_mode(ImplTraitLoweringMode::Variable)
         .with_type_param_mode(ParamLoweringMode::Variable);
-    let params = data.params.iter().map(|(_, tr)| ctx_params.lower_ty(tr)).collect::<Vec<_>>();
+    let params = data.params.iter().map(|tr| ctx_params.lower_ty(tr)).collect::<Vec<_>>();
     let ctx_ret = TyLoweringContext::new(db, &resolver)
         .with_impl_trait_mode(ImplTraitLoweringMode::Opaque)
         .with_type_param_mode(ParamLoweringMode::Variable);
