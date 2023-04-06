@@ -33,9 +33,9 @@ use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKin
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::fold::FnMutDelegate;
 use rustc_middle::ty::subst::{self, GenericArgKind, InternalSubsts, SubstsRef};
-use rustc_middle::ty::DynKind;
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{self, Const, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{DynKind, ToPredicate};
 use rustc_session::lint::builtin::{AMBIGUOUS_ASSOCIATED_ITEMS, BARE_TRAIT_OBJECTS};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
@@ -1526,8 +1526,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         for (base_trait_ref, span, constness) in regular_traits_refs_spans {
             assert_eq!(constness, ty::BoundConstness::NotConst);
-
-            for pred in traits::elaborate_trait_ref(tcx, base_trait_ref) {
+            let base_pred: ty::Predicate<'tcx> = base_trait_ref.to_predicate(tcx);
+            for pred in traits::elaborate(tcx, [base_pred]) {
                 debug!("conv_object_ty_poly_trait_ref: observing object predicate `{:?}`", pred);
 
                 let bound_predicate = pred.kind();

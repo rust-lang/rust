@@ -58,7 +58,7 @@ pub use self::specialize::{specialization_graph, translate_substs, OverlapError}
 pub use self::structural_match::{
     search_for_adt_const_param_violation, search_for_structural_match_violation,
 };
-pub use self::util::{elaborate, elaborate_trait_ref, elaborate_trait_refs};
+pub use self::util::elaborate;
 pub use self::util::{expand_trait_aliases, TraitAliasExpander};
 pub use self::util::{get_vtable_index_of_object_method, impl_item_is_final, upcast_choices};
 pub use self::util::{

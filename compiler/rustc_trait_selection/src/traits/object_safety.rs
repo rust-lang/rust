@@ -8,7 +8,7 @@
 //!   - not reference the erased type `Self` except for in this receiver;
 //!   - not have generic type parameters.
 
-use super::{elaborate, elaborate_trait_ref};
+use super::elaborate;
 
 use crate::infer::TyCtxtInferExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
@@ -666,7 +666,8 @@ fn object_ty_for_trait<'tcx>(
     });
     debug!(?trait_predicate);
 
-    let mut elaborated_predicates: Vec<_> = elaborate_trait_ref(tcx, trait_ref)
+    let pred: ty::Predicate<'tcx> = trait_ref.to_predicate(tcx);
+    let mut elaborated_predicates: Vec<_> = elaborate(tcx, [pred])
         .filter_map(|pred| {
             debug!(?pred);
             let pred = pred.to_opt_poly_projection_pred()?;

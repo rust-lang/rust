@@ -166,20 +166,6 @@ impl<'tcx> Elaboratable<'tcx> for (ty::Predicate<'tcx>, Span) {
     }
 }
 
-pub fn elaborate_trait_ref<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    trait_ref: ty::PolyTraitRef<'tcx>,
-) -> Elaborator<'tcx, ty::Predicate<'tcx>> {
-    elaborate(tcx, std::iter::once(trait_ref.without_const().to_predicate(tcx)))
-}
-
-pub fn elaborate_trait_refs<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    trait_refs: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
-) -> Elaborator<'tcx, ty::Predicate<'tcx>> {
-    elaborate(tcx, trait_refs.map(|trait_ref| trait_ref.to_predicate(tcx)))
-}
-
 pub fn elaborate<'tcx, O: Elaboratable<'tcx>>(
     tcx: TyCtxt<'tcx>,
     obligations: impl IntoIterator<Item = O>,
@@ -364,17 +350,21 @@ pub fn supertraits<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>,
 ) -> impl Iterator<Item = ty::PolyTraitRef<'tcx>> {
-    FilterToTraits::new(elaborate_trait_ref(tcx, trait_ref))
+    let pred: ty::Predicate<'tcx> = trait_ref.to_predicate(tcx);
+    FilterToTraits::new(elaborate(tcx, [pred]))
 }
 
 pub fn transitive_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_refs: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
 ) -> impl Iterator<Item = ty::PolyTraitRef<'tcx>> {
-    FilterToTraits::new(elaborate_trait_refs(tcx, trait_refs))
+    FilterToTraits::new(elaborate(
+        tcx,
+        trait_refs.map(|trait_ref| -> ty::Predicate<'tcx> { trait_ref.to_predicate(tcx) }),
+    ))
 }
 
-/// A specialized variant of `elaborate_trait_refs` that only elaborates trait references that may
+/// A specialized variant of `elaborate` that only elaborates trait references that may
 /// define the given associated type `assoc_name`. It uses the
 /// `super_predicates_that_define_assoc_type` query to avoid enumerating super-predicates that
 /// aren't related to `assoc_item`. This is used when resolving types like `Self::Item` or
