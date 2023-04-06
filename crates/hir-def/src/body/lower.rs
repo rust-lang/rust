@@ -26,10 +26,12 @@ use syntax::{
 };
 
 use crate::{
-    adt::StructKind,
-    body::{Body, BodySourceMap, Expander, ExprPtr, LabelPtr, LabelSource, PatPtr},
-    body::{BodyDiagnostic, ExprSource, PatSource},
+    body::{
+        Body, BodyDiagnostic, BodySourceMap, Expander, ExprPtr, ExprSource, LabelPtr, LabelSource,
+        PatPtr, PatSource,
+    },
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinUint},
+    data::adt::StructKind,
     db::DefDatabase,
     expr::{
         dummy_expr_id, Array, Binding, BindingAnnotation, BindingId, ClosureKind, Expr, ExprId,

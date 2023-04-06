@@ -12,7 +12,7 @@ pub(crate) mod usefulness;
 
 use chalk_ir::Mutability;
 use hir_def::{
-    adt::VariantData, body::Body, expr::PatId, AdtId, EnumVariantId, LocalFieldId, VariantId,
+    body::Body, data::adt::VariantData, expr::PatId, AdtId, EnumVariantId, LocalFieldId, VariantId,
 };
 use hir_expand::name::Name;
 use stdx::{always, never};

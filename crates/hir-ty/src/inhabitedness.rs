@@ -6,8 +6,8 @@ use chalk_ir::{
     DebruijnIndex,
 };
 use hir_def::{
-    adt::VariantData, attr::Attrs, visibility::Visibility, AdtId, EnumVariantId, HasModule, Lookup,
-    ModuleId, VariantId,
+    attr::Attrs, data::adt::VariantData, visibility::Visibility, AdtId, EnumVariantId, HasModule,
+    Lookup, ModuleId, VariantId,
 };
 use rustc_hash::FxHashSet;
 

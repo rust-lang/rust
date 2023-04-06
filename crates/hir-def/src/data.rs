@@ -1,5 +1,7 @@
 //! Contains basic data about various HIR declarations.
 
+pub mod adt;
+
 use std::sync::Arc;
 
 use hir_expand::{name::Name, AstId, ExpandResult, HirFileId, InFile, MacroCallId, MacroDefKind};

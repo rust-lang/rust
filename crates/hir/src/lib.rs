@@ -39,8 +39,8 @@ use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateId, CrateOrigin, Edition, FileId, ProcMacroKind};
 use either::Either;
 use hir_def::{
-    adt::VariantData,
     body::{BodyDiagnostic, SyntheticSyntax},
+    data::adt::VariantData,
     expr::{BindingAnnotation, BindingId, ExprOrPatId, LabelId, Pat},
     generics::{LifetimeParamData, TypeOrConstParamData, TypeParamProvenance},
     item_tree::ItemTreeNode,
@@ -109,9 +109,9 @@ pub use crate::{
 pub use {
     cfg::{CfgAtom, CfgExpr, CfgOptions},
     hir_def::{
-        adt::StructKind,
         attr::{Attrs, AttrsWithOwner, Documentation},
         builtin_attr::AttributeTemplate,
+        data::adt::StructKind,
         find_path::PrefixKind,
         import_map,
         nameres::ModuleSource,

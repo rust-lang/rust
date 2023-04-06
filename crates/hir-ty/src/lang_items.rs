@@ -1,6 +1,6 @@
 //! Functions to detect special lang items
 
-use hir_def::{adt::StructFlags, lang_item::LangItem, AdtId};
+use hir_def::{data::adt::StructFlags, lang_item::LangItem, AdtId};
 use hir_expand::name::Name;
 
 use crate::db::HirDatabase;

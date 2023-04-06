@@ -7,8 +7,8 @@ use std::fmt::{self, Debug};
 use base_db::CrateId;
 use chalk_ir::{BoundVar, TyKind};
 use hir_def::{
-    adt::VariantData,
     body,
+    data::adt::VariantData,
     db::DefDatabase,
     find_path,
     generics::{TypeOrConstParamData, TypeParamProvenance},

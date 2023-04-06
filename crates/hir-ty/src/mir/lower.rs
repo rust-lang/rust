@@ -4,8 +4,8 @@ use std::{iter, mem, sync::Arc};
 
 use chalk_ir::{BoundVar, ConstData, DebruijnIndex, TyKind};
 use hir_def::{
-    adt::{StructKind, VariantData},
     body::Body,
+    data::adt::{StructKind, VariantData},
     expr::{
         Array, BindingAnnotation, BindingId, ExprId, LabelId, Literal, MatchArm, Pat, PatId,
         RecordFieldPat, RecordLitField,

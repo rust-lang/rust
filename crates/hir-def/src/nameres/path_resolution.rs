@@ -331,11 +331,11 @@ impl DefMap {
                         Some(local_id) => {
                             let variant = EnumVariantId { parent: e, local_id };
                             match &*enum_data.variants[local_id].variant_data {
-                                crate::adt::VariantData::Record(_) => {
+                                crate::data::adt::VariantData::Record(_) => {
                                     PerNs::types(variant.into(), Visibility::Public)
                                 }
-                                crate::adt::VariantData::Tuple(_)
-                                | crate::adt::VariantData::Unit => {
+                                crate::data::adt::VariantData::Tuple(_)
+                                | crate::data::adt::VariantData::Unit => {
                                     PerNs::both(variant.into(), variant.into(), Visibility::Public)
                                 }
                             }

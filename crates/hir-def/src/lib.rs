@@ -29,7 +29,6 @@ pub mod keys;
 
 pub mod item_tree;
 
-pub mod adt;
 pub mod data;
 pub mod generics;
 pub mod lang_item;
@@ -82,8 +81,8 @@ use syntax::ast;
 use ::tt::token_id as tt;
 
 use crate::{
-    adt::VariantData,
     builtin_type::BuiltinType,
+    data::adt::VariantData,
     item_tree::{
         Const, Enum, Function, Impl, ItemTreeId, ItemTreeNode, MacroDef, MacroRules, ModItem,
         Static, Struct, Trait, TraitAlias, TypeAlias, Union,
@@ -236,7 +235,7 @@ pub struct EnumVariantId {
     pub local_id: LocalEnumVariantId,
 }
 
-pub type LocalEnumVariantId = Idx<adt::EnumVariantData>;
+pub type LocalEnumVariantId = Idx<data::adt::EnumVariantData>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FieldId {
@@ -244,7 +243,7 @@ pub struct FieldId {
     pub local_id: LocalFieldId,
 }
 
-pub type LocalFieldId = Idx<adt::FieldData>;
+pub type LocalFieldId = Idx<data::adt::FieldData>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ConstId(salsa::InternId);
