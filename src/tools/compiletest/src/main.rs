@@ -132,7 +132,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .reqopt("", "cflags", "flags for the C compiler", "FLAGS")
         .reqopt("", "cxxflags", "flags for the CXX compiler", "FLAGS")
         .optopt("", "ar", "path to an archiver", "PATH")
-        .optopt("", "linker", "path to a linker", "PATH")
+        .optopt("", "target-linker", "path to a linker for the target", "PATH")
+        .optopt("", "host-linker", "path to a linker for the host", "PATH")
         .reqopt("", "llvm-components", "list of LLVM components built in", "LIST")
         .optopt("", "llvm-bin-dir", "Path to LLVM's `bin` directory", "PATH")
         .optopt("", "nodejs", "the name of nodejs", "PATH")
@@ -303,7 +304,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
         cflags: matches.opt_str("cflags").unwrap(),
         cxxflags: matches.opt_str("cxxflags").unwrap(),
         ar: matches.opt_str("ar").unwrap_or_else(|| String::from("ar")),
-        linker: matches.opt_str("linker"),
+        target_linker: matches.opt_str("target-linker"),
+        host_linker: matches.opt_str("host-linker"),
         llvm_components: matches.opt_str("llvm-components").unwrap(),
         nodejs: matches.opt_str("nodejs"),
         npm: matches.opt_str("npm"),
@@ -346,7 +348,8 @@ pub fn log_config(config: &Config) {
     logv(c, format!("adb_test_dir: {:?}", config.adb_test_dir));
     logv(c, format!("adb_device_status: {}", config.adb_device_status));
     logv(c, format!("ar: {}", config.ar));
-    logv(c, format!("linker: {:?}", config.linker));
+    logv(c, format!("target-linker: {:?}", config.target_linker));
+    logv(c, format!("host-linker: {:?}", config.host_linker));
     logv(c, format!("verbose: {}", config.verbose));
     logv(c, format!("format: {:?}", config.format));
     logv(c, "\n".to_string());

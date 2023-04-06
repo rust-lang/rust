@@ -369,7 +369,8 @@ pub struct Config {
     pub cflags: String,
     pub cxxflags: String,
     pub ar: String,
-    pub linker: Option<String>,
+    pub target_linker: Option<String>,
+    pub host_linker: Option<String>,
     pub llvm_components: String,
 
     /// Path to a NodeJS executable. Used for JS doctests, emscripten and WASM tests

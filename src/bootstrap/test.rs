@@ -1535,7 +1535,10 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         flags.extend(builder.config.cmd.rustc_args().iter().map(|s| s.to_string()));
 
         if let Some(linker) = builder.linker(target) {
-            cmd.arg("--linker").arg(linker);
+            cmd.arg("--target-linker").arg(linker);
+        }
+        if let Some(linker) = builder.linker(compiler.host) {
+            cmd.arg("--host-linker").arg(linker);
         }
 
         let mut hostflags = flags.clone();
