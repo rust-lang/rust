@@ -2697,9 +2697,7 @@ impl BuiltinAttr {
     }
 
     fn builtin(name: &str) -> Option<Self> {
-        hir_def::builtin_attr::INERT_ATTRIBUTES
-            .iter()
-            .position(|tool| tool.name == name)
+        hir_def::builtin_attr::find_builtin_attr_idx(name)
             .map(|idx| BuiltinAttr { krate: None, idx: idx as u32 })
     }
 

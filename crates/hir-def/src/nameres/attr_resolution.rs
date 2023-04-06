@@ -83,12 +83,9 @@ impl DefMap {
             }
 
             if segments.len() == 1 {
-                let registered = self.registered_attrs.iter().map(SmolStr::as_str);
-                let is_inert = builtin_attr::INERT_ATTRIBUTES
-                    .iter()
-                    .map(|it| it.name)
-                    .chain(registered)
-                    .any(pred);
+                let mut registered = self.registered_attrs.iter().map(SmolStr::as_str);
+                let is_inert =
+                    builtin_attr::find_builtin_attr_idx(&name).is_some() || registered.any(pred);
                 return is_inert;
             }
         }
