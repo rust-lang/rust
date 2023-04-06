@@ -54,6 +54,32 @@ pub unsafe fn check_smaller_size(x: u32) -> u16 {
     }
 }
 
+// CHECK-LABEL: @check_smaller_array(
+#[no_mangle]
+#[custom_mir(dialect = "runtime", phase = "initial")]
+pub unsafe fn check_smaller_array(x: [u32; 7]) -> [u32; 3] {
+    // CHECK: call void @llvm.trap
+    mir!{
+        {
+            RET = CastTransmute(x);
+            Return()
+        }
+    }
+}
+
+// CHECK-LABEL: @check_bigger_array(
+#[no_mangle]
+#[custom_mir(dialect = "runtime", phase = "initial")]
+pub unsafe fn check_bigger_array(x: [u32; 3]) -> [u32; 7] {
+    // CHECK: call void @llvm.trap
+    mir!{
+        {
+            RET = CastTransmute(x);
+            Return()
+        }
+    }
+}
+
 // CHECK-LABEL: @check_to_uninhabited(
 #[no_mangle]
 #[custom_mir(dialect = "runtime", phase = "initial")]
@@ -71,7 +97,7 @@ pub unsafe fn check_to_uninhabited(x: u16) -> BigNever {
 #[no_mangle]
 #[custom_mir(dialect = "runtime", phase = "initial")]
 pub unsafe fn check_from_uninhabited(x: BigNever) -> u16 {
-    // CHECK: call void @llvm.trap
+    // CHECK: ret i16 poison
     mir!{
         {
             RET = CastTransmute(x);
@@ -299,5 +325,51 @@ pub unsafe fn check_pair_to_array(x: (i64, u64)) -> [u8; 16] {
     // CHECK-NOT: alloca
     // CHECK: store i64 %x.0, ptr %{{.+}}, align 1
     // CHECK: store i64 %x.1, ptr %{{.+}}, align 1
+    transmute(x)
+}
+
+// CHECK-LABEL: @check_heterogeneous_integer_pair(
+#[no_mangle]
+pub unsafe fn check_heterogeneous_integer_pair(x: (i32, bool)) -> (bool, u32) {
+    // CHECK: store i32 %x.0
+    // CHECK: %[[WIDER:.+]] = zext i1 %x.1 to i8
+    // CHECK: store i8 %[[WIDER]]
+
+    // CHECK: %[[BYTE:.+]] = load i8
+    // CHECK: trunc i8 %[[BYTE:.+]] to i1
+    // CHECK: load i32
+    transmute(x)
+}
+
+// CHECK-LABEL: @check_heterogeneous_float_pair(
+#[no_mangle]
+pub unsafe fn check_heterogeneous_float_pair(x: (f64, f32)) -> (f32, f64) {
+    // CHECK: store double %x.0
+    // CHECK: store float %x.1
+    // CHECK: %[[A:.+]] = load float
+    // CHECK: %[[B:.+]] = load double
+    // CHECK: %[[P:.+]] = insertvalue { float, double } poison, float %[[A]], 0
+    // CHECK: insertvalue { float, double } %[[P]], double %[[B]], 1
+    transmute(x)
+}
+
+// CHECK-LABEL: @check_issue_110005(
+#[no_mangle]
+pub unsafe fn check_issue_110005(x: (usize, bool)) -> Option<Box<[u8]>> {
+    // CHECK: store i64 %x.0
+    // CHECK: %[[WIDER:.+]] = zext i1 %x.1 to i8
+    // CHECK: store i8 %[[WIDER]]
+    // CHECK: load ptr
+    // CHECK: load i64
+    transmute(x)
+}
+
+// CHECK-LABEL: @check_pair_to_dst_ref(
+#[no_mangle]
+pub unsafe fn check_pair_to_dst_ref<'a>(x: (usize, usize)) -> &'a [u8] {
+    // CHECK: %0 = inttoptr i64 %x.0 to ptr
+    // CHECK: %1 = insertvalue { ptr, i64 } poison, ptr %0, 0
+    // CHECK: %2 = insertvalue { ptr, i64 } %1, i64 %x.1, 1
+    // CHECK: ret { ptr, i64 } %2
     transmute(x)
 }
