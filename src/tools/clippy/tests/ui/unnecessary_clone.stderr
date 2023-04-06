@@ -45,62 +45,16 @@ LL |     Some(t).clone();
    |     ^^^^^^^^^^^^^^^ help: try removing the `clone` call: `Some(t)`
 
 error: using `clone` on type `E` which implements the `Copy` trait
-  --> $DIR/unnecessary_clone.rs:84:20
+  --> $DIR/unnecessary_clone.rs:76:20
    |
 LL |         let _: E = a.clone();
    |                    ^^^^^^^^^ help: try dereferencing it: `*****a`
 
 error: using `.clone()` on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:108:14
+  --> $DIR/unnecessary_clone.rs:95:14
    |
 LL |         Some(try_opt!(Some(rc)).clone())
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `Rc::<u8>::clone(&try_opt!(Some(rc)))`
 
-error: using `clone` on a double-reference, which copies the reference of type `std::vec::Vec<i32>` instead of cloning the inner type
-  --> $DIR/unnecessary_clone.rs:48:22
-   |
-LL |     let z: &Vec<_> = y.clone();
-   |                      ^^^^^^^^^
-   |
-   = note: `-D clone-double-ref` implied by `-D warnings`
-help: try dereferencing it
-   |
-LL |     let z: &Vec<_> = &(*y).clone();
-   |                      +++ ~~~~~~~~~
-help: or try being explicit if you are sure, that you want to clone a reference
-   |
-LL |     let z: &Vec<_> = <&std::vec::Vec<i32>>::clone(y);
-   |                      +++++++++++++++++++++++++++++ ~
-
-error: using `clone` on a double-reference, which copies the reference of type `[u8]` instead of cloning the inner type
-  --> $DIR/unnecessary_clone.rs:89:22
-   |
-LL |         let _ = &mut encoded.clone();
-   |                      ^^^^^^^^^^^^^^^
-   |
-help: try dereferencing it
-   |
-LL |         let _ = &mut &(*encoded).clone();
-   |                      +++       ~~~~~~~~~
-help: or try being explicit if you are sure, that you want to clone a reference
-   |
-LL |         let _ = &mut <&[u8]>::clone(encoded);
-   |                      +++++++++++++++       ~
-
-error: using `clone` on a double-reference, which copies the reference of type `[u8]` instead of cloning the inner type
-  --> $DIR/unnecessary_clone.rs:90:18
-   |
-LL |         let _ = &encoded.clone();
-   |                  ^^^^^^^^^^^^^^^
-   |
-help: try dereferencing it
-   |
-LL |         let _ = &&(*encoded).clone();
-   |                  +++       ~~~~~~~~~
-help: or try being explicit if you are sure, that you want to clone a reference
-   |
-LL |         let _ = &<&[u8]>::clone(encoded);
-   |                  +++++++++++++++       ~
-
-error: aborting due to 12 previous errors
+error: aborting due to 9 previous errors
 

@@ -20,4 +20,9 @@ fn rust_clippy_issue_9272() {
     println!("{str}")
 }
 
+fn check(mut encoded: &[u8]) {
+    let _ = &mut encoded.clone();
+    let _ = &encoded.clone();
+}
+
 fn main() {}
