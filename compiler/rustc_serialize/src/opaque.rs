@@ -123,18 +123,6 @@ impl Encoder for MemEncoder {
     }
 
     #[inline]
-    fn emit_f64(&mut self, v: f64) {
-        let as_u64: u64 = v.to_bits();
-        self.emit_u64(as_u64);
-    }
-
-    #[inline]
-    fn emit_f32(&mut self, v: f32) {
-        let as_u32: u32 = v.to_bits();
-        self.emit_u32(as_u32);
-    }
-
-    #[inline]
     fn emit_char(&mut self, v: char) {
         self.emit_u32(v as u32);
     }
@@ -501,18 +489,6 @@ impl Encoder for FileEncoder {
     }
 
     #[inline]
-    fn emit_f64(&mut self, v: f64) {
-        let as_u64: u64 = v.to_bits();
-        self.emit_u64(as_u64);
-    }
-
-    #[inline]
-    fn emit_f32(&mut self, v: f32) {
-        let as_u32: u32 = v.to_bits();
-        self.emit_u32(as_u32);
-    }
-
-    #[inline]
     fn emit_char(&mut self, v: char) {
         self.emit_u32(v as u32);
     }
@@ -640,18 +616,6 @@ impl<'a> Decoder for MemDecoder<'a> {
     fn read_bool(&mut self) -> bool {
         let value = self.read_u8();
         value != 0
-    }
-
-    #[inline]
-    fn read_f64(&mut self) -> f64 {
-        let bits = self.read_u64();
-        f64::from_bits(bits)
-    }
-
-    #[inline]
-    fn read_f32(&mut self) -> f32 {
-        let bits = self.read_u32();
-        f32::from_bits(bits)
     }
 
     #[inline]
