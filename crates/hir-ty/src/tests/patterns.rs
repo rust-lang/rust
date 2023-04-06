@@ -476,7 +476,7 @@ fn infer_adt_pattern() {
             183..184 'x': usize
             190..191 'x': usize
             201..205 'E::B': E
-            209..212 'foo': {unknown}
+            209..212 'foo': bool
             216..217 '1': usize
             227..231 'E::B': E
             235..237 '10': usize

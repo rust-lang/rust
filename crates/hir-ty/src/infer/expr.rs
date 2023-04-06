@@ -86,10 +86,10 @@ impl<'a> InferenceContext<'a> {
         }
     }
 
-    pub(super) fn infer_expr_coerce_never(&mut self, expr: ExprId, expected: &Expectation) -> Ty {
+    fn infer_expr_coerce_never(&mut self, expr: ExprId, expected: &Expectation) -> Ty {
         let ty = self.infer_expr_inner(expr, expected);
         // While we don't allow *arbitrary* coercions here, we *do* allow
-        // coercions from ! to `expected`.
+        // coercions from `!` to `expected`.
         if ty.is_never() {
             if let Some(adjustments) = self.result.expr_adjustments.get(&expr) {
                 return if let [Adjustment { kind: Adjust::NeverToAny, target }] = &**adjustments {
@@ -99,13 +99,22 @@ impl<'a> InferenceContext<'a> {
                 };
             }
 
-            let adj_ty = self.table.new_type_var();
-            self.write_expr_adj(
-                expr,
-                vec![Adjustment { kind: Adjust::NeverToAny, target: adj_ty.clone() }],
-            );
-            adj_ty
+            if let Some(target) = expected.only_has_type(&mut self.table) {
+                self.coerce(Some(expr), &ty, &target)
+                    .expect("never-to-any coercion should always succeed")
+            } else {
+                ty
+            }
         } else {
+            if let Some(expected_ty) = expected.only_has_type(&mut self.table) {
+                let could_unify = self.unify(&ty, &expected_ty);
+                if !could_unify {
+                    self.result.type_mismatches.insert(
+                        expr.into(),
+                        TypeMismatch { expected: expected_ty, actual: ty.clone() },
+                    );
+                }
+            }
             ty
         }
     }
