@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::in_constant;
+use clippy_utils::{expr_or_init, in_constant};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
@@ -60,6 +60,9 @@ fn simplify<'tcx>(
     expr1: &'tcx Expr<'tcx>,
     expr2: &'tcx Expr<'tcx>,
 ) -> Option<&'tcx Expr<'tcx>> {
+    let expr1 = expr_or_init(cx, expr1);
+    let expr2 = expr_or_init(cx, expr2);
+
     simplify_half(cx, expr1, expr2).or_else(|| simplify_half(cx, expr2, expr1))
 }
 
