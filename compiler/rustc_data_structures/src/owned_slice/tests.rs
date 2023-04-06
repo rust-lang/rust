@@ -1,4 +1,10 @@
-use std::{cell::Cell, ops::Deref, rc::Rc};
+use std::{
+    ops::Deref,
+    sync::{
+        atomic::{self, AtomicBool},
+        Arc,
+    },
+};
 
 use crate::{
     owned_slice::{slice_owned, try_slice_owned, OwnedSlice},
@@ -47,18 +53,18 @@ fn boxed() {
 }
 
 #[test]
-fn drop() {
-    let flag = Rc::new(Cell::new(false));
-    let flag_prime = Rc::clone(&flag);
-    let d = OnDrop(move || flag_prime.set(true));
+fn drop_drops() {
+    let flag = Arc::new(AtomicBool::new(false));
+    let flag_prime = Arc::clone(&flag);
+    let d = OnDrop(move || flag_prime.store(true, atomic::Ordering::Relaxed));
 
     let slice = slice_owned(d, |_| &[]);
 
-    assert_eq!(flag.get(), false);
+    assert_eq!(flag.load(atomic::Ordering::Relaxed), false);
 
-    std::mem::drop(slice);
+    drop(slice);
 
-    assert_eq!(flag.get(), true);
+    assert_eq!(flag.load(atomic::Ordering::Relaxed), true);
 }
 
 #[test]
