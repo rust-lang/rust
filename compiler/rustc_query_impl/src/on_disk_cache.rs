@@ -1046,8 +1046,6 @@ impl<'a, 'tcx> Encoder for CacheEncoder<'a, 'tcx> {
         emit_i8(i8);
 
         emit_bool(bool);
-        emit_f64(f64);
-        emit_f32(f32);
         emit_char(char);
         emit_str(&str);
         emit_raw_bytes(&[u8]);
