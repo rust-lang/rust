@@ -973,10 +973,10 @@ impl ExprCollector<'_> {
         block: ast::BlockExpr,
         mk_block: impl FnOnce(Option<BlockId>, Box<[Statement]>, Option<ExprId>) -> Expr,
     ) -> ExprId {
-        let file_local_id = self.ast_id_map.ast_id(&block);
-        let ast_id = AstId::new(self.expander.current_file_id, file_local_id);
-
-        let block_id = if ItemTree::block_has_items(self.db, ast_id.file_id, &block) {
+        let block_id = if ItemTree::block_has_items(self.db, self.expander.current_file_id, &block)
+        {
+            let file_local_id = self.ast_id_map.ast_id(&block);
+            let ast_id = AstId::new(self.expander.current_file_id, file_local_id);
             Some(self.db.intern_block(BlockLoc {
                 ast_id,
                 module: self.expander.def_map.module_id(self.expander.module),
