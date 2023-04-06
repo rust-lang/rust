@@ -4,7 +4,8 @@ use hir_expand::{attrs::Attr, MacroCallId};
 use syntax::{ast, SmolStr};
 
 use crate::{
-    attr_macro_as_call_id, builtin_attr,
+    attr::builtin::{find_builtin_attr_idx, TOOL_MODULES},
+    attr_macro_as_call_id,
     db::DefDatabase,
     item_scope::BuiltinShadowMode,
     macro_id_to_def_id,
@@ -76,7 +77,7 @@ impl DefMap {
             let pred = |n: &_| *n == name;
 
             let registered = self.registered_tools.iter().map(SmolStr::as_str);
-            let is_tool = builtin_attr::TOOL_MODULES.iter().copied().chain(registered).any(pred);
+            let is_tool = TOOL_MODULES.iter().copied().chain(registered).any(pred);
             // FIXME: tool modules can be shadowed by actual modules
             if is_tool {
                 return true;
@@ -84,8 +85,7 @@ impl DefMap {
 
             if segments.len() == 1 {
                 let mut registered = self.registered_attrs.iter().map(SmolStr::as_str);
-                let is_inert =
-                    builtin_attr::find_builtin_attr_idx(&name).is_some() || registered.any(pred);
+                let is_inert = find_builtin_attr_idx(&name).is_some() || registered.any(pred);
                 return is_inert;
             }
         }

@@ -19,7 +19,6 @@ pub mod db;
 pub mod attr;
 pub mod path;
 pub mod builtin_type;
-pub mod builtin_attr;
 pub mod per_ns;
 pub mod item_scope;
 
