@@ -3,7 +3,6 @@
 #![feature(let_chains)]
 #![feature(lint_reasons)]
 #![feature(never_type)]
-#![feature(once_cell)]
 #![feature(rustc_private)]
 #![recursion_limit = "512"]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
@@ -2168,9 +2167,7 @@ pub fn fn_has_unsatisfiable_preds(cx: &LateContext<'_>, did: DefId) -> bool {
         .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
     traits::impossible_predicates(
         cx.tcx,
-        traits::elaborate_predicates(cx.tcx, predicates)
-            .map(|o| o.predicate)
-            .collect::<Vec<_>>(),
+        traits::elaborate_predicates(cx.tcx, predicates).collect::<Vec<_>>(),
     )
 }
 

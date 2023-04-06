@@ -7,7 +7,6 @@
 #![feature(let_chains)]
 #![feature(lint_reasons)]
 #![feature(never_type)]
-#![feature(once_cell)]
 #![feature(rustc_private)]
 #![feature(stmt_expr_attributes)]
 #![recursion_limit = "512"]

@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet;
-use rustc_ast::ast::{Item, ItemKind, Ty, TyKind};
+use rustc_ast::ast::{ConstItem, Item, ItemKind, StaticItem, Ty, TyKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -100,13 +100,13 @@ impl EarlyLintPass for RedundantStaticLifetimes {
         }
 
         if !item.span.from_expansion() {
-            if let ItemKind::Const(_, ref var_type, _) = item.kind {
+            if let ItemKind::Const(box ConstItem { ty: ref var_type, .. }) = item.kind {
                 Self::visit_type(var_type, cx, "constants have by default a `'static` lifetime");
                 // Don't check associated consts because `'static` cannot be elided on those (issue
                 // #2438)
             }
 
-            if let ItemKind::Static(ref var_type, _, _) = item.kind {
+            if let ItemKind::Static(box StaticItem { ty: ref var_type, .. }) = item.kind {
                 Self::visit_type(var_type, cx, "statics have by default a `'static` lifetime");
             }
         }
