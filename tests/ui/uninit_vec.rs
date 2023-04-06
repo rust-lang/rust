@@ -124,4 +124,12 @@ fn main() {
             vec.set_len(10);
         }
     }
+
+    fn poly_maybe_uninit<T>() {
+        // We are conservative around polymorphic types.
+        let mut vec: Vec<MaybeUninit<T>> = Vec::with_capacity(1000);
+        unsafe {
+            vec.set_len(10);
+        }
+    }
 }

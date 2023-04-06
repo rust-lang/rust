@@ -11,3 +11,6 @@ target-dir = "target"
 
 [unstable]
 binary-dep-depinfo = true
+
+[profile.dev]
+split-debuginfo = "unpacked"

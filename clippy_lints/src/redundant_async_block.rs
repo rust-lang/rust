@@ -1,8 +1,15 @@
-use clippy_utils::{diagnostics::span_lint_and_sugg, source::snippet};
-use rustc_ast::ast::{Expr, ExprKind, Stmt, StmtKind};
-use rustc_ast::visit::Visitor as AstVisitor;
+use std::ops::ControlFlow;
+
+use clippy_utils::{
+    diagnostics::span_lint_and_sugg,
+    peel_blocks,
+    source::{snippet, walk_span_to_context},
+    visitors::for_each_expr,
+};
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_hir::{AsyncGeneratorKind, Closure, Expr, ExprKind, GeneratorKind, MatchSource};
+use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::{lint::in_external_macro, ty::UpvarCapture};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
@@ -14,106 +21,88 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// async fn f() -> i32 {
-    ///     1 + 2
-    /// }
-    ///
+    /// let f = async {
+    ///    1 + 2
+    /// };
     /// let fut = async {
-    ///     f().await
+    ///     f.await
     /// };
     /// ```
     /// Use instead:
     /// ```rust
-    /// async fn f() -> i32 {
-    ///     1 + 2
-    /// }
-    ///
-    /// let fut = f();
+    /// let f = async {
+    ///    1 + 2
+    /// };
+    /// let fut = f;
     /// ```
     #[clippy::version = "1.69.0"]
     pub REDUNDANT_ASYNC_BLOCK,
-    nursery,
+    complexity,
     "`async { future.await }` can be replaced by `future`"
 }
 declare_lint_pass!(RedundantAsyncBlock => [REDUNDANT_ASYNC_BLOCK]);
 
-impl EarlyLintPass for RedundantAsyncBlock {
-    fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        if expr.span.from_expansion() {
-            return;
-        }
-        if let ExprKind::Async(_, block) = &expr.kind && block.stmts.len() == 1 &&
-            let Some(Stmt { kind: StmtKind::Expr(last), .. }) = block.stmts.last() &&
-            let ExprKind::Await(future) = &last.kind &&
-            !future.span.from_expansion() &&
-            !await_in_expr(future)
+impl<'tcx> LateLintPass<'tcx> for RedundantAsyncBlock {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        let span = expr.span;
+        if !in_external_macro(cx.tcx.sess, span) &&
+            let Some(body_expr) = desugar_async_block(cx, expr) &&
+            let Some(expr) = desugar_await(peel_blocks(body_expr)) &&
+            // The await prefix must not come from a macro as its content could change in the future.
+            expr.span.ctxt() == body_expr.span.ctxt() &&
+            // An async block does not have immediate side-effects from a `.await` point-of-view.
+            (!expr.can_have_side_effects() || desugar_async_block(cx, expr).is_some()) &&
+            let Some(shortened_span) = walk_span_to_context(expr.span, span.ctxt())
         {
-            if captures_value(last) {
-                // If the async block captures variables then there is no equivalence.
-                return;
-            }
-
             span_lint_and_sugg(
                 cx,
                 REDUNDANT_ASYNC_BLOCK,
-                expr.span,
+                span,
                 "this async expression only awaits a single future",
                 "you can reduce it to",
-                snippet(cx, future.span, "..").into_owned(),
+                snippet(cx, shortened_span, "..").into_owned(),
                 Applicability::MachineApplicable,
             );
         }
     }
 }
 
-/// Check whether an expression contains `.await`
-fn await_in_expr(expr: &Expr) -> bool {
-    let mut detector = AwaitDetector::default();
-    detector.visit_expr(expr);
-    detector.await_found
-}
-
-#[derive(Default)]
-struct AwaitDetector {
-    await_found: bool,
-}
-
-impl<'ast> AstVisitor<'ast> for AwaitDetector {
-    fn visit_expr(&mut self, ex: &'ast Expr) {
-        match (&ex.kind, self.await_found) {
-            (ExprKind::Await(_), _) => self.await_found = true,
-            (_, false) => rustc_ast::visit::walk_expr(self, ex),
-            _ => (),
-        }
+/// If `expr` is a desugared `async` block, return the original expression if it does not capture
+/// any variable by ref.
+fn desugar_async_block<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
+    if let ExprKind::Closure(Closure { body, def_id, .. }) = expr.kind &&
+        let body = cx.tcx.hir().body(*body) &&
+        matches!(body.generator_kind, Some(GeneratorKind::Async(AsyncGeneratorKind::Block)))
+    {
+        cx
+            .typeck_results()
+            .closure_min_captures
+            .get(def_id)
+            .map_or(true, |m| {
+                m.values().all(|places| {
+                    places
+                        .iter()
+                        .all(|place| matches!(place.info.capture_kind, UpvarCapture::ByValue))
+                })
+            })
+            .then_some(body.value)
+    } else {
+        None
     }
 }
 
-/// Check whether an expression may have captured a local variable.
-/// This is done by looking for paths with only one segment, except as
-/// a prefix of `.await` since this would be captured by value.
-///
-/// This function will sometimes return `true` even tough there are no
-/// captures happening: at the AST level, it is impossible to
-/// dinstinguish a function call from a call to a closure which comes
-/// from the local environment.
-fn captures_value(expr: &Expr) -> bool {
-    let mut detector = CaptureDetector::default();
-    detector.visit_expr(expr);
-    detector.capture_found
-}
-
-#[derive(Default)]
-struct CaptureDetector {
-    capture_found: bool,
-}
-
-impl<'ast> AstVisitor<'ast> for CaptureDetector {
-    fn visit_expr(&mut self, ex: &'ast Expr) {
-        match (&ex.kind, self.capture_found) {
-            (ExprKind::Await(fut), _) if matches!(fut.kind, ExprKind::Path(..)) => (),
-            (ExprKind::Path(_, path), _) if path.segments.len() == 1 => self.capture_found = true,
-            (_, false) => rustc_ast::visit::walk_expr(self, ex),
-            _ => (),
-        }
+/// If `expr` is a desugared `.await`, return the original expression if it does not come from a
+/// macro expansion.
+fn desugar_await<'tcx>(expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
+    if let ExprKind::Match(match_value, _, MatchSource::AwaitDesugar) = expr.kind &&
+        let ExprKind::Call(_, [into_future_arg]) = match_value.kind &&
+        let ctxt = expr.span.ctxt() &&
+        for_each_expr(into_future_arg, |e|
+            walk_span_to_context(e.span, ctxt)
+                .map_or(ControlFlow::Break(()), |_| ControlFlow::Continue(()))).is_none()
+    {
+        Some(into_future_arg)
+    } else {
+        None
     }
 }

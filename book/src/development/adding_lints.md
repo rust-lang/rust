@@ -18,12 +18,13 @@ because that's clearly a non-descriptive name.
     - [Cargo lints](#cargo-lints)
   - [Rustfix tests](#rustfix-tests)
   - [Testing manually](#testing-manually)
+  - [Running directly](#running-directly)
   - [Lint declaration](#lint-declaration)
   - [Lint registration](#lint-registration)
   - [Lint passes](#lint-passes)
   - [Emitting a lint](#emitting-a-lint)
   - [Adding the lint logic](#adding-the-lint-logic)
-  - [Specifying the lint's minimum supported Rust version (MSRV)](#specifying-the-lints-minimum-supported-rust-version-msrv)
+  - [Specifying the lint's minimum supported Rust version (MSRV)](#specifying-the-lints-minimum-supported-rust-version--msrv-)
   - [Author lint](#author-lint)
   - [Print HIR lint](#print-hir-lint)
   - [Documentation](#documentation)
@@ -186,6 +187,15 @@ cargo dev lint input.rs
 from the working copy root. With tests in place, let's have a look at
 implementing our lint now.
 
+## Running directly
+
+While it's easier to just use `cargo dev lint`, it might be desirable to get
+`target/release/cargo-clippy` and `target/release/clippy-driver` to work as well in some cases.
+By default, they don't work because clippy dynamically links rustc. To help them find rustc,
+add the path printed by`rustc --print target-libdir` (ran inside this workspace so that the rustc version matches)
+to your library search path.
+On linux, this can be done by setting the `LD_LIBRARY_PATH` environment variable to that path.
+
 ## Lint declaration
 
 Let's start by opening the new file created in the `clippy_lints` crate at
@@ -265,7 +275,7 @@ When declaring a new lint by hand and `cargo dev update_lints` is used, the lint
 pass may have to be registered manually in the `register_plugins` function in
 `clippy_lints/src/lib.rs`:
 
-```rust
+```rust,ignore
 store.register_early_pass(|| Box::new(foo_functions::FooFunctions));
 ```
 
@@ -291,7 +301,7 @@ either [`EarlyLintPass`][early_lint_pass] or [`LateLintPass`][late_lint_pass].
 
 In short, the `LateLintPass` has access to type information while the
 `EarlyLintPass` doesn't. If you don't need access to type information, use the
-`EarlyLintPass`. The `EarlyLintPass` is also faster. However linting speed
+`EarlyLintPass`. The `EarlyLintPass` is also faster. However, linting speed
 hasn't really been a concern with Clippy so far.
 
 Since we don't need type information for checking the function name, we used
@@ -308,7 +318,7 @@ implementation of the lint logic.
 
 Let's start by implementing the `EarlyLintPass` for our `FooFunctions`:
 
-```rust
+```rust,ignore
 impl EarlyLintPass for FooFunctions {
     fn check_fn(&mut self, cx: &EarlyContext<'_>, fn_kind: FnKind<'_>, span: Span, _: NodeId) {
         // TODO: Emit lint here
@@ -327,10 +337,10 @@ variety of lint emission functions. They can all be found in
 [`clippy_utils/src/diagnostics.rs`][diagnostics].
 
 `span_lint_and_help` seems most appropriate in this case. It allows us to
-provide an extra help message and we can't really suggest a better name
+provide an extra help message, and we can't really suggest a better name
 automatically. This is how it looks:
 
-```rust
+```rust,ignore
 impl EarlyLintPass for FooFunctions {
     fn check_fn(&mut self, cx: &EarlyContext<'_>, fn_kind: FnKind<'_>, span: Span, _: NodeId) {
         span_lint_and_help(
@@ -469,7 +479,7 @@ the value from `clippy.toml`. This can be accounted for using the
 `extract_msrv_attr!(LintContext)` macro and passing
 `LateContext`/`EarlyContext`.
 
-```rust
+```rust,ignore
 impl<'tcx> LateLintPass<'tcx> for ManualStrip {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         ...
@@ -483,7 +493,7 @@ the lint's test file, `tests/ui/manual_strip.rs` in this example. It should
 have a case for the version below the MSRV and one with the same contents but
 for the MSRV version itself.
 
-```rust
+```rust,ignore
 ...
 
 #[clippy::msrv = "1.44"]
@@ -514,7 +524,7 @@ define_Conf! {
 
 If you have trouble implementing your lint, there is also the internal `author`
 lint to generate Clippy code that detects the offending pattern. It does not
-work for all of the Rust syntax, but can give a good starting point.
+work for all the Rust syntax, but can give a good starting point.
 
 The quickest way to use it, is the [Rust playground:
 play.rust-lang.org][author_example]. Put the code you want to lint into the
@@ -607,7 +617,7 @@ output in the `stdout` part.
 
 ## PR Checklist
 
-Before submitting your PR make sure you followed all of the basic requirements:
+Before submitting your PR make sure you followed all the basic requirements:
 
 <!-- Sync this with `.github/PULL_REQUEST_TEMPLATE` -->
 
@@ -627,7 +637,7 @@ for some users. Adding a configuration is done in the following steps:
 
 1. Adding a new configuration entry to [`clippy_lints::utils::conf`] like this:
 
-   ```rust
+   ```rust,ignore
    /// Lint: LINT_NAME.
    ///
    /// <The configuration field doc comment>
@@ -680,7 +690,7 @@ for some users. Adding a configuration is done in the following steps:
    configuration value is now cloned or copied into a local value that is then
    passed to the impl struct like this:
 
-   ```rust
+   ```rust,ignore
    // Default generated registration:
    store.register_*_pass(|| box module::StructName);
 

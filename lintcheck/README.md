@@ -16,7 +16,7 @@ or
 cargo lintcheck
 ```
 
-By default the logs will be saved into
+By default, the logs will be saved into
 `lintcheck-logs/lintcheck_crates_logs.txt`.
 
 You can set a custom sources.toml by adding `--crates-toml custom.toml` or using

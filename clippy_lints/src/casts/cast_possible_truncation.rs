@@ -2,8 +2,9 @@ use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::expr_or_init;
 use clippy_utils::source::snippet;
+use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{get_discriminant_value, is_isize_or_usize};
-use rustc_errors::{Applicability, SuggestionStyle};
+use rustc_errors::{Applicability, Diagnostic, SuggestionStyle};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -163,19 +164,34 @@ pub(super) fn check(
         _ => return,
     };
 
-    let name_of_cast_from = snippet(cx, cast_expr.span, "..");
-    let cast_to_snip = snippet(cx, cast_to_span, "..");
-    let suggestion = format!("{cast_to_snip}::try_from({name_of_cast_from})");
-
     span_lint_and_then(cx, CAST_POSSIBLE_TRUNCATION, expr.span, &msg, |diag| {
         diag.help("if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...");
-        diag.span_suggestion_with_style(
-            expr.span,
-            "... or use `try_from` and handle the error accordingly",
-            suggestion,
-            Applicability::Unspecified,
-            // always show the suggestion in a separate line
-            SuggestionStyle::ShowAlways,
-        );
+        if !cast_from.is_floating_point() {
+            offer_suggestion(cx, expr, cast_expr, cast_to_span, diag);
+        }
     });
+}
+
+fn offer_suggestion(
+    cx: &LateContext<'_>,
+    expr: &Expr<'_>,
+    cast_expr: &Expr<'_>,
+    cast_to_span: Span,
+    diag: &mut Diagnostic,
+) {
+    let cast_to_snip = snippet(cx, cast_to_span, "..");
+    let suggestion = if cast_to_snip == "_" {
+        format!("{}.try_into()", Sugg::hir(cx, cast_expr, "..").maybe_par())
+    } else {
+        format!("{cast_to_snip}::try_from({})", Sugg::hir(cx, cast_expr, ".."))
+    };
+
+    diag.span_suggestion_with_style(
+        expr.span,
+        "... or use `try_from` and handle the error accordingly",
+        suggestion,
+        Applicability::Unspecified,
+        // always show the suggestion in a separate line
+        SuggestionStyle::ShowAlways,
+    );
 }

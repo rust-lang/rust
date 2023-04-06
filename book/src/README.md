@@ -14,7 +14,7 @@ much Clippy is supposed to ~~annoy~~ help you by changing the lint level by
 category.
 
 | Category              | Description                                                                         | Default level |
-| --------------------- | ----------------------------------------------------------------------------------- | ------------- |
+|-----------------------|-------------------------------------------------------------------------------------|---------------|
 | `clippy::all`         | all lints that are on by default (correctness, suspicious, style, complexity, perf) | **warn/deny** |
 | `clippy::correctness` | code that is outright wrong or useless                                              | **deny**      |
 | `clippy::suspicious`  | code that is most likely wrong or useless                                           | **warn**      |
