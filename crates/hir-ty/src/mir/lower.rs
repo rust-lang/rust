@@ -47,7 +47,7 @@ struct MirLowerCtx<'a> {
     current_loop_blocks: Option<LoopBlocks>,
     // FIXME: we should resolve labels in HIR lowering and always work with label id here, not
     // with raw names.
-    labeled_loop_blocks: FxHashMap<Name, LoopBlocks>,
+    labeled_loop_blocks: FxHashMap<LabelId, LoopBlocks>,
     discr_temp: Option<Place>,
     db: &'a dyn HirDatabase,
     body: &'a Body,
@@ -579,19 +579,19 @@ impl MirLowerCtx<'_> {
                     Ok(None)
                 }
             },
-            Expr::Break { expr, label } => {
+            &Expr::Break { expr, label } => {
                 if let Some(expr) = expr {
                     let loop_data = match label {
-                        Some(l) => self.labeled_loop_blocks.get(l).ok_or(MirLowerError::UnresolvedLabel)?,
+                        Some(l) => self.labeled_loop_blocks.get(&l).ok_or(MirLowerError::UnresolvedLabel)?,
                         None => self.current_loop_blocks.as_ref().ok_or(MirLowerError::BreakWithoutLoop)?,
                     };
-                    let Some(c) = self.lower_expr_to_place(*expr, loop_data.place.clone(), current)? else {
+                    let Some(c) = self.lower_expr_to_place(expr, loop_data.place.clone(), current)? else {
                         return Ok(None);
                     };
                     current = c;
                 }
                 let end = match label {
-                    Some(l) => self.labeled_loop_blocks.get(l).ok_or(MirLowerError::UnresolvedLabel)?.end.expect("We always generate end for labeled loops"),
+                    Some(l) => self.labeled_loop_blocks.get(&l).ok_or(MirLowerError::UnresolvedLabel)?.end.expect("We always generate end for labeled loops"),
                     None => self.current_loop_end()?,
                 };
                 self.set_goto(current, end);
@@ -1119,10 +1119,8 @@ impl MirLowerCtx<'_> {
             // bad as we may emit end (unneccessary unreachable block) for unterminating loop, but
             // it should not affect correctness.
             self.current_loop_end()?;
-            self.labeled_loop_blocks.insert(
-                self.body.labels[label].name.clone(),
-                self.current_loop_blocks.as_ref().unwrap().clone(),
-            )
+            self.labeled_loop_blocks
+                .insert(label, self.current_loop_blocks.as_ref().unwrap().clone())
         } else {
             None
         };
@@ -1131,7 +1129,7 @@ impl MirLowerCtx<'_> {
         let my = mem::replace(&mut self.current_loop_blocks, prev)
             .ok_or(MirLowerError::ImplementationError("current_loop_blocks is corrupt"))?;
         if let Some(prev) = prev_label {
-            self.labeled_loop_blocks.insert(self.body.labels[label.unwrap()].name.clone(), prev);
+            self.labeled_loop_blocks.insert(label.unwrap(), prev);
         }
         Ok(my.end)
     }

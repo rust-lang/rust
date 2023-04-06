@@ -219,14 +219,14 @@ impl<'a> Printer<'a> {
             }
             Expr::Continue { label } => {
                 w!(self, "continue");
-                if let Some(label) = label {
-                    w!(self, " {}", label);
+                if let Some(lbl) = label {
+                    w!(self, " {}", self.body[*lbl].name);
                 }
             }
             Expr::Break { expr, label } => {
                 w!(self, "break");
-                if let Some(label) = label {
-                    w!(self, " {}", label);
+                if let Some(lbl) = label {
+                    w!(self, " {}", self.body[*lbl].name);
                 }
                 if let Some(expr) = expr {
                     self.whitespace();

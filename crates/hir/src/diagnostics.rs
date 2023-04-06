@@ -50,7 +50,9 @@ diagnostics![
     PrivateField,
     ReplaceFilterMapNextWithFindMap,
     TypeMismatch,
+    UndeclaredLabel,
     UnimplementedBuiltinMacro,
+    UnreachableLabel,
     UnresolvedExternCrate,
     UnresolvedField,
     UnresolvedImport,
@@ -60,6 +62,13 @@ diagnostics![
     UnresolvedProcMacro,
     UnusedMut,
 ];
+
+#[derive(Debug)]
+pub struct BreakOutsideOfLoop {
+    pub expr: InFile<AstPtr<ast::Expr>>,
+    pub is_break: bool,
+    pub bad_value_break: bool,
+}
 
 #[derive(Debug)]
 pub struct UnresolvedModule {
@@ -83,6 +92,17 @@ pub struct UnresolvedMacroCall {
     pub precise_location: Option<TextRange>,
     pub path: ModPath,
     pub is_bang: bool,
+}
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct UnreachableLabel {
+    pub node: InFile<AstPtr<ast::Lifetime>>,
+    pub name: Name,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct UndeclaredLabel {
+    pub node: InFile<AstPtr<ast::Lifetime>>,
+    pub name: Name,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -164,13 +184,6 @@ pub struct UnresolvedMethodCall {
 pub struct PrivateField {
     pub expr: InFile<AstPtr<ast::Expr>>,
     pub field: Field,
-}
-
-#[derive(Debug)]
-pub struct BreakOutsideOfLoop {
-    pub expr: InFile<AstPtr<ast::Expr>>,
-    pub is_break: bool,
-    pub bad_value_break: bool,
 }
 
 #[derive(Debug)]

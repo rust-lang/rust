@@ -18,6 +18,7 @@ use std::{convert::identity, ops::Index};
 
 use chalk_ir::{cast::Cast, DebruijnIndex, Mutability, Safety, Scalar, TypeFlags};
 use either::Either;
+use hir_def::expr::LabelId;
 use hir_def::{
     body::Body,
     builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
@@ -188,7 +189,7 @@ pub enum InferenceDiagnostic {
         /// Contains the type the field resolves to
         field_with_same_name: Option<Ty>,
     },
-    // FIXME: Make this proper
+    // FIXME: This should be emitted in body lowering
     BreakOutsideOfLoop {
         expr: ExprId,
         is_break: bool,
@@ -468,7 +469,7 @@ struct BreakableContext {
     /// The coercion target of the context.
     coerce: Option<CoerceMany>,
     /// The optional label of the context.
-    label: Option<name::Name>,
+    label: Option<LabelId>,
     kind: BreakableKind,
 }
 
@@ -483,21 +484,21 @@ enum BreakableKind {
 
 fn find_breakable<'c>(
     ctxs: &'c mut [BreakableContext],
-    label: Option<&name::Name>,
+    label: Option<LabelId>,
 ) -> Option<&'c mut BreakableContext> {
     let mut ctxs = ctxs
         .iter_mut()
         .rev()
         .take_while(|it| matches!(it.kind, BreakableKind::Block | BreakableKind::Loop));
     match label {
-        Some(_) => ctxs.find(|ctx| ctx.label.as_ref() == label),
+        Some(_) => ctxs.find(|ctx| ctx.label == label),
         None => ctxs.find(|ctx| matches!(ctx.kind, BreakableKind::Loop)),
     }
 }
 
 fn find_continuable<'c>(
     ctxs: &'c mut [BreakableContext],
-    label: Option<&name::Name>,
+    label: Option<LabelId>,
 ) -> Option<&'c mut BreakableContext> {
     match label {
         Some(_) => find_breakable(ctxs, label).filter(|it| matches!(it.kind, BreakableKind::Loop)),
