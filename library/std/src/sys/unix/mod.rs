@@ -217,6 +217,13 @@ pub(crate) fn unix_sigpipe_attr_specified() -> bool {
 // SAFETY: must be called only once during runtime cleanup.
 // NOTE: this is not guaranteed to run, for example when the program aborts.
 pub unsafe fn cleanup() {
+    // Eagerly run TLS destructors while the stack overflow handler is still
+    // active. Since this operation is outside any user code scope, there can
+    // be no outstanding to the data. The TLS destructors would otherwise be
+    // run directly after this function returned, so there should be no
+    // observable differences in behaviour.
+    #[cfg(target_thread_local)]
+    thread_local_dtor::run_dtors();
     stack_overflow::cleanup();
 }
 

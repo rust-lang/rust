@@ -106,6 +106,14 @@ impl Thread {
                 let _handler = stack_overflow::Handler::new();
                 // Finally, let's run some code.
                 Box::from_raw(main as *mut Box<dyn FnOnce()>)();
+                // Eagerly run TLS destructors while the stack overflow
+                // handler is still active. Since this operation is outside
+                // any user code scope, there can be no outstanding to the
+                // data. The TLS destructors would otherwise be run directly
+                // after this function returned, so there should be no observable
+                // differences in behaviour.
+                #[cfg(target_thread_local)]
+                super::thread_local_dtor::run_dtors();
             }
             ptr::null_mut()
         }

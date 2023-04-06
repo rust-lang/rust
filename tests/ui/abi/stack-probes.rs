@@ -44,10 +44,7 @@ fn main() {
     // details
     if cfg!(not(target_os = "linux")) {
         assert_overflow(Command::new(&me).arg("main-recurse"));
-        // FIXME: This does not seem to work on macOS.
-        if cfg!(not(target_os = "macos")) {
-            assert_overflow(Command::new(&me).arg("main-tls-recurse"));
-        }
+        assert_overflow(Command::new(&me).arg("main-tls-recurse"));
     }
     assert_overflow(Command::new(&me).arg("child-recurse"));
     assert_overflow(Command::new(&me).arg("child-tls-recurse"));
