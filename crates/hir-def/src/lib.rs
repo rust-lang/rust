@@ -24,7 +24,6 @@ pub mod per_ns;
 pub mod item_scope;
 
 pub mod dyn_map;
-pub mod keys;
 
 pub mod item_tree;
 
