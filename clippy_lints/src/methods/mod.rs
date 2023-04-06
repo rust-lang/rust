@@ -3589,12 +3589,13 @@ impl Methods {
                     Some(("bytes", recv2, [], _, _)) => bytes_count_to_len::check(cx, expr, recv, recv2),
                     _ => {},
                 },
-                ("drain", [arg]) => {
-                if let Node::Stmt(Stmt { hir_id: _, kind, .. }) = cx.tcx.hir().get_parent(expr.hir_id)
-                    && matches!(kind, StmtKind::Semi(_))
+                ("drain", ..) => {
+                    if let Node::Stmt(Stmt { hir_id: _, kind, .. }) = cx.tcx.hir().get_parent(expr.hir_id)
+                        && matches!(kind, StmtKind::Semi(_))
+                        && args.len() <= 1
                     {
-                        clear_with_drain::check(cx, expr, recv, span, arg);
-                    } else {
+                        clear_with_drain::check(cx, expr, recv, span, args.first());
+                    } else if let [arg] = args {
                         iter_with_drain::check(cx, expr, recv, span, arg);
                     }
                 },

@@ -1,5 +1,5 @@
 error: `drain` used to clear a `Vec`
-  --> $DIR/clear_with_drain.rs:17:7
+  --> $DIR/clear_with_drain.rs:22:7
    |
 LL |     v.drain(0..v.len()); // Nay
    |       ^^^^^^^^^^^^^^^^^ help: try: `clear()`
@@ -7,34 +7,58 @@ LL |     v.drain(0..v.len()); // Nay
    = note: `-D clippy::clear-with-drain` implied by `-D warnings`
 
 error: `drain` used to clear a `Vec`
-  --> $DIR/clear_with_drain.rs:20:7
+  --> $DIR/clear_with_drain.rs:25:7
    |
 LL |     v.drain(usize::MIN..v.len()); // Nay
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `clear()`
 
 error: `drain` used to clear a `Vec`
-  --> $DIR/clear_with_drain.rs:35:7
+  --> $DIR/clear_with_drain.rs:40:7
    |
 LL |     v.drain(0..); // Nay
    |       ^^^^^^^^^^ help: try: `clear()`
 
 error: `drain` used to clear a `Vec`
-  --> $DIR/clear_with_drain.rs:38:7
+  --> $DIR/clear_with_drain.rs:43:7
    |
 LL |     v.drain(usize::MIN..); // Nay
    |       ^^^^^^^^^^^^^^^^^^^ help: try: `clear()`
 
 error: `drain` used to clear a `Vec`
-  --> $DIR/clear_with_drain.rs:52:7
+  --> $DIR/clear_with_drain.rs:57:7
    |
 LL |     v.drain(..); // Nay
    |       ^^^^^^^^^ help: try: `clear()`
 
 error: `drain` used to clear a `Vec`
-  --> $DIR/clear_with_drain.rs:66:7
+  --> $DIR/clear_with_drain.rs:71:7
    |
 LL |     v.drain(..v.len()); // Nay
    |       ^^^^^^^^^^^^^^^^ help: try: `clear()`
 
-error: aborting due to 6 previous errors
+error: `drain` used to clear a `VecDeque`
+  --> $DIR/clear_with_drain.rs:93:11
+   |
+LL |     deque.drain(..);
+   |           ^^^^^^^^^ help: try: `clear()`
+
+error: `drain` used to clear a `HashSet`
+  --> $DIR/clear_with_drain.rs:96:9
+   |
+LL |     set.drain();
+   |         ^^^^^^^ help: try: `clear()`
+
+error: `drain` used to clear a `HashMap`
+  --> $DIR/clear_with_drain.rs:101:7
+   |
+LL |     a.drain();
+   |       ^^^^^^^ help: try: `clear()`
+
+error: `drain` used to clear a `BinaryHeap`
+  --> $DIR/clear_with_drain.rs:104:10
+   |
+LL |     heap.drain();
+   |          ^^^^^^^ help: try: `clear()`
+
+error: aborting due to 10 previous errors
 

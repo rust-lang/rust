@@ -2,6 +2,11 @@
 #![allow(unused)]
 #![warn(clippy::clear_with_drain)]
 
+use std::collections::BinaryHeap;
+use std::collections::HashMap;
+use std::collections::HashSet;
+use std::collections::VecDeque;
+
 fn range() {
     let mut v = vec![1, 2, 3];
     let iter = v.drain(0..v.len()); // Yay
@@ -83,4 +88,22 @@ fn partial_drains() {
     let w: Vec<i8> = v.drain(1..v.len() - 1).collect(); // Yay
 }
 
-fn main() {}
+fn main() {
+    let mut deque: VecDeque<_> = [1, 2, 3].into();
+    deque.drain(..);
+
+    let mut set = HashSet::from([1, 2, 3]);
+    set.drain();
+
+    let mut a = HashMap::new();
+    a.insert(1, "a");
+    a.insert(2, "b");
+    a.drain();
+
+    let mut heap = BinaryHeap::from([1, 3]);
+    heap.drain();
+
+    // Not firing for now because `String` is not reckognized by `is_type_diagnostic_item`
+    let mut s = String::from("α is alpha, β is beta");
+    s.drain(..);
+}
