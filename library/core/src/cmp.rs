@@ -1412,6 +1412,7 @@ mod impls {
 
     #[unstable(feature = "never_type", issue = "35121")]
     impl PartialEq for ! {
+        #[inline]
         fn eq(&self, _: &!) -> bool {
             *self
         }
@@ -1422,6 +1423,7 @@ mod impls {
 
     #[unstable(feature = "never_type", issue = "35121")]
     impl PartialOrd for ! {
+        #[inline]
         fn partial_cmp(&self, _: &!) -> Option<Ordering> {
             *self
         }
@@ -1429,6 +1431,7 @@ mod impls {
 
     #[unstable(feature = "never_type", issue = "35121")]
     impl Ord for ! {
+        #[inline]
         fn cmp(&self, _: &!) -> Ordering {
             *self
         }

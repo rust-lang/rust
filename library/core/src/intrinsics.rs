@@ -2523,6 +2523,7 @@ macro_rules! assert_unsafe_precondition {
                 }
             }
             #[allow(non_snake_case)]
+            #[inline]
             const fn comptime$(<$($tt)*>)?($(_:$ty),*) {}
 
             ::core::intrinsics::const_eval_select(($($i,)*), comptime, runtime);
