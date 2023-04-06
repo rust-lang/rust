@@ -111,3 +111,6 @@ unsafe impl Send for OwnedSlice {}
 
 // Safety: `OwnedSlice` is conceptually `(&'self.1 [u8], Box<dyn Send + Sync>)`, which is `Sync`
 unsafe impl Sync for OwnedSlice {}
+
+#[cfg(test)]
+mod tests;
