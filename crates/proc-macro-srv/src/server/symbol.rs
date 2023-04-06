@@ -1,28 +1,30 @@
 //! Symbol interner for proc-macro-srv
 
-use std::{cell::RefCell, collections::HashMap};
+use std::{cell::RefCell, collections::HashMap, thread::LocalKey};
 use tt::SmolStr;
 
 thread_local! {
-    static SYMBOL_INTERNER: RefCell<SymbolInterner> = Default::default();
+    pub(crate) static SYMBOL_INTERNER: RefCell<SymbolInterner> = Default::default();
 }
 
 // ID for an interned symbol.
 #[derive(Hash, Eq, PartialEq, Copy, Clone)]
 pub struct Symbol(u32);
 
+pub(crate) type SymbolInternerRef = &'static LocalKey<RefCell<SymbolInterner>>;
+
 impl Symbol {
-    pub fn intern(data: &str) -> Symbol {
-        SYMBOL_INTERNER.with(|i| i.borrow_mut().intern(data))
+    pub(super) fn intern(interner: SymbolInternerRef, data: &str) -> Symbol {
+        interner.with(|i| i.borrow_mut().intern(data))
     }
 
-    pub fn text(&self) -> SmolStr {
-        SYMBOL_INTERNER.with(|i| i.borrow().get(self).clone())
+    pub(super) fn text(&self, interner: SymbolInternerRef) -> SmolStr {
+        interner.with(|i| i.borrow().get(self).clone())
     }
 }
 
 #[derive(Default)]
-struct SymbolInterner {
+pub(crate) struct SymbolInterner {
     idents: HashMap<SmolStr, u32>,
     ident_data: Vec<SmolStr>,
 }

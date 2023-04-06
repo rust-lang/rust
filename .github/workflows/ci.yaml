@@ -24,6 +24,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       CC: deny_c
+      # we want to build r-a on stable to check that it keeps building on stable,
+      # but we also want to test our proc-macro-srv which depends on nightly features
+      RUSTC_BOOTSTRAP: 1
 
     strategy:
       fail-fast: false
@@ -50,15 +53,15 @@ jobs:
         run: sed -i '/\[profile.dev]/a opt-level=1' Cargo.toml
 
       - name: Compile (tests)
-        run: cargo test --no-run --locked
+        run: cargo test --no-run --locked  --features sysroot-abi
 
       # It's faster to `test` before `build` ¯\_(ツ)_/¯
       - name: Compile (rust-analyzer)
         if: matrix.os == 'ubuntu-latest'
-        run: cargo build --quiet
+        run: cargo build --quiet --features sysroot-abi
 
       - name: Test
-        run: cargo test -- --nocapture --quiet
+        run: cargo test --features sysroot-abi -- --nocapture --quiet
 
       - name: Run analysis-stats on rust-analyzer
         if: matrix.os == 'ubuntu-latest'

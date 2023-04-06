@@ -37,8 +37,12 @@ impl<'a> Project<'a> {
                     "sysroot": null,
                     // Can't use test binary as rustc wrapper.
                     "buildScripts": {
-                        "useRustcWrapper": false
+                        "useRustcWrapper": false,
+                        "enable": false,
                     },
+                },
+                "procMacro": {
+                    "enable": false,
                 }
             }),
         }
@@ -251,6 +255,9 @@ impl Server {
                     .clone()
                     .extract::<lsp_ext::ServerStatusParams>("experimental/serverStatus")
                     .unwrap();
+                if status.health != lsp_ext::Health::Ok {
+                    panic!("server errored/warned while loading workspace: {:?}", status.message);
+                }
                 status.quiescent
             }
             _ => false,

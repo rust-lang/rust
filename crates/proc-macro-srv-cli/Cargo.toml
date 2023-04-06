@@ -10,6 +10,7 @@ rust-version.workspace = true
 
 [dependencies]
 proc-macro-srv.workspace = true
+proc-macro-api.workspace = true
 
 [features]
 sysroot-abi = ["proc-macro-srv/sysroot-abi"]

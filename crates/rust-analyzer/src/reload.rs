@@ -114,6 +114,10 @@ impl GlobalState {
             status.health = lsp_ext::Health::Warning;
             message.push_str("Failed to run build scripts of some packages.\n\n");
         }
+        if self.proc_macro_clients.iter().any(|it| it.is_err()) {
+            status.health = lsp_ext::Health::Warning;
+            message.push_str("Failed to spawn one or more proc-macro servers.\n\n");
+        }
         if !self.config.cargo_autoreload()
             && self.is_quiescent()
             && self.fetch_workspaces_queue.op_requested()
@@ -384,17 +388,22 @@ impl GlobalState {
                     .workspaces
                     .iter()
                     .map(|ws| {
-                        let (path, args): (_, &[_]) = if path_manually_set {
+                        let path = if path_manually_set {
                             tracing::debug!(
                                 "Pro-macro server path explicitly set: {}",
                                 path.display()
                             );
-                            (path.clone(), &[])
+                            path.clone()
                         } else {
                             match ws.find_sysroot_proc_macro_srv() {
-                                Some(server_path) => (server_path, &[]),
-                                None => (path.clone(), &["proc-macro"]),
+                                Some(server_path) => server_path,
+                                None => path.clone(),
                             }
+                        };
+                        let args: &[_] = if path.file_stem() == Some("rust-analyzer".as_ref()) {
+                            &["proc-macro"]
+                        } else {
+                            &[]
                         };
 
                         tracing::info!(?args, "Using proc-macro server at {}", path.display(),);
