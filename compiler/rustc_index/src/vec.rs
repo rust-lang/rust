@@ -24,6 +24,7 @@ pub trait Idx: Copy + 'static + Eq + PartialEq + Debug + Hash {
     }
 
     #[inline]
+    #[must_use = "Use `increment_by` if you wanted to update the index in-place"]
     fn plus(self, amount: usize) -> Self {
         Self::new(self.index() + amount)
     }
@@ -295,6 +296,11 @@ impl<I: Idx, T: Clone> ToOwned for IndexSlice<I, T> {
 
 impl<I: Idx, T> IndexSlice<I, T> {
     #[inline]
+    pub fn empty() -> &'static Self {
+        Default::default()
+    }
+
+    #[inline]
     pub fn from_raw(raw: &[T]) -> &Self {
         let ptr: *const [T] = raw;
         // SAFETY: `IndexSlice` is `repr(transparent)` over a normal slice
@@ -409,6 +415,36 @@ impl<I: Idx, T> IndexSlice<I, T> {
     }
 }
 
+impl<I: Idx, J: Idx> IndexSlice<I, J> {
+    /// Invert a bijective mapping, i.e. `invert(map)[y] = x` if `map[x] = y`,
+    /// assuming the values in `self` are a permutation of `0..self.len()`.
+    ///
+    /// This is used to go between `memory_index` (source field order to memory order)
+    /// and `inverse_memory_index` (memory order to source field order).
+    /// See also `FieldsShape::Arbitrary::memory_index` for more details.
+    // FIXME(eddyb) build a better abstraction for permutations, if possible.
+    pub fn invert_bijective_mapping(&self) -> IndexVec<J, I> {
+        debug_assert_eq!(
+            self.iter().map(|x| x.index() as u128).sum::<u128>(),
+            (0..self.len() as u128).sum::<u128>(),
+            "The values aren't 0..N in input {self:?}",
+        );
+
+        let mut inverse = IndexVec::from_elem_n(Idx::new(0), self.len());
+        for (i1, &i2) in self.iter_enumerated() {
+            inverse[i2] = i1;
+        }
+
+        debug_assert_eq!(
+            inverse.iter().map(|x| x.index() as u128).sum::<u128>(),
+            (0..inverse.len() as u128).sum::<u128>(),
+            "The values aren't 0..N in result {self:?}",
+        );
+
+        inverse
+    }
+}
+
 /// `IndexVec` is often used as a map, so it provides some map-like APIs.
 impl<I: Idx, T> IndexVec<I, Option<T>> {
     #[inline]
@@ -510,6 +546,13 @@ impl<I: Idx, T> FromIterator<T> for IndexVec<I, T> {
         J: IntoIterator<Item = T>,
     {
         IndexVec { raw: FromIterator::from_iter(iter), _marker: PhantomData }
+    }
+}
+
+impl<I: Idx, T, const N: usize> From<[T; N]> for IndexVec<I, T> {
+    #[inline]
+    fn from(array: [T; N]) -> Self {
+        IndexVec::from_raw(array.into())
     }
 }
 

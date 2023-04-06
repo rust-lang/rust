@@ -287,7 +287,7 @@ impl<'tcx> TransformVisitor<'tcx> {
         statements.push(Statement {
             kind: StatementKind::Assign(Box::new((
                 Place::return_place(),
-                Rvalue::Aggregate(Box::new(kind), IndexVec::from_iter([val])),
+                Rvalue::Aggregate(Box::new(kind), [val].into()),
             ))),
             source_info,
         });

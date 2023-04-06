@@ -1,7 +1,7 @@
 use hir::def_id::DefId;
 use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::{IndexSlice, IndexVec};
 use rustc_middle::mir::{GeneratorLayout, GeneratorSavedLocal};
 use rustc_middle::ty::layout::{
     IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, MAX_SIMD_LANES,
@@ -62,23 +62,10 @@ fn layout_of<'tcx>(
     Ok(layout)
 }
 
-// Invert a bijective mapping, i.e. `invert(map)[y] = x` if `map[x] = y`.
-// This is used to go between `memory_index` (source field order to memory order)
-// and `inverse_memory_index` (memory order to source field order).
-// See also `FieldsShape::Arbitrary::memory_index` for more details.
-// FIXME(eddyb) build a better abstraction for permutations, if possible.
-fn invert_mapping(map: &[u32]) -> Vec<u32> {
-    let mut inverse = vec![0; map.len()];
-    for i in 0..map.len() {
-        inverse[map[i] as usize] = i as u32;
-    }
-    inverse
-}
-
 fn univariant_uninterned<'tcx>(
     cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
     ty: Ty<'tcx>,
-    fields: &[Layout<'_>],
+    fields: &IndexSlice<FieldIdx, Layout<'_>>,
     repr: &ReprOptions,
     kind: StructKind,
 ) -> Result<LayoutS, LayoutError<'tcx>> {
@@ -106,7 +93,7 @@ fn layout_of_uncached<'tcx>(
     };
     let scalar = |value: Primitive| tcx.mk_layout(LayoutS::scalar(cx, scalar_unit(value)));
 
-    let univariant = |fields: &[Layout<'_>], repr: &ReprOptions, kind| {
+    let univariant = |fields: &IndexSlice<FieldIdx, Layout<'_>>, repr: &ReprOptions, kind| {
         Ok(tcx.mk_layout(univariant_uninterned(cx, ty, fields, repr, kind)?))
     };
     debug_assert!(!ty.has_non_region_infer());
@@ -256,12 +243,14 @@ fn layout_of_uncached<'tcx>(
         }),
 
         // Odd unit types.
-        ty::FnDef(..) => univariant(&[], &ReprOptions::default(), StructKind::AlwaysSized)?,
+        ty::FnDef(..) => {
+            univariant(IndexSlice::empty(), &ReprOptions::default(), StructKind::AlwaysSized)?
+        }
         ty::Dynamic(_, _, ty::Dyn) | ty::Foreign(..) => {
             let mut unit = univariant_uninterned(
                 cx,
                 ty,
-                &[],
+                IndexSlice::empty(),
                 &ReprOptions::default(),
                 StructKind::AlwaysSized,
             )?;
@@ -277,7 +266,7 @@ fn layout_of_uncached<'tcx>(
         ty::Closure(_, ref substs) => {
             let tys = substs.as_closure().upvar_tys();
             univariant(
-                &tys.map(|ty| Ok(cx.layout_of(ty)?.layout)).collect::<Result<Vec<_>, _>>()?,
+                &tys.map(|ty| Ok(cx.layout_of(ty)?.layout)).try_collect::<IndexVec<_, _>>()?,
                 &ReprOptions::default(),
                 StructKind::AlwaysSized,
             )?
@@ -288,7 +277,7 @@ fn layout_of_uncached<'tcx>(
                 if tys.len() == 0 { StructKind::AlwaysSized } else { StructKind::MaybeUnsized };
 
             univariant(
-                &tys.iter().map(|k| Ok(cx.layout_of(k)?.layout)).collect::<Result<Vec<_>, _>>()?,
+                &tys.iter().map(|k| Ok(cx.layout_of(k)?.layout)).try_collect::<IndexVec<_, _>>()?,
                 &ReprOptions::default(),
                 kind,
             )?
@@ -393,7 +382,7 @@ fn layout_of_uncached<'tcx>(
 
             // Compute the placement of the vector fields:
             let fields = if is_array {
-                FieldsShape::Arbitrary { offsets: vec![Size::ZERO], memory_index: vec![0] }
+                FieldsShape::Arbitrary { offsets: [Size::ZERO].into(), memory_index: [0].into() }
             } else {
                 FieldsShape::Array { stride: e_ly.size, count: e_len }
             };
@@ -418,9 +407,9 @@ fn layout_of_uncached<'tcx>(
                     v.fields
                         .iter()
                         .map(|field| Ok(cx.layout_of(field.ty(tcx, substs))?.layout))
-                        .collect::<Result<Vec<_>, _>>()
+                        .try_collect::<IndexVec<_, _>>()
                 })
-                .collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
+                .try_collect::<IndexVec<VariantIdx, _>>()?;
 
             if def.is_union() {
                 if def.repr().pack.is_some() && def.repr().align.is_some() {
@@ -492,8 +481,7 @@ fn layout_of_uncached<'tcx>(
 enum SavedLocalEligibility {
     Unassigned,
     Assigned(VariantIdx),
-    // FIXME: Use newtype_index so we aren't wasting bytes
-    Ineligible(Option<u32>),
+    Ineligible(Option<FieldIdx>),
 }
 
 // When laying out generators, we divide our saved local fields into two
@@ -605,7 +593,7 @@ fn generator_saved_local_eligibility(
     // Write down the order of our locals that will be promoted to the prefix.
     {
         for (idx, local) in ineligible_locals.iter().enumerate() {
-            assignments[local] = Ineligible(Some(idx as u32));
+            assignments[local] = Ineligible(Some(FieldIdx::from_usize(idx)));
         }
     }
     debug!("generator saved local assignments: {:?}", assignments);
@@ -654,7 +642,7 @@ fn generator_layout<'tcx>(
         .map(|ty| Ok(cx.layout_of(ty)?.layout))
         .chain(iter::once(Ok(tag_layout)))
         .chain(promoted_layouts)
-        .collect::<Result<Vec<_>, _>>()?;
+        .try_collect::<IndexVec<_, _>>()?;
     let prefix = univariant_uninterned(
         cx,
         ty,
@@ -672,26 +660,28 @@ fn generator_layout<'tcx>(
     debug!("prefix = {:#?}", prefix);
     let (outer_fields, promoted_offsets, promoted_memory_index) = match prefix.fields {
         FieldsShape::Arbitrary { mut offsets, memory_index } => {
-            let mut inverse_memory_index = invert_mapping(&memory_index);
+            let mut inverse_memory_index = memory_index.invert_bijective_mapping();
 
             // "a" (`0..b_start`) and "b" (`b_start..`) correspond to
             // "outer" and "promoted" fields respectively.
-            let b_start = (tag_index + 1) as u32;
-            let offsets_b = offsets.split_off(b_start as usize);
+            let b_start = FieldIdx::from_usize(tag_index + 1);
+            let offsets_b = IndexVec::from_raw(offsets.raw.split_off(b_start.as_usize()));
             let offsets_a = offsets;
 
             // Disentangle the "a" and "b" components of `inverse_memory_index`
             // by preserving the order but keeping only one disjoint "half" each.
             // FIXME(eddyb) build a better abstraction for permutations, if possible.
-            let inverse_memory_index_b: Vec<_> =
-                inverse_memory_index.iter().filter_map(|&i| i.checked_sub(b_start)).collect();
-            inverse_memory_index.retain(|&i| i < b_start);
+            let inverse_memory_index_b: IndexVec<u32, FieldIdx> = inverse_memory_index
+                .iter()
+                .filter_map(|&i| i.as_u32().checked_sub(b_start.as_u32()).map(FieldIdx::from_u32))
+                .collect();
+            inverse_memory_index.raw.retain(|&i| i < b_start);
             let inverse_memory_index_a = inverse_memory_index;
 
             // Since `inverse_memory_index_{a,b}` each only refer to their
             // respective fields, they can be safely inverted
-            let memory_index_a = invert_mapping(&inverse_memory_index_a);
-            let memory_index_b = invert_mapping(&inverse_memory_index_b);
+            let memory_index_a = inverse_memory_index_a.invert_bijective_mapping();
+            let memory_index_b = inverse_memory_index_b.invert_bijective_mapping();
 
             let outer_fields =
                 FieldsShape::Arbitrary { offsets: offsets_a, memory_index: memory_index_a };
@@ -722,7 +712,7 @@ fn generator_layout<'tcx>(
                 ty,
                 &variant_only_tys
                     .map(|ty| Ok(cx.layout_of(ty)?.layout))
-                    .collect::<Result<Vec<_>, _>>()?,
+                    .try_collect::<IndexVec<_, _>>()?,
                 &ReprOptions::default(),
                 StructKind::Prefixed(prefix_size, prefix_align.abi),
             )?;
@@ -741,13 +731,16 @@ fn generator_layout<'tcx>(
             // promoted fields were being used, but leave the elements not in the
             // subset as `INVALID_FIELD_IDX`, which we can filter out later to
             // obtain a valid (bijective) mapping.
-            const INVALID_FIELD_IDX: u32 = !0;
-            let mut combined_inverse_memory_index =
-                vec![INVALID_FIELD_IDX; promoted_memory_index.len() + memory_index.len()];
+            const INVALID_FIELD_IDX: FieldIdx = FieldIdx::MAX;
+            debug_assert!(variant_fields.next_index() <= INVALID_FIELD_IDX);
+
+            let mut combined_inverse_memory_index = IndexVec::from_elem_n(
+                INVALID_FIELD_IDX,
+                promoted_memory_index.len() + memory_index.len(),
+            );
             let mut offsets_and_memory_index = iter::zip(offsets, memory_index);
             let combined_offsets = variant_fields
-                .iter()
-                .enumerate()
+                .iter_enumerated()
                 .map(|(i, local)| {
                     let (offset, memory_index) = match assignments[*local] {
                         Unassigned => bug!(),
@@ -756,19 +749,19 @@ fn generator_layout<'tcx>(
                             (offset, promoted_memory_index.len() as u32 + memory_index)
                         }
                         Ineligible(field_idx) => {
-                            let field_idx = field_idx.unwrap() as usize;
+                            let field_idx = field_idx.unwrap();
                             (promoted_offsets[field_idx], promoted_memory_index[field_idx])
                         }
                     };
-                    combined_inverse_memory_index[memory_index as usize] = i as u32;
+                    combined_inverse_memory_index[memory_index] = i;
                     offset
                 })
                 .collect();
 
             // Remove the unused slots and invert the mapping to obtain the
             // combined `memory_index` (also see previous comment).
-            combined_inverse_memory_index.retain(|&i| i != INVALID_FIELD_IDX);
-            let combined_memory_index = invert_mapping(&combined_inverse_memory_index);
+            combined_inverse_memory_index.raw.retain(|&i| i != INVALID_FIELD_IDX);
+            let combined_memory_index = combined_inverse_memory_index.invert_bijective_mapping();
 
             variant.fields = FieldsShape::Arbitrary {
                 offsets: combined_offsets,
@@ -779,7 +772,7 @@ fn generator_layout<'tcx>(
             align = align.max(variant.align);
             Ok(variant)
         })
-        .collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
+        .try_collect::<IndexVec<VariantIdx, _>>()?;
 
     size = size.align_to(align.abi);
 
