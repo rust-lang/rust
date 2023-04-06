@@ -10,14 +10,11 @@ error[E0603]: tuple struct constructor `TupleStruct` is private
 LL |     let ts_explicit = structs::TupleStruct(640, 480);
    |                                ^^^^^^^^^^^ private tuple struct constructor
    |
-  ::: $DIR/auxiliary/structs.rs:11:1
-   |
-LL | #[non_exhaustive]
-   | ----------------- the tuple struct constructor is `#[non_exhaustive]`
-   |
 note: the tuple struct constructor `TupleStruct` is defined here
   --> $DIR/auxiliary/structs.rs:12:1
    |
+LL | #[non_exhaustive]
+   | ----------------- cannot be constructed because it is `#[non_exhaustive]`
 LL | pub struct TupleStruct(pub u16, pub u16);
    | ^^^^^^^^^^^^^^^^^^^^^^
 
@@ -27,14 +24,11 @@ error[E0603]: unit struct `UnitStruct` is private
 LL |     let us_explicit = structs::UnitStruct;
    |                                ^^^^^^^^^^ private unit struct
    |
-  ::: $DIR/auxiliary/structs.rs:8:1
-   |
-LL | #[non_exhaustive]
-   | ----------------- the unit struct is `#[non_exhaustive]`
-   |
 note: the unit struct `UnitStruct` is defined here
   --> $DIR/auxiliary/structs.rs:9:1
    |
+LL | #[non_exhaustive]
+   | ----------------- cannot be constructed because it is `#[non_exhaustive]`
 LL | pub struct UnitStruct;
    | ^^^^^^^^^^^^^^^^^^^^^
 
