@@ -20,7 +20,7 @@ use crate::errors;
 use hir::def::DefKind;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, StashKey};
+use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
@@ -333,17 +333,7 @@ fn bad_placeholder<'tcx>(
     let kind = if kind.ends_with('s') { format!("{}es", kind) } else { format!("{}s", kind) };
 
     spans.sort();
-    let mut err = struct_span_err!(
-        tcx.sess,
-        spans.clone(),
-        E0121,
-        "the placeholder `_` is not allowed within types on item signatures for {}",
-        kind
-    );
-    for span in spans {
-        err.span_label(span, "not allowed in type signatures");
-    }
-    err
+    tcx.sess.create_err(errors::PlaceholderNotAllowedItemSignatures { spans, kind })
 }
 
 impl<'tcx> ItemCtxt<'tcx> {
@@ -419,13 +409,8 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
             self.tcx().mk_projection(item_def_id, item_substs)
         } else {
             // There are no late-bound regions; we can just ignore the binder.
-            let mut err = struct_span_err!(
-                self.tcx().sess,
-                span,
-                E0212,
-                "cannot use the associated type of a trait \
-                 with uninferred generic parameters"
-            );
+            let (mut mpart_sugg, mut inferred_sugg) = (None, None);
+            let mut bound = String::new();
 
             match self.node() {
                 hir::Node::Field(_) | hir::Node::Ctor(_) | hir::Node::Variant(_) => {
@@ -444,31 +429,25 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
                                     (bound.span.shrink_to_lo(), format!("{}, ", lt_name))
                                 }
                             };
-                            let suggestions = vec![
-                                (lt_sp, sugg),
-                                (
-                                    span.with_hi(item_segment.ident.span.lo()),
-                                    format!(
-                                        "{}::",
-                                        // Replace the existing lifetimes with a new named lifetime.
-                                        self.tcx.replace_late_bound_regions_uncached(
-                                            poly_trait_ref,
-                                            |_| {
-                                                self.tcx.mk_re_early_bound(ty::EarlyBoundRegion {
-                                                    def_id: item_def_id,
-                                                    index: 0,
-                                                    name: Symbol::intern(&lt_name),
-                                                })
-                                            }
-                                        ),
+                            mpart_sugg = Some(errors::AssociatedTypeTraitUninferredGenericParamsMultipartSuggestion {
+                                fspan: lt_sp,
+                                first: sugg,
+                                sspan: span.with_hi(item_segment.ident.span.lo()),
+                                second: format!(
+                                    "{}::",
+                                    // Replace the existing lifetimes with a new named lifetime.
+                                    self.tcx.replace_late_bound_regions_uncached(
+                                        poly_trait_ref,
+                                        |_| {
+                                            self.tcx.mk_re_early_bound(ty::EarlyBoundRegion {
+                                                def_id: item_def_id,
+                                                index: 0,
+                                                name: Symbol::intern(&lt_name),
+                                            })
+                                        }
                                     ),
                                 ),
-                            ];
-                            err.multipart_suggestion(
-                                "use a fully qualified path with explicit lifetimes",
-                                suggestions,
-                                Applicability::MaybeIncorrect,
-                            );
+                            });
                         }
                         _ => {}
                     }
@@ -482,20 +461,23 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
                 | hir::Node::ForeignItem(_)
                 | hir::Node::TraitItem(_)
                 | hir::Node::ImplItem(_) => {
-                    err.span_suggestion_verbose(
-                        span.with_hi(item_segment.ident.span.lo()),
-                        "use a fully qualified path with inferred lifetimes",
-                        format!(
-                            "{}::",
-                            // Erase named lt, we want `<A as B<'_>::C`, not `<A as B<'a>::C`.
-                            self.tcx.anonymize_bound_vars(poly_trait_ref).skip_binder(),
-                        ),
-                        Applicability::MaybeIncorrect,
+                    inferred_sugg = Some(span.with_hi(item_segment.ident.span.lo()));
+                    bound = format!(
+                        "{}::",
+                        // Erase named lt, we want `<A as B<'_>::C`, not `<A as B<'a>::C`.
+                        self.tcx.anonymize_bound_vars(poly_trait_ref).skip_binder(),
                     );
                 }
                 _ => {}
             }
-            self.tcx().ty_error(err.emit())
+            self.tcx().ty_error(self.tcx().sess.emit_err(
+                errors::AssociatedTypeTraitUninferredGenericParams {
+                    span,
+                    inferred_sugg,
+                    bound,
+                    mpart_sugg,
+                },
+            ))
         }
     }
 
@@ -763,14 +745,12 @@ fn convert_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId) {
                 Some(discr)
             } else {
                 let span = tcx.def_span(variant.def_id);
-                struct_span_err!(tcx.sess, span, E0370, "enum discriminant overflowed")
-                    .span_label(span, format!("overflowed on value after {}", prev_discr.unwrap()))
-                    .note(&format!(
-                        "explicitly set `{} = {}` if that is desired outcome",
-                        tcx.item_name(variant.def_id),
-                        wrapped_discr
-                    ))
-                    .emit();
+                tcx.sess.emit_err(errors::EnumDiscriminantOverflowed {
+                    span,
+                    discr: prev_discr.unwrap().to_string(),
+                    item_name: tcx.item_name(variant.def_id),
+                    wrapped_discr: wrapped_discr.to_string(),
+                });
                 None
             }
             .unwrap_or(wrapped_discr),
@@ -915,14 +895,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
 
     let paren_sugar = tcx.has_attr(def_id, sym::rustc_paren_sugar);
     if paren_sugar && !tcx.features().unboxed_closures {
-        tcx.sess
-            .struct_span_err(
-                item.span,
-                "the `#[rustc_paren_sugar]` attribute is a temporary means of controlling \
-                 which traits can use parenthetical notation",
-            )
-            .help("add `#![feature(unboxed_closures)]` to the crate attributes to use it")
-            .emit();
+        tcx.sess.emit_err(errors::ParenSugarAttribute { span: item.span });
     }
 
     let is_marker = tcx.has_attr(def_id, sym::marker);
@@ -942,13 +915,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
         // and that they are all identifiers
         .and_then(|attr| match attr.meta_item_list() {
             Some(items) if items.len() < 2 => {
-                tcx.sess
-                    .struct_span_err(
-                        attr.span,
-                        "the `#[rustc_must_implement_one_of]` attribute must be \
-                         used with at least 2 args",
-                    )
-                    .emit();
+                tcx.sess.emit_err(errors::MustImplementOneOfAttribute { span: attr.span });
 
                 None
             }
@@ -957,9 +924,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
                 .map(|item| item.ident().ok_or(item.span()))
                 .collect::<Result<Box<[_]>, _>>()
                 .map_err(|span| {
-                    tcx.sess
-                        .struct_span_err(span, "must be a name of an associated function")
-                        .emit();
+                    tcx.sess.emit_err(errors::MustBeNameOfAssociatedFunction { span });
                 })
                 .ok()
                 .zip(Some(attr.span)),
@@ -975,13 +940,10 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
                 match item {
                     Some(item) if matches!(item.kind, hir::AssocItemKind::Fn { .. }) => {
                         if !tcx.impl_defaultness(item.id.owner_id).has_value() {
-                            tcx.sess
-                                .struct_span_err(
-                                    item.span,
-                                    "function doesn't have a default implementation",
-                                )
-                                .span_note(attr_span, "required by this annotation")
-                                .emit();
+                            tcx.sess.emit_err(errors::FunctionNotHaveDefaultImplementation {
+                                span: item.span,
+                                note_span: attr_span,
+                            });
 
                             return Some(());
                         }
@@ -989,19 +951,14 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
                         return None;
                     }
                     Some(item) => {
-                        tcx.sess
-                            .struct_span_err(item.span, "not a function")
-                            .span_note(attr_span, "required by this annotation")
-                            .note(
-                                "all `#[rustc_must_implement_one_of]` arguments must be associated \
-                                 function names",
-                            )
-                            .emit();
+                        tcx.sess.emit_err(errors::MustImplementNotFunction {
+                            span: item.span,
+                            span_note: errors::MustImplementNotFunctionSpanNote { span: attr_span },
+                            note: errors::MustImplementNotFunctionNote {},
+                        });
                     }
                     None => {
-                        tcx.sess
-                            .struct_span_err(ident.span, "function not found in this trait")
-                            .emit();
+                        tcx.sess.emit_err(errors::FunctionNotFoundInTrait { span: ident.span });
                     }
                 }
 
@@ -1018,9 +975,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
             for ident in &*list {
                 if let Some(dup) = set.insert(ident.name, ident.span) {
                     tcx.sess
-                        .struct_span_err(vec![dup, ident.span], "functions names are duplicated")
-                        .note("all `#[rustc_must_implement_one_of]` arguments must be unique")
-                        .emit();
+                        .emit_err(errors::FunctionNamesDuplicated { spans: vec![dup, ident.span] });
 
                     no_dups = false;
                 }
@@ -1485,17 +1440,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
                     .source_map()
                     .span_to_snippet(ast_ty.span)
                     .map_or_else(|_| String::new(), |s| format!(" `{}`", s));
-                tcx.sess
-                    .struct_span_err(
-                        ast_ty.span,
-                        &format!(
-                            "use of SIMD type{} in FFI is highly experimental and \
-                             may result in invalid code",
-                            snip
-                        ),
-                    )
-                    .help("add `#![feature(simd_ffi)]` to the crate attributes to enable")
-                    .emit();
+                tcx.sess.emit_err(errors::SIMDFFIHighlyExperimental { span: ast_ty.span, snip });
             }
         };
         for (input, ty) in iter::zip(decl.inputs, fty.inputs().skip_binder()) {
