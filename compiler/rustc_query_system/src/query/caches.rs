@@ -18,7 +18,7 @@ pub trait CacheSelector<'tcx, V> {
 
 pub trait QueryCache: Sized {
     type Key: Hash + Eq + Copy + Debug;
-    type Value: Copy + Debug;
+    type Value: Copy;
 
     /// Checks if the query is already computed and in the cache.
     fn lookup(&self, key: &Self::Key) -> Option<(Self::Value, DepNodeIndex)>;
@@ -52,7 +52,7 @@ impl<K, V> Default for DefaultCache<K, V> {
 impl<K, V> QueryCache for DefaultCache<K, V>
 where
     K: Eq + Hash + Copy + Debug,
-    V: Copy + Debug,
+    V: Copy,
 {
     type Key = K;
     type Value = V;
@@ -120,7 +120,7 @@ impl<V> Default for SingleCache<V> {
 
 impl<V> QueryCache for SingleCache<V>
 where
-    V: Copy + Debug,
+    V: Copy,
 {
     type Key = ();
     type Value = V;
@@ -164,7 +164,7 @@ impl<K: Idx, V> Default for VecCache<K, V> {
 impl<K, V> QueryCache for VecCache<K, V>
 where
     K: Eq + Idx + Copy + Debug,
-    V: Copy + Debug,
+    V: Copy,
 {
     type Key = K;
     type Value = V;

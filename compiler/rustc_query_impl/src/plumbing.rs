@@ -263,14 +263,14 @@ macro_rules! feedable {
 }
 
 macro_rules! hash_result {
-    ([]) => {{
-        Some(dep_graph::hash_result)
+    ([][$V:ty]) => {{
+        Some(|hcx, result| dep_graph::hash_result(hcx, &restore::<$V>(*result)))
     }};
-    ([(no_hash) $($rest:tt)*]) => {{
+    ([(no_hash) $($rest:tt)*][$V:ty]) => {{
         None
     }};
-    ([$other:tt $($modifiers:tt)*]) => {
-        hash_result!([$($modifiers)*])
+    ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
+        hash_result!([$($modifiers)*][$($args)*])
     };
 }
 
@@ -479,11 +479,16 @@ macro_rules! define_queries {
 
         $(impl<'tcx> QueryConfig<QueryCtxt<'tcx>> for queries::$name<'tcx> {
             type Key = query_keys::$name<'tcx>;
-            type Value = query_values::$name<'tcx>;
+            type Value = Erase<query_values::$name<'tcx>>;
 
             #[inline(always)]
             fn name(self) -> &'static str {
                 stringify!($name)
+            }
+
+            #[inline]
+            fn format_value(self) -> fn(&Self::Value) -> String {
+                |value| format!("{:?}", restore::<query_values::$name<'tcx>>(*value))
             }
 
             #[inline]
@@ -508,7 +513,7 @@ macro_rules! define_queries {
             }
 
             fn execute_query(self, tcx: TyCtxt<'tcx>, key: Self::Key) -> Self::Value {
-                tcx.$name(key)
+                erase(tcx.$name(key))
             }
 
             #[inline]
@@ -558,6 +563,16 @@ macro_rules! define_queries {
                 })
             }
 
+            #[inline]
+            fn value_from_cycle_error(
+                self,
+                tcx: TyCtxt<'tcx>,
+                cycle: &[QueryInfo<DepKind>],
+            ) -> Self::Value {
+                let result: query_values::$name<'tcx> = Value::from_cycle_error(tcx, cycle);
+                erase(result)
+            }
+
             #[inline(always)]
             fn anon(self) -> bool {
                 is_anon!([$($modifiers)*])
@@ -590,7 +605,16 @@ macro_rules! define_queries {
 
             #[inline(always)]
             fn hash_result(self) -> rustc_query_system::query::HashResult<Self::Value> {
-                hash_result!([$($modifiers)*])
+                hash_result!([$($modifiers)*][query_values::$name<'tcx>])
+            }
+        })*
+
+        $(impl<'tcx> QueryConfigRestored<'tcx> for queries::$name<'tcx> {
+            type RestoredValue = query_values::$name<'tcx>;
+
+            #[inline(always)]
+            fn restore(value: <Self as QueryConfig<QueryCtxt<'tcx>>>::Value) -> Self::RestoredValue {
+                restore::<query_values::$name<'tcx>>(value)
             }
         })*
 
@@ -708,7 +732,7 @@ macro_rules! define_queries {
                     )
                 },
                 encode_query_results: expand_if_cached!([$($modifiers)*], |qcx, encoder, query_result_index|
-                    $crate::on_disk_cache::encode_query_results(
+                    $crate::on_disk_cache::encode_query_results::<super::queries::$name<'tcx>>(
                         super::queries::$name::default(),
                         qcx,
                         encoder,
@@ -793,14 +817,14 @@ macro_rules! define_queries_struct {
 
             $($(#[$attr])*
             #[inline(always)]
-            #[tracing::instrument(level = "trace", skip(self, tcx), ret)]
+            #[tracing::instrument(level = "trace", skip(self, tcx))]
             fn $name(
                 &'tcx self,
                 tcx: TyCtxt<'tcx>,
                 span: Span,
-                key: <queries::$name<'tcx> as QueryConfig<QueryCtxt<'tcx>>>::Key,
+                key: query_keys::$name<'tcx>,
                 mode: QueryMode,
-            ) -> Option<query_values::$name<'tcx>> {
+            ) -> Option<Erase<query_values::$name<'tcx>>> {
                 let qcx = QueryCtxt { tcx, queries: self };
                 get_query(
                     queries::$name::default(),

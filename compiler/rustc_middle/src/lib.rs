@@ -33,6 +33,7 @@
 #![feature(generators)]
 #![feature(get_mut_unchecked)]
 #![feature(if_let_guard)]
+#![feature(inline_const)]
 #![feature(iter_from_generator)]
 #![feature(local_key_cell_methods)]
 #![feature(negative_impls)]

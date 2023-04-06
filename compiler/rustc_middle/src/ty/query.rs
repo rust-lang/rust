@@ -17,6 +17,7 @@ use crate::mir::interpret::{
 };
 use crate::mir::interpret::{LitToConstError, LitToConstInput};
 use crate::mir::mono::CodegenUnit;
+use crate::query::erase::{erase, restore, Erase};
 use crate::query::{AsLocalKey, Key};
 use crate::thir;
 use crate::traits::query::{
@@ -57,6 +58,8 @@ use rustc_hir::hir_id::OwnerId;
 use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{Crate, ItemLocalId, TraitCandidate};
 use rustc_index::vec::IndexVec;
+pub(crate) use rustc_query_system::query::QueryJobId;
+use rustc_query_system::query::*;
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
 use rustc_session::cstore::{CrateDepKind, CrateSource};
 use rustc_session::cstore::{ExternCrate, ForeignModule, LinkagePreference, NativeLib};
@@ -66,18 +69,19 @@ use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi;
 use rustc_target::spec::PanicStrategy;
+
+use std::marker::PhantomData;
 use std::mem;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-pub(crate) use rustc_query_system::query::QueryJobId;
-use rustc_query_system::query::*;
-
 #[derive(Default)]
 pub struct QuerySystem<'tcx> {
     pub arenas: QueryArenas<'tcx>,
     pub caches: QueryCaches<'tcx>,
+    // Since we erase query value types we tell the typesystem about them with `PhantomData`.
+    _phantom_values: QueryPhantomValues<'tcx>,
 }
 
 #[derive(Copy, Clone)]
@@ -263,8 +267,8 @@ macro_rules! define_callbacks {
                 pub fn $name<'tcx>(
                     _tcx: TyCtxt<'tcx>,
                     value: query_provided::$name<'tcx>,
-                ) -> query_values::$name<'tcx> {
-                    query_if_arena!([$($modifiers)*]
+                ) -> Erase<query_values::$name<'tcx>> {
+                    erase(query_if_arena!([$($modifiers)*]
                         {
                             if mem::needs_drop::<query_provided::$name<'tcx>>() {
                                 &*_tcx.query_system.arenas.$name.alloc(value)
@@ -273,7 +277,7 @@ macro_rules! define_callbacks {
                             }
                         }
                         (value)
-                    )
+                    ))
                 }
             )*
         }
@@ -282,7 +286,7 @@ macro_rules! define_callbacks {
             use super::*;
 
             $(
-                pub type $name<'tcx> = <<$($K)* as Key>::CacheSelector as CacheSelector<'tcx, $V>>::Cache;
+                pub type $name<'tcx> = <<$($K)* as Key>::CacheSelector as CacheSelector<'tcx, Erase<$V>>>::Cache;
             )*
         }
 
@@ -332,6 +336,11 @@ macro_rules! define_callbacks {
                     ),)*
                 }
             }
+        }
+
+        #[derive(Default)]
+        pub struct QueryPhantomValues<'tcx> {
+            $($(#[$attr])* pub $name: PhantomData<query_values::$name<'tcx>>,)*
         }
 
         #[derive(Default)]
@@ -395,10 +404,10 @@ macro_rules! define_callbacks {
                 let key = key.into_query_param();
                 opt_remap_env_constness!([$($modifiers)*][key]);
 
-                match try_get_cached(self.tcx, &self.tcx.query_system.caches.$name, &key) {
+                restore::<$V>(match try_get_cached(self.tcx, &self.tcx.query_system.caches.$name, &key) {
                     Some(value) => value,
                     None => self.tcx.queries.$name(self.tcx, self.span, key, QueryMode::Get).unwrap(),
-                }
+                })
             })*
         }
 
@@ -459,7 +468,7 @@ macro_rules! define_callbacks {
                 span: Span,
                 key: query_keys::$name<'tcx>,
                 mode: QueryMode,
-            ) -> Option<$V>;)*
+            ) -> Option<Erase<$V>>;)*
         }
     };
 }
@@ -486,11 +495,13 @@ macro_rules! define_feedable {
                 opt_remap_env_constness!([$($modifiers)*][key]);
 
                 let tcx = self.tcx;
-                let value = query_provided_to_value::$name(tcx, value);
+                let erased = query_provided_to_value::$name(tcx, value);
+                let value = restore::<$V>(erased);
                 let cache = &tcx.query_system.caches.$name;
 
                 match try_get_cached(tcx, cache, &key) {
                     Some(old) => {
+                        let old = restore::<$V>(old);
                         bug!(
                             "Trying to feed an already recorded value for query {} key={key:?}:\nold value: {old:?}\nnew value: {value:?}",
                             stringify!($name),
@@ -505,7 +516,7 @@ macro_rules! define_feedable {
                             &value,
                             hash_result!([$($modifiers)*]),
                         );
-                        cache.complete(key, value, dep_node_index);
+                        cache.complete(key, erased, dep_node_index);
                         value
                     }
                 }

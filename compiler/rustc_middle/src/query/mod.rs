@@ -7,6 +7,7 @@
 use crate::ty::{self, print::describe_as_module, TyCtxt};
 use rustc_span::def_id::LOCAL_CRATE;
 
+pub mod erase;
 mod keys;
 pub use keys::{AsLocalKey, Key, LocalCrate};
 
