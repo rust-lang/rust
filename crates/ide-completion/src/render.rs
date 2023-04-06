@@ -14,7 +14,6 @@ use hir::{AsAssocItem, HasAttrs, HirDisplay, ScopeDef};
 use ide_db::{
     helpers::item_name, imports::import_assets::LocatedImport, RootDatabase, SnippetCap, SymbolKind,
 };
-use itertools::Itertools;
 use syntax::{AstNode, SmolStr, SyntaxKind, TextRange};
 
 use crate::{
@@ -210,7 +209,9 @@ pub(crate) fn render_resolution_with_import(
 ) -> Option<Builder> {
     let resolution = ScopeDef::from(import_edit.original_item);
     let local_name = scope_def_to_name(resolution, &ctx, &import_edit)?;
-
+    //this now just renders the alias text, but we need to find the aliases earlier and call this with the alias instead
+    let doc_aliases = ctx.completion.doc_aliases_in_scope(resolution);
+    let ctx = ctx.doc_aliases(doc_aliases);
     Some(render_resolution_path(ctx, path_ctx, local_name, Some(import_edit), resolution))
 }
 

@@ -1189,3 +1189,38 @@ fn here_we_go() {
         "#]],
     );
 }
+
+#[test]
+fn completes_flyimport_with_doc_alias_in_another_mod() {
+    check(
+        r#"
+mod foo {
+    #[doc(alias = "Qux")]
+    pub struct Bar();
+}
+
+fn here_we_go() {
+    let foo = Bar$0
+}
+"#,
+        expect![[r#"
+            fn here_we_go()           fn()
+            md foo
+            st Bar (alias Qux) (use foo::Bar)
+            bt u32
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw return
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+        "#]],
+    );
+}
