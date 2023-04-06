@@ -3,7 +3,7 @@
 use base_db::CrateId;
 use chalk_ir::{BoundVar, DebruijnIndex, GenericArgData};
 use hir_def::{
-    expr::Expr,
+    hir::Expr,
     path::Path,
     resolver::{Resolver, ValueNs},
     type_ref::ConstRef,

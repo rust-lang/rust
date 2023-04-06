@@ -2,7 +2,7 @@
 
 use std::fmt::{Debug, Display, Write};
 
-use hir_def::{body::Body, expr::BindingId};
+use hir_def::{body::Body, hir::BindingId};
 use hir_expand::name::Name;
 use la_arena::ArenaMap;
 

@@ -8,7 +8,7 @@ use rustc_hash::FxHashMap;
 use crate::{
     body::Body,
     db::DefDatabase,
-    expr::{Binding, BindingId, Expr, ExprId, LabelId, Pat, PatId, Statement},
+    hir::{Binding, BindingId, Expr, ExprId, LabelId, Pat, PatId, Statement},
     BlockId, DefWithBodyId,
 };
 

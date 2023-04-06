@@ -12,6 +12,8 @@
 //!
 //! See also a neighboring `body` module.
 
+pub mod type_ref;
+
 use std::fmt;
 
 use hir_expand::name::Name;
@@ -28,9 +30,9 @@ use crate::{
 
 pub use syntax::ast::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp};
 
-pub type ExprId = Idx<Expr>;
-
 pub type BindingId = Idx<Binding>;
+
+pub type ExprId = Idx<Expr>;
 
 /// FIXME: this is a hacky function which should be removed
 pub(crate) fn dummy_expr_id() -> ExprId {

@@ -7,7 +7,7 @@ use crate::{
 };
 use chalk_ir::Mutability;
 use hir_def::{
-    expr::{BindingId, Expr, ExprId, Ordering, PatId},
+    hir::{BindingId, Expr, ExprId, Ordering, PatId},
     DefWithBodyId, FieldId, UnionId, VariantId,
 };
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
@@ -588,32 +588,32 @@ impl Display for BinOp {
     }
 }
 
-impl From<hir_def::expr::ArithOp> for BinOp {
-    fn from(value: hir_def::expr::ArithOp) -> Self {
+impl From<hir_def::hir::ArithOp> for BinOp {
+    fn from(value: hir_def::hir::ArithOp) -> Self {
         match value {
-            hir_def::expr::ArithOp::Add => BinOp::Add,
-            hir_def::expr::ArithOp::Mul => BinOp::Mul,
-            hir_def::expr::ArithOp::Sub => BinOp::Sub,
-            hir_def::expr::ArithOp::Div => BinOp::Div,
-            hir_def::expr::ArithOp::Rem => BinOp::Rem,
-            hir_def::expr::ArithOp::Shl => BinOp::Shl,
-            hir_def::expr::ArithOp::Shr => BinOp::Shr,
-            hir_def::expr::ArithOp::BitXor => BinOp::BitXor,
-            hir_def::expr::ArithOp::BitOr => BinOp::BitOr,
-            hir_def::expr::ArithOp::BitAnd => BinOp::BitAnd,
+            hir_def::hir::ArithOp::Add => BinOp::Add,
+            hir_def::hir::ArithOp::Mul => BinOp::Mul,
+            hir_def::hir::ArithOp::Sub => BinOp::Sub,
+            hir_def::hir::ArithOp::Div => BinOp::Div,
+            hir_def::hir::ArithOp::Rem => BinOp::Rem,
+            hir_def::hir::ArithOp::Shl => BinOp::Shl,
+            hir_def::hir::ArithOp::Shr => BinOp::Shr,
+            hir_def::hir::ArithOp::BitXor => BinOp::BitXor,
+            hir_def::hir::ArithOp::BitOr => BinOp::BitOr,
+            hir_def::hir::ArithOp::BitAnd => BinOp::BitAnd,
         }
     }
 }
 
-impl From<hir_def::expr::CmpOp> for BinOp {
-    fn from(value: hir_def::expr::CmpOp) -> Self {
+impl From<hir_def::hir::CmpOp> for BinOp {
+    fn from(value: hir_def::hir::CmpOp) -> Self {
         match value {
-            hir_def::expr::CmpOp::Eq { negated: false } => BinOp::Eq,
-            hir_def::expr::CmpOp::Eq { negated: true } => BinOp::Ne,
-            hir_def::expr::CmpOp::Ord { ordering: Ordering::Greater, strict: false } => BinOp::Ge,
-            hir_def::expr::CmpOp::Ord { ordering: Ordering::Greater, strict: true } => BinOp::Gt,
-            hir_def::expr::CmpOp::Ord { ordering: Ordering::Less, strict: false } => BinOp::Le,
-            hir_def::expr::CmpOp::Ord { ordering: Ordering::Less, strict: true } => BinOp::Lt,
+            hir_def::hir::CmpOp::Eq { negated: false } => BinOp::Eq,
+            hir_def::hir::CmpOp::Eq { negated: true } => BinOp::Ne,
+            hir_def::hir::CmpOp::Ord { ordering: Ordering::Greater, strict: false } => BinOp::Ge,
+            hir_def::hir::CmpOp::Ord { ordering: Ordering::Greater, strict: true } => BinOp::Gt,
+            hir_def::hir::CmpOp::Ord { ordering: Ordering::Less, strict: false } => BinOp::Le,
+            hir_def::hir::CmpOp::Ord { ordering: Ordering::Less, strict: true } => BinOp::Lt,
         }
     }
 }

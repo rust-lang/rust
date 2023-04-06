@@ -9,7 +9,7 @@ use std::{iter, sync::Arc};
 
 use chalk_ir::{cast::Cast, BoundVar, Goal, Mutability, TyVariableKind};
 use hir_def::{
-    expr::ExprId,
+    hir::ExprId,
     lang_item::{LangItem, LangItemTarget},
 };
 use stdx::always;

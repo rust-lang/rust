@@ -10,10 +10,10 @@ use chalk_ir::{
     cast::Cast, fold::Shift, DebruijnIndex, GenericArgData, Mutability, TyKind, TyVariableKind,
 };
 use hir_def::{
-    expr::{
+    generics::TypeOrConstParamData,
+    hir::{
         ArithOp, Array, BinaryOp, ClosureKind, Expr, ExprId, LabelId, Literal, Statement, UnaryOp,
     },
-    generics::TypeOrConstParamData,
     lang_item::LangItem,
     path::{GenericArg, GenericArgs},
     BlockId, ConstParamId, FieldId, ItemContainerId, Lookup,

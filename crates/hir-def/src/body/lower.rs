@@ -33,7 +33,7 @@ use crate::{
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinUint},
     data::adt::StructKind,
     db::DefDatabase,
-    expr::{
+    hir::{
         dummy_expr_id, Array, Binding, BindingAnnotation, BindingId, ClosureKind, Expr, ExprId,
         FloatTypeWrapper, Label, LabelId, Literal, MatchArm, Movability, Pat, PatId,
         RecordFieldPat, RecordLitField, Statement,

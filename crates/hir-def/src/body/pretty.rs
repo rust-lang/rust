@@ -5,7 +5,7 @@ use std::fmt::{self, Write};
 use syntax::ast::HasName;
 
 use crate::{
-    expr::{Array, BindingAnnotation, BindingId, ClosureKind, Literal, Movability, Statement},
+    hir::{Array, BindingAnnotation, BindingId, ClosureKind, Literal, Movability, Statement},
     pretty::{print_generic_args, print_path, print_type_ref},
     type_ref::TypeRef,
 };

@@ -41,8 +41,8 @@ use either::Either;
 use hir_def::{
     body::{BodyDiagnostic, SyntheticSyntax},
     data::adt::VariantData,
-    expr::{BindingAnnotation, BindingId, ExprOrPatId, LabelId, Pat},
     generics::{LifetimeParamData, TypeOrConstParamData, TypeParamProvenance},
+    hir::{BindingAnnotation, BindingId, ExprOrPatId, LabelId, Pat},
     item_tree::ItemTreeNode,
     lang_item::{LangItem, LangItemTarget},
     layout::{Layout, LayoutError, ReprOptions},

@@ -18,7 +18,6 @@ pub mod db;
 
 pub mod attr;
 pub mod path;
-pub mod type_ref;
 pub mod builtin_type;
 pub mod builtin_attr;
 pub mod per_ns;
@@ -34,7 +33,8 @@ pub mod generics;
 pub mod lang_item;
 pub mod layout;
 
-pub mod expr;
+pub mod hir;
+pub use self::hir::type_ref;
 pub mod body;
 pub mod resolver;
 

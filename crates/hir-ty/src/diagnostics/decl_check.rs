@@ -17,7 +17,7 @@ use std::fmt;
 use base_db::CrateId;
 use hir_def::{
     data::adt::VariantData,
-    expr::{Pat, PatId},
+    hir::{Pat, PatId},
     src::HasSource,
     AdtId, AttrDefId, ConstId, EnumId, FunctionId, ItemContainerId, Lookup, ModuleDefId, StaticId,
     StructId,

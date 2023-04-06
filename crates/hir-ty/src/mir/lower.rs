@@ -6,7 +6,7 @@ use chalk_ir::{BoundVar, ConstData, DebruijnIndex, TyKind};
 use hir_def::{
     body::Body,
     data::adt::{StructKind, VariantData},
-    expr::{
+    hir::{
         Array, BindingAnnotation, BindingId, ExprId, LabelId, Literal, MatchArm, Pat, PatId,
         RecordFieldPat, RecordLitField,
     },
@@ -713,20 +713,20 @@ impl MirLowerCtx<'_> {
                 Ok(Some(current))
             }
             Expr::Box { .. } => not_supported!("box expression"),
-            Expr::Field { .. } | Expr::Index { .. } | Expr::UnaryOp { op: hir_def::expr::UnaryOp::Deref, .. } => {
+            Expr::Field { .. } | Expr::Index { .. } | Expr::UnaryOp { op: hir_def::hir::UnaryOp::Deref, .. } => {
                 let Some((p, current)) = self.lower_expr_as_place_without_adjust(current, expr_id, true)? else {
                     return Ok(None);
                 };
                 self.push_assignment(current, place, Operand::Copy(p).into(), expr_id.into());
                 Ok(Some(current))
             }
-            Expr::UnaryOp { expr, op: op @ (hir_def::expr::UnaryOp::Not | hir_def::expr::UnaryOp::Neg) } => {
+            Expr::UnaryOp { expr, op: op @ (hir_def::hir::UnaryOp::Not | hir_def::hir::UnaryOp::Neg) } => {
                 let Some((operand, current)) = self.lower_expr_to_some_operand(*expr, current)? else {
                     return Ok(None);
                 };
                 let operation = match op {
-                    hir_def::expr::UnaryOp::Not => UnOp::Not,
-                    hir_def::expr::UnaryOp::Neg => UnOp::Neg,
+                    hir_def::hir::UnaryOp::Not => UnOp::Not,
+                    hir_def::hir::UnaryOp::Neg => UnOp::Neg,
                     _ => unreachable!(),
                 };
                 self.push_assignment(
@@ -739,7 +739,7 @@ impl MirLowerCtx<'_> {
             },
             Expr::BinaryOp { lhs, rhs, op } => {
                 let op = op.ok_or(MirLowerError::IncompleteExpr)?;
-                if let hir_def::expr::BinaryOp::Assignment { op } = op {
+                if let hir_def::hir::BinaryOp::Assignment { op } = op {
                     if op.is_some() {
                         not_supported!("assignment with arith op (like +=)");
                     }
@@ -765,13 +765,13 @@ impl MirLowerCtx<'_> {
                     place,
                     Rvalue::CheckedBinaryOp(
                         match op {
-                            hir_def::expr::BinaryOp::LogicOp(op) => match op {
-                                hir_def::expr::LogicOp::And => BinOp::BitAnd, // FIXME: make these short circuit
-                                hir_def::expr::LogicOp::Or => BinOp::BitOr,
+                            hir_def::hir::BinaryOp::LogicOp(op) => match op {
+                                hir_def::hir::LogicOp::And => BinOp::BitAnd, // FIXME: make these short circuit
+                                hir_def::hir::LogicOp::Or => BinOp::BitOr,
                             },
-                            hir_def::expr::BinaryOp::ArithOp(op) => BinOp::from(op),
-                            hir_def::expr::BinaryOp::CmpOp(op) => BinOp::from(op),
-                            hir_def::expr::BinaryOp::Assignment { .. } => unreachable!(), // handled above
+                            hir_def::hir::BinaryOp::ArithOp(op) => BinOp::from(op),
+                            hir_def::hir::BinaryOp::CmpOp(op) => BinOp::from(op),
+                            hir_def::hir::BinaryOp::Assignment { .. } => unreachable!(), // handled above
                         },
                         lhs_op,
                         rhs_op,
@@ -910,7 +910,7 @@ impl MirLowerCtx<'_> {
             .size
             .bytes_usize();
         let bytes = match l {
-            hir_def::expr::Literal::String(b) => {
+            hir_def::hir::Literal::String(b) => {
                 let b = b.as_bytes();
                 let mut data = vec![];
                 data.extend(0usize.to_le_bytes());
@@ -919,7 +919,7 @@ impl MirLowerCtx<'_> {
                 mm.insert(0, b.to_vec());
                 return Ok(Operand::from_concrete_const(data, mm, ty));
             }
-            hir_def::expr::Literal::ByteString(b) => {
+            hir_def::hir::Literal::ByteString(b) => {
                 let mut data = vec![];
                 data.extend(0usize.to_le_bytes());
                 data.extend(b.len().to_le_bytes());
@@ -927,11 +927,11 @@ impl MirLowerCtx<'_> {
                 mm.insert(0, b.to_vec());
                 return Ok(Operand::from_concrete_const(data, mm, ty));
             }
-            hir_def::expr::Literal::Char(c) => u32::from(*c).to_le_bytes().into(),
-            hir_def::expr::Literal::Bool(b) => vec![*b as u8],
-            hir_def::expr::Literal::Int(x, _) => x.to_le_bytes()[0..size].into(),
-            hir_def::expr::Literal::Uint(x, _) => x.to_le_bytes()[0..size].into(),
-            hir_def::expr::Literal::Float(f, _) => match size {
+            hir_def::hir::Literal::Char(c) => u32::from(*c).to_le_bytes().into(),
+            hir_def::hir::Literal::Bool(b) => vec![*b as u8],
+            hir_def::hir::Literal::Int(x, _) => x.to_le_bytes()[0..size].into(),
+            hir_def::hir::Literal::Uint(x, _) => x.to_le_bytes()[0..size].into(),
+            hir_def::hir::Literal::Float(f, _) => match size {
                 8 => f.into_f64().to_le_bytes().into(),
                 4 => f.into_f32().to_le_bytes().into(),
                 _ => {
@@ -1218,14 +1218,14 @@ impl MirLowerCtx<'_> {
 
     fn lower_block_to_place(
         &mut self,
-        statements: &[hir_def::expr::Statement],
+        statements: &[hir_def::hir::Statement],
         mut current: BasicBlockId,
         tail: Option<ExprId>,
         place: Place,
     ) -> Result<Option<Idx<BasicBlock>>> {
         for statement in statements.iter() {
             match statement {
-                hir_def::expr::Statement::Let { pat, initializer, else_branch, type_ref: _ } => {
+                hir_def::hir::Statement::Let { pat, initializer, else_branch, type_ref: _ } => {
                     if let Some(expr_id) = initializer {
                         let else_block;
                         let Some((init_place, c)) =
@@ -1261,7 +1261,7 @@ impl MirLowerCtx<'_> {
                         });
                     }
                 }
-                hir_def::expr::Statement::Expr { expr, has_semi: _ } => {
+                hir_def::hir::Statement::Expr { expr, has_semi: _ } => {
                     let Some((_, c)) = self.lower_expr_as_place(current, *expr, true)? else {
                         return Ok(None);
                     };

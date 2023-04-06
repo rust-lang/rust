@@ -89,7 +89,7 @@ use base_db::FileId;
 use hir_def::{
     child_by_source::ChildBySource,
     dyn_map::DynMap,
-    expr::{BindingId, LabelId},
+    hir::{BindingId, LabelId},
     keys::{self, Key},
     AdtId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, FieldId, FunctionId,
     GenericDefId, GenericParamId, ImplId, LifetimeParamId, MacroId, ModuleId, StaticId, StructId,

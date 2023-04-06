@@ -5,7 +5,7 @@ use std::iter::repeat_with;
 use chalk_ir::Mutability;
 use hir_def::{
     body::Body,
-    expr::{Binding, BindingAnnotation, BindingId, Expr, ExprId, ExprOrPatId, Literal, Pat, PatId},
+    hir::{Binding, BindingAnnotation, BindingId, Expr, ExprId, ExprOrPatId, Literal, Pat, PatId},
     path::Path,
 };
 use hir_expand::name::Name;
