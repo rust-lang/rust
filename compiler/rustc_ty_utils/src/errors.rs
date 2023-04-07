@@ -67,3 +67,10 @@ pub enum GenericConstantTooComplexSub {
     #[label(ty_utils_operation_not_supported)]
     OperationNotSupported(#[primary_span] Span),
 }
+
+#[derive(Diagnostic)]
+#[diag(ty_utils_unexpected_fnptr_associated_item)]
+pub struct UnexpectedFnPtrAssociatedItem {
+    #[primary_span]
+    pub span: Span,
+}
