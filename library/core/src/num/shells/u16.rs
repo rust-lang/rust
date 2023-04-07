@@ -1,4 +1,4 @@
-//! Redundant constants module for the [`i16` primitive type][i16].
+//! Redundant constants module for the [`u16` primitive type][u16].
 //!
 //! New code should use the associated constants directly on the primitive type.
 
