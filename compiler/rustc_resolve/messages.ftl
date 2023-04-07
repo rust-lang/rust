@@ -209,3 +209,13 @@ resolve_indeterminate =
 
 resolve_module_only =
     visibility must resolve to a module
+
+resolve_macro_expected_found =
+    expected {$expected}, found {$found} `{$macro_path}`
+
+resolve_remove_surrounding_derive =
+    remove from the surrounding `derive()`
+
+resolve_add_as_non_derive =
+    add as non-Derive macro
+    `#[{$macro_path}]`

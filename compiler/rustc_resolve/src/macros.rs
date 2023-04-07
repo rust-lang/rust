@@ -1,6 +1,7 @@
 //! A bunch of methods and structures more or less related to resolving macros and
 //! interface provided by `Resolver` to macro expander.
 
+use crate::errors::{MacroExpectedFound, RemoveAddAsNonDerive, RemoveSurroundingDerive};
 use crate::Namespace::*;
 use crate::{BuiltinMacroState, Determinacy};
 use crate::{DeriveData, Finalize, ParentScope, ResolutionError, Resolver, ScopeSet};
@@ -543,21 +544,30 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         };
         if let Some((article, expected)) = unexpected_res {
             let path_str = pprust::path_to_string(path);
-            let msg = format!("expected {}, found {} `{}`", expected, res.descr(), path_str);
-            let mut err = self.tcx.sess.struct_span_err(path.span, &msg);
 
-            err.span_label(path.span, format!("not {} {}", article, expected));
+            let mut err = MacroExpectedFound {
+                span: path.span,
+                expected,
+                found: res.descr(),
+                macro_path: &path_str,
+                ..Default::default() // Subdiagnostics default to None
+            };
 
-            // Suggest moving the macro out of the derive() as the macro isn't Derive
+            // Suggest moving the macro out of the derive() if the macro isn't Derive
             if !path.span.from_expansion()
                 && kind == MacroKind::Derive
                 && ext.macro_kind() != MacroKind::Derive
             {
-                err.span_help(path.span, "remove from the surrounding `derive()`");
-                err.help(format!("add as non-Derive macro\n`#[{}]`", path_str));
+                err.remove_surrounding_derive = Some(RemoveSurroundingDerive { span: path.span });
+                err.remove_surrounding_derive_help =
+                    Some(RemoveAddAsNonDerive { macro_path: &path_str });
             }
 
+            let mut err = self.tcx.sess.create_err(err);
+            err.span_label(path.span, format!("not {} {}", article, expected));
+
             err.emit();
+
             return Ok((self.dummy_ext(kind), Res::Err));
         }
 

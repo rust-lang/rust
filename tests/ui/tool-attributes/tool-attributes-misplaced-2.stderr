@@ -4,12 +4,12 @@ error: expected derive macro, found tool attribute `rustfmt::skip`
 LL | #[derive(rustfmt::skip)]
    |          ^^^^^^^^^^^^^ not a derive macro
    |
-help: Remove from the surrounding `derive()`
+help: remove from the surrounding `derive()`
   --> $DIR/tool-attributes-misplaced-2.rs:1:10
    |
 LL | #[derive(rustfmt::skip)]
    |          ^^^^^^^^^^^^^
-   = help: Add as non-Derive macro
+   = help: add as non-Derive macro
            `#[rustfmt::skip]`
 
 error: expected macro, found tool attribute `rustfmt::skip`
