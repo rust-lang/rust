@@ -1018,7 +1018,7 @@ extern "C" {
     pub fn LLVMSetDataLayout(M: &Module, Triple: *const c_char);
 
     /// See Module::setModuleInlineAsm.
-    pub fn LLVMRustAppendModuleInlineAsm(M: &Module, Asm: *const c_char, AsmLen: size_t);
+    pub fn LLVMAppendModuleInlineAsm(M: &Module, Asm: *const c_char, Len: size_t);
 
     /// See llvm::LLVMTypeKind::getTypeID.
     pub fn LLVMRustGetTypeKind(Ty: &Type) -> TypeKind;
@@ -1065,7 +1065,7 @@ extern "C" {
 
     // Operations on other types
     pub fn LLVMVoidTypeInContext(C: &Context) -> &Type;
-    pub fn LLVMRustMetadataTypeInContext(C: &Context) -> &Type;
+    pub fn LLVMMetadataTypeInContext(C: &Context) -> &Type;
 
     // Operations on all values
     pub fn LLVMTypeOf(Val: &Value) -> &Type;
@@ -1084,7 +1084,12 @@ extern "C" {
     pub fn LLVMGetPoison(Ty: &Type) -> &Value;
 
     // Operations on metadata
+    // FIXME: deprecated, replace with LLVMMDStringInContext2
     pub fn LLVMMDStringInContext(C: &Context, Str: *const c_char, SLen: c_uint) -> &Value;
+
+    pub fn LLVMMDStringInContext2(C: &Context, Str: *const c_char, SLen: size_t) -> &Metadata;
+
+    // FIXME: deprecated, replace with LLVMMDNodeInContext2
     pub fn LLVMMDNodeInContext<'a>(
         C: &'a Context,
         Vals: *const &'a Value,
@@ -1123,6 +1128,8 @@ extern "C" {
         Packed: Bool,
     ) -> &'a Value;
 
+    // FIXME: replace with LLVMConstArray2 when bumped minimal version to llvm-17
+    // https://github.com/llvm/llvm-project/commit/35276f16e5a2cae0dfb49c0fbf874d4d2f177acc
     pub fn LLVMConstArray<'a>(
         ElementTy: &'a Type,
         ConstantVals: *const &'a Value,
@@ -1262,7 +1269,7 @@ extern "C" {
     pub fn LLVMDisposeBuilder<'a>(Builder: &'a mut Builder<'a>);
 
     // Metadata
-    pub fn LLVMSetCurrentDebugLocation<'a>(Builder: &Builder<'a>, L: &'a Value);
+    pub fn LLVMSetCurrentDebugLocation2<'a>(Builder: &Builder<'a>, Loc: &'a Metadata);
 
     // Terminators
     pub fn LLVMBuildRetVoid<'a>(B: &Builder<'a>) -> &'a Value;
@@ -1302,38 +1309,38 @@ extern "C" {
     pub fn LLVMBuildResume<'a>(B: &Builder<'a>, Exn: &'a Value) -> &'a Value;
     pub fn LLVMBuildUnreachable<'a>(B: &Builder<'a>) -> &'a Value;
 
-    pub fn LLVMRustBuildCleanupPad<'a>(
+    pub fn LLVMBuildCleanupPad<'a>(
         B: &Builder<'a>,
         ParentPad: Option<&'a Value>,
-        ArgCnt: c_uint,
         Args: *const &'a Value,
+        NumArgs: c_uint,
         Name: *const c_char,
     ) -> Option<&'a Value>;
-    pub fn LLVMRustBuildCleanupRet<'a>(
+    pub fn LLVMBuildCleanupRet<'a>(
         B: &Builder<'a>,
         CleanupPad: &'a Value,
-        UnwindBB: Option<&'a BasicBlock>,
+        BB: Option<&'a BasicBlock>,
     ) -> Option<&'a Value>;
-    pub fn LLVMRustBuildCatchPad<'a>(
+    pub fn LLVMBuildCatchPad<'a>(
         B: &Builder<'a>,
         ParentPad: &'a Value,
-        ArgCnt: c_uint,
         Args: *const &'a Value,
+        NumArgs: c_uint,
         Name: *const c_char,
     ) -> Option<&'a Value>;
-    pub fn LLVMRustBuildCatchRet<'a>(
+    pub fn LLVMBuildCatchRet<'a>(
         B: &Builder<'a>,
-        Pad: &'a Value,
+        CatchPad: &'a Value,
         BB: &'a BasicBlock,
     ) -> Option<&'a Value>;
-    pub fn LLVMRustBuildCatchSwitch<'a>(
+    pub fn LLVMBuildCatchSwitch<'a>(
         Builder: &Builder<'a>,
         ParentPad: Option<&'a Value>,
-        BB: Option<&'a BasicBlock>,
+        UnwindBB: Option<&'a BasicBlock>,
         NumHandlers: c_uint,
         Name: *const c_char,
     ) -> Option<&'a Value>;
-    pub fn LLVMRustAddHandler<'a>(CatchSwitch: &'a Value, Handler: &'a BasicBlock);
+    pub fn LLVMAddHandler<'a>(CatchSwitch: &'a Value, Dest: &'a BasicBlock);
     pub fn LLVMSetPersonalityFn<'a>(Func: &'a Value, Pers: &'a Value);
 
     // Add a case to the switch instruction
@@ -1627,11 +1634,12 @@ extern "C" {
         DestTy: &'a Type,
         Name: *const c_char,
     ) -> &'a Value;
-    pub fn LLVMRustBuildIntCast<'a>(
+    pub fn LLVMBuildIntCast2<'a>(
         B: &Builder<'a>,
         Val: &'a Value,
         DestTy: &'a Type,
         IsSigned: bool,
+        Name: *const c_char,
     ) -> &'a Value;
 
     // Comparisons
@@ -1920,7 +1928,7 @@ extern "C" {
     );
     pub fn LLVMRustHasModuleFlag(M: &Module, name: *const c_char, len: size_t) -> bool;
 
-    pub fn LLVMRustMetadataAsValue<'a>(C: &'a Context, MD: &'a Metadata) -> &'a Value;
+    pub fn LLVMMetadataAsValue<'a>(C: &'a Context, MD: &'a Metadata) -> &'a Value;
 
     pub fn LLVMRustDIBuilderCreate(M: &Module) -> &mut DIBuilder<'_>;
 
