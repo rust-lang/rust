@@ -31,7 +31,6 @@ Libraries
 - [Implement the unstable `DispatchFromDyn` for cell types, allowing downstream experimentation with custom method receivers.](https://github.com/rust-lang/rust/pull/97373/)
 - [Document that `fmt::Arguments::as_str()` may return `Some(_)` in more cases after optimization, subject to change.](https://github.com/rust-lang/rust/pull/106823/)
 - [Implement `AsFd` and `AsRawFd` for `Rc`.](https://github.com/rust-lang/rust/pull/107317/)
-- [Move `IpAddr`, `SocketAddr` and V4+V6 related types to `core`](https://github.com/rust-lang/rust/pull/104265/)
 
 <a id="1.69.0-Stabilized-APIs"></a>
 
