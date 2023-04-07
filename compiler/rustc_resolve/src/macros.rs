@@ -1,7 +1,7 @@
 //! A bunch of methods and structures more or less related to resolving macros and
 //! interface provided by `Resolver` to macro expander.
 
-use crate::errors::{MacroExpectedFound, RemoveAddAsNonDerive, RemoveSurroundingDerive};
+use crate::errors::{AddAsNonDerive, MacroExpectedFound, RemoveSurroundingDerive};
 use crate::Namespace::*;
 use crate::{BuiltinMacroState, Determinacy};
 use crate::{DeriveData, Finalize, ParentScope, ResolutionError, Resolver, ScopeSet};
@@ -559,8 +559,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 && ext.macro_kind() != MacroKind::Derive
             {
                 err.remove_surrounding_derive = Some(RemoveSurroundingDerive { span: path.span });
-                err.remove_surrounding_derive_help =
-                    Some(RemoveAddAsNonDerive { macro_path: &path_str });
+                err.add_as_non_derive = Some(AddAsNonDerive { macro_path: &path_str });
             }
 
             let mut err = self.tcx.sess.create_err(err);

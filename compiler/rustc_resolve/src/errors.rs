@@ -484,7 +484,7 @@ pub(crate) struct MacroExpectedFound<'a> {
     #[subdiagnostic]
     pub(crate) remove_surrounding_derive: Option<RemoveSurroundingDerive>,
     #[subdiagnostic]
-    pub(crate) remove_surrounding_derive_help: Option<RemoveAddAsNonDerive<'a>>,
+    pub(crate) add_as_non_derive: Option<AddAsNonDerive<'a>>,
 }
 
 #[derive(Subdiagnostic)]
@@ -496,6 +496,6 @@ pub(crate) struct RemoveSurroundingDerive {
 
 #[derive(Subdiagnostic)]
 #[help(resolve_add_as_non_derive)]
-pub(crate) struct RemoveAddAsNonDerive<'a> {
+pub(crate) struct AddAsNonDerive<'a> {
     pub(crate) macro_path: &'a str,
 }
