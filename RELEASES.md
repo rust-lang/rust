@@ -87,7 +87,7 @@ Misc
 Compatibility Notes
 -------------------
 
-- [Remove `-Zsave-analysis` from the compiler, which was primarily intended for RLS.](https://github.com/rust-lang/rust/pull/101841/) The `rust-analysis` component from `rustup` now only contains a warning placeholder.
+- [The `rust-analysis` component from `rustup` now only contains a warning placeholder.](https://github.com/rust-lang/rust/pull/101841/) This was primarily intended for RLS, and the corresponding `-Zsave-analysis` flag has been removed from the compiler as well.
 - [Unaligned references to packed fields are now a hard error.](https://github.com/rust-lang/rust/pull/102513/) This has been a warning since 1.53, and denied by default with a future-compatibility warning since 1.62.
 - [Update the minimum external LLVM to 14.](https://github.com/rust-lang/rust/pull/107573/)
 - [Cargo now emits errors on invalid alphanumeric token for crates.io.](https://github.com/rust-lang/cargo/pull/11600/)
