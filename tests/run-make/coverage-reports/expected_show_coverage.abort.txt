@@ -32,7 +32,7 @@
    30|       |// Notes:
    31|       |//   1. Compare this program and its coverage results to those of the similar tests
    32|       |//      `panic_unwind.rs` and `try_error_result.rs`.
-   33|       |//   2. This test confirms the coverage generated when a program includes  `UnwindAction::Terminate`.
+   33|       |//   2. This test confirms the coverage generated when a program includes `UnwindAction::Terminate`.
    34|       |//   3. The test does not invoke the abort. By executing to a successful completion, the coverage
    35|       |//      results show where the program did and did not execute.
    36|       |//   4. If the program actually aborted, the coverage counters would not be saved (which "works as
