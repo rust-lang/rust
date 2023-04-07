@@ -2,7 +2,7 @@ error: the `#[test]` attribute may only be used on a non-associated function
   --> $DIR/test-on-not-fn.rs:3:1
    |
 LL | #[test]
-   | ^^^^^^^ the `#[test]` macro causes a function to be run on a test and has no effect on non-functions
+   | ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions
 LL | mod test {}
    | ----------- expected a non-associated function, found a module
    |
@@ -15,7 +15,7 @@ error: the `#[test]` attribute may only be used on a non-associated function
   --> $DIR/test-on-not-fn.rs:6:1
    |
 LL |   #[test]
-   |   ^^^^^^^ the `#[test]` macro causes a function to be run on a test and has no effect on non-functions
+   |   ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions
 LL | / mod loooooooooooooong_teeeeeeeeeest {
 LL | |     /*
 LL | |     this is a comment
@@ -34,7 +34,7 @@ error: the `#[test]` attribute may only be used on a non-associated function
   --> $DIR/test-on-not-fn.rs:20:1
    |
 LL | #[test]
-   | ^^^^^^^ the `#[test]` macro causes a function to be run on a test and has no effect on non-functions
+   | ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions
 LL | extern "C" {}
    | ------------- expected a non-associated function, found an extern block
    |
@@ -47,7 +47,7 @@ error: the `#[test]` attribute may only be used on a non-associated function
   --> $DIR/test-on-not-fn.rs:23:1
    |
 LL | #[test]
-   | ^^^^^^^ the `#[test]` macro causes a function to be run on a test and has no effect on non-functions
+   | ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions
 LL | trait Foo {}
    | ------------ expected a non-associated function, found a trait
    |
@@ -60,7 +60,7 @@ error: the `#[test]` attribute may only be used on a non-associated function
   --> $DIR/test-on-not-fn.rs:26:1
    |
 LL | #[test]
-   | ^^^^^^^ the `#[test]` macro causes a function to be run on a test and has no effect on non-functions
+   | ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions
 LL | impl Foo for i32 {}
    | ------------------- expected a non-associated function, found an implementation
    |
@@ -73,7 +73,7 @@ error: the `#[test]` attribute may only be used on a non-associated function
   --> $DIR/test-on-not-fn.rs:29:1
    |
 LL | #[test]
-   | ^^^^^^^ the `#[test]` macro causes a function to be run on a test and has no effect on non-functions
+   | ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions
 LL | const FOO: i32 = -1_i32;
    | ------------------------ expected a non-associated function, found a constant item
    |
@@ -86,7 +86,7 @@ error: the `#[test]` attribute may only be used on a non-associated function
   --> $DIR/test-on-not-fn.rs:32:1
    |
 LL | #[test]
-   | ^^^^^^^ the `#[test]` macro causes a function to be run on a test and has no effect on non-functions
+   | ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions
 LL | static BAR: u64 = 10_000_u64;
    | ----------------------------- expected a non-associated function, found a static item
    |
@@ -99,7 +99,7 @@ error: the `#[test]` attribute may only be used on a non-associated function
   --> $DIR/test-on-not-fn.rs:35:1
    |
 LL |   #[test]
-   |   ^^^^^^^ the `#[test]` macro causes a function to be run on a test and has no effect on non-functions
+   |   ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions
 LL | / enum MyUnit {
 LL | |     Unit,
 LL | | }
@@ -114,7 +114,7 @@ error: the `#[test]` attribute may only be used on a non-associated function
   --> $DIR/test-on-not-fn.rs:40:1
    |
 LL | #[test]
-   | ^^^^^^^ the `#[test]` macro causes a function to be run on a test and has no effect on non-functions
+   | ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions
 LL | struct NewI32(i32);
    | ------------------- expected a non-associated function, found a struct
    |
@@ -127,7 +127,7 @@ error: the `#[test]` attribute may only be used on a non-associated function
   --> $DIR/test-on-not-fn.rs:43:1
    |
 LL |   #[test]
-   |   ^^^^^^^ the `#[test]` macro causes a function to be run on a test and has no effect on non-functions
+   |   ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions
 LL | / union Spooky {
 LL | |     x: i32,
 LL | |     y: u32,
@@ -143,7 +143,7 @@ error: the `#[test]` attribute may only be used on a non-associated function
   --> $DIR/test-on-not-fn.rs:50:1
    |
 LL |   #[test]
-   |   ^^^^^^^ the `#[test]` macro causes a function to be run on a test and has no effect on non-functions
+   |   ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions
 LL |   #[derive(Copy, Clone, Debug)]
 LL | / struct MoreAttrs {
 LL | |     a: i32,
@@ -160,7 +160,7 @@ warning: the `#[test]` attribute may only be used on a non-associated function
   --> $DIR/test-on-not-fn.rs:61:1
    |
 LL | #[test]
-   | ^^^^^^^ the `#[test]` macro causes a function to be run on a test and has no effect on non-functions
+   | ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions
 LL | foo!();
    | ------- expected a non-associated function, found an item macro invocation
    |

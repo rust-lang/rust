@@ -1,20 +1,24 @@
-error: `#[test]` attribute is only allowed on non associated functions
-  --> $DIR/test-attr-non-associated-functions.rs:9:5
+error: the `#[test]` attribute may only be used on a non-associated function
+  --> $DIR/test-attr-non-associated-functions.rs:6:5
    |
-LL | /     fn new() -> A {
-LL | |
-LL | |         A {}
-LL | |     }
-   | |_____^
+LL |     #[test]
+   |     ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions
+   |
+help: replace with conditional compilation to make the item only exist when tests are being run
+   |
+LL |     #[cfg(test)]
+   |
 
-error: `#[test]` attribute is only allowed on non associated functions
-  --> $DIR/test-attr-non-associated-functions.rs:14:5
+error: the `#[test]` attribute may only be used on a non-associated function
+  --> $DIR/test-attr-non-associated-functions.rs:11:5
    |
-LL | /     fn recovery_witness() -> A {
-LL | |
-LL | |         A {}
-LL | |     }
-   | |_____^
+LL |     #[test]
+   |     ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions
+   |
+help: replace with conditional compilation to make the item only exist when tests are being run
+   |
+LL |     #[cfg(test)]
+   |
 
 error: aborting due to 2 previous errors
 
