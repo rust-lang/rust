@@ -2139,7 +2139,7 @@ fn replace_param_and_infer_substs_with_placeholder<'tcx>(
                     universe: ty::UniverseIndex::ROOT,
                     bound: ty::BoundTy {
                         var: ty::BoundVar::from_u32(idx),
-                        kind: ty::BoundTyKind::Anon(idx),
+                        kind: ty::BoundTyKind::Anon,
                     },
                 })
             } else {

@@ -389,9 +389,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 let index = entry.index();
                 let var = ty::BoundVar::from_usize(index);
                 let kind = entry
-                    .or_insert_with(|| {
-                        ty::BoundVariableKind::Ty(ty::BoundTyKind::Anon(index as u32))
-                    })
+                    .or_insert_with(|| ty::BoundVariableKind::Ty(ty::BoundTyKind::Anon))
                     .expect_ty();
                 self.tcx.mk_bound(ty::INNERMOST, BoundTy { var, kind })
             }

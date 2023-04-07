@@ -701,9 +701,7 @@ pub trait PrettyPrinter<'tcx>:
             ty::Error(_) => p!("[type error]"),
             ty::Param(ref param_ty) => p!(print(param_ty)),
             ty::Bound(debruijn, bound_ty) => match bound_ty.kind {
-                ty::BoundTyKind::Anon(bv) => {
-                    self.pretty_print_bound_var(debruijn, ty::BoundVar::from_u32(bv))?
-                }
+                ty::BoundTyKind::Anon => self.pretty_print_bound_var(debruijn, bound_ty.var)?,
                 ty::BoundTyKind::Param(_, s) => match self.should_print_verbose() {
                     true if debruijn == ty::INNERMOST => p!(write("^{}", s)),
                     true => p!(write("^{}_{}", debruijn.index(), s)),
@@ -740,7 +738,7 @@ pub trait PrettyPrinter<'tcx>:
                 }
             }
             ty::Placeholder(placeholder) => match placeholder.bound.kind {
-                ty::BoundTyKind::Anon(_) => p!(write("Placeholder({:?})", placeholder)),
+                ty::BoundTyKind::Anon => p!(write("Placeholder({:?})", placeholder)),
                 ty::BoundTyKind::Param(_, name) => p!(write("{}", name)),
             },
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {

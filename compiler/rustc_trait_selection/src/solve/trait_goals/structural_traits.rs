@@ -95,17 +95,15 @@ fn replace_erased_lifetimes_with_bound_vars<'tcx>(
     let mut counter = 0;
     let ty = tcx.fold_regions(ty, |mut r, current_depth| {
         if let ty::ReErased = r.kind() {
-            let br = ty::BoundRegion {
-                var: ty::BoundVar::from_u32(counter),
-                kind: ty::BrAnon(counter, None),
-            };
+            let br =
+                ty::BoundRegion { var: ty::BoundVar::from_u32(counter), kind: ty::BrAnon(None) };
             counter += 1;
             r = tcx.mk_re_late_bound(current_depth, br);
         }
         r
     });
     let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
-        (0..counter).map(|i| ty::BoundVariableKind::Region(ty::BrAnon(i, None))),
+        (0..counter).map(|_| ty::BoundVariableKind::Region(ty::BrAnon(None))),
     );
     ty::Binder::bind_with_vars(ty, bound_vars)
 }

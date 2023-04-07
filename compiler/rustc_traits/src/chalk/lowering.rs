@@ -479,14 +479,14 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
                 ty::DebruijnIndex::from_usize(bound.debruijn.depth() as usize),
                 ty::BoundTy {
                     var: ty::BoundVar::from_usize(bound.index),
-                    kind: ty::BoundTyKind::Anon(bound.index as u32),
+                    kind: ty::BoundTyKind::Anon,
                 },
             ),
             TyKind::Placeholder(placeholder) => ty::Placeholder(ty::Placeholder {
                 universe: ty::UniverseIndex::from_usize(placeholder.ui.counter),
                 bound: ty::BoundTy {
                     var: ty::BoundVar::from_usize(placeholder.idx),
-                    kind: ty::BoundTyKind::Anon(placeholder.idx as u32),
+                    kind: ty::BoundTyKind::Anon,
                 },
             }),
             TyKind::InferenceVar(_, _) => unimplemented!(),
@@ -691,7 +691,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
         let self_ty = interner.tcx.mk_bound(
             // This is going to be wrapped in a binder
             ty::DebruijnIndex::from_usize(1),
-            ty::BoundTy { var: ty::BoundVar::from_usize(0), kind: ty::BoundTyKind::Anon(0) },
+            ty::BoundTy { var: ty::BoundVar::from_usize(0), kind: ty::BoundTyKind::Anon },
         );
         let where_clauses = predicates.into_iter().map(|predicate| {
             let (predicate, binders, _named_regions) =
@@ -1098,7 +1098,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ParamsSubstitutor<'tcx> {
                     universe: ty::UniverseIndex::from_usize(0),
                     bound: ty::BoundTy {
                         var: ty::BoundVar::from_usize(idx),
-                        kind: ty::BoundTyKind::Anon(idx as u32),
+                        kind: ty::BoundTyKind::Anon,
                     },
                 }),
                 None => {
@@ -1109,7 +1109,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ParamsSubstitutor<'tcx> {
                         universe: ty::UniverseIndex::from_usize(0),
                         bound: ty::BoundTy {
                             var: ty::BoundVar::from_usize(idx),
-                            kind: ty::BoundTyKind::Anon(idx as u32),
+                            kind: ty::BoundTyKind::Anon,
                         },
                     })
                 }
