@@ -16,7 +16,7 @@ struct Foo;
 #[derive(Copy)]
 struct Foo;
 
-impl < > core::marker::Copy for Foo< > where {}"#]],
+impl < > core::marker::Copy for Foo< > {}"#]],
     );
 }
 
@@ -41,7 +41,7 @@ macro Copy {}
 #[derive(Copy)]
 struct Foo;
 
-impl < > crate ::marker::Copy for Foo< > where {}"#]],
+impl < > crate ::marker::Copy for Foo< > {}"#]],
     );
 }
 
@@ -57,7 +57,7 @@ struct Foo<A, B>;
 #[derive(Copy)]
 struct Foo<A, B>;
 
-impl <A: core::marker::Copy, B: core::marker::Copy, > core::marker::Copy for Foo<A, B, > where {}"#]],
+impl <T0: core::marker::Copy, T1: core::marker::Copy, > core::marker::Copy for Foo<T0, T1, > {}"#]],
     );
 }
 
@@ -74,7 +74,7 @@ struct Foo<A, B, 'a, 'b>;
 #[derive(Copy)]
 struct Foo<A, B, 'a, 'b>;
 
-impl <A: core::marker::Copy, B: core::marker::Copy, > core::marker::Copy for Foo<A, B, > where {}"#]],
+impl <T0: core::marker::Copy, T1: core::marker::Copy, > core::marker::Copy for Foo<T0, T1, > {}"#]],
     );
 }
 
@@ -90,7 +90,7 @@ struct Foo<A, B>;
 #[derive(Clone)]
 struct Foo<A, B>;
 
-impl <A: core::clone::Clone, B: core::clone::Clone, > core::clone::Clone for Foo<A, B, > where {}"#]],
+impl <T0: core::clone::Clone, T1: core::clone::Clone, > core::clone::Clone for Foo<T0, T1, > {}"#]],
     );
 }
 
@@ -106,6 +106,6 @@ struct Foo<const X: usize, T>(u32);
 #[derive(Clone)]
 struct Foo<const X: usize, T>(u32);
 
-impl <const X: usize, T: core::clone::Clone, > core::clone::Clone for Foo<X, T, > where u32: core::clone::Clone, {}"#]],
+impl <const T0: usize, T1: core::clone::Clone, > core::clone::Clone for Foo<T0, T1, > {}"#]],
     );
 }
