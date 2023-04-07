@@ -4315,3 +4315,63 @@ impl Trait for () {
     "#,
     );
 }
+
+#[test]
+fn derive_macro_bounds() {
+    check_types(
+        r#"
+        //- minicore: clone, derive
+        #[derive(Clone)]
+        struct Copy;
+        struct NotCopy;
+        #[derive(Clone)]
+        struct Generic<T>(T);
+        trait Tr {
+            type Assoc;
+        }
+        impl Tr for Copy {
+            type Assoc = NotCopy;
+        }
+        #[derive(Clone)]
+        struct AssocGeneric<T: Tr>(T::Assoc);
+
+        #[derive(Clone)]
+        struct AssocGeneric2<T: Tr>(<T as Tr>::Assoc);
+
+        #[derive(Clone)]
+        struct AssocGeneric3<T: Tr>(Generic<T::Assoc>);
+
+        #[derive(Clone)]
+        struct Vec<T>();
+
+        #[derive(Clone)]
+        struct R1(Vec<R2>);
+        #[derive(Clone)]
+        struct R2(R1);
+
+        fn f() {
+            let x = (&Copy).clone();
+              //^ Copy
+            let x = (&NotCopy).clone();
+              //^ &NotCopy
+            let x = (&Generic(Copy)).clone();
+              //^ Generic<Copy>
+            let x = (&Generic(NotCopy)).clone();
+              //^ &Generic<NotCopy>
+            let x: &AssocGeneric<Copy> = &AssocGeneric(NotCopy);
+            let x = x.clone();
+              //^ &AssocGeneric<Copy>
+            let x: &AssocGeneric2<Copy> = &AssocGeneric2(NotCopy);
+            let x = x.clone();
+              //^ &AssocGeneric2<Copy>
+            let x: &AssocGeneric3<Copy> = &AssocGeneric3(Generic(NotCopy));
+            let x = x.clone();
+              //^ &AssocGeneric3<Copy>
+            let x = (&R1(Vec())).clone();
+              //^ R1
+            let x = (&R2(R1(Vec()))).clone();
+              //^ R2
+        }
+        "#,
+    );
+}

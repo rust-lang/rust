@@ -143,6 +143,12 @@ pub mod clone {
     pub trait Clone: Sized {
         fn clone(&self) -> Self;
     }
+
+    impl<T> Clone for &T {
+        fn clone(&self) -> Self {
+            *self
+        }
+    }
     // region:derive
     #[rustc_builtin_macro]
     pub macro Clone($item:item) {}
