@@ -603,7 +603,16 @@ fn main() {
                             },
                             "",
                         ],
-                        text_edit: None,
+                        text_edit: Some(
+                            TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: ": Struct",
+                                        delete: 130..130,
+                                    },
+                                ],
+                            },
+                        ),
                     },
                     InlayHint {
                         range: 145..185,

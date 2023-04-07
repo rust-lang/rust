@@ -13,7 +13,7 @@ use syntax::{
 };
 
 use crate::{
-    inlay_hints::{closure_has_block_body, label_of_ty},
+    inlay_hints::{closure_has_block_body, label_of_ty, ty_to_text_edit},
     InlayHint, InlayHintsConfig, InlayKind,
 };
 
@@ -36,13 +36,30 @@ pub(super) fn hints(
         return None;
     }
 
-    let label = label_of_ty(famous_defs, config, ty)?;
+    let label = label_of_ty(famous_defs, config, ty.clone())?;
 
     if config.hide_named_constructor_hints
         && is_named_constructor(sema, pat, &label.to_string()).is_some()
     {
         return None;
     }
+
+    let type_annotation_is_valid = desc_pat
+        .syntax()
+        .parent()
+        .map(|it| ast::LetStmt::can_cast(it.kind()) || ast::Param::can_cast(it.kind()))
+        .unwrap_or(false);
+    let text_edit = if type_annotation_is_valid {
+        ty_to_text_edit(
+            sema,
+            desc_pat.syntax(),
+            &ty,
+            pat.syntax().text_range().end(),
+            String::from(": "),
+        )
+    } else {
+        None
+    };
 
     acc.push(InlayHint {
         range: match pat.name() {
@@ -51,7 +68,7 @@ pub(super) fn hints(
         },
         kind: InlayKind::Type,
         label,
-        text_edit: None,
+        text_edit,
     });
 
     Some(())
@@ -178,14 +195,16 @@ fn pat_is_enum_variant(db: &RootDatabase, bind_pat: &ast::IdentPat, pat_ty: &hir
 mod tests {
     // This module also contains tests for super::closure_ret
 
+    use expect_test::expect;
     use hir::ClosureStyle;
     use syntax::{TextRange, TextSize};
     use test_utils::extract_annotations;
 
-    use crate::{fixture, inlay_hints::InlayHintsConfig};
+    use crate::{fixture, inlay_hints::InlayHintsConfig, ClosureReturnTypeHints};
 
-    use crate::inlay_hints::tests::{check, check_with_config, DISABLED_CONFIG, TEST_CONFIG};
-    use crate::ClosureReturnTypeHints;
+    use crate::inlay_hints::tests::{
+        check, check_edit, check_no_edit, check_with_config, DISABLED_CONFIG, TEST_CONFIG,
+    };
 
     #[track_caller]
     fn check_types(ra_fixture: &str) {
@@ -1012,6 +1031,162 @@ fn main() {
     let c = Smol(Smol(0u32))
       //^ Smol<Smol<…>>
 }"#,
+        );
+    }
+
+    #[test]
+    fn edit_for_let_stmt() {
+        check_edit(
+            TEST_CONFIG,
+            r#"
+struct S<T>(T);
+fn test<F>(v: S<(S<i32>, S<()>)>, f: F) {
+    let a = v;
+    let S((b, c)) = v;
+    let a @ S((b, c)) = v;
+    let a = f;
+}
+"#,
+            expect![[r#"
+                struct S<T>(T);
+                fn test<F>(v: S<(S<i32>, S<()>)>, f: F) {
+                    let a: S<(S<i32>, S<()>)> = v;
+                    let S((b, c)) = v;
+                    let a @ S((b, c)): S<(S<i32>, S<()>)> = v;
+                    let a: F = f;
+                }
+            "#]],
+        );
+    }
+
+    #[test]
+    fn edit_for_closure_param() {
+        check_edit(
+            TEST_CONFIG,
+            r#"
+fn test<T>(t: T) {
+    let f = |a, b, c| {};
+    let result = f(42, "", t);
+}
+"#,
+            expect![[r#"
+                fn test<T>(t: T) {
+                    let f = |a: i32, b: &str, c: T| {};
+                    let result: () = f(42, "", t);
+                }
+            "#]],
+        );
+    }
+
+    #[test]
+    fn edit_for_closure_ret() {
+        check_edit(
+            TEST_CONFIG,
+            r#"
+struct S<T>(T);
+fn test() {
+    let f = || { 3 };
+    let f = |a: S<usize>| { S(a) };
+}
+"#,
+            expect![[r#"
+                struct S<T>(T);
+                fn test() {
+                    let f = || -> i32 { 3 };
+                    let f = |a: S<usize>| -> S<S<usize>> { S(a) };
+                }
+            "#]],
+        );
+    }
+
+    #[test]
+    fn edit_prefixes_paths() {
+        check_edit(
+            TEST_CONFIG,
+            r#"
+pub struct S<T>(T);
+mod middle {
+    pub struct S<T, U>(T, U);
+    pub fn make() -> S<inner::S<i64>, super::S<usize>> { loop {} }
+
+    mod inner {
+        pub struct S<T>(T);
+    }
+
+    fn test() {
+        let a = make();
+    }
+}
+"#,
+            expect![[r#"
+                pub struct S<T>(T);
+                mod middle {
+                    pub struct S<T, U>(T, U);
+                    pub fn make() -> S<inner::S<i64>, super::S<usize>> { loop {} }
+
+                    mod inner {
+                        pub struct S<T>(T);
+                    }
+
+                    fn test() {
+                        let a: S<inner::S<i64>, crate::S<usize>> = make();
+                    }
+                }
+            "#]],
+        );
+    }
+
+    #[test]
+    fn no_edit_for_top_pat_where_type_annotation_is_invalid() {
+        check_no_edit(
+            TEST_CONFIG,
+            r#"
+fn test() {
+    if let a = 42 {}
+    while let a = 42 {}
+    match 42 {
+        a => (),
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn no_edit_for_opaque_type() {
+        check_no_edit(
+            TEST_CONFIG,
+            r#"
+trait Trait {}
+struct S<T>(T);
+fn foo() -> impl Trait {}
+fn bar() -> S<impl Trait> {}
+fn test() {
+    let a = foo();
+    let a = bar();
+    let f = || { foo() };
+    let f = || { bar() };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_edit_for_closure_return_without_body_block() {
+        // We can lift this limitation; see FIXME in closure_ret module.
+        let config = InlayHintsConfig {
+            closure_return_type_hints: ClosureReturnTypeHints::Always,
+            ..TEST_CONFIG
+        };
+        check_no_edit(
+            config,
+            r#"
+struct S<T>(T);
+fn test() {
+    let f = || 3;
+    let f = |a: S<usize>| S(a);
+}
+"#,
         );
     }
 }
