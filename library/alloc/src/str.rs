@@ -89,7 +89,7 @@ macro_rules! specialize_for_lengths {
                 $num => {
                     for s in iter {
                         copy_slice_and_advance!(target, sep_bytes);
-                        let content_bytes = s.borrow().as_ref();
+                        let content_bytes = s.as_ref();
                         copy_slice_and_advance!(target, content_bytes);
                     }
                 },
@@ -98,7 +98,7 @@ macro_rules! specialize_for_lengths {
                 // arbitrary non-zero size fallback
                 for s in iter {
                     copy_slice_and_advance!(target, sep_bytes);
-                    let content_bytes = s.borrow().as_ref();
+                    let content_bytes = s.as_ref();
                     copy_slice_and_advance!(target, content_bytes);
                 }
             }

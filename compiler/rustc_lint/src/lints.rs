@@ -567,33 +567,9 @@ pub struct BuiltinUnexpectedCliConfigValue {
 #[derive(LintDiagnostic)]
 #[diag(lint_clone_double_ref)]
 pub struct CloneDoubleRef<'a> {
+    pub call: Symbol,
     pub ty: Ty<'a>,
-    #[subdiagnostic]
-    pub try_deref: CloneDoubleRefTryDeref,
-    #[subdiagnostic]
-    pub explicit: CloneDoubleRefExplicit<'a>,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(lint_clone_double_ref_sugg_explicit, applicability = "maybe-incorrect")]
-pub struct CloneDoubleRefExplicit<'a> {
-    #[suggestion_part(code = "<{refs}{ty}>::clone(")]
-    pub start: Span,
-    #[suggestion_part(code = ")")]
-    pub end: Span,
-    pub refs: String,
-    pub ty: Ty<'a>,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(lint_clone_double_ref_try_deref, applicability = "maybe-incorrect")]
-pub struct CloneDoubleRefTryDeref {
-    #[suggestion_part(code = "{refs}({derefs}")]
-    pub start: Span,
-    #[suggestion_part(code = ").clone()")]
-    pub end: Span,
-    pub refs: String,
-    pub derefs: String,
+    pub op: &'static str,
 }
 
 // deref_into_dyn_supertrait.rs

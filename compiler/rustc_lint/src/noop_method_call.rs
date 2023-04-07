@@ -1,10 +1,11 @@
 use crate::context::LintContext;
-use crate::lints::NoopMethodCallDiag;
+use crate::lints::{CloneDoubleRef, NoopMethodCallDiag};
 use crate::LateContext;
 use crate::LateLintPass;
 use rustc_hir::def::DefKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_middle::ty;
+use rustc_middle::ty::adjustment::Adjust;
 use rustc_span::symbol::sym;
 
 declare_lint! {
@@ -31,18 +32,32 @@ declare_lint! {
     /// calling `clone` on a `&T` where `T` does not implement clone, actually doesn't do anything
     /// as references are copy. This lint detects these calls and warns the user about them.
     pub NOOP_METHOD_CALL,
-    Allow,
+    Warn,
     "detects the use of well-known noop methods"
 }
 
-declare_lint_pass!(NoopMethodCall => [NOOP_METHOD_CALL]);
+declare_lint! {
+    /// The `clone_double_ref` lint checks for usage of `.clone()` on an `&&T`,
+    /// which copies the inner `&T`, instead of cloning the underlying `T` and
+    /// can be confusing.
+    pub CLONE_DOUBLE_REF,
+    Warn,
+    "using `clone` on `&&T`"
+}
+
+declare_lint_pass!(NoopMethodCall => [NOOP_METHOD_CALL, CLONE_DOUBLE_REF]);
 
 impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // We only care about method calls.
-        let ExprKind::MethodCall(call, receiver, ..) = &expr.kind else {
-            return
+        let ExprKind::MethodCall(call, receiver, _, call_span) = &expr.kind else {
+            return;
         };
+
+        if call_span.from_expansion() {
+            return;
+        }
+
         // We only care about method calls corresponding to the `Clone`, `Deref` and `Borrow`
         // traits and ignore any other method call.
         let did = match cx.typeck_results().type_dependent_def(expr.hir_id) {
@@ -70,25 +85,40 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
         };
         // (Re)check that it implements the noop diagnostic.
         let Some(name) = cx.tcx.get_diagnostic_name(i.def_id()) else { return };
-        if !matches!(
-            name,
-            sym::noop_method_borrow | sym::noop_method_clone | sym::noop_method_deref
-        ) {
-            return;
-        }
+
+        let op = match name {
+            sym::noop_method_borrow => "borrowing",
+            sym::noop_method_clone => "cloning",
+            sym::noop_method_deref => "dereferencing",
+            _ => return,
+        };
+
         let receiver_ty = cx.typeck_results().expr_ty(receiver);
         let expr_ty = cx.typeck_results().expr_ty_adjusted(expr);
-        if receiver_ty != expr_ty {
-            // This lint will only trigger if the receiver type and resulting expression \
-            // type are the same, implying that the method call is unnecessary.
+
+        let arg_adjustments = cx.typeck_results().expr_adjustments(receiver);
+
+        // If there is any user defined auto-deref step, then we don't want to warn.
+        // https://github.com/rust-lang/rust-clippy/issues/9272
+        if arg_adjustments.iter().any(|adj| matches!(adj.kind, Adjust::Deref(Some(_)))) {
             return;
         }
+
         let expr_span = expr.span;
         let span = expr_span.with_lo(receiver.span.hi());
-        cx.emit_spanned_lint(
-            NOOP_METHOD_CALL,
-            span,
-            NoopMethodCallDiag { method: call.ident.name, receiver_ty, label: span },
-        );
+
+        if receiver_ty == expr_ty {
+            cx.emit_spanned_lint(
+                NOOP_METHOD_CALL,
+                span,
+                NoopMethodCallDiag { method: call.ident.name, receiver_ty, label: span },
+            );
+        } else {
+            cx.emit_spanned_lint(
+                CLONE_DOUBLE_REF,
+                span,
+                CloneDoubleRef { call: call.ident.name, ty: expr_ty, op },
+            )
+        }
     }
 }

@@ -1,22 +1,35 @@
-error: using `clone` on a double-reference, which copies the reference of type `Vec<i32>` instead of cloning the inner type
-  --> $DIR/clone-double-ref.rs:7:22
+error: using `.clone()` on a double reference, which copies `&Vec<i32>` instead of cloning the inner type
+  --> $DIR/clone-double-ref.rs:7:23
    |
 LL |     let z: &Vec<_> = y.clone();
-   |                      ^^^^^^^^^
+   |                       ^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/clone-double-ref.rs:2:9
    |
-LL | #![deny(clone_double_ref)]
+LL | #![deny(clone_double_ref, noop_method_call)]
    |         ^^^^^^^^^^^^^^^^
-help: try dereferencing it
-   |
-LL |     let z: &Vec<_> = &(*y).clone();
-   |                      +++ ~~~~~~~~~
-help: or try being explicit if you are sure, that you want to clone a reference
-   |
-LL |     let z: &Vec<_> = <&Vec<i32>>::clone(y);
-   |                      +++++++++++++++++++ ~
 
-error: aborting due to previous error
+error: call to `.clone()` on a reference in this situation does nothing
+  --> $DIR/clone-double-ref.rs:24:25
+   |
+LL |     let _ = &mut encoded.clone();
+   |                         ^^^^^^^^ unnecessary method call
+   |
+   = note: the type `&[u8]` which `clone` is being called on is the same as the type returned from `clone`, so the method call does not do anything and can be removed
+note: the lint level is defined here
+  --> $DIR/clone-double-ref.rs:2:27
+   |
+LL | #![deny(clone_double_ref, noop_method_call)]
+   |                           ^^^^^^^^^^^^^^^^
+
+error: call to `.clone()` on a reference in this situation does nothing
+  --> $DIR/clone-double-ref.rs:26:21
+   |
+LL |     let _ = &encoded.clone();
+   |                     ^^^^^^^^ unnecessary method call
+   |
+   = note: the type `&[u8]` which `clone` is being called on is the same as the type returned from `clone`, so the method call does not do anything and can be removed
+
+error: aborting due to 3 previous errors
 

@@ -1,11 +1,11 @@
-#![feature(once_cell)]
-#![deny(clone_double_ref)]
+#![feature(lazy_cell)]
+#![deny(clone_double_ref, noop_method_call)]
 
 pub fn clone_on_double_ref() {
     let x = vec![1];
     let y = &&x;
     let z: &Vec<_> = y.clone();
-    //~^ ERROR using `clone` on a double-reference, which copies the reference of type `Vec<i32>`
+    //~^ ERROR using `.clone()` on a double reference, which copies `&Vec<i32>`
 
     println!("{:p} {:p}", *y, z);
 }
@@ -22,7 +22,9 @@ fn rust_clippy_issue_9272() {
 
 fn check(mut encoded: &[u8]) {
     let _ = &mut encoded.clone();
+    //~^ ERROR call to `.clone()` on a reference in this situation does nothing
     let _ = &encoded.clone();
+    //~^ ERROR call to `.clone()` on a reference in this situation does nothing
 }
 
 fn main() {}
