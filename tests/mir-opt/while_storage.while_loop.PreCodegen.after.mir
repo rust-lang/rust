@@ -14,7 +14,7 @@ fn while_loop(_1: bool) -> () {
         StorageLive(_2);                 // scope 0 at $DIR/while_storage.rs:+1:11: +1:22
         _2 = get_bool(_1) -> bb2;        // scope 0 at $DIR/while_storage.rs:+1:11: +1:22
                                          // mir::Constant
-                                         // + span: $DIR/while_storage.rs:10:11: 10:19
+                                         // + span: $DIR/while_storage.rs:11:11: 11:19
                                          // + literal: Const { ty: fn(bool) -> bool {get_bool}, val: Value(<ZST>) }
     }
 
@@ -26,7 +26,7 @@ fn while_loop(_1: bool) -> () {
         StorageLive(_3);                 // scope 0 at $DIR/while_storage.rs:+2:12: +2:23
         _3 = get_bool(_1) -> bb4;        // scope 0 at $DIR/while_storage.rs:+2:12: +2:23
                                          // mir::Constant
-                                         // + span: $DIR/while_storage.rs:11:12: 11:20
+                                         // + span: $DIR/while_storage.rs:12:12: 12:20
                                          // + literal: Const { ty: fn(bool) -> bool {get_bool}, val: Value(<ZST>) }
     }
 

@@ -11,7 +11,7 @@
 -         _0 = opaque::<NotCopy>(move _1) -> bb1; // scope 0 at $DIR/custom_move_arg.rs:+3:9: +3:41
 +         _0 = opaque::<NotCopy>(_1) -> bb1; // scope 0 at $DIR/custom_move_arg.rs:+3:9: +3:41
                                            // mir::Constant
-                                           // + span: $DIR/custom_move_arg.rs:15:24: 15:30
+                                           // + span: $DIR/custom_move_arg.rs:16:24: 16:30
                                            // + literal: Const { ty: fn(NotCopy) {opaque::<NotCopy>}, val: Value(<ZST>) }
       }
   
@@ -20,7 +20,7 @@
 -         _0 = opaque::<NotCopy>(_3) -> bb2; // scope 0 at $DIR/custom_move_arg.rs:+7:9: +7:35
 +         _0 = opaque::<NotCopy>(_1) -> bb2; // scope 0 at $DIR/custom_move_arg.rs:+7:9: +7:35
                                            // mir::Constant
-                                           // + span: $DIR/custom_move_arg.rs:19:24: 19:30
+                                           // + span: $DIR/custom_move_arg.rs:20:24: 20:30
                                            // + literal: Const { ty: fn(NotCopy) {opaque::<NotCopy>}, val: Value(<ZST>) }
       }
   

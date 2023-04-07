@@ -10,7 +10,7 @@ use rustc_middle::mir::{
     traversal, BasicBlock, BinOp, Body, BorrowKind, CastKind, CopyNonOverlapping, Local, Location,
     MirPass, MirPhase, NonDivergingIntrinsic, Operand, Place, PlaceElem, PlaceRef, ProjectionElem,
     RetagKind, RuntimePhase, Rvalue, SourceScope, Statement, StatementKind, Terminator,
-    TerminatorKind, UnOp, VarDebugInfo, VarDebugInfoContents, START_BLOCK,
+    TerminatorKind, UnOp, UnwindAction, VarDebugInfo, VarDebugInfoContents, START_BLOCK,
 };
 use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeVisitableExt};
 use rustc_mir_dataflow::impls::MaybeStorageLive;
@@ -229,6 +229,24 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
                 bb = parent;
             }
+        }
+    }
+
+    fn check_unwind_edge(&mut self, location: Location, unwind: UnwindAction) {
+        let is_cleanup = self.body.basic_blocks[location.block].is_cleanup;
+        match unwind {
+            UnwindAction::Cleanup(unwind) => {
+                if is_cleanup {
+                    self.fail(location, "unwind on cleanup block");
+                }
+                self.check_edge(location, unwind, EdgeKind::Unwind);
+            }
+            UnwindAction::Continue => {
+                if is_cleanup {
+                    self.fail(location, "unwind on cleanup block");
+                }
+            }
+            UnwindAction::Unreachable | UnwindAction::Terminate => (),
         }
     }
 
@@ -902,11 +920,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
             TerminatorKind::Drop { target, unwind, .. } => {
                 self.check_edge(location, *target, EdgeKind::Normal);
-                if let Some(unwind) = unwind {
-                    self.check_edge(location, *unwind, EdgeKind::Unwind);
-                }
+                self.check_unwind_edge(location, *unwind);
             }
-            TerminatorKind::Call { func, args, destination, target, cleanup, .. } => {
+            TerminatorKind::Call { func, args, destination, target, unwind, .. } => {
                 let func_ty = func.ty(&self.body.local_decls, self.tcx);
                 match func_ty.kind() {
                     ty::FnPtr(..) | ty::FnDef(..) => {}
@@ -918,9 +934,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 if let Some(target) = target {
                     self.check_edge(location, *target, EdgeKind::Normal);
                 }
-                if let Some(cleanup) = cleanup {
-                    self.check_edge(location, *cleanup, EdgeKind::Unwind);
-                }
+                self.check_unwind_edge(location, *unwind);
 
                 // The call destination place and Operand::Move place used as an argument might be
                 // passed by a reference to the callee. Consequently they must be non-overlapping.
@@ -946,7 +960,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            TerminatorKind::Assert { cond, target, cleanup, .. } => {
+            TerminatorKind::Assert { cond, target, unwind, .. } => {
                 let cond_ty = cond.ty(&self.body.local_decls, self.tcx);
                 if cond_ty != self.tcx.types.bool {
                     self.fail(
@@ -958,9 +972,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
                 self.check_edge(location, *target, EdgeKind::Normal);
-                if let Some(cleanup) = cleanup {
-                    self.check_edge(location, *cleanup, EdgeKind::Unwind);
-                }
+                self.check_unwind_edge(location, *unwind);
             }
             TerminatorKind::Yield { resume, drop, .. } => {
                 if self.body.generator.is_none() {
@@ -992,17 +1004,13 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
                 self.check_edge(location, *real_target, EdgeKind::Normal);
-                if let Some(unwind) = unwind {
-                    self.check_edge(location, *unwind, EdgeKind::Unwind);
-                }
+                self.check_unwind_edge(location, *unwind);
             }
-            TerminatorKind::InlineAsm { destination, cleanup, .. } => {
+            TerminatorKind::InlineAsm { destination, unwind, .. } => {
                 if let Some(destination) = destination {
                     self.check_edge(location, *destination, EdgeKind::Normal);
                 }
-                if let Some(cleanup) = cleanup {
-                    self.check_edge(location, *cleanup, EdgeKind::Unwind);
-                }
+                self.check_unwind_edge(location, *unwind);
             }
             TerminatorKind::GeneratorDrop => {
                 if self.body.generator.is_none() {
@@ -1015,10 +1023,13 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            TerminatorKind::Resume | TerminatorKind::Abort => {
+            TerminatorKind::Resume | TerminatorKind::Terminate => {
                 let bb = location.block;
                 if !self.body.basic_blocks[bb].is_cleanup {
-                    self.fail(location, "Cannot `Resume` or `Abort` from non-cleanup basic block")
+                    self.fail(
+                        location,
+                        "Cannot `Resume` or `Terminate` from non-cleanup basic block",
+                    )
                 }
             }
             TerminatorKind::Return => {

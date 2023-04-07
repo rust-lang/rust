@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 //! Tests that we bail out when there are multiple assignments to the same local.
 // unit-test: CopyProp
 fn val() -> i32 {

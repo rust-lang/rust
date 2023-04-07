@@ -57,7 +57,7 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
             | TerminatorKind::Assert { .. }
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Resume
-            | TerminatorKind::Abort
+            | TerminatorKind::Terminate
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::FalseEdge { .. }

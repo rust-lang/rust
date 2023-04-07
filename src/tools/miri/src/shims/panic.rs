@@ -53,7 +53,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         abi: Abi,
         link_name: Symbol,
         args: &[OpTy<'tcx, Provenance>],
-        unwind: StackPopUnwind,
+        unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -106,7 +106,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             &[data.into()],
             None,
             // Directly return to caller.
-            StackPopCleanup::Goto { ret: Some(ret), unwind: StackPopUnwind::Skip },
+            StackPopCleanup::Goto { ret: Some(ret), unwind: mir::UnwindAction::Continue },
         )?;
 
         // We ourselves will return `0`, eventually (will be overwritten if we catch a panic).
@@ -157,7 +157,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 &[catch_unwind.data.into(), payload.into()],
                 None,
                 // Directly return to caller of `try`.
-                StackPopCleanup::Goto { ret: Some(catch_unwind.ret), unwind: StackPopUnwind::Skip },
+                StackPopCleanup::Goto { ret: Some(catch_unwind.ret), unwind: mir::UnwindAction::Continue },
             )?;
 
             // We pushed a new stack frame, the engine should not do any jumping now!
@@ -168,7 +168,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 
     /// Start a panic in the interpreter with the given message as payload.
-    fn start_panic(&mut self, msg: &str, unwind: StackPopUnwind) -> InterpResult<'tcx> {
+    fn start_panic(&mut self, msg: &str, unwind: mir::UnwindAction) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
         // First arg: message.
@@ -189,7 +189,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn assert_panic(
         &mut self,
         msg: &mir::AssertMessage<'tcx>,
-        unwind: Option<mir::BasicBlock>,
+        unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
         use rustc_middle::mir::AssertKind::*;
         let this = self.eval_context_mut();
@@ -213,10 +213,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     None,
                     StackPopCleanup::Goto {
                         ret: None,
-                        unwind: match unwind {
-                            Some(cleanup) => StackPopUnwind::Cleanup(cleanup),
-                            None => StackPopUnwind::Skip,
-                        },
+                        unwind,
                     },
                 )?;
             }
@@ -240,10 +237,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     None,
                     StackPopCleanup::Goto {
                         ret: None,
-                        unwind: match unwind {
-                            Some(cleanup) => StackPopUnwind::Cleanup(cleanup),
-                            None => StackPopUnwind::Skip,
-                        },
+                        unwind,
                     },
                 )?;
             }
@@ -252,10 +246,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // Forward everything else to `panic` lang item.
                 this.start_panic(
                     msg.description(),
-                    match unwind {
-                        Some(cleanup) => StackPopUnwind::Cleanup(cleanup),
-                        None => StackPopUnwind::Skip,
-                    },
+                    unwind,
                 )?;
             }
         }

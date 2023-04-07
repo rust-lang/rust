@@ -1300,7 +1300,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         match &term.kind {
             TerminatorKind::Goto { .. }
             | TerminatorKind::Resume
-            | TerminatorKind::Abort
+            | TerminatorKind::Terminate
             | TerminatorKind::Return
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Unreachable
@@ -1584,7 +1584,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     span_mirbug!(self, block_data, "resume on non-cleanup block!")
                 }
             }
-            TerminatorKind::Abort => {
+            TerminatorKind::Terminate => {
                 if !is_cleanup {
                     span_mirbug!(self, block_data, "abort on non-cleanup block!")
                 }
@@ -1610,25 +1610,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
             TerminatorKind::Unreachable => {}
             TerminatorKind::Drop { target, unwind, .. }
-            | TerminatorKind::Assert { target, cleanup: unwind, .. } => {
+            | TerminatorKind::Assert { target, unwind, .. } => {
                 self.assert_iscleanup(body, block_data, target, is_cleanup);
-                if let Some(unwind) = unwind {
-                    if is_cleanup {
-                        span_mirbug!(self, block_data, "unwind on cleanup block")
-                    }
-                    self.assert_iscleanup(body, block_data, unwind, true);
-                }
+                self.assert_iscleanup_unwind(body, block_data, unwind, is_cleanup);
             }
-            TerminatorKind::Call { ref target, cleanup, .. } => {
+            TerminatorKind::Call { ref target, unwind, .. } => {
                 if let &Some(target) = target {
                     self.assert_iscleanup(body, block_data, target, is_cleanup);
                 }
-                if let Some(cleanup) = cleanup {
-                    if is_cleanup {
-                        span_mirbug!(self, block_data, "cleanup on cleanup block")
-                    }
-                    self.assert_iscleanup(body, block_data, cleanup, true);
-                }
+                self.assert_iscleanup_unwind(body, block_data, unwind, is_cleanup);
             }
             TerminatorKind::FalseEdge { real_target, imaginary_target } => {
                 self.assert_iscleanup(body, block_data, real_target, is_cleanup);
@@ -1636,23 +1626,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
             TerminatorKind::FalseUnwind { real_target, unwind } => {
                 self.assert_iscleanup(body, block_data, real_target, is_cleanup);
-                if let Some(unwind) = unwind {
-                    if is_cleanup {
-                        span_mirbug!(self, block_data, "cleanup in cleanup block via false unwind");
-                    }
-                    self.assert_iscleanup(body, block_data, unwind, true);
-                }
+                self.assert_iscleanup_unwind(body, block_data, unwind, is_cleanup);
             }
-            TerminatorKind::InlineAsm { destination, cleanup, .. } => {
+            TerminatorKind::InlineAsm { destination, unwind, .. } => {
                 if let Some(target) = destination {
                     self.assert_iscleanup(body, block_data, target, is_cleanup);
                 }
-                if let Some(cleanup) = cleanup {
-                    if is_cleanup {
-                        span_mirbug!(self, block_data, "cleanup on cleanup block")
-                    }
-                    self.assert_iscleanup(body, block_data, cleanup, true);
-                }
+                self.assert_iscleanup_unwind(body, block_data, unwind, is_cleanup);
             }
         }
     }
@@ -1666,6 +1646,29 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     ) {
         if body[bb].is_cleanup != iscleanuppad {
             span_mirbug!(self, ctxt, "cleanuppad mismatch: {:?} should be {:?}", bb, iscleanuppad);
+        }
+    }
+
+    fn assert_iscleanup_unwind(
+        &mut self,
+        body: &Body<'tcx>,
+        ctxt: &dyn fmt::Debug,
+        unwind: UnwindAction,
+        is_cleanup: bool,
+    ) {
+        match unwind {
+            UnwindAction::Cleanup(unwind) => {
+                if is_cleanup {
+                    span_mirbug!(self, ctxt, "unwind on cleanup block")
+                }
+                self.assert_iscleanup(body, ctxt, unwind, true);
+            }
+            UnwindAction::Continue => {
+                if is_cleanup {
+                    span_mirbug!(self, ctxt, "unwind on cleanup block")
+                }
+            }
+            UnwindAction::Unreachable | UnwindAction::Terminate => (),
         }
     }
 

@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 // unit-test: NormalizeArrayLen
 // compile-flags: -Zmir-enable-passes=+LowerSliceLenCalls
 

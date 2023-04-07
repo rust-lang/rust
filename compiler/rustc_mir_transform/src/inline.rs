@@ -453,7 +453,7 @@ impl<'tcx> Inliner<'tcx> {
 
                 // If the place doesn't actually need dropping, treat it like a regular goto.
                 let ty = callsite.callee.subst_mir(self.tcx, &place.ty(callee_body, tcx).ty);
-                if ty.needs_drop(tcx, self.param_env) && let Some(unwind) = unwind {
+                if ty.needs_drop(tcx, self.param_env) && let UnwindAction::Cleanup(unwind) = unwind {
                         work_list.push(unwind);
                     }
             } else if callee_attrs.instruction_set != self.codegen_fn_attrs.instruction_set
@@ -500,7 +500,7 @@ impl<'tcx> Inliner<'tcx> {
     ) {
         let terminator = caller_body[callsite.block].terminator.take().unwrap();
         match terminator.kind {
-            TerminatorKind::Call { args, destination, cleanup, .. } => {
+            TerminatorKind::Call { args, destination, unwind, .. } => {
                 // If the call is something like `a[*i] = f(i)`, where
                 // `i : &mut usize`, then just duplicating the `a[*i]`
                 // Place could result in two different locations if `f`
@@ -571,7 +571,7 @@ impl<'tcx> Inliner<'tcx> {
                     destination: destination_local,
                     callsite_scope: caller_body.source_scopes[callsite.source_info.scope].clone(),
                     callsite,
-                    cleanup_block: cleanup,
+                    cleanup_block: unwind,
                     in_cleanup_block: false,
                     tcx: self.tcx,
                     expn_data,
@@ -813,14 +813,14 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                 let ty = self.instance.subst_mir(tcx, &place.ty(self.callee_body, tcx).ty);
                 if ty.needs_drop(tcx, self.param_env) {
                     self.cost += CALL_PENALTY;
-                    if unwind.is_some() {
+                    if let UnwindAction::Cleanup(_) = unwind {
                         self.cost += LANDINGPAD_PENALTY;
                     }
                 } else {
                     self.cost += INSTR_COST;
                 }
             }
-            TerminatorKind::Call { func: Operand::Constant(ref f), cleanup, .. } => {
+            TerminatorKind::Call { func: Operand::Constant(ref f), unwind, .. } => {
                 let fn_ty = self.instance.subst_mir(tcx, &f.literal.ty());
                 self.cost += if let ty::FnDef(def_id, _) = *fn_ty.kind() && tcx.is_intrinsic(def_id) {
                     // Don't give intrinsics the extra penalty for calls
@@ -828,20 +828,20 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                 } else {
                     CALL_PENALTY
                 };
-                if cleanup.is_some() {
+                if let UnwindAction::Cleanup(_) = unwind {
                     self.cost += LANDINGPAD_PENALTY;
                 }
             }
-            TerminatorKind::Assert { cleanup, .. } => {
+            TerminatorKind::Assert { unwind, .. } => {
                 self.cost += CALL_PENALTY;
-                if cleanup.is_some() {
+                if let UnwindAction::Cleanup(_) = unwind {
                     self.cost += LANDINGPAD_PENALTY;
                 }
             }
             TerminatorKind::Resume => self.cost += RESUME_PENALTY,
-            TerminatorKind::InlineAsm { cleanup, .. } => {
+            TerminatorKind::InlineAsm { unwind, .. } => {
                 self.cost += INSTR_COST;
-                if cleanup.is_some() {
+                if let UnwindAction::Cleanup(_) = unwind {
                     self.cost += LANDINGPAD_PENALTY;
                 }
             }
@@ -979,7 +979,7 @@ struct Integrator<'a, 'tcx> {
     destination: Local,
     callsite_scope: SourceScopeData<'tcx>,
     callsite: &'a CallSite<'tcx>,
-    cleanup_block: Option<BasicBlock>,
+    cleanup_block: UnwindAction,
     in_cleanup_block: bool,
     tcx: TyCtxt<'tcx>,
     expn_data: LocalExpnId,
@@ -1014,18 +1014,21 @@ impl Integrator<'_, '_> {
         new
     }
 
-    fn map_unwind(&self, unwind: Option<BasicBlock>) -> Option<BasicBlock> {
+    fn map_unwind(&self, unwind: UnwindAction) -> UnwindAction {
         if self.in_cleanup_block {
-            if unwind.is_some() {
-                bug!("cleanup on cleanup block");
+            match unwind {
+                UnwindAction::Cleanup(_) | UnwindAction::Continue => {
+                    bug!("cleanup on cleanup block");
+                }
+                UnwindAction::Unreachable | UnwindAction::Terminate => return unwind,
             }
-            return unwind;
         }
 
         match unwind {
-            Some(target) => Some(self.map_block(target)),
+            UnwindAction::Unreachable | UnwindAction::Terminate => unwind,
+            UnwindAction::Cleanup(target) => UnwindAction::Cleanup(self.map_block(target)),
             // Add an unwind edge to the original call's cleanup block
-            None => self.cleanup_block,
+            UnwindAction::Continue => self.cleanup_block,
         }
     }
 }
@@ -1116,15 +1119,15 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
                 *target = self.map_block(*target);
                 *unwind = self.map_unwind(*unwind);
             }
-            TerminatorKind::Call { ref mut target, ref mut cleanup, .. } => {
+            TerminatorKind::Call { ref mut target, ref mut unwind, .. } => {
                 if let Some(ref mut tgt) = *target {
                     *tgt = self.map_block(*tgt);
                 }
-                *cleanup = self.map_unwind(*cleanup);
+                *unwind = self.map_unwind(*unwind);
             }
-            TerminatorKind::Assert { ref mut target, ref mut cleanup, .. } => {
+            TerminatorKind::Assert { ref mut target, ref mut unwind, .. } => {
                 *target = self.map_block(*target);
-                *cleanup = self.map_unwind(*cleanup);
+                *unwind = self.map_unwind(*unwind);
             }
             TerminatorKind::Return => {
                 terminator.kind = if let Some(tgt) = self.callsite.target {
@@ -1134,11 +1137,14 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
                 }
             }
             TerminatorKind::Resume => {
-                if let Some(tgt) = self.cleanup_block {
-                    terminator.kind = TerminatorKind::Goto { target: tgt }
-                }
+                terminator.kind = match self.cleanup_block {
+                    UnwindAction::Cleanup(tgt) => TerminatorKind::Goto { target: tgt },
+                    UnwindAction::Continue => TerminatorKind::Resume,
+                    UnwindAction::Unreachable => TerminatorKind::Unreachable,
+                    UnwindAction::Terminate => TerminatorKind::Terminate,
+                };
             }
-            TerminatorKind::Abort => {}
+            TerminatorKind::Terminate => {}
             TerminatorKind::Unreachable => {}
             TerminatorKind::FalseEdge { ref mut real_target, ref mut imaginary_target } => {
                 *real_target = self.map_block(*real_target);
@@ -1149,11 +1155,11 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
             {
                 bug!("False unwinds should have been removed before inlining")
             }
-            TerminatorKind::InlineAsm { ref mut destination, ref mut cleanup, .. } => {
+            TerminatorKind::InlineAsm { ref mut destination, ref mut unwind, .. } => {
                 if let Some(ref mut tgt) = *destination {
                     *tgt = self.map_block(*tgt);
                 }
-                *cleanup = self.map_unwind(*cleanup);
+                *unwind = self.map_unwind(*unwind);
             }
         }
     }

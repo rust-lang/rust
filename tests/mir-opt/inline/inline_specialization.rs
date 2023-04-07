@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 #![feature(specialization)]
 
 // EMIT_MIR inline_specialization.main.Inline.diff

@@ -18,7 +18,7 @@ fn f(_1: usize) -> usize {
         _4 = _1;                         // scope 1 at $DIR/dead_stores_better.rs:+4:8: +4:9
         _0 = id::<usize>(move _4) -> bb1; // scope 1 at $DIR/dead_stores_better.rs:+4:5: +4:10
                                          // mir::Constant
-                                         // + span: $DIR/dead_stores_better.rs:16:5: 16:7
+                                         // + span: $DIR/dead_stores_better.rs:17:5: 17:7
                                          // + literal: Const { ty: fn(usize) -> usize {id::<usize>}, val: Value(<ZST>) }
     }
 

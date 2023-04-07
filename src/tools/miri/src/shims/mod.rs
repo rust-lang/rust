@@ -34,7 +34,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         args: &[OpTy<'tcx, Provenance>],
         dest: &PlaceTy<'tcx, Provenance>,
         ret: Option<mir::BasicBlock>,
-        unwind: StackPopUnwind,
+        unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>> {
         let this = self.eval_context_mut();
         trace!("eval_fn_call: {:#?}, {:?}", instance, dest);
@@ -70,7 +70,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         align_op: &OpTy<'tcx, Provenance>,
         dest: &PlaceTy<'tcx, Provenance>,
         ret: Option<mir::BasicBlock>,
-        unwind: StackPopUnwind,
+        unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
         let ret = ret.unwrap();

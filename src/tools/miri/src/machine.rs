@@ -834,7 +834,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         args: &[OpTy<'tcx, Provenance>],
         dest: &PlaceTy<'tcx, Provenance>,
         ret: Option<mir::BasicBlock>,
-        unwind: StackPopUnwind,
+        unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>> {
         ecx.find_mir_or_eval_fn(instance, abi, args, dest, ret, unwind)
     }
@@ -847,7 +847,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         args: &[OpTy<'tcx, Provenance>],
         dest: &PlaceTy<'tcx, Provenance>,
         ret: Option<mir::BasicBlock>,
-        _unwind: StackPopUnwind,
+        _unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
         ecx.call_dlsym(fn_val, abi, args, dest, ret)
     }
@@ -859,7 +859,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         args: &[OpTy<'tcx, Provenance>],
         dest: &PlaceTy<'tcx, Provenance>,
         ret: Option<mir::BasicBlock>,
-        unwind: StackPopUnwind,
+        unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
         ecx.call_intrinsic(instance, args, dest, ret, unwind)
     }
@@ -868,7 +868,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     fn assert_panic(
         ecx: &mut MiriInterpCx<'mir, 'tcx>,
         msg: &mir::AssertMessage<'tcx>,
-        unwind: Option<mir::BasicBlock>,
+        unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
         ecx.assert_panic(msg, unwind)
     }

@@ -39,7 +39,7 @@
 -         _6 = opaque::<*mut u8>(move _7) -> bb1; // scope 4 at $DIR/reborrow.rs:+4:5: +4:14
 +         _6 = opaque::<*mut u8>(_2) -> bb1; // scope 4 at $DIR/reborrow.rs:+4:5: +4:14
                                            // mir::Constant
-                                           // + span: $DIR/reborrow.rs:38:5: 38:11
+                                           // + span: $DIR/reborrow.rs:39:5: 39:11
                                            // + literal: Const { ty: fn(*mut u8) {opaque::<*mut u8>}, val: Value(<ZST>) }
       }
   

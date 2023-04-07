@@ -186,11 +186,11 @@ fn main() -> () {
     }
 
     bb7 (cleanup): {
-        drop(_21) -> bb9;                // scope 7 at $DIR/retag.rs:+18:24: +18:25
+        drop(_21) -> [return: bb9, unwind terminate]; // scope 7 at $DIR/retag.rs:+18:24: +18:25
     }
 
     bb8 (cleanup): {
-        drop(_5) -> bb9;                 // scope 1 at $DIR/retag.rs:+3:36: +3:37
+        drop(_5) -> [return: bb9, unwind terminate]; // scope 1 at $DIR/retag.rs:+3:36: +3:37
     }
 
     bb9 (cleanup): {

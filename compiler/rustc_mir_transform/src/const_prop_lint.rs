@@ -686,7 +686,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
             // None of these have Operands to const-propagate.
             TerminatorKind::Goto { .. }
             | TerminatorKind::Resume
-            | TerminatorKind::Abort
+            | TerminatorKind::Terminate
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::Drop { .. }

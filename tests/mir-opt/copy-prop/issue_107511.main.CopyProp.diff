@@ -51,7 +51,7 @@
           StorageDead(_7);                 // scope 2 at $DIR/issue_107511.rs:+6:17: +6:18
           _5 = core::slice::<impl [i32]>::len(move _6) -> bb1; // scope 2 at $DIR/issue_107511.rs:+6:17: +6:24
                                            // mir::Constant
-                                           // + span: $DIR/issue_107511.rs:10:19: 10:22
+                                           // + span: $DIR/issue_107511.rs:11:19: 11:22
                                            // + literal: Const { ty: for<'a> fn(&'a [i32]) -> usize {core::slice::<impl [i32]>::len}, val: Value(<ZST>) }
       }
   
@@ -61,7 +61,7 @@
           StorageDead(_5);                 // scope 2 at $DIR/issue_107511.rs:+6:23: +6:24
           _3 = <std::ops::Range<usize> as IntoIterator>::into_iter(move _4) -> bb2; // scope 2 at $DIR/issue_107511.rs:+6:14: +6:24
                                            // mir::Constant
-                                           // + span: $DIR/issue_107511.rs:10:14: 10:24
+                                           // + span: $DIR/issue_107511.rs:11:14: 11:24
                                            // + literal: Const { ty: fn(std::ops::Range<usize>) -> <std::ops::Range<usize> as IntoIterator>::IntoIter {<std::ops::Range<usize> as IntoIterator>::into_iter}, val: Value(<ZST>) }
       }
   
@@ -81,7 +81,7 @@
           _12 = &mut (*_13);               // scope 3 at $DIR/issue_107511.rs:+6:14: +6:24
           _11 = <std::ops::Range<usize> as Iterator>::next(move _12) -> bb4; // scope 3 at $DIR/issue_107511.rs:+6:14: +6:24
                                            // mir::Constant
-                                           // + span: $DIR/issue_107511.rs:10:14: 10:24
+                                           // + span: $DIR/issue_107511.rs:11:14: 11:24
                                            // + literal: Const { ty: for<'a> fn(&'a mut std::ops::Range<usize>) -> Option<<std::ops::Range<usize> as Iterator>::Item> {<std::ops::Range<usize> as Iterator>::next}, val: Value(<ZST>) }
       }
   

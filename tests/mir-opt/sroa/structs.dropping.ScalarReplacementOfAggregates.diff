@@ -23,11 +23,11 @@
           StorageDead(_4);                 // scope 0 at $DIR/structs.rs:+1:29: +1:30
           StorageDead(_3);                 // scope 0 at $DIR/structs.rs:+1:29: +1:30
           _1 = move (_2.1: Tag);           // scope 0 at $DIR/structs.rs:+1:5: +1:32
-          drop(_1) -> bb1;                 // scope 0 at $DIR/structs.rs:+1:32: +1:33
+          drop(_1) -> [return: bb1, unwind unreachable]; // scope 0 at $DIR/structs.rs:+1:32: +1:33
       }
   
       bb1: {
-          drop((_2.0: Tag)) -> bb3;        // scope 0 at $DIR/structs.rs:+1:32: +1:33
+          drop((_2.0: Tag)) -> [return: bb3, unwind unreachable]; // scope 0 at $DIR/structs.rs:+1:32: +1:33
       }
   
       bb2: {
@@ -38,7 +38,7 @@
       }
   
       bb3: {
-          drop((_2.2: Tag)) -> bb2;        // scope 0 at $DIR/structs.rs:+1:32: +1:33
+          drop((_2.2: Tag)) -> [return: bb2, unwind unreachable]; // scope 0 at $DIR/structs.rs:+1:32: +1:33
       }
   }
   
