@@ -1,12 +1,11 @@
 //! Builtin derives.
 
 use base_db::{CrateOrigin, LangCrateOrigin};
-use either::Either;
 use tracing::debug;
 
 use crate::tt::{self, TokenId};
 use syntax::{
-    ast::{self, AstNode, HasGenericParams, HasModuleItem, HasName, HasTypeBounds},
+    ast::{self, AstNode, HasGenericParams, HasModuleItem, HasName},
     match_ast,
 };
 
@@ -61,11 +60,8 @@ pub fn find_builtin_derive(ident: &name::Name) -> Option<BuiltinDeriveExpander> 
 
 struct BasicAdtInfo {
     name: tt::Ident,
-    /// first field is the name, and
-    /// second field is `Some(ty)` if it's a const param of type `ty`, `None` if it's a type param.
-    /// third fields is where bounds, if any
-    param_types: Vec<(tt::Subtree, Option<tt::Subtree>, Option<tt::Subtree>)>,
-    field_types: Vec<tt::Subtree>,
+    /// `Some(ty)` if it's a const param of type `ty`, `None` if it's a type param.
+    param_types: Vec<Option<tt::Subtree>>,
 }
 
 fn parse_adt(tt: &tt::Subtree) -> Result<BasicAdtInfo, ExpandError> {
@@ -79,34 +75,17 @@ fn parse_adt(tt: &tt::Subtree) -> Result<BasicAdtInfo, ExpandError> {
         ExpandError::Other("no item found".into())
     })?;
     let node = item.syntax();
-    let (name, params, fields) = match_ast! {
+    let (name, params) = match_ast! {
         match node {
-            ast::Struct(it) => {
-                (it.name(), it.generic_param_list(), it.field_list().into_iter().collect::<Vec<_>>())
-            },
-            ast::Enum(it) => (it.name(), it.generic_param_list(), it.variant_list().into_iter().flat_map(|x| x.variants()).filter_map(|x| x.field_list()).collect()),
-            ast::Union(it) => (it.name(), it.generic_param_list(), it.record_field_list().into_iter().map(|x| ast::FieldList::RecordFieldList(x)).collect()),
+            ast::Struct(it) => (it.name(), it.generic_param_list()),
+            ast::Enum(it) => (it.name(), it.generic_param_list()),
+            ast::Union(it) => (it.name(), it.generic_param_list()),
             _ => {
                 debug!("unexpected node is {:?}", node);
                 return Err(ExpandError::Other("expected struct, enum or union".into()))
             },
         }
     };
-    let field_types = fields
-        .into_iter()
-        .flat_map(|f| match f {
-            ast::FieldList::RecordFieldList(x) => Either::Left(
-                x.fields()
-                    .filter_map(|x| x.ty())
-                    .map(|x| mbe::syntax_node_to_token_tree(x.syntax()).0),
-            ),
-            ast::FieldList::TupleFieldList(x) => Either::Right(
-                x.fields()
-                    .filter_map(|x| x.ty())
-                    .map(|x| mbe::syntax_node_to_token_tree(x.syntax()).0),
-            ),
-        })
-        .collect::<Vec<_>>();
     let name = name.ok_or_else(|| {
         debug!("parsed item has no name");
         ExpandError::Other("missing name".into())
@@ -118,17 +97,7 @@ fn parse_adt(tt: &tt::Subtree) -> Result<BasicAdtInfo, ExpandError> {
         .into_iter()
         .flat_map(|param_list| param_list.type_or_const_params())
         .map(|param| {
-            let name = param
-                .name()
-                .map(|x| mbe::syntax_node_to_token_tree(x.syntax()).0)
-                .unwrap_or_else(tt::Subtree::empty);
-            let bounds = match &param {
-                ast::TypeOrConstParam::Type(x) => {
-                    x.type_bound_list().map(|x| mbe::syntax_node_to_token_tree(x.syntax()).0)
-                }
-                ast::TypeOrConstParam::Const(_) => None,
-            };
-            let ty = if let ast::TypeOrConstParam::Const(param) = param {
+            if let ast::TypeOrConstParam::Const(param) = param {
                 let ty = param
                     .ty()
                     .map(|ty| mbe::syntax_node_to_token_tree(ty.syntax()).0)
@@ -136,11 +105,10 @@ fn parse_adt(tt: &tt::Subtree) -> Result<BasicAdtInfo, ExpandError> {
                 Some(ty)
             } else {
                 None
-            };
-            (name, ty, bounds)
+            }
         })
         .collect();
-    Ok(BasicAdtInfo { name: name_token, param_types, field_types })
+    Ok(BasicAdtInfo { name: name_token, param_types })
 }
 
 fn expand_simple_derive(tt: &tt::Subtree, trait_path: tt::Subtree) -> ExpandResult<tt::Subtree> {
@@ -148,16 +116,16 @@ fn expand_simple_derive(tt: &tt::Subtree, trait_path: tt::Subtree) -> ExpandResu
         Ok(info) => info,
         Err(e) => return ExpandResult::with_err(tt::Subtree::empty(), e),
     };
-    let mut where_block = vec![];
     let (params, args): (Vec<_>, Vec<_>) = info
         .param_types
         .into_iter()
-        .map(|(ident, param_ty, bound)| {
+        .enumerate()
+        .map(|(idx, param_ty)| {
+            let ident = tt::Leaf::Ident(tt::Ident {
+                span: tt::TokenId::unspecified(),
+                text: format!("T{idx}").into(),
+            });
             let ident_ = ident.clone();
-            if let Some(b) = bound {
-                let ident = ident.clone();
-                where_block.push(quote! { #ident : #b , });
-            }
             if let Some(ty) = param_ty {
                 (quote! { const #ident : #ty , }, quote! { #ident_ , })
             } else {
@@ -166,16 +134,9 @@ fn expand_simple_derive(tt: &tt::Subtree, trait_path: tt::Subtree) -> ExpandResu
             }
         })
         .unzip();
-
-    where_block.extend(info.field_types.iter().map(|x| {
-        let x = x.clone();
-        let bound = trait_path.clone();
-        quote! { #x : #bound , }
-    }));
-
     let name = info.name;
     let expanded = quote! {
-        impl < ##params > #trait_path for #name < ##args > where ##where_block {}
+        impl < ##params > #trait_path for #name < ##args > {}
     };
     ExpandResult::ok(expanded)
 }
