@@ -15,7 +15,7 @@ indexmap = "2"
 minifier = "0.3.0"
 pulldown-cmark-old = { version = "0.9.6", package = "pulldown-cmark", default-features = false }
 regex = "1"
-rustdoc-json-types = { path = "../rustdoc-json-types" }
+rustdoc-json-types = { path = "../rustdoc-json-types", features = ["rustc-hash"] }
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 smallvec = "1.8.1"
