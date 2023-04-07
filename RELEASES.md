@@ -99,7 +99,7 @@ These changes do not affect any public interfaces of Rust, but they represent
 significant improvements to the performance or internals of rustc and related
 tools.
 
-- [Move format_args!() into AST (and expand it during AST lowering)](https://github.com/rust-lang/rust/pull/106745/)
+- [Move `format_args!()` into AST (and expand it during AST lowering)](https://github.com/rust-lang/rust/pull/106745/)
 
 Version 1.68.2 (2023-03-28)
 ===========================
