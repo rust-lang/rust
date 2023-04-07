@@ -9,6 +9,6 @@ type A2 = dyn<dyn, dyn>;
 type A3 = dyn<<dyn as dyn>::dyn>;
 //~^ ERROR cannot find type `dyn` in this scope
 //~| ERROR cannot find type `dyn` in this scope
-//~| ERROR use of undeclared crate or module `dyn`
+//~| ERROR cannot find trait `dyn` in this scope
 
 fn main() {}
