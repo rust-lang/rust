@@ -381,7 +381,7 @@ impl<'tcx> AsmMethods<'tcx> for CodegenCx<'_, 'tcx> {
         }
 
         unsafe {
-            llvm::LLVMRustAppendModuleInlineAsm(
+            llvm::LLVMAppendModuleInlineAsm(
                 self.llmod,
                 template_str.as_ptr().cast(),
                 template_str.len(),
