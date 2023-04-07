@@ -64,7 +64,6 @@ mod rustc {
     use rustc_infer::infer::InferCtxt;
     use rustc_macros::{TypeFoldable, TypeVisitable};
     use rustc_middle::traits::ObligationCause;
-    use rustc_middle::ty::Binder;
     use rustc_middle::ty::Const;
     use rustc_middle::ty::ParamEnv;
     use rustc_middle::ty::Ty;
@@ -92,15 +91,13 @@ mod rustc {
         pub fn is_transmutable(
             &mut self,
             cause: ObligationCause<'tcx>,
-            src_and_dst: Binder<'tcx, Types<'tcx>>,
+            types: Types<'tcx>,
             scope: Ty<'tcx>,
             assume: crate::Assume,
         ) -> crate::Answer<crate::layout::rustc::Ref<'tcx>> {
-            let src = src_and_dst.map_bound(|types| types.src).skip_binder();
-            let dst = src_and_dst.map_bound(|types| types.dst).skip_binder();
             crate::maybe_transmutable::MaybeTransmutableQuery::new(
-                src,
-                dst,
+                types.src,
+                types.dst,
                 scope,
                 assume,
                 self.infcx.tcx,
