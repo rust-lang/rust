@@ -227,25 +227,34 @@ pub struct Config {
     pub reuse: Option<PathBuf>,
     pub cargo_native_static: bool,
     pub configure_args: Vec<String>,
+    pub out: PathBuf,
+    pub rust_info: channel::GitInfo,
 
     // These are either the stage0 downloaded binaries or the locally installed ones.
     pub initial_cargo: PathBuf,
     pub initial_rustc: PathBuf,
+
     #[cfg(not(test))]
     initial_rustfmt: RefCell<RustfmtState>,
     #[cfg(test)]
     pub initial_rustfmt: RefCell<RustfmtState>,
-    pub out: PathBuf,
-    pub rust_info: channel::GitInfo,
 }
 
 #[derive(Default, Deserialize)]
 #[cfg_attr(test, derive(Clone))]
 pub struct Stage0Metadata {
+    pub compiler: CompilerMetadata,
     pub config: Stage0Config,
     pub checksums_sha256: HashMap<String, String>,
     pub rustfmt: Option<RustfmtMetadata>,
 }
+#[derive(Default, Deserialize)]
+#[cfg_attr(test, derive(Clone))]
+pub struct CompilerMetadata {
+    pub date: String,
+    pub version: String,
+}
+
 #[derive(Default, Deserialize)]
 #[cfg_attr(test, derive(Clone))]
 pub struct Stage0Config {
@@ -1000,10 +1009,10 @@ impl Config {
             config.out = crate::util::absolute(&config.out);
         }
 
-        config.initial_rustc = build
-            .rustc
-            .map(PathBuf::from)
-            .unwrap_or_else(|| config.out.join(config.build.triple).join("stage0/bin/rustc"));
+        config.initial_rustc = build.rustc.map(PathBuf::from).unwrap_or_else(|| {
+            config.download_beta_toolchain();
+            config.out.join(config.build.triple).join("stage0/bin/rustc")
+        });
         config.initial_cargo = build
             .cargo
             .map(PathBuf::from)
