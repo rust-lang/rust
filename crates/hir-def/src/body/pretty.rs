@@ -13,20 +13,16 @@ use crate::{
 use super::*;
 
 pub(super) fn print_body_hir(db: &dyn DefDatabase, body: &Body, owner: DefWithBodyId) -> String {
-    let needs_semi;
     let header = match owner {
         DefWithBodyId::FunctionId(it) => {
-            needs_semi = false;
             let item_tree_id = it.lookup(db).id;
-            format!("fn {}(…) ", item_tree_id.item_tree(db)[item_tree_id.value].name)
+            format!("fn {}", item_tree_id.item_tree(db)[item_tree_id.value].name)
         }
         DefWithBodyId::StaticId(it) => {
-            needs_semi = true;
             let item_tree_id = it.lookup(db).id;
             format!("static {} = ", item_tree_id.item_tree(db)[item_tree_id.value].name)
         }
         DefWithBodyId::ConstId(it) => {
-            needs_semi = true;
             let item_tree_id = it.lookup(db).id;
             let name = match &item_tree_id.item_tree(db)[item_tree_id.value].name {
                 Some(name) => name.to_string(),
@@ -35,7 +31,6 @@ pub(super) fn print_body_hir(db: &dyn DefDatabase, body: &Body, owner: DefWithBo
             format!("const {name} = ")
         }
         DefWithBodyId::VariantId(it) => {
-            needs_semi = false;
             let src = it.parent.child_source(db);
             let variant = &src.value[it.local_id];
             let name = match &variant.name() {
@@ -47,8 +42,18 @@ pub(super) fn print_body_hir(db: &dyn DefDatabase, body: &Body, owner: DefWithBo
     };
 
     let mut p = Printer { body, buf: header, indent_level: 0, needs_indent: false };
+    if let DefWithBodyId::FunctionId(it) = owner {
+        p.buf.push('(');
+        body.params.iter().zip(&db.function_data(it).params).for_each(|(&param, ty)| {
+            p.print_pat(param);
+            p.buf.push(':');
+            p.print_type_ref(ty);
+        });
+        p.buf.push(')');
+        p.buf.push(' ');
+    }
     p.print_expr(body.body_expr);
-    if needs_semi {
+    if matches!(owner, DefWithBodyId::StaticId(_) | DefWithBodyId::ConstId(_)) {
         p.buf.push(';');
     }
     p.buf

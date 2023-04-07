@@ -20,6 +20,7 @@ use hir_expand::name::Name;
 use intern::Interned;
 use la_arena::{Idx, RawIdx};
 use smallvec::SmallVec;
+use syntax::ast;
 
 use crate::{
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinUint},
@@ -100,6 +101,45 @@ impl Literal {
             Some(Literal::Int(-i, k))
         } else {
             None
+        }
+    }
+}
+
+impl From<ast::LiteralKind> for Literal {
+    fn from(ast_lit_kind: ast::LiteralKind) -> Self {
+        use ast::LiteralKind;
+        match ast_lit_kind {
+            // FIXME: these should have actual values filled in, but unsure on perf impact
+            LiteralKind::IntNumber(lit) => {
+                if let builtin @ Some(_) = lit.suffix().and_then(BuiltinFloat::from_suffix) {
+                    Literal::Float(
+                        FloatTypeWrapper::new(lit.float_value().unwrap_or(Default::default())),
+                        builtin,
+                    )
+                } else if let builtin @ Some(_) = lit.suffix().and_then(BuiltinUint::from_suffix) {
+                    Literal::Uint(lit.value().unwrap_or(0), builtin)
+                } else {
+                    let builtin = lit.suffix().and_then(BuiltinInt::from_suffix);
+                    Literal::Int(lit.value().unwrap_or(0) as i128, builtin)
+                }
+            }
+            LiteralKind::FloatNumber(lit) => {
+                let ty = lit.suffix().and_then(BuiltinFloat::from_suffix);
+                Literal::Float(FloatTypeWrapper::new(lit.value().unwrap_or(Default::default())), ty)
+            }
+            LiteralKind::ByteString(bs) => {
+                let text = bs.value().map(Box::from).unwrap_or_else(Default::default);
+                Literal::ByteString(text)
+            }
+            LiteralKind::String(s) => {
+                let text = s.value().map(Box::from).unwrap_or_else(Default::default);
+                Literal::String(text)
+            }
+            LiteralKind::Byte(b) => {
+                Literal::Uint(b.value().unwrap_or_default() as u128, Some(BuiltinUint::U8))
+            }
+            LiteralKind::Char(c) => Literal::Char(c.value().unwrap_or_default()),
+            LiteralKind::Bool(val) => Literal::Bool(val),
         }
     }
 }

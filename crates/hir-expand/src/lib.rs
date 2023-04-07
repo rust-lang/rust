@@ -55,7 +55,7 @@ pub type ExpandResult<T> = ValueResult<T, ExpandError>;
 pub enum ExpandError {
     UnresolvedProcMacro(CrateId),
     Mbe(mbe::ExpandError),
-    RecursionOverflowPosioned,
+    RecursionOverflowPoisoned,
     Other(Box<str>),
 }
 
@@ -70,7 +70,7 @@ impl fmt::Display for ExpandError {
         match self {
             ExpandError::UnresolvedProcMacro(_) => f.write_str("unresolved proc-macro"),
             ExpandError::Mbe(it) => it.fmt(f),
-            ExpandError::RecursionOverflowPosioned => {
+            ExpandError::RecursionOverflowPoisoned => {
                 f.write_str("overflow expanding the original macro")
             }
             ExpandError::Other(it) => f.write_str(it),
