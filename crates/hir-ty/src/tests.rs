@@ -159,7 +159,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
             let range = node.as_ref().original_file_range(&db);
             if let Some(expected) = types.remove(&range) {
                 let actual = if display_source {
-                    ty.display_source_code(&db, def.module(&db)).unwrap()
+                    ty.display_source_code(&db, def.module(&db), true).unwrap()
                 } else {
                     ty.display_test(&db).to_string()
                 };
@@ -175,7 +175,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
             let range = node.as_ref().original_file_range(&db);
             if let Some(expected) = types.remove(&range) {
                 let actual = if display_source {
-                    ty.display_source_code(&db, def.module(&db)).unwrap()
+                    ty.display_source_code(&db, def.module(&db), true).unwrap()
                 } else {
                     ty.display_test(&db).to_string()
                 };

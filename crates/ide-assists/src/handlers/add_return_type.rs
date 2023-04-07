@@ -22,7 +22,7 @@ pub(crate) fn add_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
     if ty.is_unit() {
         return None;
     }
-    let ty = ty.display_source_code(ctx.db(), module.into()).ok()?;
+    let ty = ty.display_source_code(ctx.db(), module.into(), true).ok()?;
 
     acc.add(
         AssistId("add_return_type", AssistKind::RefactorRewrite),
