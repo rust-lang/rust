@@ -17,37 +17,37 @@ type A = u32;
 
 fn main() {
     let _: <u8 as Tr>::N; //~ ERROR cannot find associated type `N` in trait `Tr`
-    let _: <u8 as E>::N; //~ ERROR cannot find associated type `N` in enum `E`
-    let _: <u8 as A>::N; //~ ERROR cannot find associated type `N` in `A`
+    let _: <u8 as E>::N; //~ ERROR expected trait, found enum `E`
+    let _: <u8 as A>::N; //~ ERROR expected trait, found type alias `A`
     <u8 as Tr>::N; //~ ERROR cannot find method or associated constant `N` in trait `Tr`
-    <u8 as E>::N; //~ ERROR cannot find method or associated constant `N` in enum `E`
-    <u8 as A>::N; //~ ERROR cannot find method or associated constant `N` in `A`
+    <u8 as E>::N; //~ ERROR expected trait, found enum `E`
+    <u8 as A>::N; //~ ERROR expected trait, found type alias `A`
     let _: <u8 as Tr>::Y; // OK
-    let _: <u8 as E>::Y; //~ ERROR expected associated type, found variant `E::Y`
+    let _: <u8 as E>::Y; //~ ERROR expected trait, found enum `E`
     <u8 as Tr>::Y; // OK
-    <u8 as E>::Y; //~ ERROR expected method or associated constant, found unit variant `E::Y`
+    <u8 as E>::Y; //~ ERROR expected trait, found enum `E`
 
     let _: <u8 as Tr>::N::NN; //~ ERROR cannot find associated type `N` in trait `Tr`
-    let _: <u8 as E>::N::NN; //~ ERROR cannot find associated type `N` in enum `E`
-    let _: <u8 as A>::N::NN; //~ ERROR cannot find associated type `N` in `A`
+    let _: <u8 as E>::N::NN; //~ ERROR expected trait, found enum `E`
+    let _: <u8 as A>::N::NN; //~ ERROR expected trait, found type alias `A`
     <u8 as Tr>::N::NN; //~ ERROR cannot find associated type `N` in trait `Tr`
-    <u8 as E>::N::NN; //~ ERROR cannot find associated type `N` in enum `E`
-    <u8 as A>::N::NN; //~ ERROR cannot find associated type `N` in `A`
+    <u8 as E>::N::NN; //~ ERROR expected trait, found enum `E`
+    <u8 as A>::N::NN; //~ ERROR expected trait, found type alias `A`
     let _: <u8 as Tr>::Y::NN; //~ ERROR ambiguous associated type
-    let _: <u8 as E>::Y::NN; //~ ERROR expected associated type, found variant `E::Y`
+    let _: <u8 as E>::Y::NN; //~ ERROR expected trait, found enum `E`
     <u8 as Tr>::Y::NN; //~ ERROR no associated item named `NN` found for type `u16`
-    <u8 as E>::Y::NN; //~ ERROR expected associated type, found variant `E::Y`
+    <u8 as E>::Y::NN; //~ ERROR expected trait, found enum `E`
 
-    let _: <u8 as Tr::N>::NN; //~ ERROR cannot find associated type `NN` in `Tr::N`
-    let _: <u8 as E::N>::NN; //~ ERROR cannot find associated type `NN` in `E::N`
-    let _: <u8 as A::N>::NN; //~ ERROR cannot find associated type `NN` in `A::N`
-    <u8 as Tr::N>::NN; //~ ERROR cannot find method or associated constant `NN` in `Tr::N`
-    <u8 as E::N>::NN; //~ ERROR cannot find method or associated constant `NN` in `E::N`
-    <u8 as A::N>::NN; //~ ERROR cannot find method or associated constant `NN` in `A::N`
-    let _: <u8 as Tr::Y>::NN; //~ ERROR cannot find associated type `NN` in `Tr::Y`
-    let _: <u8 as E::Y>::NN; //~ ERROR failed to resolve: `Y` is a variant, not a module
-    <u8 as Tr::Y>::NN; //~ ERROR cannot find method or associated constant `NN` in `Tr::Y`
-    <u8 as E::Y>::NN; //~ ERROR failed to resolve: `Y` is a variant, not a module
+    let _: <u8 as Tr::N>::NN; //~ ERROR cannot find trait `N` in trait `Tr`
+    let _: <u8 as E::N>::NN; //~ ERROR cannot find trait `N` in enum `E`
+    let _: <u8 as A::N>::NN; //~ ERROR cannot find trait `N` in `A`
+    <u8 as Tr::N>::NN; //~ ERROR cannot find trait `N` in trait `Tr`
+    <u8 as E::N>::NN; //~ ERROR cannot find trait `N` in enum `E`
+    <u8 as A::N>::NN; //~ ERROR cannot find trait `N` in `A`
+    let _: <u8 as Tr::Y>::NN; //~ ERROR expected trait, found associated type `Tr::Y
+    let _: <u8 as E::Y>::NN; //~ ERROR expected trait, found variant `E::Y`
+    <u8 as Tr::Y>::NN; //~ ERROR expected trait, found associated type `Tr::Y`
+    <u8 as E::Y>::NN; //~ ERROR expected trait, found variant `E::Y`
 
     let _: <u8 as Dr>::Z; //~ ERROR expected associated type, found associated function `Dr::Z`
     <u8 as Dr>::X; //~ ERROR expected method or associated constant, found associated type `Dr::X`
