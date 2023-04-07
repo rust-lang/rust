@@ -61,7 +61,7 @@ impl Compiler {
 }
 
 #[allow(rustc::bad_opt_access)]
-pub fn set_parallel_mode(sopts: &config::UnstableOptions) {
+pub fn set_thread_safe_mode(sopts: &config::UnstableOptions) {
     rustc_data_structures::sync::set_dyn_thread_safe_mode(sopts.threads > 1);
 }
 

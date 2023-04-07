@@ -48,7 +48,7 @@ pub enum TokenTree {
     Delimited(DelimSpan, Delimiter, TokenStream),
 }
 
-// Ensure all fields of `TokenTree` is `DynSend` and `DynSync`.
+// Ensure all fields of `TokenTree` are `DynSend` and `DynSync`.
 #[cfg(parallel_compiler)]
 fn _dummy()
 where

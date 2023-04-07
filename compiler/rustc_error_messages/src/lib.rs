@@ -11,7 +11,7 @@ extern crate tracing;
 use fluent_bundle::FluentResource;
 use fluent_syntax::parser::ParserError;
 use icu_provider_adapters::fallback::{LocaleFallbackProvider, LocaleFallbacker};
-use rustc_data_structures::sync::{IntoDyn, Lrc};
+use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
 use rustc_fluent_macro::fluent_messages;
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::Span;
@@ -38,16 +38,16 @@ pub use unic_langid::{langid, LanguageIdentifier};
 fluent_messages! { "../messages.ftl" }
 
 pub type FluentBundle =
-    IntoDyn<fluent_bundle::bundle::FluentBundle<FluentResource, IntlLangMemoizer>>;
+    IntoDynSyncSend<fluent_bundle::bundle::FluentBundle<FluentResource, IntlLangMemoizer>>;
 
 #[cfg(not(parallel_compiler))]
 fn new_bundle(locales: Vec<LanguageIdentifier>) -> FluentBundle {
-    IntoDyn(fluent_bundle::bundle::FluentBundle::new(locales))
+    IntoDynSyncSend(fluent_bundle::bundle::FluentBundle::new(locales))
 }
 
 #[cfg(parallel_compiler)]
 fn new_bundle(locales: Vec<LanguageIdentifier>) -> FluentBundle {
-    IntoDyn(fluent_bundle::bundle::FluentBundle::new_concurrent(locales))
+    IntoDynSyncSend(fluent_bundle::bundle::FluentBundle::new_concurrent(locales))
 }
 
 #[derive(Debug)]

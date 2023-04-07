@@ -2,7 +2,7 @@ use crate::error::{TranslateError, TranslateErrorKind};
 use crate::fluent_bundle::*;
 use crate::translation::Translate;
 use crate::FluentBundle;
-use rustc_data_structures::sync::{IntoDyn, Lrc};
+use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
 use rustc_error_messages::fluent_bundle::resolver::errors::{ReferenceKind, ResolverError};
 use rustc_error_messages::langid;
 use rustc_error_messages::DiagnosticMessage;
@@ -28,11 +28,13 @@ fn make_dummy(ftl: &'static str) -> Dummy {
 
     #[cfg(parallel_compiler)]
     let mut bundle: FluentBundle =
-        IntoDyn(crate::fluent_bundle::bundle::FluentBundle::new_concurrent(vec![langid_en]));
+        IntoDynSyncSend(crate::fluent_bundle::bundle::FluentBundle::new_concurrent(vec![
+            langid_en,
+        ]));
 
     #[cfg(not(parallel_compiler))]
     let mut bundle: FluentBundle =
-        IntoDyn(crate::fluent_bundle::bundle::FluentBundle::new(vec![langid_en]));
+        IntoDynSyncSend(crate::fluent_bundle::bundle::FluentBundle::new(vec![langid_en]));
 
     bundle.add_resource(resource).expect("Failed to add FTL resources to the bundle.");
 

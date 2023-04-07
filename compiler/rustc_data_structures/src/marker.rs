@@ -8,20 +8,20 @@ cfg_if!(
     } else {
         #[rustc_on_unimplemented(
             message = "`{Self}` doesn't implement `DynSend`. \
-            Add it to `rustc_data_structures::marker` or use `IntoDyn` if it's already `Send`"
+            Add it to `rustc_data_structures::marker` or use `IntoDynSyncSend` if it's already `Send`"
         )]
         // This is an auto trait for types which can be sent across threads if `sync::is_dyn_thread_safe()`
         // is true. These types can be wrapped in a `FromDyn` to get a `Send` type. Wrapping a
-        // `Send` type in `IntoDyn` will create a `DynSend` type.
+        // `Send` type in `IntoDynSyncSend` will create a `DynSend` type.
         pub unsafe auto trait DynSend {}
 
         #[rustc_on_unimplemented(
             message = "`{Self}` doesn't implement `DynSync`. \
-            Add it to `rustc_data_structures::marker` or use `IntoDyn` if it's already `Sync`"
+            Add it to `rustc_data_structures::marker` or use `IntoDynSyncSend` if it's already `Sync`"
         )]
         // This is an auto trait for types which can be shared across threads if `sync::is_dyn_thread_safe()`
         // is true. These types can be wrapped in a `FromDyn` to get a `Sync` type. Wrapping a
-        // `Sync` type in `IntoDyn` will create a `DynSync` type.
+        // `Sync` type in `IntoDynSyncSend` will create a `DynSync` type.
         pub unsafe auto trait DynSync {}
 
         // Same with `Sync` and `Send`.
@@ -234,15 +234,18 @@ impl<T> const std::ops::Deref for FromDyn<T> {
     }
 }
 
+// A wrapper to convert a struct that is already a `Send` or `Sync` into
+// an instance of `DynSend` and `DynSync`, since the compiler cannot infer
+// it automatically in some cases. (e.g. Box<dyn Send / Sync>)
 #[derive(Copy, Clone)]
-pub struct IntoDyn<T: ?Sized>(pub T);
+pub struct IntoDynSyncSend<T: ?Sized>(pub T);
 
 #[cfg(parallel_compiler)]
-unsafe impl<T: ?Sized + Send> DynSend for IntoDyn<T> {}
+unsafe impl<T: ?Sized + Send> DynSend for IntoDynSyncSend<T> {}
 #[cfg(parallel_compiler)]
-unsafe impl<T: ?Sized + Sync> DynSync for IntoDyn<T> {}
+unsafe impl<T: ?Sized + Sync> DynSync for IntoDynSyncSend<T> {}
 
-impl<T> const std::ops::Deref for IntoDyn<T> {
+impl<T> const std::ops::Deref for IntoDynSyncSend<T> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -250,7 +253,7 @@ impl<T> const std::ops::Deref for IntoDyn<T> {
     }
 }
 
-impl<T> const std::ops::DerefMut for IntoDyn<T> {
+impl<T> const std::ops::DerefMut for IntoDynSyncSend<T> {
     fn deref_mut(&mut self) -> &mut T {
         &mut self.0
     }

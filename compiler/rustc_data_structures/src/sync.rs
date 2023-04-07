@@ -61,25 +61,25 @@ mod mode {
     use std::sync::atomic::AtomicU8;
 
     const UNINITIALIZED: u8 = 0;
-    const DYN_NOT_SYNC: u8 = 1;
-    const DYN_SYNC: u8 = 2;
+    const DYN_NOT_THREAD_SAFE: u8 = 1;
+    const DYN_THREAD_SAFE: u8 = 2;
 
-    static DYN_SYNC_MODE: AtomicU8 = AtomicU8::new(UNINITIALIZED);
+    static DYN_THREAD_SAFE_MODE: AtomicU8 = AtomicU8::new(UNINITIALIZED);
 
-    // Weather control thread safety dynamically
+    // Whether thread safety is enabled (due to running under multiple threads).
     #[inline]
     pub fn is_dyn_thread_safe() -> bool {
-        match DYN_SYNC_MODE.load(Ordering::Relaxed) {
-            DYN_NOT_SYNC => false,
-            DYN_SYNC => true,
-            _ => panic!("uninitialized parallel mode!"),
+        match DYN_THREAD_SAFE_MODE.load(Ordering::Relaxed) {
+            DYN_NOT_THREAD_SAFE => false,
+            DYN_THREAD_SAFE => true,
+            _ => panic!("uninitialized dyn_thread_safe mode!"),
         }
     }
 
     // Only set by the `-Z threads` compile option
-    pub fn set_dyn_thread_safe_mode(parallel: bool) {
-        let set: u8 = if parallel { DYN_SYNC } else { DYN_NOT_SYNC };
-        let previous = DYN_SYNC_MODE.compare_exchange(
+    pub fn set_dyn_thread_safe_mode(mode: bool) {
+        let set: u8 = if mode { DYN_THREAD_SAFE } else { DYN_NOT_THREAD_SAFE };
+        let previous = DYN_THREAD_SAFE_MODE.compare_exchange(
             UNINITIALIZED,
             set,
             Ordering::Relaxed,
@@ -401,7 +401,7 @@ cfg_if! {
                 if rustc_data_structures::sync::is_dyn_thread_safe() {
                     // Reverse the order of the later blocks since Rayon executes them in reverse order
                     // when using a single thread. This ensures the execution order matches that
-                    // of a single threaded rustc
+                    // of a single threaded rustc.
                     parallel!(impl $fblock [] [$($blocks),*]);
                 } else {
                     // We catch panics here ensuring that all the blocks execute.
