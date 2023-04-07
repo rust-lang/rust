@@ -153,7 +153,6 @@ pub(crate) fn try_inline_glob(
             let reexports = cx
                 .tcx
                 .module_reexports(current_mod)
-                .unwrap_or_default()
                 .iter()
                 .filter_map(|child| child.res.opt_def_id())
                 .collect();
