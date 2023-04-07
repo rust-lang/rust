@@ -1,5 +1,5 @@
 #![feature(lazy_cell)]
-#![deny(clone_double_ref, noop_method_call)]
+#![deny(suspicious_double_ref_op, noop_method_call)]
 
 pub fn clone_on_double_ref() {
     let x = vec![1];

@@ -39,7 +39,6 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{BytePos, DesugaringKind, ExpnKind, MacroKind, Span, DUMMY_SP};
 use rustc_target::spec::abi;
-use std::ops::Deref;
 
 use super::method_chain::CollectAllMismatches;
 use super::InferCtxtPrivExt;
@@ -3571,7 +3570,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             // trait_pred `S: Sum<<Self as Iterator>::Item>` and predicate `i32: Sum<&()>`
             let mut type_diffs = vec![];
 
-            if let ObligationCauseCode::ExprBindingObligation(def_id, _, _, idx) = parent_code.deref()
+            if let ObligationCauseCode::ExprBindingObligation(def_id, _, _, idx) = parent_code
                 && let Some(node_substs) = typeck_results.node_substs_opt(call_hir_id)
                 && let where_clauses = self.tcx.predicates_of(def_id).instantiate(self.tcx, node_substs)
                 && let Some(where_pred) = where_clauses.predicates.get(*idx)

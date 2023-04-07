@@ -1,6 +1,6 @@
 // check-pass
 
-#![allow(clone_double_ref)]
+#![allow(suspicious_double_ref_op)]
 
 fn main() {
     println!("{:?}", {

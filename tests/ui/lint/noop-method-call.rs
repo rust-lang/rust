@@ -1,7 +1,7 @@
 // check-pass
 
 #![allow(unused)]
-#![warn(noop_method_call, clone_double_ref)]
+#![warn(noop_method_call, suspicious_double_ref_op)]
 
 use std::borrow::Borrow;
 use std::ops::Deref;

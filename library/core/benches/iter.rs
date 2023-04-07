@@ -1,4 +1,3 @@
-use core::borrow::Borrow;
 use core::iter::*;
 use core::mem;
 use core::num::Wrapping;
@@ -428,7 +427,7 @@ fn bench_trusted_random_access_chunks(b: &mut Bencher) {
         black_box(&v)
             .iter()
             // this shows that we're not relying on the slice::Iter specialization in Copied
-            .map(|b| *b.borrow())
+            .map(|b| *b)
             .array_chunks::<{ mem::size_of::<u64>() }>()
             .map(|ary| {
                 let d = u64::from_ne_bytes(ary);

@@ -573,7 +573,7 @@ fn link_dwarf_object<'a>(
 
     impl<Relocations> ThorinSession<Relocations> {
         fn alloc_mmap(&self, data: Mmap) -> &Mmap {
-            (*self.arena_mmap.alloc(data)).borrow()
+            &*self.arena_mmap.alloc(data)
         }
     }
 
@@ -583,7 +583,7 @@ fn link_dwarf_object<'a>(
         }
 
         fn alloc_relocation(&self, data: Relocations) -> &Relocations {
-            (*self.arena_relocations.alloc(data)).borrow()
+            &*self.arena_relocations.alloc(data)
         }
 
         fn read_input(&self, path: &Path) -> std::io::Result<&[u8]> {

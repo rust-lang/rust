@@ -37,15 +37,15 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `clone_double_ref` lint checks for usage of `.clone()` on an `&&T`,
+    /// The `suspicious_double_ref_op` lint checks for usage of `.clone()` on an `&&T`,
     /// which copies the inner `&T`, instead of cloning the underlying `T` and
     /// can be confusing.
-    pub CLONE_DOUBLE_REF,
+    pub SUSPICIOUS_DOUBLE_REF_OP,
     Warn,
     "using `clone` on `&&T`"
 }
 
-declare_lint_pass!(NoopMethodCall => [NOOP_METHOD_CALL, CLONE_DOUBLE_REF]);
+declare_lint_pass!(NoopMethodCall => [NOOP_METHOD_CALL, SUSPICIOUS_DOUBLE_REF_OP]);
 
 impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
@@ -115,7 +115,7 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
             );
         } else {
             cx.emit_spanned_lint(
-                CLONE_DOUBLE_REF,
+                SUSPICIOUS_DOUBLE_REF_OP,
                 span,
                 CloneDoubleRef { call: call.ident.name, ty: expr_ty, op },
             )

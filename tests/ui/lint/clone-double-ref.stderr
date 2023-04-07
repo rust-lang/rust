@@ -7,8 +7,8 @@ LL |     let z: &Vec<_> = y.clone();
 note: the lint level is defined here
   --> $DIR/clone-double-ref.rs:2:9
    |
-LL | #![deny(clone_double_ref, noop_method_call)]
-   |         ^^^^^^^^^^^^^^^^
+LL | #![deny(suspicious_double_ref_op, noop_method_call)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: call to `.clone()` on a reference in this situation does nothing
   --> $DIR/clone-double-ref.rs:24:25
@@ -18,10 +18,10 @@ LL |     let _ = &mut encoded.clone();
    |
    = note: the type `&[u8]` which `clone` is being called on is the same as the type returned from `clone`, so the method call does not do anything and can be removed
 note: the lint level is defined here
-  --> $DIR/clone-double-ref.rs:2:27
+  --> $DIR/clone-double-ref.rs:2:35
    |
-LL | #![deny(clone_double_ref, noop_method_call)]
-   |                           ^^^^^^^^^^^^^^^^
+LL | #![deny(suspicious_double_ref_op, noop_method_call)]
+   |                                   ^^^^^^^^^^^^^^^^
 
 error: call to `.clone()` on a reference in this situation does nothing
   --> $DIR/clone-double-ref.rs:26:21

@@ -565,7 +565,7 @@ pub struct BuiltinUnexpectedCliConfigValue {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_clone_double_ref)]
+#[diag(lint_suspicious_double_ref_op)]
 pub struct CloneDoubleRef<'a> {
     pub call: Symbol,
     pub ty: Ty<'a>,

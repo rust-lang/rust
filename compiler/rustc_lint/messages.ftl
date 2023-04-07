@@ -5,7 +5,7 @@ lint_array_into_iter =
     .use_explicit_into_iter_suggestion =
         or use `IntoIterator::into_iter(..)` instead of `.into_iter()` to explicitly iterate by value
 
-lint_clone_double_ref =
+lint_suspicious_double_ref_op =
     using `.{$call}()` on a double reference, which copies `{$ty}` instead of {$op} the inner type
 
 lint_enum_intrinsics_mem_discriminant =

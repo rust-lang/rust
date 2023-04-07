@@ -2,7 +2,7 @@
 // revisions: no-opt inline
 // [inline]compile-flags: -Zmir-opt-level=3 --emit=mir
 #![feature(trivial_bounds)]
-#![allow(unused, clone_double_ref)]
+#![allow(unused, suspicious_double_ref_op)]
 
 trait Foo {
     fn test(&self);
