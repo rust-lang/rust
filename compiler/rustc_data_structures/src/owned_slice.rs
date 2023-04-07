@@ -92,6 +92,7 @@ where
 impl Deref for OwnedSlice {
     type Target = [u8];
 
+    #[inline]
     fn deref(&self) -> &[u8] {
         // Safety:
         // `self.bytes` is valid per the construction in `slice_owned`
@@ -101,6 +102,7 @@ impl Deref for OwnedSlice {
 }
 
 impl Borrow<[u8]> for OwnedSlice {
+    #[inline]
     fn borrow(&self) -> &[u8] {
         self
     }
