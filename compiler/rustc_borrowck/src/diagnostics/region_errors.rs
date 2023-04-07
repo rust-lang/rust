@@ -207,7 +207,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             .regioncx
             .placeholders_contained_in(lower_bound)
             .map(|placeholder| {
-                if let Some(id) = placeholder.name.get_id()
+                if let Some(id) = placeholder.bound.kind.get_id()
                     && let Some(placeholder_id) = id.as_local()
                     && let gat_hir_id = hir.local_def_id_to_hir_id(placeholder_id)
                     && let Some(generics_impl) = hir.get_parent(gat_hir_id).generics()

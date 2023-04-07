@@ -170,15 +170,15 @@ fn msg_span_from_named_region<'tcx>(
         }
         ty::ReStatic => ("the static lifetime".to_owned(), alt_span),
         ty::RePlaceholder(ty::PlaceholderRegion {
-            name: ty::BoundRegionKind::BrNamed(def_id, name),
+            bound: ty::BoundRegion { kind: ty::BoundRegionKind::BrNamed(def_id, name), .. },
             ..
         }) => (format!("the lifetime `{name}` as defined here"), Some(tcx.def_span(def_id))),
         ty::RePlaceholder(ty::PlaceholderRegion {
-            name: ty::BoundRegionKind::BrAnon(_, Some(span)),
+            bound: ty::BoundRegion { kind: ty::BoundRegionKind::BrAnon(_, Some(span)), .. },
             ..
         }) => (format!("the anonymous lifetime defined here"), Some(span)),
         ty::RePlaceholder(ty::PlaceholderRegion {
-            name: ty::BoundRegionKind::BrAnon(_, None),
+            bound: ty::BoundRegion { kind: ty::BoundRegionKind::BrAnon(_, None), .. },
             ..
         }) => (format!("an anonymous lifetime"), None),
         _ => bug!("{:?}", region),

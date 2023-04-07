@@ -1454,12 +1454,12 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
 #[derive(HashStable, TyEncodable, TyDecodable)]
 pub struct Placeholder<T> {
     pub universe: UniverseIndex,
-    pub name: T,
+    pub bound: T,
 }
 
-pub type PlaceholderRegion = Placeholder<BoundRegionKind>;
+pub type PlaceholderRegion = Placeholder<BoundRegion>;
 
-pub type PlaceholderType = Placeholder<BoundTyKind>;
+pub type PlaceholderType = Placeholder<BoundTy>;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
 #[derive(TyEncodable, TyDecodable, PartialOrd, Ord)]

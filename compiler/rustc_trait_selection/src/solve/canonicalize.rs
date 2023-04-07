@@ -300,14 +300,20 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
             ty::Placeholder(placeholder) => match self.canonicalize_mode {
                 CanonicalizeMode::Input => CanonicalVarKind::PlaceholderTy(ty::Placeholder {
                     universe: placeholder.universe,
-                    name: BoundTyKind::Anon(self.variables.len() as u32),
+                    bound: ty::BoundTy {
+                        var: ty::BoundVar::from_usize(self.variables.len()),
+                        kind: ty::BoundTyKind::Anon(self.variables.len() as u32),
+                    },
                 }),
                 CanonicalizeMode::Response { .. } => CanonicalVarKind::PlaceholderTy(placeholder),
             },
             ty::Param(_) => match self.canonicalize_mode {
                 CanonicalizeMode::Input => CanonicalVarKind::PlaceholderTy(ty::Placeholder {
                     universe: ty::UniverseIndex::ROOT,
-                    name: ty::BoundTyKind::Anon(self.variables.len() as u32),
+                    bound: ty::BoundTy {
+                        var: ty::BoundVar::from_usize(self.variables.len()),
+                        kind: ty::BoundTyKind::Anon(self.variables.len() as u32),
+                    },
                 }),
                 CanonicalizeMode::Response { .. } => bug!("param ty in response: {t:?}"),
             },
@@ -373,7 +379,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
                 CanonicalizeMode::Input => CanonicalVarKind::PlaceholderConst(
                     ty::Placeholder {
                         universe: placeholder.universe,
-                        name: ty::BoundVar::from(self.variables.len()),
+                        bound: ty::BoundVar::from(self.variables.len()),
                     },
                     c.ty(),
                 ),
@@ -385,7 +391,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
                 CanonicalizeMode::Input => CanonicalVarKind::PlaceholderConst(
                     ty::Placeholder {
                         universe: ty::UniverseIndex::ROOT,
-                        name: ty::BoundVar::from(self.variables.len()),
+                        bound: ty::BoundVar::from(self.variables.len()),
                     },
                     c.ty(),
                 ),

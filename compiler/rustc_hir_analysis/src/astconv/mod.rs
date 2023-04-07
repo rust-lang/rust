@@ -2336,10 +2336,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 FnMutDelegate {
                     regions: &mut |_| tcx.lifetimes.re_erased,
                     types: &mut |bv| {
-                        tcx.mk_placeholder(ty::PlaceholderType { universe, name: bv.kind })
+                        tcx.mk_placeholder(ty::PlaceholderType { universe, bound: bv })
                     },
                     consts: &mut |bv, ty| {
-                        tcx.mk_const(ty::PlaceholderConst { universe, name: bv }, ty)
+                        tcx.mk_const(ty::PlaceholderConst { universe, bound: bv }, ty)
                     },
                 },
             );
@@ -2525,11 +2525,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                             regions: &mut |_| tcx.lifetimes.re_erased,
                                             types: &mut |bv| tcx.mk_placeholder(ty::PlaceholderType {
                                                 universe,
-                                                name: bv.kind,
+                                                bound: bv,
                                             }),
                                             consts: &mut |bv, ty| tcx.mk_const(ty::PlaceholderConst {
                                                 universe,
-                                                name: bv
+                                                bound: bv,
                                             }, ty),
                                         })
                                     )

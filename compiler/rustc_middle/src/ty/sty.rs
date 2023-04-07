@@ -1632,7 +1632,7 @@ impl<'tcx> Region<'tcx> {
                 ty::ReLateBound(_, br) => br.kind.get_name(),
                 ty::ReFree(fr) => fr.bound_region.get_name(),
                 ty::ReStatic => Some(kw::StaticLifetime),
-                ty::RePlaceholder(placeholder) => placeholder.name.get_name(),
+                ty::RePlaceholder(placeholder) => placeholder.bound.kind.get_name(),
                 _ => None,
             };
 
@@ -1650,7 +1650,7 @@ impl<'tcx> Region<'tcx> {
             ty::ReFree(fr) => fr.bound_region.is_named(),
             ty::ReStatic => true,
             ty::ReVar(..) => false,
-            ty::RePlaceholder(placeholder) => placeholder.name.is_named(),
+            ty::RePlaceholder(placeholder) => placeholder.bound.kind.is_named(),
             ty::ReErased => false,
             ty::ReError(_) => false,
         }

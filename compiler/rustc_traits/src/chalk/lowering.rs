@@ -376,7 +376,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
             ty::Placeholder(_placeholder) => {
                 chalk_ir::TyKind::Placeholder(chalk_ir::PlaceholderIndex {
                     ui: chalk_ir::UniverseIndex { counter: _placeholder.universe.as_usize() },
-                    idx: _placeholder.name.expect_anon() as usize,
+                    idx: _placeholder.bound.var.as_usize(),
                 })
             }
             ty::Infer(_infer) => unimplemented!(),
@@ -484,7 +484,10 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
             ),
             TyKind::Placeholder(placeholder) => ty::Placeholder(ty::Placeholder {
                 universe: ty::UniverseIndex::from_usize(placeholder.ui.counter),
-                name: ty::BoundTyKind::Anon(placeholder.idx as u32),
+                bound: ty::BoundTy {
+                    var: ty::BoundVar::from_usize(placeholder.idx),
+                    kind: ty::BoundTyKind::Anon(placeholder.idx as u32),
+                },
             }),
             TyKind::InferenceVar(_, _) => unimplemented!(),
             TyKind::Dyn(_) => unimplemented!(),
@@ -536,7 +539,10 @@ impl<'tcx> LowerInto<'tcx, Region<'tcx>> for &chalk_ir::Lifetime<RustInterner<'t
             chalk_ir::LifetimeData::InferenceVar(_var) => unimplemented!(),
             chalk_ir::LifetimeData::Placeholder(p) => tcx.mk_re_placeholder(ty::Placeholder {
                 universe: ty::UniverseIndex::from_usize(p.ui.counter),
-                name: ty::BoundRegionKind::BrAnon(p.idx as u32, None),
+                bound: ty::BoundRegion {
+                    var: ty::BoundVar::from_usize(p.idx),
+                    kind: ty::BoundRegionKind::BrAnon(p.idx as u32, None),
+                },
             }),
             chalk_ir::LifetimeData::Static => tcx.lifetimes.re_static,
             chalk_ir::LifetimeData::Erased => tcx.lifetimes.re_erased,
@@ -1090,7 +1096,10 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ParamsSubstitutor<'tcx> {
             ty::Param(param) => match self.list.iter().position(|r| r == &param) {
                 Some(idx) => self.tcx.mk_placeholder(ty::PlaceholderType {
                     universe: ty::UniverseIndex::from_usize(0),
-                    name: ty::BoundTyKind::Anon(idx as u32),
+                    bound: ty::BoundTy {
+                        var: ty::BoundVar::from_usize(idx),
+                        kind: ty::BoundTyKind::Anon(idx as u32),
+                    },
                 }),
                 None => {
                     self.list.push(param);
@@ -1098,7 +1107,10 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ParamsSubstitutor<'tcx> {
                     self.params.insert(idx as u32, param);
                     self.tcx.mk_placeholder(ty::PlaceholderType {
                         universe: ty::UniverseIndex::from_usize(0),
-                        name: ty::BoundTyKind::Anon(idx as u32),
+                        bound: ty::BoundTy {
+                            var: ty::BoundVar::from_usize(idx),
+                            kind: ty::BoundTyKind::Anon(idx as u32),
+                        },
                     })
                 }
             },
@@ -1156,12 +1168,13 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseParamsSubstitutor<'tcx> {
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match *t.kind() {
-            ty::Placeholder(ty::PlaceholderType { universe: ty::UniverseIndex::ROOT, name }) => {
-                match self.params.get(&name.expect_anon()) {
-                    Some(&ty::ParamTy { index, name }) => self.tcx.mk_ty_param(index, name),
-                    None => t,
-                }
-            }
+            ty::Placeholder(ty::PlaceholderType {
+                universe: ty::UniverseIndex::ROOT,
+                bound: ty::BoundTy { kind: name, .. },
+            }) => match self.params.get(&name.expect_anon()) {
+                Some(&ty::ParamTy { index, name }) => self.tcx.mk_ty_param(index, name),
+                None => t,
+            },
 
             _ => t.super_fold_with(self),
         }
@@ -1190,7 +1203,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for PlaceholdersCollector {
         match t.kind() {
             ty::Placeholder(p) if p.universe == self.universe_index => {
                 self.next_ty_placeholder =
-                    self.next_ty_placeholder.max(p.name.expect_anon() as usize + 1);
+                    self.next_ty_placeholder.max(p.bound.kind.expect_anon() as usize + 1);
             }
 
             _ => (),
@@ -1202,7 +1215,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for PlaceholdersCollector {
     fn visit_region(&mut self, r: Region<'tcx>) -> ControlFlow<Self::BreakTy> {
         match *r {
             ty::RePlaceholder(p) if p.universe == self.universe_index => {
-                if let ty::BoundRegionKind::BrAnon(anon, _) = p.name {
+                if let ty::BoundRegionKind::BrAnon(anon, _) = p.bound.kind {
                     self.next_anon_region_placeholder = self.next_anon_region_placeholder.max(anon);
                 }
                 // FIXME: This doesn't seem to handle BrNamed at all?

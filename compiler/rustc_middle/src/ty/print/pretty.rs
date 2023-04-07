@@ -739,7 +739,7 @@ pub trait PrettyPrinter<'tcx>:
                     p!(print(data))
                 }
             }
-            ty::Placeholder(placeholder) => match placeholder.name {
+            ty::Placeholder(placeholder) => match placeholder.bound.kind {
                 ty::BoundTyKind::Anon(_) => p!(write("Placeholder({:?})", placeholder)),
                 ty::BoundTyKind::Param(_, name) => p!(write("{}", name)),
             },
@@ -2104,7 +2104,9 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
 
             ty::ReLateBound(_, ty::BoundRegion { kind: br, .. })
             | ty::ReFree(ty::FreeRegion { bound_region: br, .. })
-            | ty::RePlaceholder(ty::Placeholder { name: br, .. }) => {
+            | ty::RePlaceholder(ty::Placeholder {
+                bound: ty::BoundRegion { kind: br, .. }, ..
+            }) => {
                 if br.is_named() {
                     return true;
                 }
@@ -2181,7 +2183,9 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             }
             ty::ReLateBound(_, ty::BoundRegion { kind: br, .. })
             | ty::ReFree(ty::FreeRegion { bound_region: br, .. })
-            | ty::RePlaceholder(ty::Placeholder { name: br, .. }) => {
+            | ty::RePlaceholder(ty::Placeholder {
+                bound: ty::BoundRegion { kind: br, .. }, ..
+            }) => {
                 if let ty::BrNamed(_, name) = br && br.is_named() {
                     p!(write("{}", name));
                     return Ok(self);
@@ -2259,7 +2263,10 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
             ty::ReLateBound(db, br) if db >= self.current_index => {
                 *self.region_map.entry(br).or_insert_with(|| name(Some(db), self.current_index, br))
             }
-            ty::RePlaceholder(ty::PlaceholderRegion { name: kind, .. }) => {
+            ty::RePlaceholder(ty::PlaceholderRegion {
+                bound: ty::BoundRegion { kind, .. },
+                ..
+            }) => {
                 // If this is an anonymous placeholder, don't rename. Otherwise, in some
                 // async fns, we get a `for<'r> Send` bound
                 match kind {

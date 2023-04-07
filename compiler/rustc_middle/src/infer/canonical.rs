@@ -155,9 +155,11 @@ impl<'tcx> CanonicalVarInfo<'tcx> {
             | CanonicalVarKind::Region(_)
             | CanonicalVarKind::Const(_, _) => bug!("expected placeholder: {self:?}"),
 
-            CanonicalVarKind::PlaceholderRegion(placeholder) => placeholder.name.expect_anon(),
-            CanonicalVarKind::PlaceholderTy(placeholder) => placeholder.name.expect_anon(),
-            CanonicalVarKind::PlaceholderConst(placeholder, _) => placeholder.name.as_u32(),
+            CanonicalVarKind::PlaceholderRegion(placeholder) => {
+                placeholder.bound.kind.expect_anon()
+            }
+            CanonicalVarKind::PlaceholderTy(placeholder) => placeholder.bound.kind.expect_anon(),
+            CanonicalVarKind::PlaceholderConst(placeholder, _) => placeholder.bound.as_u32(),
         }
     }
 }

@@ -16,8 +16,20 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         match &self.error {
             Some(RegionResolutionError::ConcreteFailure(
                 SubregionOrigin::RelateRegionParamBound(span),
-                Region(Interned(RePlaceholder(ty::Placeholder { name: sub_name, .. }), _)),
-                Region(Interned(RePlaceholder(ty::Placeholder { name: sup_name, .. }), _)),
+                Region(Interned(
+                    RePlaceholder(ty::Placeholder {
+                        bound: ty::BoundRegion { kind: sub_name, .. },
+                        ..
+                    }),
+                    _,
+                )),
+                Region(Interned(
+                    RePlaceholder(ty::Placeholder {
+                        bound: ty::BoundRegion { kind: sup_name, .. },
+                        ..
+                    }),
+                    _,
+                )),
             )) => {
                 let span = *span;
                 let (sub_span, sub_symbol) = match sub_name {
