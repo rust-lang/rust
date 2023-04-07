@@ -100,7 +100,7 @@ impl FunctionData {
             params: enabled_params
                 .clone()
                 .filter_map(|id| match &item_tree[id] {
-                    Param::Normal(_, ty) => Some(ty.clone()),
+                    Param::Normal(ty) => Some(ty.clone()),
                     Param::Varargs => None,
                 })
                 .collect(),
