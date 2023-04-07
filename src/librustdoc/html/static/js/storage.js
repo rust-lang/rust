@@ -158,6 +158,7 @@ const updateTheme = (function() {
         if (getSettingValue("use-system-theme") !== "false") {
             const lightTheme = getSettingValue("preferred-light-theme") || "light";
             const darkTheme = getSettingValue("preferred-dark-theme") || "dark";
+            updateLocalStorage("use-system-theme", "true");
 
             if (mql.matches) {
                 use(darkTheme, true);
