@@ -988,7 +988,7 @@ impl<'a> TyLoweringContext<'a> {
                         // ignore `T: Drop` or `T: Destruct` bounds.
                         // - `T: ~const Drop` has a special meaning in Rust 1.61 that we don't implement.
                         //   (So ideally, we'd only ignore `~const Drop` here)
-                        // - `Destruct` impls are built-in in 1.62 (current nightlies as of 08-04-2022), so until
+                        // - `Destruct` impls are built-in in 1.62 (current nightly as of 08-04-2022), so until
                         //   the builtin impls are supported by Chalk, we ignore them here.
                         if let Some(lang) = lang_attr(self.db.upcast(), tr.hir_trait_id()) {
                             if matches!(lang, LangItem::Drop | LangItem::Destruct) {
@@ -1082,23 +1082,23 @@ impl<'a> TyLoweringContext<'a> {
                     associated_ty_id: to_assoc_type_id(associated_ty),
                     substitution,
                 };
-                let mut preds: SmallVec<[_; 1]> = SmallVec::with_capacity(
+                let mut predicates: SmallVec<[_; 1]> = SmallVec::with_capacity(
                     binding.type_ref.as_ref().map_or(0, |_| 1) + binding.bounds.len(),
                 );
                 if let Some(type_ref) = &binding.type_ref {
                     let ty = self.lower_ty(type_ref);
                     let alias_eq =
                         AliasEq { alias: AliasTy::Projection(projection_ty.clone()), ty };
-                    preds.push(crate::wrap_empty_binders(WhereClause::AliasEq(alias_eq)));
+                    predicates.push(crate::wrap_empty_binders(WhereClause::AliasEq(alias_eq)));
                 }
                 for bound in binding.bounds.iter() {
-                    preds.extend(self.lower_type_bound(
+                    predicates.extend(self.lower_type_bound(
                         bound,
                         TyKind::Alias(AliasTy::Projection(projection_ty.clone())).intern(Interner),
                         false,
                     ));
                 }
-                preds
+                predicates
             })
     }
 
@@ -1165,7 +1165,7 @@ impl<'a> TyLoweringContext<'a> {
                 return None;
             }
 
-            // As multiple occurrences of the same auto traits *are* permitted, we dedulicate the
+            // As multiple occurrences of the same auto traits *are* permitted, we deduplicate the
             // bounds. We shouldn't have repeated elements besides auto traits at this point.
             bounds.dedup();
 
