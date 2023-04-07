@@ -122,6 +122,12 @@ pub(crate) enum ConstantItemKind {
     Static,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+enum RecordPartialRes {
+    Yes,
+    No,
+}
+
 /// The rib kind restricts certain accesses,
 /// e.g. to a `Res::Local` of an outer item.
 #[derive(Copy, Clone, Debug)]
@@ -2682,6 +2688,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 &path,
                 PathSource::Trait(AliasPossibility::No),
                 Finalize::new(trait_ref.ref_id, trait_ref.path.span),
+                RecordPartialRes::Yes,
             );
             self.diagnostic_metadata.currently_processing_impl_trait = None;
             if let Some(def_id) = res.expect_full_res().opt_def_id() {
@@ -3420,6 +3427,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             &Segment::from_path(path),
             source,
             Finalize::new(id, path.span),
+            RecordPartialRes::Yes,
         );
     }
 
@@ -3430,6 +3438,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         path: &[Segment],
         source: PathSource<'ast>,
         finalize: Finalize,
+        record_partial_res: RecordPartialRes,
     ) -> PartialRes {
         let ns = source.namespace();
 
@@ -3636,7 +3645,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             _ => report_errors(self, None),
         };
 
-        if !matches!(source, PathSource::TraitItem(..)) {
+        if record_partial_res == RecordPartialRes::Yes {
             // Avoid recording definition of `A::B` in `<T as A>::B::C`.
             self.r.record_partial_res(node_id, partial_res);
             self.resolve_elided_lifetimes_in_path(node_id, partial_res, path, source, path_span);
@@ -3740,7 +3749,25 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 )));
             }
 
-            // Make sure `A::B` in `<T as A::B>::C` is a trait item.
+            let num_privacy_errors = self.r.privacy_errors.len();
+            // Make sure that `A` in `<T as A>::B::C` is a trait.
+            let trait_res = self.smart_resolve_path_fragment(
+                &None,
+                &path[..qself.position],
+                PathSource::Trait(AliasPossibility::No),
+                Finalize::new(finalize.node_id, qself.path_span),
+                RecordPartialRes::No,
+            );
+
+            if trait_res.expect_full_res() == Res::Err {
+                return Ok(Some(trait_res));
+            }
+
+            // Truncate additional privacy errors reported above,
+            // because they'll be recomputed below.
+            self.r.privacy_errors.truncate(num_privacy_errors);
+
+            // Make sure `A::B` in `<T as A>::B::C` is a trait item.
             //
             // Currently, `path` names the full item (`A::B::C`, in
             // our example). so we extract the prefix of that that is
@@ -3753,6 +3780,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 &path[..=qself.position],
                 PathSource::TraitItem(ns),
                 Finalize::with_root_span(finalize.node_id, finalize.path_span, qself.path_span),
+                RecordPartialRes::No,
             );
 
             // The remaining segments (the `C` in our example) will
