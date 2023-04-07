@@ -77,11 +77,6 @@ Rustdoc
 - [Remove inconsistently-present sidebar tooltips.](https://github.com/rust-lang/rust/pull/107490/)
 - [Search by macro when query ends with `!`.](https://github.com/rust-lang/rust/pull/108143/)
 
-<a id="1.69.0-Misc"></a>
-
-Misc
-----
-
 <a id="1.69.0-Compatibility-Notes"></a>
 
 Compatibility Notes
