@@ -174,11 +174,11 @@ fn msg_span_from_named_region<'tcx>(
             ..
         }) => (format!("the lifetime `{name}` as defined here"), Some(tcx.def_span(def_id))),
         ty::RePlaceholder(ty::PlaceholderRegion {
-            bound: ty::BoundRegion { kind: ty::BoundRegionKind::BrAnon(_, Some(span)), .. },
+            bound: ty::BoundRegion { kind: ty::BoundRegionKind::BrAnon(Some(span)), .. },
             ..
         }) => (format!("the anonymous lifetime defined here"), Some(span)),
         ty::RePlaceholder(ty::PlaceholderRegion {
-            bound: ty::BoundRegion { kind: ty::BoundRegionKind::BrAnon(_, None), .. },
+            bound: ty::BoundRegion { kind: ty::BoundRegionKind::BrAnon(None), .. },
             ..
         }) => (format!("an anonymous lifetime"), None),
         _ => bug!("{:?}", region),
@@ -226,7 +226,7 @@ fn msg_span_from_early_bound_and_free_regions<'tcx>(
                         };
                         (text, sp)
                     }
-                    ty::BrAnon(_, span) => (
+                    ty::BrAnon(span) => (
                         "the anonymous lifetime as defined here".to_string(),
                         match span {
                             Some(span) => span,

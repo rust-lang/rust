@@ -240,7 +240,7 @@ pub fn resolve_interior<'a, 'tcx>(
 
             let mut counter = 0;
             let mut mk_bound_region = |span| {
-                let kind = ty::BrAnon(counter, span);
+                let kind = ty::BrAnon(span);
                 let var = ty::BoundVar::from_u32(counter);
                 counter += 1;
                 ty::BoundRegion { var, kind }
@@ -263,7 +263,7 @@ pub fn resolve_interior<'a, 'tcx>(
                     }
                     ty::ReLateBound(_, ty::BoundRegion { kind, .. })
                     | ty::ReFree(ty::FreeRegion { bound_region: kind, .. }) => match kind {
-                        ty::BoundRegionKind::BrAnon(_, span) => mk_bound_region(span),
+                        ty::BoundRegionKind::BrAnon(span) => mk_bound_region(span),
                         ty::BoundRegionKind::BrNamed(def_id, _) => {
                             mk_bound_region(Some(fcx.tcx.def_span(def_id)))
                         }
@@ -294,7 +294,7 @@ pub fn resolve_interior<'a, 'tcx>(
             FnMutDelegate {
                 regions: &mut |br| {
                     let kind = match br.kind {
-                        ty::BrAnon(_, span) => ty::BrAnon(counter, span),
+                        ty::BrAnon(span) => ty::BrAnon(span),
                         _ => br.kind,
                     };
                     let var = ty::BoundVar::from_usize(bound_vars.len());

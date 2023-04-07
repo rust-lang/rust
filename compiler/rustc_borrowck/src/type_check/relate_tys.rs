@@ -124,7 +124,7 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
             .placeholder_region(self.type_checker.infcx, placeholder);
 
         let reg_info = match placeholder.bound.kind {
-            ty::BoundRegionKind::BrAnon(_, Some(span)) => BoundRegionInfo::Span(span),
+            ty::BoundRegionKind::BrAnon(Some(span)) => BoundRegionInfo::Span(span),
             ty::BoundRegionKind::BrAnon(..) => BoundRegionInfo::Name(Symbol::intern("anon")),
             ty::BoundRegionKind::BrNamed(_, name) => BoundRegionInfo::Name(name),
             ty::BoundRegionKind::BrEnv => BoundRegionInfo::Name(Symbol::intern("env")),

@@ -90,7 +90,7 @@ impl<'a> DescriptionCtx<'a> {
                             };
                             me.span = Some(sp);
                         }
-                        ty::BrAnon(_, span) => {
+                        ty::BrAnon(span) => {
                             me.kind = "defined_here";
                             me.span = match span {
                                 Some(_) => span,

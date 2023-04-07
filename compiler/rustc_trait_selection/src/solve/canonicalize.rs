@@ -257,7 +257,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
             self.primitive_var_infos.push(CanonicalVarInfo { kind });
             var
         });
-        let br = ty::BoundRegion { var, kind: BrAnon(var.as_u32(), None) };
+        let br = ty::BoundRegion { var, kind: BrAnon(None) };
         self.interner().mk_re_late_bound(self.binder_index, br)
     }
 
