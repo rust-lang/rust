@@ -313,6 +313,13 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc
                 let new_args = args.to_vec();
                 args = vec![new_args[1], new_args[0], new_args[2], new_args[3], new_args[4]].into();
             },
+            "__builtin_ia32_vpshrdv_v8di" | "__builtin_ia32_vpshrdv_v4di" | "__builtin_ia32_vpshrdv_v2di" |
+                "__builtin_ia32_vpshrdv_v16si" | "__builtin_ia32_vpshrdv_v8si" | "__builtin_ia32_vpshrdv_v4si" |
+                "__builtin_ia32_vpshrdv_v32hi" | "__builtin_ia32_vpshrdv_v16hi" | "__builtin_ia32_vpshrdv_v8hi" => {
+                // The first two arguments are reversed, compared to LLVM.
+                let new_args = args.to_vec();
+                args = vec![new_args[1], new_args[0], new_args[2]].into();
+            },
             _ => (),
         }
     }
