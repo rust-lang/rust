@@ -237,7 +237,7 @@ pub(crate) struct CycleError<D: DepKind> {
 /// which will be used if the query is not in the cache and we need
 /// to compute it.
 #[inline]
-pub fn try_get_cached<Tcx, C>(tcx: Tcx, cache: &C, key: &C::Key) -> Option<C::Value>
+pub fn try_get_cached<Tcx, C, V>(tcx: Tcx, cache: &C, key: &C::Key) -> Option<C::Value>
 where
     C: QueryCache,
     Tcx: DepContext,

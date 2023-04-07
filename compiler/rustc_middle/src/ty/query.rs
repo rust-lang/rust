@@ -355,7 +355,7 @@ macro_rules! define_callbacks {
                 let key = key.into_query_param();
                 opt_remap_env_constness!([$($modifiers)*][key]);
 
-                match try_get_cached(self.tcx, &self.tcx.query_system.caches.$name, &key) {
+                match try_get_cached::<_, _, $V>(self.tcx, &self.tcx.query_system.caches.$name, &key) {
                     Some(_) => return,
                     None => self.tcx.queries.$name(
                         self.tcx,
@@ -374,7 +374,7 @@ macro_rules! define_callbacks {
                 let key = key.into_query_param();
                 opt_remap_env_constness!([$($modifiers)*][key]);
 
-                match try_get_cached(self.tcx, &self.tcx.query_system.caches.$name, &key) {
+                match try_get_cached::<_, _, $V>(self.tcx, &self.tcx.query_system.caches.$name, &key) {
                     Some(_) => return,
                     None => self.tcx.queries.$name(
                         self.tcx,
@@ -404,7 +404,7 @@ macro_rules! define_callbacks {
                 let key = key.into_query_param();
                 opt_remap_env_constness!([$($modifiers)*][key]);
 
-                restore::<$V>(match try_get_cached(self.tcx, &self.tcx.query_system.caches.$name, &key) {
+                restore::<$V>(match try_get_cached::<_, _, $V>(self.tcx, &self.tcx.query_system.caches.$name, &key) {
                     Some(value) => value,
                     None => self.tcx.queries.$name(self.tcx, self.span, key, QueryMode::Get).unwrap(),
                 })
@@ -499,7 +499,7 @@ macro_rules! define_feedable {
                 let value = restore::<$V>(erased);
                 let cache = &tcx.query_system.caches.$name;
 
-                match try_get_cached(tcx, cache, &key) {
+                match try_get_cached::<_, _, $V>(tcx, cache, &key) {
                     Some(old) => {
                         let old = restore::<$V>(old);
                         bug!(
