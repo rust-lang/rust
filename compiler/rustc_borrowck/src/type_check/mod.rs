@@ -1342,9 +1342,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                     let region_ctxt_fn = || {
                         let reg_info = match br.kind {
-                            ty::BoundRegionKind::BrAnon(_, Some(span)) => {
-                                BoundRegionInfo::Span(span)
-                            }
+                            ty::BoundRegionKind::BrAnon(Some(span)) => BoundRegionInfo::Span(span),
                             ty::BoundRegionKind::BrAnon(..) => {
                                 BoundRegionInfo::Name(Symbol::intern("anon"))
                             }

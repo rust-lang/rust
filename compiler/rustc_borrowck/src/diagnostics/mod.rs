@@ -467,9 +467,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         if let ty::Ref(region, ..) = ty.kind() {
             match **region {
                 ty::ReLateBound(_, ty::BoundRegion { kind: br, .. })
-                | ty::RePlaceholder(ty::PlaceholderRegion { name: br, .. }) => {
-                    printer.region_highlight_mode.highlighting_bound_region(br, counter)
-                }
+                | ty::RePlaceholder(ty::PlaceholderRegion {
+                    bound: ty::BoundRegion { kind: br, .. },
+                    ..
+                }) => printer.region_highlight_mode.highlighting_bound_region(br, counter),
                 _ => {}
             }
         }
@@ -485,9 +486,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let region = if let ty::Ref(region, ..) = ty.kind() {
             match **region {
                 ty::ReLateBound(_, ty::BoundRegion { kind: br, .. })
-                | ty::RePlaceholder(ty::PlaceholderRegion { name: br, .. }) => {
-                    printer.region_highlight_mode.highlighting_bound_region(br, counter)
-                }
+                | ty::RePlaceholder(ty::PlaceholderRegion {
+                    bound: ty::BoundRegion { kind: br, .. },
+                    ..
+                }) => printer.region_highlight_mode.highlighting_bound_region(br, counter),
                 _ => {}
             }
             region

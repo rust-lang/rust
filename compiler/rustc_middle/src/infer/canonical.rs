@@ -149,15 +149,15 @@ impl<'tcx> CanonicalVarInfo<'tcx> {
         }
     }
 
-    pub fn expect_anon_placeholder(self) -> u32 {
+    pub fn expect_placeholder_index(self) -> usize {
         match self.kind {
             CanonicalVarKind::Ty(_)
             | CanonicalVarKind::Region(_)
             | CanonicalVarKind::Const(_, _) => bug!("expected placeholder: {self:?}"),
 
-            CanonicalVarKind::PlaceholderRegion(placeholder) => placeholder.name.expect_anon(),
-            CanonicalVarKind::PlaceholderTy(placeholder) => placeholder.name.expect_anon(),
-            CanonicalVarKind::PlaceholderConst(placeholder, _) => placeholder.name.as_u32(),
+            CanonicalVarKind::PlaceholderRegion(placeholder) => placeholder.bound.var.as_usize(),
+            CanonicalVarKind::PlaceholderTy(placeholder) => placeholder.bound.var.as_usize(),
+            CanonicalVarKind::PlaceholderConst(placeholder, _) => placeholder.bound.as_usize(),
         }
     }
 }
@@ -411,7 +411,7 @@ impl<'tcx> CanonicalVarValues<'tcx> {
                         CanonicalVarKind::Region(_) | CanonicalVarKind::PlaceholderRegion(_) => {
                             let br = ty::BoundRegion {
                                 var: ty::BoundVar::from_usize(i),
-                                kind: ty::BrAnon(i as u32, None),
+                                kind: ty::BrAnon(None),
                             };
                             tcx.mk_re_late_bound(ty::INNERMOST, br).into()
                         }

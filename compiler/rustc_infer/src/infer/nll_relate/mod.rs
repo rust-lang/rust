@@ -296,7 +296,7 @@ where
                     universe
                 });
 
-                let placeholder = ty::PlaceholderRegion { universe, name: br.kind };
+                let placeholder = ty::PlaceholderRegion { universe, bound: br };
                 debug!(?placeholder);
                 let placeholder_reg = nll_delegate.next_placeholder_region(placeholder);
                 debug!(?placeholder_reg);
