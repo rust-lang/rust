@@ -1168,13 +1168,12 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseParamsSubstitutor<'tcx> {
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match *t.kind() {
-            ty::Placeholder(ty::PlaceholderType {
-                universe: ty::UniverseIndex::ROOT,
-                bound: ty::BoundTy { kind: name, .. },
-            }) => match self.params.get(&name.expect_anon()) {
-                Some(&ty::ParamTy { index, name }) => self.tcx.mk_ty_param(index, name),
-                None => t,
-            },
+            ty::Placeholder(ty::PlaceholderType { universe: ty::UniverseIndex::ROOT, bound }) => {
+                match self.params.get(&bound.var.as_u32()) {
+                    Some(&ty::ParamTy { index, name }) => self.tcx.mk_ty_param(index, name),
+                    None => t,
+                }
+            }
 
             _ => t.super_fold_with(self),
         }
@@ -1202,8 +1201,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for PlaceholdersCollector {
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         match t.kind() {
             ty::Placeholder(p) if p.universe == self.universe_index => {
-                self.next_ty_placeholder =
-                    self.next_ty_placeholder.max(p.bound.kind.expect_anon() as usize + 1);
+                self.next_ty_placeholder = self.next_ty_placeholder.max(p.bound.var.as_usize() + 1);
             }
 
             _ => (),

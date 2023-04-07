@@ -107,15 +107,6 @@ impl BoundRegionKind {
             _ => None,
         }
     }
-
-    pub fn expect_anon(&self) -> u32 {
-        match *self {
-            BoundRegionKind::BrNamed(_, _) | BoundRegionKind::BrEnv => {
-                bug!("expected anon region: {self:?}")
-            }
-            BoundRegionKind::BrAnon(idx, _) => idx,
-        }
-    }
 }
 
 pub trait Article {
@@ -1535,15 +1526,6 @@ pub struct BoundTy {
 pub enum BoundTyKind {
     Anon(u32),
     Param(DefId, Symbol),
-}
-
-impl BoundTyKind {
-    pub fn expect_anon(self) -> u32 {
-        match self {
-            BoundTyKind::Anon(i) => i,
-            _ => bug!(),
-        }
-    }
 }
 
 impl From<BoundVar> for BoundTy {
