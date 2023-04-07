@@ -869,7 +869,7 @@ impl TcpListener {
     /// use std::net::{TcpListener, TcpStream};
     ///
     /// fn listen_on(port: u16) -> impl Iterator<Item = TcpStream> {
-    ///     let listener = TcpListener::bind(format!("127.0.0.1:{port}")).unwrap();
+    ///     let listener = TcpListener::bind(("127.0.0.1", port)).unwrap();
     ///     listener.into_incoming()
     ///         .filter_map(Result::ok) /* Ignore failed connections */
     /// }
