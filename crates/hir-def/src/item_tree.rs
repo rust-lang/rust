@@ -606,7 +606,7 @@ pub struct Function {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Param {
-    Normal(Option<Name>, Interned<TypeRef>),
+    Normal(Interned<TypeRef>),
     Varargs,
 }
 

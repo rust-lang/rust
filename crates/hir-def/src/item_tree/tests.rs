@@ -165,7 +165,7 @@ trait Tr: SuperTrait + 'lifetime {
     fn method(&self);
 }
         "#,
-        expect![[r##"
+        expect![[r#"
             pub static mut ST: () = _;
 
             pub(self) const _: Anon = _;
@@ -174,8 +174,8 @@ trait Tr: SuperTrait + 'lifetime {
             #[inner_attr_in_fn]
             pub(self) fn f(
                 #[attr]
-                arg: u8,
-                _: (),
+                u8,
+                (),
             ) -> () { ... }
 
             pub(self) trait Tr<Self>
@@ -186,10 +186,10 @@ trait Tr: SuperTrait + 'lifetime {
                 pub(self) type Assoc: AssocBound = Default;
 
                 pub(self) fn method(
-                    _: &Self,  // self
+                    self: &Self,
                 ) -> ();
             }
-        "##]],
+        "#]],
     );
 }
 
@@ -336,7 +336,7 @@ trait Tr<'a, T: 'a>: Super where Self: for<'a> Tr<'a, T> {}
                 T: 'b
             {
                 pub(self) fn f<G>(
-                    arg: impl Copy,
+                    impl Copy,
                 ) -> impl Copy
                 where
                     G: 'a { ... }

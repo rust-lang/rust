@@ -293,7 +293,7 @@ impl<'a> Ctx<'a> {
                     }
                 };
                 let ty = Interned::new(self_type);
-                let idx = self.data().params.alloc(Param::Normal(None, ty));
+                let idx = self.data().params.alloc(Param::Normal(ty));
                 self.add_attrs(
                     idx.into(),
                     RawAttrs::new(self.db.upcast(), &self_param, self.hygiene()),
@@ -306,19 +306,7 @@ impl<'a> Ctx<'a> {
                     None => {
                         let type_ref = TypeRef::from_ast_opt(&self.body_ctx, param.ty());
                         let ty = Interned::new(type_ref);
-                        let mut pat = param.pat();
-                        // FIXME: This really shouldn't be here, in fact FunctionData/ItemTree's function shouldn't know about
-                        // pattern names at all
-                        let name = 'name: loop {
-                            match pat {
-                                Some(ast::Pat::RefPat(ref_pat)) => pat = ref_pat.pat(),
-                                Some(ast::Pat::IdentPat(ident)) => {
-                                    break 'name ident.name().map(|it| it.as_name())
-                                }
-                                _ => break 'name None,
-                            }
-                        };
-                        self.data().params.alloc(Param::Normal(name, ty))
+                        self.data().params.alloc(Param::Normal(ty))
                     }
                 };
                 self.add_attrs(idx.into(), RawAttrs::new(self.db.upcast(), &param, self.hygiene()));

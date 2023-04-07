@@ -257,21 +257,15 @@ impl<'a> Printer<'a> {
                 w!(self, "(");
                 if !params.is_empty() {
                     self.indented(|this| {
-                        for (i, param) in params.clone().enumerate() {
+                        for param in params.clone() {
                             this.print_attrs_of(param);
                             match &this.tree[param] {
-                                Param::Normal(name, ty) => {
-                                    match name {
-                                        Some(name) => w!(this, "{}: ", name),
-                                        None => w!(this, "_: "),
+                                Param::Normal(ty) => {
+                                    if flags.contains(FnFlags::HAS_SELF_PARAM) {
+                                        w!(this, "self: ");
                                     }
                                     this.print_type_ref(ty);
-                                    w!(this, ",");
-                                    if flags.contains(FnFlags::HAS_SELF_PARAM) && i == 0 {
-                                        wln!(this, "  // self");
-                                    } else {
-                                        wln!(this);
-                                    }
+                                    wln!(this, ",");
                                 }
                                 Param::Varargs => {
                                     wln!(this, "...");
