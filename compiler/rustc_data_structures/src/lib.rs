@@ -1,5 +1,5 @@
 //! Various data structures used by the Rust compiler. The intention
-//! is that code in here should be not be *specific* to rustc, so that
+//! is that code in here should not be *specific* to rustc, so that
 //! it can be easily unit tested and so forth.
 //!
 //! # Note
@@ -27,6 +27,8 @@
 #![feature(thread_id_value)]
 #![feature(vec_into_raw_parts)]
 #![feature(get_mut_unchecked)]
+#![feature(lint_reasons)]
+#![feature(unwrap_infallible)]
 #![allow(rustc::default_hash_types)]
 #![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]
@@ -59,7 +61,6 @@ pub mod intern;
 pub mod jobserver;
 pub mod macros;
 pub mod obligation_forest;
-pub mod owning_ref;
 pub mod sip128;
 pub mod small_c_str;
 pub mod small_str;
@@ -82,6 +83,7 @@ pub mod vec_linked_list;
 pub mod work_queue;
 pub use atomic_ref::AtomicRef;
 pub mod frozen;
+pub mod owned_slice;
 pub mod sso;
 pub mod steal;
 pub mod tagged_ptr;
