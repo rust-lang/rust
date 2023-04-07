@@ -226,8 +226,8 @@ fn msg_span_from_early_bound_and_free_regions<'tcx>(
                         };
                         (text, sp)
                     }
-                    ty::BrAnon(idx, span) => (
-                        format!("the anonymous lifetime #{} defined here", idx + 1),
+                    ty::BrAnon(_, span) => (
+                        "the anonymous lifetime as defined here".to_string(),
                         match span {
                             Some(span) => span,
                             None => tcx.def_span(scope)
