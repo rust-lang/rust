@@ -104,7 +104,7 @@
 //! implemented.
 
 use crate::errors;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::{base_n, flock};
 use rustc_errors::ErrorGuaranteed;
@@ -635,8 +635,8 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
 
     // First do a pass over the crate directory, collecting lock files and
     // session directories
-    let mut session_directories = FxHashSet::default();
-    let mut lock_files = FxHashSet::default();
+    let mut session_directories = FxIndexSet::default();
+    let mut lock_files = FxIndexSet::default();
 
     for dir_entry in crate_directory.read_dir()? {
         let Ok(dir_entry) = dir_entry else {
@@ -659,7 +659,7 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
     }
 
     // Now map from lock files to session directories
-    let lock_file_to_session_dir: FxHashMap<String, Option<String>> = lock_files
+    let lock_file_to_session_dir: FxIndexMap<String, Option<String>> = lock_files
         .into_iter()
         .map(|lock_file_name| {
             assert!(lock_file_name.ends_with(LOCK_FILE_EXT));
@@ -705,7 +705,7 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
     }
 
     // Filter out `None` directories
-    let lock_file_to_session_dir: FxHashMap<String, String> = lock_file_to_session_dir
+    let lock_file_to_session_dir: FxIndexMap<String, String> = lock_file_to_session_dir
         .into_iter()
         .filter_map(|(lock_file_name, directory_name)| directory_name.map(|n| (lock_file_name, n)))
         .collect();
@@ -846,7 +846,7 @@ fn delete_old(sess: &Session, path: &Path) {
 
 fn all_except_most_recent(
     deletion_candidates: Vec<(SystemTime, PathBuf, Option<flock::Lock>)>,
-) -> FxHashMap<PathBuf, Option<flock::Lock>> {
+) -> FxIndexMap<PathBuf, Option<flock::Lock>> {
     let most_recent = deletion_candidates.iter().map(|&(timestamp, ..)| timestamp).max();
 
     if let Some(most_recent) = most_recent {
@@ -856,7 +856,7 @@ fn all_except_most_recent(
             .map(|(_, path, lock)| (path, lock))
             .collect()
     } else {
-        FxHashMap::default()
+        FxIndexMap::default()
     }
 }
 

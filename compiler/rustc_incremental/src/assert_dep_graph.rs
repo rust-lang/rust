@@ -35,7 +35,7 @@
 
 use crate::errors;
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::graph::implementation::{Direction, NodeIndex, INCOMING, OUTGOING};
 use rustc_graphviz as dot;
 use rustc_hir as hir;
@@ -258,7 +258,7 @@ fn dump_graph(query: &DepGraphQuery) {
 }
 
 #[allow(missing_docs)]
-pub struct GraphvizDepGraph(FxHashSet<DepKind>, Vec<(DepKind, DepKind)>);
+pub struct GraphvizDepGraph(FxIndexSet<DepKind>, Vec<(DepKind, DepKind)>);
 
 impl<'a> dot::GraphWalk<'a> for GraphvizDepGraph {
     type Node = DepKind;
@@ -303,7 +303,7 @@ impl<'a> dot::Labeller<'a> for GraphvizDepGraph {
 fn node_set<'q>(
     query: &'q DepGraphQuery,
     filter: &DepNodeFilter,
-) -> Option<FxHashSet<&'q DepNode>> {
+) -> Option<FxIndexSet<&'q DepNode>> {
     debug!("node_set(filter={:?})", filter);
 
     if filter.accepts_all() {
@@ -315,9 +315,9 @@ fn node_set<'q>(
 
 fn filter_nodes<'q>(
     query: &'q DepGraphQuery,
-    sources: &Option<FxHashSet<&'q DepNode>>,
-    targets: &Option<FxHashSet<&'q DepNode>>,
-) -> FxHashSet<DepKind> {
+    sources: &Option<FxIndexSet<&'q DepNode>>,
+    targets: &Option<FxIndexSet<&'q DepNode>>,
+) -> FxIndexSet<DepKind> {
     if let Some(sources) = sources {
         if let Some(targets) = targets {
             walk_between(query, sources, targets)
@@ -333,10 +333,10 @@ fn filter_nodes<'q>(
 
 fn walk_nodes<'q>(
     query: &'q DepGraphQuery,
-    starts: &FxHashSet<&'q DepNode>,
+    starts: &FxIndexSet<&'q DepNode>,
     direction: Direction,
-) -> FxHashSet<DepKind> {
-    let mut set = FxHashSet::default();
+) -> FxIndexSet<DepKind> {
+    let mut set = FxIndexSet::default();
     for &start in starts {
         debug!("walk_nodes: start={:?} outgoing?={:?}", start, direction == OUTGOING);
         if set.insert(start.kind) {
@@ -357,9 +357,9 @@ fn walk_nodes<'q>(
 
 fn walk_between<'q>(
     query: &'q DepGraphQuery,
-    sources: &FxHashSet<&'q DepNode>,
-    targets: &FxHashSet<&'q DepNode>,
-) -> FxHashSet<DepKind> {
+    sources: &FxIndexSet<&'q DepNode>,
+    targets: &FxIndexSet<&'q DepNode>,
+) -> FxIndexSet<DepKind> {
     // This is a bit tricky. We want to include a node only if it is:
     // (a) reachable from a source and (b) will reach a target. And we
     // have to be careful about cycles etc. Luckily efficiency is not
@@ -426,8 +426,8 @@ fn walk_between<'q>(
     }
 }
 
-fn filter_edges(query: &DepGraphQuery, nodes: &FxHashSet<DepKind>) -> Vec<(DepKind, DepKind)> {
-    let uniq: FxHashSet<_> = query
+fn filter_edges(query: &DepGraphQuery, nodes: &FxIndexSet<DepKind>) -> Vec<(DepKind, DepKind)> {
+    let uniq: FxIndexSet<_> = query
         .edges()
         .into_iter()
         .map(|(s, t)| (s.kind, t.kind))

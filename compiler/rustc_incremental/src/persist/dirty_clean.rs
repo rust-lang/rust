@@ -21,7 +21,7 @@
 
 use crate::errors;
 use rustc_ast::{self as ast, Attribute, NestedMetaItem};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit;
 use rustc_hir::Node as HirNode;
@@ -125,7 +125,7 @@ const LABELS_ADT: &[&[&str]] = &[BASE_HIR, BASE_STRUCT];
 //
 //     type_of for these.
 
-type Labels = FxHashSet<String>;
+type Labels = FxIndexSet<String>;
 
 /// Represents the requested configuration by rustc_clean/dirty
 struct Assertion {

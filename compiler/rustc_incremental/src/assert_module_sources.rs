@@ -24,7 +24,7 @@
 
 use crate::errors;
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::mir::mono::CodegenUnitNameBuilder;
 use rustc_middle::ty::TyCtxt;
@@ -52,7 +52,7 @@ pub fn assert_module_sources(tcx: TyCtxt<'_>) {
 
 struct AssertModuleSource<'tcx> {
     tcx: TyCtxt<'tcx>,
-    available_cgus: FxHashSet<Symbol>,
+    available_cgus: FxIndexSet<Symbol>,
 }
 
 impl<'tcx> AssertModuleSource<'tcx> {
