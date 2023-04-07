@@ -61,6 +61,9 @@ sysinfo = { version = "0.26.0", optional = true }
 [target.'cfg(not(target_os = "solaris"))'.dependencies]
 fd-lock = "3.0.8"
 
+[target.'cfg(windows)'.dependencies.junction]
+version = "1.0.0"
+
 [target.'cfg(windows)'.dependencies.windows]
 version = "0.46.0"
 features = [
