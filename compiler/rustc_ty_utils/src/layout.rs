@@ -371,7 +371,7 @@ fn layout_of_uncached<'tcx>(
             let Abi::Scalar(e_abi) = e_ly.abi else {
                 // This error isn't caught in typeck, e.g., if
                 // the element type of the vector is generic.
-                tcx.sess.emit_fatal(NonPrimitiveSimdType {ty, e_ty });
+                tcx.sess.emit_fatal(NonPrimitiveSimdType { ty, e_ty });
             };
 
             // Compute the size and alignment of the vector:
