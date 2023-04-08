@@ -2381,6 +2381,14 @@ pub unsafe fn vec_all_nlt(a: vector_float, b: vector_float) -> bool {
     vcmpgtfp_p(0, b, a) != 0
 }
 
+/// All Elements Numeric
+#[inline]
+#[target_feature(enable = "altivec")]
+#[cfg_attr(test, assert_instr("vcmpgefp."))]
+pub unsafe fn vec_all_numeric(a: vector_float) -> bool {
+    vcmpgefp_p(2, a, a) != 0
+}
+
 #[cfg(target_endian = "big")]
 mod endian {
     use super::*;
