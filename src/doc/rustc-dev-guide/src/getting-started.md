@@ -70,20 +70,67 @@ Just pinging someone without providing any context can be a bit annoying and
 just create noise, so we ask that you be mindful of the fact that the
 `t-compiler` folks get a lot of pings in a day.
 
-## Cloning and Building
+## What should I work on?
 
-See ["How to build and run the compiler"](./building//how-to-build-and-run.md).
+The Rust project is quite large and it can be difficult to know which parts of the project need
+help, or are a good starting place for beginners. Here are some suggested starting places.
 
-## Contributing code to other Rust projects
+### Easy or mentored issues
+
+If you're looking for somewhere to start, check out the following [issue
+search][help-wanted-search]. See the [Triage] for an explanation of these labels. You can also try
+filtering the search to areas you're interested in. For example:
+
+- `repo:rust-lang/rust-clippy` will only show clippy issues
+- `label:T-compiler` will only show issues related to the compiler
+- `label:A-diagnostics` will only show diagnostic issues
+
+Not all important or beginner work has issue labels.
+See below for how to find work that isn't labelled.
+
+[help-wanted-search]: https://github.com/issues?q=is%3Aopen+is%3Aissue+org%3Arust-lang+no%3Aassignee+label%3AE-easy%2C%22good+first+issue%22%2Cgood-first-issue%2CE-medium%2CE-help-wanted%2CE-mentor
+[Triage]: ./contributing.md#issue-triage
+
+### Recurring work
+
+Some work is too large to be done by a single person. In this case, it's commmon to have "Tracking
+issues" to co-ordinate the work between contributors.  Here are some example tracking issues where
+it's easy to pick up a work without a large time commitment:
+
+- [Rustdoc Askama Migration](https://github.com/rust-lang/rust/issues/108868)
+- [Diagnostic Translation](https://github.com/rust-lang/rust/issues/100717)
+- [Move UI tests to subdirectories](https://github.com/rust-lang/rust/issues/73494)
+
+If you find more recurring work, please feel free to add it here!
+
+### Clippy issues
+
+The [Clippy] project has spent a long time making its contribution process as friendly to newcomers
+as possible.  Consider working on it first to get familiar with the process and the compiler
+internals.
+
+See [the Clippy contribution guide][clippy-contributing] for instructions on getting started.
+
+[Clippy]: https://doc.rust-lang.org/clippy/
+[clippy-contributing]: https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md
+
+### Diagnostic issues
+
+Many diagnostic issues are self-contained and don't need detailed background knowledge of the
+compiler. You can see a list of diagnostic issues [here][diagnostic-issues].
+
+[diagnostic-issues]: https://github.com/rust-lang/rust/issues?q=is%3Aissue+is%3Aopen+label%3AA-diagnostics+no%3Aassignee
+
+### Contributing code to other Rust projects
 
 There are a bunch of other projects that you can contribute to outside of the
-`rust-lang/rust` repo, including `clippy`, `miri`, `chalk`, and many others.
+`rust-lang/rust` repo, including `cargo`, `miri`, `rustup`, and many others.
 
 These repos might have their own contributing guidelines and procedures. Many
 of them are owned by working groups (e.g. `chalk` is largely owned by
 WG-traits). For more info, see the documentation in those repos' READMEs.
 
-## Other ways to contribute
+### Other ways to contribute
 
 There are a bunch of other ways you can contribute, especially if you don't
 feel comfortable jumping straight into the large `rust-lang/rust` codebase.
@@ -118,9 +165,13 @@ incredibly helpful:
 [wg]: https://rust-lang.github.io/compiler-team/working-groups/
 [triage]: ./contributing.md#issue-triage
 
+## Cloning and Building
+
+See ["How to build and run the compiler"](./building//how-to-build-and-run.md).
+
 ## Contributor Procedures
 
-This section has moved to the ["Contribution Procedures"](./contributing.md) chapter.
+This section has moved to the ["Contribution Procedures"](./contributing.mD) chapter.
 
 ## Other Resources
 

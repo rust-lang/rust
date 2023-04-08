@@ -372,12 +372,9 @@ still valid. Load up an older issue, double check that it's still true, and
 leave a comment letting us know if it is or is not. The [least recently
 updated sort][lru] is good for finding issues like this.
 
-If you're looking for somewhere to start, check out the [E-easy] tag.
-
 [Thanks to `@rustbot`][rustbot], anyone can help triage issues by adding
 appropriate labels to issues that haven't been triaged yet:
 
-[E-easy]: https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AE-easy
 [lru]: https://github.com/rust-lang/rust/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-asc
 [rustbot]: ./rustbot.md
 
