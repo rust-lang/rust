@@ -1228,6 +1228,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn filter_landing_pad(&mut self, pers_fn: RValue<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
+        // TODO(antoyo): generate the correct landing pad
         self.cleanup_landing_pad(pers_fn)
     }
 
