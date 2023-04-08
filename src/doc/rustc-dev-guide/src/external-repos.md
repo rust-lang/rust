@@ -21,7 +21,6 @@ differently from other crates that are directly in this repo:
 * [rust-analyzer](https://github.com/rust-lang/rust-analyzer)
 
 [Miri]: https://github.com/rust-lang/miri
-[Cargo]: https://github.com/rust-lang/cargo
 
 In contrast to `submodule` dependencies
 (see below for those), the `subtree` dependencies are just regular files and directories which can
@@ -93,8 +92,7 @@ submodules]. The complete list may be found in the [`.gitmodules`] file. Some
 of these projects are required (like `stdarch` for the standard library) and
 some of them are optional (like `src/doc/book`).
 
-Usage of submodules is discussed more in the [Using Git
-chapter](git.md#git-submodules).
+Usage of submodules is discussed more in the [Using Git chapter](git.md#git-submodules).
 
 Some of the submodules are allowed to be in a "broken" state where they
 either don't build or their tests don't pass, e.g. the documentation books
@@ -112,49 +110,3 @@ the week leading up to the beta cut.
 [The Rust Reference]: https://github.com/rust-lang/reference/
 [toolstate website]: https://rust-lang-nursery.github.io/rust-toolstate/
 [Toolstate chapter]: https://forge.rust-lang.org/infra/toolstate.html
-
-### Breaking Tools Built With The Compiler
-
-Rust's build system builds a number of tools that make use of the internals of
-the compiler and that are hosted in a separate repository, and included in Rust
-via git submodules (such as [Cargo]). If these tools break because of your
-changes, you may run into a sort of "chicken and egg" problem. These tools rely
-on the latest compiler to be built so you can't update them (in their own
-repositories) to reflect your changes to the compiler until those changes are
-merged into the compiler. At the same time, you can't get your changes merged
-into the compiler because the rust-lang/rust build won't pass until those tools
-build and pass their tests.
-
-Luckily, a feature was
-[added to Rust's build](https://github.com/rust-lang/rust/issues/45861) to make
-all of this easy to handle. The idea is that we allow these tools to be
-"broken", so that the rust-lang/rust build passes without trying to build them,
-then land the change in the compiler, and go update the tools that you
-broke. Some tools will require waiting for a nightly release before this can
-happen, while others use the builds uploaded after each bors merge and thus can
-be updated immediately (check the tool's documentation for details). Once you're
-done and the tools are working again, you go back in the compiler and update the
-tools so they can be distributed again.
-
-This should avoid a bunch of synchronization dances and is also much easier on contributors as
-there's no need to block on tools changes going upstream.
-
-Here are those same steps in detail:
-
-1. (optional) First, if it doesn't exist already, create a `config.toml` by copying
-   `config.example.toml` in the root directory of the Rust repository.
-   Set `submodules = false` in the `[build]` section. This will prevent `x.py`
-   from resetting to the original branch after you make your changes. If you
-   need to [update any submodules to their latest versions](#updating-submodules),
-   see the section of this file about that for more information.
-2. (optional) Run `./x.py test src/tools/cargo` (substituting the submodule
-   that broke for `cargo`). Fix any errors in the submodule (and possibly others).
-3. (optional) Make commits for your changes and send them to upstream repositories as a PR.
-4. (optional) Maintainers of these submodules will **not** merge the PR. The PR can't be
-   merged because CI will be broken. You'll want to write a message on the PR referencing
-   your change, and how the PR should be merged once your change makes it into a nightly.
-5. Wait for your PR to merge.
-6. Wait for a nightly.
-7. (optional) Help land your PR on the upstream repository now that your changes are in nightly.
-8. (optional) Send a PR to rust-lang/rust updating the submodule.
-
