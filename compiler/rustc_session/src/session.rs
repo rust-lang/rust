@@ -811,7 +811,7 @@ impl Session {
     }
 
     pub fn generate_proc_macro_decls_symbol(&self, stable_crate_id: StableCrateId) -> String {
-        format!("__rustc_proc_macro_decls_{:08x}__", stable_crate_id.to_u64())
+        format!("__rustc_proc_macro_decls_{:08x}__", stable_crate_id.as_u64())
     }
 
     pub fn target_filesearch(&self, kind: PathKind) -> filesearch::FileSearch<'_> {

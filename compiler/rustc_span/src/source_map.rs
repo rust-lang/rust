@@ -13,7 +13,7 @@ pub use crate::hygiene::{ExpnData, ExpnKind};
 pub use crate::*;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_hasher::StableHasher;
+use rustc_data_structures::stable_hasher::{Hash128, Hash64, StableHasher};
 use rustc_data_structures::sync::{AtomicU32, Lrc, MappedReadGuard, ReadGuard, RwLock};
 use std::cmp;
 use std::hash::Hash;
@@ -138,7 +138,7 @@ impl FileLoader for RealFileLoader {
 pub struct StableSourceFileId {
     /// A hash of the source file's [`FileName`]. This is hash so that it's size
     /// is more predictable than if we included the actual [`FileName`] value.
-    pub file_name_hash: u64,
+    pub file_name_hash: Hash64,
 
     /// The [`CrateNum`] of the crate this source file was originally parsed for.
     /// We cannot include this information in the hash because at the time
@@ -331,7 +331,7 @@ impl SourceMap {
         &self,
         filename: FileName,
         src_hash: SourceFileHash,
-        name_hash: u128,
+        name_hash: Hash128,
         source_len: usize,
         cnum: CrateNum,
         file_local_lines: Lock<SourceFileLines>,

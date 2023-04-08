@@ -16,6 +16,7 @@ pub use self::config::{HashResult, QueryConfig, TryLoadFromDisk};
 
 use crate::dep_graph::DepKind;
 use crate::dep_graph::{DepNodeIndex, HasDepContext, SerializedDepNodeIndex};
+use rustc_data_structures::stable_hasher::Hash64;
 use rustc_data_structures::sync::Lock;
 use rustc_errors::Diagnostic;
 use rustc_hir::def::DefKind;
@@ -37,7 +38,7 @@ pub struct QueryStackFrame<D: DepKind> {
     /// This hash is used to deterministically pick
     /// a query to remove cycles in the parallel compiler.
     #[cfg(parallel_compiler)]
-    hash: u64,
+    hash: Hash64,
 }
 
 impl<D: DepKind> QueryStackFrame<D> {
@@ -49,7 +50,7 @@ impl<D: DepKind> QueryStackFrame<D> {
         def_kind: Option<DefKind>,
         dep_kind: D,
         ty_adt_id: Option<DefId>,
-        _hash: impl FnOnce() -> u64,
+        _hash: impl FnOnce() -> Hash64,
     ) -> Self {
         Self {
             description,

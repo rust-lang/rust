@@ -9,7 +9,7 @@ use crate::def_id::{CrateNum, DefIndex, LocalDefId, StableCrateId, CRATE_DEF_IND
 use crate::def_path_hash_map::DefPathHashMap;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_hasher::StableHasher;
+use rustc_data_structures::stable_hasher::{Hash64, StableHasher};
 use rustc_index::vec::IndexVec;
 use rustc_span::symbol::{kw, sym, Symbol};
 
@@ -130,7 +130,7 @@ impl DefKey {
 
         disambiguator.hash(&mut hasher);
 
-        let local_hash: u64 = hasher.finish();
+        let local_hash = hasher.finish();
 
         // Construct the new DefPathHash, making sure that the `crate_id`
         // portion of the hash is properly copied from the parent. This way the
@@ -325,7 +325,7 @@ impl Definitions {
             },
         };
 
-        let parent_hash = DefPathHash::new(stable_crate_id, 0);
+        let parent_hash = DefPathHash::new(stable_crate_id, Hash64::ZERO);
         let def_path_hash = key.compute_stable_hash(parent_hash);
 
         // Create the root definition.

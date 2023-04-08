@@ -406,7 +406,7 @@ fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
 
     // Crate disambiguator and name
     s.push('C');
-    s.push_str(&to_disambiguator(tcx.stable_crate_id(def_path.krate).to_u64()));
+    s.push_str(&to_disambiguator(tcx.stable_crate_id(def_path.krate).as_u64()));
     let crate_name = tcx.crate_name(def_path.krate).to_string();
     let _ = write!(s, "{}{}", crate_name.len(), &crate_name);
 

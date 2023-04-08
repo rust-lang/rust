@@ -86,6 +86,7 @@ pub mod work_queue;
 pub use atomic_ref::AtomicRef;
 pub mod aligned;
 pub mod frozen;
+mod hashes;
 pub mod owned_slice;
 pub mod sso;
 pub mod steal;

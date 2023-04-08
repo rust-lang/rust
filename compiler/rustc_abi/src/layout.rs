@@ -79,7 +79,8 @@ pub trait LayoutCalculator {
                 {
                     // `ReprOptions.layout_seed` is a deterministic seed that we can use to
                     // randomize field ordering with
-                    let mut rng = Xoshiro128StarStar::seed_from_u64(repr.field_shuffle_seed);
+                    let mut rng =
+                        Xoshiro128StarStar::seed_from_u64(repr.field_shuffle_seed.as_u64());
 
                     // Shuffle the ordering of the fields
                     optimizing.shuffle(&mut rng);

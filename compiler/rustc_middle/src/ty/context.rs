@@ -925,7 +925,7 @@ impl<'tcx> TyCtxt<'tcx> {
             crate_name,
             // Don't print the whole stable crate id. That's just
             // annoying in debug output.
-            stable_crate_id.to_u64() >> (8 * 6),
+            stable_crate_id.as_u64() >> (8 * 6),
             self.def_path(def_id).to_string_no_crate_verbose()
         )
     }
