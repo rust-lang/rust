@@ -2141,7 +2141,7 @@ trait Foo {
 }
 
 struct Bar;
-$0impl Foo for Bar {
+$0impl Foo for Bar$0 {
     const B: u8 = 17;
     fn c() {}
     type A = String;
