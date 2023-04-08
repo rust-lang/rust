@@ -152,10 +152,6 @@ LLVMRustInsertPrivateGlobal(LLVMModuleRef M, LLVMTypeRef Ty) {
                                  nullptr));
 }
 
-extern "C" LLVMTypeRef LLVMRustMetadataTypeInContext(LLVMContextRef C) {
-  return wrap(Type::getMetadataTy(*unwrap(C)));
-}
-
 static Attribute::AttrKind fromRust(LLVMRustAttribute Kind) {
   switch (Kind) {
   case AlwaysInline:
@@ -480,11 +476,6 @@ extern "C" bool LLVMRustInlineAsmVerify(LLVMTypeRef Ty, char *Constraints,
 #endif
 }
 
-extern "C" void LLVMRustAppendModuleInlineAsm(LLVMModuleRef M, const char *Asm,
-                                              size_t AsmLen) {
-  unwrap(M)->appendModuleInlineAsm(StringRef(Asm, AsmLen));
-}
-
 typedef DIBuilder *LLVMRustDIBuilderRef;
 
 template <typename DIT> DIT *unwrapDIPtr(LLVMMetadataRef Ref) {
@@ -751,10 +742,6 @@ extern "C" void LLVMRustAddModuleFlag(
 extern "C" bool LLVMRustHasModuleFlag(LLVMModuleRef M, const char *Name,
                                       size_t Len) {
   return unwrap(M)->getModuleFlag(StringRef(Name, Len)) != nullptr;
-}
-
-extern "C" LLVMValueRef LLVMRustMetadataAsValue(LLVMContextRef C, LLVMMetadataRef MD) {
-  return wrap(MetadataAsValue::get(*unwrap(C), unwrap(MD)));
 }
 
 extern "C" void LLVMRustGlobalAddMetadata(
@@ -1153,6 +1140,8 @@ extern "C" void LLVMRustWriteValueToString(LLVMValueRef V,
 }
 
 // LLVMArrayType function does not support 64-bit ElementCount
+// FIXME: replace with LLVMArrayType2 when bumped minimal version to llvm-17
+// https://github.com/llvm/llvm-project/commit/35276f16e5a2cae0dfb49c0fbf874d4d2f177acc
 extern "C" LLVMTypeRef LLVMRustArrayType(LLVMTypeRef ElementTy,
                                          uint64_t ElementCount) {
   return wrap(ArrayType::get(unwrap(ElementTy), ElementCount));
@@ -1408,61 +1397,6 @@ extern "C" bool LLVMRustUnpackSMDiagnostic(LLVMSMDiagnosticRef DRef,
   return true;
 }
 
-extern "C" LLVMValueRef LLVMRustBuildCleanupPad(LLVMBuilderRef B,
-                                                LLVMValueRef ParentPad,
-                                                unsigned ArgCount,
-                                                LLVMValueRef *LLArgs,
-                                                const char *Name) {
-  Value **Args = unwrap(LLArgs);
-  if (ParentPad == nullptr) {
-    Type *Ty = Type::getTokenTy(unwrap(B)->getContext());
-    ParentPad = wrap(Constant::getNullValue(Ty));
-  }
-  return wrap(unwrap(B)->CreateCleanupPad(
-      unwrap(ParentPad), ArrayRef<Value *>(Args, ArgCount), Name));
-}
-
-extern "C" LLVMValueRef LLVMRustBuildCleanupRet(LLVMBuilderRef B,
-                                                LLVMValueRef CleanupPad,
-                                                LLVMBasicBlockRef UnwindBB) {
-  CleanupPadInst *Inst = cast<CleanupPadInst>(unwrap(CleanupPad));
-  return wrap(unwrap(B)->CreateCleanupRet(Inst, unwrap(UnwindBB)));
-}
-
-extern "C" LLVMValueRef
-LLVMRustBuildCatchPad(LLVMBuilderRef B, LLVMValueRef ParentPad,
-                      unsigned ArgCount, LLVMValueRef *LLArgs, const char *Name) {
-  Value **Args = unwrap(LLArgs);
-  return wrap(unwrap(B)->CreateCatchPad(
-      unwrap(ParentPad), ArrayRef<Value *>(Args, ArgCount), Name));
-}
-
-extern "C" LLVMValueRef LLVMRustBuildCatchRet(LLVMBuilderRef B,
-                                              LLVMValueRef Pad,
-                                              LLVMBasicBlockRef BB) {
-  return wrap(unwrap(B)->CreateCatchRet(cast<CatchPadInst>(unwrap(Pad)),
-                                              unwrap(BB)));
-}
-
-extern "C" LLVMValueRef LLVMRustBuildCatchSwitch(LLVMBuilderRef B,
-                                                 LLVMValueRef ParentPad,
-                                                 LLVMBasicBlockRef BB,
-                                                 unsigned NumHandlers,
-                                                 const char *Name) {
-  if (ParentPad == nullptr) {
-    Type *Ty = Type::getTokenTy(unwrap(B)->getContext());
-    ParentPad = wrap(Constant::getNullValue(Ty));
-  }
-  return wrap(unwrap(B)->CreateCatchSwitch(unwrap(ParentPad), unwrap(BB),
-                                                 NumHandlers, Name));
-}
-
-extern "C" void LLVMRustAddHandler(LLVMValueRef CatchSwitchRef,
-                                   LLVMBasicBlockRef Handler) {
-  Value *CatchSwitch = unwrap(CatchSwitchRef);
-  cast<CatchSwitchInst>(CatchSwitch)->addHandler(unwrap(Handler));
-}
-
 extern "C" OperandBundleDef *LLVMRustBuildOperandBundleDef(const char *Name,
                                                            LLVMValueRef *Inputs,
                                                            unsigned NumInputs) {
@@ -1627,6 +1561,7 @@ extern "C" void LLVMRustSetLinkage(LLVMValueRef V,
   LLVMSetLinkage(V, fromRust(RustLinkage));
 }
 
+// FIXME: replace with LLVMConstInBoundsGEP2 when bumped minimal version to llvm-14
 extern "C" LLVMValueRef LLVMRustConstInBoundsGEP2(LLVMTypeRef Ty,
                                                   LLVMValueRef ConstantVal,
                                                   LLVMValueRef *ConstantIndices,
@@ -1702,12 +1637,6 @@ static LLVMVisibility fromRust(LLVMRustVisibility Vis) {
 
 extern "C" LLVMRustVisibility LLVMRustGetVisibility(LLVMValueRef V) {
   return toRust(LLVMGetVisibility(V));
-}
-
-// Oh hey, a binding that makes sense for once? (because LLVM’s own do not)
-extern "C" LLVMValueRef LLVMRustBuildIntCast(LLVMBuilderRef B, LLVMValueRef Val,
-                                             LLVMTypeRef DestTy, bool isSigned) {
-  return wrap(unwrap(B)->CreateIntCast(unwrap(Val), unwrap(DestTy), isSigned, ""));
 }
 
 extern "C" void LLVMRustSetVisibility(LLVMValueRef V,
