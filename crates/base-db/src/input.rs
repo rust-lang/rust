@@ -304,6 +304,7 @@ pub struct CrateData {
     /// For purposes of analysis, crates are anonymous (only names in
     /// `Dependency` matters), this name should only be used for UI.
     pub display_name: Option<CrateDisplayName>,
+    pub crate_root_path: Option<AbsPathBuf>,
     pub cfg_options: CfgOptions,
     /// The cfg options that could be used by the crate
     pub potential_cfg_options: Option<CfgOptions>,
@@ -361,6 +362,7 @@ impl CrateGraph {
         edition: Edition,
         display_name: Option<CrateDisplayName>,
         version: Option<String>,
+        crate_root_path: Option<AbsPathBuf>,
         cfg_options: CfgOptions,
         potential_cfg_options: Option<CfgOptions>,
         env: Env,
@@ -374,6 +376,7 @@ impl CrateGraph {
             edition,
             version,
             display_name,
+            crate_root_path,
             cfg_options,
             potential_cfg_options,
             env,
@@ -740,6 +743,7 @@ mod tests {
             Edition2018,
             None,
             None,
+            None,
             Default::default(),
             Default::default(),
             Env::default(),
@@ -753,6 +757,7 @@ mod tests {
             Edition2018,
             None,
             None,
+            None,
             Default::default(),
             Default::default(),
             Env::default(),
@@ -764,6 +769,7 @@ mod tests {
         let crate3 = graph.add_crate_root(
             FileId(3u32),
             Edition2018,
+            None,
             None,
             None,
             Default::default(),
@@ -793,6 +799,7 @@ mod tests {
             Edition2018,
             None,
             None,
+            None,
             Default::default(),
             Default::default(),
             Env::default(),
@@ -804,6 +811,7 @@ mod tests {
         let crate2 = graph.add_crate_root(
             FileId(2u32),
             Edition2018,
+            None,
             None,
             None,
             Default::default(),
@@ -830,6 +838,7 @@ mod tests {
             Edition2018,
             None,
             None,
+            None,
             Default::default(),
             Default::default(),
             Env::default(),
@@ -843,6 +852,7 @@ mod tests {
             Edition2018,
             None,
             None,
+            None,
             Default::default(),
             Default::default(),
             Env::default(),
@@ -854,6 +864,7 @@ mod tests {
         let crate3 = graph.add_crate_root(
             FileId(3u32),
             Edition2018,
+            None,
             None,
             None,
             Default::default(),
@@ -880,6 +891,7 @@ mod tests {
             Edition2018,
             None,
             None,
+            None,
             Default::default(),
             Default::default(),
             Env::default(),
@@ -891,6 +903,7 @@ mod tests {
         let crate2 = graph.add_crate_root(
             FileId(2u32),
             Edition2018,
+            None,
             None,
             None,
             Default::default(),

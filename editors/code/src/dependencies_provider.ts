@@ -110,9 +110,13 @@ export class Dependency extends vscode.TreeItem {
     ) {
         super(label, collapsibleState);
         this.id = this.dependencyPath.toLowerCase();
-        this.tooltip = `${this.label}-${this.version}`;
         this.description = this.version;
         this.resourceUri = vscode.Uri.file(dependencyPath);
+        if (this.version) {
+            this.tooltip = `${this.label}-${this.version}`;
+        } else {
+            this.tooltip = this.label;
+        }
     }
 }
 
@@ -124,8 +128,8 @@ export class DependencyFile extends vscode.TreeItem {
         public readonly collapsibleState: vscode.TreeItemCollapsibleState
     ) {
         super(vscode.Uri.file(dependencyPath), collapsibleState);
-        const isDir = fs.lstatSync(this.dependencyPath).isDirectory();
         this.id = this.dependencyPath.toLowerCase();
+        const isDir = fs.lstatSync(this.dependencyPath).isDirectory();
         if (!isDir) {
             this.command = { command: "vscode.open",
                 title: "Open File",

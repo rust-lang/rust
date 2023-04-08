@@ -34,6 +34,7 @@ pub(crate) fn shuffle_crate_graph(db: &mut RootDatabase) {
             data.edition,
             data.display_name.clone(),
             data.version.clone(),
+            data.crate_root_path.clone(),
             data.cfg_options.clone(),
             data.potential_cfg_options.clone(),
             data.env.clone(),

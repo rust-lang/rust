@@ -766,6 +766,7 @@ fn project_json_to_crate_graph(
                     proc_macro_dylib_path,
                     is_proc_macro,
                     repository,
+                    root_module,
                     ..
                 },
                 file_id,
@@ -784,6 +785,7 @@ fn project_json_to_crate_graph(
                     *edition,
                     display_name.clone(),
                     version.clone(),
+                    crate_path(display_name.as_ref(), root_module),
                     target_cfgs.iter().chain(cfg.iter()).cloned().collect(),
                     None,
                     env,
@@ -830,6 +832,30 @@ fn project_json_to_crate_graph(
         }
     }
     res
+}
+
+//Thats a best effort to try and find the crate path for a project configured using JsonProject model
+fn crate_path(
+    crate_name: Option<&CrateDisplayName>,
+    root_module_path: &AbsPathBuf,
+) -> Option<AbsPathBuf> {
+    crate_name.and_then(|crate_name| {
+        let mut crate_path = None;
+        let mut root_path = root_module_path.as_path();
+        while let Some(path) = root_path.parent() {
+            match path.name_and_extension() {
+                Some((name, _)) => {
+                    if name.starts_with(crate_name.canonical_name()) {
+                        crate_path = Some(path.to_path_buf());
+                        break;
+                    }
+                }
+                None => break,
+            }
+            root_path = path;
+        }
+        crate_path
+    })
 }
 
 fn cargo_to_crate_graph(
@@ -1053,6 +1079,7 @@ fn detached_files_to_crate_graph(
             Edition::CURRENT,
             display_name.clone(),
             None,
+            None,
             cfg_options.clone(),
             None,
             Env::default(),
@@ -1249,6 +1276,7 @@ fn add_target_crate_root(
         edition,
         Some(display_name),
         Some(pkg.version.to_string()),
+        Some(pkg.manifest.parent().to_owned()),
         cfg_options,
         potential_cfg_options,
         env,
@@ -1320,11 +1348,13 @@ fn sysroot_to_crate_graph(
                 let env = Env::default();
                 let display_name =
                     CrateDisplayName::from_canonical_name(sysroot[krate].name.clone());
-                let crate_id = crate_graph.add_crate_root(
+                let crate_root_path = sysroot.src_root().join(display_name.canonical_name());
+            let crate_id = crate_graph.add_crate_root(
                     file_id,
                     Edition::CURRENT,
                     Some(display_name),
                     None,
+                Some(crate_root_path),
                     cfg_options.clone(),
                     None,
                     env,
