@@ -50,6 +50,7 @@ use std::string::ToString;
 use askama::Template;
 use rustc_ast_pretty::pprust;
 use rustc_attr::{ConstStability, Deprecation, StabilityLevel};
+use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::Mutability;
@@ -69,7 +70,7 @@ use crate::formats::item_type::ItemType;
 use crate::formats::{AssocItemRender, Impl, RenderMode};
 use crate::html::escape::Escape;
 use crate::html::format::{
-    href, join_with_double_colon, print_abi_with_space, print_constness_with_space,
+    display_fn, href, join_with_double_colon, print_abi_with_space, print_constness_with_space,
     print_default_space, print_generic_bounds, print_where_clause, visibility_print_with_space,
     Buffer, Ending, HrefError, PrintWithSpace,
 };
@@ -408,128 +409,134 @@ fn scrape_examples_help(shared: &SharedContext<'_>) -> String {
     )
 }
 
-fn document(
-    w: &mut Buffer,
-    cx: &mut Context<'_>,
-    item: &clean::Item,
-    parent: Option<&clean::Item>,
+fn document<'a, 'cx: 'a>(
+    cx: &'a mut Context<'cx>,
+    item: &'a clean::Item,
+    parent: Option<&'a clean::Item>,
     heading_offset: HeadingOffset,
-) {
+) -> impl fmt::Display + 'a + Captures<'cx> {
     if let Some(ref name) = item.name {
         info!("Documenting {}", name);
     }
-    document_item_info(cx, item, parent).render_into(w).unwrap();
-    if parent.is_none() {
-        document_full_collapsible(w, item, cx, heading_offset);
-    } else {
-        document_full(w, item, cx, heading_offset);
-    }
+
+    display_fn(move |f| {
+        document_item_info(cx, item, parent).render_into(f).unwrap();
+        if parent.is_none() {
+            write!(f, "{}", document_full_collapsible(item, cx, heading_offset))?;
+        } else {
+            write!(f, "{}", document_full(item, cx, heading_offset))?;
+        }
+        Ok(())
+    })
 }
 
 /// Render md_text as markdown.
-fn render_markdown(
-    w: &mut Buffer,
-    cx: &mut Context<'_>,
-    md_text: &str,
+fn render_markdown<'a, 'cx: 'a>(
+    cx: &'a mut Context<'cx>,
+    md_text: &'a str,
     links: Vec<RenderedLink>,
     heading_offset: HeadingOffset,
-) {
-    write!(
-        w,
-        "<div class=\"docblock\">{}</div>",
-        Markdown {
-            content: md_text,
-            links: &links,
-            ids: &mut cx.id_map,
-            error_codes: cx.shared.codes,
-            edition: cx.shared.edition(),
-            playground: &cx.shared.playground,
-            heading_offset,
-        }
-        .into_string()
-    )
+) -> impl fmt::Display + 'a + Captures<'cx> {
+    display_fn(move |f| {
+        write!(
+            f,
+            "<div class=\"docblock\">{}</div>",
+            Markdown {
+                content: md_text,
+                links: &links,
+                ids: &mut cx.id_map,
+                error_codes: cx.shared.codes,
+                edition: cx.shared.edition(),
+                playground: &cx.shared.playground,
+                heading_offset,
+            }
+            .into_string()
+        )
+    })
 }
 
 /// Writes a documentation block containing only the first paragraph of the documentation. If the
 /// docs are longer, a "Read more" link is appended to the end.
-fn document_short(
-    w: &mut Buffer,
-    item: &clean::Item,
-    cx: &mut Context<'_>,
-    link: AssocItemLink<'_>,
-    parent: &clean::Item,
+fn document_short<'a, 'cx: 'a>(
+    item: &'a clean::Item,
+    cx: &'a mut Context<'cx>,
+    link: AssocItemLink<'a>,
+    parent: &'a clean::Item,
     show_def_docs: bool,
-) {
-    document_item_info(cx, item, Some(parent)).render_into(w).unwrap();
-    if !show_def_docs {
-        return;
-    }
-    if let Some(s) = item.doc_value() {
-        let (mut summary_html, has_more_content) =
-            MarkdownSummaryLine(&s, &item.links(cx)).into_string_with_has_more_content();
+) -> impl fmt::Display + 'a + Captures<'cx> {
+    display_fn(move |f| {
+        document_item_info(cx, item, Some(parent)).render_into(f).unwrap();
+        if !show_def_docs {
+            return Ok(());
+        }
+        if let Some(s) = item.doc_value() {
+            let (mut summary_html, has_more_content) =
+                MarkdownSummaryLine(&s, &item.links(cx)).into_string_with_has_more_content();
 
-        if has_more_content {
-            let link = format!(r#" <a{}>Read more</a>"#, assoc_href_attr(item, link, cx));
+            if has_more_content {
+                let link = format!(r#" <a{}>Read more</a>"#, assoc_href_attr(item, link, cx));
 
-            if let Some(idx) = summary_html.rfind("</p>") {
-                summary_html.insert_str(idx, &link);
+                if let Some(idx) = summary_html.rfind("</p>") {
+                    summary_html.insert_str(idx, &link);
+                } else {
+                    summary_html.push_str(&link);
+                }
+            }
+
+            write!(f, "<div class='docblock'>{}</div>", summary_html)?;
+        }
+        Ok(())
+    })
+}
+
+fn document_full_collapsible<'a, 'cx: 'a>(
+    item: &'a clean::Item,
+    cx: &'a mut Context<'cx>,
+    heading_offset: HeadingOffset,
+) -> impl fmt::Display + 'a + Captures<'cx> {
+    document_full_inner(item, cx, true, heading_offset)
+}
+
+fn document_full<'a, 'cx: 'a>(
+    item: &'a clean::Item,
+    cx: &'a mut Context<'cx>,
+    heading_offset: HeadingOffset,
+) -> impl fmt::Display + 'a + Captures<'cx> {
+    document_full_inner(item, cx, false, heading_offset)
+}
+
+fn document_full_inner<'a, 'cx: 'a>(
+    item: &'a clean::Item,
+    cx: &'a mut Context<'cx>,
+    is_collapsible: bool,
+    heading_offset: HeadingOffset,
+) -> impl fmt::Display + 'a + Captures<'cx> {
+    display_fn(move |f| {
+        if let Some(s) = item.collapsed_doc_value() {
+            debug!("Doc block: =====\n{}\n=====", s);
+            if is_collapsible {
+                write!(
+                    f,
+                    "<details class=\"toggle top-doc\" open>\
+                    <summary class=\"hideme\">\
+                        <span>Expand description</span>\
+                    </summary>{}</details>",
+                    render_markdown(cx, &s, item.links(cx), heading_offset)
+                )?;
             } else {
-                summary_html.push_str(&link);
+                write!(f, "{}", render_markdown(cx, &s, item.links(cx), heading_offset))?;
             }
         }
 
-        write!(w, "<div class='docblock'>{}</div>", summary_html,);
-    }
-}
+        let kind = match &*item.kind {
+            clean::ItemKind::StrippedItem(box kind) | kind => kind,
+        };
 
-fn document_full_collapsible(
-    w: &mut Buffer,
-    item: &clean::Item,
-    cx: &mut Context<'_>,
-    heading_offset: HeadingOffset,
-) {
-    document_full_inner(w, item, cx, true, heading_offset);
-}
-
-fn document_full(
-    w: &mut Buffer,
-    item: &clean::Item,
-    cx: &mut Context<'_>,
-    heading_offset: HeadingOffset,
-) {
-    document_full_inner(w, item, cx, false, heading_offset);
-}
-
-fn document_full_inner(
-    w: &mut Buffer,
-    item: &clean::Item,
-    cx: &mut Context<'_>,
-    is_collapsible: bool,
-    heading_offset: HeadingOffset,
-) {
-    if let Some(s) = item.collapsed_doc_value() {
-        debug!("Doc block: =====\n{}\n=====", s);
-        if is_collapsible {
-            w.write_str(
-                "<details class=\"toggle top-doc\" open>\
-                <summary class=\"hideme\">\
-                     <span>Expand description</span>\
-                </summary>",
-            );
-            render_markdown(w, cx, &s, item.links(cx), heading_offset);
-            w.write_str("</details>");
-        } else {
-            render_markdown(w, cx, &s, item.links(cx), heading_offset);
+        if let clean::ItemKind::FunctionItem(..) | clean::ItemKind::MethodItem(..) = kind {
+            render_call_locations(f, cx, item);
         }
-    }
-
-    let kind = match &*item.kind {
-        clean::ItemKind::StrippedItem(box kind) | kind => kind,
-    };
-
-    if let clean::ItemKind::FunctionItem(..) | clean::ItemKind::MethodItem(..) = kind {
-        render_call_locations(w, cx, item);
-    }
+        Ok(())
+    })
 }
 
 #[derive(Template)]
@@ -653,7 +660,7 @@ fn short_item_info(
 // "Auto Trait Implementations," "Blanket Trait Implementations" (on struct/enum pages).
 pub(crate) fn render_impls(
     cx: &mut Context<'_>,
-    w: &mut Buffer,
+    mut w: impl Write,
     impls: &[&Impl],
     containing_item: &clean::Item,
     toggle_open_by_default: bool,
@@ -665,7 +672,7 @@ pub(crate) fn render_impls(
             let did = i.trait_did().unwrap();
             let provided_trait_methods = i.inner_impl().provided_trait_methods(tcx);
             let assoc_link = AssocItemLink::GotoSource(did.into(), &provided_trait_methods);
-            let mut buffer = if w.is_for_html() { Buffer::html() } else { Buffer::new() };
+            let mut buffer = Buffer::new();
             render_impl(
                 &mut buffer,
                 cx,
@@ -686,7 +693,7 @@ pub(crate) fn render_impls(
         })
         .collect::<Vec<_>>();
     rendered_impls.sort();
-    w.write_str(&rendered_impls.join(""));
+    w.write_str(&rendered_impls.join("")).unwrap();
 }
 
 /// Build a (possibly empty) `href` attribute (a key-value pair) for the given associated item.
@@ -842,7 +849,7 @@ fn assoc_method(
     let (indent, indent_str, end_newline) = if parent == ItemType::Trait {
         header_len += 4;
         let indent_str = "    ";
-        render_attributes_in_pre(w, meth, indent_str);
+        write!(w, "{}", render_attributes_in_pre(meth, indent_str));
         (4, indent_str, Ending::NoNewline)
     } else {
         render_attributes_in_code(w, meth);
@@ -1038,10 +1045,16 @@ fn attributes(it: &clean::Item) -> Vec<String> {
 
 // When an attribute is rendered inside a `<pre>` tag, it is formatted using
 // a whitespace prefix and newline.
-fn render_attributes_in_pre(w: &mut Buffer, it: &clean::Item, prefix: &str) {
-    for a in attributes(it) {
-        writeln!(w, "{}{}", prefix, a);
-    }
+fn render_attributes_in_pre<'a>(
+    it: &'a clean::Item,
+    prefix: &'a str,
+) -> impl fmt::Display + Captures<'a> {
+    crate::html::format::display_fn(move |f| {
+        for a in attributes(it) {
+            writeln!(f, "{}{}", prefix, a)?;
+        }
+        Ok(())
+    })
 }
 
 // When an attribute is rendered inside a <code> tag, it is formatted using
@@ -1067,61 +1080,68 @@ impl<'a> AssocItemLink<'a> {
     }
 }
 
-fn write_impl_section_heading(w: &mut Buffer, title: &str, id: &str) {
+fn write_impl_section_heading(mut w: impl fmt::Write, title: &str, id: &str) {
     write!(
         w,
         "<h2 id=\"{id}\" class=\"small-section-header\">\
             {title}\
             <a href=\"#{id}\" class=\"anchor\">§</a>\
          </h2>"
-    );
+    )
+    .unwrap();
 }
 
 pub(crate) fn render_all_impls(
-    w: &mut Buffer,
+    mut w: impl Write,
     cx: &mut Context<'_>,
     containing_item: &clean::Item,
     concrete: &[&Impl],
     synthetic: &[&Impl],
     blanket_impl: &[&Impl],
 ) {
-    let mut impls = Buffer::empty_from(w);
+    let mut impls = Buffer::html();
     render_impls(cx, &mut impls, concrete, containing_item, true);
     let impls = impls.into_inner();
     if !impls.is_empty() {
-        write_impl_section_heading(w, "Trait Implementations", "trait-implementations");
-        write!(w, "<div id=\"trait-implementations-list\">{}</div>", impls);
+        write_impl_section_heading(&mut w, "Trait Implementations", "trait-implementations");
+        write!(w, "<div id=\"trait-implementations-list\">{}</div>", impls).unwrap();
     }
 
     if !synthetic.is_empty() {
-        write_impl_section_heading(w, "Auto Trait Implementations", "synthetic-implementations");
-        w.write_str("<div id=\"synthetic-implementations-list\">");
-        render_impls(cx, w, synthetic, containing_item, false);
-        w.write_str("</div>");
+        write_impl_section_heading(
+            &mut w,
+            "Auto Trait Implementations",
+            "synthetic-implementations",
+        );
+        w.write_str("<div id=\"synthetic-implementations-list\">").unwrap();
+        render_impls(cx, &mut w, synthetic, containing_item, false);
+        w.write_str("</div>").unwrap();
     }
 
     if !blanket_impl.is_empty() {
-        write_impl_section_heading(w, "Blanket Implementations", "blanket-implementations");
-        w.write_str("<div id=\"blanket-implementations-list\">");
-        render_impls(cx, w, blanket_impl, containing_item, false);
-        w.write_str("</div>");
+        write_impl_section_heading(&mut w, "Blanket Implementations", "blanket-implementations");
+        w.write_str("<div id=\"blanket-implementations-list\">").unwrap();
+        render_impls(cx, &mut w, blanket_impl, containing_item, false);
+        w.write_str("</div>").unwrap();
     }
 }
 
-fn render_assoc_items(
-    w: &mut Buffer,
-    cx: &mut Context<'_>,
-    containing_item: &clean::Item,
+fn render_assoc_items<'a, 'cx: 'a>(
+    cx: &'a mut Context<'cx>,
+    containing_item: &'a clean::Item,
     it: DefId,
-    what: AssocItemRender<'_>,
-) {
+    what: AssocItemRender<'a>,
+) -> impl fmt::Display + 'a + Captures<'cx> {
     let mut derefs = DefIdSet::default();
     derefs.insert(it);
-    render_assoc_items_inner(w, cx, containing_item, it, what, &mut derefs)
+    display_fn(move |f| {
+        render_assoc_items_inner(f, cx, containing_item, it, what, &mut derefs);
+        Ok(())
+    })
 }
 
 fn render_assoc_items_inner(
-    w: &mut Buffer,
+    mut w: &mut dyn fmt::Write,
     cx: &mut Context<'_>,
     containing_item: &clean::Item,
     it: DefId,
@@ -1134,7 +1154,7 @@ fn render_assoc_items_inner(
     let Some(v) = cache.impls.get(&it) else { return };
     let (non_trait, traits): (Vec<_>, _) = v.iter().partition(|i| i.inner_impl().trait_.is_none());
     if !non_trait.is_empty() {
-        let mut tmp_buf = Buffer::empty_from(w);
+        let mut tmp_buf = Buffer::html();
         let (render_mode, id) = match what {
             AssocItemRender::All => {
                 write_impl_section_heading(&mut tmp_buf, "Implementations", "implementations");
@@ -1158,7 +1178,7 @@ fn render_assoc_items_inner(
                 (RenderMode::ForDeref { mut_: deref_mut_ }, cx.derive_id(id))
             }
         };
-        let mut impls_buf = Buffer::empty_from(w);
+        let mut impls_buf = Buffer::html();
         for i in &non_trait {
             render_impl(
                 &mut impls_buf,
@@ -1178,10 +1198,10 @@ fn render_assoc_items_inner(
             );
         }
         if !impls_buf.is_empty() {
-            w.push_buffer(tmp_buf);
-            write!(w, "<div id=\"{}\">", id);
-            w.push_buffer(impls_buf);
-            w.write_str("</div>");
+            write!(w, "{}", tmp_buf.into_inner()).unwrap();
+            write!(w, "<div id=\"{}\">", id).unwrap();
+            write!(w, "{}", impls_buf.into_inner()).unwrap();
+            w.write_str("</div>").unwrap();
         }
     }
 
@@ -1191,7 +1211,7 @@ fn render_assoc_items_inner(
         if let Some(impl_) = deref_impl {
             let has_deref_mut =
                 traits.iter().any(|t| t.trait_did() == cx.tcx().lang_items().deref_mut_trait());
-            render_deref_methods(w, cx, impl_, containing_item, has_deref_mut, derefs);
+            render_deref_methods(&mut w, cx, impl_, containing_item, has_deref_mut, derefs);
         }
 
         // If we were already one level into rendering deref methods, we don't want to render
@@ -1210,7 +1230,7 @@ fn render_assoc_items_inner(
 }
 
 fn render_deref_methods(
-    w: &mut Buffer,
+    mut w: impl Write,
     cx: &mut Context<'_>,
     impl_: &Impl,
     container_item: &clean::Item,
@@ -1242,10 +1262,10 @@ fn render_deref_methods(
                 return;
             }
         }
-        render_assoc_items_inner(w, cx, container_item, did, what, derefs);
+        render_assoc_items_inner(&mut w, cx, container_item, did, what, derefs);
     } else if let Some(prim) = target.primitive_type() {
         if let Some(&did) = cache.primitive_locations.get(&prim) {
-            render_assoc_items_inner(w, cx, container_item, did, what, derefs);
+            render_assoc_items_inner(&mut w, cx, container_item, did, what, derefs);
         }
     }
 }
@@ -1478,18 +1498,25 @@ fn render_impl(
                             document_item_info(cx, it, Some(parent))
                                 .render_into(&mut info_buffer)
                                 .unwrap();
-                            document_full(&mut doc_buffer, item, cx, HeadingOffset::H5);
+                            write!(
+                                &mut doc_buffer,
+                                "{}",
+                                document_full(item, cx, HeadingOffset::H5)
+                            );
                             short_documented = false;
                         } else {
                             // In case the item isn't documented,
                             // provide short documentation from the trait.
-                            document_short(
+                            write!(
                                 &mut doc_buffer,
-                                it,
-                                cx,
-                                link,
-                                parent,
-                                rendering_params.show_def_docs,
+                                "{}",
+                                document_short(
+                                    it,
+                                    cx,
+                                    link,
+                                    parent,
+                                    rendering_params.show_def_docs,
+                                )
                             );
                         }
                     }
@@ -1498,18 +1525,15 @@ fn render_impl(
                         .render_into(&mut info_buffer)
                         .unwrap();
                     if rendering_params.show_def_docs {
-                        document_full(&mut doc_buffer, item, cx, HeadingOffset::H5);
+                        write!(&mut doc_buffer, "{}", document_full(item, cx, HeadingOffset::H5));
                         short_documented = false;
                     }
                 }
             } else {
-                document_short(
+                write!(
                     &mut doc_buffer,
-                    item,
-                    cx,
-                    link,
-                    parent,
-                    rendering_params.show_def_docs,
+                    "{}",
+                    document_short(item, cx, link, parent, rendering_params.show_def_docs,)
                 );
             }
         }
@@ -2206,7 +2230,7 @@ const MAX_FULL_EXAMPLES: usize = 5;
 const NUM_VISIBLE_LINES: usize = 10;
 
 /// Generates the HTML for example call locations generated via the --scrape-examples flag.
-fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item) {
+fn render_call_locations<W: fmt::Write>(mut w: W, cx: &mut Context<'_>, item: &clean::Item) {
     let tcx = cx.tcx();
     let def_id = item.item_id.expect_def_id();
     let key = tcx.def_path_hash(def_id);
@@ -2215,7 +2239,7 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
     // Generate a unique ID so users can link to this section for a given method
     let id = cx.id_map.derive("scraped-examples");
     write!(
-        w,
+        &mut w,
         "<div class=\"docblock scraped-example-list\">\
           <span></span>\
           <h5 id=\"{id}\">\
@@ -2224,7 +2248,8 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
           </h5>",
         root_path = cx.root_path(),
         id = id
-    );
+    )
+    .unwrap();
 
     // Create a URL to a particular location in a reverse-dependency's source file
     let link_to_loc = |call_data: &CallData, loc: &CallLocation| -> (String, String) {
@@ -2242,7 +2267,7 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
     };
 
     // Generate the HTML for a single example, being the title and code block
-    let write_example = |w: &mut Buffer, (path, call_data): (&PathBuf, &CallData)| -> bool {
+    let write_example = |mut w: &mut W, (path, call_data): (&PathBuf, &CallData)| -> bool {
         let contents = match fs::read_to_string(&path) {
             Ok(contents) => contents,
             Err(err) => {
@@ -2290,7 +2315,7 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
         let locations_encoded = serde_json::to_string(&line_ranges).unwrap();
 
         write!(
-            w,
+            &mut w,
             "<div class=\"scraped-example {expanded_cls}\" data-locs=\"{locations}\">\
                 <div class=\"scraped-example-title\">\
                    {name} (<a href=\"{url}\">{title}</a>)\
@@ -2303,10 +2328,12 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
             // The locations are encoded as a data attribute, so they can be read
             // later by the JS for interactions.
             locations = Escape(&locations_encoded)
-        );
+        )
+        .unwrap();
 
         if line_ranges.len() > 1 {
-            write!(w, r#"<button class="prev">&pr;</button> <button class="next">&sc;</button>"#);
+            write!(w, r#"<button class="prev">&pr;</button> <button class="next">&sc;</button>"#)
+                .unwrap();
         }
 
         // Look for the example file in the source map if it exists, otherwise return a dummy span
@@ -2333,7 +2360,7 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
         decoration_info.insert("highlight", byte_ranges);
 
         sources::print_src(
-            w,
+            &mut w,
             contents_subset,
             file_span,
             cx,
@@ -2341,7 +2368,7 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
             highlight::DecorationInfo(decoration_info),
             sources::SourceContext::Embedded { offset: line_min, needs_expansion },
         );
-        write!(w, "</div></div>");
+        write!(w, "</div></div>").unwrap();
 
         true
     };
@@ -2375,7 +2402,7 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
 
     // An example may fail to write if its source can't be read for some reason, so this method
     // continues iterating until a write succeeds
-    let write_and_skip_failure = |w: &mut Buffer, it: &mut Peekable<_>| {
+    let write_and_skip_failure = |w: &mut W, it: &mut Peekable<_>| {
         while let Some(example) = it.next() {
             if write_example(&mut *w, example) {
                 break;
@@ -2384,7 +2411,7 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
     };
 
     // Write just one example that's visible by default in the method's description.
-    write_and_skip_failure(w, &mut it);
+    write_and_skip_failure(&mut w, &mut it);
 
     // Then add the remaining examples in a hidden section.
     if it.peek().is_some() {
@@ -2397,17 +2424,19 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
                   <div class=\"hide-more\">Hide additional examples</div>\
                   <div class=\"more-scraped-examples\">\
                     <div class=\"toggle-line\"><div class=\"toggle-line-inner\"></div></div>"
-        );
+        )
+        .unwrap();
 
         // Only generate inline code for MAX_FULL_EXAMPLES number of examples. Otherwise we could
         // make the page arbitrarily huge!
         for _ in 0..MAX_FULL_EXAMPLES {
-            write_and_skip_failure(w, &mut it);
+            write_and_skip_failure(&mut w, &mut it);
         }
 
         // For the remaining examples, generate a <ul> containing links to the source files.
         if it.peek().is_some() {
-            write!(w, r#"<div class="example-links">Additional examples can be found in:<br><ul>"#);
+            write!(w, r#"<div class="example-links">Additional examples can be found in:<br><ul>"#)
+                .unwrap();
             it.for_each(|(_, call_data)| {
                 let (url, _) = link_to_loc(call_data, &call_data.locations[0]);
                 write!(
@@ -2415,13 +2444,14 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
                     r#"<li><a href="{url}">{name}</a></li>"#,
                     url = url,
                     name = call_data.display_name
-                );
+                )
+                .unwrap();
             });
-            write!(w, "</ul></div>");
+            write!(w, "</ul></div>").unwrap();
         }
 
-        write!(w, "</div></details>");
+        write!(w, "</div></details>").unwrap();
     }
 
-    write!(w, "</div>");
+    write!(w, "</div>").unwrap();
 }
