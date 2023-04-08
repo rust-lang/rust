@@ -518,6 +518,8 @@ declare_features! (
     /// Allows dyn upcasting trait objects via supertraits.
     /// Dyn upcasting is casting, e.g., `dyn Foo -> dyn Bar` where `Foo: Bar`.
     (active, trait_upcasting, "1.56.0", Some(65991), None),
+    /// Allows for transmuting between arrays with sizes that contain generic consts.
+    (active, transmute_generic_consts, "CURRENT_RUSTC_VERSION", Some(109929), None),
     /// Allows #[repr(transparent)] on unions (RFC 2645).
     (active, transparent_unions, "1.37.0", Some(60405), None),
     /// Allows inconsistent bounds in where clauses.
