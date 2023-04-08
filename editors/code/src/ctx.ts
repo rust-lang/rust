@@ -285,14 +285,38 @@ export class Ctx {
         });
 
         this.pushExtCleanup(this._treeView);
-        vscode.window.onDidChangeActiveTextEditor((e) => {
+        vscode.window.onDidChangeActiveTextEditor(async (e) => {
             // we should skip documents that belong to the current workspace
-            if (e && isRustEditor(e) && !isDocumentInWorkspace(e.document)) {
-                execRevealDependency(e).catch((reason) => {
-                    void vscode.window.showErrorMessage(`Dependency error: ${reason}`);
-                });
+            if (this.shouldRevealDependency(e)) {
+                try {
+                    await execRevealDependency(e);
+                } catch (reason) {
+                    await vscode.window.showErrorMessage(`Dependency error: ${reason}`);
+                }
             }
         });
+
+        this.treeView?.onDidChangeVisibility(async (e) => {
+            if (e.visible) {
+                const activeEditor = vscode.window.activeTextEditor;
+                if (this.shouldRevealDependency(activeEditor)) {
+                    try {
+                        await execRevealDependency(activeEditor);
+                    } catch (reason) {
+                        await vscode.window.showErrorMessage(`Dependency error: ${reason}`);
+                    }
+                }
+            }
+        });
+    }
+
+    private shouldRevealDependency(e: vscode.TextEditor | undefined): e is RustEditor {
+        return (
+            e !== undefined &&
+            isRustEditor(e) &&
+            !isDocumentInWorkspace(e.document) &&
+            (this.treeView?.visible || false)
+        );
     }
 
     async restart() {

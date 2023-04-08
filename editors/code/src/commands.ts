@@ -15,7 +15,6 @@ import {
     isRustEditor,
     RustEditor,
     RustDocument,
-    closeDocument,
 } from "./util";
 import { startDebugSession, makeDebugConfig } from "./debug";
 import { LanguageClient } from "vscode-languageclient/node";
@@ -324,7 +323,6 @@ async function revealParentChain(document: RustDocument, ctx: CtxInit) {
         if (parentChain.length >= maxDepth) {
             // this is an odd case that can happen when we change a crate version but we'd still have
             // a open file referencing the old version
-            await closeDocument(document);
             return;
         }
     } while (!ctx.dependencies?.contains(documentPath));

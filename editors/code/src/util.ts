@@ -125,11 +125,6 @@ export function isDocumentInWorkspace(document: RustDocument): boolean {
     return false;
 }
 
-export async function closeDocument(document: RustDocument) {
-    await vscode.window.showTextDocument(document, { preview: true, preserveFocus: false });
-    await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
-}
-
 export function isValidExecutable(path: string): boolean {
     log.debug("Checking availability of a binary at", path);
 
