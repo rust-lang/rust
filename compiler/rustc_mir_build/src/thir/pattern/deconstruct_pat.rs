@@ -902,9 +902,8 @@ impl<'tcx> SplitWildcard<'tcx> {
         // This determines the set of all possible constructors for the type `pcx.ty`. For numbers,
         // arrays and slices we use ranges and variable-length slices when appropriate.
         //
-        // If the `exhaustive_patterns` feature is enabled, we make sure to omit constructors that
-        // are statically impossible. E.g., for `Option<!>`, we do not include `Some(_)` in the
-        // returned list of constructors.
+        // We omit constructors that are statically impossible. E.g., for `Option<!>`, we do not
+        // include `Some(_)` in the returned list of constructors.
         // Invariant: this is empty if and only if the type is uninhabited (as determined by
         // `cx.is_uninhabited()`).
         let all_ctors = match pcx.ty.kind() {
@@ -941,32 +940,21 @@ impl<'tcx> SplitWildcard<'tcx> {
                 // witness.
                 let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(pcx.ty);
 
-                let is_exhaustive_pat_feature = cx.tcx.features().exhaustive_patterns;
-
-                // If `exhaustive_patterns` is disabled and our scrutinee is an empty enum, we treat it
-                // as though it had an "unknown" constructor to avoid exposing its emptiness. The
-                // exception is if the pattern is at the top level, because we want empty matches to be
-                // considered exhaustive.
-                let is_secretly_empty =
-                    def.variants().is_empty() && !is_exhaustive_pat_feature && !pcx.is_top_level;
-
                 let mut ctors: SmallVec<[_; 1]> = def
                     .variants()
                     .iter_enumerated()
                     .filter(|(_, v)| {
-                        // If `exhaustive_patterns` is enabled, we exclude variants known to be
-                        // uninhabited.
-                        !is_exhaustive_pat_feature
-                            || v.inhabited_predicate(cx.tcx, *def).subst(cx.tcx, substs).apply(
-                                cx.tcx,
-                                cx.param_env,
-                                cx.module,
-                            )
+                        // exclude variants known to be uninhabited.
+                        v.inhabited_predicate(cx.tcx, *def).subst(cx.tcx, substs).apply(
+                            cx.tcx,
+                            cx.param_env,
+                            cx.module,
+                        )
                     })
                     .map(|(idx, _)| Variant(idx))
                     .collect();
 
-                if is_secretly_empty || is_declared_nonexhaustive {
+                if is_declared_nonexhaustive {
                     ctors.push(NonExhaustive);
                 }
                 ctors
@@ -997,12 +985,6 @@ impl<'tcx> SplitWildcard<'tcx> {
                 let size = Integer::from_uint_ty(&cx.tcx, uty).size();
                 let max = size.truncate(u128::MAX);
                 smallvec![make_range(0, max)]
-            }
-            // If `exhaustive_patterns` is disabled and our scrutinee is the never type, we cannot
-            // expose its emptiness. The exception is if the pattern is at the top level, because we
-            // want empty matches to be considered exhaustive.
-            ty::Never if !cx.tcx.features().exhaustive_patterns && !pcx.is_top_level => {
-                smallvec![NonExhaustive]
             }
             ty::Never => smallvec![],
             _ if cx.is_uninhabited(pcx.ty) => smallvec![],

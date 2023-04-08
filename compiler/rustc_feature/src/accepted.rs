@@ -154,6 +154,8 @@ declare_features! (
     (accepted, dyn_trait, "1.27.0", Some(44662), None),
     /// Allows integer match exhaustiveness checking (RFC 2591).
     (accepted, exhaustive_integer_patterns, "1.33.0", Some(50907), None),
+    /// Allows exhaustive pattern matching on types that contain uninhabited types.
+    (accepted, exhaustive_patterns, "CURRENT_RUSTC_VERSION", Some(51085), None),
     /// Allows explicit generic arguments specification with `impl Trait` present.
     (accepted, explicit_generic_args_with_impl_trait, "1.63.0", Some(83701), None),
     /// Allows arbitrary expressions in key-value attributes at parse time.

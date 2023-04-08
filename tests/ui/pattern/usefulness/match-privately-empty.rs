@@ -1,5 +1,4 @@
 #![feature(never_type)]
-#![feature(exhaustive_patterns)]
 
 mod private {
     pub struct Private {

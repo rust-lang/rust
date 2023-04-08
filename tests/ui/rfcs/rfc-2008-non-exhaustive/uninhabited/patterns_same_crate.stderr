@@ -1,5 +1,5 @@
 error: unreachable pattern
-  --> $DIR/patterns_same_crate.rs:52:9
+  --> $DIR/patterns_same_crate.rs:51:9
    |
 LL |         Some(_x) => (),
    |         ^^^^^^^^
@@ -11,25 +11,25 @@ LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/patterns_same_crate.rs:57:9
+  --> $DIR/patterns_same_crate.rs:56:9
    |
 LL |         Some(_x) => (),
    |         ^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/patterns_same_crate.rs:61:15
+  --> $DIR/patterns_same_crate.rs:60:15
    |
 LL |     while let PartiallyInhabitedVariants::Struct { x } = partially_inhabited_variant() {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/patterns_same_crate.rs:65:15
+  --> $DIR/patterns_same_crate.rs:64:15
    |
 LL |     while let Some(_x) = uninhabited_struct() {
    |               ^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/patterns_same_crate.rs:68:15
+  --> $DIR/patterns_same_crate.rs:67:15
    |
 LL |     while let Some(_x) = uninhabited_tuple_struct() {
    |               ^^^^^^^^

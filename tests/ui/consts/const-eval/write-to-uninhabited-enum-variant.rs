@@ -1,6 +1,7 @@
 // run-pass
 
 #![allow(dead_code)]
+#![allow(unreachable_patterns)]
 
 enum Empty { }
 enum Test1 {

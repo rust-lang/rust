@@ -2,6 +2,7 @@
 
 #![feature(control_flow_enum)]
 #![feature(try_trait_v2)]
+#![allow(unreachable_patterns)]
 
 use std::ops::{ControlFlow, FromResidual, Try};
 
