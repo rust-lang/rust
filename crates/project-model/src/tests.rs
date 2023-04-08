@@ -103,8 +103,15 @@ fn replace_root(s: &mut String, direction: bool) {
 }
 
 fn replace_fake_sys_root(s: &mut String) {
-    let root = get_test_path("fake-sysroot");
-    *s = s.replace(root.to_str().expect("expected str"), "$FAKESYSROOT$")
+    let fake_sysroot_path = get_test_path("fake-sysroot");
+    let fake_sysroot_path = if cfg!(windows) {
+        let normalized_path =
+            fake_sysroot_path.to_str().expect("expected str").replace(r#"\"#, r#"\\"#);
+        format!(r#"{}\\"#, normalized_path)
+    } else {
+        format!("{}/", fake_sysroot_path.to_str().expect("expected str"))
+    };
+    *s = s.replace(&fake_sysroot_path, "$FAKESYSROOT$")
 }
 
 fn get_test_path(file: &str) -> PathBuf {
