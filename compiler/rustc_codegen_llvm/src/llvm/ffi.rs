@@ -1626,7 +1626,7 @@ extern "C" {
         B: &Builder<'a>,
         Val: &'a Value,
         DestTy: &'a Type,
-        IsSigned: bool,
+        IsSigned: Bool,
         Name: *const c_char,
     ) -> &'a Value;
 

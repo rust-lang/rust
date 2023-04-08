@@ -2,7 +2,7 @@ use crate::abi::FnAbiLlvmExt;
 use crate::attributes;
 use crate::common::Funclet;
 use crate::context::CodegenCx;
-use crate::llvm::{self, AtomicOrdering, AtomicRmwBinOp, BasicBlock};
+use crate::llvm::{self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, False, True};
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
@@ -841,7 +841,15 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn intcast(&mut self, val: &'ll Value, dest_ty: &'ll Type, is_signed: bool) -> &'ll Value {
-        unsafe { llvm::LLVMBuildIntCast2(self.llbuilder, val, dest_ty, is_signed, UNNAMED) }
+        unsafe {
+            llvm::LLVMBuildIntCast2(
+                self.llbuilder,
+                val,
+                dest_ty,
+                if is_signed { True } else { False },
+                UNNAMED,
+            )
+        }
     }
 
     fn pointercast(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
