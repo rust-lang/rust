@@ -16,7 +16,6 @@ declare_lint! {
     ///
     /// ```rust
     /// # #![allow(unused)]
-    /// #![warn(noop_method_call)]
     /// struct Foo;
     /// let foo = &Foo;
     /// let clone: &Foo = foo.clone();
@@ -37,9 +36,25 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `suspicious_double_ref_op` lint checks for usage of `.clone()` on an `&&T`,
-    /// which copies the inner `&T`, instead of cloning the underlying `T` and
-    /// can be confusing.
+    /// The `suspicious_double_ref_op` lint checks for usage of `.clone()`/`.borrow()`/`.deref()`
+    /// on an `&&T` when `T: !Deref/Borrow/Clone`, which means the call will copy the inner `&T`,
+    /// instead of performing the operation on the underlying `T` and can be confusing.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// # #![allow(unused)]
+    /// struct Foo;
+    /// let foo = &&Foo;
+    /// let clone: &Foo = foo.clone();
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Since `Foo` doesn't implement `Clone`, running `.clone()` only dereferences the double
+    /// reference, instead of cloning the inner type which should be what was intended.
     pub SUSPICIOUS_DOUBLE_REF_OP,
     Warn,
     "using `clone` on `&&T`"
