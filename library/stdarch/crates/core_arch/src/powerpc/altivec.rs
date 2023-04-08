@@ -272,6 +272,8 @@ extern "C" {
     fn vcmpgefp_p(cr: i32, a: vector_float, b: vector_float) -> i32;
     #[link_name = "llvm.ppc.altivec.vcmpgtfp.p"]
     fn vcmpgtfp_p(cr: i32, a: vector_float, b: vector_float) -> i32;
+    #[link_name = "llvm.ppc.altivec.vcmpbfp.p"]
+    fn vcmpbfp_p(cr: i32, a: vector_float, b: vector_float) -> i32;
 }
 
 macro_rules! s_t_l {
@@ -2182,6 +2184,14 @@ where
     a.vec_any_gt(b)
 }
 
+/// Vector All In
+#[inline]
+#[target_feature(enable = "altivec")]
+#[cfg_attr(test, assert_instr("vcmpbfp."))]
+pub unsafe fn vec_all_in(a: vector_float, b: vector_float) -> bool {
+    vcmpbfp_p(0, a, b) != 0
+}
+
 #[cfg(target_endian = "big")]
 mod endian {
     use super::*;
@@ -2834,6 +2844,18 @@ mod tests {
         [1, 255, 0, 1],
         [0, 255, 0, 1],
         true
+    }
+
+    test_vec_2! { test_vec_all_in_true, vec_all_in, f32x4 -> bool,
+        [0.0, -0.1, 0.0, 0.0],
+        [0.1, 0.2, 0.0, 0.0],
+        true
+    }
+
+    test_vec_2! { test_vec_all_in_false, vec_all_in, f32x4 -> bool,
+        [0.5, 0.4, -0.5, 0.8],
+        [0.1, 0.4, -0.5, 0.8],
+        false
     }
 
     #[simd_test(enable = "altivec")]
