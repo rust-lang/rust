@@ -839,6 +839,95 @@ mod sealed {
         }
     }
 
+    // All/Any Elements Not Equal
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpequb.))]
+    unsafe fn vcmpneub_all(a: vector_unsigned_char, b: vector_unsigned_char) -> bool {
+        vcmpequb_p(0, a, b) != 0
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpequb.))]
+    unsafe fn vcmpneub_any(a: vector_unsigned_char, b: vector_unsigned_char) -> bool {
+        vcmpequb_p(3, a, b) != 0
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpequh.))]
+    unsafe fn vcmpneuh_all(a: vector_unsigned_short, b: vector_unsigned_short) -> bool {
+        vcmpequh_p(0, a, b) != 0
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpequh.))]
+    unsafe fn vcmpneuh_any(a: vector_unsigned_short, b: vector_unsigned_short) -> bool {
+        vcmpequh_p(3, a, b) != 0
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpequw.))]
+    unsafe fn vcmpneuw_all(a: vector_unsigned_int, b: vector_unsigned_int) -> bool {
+        vcmpequw_p(0, a, b) != 0
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpequw.))]
+    unsafe fn vcmpneuw_any(a: vector_unsigned_int, b: vector_unsigned_int) -> bool {
+        vcmpequw_p(3, a, b) != 0
+    }
+
+    pub trait VectorAllNe<Other> {
+        type Result;
+        unsafe fn vec_all_ne(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_any_all! { [VectorAllNe vec_all_ne] (vcmpneub_all, vcmpneuh_all, vcmpneuw_all) }
+
+    // TODO: vsx encoding
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpeqfp.))]
+    unsafe fn vcmpnefp_all(a: vector_float, b: vector_float) -> bool {
+        vcmpeqfp_p(0, a, b) != 0
+    }
+
+    impl VectorAllNe<vector_float> for vector_float {
+        type Result = bool;
+        #[inline]
+        unsafe fn vec_all_ne(self, b: vector_float) -> Self::Result {
+            vcmpnefp_all(self, b)
+        }
+    }
+
+    pub trait VectorAnyNe<Other> {
+        type Result;
+        unsafe fn vec_any_ne(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_any_all! { [VectorAnyNe vec_any_ne] (vcmpneub_any, vcmpneuh_any, vcmpneuw_any) }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcmpeqfp.))]
+    unsafe fn vcmpnefp_any(a: vector_float, b: vector_float) -> bool {
+        vcmpeqfp_p(3, a, b) != 0
+    }
+
+    impl VectorAnyNe<vector_float> for vector_float {
+        type Result = bool;
+        #[inline]
+        unsafe fn vec_any_ne(self, b: vector_float) -> Self::Result {
+            vcmpnefp_any(self, b)
+        }
+    }
+
     test_impl! { vec_vceil(a: vector_float) -> vector_float [vceil, vrfip / xvrspip ] }
 
     test_impl! { vec_vavgsb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char [ vavgsb, vavgsb ] }
@@ -2231,6 +2320,35 @@ where
 {
     b.vec_any_gt(a)
 }
+
+/// All Elements Not a Number
+#[inline]
+#[target_feature(enable = "altivec")]
+#[cfg_attr(test, assert_instr("vcmpeqfp."))]
+pub unsafe fn vec_all_nan(a: vector_float) -> bool {
+    vcmpeqfp_p(0, a, a) != 0
+}
+
+/// Vector All Elements Not Equal
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_all_ne<T, U>(a: T, b: U) -> <T as sealed::VectorAllNe<U>>::Result
+where
+    T: sealed::VectorAllNe<U>,
+{
+    a.vec_all_ne(b)
+}
+
+/// Vector Any Elements Not Equal
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_any_ne<T, U>(a: T, b: U) -> <T as sealed::VectorAnyNe<U>>::Result
+where
+    T: sealed::VectorAnyNe<U>,
+{
+    a.vec_any_ne(b)
+}
+
 #[cfg(target_endian = "big")]
 mod endian {
     use super::*;
@@ -3180,6 +3298,150 @@ mod tests {
     }
 
     test_vec_2! { test_vec_any_lt_u32_true, vec_any_lt, u32x4 -> bool,
+        [0, 255, 0, 1],
+        [1, 255, 0, 1],
+        true
+    }
+
+    test_vec_2! { test_vec_all_ne_i8_false, vec_all_ne, i8x16 -> bool,
+        [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        false
+    }
+
+    test_vec_2! { test_vec_all_ne_u8_false, vec_all_ne, u8x16 -> bool,
+        [1, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 255, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        false
+    }
+
+    test_vec_2! { test_vec_all_ne_i16_false, vec_all_ne, i16x8 -> bool,
+        [1, -1, 0, 0, 0, 0, 0, 0],
+        [0, -1, 1, 0, 0, 0, 0, 0],
+        false
+    }
+
+    test_vec_2! { test_vec_all_ne_u16_false, vec_all_ne, u16x8 -> bool,
+        [1, 255, 0, 0, 0, 0, 0, 0],
+        [0, 255, 0, 1, 0, 0, 0, 0],
+        false
+    }
+
+    test_vec_2! { test_vec_all_ne_i32_false, vec_all_ne, i32x4 -> bool,
+        [1, -1, 0, 0],
+        [0, -1, 0, 1],
+        false
+    }
+
+    test_vec_2! { test_vec_all_ne_u32_false, vec_all_ne, u32x4 -> bool,
+        [1, 255, 0, 0],
+        [0, 255,  0, 1],
+        false
+    }
+
+    test_vec_2! { test_vec_all_ne_i8_true, vec_all_ne, i8x16 -> bool,
+        [0, -1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        [1, 0, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_all_ne_u8_true, vec_all_ne, u8x16 -> bool,
+        [0, 254, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        [1, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_all_ne_i16_true, vec_all_ne, i16x8 -> bool,
+        [2, -2, 0, 1, 1, 1, 1, 1],
+        [1, -1, 1, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_all_ne_u16_true, vec_all_ne, u16x8 -> bool,
+        [0, 254, 1, 1, 0, 0, 1, 0],
+        [1, 255, 0, 0, 1, 1, 0, 1],
+        true
+    }
+
+    test_vec_2! { test_vec_all_ne_i32_true, vec_all_ne, i32x4 -> bool,
+        [0, -2, 0, 0],
+        [1, -1, 1, 1],
+        true
+    }
+
+    test_vec_2! { test_vec_all_ne_u32_true, vec_all_ne, u32x4 -> bool,
+        [1, 255, 0, 0],
+        [0, 254, 1, 1],
+        true
+    }
+
+    test_vec_2! { test_vec_any_ne_i8_false, vec_any_ne, i8x16 -> bool,
+        [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        false
+    }
+
+    test_vec_2! { test_vec_any_ne_u8_false, vec_any_ne, u8x16 -> bool,
+        [1, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [1, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        false
+    }
+
+    test_vec_2! { test_vec_any_ne_i16_false, vec_any_ne, i16x8 -> bool,
+        [1, -1, 0, 0, 0, 0, 0, 0],
+        [1, -1, 0, 0, 0, 0, 0, 0],
+        false
+    }
+
+    test_vec_2! { test_vec_any_ne_u16_false, vec_any_ne, u16x8 -> bool,
+        [1, 255, 1, 1, 1, 1, 1, 0],
+        [1, 255, 1, 1, 1, 1, 1, 0],
+        false
+    }
+
+    test_vec_2! { test_vec_any_ne_i32_false, vec_any_ne, i32x4 -> bool,
+        [0, -1, 1, 1],
+        [0, -1, 1, 1],
+        false
+    }
+
+    test_vec_2! { test_vec_any_ne_u32_false, vec_any_ne, u32x4 -> bool,
+        [1, 2, 1, 255],
+        [1, 2, 1, 255],
+        false
+    }
+
+    test_vec_2! { test_vec_any_ne_i8_true, vec_any_ne, i8x16 -> bool,
+        [1, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_any_ne_u8_true, vec_any_ne, u8x16 -> bool,
+        [0, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [1, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_any_ne_i16_true, vec_any_ne, i16x8 -> bool,
+        [0, -1, 1, 0, 0, 0, 0, 0],
+        [1, -1, 1, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_any_ne_u16_true, vec_any_ne, u16x8 -> bool,
+        [0, 255, 1, 0, 0, 0, 0, 0],
+        [1, 255, 1, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_any_ne_i32_true, vec_any_ne, i32x4 -> bool,
+        [0, -1, 0, 1],
+        [1, -1, 0, 1],
+        true
+    }
+
+    test_vec_2! { test_vec_any_ne_u32_true, vec_any_ne, u32x4 -> bool,
         [0, 255, 0, 1],
         [1, 255, 0, 1],
         true
