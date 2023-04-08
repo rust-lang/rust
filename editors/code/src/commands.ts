@@ -761,12 +761,13 @@ export function addProject(ctx: CtxInit): Cmd {
         }
 
         const workspaces: JsonProject[] = await Promise.all(
-            vscode.workspace.workspaceFolders!.map(async (folder): Promise<JsonProject> => {
-                const rustDocuments = vscode.workspace.textDocuments.filter(isRustDocument);
-                return discoverWorkspace(rustDocuments, discoverProjectCommand, {
-                    cwd: folder.uri.fsPath,
-                });
-            })
+            vscode.workspace.textDocuments
+                .filter(isRustDocument)
+                .map(async (file): Promise<JsonProject> => {
+                    return discoverWorkspace([file], discoverProjectCommand, {
+                        cwd: path.dirname(file.uri.fsPath),
+                    });
+                })
         );
 
         ctx.addToDiscoveredWorkspaces(workspaces);
