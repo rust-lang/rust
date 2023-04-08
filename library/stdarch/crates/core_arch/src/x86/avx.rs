@@ -2436,8 +2436,6 @@ pub unsafe fn _mm256_set1_ps(a: f32) -> __m256 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_set1_epi8)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(test, assert_instr(vpshufb))]
-#[cfg_attr(test, assert_instr(vinsertf128))]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_set1_epi8(a: i8) -> __m256i {

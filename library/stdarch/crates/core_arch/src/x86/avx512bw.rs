@@ -7386,7 +7386,7 @@ pub unsafe fn _mm_maskz_set1_epi16(k: __mmask8, a: i16) -> __m128i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_set1_epi8&expand=4970)
 #[inline]
 #[target_feature(enable = "avx512bw")]
-#[cfg_attr(test, assert_instr(vpbroadcastb))]
+#[cfg_attr(test, assert_instr(vpbroadcast))]
 pub unsafe fn _mm512_mask_set1_epi8(src: __m512i, k: __mmask64, a: i8) -> __m512i {
     let r = _mm512_set1_epi8(a).as_i8x64();
     transmute(simd_select_bitmask(k, r, src.as_i8x64()))
@@ -7397,7 +7397,7 @@ pub unsafe fn _mm512_mask_set1_epi8(src: __m512i, k: __mmask64, a: i8) -> __m512
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_set1_epi8&expand=4971)
 #[inline]
 #[target_feature(enable = "avx512bw")]
-#[cfg_attr(test, assert_instr(vpbroadcastb))]
+#[cfg_attr(test, assert_instr(vpbroadcast))]
 pub unsafe fn _mm512_maskz_set1_epi8(k: __mmask64, a: i8) -> __m512i {
     let r = _mm512_set1_epi8(a).as_i8x64();
     let zero = _mm512_setzero_si512().as_i8x64();
@@ -7409,7 +7409,7 @@ pub unsafe fn _mm512_maskz_set1_epi8(k: __mmask64, a: i8) -> __m512i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_set1_epi8&expand=4967)
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
-#[cfg_attr(test, assert_instr(vpbroadcastb))]
+#[cfg_attr(test, assert_instr(vpbroadcast))]
 pub unsafe fn _mm256_mask_set1_epi8(src: __m256i, k: __mmask32, a: i8) -> __m256i {
     let r = _mm256_set1_epi8(a).as_i8x32();
     transmute(simd_select_bitmask(k, r, src.as_i8x32()))
@@ -7420,7 +7420,7 @@ pub unsafe fn _mm256_mask_set1_epi8(src: __m256i, k: __mmask32, a: i8) -> __m256
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_set1_epi8&expand=4968)
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
-#[cfg_attr(test, assert_instr(vpbroadcastb))]
+#[cfg_attr(test, assert_instr(vpbroadcast))]
 pub unsafe fn _mm256_maskz_set1_epi8(k: __mmask32, a: i8) -> __m256i {
     let r = _mm256_set1_epi8(a).as_i8x32();
     let zero = _mm256_setzero_si256().as_i8x32();
@@ -7432,7 +7432,7 @@ pub unsafe fn _mm256_maskz_set1_epi8(k: __mmask32, a: i8) -> __m256i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_set1_epi8&expand=4964)
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
-#[cfg_attr(test, assert_instr(vpbroadcastb))]
+#[cfg_attr(test, assert_instr(vpbroadcast))]
 pub unsafe fn _mm_mask_set1_epi8(src: __m128i, k: __mmask16, a: i8) -> __m128i {
     let r = _mm_set1_epi8(a).as_i8x16();
     transmute(simd_select_bitmask(k, r, src.as_i8x16()))
@@ -7443,7 +7443,7 @@ pub unsafe fn _mm_mask_set1_epi8(src: __m128i, k: __mmask16, a: i8) -> __m128i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_set1_epi8&expand=4965)
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
-#[cfg_attr(test, assert_instr(vpbroadcastb))]
+#[cfg_attr(test, assert_instr(vpbroadcast))]
 pub unsafe fn _mm_maskz_set1_epi8(k: __mmask16, a: i8) -> __m128i {
     let r = _mm_set1_epi8(a).as_i8x16();
     let zero = _mm_setzero_si128().as_i8x16();

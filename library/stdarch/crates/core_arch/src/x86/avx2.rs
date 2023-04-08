@@ -3592,7 +3592,6 @@ pub unsafe fn _mm256_cvtsd_f64(a: __m256d) -> f64 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cvtsi256_si32)
 #[inline]
 #[target_feature(enable = "avx2")]
-//#[cfg_attr(test, assert_instr(movd))] FIXME
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_cvtsi256_si32(a: __m256i) -> i32 {
     simd_extract(a.as_i32x8(), 0)
