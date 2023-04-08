@@ -2192,6 +2192,26 @@ pub unsafe fn vec_all_in(a: vector_float, b: vector_float) -> bool {
     vcmpbfp_p(0, a, b) != 0
 }
 
+/// Vector All Elements Less Than or Equal
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_all_le<T, U>(a: U, b: T) -> <T as sealed::VectorAllGe<U>>::Result
+where
+    T: sealed::VectorAllGe<U>,
+{
+    b.vec_all_ge(a)
+}
+
+/// Vector Any Element Less Than or Equal
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_any_le<T, U>(a: U, b: T) -> <T as sealed::VectorAnyGe<U>>::Result
+where
+    T: sealed::VectorAnyGe<U>,
+{
+    b.vec_any_ge(a)
+}
+
 #[cfg(target_endian = "big")]
 mod endian {
     use super::*;
@@ -2856,6 +2876,150 @@ mod tests {
         [0.5, 0.4, -0.5, 0.8],
         [0.1, 0.4, -0.5, 0.8],
         false
+    }
+
+    test_vec_2! { test_vec_all_le_i8_false, vec_all_le, i8x16 -> bool,
+        [0, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        false
+    }
+
+    test_vec_2! { test_vec_all_le_u8_false, vec_all_le, u8x16 -> bool,
+        [0, 0, 255, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [1, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        false
+    }
+
+    test_vec_2! { test_vec_all_le_i16_false, vec_all_le, i16x8 -> bool,
+        [0, 0, -1, 1, 0, 0, 0, 0],
+        [1, -1, 0, 0, 0, 0, 0, 0],
+        false
+    }
+
+    test_vec_2! { test_vec_all_le_u16_false, vec_all_le, u16x8 -> bool,
+        [0, 0, 255, 1, 0, 0, 0, 0],
+        [1, 255, 0, 0, 0, 0, 0, 0],
+        false
+    }
+
+    test_vec_2! { test_vec_all_le_i32_false, vec_all_le, i32x4 -> bool,
+        [0, -1, 0, 1],
+        [1, -1, 0, 0],
+        false
+    }
+
+    test_vec_2! { test_vec_all_le_u32_false, vec_all_le, u32x4 -> bool,
+        [0, 255,  1, 1],
+        [1, 255, 0, 0],
+        false
+    }
+
+    test_vec_2! { test_vec_all_le_i8_true, vec_all_le, i8x16 -> bool,
+        [0, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, -1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_all_le_u8_true, vec_all_le, u8x16 -> bool,
+        [1, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [1, 255, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_all_le_i16_true, vec_all_le, i16x8 -> bool,
+        [1, -5, 2, 0, 0, 0, 0, 0],
+        [1, -1, 42, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_all_le_u16_true, vec_all_le, u16x8 -> bool,
+        [2, 255, 1, 0, 0, 0, 0, 0],
+        [42, 255, 1, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_all_le_i32_true, vec_all_le, i32x4 -> bool,
+        [0, -1, 0, 1],
+        [1, -1, 0, 1],
+        true
+    }
+
+    test_vec_2! { test_vec_all_le_u32_true, vec_all_le, u32x4 -> bool,
+        [1, 254, 0, 0],
+        [1, 255, 0, 1],
+        true
+    }
+
+    test_vec_2! { test_vec_any_le_i8_false, vec_any_le, i8x16 -> bool,
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        false
+    }
+
+    test_vec_2! { test_vec_any_le_u8_false, vec_any_le, u8x16 -> bool,
+        [42, 255, 255, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        [1, 254, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        false
+    }
+
+    test_vec_2! { test_vec_any_le_i16_false, vec_any_le, i16x8 -> bool,
+        [2, 0, -1, 1, 1, 1, 1, 1],
+        [1, -1, -2, 0, 0, 0, 0, 0],
+        false
+    }
+
+    test_vec_2! { test_vec_any_le_u16_false, vec_any_le, u16x8 -> bool,
+        [2, 42, 255, 1, 1, 1, 1, 1],
+        [1, 2, 0, 0, 0, 0, 0, 0],
+        false
+    }
+
+    test_vec_2! { test_vec_any_le_i32_false, vec_any_le, i32x4 -> bool,
+        [2, 0, 1, 1],
+        [1, -1, 0, 0],
+        false
+    }
+
+    test_vec_2! { test_vec_any_le_u32_false, vec_any_le, u32x4 -> bool,
+        [4, 255,  4, 1],
+        [1, 2, 1, 0],
+        false
+    }
+
+    test_vec_2! { test_vec_any_le_i8_true, vec_any_le, i8x16 -> bool,
+        [0, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [1, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_any_le_u8_true, vec_any_le, u8x16 -> bool,
+        [1, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_any_le_i16_true, vec_any_le, i16x8 -> bool,
+        [1, -1, 1, 0, 0, 0, 0, 0],
+        [0, -1, 1, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_any_le_u16_true, vec_any_le, u16x8 -> bool,
+        [1, 255, 1, 0, 0, 0, 0, 0],
+        [0, 255, 1, 0, 0, 0, 0, 0],
+        true
+    }
+
+    test_vec_2! { test_vec_any_le_i32_true, vec_any_le, i32x4 -> bool,
+        [1, -1, 0, 1],
+        [0, -1, 0, 1],
+        true
+    }
+
+    test_vec_2! { test_vec_any_le_u32_true, vec_any_le, u32x4 -> bool,
+        [1, 255, 0, 1],
+        [0, 255, 0, 1],
+        true
     }
 
     #[simd_test(enable = "altivec")]
