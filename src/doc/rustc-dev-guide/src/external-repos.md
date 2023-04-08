@@ -100,6 +100,7 @@ like [The Rust Reference]. Maintainers of these projects will be notified
 when the project is in a broken state, and they should fix them as soon
 as possible. The current status is tracked on the [toolstate website].
 More information may be found on the Forge [Toolstate chapter].
+In practice, it is very rare for documentation to have broken toolstate.
 
 Breakage is not allowed in the beta and stable channels, and must be addressed
 before the PR is merged. They are also not allowed to be broken on master in
