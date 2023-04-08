@@ -2437,6 +2437,14 @@ pub unsafe fn vec_any_numeric(a: vector_float) -> bool {
     vcmpgefp_p(1, a, a) != 0
 }
 
+/// Any Element Out of Bounds
+#[inline]
+#[target_feature(enable = "altivec")]
+#[cfg_attr(test, assert_instr("vcmpeqfp."))]
+pub unsafe fn vec_any_out(a: vector_float) -> bool {
+    vcmpeqfp_p(1, a, a) != 0
+}
+
 #[cfg(target_endian = "big")]
 mod endian {
     use super::*;
