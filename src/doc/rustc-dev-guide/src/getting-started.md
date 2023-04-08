@@ -21,8 +21,12 @@ chapter on how to build and run the compiler](./building/how-to-build-and-run.md
 
 ## Asking Questions
 
-If you have questions, please make a post on [internals.rust-lang.org][internals] or
-hop on the [Rust Discord server][rust-discord] or [Rust Zulip server][rust-zulip].
+If you have questions, please make a post on the [Rust Zulip server][rust-zulip] or
+[internals.rust-lang.org][internals]. If you are contributing to Rustup, be aware they are not on
+Zulip - you can ask questions in `#wg-rustup` [on Discord][rust-discord].
+See [the Community page][community] on the official website for more resources.
+
+[community]: https://www.rust-lang.org/community
 
 As a reminder, all contributors are expected to follow our [Code of Conduct][coc].
 
@@ -47,6 +51,12 @@ compiler, [consult this "experts map"][map].
 
 It's not perfectly complete, though, so please also feel free to ask questions
 even if you can't figure out who to ping.
+
+Another way to find experts for a given part of the compiler is to see who has made recent commits.
+For example, to find people who have recently worked on name resolution since the 1.68.2 release,
+you could run `git shortlog -n 1.68.2.. compiler/rustc_resolve/`. Ignore any commits starting with
+"Rollup merge" or commits by `@bors` (see [CI contribution prodcedures](./contributing.md#ci) for
+more information about these commits).
 
 [map]: https://github.com/rust-lang/compiler-team/blob/master/content/experts/map.toml
 
