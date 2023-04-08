@@ -17,6 +17,9 @@ use rustc_target::abi::*;
 use std::fmt::Debug;
 use std::iter;
 
+use crate::errors::{
+    MultipleArrayFieldsSimdType, NonPrimitiveSimdType, OversizedSimdType, ZeroLengthSimdType,
+};
 use crate::layout_sanity_check::sanity_check_layout;
 
 pub fn provide(providers: &mut ty::query::Providers) {
@@ -294,6 +297,8 @@ fn layout_of_uncached<'tcx>(
                 return Err(LayoutError::Unknown(ty));
             }
 
+            let fields = &def.non_enum_variant().fields;
+
             // Supported SIMD vectors are homogeneous ADTs with at least one field:
             //
             // * #[repr(simd)] struct S(T, T, T, T);
@@ -304,18 +309,22 @@ fn layout_of_uncached<'tcx>(
 
             // SIMD vectors with zero fields are not supported.
             // (should be caught by typeck)
-            if def.non_enum_variant().fields.is_empty() {
-                tcx.sess.fatal(&format!("monomorphising SIMD type `{}` of zero length", ty));
+            if fields.is_empty() {
+                tcx.sess.emit_fatal(ZeroLengthSimdType { ty })
             }
 
             // Type of the first ADT field:
-            let f0_ty = def.non_enum_variant().fields[FieldIdx::from_u32(0)].ty(tcx, substs);
+            let f0_ty = fields[FieldIdx::from_u32(0)].ty(tcx, substs);
 
             // Heterogeneous SIMD vectors are not supported:
             // (should be caught by typeck)
-            for fi in &def.non_enum_variant().fields {
+            for fi in fields {
                 if fi.ty(tcx, substs) != f0_ty {
-                    tcx.sess.fatal(&format!("monomorphising heterogeneous SIMD type `{}`", ty));
+                    tcx.sess.delay_span_bug(
+                        DUMMY_SP,
+                        "#[repr(simd)] was applied to an ADT with hetrogeneous field type",
+                    );
+                    return Err(LayoutError::Unknown(ty));
                 }
             }
 
@@ -330,12 +339,9 @@ fn layout_of_uncached<'tcx>(
                 // First ADT field is an array:
 
                 // SIMD vectors with multiple array fields are not supported:
-                // (should be caught by typeck)
+                // Can't be caught by typeck with a generic simd type.
                 if def.non_enum_variant().fields.len() != 1 {
-                    tcx.sess.fatal(&format!(
-                        "monomorphising SIMD type `{}` with more than one array field",
-                        ty
-                    ));
+                    tcx.sess.emit_fatal(MultipleArrayFieldsSimdType { ty });
                 }
 
                 // Extract the number of elements from the layout of the array field:
@@ -355,12 +361,9 @@ fn layout_of_uncached<'tcx>(
             //
             // Can't be caught in typeck if the array length is generic.
             if e_len == 0 {
-                tcx.sess.fatal(&format!("monomorphising SIMD type `{}` of zero length", ty));
+                tcx.sess.emit_fatal(ZeroLengthSimdType { ty });
             } else if e_len > MAX_SIMD_LANES {
-                tcx.sess.fatal(&format!(
-                    "monomorphising SIMD type `{}` of length greater than {}",
-                    ty, MAX_SIMD_LANES,
-                ));
+                tcx.sess.emit_fatal(OversizedSimdType { ty, max_lanes: MAX_SIMD_LANES });
             }
 
             // Compute the ABI of the element type:
@@ -368,11 +371,7 @@ fn layout_of_uncached<'tcx>(
             let Abi::Scalar(e_abi) = e_ly.abi else {
                 // This error isn't caught in typeck, e.g., if
                 // the element type of the vector is generic.
-                tcx.sess.fatal(&format!(
-                    "monomorphising SIMD type `{}` with a non-primitive-scalar \
-                    (integer/float/pointer) element type `{}`",
-                    ty, e_ty
-                ))
+                tcx.sess.emit_fatal(NonPrimitiveSimdType {ty, e_ty });
             };
 
             // Compute the size and alignment of the vector:
