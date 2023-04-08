@@ -470,8 +470,8 @@ cc = ["@rust-lang/style"]
 
 [mentions."Cargo.lock"]
 message = """
-These commits modify the `Cargo.lock` file. Random changes to `Cargo.lock` can be introduced when switching branches and rebasing PRs. 
-This was probably unintentional and should be reverted before this PR is merged. 
+These commits modify the `Cargo.lock` file. Random changes to `Cargo.lock` can be introduced when switching branches and rebasing PRs.
+This was probably unintentional and should be reverted before this PR is merged.
 
 If this was intentional then you can ignore this comment.
 """
@@ -499,7 +499,6 @@ compiler-team = [
 ]
 compiler-team-contributors = [
     "@compiler-errors",
-    "@eholk",
     "@jackh726",
     "@TaKO8Ki",
     "@WaffleLapkin",
