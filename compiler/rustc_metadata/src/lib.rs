@@ -1,6 +1,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(decl_macro)]
-#![feature(drain_filter)]
+#![feature(extract_if)]
 #![feature(generators)]
 #![feature(iter_from_generator)]
 #![feature(let_chains)]

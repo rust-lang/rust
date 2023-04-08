@@ -237,7 +237,7 @@ pub fn suggest_constraining_type_params<'a>(
 
         {
             let mut sized_constraints =
-                constraints.drain_filter(|(_, def_id)| *def_id == tcx.lang_items().sized_trait());
+                constraints.extract_if(|(_, def_id)| *def_id == tcx.lang_items().sized_trait());
             if let Some((constraint, def_id)) = sized_constraints.next() {
                 applicability = Applicability::MaybeIncorrect;
 

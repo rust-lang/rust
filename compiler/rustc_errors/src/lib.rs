@@ -4,7 +4,7 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(array_windows)]
-#![feature(drain_filter)]
+#![feature(extract_if)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(never_type)]
@@ -1399,7 +1399,7 @@ impl HandlerInner {
                     !self.emitted_diagnostics.insert(diagnostic_hash)
                 };
 
-                diagnostic.children.drain_filter(already_emitted_sub).for_each(|_| {});
+                diagnostic.children.extract_if(already_emitted_sub).for_each(|_| {});
 
                 self.emitter.emit_diagnostic(diagnostic);
                 if diagnostic.is_error() {

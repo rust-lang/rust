@@ -5,7 +5,6 @@
 #![feature(box_patterns)]
 #![feature(min_specialization)]
 #![feature(control_flow_enum)]
-#![feature(drain_filter)]
 #![feature(option_as_slice)]
 #![allow(rustc::potential_query_instability)]
 #![recursion_limit = "256"]

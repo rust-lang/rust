@@ -6,21 +6,21 @@ use super::Vec;
 
 /// An iterator which uses a closure to determine if an element should be removed.
 ///
-/// This struct is created by [`Vec::drain_filter`].
+/// This struct is created by [`Vec::extract_if`].
 /// See its documentation for more.
 ///
 /// # Example
 ///
 /// ```
-/// #![feature(drain_filter)]
+/// #![feature(extract_if)]
 ///
 /// let mut v = vec![0, 1, 2];
-/// let iter: std::vec::DrainFilter<'_, _, _> = v.drain_filter(|x| *x % 2 == 0);
+/// let iter: std::vec::ExtractIf<'_, _, _> = v.extract_if(|x| *x % 2 == 0);
 /// ```
-#[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
+#[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
 #[derive(Debug)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
-pub struct DrainFilter<
+pub struct ExtractIf<
     'a,
     T,
     F,
@@ -39,13 +39,13 @@ pub struct DrainFilter<
     pub(super) pred: F,
     /// A flag that indicates a panic has occurred in the filter test predicate.
     /// This is used as a hint in the drop implementation to prevent consumption
-    /// of the remainder of the `DrainFilter`. Any unprocessed items will be
+    /// of the remainder of the `ExtractIf`. Any unprocessed items will be
     /// backshifted in the `vec`, but no further items will be dropped or
     /// tested by the filter predicate.
     pub(super) panic_flag: bool,
 }
 
-impl<T, F, A: Allocator> DrainFilter<'_, T, F, A>
+impl<T, F, A: Allocator> ExtractIf<'_, T, F, A>
 where
     F: FnMut(&mut T) -> bool,
 {
@@ -57,8 +57,8 @@ where
     }
 }
 
-#[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
-impl<T, F, A: Allocator> Iterator for DrainFilter<'_, T, F, A>
+#[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
+impl<T, F, A: Allocator> Iterator for ExtractIf<'_, T, F, A>
 where
     F: FnMut(&mut T) -> bool,
 {
@@ -95,8 +95,8 @@ where
     }
 }
 
-#[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
-impl<T, F, A: Allocator> Drop for DrainFilter<'_, T, F, A>
+#[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
+impl<T, F, A: Allocator> Drop for ExtractIf<'_, T, F, A>
 where
     F: FnMut(&mut T) -> bool,
 {

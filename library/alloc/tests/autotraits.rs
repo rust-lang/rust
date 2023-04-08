@@ -55,7 +55,7 @@ fn test_btree_map() {
 
     require_send_sync(async {
         let _v = None::<
-            alloc::collections::btree_map::DrainFilter<
+            alloc::collections::btree_map::ExtractIf<
                 '_,
                 &u32,
                 &u32,
@@ -149,7 +149,7 @@ fn test_btree_set() {
     });
 
     require_send_sync(async {
-        let _v = None::<alloc::collections::btree_set::DrainFilter<'_, &u32, fn(&&u32) -> bool>>;
+        let _v = None::<alloc::collections::btree_set::ExtractIf<'_, &u32, fn(&&u32) -> bool>>;
         async {}.await;
     });
 
@@ -238,7 +238,7 @@ fn test_linked_list() {
     /*
     require_send_sync(async {
         let _v =
-            None::<alloc::collections::linked_list::DrainFilter<'_, &u32, fn(&mut &u32) -> bool>>;
+            None::<alloc::collections::linked_list::ExtractIf<'_, &u32, fn(&mut &u32) -> bool>>;
         async {}.await;
     });
     */

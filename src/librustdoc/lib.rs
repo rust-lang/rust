@@ -6,7 +6,6 @@
 #![feature(array_methods)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
-#![feature(drain_filter)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(iter_intersperse)]
 #![feature(lazy_cell)]
