@@ -102,6 +102,21 @@ impl LateLintPass<'_> for MyStructLint {
 }
 ```
 
+## `hir::Ty` and `ty::Ty`
+
+We've been talking about [`ty::Ty`][middle_ty] this whole time without addressing [`hir::Ty`][hir_ty], but the latter
+is also important to understand.
+
+`hir::Ty` would represent *what* an user wrote, while `ty::Ty` would understand the meaning of it (because it has more
+information).
+
+**Example: `fn foo(x: u32) -> u32 { x }`**
+
+Here the HIR sees the types without "thinking" about them, it knows that the function takes an `u32` and returns
+an `u32`. But at the `ty::Ty` level the compiler understands that they're the same type, in-depth lifetimes, etc...
+
+you can use the [`hir_ty_to_ty`][hir_ty_to_ty] function to convert from a `hir::Ty` to a `ty::Ty`
+
 ## Useful Links
 
 Below are some useful links to further explore the concepts covered
@@ -124,3 +139,6 @@ in this chapter:
 [Ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html
 [TyKind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html
 [TypeckResults]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TypeckResults.html
+[middle_ty]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_middle/ty/struct.Ty.html
+[hir_ty]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_hir/struct.Ty.html
+[hir_ty_to_ty]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_hir_analysis/fn.hir_ty_to_ty.html
