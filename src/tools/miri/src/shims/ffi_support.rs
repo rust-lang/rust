@@ -1,11 +1,15 @@
+use std::ffi::c_void;
 use libffi::{high::call as ffi, low::CodePtr};
 use std::ops::Deref;
 
 use rustc_middle::ty::{self as ty, IntTy, Ty, UintTy};
 use rustc_span::Symbol;
 use rustc_target::abi::HasDataLayout;
+use rustc_hir::Mutability;
+use rustc_middle::ty::layout::TyAndLayout;
 
 use crate::*;
+use crate::intptrcast::GlobalStateInner;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 
@@ -13,11 +17,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Extract the scalar value from the result of reading a scalar from the machine,
     /// and convert it to a `CArg`.
     fn scalar_to_carg(
+        &mut self,
         k: Scalar<Provenance>,
-        arg_type: Ty<'tcx>,
+        arg_type: TyAndLayout<'tcx>,
         cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx, CArg> {
-        match arg_type.kind() {
+        match arg_type.ty.kind() {
             // If the primitive provided can be converted to a type matching the type pattern
             // then create a `CArg` of this primitive value with the corresponding `CArg` constructor.
             // the ints
@@ -55,6 +60,29 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // This will fail if host != target, but then the entire FFI thing probably won't work well
                 // in that situation.
                 return Ok(CArg::USize(k.to_target_usize(cx)?.try_into().unwrap()));
+            }
+            // pointers
+            ty::RawPtr(ty::TypeAndMut { mutbl, ty }) if mutbl.is_not() => {
+                // FIXME: Add warning for types that are probably not C-portable
+                // FIXME: This should
+                //        - expose the pointer
+                //        - if it contains another pointer, mark the *inner* pointer as having wildcard provenance
+                if let Scalar::Ptr(ptr, _) = k {
+                    if let Provenance::Concrete { alloc_id, tag } = ptr.provenance {
+                        GlobalStateInner::expose_ptr(
+                            self,
+                            alloc_id,
+                            tag,
+                        )
+                    }
+                    let alloc = self.get_ptr_alloc(
+                        ptr,
+                        arg_type.layout.size(),
+                        arg_type.layout.align().abi,
+                    );
+                    let qq = alloc.base_addr();
+                    return Ok(CArg::Ptr(qq as *const c_void));
+                }
             }
             _ => {}
         }
@@ -223,8 +251,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let mut libffi_args = Vec::<CArg>::with_capacity(args.len());
         for cur_arg in args.iter() {
             libffi_args.push(Self::scalar_to_carg(
+                ecx,
                 this.read_scalar(cur_arg)?,
-                cur_arg.layout.ty,
+                cur_arg.layout,
                 this,
             )?);
         }
@@ -268,6 +297,8 @@ pub enum CArg {
     UInt64(u64),
     /// usize.
     USize(usize),
+    /// A pointer to a value
+    Ptr(*const c_void),
 }
 
 impl<'a> CArg {
@@ -284,6 +315,7 @@ impl<'a> CArg {
             CArg::UInt32(i) => ffi::arg(i),
             CArg::UInt64(i) => ffi::arg(i),
             CArg::USize(i) => ffi::arg(i),
+            CArg::Ptr(i) => ffi::arg(i),
         }
     }
 }

@@ -9,6 +9,7 @@
 #![feature(local_key_cell_methods)]
 #![feature(is_terminal)]
 #![feature(round_ties_even)]
+#![feature(allocator_api)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -43,6 +44,7 @@
 #![recursion_limit = "256"]
 
 extern crate rustc_apfloat;
+extern crate rustc_abi;
 extern crate rustc_ast;
 #[macro_use]
 extern crate rustc_middle;
@@ -73,6 +75,7 @@ mod operator;
 mod range_map;
 mod shims;
 mod tag_gc;
+mod aligned_bytes;
 
 // Establish a "crate-wide prelude": we often import `crate::*`.
 
