@@ -148,7 +148,7 @@ fn parse(output: &str) -> HashSet<Function> {
                 instruction
                     .split_whitespace()
                     .skip(1)
-                    .skip_while(|s| *s == "lock") // skip x86-specific prefix
+                    .skip_while(|s| *s == "lock" || *s == "{evex}") // skip x86-specific prefix
                     .map(std::string::ToString::to_string)
                     .collect::<Vec<String>>()
             };
