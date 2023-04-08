@@ -16,7 +16,7 @@
 # Use different pre-set defaults than the global defaults.
 #
 # See `src/bootstrap/defaults` for more information.
-# Note that this has no default value (x.py uses the defaults in `config.toml.example`).
+# Note that this has no default value (x.py uses the defaults in `config.example.toml`).
 #profile = <none>
 
 # Keeps track of the last version of `x.py` used.
