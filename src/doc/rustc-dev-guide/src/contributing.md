@@ -189,6 +189,8 @@ a pull request, CI builds the compiler and tests it against the
 [compiler test suite][rctd], and also performs other tests such as checking that
 your pull request is in compliance with Rust's style guidelines.
 
+[rctd]: tests/intro.md
+
 Running continuous integration tests allows PR authors to catch mistakes early
 without going through a first review cycle, and also helps reviewers stay aware
 of the status of a particular pull request.

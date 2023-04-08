@@ -60,13 +60,12 @@ You might also find the following sites useful:
 
 - This guide contains information about how various parts of the
   compiler work and how to contribute to the compiler.
-- [rustc API docs] -- rustdoc documentation for the compiler
+- [rustc API docs] -- rustdoc documentation for the compiler, devtools, and internal tools
 - [Forge] -- contains documentation about Rust infrastructure, team procedures, and more
 - [compiler-team] -- the home-base for the Rust compiler team, with description
   of the team procedures, active working groups, and the team calendar.
 - [std-dev-guide] -- a similar guide for developing the standard library.
 - [The t-compiler zulip][z]
-- [The compiler's documentation (rustdocs)](https://doc.rust-lang.org/nightly/nightly-rustc/)
 - [The Forge](https://forge.rust-lang.org/) has more documentation about various procedures.
 - `#contribute` and `#wg-rustup` on [Discord](https://discord.gg/rust-lang).
 - The [Rust Internals forum][rif], a place to ask questions and
@@ -102,7 +101,7 @@ You might also find the following sites useful:
 [Miri]: https://github.com/rust-lang/miri
 [@bors]: https://github.com/bors
 [GitHub repository]: https://github.com/rust-lang/rustc-dev-guide/
-[rustc API docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/
+[rustc API docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle
 [Forge]: https://forge.rust-lang.org/
 [compiler-team]: https://github.com/rust-lang/compiler-team/
 [std-dev-guide]: https://std-dev-guide.rust-lang.org/
