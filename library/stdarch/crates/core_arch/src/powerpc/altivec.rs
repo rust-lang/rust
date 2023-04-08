@@ -2329,6 +2329,14 @@ pub unsafe fn vec_all_nan(a: vector_float) -> bool {
     vcmpeqfp_p(0, a, a) != 0
 }
 
+/// Any Elements Not a Number
+#[inline]
+#[target_feature(enable = "altivec")]
+#[cfg_attr(test, assert_instr("vcmpeqfp."))]
+pub unsafe fn vec_any_nan(a: vector_float) -> bool {
+    vcmpeqfp_p(3, a, a) != 0
+}
+
 /// Vector All Elements Not Equal
 #[inline]
 #[target_feature(enable = "altivec")]
@@ -2387,6 +2395,46 @@ pub unsafe fn vec_all_nlt(a: vector_float, b: vector_float) -> bool {
 #[cfg_attr(test, assert_instr("vcmpgefp."))]
 pub unsafe fn vec_all_numeric(a: vector_float) -> bool {
     vcmpgefp_p(2, a, a) != 0
+}
+
+/// Any Elements Not Greater Than or Equal
+#[inline]
+#[target_feature(enable = "altivec")]
+#[cfg_attr(test, assert_instr("vcmpgefp."))]
+pub unsafe fn vec_any_nge(a: vector_float, b: vector_float) -> bool {
+    vcmpgefp_p(3, a, b) != 0
+}
+
+/// Any Elements Not Greater Than
+#[inline]
+#[target_feature(enable = "altivec")]
+#[cfg_attr(test, assert_instr("vcmpgtfp."))]
+pub unsafe fn vec_any_ngt(a: vector_float, b: vector_float) -> bool {
+    vcmpgtfp_p(3, a, b) != 0
+}
+
+/// Any Elements Not Less Than or Equal
+#[inline]
+#[target_feature(enable = "altivec")]
+#[cfg_attr(test, assert_instr("vcmpgefp."))]
+pub unsafe fn vec_any_nle(a: vector_float, b: vector_float) -> bool {
+    vcmpgefp_p(3, b, a) != 0
+}
+
+/// Any Elements Not Less Than
+#[inline]
+#[target_feature(enable = "altivec")]
+#[cfg_attr(test, assert_instr("vcmpgtfp."))]
+pub unsafe fn vec_any_nlt(a: vector_float, b: vector_float) -> bool {
+    vcmpgtfp_p(3, b, a) != 0
+}
+
+/// Any Elements Numeric
+#[inline]
+#[target_feature(enable = "altivec")]
+#[cfg_attr(test, assert_instr("vcmpgefp."))]
+pub unsafe fn vec_any_numeric(a: vector_float) -> bool {
+    vcmpgefp_p(1, a, a) != 0
 }
 
 #[cfg(target_endian = "big")]
