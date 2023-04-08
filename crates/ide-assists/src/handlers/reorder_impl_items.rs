@@ -309,8 +309,8 @@ struct Foo;
 impl Bar for Foo {
     type T = ();$0
     const C: () = ();
-    fn a() {}
     fn z() {}
+    fn a() {}
     fn b() {}
 }
         "#,
