@@ -7,7 +7,7 @@ use rustc_ast::{
     FormatDebugHex, FormatOptions, FormatPlaceholder, FormatSign, FormatTrait,
 };
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{pluralize, Applicability, MultiSpan, PResult};
+use rustc_errors::{Applicability, MultiSpan, PResult, SingleLabelManySpans};
 use rustc_expand::base::{self, *};
 use rustc_parse_format as parse;
 use rustc_span::symbol::{Ident, Symbol};
@@ -35,6 +35,8 @@ enum PositionUsedAs {
     Width,
 }
 use PositionUsedAs::*;
+
+use crate::errors;
 
 struct MacroInput {
     fmtstr: P<Expr>,
@@ -66,7 +68,7 @@ fn parse_args<'a>(ecx: &mut ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<
     let mut p = ecx.new_parser_from_tts(tts);
 
     if p.token == token::Eof {
-        return Err(ecx.struct_span_err(sp, "requires at least a format string argument"));
+        return Err(ecx.create_err(errors::FormatRequiresString { span: sp }));
     }
 
     let first_token = &p.token;
@@ -121,13 +123,12 @@ fn parse_args<'a>(ecx: &mut ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<
                 p.expect(&token::Eq)?;
                 let expr = p.parse_expr()?;
                 if let Some((_, prev)) = args.by_name(ident.name) {
-                    ecx.struct_span_err(
-                        ident.span,
-                        &format!("duplicate argument named `{}`", ident),
-                    )
-                    .span_label(prev.kind.ident().unwrap().span, "previously here")
-                    .span_label(ident.span, "duplicate argument")
-                    .emit();
+                    ecx.emit_err(errors::FormatDuplicateArg {
+                        span: ident.span,
+                        prev: prev.kind.ident().unwrap().span,
+                        duplicate: ident.span,
+                        ident,
+                    });
                     continue;
                 }
                 args.add(FormatArgument { kind: FormatArgumentKind::Named(ident), expr });
@@ -135,20 +136,21 @@ fn parse_args<'a>(ecx: &mut ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<
             _ => {
                 let expr = p.parse_expr()?;
                 if !args.named_args().is_empty() {
-                    let mut err = ecx.struct_span_err(
-                        expr.span,
-                        "positional arguments cannot follow named arguments",
-                    );
-                    err.span_label(
-                        expr.span,
-                        "positional arguments must be before named arguments",
-                    );
-                    for arg in args.named_args() {
-                        if let Some(name) = arg.kind.ident() {
-                            err.span_label(name.span.to(arg.expr.span), "named argument");
-                        }
-                    }
-                    err.emit();
+                    ecx.emit_err(errors::PositionalAfterNamed {
+                        span: expr.span,
+                        args: args
+                            .named_args()
+                            .iter()
+                            .filter_map(|a| {
+                                if let Some(ident) = a.kind.ident() {
+                                    Some((a, ident))
+                                } else {
+                                    None
+                                }
+                            })
+                            .map(|(arg, n)| n.span.to(arg.expr.span))
+                            .collect(),
+                    });
                 }
                 args.add(FormatArgument { kind: FormatArgumentKind::Normal, expr });
             }
@@ -234,13 +236,19 @@ fn make_format_args(
             // argument span here.
             fmt_span
         };
-        let mut e = ecx.struct_span_err(sp, &format!("invalid format string: {}", err.description));
-        e.span_label(sp, err.label + " in format string");
+        let mut e = errors::InvalidFormatString {
+            span: sp,
+            note_: None,
+            label_: None,
+            sugg_: None,
+            desc: err.description,
+            label1: err.label,
+        };
         if let Some(note) = err.note {
-            e.note(&note);
+            e.note_ = Some(errors::InvalidFormatStringNote { note });
         }
         if let Some((label, span)) = err.secondary_label && is_source_literal {
-            e.span_label(fmt_span.from_inner(InnerSpan::new(span.start, span.end)), label);
+            e.label_ = Some(errors::InvalidFormatStringLabel { span: fmt_span.from_inner(InnerSpan::new(span.start, span.end)), label } );
         }
         if err.should_be_replaced_with_positional_argument {
             let captured_arg_span =
@@ -250,17 +258,15 @@ fn make_format_args(
                     Some(arg) => arg.expr.span,
                     None => fmt_span,
                 };
-                e.multipart_suggestion_verbose(
-                    "consider using a positional formatting argument instead",
-                    vec![
-                        (captured_arg_span, args.unnamed_args().len().to_string()),
-                        (span.shrink_to_hi(), format!(", {}", arg)),
-                    ],
-                    Applicability::MachineApplicable,
-                );
+                e.sugg_ = Some(errors::InvalidFormatStringSuggestion {
+                    captured: captured_arg_span,
+                    len: args.unnamed_args().len().to_string(),
+                    span: span.shrink_to_hi(),
+                    arg,
+                });
             }
         }
-        e.emit();
+        ecx.emit_err(e);
         return Err(());
     }
 
@@ -318,10 +324,7 @@ fn make_format_args(
                     } else {
                         // For the moment capturing variables from format strings expanded from macros is
                         // disabled (see RFC #2795)
-                        ecx.struct_span_err(span, &format!("there is no argument named `{name}`"))
-                            .note(format!("did you intend to capture a variable `{name}` from the surrounding scope?"))
-                            .note("to avoid ambiguity, `format_args!` cannot capture variables when the format string is expanded from a macro")
-                            .emit();
+                        ecx.emit_err(errors::FormatNoArgNamed { span, name });
                         DummyResult::raw_expr(span, true)
                     };
                     Ok(args.add(FormatArgument { kind: FormatArgumentKind::Captured(ident), expr }))
@@ -475,12 +478,8 @@ fn make_format_args(
         .enumerate()
         .filter(|&(_, used)| !used)
         .map(|(i, _)| {
-            let msg = if let FormatArgumentKind::Named(_) = args.explicit_args()[i].kind {
-                "named argument never used"
-            } else {
-                "argument never used"
-            };
-            (args.explicit_args()[i].expr.span, msg)
+            let named = matches!(args.explicit_args()[i].kind, FormatArgumentKind::Named(_));
+            (args.explicit_args()[i].expr.span, named)
         })
         .collect::<Vec<_>>();
 
@@ -531,22 +530,8 @@ fn invalid_placeholder_type_error(
     fmt_span: Span,
 ) {
     let sp = ty_span.map(|sp| fmt_span.from_inner(InnerSpan::new(sp.start, sp.end)));
-    let mut err =
-        ecx.struct_span_err(sp.unwrap_or(fmt_span), &format!("unknown format trait `{}`", ty));
-    err.note(
-        "the only appropriate formatting traits are:\n\
-                                - ``, which uses the `Display` trait\n\
-                                - `?`, which uses the `Debug` trait\n\
-                                - `e`, which uses the `LowerExp` trait\n\
-                                - `E`, which uses the `UpperExp` trait\n\
-                                - `o`, which uses the `Octal` trait\n\
-                                - `p`, which uses the `Pointer` trait\n\
-                                - `b`, which uses the `Binary` trait\n\
-                                - `x`, which uses the `LowerHex` trait\n\
-                                - `X`, which uses the `UpperHex` trait",
-    );
-    if let Some(sp) = sp {
-        for (fmt, name) in &[
+    let suggs = if let Some(sp) = sp {
+        [
             ("", "Display"),
             ("?", "Debug"),
             ("e", "LowerExp"),
@@ -556,40 +541,38 @@ fn invalid_placeholder_type_error(
             ("b", "Binary"),
             ("x", "LowerHex"),
             ("X", "UpperHex"),
-        ] {
-            err.tool_only_span_suggestion(
-                sp,
-                &format!("use the `{}` trait", name),
-                *fmt,
-                Applicability::MaybeIncorrect,
-            );
-        }
-    }
-    err.emit();
+        ]
+        .into_iter()
+        .map(|(fmt, trait_name)| errors::FormatUnknownTraitSugg { span: sp, fmt, trait_name })
+        .collect()
+    } else {
+        vec![]
+    };
+    ecx.emit_err(errors::FormatUnknownTrait { span: sp.unwrap_or(fmt_span), ty, suggs });
 }
 
 fn report_missing_placeholders(
     ecx: &mut ExtCtxt<'_>,
-    unused: Vec<(Span, &str)>,
+    unused: Vec<(Span, bool)>,
     detect_foreign_fmt: bool,
     str_style: Option<usize>,
     fmt_str: &str,
     fmt_span: Span,
 ) {
-    let mut diag = if let &[(span, msg)] = &unused[..] {
-        let mut diag = ecx.struct_span_err(span, msg);
-        diag.span_label(span, msg);
-        diag
+    let mut diag = if let &[(span, named)] = &unused[..] {
+        //let mut diag = ecx.struct_span_err(span, msg);
+        //diag.span_label(span, msg);
+        //diag
+        ecx.create_err(errors::FormatUnusedArg { span, named })
     } else {
-        let mut diag = ecx.struct_span_err(
-            unused.iter().map(|&(sp, _)| sp).collect::<Vec<Span>>(),
-            "multiple unused formatting arguments",
-        );
-        diag.span_label(fmt_span, "multiple missing formatting specifiers");
-        for &(span, msg) in &unused {
-            diag.span_label(span, msg);
-        }
-        diag
+        let unused_labels =
+            unused.iter().map(|&(span, named)| errors::FormatUnusedArg { span, named }).collect();
+        let unused_spans = unused.iter().map(|&(span, _)| span).collect();
+        ecx.create_err(errors::FormatUnusedArgs {
+            fmt: fmt_span,
+            unused: unused_spans,
+            unused_labels,
+        })
     };
 
     // Used to ensure we only report translations for *one* kind of foreign format.
@@ -768,18 +751,16 @@ fn report_invalid_references(
         } else {
             MultiSpan::from_spans(spans)
         };
-        e = ecx.struct_span_err(
+        e = ecx.create_err(errors::FormatPositionalMismatch {
             span,
-            &format!(
-                "{} positional argument{} in format string, but {}",
-                num_placeholders,
-                pluralize!(num_placeholders),
-                num_args_desc,
-            ),
-        );
-        for arg in args.explicit_args() {
-            e.span_label(arg.expr.span, "");
-        }
+            n: num_placeholders,
+            desc: num_args_desc,
+            highlight: SingleLabelManySpans {
+                spans: args.explicit_args().iter().map(|arg| arg.expr.span).collect(),
+                label: "",
+                kind: rustc_errors::LabelKind::Label,
+            },
+        });
         // Point out `{:.*}` placeholders: those take an extra argument.
         let mut has_precision_star = false;
         for piece in template {

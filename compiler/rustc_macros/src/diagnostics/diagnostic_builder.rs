@@ -392,14 +392,16 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
             }
             SubdiagnosticKind::Note | SubdiagnosticKind::Help | SubdiagnosticKind::Warn => {
                 let inner = info.ty.inner_type();
-                if type_matches_path(inner, &["rustc_span", "Span"]) {
+                if type_matches_path(inner, &["rustc_span", "Span"])
+                    || type_matches_path(inner, &["rustc_span", "MultiSpan"])
+                {
                     Ok(self.add_spanned_subdiagnostic(binding, &fn_ident, slug))
                 } else if type_is_unit(inner)
                     || (matches!(info.ty, FieldInnerTy::Plain(_)) && type_is_bool(inner))
                 {
                     Ok(self.add_subdiagnostic(&fn_ident, slug))
                 } else {
-                    report_type_error(attr, "`Span`, `bool` or `()`")?
+                    report_type_error(attr, "`Span`, `MultiSpan`, `bool` or `()`")?
                 }
             }
             SubdiagnosticKind::Suggestion {
