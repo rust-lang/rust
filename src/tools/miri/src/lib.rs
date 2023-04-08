@@ -7,7 +7,6 @@
 #![feature(yeet_expr)]
 #![feature(nonzero_ops)]
 #![feature(local_key_cell_methods)]
-#![feature(is_terminal)]
 #![feature(round_ties_even)]
 // Configure clippy and other lints
 #![allow(

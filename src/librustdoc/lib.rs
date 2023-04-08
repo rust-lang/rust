@@ -7,7 +7,6 @@
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(drain_filter)]
-#![feature(is_terminal)]
 #![feature(let_chains)]
 #![feature(test)]
 #![feature(never_type)]
