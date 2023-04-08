@@ -125,6 +125,7 @@ pub struct ExternalConstraintsData<'tcx> {
     // FIXME: implement this.
     pub region_constraints: QueryRegionConstraints<'tcx>,
     pub opaque_types: Vec<(Ty<'tcx>, Ty<'tcx>)>,
+    pub stalled_subtypes: Vec<(Ty<'tcx>, Ty<'tcx>)>,
 }
 
 // FIXME: Having to clone `region_constraints` for folding feels bad and
@@ -144,6 +145,11 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
                 .iter()
                 .map(|opaque| opaque.try_fold_with(folder))
                 .collect::<Result<_, F::Error>>()?,
+            stalled_subtypes: self
+                .stalled_subtypes
+                .iter()
+                .map(|subtype| subtype.try_fold_with(folder))
+                .collect::<Result<_, F::Error>>()?,
         }))
     }
 
@@ -151,6 +157,11 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
         TypeFolder::interner(folder).mk_external_constraints(ExternalConstraintsData {
             region_constraints: self.region_constraints.clone().fold_with(folder),
             opaque_types: self.opaque_types.iter().map(|opaque| opaque.fold_with(folder)).collect(),
+            stalled_subtypes: self
+                .stalled_subtypes
+                .iter()
+                .map(|subtype| subtype.fold_with(folder))
+                .collect(),
         })
     }
 }
@@ -162,6 +173,7 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
     ) -> std::ops::ControlFlow<V::BreakTy> {
         self.region_constraints.visit_with(visitor)?;
         self.opaque_types.visit_with(visitor)?;
+        self.stalled_subtypes.visit_with(visitor)?;
         ControlFlow::Continue(())
     }
 }

@@ -105,6 +105,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         goal: Goal<'tcx, SubtypePredicate<'tcx>>,
     ) -> QueryResult<'tcx> {
         if goal.predicate.a.is_ty_var() && goal.predicate.b.is_ty_var() {
+            self.stalled_subtypes.push((goal.predicate.a, goal.predicate.b));
             self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
         } else {
             self.sub(goal.param_env, goal.predicate.a, goal.predicate.b)?;

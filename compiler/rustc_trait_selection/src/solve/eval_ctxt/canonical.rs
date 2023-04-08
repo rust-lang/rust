@@ -16,7 +16,7 @@ use rustc_infer::infer::canonical::CanonicalVarValues;
 use rustc_infer::infer::canonical::{CanonicalExt, QueryRegionConstraints};
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{ExternalConstraints, ExternalConstraintsData};
-use rustc_middle::ty::{self, GenericArgKind};
+use rustc_middle::ty::{self, GenericArgKind, Ty};
 use rustc_span::DUMMY_SP;
 use std::iter;
 use std::ops::Deref;
@@ -79,9 +79,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             )
         });
         let opaque_types = self.infcx.clone_opaque_types_for_query_response();
-        Ok(self
-            .tcx()
-            .mk_external_constraints(ExternalConstraintsData { region_constraints, opaque_types }))
+        Ok(self.tcx().mk_external_constraints(ExternalConstraintsData {
+            region_constraints,
+            opaque_types,
+            stalled_subtypes: self.stalled_subtypes.clone(),
+        }))
     }
 
     /// After calling a canonical query, we apply the constraints returned
@@ -102,12 +104,17 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let Response { var_values, external_constraints, certainty } =
             response.substitute(self.tcx(), &substitution);
 
-        let nested_goals = self.unify_query_var_values(param_env, &original_values, var_values)?;
-
         // FIXME: implement external constraints.
-        let ExternalConstraintsData { region_constraints, opaque_types: _ } =
+        let ExternalConstraintsData { region_constraints, stalled_subtypes, opaque_types: _ } =
             external_constraints.deref();
         self.register_region_constraints(region_constraints);
+        assert!(
+            stalled_subtypes.is_empty() || certainty != Certainty::Yes,
+            "stalled_subtypes is non-empty: {stalled_subtypes:?}, but certainty is Yes"
+        );
+        self.register_stalled_subtypes(stalled_subtypes);
+
+        let nested_goals = self.unify_query_var_values(param_env, &original_values, var_values)?;
 
         Ok((certainty, nested_goals))
     }
@@ -225,6 +232,16 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         for member_constraint in &region_constraints.member_constraints {
             // FIXME: Deal with member constraints :<
             let _ = member_constraint;
+        }
+    }
+
+    fn register_stalled_subtypes(&mut self, stalled_subtypes: &[(Ty<'tcx>, Ty<'tcx>)]) {
+        for (sub, sup) in stalled_subtypes {
+            if let ty::Infer(ty::TyVar(sub_vid)) = *self.infcx.shallow_resolve(*sub).kind()
+                && let ty::Infer(ty::TyVar(sup_vid)) = *self.infcx.shallow_resolve(*sup).kind()
+            {
+               self.infcx.inner.borrow_mut().type_variables().sub(sub_vid, sup_vid);
+            }
         }
     }
 }

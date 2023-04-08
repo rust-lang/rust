@@ -199,7 +199,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
     }
 
     #[inline]
-    fn type_variables(&mut self) -> type_variable::TypeVariableTable<'_, 'tcx> {
+    pub fn type_variables(&mut self) -> type_variable::TypeVariableTable<'_, 'tcx> {
         self.type_variable_storage.with_log(&mut self.undo_log)
     }
 

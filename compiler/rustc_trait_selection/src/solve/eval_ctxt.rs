@@ -57,6 +57,11 @@ pub struct EvalCtxt<'a, 'tcx> {
     pub(super) search_graph: &'a mut SearchGraph<'tcx>,
 
     pub(super) nested_goals: NestedGoals<'tcx>,
+
+    // Subtyping predicates which have stalled. These are passed down in query
+    // responses to help detect cycle errors in cases where we're computing a
+    // goal like `?0 <: Box<?1>` when we already know that `?0 <: ?1`.
+    pub(super) stalled_subtypes: Vec<(Ty<'tcx>, Ty<'tcx>)>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -121,6 +126,7 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
             max_input_universe: ty::UniverseIndex::ROOT,
             var_values: CanonicalVarValues::dummy(),
             nested_goals: NestedGoals::new(),
+            stalled_subtypes: vec![],
         };
         let result = ecx.evaluate_goal(IsNormalizesToHack::No, goal);
 
@@ -172,6 +178,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 max_input_universe: canonical_goal.max_universe,
                 search_graph,
                 nested_goals: NestedGoals::new(),
+                stalled_subtypes: vec![],
             };
             ecx.compute_goal(goal)
         })
@@ -404,6 +411,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             max_input_universe: self.max_input_universe,
             search_graph: self.search_graph,
             nested_goals: self.nested_goals.clone(),
+            stalled_subtypes: self.stalled_subtypes.clone(),
         };
         self.infcx.probe(|_| f(&mut ecx))
     }
