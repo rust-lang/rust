@@ -57,7 +57,7 @@ impl<T> ManuallyDrop<T> {
     /// # Examples
     ///
     /// ```rust
-    /// use std::mem::ManuallyDrop;
+    /// use core::mem::ManuallyDrop;
     /// let mut x = ManuallyDrop::new(String::from("Hello World!"));
     /// x.truncate(5); // You can still safely operate on the value
     /// assert_eq!(*x, "Hello");
@@ -78,7 +78,7 @@ impl<T> ManuallyDrop<T> {
     /// # Examples
     ///
     /// ```rust
-    /// use std::mem::ManuallyDrop;
+    /// use core::mem::ManuallyDrop;
     /// let x = ManuallyDrop::new(Box::new(()));
     /// let _: Box<()> = ManuallyDrop::into_inner(x); // This drops the `Box`.
     /// ```

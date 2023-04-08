@@ -39,7 +39,7 @@
 /// struct.
 ///
 /// ```
-/// use std::ops::Deref;
+/// use core::ops::Deref;
 ///
 /// struct DerefExample<T> {
 ///     value: T
@@ -143,7 +143,7 @@ impl<T: ?Sized> const Deref for &mut T {
 /// struct.
 ///
 /// ```
-/// use std::ops::{Deref, DerefMut};
+/// use core::ops::{Deref, DerefMut};
 ///
 /// struct DerefMutExample<T> {
 ///     value: T

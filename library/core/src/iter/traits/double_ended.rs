@@ -76,7 +76,7 @@ pub trait DoubleEndedIterator: Iterator {
     /// ```
     /// let vec = vec![(1, 'a'), (1, 'b'), (1, 'c'), (2, 'a'), (2, 'b')];
     /// let uniq_by_fst_comp = || {
-    ///     let mut seen = std::collections::HashSet::new();
+    ///     let mut seen = core::collections::HashSet::new();
     ///     vec.iter().copied().filter(move |x| seen.insert(x.0))
     /// };
     ///
@@ -122,7 +122,7 @@ pub trait DoubleEndedIterator: Iterator {
     /// ```
     /// #![feature(iter_advance_by)]
     ///
-    /// use std::num::NonZeroUsize;
+    /// use core::num::NonZeroUsize;
     /// let a = [3, 4, 5, 6];
     /// let mut iter = a.iter();
     ///

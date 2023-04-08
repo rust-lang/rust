@@ -25,7 +25,7 @@ use crate::num::FpCategory;
 /// ```rust
 /// // deprecated way
 /// # #[allow(deprecated, deprecated_in_future)]
-/// let r = std::f64::RADIX;
+/// let r = core::f64::RADIX;
 ///
 /// // intended way
 /// let r = f64::RADIX;
@@ -42,7 +42,7 @@ pub const RADIX: u32 = f64::RADIX;
 /// ```rust
 /// // deprecated way
 /// # #[allow(deprecated, deprecated_in_future)]
-/// let d = std::f64::MANTISSA_DIGITS;
+/// let d = core::f64::MANTISSA_DIGITS;
 ///
 /// // intended way
 /// let d = f64::MANTISSA_DIGITS;
@@ -62,7 +62,7 @@ pub const MANTISSA_DIGITS: u32 = f64::MANTISSA_DIGITS;
 /// ```rust
 /// // deprecated way
 /// # #[allow(deprecated, deprecated_in_future)]
-/// let d = std::f64::DIGITS;
+/// let d = core::f64::DIGITS;
 ///
 /// // intended way
 /// let d = f64::DIGITS;
@@ -83,7 +83,7 @@ pub const DIGITS: u32 = f64::DIGITS;
 /// ```rust
 /// // deprecated way
 /// # #[allow(deprecated, deprecated_in_future)]
-/// let e = std::f64::EPSILON;
+/// let e = core::f64::EPSILON;
 ///
 /// // intended way
 /// let e = f64::EPSILON;
@@ -100,7 +100,7 @@ pub const EPSILON: f64 = f64::EPSILON;
 /// ```rust
 /// // deprecated way
 /// # #[allow(deprecated, deprecated_in_future)]
-/// let min = std::f64::MIN;
+/// let min = core::f64::MIN;
 ///
 /// // intended way
 /// let min = f64::MIN;
@@ -117,7 +117,7 @@ pub const MIN: f64 = f64::MIN;
 /// ```rust
 /// // deprecated way
 /// # #[allow(deprecated, deprecated_in_future)]
-/// let min = std::f64::MIN_POSITIVE;
+/// let min = core::f64::MIN_POSITIVE;
 ///
 /// // intended way
 /// let min = f64::MIN_POSITIVE;
@@ -134,7 +134,7 @@ pub const MIN_POSITIVE: f64 = f64::MIN_POSITIVE;
 /// ```rust
 /// // deprecated way
 /// # #[allow(deprecated, deprecated_in_future)]
-/// let max = std::f64::MAX;
+/// let max = core::f64::MAX;
 ///
 /// // intended way
 /// let max = f64::MAX;
@@ -151,7 +151,7 @@ pub const MAX: f64 = f64::MAX;
 /// ```rust
 /// // deprecated way
 /// # #[allow(deprecated, deprecated_in_future)]
-/// let min = std::f64::MIN_EXP;
+/// let min = core::f64::MIN_EXP;
 ///
 /// // intended way
 /// let min = f64::MIN_EXP;
@@ -168,7 +168,7 @@ pub const MIN_EXP: i32 = f64::MIN_EXP;
 /// ```rust
 /// // deprecated way
 /// # #[allow(deprecated, deprecated_in_future)]
-/// let max = std::f64::MAX_EXP;
+/// let max = core::f64::MAX_EXP;
 ///
 /// // intended way
 /// let max = f64::MAX_EXP;
@@ -185,7 +185,7 @@ pub const MAX_EXP: i32 = f64::MAX_EXP;
 /// ```rust
 /// // deprecated way
 /// # #[allow(deprecated, deprecated_in_future)]
-/// let min = std::f64::MIN_10_EXP;
+/// let min = core::f64::MIN_10_EXP;
 ///
 /// // intended way
 /// let min = f64::MIN_10_EXP;
@@ -202,7 +202,7 @@ pub const MIN_10_EXP: i32 = f64::MIN_10_EXP;
 /// ```rust
 /// // deprecated way
 /// # #[allow(deprecated, deprecated_in_future)]
-/// let max = std::f64::MAX_10_EXP;
+/// let max = core::f64::MAX_10_EXP;
 ///
 /// // intended way
 /// let max = f64::MAX_10_EXP;
@@ -219,7 +219,7 @@ pub const MAX_10_EXP: i32 = f64::MAX_10_EXP;
 /// ```rust
 /// // deprecated way
 /// # #[allow(deprecated, deprecated_in_future)]
-/// let nan = std::f64::NAN;
+/// let nan = core::f64::NAN;
 ///
 /// // intended way
 /// let nan = f64::NAN;
@@ -236,7 +236,7 @@ pub const NAN: f64 = f64::NAN;
 /// ```rust
 /// // deprecated way
 /// # #[allow(deprecated, deprecated_in_future)]
-/// let inf = std::f64::INFINITY;
+/// let inf = core::f64::INFINITY;
 ///
 /// // intended way
 /// let inf = f64::INFINITY;
@@ -253,7 +253,7 @@ pub const INFINITY: f64 = f64::INFINITY;
 /// ```rust
 /// // deprecated way
 /// # #[allow(deprecated, deprecated_in_future)]
-/// let ninf = std::f64::NEG_INFINITY;
+/// let ninf = core::f64::NEG_INFINITY;
 ///
 /// // intended way
 /// let ninf = f64::NEG_INFINITY;
@@ -547,7 +547,7 @@ impl f64 {
     /// predicate instead.
     ///
     /// ```
-    /// use std::num::FpCategory;
+    /// use core::num::FpCategory;
     ///
     /// let num = 12.4_f64;
     /// let inf = f64::INFINITY;
@@ -806,7 +806,7 @@ impl f64 {
     /// Converts radians to degrees.
     ///
     /// ```
-    /// let angle = std::f64::consts::PI;
+    /// let angle = core::f64::consts::PI;
     ///
     /// let abs_difference = (angle.to_degrees() - 180.0).abs();
     ///
@@ -828,7 +828,7 @@ impl f64 {
     /// ```
     /// let angle = 180.0_f64;
     ///
-    /// let abs_difference = (angle.to_radians() - std::f64::consts::PI).abs();
+    /// let abs_difference = (angle.to_radians() - core::f64::consts::PI).abs();
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```

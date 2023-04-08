@@ -512,7 +512,7 @@ unsafe impl const SliceIndex<str> for ops::RangeToInclusive<usize> {
 /// Basic implementation of `FromStr` on an example `Point` type:
 ///
 /// ```
-/// use std::str::FromStr;
+/// use core::str::FromStr;
 ///
 /// #[derive(Debug, PartialEq)]
 /// struct Point {
@@ -566,7 +566,7 @@ pub trait FromStr: Sized {
     /// Basic usage with [`i32`], a type that implements `FromStr`:
     ///
     /// ```
-    /// use std::str::FromStr;
+    /// use core::str::FromStr;
     ///
     /// let s = "5";
     /// let x = i32::from_str(s).unwrap();
@@ -589,7 +589,7 @@ impl FromStr for bool {
     /// # Examples
     ///
     /// ```
-    /// use std::str::FromStr;
+    /// use core::str::FromStr;
     ///
     /// assert_eq!(FromStr::from_str("true"), Ok(true));
     /// assert_eq!(FromStr::from_str("false"), Ok(false));

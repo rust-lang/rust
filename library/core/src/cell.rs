@@ -107,9 +107,9 @@
 //! mutability:
 //!
 //! ```
-//! use std::cell::{RefCell, RefMut};
-//! use std::collections::HashMap;
-//! use std::rc::Rc;
+//! use core::cell::{RefCell, RefMut};
+//! use core::collections::HashMap;
+//! use core::rc::Rc;
 //!
 //! fn main() {
 //!     let shared_map: Rc<RefCell<_>> = Rc::new(RefCell::new(HashMap::new()));
@@ -143,7 +143,7 @@
 //!
 //! ```
 //! # #![allow(dead_code)]
-//! use std::cell::RefCell;
+//! use core::cell::RefCell;
 //!
 //! struct Graph {
 //!     edges: Vec<(i32, i32)>,
@@ -173,10 +173,10 @@
 //! reference counts within a `Cell<T>`.
 //!
 //! ```
-//! use std::cell::Cell;
-//! use std::ptr::NonNull;
-//! use std::process::abort;
-//! use std::marker::PhantomData;
+//! use core::cell::Cell;
+//! use core::ptr::NonNull;
+//! use core::process::abort;
+//! use core::marker::PhantomData;
 //!
 //! struct Rc<T: ?Sized> {
 //!     ptr: NonNull<RcBox<T>>,
@@ -264,7 +264,7 @@ pub use once::OnceCell;
 /// immutable struct. In other words, it enables "interior mutability".
 ///
 /// ```
-/// use std::cell::Cell;
+/// use core::cell::Cell;
 ///
 /// struct SomeStruct {
 ///     regular_field: u8,
@@ -384,7 +384,7 @@ impl<T> Cell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::Cell;
+    /// use core::cell::Cell;
     ///
     /// let c = Cell::new(5);
     /// ```
@@ -400,7 +400,7 @@ impl<T> Cell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::Cell;
+    /// use core::cell::Cell;
     ///
     /// let c = Cell::new(5);
     ///
@@ -414,12 +414,12 @@ impl<T> Cell<T> {
     }
 
     /// Swaps the values of two `Cell`s.
-    /// Difference with `std::mem::swap` is that this function doesn't require `&mut` reference.
+    /// Difference with `core::mem::swap` is that this function doesn't require `&mut` reference.
     ///
     /// # Examples
     ///
     /// ```
-    /// use std::cell::Cell;
+    /// use core::cell::Cell;
     ///
     /// let c1 = Cell::new(5i32);
     /// let c2 = Cell::new(10i32);
@@ -447,7 +447,7 @@ impl<T> Cell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::Cell;
+    /// use core::cell::Cell;
     ///
     /// let cell = Cell::new(5);
     /// assert_eq!(cell.get(), 5);
@@ -467,7 +467,7 @@ impl<T> Cell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::Cell;
+    /// use core::cell::Cell;
     ///
     /// let c = Cell::new(5);
     /// let five = c.into_inner();
@@ -487,7 +487,7 @@ impl<T: Copy> Cell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::Cell;
+    /// use core::cell::Cell;
     ///
     /// let c = Cell::new(5);
     ///
@@ -508,7 +508,7 @@ impl<T: Copy> Cell<T> {
     /// ```
     /// #![feature(cell_update)]
     ///
-    /// use std::cell::Cell;
+    /// use core::cell::Cell;
     ///
     /// let c = Cell::new(5);
     /// let new = c.update(|x| x + 1);
@@ -535,7 +535,7 @@ impl<T: ?Sized> Cell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::Cell;
+    /// use core::cell::Cell;
     ///
     /// let c = Cell::new(5);
     ///
@@ -563,7 +563,7 @@ impl<T: ?Sized> Cell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::Cell;
+    /// use core::cell::Cell;
     ///
     /// let mut c = Cell::new(5);
     /// *c.get_mut() += 1;
@@ -581,7 +581,7 @@ impl<T: ?Sized> Cell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::Cell;
+    /// use core::cell::Cell;
     ///
     /// let slice: &mut [i32] = &mut [1, 2, 3];
     /// let cell_slice: &Cell<[i32]> = Cell::from_mut(slice);
@@ -603,7 +603,7 @@ impl<T: Default> Cell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::Cell;
+    /// use core::cell::Cell;
     ///
     /// let c = Cell::new(5);
     /// let five = c.take();
@@ -636,7 +636,7 @@ impl<T> Cell<[T]> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::Cell;
+    /// use core::cell::Cell;
     ///
     /// let slice: &mut [i32] = &mut [1, 2, 3];
     /// let cell_slice: &Cell<[i32]> = Cell::from_mut(slice);
@@ -658,7 +658,7 @@ impl<T, const N: usize> Cell<[T; N]> {
     ///
     /// ```
     /// #![feature(as_array_of_cells)]
-    /// use std::cell::Cell;
+    /// use core::cell::Cell;
     ///
     /// let mut array: [i32; 3] = [1, 2, 3];
     /// let cell_array: &Cell<[i32; 3]> = Cell::from_mut(&mut array);
@@ -773,7 +773,7 @@ impl<T> RefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::RefCell;
+    /// use core::cell::RefCell;
     ///
     /// let c = RefCell::new(5);
     /// ```
@@ -794,7 +794,7 @@ impl<T> RefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::RefCell;
+    /// use core::cell::RefCell;
     ///
     /// let c = RefCell::new(5);
     ///
@@ -812,7 +812,7 @@ impl<T> RefCell<T> {
     /// Replaces the wrapped value with a new one, returning the old value,
     /// without deinitializing either one.
     ///
-    /// This function corresponds to [`std::mem::replace`](../mem/fn.replace.html).
+    /// This function corresponds to [`core::mem::replace`](../mem/fn.replace.html).
     ///
     /// # Panics
     ///
@@ -821,7 +821,7 @@ impl<T> RefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::RefCell;
+    /// use core::cell::RefCell;
     /// let cell = RefCell::new(5);
     /// let old_value = cell.replace(6);
     /// assert_eq!(old_value, 5);
@@ -844,7 +844,7 @@ impl<T> RefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::RefCell;
+    /// use core::cell::RefCell;
     /// let cell = RefCell::new(5);
     /// let old_value = cell.replace_with(|&mut old| old + 1);
     /// assert_eq!(old_value, 5);
@@ -862,7 +862,7 @@ impl<T> RefCell<T> {
     /// Swaps the wrapped value of `self` with the wrapped value of `other`,
     /// without deinitializing either one.
     ///
-    /// This function corresponds to [`std::mem::swap`](../mem/fn.swap.html).
+    /// This function corresponds to [`core::mem::swap`](../mem/fn.swap.html).
     ///
     /// # Panics
     ///
@@ -872,7 +872,7 @@ impl<T> RefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::RefCell;
+    /// use core::cell::RefCell;
     /// let c = RefCell::new(5);
     /// let d = RefCell::new(6);
     /// c.swap(&d);
@@ -900,7 +900,7 @@ impl<T: ?Sized> RefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::RefCell;
+    /// use core::cell::RefCell;
     ///
     /// let c = RefCell::new(5);
     ///
@@ -911,7 +911,7 @@ impl<T: ?Sized> RefCell<T> {
     /// An example of panic:
     ///
     /// ```should_panic
-    /// use std::cell::RefCell;
+    /// use core::cell::RefCell;
     ///
     /// let c = RefCell::new(5);
     ///
@@ -936,7 +936,7 @@ impl<T: ?Sized> RefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::RefCell;
+    /// use core::cell::RefCell;
     ///
     /// let c = RefCell::new(5);
     ///
@@ -992,7 +992,7 @@ impl<T: ?Sized> RefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::RefCell;
+    /// use core::cell::RefCell;
     ///
     /// let c = RefCell::new("hello".to_owned());
     ///
@@ -1004,7 +1004,7 @@ impl<T: ?Sized> RefCell<T> {
     /// An example of panic:
     ///
     /// ```should_panic
-    /// use std::cell::RefCell;
+    /// use core::cell::RefCell;
     ///
     /// let c = RefCell::new(5);
     /// let m = c.borrow();
@@ -1029,7 +1029,7 @@ impl<T: ?Sized> RefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::RefCell;
+    /// use core::cell::RefCell;
     ///
     /// let c = RefCell::new(5);
     ///
@@ -1069,7 +1069,7 @@ impl<T: ?Sized> RefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::RefCell;
+    /// use core::cell::RefCell;
     ///
     /// let c = RefCell::new(5);
     ///
@@ -1101,7 +1101,7 @@ impl<T: ?Sized> RefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::RefCell;
+    /// use core::cell::RefCell;
     ///
     /// let mut c = RefCell::new(5);
     /// *c.get_mut() += 1;
@@ -1126,10 +1126,10 @@ impl<T: ?Sized> RefCell<T> {
     ///
     /// ```
     /// #![feature(cell_leak)]
-    /// use std::cell::RefCell;
+    /// use core::cell::RefCell;
     ///
     /// let mut c = RefCell::new(0);
-    /// std::mem::forget(c.borrow_mut());
+    /// core::mem::forget(c.borrow_mut());
     ///
     /// assert!(c.try_borrow().is_err());
     /// c.undo_leak();
@@ -1154,7 +1154,7 @@ impl<T: ?Sized> RefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::RefCell;
+    /// use core::cell::RefCell;
     ///
     /// let c = RefCell::new(5);
     ///
@@ -1199,7 +1199,7 @@ impl<T: Default> RefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::RefCell;
+    /// use core::cell::RefCell;
     ///
     /// let c = RefCell::new(5);
     /// let five = c.take();
@@ -1434,7 +1434,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::{RefCell, Ref};
+    /// use core::cell::{RefCell, Ref};
     ///
     /// let c = RefCell::new((5, 'b'));
     /// let b1: Ref<(u32, char)> = c.borrow();
@@ -1463,7 +1463,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::{RefCell, Ref};
+    /// use core::cell::{RefCell, Ref};
     ///
     /// let c = RefCell::new(vec![1, 2, 3]);
     /// let b1: Ref<Vec<u32>> = c.borrow();
@@ -1494,7 +1494,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::{Ref, RefCell};
+    /// use core::cell::{Ref, RefCell};
     ///
     /// let cell = RefCell::new([1, 2, 3, 4]);
     /// let borrow = cell.borrow();
@@ -1531,7 +1531,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     ///
     /// ```
     /// #![feature(cell_leak)]
-    /// use std::cell::{RefCell, Ref};
+    /// use core::cell::{RefCell, Ref};
     /// let cell = RefCell::new(0);
     ///
     /// let value = Ref::leak(cell.borrow());
@@ -1575,7 +1575,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::{RefCell, RefMut};
+    /// use core::cell::{RefCell, RefMut};
     ///
     /// let c = RefCell::new((5, 'b'));
     /// {
@@ -1609,7 +1609,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::{RefCell, RefMut};
+    /// use core::cell::{RefCell, RefMut};
     ///
     /// let c = RefCell::new(vec![1, 2, 3]);
     ///
@@ -1657,7 +1657,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::{RefCell, RefMut};
+    /// use core::cell::{RefCell, RefMut};
     ///
     /// let cell = RefCell::new([1, 2, 3, 4]);
     /// let borrow = cell.borrow_mut();
@@ -1697,7 +1697,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     ///
     /// ```
     /// #![feature(cell_leak)]
-    /// use std::cell::{RefCell, RefMut};
+    /// use core::cell::{RefCell, RefMut};
     /// let cell = RefCell::new(0);
     ///
     /// let value = RefMut::leak(cell.borrow_mut());
@@ -1896,7 +1896,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// same memory layout, the following is not allowed and undefined behavior:
 ///
 /// ```rust,no_run
-/// # use std::cell::UnsafeCell;
+/// # use core::cell::UnsafeCell;
 /// unsafe fn not_allowed<T>(ptr: &UnsafeCell<T>) -> &mut T {
 ///   let t = ptr as *const UnsafeCell<T> as *mut T;
 ///   // This is undefined behavior, because the `*mut T` pointer
@@ -1908,7 +1908,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// Instead, do this:
 ///
 /// ```rust
-/// # use std::cell::UnsafeCell;
+/// # use core::cell::UnsafeCell;
 /// // Safety: the caller must ensure that there are no references that
 /// // point to the *contents* of the `UnsafeCell`.
 /// unsafe fn get_mut<T>(ptr: &UnsafeCell<T>) -> &mut T {
@@ -1920,7 +1920,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// to an `&UnsafeCell<T>` is allowed:
 ///
 /// ```rust
-/// # use std::cell::UnsafeCell;
+/// # use core::cell::UnsafeCell;
 /// fn get_shared<T>(ptr: &mut T) -> &UnsafeCell<T> {
 ///   let t = ptr as *mut T as *const UnsafeCell<T>;
 ///   // SAFETY: `T` and `UnsafeCell<T>` have the same memory layout
@@ -1937,7 +1937,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// there being multiple references aliasing the cell:
 ///
 /// ```
-/// use std::cell::UnsafeCell;
+/// use core::cell::UnsafeCell;
 ///
 /// let x: UnsafeCell<i32> = 42.into();
 /// // Get multiple / concurrent / shared references to the same `x`.
@@ -1967,7 +1967,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// #![forbid(unsafe_code)] // with exclusive accesses,
 ///                         // `UnsafeCell` is a transparent no-op wrapper,
 ///                         // so no need for `unsafe` here.
-/// use std::cell::UnsafeCell;
+/// use core::cell::UnsafeCell;
 ///
 /// let mut x: UnsafeCell<i32> = 42.into();
 ///
@@ -2001,7 +2001,7 @@ impl<T> UnsafeCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::UnsafeCell;
+    /// use core::cell::UnsafeCell;
     ///
     /// let uc = UnsafeCell::new(5);
     /// ```
@@ -2017,7 +2017,7 @@ impl<T> UnsafeCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::UnsafeCell;
+    /// use core::cell::UnsafeCell;
     ///
     /// let uc = UnsafeCell::new(5);
     ///
@@ -2042,7 +2042,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::UnsafeCell;
+    /// use core::cell::UnsafeCell;
     ///
     /// let uc = UnsafeCell::new(5);
     ///
@@ -2066,7 +2066,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::UnsafeCell;
+    /// use core::cell::UnsafeCell;
     ///
     /// let mut c = UnsafeCell::new(5);
     /// *c.get_mut() += 1;
@@ -2097,8 +2097,8 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// calling `get` would require creating a reference to uninitialized data:
     ///
     /// ```
-    /// use std::cell::UnsafeCell;
-    /// use std::mem::MaybeUninit;
+    /// use core::cell::UnsafeCell;
+    /// use core::mem::MaybeUninit;
     ///
     /// let m = MaybeUninit::<UnsafeCell<i32>>::uninit();
     /// unsafe { UnsafeCell::raw_get(m.as_ptr()).write(5); }

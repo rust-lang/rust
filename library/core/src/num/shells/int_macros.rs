@@ -12,7 +12,7 @@ macro_rules! int_module {
         ///
         /// ```rust
         /// // deprecated way
-        #[doc = concat!("let min = std::", stringify!($T), "::MIN;")]
+        #[doc = concat!("let min = core::", stringify!($T), "::MIN;")]
         ///
         /// // intended way
         #[doc = concat!("let min = ", stringify!($T), "::MIN;")]
@@ -31,7 +31,7 @@ macro_rules! int_module {
         ///
         /// ```rust
         /// // deprecated way
-        #[doc = concat!("let max = std::", stringify!($T), "::MAX;")]
+        #[doc = concat!("let max = core::", stringify!($T), "::MAX;")]
         ///
         /// // intended way
         #[doc = concat!("let max = ", stringify!($T), "::MAX;")]

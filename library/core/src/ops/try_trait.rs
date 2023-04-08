@@ -41,7 +41,7 @@ use crate::ops::ControlFlow;
 /// output type that we want:
 /// ```
 /// # #![feature(try_trait_v2)]
-/// # use std::ops::Try;
+/// # use core::ops::Try;
 /// fn simple_try_fold_1<A, T, R: Try<Output = A>>(
 ///     iter: impl Iterator<Item = T>,
 ///     mut accum: A,
@@ -55,7 +55,7 @@ use crate::ops::ControlFlow;
 /// into the return type using [`Try::from_output`]:
 /// ```
 /// # #![feature(try_trait_v2)]
-/// # use std::ops::{ControlFlow, Try};
+/// # use core::ops::{ControlFlow, Try};
 /// fn simple_try_fold_2<A, T, R: Try<Output = A>>(
 ///     iter: impl Iterator<Item = T>,
 ///     mut accum: A,
@@ -78,7 +78,7 @@ use crate::ops::ControlFlow;
 /// recreated from their corresponding residual, so we'll just call it:
 /// ```
 /// # #![feature(try_trait_v2)]
-/// # use std::ops::{ControlFlow, Try};
+/// # use core::ops::{ControlFlow, Try};
 /// pub fn simple_try_fold_3<A, T, R: Try<Output = A>>(
 ///     iter: impl Iterator<Item = T>,
 ///     mut accum: A,
@@ -100,7 +100,7 @@ use crate::ops::ControlFlow;
 /// do all this manually, we can just use `?` instead:
 /// ```
 /// # #![feature(try_trait_v2)]
-/// # use std::ops::Try;
+/// # use core::ops::Try;
 /// fn simple_try_fold<A, T, R: Try<Output = A>>(
 ///     iter: impl Iterator<Item = T>,
 ///     mut accum: A,
@@ -152,7 +152,7 @@ pub trait Try: ~const FromResidual {
     /// and thus `?` on `ControlFlow` cannot be used in a method returning `Result`.
     ///
     /// If you're making a generic type `Foo<T>` that implements `Try<Output = T>`,
-    /// then typically you can use `Foo<std::convert::Infallible>` as its `Residual`
+    /// then typically you can use `Foo<core::convert::Infallible>` as its `Residual`
     /// type: that type will have a "hole" in the correct place, and will maintain the
     /// "foo-ness" of the residual so other types need to opt-in to interconversion.
     #[unstable(feature = "try_trait_v2", issue = "84277")]
@@ -168,13 +168,13 @@ pub trait Try: ~const FromResidual {
     ///
     /// ```
     /// #![feature(try_trait_v2)]
-    /// use std::ops::Try;
+    /// use core::ops::Try;
     ///
     /// assert_eq!(<Result<_, String> as Try>::from_output(3), Ok(3));
     /// assert_eq!(<Option<_> as Try>::from_output(4), Some(4));
     /// assert_eq!(
-    ///     <std::ops::ControlFlow<String, _> as Try>::from_output(5),
-    ///     std::ops::ControlFlow::Continue(5),
+    ///     <core::ops::ControlFlow<String, _> as Try>::from_output(5),
+    ///     core::ops::ControlFlow::Continue(5),
     /// );
     ///
     /// # fn make_question_mark_work() -> Option<()> {
@@ -183,7 +183,7 @@ pub trait Try: ~const FromResidual {
     /// # make_question_mark_work();
     ///
     /// // This is used, for example, on the accumulator in `try_fold`:
-    /// let r = std::iter::empty().try_fold(4, |_, ()| -> Option<_> { unreachable!() });
+    /// let r = core::iter::empty().try_fold(4, |_, ()| -> Option<_> { unreachable!() });
     /// assert_eq!(r, Some(4));
     /// ```
     #[lang = "from_output"]
@@ -199,7 +199,7 @@ pub trait Try: ~const FromResidual {
     ///
     /// ```
     /// #![feature(try_trait_v2)]
-    /// use std::ops::{ControlFlow, Try};
+    /// use core::ops::{ControlFlow, Try};
     ///
     /// assert_eq!(Ok::<_, String>(3).branch(), ControlFlow::Continue(3));
     /// assert_eq!(Err::<String, _>(3).branch(), ControlFlow::Break(Err(3)));
@@ -227,8 +227,8 @@ pub trait Try: ~const FromResidual {
     on(
         all(
             from_desugaring = "QuestionMark",
-            _Self = "std::result::Result<T, E>",
-            R = "std::option::Option<std::convert::Infallible>"
+            _Self = "core::result::Result<T, E>",
+            R = "core::option::Option<core::convert::Infallible>"
         ),
         message = "the `?` operator can only be used on `Result`s, not `Option`s, \
             in {ItemContext} that returns `Result`",
@@ -238,7 +238,7 @@ pub trait Try: ~const FromResidual {
     on(
         all(
             from_desugaring = "QuestionMark",
-            _Self = "std::result::Result<T, E>",
+            _Self = "core::result::Result<T, E>",
         ),
         // There's a special error message in the trait selection code for
         // `From` in `?`, so this is not shown for result-in-result errors,
@@ -251,8 +251,8 @@ pub trait Try: ~const FromResidual {
     on(
         all(
             from_desugaring = "QuestionMark",
-            _Self = "std::option::Option<T>",
-            R = "std::result::Result<T, E>",
+            _Self = "core::option::Option<T>",
+            R = "core::result::Result<T, E>",
         ),
         message = "the `?` operator can only be used on `Option`s, not `Result`s, \
             in {ItemContext} that returns `Option`",
@@ -262,7 +262,7 @@ pub trait Try: ~const FromResidual {
     on(
         all(
             from_desugaring = "QuestionMark",
-            _Self = "std::option::Option<T>",
+            _Self = "core::option::Option<T>",
         ),
         // `Option`-in-`Option` always works, as there's only one possible
         // residual, so this can also be phrased strongly.
@@ -274,8 +274,8 @@ pub trait Try: ~const FromResidual {
     on(
         all(
             from_desugaring = "QuestionMark",
-            _Self = "std::ops::ControlFlow<B, C>",
-            R = "std::ops::ControlFlow<B, C>",
+            _Self = "core::ops::ControlFlow<B, C>",
+            R = "core::ops::ControlFlow<B, C>",
         ),
         message = "the `?` operator in {ItemContext} that returns `ControlFlow<B, _>` \
             can only be used on other `ControlFlow<B, _>`s (with the same Break type)",
@@ -286,7 +286,7 @@ pub trait Try: ~const FromResidual {
     on(
         all(
             from_desugaring = "QuestionMark",
-            _Self = "std::ops::ControlFlow<B, C>",
+            _Self = "core::ops::ControlFlow<B, C>",
             // `R` is not a `ControlFlow`, as that case was matched previously
         ),
         message = "the `?` operator can only be used on `ControlFlow`s \
@@ -318,7 +318,7 @@ pub trait FromResidual<R = <Self as Try>::Residual> {
     ///
     /// ```
     /// #![feature(try_trait_v2)]
-    /// use std::ops::{ControlFlow, FromResidual};
+    /// use core::ops::{ControlFlow, FromResidual};
     ///
     /// assert_eq!(Result::<String, i64>::from_residual(Err(3_u8)), Err(3));
     /// assert_eq!(Option::<String>::from_residual(None), None);

@@ -12,8 +12,8 @@
 //! # Examples
 //!
 //! ```rust
-//! use std::collections::hash_map::DefaultHasher;
-//! use std::hash::{Hash, Hasher};
+//! use core::collections::hash_map::DefaultHasher;
+//! use core::hash::{Hash, Hasher};
 //!
 //! #[derive(Hash)]
 //! struct Person {
@@ -46,8 +46,8 @@
 //! the [`Hash`] trait:
 //!
 //! ```rust
-//! use std::collections::hash_map::DefaultHasher;
-//! use std::hash::{Hash, Hasher};
+//! use core::collections::hash_map::DefaultHasher;
+//! use core::hash::{Hash, Hasher};
 //!
 //! struct Person {
 //!     id: u32,
@@ -123,7 +123,7 @@ mod sip;
 /// implement the `Hash` trait yourself:
 ///
 /// ```
-/// use std::hash::{Hash, Hasher};
+/// use core::hash::{Hash, Hasher};
 ///
 /// struct Person {
 ///     id: u32,
@@ -191,8 +191,8 @@ pub trait Hash {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::hash_map::DefaultHasher;
-    /// use std::hash::{Hash, Hasher};
+    /// use core::collections::hash_map::DefaultHasher;
+    /// use core::hash::{Hash, Hasher};
     ///
     /// let mut hasher = DefaultHasher::new();
     /// 7920.hash(&mut hasher);
@@ -221,8 +221,8 @@ pub trait Hash {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::hash_map::DefaultHasher;
-    /// use std::hash::{Hash, Hasher};
+    /// use core::collections::hash_map::DefaultHasher;
+    /// use core::hash::{Hash, Hasher};
     ///
     /// let mut hasher = DefaultHasher::new();
     /// let numbers = [6, 28, 496, 8128];
@@ -288,14 +288,14 @@ pub use macros::Hash;
 /// equivalent to four calls of [`write_u8`].  Nor can you assume that adjacent
 /// `write` calls are merged, so it's possible, for example, that
 /// ```
-/// # fn foo(hasher: &mut impl std::hash::Hasher) {
+/// # fn foo(hasher: &mut impl core::hash::Hasher) {
 /// hasher.write(&[1, 2]);
 /// hasher.write(&[3, 4, 5, 6]);
 /// # }
 /// ```
 /// and
 /// ```
-/// # fn foo(hasher: &mut impl std::hash::Hasher) {
+/// # fn foo(hasher: &mut impl core::hash::Hasher) {
 /// hasher.write(&[1, 2, 3, 4]);
 /// hasher.write(&[5, 6]);
 /// # }
@@ -309,8 +309,8 @@ pub use macros::Hash;
 /// # Examples
 ///
 /// ```
-/// use std::collections::hash_map::DefaultHasher;
-/// use std::hash::Hasher;
+/// use core::collections::hash_map::DefaultHasher;
+/// use core::hash::Hasher;
 ///
 /// let mut hasher = DefaultHasher::new();
 ///
@@ -339,8 +339,8 @@ pub trait Hasher {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::hash_map::DefaultHasher;
-    /// use std::hash::Hasher;
+    /// use core::collections::hash_map::DefaultHasher;
+    /// use core::hash::Hasher;
     ///
     /// let mut hasher = DefaultHasher::new();
     /// hasher.write(b"Cool!");
@@ -357,8 +357,8 @@ pub trait Hasher {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::hash_map::DefaultHasher;
-    /// use std::hash::Hasher;
+    /// use core::collections::hash_map::DefaultHasher;
+    /// use core::hash::Hasher;
     ///
     /// let mut hasher = DefaultHasher::new();
     /// let data = [0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef];
@@ -477,11 +477,11 @@ pub trait Hasher {
     /// # }
     /// # impl<'a, T> IntoIterator for &'a MyCollection<T> {
     /// #     type Item = T;
-    /// #     type IntoIter = std::iter::Empty<T>;
+    /// #     type IntoIter = core::iter::Empty<T>;
     /// #     fn into_iter(self) -> Self::IntoIter { todo!() }
     /// # }
     ///
-    /// use std::hash::{Hash, Hasher};
+    /// use core::hash::{Hash, Hasher};
     /// impl<T: Hash> Hash for MyCollection<T> {
     ///     fn hash<H: Hasher>(&self, state: &mut H) {
     ///         state.write_length_prefix(self.len());
@@ -524,7 +524,7 @@ pub trait Hasher {
     /// ```
     /// # #![feature(hasher_prefixfree_extras)]
     /// # struct Foo;
-    /// # impl std::hash::Hasher for Foo {
+    /// # impl core::hash::Hasher for Foo {
     /// # fn finish(&self) -> u64 { unimplemented!() }
     /// # fn write(&mut self, _bytes: &[u8]) { unimplemented!() }
     /// fn write_str(&mut self, s: &str) {
@@ -547,7 +547,7 @@ pub trait Hasher {
     /// ```
     /// # #![feature(hasher_prefixfree_extras)]
     /// # struct Foo;
-    /// # impl std::hash::Hasher for Foo {
+    /// # impl core::hash::Hasher for Foo {
     /// # fn finish(&self) -> u64 { unimplemented!() }
     /// # fn write(&mut self, _bytes: &[u8]) { unimplemented!() }
     /// fn write_str(&mut self, s: &str) {
@@ -638,8 +638,8 @@ impl<H: ~const Hasher + ?Sized> const Hasher for &mut H {
 /// # Examples
 ///
 /// ```
-/// use std::collections::hash_map::RandomState;
-/// use std::hash::{BuildHasher, Hasher};
+/// use core::collections::hash_map::RandomState;
+/// use core::hash::{BuildHasher, Hasher};
 ///
 /// let s = RandomState::new();
 /// let mut hasher_1 = s.build_hasher();
@@ -668,8 +668,8 @@ pub trait BuildHasher {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::hash_map::RandomState;
-    /// use std::hash::BuildHasher;
+    /// use core::collections::hash_map::RandomState;
+    /// use core::hash::BuildHasher;
     ///
     /// let s = RandomState::new();
     /// let new_s = s.build_hasher();
@@ -693,8 +693,8 @@ pub trait BuildHasher {
     /// ```
     /// #![feature(build_hasher_simple_hash_one)]
     ///
-    /// use std::cmp::{max, min};
-    /// use std::hash::{BuildHasher, Hash, Hasher};
+    /// use core::cmp::{max, min};
+    /// use core::hash::{BuildHasher, Hash, Hasher};
     /// struct OrderAmbivalentPair<T: Ord>(T, T);
     /// impl<T: Ord + Hash> Hash for OrderAmbivalentPair<T> {
     ///     fn hash<H: Hasher>(&self, hasher: &mut H) {
@@ -704,7 +704,7 @@ pub trait BuildHasher {
     /// }
     ///
     /// // Then later, in a `#[test]` for the type...
-    /// let bh = std::collections::hash_map::RandomState::new();
+    /// let bh = core::collections::hash_map::RandomState::new();
     /// assert_eq!(
     ///     bh.hash_one(OrderAmbivalentPair(1, 2)),
     ///     bh.hash_one(OrderAmbivalentPair(2, 1))
@@ -744,8 +744,8 @@ pub trait BuildHasher {
 /// [`HashMap`]:
 ///
 /// ```
-/// use std::collections::HashMap;
-/// use std::hash::{BuildHasherDefault, Hasher};
+/// use core::collections::HashMap;
+/// use core::hash::{BuildHasherDefault, Hasher};
 ///
 /// #[derive(Default)]
 /// struct MyHasher;

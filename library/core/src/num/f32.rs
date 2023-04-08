@@ -25,7 +25,7 @@ use crate::num::FpCategory;
 /// ```rust
 /// // deprecated way
 /// # #[allow(deprecated, deprecated_in_future)]
-/// let r = std::f32::RADIX;
+/// let r = core::f32::RADIX;
 ///
 /// // intended way
 /// let r = f32::RADIX;
@@ -42,7 +42,7 @@ pub const RADIX: u32 = f32::RADIX;
 /// ```rust
 /// // deprecated way
 /// # #[allow(deprecated, deprecated_in_future)]
-/// let d = std::f32::MANTISSA_DIGITS;
+/// let d = core::f32::MANTISSA_DIGITS;
 ///
 /// // intended way
 /// let d = f32::MANTISSA_DIGITS;
@@ -62,7 +62,7 @@ pub const MANTISSA_DIGITS: u32 = f32::MANTISSA_DIGITS;
 /// ```rust
 /// // deprecated way
 /// # #[allow(deprecated, deprecated_in_future)]
-/// let d = std::f32::DIGITS;
+/// let d = core::f32::DIGITS;
 ///
 /// // intended way
 /// let d = f32::DIGITS;
@@ -83,7 +83,7 @@ pub const DIGITS: u32 = f32::DIGITS;
 /// ```rust
 /// // deprecated way
 /// # #[allow(deprecated, deprecated_in_future)]
-/// let e = std::f32::EPSILON;
+/// let e = core::f32::EPSILON;
 ///
 /// // intended way
 /// let e = f32::EPSILON;
@@ -100,7 +100,7 @@ pub const EPSILON: f32 = f32::EPSILON;
 /// ```rust
 /// // deprecated way
 /// # #[allow(deprecated, deprecated_in_future)]
-/// let min = std::f32::MIN;
+/// let min = core::f32::MIN;
 ///
 /// // intended way
 /// let min = f32::MIN;
@@ -117,7 +117,7 @@ pub const MIN: f32 = f32::MIN;
 /// ```rust
 /// // deprecated way
 /// # #[allow(deprecated, deprecated_in_future)]
-/// let min = std::f32::MIN_POSITIVE;
+/// let min = core::f32::MIN_POSITIVE;
 ///
 /// // intended way
 /// let min = f32::MIN_POSITIVE;
@@ -134,7 +134,7 @@ pub const MIN_POSITIVE: f32 = f32::MIN_POSITIVE;
 /// ```rust
 /// // deprecated way
 /// # #[allow(deprecated, deprecated_in_future)]
-/// let max = std::f32::MAX;
+/// let max = core::f32::MAX;
 ///
 /// // intended way
 /// let max = f32::MAX;
@@ -151,7 +151,7 @@ pub const MAX: f32 = f32::MAX;
 /// ```rust
 /// // deprecated way
 /// # #[allow(deprecated, deprecated_in_future)]
-/// let min = std::f32::MIN_EXP;
+/// let min = core::f32::MIN_EXP;
 ///
 /// // intended way
 /// let min = f32::MIN_EXP;
@@ -168,7 +168,7 @@ pub const MIN_EXP: i32 = f32::MIN_EXP;
 /// ```rust
 /// // deprecated way
 /// # #[allow(deprecated, deprecated_in_future)]
-/// let max = std::f32::MAX_EXP;
+/// let max = core::f32::MAX_EXP;
 ///
 /// // intended way
 /// let max = f32::MAX_EXP;
@@ -185,7 +185,7 @@ pub const MAX_EXP: i32 = f32::MAX_EXP;
 /// ```rust
 /// // deprecated way
 /// # #[allow(deprecated, deprecated_in_future)]
-/// let min = std::f32::MIN_10_EXP;
+/// let min = core::f32::MIN_10_EXP;
 ///
 /// // intended way
 /// let min = f32::MIN_10_EXP;
@@ -202,7 +202,7 @@ pub const MIN_10_EXP: i32 = f32::MIN_10_EXP;
 /// ```rust
 /// // deprecated way
 /// # #[allow(deprecated, deprecated_in_future)]
-/// let max = std::f32::MAX_10_EXP;
+/// let max = core::f32::MAX_10_EXP;
 ///
 /// // intended way
 /// let max = f32::MAX_10_EXP;
@@ -219,7 +219,7 @@ pub const MAX_10_EXP: i32 = f32::MAX_10_EXP;
 /// ```rust
 /// // deprecated way
 /// # #[allow(deprecated, deprecated_in_future)]
-/// let nan = std::f32::NAN;
+/// let nan = core::f32::NAN;
 ///
 /// // intended way
 /// let nan = f32::NAN;
@@ -236,7 +236,7 @@ pub const NAN: f32 = f32::NAN;
 /// ```rust
 /// // deprecated way
 /// # #[allow(deprecated, deprecated_in_future)]
-/// let inf = std::f32::INFINITY;
+/// let inf = core::f32::INFINITY;
 ///
 /// // intended way
 /// let inf = f32::INFINITY;
@@ -253,7 +253,7 @@ pub const INFINITY: f32 = f32::INFINITY;
 /// ```rust
 /// // deprecated way
 /// # #[allow(deprecated, deprecated_in_future)]
-/// let ninf = std::f32::NEG_INFINITY;
+/// let ninf = core::f32::NEG_INFINITY;
 ///
 /// // intended way
 /// let ninf = f32::NEG_INFINITY;
@@ -546,7 +546,7 @@ impl f32 {
     /// predicate instead.
     ///
     /// ```
-    /// use std::num::FpCategory;
+    /// use core::num::FpCategory;
     ///
     /// let num = 12.4_f32;
     /// let inf = f32::INFINITY;
@@ -796,7 +796,7 @@ impl f32 {
     /// Converts radians to degrees.
     ///
     /// ```
-    /// let angle = std::f32::consts::PI;
+    /// let angle = core::f32::consts::PI;
     ///
     /// let abs_difference = (angle.to_degrees() - 180.0).abs();
     ///
@@ -817,7 +817,7 @@ impl f32 {
     /// ```
     /// let angle = 180.0f32;
     ///
-    /// let abs_difference = (angle.to_radians() - std::f32::consts::PI).abs();
+    /// let abs_difference = (angle.to_radians() - core::f32::consts::PI).abs();
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```

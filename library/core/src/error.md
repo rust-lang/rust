@@ -52,7 +52,7 @@ Of the two, `expect` is generally preferred since its `msg` field allows you
 to convey your intent and assumptions which makes tracking down the source
 of a panic easier. `unwrap` on the other hand can still be a good fit in
 situations where you can trivially show that a piece of code will never
-panic, such as `"127.0.0.1".parse::<std::net::IpAddr>().unwrap()` or early
+panic, such as `"127.0.0.1".parse::<core::net::IpAddr>().unwrap()` or early
 prototyping.
 
 # Common Message Styles
@@ -67,14 +67,14 @@ has occurred which is considered a bug. Consider the following example:
 
 ```should_panic
 // Read environment variable, panic if it is not present
-let path = std::env::var("IMPORTANT_PATH").unwrap();
+let path = core::env::var("IMPORTANT_PATH").unwrap();
 ```
 
 In the "expect as error message" style we would use expect to describe
 that the environment variable was not set when it should have been:
 
 ```should_panic
-let path = std::env::var("IMPORTANT_PATH")
+let path = core::env::var("IMPORTANT_PATH")
     .expect("env variable `IMPORTANT_PATH` is not set");
 ```
 
@@ -83,7 +83,7 @@ reason we _expect_ the `Result` should be `Ok`. With this style we would
 prefer to write:
 
 ```should_panic
-let path = std::env::var("IMPORTANT_PATH")
+let path = core::env::var("IMPORTANT_PATH")
     .expect("env variable `IMPORTANT_PATH` should be set by `wrapper_script.sh`");
 ```
 

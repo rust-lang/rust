@@ -355,7 +355,7 @@ impl Layout {
     /// the fields from its fields' layouts:
     ///
     /// ```rust
-    /// # use std::alloc::{Layout, LayoutError};
+    /// # use core::alloc::{Layout, LayoutError};
     /// pub fn repr_c(fields: &[Layout]) -> Result<(Layout, Vec<usize>), LayoutError> {
     ///     let mut offsets = Vec::new();
     ///     let mut layout = Layout::from_size_align(0, 1)?;

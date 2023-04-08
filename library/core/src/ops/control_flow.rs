@@ -15,7 +15,7 @@ use crate::{convert, ops};
 ///
 /// Early-exiting from [`Iterator::try_for_each`]:
 /// ```
-/// use std::ops::ControlFlow;
+/// use core::ops::ControlFlow;
 ///
 /// let r = (2..100).try_for_each(|x| {
 ///     if 403 % x == 0 {
@@ -29,7 +29,7 @@ use crate::{convert, ops};
 ///
 /// A basic tree traversal:
 /// ```
-/// use std::ops::ControlFlow;
+/// use core::ops::ControlFlow;
 ///
 /// pub struct TreeNode<T> {
 ///     value: T,
@@ -139,7 +139,7 @@ impl<B, C> ControlFlow<B, C> {
     /// # Examples
     ///
     /// ```
-    /// use std::ops::ControlFlow;
+    /// use core::ops::ControlFlow;
     ///
     /// assert!(ControlFlow::<i32, String>::Break(3).is_break());
     /// assert!(!ControlFlow::<String, i32>::Continue(3).is_break());
@@ -155,7 +155,7 @@ impl<B, C> ControlFlow<B, C> {
     /// # Examples
     ///
     /// ```
-    /// use std::ops::ControlFlow;
+    /// use core::ops::ControlFlow;
     ///
     /// assert!(!ControlFlow::<i32, String>::Break(3).is_continue());
     /// assert!(ControlFlow::<String, i32>::Continue(3).is_continue());
@@ -173,7 +173,7 @@ impl<B, C> ControlFlow<B, C> {
     ///
     /// ```
     /// #![feature(control_flow_enum)]
-    /// use std::ops::ControlFlow;
+    /// use core::ops::ControlFlow;
     ///
     /// assert_eq!(ControlFlow::<i32, String>::Break(3).break_value(), Some(3));
     /// assert_eq!(ControlFlow::<String, i32>::Continue(3).break_value(), None);
@@ -208,7 +208,7 @@ impl<B, C> ControlFlow<B, C> {
     ///
     /// ```
     /// #![feature(control_flow_enum)]
-    /// use std::ops::ControlFlow;
+    /// use core::ops::ControlFlow;
     ///
     /// assert_eq!(ControlFlow::<i32, String>::Break(3).continue_value(), None);
     /// assert_eq!(ControlFlow::<String, i32>::Continue(3).continue_value(), Some(3));

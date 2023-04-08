@@ -17,7 +17,7 @@
 /// Basic usage:
 ///
 /// ```
-/// let five_fives = std::iter::repeat(5).take(5);
+/// let five_fives = core::iter::repeat(5).take(5);
 ///
 /// let v = Vec::from_iter(five_fives);
 ///
@@ -27,7 +27,7 @@
 /// Using [`Iterator::collect()`] to implicitly use `FromIterator`:
 ///
 /// ```
-/// let five_fives = std::iter::repeat(5).take(5);
+/// let five_fives = core::iter::repeat(5).take(5);
 ///
 /// let v: Vec<i32> = five_fives.collect();
 ///
@@ -38,7 +38,7 @@
 /// [`Iterator::collect()`]:
 ///
 /// ```
-/// use std::collections::VecDeque;
+/// use core::collections::VecDeque;
 /// let first = (0..10).collect::<VecDeque<i32>>();
 /// let second = VecDeque::from_iter(0..10);
 ///
@@ -116,7 +116,7 @@
     ),
     message = "a value of type `{Self}` cannot be built from an iterator \
                over elements of type `{A}`",
-    label = "value of type `{Self}` cannot be built from `std::iter::Iterator<Item={A}>`"
+    label = "value of type `{Self}` cannot be built from `core::iter::Iterator<Item={A}>`"
 )]
 #[rustc_diagnostic_item = "FromIterator"]
 pub trait FromIterator<A>: Sized {
@@ -131,7 +131,7 @@ pub trait FromIterator<A>: Sized {
     /// Basic usage:
     ///
     /// ```
-    /// let five_fives = std::iter::repeat(5).take(5);
+    /// let five_fives = core::iter::repeat(5).take(5);
     ///
     /// let v = Vec::from_iter(five_fives);
     ///
@@ -187,7 +187,7 @@ pub trait FromIterator<A>: Sized {
 /// // and we'll implement IntoIterator
 /// impl IntoIterator for MyCollection {
 ///     type Item = i32;
-///     type IntoIter = std::vec::IntoIter<Self::Item>;
+///     type IntoIter = core::vec::IntoIter<Self::Item>;
 ///
 ///     fn into_iter(self) -> Self::IntoIter {
 ///         self.0.into_iter()
@@ -217,7 +217,7 @@ pub trait FromIterator<A>: Sized {
 /// fn collect_as_strings<T>(collection: T) -> Vec<String>
 /// where
 ///     T: IntoIterator,
-///     T::Item: std::fmt::Debug,
+///     T::Item: core::fmt::Debug,
 /// {
 ///     collection
 ///         .into_iter()

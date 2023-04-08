@@ -52,7 +52,7 @@ impl fmt::Write for PadAdapter<'_, '_> {
 /// # Examples
 ///
 /// ```
-/// use std::fmt;
+/// use core::fmt;
 ///
 /// struct Foo {
 ///     bar: i32,
@@ -96,7 +96,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Bar {
     ///     bar: i32,
@@ -152,7 +152,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Bar {
     ///     bar: i32,
@@ -197,7 +197,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Bar {
     ///     bar: i32,
@@ -244,7 +244,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
 /// # Examples
 ///
 /// ```
-/// use std::fmt;
+/// use core::fmt;
 ///
 /// struct Foo(i32, String);
 ///
@@ -286,7 +286,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Foo(i32, String);
     ///
@@ -332,7 +332,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Foo(i32, String);
     ///
@@ -413,7 +413,7 @@ impl<'a, 'b: 'a> DebugInner<'a, 'b> {
 /// # Examples
 ///
 /// ```
-/// use std::fmt;
+/// use core::fmt;
 ///
 /// struct Foo(Vec<i32>);
 ///
@@ -446,7 +446,7 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Foo(Vec<i32>, Vec<u32>);
     ///
@@ -475,7 +475,7 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Foo(Vec<i32>, Vec<u32>);
     ///
@@ -510,7 +510,7 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Foo(Vec<i32>);
     ///
@@ -543,7 +543,7 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
 /// # Examples
 ///
 /// ```
-/// use std::fmt;
+/// use core::fmt;
 ///
 /// struct Foo(Vec<i32>);
 ///
@@ -576,7 +576,7 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Foo(Vec<i32>, Vec<u32>);
     ///
@@ -605,7 +605,7 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Foo(Vec<i32>, Vec<u32>);
     ///
@@ -640,7 +640,7 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Foo(Vec<i32>);
     ///
@@ -673,7 +673,7 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
 /// # Examples
 ///
 /// ```
-/// use std::fmt;
+/// use core::fmt;
 ///
 /// struct Foo(Vec<(String, i32)>);
 ///
@@ -711,7 +711,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Foo(Vec<(String, i32)>);
     ///
@@ -747,7 +747,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Foo(Vec<(String, i32)>);
     ///
@@ -811,7 +811,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Foo(Vec<(String, i32)>);
     ///
@@ -855,7 +855,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Foo(Vec<(String, i32)>);
     ///
@@ -897,7 +897,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Foo(Vec<(String, i32)>);
     ///

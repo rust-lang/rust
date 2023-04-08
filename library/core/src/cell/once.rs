@@ -9,16 +9,16 @@ use crate::mem;
 /// only immutable references can be obtained unless one has a mutable reference to the cell
 /// itself.
 ///
-/// For a thread-safe version of this struct, see [`std::sync::OnceLock`].
+/// For a thread-safe version of this struct, see [`core::sync::OnceLock`].
 ///
 /// [`RefCell`]: crate::cell::RefCell
 /// [`Cell`]: crate::cell::Cell
-/// [`std::sync::OnceLock`]: ../../std/sync/struct.OnceLock.html
+/// [`core::sync::OnceLock`]: ../../std/sync/struct.OnceLock.html
 ///
 /// # Examples
 ///
 /// ```
-/// use std::cell::OnceCell;
+/// use core::cell::OnceCell;
 ///
 /// let cell = OnceCell::new();
 /// assert!(cell.get().is_none());
@@ -74,7 +74,7 @@ impl<T> OnceCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::OnceCell;
+    /// use core::cell::OnceCell;
     ///
     /// let cell = OnceCell::new();
     /// assert!(cell.get().is_none());
@@ -116,7 +116,7 @@ impl<T> OnceCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::OnceCell;
+    /// use core::cell::OnceCell;
     ///
     /// let cell = OnceCell::new();
     /// let value = cell.get_or_init(|| 92);
@@ -152,7 +152,7 @@ impl<T> OnceCell<T> {
     /// ```
     /// #![feature(once_cell_try)]
     ///
-    /// use std::cell::OnceCell;
+    /// use core::cell::OnceCell;
     ///
     /// let cell = OnceCell::new();
     /// assert_eq!(cell.get_or_try_init(|| Err(())), Err(()));
@@ -196,7 +196,7 @@ impl<T> OnceCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::OnceCell;
+    /// use core::cell::OnceCell;
     ///
     /// let cell: OnceCell<String> = OnceCell::new();
     /// assert_eq!(cell.into_inner(), None);
@@ -222,7 +222,7 @@ impl<T> OnceCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::OnceCell;
+    /// use core::cell::OnceCell;
     ///
     /// let mut cell: OnceCell<String> = OnceCell::new();
     /// assert_eq!(cell.take(), None);

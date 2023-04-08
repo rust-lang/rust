@@ -342,7 +342,7 @@
 //! successfully for any infinite iterators.
 //!
 //! ```no_run
-//! let ones = std::iter::repeat(1);
+//! let ones = core::iter::repeat(1);
 //! let least = ones.min().unwrap(); // Oh no! An infinite loop!
 //! // `ones.min()` causes an infinite loop, so we won't reach this point!
 //! println!("The smallest number one is {least}.");

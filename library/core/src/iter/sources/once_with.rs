@@ -19,7 +19,7 @@ use crate::iter::{FusedIterator, TrustedLen};
 /// Basic usage:
 ///
 /// ```
-/// use std::iter;
+/// use core::iter;
 ///
 /// // one is the loneliest number
 /// let mut one = iter::once_with(|| 1);
@@ -35,9 +35,9 @@ use crate::iter::{FusedIterator, TrustedLen};
 /// `.foorc`:
 ///
 /// ```no_run
-/// use std::iter;
-/// use std::fs;
-/// use std::path::PathBuf;
+/// use core::iter;
+/// use core::fs;
+/// use core::path::PathBuf;
 ///
 /// let dirs = fs::read_dir(".foo").unwrap();
 ///

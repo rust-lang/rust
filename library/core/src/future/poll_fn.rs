@@ -14,7 +14,7 @@ use crate::task::{Context, Poll};
 /// ```
 /// # async fn run() {
 /// use core::future::poll_fn;
-/// use std::task::{Context, Poll};
+/// use core::task::{Context, Poll};
 ///
 /// fn read_line(_cx: &mut Context<'_>) -> Poll<String> {
 ///     Poll::Ready("Hello, World!".into())

@@ -7,7 +7,7 @@
 //! There are multiple ways to create a new [`Duration`]:
 //!
 //! ```
-//! # use std::time::Duration;
+//! # use core::time::Duration;
 //! let five_seconds = Duration::from_secs(5);
 //! assert_eq!(five_seconds, Duration::from_millis(5_000));
 //! assert_eq!(five_seconds, Duration::from_micros(5_000_000));
@@ -59,7 +59,7 @@ impl Default for Nanoseconds {
 /// # Examples
 ///
 /// ```
-/// use std::time::Duration;
+/// use core::time::Duration;
 ///
 /// let five_seconds = Duration::new(5, 0);
 /// let five_seconds_and_five_nanos = five_seconds + Duration::new(0, 5);
@@ -95,7 +95,7 @@ impl Duration {
     ///
     /// ```
     /// #![feature(duration_constants)]
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// assert_eq!(Duration::SECOND, Duration::from_secs(1));
     /// ```
@@ -108,7 +108,7 @@ impl Duration {
     ///
     /// ```
     /// #![feature(duration_constants)]
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// assert_eq!(Duration::MILLISECOND, Duration::from_millis(1));
     /// ```
@@ -121,7 +121,7 @@ impl Duration {
     ///
     /// ```
     /// #![feature(duration_constants)]
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// assert_eq!(Duration::MICROSECOND, Duration::from_micros(1));
     /// ```
@@ -134,7 +134,7 @@ impl Duration {
     ///
     /// ```
     /// #![feature(duration_constants)]
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// assert_eq!(Duration::NANOSECOND, Duration::from_nanos(1));
     /// ```
@@ -146,7 +146,7 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// let duration = Duration::ZERO;
     /// assert!(duration.is_zero());
@@ -165,7 +165,7 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// assert_eq!(Duration::MAX, Duration::new(u64::MAX, 1_000_000_000 - 1));
     /// ```
@@ -188,7 +188,7 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// let five_seconds = Duration::new(5, 0);
     /// ```
@@ -211,7 +211,7 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// let duration = Duration::from_secs(5);
     ///
@@ -231,7 +231,7 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// let duration = Duration::from_millis(2569);
     ///
@@ -251,7 +251,7 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// let duration = Duration::from_micros(1_000_002);
     ///
@@ -271,7 +271,7 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// let duration = Duration::from_nanos(1_000_000_123);
     ///
@@ -291,7 +291,7 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// assert!(Duration::ZERO.is_zero());
     /// assert!(Duration::new(0, 0).is_zero());
@@ -318,7 +318,7 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// let duration = Duration::new(5, 730023852);
     /// assert_eq!(duration.as_secs(), 5);
@@ -347,7 +347,7 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// let duration = Duration::from_millis(5432);
     /// assert_eq!(duration.as_secs(), 5);
@@ -370,7 +370,7 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// let duration = Duration::from_micros(1_234_567);
     /// assert_eq!(duration.as_secs(), 1);
@@ -393,7 +393,7 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// let duration = Duration::from_millis(5010);
     /// assert_eq!(duration.as_secs(), 5);
@@ -412,7 +412,7 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// let duration = Duration::new(5, 730023852);
     /// assert_eq!(duration.as_millis(), 5730);
@@ -430,7 +430,7 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// let duration = Duration::new(5, 730023852);
     /// assert_eq!(duration.as_micros(), 5730023);
@@ -448,7 +448,7 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// let duration = Duration::new(5, 730023852);
     /// assert_eq!(duration.as_nanos(), 5730023852);
@@ -469,7 +469,7 @@ impl Duration {
     /// Basic usage:
     ///
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 0).checked_add(Duration::new(0, 1)), Some(Duration::new(0, 1)));
     /// assert_eq!(Duration::new(1, 0).checked_add(Duration::new(u64::MAX, 0)), None);
@@ -504,7 +504,7 @@ impl Duration {
     ///
     /// ```
     /// #![feature(duration_constants)]
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 0).saturating_add(Duration::new(0, 1)), Duration::new(0, 1));
     /// assert_eq!(Duration::new(1, 0).saturating_add(Duration::new(u64::MAX, 0)), Duration::MAX);
@@ -529,7 +529,7 @@ impl Duration {
     /// Basic usage:
     ///
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 1).checked_sub(Duration::new(0, 0)), Some(Duration::new(0, 1)));
     /// assert_eq!(Duration::new(0, 0).checked_sub(Duration::new(0, 1)), None);
@@ -562,7 +562,7 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 1).saturating_sub(Duration::new(0, 0)), Duration::new(0, 1));
     /// assert_eq!(Duration::new(0, 0).saturating_sub(Duration::new(0, 1)), Duration::ZERO);
@@ -587,7 +587,7 @@ impl Duration {
     /// Basic usage:
     ///
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 500_000_001).checked_mul(2), Some(Duration::new(1, 2)));
     /// assert_eq!(Duration::new(u64::MAX - 1, 0).checked_mul(2), None);
@@ -618,7 +618,7 @@ impl Duration {
     ///
     /// ```
     /// #![feature(duration_constants)]
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 500_000_001).saturating_mul(2), Duration::new(1, 2));
     /// assert_eq!(Duration::new(u64::MAX - 1, 0).saturating_mul(2), Duration::MAX);
@@ -643,7 +643,7 @@ impl Duration {
     /// Basic usage:
     ///
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// assert_eq!(Duration::new(2, 0).checked_div(2), Some(Duration::new(1, 0)));
     /// assert_eq!(Duration::new(1, 0).checked_div(2), Some(Duration::new(0, 500_000_000)));
@@ -673,7 +673,7 @@ impl Duration {
     ///
     /// # Examples
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
     /// assert_eq!(dur.as_secs_f64(), 2.7);
@@ -692,7 +692,7 @@ impl Duration {
     ///
     /// # Examples
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
     /// assert_eq!(dur.as_secs_f32(), 2.7);
@@ -713,7 +713,7 @@ impl Duration {
     ///
     /// # Examples
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// let res = Duration::from_secs_f64(0.0);
     /// assert_eq!(res, Duration::new(0, 0));
@@ -751,7 +751,7 @@ impl Duration {
     ///
     /// # Examples
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// let res = Duration::from_secs_f32(0.0);
     /// assert_eq!(res, Duration::new(0, 0));
@@ -788,7 +788,7 @@ impl Duration {
     ///
     /// # Examples
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
     /// assert_eq!(dur.mul_f64(3.14), Duration::new(8, 478_000_000));
@@ -810,7 +810,7 @@ impl Duration {
     ///
     /// # Examples
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
     /// assert_eq!(dur.mul_f32(3.14), Duration::new(8, 478_000_641));
@@ -832,7 +832,7 @@ impl Duration {
     ///
     /// # Examples
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
     /// assert_eq!(dur.div_f64(3.14), Duration::new(0, 859_872_611));
@@ -854,7 +854,7 @@ impl Duration {
     ///
     /// # Examples
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
     /// // note that due to rounding errors result is slightly
@@ -876,7 +876,7 @@ impl Duration {
     /// # Examples
     /// ```
     /// #![feature(div_duration)]
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// let dur1 = Duration::new(2, 700_000_000);
     /// let dur2 = Duration::new(5, 400_000_000);
@@ -896,7 +896,7 @@ impl Duration {
     /// # Examples
     /// ```
     /// #![feature(div_duration)]
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// let dur1 = Duration::new(2, 700_000_000);
     /// let dur2 = Duration::new(5, 400_000_000);
@@ -1225,7 +1225,7 @@ impl fmt::Debug for Duration {
 /// # Example
 ///
 /// ```
-/// use std::time::Duration;
+/// use core::time::Duration;
 ///
 /// if let Err(e) = Duration::try_from_secs_f32(-1.0) {
 ///     println!("Failed conversion to Duration: {e}");
@@ -1354,7 +1354,7 @@ impl Duration {
     ///
     /// # Examples
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// let res = Duration::try_from_secs_f32(0.0);
     /// assert_eq!(res, Ok(Duration::new(0, 0)));
@@ -1423,7 +1423,7 @@ impl Duration {
     ///
     /// # Examples
     /// ```
-    /// use std::time::Duration;
+    /// use core::time::Duration;
     ///
     /// let res = Duration::try_from_secs_f64(0.0);
     /// assert_eq!(res, Ok(Duration::new(0, 0)));

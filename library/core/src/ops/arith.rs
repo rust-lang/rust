@@ -1,17 +1,17 @@
 /// The addition operator `+`.
 ///
 /// Note that `Rhs` is `Self` by default, but this is not mandatory. For
-/// example, [`std::time::SystemTime`] implements `Add<Duration>`, which permits
+/// example, [`core::time::SystemTime`] implements `Add<Duration>`, which permits
 /// operations of the form `SystemTime = SystemTime + Duration`.
 ///
-/// [`std::time::SystemTime`]: ../../std/time/struct.SystemTime.html
+/// [`core::time::SystemTime`]: ../../std/time/struct.SystemTime.html
 ///
 /// # Examples
 ///
 /// ## `Add`able points
 ///
 /// ```
-/// use std::ops::Add;
+/// use core::ops::Add;
 ///
 /// #[derive(Debug, Copy, Clone, PartialEq)]
 /// struct Point {
@@ -40,7 +40,7 @@
 /// using generics.
 ///
 /// ```
-/// use std::ops::Add;
+/// use core::ops::Add;
 ///
 /// #[derive(Debug, Copy, Clone, PartialEq)]
 /// struct Point<T> {
@@ -113,17 +113,17 @@ add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// The subtraction operator `-`.
 ///
 /// Note that `Rhs` is `Self` by default, but this is not mandatory. For
-/// example, [`std::time::SystemTime`] implements `Sub<Duration>`, which permits
+/// example, [`core::time::SystemTime`] implements `Sub<Duration>`, which permits
 /// operations of the form `SystemTime = SystemTime - Duration`.
 ///
-/// [`std::time::SystemTime`]: ../../std/time/struct.SystemTime.html
+/// [`core::time::SystemTime`]: ../../std/time/struct.SystemTime.html
 ///
 /// # Examples
 ///
 /// ## `Sub`tractable points
 ///
 /// ```
-/// use std::ops::Sub;
+/// use core::ops::Sub;
 ///
 /// #[derive(Debug, Copy, Clone, PartialEq)]
 /// struct Point {
@@ -152,7 +152,7 @@ add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// using generics.
 ///
 /// ```
-/// use std::ops::Sub;
+/// use core::ops::Sub;
 ///
 /// #[derive(Debug, PartialEq)]
 /// struct Point<T> {
@@ -229,7 +229,7 @@ sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// ## `Mul`tipliable rational numbers
 ///
 /// ```
-/// use std::ops::Mul;
+/// use core::ops::Mul;
 ///
 /// // By the fundamental theorem of arithmetic, rational numbers in lowest
 /// // terms are unique. So, by keeping `Rational`s in reduced form, we can
@@ -288,7 +288,7 @@ sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// ## Multiplying vectors by scalars as in linear algebra
 ///
 /// ```
-/// use std::ops::Mul;
+/// use core::ops::Mul;
 ///
 /// struct Scalar { value: usize }
 ///
@@ -360,7 +360,7 @@ mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// ## `Div`idable rational numbers
 ///
 /// ```
-/// use std::ops::Div;
+/// use core::ops::Div;
 ///
 /// // By the fundamental theorem of arithmetic, rational numbers in lowest
 /// // terms are unique. So, by keeping `Rational`s in reduced form, we can
@@ -423,7 +423,7 @@ mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// ## Dividing vectors by scalars as in linear algebra
 ///
 /// ```
-/// use std::ops::Div;
+/// use core::ops::Div;
 ///
 /// struct Scalar { value: f32 }
 ///
@@ -523,7 +523,7 @@ div_impl_float! { f32 f64 }
 /// given length.
 ///
 /// ```
-/// use std::ops::Rem;
+/// use core::ops::Rem;
 ///
 /// #[derive(PartialEq, Debug)]
 /// struct SplitSlice<'a, T: 'a> {
@@ -638,7 +638,7 @@ rem_impl_float! { f32 f64 }
 /// negate its value.
 ///
 /// ```
-/// use std::ops::Neg;
+/// use core::ops::Neg;
 ///
 /// #[derive(Debug, PartialEq)]
 /// enum Sign {
@@ -715,7 +715,7 @@ neg_impl! { isize i8 i16 i32 i64 i128 f32 f64 }
 /// trait, and then demonstrates add-assigning to a mutable `Point`.
 ///
 /// ```
-/// use std::ops::AddAssign;
+/// use core::ops::AddAssign;
 ///
 /// #[derive(Debug, Copy, Clone, PartialEq)]
 /// struct Point {
@@ -783,7 +783,7 @@ add_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// trait, and then demonstrates sub-assigning to a mutable `Point`.
 ///
 /// ```
-/// use std::ops::SubAssign;
+/// use core::ops::SubAssign;
 ///
 /// #[derive(Debug, Copy, Clone, PartialEq)]
 /// struct Point {
@@ -848,7 +848,7 @@ sub_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// # Examples
 ///
 /// ```
-/// use std::ops::MulAssign;
+/// use core::ops::MulAssign;
 ///
 /// #[derive(Debug, PartialEq)]
 /// struct Frequency { hertz: f64 }
@@ -907,7 +907,7 @@ mul_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// # Examples
 ///
 /// ```
-/// use std::ops::DivAssign;
+/// use core::ops::DivAssign;
 ///
 /// #[derive(Debug, PartialEq)]
 /// struct Frequency { hertz: f64 }
@@ -965,7 +965,7 @@ div_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// # Examples
 ///
 /// ```
-/// use std::ops::RemAssign;
+/// use core::ops::RemAssign;
 ///
 /// struct CookieJar { cookies: u32 }
 ///

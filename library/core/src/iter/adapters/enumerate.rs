@@ -268,7 +268,7 @@ impl<I: Default> Default for Enumerate<I> {
     /// Creates an `Enumerate` iterator from the default value of `I`
     /// ```
     /// # use core::slice;
-    /// # use std::iter::Enumerate;
+    /// # use core::iter::Enumerate;
     /// let iter: Enumerate<slice::Iter<'_, u8>> = Default::default();
     /// assert_eq!(iter.len(), 0);
     /// ```

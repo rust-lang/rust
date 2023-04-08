@@ -40,7 +40,7 @@
 //! and then demonstrates adding and subtracting two `Point`s.
 //!
 //! ```rust
-//! use std::ops::{Add, Sub};
+//! use core::ops::{Add, Sub};
 //!
 //! #[derive(Debug, Copy, Clone, PartialEq)]
 //! struct Point {

@@ -801,7 +801,7 @@ extern "rust-intrinsic" {
     /// Therefore, implementations must not require the user to uphold
     /// any safety invariants.
     ///
-    /// [`std::process::abort`](../../std/process/fn.abort.html) is to be preferred if possible,
+    /// [`core::process::abort`](../../std/process/fn.abort.html) is to be preferred if possible,
     /// as its behavior is more user-friendly and more stable.
     ///
     /// The current implementation of `intrinsics::abort` is to invoke an invalid instruction,
@@ -957,7 +957,7 @@ extern "rust-intrinsic" {
     #[rustc_safe_intrinsic]
     pub fn assert_zero_valid<T>();
 
-    /// A guard for `std::mem::uninitialized`. This will statically either panic, or do nothing.
+    /// A guard for `core::mem::uninitialized`. This will statically either panic, or do nothing.
     ///
     /// This intrinsic does not have a stable counterpart.
     #[rustc_const_unstable(feature = "const_assert_type2", issue = "none")]
@@ -1038,7 +1038,7 @@ extern "rust-intrinsic" {
     /// // Transmuting between raw pointers and function pointers (i.e., two pointer types) is fine.
     /// let pointer = foo as *const ();
     /// let function = unsafe {
-    ///     std::mem::transmute::<*const (), fn() -> i32>(pointer)
+    ///     core::mem::transmute::<*const (), fn() -> i32>(pointer)
     /// };
     /// assert_eq!(function(), 0);
     /// ```
@@ -1049,12 +1049,12 @@ extern "rust-intrinsic" {
     /// ```
     /// struct R<'a>(&'a i32);
     /// unsafe fn extend_lifetime<'b>(r: R<'b>) -> R<'static> {
-    ///     std::mem::transmute::<R<'b>, R<'static>>(r)
+    ///     core::mem::transmute::<R<'b>, R<'static>>(r)
     /// }
     ///
     /// unsafe fn shorten_invariant_lifetime<'b, 'c>(r: &'b mut R<'static>)
     ///                                              -> &'b mut R<'c> {
-    ///     std::mem::transmute::<&'b mut R<'static>, &'b mut R<'c>>(r)
+    ///     core::mem::transmute::<&'b mut R<'static>, &'b mut R<'c>>(r)
     /// }
     /// ```
     ///
@@ -1070,7 +1070,7 @@ extern "rust-intrinsic" {
     /// let raw_bytes = [0x78, 0x56, 0x34, 0x12];
     ///
     /// let num = unsafe {
-    ///     std::mem::transmute::<[u8; 4], u32>(raw_bytes)
+    ///     core::mem::transmute::<[u8; 4], u32>(raw_bytes)
     /// };
     ///
     /// // use `u32::from_ne_bytes` instead
@@ -1087,7 +1087,7 @@ extern "rust-intrinsic" {
     /// ```no_run
     /// let ptr = &0;
     /// let ptr_num_transmute = unsafe {
-    ///     std::mem::transmute::<&i32, usize>(ptr)
+    ///     core::mem::transmute::<&i32, usize>(ptr)
     /// };
     ///
     /// // Use an `as` cast instead
@@ -1109,7 +1109,7 @@ extern "rust-intrinsic" {
     /// ```
     /// let ptr: *mut i32 = &mut 0;
     /// let ref_transmuted = unsafe {
-    ///     std::mem::transmute::<*mut i32, &mut i32>(ptr)
+    ///     core::mem::transmute::<*mut i32, &mut i32>(ptr)
     /// };
     ///
     /// // Use a reborrow instead
@@ -1121,7 +1121,7 @@ extern "rust-intrinsic" {
     /// ```
     /// let ptr = &mut 0;
     /// let val_transmuted = unsafe {
-    ///     std::mem::transmute::<&mut i32, &mut u32>(ptr)
+    ///     core::mem::transmute::<&mut i32, &mut u32>(ptr)
     /// };
     ///
     /// // Now, put together `as` and reborrowing - note the chaining of `as`
@@ -1133,7 +1133,7 @@ extern "rust-intrinsic" {
     ///
     /// ```
     /// // this is not a good way to do this.
-    /// let slice = unsafe { std::mem::transmute::<&str, &[u8]>("Rust") };
+    /// let slice = unsafe { core::mem::transmute::<&str, &[u8]>("Rust") };
     /// assert_eq!(slice, &[82, 117, 115, 116]);
     ///
     /// // You could use `str::as_bytes`
@@ -1164,7 +1164,7 @@ extern "rust-intrinsic" {
     /// // bad idea and could cause Undefined Behavior.
     /// // However, it is no-copy.
     /// let v_transmuted = unsafe {
-    ///     std::mem::transmute::<Vec<&i32>, Vec<Option<&i32>>>(v_clone)
+    ///     core::mem::transmute::<Vec<&i32>, Vec<Option<&i32>>>(v_clone)
     /// };
     ///
     /// let v_clone = v_orig.clone();
@@ -1185,7 +1185,7 @@ extern "rust-intrinsic" {
     /// let v_from_raw = unsafe {
     // FIXME Update this when vec_into_raw_parts is stabilized
     ///     // Ensure the original vector is not dropped.
-    ///     let mut v_clone = std::mem::ManuallyDrop::new(v_clone);
+    ///     let mut v_clone = core::mem::ManuallyDrop::new(v_clone);
     ///     Vec::from_raw_parts(v_clone.as_mut_ptr() as *mut Option<&i32>,
     ///                         v_clone.len(),
     ///                         v_clone.capacity())
@@ -1197,7 +1197,7 @@ extern "rust-intrinsic" {
     /// Implementing `split_at_mut`:
     ///
     /// ```
-    /// use std::{slice, mem};
+    /// use core::{slice, mem};
     ///
     /// // There are multiple ways to do this, and there are multiple problems
     /// // with the following (transmute) way.
@@ -1695,7 +1695,7 @@ extern "rust-intrinsic" {
     /// ```
     /// #![feature(core_intrinsics)]
     ///
-    /// use std::intrinsics::ctlz;
+    /// use core::intrinsics::ctlz;
     ///
     /// let x = 0b0001_1100_u8;
     /// let num_leading = ctlz(x);
@@ -1707,7 +1707,7 @@ extern "rust-intrinsic" {
     /// ```
     /// #![feature(core_intrinsics)]
     ///
-    /// use std::intrinsics::ctlz;
+    /// use core::intrinsics::ctlz;
     ///
     /// let x = 0u16;
     /// let num_leading = ctlz(x);
@@ -1727,7 +1727,7 @@ extern "rust-intrinsic" {
     /// ```
     /// #![feature(core_intrinsics)]
     ///
-    /// use std::intrinsics::ctlz_nonzero;
+    /// use core::intrinsics::ctlz_nonzero;
     ///
     /// let x = 0b0001_1100_u8;
     /// let num_leading = unsafe { ctlz_nonzero(x) };
@@ -1752,7 +1752,7 @@ extern "rust-intrinsic" {
     /// ```
     /// #![feature(core_intrinsics)]
     ///
-    /// use std::intrinsics::cttz;
+    /// use core::intrinsics::cttz;
     ///
     /// let x = 0b0011_1000_u8;
     /// let num_trailing = cttz(x);
@@ -1764,7 +1764,7 @@ extern "rust-intrinsic" {
     /// ```
     /// #![feature(core_intrinsics)]
     ///
-    /// use std::intrinsics::cttz;
+    /// use core::intrinsics::cttz;
     ///
     /// let x = 0u16;
     /// let num_trailing = cttz(x);
@@ -1784,7 +1784,7 @@ extern "rust-intrinsic" {
     /// ```
     /// #![feature(core_intrinsics)]
     ///
-    /// use std::intrinsics::cttz_nonzero;
+    /// use core::intrinsics::cttz_nonzero;
     ///
     /// let x = 0b0011_1000_u8;
     /// let num_trailing = unsafe { cttz_nonzero(x) };
@@ -2138,9 +2138,9 @@ extern "rust-intrinsic" {
     #[rustc_const_unstable(feature = "const_intrinsic_raw_eq", issue = "none")]
     pub fn raw_eq<T>(a: &T, b: &T) -> bool;
 
-    /// See documentation of [`std::hint::black_box`] for details.
+    /// See documentation of [`core::hint::black_box`] for details.
     ///
-    /// [`std::hint::black_box`]: crate::hint::black_box
+    /// [`core::hint::black_box`]: crate::hint::black_box
     #[rustc_const_unstable(feature = "const_black_box", issue = "none")]
     #[rustc_safe_intrinsic]
     pub fn black_box<T>(dummy: T) -> T;
@@ -2180,8 +2180,8 @@ extern "rust-intrinsic" {
     /// ```no_run
     /// #![feature(const_eval_select)]
     /// #![feature(core_intrinsics)]
-    /// use std::hint::unreachable_unchecked;
-    /// use std::intrinsics::const_eval_select;
+    /// use core::hint::unreachable_unchecked;
+    /// use core::intrinsics::const_eval_select;
     ///
     /// // Crate A
     /// pub const fn inconsistent() -> i32 {
@@ -2343,7 +2343,7 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
 /// Manually implement [`Vec::append`]:
 ///
 /// ```
-/// use std::ptr;
+/// use core::ptr;
 ///
 /// /// Moves all the elements of `src` into `dst`, leaving `src` empty.
 /// fn append<T>(dst: &mut Vec<T>, src: &mut Vec<T>) {
@@ -2452,7 +2452,7 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 /// Efficiently create a Rust vector from an unsafe buffer:
 ///
 /// ```
-/// use std::ptr;
+/// use core::ptr;
 ///
 /// /// # Safety
 /// ///
@@ -2536,7 +2536,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 /// Basic usage:
 ///
 /// ```
-/// use std::ptr;
+/// use core::ptr;
 ///
 /// let mut vec = vec![0u32; 4];
 /// unsafe {

@@ -125,7 +125,7 @@ pub auto trait RefUnwindSafe {}
 /// itself is unwind safe, bypassing all checks for all variables:
 ///
 /// ```
-/// use std::panic::{self, AssertUnwindSafe};
+/// use core::panic::{self, AssertUnwindSafe};
 ///
 /// let mut variable = 4;
 ///
@@ -153,7 +153,7 @@ pub auto trait RefUnwindSafe {}
 /// not.
 ///
 /// ```
-/// use std::panic::{self, AssertUnwindSafe};
+/// use core::panic::{self, AssertUnwindSafe};
 ///
 /// let mut variable = 4;
 /// let other_capture = 3;

@@ -20,7 +20,7 @@ use crate::fmt;
 /// ```
 /// fn from_utf8_lossy<F>(mut input: &[u8], mut push: F) where F: FnMut(&str) {
 ///     loop {
-///         match std::str::from_utf8(input) {
+///         match core::str::from_utf8(input) {
 ///             Ok(valid) => {
 ///                 push(valid);
 ///                 break
@@ -28,7 +28,7 @@ use crate::fmt;
 ///             Err(error) => {
 ///                 let (valid, after_valid) = input.split_at(error.valid_up_to());
 ///                 unsafe {
-///                     push(std::str::from_utf8_unchecked(valid))
+///                     push(core::str::from_utf8_unchecked(valid))
 ///                 }
 ///                 push("\u{FFFD}");
 ///
@@ -61,12 +61,12 @@ impl Utf8Error {
     /// Basic usage:
     ///
     /// ```
-    /// use std::str;
+    /// use core::str;
     ///
     /// // some invalid bytes, in a vector
     /// let sparkle_heart = vec![0, 159, 146, 150];
     ///
-    /// // std::str::from_utf8 returns a Utf8Error
+    /// // core::str::from_utf8 returns a Utf8Error
     /// let error = str::from_utf8(&sparkle_heart).unwrap_err();
     ///
     /// // the second byte is invalid here

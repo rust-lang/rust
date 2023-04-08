@@ -25,7 +25,7 @@
 //! as [`mem::swap`]:
 //!
 //! ```
-//! use std::pin::Pin;
+//! use core::pin::Pin;
 //! fn swap_pins<T>(x: Pin<&mut T>, y: Pin<&mut T>) {
 //!     // `mem::swap` needs `&mut T`, but we cannot get it.
 //!     // We are stuck, we cannot swap the contents of these references.
@@ -71,9 +71,9 @@
 //! Feel free to [skip to where the theoretical discussion continues](#drop-guarantee).
 //!
 //! ```rust
-//! use std::pin::Pin;
-//! use std::marker::PhantomPinned;
-//! use std::ptr::NonNull;
+//! use core::pin::Pin;
+//! use core::marker::PhantomPinned;
+//! use core::ptr::NonNull;
 //!
 //! // This is a self-referential struct because the slice field points to the data field.
 //! // We cannot inform the compiler about that with a normal reference,
@@ -120,7 +120,7 @@
 //!
 //! // Since our type doesn't implement Unpin, this will fail to compile:
 //! // let mut new_unmoved = Unmovable::new("world".to_string());
-//! // std::mem::swap(&mut *still_unmoved, &mut *new_unmoved);
+//! // core::mem::swap(&mut *still_unmoved, &mut *new_unmoved);
 //! ```
 //!
 //! # Example: intrusive doubly-linked list
@@ -181,7 +181,7 @@
 //! For example, you could implement [`Drop`][Drop] as follows:
 //!
 //! ```rust,no_run
-//! # use std::pin::Pin;
+//! # use core::pin::Pin;
 //! # struct Type { }
 //! impl Drop for Type {
 //!     fn drop(&mut self) {
@@ -240,7 +240,7 @@
 //! <code>[Pin]<[&mut] Struct></code> into <code>[&mut] Field</code>:
 //!
 //! ```rust,no_run
-//! # use std::pin::Pin;
+//! # use core::pin::Pin;
 //! # type Field = i32;
 //! # struct Struct { field: Field }
 //! impl Struct {
@@ -264,7 +264,7 @@
 //! witnessing that the field is pinned:
 //!
 //! ```rust,no_run
-//! # use std::pin::Pin;
+//! # use core::pin::Pin;
 //! # type Field = i32;
 //! # struct Struct { field: Field }
 //! impl Struct {
@@ -489,7 +489,7 @@ impl<P: Deref<Target: Unpin>> Pin<P> {
     /// # Examples
     ///
     /// ```
-    /// use std::pin::Pin;
+    /// use core::pin::Pin;
     ///
     /// let mut val: u8 = 5;
     /// // We can pin the value, since it doesn't care about being moved
@@ -512,7 +512,7 @@ impl<P: Deref<Target: Unpin>> Pin<P> {
     /// # Examples
     ///
     /// ```
-    /// use std::pin::Pin;
+    /// use core::pin::Pin;
     ///
     /// let mut val: u8 = 5;
     /// let pinned: Pin<&mut u8> = Pin::new(&mut val);
@@ -557,8 +557,8 @@ impl<P: Deref> Pin<P> {
     /// while you are able to pin it for the given lifetime `'a`, you have no control
     /// over whether it is kept pinned once `'a` ends:
     /// ```
-    /// use std::mem;
-    /// use std::pin::Pin;
+    /// use core::mem;
+    /// use core::pin::Pin;
     ///
     /// fn move_pinned_ref<T>(mut a: T, mut b: T) {
     ///     unsafe {
@@ -575,8 +575,8 @@ impl<P: Deref> Pin<P> {
     /// Similarly, calling `Pin::new_unchecked` on an `Rc<T>` is unsafe because there could be
     /// aliases to the same data that are not subject to the pinning restrictions:
     /// ```
-    /// use std::rc::Rc;
-    /// use std::pin::Pin;
+    /// use core::rc::Rc;
+    /// use core::pin::Pin;
     ///
     /// fn move_pinned_rc<T>(mut x: Rc<T>) {
     ///     let pinned = unsafe { Pin::new_unchecked(Rc::clone(&x)) };
@@ -599,9 +599,9 @@ impl<P: Deref> Pin<P> {
     /// implicitly makes the promise that the closure itself is pinned, and that *all* uses
     /// of this closure capture respect that pinning.
     /// ```
-    /// use std::pin::Pin;
-    /// use std::task::Context;
-    /// use std::future::Future;
+    /// use core::pin::Pin;
+    /// use core::task::Context;
+    /// use core::future::Future;
     ///
     /// fn move_pinned_closure(mut x: impl Future, cx: &mut Context<'_>) {
     ///     // Create a closure that moves `x`, and then internally uses it in a pinned way.
@@ -624,9 +624,9 @@ impl<P: Deref> Pin<P> {
     /// The better alternative is to avoid all that trouble and do the pinning in the outer function
     /// instead (here using the [`pin!`][crate::pin::pin] macro):
     /// ```
-    /// use std::pin::pin;
-    /// use std::task::Context;
-    /// use std::future::Future;
+    /// use core::pin::pin;
+    /// use core::task::Context;
+    /// use core::future::Future;
     ///
     /// fn move_pinned_closure(mut x: impl Future, cx: &mut Context<'_>) {
     ///     let mut x = pin!(x);
@@ -702,7 +702,7 @@ impl<P: DerefMut> Pin<P> {
     /// # Example
     ///
     /// ```
-    /// use std::pin::Pin;
+    /// use core::pin::Pin;
     ///
     /// # struct Type {}
     /// impl Type {
@@ -732,7 +732,7 @@ impl<P: DerefMut> Pin<P> {
     /// # Example
     ///
     /// ```
-    /// use std::pin::Pin;
+    /// use core::pin::Pin;
     ///
     /// let mut val: u8 = 5;
     /// let mut pinned: Pin<&mut u8> = Pin::new(&mut val);
@@ -1045,13 +1045,13 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 /// ### Manually polling a `Future` (without `Unpin` bounds)
 ///
 /// ```rust
-/// use std::{
+/// use core::{
 ///     future::Future,
 ///     pin::pin,
 ///     task::{Context, Poll},
 ///     thread,
 /// };
-/// # use std::{sync::Arc, task::Wake, thread::Thread};
+/// # use core::{sync::Arc, task::Wake, thread::Thread};
 ///
 /// # /// A waker that wakes up the current thread when called.
 /// # struct ThreadWaker(Thread);

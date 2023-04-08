@@ -25,7 +25,7 @@
 //! the object's `TypeId`. For example:
 //!
 //! ```
-//! use std::any::{Any, TypeId};
+//! use core::any::{Any, TypeId};
 //!
 //! let boxed: Box<dyn Any> = Box::new(3_i32);
 //!
@@ -48,8 +48,8 @@
 //! use runtime reflection instead.
 //!
 //! ```rust
-//! use std::fmt::Debug;
-//! use std::any::Any;
+//! use core::fmt::Debug;
+//! use core::any::Any;
 //!
 //! // Logger function for any type that implements Debug.
 //! fn log<T: Any + Debug>(value: &T) {
@@ -111,7 +111,7 @@
 //!
 //! ```
 //! # #![feature(provide_any)]
-//! use std::any::{Provider, Demand, request_ref};
+//! use core::any::{Provider, Demand, request_ref};
 //!
 //! // Definition of MyTrait, a data provider.
 //! trait MyTrait: Provider {
@@ -183,7 +183,7 @@ pub trait Any: 'static {
     /// # Examples
     ///
     /// ```
-    /// use std::any::{Any, TypeId};
+    /// use core::any::{Any, TypeId};
     ///
     /// fn is_string(s: &dyn Any) -> bool {
     ///     TypeId::of::<String>() == s.type_id()
@@ -237,7 +237,7 @@ impl dyn Any {
     /// # Examples
     ///
     /// ```
-    /// use std::any::Any;
+    /// use core::any::Any;
     ///
     /// fn is_string(s: &dyn Any) {
     ///     if s.is::<String>() {
@@ -269,7 +269,7 @@ impl dyn Any {
     /// # Examples
     ///
     /// ```
-    /// use std::any::Any;
+    /// use core::any::Any;
     ///
     /// fn print_if_string(s: &dyn Any) {
     ///     if let Some(string) = s.downcast_ref::<String>() {
@@ -301,7 +301,7 @@ impl dyn Any {
     /// # Examples
     ///
     /// ```
-    /// use std::any::Any;
+    /// use core::any::Any;
     ///
     /// fn modify_if_u32(s: &mut dyn Any) {
     ///     if let Some(num) = s.downcast_mut::<u32>() {
@@ -338,7 +338,7 @@ impl dyn Any {
     /// ```
     /// #![feature(downcast_unchecked)]
     ///
-    /// use std::any::Any;
+    /// use core::any::Any;
     ///
     /// let x: Box<dyn Any> = Box::new(1_usize);
     ///
@@ -366,7 +366,7 @@ impl dyn Any {
     /// ```
     /// #![feature(downcast_unchecked)]
     ///
-    /// use std::any::Any;
+    /// use core::any::Any;
     ///
     /// let mut x: Box<dyn Any> = Box::new(1_usize);
     ///
@@ -396,7 +396,7 @@ impl dyn Any + Send {
     /// # Examples
     ///
     /// ```
-    /// use std::any::Any;
+    /// use core::any::Any;
     ///
     /// fn is_string(s: &(dyn Any + Send)) {
     ///     if s.is::<String>() {
@@ -420,7 +420,7 @@ impl dyn Any + Send {
     /// # Examples
     ///
     /// ```
-    /// use std::any::Any;
+    /// use core::any::Any;
     ///
     /// fn print_if_string(s: &(dyn Any + Send)) {
     ///     if let Some(string) = s.downcast_ref::<String>() {
@@ -444,7 +444,7 @@ impl dyn Any + Send {
     /// # Examples
     ///
     /// ```
-    /// use std::any::Any;
+    /// use core::any::Any;
     ///
     /// fn modify_if_u32(s: &mut (dyn Any + Send)) {
     ///     if let Some(num) = s.downcast_mut::<u32>() {
@@ -474,7 +474,7 @@ impl dyn Any + Send {
     /// ```
     /// #![feature(downcast_unchecked)]
     ///
-    /// use std::any::Any;
+    /// use core::any::Any;
     ///
     /// let x: Box<dyn Any> = Box::new(1_usize);
     ///
@@ -500,7 +500,7 @@ impl dyn Any + Send {
     /// ```
     /// #![feature(downcast_unchecked)]
     ///
-    /// use std::any::Any;
+    /// use core::any::Any;
     ///
     /// let mut x: Box<dyn Any> = Box::new(1_usize);
     ///
@@ -528,7 +528,7 @@ impl dyn Any + Send + Sync {
     /// # Examples
     ///
     /// ```
-    /// use std::any::Any;
+    /// use core::any::Any;
     ///
     /// fn is_string(s: &(dyn Any + Send + Sync)) {
     ///     if s.is::<String>() {
@@ -552,7 +552,7 @@ impl dyn Any + Send + Sync {
     /// # Examples
     ///
     /// ```
-    /// use std::any::Any;
+    /// use core::any::Any;
     ///
     /// fn print_if_string(s: &(dyn Any + Send + Sync)) {
     ///     if let Some(string) = s.downcast_ref::<String>() {
@@ -576,7 +576,7 @@ impl dyn Any + Send + Sync {
     /// # Examples
     ///
     /// ```
-    /// use std::any::Any;
+    /// use core::any::Any;
     ///
     /// fn modify_if_u32(s: &mut (dyn Any + Send + Sync)) {
     ///     if let Some(num) = s.downcast_mut::<u32>() {
@@ -606,7 +606,7 @@ impl dyn Any + Send + Sync {
     /// ```
     /// #![feature(downcast_unchecked)]
     ///
-    /// use std::any::Any;
+    /// use core::any::Any;
     ///
     /// let x: Box<dyn Any> = Box::new(1_usize);
     ///
@@ -628,7 +628,7 @@ impl dyn Any + Send + Sync {
     /// ```
     /// #![feature(downcast_unchecked)]
     ///
-    /// use std::any::Any;
+    /// use core::any::Any;
     ///
     /// let mut x: Box<dyn Any> = Box::new(1_usize);
     ///
@@ -676,7 +676,7 @@ impl TypeId {
     /// # Examples
     ///
     /// ```
-    /// use std::any::{Any, TypeId};
+    /// use core::any::{Any, TypeId};
     ///
     /// fn is_string<T: ?Sized + Any>(_s: &T) -> bool {
     ///     TypeId::of::<String>() == TypeId::of::<T>()
@@ -701,7 +701,7 @@ impl TypeId {
 /// string returned are not specified, other than being a best-effort
 /// description of the type. For example, amongst the strings
 /// that `type_name::<Option<String>>()` might return are `"Option<String>"` and
-/// `"std::option::Option<std::string::String>"`.
+/// `"core::option::Option<core::string::String>"`.
 ///
 /// The returned string must not be considered to be a unique identifier of a
 /// type as multiple types may map to the same type name. Similarly, there is no
@@ -716,7 +716,7 @@ impl TypeId {
 ///
 /// ```rust
 /// assert_eq!(
-///     std::any::type_name::<Option<String>>(),
+///     core::any::type_name::<Option<String>>(),
 ///     "core::option::Option<alloc::string::String>",
 /// );
 /// ```
@@ -736,7 +736,7 @@ pub const fn type_name<T: ?Sized>() -> &'static str {
 /// This is intended for diagnostic use. The exact contents and format of the
 /// string are not specified, other than being a best-effort description of the
 /// type. For example, `type_name_of_val::<Option<String>>(None)` could return
-/// `"Option<String>"` or `"std::option::Option<std::string::String>"`, but not
+/// `"Option<String>"` or `"core::option::Option<core::string::String>"`, but not
 /// `"foobar"`. In addition, the output may change between versions of the
 /// compiler.
 ///
@@ -756,7 +756,7 @@ pub const fn type_name<T: ?Sized>() -> &'static str {
 ///
 /// ```rust
 /// #![feature(type_name_of_val)]
-/// use std::any::type_name_of_val;
+/// use core::any::type_name_of_val;
 ///
 /// let x = 1;
 /// println!("{}", type_name_of_val(&x));
@@ -791,7 +791,7 @@ pub trait Provider {
     ///
     /// ```rust
     /// # #![feature(provide_any)]
-    /// use std::any::{Provider, Demand};
+    /// use core::any::{Provider, Demand};
     /// # struct SomeConcreteType { field: String, num_field: i32 }
     ///
     /// impl Provider for SomeConcreteType {
@@ -813,7 +813,7 @@ pub trait Provider {
 ///
 /// ```rust
 /// # #![feature(provide_any)]
-/// use std::any::{Provider, request_value};
+/// use core::any::{Provider, request_value};
 ///
 /// fn get_string(provider: &impl Provider) -> String {
 ///     request_value::<String>(provider).unwrap()
@@ -835,7 +835,7 @@ where
 ///
 /// ```rust
 /// # #![feature(provide_any)]
-/// use std::any::{Provider, request_ref};
+/// use core::any::{Provider, request_ref};
 ///
 /// fn get_str(provider: &impl Provider) -> &str {
 ///     request_ref::<str>(provider).unwrap()
@@ -887,7 +887,7 @@ impl<'a> Demand<'a> {
     /// ```rust
     /// #![feature(provide_any)]
     ///
-    /// use std::any::{Provider, Demand};
+    /// use core::any::{Provider, Demand};
     /// # struct SomeConcreteType { field: u8 }
     ///
     /// impl Provider for SomeConcreteType {
@@ -913,7 +913,7 @@ impl<'a> Demand<'a> {
     /// ```rust
     /// #![feature(provide_any)]
     ///
-    /// use std::any::{Provider, Demand};
+    /// use core::any::{Provider, Demand};
     /// # struct SomeConcreteType { field: String }
     ///
     /// impl Provider for SomeConcreteType {
@@ -940,7 +940,7 @@ impl<'a> Demand<'a> {
     /// ```rust
     /// #![feature(provide_any)]
     ///
-    /// use std::any::{Provider, Demand};
+    /// use core::any::{Provider, Demand};
     /// # struct SomeConcreteType { field: String }
     ///
     /// impl Provider for SomeConcreteType {
@@ -964,7 +964,7 @@ impl<'a> Demand<'a> {
     /// ```rust
     /// #![feature(provide_any)]
     ///
-    /// use std::any::{Provider, Demand};
+    /// use core::any::{Provider, Demand};
     /// # struct SomeConcreteType { business: String, party: String }
     /// # fn today_is_a_weekday() -> bool { true }
     ///
@@ -1022,7 +1022,7 @@ impl<'a> Demand<'a> {
     /// ```rust
     /// #![feature(provide_any)]
     ///
-    /// use std::any::{Provider, Demand};
+    /// use core::any::{Provider, Demand};
     ///
     /// struct Parent(Option<u8>);
     ///
@@ -1067,11 +1067,11 @@ impl<'a> Demand<'a> {
     ///
     /// let parent = Parent(Some(42));
     /// let child = Child { parent };
-    /// assert_eq!(Some(42), std::any::request_value::<u8>(&child));
+    /// assert_eq!(Some(42), core::any::request_value::<u8>(&child));
     ///
     /// let parent = Parent(None);
     /// let child = Child { parent };
-    /// assert_eq!(Some(99), std::any::request_value::<u8>(&child));
+    /// assert_eq!(Some(99), core::any::request_value::<u8>(&child));
     /// ```
     #[unstable(feature = "provide_any", issue = "96024")]
     pub fn would_be_satisfied_by_value_of<T>(&self) -> bool
@@ -1093,7 +1093,7 @@ impl<'a> Demand<'a> {
     /// ```rust
     /// #![feature(provide_any)]
     ///
-    /// use std::any::{Provider, Demand};
+    /// use core::any::{Provider, Demand};
     ///
     /// struct Parent(Option<String>);
     ///
@@ -1139,11 +1139,11 @@ impl<'a> Demand<'a> {
     ///
     /// let parent = Parent(Some("parent".into()));
     /// let child = Child { parent, name: "child".into() };
-    /// assert_eq!(Some("parent"), std::any::request_ref::<str>(&child));
+    /// assert_eq!(Some("parent"), core::any::request_ref::<str>(&child));
     ///
     /// let parent = Parent(None);
     /// let child = Child { parent, name: "child".into() };
-    /// assert_eq!(Some("child"), std::any::request_ref::<str>(&child));
+    /// assert_eq!(Some("child"), core::any::request_ref::<str>(&child));
     /// ```
     #[unstable(feature = "provide_any", issue = "96024")]
     pub fn would_be_satisfied_by_ref_of<T>(&self) -> bool

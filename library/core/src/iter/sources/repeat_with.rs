@@ -26,7 +26,7 @@ use crate::ops::Try;
 /// Basic usage:
 ///
 /// ```
-/// use std::iter;
+/// use core::iter;
 ///
 /// // let's assume we have some value of a type that is not `Clone`
 /// // or which we don't want to have in memory just yet because it is expensive:
@@ -46,7 +46,7 @@ use crate::ops::Try;
 /// Using mutation and going finite:
 ///
 /// ```rust
-/// use std::iter;
+/// use core::iter;
 ///
 /// // From the zeroth to the third power of two:
 /// let mut curr = 1;

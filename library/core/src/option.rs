@@ -312,7 +312,7 @@
 //! message if it receives [`None`].
 //!
 //! ```
-//! # use std::collections::BTreeMap;
+//! # use core::collections::BTreeMap;
 //! let mut bt = BTreeMap::new();
 //! bt.insert(20u8, "foo");
 //! bt.insert(42u8, "bar");
@@ -414,7 +414,7 @@
 //! [`once()`]: crate::iter::once
 //!
 //! ```compile_fail,E0308
-//! # use std::iter::{empty, once};
+//! # use core::iter::{empty, once};
 //! // This won't compile because all possible returns from the function
 //! // must have the same concrete type.
 //! fn make_iter(do_insert: bool) -> impl Iterator<Item = i32> {
@@ -739,7 +739,7 @@ impl<T> Option<T> {
     /// iterator over an `Option` or slice.
     ///
     /// Note: Should you have an `Option<&T>` and wish to get a slice of `T`,
-    /// you can unpack it via `opt.map_or(&[], std::slice::from_ref)`.
+    /// you can unpack it via `opt.map_or(&[], core::slice::from_ref)`.
     ///
     /// # Examples
     ///
@@ -797,7 +797,7 @@ impl<T> Option<T> {
     ///
     /// Note: Should you have an `Option<&mut T>` instead of a
     /// `&mut Option<T>`, which this method takes, you can obtain a mutable
-    /// slice via `opt.map_or(&mut [], std::slice::from_mut)`.
+    /// slice via `opt.map_or(&mut [], core::slice::from_mut)`.
     ///
     /// # Examples
     ///
@@ -902,7 +902,7 @@ impl<T> Option<T> {
     ///
     /// For more detail on expect message styles and the reasoning behind our
     /// recommendation please refer to the section on ["Common Message
-    /// Styles"](../../std/error/index.html#common-message-styles) in the [`std::error`](../../std/error/index.html) module docs.
+    /// Styles"](../../std/error/index.html#common-message-styles) in the [`core::error`](../../std/error/index.html) module docs.
     #[inline]
     #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]

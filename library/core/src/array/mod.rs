@@ -79,16 +79,16 @@ where
 /// ```rust
 /// #![feature(array_try_from_fn)]
 ///
-/// let array: Result<[u8; 5], _> = std::array::try_from_fn(|i| i.try_into());
+/// let array: Result<[u8; 5], _> = core::array::try_from_fn(|i| i.try_into());
 /// assert_eq!(array, Ok([0, 1, 2, 3, 4]));
 ///
-/// let array: Result<[i8; 200], _> = std::array::try_from_fn(|i| i.try_into());
+/// let array: Result<[i8; 200], _> = core::array::try_from_fn(|i| i.try_into());
 /// assert!(array.is_err());
 ///
-/// let array: Option<[_; 4]> = std::array::try_from_fn(|i| i.checked_add(100));
+/// let array: Option<[_; 4]> = core::array::try_from_fn(|i| i.checked_add(100));
 /// assert_eq!(array, Some([100, 101, 102, 103]));
 ///
-/// let array: Option<[_; 4]> = std::array::try_from_fn(|i| i.checked_sub(100));
+/// let array: Option<[_; 4]> = core::array::try_from_fn(|i| i.checked_sub(100));
 /// assert_eq!(array, None);
 /// ```
 #[inline]
@@ -294,9 +294,9 @@ impl<'a, T, const N: usize> TryFrom<&'a mut [T]> for &'a mut [T; N] {
 ///
 /// ```
 /// #![feature(build_hasher_simple_hash_one)]
-/// use std::hash::BuildHasher;
+/// use core::hash::BuildHasher;
 ///
-/// let b = std::collections::hash_map::RandomState::new();
+/// let b = core::collections::hash_map::RandomState::new();
 /// let a: [u8; 3] = [0xa8, 0x3c, 0x09];
 /// let s: &[u8] = &[0xa8, 0x3c, 0x09];
 /// assert_eq!(b.hash_one(a), b.hash_one(s));
@@ -523,7 +523,7 @@ impl<T, const N: usize> [T; N] {
     /// let b = a.try_map(|v| v.parse::<u32>());
     /// assert!(b.is_err());
     ///
-    /// use std::num::NonZeroU32;
+    /// use core::num::NonZeroU32;
     /// let z = [1, 2, 0, 3, 4];
     /// assert_eq!(z.try_map(NonZeroU32::new), None);
     /// let a = [1, 2, 3];

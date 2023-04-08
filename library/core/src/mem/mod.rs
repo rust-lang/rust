@@ -67,8 +67,8 @@ pub use crate::intrinsics::transmute;
 /// the space taken by the variable but never close the underlying system resource:
 ///
 /// ```no_run
-/// use std::mem;
-/// use std::fs::File;
+/// use core::mem;
+/// use core::fs::File;
 ///
 /// let file = File::open("foo.txt").unwrap();
 /// mem::forget(file);
@@ -84,7 +84,7 @@ pub use crate::intrinsics::transmute;
 /// [`ManuallyDrop`] should be used instead. Consider, for example, this code:
 ///
 /// ```
-/// use std::mem;
+/// use core::mem;
 ///
 /// let mut v = vec![65, 122];
 /// // Build a `String` using the contents of `v`
@@ -110,7 +110,7 @@ pub use crate::intrinsics::transmute;
 /// Switching to `ManuallyDrop` avoids both issues:
 ///
 /// ```
-/// use std::mem::ManuallyDrop;
+/// use core::mem::ManuallyDrop;
 ///
 /// let v = vec![65, 122];
 /// // Before we disassemble `v` into its raw parts, make sure it
@@ -230,7 +230,7 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 /// # Examples
 ///
 /// ```
-/// use std::mem;
+/// use core::mem;
 ///
 /// // Some primitives
 /// assert_eq!(4, mem::size_of::<i32>());
@@ -253,7 +253,7 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 /// Using `#[repr(C)]`.
 ///
 /// ```
-/// use std::mem;
+/// use core::mem;
 ///
 /// #[repr(C)]
 /// struct FieldStruct {
@@ -320,7 +320,7 @@ pub const fn size_of<T>() -> usize {
 /// # Examples
 ///
 /// ```
-/// use std::mem;
+/// use core::mem;
 ///
 /// assert_eq!(4, mem::size_of_val(&5i32));
 ///
@@ -370,7 +370,7 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 ///
 /// ```
 /// #![feature(layout_for_ptr)]
-/// use std::mem;
+/// use core::mem;
 ///
 /// assert_eq!(4, mem::size_of_val(&5i32));
 ///
@@ -399,7 +399,7 @@ pub const unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
 ///
 /// ```
 /// # #![allow(deprecated)]
-/// use std::mem;
+/// use core::mem;
 ///
 /// assert_eq!(4, mem::min_align_of::<i32>());
 /// ```
@@ -422,7 +422,7 @@ pub fn min_align_of<T>() -> usize {
 ///
 /// ```
 /// # #![allow(deprecated)]
-/// use std::mem;
+/// use core::mem;
 ///
 /// assert_eq!(4, mem::min_align_of_val(&5i32));
 /// ```
@@ -446,7 +446,7 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 /// # Examples
 ///
 /// ```
-/// use std::mem;
+/// use core::mem;
 ///
 /// assert_eq!(4, mem::align_of::<i32>());
 /// ```
@@ -469,7 +469,7 @@ pub const fn align_of<T>() -> usize {
 /// # Examples
 ///
 /// ```
-/// use std::mem;
+/// use core::mem;
 ///
 /// assert_eq!(4, mem::align_of_val(&5i32));
 /// ```
@@ -516,7 +516,7 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 ///
 /// ```
 /// #![feature(layout_for_ptr)]
-/// use std::mem;
+/// use core::mem;
 ///
 /// assert_eq!(4, unsafe { mem::align_of_val_raw(&5i32) });
 /// ```
@@ -560,7 +560,7 @@ pub const unsafe fn align_of_val_raw<T: ?Sized>(val: *const T) -> usize {
 /// Here's an example of how a collection might make use of `needs_drop`:
 ///
 /// ```
-/// use std::{mem, ptr};
+/// use core::{mem, ptr};
 ///
 /// pub struct MyCollection<T> {
 /// #   data: [T; 1],
@@ -618,7 +618,7 @@ pub const fn needs_drop<T: ?Sized>() -> bool {
 /// Correct usage of this function: initializing an integer with zero.
 ///
 /// ```
-/// use std::mem;
+/// use core::mem;
 ///
 /// let x: i32 = unsafe { mem::zeroed() };
 /// assert_eq!(0, x);
@@ -628,7 +628,7 @@ pub const fn needs_drop<T: ?Sized>() -> bool {
 ///
 /// ```rust,no_run
 /// # #![allow(invalid_value)]
-/// use std::mem;
+/// use core::mem;
 ///
 /// let _x: &i32 = unsafe { mem::zeroed() }; // Undefined behavior!
 /// let _y: fn() = unsafe { mem::zeroed() }; // And again!
@@ -703,7 +703,7 @@ pub unsafe fn uninitialized<T>() -> T {
 /// # Examples
 ///
 /// ```
-/// use std::mem;
+/// use core::mem;
 ///
 /// let mut x = 5;
 /// let mut y = 42;
@@ -787,7 +787,7 @@ pub(crate) const fn swap_simple<T>(x: &mut T, y: &mut T) {
 /// A simple example:
 ///
 /// ```
-/// use std::mem;
+/// use core::mem;
 ///
 /// let mut v: Vec<i32> = vec![1, 2];
 ///
@@ -817,7 +817,7 @@ pub(crate) const fn swap_simple<T>(x: &mut T, y: &mut T) {
 /// `self`, allowing it to be returned:
 ///
 /// ```
-/// use std::mem;
+/// use core::mem;
 ///
 /// # struct Buffer<T> { buf: Vec<T> }
 /// impl<T> Buffer<T> {
@@ -850,7 +850,7 @@ pub fn take<T: Default>(dest: &mut T) -> T {
 /// A simple example:
 ///
 /// ```
-/// use std::mem;
+/// use core::mem;
 ///
 /// let mut v: Vec<i32> = vec![1, 2];
 ///
@@ -881,7 +881,7 @@ pub fn take<T: Default>(dest: &mut T) -> T {
 ///
 /// ```
 /// # #![allow(dead_code)]
-/// use std::mem;
+/// use core::mem;
 ///
 /// # struct Buffer<T> { buf: Vec<T> }
 /// impl<T> Buffer<T> {
@@ -945,7 +945,7 @@ pub const fn replace<T>(dest: &mut T, src: T) -> T {
 /// release a [`RefCell`] borrow:
 ///
 /// ```
-/// use std::cell::RefCell;
+/// use core::cell::RefCell;
 ///
 /// let x = RefCell::new(1);
 ///
@@ -1018,7 +1018,7 @@ pub const fn copy<T: Copy>(x: &T) -> T {
 /// # Examples
 ///
 /// ```
-/// use std::mem;
+/// use core::mem;
 ///
 /// #[repr(packed)]
 /// struct Foo {
@@ -1124,7 +1124,7 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// the actual data:
 ///
 /// ```
-/// use std::mem;
+/// use core::mem;
 ///
 /// enum Foo { A(&'static str), B(i32), C(i32) }
 ///
@@ -1186,7 +1186,7 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// assert_eq!(2, struct_like.discriminant());
 ///
 /// // ⚠️ This is undefined behavior. Don't do this. ⚠️
-/// // assert_eq!(0, unsafe { std::mem::transmute::<_, u8>(std::mem::discriminant(&unit_like)) });
+/// // assert_eq!(0, unsafe { core::mem::transmute::<_, u8>(core::mem::discriminant(&unit_like)) });
 /// ```
 #[stable(feature = "discriminant_value", since = "1.21.0")]
 #[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]
@@ -1212,7 +1212,7 @@ pub const fn discriminant<T>(v: &T) -> Discriminant<T> {
 /// # #![feature(never_type)]
 /// # #![feature(variant_count)]
 ///
-/// use std::mem;
+/// use core::mem;
 ///
 /// enum Void {}
 /// enum Foo { A(&'static str), B(i32), C(i32) }

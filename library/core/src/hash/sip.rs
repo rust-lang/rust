@@ -14,7 +14,7 @@ use crate::ptr;
 ///
 /// See: <https://131002.net/siphash>
 #[unstable(feature = "hashmap_internals", issue = "none")]
-#[deprecated(since = "1.13.0", note = "use `std::collections::hash_map::DefaultHasher` instead")]
+#[deprecated(since = "1.13.0", note = "use `core::collections::hash_map::DefaultHasher` instead")]
 #[derive(Debug, Clone, Default)]
 #[doc(hidden)]
 pub struct SipHasher13 {
@@ -25,7 +25,7 @@ pub struct SipHasher13 {
 ///
 /// See: <https://131002.net/siphash/>
 #[unstable(feature = "hashmap_internals", issue = "none")]
-#[deprecated(since = "1.13.0", note = "use `std::collections::hash_map::DefaultHasher` instead")]
+#[deprecated(since = "1.13.0", note = "use `core::collections::hash_map::DefaultHasher` instead")]
 #[derive(Debug, Clone, Default)]
 struct SipHasher24 {
     hasher: Hasher<Sip24Rounds>,
@@ -44,7 +44,7 @@ struct SipHasher24 {
 /// it is not intended for cryptographic purposes. As such, all
 /// cryptographic uses of this implementation are _strongly discouraged_.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "1.13.0", note = "use `std::collections::hash_map::DefaultHasher` instead")]
+#[deprecated(since = "1.13.0", note = "use `core::collections::hash_map::DefaultHasher` instead")]
 #[derive(Debug, Clone, Default)]
 pub struct SipHasher(SipHasher24);
 
@@ -149,7 +149,7 @@ impl SipHasher {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[deprecated(
         since = "1.13.0",
-        note = "use `std::collections::hash_map::DefaultHasher` instead"
+        note = "use `core::collections::hash_map::DefaultHasher` instead"
     )]
     #[rustc_const_unstable(feature = "const_hash", issue = "104061")]
     #[must_use]
@@ -162,7 +162,7 @@ impl SipHasher {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[deprecated(
         since = "1.13.0",
-        note = "use `std::collections::hash_map::DefaultHasher` instead"
+        note = "use `core::collections::hash_map::DefaultHasher` instead"
     )]
     #[rustc_const_unstable(feature = "const_hash", issue = "104061")]
     #[must_use]
@@ -177,7 +177,7 @@ impl SipHasher13 {
     #[unstable(feature = "hashmap_internals", issue = "none")]
     #[deprecated(
         since = "1.13.0",
-        note = "use `std::collections::hash_map::DefaultHasher` instead"
+        note = "use `core::collections::hash_map::DefaultHasher` instead"
     )]
     #[rustc_const_unstable(feature = "const_hash", issue = "104061")]
     pub const fn new() -> SipHasher13 {
@@ -189,7 +189,7 @@ impl SipHasher13 {
     #[unstable(feature = "hashmap_internals", issue = "none")]
     #[deprecated(
         since = "1.13.0",
-        note = "use `std::collections::hash_map::DefaultHasher` instead"
+        note = "use `core::collections::hash_map::DefaultHasher` instead"
     )]
     #[rustc_const_unstable(feature = "const_hash", issue = "104061")]
     pub const fn new_with_keys(key0: u64, key1: u64) -> SipHasher13 {

@@ -65,7 +65,7 @@ fn skip_search<const SOR: usize, const OFFSETS: usize>(
     offsets: &[u8; OFFSETS],
 ) -> bool {
     // Note that this *cannot* be past the end of the array, as the last
-    // element is greater than std::char::MAX (the largest possible needle).
+    // element is greater than core::char::MAX (the largest possible needle).
     //
     // So, we cannot have found it (i.e. Ok(idx) + 1 != length) and the correct
     // location cannot be past it, so Err(idx) != length either.

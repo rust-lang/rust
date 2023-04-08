@@ -460,8 +460,8 @@ mod mut_ptr;
 /// Manually remove the last item from a vector:
 ///
 /// ```
-/// use std::ptr;
-/// use std::rc::Rc;
+/// use core::ptr;
+/// use core::rc::Rc;
 ///
 /// let last = Rc::new(1);
 /// let weak = Rc::downgrade(&last);
@@ -500,7 +500,7 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 /// # Examples
 ///
 /// ```
-/// use std::ptr;
+/// use core::ptr;
 ///
 /// let p: *const i32 = ptr::null();
 /// assert!(p.is_null());
@@ -521,7 +521,7 @@ pub const fn null<T: ?Sized + Thin>() -> *const T {
 /// # Examples
 ///
 /// ```
-/// use std::ptr;
+/// use core::ptr;
 ///
 /// let p: *mut i32 = ptr::null_mut();
 /// assert!(p.is_null());
@@ -718,7 +718,7 @@ pub const fn from_mut<T: ?Sized>(r: &mut T) -> *mut T {
 /// # Examples
 ///
 /// ```rust
-/// use std::ptr;
+/// use core::ptr;
 ///
 /// // create a slice pointer when starting out with a pointer to the first element
 /// let x = [5, 6, 7];
@@ -747,7 +747,7 @@ pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
 /// # Examples
 ///
 /// ```rust
-/// use std::ptr;
+/// use core::ptr;
 ///
 /// let x = &mut [5, 6, 7];
 /// let raw_pointer = x.as_mut_ptr();
@@ -799,7 +799,7 @@ pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
 /// Swapping two non-overlapping regions:
 ///
 /// ```
-/// use std::ptr;
+/// use core::ptr;
 ///
 /// let mut array = [0, 1, 2, 3];
 ///
@@ -816,7 +816,7 @@ pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
 /// Swapping two overlapping regions:
 ///
 /// ```
-/// use std::ptr;
+/// use core::ptr;
 ///
 /// let mut array: [i32; 4] = [0, 1, 2, 3];
 ///
@@ -884,7 +884,7 @@ pub const unsafe fn swap<T>(x: *mut T, y: *mut T) {
 /// Basic usage:
 ///
 /// ```
-/// use std::ptr;
+/// use core::ptr;
 ///
 /// let mut x = [1, 2, 3, 4];
 /// let mut y = [7, 8, 9];
@@ -994,7 +994,7 @@ const unsafe fn swap_nonoverlapping_simple_untyped<T>(x: *mut T, y: *mut T, coun
 /// # Examples
 ///
 /// ```
-/// use std::ptr;
+/// use core::ptr;
 ///
 /// let mut rust = vec!['b', 'u', 's', 't'];
 ///
@@ -1050,14 +1050,14 @@ pub const unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
 /// let y = &x as *const i32;
 ///
 /// unsafe {
-///     assert_eq!(std::ptr::read(y), 12);
+///     assert_eq!(core::ptr::read(y), 12);
 /// }
 /// ```
 ///
 /// Manually implement [`mem::swap`]:
 ///
 /// ```
-/// use std::ptr;
+/// use core::ptr;
 ///
 /// fn swap<T>(a: &mut T, b: &mut T) {
 ///     unsafe {
@@ -1103,7 +1103,7 @@ pub const unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
 /// [`write()`] can be used to overwrite data without causing it to be dropped.
 ///
 /// ```
-/// use std::ptr;
+/// use core::ptr;
 ///
 /// let mut s = String::from("foo");
 /// unsafe {
@@ -1242,9 +1242,9 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 ///
 /// // Take the address of a 32-bit integer which is not aligned.
 /// // In contrast to `&packed.unaligned as *const _`, this has no undefined behavior.
-/// let unaligned = std::ptr::addr_of!(packed.unaligned);
+/// let unaligned = core::ptr::addr_of!(packed.unaligned);
 ///
-/// let v = unsafe { std::ptr::read_unaligned(unaligned) };
+/// let v = unsafe { core::ptr::read_unaligned(unaligned) };
 /// assert_eq!(v, 0x01020304);
 /// ```
 ///
@@ -1255,7 +1255,7 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 /// Read a usize value from a byte buffer:
 ///
 /// ```
-/// use std::mem;
+/// use core::mem;
 ///
 /// fn read_usize(x: &[u8]) -> usize {
 ///     assert!(x.len() >= mem::size_of::<usize>());
@@ -1319,15 +1319,15 @@ pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
 /// let z = 12;
 ///
 /// unsafe {
-///     std::ptr::write(y, z);
-///     assert_eq!(std::ptr::read(y), 12);
+///     core::ptr::write(y, z);
+///     assert_eq!(core::ptr::read(y), 12);
 /// }
 /// ```
 ///
 /// Manually implement [`mem::swap`]:
 ///
 /// ```
-/// use std::ptr;
+/// use core::ptr;
 ///
 /// fn swap<T>(a: &mut T, b: &mut T) {
 ///     unsafe {
@@ -1435,13 +1435,13 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 ///     unaligned: u32,
 /// }
 ///
-/// let mut packed: Packed = unsafe { std::mem::zeroed() };
+/// let mut packed: Packed = unsafe { core::mem::zeroed() };
 ///
 /// // Take the address of a 32-bit integer which is not aligned.
 /// // In contrast to `&packed.unaligned as *mut _`, this has no undefined behavior.
-/// let unaligned = std::ptr::addr_of_mut!(packed.unaligned);
+/// let unaligned = core::ptr::addr_of_mut!(packed.unaligned);
 ///
-/// unsafe { std::ptr::write_unaligned(unaligned, 42) };
+/// unsafe { core::ptr::write_unaligned(unaligned, 42) };
 ///
 /// assert_eq!({packed.unaligned}, 42); // `{...}` forces copying the field instead of creating a reference.
 /// ```
@@ -1454,7 +1454,7 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 /// Write a usize value to a byte buffer:
 ///
 /// ```
-/// use std::mem;
+/// use core::mem;
 ///
 /// fn write_usize(x: &mut [u8], val: usize) {
 ///     assert!(x.len() >= mem::size_of::<usize>());
@@ -1536,7 +1536,7 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 /// let y = &x as *const i32;
 ///
 /// unsafe {
-///     assert_eq!(std::ptr::read_volatile(y), 12);
+///     assert_eq!(core::ptr::read_volatile(y), 12);
 /// }
 /// ```
 #[inline]
@@ -1609,8 +1609,8 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 /// let z = 12;
 ///
 /// unsafe {
-///     std::ptr::write_volatile(y, z);
-///     assert_eq!(std::ptr::read_volatile(y), 12);
+///     core::ptr::write_volatile(y, z);
+///     assert_eq!(core::ptr::read_volatile(y), 12);
 /// }
 /// ```
 #[inline]
@@ -1830,7 +1830,7 @@ pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usiz
 /// # Examples
 ///
 /// ```
-/// use std::ptr;
+/// use core::ptr;
 ///
 /// let five = 5;
 /// let other_five = 5;
@@ -1849,9 +1849,9 @@ pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usiz
 ///
 /// ```
 /// let a = [1, 2, 3];
-/// assert!(std::ptr::eq(&a[..3], &a[..3]));
-/// assert!(!std::ptr::eq(&a[..2], &a[..3]));
-/// assert!(!std::ptr::eq(&a[0..2], &a[1..3]));
+/// assert!(core::ptr::eq(&a[..3], &a[..3]));
+/// assert!(!core::ptr::eq(&a[..2], &a[..3]));
+/// assert!(!core::ptr::eq(&a[0..2], &a[1..3]));
 /// ```
 #[stable(feature = "ptr_eq", since = "1.17.0")]
 #[inline(always)]
@@ -1868,9 +1868,9 @@ pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
 /// # Examples
 ///
 /// ```
-/// use std::collections::hash_map::DefaultHasher;
-/// use std::hash::{Hash, Hasher};
-/// use std::ptr;
+/// use core::collections::hash_map::DefaultHasher;
+/// use core::hash::{Hash, Hasher};
+/// use core::ptr;
 ///
 /// let five = 5;
 /// let five_ref = &five;
@@ -2106,7 +2106,7 @@ mod new_fn_ptr_impl {
 /// # Example
 ///
 /// ```
-/// use std::ptr;
+/// use core::ptr;
 ///
 /// #[repr(packed)]
 /// struct Packed {
@@ -2148,7 +2148,7 @@ pub macro addr_of($place:expr) {
 /// **Creating a pointer to unaligned data:**
 ///
 /// ```
-/// use std::ptr;
+/// use core::ptr;
 ///
 /// #[repr(packed)]
 /// struct Packed {
@@ -2166,7 +2166,7 @@ pub macro addr_of($place:expr) {
 /// **Creating a pointer to uninitialized data:**
 ///
 /// ```rust
-/// use std::{ptr, mem::MaybeUninit};
+/// use core::{ptr, mem::MaybeUninit};
 ///
 /// struct Demo {
 ///     field: bool,

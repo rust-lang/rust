@@ -31,7 +31,7 @@ impl Alignment {
     ///
     /// ```
     /// #![feature(ptr_alignment_type)]
-    /// use std::ptr::Alignment;
+    /// use core::ptr::Alignment;
     ///
     /// assert_eq!(Alignment::MIN.as_usize(), 1);
     /// ```
@@ -113,7 +113,7 @@ impl Alignment {
     ///
     /// ```
     /// #![feature(ptr_alignment_type)]
-    /// use std::ptr::Alignment;
+    /// use core::ptr::Alignment;
     ///
     /// assert_eq!(Alignment::of::<u8>().log2(), 0);
     /// assert_eq!(Alignment::new(1024).unwrap().log2(), 10);

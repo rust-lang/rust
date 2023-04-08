@@ -46,7 +46,7 @@ pub struct EscapeDefault {
 /// # Examples
 ///
 /// ```
-/// use std::ascii;
+/// use core::ascii;
 ///
 /// let escaped = ascii::escape_default(b'0').next().unwrap();
 /// assert_eq!(b'0', escaped);

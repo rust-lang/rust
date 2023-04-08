@@ -471,60 +471,60 @@ pub macro Copy($item:item) {
 #[lang = "sync"]
 #[rustc_on_unimplemented(
     on(
-        _Self = "std::cell::OnceCell<T>",
-        note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::OnceLock` instead"
+        _Self = "core::cell::OnceCell<T>",
+        note = "if you want to do aliasing and mutation between multiple threads, use `core::sync::OnceLock` instead"
     ),
     on(
-        _Self = "std::cell::Cell<u8>",
-        note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicU8` instead",
+        _Self = "core::cell::Cell<u8>",
+        note = "if you want to do aliasing and mutation between multiple threads, use `core::sync::RwLock` or `core::sync::atomic::AtomicU8` instead",
     ),
     on(
-        _Self = "std::cell::Cell<u16>",
-        note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicU16` instead",
+        _Self = "core::cell::Cell<u16>",
+        note = "if you want to do aliasing and mutation between multiple threads, use `core::sync::RwLock` or `core::sync::atomic::AtomicU16` instead",
     ),
     on(
-        _Self = "std::cell::Cell<u32>",
-        note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicU32` instead",
+        _Self = "core::cell::Cell<u32>",
+        note = "if you want to do aliasing and mutation between multiple threads, use `core::sync::RwLock` or `core::sync::atomic::AtomicU32` instead",
     ),
     on(
-        _Self = "std::cell::Cell<u64>",
-        note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicU64` instead",
+        _Self = "core::cell::Cell<u64>",
+        note = "if you want to do aliasing and mutation between multiple threads, use `core::sync::RwLock` or `core::sync::atomic::AtomicU64` instead",
     ),
     on(
-        _Self = "std::cell::Cell<usize>",
-        note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicUsize` instead",
+        _Self = "core::cell::Cell<usize>",
+        note = "if you want to do aliasing and mutation between multiple threads, use `core::sync::RwLock` or `core::sync::atomic::AtomicUsize` instead",
     ),
     on(
-        _Self = "std::cell::Cell<i8>",
-        note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicI8` instead",
+        _Self = "core::cell::Cell<i8>",
+        note = "if you want to do aliasing and mutation between multiple threads, use `core::sync::RwLock` or `core::sync::atomic::AtomicI8` instead",
     ),
     on(
-        _Self = "std::cell::Cell<i16>",
-        note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicI16` instead",
+        _Self = "core::cell::Cell<i16>",
+        note = "if you want to do aliasing and mutation between multiple threads, use `core::sync::RwLock` or `core::sync::atomic::AtomicI16` instead",
     ),
     on(
-        _Self = "std::cell::Cell<i32>",
-        note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicI32` instead",
+        _Self = "core::cell::Cell<i32>",
+        note = "if you want to do aliasing and mutation between multiple threads, use `core::sync::RwLock` or `core::sync::atomic::AtomicI32` instead",
     ),
     on(
-        _Self = "std::cell::Cell<i64>",
-        note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicI64` instead",
+        _Self = "core::cell::Cell<i64>",
+        note = "if you want to do aliasing and mutation between multiple threads, use `core::sync::RwLock` or `core::sync::atomic::AtomicI64` instead",
     ),
     on(
-        _Self = "std::cell::Cell<isize>",
-        note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicIsize` instead",
+        _Self = "core::cell::Cell<isize>",
+        note = "if you want to do aliasing and mutation between multiple threads, use `core::sync::RwLock` or `core::sync::atomic::AtomicIsize` instead",
     ),
     on(
-        _Self = "std::cell::Cell<bool>",
-        note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicBool` instead",
+        _Self = "core::cell::Cell<bool>",
+        note = "if you want to do aliasing and mutation between multiple threads, use `core::sync::RwLock` or `core::sync::atomic::AtomicBool` instead",
     ),
     on(
-        _Self = "std::cell::Cell<T>",
-        note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock`",
+        _Self = "core::cell::Cell<T>",
+        note = "if you want to do aliasing and mutation between multiple threads, use `core::sync::RwLock`",
     ),
     on(
-        _Self = "std::cell::RefCell<T>",
-        note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead",
+        _Self = "core::cell::RefCell<T>",
+        note = "if you want to do aliasing and mutation between multiple threads, use `core::sync::RwLock` instead",
     ),
     message = "`{Self}` cannot be shared between threads safely",
     label = "`{Self}` cannot be shared between threads safely"
@@ -588,7 +588,7 @@ impl<T: ?Sized> !Sync for *mut T {}
 /// `Slice` struct contained a reference `&'a T`:
 ///
 /// ```
-/// use std::marker::PhantomData;
+/// use core::marker::PhantomData;
 ///
 /// # #[allow(dead_code)]
 /// struct Slice<'a, T: 'a> {
@@ -606,7 +606,7 @@ impl<T: ?Sized> !Sync for *mut T {}
 ///
 /// ```
 /// # #![allow(dead_code)]
-/// # use std::marker::PhantomData;
+/// # use core::marker::PhantomData;
 /// # struct Slice<'a, T: 'a> {
 /// #     start: *const T,
 /// #     end: *const T,
@@ -643,8 +643,8 @@ impl<T: ?Sized> !Sync for *mut T {}
 /// #     pub fn do_stuff(_: *mut (), _: usize) {}
 /// # }
 /// # fn convert_params(_: ParamType) -> usize { 42 }
-/// use std::marker::PhantomData;
-/// use std::mem;
+/// use core::marker::PhantomData;
+/// use core::mem;
 ///
 /// struct ExternalResource<R> {
 ///    resource_handle: *mut (),
@@ -804,8 +804,8 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
-/// use std::mem;
-/// use std::pin::Pin;
+/// use core::mem;
+/// use core::pin::Pin;
 ///
 /// let mut string = "this".to_string();
 /// let mut pinned_string = Pin::new(&mut string);

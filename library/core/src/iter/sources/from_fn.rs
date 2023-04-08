@@ -25,7 +25,7 @@ use crate::fmt;
 ///
 /// ```
 /// let mut count = 0;
-/// let counter = std::iter::from_fn(move || {
+/// let counter = core::iter::from_fn(move || {
 ///     // Increment our count. This is why we started at zero.
 ///     count += 1;
 ///

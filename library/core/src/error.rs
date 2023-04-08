@@ -35,8 +35,8 @@ pub trait Error: Debug + Display {
     /// # Examples
     ///
     /// ```
-    /// use std::error::Error;
-    /// use std::fmt;
+    /// use core::error::Error;
+    /// use core::fmt;
     ///
     /// #[derive(Debug)]
     /// struct SuperError {
@@ -157,7 +157,7 @@ pub trait Error: Debug + Display {
     ///     }
     /// }
     ///
-    /// impl std::error::Error for SourceError {}
+    /// impl core::error::Error for SourceError {}
     ///
     /// #[derive(Debug)]
     /// struct Error {
@@ -171,11 +171,11 @@ pub trait Error: Debug + Display {
     ///     }
     /// }
     ///
-    /// impl std::error::Error for Error {
+    /// impl core::error::Error for Error {
     ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
     ///         demand
     ///             .provide_ref::<MyBacktrace>(&self.backtrace)
-    ///             .provide_ref::<dyn std::error::Error + 'static>(&self.source);
+    ///             .provide_ref::<dyn core::error::Error + 'static>(&self.source);
     ///     }
     /// }
     ///
@@ -183,7 +183,7 @@ pub trait Error: Debug + Display {
     ///     let backtrace = MyBacktrace::new();
     ///     let source = SourceError {};
     ///     let error = Error { source, backtrace };
-    ///     let dyn_error = &error as &dyn std::error::Error;
+    ///     let dyn_error = &error as &dyn core::error::Error;
     ///     let backtrace_ref = dyn_error.request_ref::<MyBacktrace>().unwrap();
     ///
     ///     assert!(core::ptr::eq(&error.backtrace, backtrace_ref));
@@ -353,8 +353,8 @@ impl dyn Error {
     ///
     /// ```
     /// #![feature(error_iter)]
-    /// use std::error::Error;
-    /// use std::fmt;
+    /// use core::error::Error;
+    /// use core::fmt;
     ///
     /// #[derive(Debug)]
     /// struct A;

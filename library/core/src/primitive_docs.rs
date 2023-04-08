@@ -133,7 +133,7 @@ mod prim_bool {}
 ///
 /// ```
 /// #![feature(exhaustive_patterns)]
-/// use std::str::FromStr;
+/// use core::str::FromStr;
 /// let Ok(s) = String::from_str("hello");
 /// ```
 ///
@@ -204,7 +204,7 @@ mod prim_bool {}
 /// words, they can't return `!` from every code path. As an example, this code doesn't compile:
 ///
 /// ```compile_fail
-/// use std::ops::Add;
+/// use core::ops::Add;
 ///
 /// fn foo() -> impl Add<u32> {
 ///     unimplemented!()
@@ -214,7 +214,7 @@ mod prim_bool {}
 /// But this code does:
 ///
 /// ```
-/// use std::ops::Add;
+/// use core::ops::Add;
 ///
 /// fn foo() -> impl Add<u32> {
 ///     if true {
@@ -238,7 +238,7 @@ mod prim_bool {}
 ///
 /// ```
 /// #![feature(never_type)]
-/// # use std::fmt;
+/// # use core::fmt;
 /// # trait Debug {
 /// #     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result;
 /// # }
@@ -287,7 +287,7 @@ mod prim_never {}
 ///
 /// This documentation describes a number of methods and trait implementations on the
 /// `char` type. For technical reasons, there is additional, separate
-/// documentation in [the `std::char` module](char/index.html) as well.
+/// documentation in [the `core::char` module](char/index.html) as well.
 ///
 /// # Validity
 ///
@@ -350,12 +350,12 @@ mod prim_never {}
 /// let v = vec!['h', 'e', 'l', 'l', 'o'];
 ///
 /// // five elements times four bytes for each element
-/// assert_eq!(20, v.len() * std::mem::size_of::<char>());
+/// assert_eq!(20, v.len() * core::mem::size_of::<char>());
 ///
 /// let s = String::from("hello");
 ///
 /// // five elements times one byte per element
-/// assert_eq!(5, s.len() * std::mem::size_of::<u8>());
+/// assert_eq!(5, s.len() * core::mem::size_of::<u8>());
 /// ```
 ///
 #[doc = concat!("[`String`]: ", include_str!("../primitive_docs/string_string.md"))]
@@ -395,8 +395,8 @@ mod prim_never {}
 /// let s = String::from("love: ❤️");
 /// let v: Vec<char> = s.chars().collect();
 ///
-/// assert_eq!(12, std::mem::size_of_val(&s[..]));
-/// assert_eq!(32, std::mem::size_of_val(&v[..]));
+/// assert_eq!(12, core::mem::size_of_val(&s[..]));
+/// assert_eq!(32, core::mem::size_of_val(&v[..]));
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_char {}
@@ -473,7 +473,7 @@ impl Copy for () {
 //
 /// Raw, unsafe pointers, `*const T`, and `*mut T`.
 ///
-/// *[See also the `std::ptr` module](ptr).*
+/// *[See also the `core::ptr` module](ptr).*
 ///
 /// Working with raw pointers in Rust is uncommon, typically limited to a few patterns.
 /// Raw pointers can be unaligned or [`null`]. However, when a raw pointer is
@@ -548,7 +548,7 @@ impl Copy for () {
 ///     unaligned: u32,
 /// }
 /// let s = S::default();
-/// let p = std::ptr::addr_of!(s.unaligned); // not allowed with coercion
+/// let p = core::ptr::addr_of!(s.unaligned); // not allowed with coercion
 /// ```
 ///
 /// ## 4. Get it from C.
@@ -557,7 +557,7 @@ impl Copy for () {
 /// # #![feature(rustc_private)]
 /// extern crate libc;
 ///
-/// use std::mem;
+/// use core::mem;
 ///
 /// unsafe {
 ///     let my_num: *mut i32 = libc::malloc(mem::size_of::<i32>()) as *mut i32;
@@ -793,7 +793,7 @@ mod prim_array {}
 /// means that elements are laid out so that every element is the same
 /// distance from its neighbors.
 ///
-/// *[See also the `std::slice` module](crate::slice).*
+/// *[See also the `core::slice` module](crate::slice).*
 ///
 /// Slices are a view into a block of memory represented as a pointer and a
 /// length.
@@ -824,12 +824,12 @@ mod prim_array {}
 /// [dynamically sized types](../reference/dynamically-sized-types.html).
 ///
 /// ```
-/// # use std::rc::Rc;
-/// let pointer_size = std::mem::size_of::<&u8>();
-/// assert_eq!(2 * pointer_size, std::mem::size_of::<&[u8]>());
-/// assert_eq!(2 * pointer_size, std::mem::size_of::<*const [u8]>());
-/// assert_eq!(2 * pointer_size, std::mem::size_of::<Box<[u8]>>());
-/// assert_eq!(2 * pointer_size, std::mem::size_of::<Rc<[u8]>>());
+/// # use core::rc::Rc;
+/// let pointer_size = core::mem::size_of::<&u8>();
+/// assert_eq!(2 * pointer_size, core::mem::size_of::<&[u8]>());
+/// assert_eq!(2 * pointer_size, core::mem::size_of::<*const [u8]>());
+/// assert_eq!(2 * pointer_size, core::mem::size_of::<Box<[u8]>>());
+/// assert_eq!(2 * pointer_size, core::mem::size_of::<Rc<[u8]>>());
 /// ```
 ///
 /// ## Trait Implementations
@@ -881,7 +881,7 @@ mod prim_slice {}
 #[cfg_attr(not(bootstrap), rustc_doc_primitive = "str")]
 /// String slices.
 ///
-/// *[See also the `std::str` module](crate::str).*
+/// *[See also the `core::str` module](crate::str).*
 ///
 /// The `str` type, also called a 'string slice', is the most primitive string
 /// type. It is usually seen in its borrowed form, `&str`. It is also the type
@@ -912,8 +912,8 @@ mod prim_slice {}
 /// length. You can look at these with the [`as_ptr`] and [`len`] methods:
 ///
 /// ```
-/// use std::slice;
-/// use std::str;
+/// use core::slice;
+/// use core::str;
 ///
 /// let story = "Once upon a time...";
 ///
@@ -1151,7 +1151,7 @@ impl<T: Copy> Copy for (T,) {
 ///
 /// For more information on floating point numbers, see [Wikipedia][wikipedia].
 ///
-/// *[See also the `std::f32::consts` module](crate::f32::consts).*
+/// *[See also the `core::f32::consts` module](crate::f32::consts).*
 ///
 /// [wikipedia]: https://en.wikipedia.org/wiki/Single-precision_floating-point_format
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1166,7 +1166,7 @@ mod prim_f32 {}
 /// `f32`][`f32`] or [Wikipedia on double precision
 /// values][wikipedia] for more information.
 ///
-/// *[See also the `std::f64::consts` module](crate::f64::consts).*
+/// *[See also the `core::f64::consts` module](crate::f64::consts).*
 ///
 /// [`f32`]: prim@f32
 /// [wikipedia]: https://en.wikipedia.org/wiki/Double-precision_floating-point_format
@@ -1305,7 +1305,7 @@ mod prim_usize {}
 /// [`PartialEq`] compares values.
 ///
 /// ```
-/// use std::ptr;
+/// use core::ptr;
 ///
 /// let five = 5;
 /// let other_five = 5;
@@ -1352,7 +1352,7 @@ mod prim_usize {}
 /// The following traits are implemented on `&T` references if the underlying `T` also implements
 /// that trait:
 ///
-/// * All the traits in [`std::fmt`] except [`fmt::Pointer`] (which is implemented regardless of the type of its referent) and [`fmt::Write`]
+/// * All the traits in [`core::fmt`] except [`fmt::Pointer`] (which is implemented regardless of the type of its referent) and [`fmt::Write`]
 /// * [`PartialOrd`]
 /// * [`Ord`]
 /// * [`PartialEq`]
@@ -1363,7 +1363,7 @@ mod prim_usize {}
 /// * [`ToSocketAddrs`]
 /// * [`Send`] \(`&T` references also require <code>T: [Sync]</code>)
 ///
-/// [`std::fmt`]: fmt
+/// [`core::fmt`]: fmt
 /// [`Hash`]: hash::Hash
 #[doc = concat!("[`ToSocketAddrs`]: ", include_str!("../primitive_docs/net_tosocketaddrs.md"))]
 ///
@@ -1491,7 +1491,7 @@ mod prim_ref {}
 /// This zero-sized type *coerces* to a regular function pointer. For example:
 ///
 /// ```rust
-/// use std::mem;
+/// use core::mem;
 ///
 /// fn bar(x: i32) {}
 ///
@@ -1524,7 +1524,7 @@ mod prim_ref {}
 /// # let fnptr: fn(i32) -> i32 = |x| x+2;
 /// # let fnptr_addr = fnptr as usize;
 /// let fnptr = fnptr_addr as *const ();
-/// let fnptr: fn(i32) -> i32 = unsafe { std::mem::transmute(fnptr) };
+/// let fnptr: fn(i32) -> i32 = unsafe { core::mem::transmute(fnptr) };
 /// assert_eq!(fnptr(40), 42);
 /// # }
 /// ```

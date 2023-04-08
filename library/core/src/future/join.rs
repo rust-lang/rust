@@ -17,7 +17,7 @@ use crate::task::{Context, Poll};
 /// ```
 /// #![feature(future_join)]
 ///
-/// use std::future::join;
+/// use core::future::join;
 ///
 /// async fn one() -> usize { 1 }
 /// async fn two() -> usize { 2 }
@@ -33,7 +33,7 @@ use crate::task::{Context, Poll};
 /// ```
 /// #![feature(future_join)]
 ///
-/// use std::future::join;
+/// use core::future::join;
 ///
 /// async fn one() -> usize { 1 }
 /// async fn two() -> usize { 2 }

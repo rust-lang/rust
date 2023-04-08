@@ -43,7 +43,7 @@ use super::Utf8Error;
 /// Basic usage:
 ///
 /// ```
-/// use std::str;
+/// use core::str;
 ///
 /// // some bytes, in a vector
 /// let sparkle_heart = vec![240, 159, 146, 150];
@@ -57,7 +57,7 @@ use super::Utf8Error;
 /// Incorrect bytes:
 ///
 /// ```
-/// use std::str;
+/// use core::str;
 ///
 /// // some invalid bytes, in a vector
 /// let sparkle_heart = vec![0, 159, 146, 150];
@@ -71,7 +71,7 @@ use super::Utf8Error;
 /// A "stack allocated string":
 ///
 /// ```
-/// use std::str;
+/// use core::str;
 ///
 /// // some bytes, in a stack-allocated array
 /// let sparkle_heart = [240, 159, 146, 150];
@@ -102,7 +102,7 @@ pub const fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 /// Basic usage:
 ///
 /// ```
-/// use std::str;
+/// use core::str;
 ///
 /// // "Hello, Rust!" as a mutable vector
 /// let mut hellorust = vec![72, 101, 108, 108, 111, 44, 32, 82, 117, 115, 116, 33];
@@ -116,7 +116,7 @@ pub const fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 /// Incorrect bytes:
 ///
 /// ```
-/// use std::str;
+/// use core::str;
 ///
 /// // Some invalid bytes in a mutable vector
 /// let mut invalid = vec![128, 223];
@@ -152,7 +152,7 @@ pub const fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
 /// Basic usage:
 ///
 /// ```
-/// use std::str;
+/// use core::str;
 ///
 /// // some bytes, in a vector
 /// let sparkle_heart = vec![240, 159, 146, 150];
@@ -183,7 +183,7 @@ pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
 /// Basic usage:
 ///
 /// ```
-/// use std::str;
+/// use core::str;
 ///
 /// let mut heart = vec![240, 159, 146, 150];
 /// let heart = unsafe { str::from_utf8_unchecked_mut(&mut heart) };

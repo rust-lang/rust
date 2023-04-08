@@ -9,7 +9,7 @@ use crate::fmt;
 /// # Examples
 ///
 /// ```should_panic
-/// use std::panic;
+/// use core::panic;
 ///
 /// panic::set_hook(Box::new(|panic_info| {
 ///     if let Some(location) = panic_info.location() {
@@ -44,7 +44,7 @@ impl<'a> Location<'a> {
     /// # Examples
     ///
     /// ```
-    /// use std::panic::Location;
+    /// use core::panic::Location;
     ///
     /// /// Returns the [`Location`] at which it is called.
     /// #[track_caller]
@@ -109,7 +109,7 @@ impl<'a> Location<'a> {
     /// # Examples
     ///
     /// ```should_panic
-    /// use std::panic;
+    /// use core::panic;
     ///
     /// panic::set_hook(Box::new(|panic_info| {
     ///     if let Some(location) = panic_info.location() {
@@ -134,7 +134,7 @@ impl<'a> Location<'a> {
     /// # Examples
     ///
     /// ```should_panic
-    /// use std::panic;
+    /// use core::panic;
     ///
     /// panic::set_hook(Box::new(|panic_info| {
     ///     if let Some(location) = panic_info.location() {
@@ -159,7 +159,7 @@ impl<'a> Location<'a> {
     /// # Examples
     ///
     /// ```should_panic
-    /// use std::panic;
+    /// use core::panic;
     ///
     /// panic::set_hook(Box::new(|panic_info| {
     ///     if let Some(location) = panic_info.location() {

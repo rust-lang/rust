@@ -60,11 +60,11 @@
 /// this:
 ///
 /// ```
-/// use std::borrow::Borrow;
-/// use std::hash::Hash;
+/// use core::borrow::Borrow;
+/// use core::hash::Hash;
 ///
 /// pub struct HashMap<K, V> {
-///     # marker: ::std::marker::PhantomData<(K, V)>,
+///     # marker: ::core::marker::PhantomData<(K, V)>,
 ///     // fields omitted
 /// }
 ///
@@ -131,7 +131,7 @@
 /// implementation of `Hash` needs to ignore ASCII case, too:
 ///
 /// ```
-/// # use std::hash::{Hash, Hasher};
+/// # use core::hash::{Hash, Hasher};
 /// # pub struct CaseInsensitiveString(String);
 /// impl Hash for CaseInsensitiveString {
 ///     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -161,7 +161,7 @@ pub trait Borrow<Borrowed: ?Sized> {
     /// # Examples
     ///
     /// ```
-    /// use std::borrow::Borrow;
+    /// use core::borrow::Borrow;
     ///
     /// fn check<T: Borrow<str>>(s: T) {
     ///     assert_eq!("Hello", s.borrow());
@@ -192,7 +192,7 @@ pub trait BorrowMut<Borrowed: ?Sized>: Borrow<Borrowed> {
     /// # Examples
     ///
     /// ```
-    /// use std::borrow::BorrowMut;
+    /// use core::borrow::BorrowMut;
     ///
     /// fn check<T: BorrowMut<[i32]>>(mut v: T) {
     ///     assert_eq!(&mut [1, 2, 3], v.borrow_mut());

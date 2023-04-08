@@ -49,7 +49,7 @@ pub mod rt {
 /// # Examples
 ///
 /// ```
-/// use std::fmt;
+/// use core::fmt;
 ///
 /// #[derive(Debug)]
 /// struct Triangle {
@@ -78,16 +78,16 @@ pub type Result = result::Result<(), Error>;
 /// some other means.
 ///
 /// An important thing to remember is that the type `fmt::Error` should not be
-/// confused with [`std::io::Error`] or [`std::error::Error`], which you may also
+/// confused with [`core::io::Error`] or [`core::error::Error`], which you may also
 /// have in scope.
 ///
-/// [`std::io::Error`]: ../../std/io/struct.Error.html
-/// [`std::error::Error`]: ../../std/error/trait.Error.html
+/// [`core::io::Error`]: ../../std/io/struct.Error.html
+/// [`core::error::Error`]: ../../std/error/trait.Error.html
 ///
 /// # Examples
 ///
 /// ```rust
-/// use std::fmt::{self, write};
+/// use core::fmt::{self, write};
 ///
 /// let mut output = String::new();
 /// if let Err(fmt::Error) = write(&mut output, format_args!("Hello {}!", "world")) {
@@ -102,9 +102,9 @@ pub struct Error;
 ///
 /// This trait only accepts UTF-8–encoded data and is not [flushable]. If you only
 /// want to accept Unicode and you don't need flushing, you should implement this trait;
-/// otherwise you should implement [`std::io::Write`].
+/// otherwise you should implement [`core::io::Write`].
 ///
-/// [`std::io::Write`]: ../../std/io/trait.Write.html
+/// [`core::io::Write`]: ../../std/io/trait.Write.html
 /// [flushable]: ../../std/io/trait.Write.html#tymethod.flush
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Write {
@@ -119,14 +119,14 @@ pub trait Write {
     ///
     /// This function will return an instance of [`Error`] on error.
     ///
-    /// The purpose of std::fmt::Error is to abort the formatting operation when the underlying
+    /// The purpose of core::fmt::Error is to abort the formatting operation when the underlying
     /// destination encounters some error preventing it from accepting more text; it should
     /// generally be propagated rather than handled, at least when implementing formatting traits.
     ///
     /// # Examples
     ///
     /// ```
-    /// use std::fmt::{Error, Write};
+    /// use core::fmt::{Error, Write};
     ///
     /// fn writer<W: Write>(f: &mut W, s: &str) -> Result<(), Error> {
     ///     f.write_str(s)
@@ -153,7 +153,7 @@ pub trait Write {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt::{Error, Write};
+    /// use core::fmt::{Error, Write};
     ///
     /// fn writer<W: Write>(f: &mut W, c: char) -> Result<(), Error> {
     ///     f.write_char(c)
@@ -182,7 +182,7 @@ pub trait Write {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt::{Error, Write};
+    /// use core::fmt::{Error, Write};
     ///
     /// fn writer<W: Write>(f: &mut W, s: &str) -> Result<(), Error> {
     ///     f.write_fmt(format_args!("{s}"))
@@ -537,7 +537,7 @@ impl<'a> Arguments<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// use std::fmt::Arguments;
+    /// use core::fmt::Arguments;
     ///
     /// fn write_str(_: &str) { /* ... */ }
     ///
@@ -553,7 +553,7 @@ impl<'a> Arguments<'a> {
     /// ```rust
     /// assert_eq!(format_args!("hello").as_str(), Some("hello"));
     /// assert_eq!(format_args!("").as_str(), Some(""));
-    /// assert_eq!(format_args!("{:?}", std::env::current_dir()).as_str(), None);
+    /// assert_eq!(format_args!("{:?}", core::env::current_dir()).as_str(), None);
     /// ```
     #[stable(feature = "fmt_as_str", since = "1.52.0")]
     #[rustc_const_unstable(feature = "const_arguments_as_str", issue = "103900")]
@@ -626,7 +626,7 @@ impl Display for Arguments<'_> {
 /// Manually implementing:
 ///
 /// ```
-/// use std::fmt;
+/// use core::fmt;
 ///
 /// struct Point {
 ///     x: i32,
@@ -658,7 +658,7 @@ impl Display for Arguments<'_> {
 /// manually writing an arbitrary representation to the `Formatter`.
 ///
 /// ```
-/// # use std::fmt;
+/// # use core::fmt;
 /// # struct Point {
 /// #     x: i32,
 /// #     y: i32,
@@ -711,7 +711,7 @@ pub trait Debug {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Position {
     ///     longitude: f32,
@@ -774,7 +774,7 @@ pub use macros::Debug;
 /// Implementing `Display` on a type:
 ///
 /// ```
-/// use std::fmt;
+/// use core::fmt;
 ///
 /// struct Point {
 ///     x: i32,
@@ -793,7 +793,7 @@ pub use macros::Debug;
 /// ```
 #[rustc_on_unimplemented(
     on(
-        any(_Self = "std::path::Path", _Self = "std::path::PathBuf"),
+        any(_Self = "core::path::Path", _Self = "core::path::PathBuf"),
         label = "`{Self}` cannot be formatted with the default formatter; call `.display()` on it",
         note = "call `.display()` or `.to_string_lossy()` to safely print paths, \
                 as they may contain non-Unicode data"
@@ -811,7 +811,7 @@ pub trait Display {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Position {
     ///     longitude: f32,
@@ -860,7 +860,7 @@ pub trait Display {
 /// Implementing `Octal` on a type:
 ///
 /// ```
-/// use std::fmt;
+/// use core::fmt;
 ///
 /// struct Length(i32);
 ///
@@ -914,7 +914,7 @@ pub trait Octal {
 /// Implementing `Binary` on a type:
 ///
 /// ```
-/// use std::fmt;
+/// use core::fmt;
 ///
 /// struct Length(i32);
 ///
@@ -972,7 +972,7 @@ pub trait Binary {
 /// Implementing `LowerHex` on a type:
 ///
 /// ```
-/// use std::fmt;
+/// use core::fmt;
 ///
 /// struct Length(i32);
 ///
@@ -1027,7 +1027,7 @@ pub trait LowerHex {
 /// Implementing `UpperHex` on a type:
 ///
 /// ```
-/// use std::fmt;
+/// use core::fmt;
 ///
 /// struct Length(i32);
 ///
@@ -1074,7 +1074,7 @@ pub trait UpperHex {
 /// Implementing `Pointer` on a type:
 ///
 /// ```
-/// use std::fmt;
+/// use core::fmt;
 ///
 /// struct Length(i32);
 ///
@@ -1124,7 +1124,7 @@ pub trait Pointer {
 /// Implementing `LowerExp` on a type:
 ///
 /// ```
-/// use std::fmt;
+/// use core::fmt;
 ///
 /// struct Length(i32);
 ///
@@ -1175,7 +1175,7 @@ pub trait LowerExp {
 /// Implementing `UpperExp` on a type:
 ///
 /// ```
-/// use std::fmt;
+/// use core::fmt;
 ///
 /// struct Length(i32);
 ///
@@ -1216,7 +1216,7 @@ pub trait UpperExp {
 /// Basic usage:
 ///
 /// ```
-/// use std::fmt;
+/// use core::fmt;
 ///
 /// let mut output = String::new();
 /// fmt::write(&mut output, format_args!("Hello {}!", "world"))
@@ -1227,7 +1227,7 @@ pub trait UpperExp {
 /// Please note that using [`write!`] might be preferable. Example:
 ///
 /// ```
-/// use std::fmt::Write;
+/// use core::fmt::Write;
 ///
 /// let mut output = String::new();
 /// write!(&mut output, "Hello {}!", "world")
@@ -1375,7 +1375,7 @@ impl<'a> Formatter<'a> {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Foo { nb: i32 }
     ///
@@ -1483,7 +1483,7 @@ impl<'a> Formatter<'a> {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Foo;
     ///
@@ -1665,7 +1665,7 @@ impl<'a> Formatter<'a> {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Foo;
     ///
@@ -1690,7 +1690,7 @@ impl<'a> Formatter<'a> {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Foo(i32);
     ///
@@ -1725,7 +1725,7 @@ impl<'a> Formatter<'a> {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Foo;
     ///
@@ -1760,7 +1760,7 @@ impl<'a> Formatter<'a> {
     /// ```
     /// extern crate core;
     ///
-    /// use std::fmt::{self, Alignment};
+    /// use core::fmt::{self, Alignment};
     ///
     /// struct Foo;
     ///
@@ -1800,7 +1800,7 @@ impl<'a> Formatter<'a> {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Foo(i32);
     ///
@@ -1831,7 +1831,7 @@ impl<'a> Formatter<'a> {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Foo(f32);
     ///
@@ -1861,7 +1861,7 @@ impl<'a> Formatter<'a> {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Foo(i32);
     ///
@@ -1893,7 +1893,7 @@ impl<'a> Formatter<'a> {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Foo(i32);
     ///
@@ -1922,7 +1922,7 @@ impl<'a> Formatter<'a> {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Foo(i32);
     ///
@@ -1950,7 +1950,7 @@ impl<'a> Formatter<'a> {
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Foo(i32);
     ///
@@ -1989,8 +1989,8 @@ impl<'a> Formatter<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// use std::fmt;
-    /// use std::net::Ipv4Addr;
+    /// use core::fmt;
+    /// use core::net::Ipv4Addr;
     ///
     /// struct Foo {
     ///     bar: i32,
@@ -2151,8 +2151,8 @@ impl<'a> Formatter<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// use std::fmt;
-    /// use std::marker::PhantomData;
+    /// use core::fmt;
+    /// use core::marker::PhantomData;
     ///
     /// struct Foo<T>(i32, String, PhantomData<T>);
     ///
@@ -2284,7 +2284,7 @@ impl<'a> Formatter<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Foo(Vec<i32>);
     ///
@@ -2307,7 +2307,7 @@ impl<'a> Formatter<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Foo(Vec<i32>);
     ///
@@ -2326,7 +2326,7 @@ impl<'a> Formatter<'a> {
     /// to build a list of match arms:
     ///
     /// ```rust
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Arm<'a, L: 'a, R: 'a>(&'a (L, R));
     /// struct Table<'a, K: 'a, V: 'a>(&'a [(K, V)], V);
@@ -2365,7 +2365,7 @@ impl<'a> Formatter<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// struct Foo(Vec<(String, i32)>);
     ///

@@ -27,13 +27,13 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
     on(
-        _Self = "std::ops::RangeTo<Idx>",
+        _Self = "core::ops::RangeTo<Idx>",
         label = "if you meant to iterate until a value, add a starting value",
         note = "`..end` is a `RangeTo`, which cannot be iterated on; you might have meant to have a \
               bounded `Range`: `0..end`"
     ),
     on(
-        _Self = "std::ops::RangeToInclusive<Idx>",
+        _Self = "core::ops::RangeToInclusive<Idx>",
         label = "if you meant to iterate until a value (including it), add a starting value",
         note = "`..=end` is a `RangeToInclusive`, which cannot be iterated on; you might have meant \
               to have a bounded `RangeInclusive`: `0..=end`"
@@ -44,7 +44,7 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
     ),
     on(_Self = "&[]", label = "`{Self}` is not an iterator; try calling `.iter()`"),
     on(
-        _Self = "std::vec::Vec<T, A>",
+        _Self = "core::vec::Vec<T, A>",
         label = "`{Self}` is not an iterator; try calling `.into_iter()` or `.iter()`"
     ),
     on(
@@ -52,7 +52,7 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
         label = "`{Self}` is not an iterator; try calling `.chars()` or `.bytes()`"
     ),
     on(
-        _Self = "std::string::String",
+        _Self = "core::string::String",
         label = "`{Self}` is not an iterator; try calling `.chars()` or `.bytes()`"
     ),
     on(
@@ -329,7 +329,7 @@ pub trait Iterator {
     /// ```
     /// #![feature(iter_advance_by)]
     ///
-    /// use std::num::NonZeroUsize;
+    /// use core::num::NonZeroUsize;
     /// let a = [1, 2, 3, 4];
     /// let mut iter = a.iter();
     ///
@@ -511,9 +511,9 @@ pub trait Iterator {
     ///
     /// ```
     /// #[cfg(windows)]
-    /// fn os_str_to_utf16(s: &std::ffi::OsStr) -> Vec<u16> {
-    ///     use std::os::windows::ffi::OsStrExt;
-    ///     s.encode_wide().chain(std::iter::once(0)).collect()
+    /// fn os_str_to_utf16(s: &core::ffi::OsStr) -> Vec<u16> {
+    ///     use core::os::windows::ffi::OsStrExt;
+    ///     s.encode_wide().chain(core::iter::once(0)).collect()
     /// }
     /// ```
     ///
@@ -603,7 +603,7 @@ pub trait Iterator {
     /// If both iterators have roughly equivalent syntax, it may be more readable to use [`zip`]:
     ///
     /// ```
-    /// use std::iter::zip;
+    /// use core::iter::zip;
     ///
     /// let a = [1, 2, 3];
     /// let b = [2, 3, 4];
@@ -828,7 +828,7 @@ pub trait Iterator {
     /// Basic usage:
     ///
     /// ```
-    /// use std::sync::mpsc::channel;
+    /// use core::sync::mpsc::channel;
     ///
     /// let (tx, rx) = channel();
     /// (0..5).map(|x| x * 2 + 1)
@@ -1823,7 +1823,7 @@ pub trait Iterator {
     /// [`VecDeque<T>`]: ../../std/collections/struct.VecDeque.html
     ///
     /// ```
-    /// use std::collections::VecDeque;
+    /// use core::collections::VecDeque;
     ///
     /// let a = [1, 2, 3];
     ///
@@ -2276,7 +2276,7 @@ pub trait Iterator {
     /// a similar idea:
     ///
     /// ```
-    /// use std::ops::ControlFlow;
+    /// use core::ops::ControlFlow;
     ///
     /// let triangular = (1..30).try_fold(0_i8, |prev, x| {
     ///     if let Some(next) = prev.checked_add(x) {
@@ -2324,9 +2324,9 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// use std::fs::rename;
-    /// use std::io::{stdout, Write};
-    /// use std::path::Path;
+    /// use core::fs::rename;
+    /// use core::io::{stdout, Write};
+    /// use core::path::Path;
     ///
     /// let data = ["no_tea.txt", "stale_bread.json", "torrential_rain.png"];
     ///
@@ -2344,7 +2344,7 @@ pub trait Iterator {
     /// in which you'd use `break` and `continue` in a normal loop:
     ///
     /// ```
-    /// use std::ops::ControlFlow;
+    /// use core::ops::ControlFlow;
     ///
     /// let r = (2..100).try_for_each(|x| {
     ///     if 323 % x == 0 {
@@ -2579,7 +2579,7 @@ pub trait Iterator {
     /// #![feature(iterator_try_reduce)]
     ///
     /// let numbers = vec!["1", "2", "3", "4", "5"];
-    /// let max: Result<Option<_>, <usize as std::str::FromStr>::Err> =
+    /// let max: Result<Option<_>, <usize as core::str::FromStr>::Err> =
     ///     numbers.into_iter().try_reduce(|x, y| {
     ///         if x.parse::<usize>()? > y.parse::<usize>()? { Ok(x) } else { Ok(y) }
     ///     });
@@ -2826,7 +2826,7 @@ pub trait Iterator {
     ///
     /// let a = ["1", "2", "lol", "NaN", "5"];
     ///
-    /// let is_my_num = |s: &str, search: i32| -> Result<bool, std::num::ParseIntError> {
+    /// let is_my_num = |s: &str, search: i32| -> Result<bool, core::num::ParseIntError> {
     ///     Ok(s.parse::<i32>()?  == search)
     /// };
     ///
@@ -2841,7 +2841,7 @@ pub trait Iterator {
     /// ```
     /// #![feature(try_find)]
     ///
-    /// use std::num::NonZeroU32;
+    /// use core::num::NonZeroU32;
     /// let a = [3, 5, 7, 4, 9, 0, 11];
     /// let result = a.iter().try_find(|&&x| NonZeroU32::new(x).map(|y| y.is_power_of_two()));
     /// assert_eq!(result, Some(Some(&4)));
@@ -3522,7 +3522,7 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// use std::cmp::Ordering;
+    /// use core::cmp::Ordering;
     ///
     /// assert_eq!([1].iter().cmp([1].iter()), Ordering::Equal);
     /// assert_eq!([1].iter().cmp([1, 2].iter()), Ordering::Less);
@@ -3549,7 +3549,7 @@ pub trait Iterator {
     /// ```
     /// #![feature(iter_order_by)]
     ///
-    /// use std::cmp::Ordering;
+    /// use core::cmp::Ordering;
     ///
     /// let xs = [1, 2, 3, 4];
     /// let ys = [1, 4, 9, 16];
@@ -3591,7 +3591,7 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// use std::cmp::Ordering;
+    /// use core::cmp::Ordering;
     ///
     /// assert_eq!([1.].iter().partial_cmp([1.].iter()), Some(Ordering::Equal));
     /// assert_eq!([1.].iter().partial_cmp([1., 2.].iter()), Some(Ordering::Less));
@@ -3608,7 +3608,7 @@ pub trait Iterator {
     /// The results are determined by the order of evaluation.
     ///
     /// ```
-    /// use std::cmp::Ordering;
+    /// use core::cmp::Ordering;
     ///
     /// assert_eq!([1.0, f64::NAN].iter().partial_cmp([2.0, f64::NAN].iter()), Some(Ordering::Less));
     /// assert_eq!([2.0, f64::NAN].iter().partial_cmp([1.0, f64::NAN].iter()), Some(Ordering::Greater));
@@ -3636,7 +3636,7 @@ pub trait Iterator {
     /// ```
     /// #![feature(iter_order_by)]
     ///
-    /// use std::cmp::Ordering;
+    /// use core::cmp::Ordering;
     ///
     /// let xs = [1.0, 2.0, 3.0, 4.0];
     /// let ys = [1.0, 4.0, 9.0, 16.0];
@@ -3863,7 +3863,7 @@ pub trait Iterator {
     /// assert!([1, 2, 2, 9].iter().is_sorted());
     /// assert!(![1, 3, 2, 4].iter().is_sorted());
     /// assert!([0].iter().is_sorted());
-    /// assert!(std::iter::empty::<i32>().is_sorted());
+    /// assert!(core::iter::empty::<i32>().is_sorted());
     /// assert!(![0.0, 1.0, f32::NAN].iter().is_sorted());
     /// ```
     #[inline]
@@ -3891,7 +3891,7 @@ pub trait Iterator {
     /// assert!([1, 2, 2, 9].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
     /// assert!(![1, 3, 2, 4].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
     /// assert!([0].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
-    /// assert!(std::iter::empty::<i32>().is_sorted_by(|a, b| a.partial_cmp(b)));
+    /// assert!(core::iter::empty::<i32>().is_sorted_by(|a, b| a.partial_cmp(b)));
     /// assert!(![0.0, 1.0, f32::NAN].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
     /// ```
     ///

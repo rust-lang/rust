@@ -62,7 +62,7 @@ pub use num::FloatToInt;
 /// functions:
 ///
 /// ```rust
-/// use std::convert::identity;
+/// use core::convert::identity;
 ///
 /// fn manipulation(x: u32) -> u32 {
 ///     // Let's pretend that adding one is an interesting function.
@@ -75,7 +75,7 @@ pub use num::FloatToInt;
 /// Using `identity` as a "do nothing" base case in a conditional:
 ///
 /// ```rust
-/// use std::convert::identity;
+/// use core::convert::identity;
 ///
 /// # let condition = true;
 /// #
@@ -91,7 +91,7 @@ pub use num::FloatToInt;
 /// Using `identity` to keep the `Some` variants of an iterator of `Option<T>`:
 ///
 /// ```rust
-/// use std::convert::identity;
+/// use core::convert::identity;
 ///
 /// let iter = [Some(1), None, Some(3)].into_iter();
 /// let filtered = iter.filter_map(identity).collect::<Vec<_>>();
@@ -502,9 +502,9 @@ pub trait Into<T>: Sized {
 /// implementing `From`. The compiler then infers which implementation of `Into` should be used.
 ///
 /// ```
-/// use std::fs;
-/// use std::io;
-/// use std::num;
+/// use core::fs;
+/// use core::io;
+/// use core::num;
 ///
 /// enum CliError {
 ///     IoError(io::Error),
@@ -536,7 +536,7 @@ pub trait Into<T>: Sized {
 #[rustc_diagnostic_item = "From"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(on(
-    all(_Self = "&str", T = "std::string::String"),
+    all(_Self = "&str", T = "core::string::String"),
     note = "to coerce a `{T}` into a `{Self}`, use `&*` as a prefix",
 ))]
 #[const_trait]
@@ -864,7 +864,7 @@ impl AsMut<str> for str {
 /// ```
 /// trait MyTrait {}
 /// impl MyTrait for fn() -> ! {}
-/// impl MyTrait for fn() -> std::convert::Infallible {}
+/// impl MyTrait for fn() -> core::convert::Infallible {}
 /// ```
 ///
 /// With `Infallible` being an enum, this code is valid.

@@ -94,11 +94,11 @@ pub use self::zip::zip;
 ///
 /// ```
 /// # #![feature(inplace_iteration)]
-/// # use std::iter::SourceIter;
+/// # use core::iter::SourceIter;
 ///
 /// let mut iter = vec![9, 9, 9].into_iter().map(|i| i * i);
 /// let _ = iter.next();
-/// let mut remainder = std::mem::replace(unsafe { iter.as_inner() }, Vec::new().into_iter());
+/// let mut remainder = core::mem::replace(unsafe { iter.as_inner() }, Vec::new().into_iter());
 /// println!("n = {} elements remaining", remainder.len());
 /// ```
 ///

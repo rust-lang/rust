@@ -321,7 +321,7 @@ pub struct AssertParamIsEq<T: Eq + ?Sized> {
 /// # Examples
 ///
 /// ```
-/// use std::cmp::Ordering;
+/// use core::cmp::Ordering;
 ///
 /// let result = 1.cmp(&2);
 /// assert_eq!(Ordering::Less, result);
@@ -354,7 +354,7 @@ impl Ordering {
     /// # Examples
     ///
     /// ```
-    /// use std::cmp::Ordering;
+    /// use core::cmp::Ordering;
     ///
     /// assert_eq!(Ordering::Less.is_eq(), false);
     /// assert_eq!(Ordering::Equal.is_eq(), true);
@@ -373,7 +373,7 @@ impl Ordering {
     /// # Examples
     ///
     /// ```
-    /// use std::cmp::Ordering;
+    /// use core::cmp::Ordering;
     ///
     /// assert_eq!(Ordering::Less.is_ne(), true);
     /// assert_eq!(Ordering::Equal.is_ne(), false);
@@ -392,7 +392,7 @@ impl Ordering {
     /// # Examples
     ///
     /// ```
-    /// use std::cmp::Ordering;
+    /// use core::cmp::Ordering;
     ///
     /// assert_eq!(Ordering::Less.is_lt(), true);
     /// assert_eq!(Ordering::Equal.is_lt(), false);
@@ -411,7 +411,7 @@ impl Ordering {
     /// # Examples
     ///
     /// ```
-    /// use std::cmp::Ordering;
+    /// use core::cmp::Ordering;
     ///
     /// assert_eq!(Ordering::Less.is_gt(), false);
     /// assert_eq!(Ordering::Equal.is_gt(), false);
@@ -430,7 +430,7 @@ impl Ordering {
     /// # Examples
     ///
     /// ```
-    /// use std::cmp::Ordering;
+    /// use core::cmp::Ordering;
     ///
     /// assert_eq!(Ordering::Less.is_le(), true);
     /// assert_eq!(Ordering::Equal.is_le(), true);
@@ -449,7 +449,7 @@ impl Ordering {
     /// # Examples
     ///
     /// ```
-    /// use std::cmp::Ordering;
+    /// use core::cmp::Ordering;
     ///
     /// assert_eq!(Ordering::Less.is_ge(), false);
     /// assert_eq!(Ordering::Equal.is_ge(), true);
@@ -474,7 +474,7 @@ impl Ordering {
     /// Basic behavior:
     ///
     /// ```
-    /// use std::cmp::Ordering;
+    /// use core::cmp::Ordering;
     ///
     /// assert_eq!(Ordering::Less.reverse(), Ordering::Greater);
     /// assert_eq!(Ordering::Equal.reverse(), Ordering::Equal);
@@ -511,7 +511,7 @@ impl Ordering {
     /// # Examples
     ///
     /// ```
-    /// use std::cmp::Ordering;
+    /// use core::cmp::Ordering;
     ///
     /// let result = Ordering::Equal.then(Ordering::Less);
     /// assert_eq!(result, Ordering::Less);
@@ -550,7 +550,7 @@ impl Ordering {
     /// # Examples
     ///
     /// ```
-    /// use std::cmp::Ordering;
+    /// use core::cmp::Ordering;
     ///
     /// let result = Ordering::Equal.then_with(|| Ordering::Less);
     /// assert_eq!(result, Ordering::Less);
@@ -591,7 +591,7 @@ impl Ordering {
 /// # Examples
 ///
 /// ```
-/// use std::cmp::Reverse;
+/// use core::cmp::Reverse;
 ///
 /// let mut v = vec![1, 2, 3, 4, 5, 6];
 /// v.sort_by_key(|&num| (num > 3, Reverse(num)));
@@ -727,7 +727,7 @@ impl<T: Clone> Clone for Reverse<T> {
 /// and `name`:
 ///
 /// ```
-/// use std::cmp::Ordering;
+/// use core::cmp::Ordering;
 ///
 /// #[derive(Eq)]
 /// struct Person {
@@ -772,7 +772,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
     /// # Examples
     ///
     /// ```
-    /// use std::cmp::Ordering;
+    /// use core::cmp::Ordering;
     ///
     /// assert_eq!(5.cmp(&10), Ordering::Less);
     /// assert_eq!(10.cmp(&5), Ordering::Greater);
@@ -956,7 +956,7 @@ pub macro Ord($item:item) {
 /// If your type is [`Ord`], you can implement [`partial_cmp`] by using [`cmp`]:
 ///
 /// ```
-/// use std::cmp::Ordering;
+/// use core::cmp::Ordering;
 ///
 /// #[derive(Eq)]
 /// struct Person {
@@ -989,7 +989,7 @@ pub macro Ord($item:item) {
 /// is the only field to be used for sorting:
 ///
 /// ```
-/// use std::cmp::Ordering;
+/// use core::cmp::Ordering;
 ///
 /// struct Person {
 ///     id: u32,
@@ -1041,7 +1041,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     /// # Examples
     ///
     /// ```
-    /// use std::cmp::Ordering;
+    /// use core::cmp::Ordering;
     ///
     /// let result = 1.0.partial_cmp(&2.0);
     /// assert_eq!(result, Some(Ordering::Less));
@@ -1155,7 +1155,7 @@ pub macro PartialOrd($item:item) {
 /// # Examples
 ///
 /// ```
-/// use std::cmp;
+/// use core::cmp;
 ///
 /// assert_eq!(1, cmp::min(1, 2));
 /// assert_eq!(2, cmp::min(2, 2));
@@ -1176,7 +1176,7 @@ pub const fn min<T: ~const Ord + ~const Destruct>(v1: T, v2: T) -> T {
 /// # Examples
 ///
 /// ```
-/// use std::cmp;
+/// use core::cmp;
 ///
 /// assert_eq!(cmp::min_by(-2, 1, |x: &i32, y: &i32| x.abs().cmp(&y.abs())), 1);
 /// assert_eq!(cmp::min_by(-2, 2, |x: &i32, y: &i32| x.abs().cmp(&y.abs())), -2);
@@ -1203,7 +1203,7 @@ where
 /// # Examples
 ///
 /// ```
-/// use std::cmp;
+/// use core::cmp;
 ///
 /// assert_eq!(cmp::min_by_key(-2, 1, |x: &i32| x.abs()), 1);
 /// assert_eq!(cmp::min_by_key(-2, 2, |x: &i32| x.abs()), -2);
@@ -1230,7 +1230,7 @@ where
 /// # Examples
 ///
 /// ```
-/// use std::cmp;
+/// use core::cmp;
 ///
 /// assert_eq!(2, cmp::max(1, 2));
 /// assert_eq!(2, cmp::max(2, 2));
@@ -1251,7 +1251,7 @@ pub const fn max<T: ~const Ord + ~const Destruct>(v1: T, v2: T) -> T {
 /// # Examples
 ///
 /// ```
-/// use std::cmp;
+/// use core::cmp;
 ///
 /// assert_eq!(cmp::max_by(-2, 1, |x: &i32, y: &i32| x.abs().cmp(&y.abs())), -2);
 /// assert_eq!(cmp::max_by(-2, 2, |x: &i32, y: &i32| x.abs().cmp(&y.abs())), 2);
@@ -1278,7 +1278,7 @@ where
 /// # Examples
 ///
 /// ```
-/// use std::cmp;
+/// use core::cmp;
 ///
 /// assert_eq!(cmp::max_by_key(-2, 1, |x: &i32| x.abs()), -2);
 /// assert_eq!(cmp::max_by_key(-2, 2, |x: &i32| x.abs()), 2);

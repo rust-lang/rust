@@ -80,7 +80,7 @@
 //! by the [`Write`] trait:
 //!
 //! ```
-//! use std::io;
+//! use core::io;
 //!
 //! trait Write {
 //!     fn write_all(&mut self, bytes: &[u8]) -> Result<(), io::Error>;
@@ -96,8 +96,8 @@
 //!
 //! ```no_run
 //! # #![allow(unused_must_use)] // \o/
-//! use std::fs::File;
-//! use std::io::prelude::*;
+//! use core::fs::File;
+//! use core::io::prelude::*;
 //!
 //! let mut file = File::create("valuable_data.txt").unwrap();
 //! // If `write_all` errors, then we'll never know, because the return
@@ -113,8 +113,8 @@
 //! write fails, providing a marginally useful message indicating why:
 //!
 //! ```no_run
-//! use std::fs::File;
-//! use std::io::prelude::*;
+//! use core::fs::File;
+//! use core::io::prelude::*;
 //!
 //! let mut file = File::create("valuable_data.txt").unwrap();
 //! file.write_all(b"important message").expect("failed to write message");
@@ -123,8 +123,8 @@
 //! You might also simply assert success:
 //!
 //! ```no_run
-//! # use std::fs::File;
-//! # use std::io::prelude::*;
+//! # use core::fs::File;
+//! # use core::io::prelude::*;
 //! # let mut file = File::create("valuable_data.txt").unwrap();
 //! assert!(file.write_all(b"important message").is_ok());
 //! ```
@@ -132,9 +132,9 @@
 //! Or propagate the error up the call stack with [`?`]:
 //!
 //! ```
-//! # use std::fs::File;
-//! # use std::io::prelude::*;
-//! # use std::io;
+//! # use core::fs::File;
+//! # use core::io::prelude::*;
+//! # use core::io;
 //! # #[allow(dead_code)]
 //! fn write_message() -> io::Result<()> {
 //!     let mut file = File::create("valuable_data.txt")?;
@@ -154,9 +154,9 @@
 //!
 //! ```
 //! # #![allow(dead_code)]
-//! use std::fs::File;
-//! use std::io::prelude::*;
-//! use std::io;
+//! use core::fs::File;
+//! use core::io::prelude::*;
+//! use core::io;
 //!
 //! struct Info {
 //!     name: String,
@@ -187,9 +187,9 @@
 //!
 //! ```
 //! # #![allow(dead_code)]
-//! use std::fs::File;
-//! use std::io::prelude::*;
-//! use std::io;
+//! use core::fs::File;
+//! use core::io::prelude::*;
+//! use core::io;
 //!
 //! struct Info {
 //!     name: String,
@@ -432,7 +432,7 @@
 //! [`Ok`] values using [`flatten`][Iterator::flatten].
 //!
 //! ```
-//! # use std::str::FromStr;
+//! # use core::str::FromStr;
 //! let mut results = vec![];
 //! let mut errs = vec![];
 //! let nums: Vec<_> = ["17", "not a number", "99", "-27", "768"]
@@ -588,7 +588,7 @@ impl<T, E> Result<T, E> {
     /// # Examples
     ///
     /// ```
-    /// use std::io::{Error, ErrorKind};
+    /// use core::io::{Error, ErrorKind};
     ///
     /// let x: Result<u32, Error> = Err(Error::new(ErrorKind::NotFound, "!"));
     /// assert_eq!(x.is_err_and(|x| x.kind() == ErrorKind::NotFound), true);
@@ -872,7 +872,7 @@ impl<T, E> Result<T, E> {
     /// ```
     /// #![feature(result_option_inspect)]
     ///
-    /// use std::{fs, io};
+    /// use core::{fs, io};
     ///
     /// fn read() -> io::Result<String> {
     ///     fs::read_to_string("address.txt")
@@ -1021,7 +1021,7 @@ impl<T, E> Result<T, E> {
     /// _expect_ the `Result` should be `Ok`.
     ///
     /// ```should_panic
-    /// let path = std::env::var("IMPORTANT_PATH")
+    /// let path = core::env::var("IMPORTANT_PATH")
     ///     .expect("env variable `IMPORTANT_PATH` should be set by `wrapper_script.sh`");
     /// ```
     ///
@@ -1033,7 +1033,7 @@ impl<T, E> Result<T, E> {
     /// For more detail on expect message styles and the reasoning behind our recommendation please
     /// refer to the section on ["Common Message
     /// Styles"](../../std/error/index.html#common-message-styles) in the
-    /// [`std::error`](../../std/error/index.html) module docs.
+    /// [`core::error`](../../std/error/index.html) module docs.
     #[inline]
     #[track_caller]
     #[stable(feature = "result_expect", since = "1.4.0")]
@@ -1323,7 +1323,7 @@ impl<T, E> Result<T, E> {
     /// Often used to chain fallible operations that may return [`Err`].
     ///
     /// ```
-    /// use std::{io::ErrorKind, path::Path};
+    /// use core::{io::ErrorKind, path::Path};
     ///
     /// // Note: on Windows "/" maps to "C:\"
     /// let root_modified_time = Path::new("/").metadata().and_then(|md| md.modified());

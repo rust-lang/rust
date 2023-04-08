@@ -34,7 +34,7 @@ impl const From<char> for u32 {
     /// # Examples
     ///
     /// ```
-    /// use std::mem;
+    /// use core::mem;
     ///
     /// let c = 'c';
     /// let u = u32::from(c);
@@ -54,7 +54,7 @@ impl const From<char> for u64 {
     /// # Examples
     ///
     /// ```
-    /// use std::mem;
+    /// use core::mem;
     ///
     /// let c = '👤';
     /// let u = u64::from(c);
@@ -76,7 +76,7 @@ impl const From<char> for u128 {
     /// # Examples
     ///
     /// ```
-    /// use std::mem;
+    /// use core::mem;
     ///
     /// let c = '⚙';
     /// let u = u128::from(c);
@@ -130,7 +130,7 @@ impl const From<u8> for char {
     /// # Examples
     ///
     /// ```
-    /// use std::mem;
+    /// use core::mem;
     ///
     /// let u = 32 as u8;
     /// let c = char::from(u);

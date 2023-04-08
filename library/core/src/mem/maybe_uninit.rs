@@ -18,7 +18,7 @@ use crate::slice;
 ///
 /// ```rust,no_run
 /// # #![allow(invalid_value)]
-/// use std::mem::{self, MaybeUninit};
+/// use core::mem::{self, MaybeUninit};
 ///
 /// let x: &i32 = unsafe { mem::zeroed() }; // undefined behavior! ⚠️
 /// // The equivalent code with `MaybeUninit<&i32>`:
@@ -33,7 +33,7 @@ use crate::slice;
 ///
 /// ```rust,no_run
 /// # #![allow(invalid_value)]
-/// use std::mem::{self, MaybeUninit};
+/// use core::mem::{self, MaybeUninit};
 ///
 /// let b: bool = unsafe { mem::uninitialized() }; // undefined behavior! ⚠️
 /// // The equivalent code with `MaybeUninit<bool>`:
@@ -48,7 +48,7 @@ use crate::slice;
 ///
 /// ```rust,no_run
 /// # #![allow(invalid_value)]
-/// use std::mem::{self, MaybeUninit};
+/// use core::mem::{self, MaybeUninit};
 ///
 /// let x: i32 = unsafe { mem::uninitialized() }; // undefined behavior! ⚠️
 /// // The equivalent code with `MaybeUninit<i32>`:
@@ -71,7 +71,7 @@ use crate::slice;
 /// be initialized:
 ///
 /// ```rust
-/// use std::mem::MaybeUninit;
+/// use core::mem::MaybeUninit;
 ///
 /// // Create an explicitly uninitialized reference. The compiler knows that data inside
 /// // a `MaybeUninit<T>` may be invalid, and hence this is not UB:
@@ -97,7 +97,7 @@ use crate::slice;
 /// unnecessary moves.
 ///
 /// ```
-/// use std::mem::MaybeUninit;
+/// use core::mem::MaybeUninit;
 ///
 /// unsafe fn make_vec(out: *mut Vec<i32>) {
 ///     // `write` does not drop the old contents, which is important.
@@ -117,7 +117,7 @@ use crate::slice;
 /// `MaybeUninit<T>` can be used to initialize a large array element-by-element:
 ///
 /// ```
-/// use std::mem::{self, MaybeUninit};
+/// use core::mem::{self, MaybeUninit};
 ///
 /// let data = {
 ///     // Create an uninitialized array of `MaybeUninit`. The `assume_init` is
@@ -145,7 +145,7 @@ use crate::slice;
 /// be found in low-level datastructures.
 ///
 /// ```
-/// use std::mem::MaybeUninit;
+/// use core::mem::MaybeUninit;
 ///
 /// // Create an uninitialized array of `MaybeUninit`. The `assume_init` is
 /// // safe because the type we are claiming to have initialized here is a
@@ -167,11 +167,11 @@ use crate::slice;
 ///
 /// ## Initializing a struct field-by-field
 ///
-/// You can use `MaybeUninit<T>`, and the [`std::ptr::addr_of_mut`] macro, to initialize structs field by field:
+/// You can use `MaybeUninit<T>`, and the [`core::ptr::addr_of_mut`] macro, to initialize structs field by field:
 ///
 /// ```rust
-/// use std::mem::MaybeUninit;
-/// use std::ptr::addr_of_mut;
+/// use core::mem::MaybeUninit;
+/// use core::ptr::addr_of_mut;
 ///
 /// #[derive(Debug, PartialEq)]
 /// pub struct Foo {
@@ -204,7 +204,7 @@ use crate::slice;
 ///     }
 /// );
 /// ```
-/// [`std::ptr::addr_of_mut`]: crate::ptr::addr_of_mut
+/// [`core::ptr::addr_of_mut`]: crate::ptr::addr_of_mut
 /// [ub]: ../../reference/behavior-considered-undefined.html
 ///
 /// # Layout
@@ -212,7 +212,7 @@ use crate::slice;
 /// `MaybeUninit<T>` is guaranteed to have the same size, alignment, and ABI as `T`:
 ///
 /// ```rust
-/// use std::mem::{MaybeUninit, size_of, align_of};
+/// use core::mem::{MaybeUninit, size_of, align_of};
 /// assert_eq!(size_of::<MaybeUninit<u64>>(), size_of::<u64>());
 /// assert_eq!(align_of::<MaybeUninit<u64>>(), align_of::<u64>());
 /// ```
@@ -224,7 +224,7 @@ use crate::slice;
 /// optimizations, potentially resulting in a larger size:
 ///
 /// ```rust
-/// # use std::mem::{MaybeUninit, size_of};
+/// # use core::mem::{MaybeUninit, size_of};
 /// assert_eq!(size_of::<Option<bool>>(), 1);
 /// assert_eq!(size_of::<Option<MaybeUninit<bool>>>(), 2);
 /// ```
@@ -277,7 +277,7 @@ impl<T> MaybeUninit<T> {
     /// # Example
     ///
     /// ```
-    /// use std::mem::MaybeUninit;
+    /// use core::mem::MaybeUninit;
     ///
     /// let v: MaybeUninit<Vec<u8>> = MaybeUninit::new(vec![42]);
     /// ```
@@ -301,7 +301,7 @@ impl<T> MaybeUninit<T> {
     /// # Example
     ///
     /// ```
-    /// use std::mem::MaybeUninit;
+    /// use core::mem::MaybeUninit;
     ///
     /// let v: MaybeUninit<String> = MaybeUninit::uninit();
     /// ```
@@ -326,7 +326,7 @@ impl<T> MaybeUninit<T> {
     /// ```no_run
     /// #![feature(maybe_uninit_uninit_array, maybe_uninit_slice)]
     ///
-    /// use std::mem::MaybeUninit;
+    /// use core::mem::MaybeUninit;
     ///
     /// extern "C" {
     ///     fn read_into_buffer(ptr: *mut u8, max_len: usize) -> usize;
@@ -367,7 +367,7 @@ impl<T> MaybeUninit<T> {
     /// fields of the struct can hold the bit-pattern 0 as a valid value.
     ///
     /// ```rust
-    /// use std::mem::MaybeUninit;
+    /// use core::mem::MaybeUninit;
     ///
     /// let x = MaybeUninit::<(u8, bool)>::zeroed();
     /// let x = unsafe { x.assume_init() };
@@ -378,7 +378,7 @@ impl<T> MaybeUninit<T> {
     /// when `0` is not a valid bit-pattern for the type:
     ///
     /// ```rust,no_run
-    /// use std::mem::MaybeUninit;
+    /// use core::mem::MaybeUninit;
     ///
     /// enum NotZero { One = 1, Two = 2 }
     ///
@@ -425,7 +425,7 @@ impl<T> MaybeUninit<T> {
     /// Correct usage of this method:
     ///
     /// ```rust
-    /// use std::mem::MaybeUninit;
+    /// use core::mem::MaybeUninit;
     ///
     /// let mut x = MaybeUninit::<Vec<u8>>::uninit();
     ///
@@ -443,7 +443,7 @@ impl<T> MaybeUninit<T> {
     /// This usage of the method causes a leak:
     ///
     /// ```rust
-    /// use std::mem::MaybeUninit;
+    /// use core::mem::MaybeUninit;
     ///
     /// let mut x = MaybeUninit::<String>::uninit();
     ///
@@ -501,7 +501,7 @@ impl<T> MaybeUninit<T> {
     /// Correct usage of this method:
     ///
     /// ```rust
-    /// use std::mem::MaybeUninit;
+    /// use core::mem::MaybeUninit;
     ///
     /// let mut x = MaybeUninit::<Vec<u32>>::uninit();
     /// x.write(vec![0, 1, 2]);
@@ -513,7 +513,7 @@ impl<T> MaybeUninit<T> {
     /// *Incorrect* usage of this method:
     ///
     /// ```rust,no_run
-    /// use std::mem::MaybeUninit;
+    /// use core::mem::MaybeUninit;
     ///
     /// let x = MaybeUninit::<Vec<u32>>::uninit();
     /// let x_vec = unsafe { &*x.as_ptr() };
@@ -538,7 +538,7 @@ impl<T> MaybeUninit<T> {
     /// Correct usage of this method:
     ///
     /// ```rust
-    /// use std::mem::MaybeUninit;
+    /// use core::mem::MaybeUninit;
     ///
     /// let mut x = MaybeUninit::<Vec<u32>>::uninit();
     /// x.write(vec![0, 1, 2]);
@@ -552,7 +552,7 @@ impl<T> MaybeUninit<T> {
     /// *Incorrect* usage of this method:
     ///
     /// ```rust,no_run
-    /// use std::mem::MaybeUninit;
+    /// use core::mem::MaybeUninit;
     ///
     /// let mut x = MaybeUninit::<Vec<u32>>::uninit();
     /// let x_vec = unsafe { &mut *x.as_mut_ptr() };
@@ -597,7 +597,7 @@ impl<T> MaybeUninit<T> {
     /// Correct usage of this method:
     ///
     /// ```rust
-    /// use std::mem::MaybeUninit;
+    /// use core::mem::MaybeUninit;
     ///
     /// let mut x = MaybeUninit::<bool>::uninit();
     /// x.write(true);
@@ -608,7 +608,7 @@ impl<T> MaybeUninit<T> {
     /// *Incorrect* usage of this method:
     ///
     /// ```rust,no_run
-    /// use std::mem::MaybeUninit;
+    /// use core::mem::MaybeUninit;
     ///
     /// let x = MaybeUninit::<Vec<u32>>::uninit();
     /// let x_init = unsafe { x.assume_init() };
@@ -656,7 +656,7 @@ impl<T> MaybeUninit<T> {
     /// Correct usage of this method:
     ///
     /// ```rust
-    /// use std::mem::MaybeUninit;
+    /// use core::mem::MaybeUninit;
     ///
     /// let mut x = MaybeUninit::<u32>::uninit();
     /// x.write(13);
@@ -676,7 +676,7 @@ impl<T> MaybeUninit<T> {
     /// *Incorrect* usage of this method:
     ///
     /// ```rust,no_run
-    /// use std::mem::MaybeUninit;
+    /// use core::mem::MaybeUninit;
     ///
     /// let mut x = MaybeUninit::<Option<Vec<u32>>>::uninit();
     /// x.write(Some(vec![0, 1, 2]));
@@ -745,7 +745,7 @@ impl<T> MaybeUninit<T> {
     /// ### Correct usage of this method:
     ///
     /// ```rust
-    /// use std::mem::MaybeUninit;
+    /// use core::mem::MaybeUninit;
     ///
     /// let mut x = MaybeUninit::<Vec<u32>>::uninit();
     /// // Initialize `x`:
@@ -762,7 +762,7 @@ impl<T> MaybeUninit<T> {
     /// ### *Incorrect* usages of this method:
     ///
     /// ```rust,no_run
-    /// use std::mem::MaybeUninit;
+    /// use core::mem::MaybeUninit;
     ///
     /// let x = MaybeUninit::<Vec<u32>>::uninit();
     /// let x_vec: &Vec<u32> = unsafe { x.assume_init_ref() };
@@ -770,7 +770,7 @@ impl<T> MaybeUninit<T> {
     /// ```
     ///
     /// ```rust,no_run
-    /// use std::{cell::Cell, mem::MaybeUninit};
+    /// use core::{cell::Cell, mem::MaybeUninit};
     ///
     /// let b = MaybeUninit::<Cell<bool>>::uninit();
     /// // Initialize the `MaybeUninit` using `Cell::set`:
@@ -811,7 +811,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// ```rust
     /// # #![allow(unexpected_cfgs)]
-    /// use std::mem::MaybeUninit;
+    /// use core::mem::MaybeUninit;
     ///
     /// # unsafe extern "C" fn initialize_buffer(buf: *mut [u8; 1024]) { *buf = [0; 1024] }
     /// # #[cfg(FALSE)]
@@ -846,7 +846,7 @@ impl<T> MaybeUninit<T> {
     /// You cannot use `.assume_init_mut()` to initialize a value:
     ///
     /// ```rust,no_run
-    /// use std::mem::MaybeUninit;
+    /// use core::mem::MaybeUninit;
     ///
     /// let mut b = MaybeUninit::<bool>::uninit();
     /// unsafe {
@@ -861,7 +861,7 @@ impl<T> MaybeUninit<T> {
     /// [`Read`]: ../../std/io/trait.Read.html
     ///
     /// ```rust,no_run
-    /// use std::{io, mem::MaybeUninit};
+    /// use core::{io, mem::MaybeUninit};
     ///
     /// fn read_chunk (reader: &'_ mut dyn io::Read) -> io::Result<[u8; 64]>
     /// {
@@ -877,7 +877,7 @@ impl<T> MaybeUninit<T> {
     /// Nor can you use direct field access to do field-by-field gradual initialization:
     ///
     /// ```rust,no_run
-    /// use std::{mem::MaybeUninit, ptr};
+    /// use core::{mem::MaybeUninit, ptr};
     ///
     /// struct Foo {
     ///     a: u32,
@@ -921,7 +921,7 @@ impl<T> MaybeUninit<T> {
     /// ```
     /// #![feature(maybe_uninit_uninit_array)]
     /// #![feature(maybe_uninit_array_assume_init)]
-    /// use std::mem::MaybeUninit;
+    /// use core::mem::MaybeUninit;
     ///
     /// let mut array: [MaybeUninit<i32>; 3] = MaybeUninit::uninit_array();
     /// array[0].write(0);
@@ -1027,7 +1027,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// ```
     /// #![feature(maybe_uninit_write_slice)]
-    /// use std::mem::MaybeUninit;
+    /// use core::mem::MaybeUninit;
     ///
     /// let mut dst = [MaybeUninit::uninit(); 32];
     /// let src = [0; 32];
@@ -1039,7 +1039,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// ```
     /// #![feature(maybe_uninit_write_slice)]
-    /// use std::mem::MaybeUninit;
+    /// use core::mem::MaybeUninit;
     ///
     /// let mut vec = Vec::with_capacity(32);
     /// let src = [0; 16];
@@ -1087,7 +1087,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// ```
     /// #![feature(maybe_uninit_write_slice)]
-    /// use std::mem::MaybeUninit;
+    /// use core::mem::MaybeUninit;
     ///
     /// let mut dst = [MaybeUninit::uninit(), MaybeUninit::uninit(), MaybeUninit::uninit(), MaybeUninit::uninit(), MaybeUninit::uninit()];
     /// let src = ["wibbly".to_string(), "wobbly".to_string(), "timey".to_string(), "wimey".to_string(), "stuff".to_string()];
@@ -1099,7 +1099,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// ```
     /// #![feature(maybe_uninit_write_slice)]
-    /// use std::mem::MaybeUninit;
+    /// use core::mem::MaybeUninit;
     ///
     /// let mut vec = Vec::with_capacity(32);
     /// let src = ["rust", "is", "a", "pretty", "cool", "language"];
@@ -1170,7 +1170,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// ```
     /// #![feature(maybe_uninit_as_bytes, maybe_uninit_slice)]
-    /// use std::mem::MaybeUninit;
+    /// use core::mem::MaybeUninit;
     ///
     /// let val = 0x12345678_i32;
     /// let uninit = MaybeUninit::new(val);
@@ -1196,7 +1196,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// ```
     /// #![feature(maybe_uninit_as_bytes)]
-    /// use std::mem::MaybeUninit;
+    /// use core::mem::MaybeUninit;
     ///
     /// let val = 0x12345678_i32;
     /// let mut uninit = MaybeUninit::new(val);
@@ -1230,7 +1230,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// ```
     /// #![feature(maybe_uninit_as_bytes, maybe_uninit_write_slice, maybe_uninit_slice)]
-    /// use std::mem::MaybeUninit;
+    /// use core::mem::MaybeUninit;
     ///
     /// let uninit = [MaybeUninit::new(0x1234u16), MaybeUninit::new(0x5678u16)];
     /// let uninit_bytes = MaybeUninit::slice_as_bytes(&uninit);
@@ -1260,7 +1260,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// ```
     /// #![feature(maybe_uninit_as_bytes, maybe_uninit_write_slice, maybe_uninit_slice)]
-    /// use std::mem::MaybeUninit;
+    /// use core::mem::MaybeUninit;
     ///
     /// let mut uninit = [MaybeUninit::<u16>::uninit(), MaybeUninit::<u16>::uninit()];
     /// let uninit_bytes = MaybeUninit::slice_as_bytes_mut(&mut uninit);
@@ -1291,7 +1291,7 @@ impl<T, const N: usize> MaybeUninit<[T; N]> {
     ///
     /// ```
     /// #![feature(maybe_uninit_uninit_array_transpose)]
-    /// # use std::mem::MaybeUninit;
+    /// # use core::mem::MaybeUninit;
     ///
     /// let data: [MaybeUninit<u8>; 1000] = MaybeUninit::uninit().transpose();
     /// ```
@@ -1310,7 +1310,7 @@ impl<T, const N: usize> [MaybeUninit<T>; N] {
     ///
     /// ```
     /// #![feature(maybe_uninit_uninit_array_transpose)]
-    /// # use std::mem::MaybeUninit;
+    /// # use core::mem::MaybeUninit;
     ///
     /// let data = [MaybeUninit::<u8>::uninit(); 1000];
     /// let data: MaybeUninit<[u8; 1000]> = data.transpose();

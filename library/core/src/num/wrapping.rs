@@ -25,7 +25,7 @@ use crate::ops::{Shl, ShlAssign, Shr, ShrAssign, Sub, SubAssign};
 /// # Examples
 ///
 /// ```
-/// use std::num::Wrapping;
+/// use core::num::Wrapping;
 ///
 /// let zero = Wrapping(0u32);
 /// let one = Wrapping(1u32);
@@ -521,7 +521,7 @@ macro_rules! wrapping_int_impl {
             ///
             /// ```
             /// #![feature(wrapping_int_impl)]
-            /// use std::num::Wrapping;
+            /// use core::num::Wrapping;
             ///
             #[doc = concat!("assert_eq!(<Wrapping<", stringify!($t), ">>::MIN, Wrapping(", stringify!($t), "::MIN));")]
             /// ```
@@ -536,7 +536,7 @@ macro_rules! wrapping_int_impl {
             ///
             /// ```
             /// #![feature(wrapping_int_impl)]
-            /// use std::num::Wrapping;
+            /// use core::num::Wrapping;
             ///
             #[doc = concat!("assert_eq!(<Wrapping<", stringify!($t), ">>::MAX, Wrapping(", stringify!($t), "::MAX));")]
             /// ```
@@ -551,7 +551,7 @@ macro_rules! wrapping_int_impl {
             ///
             /// ```
             /// #![feature(wrapping_int_impl)]
-            /// use std::num::Wrapping;
+            /// use core::num::Wrapping;
             ///
             #[doc = concat!("assert_eq!(<Wrapping<", stringify!($t), ">>::BITS, ", stringify!($t), "::BITS);")]
             /// ```
@@ -566,7 +566,7 @@ macro_rules! wrapping_int_impl {
             ///
             /// ```
             /// #![feature(wrapping_int_impl)]
-            /// use std::num::Wrapping;
+            /// use core::num::Wrapping;
             ///
             #[doc = concat!("let n = Wrapping(0b01001100", stringify!($t), ");")]
             ///
@@ -590,7 +590,7 @@ macro_rules! wrapping_int_impl {
             ///
             /// ```
             /// #![feature(wrapping_int_impl)]
-            /// use std::num::Wrapping;
+            /// use core::num::Wrapping;
             ///
             #[doc = concat!("assert_eq!(Wrapping(!0", stringify!($t), ").count_zeros(), 0);")]
             /// ```
@@ -610,7 +610,7 @@ macro_rules! wrapping_int_impl {
             ///
             /// ```
             /// #![feature(wrapping_int_impl)]
-            /// use std::num::Wrapping;
+            /// use core::num::Wrapping;
             ///
             #[doc = concat!("let n = Wrapping(0b0101000", stringify!($t), ");")]
             ///
@@ -637,7 +637,7 @@ macro_rules! wrapping_int_impl {
             ///
             /// ```
             /// #![feature(wrapping_int_impl)]
-            /// use std::num::Wrapping;
+            /// use core::num::Wrapping;
             ///
             /// let n: Wrapping<i64> = Wrapping(0x0123456789ABCDEF);
             /// let m: Wrapping<i64> = Wrapping(-0x76543210FEDCBA99);
@@ -665,7 +665,7 @@ macro_rules! wrapping_int_impl {
             ///
             /// ```
             /// #![feature(wrapping_int_impl)]
-            /// use std::num::Wrapping;
+            /// use core::num::Wrapping;
             ///
             /// let n: Wrapping<i64> = Wrapping(0x0123456789ABCDEF);
             /// let m: Wrapping<i64> = Wrapping(-0xFEDCBA987654322);
@@ -688,7 +688,7 @@ macro_rules! wrapping_int_impl {
             ///
             /// ```
             /// #![feature(wrapping_int_impl)]
-            /// use std::num::Wrapping;
+            /// use core::num::Wrapping;
             ///
             /// let n: Wrapping<i16> = Wrapping(0b0000000_01010101);
             /// assert_eq!(n, Wrapping(85));
@@ -716,7 +716,7 @@ macro_rules! wrapping_int_impl {
             /// Basic usage:
             ///
             /// ```
-            /// use std::num::Wrapping;
+            /// use core::num::Wrapping;
             ///
             /// let n = Wrapping(0b0000000_01010101i16);
             /// assert_eq!(n, Wrapping(85));
@@ -746,7 +746,7 @@ macro_rules! wrapping_int_impl {
             ///
             /// ```
             /// #![feature(wrapping_int_impl)]
-            /// use std::num::Wrapping;
+            /// use core::num::Wrapping;
             ///
             #[doc = concat!("let n = Wrapping(0x1A", stringify!($t), ");")]
             ///
@@ -774,7 +774,7 @@ macro_rules! wrapping_int_impl {
             ///
             /// ```
             /// #![feature(wrapping_int_impl)]
-            /// use std::num::Wrapping;
+            /// use core::num::Wrapping;
             ///
             #[doc = concat!("let n = Wrapping(0x1A", stringify!($t), ");")]
             ///
@@ -802,7 +802,7 @@ macro_rules! wrapping_int_impl {
             ///
             /// ```
             /// #![feature(wrapping_int_impl)]
-            /// use std::num::Wrapping;
+            /// use core::num::Wrapping;
             ///
             #[doc = concat!("let n = Wrapping(0x1A", stringify!($t), ");")]
             ///
@@ -831,7 +831,7 @@ macro_rules! wrapping_int_impl {
             ///
             /// ```
             /// #![feature(wrapping_int_impl)]
-            /// use std::num::Wrapping;
+            /// use core::num::Wrapping;
             ///
             #[doc = concat!("let n = Wrapping(0x1A", stringify!($t), ");")]
             ///
@@ -857,7 +857,7 @@ macro_rules! wrapping_int_impl {
             ///
             /// ```
             /// #![feature(wrapping_int_impl)]
-            /// use std::num::Wrapping;
+            /// use core::num::Wrapping;
             ///
             #[doc = concat!("assert_eq!(Wrapping(3", stringify!($t), ").pow(4), Wrapping(81));")]
             /// ```
@@ -866,7 +866,7 @@ macro_rules! wrapping_int_impl {
             ///
             /// ```
             /// #![feature(wrapping_int_impl)]
-            /// use std::num::Wrapping;
+            /// use core::num::Wrapping;
             ///
             /// assert_eq!(Wrapping(3i8).pow(5), Wrapping(-13));
             /// assert_eq!(Wrapping(3i8).pow(6), Wrapping(-39));
@@ -895,7 +895,7 @@ macro_rules! wrapping_int_impl_signed {
             ///
             /// ```
             /// #![feature(wrapping_int_impl)]
-            /// use std::num::Wrapping;
+            /// use core::num::Wrapping;
             ///
             #[doc = concat!("let n = Wrapping(", stringify!($t), "::MAX) >> 2;")]
             ///
@@ -922,7 +922,7 @@ macro_rules! wrapping_int_impl_signed {
             ///
             /// ```
             /// #![feature(wrapping_int_impl)]
-            /// use std::num::Wrapping;
+            /// use core::num::Wrapping;
             ///
             #[doc = concat!("assert_eq!(Wrapping(100", stringify!($t), ").abs(), Wrapping(100));")]
             #[doc = concat!("assert_eq!(Wrapping(-100", stringify!($t), ").abs(), Wrapping(100));")]
@@ -949,7 +949,7 @@ macro_rules! wrapping_int_impl_signed {
             ///
             /// ```
             /// #![feature(wrapping_int_impl)]
-            /// use std::num::Wrapping;
+            /// use core::num::Wrapping;
             ///
             #[doc = concat!("assert_eq!(Wrapping(10", stringify!($t), ").signum(), Wrapping(1));")]
             #[doc = concat!("assert_eq!(Wrapping(0", stringify!($t), ").signum(), Wrapping(0));")]
@@ -972,7 +972,7 @@ macro_rules! wrapping_int_impl_signed {
             ///
             /// ```
             /// #![feature(wrapping_int_impl)]
-            /// use std::num::Wrapping;
+            /// use core::num::Wrapping;
             ///
             #[doc = concat!("assert!(Wrapping(10", stringify!($t), ").is_positive());")]
             #[doc = concat!("assert!(!Wrapping(-10", stringify!($t), ").is_positive());")]
@@ -993,7 +993,7 @@ macro_rules! wrapping_int_impl_signed {
             ///
             /// ```
             /// #![feature(wrapping_int_impl)]
-            /// use std::num::Wrapping;
+            /// use core::num::Wrapping;
             ///
             #[doc = concat!("assert!(Wrapping(-10", stringify!($t), ").is_negative());")]
             #[doc = concat!("assert!(!Wrapping(10", stringify!($t), ").is_negative());")]
@@ -1021,7 +1021,7 @@ macro_rules! wrapping_int_impl_unsigned {
             ///
             /// ```
             /// #![feature(wrapping_int_impl)]
-            /// use std::num::Wrapping;
+            /// use core::num::Wrapping;
             ///
             #[doc = concat!("let n = Wrapping(", stringify!($t), "::MAX) >> 2;")]
             ///
@@ -1043,7 +1043,7 @@ macro_rules! wrapping_int_impl_unsigned {
             ///
             /// ```
             /// #![feature(wrapping_int_impl)]
-            /// use std::num::Wrapping;
+            /// use core::num::Wrapping;
             ///
             #[doc = concat!("assert!(Wrapping(16", stringify!($t), ").is_power_of_two());")]
             #[doc = concat!("assert!(!Wrapping(10", stringify!($t), ").is_power_of_two());")]
@@ -1066,7 +1066,7 @@ macro_rules! wrapping_int_impl_unsigned {
             ///
             /// ```
             /// #![feature(wrapping_next_power_of_two)]
-            /// use std::num::Wrapping;
+            /// use core::num::Wrapping;
             ///
             #[doc = concat!("assert_eq!(Wrapping(2", stringify!($t), ").next_power_of_two(), Wrapping(2));")]
             #[doc = concat!("assert_eq!(Wrapping(3", stringify!($t), ").next_power_of_two(), Wrapping(4));")]

@@ -105,8 +105,8 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}
 ///
 /// ```
 /// # #![feature(dispatch_from_dyn, unsize)]
-/// # use std::{ops::DispatchFromDyn, marker::Unsize};
-/// # struct Rc<T: ?Sized>(std::rc::Rc<T>);
+/// # use core::{ops::DispatchFromDyn, marker::Unsize};
+/// # struct Rc<T: ?Sized>(core::rc::Rc<T>);
 /// impl<T: ?Sized, U: ?Sized> DispatchFromDyn<Rc<U>> for Rc<T>
 /// where
 ///     T: Unsize<U>,

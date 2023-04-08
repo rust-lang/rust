@@ -25,7 +25,7 @@ use crate::ops::{Shl, ShlAssign, Shr, ShrAssign, Sub, SubAssign};
 ///
 /// ```
 /// #![feature(saturating_int_impl)]
-/// use std::num::Saturating;
+/// use core::num::Saturating;
 ///
 /// let max = Saturating(u32::MAX);
 /// let one = Saturating(1u32);
@@ -301,7 +301,7 @@ macro_rules! saturating_impl {
         ///
         /// ```
         /// #![feature(saturating_int_impl)]
-        /// use std::num::Saturating;
+        /// use core::num::Saturating;
         ///
         #[doc = concat!("assert_eq!(Saturating(2", stringify!($t), "), Saturating(5", stringify!($t), ") / Saturating(2));")]
         #[doc = concat!("assert_eq!(Saturating(", stringify!($t), "::MAX), Saturating(", stringify!($t), "::MAX) / Saturating(1));")]
@@ -310,7 +310,7 @@ macro_rules! saturating_impl {
         ///
         /// ```should_panic
         /// #![feature(saturating_int_impl)]
-        /// use std::num::Saturating;
+        /// use core::num::Saturating;
         ///
         #[doc = concat!("let _ = Saturating(0", stringify!($t), ") / Saturating(0);")]
         /// ```
@@ -493,7 +493,7 @@ macro_rules! saturating_int_impl {
             ///
             /// ```
             /// #![feature(saturating_int_impl)]
-            /// use std::num::Saturating;
+            /// use core::num::Saturating;
             ///
             #[doc = concat!("assert_eq!(<Saturating<", stringify!($t), ">>::MIN, Saturating(", stringify!($t), "::MIN));")]
             /// ```
@@ -508,7 +508,7 @@ macro_rules! saturating_int_impl {
             ///
             /// ```
             /// #![feature(saturating_int_impl)]
-            /// use std::num::Saturating;
+            /// use core::num::Saturating;
             ///
             #[doc = concat!("assert_eq!(<Saturating<", stringify!($t), ">>::MAX, Saturating(", stringify!($t), "::MAX));")]
             /// ```
@@ -523,7 +523,7 @@ macro_rules! saturating_int_impl {
             ///
             /// ```
             /// #![feature(saturating_int_impl)]
-            /// use std::num::Saturating;
+            /// use core::num::Saturating;
             ///
             #[doc = concat!("assert_eq!(<Saturating<", stringify!($t), ">>::BITS, ", stringify!($t), "::BITS);")]
             /// ```
@@ -538,7 +538,7 @@ macro_rules! saturating_int_impl {
             ///
             /// ```
             /// #![feature(saturating_int_impl)]
-            /// use std::num::Saturating;
+            /// use core::num::Saturating;
             ///
             #[doc = concat!("let n = Saturating(0b01001100", stringify!($t), ");")]
             ///
@@ -562,7 +562,7 @@ macro_rules! saturating_int_impl {
             ///
             /// ```
             /// #![feature(saturating_int_impl)]
-            /// use std::num::Saturating;
+            /// use core::num::Saturating;
             ///
             #[doc = concat!("assert_eq!(Saturating(!0", stringify!($t), ").count_zeros(), 0);")]
             /// ```
@@ -582,7 +582,7 @@ macro_rules! saturating_int_impl {
             ///
             /// ```
             /// #![feature(saturating_int_impl)]
-            /// use std::num::Saturating;
+            /// use core::num::Saturating;
             ///
             #[doc = concat!("let n = Saturating(0b0101000", stringify!($t), ");")]
             ///
@@ -609,7 +609,7 @@ macro_rules! saturating_int_impl {
             ///
             /// ```
             /// #![feature(saturating_int_impl)]
-            /// use std::num::Saturating;
+            /// use core::num::Saturating;
             ///
             /// let n: Saturating<i64> = Saturating(0x0123456789ABCDEF);
             /// let m: Saturating<i64> = Saturating(-0x76543210FEDCBA99);
@@ -637,7 +637,7 @@ macro_rules! saturating_int_impl {
             ///
             /// ```
             /// #![feature(saturating_int_impl)]
-            /// use std::num::Saturating;
+            /// use core::num::Saturating;
             ///
             /// let n: Saturating<i64> = Saturating(0x0123456789ABCDEF);
             /// let m: Saturating<i64> = Saturating(-0xFEDCBA987654322);
@@ -660,7 +660,7 @@ macro_rules! saturating_int_impl {
             ///
             /// ```
             /// #![feature(saturating_int_impl)]
-            /// use std::num::Saturating;
+            /// use core::num::Saturating;
             ///
             /// let n: Saturating<i16> = Saturating(0b0000000_01010101);
             /// assert_eq!(n, Saturating(85));
@@ -689,7 +689,7 @@ macro_rules! saturating_int_impl {
             ///
             /// ```
             /// #![feature(saturating_int_impl)]
-            /// use std::num::Saturating;
+            /// use core::num::Saturating;
             ///
             /// let n = Saturating(0b0000000_01010101i16);
             /// assert_eq!(n, Saturating(85));
@@ -719,7 +719,7 @@ macro_rules! saturating_int_impl {
             ///
             /// ```
             /// #![feature(saturating_int_impl)]
-            /// use std::num::Saturating;
+            /// use core::num::Saturating;
             ///
             #[doc = concat!("let n = Saturating(0x1A", stringify!($t), ");")]
             ///
@@ -747,7 +747,7 @@ macro_rules! saturating_int_impl {
             ///
             /// ```
             /// #![feature(saturating_int_impl)]
-            /// use std::num::Saturating;
+            /// use core::num::Saturating;
             ///
             #[doc = concat!("let n = Saturating(0x1A", stringify!($t), ");")]
             ///
@@ -775,7 +775,7 @@ macro_rules! saturating_int_impl {
             ///
             /// ```
             /// #![feature(saturating_int_impl)]
-            /// use std::num::Saturating;
+            /// use core::num::Saturating;
             ///
             #[doc = concat!("let n = Saturating(0x1A", stringify!($t), ");")]
             ///
@@ -804,7 +804,7 @@ macro_rules! saturating_int_impl {
             ///
             /// ```
             /// #![feature(saturating_int_impl)]
-            /// use std::num::Saturating;
+            /// use core::num::Saturating;
             ///
             #[doc = concat!("let n = Saturating(0x1A", stringify!($t), ");")]
             ///
@@ -830,7 +830,7 @@ macro_rules! saturating_int_impl {
             ///
             /// ```
             /// #![feature(saturating_int_impl)]
-            /// use std::num::Saturating;
+            /// use core::num::Saturating;
             ///
             #[doc = concat!("assert_eq!(Saturating(3", stringify!($t), ").pow(4), Saturating(81));")]
             /// ```
@@ -839,7 +839,7 @@ macro_rules! saturating_int_impl {
             ///
             /// ```
             /// #![feature(saturating_int_impl)]
-            /// use std::num::Saturating;
+            /// use core::num::Saturating;
             ///
             /// assert_eq!(Saturating(3i8).pow(5), Saturating(127));
             /// assert_eq!(Saturating(3i8).pow(6), Saturating(127));
@@ -868,7 +868,7 @@ macro_rules! saturating_int_impl_signed {
             ///
             /// ```
             /// #![feature(saturating_int_impl)]
-            /// use std::num::Saturating;
+            /// use core::num::Saturating;
             ///
             #[doc = concat!("let n = Saturating(", stringify!($t), "::MAX >> 2);")]
             ///
@@ -891,7 +891,7 @@ macro_rules! saturating_int_impl_signed {
             ///
             /// ```
             /// #![feature(saturating_int_impl)]
-            /// use std::num::Saturating;
+            /// use core::num::Saturating;
             ///
             #[doc = concat!("assert_eq!(Saturating(100", stringify!($t), ").abs(), Saturating(100));")]
             #[doc = concat!("assert_eq!(Saturating(-100", stringify!($t), ").abs(), Saturating(100));")]
@@ -919,7 +919,7 @@ macro_rules! saturating_int_impl_signed {
             ///
             /// ```
             /// #![feature(saturating_int_impl)]
-            /// use std::num::Saturating;
+            /// use core::num::Saturating;
             ///
             #[doc = concat!("assert_eq!(Saturating(10", stringify!($t), ").signum(), Saturating(1));")]
             #[doc = concat!("assert_eq!(Saturating(0", stringify!($t), ").signum(), Saturating(0));")]
@@ -942,7 +942,7 @@ macro_rules! saturating_int_impl_signed {
             ///
             /// ```
             /// #![feature(saturating_int_impl)]
-            /// use std::num::Saturating;
+            /// use core::num::Saturating;
             ///
             #[doc = concat!("assert!(Saturating(10", stringify!($t), ").is_positive());")]
             #[doc = concat!("assert!(!Saturating(-10", stringify!($t), ").is_positive());")]
@@ -963,7 +963,7 @@ macro_rules! saturating_int_impl_signed {
             ///
             /// ```
             /// #![feature(saturating_int_impl)]
-            /// use std::num::Saturating;
+            /// use core::num::Saturating;
             ///
             #[doc = concat!("assert!(Saturating(-10", stringify!($t), ").is_negative());")]
             #[doc = concat!("assert!(!Saturating(10", stringify!($t), ").is_negative());")]
@@ -1002,7 +1002,7 @@ macro_rules! saturating_int_impl_unsigned {
             ///
             /// ```
             /// #![feature(saturating_int_impl)]
-            /// use std::num::Saturating;
+            /// use core::num::Saturating;
             ///
             #[doc = concat!("let n = Saturating(", stringify!($t), "::MAX >> 2);")]
             ///
@@ -1024,7 +1024,7 @@ macro_rules! saturating_int_impl_unsigned {
             ///
             /// ```
             /// #![feature(saturating_int_impl)]
-            /// use std::num::Saturating;
+            /// use core::num::Saturating;
             ///
             #[doc = concat!("assert!(Saturating(16", stringify!($t), ").is_power_of_two());")]
             #[doc = concat!("assert!(!Saturating(10", stringify!($t), ").is_power_of_two());")]

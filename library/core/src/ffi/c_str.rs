@@ -33,8 +33,8 @@ use crate::str;
 /// Inspecting a foreign C string:
 ///
 /// ```ignore (extern-declaration)
-/// use std::ffi::CStr;
-/// use std::os::raw::c_char;
+/// use core::ffi::CStr;
+/// use core::os::raw::c_char;
 ///
 /// extern "C" { fn my_string() -> *const c_char; }
 ///
@@ -47,8 +47,8 @@ use crate::str;
 /// Passing a Rust-originating C string:
 ///
 /// ```ignore (extern-declaration)
-/// use std::ffi::{CString, CStr};
-/// use std::os::raw::c_char;
+/// use core::ffi::{CString, CStr};
+/// use core::os::raw::c_char;
 ///
 /// fn work(data: &CStr) {
 ///     extern "C" { fn work_with(data: *const c_char); }
@@ -63,8 +63,8 @@ use crate::str;
 /// Converting a foreign C string into a Rust `String`:
 ///
 /// ```ignore (extern-declaration)
-/// use std::ffi::CStr;
-/// use std::os::raw::c_char;
+/// use core::ffi::CStr;
+/// use core::os::raw::c_char;
 ///
 /// extern "C" { fn my_string() -> *const c_char; }
 ///
@@ -107,7 +107,7 @@ pub struct CStr {
 /// # Examples
 ///
 /// ```
-/// use std::ffi::{CStr, FromBytesWithNulError};
+/// use core::ffi::{CStr, FromBytesWithNulError};
 ///
 /// let _: FromBytesWithNulError = CStr::from_bytes_with_nul(b"f\0oo").unwrap_err();
 /// ```
@@ -228,7 +228,7 @@ impl CStr {
     /// # Examples
     ///
     /// ```ignore (extern-declaration)
-    /// use std::ffi::{c_char, CStr};
+    /// use core::ffi::{c_char, CStr};
     ///
     /// extern "C" {
     ///     fn my_string() -> *const c_char;
@@ -243,7 +243,7 @@ impl CStr {
     /// ```
     /// #![feature(const_cstr_methods)]
     ///
-    /// use std::ffi::{c_char, CStr};
+    /// use core::ffi::{c_char, CStr};
     ///
     /// const HELLO_PTR: *const c_char = {
     ///     const BYTES: &[u8] = b"Hello, world!\0";
@@ -310,7 +310,7 @@ impl CStr {
     ///
     /// # Examples
     /// ```
-    /// use std::ffi::CStr;
+    /// use core::ffi::CStr;
     ///
     /// let mut buffer = [0u8; 16];
     /// unsafe {
@@ -352,7 +352,7 @@ impl CStr {
     /// # Examples
     ///
     /// ```
-    /// use std::ffi::CStr;
+    /// use core::ffi::CStr;
     ///
     /// let cstr = CStr::from_bytes_with_nul(b"hello\0");
     /// assert!(cstr.is_ok());
@@ -361,7 +361,7 @@ impl CStr {
     /// Creating a `CStr` without a trailing nul terminator is an error:
     ///
     /// ```
-    /// use std::ffi::CStr;
+    /// use core::ffi::CStr;
     ///
     /// let cstr = CStr::from_bytes_with_nul(b"hello");
     /// assert!(cstr.is_err());
@@ -370,7 +370,7 @@ impl CStr {
     /// Creating a `CStr` with an interior nul byte is an error:
     ///
     /// ```
-    /// use std::ffi::CStr;
+    /// use core::ffi::CStr;
     ///
     /// let cstr = CStr::from_bytes_with_nul(b"he\0llo\0");
     /// assert!(cstr.is_err());
@@ -402,7 +402,7 @@ impl CStr {
     /// # Examples
     ///
     /// ```
-    /// use std::ffi::{CStr, CString};
+    /// use core::ffi::{CStr, CString};
     ///
     /// unsafe {
     ///     let cstring = CString::new("hello").expect("CString::new failed");
@@ -473,7 +473,7 @@ impl CStr {
     ///
     /// ```no_run
     /// # #![allow(unused_must_use)] #![allow(temporary_cstring_as_ptr)]
-    /// use std::ffi::CString;
+    /// use core::ffi::CString;
     ///
     /// // Do not do this:
     /// let ptr = CString::new("Hello").expect("CString::new failed").as_ptr();
@@ -491,7 +491,7 @@ impl CStr {
     ///
     /// ```no_run
     /// # #![allow(unused_must_use)]
-    /// use std::ffi::CString;
+    /// use core::ffi::CString;
     ///
     /// let hello = CString::new("Hello").expect("CString::new failed");
     /// let ptr = hello.as_ptr();
@@ -518,8 +518,8 @@ impl CStr {
     /// ```
     /// #![feature(cstr_is_empty)]
     ///
-    /// use std::ffi::CStr;
-    /// # use std::ffi::FromBytesWithNulError;
+    /// use core::ffi::CStr;
+    /// # use core::ffi::FromBytesWithNulError;
     ///
     /// # fn main() { test().unwrap(); }
     /// # fn test() -> Result<(), FromBytesWithNulError> {
@@ -551,7 +551,7 @@ impl CStr {
     /// # Examples
     ///
     /// ```
-    /// use std::ffi::CStr;
+    /// use core::ffi::CStr;
     ///
     /// let cstr = CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed");
     /// assert_eq!(cstr.to_bytes(), b"foo");
@@ -579,7 +579,7 @@ impl CStr {
     /// # Examples
     ///
     /// ```
-    /// use std::ffi::CStr;
+    /// use core::ffi::CStr;
     ///
     /// let cstr = CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed");
     /// assert_eq!(cstr.to_bytes_with_nul(), b"foo\0");
@@ -606,7 +606,7 @@ impl CStr {
     /// # Examples
     ///
     /// ```
-    /// use std::ffi::CStr;
+    /// use core::ffi::CStr;
     ///
     /// let cstr = CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed");
     /// assert_eq!(cstr.to_str(), Ok("foo"));

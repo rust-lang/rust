@@ -11,7 +11,7 @@
 /// container, enabling individual counts to be retrieved with index syntax.
 ///
 /// ```
-/// use std::ops::Index;
+/// use core::ops::Index;
 ///
 /// enum Nucleotide {
 ///     A,
@@ -84,7 +84,7 @@ pub trait Index<Idx: ?Sized> {
 /// each can be indexed mutably and immutably.
 ///
 /// ```
-/// use std::ops::{Index, IndexMut};
+/// use core::ops::{Index, IndexMut};
 ///
 /// #[derive(Debug)]
 /// enum Side {
@@ -153,7 +153,7 @@ see chapter in The Book <https://doc.rust-lang.org/book/ch08-02-strings.html#ind
 see chapter in The Book <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>"
     ),
     on(
-        _Self = "std::string::String",
+        _Self = "core::string::String",
         note = "you can use `.chars().nth()` or `.bytes().nth()`
 see chapter in The Book <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>"
     ),

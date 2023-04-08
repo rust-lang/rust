@@ -16,7 +16,7 @@ use super::validations::utf8_char_width;
 /// ```
 /// #![feature(utf8_chunks)]
 ///
-/// use std::str::Utf8Chunks;
+/// use core::str::Utf8Chunks;
 ///
 /// // An invalid UTF-8 string
 /// let bytes = b"foo\xF1\x80bar";
@@ -125,7 +125,7 @@ impl fmt::Debug for Debug<'_> {
 /// ```
 /// #![feature(utf8_chunks)]
 ///
-/// use std::str::Utf8Chunks;
+/// use core::str::Utf8Chunks;
 ///
 /// fn from_utf8_lossy<F>(input: &[u8], mut push: F) where F: FnMut(&str) {
 ///     for chunk in Utf8Chunks::new(input) {

@@ -78,7 +78,7 @@ impl<T: Sized> NonNull<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::ptr::NonNull;
+    /// use core::ptr::NonNull;
     ///
     /// let ptr = NonNull::<u32>::dangling();
     /// // Important: don't try to access the value of `ptr` without
@@ -177,7 +177,7 @@ impl<T: ?Sized> NonNull<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::ptr::NonNull;
+    /// use core::ptr::NonNull;
     ///
     /// let mut x = 0u32;
     /// let ptr = unsafe { NonNull::new_unchecked(&mut x as *mut _) };
@@ -186,10 +186,10 @@ impl<T: ?Sized> NonNull<T> {
     /// *Incorrect* usage of this function:
     ///
     /// ```rust,no_run
-    /// use std::ptr::NonNull;
+    /// use core::ptr::NonNull;
     ///
     /// // NEVER DO THAT!!! This is undefined behavior. ⚠️
-    /// let ptr = unsafe { NonNull::<u32>::new_unchecked(std::ptr::null_mut()) };
+    /// let ptr = unsafe { NonNull::<u32>::new_unchecked(core::ptr::null_mut()) };
     /// ```
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[rustc_const_stable(feature = "const_nonnull_new_unchecked", since = "1.25.0")]
@@ -207,12 +207,12 @@ impl<T: ?Sized> NonNull<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::ptr::NonNull;
+    /// use core::ptr::NonNull;
     ///
     /// let mut x = 0u32;
     /// let ptr = NonNull::<u32>::new(&mut x as *mut _).expect("ptr is null!");
     ///
-    /// if let Some(ptr) = NonNull::<u32>::new(std::ptr::null_mut()) {
+    /// if let Some(ptr) = NonNull::<u32>::new(core::ptr::null_mut()) {
     ///     unreachable!();
     /// }
     /// ```
@@ -228,12 +228,12 @@ impl<T: ?Sized> NonNull<T> {
         }
     }
 
-    /// Performs the same functionality as [`std::ptr::from_raw_parts`], except that a
+    /// Performs the same functionality as [`core::ptr::from_raw_parts`], except that a
     /// `NonNull` pointer is returned, as opposed to a raw `*const` pointer.
     ///
-    /// See the documentation of [`std::ptr::from_raw_parts`] for more details.
+    /// See the documentation of [`core::ptr::from_raw_parts`] for more details.
     ///
-    /// [`std::ptr::from_raw_parts`]: crate::ptr::from_raw_parts
+    /// [`core::ptr::from_raw_parts`]: crate::ptr::from_raw_parts
     #[unstable(feature = "ptr_metadata", issue = "81513")]
     #[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
     #[inline]
@@ -306,7 +306,7 @@ impl<T: ?Sized> NonNull<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::ptr::NonNull;
+    /// use core::ptr::NonNull;
     ///
     /// let mut x = 0u32;
     /// let ptr = NonNull::new(&mut x).expect("ptr is null!");
@@ -356,7 +356,7 @@ impl<T: ?Sized> NonNull<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::ptr::NonNull;
+    /// use core::ptr::NonNull;
     ///
     /// let mut x = 0u32;
     /// let ptr = NonNull::new(&mut x as *mut _).expect("ptr is null!");
@@ -405,7 +405,7 @@ impl<T: ?Sized> NonNull<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::ptr::NonNull;
+    /// use core::ptr::NonNull;
     ///
     /// let mut x = 0u32;
     /// let mut ptr = NonNull::new(&mut x).expect("null pointer");
@@ -432,7 +432,7 @@ impl<T: ?Sized> NonNull<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::ptr::NonNull;
+    /// use core::ptr::NonNull;
     ///
     /// let mut x = 0u32;
     /// let ptr = NonNull::new(&mut x as *mut _).expect("null pointer");
@@ -462,7 +462,7 @@ impl<T> NonNull<[T]> {
     /// # Examples
     ///
     /// ```rust
-    /// use std::ptr::NonNull;
+    /// use core::ptr::NonNull;
     ///
     /// // create a slice pointer when starting out with a pointer to the first element
     /// let mut x = [5, 6, 7];
@@ -492,7 +492,7 @@ impl<T> NonNull<[T]> {
     /// # Examples
     ///
     /// ```rust
-    /// use std::ptr::NonNull;
+    /// use core::ptr::NonNull;
     ///
     /// let slice: NonNull<[i8]> = NonNull::slice_from_raw_parts(NonNull::dangling(), 3);
     /// assert_eq!(slice.len(), 3);
@@ -512,7 +512,7 @@ impl<T> NonNull<[T]> {
     ///
     /// ```rust
     /// #![feature(slice_ptr_get)]
-    /// use std::ptr::NonNull;
+    /// use core::ptr::NonNull;
     ///
     /// let slice: NonNull<[i8]> = NonNull::slice_from_raw_parts(NonNull::dangling(), 3);
     /// assert_eq!(slice.as_non_null_ptr(), NonNull::<i8>::dangling());
@@ -532,7 +532,7 @@ impl<T> NonNull<[T]> {
     ///
     /// ```rust
     /// #![feature(slice_ptr_get)]
-    /// use std::ptr::NonNull;
+    /// use core::ptr::NonNull;
     ///
     /// let slice: NonNull<[i8]> = NonNull::slice_from_raw_parts(NonNull::dangling(), 3);
     /// assert_eq!(slice.as_mut_ptr(), NonNull::<i8>::dangling().as_ptr());
@@ -634,16 +634,16 @@ impl<T> NonNull<[T]> {
     /// ```rust
     /// #![feature(allocator_api, ptr_as_uninit)]
     ///
-    /// use std::alloc::{Allocator, Layout, Global};
-    /// use std::mem::MaybeUninit;
-    /// use std::ptr::NonNull;
+    /// use core::alloc::{Allocator, Layout, Global};
+    /// use core::mem::MaybeUninit;
+    /// use core::ptr::NonNull;
     ///
     /// let memory: NonNull<[u8]> = Global.allocate(Layout::new::<[u8; 32]>())?;
     /// // This is safe as `memory` is valid for reads and writes for `memory.len()` many bytes.
     /// // Note that calling `memory.as_mut()` is not allowed here as the content may be uninitialized.
     /// # #[allow(unused_variables)]
     /// let slice: &mut [MaybeUninit<u8>] = unsafe { memory.as_uninit_slice_mut() };
-    /// # Ok::<_, std::alloc::AllocError>(())
+    /// # Ok::<_, core::alloc::AllocError>(())
     /// ```
     #[inline]
     #[must_use]
@@ -666,7 +666,7 @@ impl<T> NonNull<[T]> {
     ///
     /// ```
     /// #![feature(slice_ptr_get)]
-    /// use std::ptr::NonNull;
+    /// use core::ptr::NonNull;
     ///
     /// let x = &mut [1, 2, 4];
     /// let x = NonNull::slice_from_raw_parts(NonNull::new(x.as_mut_ptr()).unwrap(), x.len());

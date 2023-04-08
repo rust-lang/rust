@@ -154,7 +154,7 @@ impl<T: ?Sized> *const T {
     /// ```
     /// #![feature(ptr_to_from_bits)]
     /// # #[cfg(not(miri))] { // doctest does not work with strict provenance
-    /// use std::ptr::NonNull;
+    /// use core::ptr::NonNull;
     /// let dangling: *const u8 = NonNull::dangling().as_ptr();
     /// assert_eq!(<*const u8>::from_bits(1), dangling);
     /// # }
@@ -1303,7 +1303,7 @@ impl<T: ?Sized> *const T {
     /// Accessing adjacent `u8` as `u16`
     ///
     /// ```
-    /// use std::mem::align_of;
+    /// use core::mem::align_of;
     ///
     /// # unsafe {
     /// let x = [5_u8, 6, 7, 8, 9];
@@ -1598,7 +1598,7 @@ impl<T> *const [T] {
     /// ```rust
     /// #![feature(slice_ptr_len)]
     ///
-    /// use std::ptr;
+    /// use core::ptr;
     ///
     /// let slice: *const [i8] = ptr::slice_from_raw_parts(ptr::null(), 3);
     /// assert_eq!(slice.len(), 3);
@@ -1618,7 +1618,7 @@ impl<T> *const [T] {
     ///
     /// ```rust
     /// #![feature(slice_ptr_get)]
-    /// use std::ptr;
+    /// use core::ptr;
     ///
     /// let slice: *const [i8] = ptr::slice_from_raw_parts(ptr::null(), 3);
     /// assert_eq!(slice.as_ptr(), ptr::null());

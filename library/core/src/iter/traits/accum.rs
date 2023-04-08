@@ -12,7 +12,7 @@ use crate::num::Wrapping;
 #[stable(feature = "iter_arith_traits", since = "1.12.0")]
 #[rustc_on_unimplemented(
     message = "a value of type `{Self}` cannot be made by summing an iterator over elements of type `{A}`",
-    label = "value of type `{Self}` cannot be made by summing a `std::iter::Iterator<Item={A}>`"
+    label = "value of type `{Self}` cannot be made by summing a `core::iter::Iterator<Item={A}>`"
 )]
 pub trait Sum<A = Self>: Sized {
     /// Method which takes an iterator and generates `Self` from the elements by
@@ -33,7 +33,7 @@ pub trait Sum<A = Self>: Sized {
 #[stable(feature = "iter_arith_traits", since = "1.12.0")]
 #[rustc_on_unimplemented(
     message = "a value of type `{Self}` cannot be made by multiplying all elements of type `{A}` from an iterator",
-    label = "value of type `{Self}` cannot be made by multiplying all elements from a `std::iter::Iterator<Item={A}>`"
+    label = "value of type `{Self}` cannot be made by multiplying all elements from a `core::iter::Iterator<Item={A}>`"
 )]
 pub trait Product<A = Self>: Sized {
     /// Method which takes an iterator and generates `Self` from the elements by

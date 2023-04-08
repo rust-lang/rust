@@ -6,7 +6,7 @@ use crate::iter::FromIterator;
 /// collecting to a `Result<(), E>` where you only care about errors:
 ///
 /// ```
-/// use std::io::*;
+/// use core::io::*;
 /// let data = vec![1, 2, 3, 4, 5];
 /// let res: Result<()> = data.iter()
 ///     .map(|x| writeln!(stdout(), "{x}"))

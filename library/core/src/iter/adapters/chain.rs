@@ -10,8 +10,8 @@ use crate::ops::Try;
 /// # Examples
 ///
 /// ```
-/// use std::iter::Chain;
-/// use std::slice::Iter;
+/// use core::iter::Chain;
+/// use core::slice::Iter;
 ///
 /// let a1 = [1, 2, 3];
 /// let a2 = [4, 5, 6];
@@ -280,8 +280,8 @@ impl<A: Default, B: Default> Default for Chain<A, B> {
     /// ```
     /// # use core::iter::Chain;
     /// # use core::slice;
-    /// # use std::collections::{btree_set, BTreeSet};
-    /// # use std::mem;
+    /// # use core::collections::{btree_set, BTreeSet};
+    /// # use core::mem;
     /// struct Foo<'a>(Chain<slice::Iter<'a, u8>, btree_set::Iter<'a, u8>>);
     ///
     /// let set = BTreeSet::<u8>::new();

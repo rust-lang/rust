@@ -84,9 +84,9 @@
 //! A simple spinlock:
 //!
 //! ```
-//! use std::sync::Arc;
-//! use std::sync::atomic::{AtomicUsize, Ordering};
-//! use std::{hint, thread};
+//! use core::sync::Arc;
+//! use core::sync::atomic::{AtomicUsize, Ordering};
+//! use core::{hint, thread};
 //!
 //! fn main() {
 //!     let spinlock = Arc::new(AtomicUsize::new(1));
@@ -110,7 +110,7 @@
 //! Keep a global count of live threads:
 //!
 //! ```
-//! use std::sync::atomic::{AtomicUsize, Ordering};
+//! use core::sync::atomic::{AtomicUsize, Ordering};
 //!
 //! static GLOBAL_THREAD_COUNT: AtomicUsize = AtomicUsize::new(0);
 //!
@@ -292,7 +292,7 @@ impl AtomicBool {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::AtomicBool;
+    /// use core::sync::atomic::AtomicBool;
     ///
     /// let atomic_true = AtomicBool::new(true);
     /// let atomic_false = AtomicBool::new(false);
@@ -311,8 +311,8 @@ impl AtomicBool {
     ///
     /// ```
     /// #![feature(atomic_from_ptr, pointer_is_aligned)]
-    /// use std::sync::atomic::{self, AtomicBool};
-    /// use std::mem::align_of;
+    /// use core::sync::atomic::{self, AtomicBool};
+    /// use core::mem::align_of;
     ///
     /// // Get a pointer to an allocated value
     /// let ptr: *mut bool = Box::into_raw(Box::new(false));
@@ -357,7 +357,7 @@ impl AtomicBool {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{AtomicBool, Ordering};
+    /// use core::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let mut some_bool = AtomicBool::new(true);
     /// assert_eq!(*some_bool.get_mut(), true);
@@ -377,7 +377,7 @@ impl AtomicBool {
     ///
     /// ```
     /// #![feature(atomic_from_mut)]
-    /// use std::sync::atomic::{AtomicBool, Ordering};
+    /// use core::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let mut some_bool = true;
     /// let a = AtomicBool::from_mut(&mut some_bool);
@@ -402,7 +402,7 @@ impl AtomicBool {
     ///
     /// ```
     /// #![feature(atomic_from_mut, inline_const)]
-    /// use std::sync::atomic::{AtomicBool, Ordering};
+    /// use core::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let mut some_bools = [const { AtomicBool::new(false) }; 10];
     ///
@@ -410,7 +410,7 @@ impl AtomicBool {
     /// assert_eq!(view, [false; 10]);
     /// view[..5].copy_from_slice(&[true; 5]);
     ///
-    /// std::thread::scope(|s| {
+    /// core::thread::scope(|s| {
     ///     for t in &some_bools[..5] {
     ///         s.spawn(move || assert_eq!(t.load(Ordering::Relaxed), true));
     ///     }
@@ -433,11 +433,11 @@ impl AtomicBool {
     ///
     /// ```
     /// #![feature(atomic_from_mut)]
-    /// use std::sync::atomic::{AtomicBool, Ordering};
+    /// use core::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let mut some_bools = [false; 10];
     /// let a = &*AtomicBool::from_mut_slice(&mut some_bools);
-    /// std::thread::scope(|s| {
+    /// core::thread::scope(|s| {
     ///     for i in 0..a.len() {
     ///         s.spawn(move || a[i].store(true, Ordering::Relaxed));
     ///     }
@@ -461,7 +461,7 @@ impl AtomicBool {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::AtomicBool;
+    /// use core::sync::atomic::AtomicBool;
     ///
     /// let some_bool = AtomicBool::new(true);
     /// assert_eq!(some_bool.into_inner(), true);
@@ -485,7 +485,7 @@ impl AtomicBool {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{AtomicBool, Ordering};
+    /// use core::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let some_bool = AtomicBool::new(true);
     ///
@@ -512,7 +512,7 @@ impl AtomicBool {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{AtomicBool, Ordering};
+    /// use core::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let some_bool = AtomicBool::new(true);
     ///
@@ -543,7 +543,7 @@ impl AtomicBool {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{AtomicBool, Ordering};
+    /// use core::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let some_bool = AtomicBool::new(true);
     ///
@@ -593,7 +593,7 @@ impl AtomicBool {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{AtomicBool, Ordering};
+    /// use core::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let some_bool = AtomicBool::new(true);
     ///
@@ -637,7 +637,7 @@ impl AtomicBool {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{AtomicBool, Ordering};
+    /// use core::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let some_bool = AtomicBool::new(true);
     ///
@@ -696,7 +696,7 @@ impl AtomicBool {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{AtomicBool, Ordering};
+    /// use core::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let val = AtomicBool::new(false);
     ///
@@ -748,7 +748,7 @@ impl AtomicBool {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{AtomicBool, Ordering};
+    /// use core::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let foo = AtomicBool::new(true);
     /// assert_eq!(foo.fetch_and(false, Ordering::SeqCst), true);
@@ -789,7 +789,7 @@ impl AtomicBool {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{AtomicBool, Ordering};
+    /// use core::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let foo = AtomicBool::new(true);
     /// assert_eq!(foo.fetch_nand(false, Ordering::SeqCst), true);
@@ -842,7 +842,7 @@ impl AtomicBool {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{AtomicBool, Ordering};
+    /// use core::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let foo = AtomicBool::new(true);
     /// assert_eq!(foo.fetch_or(false, Ordering::SeqCst), true);
@@ -883,7 +883,7 @@ impl AtomicBool {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{AtomicBool, Ordering};
+    /// use core::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let foo = AtomicBool::new(true);
     /// assert_eq!(foo.fetch_xor(false, Ordering::SeqCst), true);
@@ -925,7 +925,7 @@ impl AtomicBool {
     ///
     /// ```
     /// #![feature(atomic_bool_fetch_not)]
-    /// use std::sync::atomic::{AtomicBool, Ordering};
+    /// use core::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let foo = AtomicBool::new(true);
     /// assert_eq!(foo.fetch_not(Ordering::SeqCst), true);
@@ -959,7 +959,7 @@ impl AtomicBool {
     ///
     /// ```ignore (extern-declaration)
     /// # fn main() {
-    /// use std::sync::atomic::AtomicBool;
+    /// use core::sync::atomic::AtomicBool;
     ///
     /// extern "C" {
     ///     fn my_atomic_op(arg: *mut bool);
@@ -1012,7 +1012,7 @@ impl AtomicBool {
     /// # Examples
     ///
     /// ```rust
-    /// use std::sync::atomic::{AtomicBool, Ordering};
+    /// use core::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let x = AtomicBool::new(false);
     /// assert_eq!(x.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| None), Err(false));
@@ -1051,7 +1051,7 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::AtomicPtr;
+    /// use core::sync::atomic::AtomicPtr;
     ///
     /// let ptr = &mut 5;
     /// let atomic_ptr = AtomicPtr::new(ptr);
@@ -1069,11 +1069,11 @@ impl<T> AtomicPtr<T> {
     ///
     /// ```
     /// #![feature(atomic_from_ptr, pointer_is_aligned)]
-    /// use std::sync::atomic::{self, AtomicPtr};
-    /// use std::mem::align_of;
+    /// use core::sync::atomic::{self, AtomicPtr};
+    /// use core::mem::align_of;
     ///
     /// // Get a pointer to an allocated value
-    /// let ptr: *mut *mut u8 = Box::into_raw(Box::new(std::ptr::null_mut()));
+    /// let ptr: *mut *mut u8 = Box::into_raw(Box::new(core::ptr::null_mut()));
     ///
     /// assert!(ptr.is_aligned_to(align_of::<AtomicPtr<u8>>()));
     ///
@@ -1082,7 +1082,7 @@ impl<T> AtomicPtr<T> {
     ///     let atomic = unsafe { AtomicPtr::from_ptr(ptr) };
     ///
     ///     // Use `atomic` for atomic operations, possibly share it with other threads
-    ///     atomic.store(std::ptr::NonNull::dangling().as_ptr(), atomic::Ordering::Relaxed);
+    ///     atomic.store(core::ptr::NonNull::dangling().as_ptr(), atomic::Ordering::Relaxed);
     /// }
     ///
     /// // It's ok to non-atomically access the value behind `ptr`,
@@ -1115,7 +1115,7 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{AtomicPtr, Ordering};
+    /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let mut data = 10;
     /// let mut atomic_ptr = AtomicPtr::new(&mut data);
@@ -1135,7 +1135,7 @@ impl<T> AtomicPtr<T> {
     ///
     /// ```
     /// #![feature(atomic_from_mut)]
-    /// use std::sync::atomic::{AtomicPtr, Ordering};
+    /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let mut data = 123;
     /// let mut some_ptr = &mut data as *mut i32;
@@ -1166,8 +1166,8 @@ impl<T> AtomicPtr<T> {
     ///
     /// ```
     /// #![feature(atomic_from_mut, inline_const)]
-    /// use std::ptr::null_mut;
-    /// use std::sync::atomic::{AtomicPtr, Ordering};
+    /// use core::ptr::null_mut;
+    /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let mut some_ptrs = [const { AtomicPtr::new(null_mut::<String>()) }; 10];
     ///
@@ -1178,7 +1178,7 @@ impl<T> AtomicPtr<T> {
     ///     .enumerate()
     ///     .for_each(|(i, ptr)| *ptr = Box::into_raw(Box::new(format!("iteration#{i}"))));
     ///
-    /// std::thread::scope(|s| {
+    /// core::thread::scope(|s| {
     ///     for ptr in &some_ptrs {
     ///         s.spawn(move || {
     ///             let ptr = ptr.load(Ordering::Relaxed);
@@ -1203,12 +1203,12 @@ impl<T> AtomicPtr<T> {
     ///
     /// ```
     /// #![feature(atomic_from_mut)]
-    /// use std::ptr::null_mut;
-    /// use std::sync::atomic::{AtomicPtr, Ordering};
+    /// use core::ptr::null_mut;
+    /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let mut some_ptrs = [null_mut::<String>(); 10];
     /// let a = &*AtomicPtr::from_mut_slice(&mut some_ptrs);
-    /// std::thread::scope(|s| {
+    /// core::thread::scope(|s| {
     ///     for i in 0..a.len() {
     ///         s.spawn(move || {
     ///             let name = Box::new(format!("thread{i}"));
@@ -1241,7 +1241,7 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::AtomicPtr;
+    /// use core::sync::atomic::AtomicPtr;
     ///
     /// let mut data = 5;
     /// let atomic_ptr = AtomicPtr::new(&mut data);
@@ -1266,7 +1266,7 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{AtomicPtr, Ordering};
+    /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let ptr = &mut 5;
     /// let some_ptr = AtomicPtr::new(ptr);
@@ -1293,7 +1293,7 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{AtomicPtr, Ordering};
+    /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let ptr = &mut 5;
     /// let some_ptr = AtomicPtr::new(ptr);
@@ -1325,7 +1325,7 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{AtomicPtr, Ordering};
+    /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let ptr = &mut 5;
     /// let some_ptr = AtomicPtr::new(ptr);
@@ -1377,7 +1377,7 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{AtomicPtr, Ordering};
+    /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let ptr = &mut 5;
     /// let some_ptr = AtomicPtr::new(ptr);
@@ -1420,7 +1420,7 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{AtomicPtr, Ordering};
+    /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let ptr = &mut 5;
     /// let some_ptr = AtomicPtr::new(ptr);
@@ -1466,7 +1466,7 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{AtomicPtr, Ordering};
+    /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let some_ptr = AtomicPtr::new(&mut 5);
     ///
@@ -1531,7 +1531,7 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```rust
-    /// use std::sync::atomic::{AtomicPtr, Ordering};
+    /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let ptr: *mut _ = &mut 5;
     /// let some_ptr = AtomicPtr::new(ptr);
@@ -1892,7 +1892,7 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```ignore (extern-declaration)
-    /// use std::sync::atomic::AtomicPtr;
+    /// use core::sync::atomic::AtomicPtr;
     ///
     /// extern "C" {
     ///     fn my_atomic_op(arg: *mut *mut u32);
@@ -1923,7 +1923,7 @@ impl const From<bool> for AtomicBool {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::AtomicBool;
+    /// use core::sync::atomic::AtomicBool;
     /// let atomic_bool = AtomicBool::from(true);
     /// assert_eq!(format!("{atomic_bool:?}"), "true")
     /// ```
@@ -2035,7 +2035,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
-            #[doc = concat!($extra_feature, "use std::sync::atomic::", stringify!($atomic_type), ";")]
+            #[doc = concat!($extra_feature, "use core::sync::atomic::", stringify!($atomic_type), ";")]
             ///
             #[doc = concat!("let atomic_forty_two = ", stringify!($atomic_type), "::new(42);")]
             /// ```
@@ -2053,8 +2053,8 @@ macro_rules! atomic_int {
             ///
             /// ```
             /// #![feature(atomic_from_ptr, pointer_is_aligned)]
-            #[doc = concat!($extra_feature, "use std::sync::atomic::{self, ", stringify!($atomic_type), "};")]
-            /// use std::mem::align_of;
+            #[doc = concat!($extra_feature, "use core::sync::atomic::{self, ", stringify!($atomic_type), "};")]
+            /// use core::mem::align_of;
             ///
             /// // Get a pointer to an allocated value
             #[doc = concat!("let ptr: *mut ", stringify!($int_type), " = Box::into_raw(Box::new(0));")]
@@ -2102,7 +2102,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
-            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            #[doc = concat!($extra_feature, "use core::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let mut some_var = ", stringify!($atomic_type), "::new(10);")]
             /// assert_eq!(*some_var.get_mut(), 10);
@@ -2129,7 +2129,7 @@ macro_rules! atomic_int {
             ///
             /// ```
             /// #![feature(atomic_from_mut)]
-            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            #[doc = concat!($extra_feature, "use core::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             /// let mut some_int = 123;
             #[doc = concat!("let a = ", stringify!($atomic_type), "::from_mut(&mut some_int);")]
@@ -2159,7 +2159,7 @@ macro_rules! atomic_int {
             ///
             /// ```
             /// #![feature(atomic_from_mut, inline_const)]
-            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            #[doc = concat!($extra_feature, "use core::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let mut some_ints = [const { ", stringify!($atomic_type), "::new(0) }; 10];")]
             ///
@@ -2170,7 +2170,7 @@ macro_rules! atomic_int {
             ///     .enumerate()
             ///     .for_each(|(idx, int)| *int = idx as _);
             ///
-            /// std::thread::scope(|s| {
+            /// core::thread::scope(|s| {
             ///     some_ints
             ///         .iter()
             ///         .enumerate()
@@ -2192,11 +2192,11 @@ macro_rules! atomic_int {
             ///
             /// ```
             /// #![feature(atomic_from_mut)]
-            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            #[doc = concat!($extra_feature, "use core::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             /// let mut some_ints = [0; 10];
             #[doc = concat!("let a = &*", stringify!($atomic_type), "::from_mut_slice(&mut some_ints);")]
-            /// std::thread::scope(|s| {
+            /// core::thread::scope(|s| {
             ///     for i in 0..a.len() {
             ///         s.spawn(move || a[i].store(i as _, Ordering::Relaxed));
             ///     }
@@ -2226,7 +2226,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
-            #[doc = concat!($extra_feature, "use std::sync::atomic::", stringify!($atomic_type), ";")]
+            #[doc = concat!($extra_feature, "use core::sync::atomic::", stringify!($atomic_type), ";")]
             ///
             #[doc = concat!("let some_var = ", stringify!($atomic_type), "::new(5);")]
             /// assert_eq!(some_var.into_inner(), 5);
@@ -2250,7 +2250,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
-            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            #[doc = concat!($extra_feature, "use core::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let some_var = ", stringify!($atomic_type), "::new(5);")]
             ///
@@ -2276,7 +2276,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
-            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            #[doc = concat!($extra_feature, "use core::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let some_var = ", stringify!($atomic_type), "::new(5);")]
             ///
@@ -2304,7 +2304,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
-            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            #[doc = concat!($extra_feature, "use core::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let some_var = ", stringify!($atomic_type), "::new(5);")]
             ///
@@ -2354,7 +2354,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
-            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            #[doc = concat!($extra_feature, "use core::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let some_var = ", stringify!($atomic_type), "::new(5);")]
             ///
@@ -2406,7 +2406,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
-            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            #[doc = concat!($extra_feature, "use core::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let some_var = ", stringify!($atomic_type), "::new(5);")]
             ///
@@ -2458,7 +2458,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
-            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            #[doc = concat!($extra_feature, "use core::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let val = ", stringify!($atomic_type), "::new(4);")]
             ///
@@ -2501,7 +2501,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
-            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            #[doc = concat!($extra_feature, "use core::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(0);")]
             /// assert_eq!(foo.fetch_add(10, Ordering::SeqCst), 0);
@@ -2531,7 +2531,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
-            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            #[doc = concat!($extra_feature, "use core::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(20);")]
             /// assert_eq!(foo.fetch_sub(10, Ordering::SeqCst), 20);
@@ -2564,7 +2564,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
-            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            #[doc = concat!($extra_feature, "use core::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(0b101101);")]
             /// assert_eq!(foo.fetch_and(0b110011, Ordering::SeqCst), 0b101101);
@@ -2597,7 +2597,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
-            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            #[doc = concat!($extra_feature, "use core::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(0x13);")]
             /// assert_eq!(foo.fetch_nand(0x31, Ordering::SeqCst), 0x13);
@@ -2630,7 +2630,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
-            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            #[doc = concat!($extra_feature, "use core::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(0b101101);")]
             /// assert_eq!(foo.fetch_or(0b110011, Ordering::SeqCst), 0b101101);
@@ -2663,7 +2663,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
-            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            #[doc = concat!($extra_feature, "use core::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(0b101101);")]
             /// assert_eq!(foo.fetch_xor(0b110011, Ordering::SeqCst), 0b101101);
@@ -2712,7 +2712,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```rust
-            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            #[doc = concat!($extra_feature, "use core::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let x = ", stringify!($atomic_type), "::new(7);")]
             /// assert_eq!(x.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| None), Err(7));
@@ -2757,7 +2757,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
-            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            #[doc = concat!($extra_feature, "use core::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(23);")]
             /// assert_eq!(foo.fetch_max(42, Ordering::SeqCst), 23);
@@ -2767,7 +2767,7 @@ macro_rules! atomic_int {
             /// If you want to obtain the maximum value in one step, you can use the following:
             ///
             /// ```
-            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            #[doc = concat!($extra_feature, "use core::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(23);")]
             /// let bar = 42;
@@ -2801,7 +2801,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
-            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            #[doc = concat!($extra_feature, "use core::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(23);")]
             /// assert_eq!(foo.fetch_min(42, Ordering::Relaxed), 23);
@@ -2813,7 +2813,7 @@ macro_rules! atomic_int {
             /// If you want to obtain the minimum value in one step, you can use the following:
             ///
             /// ```
-            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            #[doc = concat!($extra_feature, "use core::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(23);")]
             /// let bar = 12;
@@ -2845,7 +2845,7 @@ macro_rules! atomic_int {
             ///
             /// ```ignore (extern-declaration)
             /// # fn main() {
-            #[doc = concat!($extra_feature, "use std::sync::atomic::", stringify!($atomic_type), ";")]
+            #[doc = concat!($extra_feature, "use core::sync::atomic::", stringify!($atomic_type), ";")]
             ///
             /// extern "C" {
             #[doc = concat!("    fn my_atomic_op(arg: *mut ", stringify!($int_type), ");")]
@@ -3459,9 +3459,9 @@ unsafe fn atomic_umin<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 /// # Examples
 ///
 /// ```
-/// use std::sync::atomic::AtomicBool;
-/// use std::sync::atomic::fence;
-/// use std::sync::atomic::Ordering;
+/// use core::sync::atomic::AtomicBool;
+/// use core::sync::atomic::fence;
+/// use core::sync::atomic::Ordering;
 ///
 /// // A mutual exclusion primitive based on spinlock.
 /// pub struct Mutex {
@@ -3552,9 +3552,9 @@ pub fn fence(order: Ordering) {
 /// Using a `compiler_fence` remedies this situation.
 ///
 /// ```
-/// use std::sync::atomic::{AtomicBool, AtomicUsize};
-/// use std::sync::atomic::Ordering;
-/// use std::sync::atomic::compiler_fence;
+/// use core::sync::atomic::{AtomicBool, AtomicUsize};
+/// use core::sync::atomic::Ordering;
+/// use core::sync::atomic::compiler_fence;
 ///
 /// static IMPORTANT_VARIABLE: AtomicUsize = AtomicUsize::new(0);
 /// static IS_READY: AtomicBool = AtomicBool::new(false);

@@ -21,7 +21,7 @@ pub struct Pending<T> {
 /// # Examples
 ///
 /// ```no_run
-/// use std::future;
+/// use core::future;
 ///
 /// # async fn run() {
 /// let future = future::pending();

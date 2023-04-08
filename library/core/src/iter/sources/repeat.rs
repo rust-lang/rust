@@ -19,7 +19,7 @@ use crate::num::NonZeroUsize;
 /// Basic usage:
 ///
 /// ```
-/// use std::iter;
+/// use core::iter;
 ///
 /// // the number four 4ever:
 /// let mut fours = iter::repeat(4);
@@ -37,7 +37,7 @@ use crate::num::NonZeroUsize;
 /// Going finite with [`Iterator::take()`]:
 ///
 /// ```
-/// use std::iter;
+/// use core::iter;
 ///
 /// // that last example was too many fours. Let's only have four fours.
 /// let mut four_fours = iter::repeat(4).take(4);

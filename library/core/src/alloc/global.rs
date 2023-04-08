@@ -21,10 +21,10 @@ use crate::ptr;
 /// # Example
 ///
 /// ```
-/// use std::alloc::{GlobalAlloc, Layout};
-/// use std::cell::UnsafeCell;
-/// use std::ptr::null_mut;
-/// use std::sync::atomic::{
+/// use core::alloc::{GlobalAlloc, Layout};
+/// use core::cell::UnsafeCell;
+/// use core::ptr::null_mut;
+/// use core::sync::atomic::{
 ///     AtomicUsize,
 ///     Ordering::{Acquire, SeqCst},
 /// };
@@ -110,7 +110,7 @@ use crate::ptr;
 ///   ```rust,ignore (unsound and has placeholders)
 ///   drop(Box::new(42));
 ///   let number_of_heap_allocs = /* call private allocator API */;
-///   unsafe { std::intrinsics::assume(number_of_heap_allocs > 0); }
+///   unsafe { core::intrinsics::assume(number_of_heap_allocs > 0); }
 ///   ```
 ///
 ///   Note that the optimizations mentioned above are not the only

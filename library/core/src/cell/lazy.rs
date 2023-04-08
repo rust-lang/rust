@@ -11,16 +11,16 @@ enum State<T, F> {
 
 /// A value which is initialized on the first access.
 ///
-/// For a thread-safe version of this struct, see [`std::sync::LazyLock`].
+/// For a thread-safe version of this struct, see [`core::sync::LazyLock`].
 ///
-/// [`std::sync::LazyLock`]: ../../std/sync/struct.LazyLock.html
+/// [`core::sync::LazyLock`]: ../../std/sync/struct.LazyLock.html
 ///
 /// # Examples
 ///
 /// ```
 /// #![feature(lazy_cell)]
 ///
-/// use std::cell::LazyCell;
+/// use core::cell::LazyCell;
 ///
 /// let lazy: LazyCell<i32> = LazyCell::new(|| {
 ///     println!("initializing");
@@ -49,7 +49,7 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// ```
     /// #![feature(lazy_cell)]
     ///
-    /// use std::cell::LazyCell;
+    /// use core::cell::LazyCell;
     ///
     /// let hello = "Hello, World!".to_string();
     ///
@@ -73,7 +73,7 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// ```
     /// #![feature(lazy_cell)]
     ///
-    /// use std::cell::LazyCell;
+    /// use core::cell::LazyCell;
     ///
     /// let lazy = LazyCell::new(|| 92);
     ///

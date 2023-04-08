@@ -128,7 +128,7 @@ macro_rules! assert_ne {
 /// ```
 /// #![feature(assert_matches)]
 ///
-/// use std::assert_matches::assert_matches;
+/// use core::assert_matches::assert_matches;
 ///
 /// let a = 1u32.checked_add(2);
 /// let b = 1u32.checked_sub(2);
@@ -302,7 +302,7 @@ macro_rules! debug_assert_ne {
 /// ```
 /// #![feature(assert_matches)]
 ///
-/// use std::assert_matches::debug_assert_matches;
+/// use core::assert_matches::debug_assert_matches;
 ///
 /// let a = 1u32.checked_add(2);
 /// let b = 1u32.checked_sub(2);
@@ -372,9 +372,9 @@ macro_rules! matches {
 /// # Examples
 ///
 /// ```
-/// use std::io;
-/// use std::fs::File;
-/// use std::io::prelude::*;
+/// use core::io;
+/// use core::fs::File;
+/// use core::io::prelude::*;
 ///
 /// enum MyError {
 ///     FileWriteError
@@ -434,9 +434,9 @@ macro_rules! r#try {
 /// returns whatever the `write_fmt` method returns; commonly a [`fmt::Result`], or an
 /// [`io::Result`].
 ///
-/// See [`std::fmt`] for more information on the format string syntax.
+/// See [`core::fmt`] for more information on the format string syntax.
 ///
-/// [`std::fmt`]: ../std/fmt/index.html
+/// [`core::fmt`]: ../std/fmt/index.html
 /// [`fmt::Write`]: crate::fmt::Write
 /// [`io::Write`]: ../std/io/trait.Write.html
 /// [`fmt::Result`]: crate::fmt::Result
@@ -445,9 +445,9 @@ macro_rules! r#try {
 /// # Examples
 ///
 /// ```
-/// use std::io::Write;
+/// use core::io::Write;
 ///
-/// fn main() -> std::io::Result<()> {
+/// fn main() -> core::io::Result<()> {
 ///     let mut w = Vec::new();
 ///     write!(&mut w, "test")?;
 ///     write!(&mut w, "formatted {}", "arguments")?;
@@ -457,16 +457,16 @@ macro_rules! r#try {
 /// }
 /// ```
 ///
-/// A module can import both `std::fmt::Write` and `std::io::Write` and call `write!` on objects
+/// A module can import both `core::fmt::Write` and `core::io::Write` and call `write!` on objects
 /// implementing either, as objects do not typically implement both. However, the module must
 /// avoid conflict between the trait names, such as by importing them as `_` or otherwise renaming
 /// them:
 ///
 /// ```
-/// use std::fmt::Write as _;
-/// use std::io::Write as _;
+/// use core::fmt::Write as _;
+/// use core::io::Write as _;
 ///
-/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// fn main() -> Result<(), Box<dyn core::error::Error>> {
 ///     let mut s = String::new();
 ///     let mut v = Vec::new();
 ///
@@ -482,8 +482,8 @@ macro_rules! r#try {
 ///
 /// ```
 /// # #![allow(unused_imports)]
-/// use std::fmt::{self, Write as _};
-/// use std::io::{self, Write as _};
+/// use core::fmt::{self, Write as _};
+/// use core::io::{self, Write as _};
 ///
 /// struct Example;
 ///
@@ -527,14 +527,14 @@ macro_rules! write {
 /// (no additional CARRIAGE RETURN (`\r`/`U+000D`).
 ///
 /// For more information, see [`write!`]. For information on the format string syntax, see
-/// [`std::fmt`].
+/// [`core::fmt`].
 ///
-/// [`std::fmt`]: ../std/fmt/index.html
+/// [`core::fmt`]: ../std/fmt/index.html
 ///
 /// # Examples
 ///
 /// ```
-/// use std::io::{Write, Result};
+/// use core::io::{Write, Result};
 ///
 /// fn main() -> Result<()> {
 ///     let mut w = Vec::new();
@@ -834,7 +834,7 @@ pub(crate) mod builtin {
     /// [`Debug`] implementation be passed to a `{:?}` within the formatting string.
     ///
     /// This macro produces a value of type [`fmt::Arguments`]. This value can be
-    /// passed to the macros within [`std::fmt`] for performing useful redirection.
+    /// passed to the macros within [`core::fmt`] for performing useful redirection.
     /// All other formatting macros ([`format!`], [`write!`], [`println!`], etc) are
     /// proxied through this one. `format_args!`, unlike its derived macros, avoids
     /// heap allocations.
@@ -851,19 +851,19 @@ pub(crate) mod builtin {
     /// assert_eq!(display, debug);
     /// ```
     ///
-    /// For more information, see the documentation in [`std::fmt`].
+    /// For more information, see the documentation in [`core::fmt`].
     ///
     /// [`Display`]: crate::fmt::Display
     /// [`Debug`]: crate::fmt::Debug
     /// [`fmt::Arguments`]: crate::fmt::Arguments
-    /// [`std::fmt`]: ../std/fmt/index.html
+    /// [`core::fmt`]: ../std/fmt/index.html
     /// [`format!`]: ../std/macro.format.html
     /// [`println!`]: ../std/macro.println.html
     ///
     /// # Examples
     ///
     /// ```
-    /// use std::fmt;
+    /// use core::fmt;
     ///
     /// let s = fmt::format(format_args!("hello {}", "world"));
     /// assert_eq!(s, format!("hello {}", "world"));
@@ -912,9 +912,9 @@ pub(crate) mod builtin {
     ///
     /// This macro will expand to the value of the named environment variable at
     /// compile time, yielding an expression of type `&'static str`. Use
-    /// [`std::env::var`] instead if you want to read the value at runtime.
+    /// [`core::env::var`] instead if you want to read the value at runtime.
     ///
-    /// [`std::env::var`]: ../std/env/fn.var.html
+    /// [`core::env::var`]: ../std/env/fn.var.html
     ///
     /// If the environment variable is not defined, then a compilation error
     /// will be emitted. To not emit a compile error, use the [`option_env!`]
@@ -955,9 +955,9 @@ pub(crate) mod builtin {
     /// `Some` of the value of the environment variable. If the environment
     /// variable is not present, then this will expand to `None`. See
     /// [`Option<T>`][Option] for more information on this type.  Use
-    /// [`std::env::var`] instead if you want to read the value at runtime.
+    /// [`core::env::var`] instead if you want to read the value at runtime.
     ///
-    /// [`std::env::var`]: ../std/env/fn.var.html
+    /// [`core::env::var`]: ../std/env/fn.var.html
     ///
     /// A compile time error is never emitted when using this macro regardless
     /// of whether the environment variable is present or not.
@@ -1400,11 +1400,11 @@ pub(crate) mod builtin {
     /// # Custom Messages
     ///
     /// This macro has a second form, where a custom panic message can
-    /// be provided with or without arguments for formatting. See [`std::fmt`]
+    /// be provided with or without arguments for formatting. See [`core::fmt`]
     /// for syntax for this form. Expressions used as format arguments will only
     /// be evaluated if the assertion fails.
     ///
-    /// [`std::fmt`]: ../std/fmt/index.html
+    /// [`core::fmt`]: ../std/fmt/index.html
     ///
     /// # Examples
     ///
@@ -1523,7 +1523,7 @@ pub(crate) mod builtin {
 
     /// Attribute macro applied to a static to register it as a global allocator.
     ///
-    /// See also [`std::alloc::GlobalAlloc`](../../../std/alloc/trait.GlobalAlloc.html).
+    /// See also [`core::alloc::GlobalAlloc`](../../../std/alloc/trait.GlobalAlloc.html).
     #[stable(feature = "global_allocator", since = "1.28.0")]
     #[allow_internal_unstable(rustc_attrs)]
     #[rustc_builtin_macro]
@@ -1533,7 +1533,7 @@ pub(crate) mod builtin {
 
     /// Attribute macro applied to a function to register it as a handler for allocation failure.
     ///
-    /// See also [`std::alloc::handle_alloc_error`](../../../std/alloc/fn.handle_alloc_error.html).
+    /// See also [`core::alloc::handle_alloc_error`](../../../std/alloc/fn.handle_alloc_error.html).
     #[unstable(feature = "alloc_error_handler", issue = "51540")]
     #[allow_internal_unstable(rustc_attrs)]
     #[rustc_builtin_macro]

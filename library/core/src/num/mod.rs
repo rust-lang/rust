@@ -1238,7 +1238,7 @@ impl usize {
 /// # Examples
 ///
 /// ```
-/// use std::num::FpCategory;
+/// use core::num::FpCategory;
 ///
 /// let num = 12.4_f32;
 /// let inf = f32::INFINITY;

@@ -143,7 +143,7 @@ pub trait Default: Sized {
 /// ```
 /// #![feature(default_free_fn)]
 ///
-/// use std::default::default;
+/// use core::default::default;
 ///
 /// #[derive(Default)]
 /// struct AppConfig {

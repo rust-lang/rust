@@ -40,7 +40,7 @@ impl<A: Iterator, B: Iterator> Zip<A, B> {
 /// # Examples
 ///
 /// ```
-/// use std::iter::zip;
+/// use core::iter::zip;
 ///
 /// let xs = [1, 2, 3];
 /// let ys = [4, 5, 6];
@@ -500,12 +500,12 @@ impl<A: Debug + TrustedRandomAccessNoCoerce, B: Debug + TrustedRandomAccessNoCoe
 ///    but `self.next_back()` calls that happened before the cloning count for both `self` and the clone.
 /// 4. After `self.__iterator_get_unchecked(idx)` has been called, then only the following methods
 ///    will be called on `self` or on any new clones of `self`:
-///     * `std::clone::Clone::clone`
-///     * `std::iter::Iterator::size_hint`
-///     * `std::iter::DoubleEndedIterator::next_back`
-///     * `std::iter::ExactSizeIterator::len`
-///     * `std::iter::Iterator::__iterator_get_unchecked`
-///     * `std::iter::TrustedRandomAccessNoCoerce::size`
+///     * `core::clone::Clone::clone`
+///     * `core::iter::Iterator::size_hint`
+///     * `core::iter::DoubleEndedIterator::next_back`
+///     * `core::iter::ExactSizeIterator::len`
+///     * `core::iter::Iterator::__iterator_get_unchecked`
+///     * `core::iter::TrustedRandomAccessNoCoerce::size`
 /// 5. If `T` is a subtype of `Self`, then `self` is allowed to be coerced
 ///    to `T`. If `self` is coerced to `T` after `self.__iterator_get_unchecked(idx)` has already
 ///    been called, then no methods except for the ones listed under 4. are allowed to be called

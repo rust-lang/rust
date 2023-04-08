@@ -135,7 +135,7 @@ pub trait ExactSizeIterator: Iterator {
     /// ```
     /// #![feature(exact_size_is_empty)]
     ///
-    /// let mut one_element = std::iter::once(0);
+    /// let mut one_element = core::iter::once(0);
     /// assert!(!one_element.is_empty());
     ///
     /// assert_eq!(one_element.next(), Some(0));

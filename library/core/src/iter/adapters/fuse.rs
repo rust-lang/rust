@@ -187,7 +187,7 @@ impl<I: Default> Default for Fuse<I> {
     ///
     /// ```
     /// # use core::slice;
-    /// # use std::iter::Fuse;
+    /// # use core::iter::Fuse;
     /// let iter: Fuse<slice::Iter<'_, u8>> = Default::default();
     /// assert_eq!(iter.len(), 0);
     /// ```

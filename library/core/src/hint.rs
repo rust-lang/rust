@@ -51,7 +51,7 @@ use crate::intrinsics;
 ///             // Safety: `divisor` can't be zero because of `prepare_inputs`,
 ///             // but the compiler does not know about this. We *promise*
 ///             // that we always call `prepare_inputs`.
-///             std::hint::unreachable_unchecked()
+///             core::hint::unreachable_unchecked()
 ///         }
 ///         // The compiler would normally introduce a check here that prevents
 ///         // a division by zero. However, if `divisor` was zero, the branch
@@ -80,7 +80,7 @@ use crate::intrinsics;
 ///
 /// ```
 /// fn div_1(a: u32, b: u32) -> u32 {
-///     use std::hint::unreachable_unchecked;
+///     use core::hint::unreachable_unchecked;
 ///
 ///     // `b.saturating_add(1)` is always positive (not zero),
 ///     // hence `checked_div` will never return `None`.
@@ -128,9 +128,9 @@ pub const unsafe fn unreachable_unchecked() -> ! {
 /// # Examples
 ///
 /// ```
-/// use std::sync::atomic::{AtomicBool, Ordering};
-/// use std::sync::Arc;
-/// use std::{hint, thread};
+/// use core::sync::atomic::{AtomicBool, Ordering};
+/// use core::sync::Arc;
+/// use core::{hint, thread};
 ///
 /// // A shared atomic value that threads will use to coordinate
 /// let live = Arc::new(AtomicBool::new(false));
@@ -209,7 +209,7 @@ pub fn spin_loop() {
 /// An identity function that *__hints__* to the compiler to be maximally pessimistic about what
 /// `black_box` could do.
 ///
-/// Unlike [`std::convert::identity`], a Rust compiler is encouraged to assume that `black_box` can
+/// Unlike [`core::convert::identity`], a Rust compiler is encouraged to assume that `black_box` can
 /// use `dummy` in any possible valid way that Rust code is allowed to without introducing undefined
 /// behavior in the calling code. This property makes `black_box` useful for writing code in which
 /// certain optimizations are not desired, such as benchmarks.
@@ -219,7 +219,7 @@ pub fn spin_loop() {
 /// backend used. Programs cannot rely on `black_box` for *correctness*, beyond it behaving as the
 /// identity function.
 ///
-/// [`std::convert::identity`]: crate::convert::identity
+/// [`core::convert::identity`]: crate::convert::identity
 ///
 /// # When is this useful?
 ///
@@ -262,7 +262,7 @@ pub fn spin_loop() {
 /// in:
 ///
 /// ```
-/// use std::hint::black_box;
+/// use core::hint::black_box;
 ///
 /// // Same `contains` function
 /// fn contains(haystack: &[&str], needle: &str) -> bool {

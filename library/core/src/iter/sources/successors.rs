@@ -6,7 +6,7 @@ use crate::{fmt, iter::FusedIterator};
 /// and calls the given `FnMut(&T) -> Option<T>` closure to compute each item’s successor.
 ///
 /// ```
-/// use std::iter::successors;
+/// use core::iter::successors;
 ///
 /// let powers_of_10 = successors(Some(1_u16), |n| n.checked_mul(10));
 /// assert_eq!(powers_of_10.collect::<Vec<_>>(), &[1, 10, 100, 1_000, 10_000]);

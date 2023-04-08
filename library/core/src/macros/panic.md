@@ -15,7 +15,7 @@ the calling Rust thread, causing the thread to panic entirely.
 The behavior of the default `std` hook, i.e. the code that runs directly
 after the panic is invoked, is to print the message payload to
 `stderr` along with the file/line/column information of the `panic!()`
-call. You can override the panic hook using [`std::panic::set_hook()`].
+call. You can override the panic hook using [`core::panic::set_hook()`].
 Inside the hook a panic can be accessed as a `&dyn Any + Send`,
 which contains either a `&str` or `String` for regular `panic!()` invocations.
 To panic with a value of another other type, [`panic_any`] can be used.
@@ -47,17 +47,17 @@ encounter. `Result` must be propagated manually, often with the the help of the
 the help of the `Error` trait.
 
 For more detailed information about error handling check out the [book] or the
-[`std::result`] module docs.
+[`core::result`] module docs.
 
 [ounwrap]: Option::unwrap
 [runwrap]: Result::unwrap
-[`std::panic::set_hook()`]: ../std/panic/fn.set_hook.html
+[`core::panic::set_hook()`]: ../std/panic/fn.set_hook.html
 [`panic_any`]: ../std/panic/fn.panic_any.html
 [`Box`]: ../std/boxed/struct.Box.html
 [`Any`]: crate::any::Any
 [`format!`]: ../std/macro.format.html
 [book]: ../book/ch09-00-error-handling.html
-[`std::result`]: ../std/result/index.html
+[`core::result`]: ../std/result/index.html
 
 # Current implementation
 
@@ -71,5 +71,5 @@ program with code `101`.
 panic!();
 panic!("this is a terrible mistake!");
 panic!("this is a {} {message}", "fancy", message = "message");
-std::panic::panic_any(4); // panic with the value of 4 to be collected elsewhere
+core::panic::panic_any(4); // panic with the value of 4 to be collected elsewhere
 ```

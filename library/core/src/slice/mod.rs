@@ -1,8 +1,8 @@
 //! Slice management and manipulation.
 //!
-//! For more details see [`std::slice`].
+//! For more details see [`core::slice`].
 //!
-//! [`std::slice`]: ../../std/slice/index.html
+//! [`core::slice`]: ../../std/slice/index.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -793,7 +793,7 @@ impl<T> [T] {
     /// use [`Cell::as_slice_of_cells`](crate::cell::Cell::as_slice_of_cells) in
     /// conjunction with `windows` to accomplish something similar:
     /// ```
-    /// use std::cell::Cell;
+    /// use core::cell::Cell;
     ///
     /// let mut array = ['R', 'u', 's', 't', ' ', '2', '0', '1', '5'];
     /// let slice = &mut array[..];
@@ -3699,8 +3699,8 @@ impl<T> [T] {
     /// assert_eq!(it.collect::<Vec<_>>(), vec![1, 2, 3]);
     ///
     /// fn basic_simd_sum(x: &[f32]) -> f32 {
-    ///     use std::ops::Add;
-    ///     use std::simd::f32x4;
+    ///     use core::ops::Add;
+    ///     use core::simd::f32x4;
     ///     let (prefix, middle, suffix) = x.as_simd();
     ///     let sums = f32x4::from_array([
     ///         prefix.iter().copied().sum(),

@@ -11,7 +11,7 @@ use crate::hash::Hash;
 /// The `..` syntax is a `RangeFull`:
 ///
 /// ```
-/// assert_eq!((..), std::ops::RangeFull);
+/// assert_eq!((..), core::ops::RangeFull);
 /// ```
 ///
 /// It does not have an [`IntoIterator`] implementation, so you can't use it in
@@ -60,7 +60,7 @@ impl fmt::Debug for RangeFull {
 /// The `start..end` syntax is a `Range`:
 ///
 /// ```
-/// assert_eq!((3..5), std::ops::Range { start: 3, end: 5 });
+/// assert_eq!((3..5), core::ops::Range { start: 3, end: 5 });
 /// assert_eq!(3 + 4 + 5, (3..6).sum());
 /// ```
 ///
@@ -169,7 +169,7 @@ impl<Idx: ~const PartialOrd<Idx>> Range<Idx> {
 /// The `start..` syntax is a `RangeFrom`:
 ///
 /// ```
-/// assert_eq!((2..), std::ops::RangeFrom { start: 2 });
+/// assert_eq!((2..), core::ops::RangeFrom { start: 2 });
 /// assert_eq!(2 + 3 + 4, (2..).take(3).sum());
 /// ```
 ///
@@ -236,15 +236,15 @@ impl<Idx: ~const PartialOrd<Idx>> RangeFrom<Idx> {
 /// The `..end` syntax is a `RangeTo`:
 ///
 /// ```
-/// assert_eq!((..5), std::ops::RangeTo { end: 5 });
+/// assert_eq!((..5), core::ops::RangeTo { end: 5 });
 /// ```
 ///
 /// It does not have an [`IntoIterator`] implementation, so you can't use it in
 /// a `for` loop directly. This won't compile:
 ///
 /// ```compile_fail,E0277
-/// // error[E0277]: the trait bound `std::ops::RangeTo<{integer}>:
-/// // std::iter::Iterator` is not satisfied
+/// // error[E0277]: the trait bound `core::ops::RangeTo<{integer}>:
+/// // core::iter::Iterator` is not satisfied
 /// for i in ..5 {
 ///     // ...
 /// }
@@ -325,7 +325,7 @@ impl<Idx: ~const PartialOrd<Idx>> RangeTo<Idx> {
 /// The `start..=end` syntax is a `RangeInclusive`:
 ///
 /// ```
-/// assert_eq!((3..=5), std::ops::RangeInclusive::new(3, 5));
+/// assert_eq!((3..=5), core::ops::RangeInclusive::new(3, 5));
 /// assert_eq!(3 + 4 + 5, (3..=5).sum());
 /// ```
 ///
@@ -366,7 +366,7 @@ impl<Idx> RangeInclusive<Idx> {
     /// # Examples
     ///
     /// ```
-    /// use std::ops::RangeInclusive;
+    /// use core::ops::RangeInclusive;
     ///
     /// assert_eq!(3..=5, RangeInclusive::new(3, 5));
     /// ```
@@ -558,15 +558,15 @@ impl<Idx: ~const PartialOrd<Idx>> RangeInclusive<Idx> {
 /// The `..=end` syntax is a `RangeToInclusive`:
 ///
 /// ```
-/// assert_eq!((..=5), std::ops::RangeToInclusive{ end: 5 });
+/// assert_eq!((..=5), core::ops::RangeToInclusive{ end: 5 });
 /// ```
 ///
 /// It does not have an [`IntoIterator`] implementation, so you can't use it in a
 /// `for` loop directly. This won't compile:
 ///
 /// ```compile_fail,E0277
-/// // error[E0277]: the trait bound `std::ops::RangeToInclusive<{integer}>:
-/// // std::iter::Iterator` is not satisfied
+/// // error[E0277]: the trait bound `core::ops::RangeToInclusive<{integer}>:
+/// // core::iter::Iterator` is not satisfied
 /// for i in ..=5 {
 ///     // ...
 /// }
@@ -640,8 +640,8 @@ impl<Idx: ~const PartialOrd<Idx>> RangeToInclusive<Idx> {
 /// `Bound`s are range endpoints:
 ///
 /// ```
-/// use std::ops::Bound::*;
-/// use std::ops::RangeBounds;
+/// use core::ops::Bound::*;
+/// use core::ops::RangeBounds;
 ///
 /// assert_eq!((..100).start_bound(), Unbounded);
 /// assert_eq!((1..12).start_bound(), Included(&1));
@@ -652,8 +652,8 @@ impl<Idx: ~const PartialOrd<Idx>> RangeToInclusive<Idx> {
 /// Note that in most cases, it's better to use range syntax (`1..5`) instead.
 ///
 /// ```
-/// use std::collections::BTreeMap;
-/// use std::ops::Bound::{Excluded, Included, Unbounded};
+/// use core::collections::BTreeMap;
+/// use core::ops::Bound::{Excluded, Included, Unbounded};
 ///
 /// let mut map = BTreeMap::new();
 /// map.insert(3, "a");
@@ -712,7 +712,7 @@ impl<T> Bound<T> {
     ///
     /// ```
     /// #![feature(bound_map)]
-    /// use std::ops::Bound::*;
+    /// use core::ops::Bound::*;
     ///
     /// let bound_string = Included("Hello, World!");
     ///
@@ -721,7 +721,7 @@ impl<T> Bound<T> {
     ///
     /// ```
     /// #![feature(bound_map)]
-    /// use std::ops::Bound;
+    /// use core::ops::Bound;
     /// use Bound::*;
     ///
     /// let unbounded_string: Bound<String> = Unbounded;
@@ -745,8 +745,8 @@ impl<T: Clone> Bound<&T> {
     /// # Examples
     ///
     /// ```
-    /// use std::ops::Bound::*;
-    /// use std::ops::RangeBounds;
+    /// use core::ops::Bound::*;
+    /// use core::ops::RangeBounds;
     ///
     /// assert_eq!((1..12).start_bound(), Included(&1));
     /// assert_eq!((1..12).start_bound().cloned(), Included(1));
@@ -775,8 +775,8 @@ pub trait RangeBounds<T: ?Sized> {
     ///
     /// ```
     /// # fn main() {
-    /// use std::ops::Bound::*;
-    /// use std::ops::RangeBounds;
+    /// use core::ops::Bound::*;
+    /// use core::ops::RangeBounds;
     ///
     /// assert_eq!((..10).start_bound(), Unbounded);
     /// assert_eq!((3..10).start_bound(), Included(&3));
@@ -793,8 +793,8 @@ pub trait RangeBounds<T: ?Sized> {
     ///
     /// ```
     /// # fn main() {
-    /// use std::ops::Bound::*;
-    /// use std::ops::RangeBounds;
+    /// use core::ops::Bound::*;
+    /// use core::ops::RangeBounds;
     ///
     /// assert_eq!((3..).end_bound(), Unbounded);
     /// assert_eq!((3..10).end_bound(), Excluded(&10));

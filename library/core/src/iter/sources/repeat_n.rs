@@ -19,7 +19,7 @@ use crate::num::NonZeroUsize;
 ///
 /// ```
 /// #![feature(iter_repeat_n)]
-/// use std::iter;
+/// use core::iter;
 ///
 /// // four of the number four:
 /// let mut four_fours = iter::repeat_n(4, 4);
@@ -37,7 +37,7 @@ use crate::num::NonZeroUsize;
 ///
 /// ```
 /// #![feature(iter_repeat_n)]
-/// use std::iter;
+/// use core::iter;
 ///
 /// let v: Vec<i32> = Vec::with_capacity(123);
 /// let mut it = iter::repeat_n(v, 5);

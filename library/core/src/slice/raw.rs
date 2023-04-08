@@ -46,7 +46,7 @@ use crate::ptr;
 /// # Examples
 ///
 /// ```
-/// use std::slice;
+/// use core::slice;
 ///
 /// // manifest a slice for a single element
 /// let x = 42;
@@ -60,7 +60,7 @@ use crate::ptr;
 /// The following `join_slices` function is **unsound** ⚠️
 ///
 /// ```rust,no_run
-/// use std::slice;
+/// use core::slice;
 ///
 /// fn join_slices<'a, T>(fst: &'a [T], snd: &'a [T]) -> &'a [T] {
 ///     let fst_end = fst.as_ptr().wrapping_add(fst.len());

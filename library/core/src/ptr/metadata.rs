@@ -69,8 +69,8 @@ pub trait Pointee {
 /// ```rust
 /// #![feature(ptr_metadata)]
 ///
-/// fn this_never_panics<T: std::ptr::Thin>() {
-///     assert_eq!(std::mem::size_of::<&T>(), std::mem::size_of::<usize>())
+/// fn this_never_panics<T: core::ptr::Thin>() {
+///     assert_eq!(core::mem::size_of::<&T>(), core::mem::size_of::<usize>())
 /// }
 /// ```
 #[unstable(feature = "ptr_metadata", issue = "81513")]
@@ -87,7 +87,7 @@ pub trait Thin = Pointee<Metadata = ()>;
 /// ```
 /// #![feature(ptr_metadata)]
 ///
-/// assert_eq!(std::ptr::metadata("foo"), 3_usize);
+/// assert_eq!(core::ptr::metadata("foo"), 3_usize);
 /// ```
 #[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
 #[inline]

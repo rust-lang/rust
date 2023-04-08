@@ -13,7 +13,7 @@ use crate::future::Future;
 /// on all futures.
 ///
 /// ```no_run
-/// use std::future::IntoFuture;
+/// use core::future::IntoFuture;
 ///
 /// # async fn foo() {
 /// let v = async { "meow" };
@@ -31,7 +31,7 @@ use crate::future::Future;
 /// multiple times before being `.await`ed.
 ///
 /// ```rust
-/// use std::future::{ready, Ready, IntoFuture};
+/// use core::future::{ready, Ready, IntoFuture};
 ///
 /// /// Eventually multiply two numbers
 /// pub struct Multiply {
@@ -87,13 +87,13 @@ use crate::future::Future;
 /// `IntoFuture::into_future` to obtain an instance of `Future`:
 ///
 /// ```rust
-/// use std::future::IntoFuture;
+/// use core::future::IntoFuture;
 ///
 /// /// Convert the output of a future to a string.
 /// async fn fut_to_string<Fut>(fut: Fut) -> String
 /// where
 ///     Fut: IntoFuture,
-///     Fut::Output: std::fmt::Debug,
+///     Fut::Output: core::fmt::Debug,
 /// {
 ///     format!("{:?}", fut.await)
 /// }
@@ -115,7 +115,7 @@ pub trait IntoFuture {
     /// Basic usage:
     ///
     /// ```no_run
-    /// use std::future::IntoFuture;
+    /// use core::future::IntoFuture;
     ///
     /// # async fn foo() {
     /// let v = async { "meow" };

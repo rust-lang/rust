@@ -14,7 +14,7 @@ use crate::pin::Pin;
 /// #![feature(generators)]
 /// #![feature(iter_from_generator)]
 ///
-/// let it = std::iter::from_generator(|| {
+/// let it = core::iter::from_generator(|| {
 ///     yield 1;
 ///     yield 2;
 ///     yield 3;

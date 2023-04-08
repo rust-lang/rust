@@ -35,7 +35,7 @@ impl<T> Ready<T> {
     ///
     /// ```
     /// #![feature(ready_into_inner)]
-    /// use std::future;
+    /// use core::future;
     ///
     /// let a = future::ready(1);
     /// assert_eq!(a.into_inner(), 1);
@@ -57,7 +57,7 @@ impl<T> Ready<T> {
 /// # Examples
 ///
 /// ```
-/// use std::future;
+/// use core::future;
 ///
 /// # async fn run() {
 /// let a = future::ready(1);

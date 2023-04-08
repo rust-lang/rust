@@ -12,7 +12,7 @@ use crate::panic::Location;
 /// # Examples
 ///
 /// ```should_panic
-/// use std::panic;
+/// use core::panic;
 ///
 /// panic::set_hook(Box::new(|panic_info| {
 ///     if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
@@ -71,7 +71,7 @@ impl<'a> PanicInfo<'a> {
     /// # Examples
     ///
     /// ```should_panic
-    /// use std::panic;
+    /// use core::panic;
     ///
     /// panic::set_hook(Box::new(|panic_info| {
     ///     if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
@@ -107,7 +107,7 @@ impl<'a> PanicInfo<'a> {
     /// # Examples
     ///
     /// ```should_panic
-    /// use std::panic;
+    /// use core::panic;
     ///
     /// panic::set_hook(Box::new(|panic_info| {
     ///     if let Some(location) = panic_info.location() {
@@ -126,7 +126,7 @@ impl<'a> PanicInfo<'a> {
     #[stable(feature = "panic_hooks", since = "1.10.0")]
     pub fn location(&self) -> Option<&Location<'_>> {
         // NOTE: If this is changed to sometimes return None,
-        // deal with that case in std::panicking::default_hook and core::panicking::panic_fmt.
+        // deal with that case in core::panicking::default_hook and core::panicking::panic_fmt.
         Some(&self.location)
     }
 
@@ -158,7 +158,7 @@ impl fmt::Display for PanicInfo<'_> {
         }
         // NOTE: we cannot use downcast_ref::<String>() here
         // since String is not available in core!
-        // The payload is a String when `std::panic!` is called with multiple arguments,
+        // The payload is a String when `core::panic!` is called with multiple arguments,
         // but in that case the message is also available.
 
         self.location.fmt(formatter)

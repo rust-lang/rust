@@ -9,7 +9,7 @@ use crate::marker;
 /// Basic usage:
 ///
 /// ```
-/// use std::iter;
+/// use core::iter;
 ///
 /// // this could have been an iterator over i32, but alas, it's just not.
 /// let mut nope = iter::empty::<i32>();

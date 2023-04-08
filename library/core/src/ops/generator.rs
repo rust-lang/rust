@@ -41,8 +41,8 @@ pub enum GeneratorState<Y, R> {
 /// ```rust
 /// #![feature(generators, generator_trait)]
 ///
-/// use std::ops::{Generator, GeneratorState};
-/// use std::pin::Pin;
+/// use core::ops::{Generator, GeneratorState};
+/// use core::pin::Pin;
 ///
 /// fn main() {
 ///     let mut generator = || {

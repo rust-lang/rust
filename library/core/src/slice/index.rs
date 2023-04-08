@@ -154,7 +154,7 @@ mod private_slice_index {
 #[rustc_on_unimplemented(
     on(T = "str", label = "string indices are ranges of `usize`",),
     on(
-        all(any(T = "str", T = "&str", T = "std::string::String"), _Self = "{integer}"),
+        all(any(T = "str", T = "&str", T = "core::string::String"), _Self = "{integer}"),
         note = "you can use `.chars().nth()` or `.bytes().nth()`\n\
                 for more information, see chapter 8 in The Book: \
                 <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>"
@@ -654,7 +654,7 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeToInclusive<usize> {
 /// ```
 /// #![feature(slice_range)]
 ///
-/// use std::slice;
+/// use core::slice;
 ///
 /// let v = [10, 40, 30];
 /// assert_eq!(1..2, slice::range(1..2, ..v.len()));
@@ -667,7 +667,7 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeToInclusive<usize> {
 /// ```should_panic
 /// #![feature(slice_range)]
 ///
-/// use std::slice;
+/// use core::slice;
 ///
 /// let _ = slice::range(2..1, ..3);
 /// ```
@@ -675,7 +675,7 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeToInclusive<usize> {
 /// ```should_panic
 /// #![feature(slice_range)]
 ///
-/// use std::slice;
+/// use core::slice;
 ///
 /// let _ = slice::range(1..4, ..3);
 /// ```
@@ -683,7 +683,7 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeToInclusive<usize> {
 /// ```should_panic
 /// #![feature(slice_range)]
 ///
-/// use std::slice;
+/// use core::slice;
 ///
 /// let _ = slice::range(1..=usize::MAX, ..3);
 /// ```

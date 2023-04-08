@@ -107,8 +107,8 @@ impl<T, const N: usize> IntoIter<T, N> {
     /// #![feature(array_into_iter_constructors)]
     /// #![feature(maybe_uninit_uninit_array_transpose)]
     /// #![feature(maybe_uninit_uninit_array)]
-    /// use std::array::IntoIter;
-    /// use std::mem::MaybeUninit;
+    /// use core::array::IntoIter;
+    /// use core::mem::MaybeUninit;
     ///
     /// # // Hi!  Thanks for reading the code. This is restricted to `Copy` because
     /// # // otherwise it could leak. A fully-general version this would need a drop
@@ -165,20 +165,20 @@ impl<T, const N: usize> IntoIter<T, N> {
     ///
     /// ```
     /// #![feature(array_into_iter_constructors)]
-    /// use std::array::IntoIter;
+    /// use core::array::IntoIter;
     ///
     /// let empty = IntoIter::<i32, 3>::empty();
     /// assert_eq!(empty.len(), 0);
     /// assert_eq!(empty.as_slice(), &[]);
     ///
-    /// let empty = IntoIter::<std::convert::Infallible, 200>::empty();
+    /// let empty = IntoIter::<core::convert::Infallible, 200>::empty();
     /// assert_eq!(empty.len(), 0);
     /// ```
     ///
     /// `[1, 2].into_iter()` and `[].into_iter()` have different types
     /// ```should_fail,edition2021
     /// #![feature(array_into_iter_constructors)]
-    /// use std::array::IntoIter;
+    /// use core::array::IntoIter;
     ///
     /// pub fn get_bytes(b: bool) -> IntoIter<i8, 4> {
     ///     if b {
@@ -192,7 +192,7 @@ impl<T, const N: usize> IntoIter<T, N> {
     /// But using this method you can get an empty iterator of appropriate size:
     /// ```edition2021
     /// #![feature(array_into_iter_constructors)]
-    /// use std::array::IntoIter;
+    /// use core::array::IntoIter;
     ///
     /// pub fn get_bytes(b: bool) -> IntoIter<i8, 4> {
     ///     if b {

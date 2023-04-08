@@ -312,7 +312,7 @@ where
     ///
     /// ```
     /// # use core::slice;
-    /// # use std::iter::Flatten;
+    /// # use core::iter::Flatten;
     /// let iter: Flatten<slice::Iter<'_, [u8; 4]>> = Default::default();
     /// assert_eq!(iter.count(), 0);
     /// ```

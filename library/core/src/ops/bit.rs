@@ -6,7 +6,7 @@
 /// invert its value.
 ///
 /// ```
-/// use std::ops::Not;
+/// use core::ops::Not;
 ///
 /// #[derive(Debug, PartialEq)]
 /// enum Answer {
@@ -89,7 +89,7 @@ impl const Not for ! {
 /// An implementation of `BitAnd` for a wrapper around `bool`.
 ///
 /// ```
-/// use std::ops::BitAnd;
+/// use core::ops::BitAnd;
 ///
 /// #[derive(Debug, PartialEq)]
 /// struct Scalar(bool);
@@ -112,7 +112,7 @@ impl const Not for ! {
 /// An implementation of `BitAnd` for a wrapper around `Vec<bool>`.
 ///
 /// ```
-/// use std::ops::BitAnd;
+/// use core::ops::BitAnd;
 ///
 /// #[derive(Debug, PartialEq)]
 /// struct BooleanVector(Vec<bool>);
@@ -191,7 +191,7 @@ bitand_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 /// An implementation of `BitOr` for a wrapper around `bool`.
 ///
 /// ```
-/// use std::ops::BitOr;
+/// use core::ops::BitOr;
 ///
 /// #[derive(Debug, PartialEq)]
 /// struct Scalar(bool);
@@ -214,7 +214,7 @@ bitand_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 /// An implementation of `BitOr` for a wrapper around `Vec<bool>`.
 ///
 /// ```
-/// use std::ops::BitOr;
+/// use core::ops::BitOr;
 ///
 /// #[derive(Debug, PartialEq)]
 /// struct BooleanVector(Vec<bool>);
@@ -293,7 +293,7 @@ bitor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 /// An implementation of `BitXor` that lifts `^` to a wrapper around `bool`.
 ///
 /// ```
-/// use std::ops::BitXor;
+/// use core::ops::BitXor;
 ///
 /// #[derive(Debug, PartialEq)]
 /// struct Scalar(bool);
@@ -316,7 +316,7 @@ bitor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 /// An implementation of `BitXor` trait for a wrapper around `Vec<bool>`.
 ///
 /// ```
-/// use std::ops::BitXor;
+/// use core::ops::BitXor;
 ///
 /// #[derive(Debug, PartialEq)]
 /// struct BooleanVector(Vec<bool>);
@@ -399,7 +399,7 @@ bitxor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 /// wrapper around `usize`.
 ///
 /// ```
-/// use std::ops::Shl;
+/// use core::ops::Shl;
 ///
 /// #[derive(PartialEq, Debug)]
 /// struct Scalar(usize);
@@ -419,7 +419,7 @@ bitxor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 /// An implementation of `Shl` that spins a vector leftward by a given amount.
 ///
 /// ```
-/// use std::ops::Shl;
+/// use core::ops::Shl;
 ///
 /// #[derive(PartialEq, Debug)]
 /// struct SpinVector<T: Clone> {
@@ -519,7 +519,7 @@ shl_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 isize i128 }
 /// wrapper around `usize`.
 ///
 /// ```
-/// use std::ops::Shr;
+/// use core::ops::Shr;
 ///
 /// #[derive(PartialEq, Debug)]
 /// struct Scalar(usize);
@@ -539,7 +539,7 @@ shl_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 isize i128 }
 /// An implementation of `Shr` that spins a vector rightward by a given amount.
 ///
 /// ```
-/// use std::ops::Shr;
+/// use core::ops::Shr;
 ///
 /// #[derive(PartialEq, Debug)]
 /// struct SpinVector<T: Clone> {
@@ -634,7 +634,7 @@ shr_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 /// wrapper around `bool`.
 ///
 /// ```
-/// use std::ops::BitAndAssign;
+/// use core::ops::BitAndAssign;
 ///
 /// #[derive(Debug, PartialEq)]
 /// struct Scalar(bool);
@@ -667,7 +667,7 @@ shr_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 /// `Vec<bool>`.
 ///
 /// ```
-/// use std::ops::BitAndAssign;
+/// use core::ops::BitAndAssign;
 ///
 /// #[derive(Debug, PartialEq)]
 /// struct BooleanVector(Vec<bool>);
@@ -745,7 +745,7 @@ bitand_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 /// # Examples
 ///
 /// ```
-/// use std::ops::BitOrAssign;
+/// use core::ops::BitOrAssign;
 ///
 /// #[derive(Debug, PartialEq)]
 /// struct PersonalPreferences {
@@ -818,7 +818,7 @@ bitor_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 /// # Examples
 ///
 /// ```
-/// use std::ops::BitXorAssign;
+/// use core::ops::BitXorAssign;
 ///
 /// #[derive(Debug, PartialEq)]
 /// struct Personality {
@@ -893,7 +893,7 @@ bitxor_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 /// An implementation of `ShlAssign` for a wrapper around `usize`.
 ///
 /// ```
-/// use std::ops::ShlAssign;
+/// use core::ops::ShlAssign;
 ///
 /// #[derive(Debug, PartialEq)]
 /// struct Scalar(usize);
@@ -977,7 +977,7 @@ shl_assign_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 /// An implementation of `ShrAssign` for a wrapper around `usize`.
 ///
 /// ```
-/// use std::ops::ShrAssign;
+/// use core::ops::ShrAssign;
 ///
 /// #[derive(Debug, PartialEq)]
 /// struct Scalar(usize);
