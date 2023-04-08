@@ -2365,6 +2365,22 @@ pub unsafe fn vec_all_ngt(a: vector_float, b: vector_float) -> bool {
     vcmpgtfp_p(0, a, b) != 0
 }
 
+/// All Elements Not Less Than or Equal
+#[inline]
+#[target_feature(enable = "altivec")]
+#[cfg_attr(test, assert_instr("vcmpgefp."))]
+pub unsafe fn vec_all_nle(a: vector_float, b: vector_float) -> bool {
+    vcmpgefp_p(0, b, a) != 0
+}
+
+/// All Elements Not Less Than
+#[inline]
+#[target_feature(enable = "altivec")]
+#[cfg_attr(test, assert_instr("vcmpgtfp."))]
+pub unsafe fn vec_all_nlt(a: vector_float, b: vector_float) -> bool {
+    vcmpgtfp_p(0, b, a) != 0
+}
+
 #[cfg(target_endian = "big")]
 mod endian {
     use super::*;
