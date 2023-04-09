@@ -2,13 +2,13 @@
 // expanded to `Box<dyn Trait + 'static>`, but the generator "witness"
 // that results is `for<'r> { Box<dyn Trait + 'r> }`. The WF code was
 // encountering an ICE (when debug-assertions were enabled) and an
-// unexpected compilation error (without debug-asserions) when trying
+// unexpected compilation error (without debug-assertions) when trying
 // to process this `'r` region bound. In particular, to be WF, the
 // region bound must meet the requirements of the trait, and hence we
 // got `for<'r> { 'r: 'static }`. This would ICE because the `Binder`
 // constructor we were using was asserting that no higher-ranked
 // regions were involved (because the WF code is supposed to skip
-// those). The error (if debug-asserions were disabled) came because
+// those). The error (if debug-assertions were disabled) came because
 // we obviously cannot prove that `'r: 'static` for any region `'r`.
 // Pursuant with our "lazy WF" strategy for higher-ranked regions, the
 // fix is not to require that `for<'r> { 'r: 'static }` holds (this is
