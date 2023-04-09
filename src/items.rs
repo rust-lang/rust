@@ -138,17 +138,30 @@ impl Rewrite for ast::Local {
                 );
                 result.push_str(&else_kw);
 
-                let allow_single_line = allow_single_line_let_else_block(&result, block);
+                // At this point we've written `let {pat} = {expr} else' into the buffer, and we
+                // want to calculate up front if there's room to write the divergent block on the
+                // same line. The available space varies based on indentation so we clamp the width
+                // on the smaller of `shape.width` and `single_line_let_else_max_width`.
+                let max_width =
+                    std::cmp::min(shape.width, context.config.single_line_let_else_max_width());
+
+                // If available_space hits zero we know for sure this will be a multi-lined block
+                let available_space = max_width.saturating_sub(result.len());
+
+                let allow_single_line = !force_newline_else
+                    && available_space > 0
+                    && allow_single_line_let_else_block(&result, block);
 
                 let mut rw_else_block =
                     rewrite_let_else_block(block, allow_single_line, context, shape)?;
 
-                if allow_single_line && !rw_else_block.contains('\n') {
-                    let available_space = shape.width.saturating_sub(result.len());
-                    if available_space <= rw_else_block.len() {
-                        // writing this on one line would exceed the available width
-                        rw_else_block = rewrite_let_else_block(block, false, context, shape)?;
-                    }
+                let single_line_else = !rw_else_block.contains('\n');
+                let else_block_exceeds_width = available_space <= rw_else_block.len();
+
+                if allow_single_line && single_line_else && else_block_exceeds_width {
+                    // writing this on one line would exceed the available width
+                    // so rewrite the else block over multiple lines.
+                    rw_else_block = rewrite_let_else_block(block, false, context, shape)?;
                 }
 
                 result.push_str(&rw_else_block);

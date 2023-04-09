@@ -58,6 +58,9 @@ create_config! {
     chain_width: usize, 60, true, "Maximum length of a chain to fit on a single line.";
     single_line_if_else_max_width: usize, 50, true, "Maximum line length for single line if-else \
         expressions. A value of zero means always break if-else expressions.";
+    single_line_let_else_max_width: usize, 50, true, "Maximum line length for single line \
+        let-else statements. A value of zero means always format the divergent `else` block \
+        over multiple lines.";
 
     // Comments. macros, and strings
     wrap_comments: bool, false, false, "Break comments to fit on the line";
@@ -473,6 +476,9 @@ mod test {
             chain_width: usize, 60, true, "Maximum length of a chain to fit on a single line.";
             single_line_if_else_max_width: usize, 50, true, "Maximum line length for single \
                 line if-else expressions. A value of zero means always break if-else expressions.";
+            single_line_let_else_max_width: usize, 50, false, "Maximum line length for single \
+                line let-else statements. A value of zero means always format the divergent \
+                `else` block over multiple lines.";
 
             // Options that are used by the tests
             stable_option: bool, false, true, "A stable option";
@@ -619,6 +625,7 @@ struct_variant_width = 35
 array_width = 60
 chain_width = 60
 single_line_if_else_max_width = 50
+single_line_let_else_max_width = 50
 wrap_comments = false
 format_code_in_doc_comments = false
 doc_comment_code_block_width = 100

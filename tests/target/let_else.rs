@@ -1,3 +1,5 @@
+// rustfmt-single_line_let_else_max_width: 100
+
 fn main() {
     // Although this won't compile it still parses so make sure we can format empty else blocks
     let Some(x) = opt else {};
@@ -225,6 +227,28 @@ fn long_patterns() {
     let Some(Ok((Message::ChangeColor(super::color::Color::Rgb(r, g, b)), Point { x, y, z }))) =
         opt
     else {
+        return;
+    };
+}
+
+fn with_trailing_try_operator() {
+    // Currently the trailing ? forces the else on the next line
+    // This may be revisited in style edition 2024
+    let Some(next_bucket) = ranking_rules[cur_ranking_rule_index].next_bucket(
+        ctx,
+        logger,
+        &ranking_rule_universes[cur_ranking_rule_index],
+    )?
+    else {
+        return;
+    };
+
+    // Maybe this is a workaround?
+    let Ok(Some(next_bucket)) = ranking_rules[cur_ranking_rule_index].next_bucket(
+        ctx,
+        logger,
+        &ranking_rule_universes[cur_ranking_rule_index],
+    ) else {
         return;
     };
 }
