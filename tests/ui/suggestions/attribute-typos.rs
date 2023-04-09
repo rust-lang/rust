@@ -1,4 +1,4 @@
-#[deprcated] //~ ERROR cannot find attribute `deprcated` in this scope
+#[deprecate] //~ ERROR cannot find attribute `deprecate` in this scope
 fn foo() {}
 
 #[tests] //~ ERROR cannot find attribute `tests` in this scope
