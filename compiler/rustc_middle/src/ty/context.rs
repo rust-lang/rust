@@ -2502,7 +2502,7 @@ pub struct DeducedParamAttrs {
 
 pub fn provide(providers: &mut ty::query::Providers) {
     providers.module_reexports =
-        |tcx, id| tcx.resolutions(()).reexport_map.get(&id).map(|v| &v[..]);
+        |tcx, id| tcx.resolutions(()).reexport_map.get(&id).map_or(&[], |v| &v[..]);
     providers.maybe_unused_trait_imports =
         |tcx, ()| &tcx.resolutions(()).maybe_unused_trait_imports;
     providers.names_imported_by_glob_use = |tcx, id| {

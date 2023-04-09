@@ -13,9 +13,9 @@ use rustc_span::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 
-use std::mem;
+use std::{iter, mem};
 
-use crate::clean::{cfg::Cfg, AttributesExt, NestedAttributesExt, OneLevelVisitor};
+use crate::clean::{cfg::Cfg, reexport_chain, AttributesExt, NestedAttributesExt};
 use crate::core;
 
 /// This module is used to store stuff from Rust's AST in a more convenient
@@ -133,7 +133,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         // is declared but also a reexport of itself producing two exports of the same
         // macro in the same module.
         let mut inserted = FxHashSet::default();
-        for export in self.cx.tcx.module_reexports(CRATE_DEF_ID).unwrap_or(&[]) {
+        for export in self.cx.tcx.module_reexports(CRATE_DEF_ID) {
             if let Res::Def(DefKind::Macro(_), def_id) = export.res &&
                 let Some(local_def_id) = def_id.as_local() &&
                 self.cx.tcx.has_attr(def_id, sym::macro_export) &&
@@ -220,7 +220,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         renamed: Option<Symbol>,
         glob: bool,
         please_inline: bool,
-        path: &hir::UsePath<'_>,
     ) -> bool {
         debug!("maybe_inline_local res: {:?}", res);
 
@@ -266,9 +265,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         }
 
         if !please_inline &&
-            let mut visitor = OneLevelVisitor::new(self.cx.tcx.hir(), res_did) &&
-            let Some(item) = visitor.find_target(self.cx.tcx, def_id.to_def_id(), path) &&
-            let item_def_id = item.owner_id.def_id &&
+            let Some(item_def_id) = reexport_chain(self.cx.tcx, def_id, res_did).iter()
+                .flat_map(|reexport| reexport.id()).map(|id| id.expect_local())
+                .chain(iter::once(res_did)).nth(1) &&
             item_def_id != def_id &&
             self
                 .cx
@@ -383,7 +382,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                             ident,
                             is_glob,
                             please_inline,
-                            path,
                         ) {
                             continue;
                         }

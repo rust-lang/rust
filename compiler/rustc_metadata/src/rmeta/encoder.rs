@@ -1327,8 +1327,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
             }));
 
-            if let Some(reexports) = tcx.module_reexports(local_def_id) {
-                assert!(!reexports.is_empty());
+            let reexports = tcx.module_reexports(local_def_id);
+            if !reexports.is_empty() {
                 record_array!(self.tables.module_reexports[def_id] <- reexports);
             }
         }
