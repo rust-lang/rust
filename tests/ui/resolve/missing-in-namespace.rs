@@ -1,4 +1,4 @@
 fn main() {
-    let _map = std::hahmap::HashMap::new();
-    //~^ ERROR failed to resolve: could not find `hahmap` in `std
+    let _map = std::hashmap_::HashMap::new();
+    //~^ ERROR failed to resolve: could not find `hashmap_` in `std
 }
