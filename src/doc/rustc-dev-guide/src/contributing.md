@@ -311,7 +311,7 @@ There are issues for beginners and advanced compiler devs alike!
 Just a few things to keep in mind:
 
 - Please limit line length to 100 characters. This is enforced by CI, and you can run the checks
-  locally with `ci/check_line_lengths.sh`.
+  locally with `ci/lengthcheck.sh`.
 
 - When contributing text to the guide, please contextualize the information with some time period
   and/or a reason so that the reader knows how much to trust or mistrust the information.

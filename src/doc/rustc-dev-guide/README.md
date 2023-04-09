@@ -67,20 +67,20 @@ including the `<!-- toc -->` marker at the place where you want the TOC.
 ### Pre-commit script
 
 We also test that line lengths are less than 100 columns. To test this locally,
-you can run `ci/check_line_lengths.sh`.
+you can run `ci/lengthcheck.sh`.
 
 You can also set this to run automatically.
 
 On Linux:
 
 ```bash
-ln -s ../../ci/check_line_lengths.sh .git/hooks/pre-commit
+ln -s ../../ci/lengthcheck.sh .git/hooks/pre-commit
 ```
 
 On Windows:
 
 ```powershell
-New-Item -Path .git/hooks/pre-commit -ItemType HardLink -Value <absolute_path/to/check_line_lengths.sh>
+New-Item -Path .git/hooks/pre-commit -ItemType HardLink -Value $(Resolve-Path ci/lengthcheck.sh)
 ```
 
 ## How to fix toolstate failures
