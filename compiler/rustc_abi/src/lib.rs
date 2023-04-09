@@ -1522,6 +1522,16 @@ impl<'a> Layout<'a> {
     pub fn size(self) -> Size {
         self.0.0.size
     }
+
+    /// Whether the layout is from a type that implements [`std::marker::PointerLike`].
+    ///
+    /// Currently, that means that the type is pointer-sized, pointer-aligned,
+    /// and has a scalar ABI.
+    pub fn is_pointer_like(self, data_layout: &TargetDataLayout) -> bool {
+        self.size() == data_layout.pointer_size
+            && self.align().abi == data_layout.pointer_align.abi
+            && matches!(self.abi(), Abi::Scalar(..))
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
