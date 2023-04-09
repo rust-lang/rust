@@ -2,11 +2,11 @@
 
 use std::{fmt, ops};
 
-struct Debuger<T> {
+struct Debugger<T> {
     x: T
 }
 
-impl<T: fmt::Debug> ops::FnOnce<(),> for Debuger<T> {
+impl<T: fmt::Debug> ops::FnOnce<(),> for Debugger<T> {
     type Output = ();
     fn call_once(self, _args: ()) {
     //~^ ERROR `call_once` has an incompatible type for trait
@@ -16,8 +16,8 @@ impl<T: fmt::Debug> ops::FnOnce<(),> for Debuger<T> {
     }
 }
 
-fn make_shower<T>(x: T) -> Debuger<T> {
-    Debuger { x: x }
+fn make_shower<T>(x: T) -> Debugger<T> {
+    Debugger { x: x }
 }
 
 pub fn main() {
