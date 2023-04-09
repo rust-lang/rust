@@ -124,9 +124,9 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
 
         let preds = traits::elaborate_predicates(cx.tcx, cx.param_env.caller_bounds().iter())
             .filter(|p| !p.is_global())
-            .filter_map(|obligation| {
+            .filter_map(|pred| {
                 // Note that we do not want to deal with qualified predicates here.
-                match obligation.predicate.kind().no_bound_vars() {
+                match pred.kind().no_bound_vars() {
                     Some(ty::PredicateKind::Clause(ty::Clause::Trait(pred))) if pred.def_id() != sized_trait => {
                         Some(pred)
                     },

@@ -13,7 +13,7 @@ guide to Clippy that you're reading right now. The Clippy book is formatted with
 While not strictly necessary since the book source is simply Markdown text
 files, having mdBook locally will allow you to build, test and serve the book
 locally to view changes before you commit them to the repository. You likely
-already have `cargo` installed, so the easiest option is to simply:
+already have `cargo` installed, so the easiest option is to:
 
 ```shell
 cargo install mdbook
@@ -26,7 +26,7 @@ instructions for other options.
 
 The book's
 [src](https://github.com/rust-lang/rust-clippy/tree/master/book/src)
-directory contains all of the markdown files used to generate the book. If you
+directory contains all the markdown files used to generate the book. If you
 want to see your changes in real time, you can use the mdBook `serve` command to
 run a web server locally that will automatically update changes as they are
 made. From the top level of your `rust-clippy` directory:

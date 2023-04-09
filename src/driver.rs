@@ -1,6 +1,6 @@
 #![feature(rustc_private)]
 #![feature(let_chains)]
-#![feature(once_cell)]
+#![feature(lazy_cell)]
 #![feature(lint_reasons)]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
@@ -130,7 +130,7 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
     #[allow(rustc::bad_opt_access)]
     fn config(&mut self, config: &mut interface::Config) {
         let conf_path = clippy_lints::lookup_conf_file();
-        let conf_path_string = if let Ok(Some(path)) = &conf_path {
+        let conf_path_string = if let Ok((Some(path), _)) = &conf_path {
             path.to_str().map(String::from)
         } else {
             None

@@ -20,7 +20,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, lt: &Lifetime, m
                 if let QPath::Resolved(None, path) = *qpath;
                 if let [ref bx] = *path.segments;
                 if let Some(params) = bx.args;
-                if !params.parenthesized;
+                if params.parenthesized == hir::GenericArgsParentheses::No;
                 if let Some(inner) = params.args.iter().find_map(|arg| match arg {
                     GenericArg::Type(ty) => Some(ty),
                     _ => None,

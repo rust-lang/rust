@@ -63,7 +63,7 @@ fn group_with_span(delimiter: Delimiter, stream: TokenStream, span: Span) -> Gro
 /// Token used to escape the following token from the macro's span rules.
 const ESCAPE_CHAR: char = '$';
 
-/// Takes a single token followed by a sequence tokens. Returns the sequence of tokens with their
+/// Takes a single token followed by a sequence of tokens. Returns the sequence of tokens with their
 /// span set to that of the first token. Tokens may be escaped with either `#ident` or `#(tokens)`.
 #[proc_macro]
 pub fn with_span(input: TokenStream) -> TokenStream {

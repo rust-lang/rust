@@ -37,11 +37,7 @@ error: format specifiers have no effect on `format_args!()`
 LL |     println!("{:5}.", format_args_from_macro!());
    |               ^^^^
    |
-help: for the width to apply consider using `format!()`
-  --> $DIR/unused_format_specs_unfixable.rs:16:17
-   |
-LL |     println!("{:5}.", format_args_from_macro!());
-   |                 ^
+   = help: for the width to apply consider using `format!()`
 help: if the current behavior is intentional, remove the format specifiers
    |
 LL -     println!("{:5}.", format_args_from_macro!());
@@ -54,11 +50,7 @@ error: format specifiers have no effect on `format_args!()`
 LL |     println!("{args:5}");
    |               ^^^^^^^^
    |
-help: for the width to apply consider using `format!()`
-  --> $DIR/unused_format_specs_unfixable.rs:19:21
-   |
-LL |     println!("{args:5}");
-   |                     ^
+   = help: for the width to apply consider using `format!()`
 help: if the current behavior is intentional, remove the format specifiers
    |
 LL -     println!("{args:5}");

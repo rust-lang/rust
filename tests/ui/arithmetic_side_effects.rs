@@ -425,4 +425,8 @@ pub fn integer_arithmetic() {
     i ^= i;
 }
 
+pub fn issue_10583(a: u16) -> u16 {
+    10 / a
+}
+
 fn main() {}

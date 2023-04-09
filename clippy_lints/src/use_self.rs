@@ -10,8 +10,8 @@ use rustc_hir::{
     def::{CtorOf, DefKind, Res},
     def_id::LocalDefId,
     intravisit::{walk_inf, walk_ty, Visitor},
-    Expr, ExprKind, FnRetTy, FnSig, GenericArg, GenericParam, GenericParamKind, HirId, Impl, ImplItemKind, Item,
-    ItemKind, Pat, PatKind, Path, QPath, Ty, TyKind,
+    Expr, ExprKind, FnRetTy, FnSig, GenericArg, GenericArgsParentheses, GenericParam, GenericParamKind, HirId, Impl,
+    ImplItemKind, Item, ItemKind, Pat, PatKind, Path, QPath, Ty, TyKind,
 };
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
@@ -100,7 +100,8 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             if let TyKind::Path(QPath::Resolved(_, item_path)) = self_ty.kind;
             let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).args;
             if parameters.as_ref().map_or(true, |params| {
-                !params.parenthesized && !params.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)))
+                params.parenthesized  == GenericArgsParentheses::No
+                    && !params.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)))
             });
             if !item.span.from_expansion();
             if !is_from_proc_macro(cx, item); // expensive, should be last check
