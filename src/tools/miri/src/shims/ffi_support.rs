@@ -2,10 +2,9 @@ use std::ffi::c_void;
 use libffi::{high::call as ffi, low::CodePtr};
 use std::ops::Deref;
 
-use rustc_middle::ty::{self as ty, IntTy, Ty, UintTy};
+use rustc_middle::ty::{self as ty, IntTy, UintTy};
 use rustc_span::Symbol;
 use rustc_target::abi::HasDataLayout;
-use rustc_hir::Mutability;
 use rustc_middle::ty::layout::TyAndLayout;
 
 use crate::*;
@@ -70,12 +69,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 if let Scalar::Ptr(ptr, _) = k {
                     if let Provenance::Concrete { alloc_id, tag } = ptr.provenance {
                         GlobalStateInner::expose_ptr(
-                            self,
+                            self.eval_context_mut(),
                             alloc_id,
                             tag,
-                        )
+                        )?;
                     }
-                    let alloc = self.get_ptr_alloc(
+                    let alloc = self.eval_context_ref().get_ptr_alloc(
                         ptr,
                         arg_type.layout.size(),
                         arg_type.layout.align().abi,
@@ -250,8 +249,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // Get the function arguments, and convert them to `libffi`-compatible form.
         let mut libffi_args = Vec::<CArg>::with_capacity(args.len());
         for cur_arg in args.iter() {
-            libffi_args.push(Self::scalar_to_carg(
-                ecx,
+            libffi_args.push(self.scalar_to_carg(
                 this.read_scalar(cur_arg)?,
                 cur_arg.layout,
                 this,
