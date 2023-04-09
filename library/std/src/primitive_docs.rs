@@ -130,6 +130,7 @@ mod prim_bool {}
 /// [`Result<String, !>`] which we can unpack like this:
 ///
 /// ```
+/// # #![cfg_attr(bootstrap, feature(exhaustive_patterns))]
 /// use std::str::FromStr;
 /// let Ok(s) = String::from_str("hello");
 /// ```
