@@ -5,9 +5,9 @@
 // [twenty_twentyone]compile-flags: --edition 2021
 
 #[derive(Debug)]
-struct Dropable(&'static str);
+struct Droppable(&'static str);
 
-impl Drop for Dropable {
+impl Drop for Droppable {
     fn drop(&mut self) {
         println!("Dropping {}", self.0)
     }
@@ -15,8 +15,8 @@ impl Drop for Dropable {
 
 #[derive(Debug)]
 struct A {
-    x: Dropable,
-    y: Dropable,
+    x: Droppable,
+    y: Droppable,
 }
 
 #[derive(Debug)]
@@ -32,15 +32,15 @@ struct R<'a> {
 }
 
 fn main() {
-    let a = A { x: Dropable("x"), y: Dropable("y") };
+    let a = A { x: Droppable("x"), y: Droppable("y") };
 
     let c = move || println!("{:?} {:?}", a.y, a.x);
 
     c();
 
     let b = B {
-        c: A { x: Dropable("b.c.x"), y: Dropable("b.c.y") },
-        d: A { x: Dropable("b.d.x"), y: Dropable("b.d.y") },
+        c: A { x: Droppable("b.c.x"), y: Droppable("b.c.y") },
+        d: A { x: Droppable("b.d.x"), y: Droppable("b.d.y") },
     };
 
     let d = move || println!("{:?} {:?} {:?} {:?}", b.d.y, b.d.x, b.c.y, b.c.x);
@@ -48,8 +48,8 @@ fn main() {
     d();
 
         let r = R {
-        c: &A { x: Dropable("r.c.x"), y: Dropable("r.c.y") },
-        d: &A { x: Dropable("r.d.x"), y: Dropable("r.d.y") },
+        c: &A { x: Droppable("r.c.x"), y: Droppable("r.c.y") },
+        d: &A { x: Droppable("r.d.x"), y: Droppable("r.d.y") },
     };
 
     let e = move || println!("{:?} {:?} {:?} {:?}", r.d.y, r.d.x, r.c.y, r.c.x);
