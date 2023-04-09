@@ -52,11 +52,11 @@ where
     desugared_bound_region_forall2(beta)
 }
 
-fn where_contraint_region_forall<B>(beta: B) -> usize
+fn where_constraint_region_forall<B>(beta: B) -> usize
 where
     for<'a> &'a B: Beta<Gamma: Alpha>,
 {
-    desugared_contraint_region_forall(beta)
+    desugared_constraint_region_forall(beta)
 }
 
 fn where_bound_nested<B>(beta: B) -> usize
