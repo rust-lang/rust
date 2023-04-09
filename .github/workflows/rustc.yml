@@ -6,6 +6,7 @@ on:
 jobs:
   bootstrap_rustc:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
 
     steps:
     - uses: actions/checkout@v3
@@ -21,8 +22,11 @@ jobs:
 
     - name: Test
       run: ./scripts/test_bootstrap.sh
+
+
   rustc_test_suite:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
 
     steps:
     - uses: actions/checkout@v3
