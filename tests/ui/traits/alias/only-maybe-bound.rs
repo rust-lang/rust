@@ -1,4 +1,4 @@
-// Test that `dyn ?Sized` (i.e., a trait object with only a maybe buond) is not allowed, when just
+// Test that `dyn ?Sized` (i.e., a trait object with only a maybe bound) is not allowed, when just
 // `?Sized` results from trait alias expansion.
 
 #![feature(trait_alias)]
