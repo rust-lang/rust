@@ -7,7 +7,7 @@ pub(super) fn handle_needs(
     config: &Config,
     ln: &str,
 ) -> IgnoreDecision {
-    // Note thet we intentionally still put the needs- prefix here to make the file show up when
+    // Note that we intentionally still put the needs- prefix here to make the file show up when
     // grepping for a directive name, even though we could technically strip that.
     let needs = &[
         Need {

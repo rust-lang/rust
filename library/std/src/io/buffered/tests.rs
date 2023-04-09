@@ -832,7 +832,7 @@ fn partial_line_buffered_after_line_write() {
 }
 
 /// Test that, given a partial line that exceeds the length of
-/// LineBuffer's buffer (that is, without a trailing newline), that that
+/// LineBuffer's buffer (that is, without a trailing newline), that
 /// line is written to the inner writer
 #[test]
 fn long_line_flushed() {
@@ -844,7 +844,7 @@ fn long_line_flushed() {
 }
 
 /// Test that, given a very long partial line *after* successfully
-/// flushing a complete line, that that line is buffered unconditionally,
+/// flushing a complete line, that line is buffered unconditionally,
 /// and no additional writes take place. This assures the property that
 /// `write` should make at-most-one attempt to write new data.
 #[test]
