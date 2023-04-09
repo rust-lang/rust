@@ -665,7 +665,7 @@ impl FromWithTcx<clean::Impl> for Impl {
         let clean::Impl { unsafety, generics, trait_, for_, items, polarity, kind } = impl_;
         // FIXME: use something like ImplKind in JSON?
         let (synthetic, blanket_impl) = match kind {
-            clean::ImplKind::Normal | clean::ImplKind::FakeVaradic => (false, None),
+            clean::ImplKind::Normal | clean::ImplKind::FakeVariadic => (false, None),
             clean::ImplKind::Auto => (true, None),
             clean::ImplKind::Blanket(ty) => (false, Some(*ty)),
         };
@@ -740,7 +740,7 @@ impl FromWithTcx<clean::Variant> for Variant {
 impl FromWithTcx<clean::Discriminant> for Discriminant {
     fn from_tcx(disr: clean::Discriminant, tcx: TyCtxt<'_>) -> Self {
         Discriminant {
-            // expr is only none if going through the inlineing path, which gets
+            // expr is only none if going through the inlining path, which gets
             // `rustc_middle` types, not `rustc_hir`, but because JSON never inlines
             // the expr is always some.
             expr: disr.expr(tcx).unwrap(),

@@ -156,7 +156,7 @@ impl ExternalCrate {
     }
 
     /// Attempts to find where an external crate is located, given that we're
-    /// rendering in to the specified source destination.
+    /// rendering into the specified source destination.
     pub(crate) fn location(
         &self,
         extern_url: Option<&str>,
@@ -751,7 +751,7 @@ pub(crate) enum ItemKind {
     PrimitiveItem(PrimitiveType),
     /// A required associated constant in a trait declaration.
     TyAssocConstItem(Type),
-    /// An associated associated constant in a trait impl or a provided one in a trait declaration.
+    /// An associated constant in a trait impl or a provided one in a trait declaration.
     AssocConstItem(Type, ConstantKind),
     /// A required associated type in a trait declaration.
     ///
@@ -2305,7 +2305,7 @@ impl Impl {
 pub(crate) enum ImplKind {
     Normal,
     Auto,
-    FakeVaradic,
+    FakeVariadic,
     Blanket(Box<Type>),
 }
 
@@ -2319,7 +2319,7 @@ impl ImplKind {
     }
 
     pub(crate) fn is_fake_variadic(&self) -> bool {
-        matches!(self, ImplKind::FakeVaradic)
+        matches!(self, ImplKind::FakeVariadic)
     }
 
     pub(crate) fn as_blanket_ty(&self) -> Option<&Type> {
