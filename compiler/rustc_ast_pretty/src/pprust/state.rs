@@ -988,7 +988,9 @@ impl<'a> State<'a> {
 
     pub fn print_assoc_constraint(&mut self, constraint: &ast::AssocConstraint) {
         self.print_ident(constraint.ident);
-        constraint.gen_args.as_ref().map(|args| self.print_generic_args(args, false));
+        if let Some(args) = constraint.gen_args.as_ref() {
+            self.print_generic_args(args, false)
+        }
         self.space();
         match &constraint.kind {
             ast::AssocConstraintKind::Equality { term } => {

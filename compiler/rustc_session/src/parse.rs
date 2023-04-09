@@ -84,12 +84,12 @@ impl SymbolGallery {
 
 /// Construct a diagnostic for a language feature error due to the given `span`.
 /// The `feature`'s `Symbol` is the one you used in `active.rs` and `rustc_span::symbols`.
-pub fn feature_err<'a>(
-    sess: &'a ParseSess,
+pub fn feature_err(
+    sess: &ParseSess,
     feature: Symbol,
     span: impl Into<MultiSpan>,
     explain: impl Into<DiagnosticMessage>,
-) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
     feature_err_issue(sess, feature, span, GateIssue::Language, explain)
 }
 
@@ -98,20 +98,21 @@ pub fn feature_err<'a>(
 /// This variant allows you to control whether it is a library or language feature.
 /// Almost always, you want to use this for a language feature. If so, prefer `feature_err`.
 #[track_caller]
-pub fn feature_err_issue<'a>(
-    sess: &'a ParseSess,
+pub fn feature_err_issue(
+    sess: &ParseSess,
     feature: Symbol,
     span: impl Into<MultiSpan>,
     issue: GateIssue,
     explain: impl Into<DiagnosticMessage>,
-) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
     let span = span.into();
 
     // Cancel an earlier warning for this same error, if it exists.
     if let Some(span) = span.primary_span() {
-        sess.span_diagnostic
-            .steal_diagnostic(span, StashKey::EarlySyntaxWarning)
-            .map(|err| err.cancel());
+        if let Some(err) = sess.span_diagnostic.steal_diagnostic(span, StashKey::EarlySyntaxWarning)
+        {
+            err.cancel()
+        }
     }
 
     let mut err = sess.create_err(FeatureGateError { span, explain: explain.into() });

@@ -105,7 +105,7 @@ impl<'tcx> std::ops::Deref for ExternalConstraints<'tcx> {
     type Target = ExternalConstraintsData<'tcx>;
 
     fn deref(&self) -> &Self::Target {
-        &*self.0
+        &self.0
     }
 }
 
