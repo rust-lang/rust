@@ -19,7 +19,7 @@ pub enum GitInfo {
     #[default]
     Absent,
     /// This is a git repository.
-    /// If the info should be used (`ignore_git` is false), this will be
+    /// If the info should be used (`omit_git_hash` is false), this will be
     /// `Some`, otherwise it will be `None`.
     Present(Option<Info>),
     /// This is not a git repostory, but the info can be fetched from the
@@ -35,7 +35,7 @@ pub struct Info {
 }
 
 impl GitInfo {
-    pub fn new(ignore_git: bool, dir: &Path) -> GitInfo {
+    pub fn new(omit_git_hash: bool, dir: &Path) -> GitInfo {
         // See if this even begins to look like a git dir
         if !dir.join(".git").exists() {
             match read_commit_info_file(dir) {
@@ -52,7 +52,7 @@ impl GitInfo {
 
         // If we're ignoring the git info, we don't actually need to collect it, just make sure this
         // was a git repo in the first place.
-        if ignore_git {
+        if omit_git_hash {
             return GitInfo::Present(None);
         }
 

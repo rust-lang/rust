@@ -320,7 +320,7 @@ pub fn prepare_tool_cargo(
     cargo.env("CFG_RELEASE_NUM", &builder.version);
     cargo.env("DOC_RUST_LANG_ORG_CHANNEL", builder.doc_rust_lang_org_channel());
 
-    let info = GitInfo::new(builder.config.ignore_git, &dir);
+    let info = GitInfo::new(builder.config.omit_git_hash, &dir);
     if let Some(sha) = info.sha() {
         cargo.env("CFG_COMMIT_HASH", sha);
     }
