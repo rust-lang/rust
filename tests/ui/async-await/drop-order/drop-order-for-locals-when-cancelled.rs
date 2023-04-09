@@ -62,7 +62,7 @@ fn simple_variable_declaration_sync(l: DropOrderListPtr) {
     let y = D("y", l.clone());
 }
 
-async fn varable_completely_contained_within_block_async(l: DropOrderListPtr) {
+async fn variable_completely_contained_within_block_async(l: DropOrderListPtr) {
     l.borrow_mut().push(DropOrder::Function);
     async {
         let x = D("x", l.clone());
@@ -72,7 +72,7 @@ async fn varable_completely_contained_within_block_async(l: DropOrderListPtr) {
     NeverReady.await;
 }
 
-fn varable_completely_contained_within_block_sync(l: DropOrderListPtr) {
+fn variable_completely_contained_within_block_sync(l: DropOrderListPtr) {
     l.borrow_mut().push(DropOrder::Function);
     {
         let x = D("x", l.clone());
@@ -158,8 +158,8 @@ fn main() {
         simple_variable_declaration_sync,
     );
     assert_drop_order_after_cancel(
-        varable_completely_contained_within_block_async,
-        varable_completely_contained_within_block_sync,
+        variable_completely_contained_within_block_async,
+        variable_completely_contained_within_block_sync,
     );
     assert_drop_order_after_cancel(
         variables_moved_into_separate_blocks_async,
