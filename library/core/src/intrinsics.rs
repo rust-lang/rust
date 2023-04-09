@@ -2717,7 +2717,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     // SAFETY: the safety contract for `copy` must be upheld by the caller.
     unsafe {
         assert_unsafe_precondition!(
-            "ptr::copy requires that both pointer arguments are aligned aligned and non-null",
+            "ptr::copy requires that both pointer arguments are aligned and non-null",
             [T](src: *const T, dst: *mut T) =>
             is_aligned_and_not_null(src) && is_aligned_and_not_null(dst)
         );
