@@ -112,8 +112,6 @@ impl<'a, 'tcx> Encoder for EncodeContext<'a, 'tcx> {
         emit_i8(i8);
 
         emit_bool(bool);
-        emit_f64(f64);
-        emit_f32(f32);
         emit_char(char);
         emit_str(&str);
         emit_raw_bytes(&[u8]);
@@ -1329,8 +1327,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
             }));
 
-            if let Some(reexports) = tcx.module_reexports(local_def_id) {
-                assert!(!reexports.is_empty());
+            let reexports = tcx.module_reexports(local_def_id);
+            if !reexports.is_empty() {
                 record_array!(self.tables.module_reexports[def_id] <- reexports);
             }
         }

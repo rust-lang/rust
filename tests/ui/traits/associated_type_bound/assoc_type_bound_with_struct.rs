@@ -18,6 +18,6 @@ fn qux<'a, T: Bar>(_: &'a T) where <&'a T as Bar>::Baz: String { //~ ERROR expec
 
 fn issue_95327() where <u8 as Unresolved>::Assoc: String {}
 //~^ ERROR expected trait, found struct
-//~| ERROR use of undeclared type `Unresolved`
+//~| ERROR cannot find trait `Unresolved` in this scope
 
 fn main() {}

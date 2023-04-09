@@ -125,9 +125,9 @@ impl<'tcx> InferCtxt<'tcx> {
                 ty.into()
             }
 
-            CanonicalVarKind::PlaceholderTy(ty::PlaceholderType { universe, name }) => {
+            CanonicalVarKind::PlaceholderTy(ty::PlaceholderType { universe, bound }) => {
                 let universe_mapped = universe_map(universe);
-                let placeholder_mapped = ty::PlaceholderType { universe: universe_mapped, name };
+                let placeholder_mapped = ty::PlaceholderType { universe: universe_mapped, bound };
                 self.tcx.mk_placeholder(placeholder_mapped).into()
             }
 
@@ -138,9 +138,9 @@ impl<'tcx> InferCtxt<'tcx> {
                 )
                 .into(),
 
-            CanonicalVarKind::PlaceholderRegion(ty::PlaceholderRegion { universe, name }) => {
+            CanonicalVarKind::PlaceholderRegion(ty::PlaceholderRegion { universe, bound }) => {
                 let universe_mapped = universe_map(universe);
-                let placeholder_mapped = ty::PlaceholderRegion { universe: universe_mapped, name };
+                let placeholder_mapped = ty::PlaceholderRegion { universe: universe_mapped, bound };
                 self.tcx.mk_re_placeholder(placeholder_mapped).into()
             }
 
@@ -152,9 +152,9 @@ impl<'tcx> InferCtxt<'tcx> {
                 )
                 .into(),
 
-            CanonicalVarKind::PlaceholderConst(ty::PlaceholderConst { universe, name }, ty) => {
+            CanonicalVarKind::PlaceholderConst(ty::PlaceholderConst { universe, bound }, ty) => {
                 let universe_mapped = universe_map(universe);
-                let placeholder_mapped = ty::PlaceholderConst { universe: universe_mapped, name };
+                let placeholder_mapped = ty::PlaceholderConst { universe: universe_mapped, bound };
                 self.tcx.mk_const(placeholder_mapped, ty).into()
             }
         }

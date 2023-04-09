@@ -26,7 +26,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         args: &[OpTy<'tcx, Provenance>],
         dest: &PlaceTy<'tcx, Provenance>,
         ret: Option<mir::BasicBlock>,
-        _unwind: StackPopUnwind,
+        _unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 

@@ -24,7 +24,7 @@ use crate::MirPass;
 use rustc_const_eval::interpret::{
     self, compile_time_machine, AllocId, ConstAllocation, ConstValue, CtfeValidationMode, Frame,
     ImmTy, Immediate, InterpCx, InterpResult, LocalValue, MemoryKind, OpTy, PlaceTy, Pointer,
-    Scalar, StackPopCleanup, StackPopUnwind,
+    Scalar, StackPopCleanup,
 };
 
 /// The maximum number of bytes that we'll allocate space for a local or the return value.
@@ -115,10 +115,7 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
             .predicates
             .iter()
             .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
-        if traits::impossible_predicates(
-            tcx,
-            traits::elaborate_predicates(tcx, predicates).collect(),
-        ) {
+        if traits::impossible_predicates(tcx, traits::elaborate(tcx, predicates).collect()) {
             trace!("ConstProp skipped for {:?}: found unsatisfiable predicates", def_id);
             return;
         }
@@ -209,7 +206,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         _args: &[OpTy<'tcx>],
         _destination: &PlaceTy<'tcx>,
         _target: Option<BasicBlock>,
-        _unwind: StackPopUnwind,
+        _unwind: UnwindAction,
     ) -> InterpResult<'tcx, Option<(&'mir Body<'tcx>, ty::Instance<'tcx>)>> {
         Ok(None)
     }
@@ -220,7 +217,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         _args: &[OpTy<'tcx>],
         _destination: &PlaceTy<'tcx>,
         _target: Option<BasicBlock>,
-        _unwind: StackPopUnwind,
+        _unwind: UnwindAction,
     ) -> InterpResult<'tcx> {
         throw_machine_stop_str!("calling intrinsics isn't supported in ConstProp")
     }
@@ -228,7 +225,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
     fn assert_panic(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _msg: &rustc_middle::mir::AssertMessage<'tcx>,
-        _unwind: Option<rustc_middle::mir::BasicBlock>,
+        _unwind: rustc_middle::mir::UnwindAction,
     ) -> InterpResult<'tcx> {
         bug!("panics terminators are not evaluated in ConstProp")
     }
@@ -959,7 +956,7 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
             // None of these have Operands to const-propagate.
             TerminatorKind::Goto { .. }
             | TerminatorKind::Resume
-            | TerminatorKind::Abort
+            | TerminatorKind::Terminate
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::Drop { .. }

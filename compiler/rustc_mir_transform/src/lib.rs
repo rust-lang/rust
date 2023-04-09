@@ -159,7 +159,7 @@ fn remap_mir_for_const_eval_select<'tcx>(
                 ref mut args,
                 destination,
                 target,
-                cleanup,
+                unwind,
                 fn_span,
                 ..
             } if let ty::FnDef(def_id, _) = *literal.ty().kind()
@@ -196,7 +196,7 @@ fn remap_mir_for_const_eval_select<'tcx>(
                     };
                     method(place)
                 }).collect();
-                terminator.kind = TerminatorKind::Call { func, args: arguments, destination, target, cleanup, from_hir_call: false, fn_span };
+                terminator.kind = TerminatorKind::Call { func, args: arguments, destination, target, unwind, from_hir_call: false, fn_span };
             }
             _ => {}
         }

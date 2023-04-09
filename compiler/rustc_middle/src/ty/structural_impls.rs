@@ -68,7 +68,7 @@ impl<'tcx> fmt::Debug for ty::adjustment::Adjustment<'tcx> {
 impl fmt::Debug for ty::BoundRegionKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            ty::BrAnon(n, span) => write!(f, "BrAnon({n:?}, {span:?})"),
+            ty::BrAnon(span) => write!(f, "BrAnon({span:?})"),
             ty::BrNamed(did, name) => {
                 if did.is_crate_root() {
                     write!(f, "BrNamed({})", name)
@@ -254,8 +254,8 @@ TrivialTypeTraversalAndLiftImpls! {
     crate::ty::AssocKind,
     crate::ty::AliasKind,
     crate::ty::AliasRelationDirection,
-    crate::ty::Placeholder<crate::ty::BoundRegionKind>,
-    crate::ty::Placeholder<crate::ty::BoundTyKind>,
+    crate::ty::Placeholder<crate::ty::BoundRegion>,
+    crate::ty::Placeholder<crate::ty::BoundTy>,
     crate::ty::ClosureKind,
     crate::ty::FreeRegion,
     crate::ty::InferTy,

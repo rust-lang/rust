@@ -1133,7 +1133,7 @@ impl Step for Tidy {
         if builder.config.channel == "dev" || builder.config.channel == "nightly" {
             builder.info("fmt check");
             if builder.initial_rustfmt().is_none() {
-                let inferred_rustfmt_dir = builder.config.initial_rustc.parent().unwrap();
+                let inferred_rustfmt_dir = builder.initial_rustc.parent().unwrap();
                 eprintln!(
                     "\
 error: no `rustfmt` binary found in {PATH}

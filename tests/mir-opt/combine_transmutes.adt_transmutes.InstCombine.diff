@@ -128,7 +128,7 @@
           StorageDead(_22);                // scope 10 at $DIR/combine_transmutes.rs:+11:47: +11:48
           StorageLive(_23);                // scope 11 at $DIR/combine_transmutes.rs:+12:9: +12:11
           StorageLive(_24);                // scope 11 at $DIR/combine_transmutes.rs:+12:46: +12:77
-          _24 = MaybeUninit::<String>::uninit() -> bb1; // scope 11 at $DIR/combine_transmutes.rs:+12:46: +12:77
+          _24 = MaybeUninit::<String>::uninit() -> [return: bb1, unwind unreachable]; // scope 11 at $DIR/combine_transmutes.rs:+12:46: +12:77
                                            // mir::Constant
                                            // + span: $DIR/combine_transmutes.rs:46:46: 46:75
                                            // + user_ty: UserType(23)

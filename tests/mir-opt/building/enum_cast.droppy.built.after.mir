@@ -63,7 +63,7 @@ fn droppy() -> () {
     }
 
     bb4 (cleanup): {
-        drop(_2) -> bb5;                 // scope 0 at $DIR/enum_cast.rs:+6:5: +6:6
+        drop(_2) -> [return: bb5, unwind terminate]; // scope 0 at $DIR/enum_cast.rs:+6:5: +6:6
     }
 
     bb5 (cleanup): {

@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 //! Tests that we can propagate into places that are projections into unions
 // compile-flags: -Zunsound-mir-opts
 fn val() -> u32 {

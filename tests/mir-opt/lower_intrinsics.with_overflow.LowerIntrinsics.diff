@@ -30,7 +30,7 @@
           _4 = _1;                         // scope 0 at $DIR/lower_intrinsics.rs:+1:50: +1:51
           StorageLive(_5);                 // scope 0 at $DIR/lower_intrinsics.rs:+1:53: +1:54
           _5 = _2;                         // scope 0 at $DIR/lower_intrinsics.rs:+1:53: +1:54
--         _3 = add_with_overflow::<i32>(move _4, move _5) -> bb1; // scope 0 at $DIR/lower_intrinsics.rs:+1:14: +1:55
+-         _3 = add_with_overflow::<i32>(move _4, move _5) -> [return: bb1, unwind unreachable]; // scope 0 at $DIR/lower_intrinsics.rs:+1:14: +1:55
 -                                          // mir::Constant
 -                                          // + span: $DIR/lower_intrinsics.rs:111:14: 111:49
 -                                          // + literal: Const { ty: extern "rust-intrinsic" fn(i32, i32) -> (i32, bool) {add_with_overflow::<i32>}, val: Value(<ZST>) }
@@ -46,7 +46,7 @@
           _7 = _1;                         // scope 1 at $DIR/lower_intrinsics.rs:+2:50: +2:51
           StorageLive(_8);                 // scope 1 at $DIR/lower_intrinsics.rs:+2:53: +2:54
           _8 = _2;                         // scope 1 at $DIR/lower_intrinsics.rs:+2:53: +2:54
--         _6 = sub_with_overflow::<i32>(move _7, move _8) -> bb2; // scope 1 at $DIR/lower_intrinsics.rs:+2:14: +2:55
+-         _6 = sub_with_overflow::<i32>(move _7, move _8) -> [return: bb2, unwind unreachable]; // scope 1 at $DIR/lower_intrinsics.rs:+2:14: +2:55
 -                                          // mir::Constant
 -                                          // + span: $DIR/lower_intrinsics.rs:112:14: 112:49
 -                                          // + literal: Const { ty: extern "rust-intrinsic" fn(i32, i32) -> (i32, bool) {sub_with_overflow::<i32>}, val: Value(<ZST>) }
@@ -62,7 +62,7 @@
           _10 = _1;                        // scope 2 at $DIR/lower_intrinsics.rs:+3:50: +3:51
           StorageLive(_11);                // scope 2 at $DIR/lower_intrinsics.rs:+3:53: +3:54
           _11 = _2;                        // scope 2 at $DIR/lower_intrinsics.rs:+3:53: +3:54
--         _9 = mul_with_overflow::<i32>(move _10, move _11) -> bb3; // scope 2 at $DIR/lower_intrinsics.rs:+3:14: +3:55
+-         _9 = mul_with_overflow::<i32>(move _10, move _11) -> [return: bb3, unwind unreachable]; // scope 2 at $DIR/lower_intrinsics.rs:+3:14: +3:55
 -                                          // mir::Constant
 -                                          // + span: $DIR/lower_intrinsics.rs:113:14: 113:49
 -                                          // + literal: Const { ty: extern "rust-intrinsic" fn(i32, i32) -> (i32, bool) {mul_with_overflow::<i32>}, val: Value(<ZST>) }

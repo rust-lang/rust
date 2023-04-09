@@ -1908,7 +1908,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
         let predicates_with_span = tcx.predicates_of(self.body_def_id).predicates.iter().copied();
         // Check elaborated bounds.
-        let implied_obligations = traits::elaborate_predicates_with_span(tcx, predicates_with_span);
+        let implied_obligations = traits::elaborate(tcx, predicates_with_span);
 
         for (pred, obligation_span) in implied_obligations {
             // We lower empty bounds like `Vec<dyn Copy>:` as

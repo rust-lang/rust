@@ -60,7 +60,7 @@ pub struct FreeRegion {
 #[derive(HashStable)]
 pub enum BoundRegionKind {
     /// An anonymous region parameter for a given fn (&T)
-    BrAnon(u32, Option<Span>),
+    BrAnon(Option<Span>),
 
     /// Named region parameters for functions (a in &'a T)
     ///
@@ -107,15 +107,6 @@ impl BoundRegionKind {
             _ => None,
         }
     }
-
-    pub fn expect_anon(&self) -> u32 {
-        match *self {
-            BoundRegionKind::BrNamed(_, _) | BoundRegionKind::BrEnv => {
-                bug!("expected anon region: {self:?}")
-            }
-            BoundRegionKind::BrAnon(idx, _) => idx,
-        }
-    }
 }
 
 pub trait Article {
@@ -135,10 +126,6 @@ impl<'tcx> Article for TyKind<'tcx> {
         }
     }
 }
-
-// `TyKind` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(TyKind<'_>, 32);
 
 /// A closure can be modeled as a struct that looks like:
 /// ```ignore (illustrative)
@@ -1533,22 +1520,13 @@ pub struct BoundTy {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub enum BoundTyKind {
-    Anon(u32),
+    Anon,
     Param(DefId, Symbol),
-}
-
-impl BoundTyKind {
-    pub fn expect_anon(self) -> u32 {
-        match self {
-            BoundTyKind::Anon(i) => i,
-            _ => bug!(),
-        }
-    }
 }
 
 impl From<BoundVar> for BoundTy {
     fn from(var: BoundVar) -> Self {
-        BoundTy { var, kind: BoundTyKind::Anon(var.as_u32()) }
+        BoundTy { var, kind: BoundTyKind::Anon }
     }
 }
 
@@ -1632,7 +1610,7 @@ impl<'tcx> Region<'tcx> {
                 ty::ReLateBound(_, br) => br.kind.get_name(),
                 ty::ReFree(fr) => fr.bound_region.get_name(),
                 ty::ReStatic => Some(kw::StaticLifetime),
-                ty::RePlaceholder(placeholder) => placeholder.name.get_name(),
+                ty::RePlaceholder(placeholder) => placeholder.bound.kind.get_name(),
                 _ => None,
             };
 
@@ -1650,7 +1628,7 @@ impl<'tcx> Region<'tcx> {
             ty::ReFree(fr) => fr.bound_region.is_named(),
             ty::ReStatic => true,
             ty::ReVar(..) => false,
-            ty::RePlaceholder(placeholder) => placeholder.name.is_named(),
+            ty::RePlaceholder(placeholder) => placeholder.bound.kind.is_named(),
             ty::ReErased => false,
             ty::ReError(_) => false,
         }
@@ -2513,4 +2491,15 @@ impl<'tcx> VarianceDiagInfo<'tcx> {
             VarianceDiagInfo::Invariant { .. } => self,
         }
     }
+}
+
+// Some types are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+mod size_asserts {
+    use super::*;
+    use rustc_data_structures::static_assert_size;
+    // tidy-alphabetical-start
+    static_assert_size!(RegionKind<'_>, 28);
+    static_assert_size!(TyKind<'_>, 32);
+    // tidy-alphabetical-end
 }

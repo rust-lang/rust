@@ -56,7 +56,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                 Ok(TerminatorKind::Drop {
                     place: self.parse_place(args[0])?,
                     target: self.parse_block(args[1])?,
-                    unwind: None,
+                    unwind: UnwindAction::Continue,
                 })
             },
             @call("mir_call", args) => {
@@ -126,7 +126,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                     args,
                     destination,
                     target: Some(target),
-                    cleanup: None,
+                    unwind: UnwindAction::Continue,
                     from_hir_call: *from_hir_call,
                     fn_span: *fn_span,
                 })

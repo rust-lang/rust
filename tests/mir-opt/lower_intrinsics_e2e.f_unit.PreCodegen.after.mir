@@ -10,7 +10,7 @@ fn f_unit() -> () {
     }
 
     bb0: {
-        _1 = f_zst::<()>(const ()) -> bb1; // scope 1 at $DIR/lower_intrinsics_e2e.rs:21:9: 21:17
+        _1 = f_zst::<()>(const ()) -> [return: bb1, unwind unreachable]; // scope 1 at $DIR/lower_intrinsics_e2e.rs:21:9: 21:17
                                          // mir::Constant
                                          // + span: $DIR/lower_intrinsics_e2e.rs:21:9: 21:14
                                          // + literal: Const { ty: fn(()) {f_zst::<()>}, val: Value(<ZST>) }

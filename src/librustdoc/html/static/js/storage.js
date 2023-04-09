@@ -53,10 +53,9 @@ function removeClass(elem, className) {
  * @param {boolean}     [reversed] - Whether to iterate in reverse
  */
 function onEach(arr, func, reversed) {
-    if (arr && arr.length > 0 && func) {
+    if (arr && arr.length > 0) {
         if (reversed) {
-            const length = arr.length;
-            for (let i = length - 1; i >= 0; --i) {
+            for (let i = arr.length - 1; i >= 0; --i) {
                 if (func(arr[i])) {
                     return true;
                 }
@@ -150,26 +149,19 @@ const updateTheme = (function() {
      * … dictates that it should be.
      */
     function updateTheme() {
-        const use = (theme, saveTheme) => {
-            switchTheme(theme, saveTheme);
-        };
-
         // maybe the user has disabled the setting in the meantime!
         if (getSettingValue("use-system-theme") !== "false") {
             const lightTheme = getSettingValue("preferred-light-theme") || "light";
             const darkTheme = getSettingValue("preferred-dark-theme") || "dark";
+            updateLocalStorage("use-system-theme", "true");
 
-            if (mql.matches) {
-                use(darkTheme, true);
-            } else {
-                // prefers a light theme, or has no preference
-                use(lightTheme, true);
-            }
+            // use light theme if user prefers it, or has no preference
+            switchTheme(mql.matches ? darkTheme : lightTheme, true);
             // note: we save the theme so that it doesn't suddenly change when
             // the user disables "use-system-theme" and reloads the page or
             // navigates to another page
         } else {
-            use(getSettingValue("theme"), false);
+            switchTheme(getSettingValue("theme"), false);
         }
     }
 

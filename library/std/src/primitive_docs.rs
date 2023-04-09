@@ -1362,6 +1362,7 @@ mod prim_usize {}
 /// * [`Hash`]
 /// * [`ToSocketAddrs`]
 /// * [`Send`] \(`&T` references also require <code>T: [Sync]</code>)
+/// * [`Sync`]
 ///
 /// [`std::fmt`]: fmt
 /// [`Hash`]: hash::Hash

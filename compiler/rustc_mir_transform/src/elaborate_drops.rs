@@ -120,7 +120,7 @@ fn remove_dead_unwinds<'tcx>(
         .into_results_cursor(body);
     for (bb, bb_data) in body.basic_blocks.iter_enumerated() {
         let place = match bb_data.terminator().kind {
-            TerminatorKind::Drop { ref place, unwind: Some(_), .. } => {
+            TerminatorKind::Drop { ref place, unwind: UnwindAction::Cleanup(_), .. } => {
                 und.derefer(place.as_ref(), body).unwrap_or(*place)
             }
             _ => continue,
@@ -160,7 +160,7 @@ fn remove_dead_unwinds<'tcx>(
     let basic_blocks = body.basic_blocks.as_mut();
     for &bb in dead_unwinds.iter() {
         if let Some(unwind) = basic_blocks[bb].terminator_mut().unwind_mut() {
-            *unwind = None;
+            *unwind = UnwindAction::Unreachable;
         }
     }
 }
@@ -399,7 +399,6 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             let loc = Location { block: bb, statement_index: data.statements.len() };
             let terminator = data.terminator();
 
-            let resume_block = self.patch.resume_block();
             match terminator.kind {
                 TerminatorKind::Drop { mut place, target, unwind } => {
                     if let Some(new_place) = self.un_derefer.derefer(place.as_ref(), self.body) {
@@ -408,19 +407,31 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
                     self.init_data.seek_before(loc);
                     match self.move_data().rev_lookup.find(place.as_ref()) {
-                        LookupResult::Exact(path) => elaborate_drop(
-                            &mut Elaborator { ctxt: self },
-                            terminator.source_info,
-                            place,
-                            path,
-                            target,
-                            if data.is_cleanup {
+                        LookupResult::Exact(path) => {
+                            let unwind = if data.is_cleanup {
                                 Unwind::InCleanup
                             } else {
-                                Unwind::To(Option::unwrap_or(unwind, resume_block))
-                            },
-                            bb,
-                        ),
+                                match unwind {
+                                    UnwindAction::Cleanup(cleanup) => Unwind::To(cleanup),
+                                    UnwindAction::Continue => Unwind::To(self.patch.resume_block()),
+                                    UnwindAction::Unreachable => {
+                                        Unwind::To(self.patch.unreachable_cleanup_block())
+                                    }
+                                    UnwindAction::Terminate => {
+                                        Unwind::To(self.patch.terminate_block())
+                                    }
+                                }
+                            };
+                            elaborate_drop(
+                                &mut Elaborator { ctxt: self },
+                                terminator.source_info,
+                                place,
+                                path,
+                                target,
+                                unwind,
+                                bb,
+                            )
+                        }
                         LookupResult::Parent(..) => {
                             if !matches!(
                                 terminator.source_info.span.desugaring_kind(),
@@ -474,7 +485,10 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 continue;
             }
             if let TerminatorKind::Call {
-                destination, target: Some(tgt), cleanup: Some(_), ..
+                destination,
+                target: Some(tgt),
+                unwind: UnwindAction::Cleanup(_),
+                ..
             } = data.terminator().kind
             {
                 assert!(!self.patch.is_patched(bb));
@@ -543,8 +557,12 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             // There may be a critical edge after this call,
             // so mark the return as initialized *before* the
             // call.
-            if let TerminatorKind::Call { destination, target: Some(_), cleanup: None, .. } =
-                data.terminator().kind
+            if let TerminatorKind::Call {
+                destination,
+                target: Some(_),
+                unwind: UnwindAction::Continue | UnwindAction::Unreachable | UnwindAction::Terminate,
+                ..
+            } = data.terminator().kind
             {
                 assert!(!self.patch.is_patched(bb));
 

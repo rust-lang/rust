@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 // compile-flags: -Copt-level=0 -Coverflow-checks=yes
 
 // Tests that division with a const does not emit a panicking branch for overflow

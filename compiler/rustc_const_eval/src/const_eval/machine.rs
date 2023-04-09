@@ -23,7 +23,7 @@ use rustc_target::spec::abi::Abi as CallAbi;
 
 use crate::interpret::{
     self, compile_time_machine, AllocId, ConstAllocation, FnVal, Frame, ImmTy, InterpCx,
-    InterpResult, OpTy, PlaceTy, Pointer, Scalar, StackPopUnwind,
+    InterpResult, OpTy, PlaceTy, Pointer, Scalar,
 };
 
 use super::error::*;
@@ -271,7 +271,7 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
                         /* with_caller_location = */ false,
                         dest,
                         ret,
-                        StackPopUnwind::NotAllowed,
+                        mir::UnwindAction::Unreachable,
                     )?;
                     Ok(ControlFlow::Break(()))
                 } else {
@@ -401,7 +401,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         args: &[OpTy<'tcx>],
         dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
-        _unwind: StackPopUnwind, // unwinding is not supported in consts
+        _unwind: mir::UnwindAction, // unwinding is not supported in consts
     ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>> {
         debug!("find_mir_or_eval_fn: {:?}", instance);
 
@@ -450,7 +450,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         args: &[OpTy<'tcx>],
         dest: &PlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
-        _unwind: StackPopUnwind,
+        _unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
         // Shared intrinsics.
         if ecx.emulate_intrinsic(instance, args, dest, target)? {
@@ -526,7 +526,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     fn assert_panic(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         msg: &AssertMessage<'tcx>,
-        _unwind: Option<mir::BasicBlock>,
+        _unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
         use rustc_middle::mir::AssertKind::*;
         // Convert `AssertKind<Operand>` to `AssertKind<Scalar>`.

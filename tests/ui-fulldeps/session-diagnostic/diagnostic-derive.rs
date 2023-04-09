@@ -50,7 +50,7 @@ enum DiagnosticOnEnum {
 #[derive(Diagnostic)]
 #[diag(no_crate_example, code = "E0123")]
 #[diag = "E0123"]
-//~^ ERROR `#[diag = ...]` is not a valid attribute
+//~^ ERROR expected parentheses: #[diag(...)]
 struct WrongStructAttrStyle {}
 
 #[derive(Diagnostic)]
@@ -62,8 +62,7 @@ struct InvalidStructAttr {}
 
 #[derive(Diagnostic)]
 #[diag("E0123")]
-//~^ ERROR `#[diag("...")]` is not a valid attribute
-//~^^ ERROR diagnostic slug not specified
+//~^ ERROR diagnostic slug not specified
 struct InvalidLitNestedAttr {}
 
 #[derive(Diagnostic)]
@@ -73,27 +72,25 @@ struct InvalidNestedStructAttr {}
 
 #[derive(Diagnostic)]
 #[diag(nonsense("foo"), code = "E0123", slug = "foo")]
-//~^ ERROR `#[diag(nonsense(...))]` is not a valid attribute
-//~^^ ERROR diagnostic slug not specified
+//~^ ERROR diagnostic slug must be the first argument
+//~| ERROR diagnostic slug not specified
 struct InvalidNestedStructAttr1 {}
 
 #[derive(Diagnostic)]
 #[diag(nonsense = "...", code = "E0123", slug = "foo")]
-//~^ ERROR `#[diag(nonsense = ...)]` is not a valid attribute
-//~| ERROR `#[diag(slug = ...)]` is not a valid attribute
+//~^ ERROR unknown argument
 //~| ERROR diagnostic slug not specified
 struct InvalidNestedStructAttr2 {}
 
 #[derive(Diagnostic)]
 #[diag(nonsense = 4, code = "E0123", slug = "foo")]
-//~^ ERROR `#[diag(nonsense = ...)]` is not a valid attribute
-//~| ERROR `#[diag(slug = ...)]` is not a valid attribute
+//~^ ERROR unknown argument
 //~| ERROR diagnostic slug not specified
 struct InvalidNestedStructAttr3 {}
 
 #[derive(Diagnostic)]
 #[diag(no_crate_example, code = "E0123", slug = "foo")]
-//~^ ERROR `#[diag(slug = ...)]` is not a valid attribute
+//~^ ERROR unknown argument
 struct InvalidNestedStructAttr4 {}
 
 #[derive(Diagnostic)]
@@ -118,7 +115,7 @@ struct CodeSpecifiedTwice {}
 
 #[derive(Diagnostic)]
 #[diag(no_crate_example, no_crate::example, code = "E0456")]
-//~^ ERROR `#[diag(no_crate::example)]` is not a valid attribute
+//~^ ERROR diagnostic slug must be the first argument
 struct SlugSpecifiedTwice {}
 
 #[derive(Diagnostic)]
@@ -232,7 +229,7 @@ struct SuggestWithoutCode {
 #[diag(no_crate_example, code = "E0123")]
 struct SuggestWithBadKey {
     #[suggestion(nonsense = "bar")]
-    //~^ ERROR `#[suggestion(nonsense = ...)]` is not a valid attribute
+    //~^ ERROR invalid nested attribute
     //~| ERROR suggestion without `code = "..."`
     suggestion: (Span, Applicability),
 }
@@ -241,7 +238,7 @@ struct SuggestWithBadKey {
 #[diag(no_crate_example, code = "E0123")]
 struct SuggestWithShorthandMsg {
     #[suggestion(msg = "bar")]
-    //~^ ERROR `#[suggestion(msg = ...)]` is not a valid attribute
+    //~^ ERROR invalid nested attribute
     //~| ERROR suggestion without `code = "..."`
     suggestion: (Span, Applicability),
 }
@@ -530,7 +527,7 @@ struct BoolField {
 #[diag(no_crate_example, code = "E0123")]
 struct LabelWithTrailingPath {
     #[label(no_crate_label, foo)]
-    //~^ ERROR `#[label(foo)]` is not a valid attribute
+    //~^ ERROR a diagnostic slug must be the first argument to the attribute
     span: Span,
 }
 
@@ -538,7 +535,7 @@ struct LabelWithTrailingPath {
 #[diag(no_crate_example, code = "E0123")]
 struct LabelWithTrailingNameValue {
     #[label(no_crate_label, foo = "...")]
-    //~^ ERROR `#[label(foo = ...)]` is not a valid attribute
+    //~^ ERROR invalid nested attribute
     span: Span,
 }
 
@@ -546,7 +543,7 @@ struct LabelWithTrailingNameValue {
 #[diag(no_crate_example, code = "E0123")]
 struct LabelWithTrailingList {
     #[label(no_crate_label, foo("..."))]
-    //~^ ERROR `#[label(foo(...))]` is not a valid attribute
+    //~^ ERROR invalid nested attribute
     span: Span,
 }
 
@@ -643,8 +640,8 @@ struct MissingCodeInSuggestion {
 //~^ ERROR `#[multipart_suggestion(...)]` is not a valid attribute
 //~| ERROR cannot find attribute `multipart_suggestion` in this scope
 #[multipart_suggestion()]
-//~^ ERROR `#[multipart_suggestion(...)]` is not a valid attribute
-//~| ERROR cannot find attribute `multipart_suggestion` in this scope
+//~^ ERROR cannot find attribute `multipart_suggestion` in this scope
+//~| ERROR unexpected end of input, unexpected token in nested attribute, expected ident
 struct MultipartSuggestion {
     #[multipart_suggestion(no_crate_suggestion)]
     //~^ ERROR `#[multipart_suggestion(...)]` is not a valid attribute
@@ -698,7 +695,7 @@ struct RawIdentDiagnosticArg {
 #[diag(no_crate_example)]
 struct SubdiagnosticBad {
     #[subdiagnostic(bad)]
-    //~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
+    //~^ ERROR `eager` is the only supported nested attribute for `subdiagnostic`
     note: Note,
 }
 
@@ -714,7 +711,7 @@ struct SubdiagnosticBadStr {
 #[diag(no_crate_example)]
 struct SubdiagnosticBadTwice {
     #[subdiagnostic(bad, bad)]
-    //~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
+    //~^ ERROR `eager` is the only supported nested attribute for `subdiagnostic`
     note: Note,
 }
 
@@ -722,7 +719,7 @@ struct SubdiagnosticBadTwice {
 #[diag(no_crate_example)]
 struct SubdiagnosticBadLitStr {
     #[subdiagnostic("bad")]
-    //~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
+    //~^ ERROR `eager` is the only supported nested attribute for `subdiagnostic`
     note: Note,
 }
 
@@ -797,14 +794,15 @@ struct SuggestionsNoItem {
 struct SuggestionsInvalidItem {
     #[suggestion(code(foo))]
     //~^ ERROR `code(...)` must contain only string literals
+    //~| ERROR unexpected token
     sub: Span,
 }
 
-#[derive(Diagnostic)]
+#[derive(Diagnostic)] //~ ERROR cannot find value `__code_34` in this scope
 #[diag(no_crate_example)]
 struct SuggestionsInvalidLiteral {
     #[suggestion(code = 3)]
-    //~^ ERROR `code = "..."`/`code(...)` must contain only string literals
+    //~^ ERROR expected string literal
     sub: Span,
 }
 

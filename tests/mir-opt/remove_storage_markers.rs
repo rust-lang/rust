@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 // unit-test: RemoveStorageMarkers
 
 // Checks that storage markers are removed at opt-level=0.

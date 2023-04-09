@@ -181,8 +181,8 @@ trait TypeOpInfo<'tcx> {
         };
 
         let placeholder_region = tcx.mk_re_placeholder(ty::Placeholder {
-            name: placeholder.name,
             universe: adjusted_universe.into(),
+            bound: placeholder.bound,
         });
 
         let error_region =
@@ -191,8 +191,8 @@ trait TypeOpInfo<'tcx> {
                     error_placeholder.universe.as_u32().checked_sub(base_universe.as_u32());
                 adjusted_universe.map(|adjusted| {
                     tcx.mk_re_placeholder(ty::Placeholder {
-                        name: error_placeholder.name,
                         universe: adjusted.into(),
+                        bound: error_placeholder.bound,
                     })
                 })
             } else {

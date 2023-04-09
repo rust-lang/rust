@@ -1,17 +1,17 @@
-thread 'main' panicked at 'explicit panic', $DIR/abort-terminator.rs:LL:CC
+thread 'main' panicked at 'explicit panic', $DIR/unwind-action-terminate.rs:LL:CC
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-error: abnormal termination: the program aborted execution
-  --> $DIR/abort-terminator.rs:LL:CC
+error: abnormal termination: panic in a function that cannot unwind
+  --> $DIR/unwind-action-terminate.rs:LL:CC
    |
 LL | / extern "C" fn panic_abort() {
 LL | |
 LL | |     panic!()
 LL | | }
-   | |_^ the program aborted execution
+   | |_^ panic in a function that cannot unwind
    |
-   = note: inside `panic_abort` at $DIR/abort-terminator.rs:LL:CC
+   = note: inside `panic_abort` at $DIR/unwind-action-terminate.rs:LL:CC
 note: inside `main`
-  --> $DIR/abort-terminator.rs:LL:CC
+  --> $DIR/unwind-action-terminate.rs:LL:CC
    |
 LL |     panic_abort();
    |     ^^^^^^^^^^^^^

@@ -22,7 +22,7 @@
           _6 = &(*_2);                     // scope 0 at $DIR/lower_slice_len.rs:+1:16: +1:27
 -         _5 = core::slice::<impl [u8]>::len(move _6) -> bb1; // scope 0 at $DIR/lower_slice_len.rs:+1:16: +1:27
 -                                          // mir::Constant
--                                          // + span: $DIR/lower_slice_len.rs:5:22: 5:25
+-                                          // + span: $DIR/lower_slice_len.rs:6:22: 6:25
 -                                          // + literal: Const { ty: for<'a> fn(&'a [u8]) -> usize {core::slice::<impl [u8]>::len}, val: Value(<ZST>) }
 +         _5 = Len((*_6));                 // scope 0 at $DIR/lower_slice_len.rs:+1:16: +1:27
 +         goto -> bb1;                     // scope 0 at $DIR/lower_slice_len.rs:+1:16: +1:27

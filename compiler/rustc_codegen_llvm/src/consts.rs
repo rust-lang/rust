@@ -7,7 +7,6 @@ use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 use cstr::cstr;
-use libc::c_uint;
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
@@ -486,10 +485,10 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
             // go into custom sections of the wasm executable.
             if self.tcx.sess.target.is_like_wasm {
                 if let Some(section) = attrs.link_section {
-                    let section = llvm::LLVMMDStringInContext(
+                    let section = llvm::LLVMMDStringInContext2(
                         self.llcx,
                         section.as_str().as_ptr().cast(),
-                        section.as_str().len() as c_uint,
+                        section.as_str().len(),
                     );
                     assert!(alloc.provenance().ptrs().is_empty());
 
@@ -498,17 +497,15 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
                     // as part of the interpreter execution).
                     let bytes =
                         alloc.inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len());
-                    let alloc = llvm::LLVMMDStringInContext(
-                        self.llcx,
-                        bytes.as_ptr().cast(),
-                        bytes.len() as c_uint,
-                    );
+                    let alloc =
+                        llvm::LLVMMDStringInContext2(self.llcx, bytes.as_ptr().cast(), bytes.len());
                     let data = [section, alloc];
-                    let meta = llvm::LLVMMDNodeInContext(self.llcx, data.as_ptr(), 2);
+                    let meta = llvm::LLVMMDNodeInContext2(self.llcx, data.as_ptr(), data.len());
+                    let val = llvm::LLVMMetadataAsValue(self.llcx, meta);
                     llvm::LLVMAddNamedMetadataOperand(
                         self.llmod,
                         "wasm.custom_sections\0".as_ptr().cast(),
-                        meta,
+                        val,
                     );
                 }
             } else {

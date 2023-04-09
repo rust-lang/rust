@@ -54,7 +54,6 @@ fn lower_slice_len_call<'tcx>(
             args,
             destination,
             target: Some(bb),
-            cleanup: None,
             from_hir_call: true,
             ..
         } => {

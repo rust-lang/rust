@@ -1,5 +1,5 @@
 use rustc_data_structures::base_n;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
@@ -81,9 +81,9 @@ pub(super) fn mangle_typeid_for_trait_ref<'tcx>(
 struct BinderLevel {
     /// The range of distances from the root of what's
     /// being printed, to the lifetimes in a binder.
-    /// Specifically, a `BrAnon(i)` lifetime has depth
-    /// `lifetime_depths.start + i`, going away from the
-    /// the root and towards its use site, as `i` increases.
+    /// Specifically, a `BrAnon` lifetime has depth
+    /// `lifetime_depths.start + index`, going away from the
+    /// the root and towards its use site, as the var index increases.
     /// This is used to flatten rustc's pairing of `BrAnon`
     /// (intra-binder disambiguation) with a `DebruijnIndex`
     /// (binder addressing), to "true" de Bruijn indices,
@@ -208,24 +208,15 @@ impl<'tcx> SymbolMangler<'tcx> {
     where
         T: TypeVisitable<TyCtxt<'tcx>>,
     {
-        // FIXME(non-lifetime-binders): What to do here?
-        let regions = if value.has_late_bound_regions() {
-            self.tcx.collect_referenced_late_bound_regions(value)
-        } else {
-            FxHashSet::default()
-        };
-
         let mut lifetime_depths =
             self.binders.last().map(|b| b.lifetime_depths.end).map_or(0..0, |i| i..i);
 
-        let lifetimes = regions
-            .into_iter()
-            .map(|br| match br {
-                ty::BrAnon(i, _) => i,
-                _ => bug!("symbol_names: non-anonymized region `{:?}` in `{:?}`", br, value),
-            })
-            .max()
-            .map_or(0, |max| max + 1);
+        // FIXME(non-lifetime-binders): What to do here?
+        let lifetimes = value
+            .bound_vars()
+            .iter()
+            .filter(|var| matches!(var, ty::BoundVariableKind::Region(..)))
+            .count() as u32;
 
         self.push_opt_integer_62("G", lifetimes as u64);
         lifetime_depths.end += lifetimes;
@@ -338,9 +329,9 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
 
             // Late-bound lifetimes use indices starting at 1,
             // see `BinderLevel` for more details.
-            ty::ReLateBound(debruijn, ty::BoundRegion { kind: ty::BrAnon(i, _), .. }) => {
+            ty::ReLateBound(debruijn, ty::BoundRegion { var, kind: ty::BrAnon(_) }) => {
                 let binder = &self.binders[self.binders.len() - 1 - debruijn.index()];
-                let depth = binder.lifetime_depths.start + i;
+                let depth = binder.lifetime_depths.start + var.as_u32();
 
                 1 + (self.binders.last().unwrap().lifetime_depths.end - 1 - depth)
             }

@@ -34,7 +34,7 @@ impl<'tcx> Visitor<'tcx> for FunctionItemRefChecker<'_, 'tcx> {
             args,
             destination: _,
             target: _,
-            cleanup: _,
+            unwind: _,
             from_hir_call: _,
             fn_span: _,
         } = &terminator.kind

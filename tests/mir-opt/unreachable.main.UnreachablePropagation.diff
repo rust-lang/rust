@@ -21,7 +21,7 @@
           StorageLive(_1);                 // scope 1 at $DIR/unreachable.rs:+1:23: +1:30
           _1 = empty() -> bb1;             // scope 1 at $DIR/unreachable.rs:+1:23: +1:30
                                            // mir::Constant
-                                           // + span: $DIR/unreachable.rs:9:23: 9:28
+                                           // + span: $DIR/unreachable.rs:10:23: 10:28
                                            // + literal: Const { ty: fn() -> Option<Empty> {empty}, val: Value(<ZST>) }
       }
   

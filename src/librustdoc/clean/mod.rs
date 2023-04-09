@@ -21,6 +21,7 @@ use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId, LOCAL_CRATE};
 use rustc_hir::PredicateOrigin;
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
+use rustc_middle::metadata::Reexport;
 use rustc_middle::middle::resolve_bound_vars as rbv;
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::InternalSubsts;
@@ -2056,141 +2057,44 @@ fn clean_bare_fn_ty<'tcx>(
     BareFunctionDecl { unsafety: bare_fn.unsafety, abi: bare_fn.abi, decl, generic_params }
 }
 
-/// Get DefId of of an item's user-visible parent.
-///
-/// "User-visible" should account for re-exporting and inlining, which is why this function isn't
-/// just `tcx.parent(def_id)`. If the provided `path` has more than one path element, the `DefId`
-/// of the second-to-last will be given.
-///
-/// ```text
-/// use crate::foo::Bar;
-///            ^^^ DefId of this item will be returned
-/// ```
-///
-/// If the provided path has only one item, `tcx.parent(def_id)` will be returned instead.
-fn get_path_parent_def_id(
-    tcx: TyCtxt<'_>,
-    def_id: DefId,
-    path: &hir::UsePath<'_>,
-) -> Option<DefId> {
-    if let [.., parent_segment, _] = &path.segments {
-        match parent_segment.res {
-            hir::def::Res::Def(_, parent_def_id) => Some(parent_def_id),
-            _ if parent_segment.ident.name == kw::Crate => {
-                // In case the "parent" is the crate, it'll give `Res::Err` so we need to
-                // circumvent it this way.
-                Some(tcx.parent(def_id))
-            }
-            _ => None,
-        }
-    } else {
-        // If the path doesn't have a parent, then the parent is the current module.
-        Some(tcx.parent(def_id))
-    }
-}
-
-/// This visitor is used to find an HIR Item based on its `use` path. This doesn't use the ordinary
-/// name resolver because it does not walk all the way through a chain of re-exports.
-pub(crate) struct OneLevelVisitor<'hir> {
-    map: rustc_middle::hir::map::Map<'hir>,
-    pub(crate) item: Option<&'hir hir::Item<'hir>>,
-    looking_for: Ident,
+pub(crate) fn reexport_chain<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    import_def_id: LocalDefId,
     target_def_id: LocalDefId,
-}
-
-impl<'hir> OneLevelVisitor<'hir> {
-    pub(crate) fn new(map: rustc_middle::hir::map::Map<'hir>, target_def_id: LocalDefId) -> Self {
-        Self { map, item: None, looking_for: Ident::empty(), target_def_id }
-    }
-
-    pub(crate) fn find_target(
-        &mut self,
-        tcx: TyCtxt<'_>,
-        def_id: DefId,
-        path: &hir::UsePath<'_>,
-    ) -> Option<&'hir hir::Item<'hir>> {
-        let parent_def_id = get_path_parent_def_id(tcx, def_id, path)?;
-        let parent = self.map.get_if_local(parent_def_id)?;
-
-        // We get the `Ident` we will be looking for into `item`.
-        self.looking_for = path.segments[path.segments.len() - 1].ident;
-        // We reset the `item`.
-        self.item = None;
-
-        match parent {
-            hir::Node::Item(parent_item) => {
-                hir::intravisit::walk_item(self, parent_item);
-            }
-            hir::Node::Crate(m) => {
-                hir::intravisit::walk_mod(
-                    self,
-                    m,
-                    tcx.local_def_id_to_hir_id(parent_def_id.as_local().unwrap()),
-                );
-            }
-            _ => return None,
-        }
-        self.item
-    }
-}
-
-impl<'hir> hir::intravisit::Visitor<'hir> for OneLevelVisitor<'hir> {
-    type NestedFilter = rustc_middle::hir::nested_filter::All;
-
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.map
-    }
-
-    fn visit_item(&mut self, item: &'hir hir::Item<'hir>) {
-        if self.item.is_none()
-            && item.ident == self.looking_for
-            && (matches!(item.kind, hir::ItemKind::Use(_, _))
-                || item.owner_id.def_id == self.target_def_id)
+) -> &'tcx [Reexport] {
+    for child in tcx.module_reexports(tcx.local_parent(import_def_id)) {
+        if child.res.opt_def_id() == Some(target_def_id.to_def_id())
+            && child.reexport_chain[0].id() == Some(import_def_id.to_def_id())
         {
-            self.item = Some(item);
+            return &child.reexport_chain;
         }
     }
+    &[]
 }
 
-/// Because a `Use` item directly links to the imported item, we need to manually go through each
-/// import one by one. To do so, we go to the parent item and look for the `Ident` into it. Then,
-/// if we found the "end item" (the imported one), we stop there because we don't need its
-/// documentation. Otherwise, we repeat the same operation until we find the "end item".
+/// Collect attributes from the whole import chain.
 fn get_all_import_attributes<'hir>(
-    mut item: &hir::Item<'hir>,
     cx: &mut DocContext<'hir>,
+    import_def_id: LocalDefId,
     target_def_id: LocalDefId,
     is_inline: bool,
-    mut prev_import: LocalDefId,
 ) -> Vec<(Cow<'hir, ast::Attribute>, Option<DefId>)> {
-    let mut attributes: Vec<(Cow<'hir, ast::Attribute>, Option<DefId>)> = Vec::new();
+    let mut attrs = Vec::new();
     let mut first = true;
-    let hir_map = cx.tcx.hir();
-    let mut visitor = OneLevelVisitor::new(hir_map, target_def_id);
-    let mut visited = FxHashSet::default();
-
-    // If the item is an import and has at least a path with two parts, we go into it.
-    while let hir::ItemKind::Use(path, _) = item.kind && visited.insert(item.hir_id()) {
-        let import_parent = cx.tcx.opt_local_parent(prev_import).map(|def_id| def_id.to_def_id());
+    for def_id in reexport_chain(cx.tcx, import_def_id, target_def_id)
+        .iter()
+        .flat_map(|reexport| reexport.id())
+    {
+        let import_attrs = inline::load_attrs(cx, def_id);
         if first {
             // This is the "original" reexport so we get all its attributes without filtering them.
-            attributes = hir_map.attrs(item.hir_id())
-                .iter()
-                .map(|attr| (Cow::Borrowed(attr), import_parent))
-                .collect::<Vec<_>>();
+            attrs = import_attrs.iter().map(|attr| (Cow::Borrowed(attr), Some(def_id))).collect();
             first = false;
         } else {
-            add_without_unwanted_attributes(&mut attributes, hir_map.attrs(item.hir_id()), is_inline, import_parent);
+            add_without_unwanted_attributes(&mut attrs, import_attrs, is_inline, Some(def_id));
         }
-
-        if let Some(i) = visitor.find_target(cx.tcx, item.owner_id.def_id.to_def_id(), path) {
-            item = i;
-        } else {
-            break;
-        }
-        prev_import = item.owner_id.def_id;
     }
-    attributes
+    attrs
 }
 
 fn filter_tokens_from_list(
@@ -2375,39 +2279,24 @@ fn clean_maybe_renamed_item<'tcx>(
             _ => unreachable!("not yet converted"),
         };
 
-        let attrs = if let Some(import_id) = import_id &&
-            let Some(hir::Node::Item(use_node)) = cx.tcx.hir().find_by_def_id(import_id)
-        {
+        let target_attrs = inline::load_attrs(cx, def_id);
+        let attrs = if let Some(import_id) = import_id {
             let is_inline = inline::load_attrs(cx, import_id.to_def_id())
                 .lists(sym::doc)
                 .get_word_attr(sym::inline)
                 .is_some();
-            // Then we get all the various imports' attributes.
-            let mut attrs = get_all_import_attributes(
-                use_node,
-                cx,
-                item.owner_id.def_id,
-                is_inline,
-                import_id,
-            );
-
-            add_without_unwanted_attributes(
-                &mut attrs,
-                inline::load_attrs(cx, def_id),
-                is_inline,
-                None
-            );
+            let mut attrs =
+                get_all_import_attributes(cx, import_id, item.owner_id.def_id, is_inline);
+            add_without_unwanted_attributes(&mut attrs, target_attrs, is_inline, None);
             attrs
         } else {
             // We only keep the item's attributes.
-            inline::load_attrs(cx, def_id).iter().map(|attr| (Cow::Borrowed(attr), None)).collect::<Vec<_>>()
+            target_attrs.iter().map(|attr| (Cow::Borrowed(attr), None)).collect()
         };
 
         let cfg = attrs.cfg(cx.tcx, &cx.cache.hidden_cfg);
-        let attrs = Attributes::from_ast_iter(attrs.iter().map(|(attr, did)| match attr {
-            Cow::Borrowed(attr) => (*attr, *did),
-            Cow::Owned(attr) => (attr, *did)
-        }), false);
+        let attrs =
+            Attributes::from_ast_iter(attrs.iter().map(|(attr, did)| (&**attr, *did)), false);
 
         let mut item =
             Item::from_def_id_and_attrs_and_parts(def_id, Some(name), kind, Box::new(attrs), cfg);

@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 //! Tests that assignment in both branches of an `if` are eliminated.
 // unit-test: DestinationPropagation
 fn val() -> i32 {

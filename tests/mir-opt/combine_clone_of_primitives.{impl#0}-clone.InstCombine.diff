@@ -72,7 +72,7 @@
       }
   
       bb4 (cleanup): {
-          drop(_2) -> bb5;                 // scope 0 at $DIR/combine_clone_of_primitives.rs:+0:14: +0:15
+          drop(_2) -> [return: bb5, unwind terminate]; // scope 0 at $DIR/combine_clone_of_primitives.rs:+0:14: +0:15
       }
   
       bb5 (cleanup): {

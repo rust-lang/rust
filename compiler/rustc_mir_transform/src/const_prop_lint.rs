@@ -91,10 +91,7 @@ impl<'tcx> MirLint<'tcx> for ConstProp {
             .predicates
             .iter()
             .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
-        if traits::impossible_predicates(
-            tcx,
-            traits::elaborate_predicates(tcx, predicates).collect(),
-        ) {
+        if traits::impossible_predicates(tcx, traits::elaborate(tcx, predicates).collect()) {
             trace!("ConstProp skipped for {:?}: found unsatisfiable predicates", def_id);
             return;
         }
@@ -686,7 +683,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
             // None of these have Operands to const-propagate.
             TerminatorKind::Goto { .. }
             | TerminatorKind::Resume
-            | TerminatorKind::Abort
+            | TerminatorKind::Terminate
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::Drop { .. }

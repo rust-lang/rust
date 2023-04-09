@@ -1,6 +1,6 @@
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{InferCtxt, LateBoundRegionConversionTime};
-use rustc_infer::traits::util::elaborate_predicates_with_span;
+use rustc_infer::traits::util::elaborate;
 use rustc_infer::traits::{Obligation, ObligationCause, TraitObligation};
 use rustc_middle::ty;
 use rustc_span::{Span, DUMMY_SP};
@@ -82,7 +82,7 @@ pub fn recompute_applicable_impls<'tcx>(
 
     let predicates =
         tcx.predicates_of(obligation.cause.body_id.to_def_id()).instantiate_identity(tcx);
-    for (pred, span) in elaborate_predicates_with_span(tcx, predicates.into_iter()) {
+    for (pred, span) in elaborate(tcx, predicates.into_iter()) {
         let kind = pred.kind();
         if let ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) = kind.skip_binder()
             && param_env_candidate_may_apply(kind.rebind(trait_pred))

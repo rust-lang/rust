@@ -104,7 +104,7 @@ impl<'tcx> Visitor<'tcx> for CheckLiveDrops<'_, 'tcx> {
                 }
             }
 
-            mir::TerminatorKind::Abort
+            mir::TerminatorKind::Terminate
             | mir::TerminatorKind::Call { .. }
             | mir::TerminatorKind::Assert { .. }
             | mir::TerminatorKind::FalseEdge { .. }

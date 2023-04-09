@@ -50,10 +50,11 @@ impl AddCallGuards {
         for block in body.basic_blocks_mut() {
             match block.terminator {
                 Some(Terminator {
-                    kind: TerminatorKind::Call { target: Some(ref mut destination), cleanup, .. },
+                    kind: TerminatorKind::Call { target: Some(ref mut destination), unwind, .. },
                     source_info,
                 }) if pred_count[*destination] > 1
-                    && (cleanup.is_some() || self == &AllCallEdges) =>
+                    && (matches!(unwind, UnwindAction::Cleanup(_) | UnwindAction::Terminate)
+                        || self == &AllCallEdges) =>
                 {
                     // It's a critical edge, break it
                     let call_guard = BasicBlockData {
