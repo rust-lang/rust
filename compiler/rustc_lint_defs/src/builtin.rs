@@ -1021,7 +1021,7 @@ declare_lint! {
 
 declare_lint! {
     /// The `invalid_alignment` lint detects dereferences of misaligned pointers during
-    /// constant evluation.
+    /// constant evaluation.
     ///
     /// ### Example
     ///
