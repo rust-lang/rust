@@ -2,6 +2,7 @@
 //@aux-build: proc_macros.rs
 #![warn(clippy::single_match_else)]
 #![allow(unused, clippy::needless_return, clippy::no_effect, clippy::uninlined_format_args)]
+#![allow(irrefutable_let_patterns)] // The fixed code may introduce some cases.
 extern crate proc_macros;
 use proc_macros::with_span;
 
