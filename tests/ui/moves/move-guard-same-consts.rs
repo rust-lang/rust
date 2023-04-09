@@ -1,4 +1,4 @@
-// #47295: We used to have a hack of special-casing adjacent amtch
+// #47295: We used to have a hack of special-casing adjacent match
 // arms whose patterns were composed solely of constants to not have
 // them linked in the cfg.
 //
