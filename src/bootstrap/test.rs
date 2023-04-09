@@ -1804,7 +1804,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         cmd.arg("--channel").arg(&builder.config.channel);
 
-        if !builder.config.ignore_git {
+        if !builder.config.omit_git_hash {
             cmd.arg("--git-hash");
         }
 
