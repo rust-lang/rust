@@ -66,7 +66,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // FIXME: Add warning for types that are probably not C-portable
                 // FIXME: This should
                 //        - expose the pointer
-                //        - if it contains another pointer, mark the *inner* pointer as having wildcard provenance
+                //        - if it contains another pointer, and outer is mut, mark the *inner* pointer as having wildcard provenance
                 if let Scalar::Ptr(ptr, _) = k {
                     if let Provenance::Concrete { alloc_id, tag } = ptr.provenance {
                         GlobalStateInner::expose_ptr(
@@ -80,8 +80,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         arg_type.layout.size(),
                         arg_type.layout.align().abi,
                     );
-                    let qq = alloc.base_addr();
-                    return Ok(CArg::Ptr(qq as *const c_void));
+                    let addr = alloc.base_addr();
+                    return Ok(CArg::Ptr(addr as *const c_void));
                 }
             }
             _ => {}

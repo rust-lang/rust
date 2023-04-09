@@ -15,7 +15,7 @@ pub struct AlignedBytes(NonNull<[u8]>, Align);
 
 impl AlignedBytes {
     fn alloc(fill: FillBytes<'_>, align: Align) -> Option<Self> {
-        let len = match FillBytes {
+        let len = match fill {
             FillBytes::Bytes(b) => b.len(),
             FillBytes::Zero(s) => s.bytes() as usize,
         };
@@ -31,7 +31,7 @@ impl AlignedBytes {
             FillBytes::Zero(_) => (),
         }
 
-        debug_assert_eq!(bytes.as_ptr() as usize % align.bytes() as usize, 0);
+        debug_assert_eq!(bytes.as_ptr().cast::<()>() as usize % align.bytes() as usize, 0);
 
         Some(Self(bytes, align))
     }
@@ -53,7 +53,7 @@ impl DerefMut for AlignedBytes {
 
 impl AllocBytes for AlignedBytes {
     fn adjust_to_align(self, align: Align) -> Self {
-        if self.align >= align {
+        if self.1 >= align {
             self
         } else {
             let out = Self::alloc(FillBytes::Bytes(&*self), align)

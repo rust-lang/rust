@@ -16,6 +16,7 @@ fn get_host() -> String {
 
 // Build the shared object file for testing external C function calls.
 fn build_so_for_c_ffi_tests() -> PathBuf {
+    // TODO: Support multiple so files with individual tests
     let cc = option_env!("CC").unwrap_or("cc");
     // Target directory that we can write to.
     let so_target_dir = Path::new(&env::var_os("CARGO_TARGET_DIR").unwrap()).join("miri-extern-so");

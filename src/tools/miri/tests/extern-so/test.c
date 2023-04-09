@@ -25,3 +25,24 @@ short add_int16(short x) {
 long add_short_to_long(short x, long y) {
   return x + y;
 }
+
+int single_deref(const int *p) {
+    return *p;
+}
+
+int double_deref(const int **p) {
+    return **p;
+}
+
+struct Foo {
+    int a;
+    float b;
+};
+
+int struct_int(const struct Foo* p) {
+    return p->a;
+}
+
+float struct_float(const struct Foo* p) {
+    return p->b;
+}
