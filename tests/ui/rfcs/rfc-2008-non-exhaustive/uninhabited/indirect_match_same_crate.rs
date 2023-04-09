@@ -29,9 +29,6 @@ pub struct IndirectUninhabitedVariants(UninhabitedVariants);
 
 struct A;
 
-// This test checks that an empty match on a non-exhaustive uninhabited type through a level of
-// indirection from the defining crate will not compile without `#![feature(exhaustive_patterns)]`.
-
 fn cannot_empty_match_on_empty_enum_to_anything(x: IndirectUninhabitedEnum) -> A {
     match x {}
 }
