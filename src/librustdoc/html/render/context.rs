@@ -647,7 +647,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                      </div>\
                      <noscript>\
                         <section>\
-                            You need to enable Javascript be able to update your settings.\
+                            You need to enable JavaScript be able to update your settings.\
                         </section>\
                      </noscript>\
                      <link rel=\"stylesheet\" \
@@ -709,7 +709,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                      </div>\
                      <noscript>\
                         <section>\
-                            <p>You need to enable Javascript to use keyboard commands or search.</p>\
+                            <p>You need to enable JavaScript to use keyboard commands or search.</p>\
                             <p>For more information, browse the <a href=\"https://doc.rust-lang.org/rustdoc/\">rustdoc handbook</a>.</p>\
                         </section>\
                      </noscript>",

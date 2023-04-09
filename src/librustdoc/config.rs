@@ -491,7 +491,7 @@ impl Options {
                 //   https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/dataset
                 //
                 // The original key values we have are the same as the DOM storage API keys and the
-                // command line options, so contain `-`.  Our Javascript needs to be able to look
+                // command line options, so contain `-`.  Our JavaScript needs to be able to look
                 // these values up both in `dataset` and in the storage API, so it needs to be able
                 // to convert the names back and forth.  Despite doing this kebab-case to
                 // StudlyCaps transformation automatically, the JS DOM API does not provide a

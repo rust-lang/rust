@@ -408,7 +408,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         }
         let Some(path_last_segment) = path.last() else { return };
         let item_str = path_last_segment.ident;
-        // Emit help message for fake-self from other languages (e.g., `this` in Javascript).
+        // Emit help message for fake-self from other languages (e.g., `this` in JavaScript).
         if ["this", "my"].contains(&item_str.as_str()) {
             err.span_suggestion_short(
                 span,
