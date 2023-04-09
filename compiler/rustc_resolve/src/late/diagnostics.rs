@@ -91,7 +91,7 @@ fn import_candidate_to_enum_paths(suggestion: &ImportSuggestion) -> (String, Str
 /// Description of an elided lifetime.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub(super) struct MissingLifetime {
-    /// Used to overwrite the resolution with the suggestion, to avoid cascasing errors.
+    /// Used to overwrite the resolution with the suggestion, to avoid cascading errors.
     pub id: NodeId,
     /// Where to suggest adding the lifetime.
     pub span: Span,
