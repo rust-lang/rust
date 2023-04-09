@@ -22,10 +22,10 @@ $ ./test.sh
 
 For more docs on how to build and test see [build_system/usage.txt](build_system/usage.txt) or the help message of `./y.rs`.
 
-Alternatively you can download a pre built version from [Github Actions]. It is listed in the artifacts section
+Alternatively you can download a pre built version from [GitHub Actions]. It is listed in the artifacts section
 of workflow runs. Unfortunately due to GHA restrictions you need to be logged in to access it.
 
-[Github Actions]: https://github.com/bjorn3/rustc_codegen_cranelift/actions?query=branch%3Amaster+event%3Apush+is%3Asuccess
+[GitHub Actions]: https://github.com/bjorn3/rustc_codegen_cranelift/actions?query=branch%3Amaster+event%3Apush+is%3Asuccess
 
 ## Usage
 
