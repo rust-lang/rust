@@ -163,3 +163,23 @@ fn function_argument() {
     let x = vec![1, 2, 3]; // Ok
     foo(&x);
 }
+
+fn string() {
+    // Do lint (write without read)
+    let mut s = String::new();
+    s.push_str("Hello, World!");
+
+    // Do not lint (read without write)
+    let mut s = String::from("Hello, World!");
+    let _ = s.len();
+
+    // Do not lint (write and read)
+    let mut s = String::from("Hello, World!");
+    s.push_str("foo, bar");
+    let _ = s.len();
+
+    // Do lint the first line, but not the second
+    let mut s = String::from("Hello, World!");
+    let t = String::from("foo, bar");
+    s = t;
+}
