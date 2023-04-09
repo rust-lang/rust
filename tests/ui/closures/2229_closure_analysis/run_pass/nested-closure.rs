@@ -1,7 +1,7 @@
 // edition:2021
 // run-pass
 
-// Test whether if we can do precise capture when using nested clsoure.
+// Test whether if we can do precise capture when using nested closure.
 
 struct Point {
     x: i32,
