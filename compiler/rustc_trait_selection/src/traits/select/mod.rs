@@ -537,7 +537,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
         self.evaluation_probe(|this| {
-            let goal = infcx.resolve_vars_if_possible((obligation.predicate, obligation.param_env));
+            let goal =
+                this.infcx.resolve_vars_if_possible((obligation.predicate, obligation.param_env));
             let mut result = if this.tcx().trait_solver_next() {
                 this.evaluate_predicates_recursively_in_new_solver([obligation.clone()])?
             } else {
