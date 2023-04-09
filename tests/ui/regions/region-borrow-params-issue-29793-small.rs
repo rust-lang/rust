@@ -12,7 +12,7 @@ fn escaping_borrow_of_closure_params_1() {
         return f;
     };
 
-    // We delberately do not call `g`; this small version of the test,
+    // We deliberately do not call `g`; this small version of the test,
     // after adding such a call, was (properly) rejected even when the
     // system still suffered from issue #29793.
 
