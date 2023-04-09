@@ -201,7 +201,7 @@ where
         //
         // Note: This access to the source wouldn't be allowed by the TrustedRandomIteratorNoCoerce
         // contract (used by SpecInPlaceCollect below). But see the "O(1) collect" section in the
-        // module documenttation why this is ok anyway.
+        // module documentation why this is ok anyway.
         let dst_guard = InPlaceDstBufDrop { ptr: dst_buf, len, cap };
         src.forget_allocation_drop_remaining();
         mem::forget(dst_guard);
