@@ -274,11 +274,11 @@ This section has moved to ["Using External Repositories"](./external-repos.md).
 
 Documentation improvements are very welcome. The source of `doc.rust-lang.org`
 is located in [`src/doc`] in the tree, and standard API documentation is generated
-from the source code itself (e.g. [`lib.rs`]). Documentation pull requests function
-in the same way as other pull requests.
+from the source code itself (e.g. [`library/std/src/lib.rs`][std-root]). Documentation pull requests
+function in the same way as other pull requests.
 
 [`src/doc`]: https://github.com/rust-lang/rust/tree/master/src/doc
-[`lib.rs`]: https://github.com/rust-lang/rust/blob/master/library/std/src/lib.rs#L1
+[`std-root`]: https://github.com/rust-lang/rust/blob/master/library/std/src/lib.rs#L1
 
 To find documentation-related issues, sort by the [A-docs label][adocs].
 
@@ -288,14 +288,11 @@ You can find documentation style guidelines in [RFC 1574][rfc1574].
 
 [rfc1574]: https://github.com/rust-lang/rfcs/blob/master/text/1574-more-api-documentation-conventions.md#appendix-a-full-conventions-text
 
-In many cases, you don't need a full `./x.py doc --stage 2`, which will build
-the entire stage 2 compiler and compile the various books published on
-[doc.rust-lang.org][docs]. When updating documentation for the standard library,
-first try `./x.py doc library`. If that fails, or if you need to
-see the output from the latest version of `rustdoc`, add `--stage 1`.
-Results should appear in `build/host/doc`.
-
-[docs]: https://doc.rust-lang.org
+To build the standard library documentation, use `x doc --stage 0 library --open`.
+To build the documentation for a book (e.g. the unstable book), use `x doc src/doc/unstable-book.`
+Results should appear in `build/host/doc`, as well as automatically open in your default browser.
+See [Building Documentation](./building/compiler-documenting.md#building-documentation) for more
+information.
 
 You can also use `rustdoc` directly to check small fixes. For example,
 `rustdoc src/doc/reference.md` will render reference to `doc/reference.html`.
