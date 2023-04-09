@@ -1,3 +1,33 @@
+//! Global value numbering.
+//!
+//! MIR may contain repeated and/or redundant computations. The objective of this pass is to detect
+//! such redundancies and re-use the already-computed result when possible.
+//!
+//! In a first pass, we compute a symbolic representation of values that are assigned to SSA
+//! locals. This symbolic representation is defined by the `Value` enum. Each produced instance of
+//! `Value` is interned as a `VnIndex`, which allows us to cheaply compute identical values.
+//!
+//! From those assignments, we construct a mapping `VnIndex -> Vec<(Local, Location)>` of available
+//! values, the locals in which they are stored, and a the assignment location.
+//!
+//! In a second pass, we traverse all (non SSA) assignments `x = rvalue` and operands. For each
+//! one, we compute the `VnIndex` of the rvalue. If this `VnIndex` is associated to a constant, we
+//! replace the rvalue/operand by that constant. Otherwise, if there is an SSA local `y`
+//! associated to this `VnIndex`, and if its definition location strictly dominates the assignment
+//! to `x`, we replace the assignment by `x = y`.
+//!
+//! By opportunity, this pass simplifies some `Rvalue`s based on the accumulated knowledge.
+//!
+//! # Handling of references
+//!
+//! We handle references by assigning a different "provenance" index to each Ref/AddressOf rvalue.
+//! This ensure that we do not spuriously merge borrows that should not be merged. Meanwhile, we
+//! consider all the derefs of an immutable reference to a freeze type to give the same value:
+//! ```ignore (MIR)
+//! _a = *_b // _b is &Freeze
+//! _c = *_b // replaced by _c = _a
+//! ```
+
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::bit_set::BitSet;
@@ -11,7 +41,6 @@ use rustc_target::abi::{VariantIdx, FIRST_VARIANT};
 use crate::ssa::SsaLocals;
 use crate::MirPass;
 
-/// Global value numbering.
 pub struct GVN;
 
 impl<'tcx> MirPass<'tcx> for GVN {
@@ -65,6 +94,9 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         replacer.visit_basic_block_data(bb, data);
     }
 
+    // For each local that is reused (`y` above), we remove its storage statements do avoid any
+    // difficulty. Those locals are SSA, so should be easy to optimize by LLVM without storage
+    // statements.
     StorageRemover { tcx, reused_locals: replacer.reused_locals }.visit_body_preserves_cfg(body);
 
     if any_replacement {
@@ -154,6 +186,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         VnIndex::from_usize(index)
     }
 
+    /// Create a new `Value` for which we have no information at all, except that it is distinct
+    /// from all the others.
     #[instrument(level = "trace", skip(self), ret)]
     fn new_opaque(&mut self) -> Option<VnIndex> {
         let next_opaque = self.next_opaque.as_mut()?;
@@ -162,6 +196,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         Some(self.insert(value))
     }
 
+    /// Create a new `Value::Address` distinct from all the others.
     #[instrument(level = "trace", skip(self), ret)]
     fn new_pointer(&mut self, place: Place<'tcx>) -> Option<VnIndex> {
         let next_opaque = self.next_opaque.as_mut()?;
@@ -174,12 +209,14 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         self.values.get_index(index.as_usize()).unwrap()
     }
 
+    /// Record that `local` is assigned `value`. `local` must be SSA.
     #[instrument(level = "trace", skip(self))]
     fn assign(&mut self, local: Local, value: VnIndex) {
         self.locals[local] = Some(value);
         self.rev_locals.entry(value).or_default().push(local);
     }
 
+    /// Represent the *value* which would be read from `place`.
     #[instrument(level = "trace", skip(self), ret)]
     fn insert_place(&mut self, place: Place<'tcx>) -> Option<VnIndex> {
         let mut value = self.locals[place.local]?;
@@ -308,11 +345,14 @@ struct Replacer<'a, 'tcx> {
     ssa: SsaLocals,
     dominators: Dominators<BasicBlock>,
     state: VnState<'a, 'tcx>,
+    /// Set of locals that are reused, and for which we should remove storage statements to avoid a
+    /// use-after-StorageDead.
     reused_locals: BitSet<Local>,
     any_replacement: &'a mut bool,
 }
 
 impl<'tcx> Replacer<'_, 'tcx> {
+    /// If `index` is a `Value::Constant`, return the `Constant` to be put in the MIR.
     fn try_as_constant(&mut self, index: VnIndex) -> Option<ConstOperand<'tcx>> {
         if let Value::Constant(const_) = self.state.get(index) {
             Some(ConstOperand { span: rustc_span::DUMMY_SP, user_ty: None, const_: const_.clone() })
@@ -321,6 +361,8 @@ impl<'tcx> Replacer<'_, 'tcx> {
         }
     }
 
+    /// If there is a local which is assigned `index`, and its assignment strictly dominates `loc`,
+    /// return it.
     fn try_as_local(&mut self, index: VnIndex, loc: Location) -> Option<Local> {
         let other = self.state.rev_locals.get(&index)?;
         other
