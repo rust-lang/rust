@@ -286,7 +286,7 @@ pub(crate) fn run(
         let (cx, _) = Context::init(krate, renderopts, cache, tcx).map_err(|e| e.to_string())?;
 
         // Collect CrateIds corresponding to provided target crates
-        // If two different versions of the crate in the dependency tree, then examples will be collcted from both.
+        // If two different versions of the crate in the dependency tree, then examples will be collected from both.
         let all_crates = tcx
             .crates(())
             .iter()
