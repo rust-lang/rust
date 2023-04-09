@@ -100,7 +100,7 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
             Diagnostic::spanned(
                 resource_span,
                 Level::Error,
-                format!("could not open Fluent resource: {}", e.to_string()),
+                format!("could not open Fluent resource: {}", e),
             )
             .emit();
             return failed(&crate_name);
