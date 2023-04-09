@@ -978,7 +978,7 @@ fn test_chunksator_0() {
 }
 
 #[test]
-fn test_chunks_exactator() {
+fn test_chunks_extractor() {
     let v = &[1, 2, 3, 4, 5];
 
     assert_eq!(v.chunks_exact(2).len(), 2);
@@ -996,7 +996,7 @@ fn test_chunks_exactator() {
 
 #[test]
 #[should_panic]
-fn test_chunks_exactator_0() {
+fn test_chunks_extractor_0() {
     let v = &[1, 2, 3, 4];
     let _it = v.chunks_exact(0);
 }
@@ -1026,7 +1026,7 @@ fn test_rchunksator_0() {
 }
 
 #[test]
-fn test_rchunks_exactator() {
+fn test_rchunks_extractor() {
     let v = &[1, 2, 3, 4, 5];
 
     assert_eq!(v.rchunks_exact(2).len(), 2);
@@ -1044,7 +1044,7 @@ fn test_rchunks_exactator() {
 
 #[test]
 #[should_panic]
-fn test_rchunks_exactator_0() {
+fn test_rchunks_extractor_0() {
     let v = &[1, 2, 3, 4];
     let _it = v.rchunks_exact(0);
 }
