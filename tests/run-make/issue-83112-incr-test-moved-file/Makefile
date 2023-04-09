@@ -10,7 +10,7 @@ include ../tools.mk
 # the encoding of the location information. If the file gest moved, the hash
 # of the span will be unchanged (since it has a dummy location), so the incr
 # cache would end up try to load a non-existent file using the previously
-# enccoded source file id.
+# encoded source file id.
 
 SRC=$(TMPDIR)/src
 INCR=$(TMPDIR)/incr
