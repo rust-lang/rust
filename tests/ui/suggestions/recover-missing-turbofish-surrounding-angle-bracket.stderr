@@ -1,5 +1,5 @@
 error: generic parameters without surrounding angle brackets
-  --> $DIR/recover-missing-turbofish-surrounding-angle-braket.rs:2:48
+  --> $DIR/recover-missing-turbofish-surrounding-angle-bracket.rs:2:48
    |
 LL |     let _ = vec![1, 2, 3].into_iter().collect::Vec<_>();
    |                                                ^^^^^^
@@ -10,7 +10,7 @@ LL |     let _ = vec![1, 2, 3].into_iter().collect::<Vec<_>>();
    |                                                +      +
 
 error: generic parameters without surrounding angle brackets
-  --> $DIR/recover-missing-turbofish-surrounding-angle-braket.rs:4:48
+  --> $DIR/recover-missing-turbofish-surrounding-angle-bracket.rs:4:48
    |
 LL |     let _ = vec![1, 2, 3].into_iter().collect::Vec<_>>>>();
    |                                                ^^^^^^
@@ -21,7 +21,7 @@ LL |     let _ = vec![1, 2, 3].into_iter().collect::<Vec<_>>();
    |                                                +      ~
 
 error: generic parameters without surrounding angle brackets
-  --> $DIR/recover-missing-turbofish-surrounding-angle-braket.rs:6:48
+  --> $DIR/recover-missing-turbofish-surrounding-angle-bracket.rs:6:48
    |
 LL |     let _ = vec![1, 2, 3].into_iter().collect::Vec<_>>>();
    |                                                ^^^^^^
@@ -32,7 +32,7 @@ LL |     let _ = vec![1, 2, 3].into_iter().collect::<Vec<_>>();
    |                                                +      ~
 
 error: generic parameters without surrounding angle brackets
-  --> $DIR/recover-missing-turbofish-surrounding-angle-braket.rs:8:48
+  --> $DIR/recover-missing-turbofish-surrounding-angle-bracket.rs:8:48
    |
 LL |     let _ = vec![1, 2, 3].into_iter().collect::Vec<_>>();
    |                                                ^^^^^^
