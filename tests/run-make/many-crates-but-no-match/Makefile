@@ -4,7 +4,7 @@ include ../tools.mk
 # more than one (mismatching) candidate crate into the search path,
 # which did not appear directly expressible in UI testing infrastructure.
 #
-# Note that we move the built libraries into target direcrtories rather than
+# Note that we move the built libraries into target directories rather than
 # use the `--out-dir` option because the `../tools.mk` file already bakes a
 # use of `--out-dir` into the definition of $(RUSTC).
 
