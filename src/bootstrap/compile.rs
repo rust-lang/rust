@@ -83,11 +83,11 @@ impl Step for Std {
         let target = self.target;
         let compiler = self.compiler;
 
-        // These artifacts were already copied (in `impl Step for Sysroot`).
-        // Don't recompile them.
+        // When using `download-rustc`, we already have artifacts for the host available
+        // (they were copied in `impl Step for Sysroot`). Don't recompile them.
         // NOTE: the ABI of the beta compiler is different from the ABI of the downloaded compiler,
         // so its artifacts can't be reused.
-        if builder.download_rustc() && compiler.stage != 0 {
+        if builder.download_rustc() && compiler.stage != 0 && target == builder.build.build {
             return;
         }
 
