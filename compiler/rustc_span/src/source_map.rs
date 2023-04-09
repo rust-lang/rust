@@ -777,7 +777,7 @@ impl SourceMap {
 
     /// Given a 'Span', tries to tell if it's wrapped by "<>" or "()"
     /// the algorithm searches if the next character is '>' or ')' after skipping white space
-    /// then searches the previous charactoer to match '<' or '(' after skipping white space
+    /// then searches the previous character to match '<' or '(' after skipping white space
     /// return true if wrapped by '<>' or '()'
     pub fn span_wrapped_by_angle_or_parentheses(&self, span: Span) -> bool {
         self.span_to_source(span, |src, start_index, end_index| {
