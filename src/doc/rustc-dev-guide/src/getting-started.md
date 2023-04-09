@@ -93,9 +93,9 @@ See below for how to find work that isn't labelled.
 
 ### Recurring work
 
-Some work is too large to be done by a single person. In this case, it's commmon to have "Tracking
-issues" to co-ordinate the work between contributors.  Here are some example tracking issues where
-it's easy to pick up a work without a large time commitment:
+Some work is too large to be done by a single person. In this case, it's common to have "Tracking
+issues" to co-ordinate the work between contributors. Here are some example tracking issues where
+it's easy to pick up work without a large time commitment:
 
 - [Rustdoc Askama Migration](https://github.com/rust-lang/rust/issues/108868)
 - [Diagnostic Translation](https://github.com/rust-lang/rust/issues/100717)
@@ -106,7 +106,7 @@ If you find more recurring work, please feel free to add it here!
 ### Clippy issues
 
 The [Clippy] project has spent a long time making its contribution process as friendly to newcomers
-as possible.  Consider working on it first to get familiar with the process and the compiler
+as possible. Consider working on it first to get familiar with the process and the compiler
 internals.
 
 See [the Clippy contribution guide][clippy-contributing] for instructions on getting started.
@@ -171,7 +171,7 @@ See ["How to build and run the compiler"](./building//how-to-build-and-run.md).
 
 ## Contributor Procedures
 
-This section has moved to the ["Contribution Procedures"](./contributing.mD) chapter.
+This section has moved to the ["Contribution Procedures"](./contributing.md) chapter.
 
 ## Other Resources
 
