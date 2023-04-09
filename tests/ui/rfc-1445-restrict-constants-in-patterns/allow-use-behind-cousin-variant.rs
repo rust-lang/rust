@@ -3,7 +3,7 @@
 // any such variant.
 
 // NOTE: for now, deliberately leaving the lint `indirect_structural_match` set
-// to its default, so that we will not issue a diangostic even if
+// to its default, so that we will not issue a diagnostic even if
 // rust-lang/rust#62614 remains an open issue.
 
 // run-pass
