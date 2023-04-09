@@ -22,7 +22,7 @@ pub enum GitInfo {
     /// If the info should be used (`omit_git_hash` is false), this will be
     /// `Some`, otherwise it will be `None`.
     Present(Option<Info>),
-    /// This is not a git repostory, but the info can be fetched from the
+    /// This is not a git repository, but the info can be fetched from the
     /// `git-commit-info` file.
     RecordedForTarball(Info),
 }
