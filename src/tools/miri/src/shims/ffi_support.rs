@@ -75,10 +75,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         )?;
                     }
                     let alloc = self.eval_context_ref().get_ptr_alloc(
-                        ptr,
+                        ptr.into(),
                         arg_type.layout.size(),
                         arg_type.layout.align().abi,
-                    );
+                    )?;
                     let addr = alloc.base_addr();
                     return Ok(CArg::Ptr(addr as *const c_void));
                 }
