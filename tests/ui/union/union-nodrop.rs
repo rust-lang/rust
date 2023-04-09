@@ -13,7 +13,7 @@ impl Drop for NeedDrop {
     fn drop(&mut self) {}
 }
 
-// Constant expressios allow `NoDrop` to go out of scope,
+// Constant expression allow `NoDrop` to go out of scope,
 // unlike a value of the interior type implementing `Drop`.
 static X: () = (NoDrop { inner: ManuallyDrop::new(NeedDrop) }, ()).1;
 
