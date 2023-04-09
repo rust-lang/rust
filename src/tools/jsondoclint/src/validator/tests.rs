@@ -141,7 +141,7 @@ fn checks_local_crate_id_is_correct() {
             Item {
                 id: id("root"),
                 crate_id: LOCAL_CRATE_ID.wrapping_add(1),
-                name: Some("irrelavent".to_owned()),
+                name: Some("irrelevant".to_owned()),
                 span: None,
                 visibility: Visibility::Public,
                 docs: None,
