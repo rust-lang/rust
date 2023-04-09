@@ -50,7 +50,7 @@ fn significant_drop_needs_migration() {
 
 // Even if a type implements an insignificant drop, if it's
 // elements have a significant drop then the overall type is
-// consdered to have an significant drop. Since the elements
+// considered to have an significant drop. Since the elements
 // of `GenericStruct` implement drop, migration is required.
 fn generic_struct_with_significant_drop_needs_migration() {
     let t = Wrapper(GenericStruct(SigDrop {}, SigDrop {}), 5);
