@@ -9,6 +9,8 @@ compiler-docs = true
 assertions = true
 # enable warnings during the llvm compilation
 enable-warnings = true
+# build llvm from source
+download-ci-llvm = false
 
 [rust]
 # This enables `RUSTC_LOG=debug`, avoiding confusing situations
