@@ -235,7 +235,9 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::borrow::{Borrow, BorrowMut};
 use crate::cmp::Ordering;
+use crate::convert::{AsMut, AsRef};
 use crate::fmt::{self, Debug, Display};
 use crate::marker::{PhantomData, Unsize};
 use crate::mem;
@@ -1407,6 +1409,22 @@ impl<T: ?Sized> Deref for Ref<'_, T> {
     }
 }
 
+#[stable(feature = "refcell_ref_convert", since = "CURRENT_RUSTC_VERSION")]
+impl<'b, T: ?Sized> AsRef<T> for Ref<'b, T> {
+    #[inline]
+    fn as_ref(&self) -> &T {
+        &*self
+    }
+}
+
+#[stable(feature = "refcell_ref_convert", since = "CURRENT_RUSTC_VERSION")]
+impl<'b, T: ?Sized> Borrow<T> for Ref<'b, T> {
+    #[inline]
+    fn borrow(&self) -> &T {
+        &*self
+    }
+}
+
 impl<'b, T: ?Sized> Ref<'b, T> {
     /// Copies a `Ref`.
     ///
@@ -1795,6 +1813,38 @@ impl<T: ?Sized> DerefMut for RefMut<'_, T> {
     fn deref_mut(&mut self) -> &mut T {
         // SAFETY: the value is accessible as long as we hold our borrow.
         unsafe { self.value.as_mut() }
+    }
+}
+
+#[stable(feature = "refcell_ref_convert", since = "CURRENT_RUSTC_VERSION")]
+impl<'b, T: ?Sized> AsRef<T> for RefMut<'b, T> {
+    #[inline]
+    fn as_ref(&self) -> &T {
+        &*self
+    }
+}
+
+#[stable(feature = "refcell_ref_convert", since = "CURRENT_RUSTC_VERSION")]
+impl<'b, T: ?Sized> AsMut<T> for RefMut<'b, T> {
+    #[inline]
+    fn as_mut(&mut self) -> &mut T {
+        &mut *self
+    }
+}
+
+#[stable(feature = "refcell_ref_convert", since = "CURRENT_RUSTC_VERSION")]
+impl<'b, T: ?Sized> Borrow<T> for RefMut<'b, T> {
+    #[inline]
+    fn borrow(&self) -> &T {
+        &*self
+    }
+}
+
+#[stable(feature = "refcell_ref_convert", since = "CURRENT_RUSTC_VERSION")]
+impl<'b, T: ?Sized> BorrowMut<T> for RefMut<'b, T> {
+    #[inline]
+    fn borrow_mut(&mut self) -> &mut T {
+        &mut *self
     }
 }
 
