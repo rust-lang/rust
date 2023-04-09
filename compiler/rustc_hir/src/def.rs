@@ -377,7 +377,7 @@ pub enum Res<Id = hir::HirId> {
         /// const fn baz<T>() -> usize { 10 }
         /// ```
         /// We do however allow `Self` in repeat expression even if it is generic to not break code
-        /// which already works on stable while causing the `const_evaluatable_unchecked` future
+        /// which already works on stable while causing the `const_evaluable_unchecked` future
         /// compat lint:
         /// ```
         /// fn foo<T>() {

@@ -86,7 +86,7 @@ impl<'tcx> TyCtxt<'tcx> {
             Ok(Some(instance)) => {
                 let cid = GlobalId { instance, promoted: None };
                 self.const_eval_global_id_for_typeck(param_env, cid, span).inspect(|_| {
-                    // We are emitting the lint here instead of in `is_const_evaluatable`
+                    // We are emitting the lint here instead of in `is_const_evaluable`
                     // as we normalize obligations before checking them, and normalization
                     // uses this function to evaluate this constant.
                     //

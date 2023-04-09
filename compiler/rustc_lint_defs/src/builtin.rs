@@ -2747,7 +2747,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `const_evaluatable_unchecked` lint detects a generic constant used
+    /// The `const_evaluable_unchecked` lint detects a generic constant used
     /// in a type.
     ///
     /// ### Example

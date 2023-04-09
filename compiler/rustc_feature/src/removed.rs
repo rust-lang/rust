@@ -60,7 +60,7 @@ declare_features! (
     (removed, const_compare_raw_pointers, "1.46.0", Some(53020), None,
      Some("cannot be allowed in const eval in any meaningful way")),
     /// Allows non-trivial generic constants which have to be manually propagated upwards.
-     (removed, const_evaluatable_checked, "1.48.0", Some(76560), None, Some("renamed to `generic_const_exprs`")),
+     (removed, const_evaluable_checked, "1.48.0", Some(76560), None, Some("renamed to `generic_const_exprs`")),
     /// Allows the definition of `const` functions with some advanced features.
     (removed, const_fn, "1.54.0", Some(57563), None,
      Some("split into finer-grained feature gates")),

@@ -254,7 +254,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     }
 
     if tcx.features().generic_const_exprs {
-        predicates.extend(const_evaluatable_predicates_of(tcx, def_id));
+        predicates.extend(const_evaluable_predicates_of(tcx, def_id));
     }
 
     let mut predicates: Vec<_> = predicates.into_iter().collect();
@@ -327,7 +327,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     }
 }
 
-fn const_evaluatable_predicates_of(
+fn const_evaluable_predicates_of(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
 ) -> FxIndexSet<(ty::Predicate<'_>, Span)> {
@@ -366,24 +366,24 @@ fn const_evaluatable_predicates_of(
     let mut collector = ConstCollector { tcx, preds: FxIndexSet::default() };
     if let hir::Node::Item(item) = node && let hir::ItemKind::Impl(impl_) = item.kind {
         if let Some(of_trait) = &impl_.of_trait {
-            debug!("const_evaluatable_predicates_of({:?}): visit impl trait_ref", def_id);
+            debug!("const_evaluable_predicates_of({:?}): visit impl trait_ref", def_id);
             collector.visit_trait_ref(of_trait);
         }
 
-        debug!("const_evaluatable_predicates_of({:?}): visit_self_ty", def_id);
+        debug!("const_evaluable_predicates_of({:?}): visit_self_ty", def_id);
         collector.visit_ty(impl_.self_ty);
     }
 
     if let Some(generics) = node.generics() {
-        debug!("const_evaluatable_predicates_of({:?}): visit_generics", def_id);
+        debug!("const_evaluable_predicates_of({:?}): visit_generics", def_id);
         collector.visit_generics(generics);
     }
 
     if let Some(fn_sig) = tcx.hir().fn_sig_by_hir_id(hir_id) {
-        debug!("const_evaluatable_predicates_of({:?}): visit_fn_decl", def_id);
+        debug!("const_evaluable_predicates_of({:?}): visit_fn_decl", def_id);
         collector.visit_fn_decl(fn_sig.decl);
     }
-    debug!("const_evaluatable_predicates_of({:?}) = {:?}", def_id, collector.preds);
+    debug!("const_evaluable_predicates_of({:?}) = {:?}", def_id, collector.preds);
 
     collector.preds
 }

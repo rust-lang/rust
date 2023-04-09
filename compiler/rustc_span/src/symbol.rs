@@ -508,7 +508,7 @@ symbols! {
         const_deallocate,
         const_eval_limit,
         const_eval_select,
-        const_evaluatable_checked,
+        const_evaluable_checked,
         const_extern_fn,
         const_fn,
         const_fn_floating_point_arithmetic,

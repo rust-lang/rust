@@ -241,7 +241,7 @@ impl<'tcx> Const<'tcx> {
                 Err(guar) => tcx.const_error_with_guaranteed(self.ty(), guar),
             }
         } else {
-            // Either the constant isn't evaluatable or ValTree creation failed.
+            // Either the constant isn't evaluable or ValTree creation failed.
             self
         }
     }

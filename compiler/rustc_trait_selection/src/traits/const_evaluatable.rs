@@ -23,7 +23,7 @@ use crate::traits::ObligationCtxt;
 
 /// Check if a given constant can be evaluated.
 #[instrument(skip(infcx), level = "debug")]
-pub fn is_const_evaluatable<'tcx>(
+pub fn is_const_evaluable<'tcx>(
     infcx: &InferCtxt<'tcx>,
     unexpanded_ct: ty::Const<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -64,7 +64,7 @@ pub fn is_const_evaluatable<'tcx>(
             ty::ConstKind::Expr(_) => {
                 // FIXME(generic_const_exprs): we have a `ConstKind::Expr` which is fully concrete, but
                 // currently it is not possible to evaluate `ConstKind::Expr` so we are unable to tell if it
-                // is evaluatable or not. For now we just ICE until this is implemented.
+                // is evaluable or not. For now we just ICE until this is implemented.
                 Err(NotConstEvaluatable::Error(tcx.sess.delay_span_bug(
                     span,
                     "evaluating `ConstKind::Expr` is not currently supported",
@@ -161,7 +161,7 @@ fn satisfied_from_param_env<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
 ) -> bool {
     // Try to unify with each subtree in the AbstractConst to allow for
-    // `N + 1` being const evaluatable even if theres only a `ConstEvaluatable`
+    // `N + 1` being const evaluable even if theres only a `ConstEvaluatable`
     // predicate for `(N + 1) * 2`
     struct Visitor<'a, 'tcx> {
         ct: ty::Const<'tcx>,
@@ -174,7 +174,7 @@ fn satisfied_from_param_env<'tcx>(
     impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for Visitor<'a, 'tcx> {
         type BreakTy = ();
         fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-            debug!("is_const_evaluatable: candidate={:?}", c);
+            debug!("is_const_evaluable: candidate={:?}", c);
             if self.infcx.probe(|_| {
                 let ocx = ObligationCtxt::new_in_snapshot(self.infcx);
                 ocx.eq(&ObligationCause::dummy(), self.param_env, c.ty(), self.ct.ty()).is_ok()
@@ -226,6 +226,6 @@ fn satisfied_from_param_env<'tcx>(
         return true;
     }
 
-    debug!("is_const_evaluatable: no");
+    debug!("is_const_evaluable: no");
     false
 }

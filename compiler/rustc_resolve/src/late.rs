@@ -2565,7 +2565,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         self.with_rib(ValueNS, kind, |this| this.with_rib(TypeNS, kind, f))
     }
 
-    // HACK(min_const_generics,const_evaluatable_unchecked): We
+    // HACK(min_const_generics,const_evaluable_unchecked): We
     // want to keep allowing `[0; std::mem::size_of::<*mut T>()]`
     // with a future compat lint for now. We do this by adding an
     // additional special case for repeat expressions.
@@ -2636,7 +2636,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     // actual constant expression in a provided default.
                     if let Some(expr) = expr {
                         // We allow arbitrary const expressions inside of associated consts,
-                        // even if they are potentially not const evaluatable.
+                        // even if they are potentially not const evaluable.
                         //
                         // Type parameters can already be used and as associated consts are
                         // not used as part of the type system, this is far less surprising.
@@ -2823,7 +2823,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 self.visit_ty(ty);
                 if let Some(expr) = expr {
                     // We allow arbitrary const expressions inside of associated consts,
-                    // even if they are potentially not const evaluatable.
+                    // even if they are potentially not const evaluable.
                     //
                     // Type parameters can already be used and as associated consts are
                     // not used as part of the type system, this is far less surprising.
