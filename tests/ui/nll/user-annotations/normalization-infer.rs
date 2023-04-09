@@ -1,4 +1,4 @@
-// Annnotations may contain projection types with inference variables as input.
+// Annotations may contain projection types with inference variables as input.
 // Make sure we don't get ambiguities when normalizing them.
 
 // check-fail
