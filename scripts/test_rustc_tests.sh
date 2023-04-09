@@ -122,5 +122,5 @@ rm tests/ui/process/nofile-limit.rs # TODO some AArch64 linking issue
 rm tests/ui/stdio-is-blocking.rs # really slow with unoptimized libstd
 
 echo "[TEST] rustc test suite"
-RUST_TEST_NOCAPTURE=1 COMPILETEST_FORCE_STAGE0=1 ./x.py test --stage 0 tests/{codegen-units,run-make,run-pass-valgrind,ui,incremental}
+COMPILETEST_FORCE_STAGE0=1 ./x.py test --stage 0 --test-args=--nocapture tests/{codegen-units,run-make,run-pass-valgrind,ui,incremental}
 popd
