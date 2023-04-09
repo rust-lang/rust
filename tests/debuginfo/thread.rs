@@ -1,4 +1,4 @@
-// Testing the the display of JoinHandle and Thread in cdb.
+// Testing the display of JoinHandle and Thread in cdb.
 
 // cdb-only
 // min-cdb-version: 10.0.18317.1001
