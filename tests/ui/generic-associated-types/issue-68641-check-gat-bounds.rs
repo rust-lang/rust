@@ -21,7 +21,7 @@ fn main() {
     // Do we indeed point to the samme memory?
     assert!(s.as_ptr() == copy.as_ptr());
 
-    // Any use of `copy` is certeinly UB after this
+    // Any use of `copy` is certainly UB after this
     drop(s);
 
     // UB UB UB UB UB!!
