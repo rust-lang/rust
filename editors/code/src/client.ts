@@ -125,7 +125,11 @@ export async function createClient(
                         typeof diag.code === "string" || typeof diag.code === "number"
                             ? diag.code
                             : diag.code?.value;
-                    if (value === "unlinked-file" && !unlinkedFiles.includes(uri)) {
+                    if (
+                        value === "unlinked-file" &&
+                        !unlinkedFiles.includes(uri) &&
+                        diag.message !== "file not included in module tree"
+                    ) {
                         const config = vscode.workspace.getConfiguration("rust-analyzer");
                         if (config.get("showUnlinkedFileNotification")) {
                             unlinkedFiles.push(uri);
