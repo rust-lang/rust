@@ -12,7 +12,7 @@ Tracking issues are for tracking a feature from implementation to stabilization.
 Make sure to include the relevant RFC for the feature if it has one.
 
 If the new feature is small, it may be fine to skip the RFC process. In that
-case, you can use use `issue = "none"` in your initial implementation PR. The
+case, you can use `issue = "none"` in your initial implementation PR. The
 reviewer will ask you to open a tracking issue if they agree your feature can be
 added without an RFC.
 -->
