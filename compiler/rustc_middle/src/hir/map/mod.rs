@@ -74,18 +74,17 @@ impl<'hir> Iterator for ParentHirIterator<'hir> {
         if self.current_id == CRATE_HIR_ID {
             return None;
         }
-        loop {
-            // There are nodes that do not have entries, so we need to skip them.
-            let parent_id = self.map.parent_id(self.current_id);
 
-            if parent_id == self.current_id {
-                self.current_id = CRATE_HIR_ID;
-                return None;
-            }
+        // There are nodes that do not have entries, so we need to skip them.
+        let parent_id = self.map.parent_id(self.current_id);
 
-            self.current_id = parent_id;
-            return Some(parent_id);
+        if parent_id == self.current_id {
+            self.current_id = CRATE_HIR_ID;
+            return None;
         }
+
+        self.current_id = parent_id;
+        return Some(parent_id);
     }
 }
 
