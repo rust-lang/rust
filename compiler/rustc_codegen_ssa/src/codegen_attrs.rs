@@ -156,7 +156,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     None => {
                         // Unfortunately, unconditionally using `llvm.used` causes
                         // issues in handling `.init_array` with the gold linker,
-                        // but using `llvm.compiler.used` caused a nontrival amount
+                        // but using `llvm.compiler.used` caused a nontrivial amount
                         // of unintentional ecosystem breakage -- particularly on
                         // Mach-O targets.
                         //

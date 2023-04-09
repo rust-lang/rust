@@ -77,7 +77,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | PatKind::Wild
             | PatKind::Binding { .. }
             | PatKind::Leaf { .. }
-            | PatKind::Deref { .. } => self.error_simplifyable(match_pair),
+            | PatKind::Deref { .. } => self.error_simplifiable(match_pair),
         }
     }
 
@@ -173,7 +173,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             debug_assert_ne!(
                                 target_blocks[idx.index()],
                                 otherwise_block,
-                                "no canididates for tested discriminant: {:?}",
+                                "no candidates for tested discriminant: {:?}",
                                 discr,
                             );
                             Some((discr.val, target_blocks[idx.index()]))
@@ -181,7 +181,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             debug_assert_eq!(
                                 target_blocks[idx.index()],
                                 otherwise_block,
-                                "found canididates for untested discriminant: {:?}",
+                                "found candidates for untested discriminant: {:?}",
                                 discr,
                             );
                             None
@@ -499,7 +499,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// However, in some cases, the test may just not be relevant to candidate.
     /// For example, suppose we are testing whether `foo.x == 22`, but in one
     /// match arm we have `Foo { x: _, ... }`... in that case, the test for
-    /// what value `x` has has no particular relevance to this candidate. In
+    /// the value of `x` has no particular relevance to this candidate. In
     /// such cases, this function just returns None without doing anything.
     /// This is used by the overall `match_candidates` algorithm to structure
     /// the match as a whole. See `match_candidates` for more details.
@@ -763,8 +763,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate.match_pairs.extend(consequent_match_pairs);
     }
 
-    fn error_simplifyable<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> ! {
-        span_bug!(match_pair.pattern.span, "simplifyable pattern found: {:?}", match_pair.pattern)
+    fn error_simplifiable<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> ! {
+        span_bug!(match_pair.pattern.span, "simplifiable pattern found: {:?}", match_pair.pattern)
     }
 
     fn const_range_contains(

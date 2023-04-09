@@ -251,7 +251,7 @@ pub enum StatementKind<'tcx> {
     /// **Needs clarification**: The implication of the above idea would be that assignment implies
     /// that the resulting value is initialized. I believe we could commit to this separately from
     /// committing to whatever part of the memory model we would need to decide on to make the above
-    /// paragragh precise. Do we want to?
+    /// paragraph precise. Do we want to?
     ///
     /// Assignments in which the types of the place and rvalue differ are not well-formed.
     ///
@@ -997,7 +997,7 @@ pub type PlaceElem<'tcx> = ProjectionElem<Local, Ty<'tcx>>;
 /// This is what is implemented in miri today. Are these the semantics we want for MIR? Is this
 /// something we can even decide without knowing more about Rust's memory model?
 ///
-/// **Needs clarifiation:** Is loading a place that has its variant index set well-formed? Miri
+/// **Needs clarification:** Is loading a place that has its variant index set well-formed? Miri
 /// currently implements it, but it seems like this may be something to check against in the
 /// validator.
 #[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]

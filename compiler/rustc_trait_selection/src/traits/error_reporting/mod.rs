@@ -467,7 +467,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
         }
 
-        self.tcx.sess.delay_span_bug(DUMMY_SP, "expected fullfillment errors")
+        self.tcx.sess.delay_span_bug(DUMMY_SP, "expected fulfillment errors")
     }
 
     /// Reports that an overflow has occurred and halts compilation. We
@@ -2056,7 +2056,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         if candidates.iter().any(|c| matches!(c.similarity, CandidateSimilarity::Exact { .. })) {
             // If any of the candidates is a perfect match, we don't want to show all of them.
             // This is particularly relevant for the case of numeric types (as they all have the
-            // same cathegory).
+            // same category).
             candidates.retain(|c| matches!(c.similarity, CandidateSimilarity::Exact { .. }));
         }
         candidates

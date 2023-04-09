@@ -827,7 +827,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             QPath::TypeRelative(ref qself, ref segment) => {
                 // Don't use `self.to_ty`, since this will register a WF obligation.
-                // If we're trying to call a non-existent method on a trait
+                // If we're trying to call a nonexistent method on a trait
                 // (e.g. `MyTrait::missing_method`), then resolution will
                 // give us a `QPath::TypeRelative` with a trait object as
                 // `qself`. In that case, we want to avoid registering a WF obligation

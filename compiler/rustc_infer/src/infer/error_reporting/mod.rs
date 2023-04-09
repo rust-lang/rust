@@ -2886,7 +2886,7 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
             LetElse => ObligationCauseFailureCode::NoDiverge { span, subdiags },
             MainFunctionType => ObligationCauseFailureCode::FnMainCorrectType { span },
             StartFunctionType => ObligationCauseFailureCode::FnStartCorrectType { span, subdiags },
-            IntrinsicType => ObligationCauseFailureCode::IntristicCorrectType { span, subdiags },
+            IntrinsicType => ObligationCauseFailureCode::IntrinsicCorrectType { span, subdiags },
             MethodReceiver => ObligationCauseFailureCode::MethodCorrectType { span, subdiags },
 
             // In the case where we have no more specific thing to
@@ -2943,7 +2943,7 @@ impl IntoDiagnosticArg for ObligationCauseAsDiagArg<'_> {
             IfExpressionWithNoElse => "no_else",
             MainFunctionType => "fn_main_correct_type",
             StartFunctionType => "fn_start_correct_type",
-            IntrinsicType => "intristic_correct_type",
+            IntrinsicType => "intrinsic_correct_type",
             MethodReceiver => "method_correct_type",
             _ => "other",
         }

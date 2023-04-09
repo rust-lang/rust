@@ -285,7 +285,7 @@ pub(super) fn sanity_check_layout<'tcx>(
             {
                 // These are never actually accessed anyway, so we can skip the coherence check
                 // for them. They also fail that check, since they have
-                // `Aggregate`/`Uninhbaited` ABI even when the main type is
+                // `Aggregate`/`Uninhabited` ABI even when the main type is
                 // `Scalar`/`ScalarPair`. (Note that sometimes, variants with fields have size
                 // 0, and sometimes, variants without fields have non-0 size.)
                 continue;

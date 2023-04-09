@@ -111,7 +111,7 @@ impl CoverageGraph {
                         if predecessors.len() > 1 {
                             "predecessors.len() > 1".to_owned()
                         } else {
-                            format!("bb {} is not in precessors: {:?}", bb.index(), predecessors)
+                            format!("bb {} is not in predecessors: {:?}", bb.index(), predecessors)
                         }
                     );
                 }

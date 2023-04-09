@@ -62,7 +62,7 @@ const SINGLE_VARIANT_VIRTUAL_DISR: u64 = 0;
 
 /// In CPP-like mode, we generate a union with a field for each variant and an
 /// explicit tag field. The field of each variant has a struct type
-/// that encodes the discrimiant of the variant and it's data layout.
+/// that encodes the discriminant of the variant and it's data layout.
 /// The union also has a nested enumeration type that is only used for encoding
 /// variant names in an efficient way. Its enumerator values do _not_ correspond
 /// to the enum's discriminant values.

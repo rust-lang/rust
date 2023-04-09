@@ -67,7 +67,7 @@ pub(crate) fn parse_token_trees<'a>(
     match token_trees {
         Ok(stream) if unmatched_delims.is_empty() => Ok(stream),
         _ => {
-            // Return error if there are unmatched delimiters or unclosng delimiters.
+            // Return error if there are unmatched delimiters or unclosed delimiters.
             // We emit delimiter mismatch errors first, then emit the unclosing delimiter mismatch
             // because the delimiter mismatch is more likely to be the root cause of error
 

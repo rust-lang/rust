@@ -1147,7 +1147,7 @@ pub fn mut_borrow_of_mutable_ref(local_decl: &LocalDecl<'_>, local_name: Option<
             // suggest removing the `&mut`.
             //
             // Deliberately fall into this case for all implicit self types,
-            // so that we don't fall in to the next case with them.
+            // so that we don't fall into the next case with them.
             kind == hir::ImplicitSelfKind::MutRef
         }
         _ if Some(kw::SelfLower) == local_name => {
@@ -1235,7 +1235,7 @@ fn suggest_ampmut<'tcx>(
         }
     }
 
-    let (suggestability, highlight_span) = match opt_ty_info {
+    let (suggestibility, highlight_span) = match opt_ty_info {
         // if this is a variable binding with an explicit type,
         // try to highlight that for the suggestion.
         Some(ty_span) => (true, ty_span),
@@ -1256,7 +1256,7 @@ fn suggest_ampmut<'tcx>(
     let ty_mut = local_decl.ty.builtin_deref(true).unwrap();
     assert_eq!(ty_mut.mutbl, hir::Mutability::Not);
     (
-        suggestability,
+        suggestibility,
         highlight_span,
         if local_decl.ty.is_ref() {
             format!("&mut {}", ty_mut.ty)

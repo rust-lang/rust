@@ -976,7 +976,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Attempt to coerce an expression to a type, and return the
     /// adjusted type of the expression, if successful.
     /// Adjustments are only recorded if the coercion succeeded.
-    /// The expressions *must not* have any pre-existing adjustments.
+    /// The expressions *must not* have any preexisting adjustments.
     pub fn try_coerce(
         &self,
         expr: &hir::Expr<'_>,
@@ -1340,7 +1340,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
     }
 
     /// As an optimization, you can create a `CoerceMany` with a
-    /// pre-existing slice of expressions. In this case, you are
+    /// preexisting slice of expressions. In this case, you are
     /// expected to pass each element in the slice to `coerce(...)` in
     /// order. This is used with arrays in particular to avoid
     /// needlessly cloning the slice.

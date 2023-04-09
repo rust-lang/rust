@@ -203,7 +203,7 @@ fn do_normalize_predicates<'tcx>(
         }
     };
 
-    debug!("do_normalize_predictes: normalized predicates = {:?}", predicates);
+    debug!("do_normalize_predicates: normalized predicates = {:?}", predicates);
 
     // We can use the `elaborated_env` here; the region code only
     // cares about declarations like `'a: 'b`.

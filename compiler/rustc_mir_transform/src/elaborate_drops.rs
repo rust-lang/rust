@@ -24,7 +24,7 @@ use std::fmt;
 /// In general, the compiler cannot determine at compile time whether a destructor will run or not.
 ///
 /// At a high level, this pass refines Drop to only run the destructor if the
-/// target is initialized. The way this is achievied is by inserting drop flags for every variable
+/// target is initialized. The way this is achieved is by inserting drop flags for every variable
 /// that may be dropped, and then using those flags to determine whether a destructor should run.
 /// Once this is complete, Drop terminators in the MIR correspond to a call to the "drop glue" or
 /// "drop shim" for the type of the dropped place.

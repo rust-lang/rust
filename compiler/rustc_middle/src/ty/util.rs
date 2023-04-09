@@ -642,7 +642,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// Return the set of types that should be taken into accound when checking
+    /// Return the set of types that should be taken into account when checking
     /// trait bounds on a generator's internal state.
     pub fn generator_hidden_types(
         self,
@@ -1402,7 +1402,7 @@ pub fn is_trivially_const_drop(ty: Ty<'_>) -> bool {
 }
 
 /// Does the equivalent of
-/// ```ignore (ilustrative)
+/// ```ignore (illustrative)
 /// let v = self.iter().map(|p| p.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
 /// folder.tcx().intern_*(&v)
 /// ```

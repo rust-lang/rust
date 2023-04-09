@@ -1,4 +1,4 @@
-//! A subset of a mir body used for const evaluatability checking.
+//! A subset of a mir body used for const evaluability checking.
 use crate::ty::{
     self, Const, EarlyBinder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeVisitableExt,
