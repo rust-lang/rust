@@ -3,37 +3,37 @@
 #![allow(dead_code)]
 use std::fmt::Debug;
 
-struct NotDebugable;
+struct NotDebuggable;
 
 #[cfg_attr(set1, derive(Debug))]
 struct Set1;
 
 #[cfg_attr(notset, derive(Debug))]
-struct Notset(NotDebugable);
+struct Notset(NotDebuggable);
 
 #[cfg_attr(not(notset), derive(Debug))]
 struct NotNotset;
 
 #[cfg_attr(not(set1), derive(Debug))]
-struct NotSet1(NotDebugable);
+struct NotSet1(NotDebuggable);
 
 #[cfg_attr(all(set1, set2), derive(Debug))]
 struct AllSet1Set2;
 
 #[cfg_attr(all(set1, notset), derive(Debug))]
-struct AllSet1Notset(NotDebugable);
+struct AllSet1Notset(NotDebuggable);
 
 #[cfg_attr(any(set1, notset), derive(Debug))]
 struct AnySet1Notset;
 
 #[cfg_attr(any(notset, notset2), derive(Debug))]
-struct AnyNotsetNotset2(NotDebugable);
+struct AnyNotsetNotset2(NotDebuggable);
 
 #[cfg_attr(all(not(notset), any(set1, notset)), derive(Debug))]
 struct Complex;
 
 #[cfg_attr(any(notset, not(any(set1, notset))), derive(Debug))]
-struct ComplexNot(NotDebugable);
+struct ComplexNot(NotDebuggable);
 
 #[cfg_attr(any(target_endian = "little", target_endian = "big"), derive(Debug))]
 struct KeyValue;
