@@ -2,7 +2,7 @@
 
 // Regression test for issue #92987
 // Tests that we properly manage `DepNode`s during trait evaluation
-// involing an auto-trait cycle.
+// involving an auto-trait cycle.
 
 #[cfg(rpass1)]
 struct CycleOne(Box<CycleTwo>);
