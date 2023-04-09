@@ -3467,8 +3467,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                         sugg.to_string(),
                         Applicability::MaybeIncorrect,
                     ))
-                } else if res.is_none() && matches!(source, PathSource::Type) {
-                    this.report_missing_type_error(path)
+                } else if res.is_none() && let PathSource::Type | PathSource::Expr(_) = source {
+                    this.suggest_adding_generic_parameter(path, source)
                 } else {
                     None
                 };

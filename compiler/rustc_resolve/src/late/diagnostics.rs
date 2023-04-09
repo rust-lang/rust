@@ -2110,9 +2110,10 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         }
     }
 
-    pub(crate) fn report_missing_type_error(
+    pub(crate) fn suggest_adding_generic_parameter(
         &self,
         path: &[Segment],
+        source: PathSource<'_>,
     ) -> Option<(Span, &'static str, String, Applicability)> {
         let (ident, span) = match path {
             [segment]
@@ -2148,7 +2149,6 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             // Without the 2nd `true`, we'd suggest `impl <T>` for `impl T` when a type `T` isn't found
             | (Some(Item { kind: kind @ ItemKind::Impl(..), .. }), true, true)
             | (Some(Item { kind, .. }), false, _) => {
-                // Likely missing type parameter.
                 if let Some(generics) = kind.generics() {
                     if span.overlaps(generics.span) {
                         // Avoid the following:
@@ -2161,7 +2161,12 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         //   |           not found in this scope
                         return None;
                     }
-                    let msg = "you might be missing a type parameter";
+
+                    let (msg, sugg) = match source {
+                        PathSource::Type => ("you might be missing a type parameter", ident),
+                        PathSource::Expr(_) => ("you might be missing a const parameter", format!("const {ident}: /* Type */")),
+                        _ => return None,
+                    };
                     let (span, sugg) = if let [.., param] = &generics.params[..] {
                         let span = if let [.., bound] = &param.bounds[..] {
                             bound.span()
@@ -2172,9 +2177,9 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         } else {
                             param.ident.span
                         };
-                        (span, format!(", {}", ident))
+                        (span, format!(", {sugg}"))
                     } else {
-                        (generics.span, format!("<{}>", ident))
+                        (generics.span, format!("<{sugg}>"))
                     };
                     // Do not suggest if this is coming from macro expansion.
                     if span.can_be_used_for_suggestions() {
