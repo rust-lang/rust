@@ -1990,7 +1990,7 @@ Compatibility Notes
   kinds of errors could be categorised [into newer more specific `ErrorKind`
   variants][79965], and that they do not represent a user error.
 - [Using environment variable names with `process::Command` on Windows now
-  behaves as expected.][85270] Previously using envionment variables with
+  behaves as expected.][85270] Previously using environment variables with
   `Command` would cause them to be ASCII-uppercased.
 - [Rustdoc will now warn on using rustdoc lints that aren't prefixed
   with `rustdoc::`][86849]
