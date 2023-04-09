@@ -97,7 +97,7 @@ impl<'a> Registry<'a> {
 
 fn register_plugins<'a>(mk_reg: impl Fn() -> &'a mut Registry<'a>) {
     // Not okay without two-phase borrows: The implicit `&mut reg` of
-    // the receiver is evaluaated first, and that conflicts with the
+    // the receiver is evaluated first, and that conflicts with the
     // `reg.sess_mut` access during argument evaluation.
     //
     // Okay if we have two-phase borrows: inner borrows do not survive
