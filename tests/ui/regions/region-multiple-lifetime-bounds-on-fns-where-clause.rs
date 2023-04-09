@@ -18,7 +18,7 @@ fn c<'a,'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) {
 
 fn d() {
     // 'a and 'b are early bound in the function `a` because they appear
-    // inconstraints:
+    // in constraints:
     let _: fn(&mut &isize, &mut &isize, &mut &isize) = a;
     //~^ ERROR E0308
 }

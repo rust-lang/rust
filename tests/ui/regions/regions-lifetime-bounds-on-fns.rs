@@ -16,7 +16,7 @@ fn c<'a,'b>(x: &mut &'a isize, y: &mut &'b isize) {
 
 fn d() {
     // 'a and 'b are early bound in the function `a` because they appear
-    // inconstraints:
+    // in constraints:
     let _: fn(&mut &isize, &mut &isize) = a;
     //~^ ERROR mismatched types [E0308]
 }
