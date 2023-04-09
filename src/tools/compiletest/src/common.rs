@@ -325,7 +325,7 @@ pub struct Config {
     /// Whether to rerun tests even if the inputs are unchanged.
     pub force_rerun: bool,
 
-    /// Only rerun the tests that result has been modified accoring to Git status
+    /// Only rerun the tests that result has been modified according to Git status
     pub only_modified: bool,
 
     pub target_cfgs: AtomicLazyCell<TargetCfgs>,
