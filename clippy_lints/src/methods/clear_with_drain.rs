@@ -44,7 +44,7 @@ fn suggest(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, span: Span) {
             cx,
             CLEAR_WITH_DRAIN,
             span.with_hi(expr.span.hi()),
-            &format!("`drain` used to clear a `{}`", ty_name),
+            &format!("`drain` used to clear a `{ty_name}`"),
             "try",
             "clear()".to_string(),
             Applicability::MachineApplicable,
