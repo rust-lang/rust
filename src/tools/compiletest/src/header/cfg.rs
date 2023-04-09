@@ -212,7 +212,7 @@ pub(super) fn parse_cfg_name_directive<'a>(
     }
 
     if prefix == "ignore" && outcome == MatchOutcome::Invalid {
-        // Don't error out for ignore-tidy-* diretives, as those are not handled by compiletest.
+        // Don't error out for ignore-tidy-* directives, as those are not handled by compiletest.
         if name.starts_with("tidy-") {
             outcome = MatchOutcome::External;
         }
