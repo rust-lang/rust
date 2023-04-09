@@ -92,13 +92,13 @@ LL | subspan!("how are you this evening");
 error: found 'hi's
   --> $DIR/subspan.rs:24:1
    |
-LL | subspan!("this is highly eradic");
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | subspan!("this is highly erratic");
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: here
   --> $DIR/subspan.rs:24:12
    |
-LL | subspan!("this is highly eradic");
+LL | subspan!("this is highly erratic");
    |            ^^     ^^
    = note: this error originates in the macro `subspan` (in Nightly builds, run with -Z macro-backtrace for more info)
 
