@@ -751,7 +751,7 @@ pub(crate) enum ItemKind {
     PrimitiveItem(PrimitiveType),
     /// A required associated constant in a trait declaration.
     TyAssocConstItem(Type),
-    /// An associated associated constant in a trait impl or a provided one in a trait declaration.
+    /// An associated constant in a trait impl or a provided one in a trait declaration.
     AssocConstItem(Type, ConstantKind),
     /// A required associated type in a trait declaration.
     ///
