@@ -9,7 +9,7 @@ use itertools::Itertools;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
-use rustc_infer::traits::util::elaborate_predicates;
+use rustc_infer::traits::util::elaborate;
 use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, MaybeCause, QueryResult};
 use rustc_middle::ty::fast_reject::TreatProjections;
 use rustc_middle::ty::TypeFoldable;
@@ -498,7 +498,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let tcx = self.tcx();
         let own_bounds: FxIndexSet<_> =
             bounds.iter().map(|bound| bound.with_self_ty(tcx, self_ty)).collect();
-        for assumption in elaborate_predicates(tcx, own_bounds.iter().copied()) {
+        for assumption in elaborate(tcx, own_bounds.iter().copied()) {
             // FIXME: Predicates are fully elaborated in the object type's existential bounds
             // list. We want to only consider these pre-elaborated projections, and not other
             // projection predicates that we reach by elaborating the principal trait ref,

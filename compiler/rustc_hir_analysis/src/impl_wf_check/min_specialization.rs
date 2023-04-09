@@ -318,15 +318,14 @@ fn check_predicates<'tcx>(
     span: Span,
 ) {
     let instantiated = tcx.predicates_of(impl1_def_id).instantiate(tcx, impl1_substs);
-    let impl1_predicates: Vec<_> =
-        traits::elaborate_predicates_with_span(tcx, instantiated.into_iter()).collect();
+    let impl1_predicates: Vec<_> = traits::elaborate(tcx, instantiated.into_iter()).collect();
 
     let mut impl2_predicates = if impl2_node.is_from_trait() {
         // Always applicable traits have to be always applicable without any
         // assumptions.
         Vec::new()
     } else {
-        traits::elaborate_predicates(
+        traits::elaborate(
             tcx,
             tcx.predicates_of(impl2_node.def_id())
                 .instantiate(tcx, impl2_substs)
@@ -371,11 +370,10 @@ fn check_predicates<'tcx>(
                 .unwrap();
 
         assert!(!obligations.needs_infer());
-        impl2_predicates.extend(
-            traits::elaborate_obligations(tcx, obligations).map(|obligation| obligation.predicate),
-        )
+        impl2_predicates
+            .extend(traits::elaborate(tcx, obligations).map(|obligation| obligation.predicate))
     }
-    impl2_predicates.extend(traits::elaborate_predicates(tcx, always_applicable_traits));
+    impl2_predicates.extend(traits::elaborate(tcx, always_applicable_traits));
 
     for (predicate, span) in impl1_predicates {
         if !impl2_predicates.iter().any(|pred2| trait_predicates_eq(tcx, predicate, *pred2, span)) {

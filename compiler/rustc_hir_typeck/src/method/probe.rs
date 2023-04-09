@@ -1555,8 +1555,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         if !self.predicate_may_hold(&o) {
                             result = ProbeResult::NoMatch;
                             let parent_o = o.clone();
-                            let implied_obligations =
-                                traits::elaborate_obligations(self.tcx, vec![o]);
+                            let implied_obligations = traits::elaborate(self.tcx, vec![o]);
                             for o in implied_obligations {
                                 let parent = if o == parent_o {
                                     None

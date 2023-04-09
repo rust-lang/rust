@@ -2034,7 +2034,7 @@ pub(super) fn check_type_bounds<'tcx>(
         ObligationCause::new(impl_ty_span, impl_ty_def_id, code)
     };
 
-    let obligations = tcx
+    let obligations: Vec<_> = tcx
         .bound_explicit_item_bounds(trait_ty.def_id)
         .subst_iter_copied(tcx, rebased_substs)
         .map(|(concrete_ty_bound, span)| {
@@ -2044,7 +2044,7 @@ pub(super) fn check_type_bounds<'tcx>(
         .collect();
     debug!("check_type_bounds: item_bounds={:?}", obligations);
 
-    for mut obligation in util::elaborate_obligations(tcx, obligations) {
+    for mut obligation in util::elaborate(tcx, obligations) {
         let normalized_predicate =
             ocx.normalize(&normalize_cause, normalize_param_env, obligation.predicate);
         debug!("compare_projection_bounds: normalized predicate = {:?}", normalized_predicate);

@@ -2104,7 +2104,7 @@ pub fn fn_has_unsatisfiable_preds(cx: &LateContext<'_>, did: DefId) -> bool {
         .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
     traits::impossible_predicates(
         cx.tcx,
-        traits::elaborate_predicates(cx.tcx, predicates)
+        traits::elaborate(cx.tcx, predicates)
             .collect::<Vec<_>>(),
     )
 }
