@@ -1143,7 +1143,7 @@ pub fn mut_borrow_of_mutable_ref(local_decl: &LocalDecl<'_>, local_name: Option<
             // suggest removing the `&mut`.
             //
             // Deliberately fall into this case for all implicit self types,
-            // so that we don't fall in to the next case with them.
+            // so that we don't fall into the next case with them.
             kind == hir::ImplicitSelfKind::MutRef
         }
         _ if Some(kw::SelfLower) == local_name => {

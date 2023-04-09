@@ -156,7 +156,7 @@ impl ExternalCrate {
     }
 
     /// Attempts to find where an external crate is located, given that we're
-    /// rendering in to the specified source destination.
+    /// rendering into the specified source destination.
     pub(crate) fn location(
         &self,
         extern_url: Option<&str>,
