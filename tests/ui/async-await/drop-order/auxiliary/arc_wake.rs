@@ -37,7 +37,7 @@ unsafe fn increase_refcount<T: ArcWake>(data: *const ()) {
     // Retain Arc by creating a copy
     let arc: Arc<T> = Arc::from_raw(data as *const T);
     let arc_clone = arc.clone();
-    // Forget the Arcs again, so that the refcount isn't decrased
+    // Forget the Arcs again, so that the refcount isn't decreased
     let _ = Arc::into_raw(arc);
     let _ = Arc::into_raw(arc_clone);
 }
