@@ -1,4 +1,4 @@
-// Ensure that the compiler include the blanklet implementation suggestion
+// Ensure that the compiler include the blanket implementation suggestion
 // when inside a `impl` statement are used two local traits.
 //
 // edition:2021
