@@ -1031,7 +1031,7 @@ impl Command {
     /// process.
     ///
     /// Each element is a tuple key/value pair `(&OsStr, Option<&OsStr>)`. A [`None`] value
-    /// indicates its key was explicitly removed via [`Command::env_clear`]. The associated key for
+    /// indicates its key was explicitly removed via [`Command::env_remove`]. The associated key for
     /// the [`None`] value will no longer inherit from its parent process.
     ///
     /// An empty iterator can indicate that no explicit mappings were added or that
