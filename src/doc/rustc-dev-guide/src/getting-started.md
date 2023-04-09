@@ -24,8 +24,10 @@ chapter on how to build and run the compiler](./building/how-to-build-and-run.md
 If you have questions, please make a post on the [Rust Zulip server][rust-zulip] or
 [internals.rust-lang.org][internals]. If you are contributing to Rustup, be aware they are not on
 Zulip - you can ask questions in `#wg-rustup` [on Discord][rust-discord].
-See [the Community page][community] on the official website for more resources.
+See the [list of teams and working groups][governance] and [the Community page][community] on the
+official website for more resources.
 
+[governance]: https://www.rust-lang.org/governance
 [community]: https://www.rust-lang.org/community
 
 As a reminder, all contributors are expected to follow our [Code of Conduct][coc].
