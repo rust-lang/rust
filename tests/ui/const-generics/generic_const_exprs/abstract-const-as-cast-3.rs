@@ -13,7 +13,7 @@ where
     EvaluatableU128<{N as u128}>:, {
     fn assert_impl<T: Trait>() {}
 
-    // errors are bad but seems to be pre-existing issue #86198
+    // errors are bad but seems to be preexisting issue #86198
     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as u128 }>>();
     //~^ Error: mismatched types
     //~^^ Error: unconstrained generic constant
@@ -31,7 +31,7 @@ where
     EvaluatableU128<{N as _}>:, {
     fn assert_impl<T: Trait>() {}
 
-    // errors are bad but seems to be pre-existing issue #86198
+    // errors are bad but seems to be preexisting issue #86198
     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as u128 }>>();
     //~^ Error: mismatched types
     //~^^ Error: unconstrained generic constant

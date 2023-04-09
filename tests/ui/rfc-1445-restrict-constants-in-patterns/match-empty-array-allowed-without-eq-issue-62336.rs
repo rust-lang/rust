@@ -1,4 +1,4 @@
-// Pre-existing behavior has been to reject patterns with consts
+// Preexisting behavior has been to reject patterns with consts
 // denoting non-empty arrays of non-`Eq` types, but *accept* empty
 // arrays of such types.
 //
