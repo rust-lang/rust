@@ -45,3 +45,13 @@ ty_utils_control_flow_not_supported = control flow is not supported in generic c
 ty_utils_inline_asm_not_supported = assembly is not supported in generic constants
 
 ty_utils_operation_not_supported = unsupported operation in generic constants
+
+ty_utils_unexpected_fnptr_associated_item = `FnPtr` trait with unexpected associated item
+
+ty_utils_zero_length_simd_type = monomorphising SIMD type `{$ty}` of zero length
+
+ty_utils_multiple_array_fields_simd_type = monomorphising SIMD type `{$ty}` with more than one array field
+
+ty_utils_oversized_simd_type = monomorphising SIMD type `{$ty}` of length greater than {$max_lanes}
+
+ty_utils_non_primative_simd_type = monomorphising SIMD type `{$ty}` with a non-primitive-scalar (integer/float/pointer) element type `{$e_ty}`
