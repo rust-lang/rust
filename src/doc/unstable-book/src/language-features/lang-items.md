@@ -16,17 +16,25 @@ and one for deallocation. A freestanding program that uses the `Box`
 sugar for dynamic allocations via `malloc` and `free`:
 
 ```rust,ignore (libc-is-finicky)
-#![feature(lang_items, box_syntax, start, libc, core_intrinsics, rustc_private)]
+#![feature(lang_items, start, libc, core_intrinsics, rustc_private, rustc_attrs)]
 #![no_std]
 use core::intrinsics;
 use core::panic::PanicInfo;
+use core::ptr::NonNull;
 
 extern crate libc;
 
-struct Unique<T>(*mut T);
+struct Unique<T>(NonNull<T>);
 
 #[lang = "owned_box"]
 pub struct Box<T>(Unique<T>);
+
+impl<T> Box<T> {
+    pub fn new(x: T) -> Self {
+        #[rustc_box]
+        Box::new(x)
+    }
+}
 
 #[lang = "exchange_malloc"]
 unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
@@ -47,13 +55,13 @@ unsafe fn box_free<T: ?Sized>(ptr: *mut T) {
 
 #[start]
 fn main(_argc: isize, _argv: *const *const u8) -> isize {
-    let _x = box 1;
+    let _x = Box::new(1);
 
     0
 }
 
 #[lang = "eh_personality"] extern fn rust_eh_personality() {}
-#[lang = "panic_impl"] extern fn rust_begin_panic(info: &PanicInfo) -> ! { unsafe { intrinsics::abort() } }
+#[lang = "panic_impl"] extern fn rust_begin_panic(_info: &PanicInfo) -> ! { intrinsics::abort() }
 #[no_mangle] pub extern fn rust_eh_register_frames () {}
 #[no_mangle] pub extern fn rust_eh_unregister_frames () {}
 ```
