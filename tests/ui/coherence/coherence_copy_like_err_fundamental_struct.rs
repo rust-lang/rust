@@ -3,7 +3,7 @@
 
 // aux-build:coherence_copy_like_lib.rs
 // build-pass (FIXME(62277): could be check-pass?)
-// skip-codgen
+// skip-codegen
 #![allow(dead_code)]
 
 extern crate coherence_copy_like_lib as lib;
