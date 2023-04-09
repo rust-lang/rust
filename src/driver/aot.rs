@@ -407,7 +407,7 @@ pub(crate) fn run_aot(
                                     backend_config.clone(),
                                     global_asm_config.clone(),
                                     cgu.name(),
-                                    concurrency_limiter.acquire(),
+                                    concurrency_limiter.acquire(tcx.sess.diagnostic()),
                                 ),
                                 module_codegen,
                                 Some(rustc_middle::dep_graph::hash_result),
