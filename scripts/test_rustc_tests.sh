@@ -29,11 +29,21 @@ rm tests/ui/parser/unclosed-delimiter-in-dep.rs # submodule contains //~ERROR
 # requires stack unwinding
 rm tests/incremental/change_crate_dep_kind.rs
 rm tests/incremental/issue-80691-bad-eval-cache.rs # -Cpanic=abort causes abort instead of exit(101)
+rm -r tests/run-make/c-unwind-abi-catch-lib-panic
+rm -r tests/run-make/c-unwind-abi-catch-panic
+rm -r tests/run-make/debug-assertions
+rm -r tests/run-make/foreign-double-unwind
+rm -r tests/run-make/foreign-exceptions
+rm -r tests/run-make/foreign-rust-exceptions
+rm -r tests/run-make/libtest-json
+rm -r tests/run-make/static-unwinding
 
 # requires compiling with -Cpanic=unwind
 rm -r tests/ui/macros/rfc-2011-nicer-assert-messages/
 rm -r tests/run-make/test-benches
 rm tests/ui/test-attrs/test-type.rs
+rm -r tests/run-make/const_fn_mir
+rm -r tests/run-make/intrinsic-unreachable
 
 # vendor intrinsics
 rm tests/ui/sse2.rs # cpuid not supported, so sse2 not detected
@@ -49,6 +59,7 @@ rm tests/incremental/hashes/statics.rs # same
 # variadic arguments
 rm tests/ui/abi/mir/mir_codegen_calls_variadic.rs # requires float varargs
 rm tests/ui/abi/variadic-ffi.rs # requires callee side vararg support
+rm -r tests/run-make/c-link-to-rust-va-list-fn # requires callee side vararg support
 
 # unsized locals
 rm -r tests/run-pass-valgrind/unsized-locals
@@ -59,6 +70,19 @@ rm tests/ui/target-feature/missing-plusminus.rs # error not implemented
 rm tests/ui/fn/dyn-fn-alignment.rs # wants a 256 byte alignment
 rm -r tests/run-make/emit-named-files # requires full --emit support
 rm -r tests/run-make/repr128-dwarf # debuginfo test
+rm -r tests/run-make/split-debuginfo # same
+rm -r tests/run-make/symbols-include-type-name # --emit=asm not supported
+rm -r tests/run-make/target-specs # i686 not supported by Cranelift
+rm -r tests/run-make/mismatching-target-triples # same
+rm -r tests/run-make/use-extern-for-plugins # same
+
+# requires LTO
+rm -r tests/run-make/cdylib
+rm -r tests/run-make/issue-14500
+rm -r tests/run-make/issue-64153
+rm -r tests/run-make/codegen-options-parsing
+rm -r tests/run-make/lto-*
+rm -r tests/run-make/reproducible-build-2
 
 # optimization tests
 # ==================
@@ -70,7 +94,14 @@ rm -r tests/run-make/fmt-write-bloat/ # tests an optimization
 # backend specific tests
 # ======================
 rm tests/incremental/thinlto/cgu_invalidated_when_import_{added,removed}.rs # requires LLVM
+rm -r tests/run-make/cross-lang-lto # same
+rm -r tests/run-make/issue-7349 # same
+rm -r tests/run-make/sepcomp-inlining # same
+rm -r tests/run-make/sepcomp-separate # same
+rm -r tests/run-make/sepcomp-cci-copies # same
+rm -r tests/run-make/volatile-intrinsics # same
 rm tests/ui/abi/stack-protector.rs # requires stack protector support
+rm -r tests/run-make/emit-stack-sizes # requires support for -Z emit-stack-sizes
 
 # giving different but possibly correct results
 # =============================================
@@ -102,6 +133,10 @@ rm -r tests/run-make/emit-shared-files # requires the rustdoc executable in dist
 rm -r tests/run-make/unstable-flag-required # same
 rm -r tests/run-make/rustdoc-* # same
 rm -r tests/run-make/issue-88756-default-output # same
+rm -r tests/run-make/doctests-keep-binaries # same
+rm -r tests/run-make/exit-code # same
+rm -r tests/run-make/issue-22131 # same
+rm -r tests/run-make/issue-38237 # same
 rm -r tests/run-make/remap-path-prefix-dwarf # requires llvm-dwarfdump
 rm -r tests/ui/consts/missing_span_in_backtrace.rs # expects sysroot source to be elsewhere
 
@@ -113,6 +148,12 @@ rm tests/incremental/spike-neg2.rs # same
 rm tests/ui/simd/intrinsic/generic-reduction-pass.rs # simd_reduce_add_unordered doesn't accept an accumulator for integer vectors
 
 rm tests/ui/simd/simd-bitmask.rs # crash
+
+rm -r tests/run-make/issue-51671 # wrong filename given in case of --emit=obj
+rm -r tests/run-make/issue-30063 # same
+rm -r tests/run-make/multiple-emits # same
+rm -r tests/run-make/output-type-permutations # same
+rm -r tests/run-make/used # same
 
 # bugs in the test suite
 # ======================
