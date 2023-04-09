@@ -125,6 +125,8 @@ pub trait TypeErrCtxtExt<'tcx> {
             + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
         <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug;
 
+    fn report_overflow_no_abort(&self, obligation: PredicateObligation<'tcx>) -> ErrorGuaranteed;
+
     fn report_fulfillment_errors(&self, errors: &[FulfillmentError<'tcx>]) -> ErrorGuaranteed;
 
     fn report_overflow_obligation<T>(
@@ -600,6 +602,14 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             cycle.iter().max_by_key(|p| p.recursion_depth).unwrap(),
             false,
         );
+    }
+
+    fn report_overflow_no_abort(&self, obligation: PredicateObligation<'tcx>) -> ErrorGuaranteed {
+        let obligation = self.resolve_vars_if_possible(obligation);
+        let mut err = self.build_overflow_error(&obligation.predicate, obligation.cause.span, true);
+        self.note_obligation_cause(&mut err, &obligation);
+        self.point_at_returns_when_relevant(&mut err, &obligation);
+        err.emit()
     }
 
     fn report_selection_error(
@@ -1658,8 +1668,11 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             FulfillmentErrorCode::CodeProjectionError(ref e) => {
                 self.report_projection_error(&error.obligation, e);
             }
-            FulfillmentErrorCode::CodeAmbiguity => {
+            FulfillmentErrorCode::CodeAmbiguity { overflow: false } => {
                 self.maybe_report_ambiguity(&error.obligation);
+            }
+            FulfillmentErrorCode::CodeAmbiguity { overflow: true } => {
+                self.report_overflow_no_abort(error.obligation.clone());
             }
             FulfillmentErrorCode::CodeSubtypeError(ref expected_found, ref err) => {
                 self.report_mismatched_types(

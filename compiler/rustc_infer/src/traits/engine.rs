@@ -38,7 +38,7 @@ pub trait TraitEngine<'tcx>: 'tcx {
 
     fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>>;
 
-    fn collect_remaining_errors(&mut self) -> Vec<FulfillmentError<'tcx>>;
+    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>>;
 
     fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>>;
 
@@ -78,6 +78,6 @@ impl<'tcx, T: ?Sized + TraitEngine<'tcx>> TraitEngineExt<'tcx> for T {
             return errors;
         }
 
-        self.collect_remaining_errors()
+        self.collect_remaining_errors(infcx)
     }
 }
