@@ -1,11 +1,11 @@
 // run-pass
 
 #![allow(unused_imports)]
-#![feature(rustc_private)]
+#![no_std]
 
-extern crate libc;
-use libc::c_void;
+extern crate std;
+use std::ffi::c_void;
 
 pub fn main() {
-    println!("Hello world!");
+    std::println!("Hello world!");
 }

@@ -1,4 +1,5 @@
 // run-pass
+// ignore-wasm (needs file descriptors and env variables)
 
 use std::env;
 use std::fs::File;
