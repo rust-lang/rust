@@ -1,11 +1,11 @@
 error: line/column mismatch: (0, 35) != (21, 35)
-  --> $DIR/span-absolute-posititions.rs:21:35
+  --> $DIR/span-absolute-positions.rs:21:35
    |
 LL | assert_span_pos::assert_span_pos!(0, 35);
    |                                   ^
 
 error: line/column mismatch: (22, 0) != (22, 35)
-  --> $DIR/span-absolute-posititions.rs:22:35
+  --> $DIR/span-absolute-positions.rs:22:35
    |
 LL | assert_span_pos::assert_span_pos!(22, 0);
    |                                   ^^
