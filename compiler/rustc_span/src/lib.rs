@@ -2051,13 +2051,13 @@ pub type FileLinesResult = Result<FileLines, SpanLinesError>;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum SpanLinesError {
-    DistinctSources(DistinctSources),
+    DistinctSources(Box<DistinctSources>),
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum SpanSnippetError {
     IllFormedSpan(Span),
-    DistinctSources(DistinctSources),
+    DistinctSources(Box<DistinctSources>),
     MalformedForSourcemap(MalformedSourceMapPositions),
     SourceNotAvailable { filename: FileName },
 }

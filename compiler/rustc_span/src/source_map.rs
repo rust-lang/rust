@@ -542,10 +542,10 @@ impl SourceMap {
         let hi = self.lookup_char_pos(sp.hi());
         trace!(?hi);
         if lo.file.start_pos != hi.file.start_pos {
-            return Err(SpanLinesError::DistinctSources(DistinctSources {
+            return Err(SpanLinesError::DistinctSources(Box::new(DistinctSources {
                 begin: (lo.file.name.clone(), lo.file.start_pos),
                 end: (hi.file.name.clone(), hi.file.start_pos),
-            }));
+            })));
         }
         Ok((lo, hi))
     }
@@ -603,10 +603,10 @@ impl SourceMap {
         let local_end = self.lookup_byte_offset(sp.hi());
 
         if local_begin.sf.start_pos != local_end.sf.start_pos {
-            Err(SpanSnippetError::DistinctSources(DistinctSources {
+            Err(SpanSnippetError::DistinctSources(Box::new(DistinctSources {
                 begin: (local_begin.sf.name.clone(), local_begin.sf.start_pos),
                 end: (local_end.sf.name.clone(), local_end.sf.start_pos),
-            }))
+            })))
         } else {
             self.ensure_source_file_source_present(local_begin.sf.clone());
 

@@ -762,14 +762,14 @@ impl<'a> CrateLocator<'a> {
     }
 
     pub(crate) fn into_error(self, root: Option<CratePaths>) -> CrateError {
-        CrateError::LocatorCombined(CombinedLocatorError {
+        CrateError::LocatorCombined(Box::new(CombinedLocatorError {
             crate_name: self.crate_name,
             root,
             triple: self.triple,
             dll_prefix: self.target.dll_prefix.to_string(),
             dll_suffix: self.target.dll_suffix.to_string(),
             crate_rejections: self.crate_rejections,
-        })
+        }))
     }
 }
 
@@ -958,7 +958,7 @@ pub(crate) enum CrateError {
     StableCrateIdCollision(Symbol, Symbol),
     DlOpen(String),
     DlSym(String),
-    LocatorCombined(CombinedLocatorError),
+    LocatorCombined(Box<CombinedLocatorError>),
     NonDylibPlugin(Symbol),
 }
 
