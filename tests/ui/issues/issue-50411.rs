@@ -1,6 +1,6 @@
 // Regression test for #50411: the MIR inliner was causing problems
 // here because it would inline promoted code (which had already had
-// elaborate-drops invoked on it) and then try to elaboate drops a
+// elaborate-drops invoked on it) and then try to elaborate drops a
 // second time. Uncool.
 
 // compile-flags:-Zmir-opt-level=4
