@@ -15,7 +15,7 @@ fn main() {
 
     //
     // Requirements:
-    // p.x -> MutBoorrow
+    // p.x -> MutBorrow
     // p   -> ImmBorrow
     //
     // Requirements met when p is captured via MutBorrow
