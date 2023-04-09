@@ -541,7 +541,18 @@ impl Config {
             None
         };
 
-        self.download_file(&format!("{base_url}/{url}"), &tarball, "");
+        let mut help_on_error = "";
+        if destination == "ci-rustc" {
+            help_on_error = "error: failed to download pre-built rustc from CI
+
+note: old builds get deleted after a certain time
+help: if trying to compile an old commit of rustc, disable `download-rustc` in config.toml:
+
+[rust]
+download-rustc = false
+";
+        }
+        self.download_file(&format!("{base_url}/{url}"), &tarball, help_on_error);
         if let Some(sha256) = checksum {
             if !self.verify(&tarball, sha256) {
                 panic!("failed to verify {}", tarball.display());
