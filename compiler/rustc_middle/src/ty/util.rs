@@ -642,7 +642,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// Return the set of types that should be taken into accound when checking
+    /// Return the set of types that should be taken into account when checking
     /// trait bounds on a generator's internal state.
     pub fn generator_hidden_types(
         self,
