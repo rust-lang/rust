@@ -1,5 +1,5 @@
 error: couldn't read the file
-  --> $DIR/extented-attribute-macro-error.rs:3:10
+  --> $DIR/extended-attribute-macro-error.rs:3:10
    |
 LL | #![doc = include_str!("../not_existing_file.md")]
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
