@@ -122,9 +122,9 @@ pub(crate) struct SharedContext<'tcx> {
     /// the crate.
     redirections: Option<RefCell<FxHashMap<String, String>>>,
 
-    /// Correspondance map used to link types used in the source code pages to allow to click on
+    /// Correspondence map used to link types used in the source code pages to allow to click on
     /// links to jump to the type's definition.
-    pub(crate) span_correspondance_map: FxHashMap<rustc_span::Span, LinkFromSrc>,
+    pub(crate) span_correspondence_map: FxHashMap<rustc_span::Span, LinkFromSrc>,
     /// The [`Cache`] used during rendering.
     pub(crate) cache: Cache,
 
@@ -531,7 +531,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             errors: receiver,
             redirections: if generate_redirect_map { Some(Default::default()) } else { None },
             show_type_layout,
-            span_correspondance_map: matches,
+            span_correspondence_map: matches,
             cache,
             call_locations,
         };
