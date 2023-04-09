@@ -115,7 +115,7 @@ impl hash::Hash for Allocation {
             init_mask,
             align,
             mutability,
-            extra: _, // don't bother hashing ()
+            extra: (), // don't bother hashing ()
         } = self;
 
         // Partially hash the `bytes` buffer when it is large. To limit collisions with common
