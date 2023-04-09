@@ -2,7 +2,7 @@
 
 // rust-lang/rust#55552: The strategy pnkfelix landed in PR #55274
 // (for ensuring that NLL respects user-provided lifetime annotations)
-// did not handle the case where the ascribed type has some expliit
+// did not handle the case where the ascribed type has some explicit
 // wildcards (`_`) mixed in, and it caused an internal compiler error
 // (ICE).
 //
