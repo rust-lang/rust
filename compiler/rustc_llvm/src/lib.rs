@@ -30,7 +30,7 @@ pub unsafe extern "C" fn LLVMRustStringWriteImpl(
     ptr: *const c_char,
     size: size_t,
 ) {
-    let slice = slice::from_raw_parts(ptr as *const u8, size as usize);
+    let slice = slice::from_raw_parts(ptr as *const u8, size);
 
     sr.bytes.borrow_mut().extend_from_slice(slice);
 }

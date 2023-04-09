@@ -686,7 +686,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     fn bclose_maybe_open(&mut self, span: rustc_span::Span, empty: bool, close_box: bool) {
         let has_comment = self.maybe_print_comment(span.hi());
         if !empty || has_comment {
-            self.break_offset_if_not_bol(1, -(INDENT_UNIT as isize));
+            self.break_offset_if_not_bol(1, -INDENT_UNIT);
         }
         self.word("}");
         if close_box {
