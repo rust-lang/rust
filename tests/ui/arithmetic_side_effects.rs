@@ -1,3 +1,5 @@
+// aux-build:proc_macro_derive.rs
+
 #![allow(
     clippy::assign_op_pattern,
     clippy::erasing_op,
@@ -11,6 +13,8 @@
 #![feature(const_mut_refs, inline_const, saturating_int_impl)]
 #![warn(clippy::arithmetic_side_effects)]
 
+extern crate proc_macro_derive;
+
 use core::num::{Saturating, Wrapping};
 
 const ONE: i32 = 1;
@@ -18,6 +22,9 @@ const ZERO: i32 = 0;
 
 #[derive(Clone, Copy)]
 pub struct Custom;
+
+#[derive(proc_macro_derive::ShadowDerive)]
+pub struct Nothing;
 
 macro_rules! impl_arith {
     ( $( $_trait:ident, $lhs:ty, $rhs:ty, $method:ident; )* ) => {

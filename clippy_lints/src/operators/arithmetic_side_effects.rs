@@ -1,4 +1,5 @@
 use super::ARITHMETIC_SIDE_EFFECTS;
+use clippy_utils::is_from_proc_macro;
 use clippy_utils::{
     consts::{constant, constant_simple, Constant},
     diagnostics::span_lint,
@@ -206,8 +207,9 @@ impl ArithmeticSideEffects {
         self.issue_lint(cx, expr);
     }
 
-    fn should_skip_expr(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
+    fn should_skip_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr<'tcx>) -> bool {
         is_lint_allowed(cx, ARITHMETIC_SIDE_EFFECTS, expr.hir_id)
+            || is_from_proc_macro(cx, expr)
             || self.expr_span.is_some()
             || self.const_span.map_or(false, |sp| sp.contains(expr.span))
     }
