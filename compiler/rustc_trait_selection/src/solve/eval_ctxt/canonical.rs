@@ -155,8 +155,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     }
                 }
                 GenericArgKind::Const(c) => {
-                    if let ty::ConstKind::Bound(debrujin, b) = c.kind() {
-                        assert_eq!(debrujin, ty::INNERMOST);
+                    if let ty::ConstKind::Bound(debruijn, b) = c.kind() {
+                        assert_eq!(debruijn, ty::INNERMOST);
                         opt_values[b.index()] = Some(*original_value);
                     }
                 }
