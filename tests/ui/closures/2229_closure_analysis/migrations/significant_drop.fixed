@@ -13,7 +13,7 @@ impl Drop for Foo {
 }
 
 #[derive(Debug)]
-struct ConstainsDropField(Foo, #[allow(unused_tuple_struct_fields)] Foo);
+struct ContainsDropField(Foo, #[allow(unused_tuple_struct_fields)] Foo);
 
 // `t` needs Drop because one of its elements needs drop,
 // therefore precise capture might affect drop ordering
@@ -89,7 +89,7 @@ fn test3_only_by_value_need_migration() {
 //
 // If this path isn't captured we need to migrate for the root variable.
 fn test4_type_contains_drop_need_migration() {
-    let t = ConstainsDropField(Foo(0), Foo(0));
+    let t = ContainsDropField(Foo(0), Foo(0));
 
     let c = || {
         let _ = &t;

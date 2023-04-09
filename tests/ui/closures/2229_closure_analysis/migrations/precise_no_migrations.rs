@@ -10,7 +10,7 @@ impl Drop for Foo {
     }
 }
 
-struct ConstainsDropField(Foo, Foo);
+struct ContainsDropField(Foo, Foo);
 
 // Test that if all paths starting at root variable that implement Drop are captured
 // then it doesn't trigger the lint.
@@ -29,7 +29,7 @@ fn test_precise_analysis_simple_1() {
 // Test that if all paths starting at root variable that implement Drop are captured
 // then it doesn't trigger the lint.
 fn test_precise_analysis_simple_2() {
-    let t = ConstainsDropField(Foo(10), Foo(20));
+    let t = ContainsDropField(Foo(10), Foo(20));
 
     let c = || {
         let _t = t.0;
@@ -50,7 +50,7 @@ impl Drop for ContainsAndImplsDrop {
 // If a path isn't directly captured but requires Drop, then this tests that migrations aren't
 // needed if the a parent to that path is captured.
 fn test_precise_analysis_parent_captured_1() {
-    let t = ConstainsDropField(Foo(10), Foo(20));
+    let t = ContainsDropField(Foo(10), Foo(20));
 
     let c = || {
         let _t = t;

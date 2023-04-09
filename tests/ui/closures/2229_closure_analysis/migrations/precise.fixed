@@ -11,11 +11,11 @@ impl Drop for Foo {
     }
 }
 
-struct ConstainsDropField(Foo, Foo);
+struct ContainsDropField(Foo, Foo);
 
 // Test that lint is triggered if a path that implements Drop is not captured by move
 fn test_precise_analysis_drop_paths_not_captured_by_move() {
-    let t = ConstainsDropField(Foo(10), Foo(20));
+    let t = ContainsDropField(Foo(10), Foo(20));
 
     let c = || {
         let _ = &t;
