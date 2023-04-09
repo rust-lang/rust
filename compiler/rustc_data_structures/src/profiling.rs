@@ -778,7 +778,7 @@ pub fn print_time_passes_entry(
                 "rss_start": start_rss,
                 "rss_end": end_rss,
             });
-            eprintln!("time: {}", json);
+            eprintln!("time: {json}");
             return;
         }
         TimePassesFormat::Text => (),
