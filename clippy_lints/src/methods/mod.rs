@@ -3193,7 +3193,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `.drain(..)` for the sole purpose of clearing a `Vec`.
+    /// Checks for usage of `.drain(..)` for the sole purpose of clearing a container.
     ///
     /// ### Why is this bad?
     /// This creates an unnecessary iterator that is dropped immediately.
@@ -3213,7 +3213,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.69.0"]
     pub CLEAR_WITH_DRAIN,
     nursery,
-    "calling `drain` in order to `clear` a `Vec`"
+    "calling `drain` in order to `clear` a container"
 }
 
 pub struct Methods {
