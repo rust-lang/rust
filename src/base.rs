@@ -335,7 +335,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
             TerminatorKind::Return => {
                 crate::abi::codegen_return(fx);
             }
-            TerminatorKind::Assert { cond, expected, msg, target, cleanup: _ } => {
+            TerminatorKind::Assert { cond, expected, msg, target, unwind: _ } => {
                 if !fx.tcx.sess.overflow_checks() && msg.is_optional_overflow_check() {
                     let target = fx.get_block(*target);
                     fx.bcx.ins().jump(target, &[]);
@@ -366,6 +366,18 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                             fx,
                             rustc_hir::LangItem::PanicBoundsCheck,
                             &[index, len, location],
+                            source_info.span,
+                        );
+                    }
+                    AssertKind::MisalignedPointerDereference { ref required, ref found } => {
+                        let required = codegen_operand(fx, required).load_scalar(fx);
+                        let found = codegen_operand(fx, found).load_scalar(fx);
+                        let location = fx.get_caller_location(source_info).load_scalar(fx);
+
+                        codegen_panic_inner(
+                            fx,
+                            rustc_hir::LangItem::PanicBoundsCheck,
+                            &[required, found, location],
                             source_info.span,
                         );
                     }
@@ -428,7 +440,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 destination,
                 target,
                 fn_span,
-                cleanup: _,
+                unwind: _,
                 from_hir_call: _,
             } => {
                 fx.tcx.prof.generic_activity("codegen call").run(|| {
@@ -448,7 +460,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 options,
                 destination,
                 line_spans: _,
-                cleanup: _,
+                unwind: _,
             } => {
                 if options.contains(InlineAsmOptions::MAY_UNWIND) {
                     fx.tcx.sess.span_fatal(
@@ -466,7 +478,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                     *destination,
                 );
             }
-            TerminatorKind::Abort => {
+            TerminatorKind::Terminate => {
                 codegen_panic_cannot_unwind(fx, source_info);
             }
             TerminatorKind::Resume => {
@@ -784,14 +796,15 @@ fn codegen_stmt<'tcx>(
                     if active_field_index.is_some() {
                         assert_eq!(operands.len(), 1);
                     }
-                    for (i, operand) in operands.iter().enumerate() {
+                    for (i, operand) in operands.iter_enumerated() {
                         let operand = codegen_operand(fx, operand);
                         let field_index = active_field_index.unwrap_or(i);
                         let to = if let mir::AggregateKind::Array(_) = **kind {
-                            let index = fx.bcx.ins().iconst(fx.pointer_type, field_index as i64);
+                            let array_index = i64::from(field_index.as_u32());
+                            let index = fx.bcx.ins().iconst(fx.pointer_type, array_index);
                             variant_dest.place_index(fx, index)
                         } else {
-                            variant_dest.place_field(fx, mir::Field::new(field_index))
+                            variant_dest.place_field(fx, field_index)
                         };
                         to.write_cvalue(fx, operand);
                     }

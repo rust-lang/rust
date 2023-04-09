@@ -551,7 +551,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                     TerminatorKind::Goto { .. }
                     | TerminatorKind::SwitchInt { .. }
                     | TerminatorKind::Resume
-                    | TerminatorKind::Abort
+                    | TerminatorKind::Terminate
                     | TerminatorKind::Return
                     | TerminatorKind::Unreachable
                     | TerminatorKind::Drop { .. }

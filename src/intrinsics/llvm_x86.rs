@@ -179,8 +179,8 @@ fn llvm_add_sub<'tcx>(
 
     // c + carry -> c + first intermediate carry or borrow respectively
     let int0 = crate::num::codegen_checked_int_binop(fx, bin_op, a, b);
-    let c = int0.value_field(fx, mir::Field::new(0));
-    let cb0 = int0.value_field(fx, mir::Field::new(1)).load_scalar(fx);
+    let c = int0.value_field(fx, FieldIdx::new(0));
+    let cb0 = int0.value_field(fx, FieldIdx::new(1)).load_scalar(fx);
 
     // c + carry -> c + second intermediate carry or borrow respectively
     let cb_in_as_u64 = fx.bcx.ins().uextend(types::I64, cb_in);
