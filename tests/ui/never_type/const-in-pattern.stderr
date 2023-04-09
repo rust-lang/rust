@@ -1,0 +1,20 @@
+warning: the feature `inline_const_pat` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/const-in-pattern.rs:5:12
+   |
+LL | #![feature(inline_const_pat)]
+   |            ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #76001 <https://github.com/rust-lang/rust/issues/76001> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0080]: evaluation of `foo::<T>::{constant#0}` failed
+  --> $DIR/const-in-pattern.rs:11:21
+   |
+LL |         Err(const { panic!() }) => panic!(),
+   |                     ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/const-in-pattern.rs:11:21
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0080`.
