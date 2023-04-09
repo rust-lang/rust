@@ -176,7 +176,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     // As an optimization we sometimes avoid creating a new inference variable here.
                     //
                     // All new inference variables we create start out in the current universe of the caller.
-                    // This is conceptionally wrong as these inference variables would be able to name
+                    // This is conceptually wrong as these inference variables would be able to name
                     // more placeholders then they should be able to. However the inference variables have
                     // to "come from somewhere", so by equating them with the original values of the caller
                     // later on, we pull them down into their correct universe again.
