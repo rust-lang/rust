@@ -197,7 +197,7 @@ impl<'tcx> fmt::Debug for AliasTy<'tcx> {
 // Atomic structs
 //
 // For things that don't carry any arena-allocated data (and are
-// copy...), just add them to one of these lists as appropriat.
+// copy...), just add them to one of these lists as appropriate.
 
 // For things for which the type library provides traversal implementations
 // for all Interners, we only need to provide a Lift implementation:
