@@ -696,7 +696,7 @@ impl Step for Rustc {
         ));
 
         let mut cargo = builder.cargo(compiler, Mode::Rustc, SourceType::InTree, target, "build");
-        rustc_cargo(builder, &mut cargo, target);
+        rustc_cargo(builder, &mut cargo, target, compiler.stage);
 
         if builder.config.rust_profile_use.is_some()
             && builder.config.rust_profile_generate.is_some()
@@ -813,16 +813,21 @@ impl Step for Rustc {
     }
 }
 
-pub fn rustc_cargo(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
+pub fn rustc_cargo(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection, stage: u32) {
     cargo
         .arg("--features")
         .arg(builder.rustc_features(builder.kind))
         .arg("--manifest-path")
         .arg(builder.src.join("compiler/rustc/Cargo.toml"));
-    rustc_cargo_env(builder, cargo, target);
+    rustc_cargo_env(builder, cargo, target, stage);
 }
 
-pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
+pub fn rustc_cargo_env(
+    builder: &Builder<'_>,
+    cargo: &mut Cargo,
+    target: TargetSelection,
+    stage: u32,
+) {
     // Set some configuration variables picked up by build scripts and
     // the compiler alike
     cargo
@@ -867,16 +872,18 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
         cargo.env("RUSTC_VERIFY_LLVM_IR", "1");
     }
 
-    //
     // Note that this is disabled if LLVM itself is disabled or we're in a check
     // build. If we are in a check build we still go ahead here presuming we've
     // detected that LLVM is already built and good to go which helps prevent
     // busting caches (e.g. like #71152).
-    if builder.config.llvm_enabled()
-        && (builder.kind != Kind::Check
-            || crate::llvm::prebuilt_llvm_config(builder, target).is_ok())
-    {
-        rustc_llvm_env(builder, cargo, target)
+    if builder.config.llvm_enabled() {
+        let building_is_expensive = crate::llvm::prebuilt_llvm_config(builder, target).is_err();
+        // `top_stage == stage` might be false for `check --stage 1`, if we are building the stage 1 compiler
+        let can_skip_build = builder.kind == Kind::Check && builder.top_stage == stage;
+        let should_skip_build = building_is_expensive && can_skip_build;
+        if !should_skip_build {
+            rustc_llvm_env(builder, cargo, target)
+        }
     }
 }
 
@@ -933,13 +940,8 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
         && !target.contains("apple")
         && !target.contains("solaris")
     {
-        let file = compiler_file(
-            builder,
-            builder.cxx(target).unwrap(),
-            target,
-            CLang::Cxx,
-            "libstdc++.a",
-        );
+        let file =
+            compiler_file(builder, builder.cxx(target).unwrap(), target, CLang::Cxx, "libstdc++.a");
         cargo.env("LLVM_STATIC_STDCPP", file);
     }
     if builder.llvm_link_shared() {
@@ -1054,7 +1056,7 @@ impl Step for CodegenBackend {
         cargo
             .arg("--manifest-path")
             .arg(builder.src.join(format!("compiler/rustc_codegen_{}/Cargo.toml", backend)));
-        rustc_cargo_env(builder, &mut cargo, target);
+        rustc_cargo_env(builder, &mut cargo, target, compiler.stage);
 
         let tmp_stamp = out_dir.join(".tmp.stamp");
 
