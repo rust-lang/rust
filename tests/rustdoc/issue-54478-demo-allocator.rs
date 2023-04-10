@@ -8,7 +8,7 @@
 // `-C prefer-dynamic` (and had done so for years, for reasons we did
 // not document at that time).
 //
-// Rather than try to revise the visbility semanics, we instead
+// Rather than try to revise the visbility semantics, we instead
 // decided to change `rustdoc` to behave more like the compiler's
 // default setting, by leaving off `-C prefer-dynamic`.
 
