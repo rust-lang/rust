@@ -1,4 +1,4 @@
-// Verify that we do not ICE when the user uses a multubyte ampersand.
+// Verify that we do not ICE when the user uses a multibyte ampersand.
 
 fn f(_: &＆()) -> &() { todo!() }
 //~^ ERROR unknown start of token: \u{ff06}
