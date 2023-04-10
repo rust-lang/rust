@@ -661,19 +661,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Find all the requirements that come from a local `impl` block.
             let mut skip_list: FxHashSet<_> = Default::default();
             let mut spanned_predicates = FxHashMap::default();
-            for (p, parent_p, impl_def_id, cause) in unsatisfied_predicates
-                .iter()
-                .filter_map(|(p, parent, c)| c.as_ref().map(|c| (p, parent, c)))
-                .filter_map(|(p, parent, c)| match c.code() {
-                    ObligationCauseCode::ImplDerivedObligation(data)
-                        if matches!(p.kind().skip_binder(), ty::PredicateKind::Clause(_)) =>
-                    {
-                        Some((p, parent, data.impl_or_alias_def_id, data))
+            for (p, parent_p, cause) in unsatisfied_predicates {
+                // Extract the predicate span and parent def id of the cause,
+                // if we have one.
+                let (item_def_id, cause_span) = match cause.as_ref().map(|cause| cause.code()) {
+                    Some(ObligationCauseCode::ImplDerivedObligation(data)) => {
+                        (data.impl_or_alias_def_id, data.span)
                     }
-                    _ => None,
-                })
-            {
-                match self.tcx.hir().get_if_local(impl_def_id) {
+                    Some(
+                        ObligationCauseCode::ExprBindingObligation(def_id, span, _, _)
+                        | ObligationCauseCode::BindingObligation(def_id, span),
+                    ) => (*def_id, *span),
+                    _ => continue,
+                };
+
+                // Don't point out the span of `WellFormed` predicates.
+                if !matches!(p.kind().skip_binder(), ty::PredicateKind::Clause(_)) {
+                    continue;
+                };
+
+                match self.tcx.hir().get_if_local(item_def_id) {
                     // Unmet obligation comes from a `derive` macro, point at it once to
                     // avoid multiple span labels pointing at the same place.
                     Some(Node::Item(hir::Item {
@@ -718,7 +725,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 }
                             });
                         for param in generics.params {
-                            if param.span == cause.span && sized_pred {
+                            if param.span == cause_span && sized_pred {
                                 let (sp, sugg) = match param.colon_span {
                                     Some(sp) => (sp.shrink_to_hi(), " ?Sized +"),
                                     None => (param.span.shrink_to_hi(), ": ?Sized"),
@@ -741,9 +748,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             (FxHashSet::default(), FxHashSet::default(), Vec::new())
                         });
                         entry.2.push(p);
-                        if cause.span != *item_span {
-                            entry.0.insert(cause.span);
-                            entry.1.insert((cause.span, "unsatisfied trait bound introduced here"));
+                        if cause_span != *item_span {
+                            entry.0.insert(cause_span);
+                            entry.1.insert((cause_span, "unsatisfied trait bound introduced here"));
                         } else {
                             if let Some(trait_ref) = of_trait {
                                 entry.0.insert(trait_ref.path.span);
@@ -775,9 +782,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let entry = entry.or_insert_with(|| {
                             (FxHashSet::default(), FxHashSet::default(), Vec::new())
                         });
-                        entry.0.insert(cause.span);
+                        entry.0.insert(cause_span);
                         entry.1.insert((ident.span, ""));
-                        entry.1.insert((cause.span, "unsatisfied trait bound introduced here"));
+                        entry.1.insert((cause_span, "unsatisfied trait bound introduced here"));
                         entry.2.push(p);
                     }
                     Some(node) => unreachable!("encountered `{node:?}`"),
