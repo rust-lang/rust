@@ -1,11 +1,11 @@
 // Test that we can do shifts by any integral type.
 
-struct Panolpy {
+struct Panoply {
     char: char,
     str: &'static str,
 }
 
-fn foo(p: &Panolpy) {
+fn foo(p: &Panoply) {
     22 >> p.char;
     //~^ ERROR E0277
 

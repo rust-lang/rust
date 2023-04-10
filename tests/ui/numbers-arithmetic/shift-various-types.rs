@@ -2,7 +2,7 @@
 // Test that we can do shifts by any integral type.
 
 
-struct Panolpy {
+struct Panoply {
     i8: i8,
     i16: i16,
     i32: i32,
@@ -16,7 +16,7 @@ struct Panolpy {
     usize: usize,
 }
 
-fn foo(p: &Panolpy) {
+fn foo(p: &Panoply) {
     assert_eq!(22 >> p.i8, 11);
     assert_eq!(22 >> p.i16, 11);
     assert_eq!(22 >> p.i32, 11);
@@ -31,7 +31,7 @@ fn foo(p: &Panolpy) {
 }
 
 fn main() {
-    let p = Panolpy {
+    let p = Panoply {
         i8: 1,
         i16: 1,
         i32: 1,

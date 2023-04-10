@@ -34,13 +34,13 @@ LL |     22 >> p.str;
              <&'a i128 as Shr<u16>>
            and 568 others
 
-error[E0277]: no implementation for `{integer} >> &Panolpy`
+error[E0277]: no implementation for `{integer} >> &Panoply`
   --> $DIR/shift-various-bad-types.rs:15:8
    |
 LL |     22 >> p;
-   |        ^^ no implementation for `{integer} >> &Panolpy`
+   |        ^^ no implementation for `{integer} >> &Panoply`
    |
-   = help: the trait `Shr<&Panolpy>` is not implemented for `{integer}`
+   = help: the trait `Shr<&Panoply>` is not implemented for `{integer}`
    = help: the following other types implement trait `Shr<Rhs>`:
              <&'a i128 as Shr<i128>>
              <&'a i128 as Shr<i16>>
