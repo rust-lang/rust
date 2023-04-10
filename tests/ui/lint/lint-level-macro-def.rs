@@ -1,4 +1,4 @@
-// Checks that you can set a lint level specficially for a macro definition.
+// Checks that you can set a lint level specifically for a macro definition.
 //
 // This is a regression test for issue #59306.
 //
