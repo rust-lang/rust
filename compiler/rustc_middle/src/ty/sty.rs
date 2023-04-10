@@ -15,6 +15,7 @@ use hir::def::DefKind;
 use polonius_engine::Atom;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::intern::Interned;
+use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
@@ -864,8 +865,8 @@ impl<'tcx> PolyTraitRef<'tcx> {
     }
 }
 
-impl rustc_errors::IntoDiagnosticArg for PolyTraitRef<'_> {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+impl<'tcx> IntoDiagnosticArg for TraitRef<'tcx> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         self.to_string().into_diagnostic_arg()
     }
 }
@@ -910,6 +911,12 @@ impl<'tcx> ExistentialTraitRef<'tcx> {
     }
 }
 
+impl<'tcx> IntoDiagnosticArg for ExistentialTraitRef<'tcx> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        self.to_string().into_diagnostic_arg()
+    }
+}
+
 pub type PolyExistentialTraitRef<'tcx> = Binder<'tcx, ExistentialTraitRef<'tcx>>;
 
 impl<'tcx> PolyExistentialTraitRef<'tcx> {
@@ -923,12 +930,6 @@ impl<'tcx> PolyExistentialTraitRef<'tcx> {
     /// or some placeholder type.
     pub fn with_self_ty(&self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> ty::PolyTraitRef<'tcx> {
         self.map_bound(|trait_ref| trait_ref.with_self_ty(tcx, self_ty))
-    }
-}
-
-impl rustc_errors::IntoDiagnosticArg for PolyExistentialTraitRef<'_> {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
-        self.to_string().into_diagnostic_arg()
     }
 }
 
@@ -1146,6 +1147,15 @@ impl<'tcx, T: IntoIterator> Binder<'tcx, T> {
     }
 }
 
+impl<'tcx, T> IntoDiagnosticArg for Binder<'tcx, T>
+where
+    T: IntoDiagnosticArg,
+{
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        self.0.into_diagnostic_arg()
+    }
+}
+
 struct SkipBindersAt<'tcx> {
     tcx: TyCtxt<'tcx>,
     index: ty::DebruijnIndex,
@@ -1359,6 +1369,12 @@ impl<'tcx> FnSig<'tcx> {
             unsafety: hir::Unsafety::Normal,
             abi: abi::Abi::Rust,
         }
+    }
+}
+
+impl<'tcx> IntoDiagnosticArg for FnSig<'tcx> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        self.to_string().into_diagnostic_arg()
     }
 }
 
