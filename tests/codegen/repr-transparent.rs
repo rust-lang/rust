@@ -68,7 +68,7 @@ pub struct LifetimePhantom<'a, T: 'a>(*const T, PhantomData<&'a T>);
 #[no_mangle]
 pub extern "C" fn test_LifetimePhantom(_: LifetimePhantom<i16>) -> LifetimePhantom<i16> { loop {} }
 
-// This works despite current alignment resrictions because PhantomData is always align(1)
+// This works despite current alignment restrictions because PhantomData is always align(1)
 #[repr(transparent)]
 pub struct UnitPhantom<T, U> { val: T, unit: PhantomData<U> }
 
