@@ -1,6 +1,7 @@
 //! A bunch of methods and structures more or less related to resolving macros and
 //! interface provided by `Resolver` to macro expander.
 
+use crate::errors::{AddAsNonDerive, MacroExpectedFound, RemoveSurroundingDerive};
 use crate::Namespace::*;
 use crate::{BuiltinMacroState, Determinacy};
 use crate::{DeriveData, Finalize, ParentScope, ResolutionError, Resolver, ScopeSet};
@@ -543,12 +544,29 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         };
         if let Some((article, expected)) = unexpected_res {
             let path_str = pprust::path_to_string(path);
-            let msg = format!("expected {}, found {} `{}`", expected, res.descr(), path_str);
-            self.tcx
-                .sess
-                .struct_span_err(path.span, &msg)
-                .span_label(path.span, format!("not {} {}", article, expected))
-                .emit();
+
+            let mut err = MacroExpectedFound {
+                span: path.span,
+                expected,
+                found: res.descr(),
+                macro_path: &path_str,
+                ..Default::default() // Subdiagnostics default to None
+            };
+
+            // Suggest moving the macro out of the derive() if the macro isn't Derive
+            if !path.span.from_expansion()
+                && kind == MacroKind::Derive
+                && ext.macro_kind() != MacroKind::Derive
+            {
+                err.remove_surrounding_derive = Some(RemoveSurroundingDerive { span: path.span });
+                err.add_as_non_derive = Some(AddAsNonDerive { macro_path: &path_str });
+            }
+
+            let mut err = self.tcx.sess.create_err(err);
+            err.span_label(path.span, format!("not {} {}", article, expected));
+
+            err.emit();
+
             return Ok((self.dummy_ext(kind), Res::Err));
         }
 

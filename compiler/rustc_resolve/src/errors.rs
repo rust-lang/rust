@@ -481,3 +481,30 @@ pub(crate) struct ToolModuleImported {
 #[derive(Diagnostic)]
 #[diag(resolve_module_only)]
 pub(crate) struct ModuleOnly(#[primary_span] pub(crate) Span);
+
+#[derive(Diagnostic, Default)]
+#[diag(resolve_macro_expected_found)]
+pub(crate) struct MacroExpectedFound<'a> {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) found: &'a str,
+    pub(crate) expected: &'a str,
+    pub(crate) macro_path: &'a str,
+    #[subdiagnostic]
+    pub(crate) remove_surrounding_derive: Option<RemoveSurroundingDerive>,
+    #[subdiagnostic]
+    pub(crate) add_as_non_derive: Option<AddAsNonDerive<'a>>,
+}
+
+#[derive(Subdiagnostic)]
+#[help(resolve_remove_surrounding_derive)]
+pub(crate) struct RemoveSurroundingDerive {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[help(resolve_add_as_non_derive)]
+pub(crate) struct AddAsNonDerive<'a> {
+    pub(crate) macro_path: &'a str,
+}
