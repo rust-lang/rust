@@ -79,7 +79,7 @@ impl Parker {
             park_timeout(dur, self.state.as_ptr().addr());
             // Swap to ensure that we observe all state changes with acquire
             // ordering, even if the state has been changed after the timeout
-            // occured.
+            // occurred.
             self.state.swap(EMPTY, Acquire);
         }
     }

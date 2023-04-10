@@ -1428,8 +1428,8 @@ mod prim_ref {}
 /// let ptr: fn(usize) -> usize = add_one;
 /// assert_eq!(ptr(5), 6);
 ///
-/// let clos: fn(usize) -> usize = |x| x + 5;
-/// assert_eq!(clos(5), 10);
+/// let closure: fn(usize) -> usize = |x| x + 5;
+/// assert_eq!(closure(5), 10);
 /// ```
 ///
 /// In addition to varying based on their signature, function pointers come in two flavors: safe
