@@ -43,7 +43,7 @@ including automatic and blanket implementations that `rustdoc` knows about.
 Subheadings, variants, fields, and many other things in this documentation
 are anchors and can be clicked on and deep-linked to,
 which is a great way to communicate exactly what you're talking about.
-The typograpical character "§" appears next to lines with anchors on them
+The typographical character "§" appears next to lines with anchors on them
 when hovered or given keyboard focus.
 
 ## The Navigation Bar
