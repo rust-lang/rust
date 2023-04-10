@@ -12,7 +12,7 @@ ty_utils_array_not_supported = array construction is not supported in generic co
 
 ty_utils_block_not_supported = blocks are not supported in generic constants
 
-ty_utils_never_to_any_not_supported = converting never to any is not supported in generic constants
+ty_utils_never_to_any_not_supported = coercing the `never` type is not supported in generic constants
 
 ty_utils_tuple_not_supported = tuple construction is not supported in generic constants
 
