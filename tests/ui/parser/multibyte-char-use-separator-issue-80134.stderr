@@ -1,5 +1,5 @@
 error: expected one of `)`, `,`, `.`, `?`, or an operator, found `é`
-  --> $DIR/multibyte-char-use-seperator-issue-80134.rs:4:8
+  --> $DIR/multibyte-char-use-separator-issue-80134.rs:4:8
    |
 LL |     (()é);
    |        ^
@@ -8,7 +8,7 @@ LL |     (()é);
    |        help: missing `,`
 
 error: expected one of `)`, `,`, `.`, `?`, or an operator, found `氷`
-  --> $DIR/multibyte-char-use-seperator-issue-80134.rs:7:8
+  --> $DIR/multibyte-char-use-separator-issue-80134.rs:7:8
    |
 LL |     (()氷);
    |        -^
@@ -17,13 +17,13 @@ LL |     (()氷);
    |        help: missing `,`
 
 error[E0425]: cannot find value `é` in this scope
-  --> $DIR/multibyte-char-use-seperator-issue-80134.rs:4:8
+  --> $DIR/multibyte-char-use-separator-issue-80134.rs:4:8
    |
 LL |     (()é);
    |        ^ not found in this scope
 
 error[E0425]: cannot find value `氷` in this scope
-  --> $DIR/multibyte-char-use-seperator-issue-80134.rs:7:8
+  --> $DIR/multibyte-char-use-separator-issue-80134.rs:7:8
    |
 LL |     (()氷);
    |        ^^ not found in this scope
