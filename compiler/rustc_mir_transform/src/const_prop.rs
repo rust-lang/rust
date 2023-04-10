@@ -826,7 +826,7 @@ impl Visitor<'_> for CanConstProp {
             | NonMutatingUse(NonMutatingUseContext::AddressOf)
             | MutatingUse(MutatingUseContext::Borrow)
             | MutatingUse(MutatingUseContext::AddressOf) => {
-                trace!("local {:?} can't be propagaged because it's used: {:?}", local, context);
+                trace!("local {:?} can't be propagated because it's used: {:?}", local, context);
                 self.can_const_prop[local] = ConstPropMode::NoPropagation;
             }
         }
