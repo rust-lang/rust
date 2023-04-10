@@ -22,7 +22,7 @@ pub(crate) struct UnderscoreLifetimeNameCannotBeUsedHere(#[primary_span] pub(cra
 
 #[derive(Diagnostic)]
 #[diag(resolve_crate_may_not_be_imported)]
-pub(crate) struct CrateMayNotBeImprted(#[primary_span] pub(crate) Span);
+pub(crate) struct CrateMayNotBeImported(#[primary_span] pub(crate) Span);
 
 #[derive(Diagnostic)]
 #[diag(resolve_crate_root_imports_must_be_named_explicitly)]
