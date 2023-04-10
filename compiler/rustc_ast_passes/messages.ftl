@@ -231,7 +231,7 @@ ast_passes_feature_on_non_nightly = `#![feature]` may not be used on the {$chann
     .suggestion = remove the attribute
     .stable_since = the feature `{$name}` has been stable since `{$since}` and no longer requires an attribute to enable
 
-ast_passes_incompatbile_features = `{$f1}` and `{$f2}` are incompatible, using them at the same time is not allowed
+ast_passes_incompatible_features = `{$f1}` and `{$f2}` are incompatible, using them at the same time is not allowed
     .help = remove one of these features
 
 ast_passes_show_span = {$msg}
