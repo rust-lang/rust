@@ -117,7 +117,7 @@ pub(crate) struct CrateMetadata {
 
     /// Additional data used for decoding `HygieneData` (e.g. `SyntaxContext`
     /// and `ExpnId`).
-    /// Note that we store a `HygieneDecodeContext` for each `CrateMetadat`. This is
+    /// Note that we store a `HygieneDecodeContext` for each `CrateMetadata`. This is
     /// because `SyntaxContext` ids are not globally unique, so we need
     /// to track which ids we've decoded on a per-crate basis.
     hygiene_context: HygieneDecodeContext,
