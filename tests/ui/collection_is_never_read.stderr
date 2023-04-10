@@ -61,16 +61,64 @@ LL |     let x = vec![1, 2, 3]; // WARNING
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: collection is never read
-  --> $DIR/collection_is_never_read.rs:174:5
+  --> $DIR/collection_is_never_read.rs:173:5
    |
-LL |     let mut s = String::new();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let mut x = std::collections::BTreeMap::new(); // WARNING
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: collection is never read
-  --> $DIR/collection_is_never_read.rs:187:5
+  --> $DIR/collection_is_never_read.rs:176:5
    |
-LL |     let mut s = String::from("Hello, World!");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let mut x = std::collections::BTreeSet::new(); // WARNING
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 12 previous errors
+error: collection is never read
+  --> $DIR/collection_is_never_read.rs:179:5
+   |
+LL |     let mut x = std::collections::BinaryHeap::new(); // WARNING
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: collection is never read
+  --> $DIR/collection_is_never_read.rs:182:5
+   |
+LL |     let mut x = std::collections::HashMap::new(); // WARNING
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: collection is never read
+  --> $DIR/collection_is_never_read.rs:185:5
+   |
+LL |     let mut x = std::collections::HashSet::new(); // WARNING
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: collection is never read
+  --> $DIR/collection_is_never_read.rs:188:5
+   |
+LL |     let mut x = std::collections::LinkedList::new(); // WARNING
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: collection is never read
+  --> $DIR/collection_is_never_read.rs:191:5
+   |
+LL |     let mut x = Some(true); // WARNING
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: collection is never read
+  --> $DIR/collection_is_never_read.rs:194:5
+   |
+LL |     let mut x = String::from("hello"); // WARNING
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: collection is never read
+  --> $DIR/collection_is_never_read.rs:197:5
+   |
+LL |     let mut x = Vec::new(); // WARNING
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: collection is never read
+  --> $DIR/collection_is_never_read.rs:201:5
+   |
+LL |     let mut x = std::collections::VecDeque::new(); // WARNING
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 20 previous errors
 
