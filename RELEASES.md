@@ -963,7 +963,7 @@ Compatibility Notes
 - [rustdoc: doctests are now run on unexported `macro_rules!` macros, matching other private items][96630]
 - [rustdoc: Remove .woff font files][96279]
 - [Enforce Copy bounds for repeat elements while considering lifetimes][95819]
-- [Windows: Fix potentinal unsoundness by aborting if `File` reads or writes cannot
+- [Windows: Fix potential unsoundness by aborting if `File` reads or writes cannot
   complete synchronously][95469].
 
 Internal Changes
