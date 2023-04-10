@@ -1258,7 +1258,7 @@ pub fn build_configuration(sess: &Session, mut user_cfg: CrateConfig) -> CrateCo
     // some default and generated configuration items.
     let default_cfg = default_configuration(sess);
     // If the user wants a test runner, then add the test cfg.
-    if sess.opts.test {
+    if sess.is_test_crate() {
         user_cfg.insert((sym::test, None));
     }
     user_cfg.extend(default_cfg.iter().cloned());
