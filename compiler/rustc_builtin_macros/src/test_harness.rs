@@ -53,7 +53,7 @@ pub fn inject(krate: &mut ast::Crate, sess: &Session, resolver: &mut dyn Resolve
     // even in non-test builds
     let test_runner = get_test_runner(span_diagnostic, &krate);
 
-    if sess.opts.test {
+    if sess.is_test_crate() {
         let panic_strategy = match (panic_strategy, sess.opts.unstable_opts.panic_abort_tests) {
             (PanicStrategy::Abort, true) => PanicStrategy::Abort,
             (PanicStrategy::Abort, false) => {

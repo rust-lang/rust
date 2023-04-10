@@ -294,6 +294,11 @@ impl Session {
         self.crate_types.get().unwrap().as_slice()
     }
 
+    /// Returns true if the crate is a testing one.
+    pub fn is_test_crate(&self) -> bool {
+        self.opts.test
+    }
+
     pub fn needs_crate_hash(&self) -> bool {
         // Why is the crate hash needed for these configurations?
         // - debug_assertions: for the "fingerprint the result" check in

@@ -393,7 +393,7 @@ impl Resolver<'_, '_> {
             // If we are in the `--test` mode, suppress a help that adds the `#[cfg(test)]`
             // attribute; however, if not, suggest adding the attribute. There is no way to
             // retrieve attributes here because we do not have a `TyCtxt` yet.
-            let test_module_span = if tcx.sess.opts.test {
+            let test_module_span = if tcx.sess.is_test_crate() {
                 None
             } else {
                 let parent_module = visitor.r.get_nearest_non_block_module(

@@ -189,3 +189,39 @@ hir_analysis_return_type_notation_equality_bound =
 
 hir_analysis_return_type_notation_missing_method =
     cannot find associated function `{$assoc_name}` in trait `{$trait_name}`
+
+hir_analysis_placeholder_not_allowed_item_signatures = the placeholder `_` is not allowed within types on item signatures for {$kind}
+    .label = not allowed in type signatures
+
+hir_analysis_associated_type_trait_uninferred_generic_params = cannot use the associated type of a trait with uninferred generic parameters
+    .suggestion = use a fully qualified path with inferred lifetimes
+
+hir_analysis_associated_type_trait_uninferred_generic_params_multipart_suggestion = use a fully qualified path with explicit lifetimes
+
+hir_analysis_enum_discriminant_overflowed = enum discriminant overflowed
+    .label = overflowed on value after {$discr}
+    .note = explicitly set `{$item_name} = {$wrapped_discr}` if that is desired outcome
+
+hir_analysis_paren_sugar_attribute = the `#[rustc_paren_sugar]` attribute is a temporary means of controlling which traits can use parenthetical notation
+    .help = add `#![feature(unboxed_closures)]` to the crate attributes to use it
+
+hir_analysis_must_implement_one_of_attribute = the `#[rustc_must_implement_one_of]` attribute must be used with at least 2 args
+
+hir_analysis_must_be_name_of_associated_function = must be a name of an associated function
+
+hir_analysis_function_not_have_default_implementation = function doesn't have a default implementation
+    .note = required by this annotation
+
+hir_analysis_must_implement_not_function = not a function
+
+hir_analysis_must_implement_not_function_span_note = required by this annotation
+
+hir_analysis_must_implement_not_function_note = all `#[rustc_must_implement_one_of]` arguments must be associated function names
+
+hir_analysis_function_not_found_in_trait = function not found in this trait
+
+hir_analysis_functions_names_duplicated = functions names are duplicated
+    .note = all `#[rustc_must_implement_one_of]` arguments must be unique
+
+hir_analysis_simd_ffi_highly_experimental = use of SIMD type{$snip} in FFI is highly experimental and may result in invalid code
+    .help = add `#![feature(simd_ffi)]` to the crate attributes to enable
