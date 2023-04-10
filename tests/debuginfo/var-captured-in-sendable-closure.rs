@@ -66,12 +66,12 @@ fn main() {
     // The `self` argument of the following closure should be passed by value
     // to FnOnce::call_once(self, args), which gets codegened a bit differently
     // than the regular case. Let's make sure this is supported too.
-    let immedate_env = move || {
+    let immediate_env = move || {
         zzz(); // #break
         return constant2;
     };
 
-    immedate_env();
+    immediate_env();
 }
 
 fn do_something(_: &isize, _:&isize, _:&isize) {
