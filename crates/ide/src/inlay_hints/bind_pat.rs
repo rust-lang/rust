@@ -176,6 +176,7 @@ fn pat_is_enum_variant(db: &RootDatabase, bind_pat: &ast::IdentPat, pat_ty: &hir
 mod tests {
     // This module also contains tests for super::closure_ret
 
+    use hir::ClosureStyle;
     use syntax::{TextRange, TextSize};
     use test_utils::extract_annotations;
 
@@ -235,7 +236,7 @@ fn main() {
     let zz_ref = &zz;
       //^^^^^^ &Test<i32>
     let test = || zz;
-      //^^^^ || -> Test<i32>
+      //^^^^ impl FnOnce() -> Test<i32>
 }"#,
         );
     }
@@ -753,7 +754,7 @@ fn main() {
     let func = times2;
     //  ^^^^ fn times2(i32) -> i32
     let closure = |x: i32| x * 2;
-    //  ^^^^^^^ |i32| -> i32
+    //  ^^^^^^^ impl Fn(i32) -> i32
 }
 
 fn fallible() -> ControlFlow<()> {
@@ -821,7 +822,7 @@ fn main() {
                    //^^^^^^^^^ i32
 
     let multiply =
-      //^^^^^^^^ |i32, i32| -> i32
+      //^^^^^^^^ impl Fn(i32, i32) -> i32
       | a,     b| a * b
       //^ i32  ^ i32
 
@@ -830,10 +831,10 @@ fn main() {
     let _: i32 = multiply(1,  2);
                         //^ a ^ b
     let multiply_ref = &multiply;
-      //^^^^^^^^^^^^ &|i32, i32| -> i32
+      //^^^^^^^^^^^^ &impl Fn(i32, i32) -> i32
 
     let return_42 = || 42;
-      //^^^^^^^^^ || -> i32
+      //^^^^^^^^^ impl Fn() -> i32
       || { 42 };
     //^^ i32
 }"#,
@@ -858,6 +859,94 @@ fn main() {
     }
 
     #[test]
+    fn closure_style() {
+        check_with_config(
+            InlayHintsConfig { type_hints: true, ..DISABLED_CONFIG },
+            r#"
+//- minicore: fn
+fn main() {
+    let x = || 2;
+      //^ impl Fn() -> i32
+    let y = |t: i32| x() + t;
+      //^ impl Fn(i32) -> i32
+    let mut t = 5;
+          //^ i32
+    let z = |k: i32| { t += k; };
+      //^ impl FnMut(i32)
+    let p = (y, z);
+      //^ (impl Fn(i32) -> i32, impl FnMut(i32))
+}
+            "#,
+        );
+        check_with_config(
+            InlayHintsConfig {
+                type_hints: true,
+                closure_style: ClosureStyle::RANotation,
+                ..DISABLED_CONFIG
+            },
+            r#"
+//- minicore: fn
+fn main() {
+    let x = || 2;
+      //^ || -> i32
+    let y = |t: i32| x() + t;
+      //^ |i32| -> i32
+    let mut t = 5;
+          //^ i32
+    let z = |k: i32| { t += k; };
+      //^ |i32| -> ()
+    let p = (y, z);
+      //^ (|i32| -> i32, |i32| -> ())
+}
+            "#,
+        );
+        check_with_config(
+            InlayHintsConfig {
+                type_hints: true,
+                closure_style: ClosureStyle::ClosureWithId,
+                ..DISABLED_CONFIG
+            },
+            r#"
+//- minicore: fn
+fn main() {
+    let x = || 2;
+      //^ {closure#0}
+    let y = |t: i32| x() + t;
+      //^ {closure#1}
+    let mut t = 5;
+          //^ i32
+    let z = |k: i32| { t += k; };
+      //^ {closure#2}
+    let p = (y, z);
+      //^ ({closure#1}, {closure#2})
+}
+            "#,
+        );
+        check_with_config(
+            InlayHintsConfig {
+                type_hints: true,
+                closure_style: ClosureStyle::Hide,
+                ..DISABLED_CONFIG
+            },
+            r#"
+//- minicore: fn
+fn main() {
+    let x = || 2;
+      //^ …
+    let y = |t: i32| x() + t;
+      //^ …
+    let mut t = 5;
+          //^ i32
+    let z = |k: i32| { t += k; };
+      //^ …
+    let p = (y, z);
+      //^ (…, …)
+}
+            "#,
+        );
+    }
+
+    #[test]
     fn skip_closure_type_hints() {
         check_with_config(
             InlayHintsConfig {
@@ -871,13 +960,13 @@ fn main() {
     let multiple_2 = |x: i32| { x * 2 };
 
     let multiple_2 = |x: i32| x * 2;
-    //  ^^^^^^^^^^ |i32| -> i32
+    //  ^^^^^^^^^^ impl Fn(i32) -> i32
 
     let (not) = (|x: bool| { !x });
-    //   ^^^ |bool| -> bool
+    //   ^^^ impl Fn(bool) -> bool
 
     let (is_zero, _b) = (|x: usize| { x == 0 }, false);
-    //   ^^^^^^^ |usize| -> bool
+    //   ^^^^^^^ impl Fn(usize) -> bool
     //            ^^ bool
 
     let plus_one = |x| { x + 1 };

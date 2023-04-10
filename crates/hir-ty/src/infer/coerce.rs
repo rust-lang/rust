@@ -7,7 +7,7 @@
 
 use std::{iter, sync::Arc};
 
-use chalk_ir::{cast::Cast, BoundVar, Goal, Mutability, TyVariableKind};
+use chalk_ir::{cast::Cast, BoundVar, Goal, Mutability, TyKind, TyVariableKind};
 use hir_def::{
     hir::ExprId,
     lang_item::{LangItem, LangItemTarget},
@@ -22,7 +22,7 @@ use crate::{
         TypeError, TypeMismatch,
     },
     static_lifetime, Canonical, DomainGoal, FnPointer, FnSig, Guidance, InEnvironment, Interner,
-    Solution, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind,
+    Solution, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt,
 };
 
 use super::unify::InferenceTable;
@@ -111,6 +111,8 @@ impl CoerceMany {
         // pointers to have a chance at getting a match. See
         // https://github.com/rust-lang/rust/blob/7b805396bf46dce972692a6846ce2ad8481c5f85/src/librustc_typeck/check/coercion.rs#L877-L916
         let sig = match (self.merged_ty().kind(Interner), expr_ty.kind(Interner)) {
+            (TyKind::FnDef(x, _), TyKind::FnDef(y, _)) if x == y => None,
+            (TyKind::Closure(x, _), TyKind::Closure(y, _)) if x == y => None,
             (TyKind::FnDef(..) | TyKind::Closure(..), TyKind::FnDef(..) | TyKind::Closure(..)) => {
                 // FIXME: we're ignoring safety here. To be more correct, if we have one FnDef and one Closure,
                 // we should be coercing the closure to a fn pointer of the safety of the FnDef

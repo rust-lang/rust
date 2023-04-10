@@ -575,7 +575,7 @@ fn two_closures_lub() {
 fn foo(c: i32) {
     let add = |a: i32, b: i32| a + b;
     let sub = |a, b| a - b;
-            //^^^^^^^^^^^^ |i32, i32| -> i32
+            //^^^^^^^^^^^^ impl Fn(i32, i32) -> i32
     if c > 42 { add } else { sub };
   //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ fn(i32, i32) -> i32
 }
@@ -873,6 +873,16 @@ fn test() {
 
 #[test]
 fn adjust_index() {
+    check_no_mismatches(
+        r"
+//- minicore: index, slice, coerce_unsized
+fn test() {
+    let x = [1, 2, 3];
+    x[2] = 6;
+ // ^ adjustments: Borrow(Ref(Mut))
+}
+    ",
+    );
     check_no_mismatches(
         r"
 //- minicore: index

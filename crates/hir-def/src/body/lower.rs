@@ -28,9 +28,9 @@ use crate::{
     data::adt::StructKind,
     db::DefDatabase,
     hir::{
-        dummy_expr_id, Array, Binding, BindingAnnotation, BindingId, ClosureKind, Expr, ExprId,
-        Label, LabelId, Literal, MatchArm, Movability, Pat, PatId, RecordFieldPat, RecordLitField,
-        Statement,
+        dummy_expr_id, Array, Binding, BindingAnnotation, BindingId, CaptureBy, ClosureKind, Expr,
+        ExprId, Label, LabelId, Literal, MatchArm, Movability, Pat, PatId, RecordFieldPat,
+        RecordLitField, Statement,
     },
     item_scope::BuiltinShadowMode,
     lang_item::LangItem,
@@ -67,6 +67,7 @@ pub(super) fn lower(
         is_lowering_assignee_expr: false,
         is_lowering_generator: false,
         label_ribs: Vec::new(),
+        current_binding_owner: None,
     }
     .collect(params, body, is_async_fn)
 }
@@ -92,6 +93,7 @@ struct ExprCollector<'a> {
 
     // resolution
     label_ribs: Vec<LabelRib>,
+    current_binding_owner: Option<ExprId>,
 }
 
 #[derive(Clone, Debug)]
@@ -261,11 +263,16 @@ impl ExprCollector<'_> {
                 }
                 Some(ast::BlockModifier::Const(_)) => {
                     self.with_label_rib(RibKind::Constant, |this| {
-                        this.collect_block_(e, |id, statements, tail| Expr::Const {
-                            id,
-                            statements,
-                            tail,
-                        })
+                        this.collect_as_a_binding_owner_bad(
+                            |this| {
+                                this.collect_block_(e, |id, statements, tail| Expr::Const {
+                                    id,
+                                    statements,
+                                    tail,
+                                })
+                            },
+                            syntax_ptr,
+                        )
                     })
                 }
                 None => self.collect_block(e),
@@ -461,6 +468,8 @@ impl ExprCollector<'_> {
                 }
             }
             ast::Expr::ClosureExpr(e) => self.with_label_rib(RibKind::Closure, |this| {
+                let (result_expr_id, prev_binding_owner) =
+                    this.initialize_binding_owner(syntax_ptr);
                 let mut args = Vec::new();
                 let mut arg_types = Vec::new();
                 if let Some(pl) = e.param_list() {
@@ -494,17 +503,19 @@ impl ExprCollector<'_> {
                     ClosureKind::Closure
                 };
                 this.is_lowering_generator = prev_is_lowering_generator;
-
-                this.alloc_expr(
-                    Expr::Closure {
-                        args: args.into(),
-                        arg_types: arg_types.into(),
-                        ret_type,
-                        body,
-                        closure_kind,
-                    },
-                    syntax_ptr,
-                )
+                let capture_by =
+                    if e.move_token().is_some() { CaptureBy::Value } else { CaptureBy::Ref };
+                this.is_lowering_generator = prev_is_lowering_generator;
+                this.current_binding_owner = prev_binding_owner;
+                this.body.exprs[result_expr_id] = Expr::Closure {
+                    args: args.into(),
+                    arg_types: arg_types.into(),
+                    ret_type,
+                    body,
+                    closure_kind,
+                    capture_by,
+                };
+                result_expr_id
             }),
             ast::Expr::BinExpr(e) => {
                 let op = e.op_kind();
@@ -545,7 +556,15 @@ impl ExprCollector<'_> {
                     ArrayExprKind::Repeat { initializer, repeat } => {
                         let initializer = self.collect_expr_opt(initializer);
                         let repeat = self.with_label_rib(RibKind::Constant, |this| {
-                            this.collect_expr_opt(repeat)
+                            if let Some(repeat) = repeat {
+                                let syntax_ptr = AstPtr::new(&repeat);
+                                this.collect_as_a_binding_owner_bad(
+                                    |this| this.collect_expr(repeat),
+                                    syntax_ptr,
+                                )
+                            } else {
+                                this.missing_expr()
+                            }
                         });
                         self.alloc_expr(
                             Expr::Array(Array::Repeat { initializer, repeat }),
@@ -590,6 +609,32 @@ impl ExprCollector<'_> {
             }
             ast::Expr::UnderscoreExpr(_) => self.alloc_expr(Expr::Underscore, syntax_ptr),
         })
+    }
+
+    fn initialize_binding_owner(
+        &mut self,
+        syntax_ptr: AstPtr<ast::Expr>,
+    ) -> (ExprId, Option<ExprId>) {
+        let result_expr_id = self.alloc_expr(Expr::Missing, syntax_ptr);
+        let prev_binding_owner = self.current_binding_owner.take();
+        self.current_binding_owner = Some(result_expr_id);
+        (result_expr_id, prev_binding_owner)
+    }
+
+    /// FIXME: This function is bad. It will produce a dangling `Missing` expr which wastes memory. Currently
+    /// it is used only for const blocks and repeat expressions, which are also hacky and ideally should have
+    /// their own body. Don't add more usage for this function so that we can remove this function after
+    /// separating those bodies.
+    fn collect_as_a_binding_owner_bad(
+        &mut self,
+        job: impl FnOnce(&mut ExprCollector<'_>) -> ExprId,
+        syntax_ptr: AstPtr<ast::Expr>,
+    ) -> ExprId {
+        let (id, prev_owner) = self.initialize_binding_owner(syntax_ptr);
+        let tmp = job(self);
+        self.body.exprs[id] = mem::replace(&mut self.body.exprs[tmp], Expr::Missing);
+        self.current_binding_owner = prev_owner;
+        id
     }
 
     /// Desugar `try { <stmts>; <expr> }` into `'<new_label>: { <stmts>; ::std::ops::Try::from_output(<expr>) }`,
@@ -1112,8 +1157,13 @@ impl ExprCollector<'_> {
             }
             ast::Pat::ConstBlockPat(const_block_pat) => {
                 if let Some(block) = const_block_pat.block_expr() {
-                    let expr_id =
-                        self.with_label_rib(RibKind::Constant, |this| this.collect_block(block));
+                    let expr_id = self.with_label_rib(RibKind::Constant, |this| {
+                        let syntax_ptr = AstPtr::new(&block.clone().into());
+                        this.collect_as_a_binding_owner_bad(
+                            |this| this.collect_block(block),
+                            syntax_ptr,
+                        )
+                    });
                     Pat::ConstBlock(expr_id)
                 } else {
                     Pat::Missing
@@ -1272,7 +1322,12 @@ impl ExprCollector<'_> {
     }
 
     fn alloc_binding(&mut self, name: Name, mode: BindingAnnotation) -> BindingId {
-        self.body.bindings.alloc(Binding { name, mode, definitions: SmallVec::new() })
+        self.body.bindings.alloc(Binding {
+            name,
+            mode,
+            definitions: SmallVec::new(),
+            owner: self.current_binding_owner,
+        })
     }
 
     fn alloc_pat(&mut self, pat: Pat, ptr: PatPtr) -> PatId {

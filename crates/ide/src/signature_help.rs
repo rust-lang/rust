@@ -1228,6 +1228,24 @@ fn main() {
     }
 
     #[test]
+    fn call_info_for_fn_def_over_reference() {
+        check(
+            r#"
+struct S;
+fn foo(s: S) -> i32 { 92 }
+fn main() {
+    let bar = &&&&&foo;
+    bar($0);
+}
+        "#,
+            expect![[r#"
+                fn foo(s: S) -> i32
+                       ^^^^
+            "#]],
+        )
+    }
+
+    #[test]
     fn call_info_for_fn_ptr() {
         check(
             r#"

@@ -12,8 +12,9 @@ use hir_def::{
 use crate::{
     db::HirDatabase, from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id,
     from_placeholder_idx, to_chalk_trait_id, utils::generics, AdtId, AliasEq, AliasTy, Binders,
-    CallableDefId, CallableSig, DynTy, FnPointer, ImplTraitId, Interner, Lifetime, ProjectionTy,
-    QuantifiedWhereClause, Substitution, TraitRef, Ty, TyBuilder, TyKind, TypeFlags, WhereClause,
+    CallableDefId, CallableSig, ClosureId, DynTy, FnPointer, ImplTraitId, Interner, Lifetime,
+    ProjectionTy, QuantifiedWhereClause, Substitution, TraitRef, Ty, TyBuilder, TyKind, TypeFlags,
+    WhereClause,
 };
 
 pub trait TyExt {
@@ -28,6 +29,7 @@ pub trait TyExt {
     fn as_adt(&self) -> Option<(hir_def::AdtId, &Substitution)>;
     fn as_builtin(&self) -> Option<BuiltinType>;
     fn as_tuple(&self) -> Option<&Substitution>;
+    fn as_closure(&self) -> Option<ClosureId>;
     fn as_fn_def(&self, db: &dyn HirDatabase) -> Option<FunctionId>;
     fn as_reference(&self) -> Option<(&Ty, Lifetime, Mutability)>;
     fn as_reference_or_ptr(&self) -> Option<(&Ty, Rawness, Mutability)>;
@@ -124,6 +126,13 @@ impl TyExt for Ty {
     fn as_tuple(&self) -> Option<&Substitution> {
         match self.kind(Interner) {
             TyKind::Tuple(_, substs) => Some(substs),
+            _ => None,
+        }
+    }
+
+    fn as_closure(&self) -> Option<ClosureId> {
+        match self.kind(Interner) {
+            TyKind::Closure(id, _) => Some(*id),
             _ => None,
         }
     }

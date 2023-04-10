@@ -115,7 +115,7 @@ fn foo() {
             r#"
 //- minicore: iterators
 fn foo() {
-    let m = core::iter::repeat(())
+    let mut m = core::iter::repeat(())
         .filter_map(|()| Some(92));
     let n = m.next();
 }
