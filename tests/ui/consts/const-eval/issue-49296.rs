@@ -1,4 +1,4 @@
-// issue-49296: Unsafe shenigans in constants can result in missing errors
+// issue-49296: Unsafe shenanigans in constants can result in missing errors
 
 use std::mem::transmute;
 
