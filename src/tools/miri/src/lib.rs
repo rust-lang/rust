@@ -124,10 +124,13 @@ pub use crate::tag_gc::{EvalContextExt as _, VisitTags};
 
 /// Insert rustc arguments at the beginning of the argument list that Miri wants to be
 /// set per default, for maximal validation power.
+/// Also disable the MIR pass that inserts an alignment check on every pointer dereference. Miri
+/// does that too, and with a better error message.
 pub const MIRI_DEFAULT_ARGS: &[&str] = &[
     "--cfg=miri",
     "-Zalways-encode-mir",
     "-Zextra-const-ub-checks",
     "-Zmir-emit-retag",
     "-Zmir-opt-level=0",
+    "-Zmir-enable-passes=-CheckAlignment",
 ];
