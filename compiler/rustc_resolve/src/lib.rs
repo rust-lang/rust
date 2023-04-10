@@ -312,7 +312,6 @@ impl<'a> From<&'a ast::PathSegment> for Segment {
                     (args.span, found_lifetimes)
                 }
                 GenericArgs::Parenthesized(args) => (args.span, true),
-                GenericArgs::ReturnTypeNotation(span) => (*span, false),
             }
         } else {
             (DUMMY_SP, false)

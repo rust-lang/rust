@@ -353,13 +353,7 @@ pub enum BadReturnTypeNotation {
     #[diag(ast_lowering_bad_return_type_notation_inputs)]
     Inputs {
         #[primary_span]
-        #[suggestion(code = "(..)", applicability = "maybe-incorrect")]
-        span: Span,
-    },
-    #[diag(ast_lowering_bad_return_type_notation_needs_dots)]
-    NeedsDots {
-        #[primary_span]
-        #[suggestion(code = "(..)", applicability = "maybe-incorrect")]
+        #[suggestion(code = "()", applicability = "maybe-incorrect")]
         span: Span,
     },
     #[diag(ast_lowering_bad_return_type_notation_output)]

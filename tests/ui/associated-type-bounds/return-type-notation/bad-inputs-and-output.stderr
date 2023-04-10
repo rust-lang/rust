@@ -1,8 +1,8 @@
-error: return type not allowed with return type notation
-  --> $DIR/bad-inputs-and-output.rs:15:28
+error: return type notation uses `()` instead of `(..)` for elided arguments
+  --> $DIR/bad-inputs-and-output.rs:19:24
    |
-LL | fn bar<T: Trait<method(..) -> (): Send>>() {}
-   |                            ^^^^^ help: remove the return type
+LL | fn baz<T: Trait<method(..): Send>>() {}
+   |                        ^^ help: remove the `..`
 
 error[E0658]: associated type bounds are unstable
   --> $DIR/bad-inputs-and-output.rs:11:17
@@ -14,10 +14,10 @@ LL | fn foo<T: Trait<method(i32): Send>>() {}
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
-  --> $DIR/bad-inputs-and-output.rs:18:17
+  --> $DIR/bad-inputs-and-output.rs:15:17
    |
-LL | fn baz<T: Trait<method(): Send>>() {}
-   |                 ^^^^^^^^^^^^^^
+LL | fn bar<T: Trait<method() -> (): Send>>() {}
+   |                 ^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
@@ -43,13 +43,13 @@ error: argument types not allowed with return type notation
   --> $DIR/bad-inputs-and-output.rs:11:23
    |
 LL | fn foo<T: Trait<method(i32): Send>>() {}
-   |                       ^^^^^ help: remove the input types: `(..)`
+   |                       ^^^^^ help: remove the input types: `()`
 
-error: return type notation arguments must be elided with `..`
-  --> $DIR/bad-inputs-and-output.rs:18:23
+error: return type not allowed with return type notation
+  --> $DIR/bad-inputs-and-output.rs:15:25
    |
-LL | fn baz<T: Trait<method(): Send>>() {}
-   |                       ^^ help: add `..`: `(..)`
+LL | fn bar<T: Trait<method() -> (): Send>>() {}
+   |                         ^^^^^^ help: remove the return type
 
 error: aborting due to 5 previous errors; 2 warnings emitted
 
