@@ -8,7 +8,6 @@
 // implementations for some macro_rules! macros as an implementation
 // detail.
 
-// ignore-pretty issue #37195
 
 // compile-flags: --test -C debug_assertions=yes
 // revisions: std core

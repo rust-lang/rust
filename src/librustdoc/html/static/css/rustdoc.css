@@ -6,6 +6,10 @@
 	3. Copy the filenames with updated suffixes from the directory.
 */
 
+:root {
+	--nav-sub-mobile-padding: 8px;
+}
+
 /* See FiraSans-LICENSE.txt for the Fira Sans license. */
 @font-face {
 	font-family: 'Fira Sans';
@@ -348,7 +352,7 @@ pre.item-decl {
 .source .content pre {
 	padding: 20px;
 }
-.rustdoc.source .example-wrap > pre.src-line-numbers  {
+.rustdoc.source .example-wrap pre.src-line-numbers  {
 	padding: 20px 0 20px 4px;
 }
 
@@ -392,6 +396,7 @@ img {
 	overflow-x: hidden;
 	/* The sidebar is by default hidden  */
 	overflow-y: hidden;
+	z-index: 1;
 }
 
 .sidebar, .mobile-topbar, .sidebar-menu-toggle,
@@ -532,14 +537,17 @@ ul.block, .block li {
 	margin-bottom: 0px;
 }
 
-.rustdoc .example-wrap > pre {
+.rustdoc .example-wrap pre {
 	margin: 0;
 	flex-grow: 1;
+}
+
+.rustdoc:not(.source) .example-wrap pre {
 	overflow: auto hidden;
 }
 
-.rustdoc .example-wrap > pre.example-line-numbers,
-.rustdoc .example-wrap > pre.src-line-numbers {
+.rustdoc .example-wrap pre.example-line-numbers,
+.rustdoc .example-wrap pre.src-line-numbers {
 	flex-grow: 0;
 	min-width: fit-content; /* prevent collapsing into nothing in truncated scraped examples */
 	overflow: initial;
@@ -550,7 +558,7 @@ ul.block, .block li {
 	color: var(--src-line-numbers-span-color);
 }
 
-.rustdoc .example-wrap > pre.src-line-numbers {
+.rustdoc .example-wrap pre.src-line-numbers {
 	padding: 14px 0;
 }
 .src-line-numbers a, .src-line-numbers span {
@@ -698,7 +706,7 @@ h2.small-section-header > .anchor {
 }
 
 .main-heading a:hover,
-.example-wrap > .rust a:hover,
+.example-wrap .rust a:hover,
 .all-items a:hover,
 .docblock a:not(.test-arrow):not(.scrape-help):not(.tooltip):hover,
 .docblock-short a:not(.test-arrow):not(.scrape-help):not(.tooltip):hover,
@@ -1722,7 +1730,7 @@ in main.js
 
 	.source nav.sub {
 		margin: 0;
-		padding: 8px;
+		padding: var(--nav-sub-mobile-padding);
 	}
 }
 
@@ -1779,6 +1787,7 @@ in main.js
 	.sub-logo-container > img {
 		height: 35px;
 		width: 35px;
+		margin-bottom: var(--nav-sub-mobile-padding);
 	}
 }
 

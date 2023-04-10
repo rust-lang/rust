@@ -125,7 +125,7 @@ where
                 }
             }
 
-            TerminatorKind::Abort
+            TerminatorKind::Terminate
             | TerminatorKind::Assert { .. }
             | TerminatorKind::Call { .. }
             | TerminatorKind::FalseEdge { .. }

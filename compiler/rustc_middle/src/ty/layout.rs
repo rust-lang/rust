@@ -5,6 +5,7 @@ use crate::ty::{self, ReprOptions, Ty, TyCtxt, TypeVisitableExt};
 use rustc_errors::{DiagnosticBuilder, Handler, IntoDiagnostic};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_index::vec::IndexVec;
 use rustc_session::config::OptLevel;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -280,6 +281,12 @@ pub enum SizeSkeleton<'tcx> {
     /// Any statically computable Layout.
     Known(Size),
 
+    /// This is a generic const expression (i.e. N * 2), which may contain some parameters.
+    /// It must be of type usize, and represents the size of a type in bytes.
+    /// It is not required to be evaluatable to a concrete value, but can be used to check
+    /// that another SizeSkeleton is of equal size.
+    Generic(ty::Const<'tcx>),
+
     /// A potentially-fat pointer.
     Pointer {
         /// If true, this pointer is never null.
@@ -325,6 +332,37 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     ),
                 }
             }
+            ty::Array(inner, len)
+                if len.ty() == tcx.types.usize && tcx.features().transmute_generic_consts =>
+            {
+                match SizeSkeleton::compute(inner, tcx, param_env)? {
+                    // This may succeed because the multiplication of two types may overflow
+                    // but a single size of a nested array will not.
+                    SizeSkeleton::Known(s) => {
+                        if let Some(c) = len.try_eval_target_usize(tcx, param_env) {
+                            let size = s
+                                .bytes()
+                                .checked_mul(c)
+                                .ok_or_else(|| LayoutError::SizeOverflow(ty))?;
+                            return Ok(SizeSkeleton::Known(Size::from_bytes(size)));
+                        }
+                        let len = tcx.expand_abstract_consts(len);
+                        let prev = ty::Const::from_target_usize(tcx, s.bytes());
+                        let Some(gen_size) = mul_sorted_consts(tcx, param_env, len, prev) else {
+                            return Err(LayoutError::SizeOverflow(ty));
+                        };
+                        Ok(SizeSkeleton::Generic(gen_size))
+                    }
+                    SizeSkeleton::Pointer { .. } => Err(err),
+                    SizeSkeleton::Generic(g) => {
+                        let len = tcx.expand_abstract_consts(len);
+                        let Some(gen_size) = mul_sorted_consts(tcx, param_env, len, g) else {
+                            return Err(LayoutError::SizeOverflow(ty));
+                        };
+                        Ok(SizeSkeleton::Generic(gen_size))
+                    }
+                }
+            }
 
             ty::Adt(def, substs) => {
                 // Only newtypes and enums w/ nullable pointer optimization.
@@ -353,6 +391,9 @@ impl<'tcx> SizeSkeleton<'tcx> {
                                     return Err(err);
                                 }
                                 ptr = Some(field);
+                            }
+                            SizeSkeleton::Generic(_) => {
+                                return Err(err);
                             }
                         }
                     }
@@ -409,9 +450,64 @@ impl<'tcx> SizeSkeleton<'tcx> {
             (SizeSkeleton::Pointer { tail: a, .. }, SizeSkeleton::Pointer { tail: b, .. }) => {
                 a == b
             }
+            // constants are always pre-normalized into a canonical form so this
+            // only needs to check if their pointers are identical.
+            (SizeSkeleton::Generic(a), SizeSkeleton::Generic(b)) => a == b,
             _ => false,
         }
     }
+}
+
+/// When creating the layout for types with abstract conts in their size (i.e. [usize; 4 * N]),
+/// to ensure that they have a canonical order and can be compared directly we combine all
+/// constants, and sort the other terms. This allows comparison of expressions of sizes,
+/// allowing for things like transmutating between types that depend on generic consts.
+/// This returns `None` if multiplication of constants overflows.
+fn mul_sorted_consts<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    a: ty::Const<'tcx>,
+    b: ty::Const<'tcx>,
+) -> Option<ty::Const<'tcx>> {
+    use crate::mir::BinOp::Mul;
+    use ty::ConstKind::Expr;
+    use ty::Expr::Binop;
+
+    let mut work = vec![a, b];
+    let mut done = vec![];
+    while let Some(n) = work.pop() {
+        if let Expr(Binop(Mul, l, r)) = n.kind() {
+            work.push(l);
+            work.push(r)
+        } else {
+            done.push(n);
+        }
+    }
+    let mut k = 1;
+    let mut overflow = false;
+    done.retain(|c| {
+        let Some(c) = c.try_eval_target_usize(tcx, param_env) else {
+            return true;
+        };
+        let Some(next) = c.checked_mul(k) else {
+            overflow = true;
+            return false;
+        };
+        k = next;
+        false
+    });
+    if overflow {
+        return None;
+    }
+    if k != 1 {
+        done.push(ty::Const::from_target_usize(tcx, k));
+    } else if k == 0 {
+        return Some(ty::Const::from_target_usize(tcx, 0));
+    }
+    done.sort_unstable();
+
+    // create a single tree from the buffer
+    done.into_iter().reduce(|acc, n| tcx.mk_const(Expr(Binop(Mul, n, acc)), n.ty()))
 }
 
 pub trait HasTyCtxt<'tcx>: HasDataLayout {
@@ -635,7 +731,7 @@ where
                     variants: Variants::Single { index: variant_index },
                     fields: match NonZeroUsize::new(fields) {
                         Some(fields) => FieldsShape::Union(fields),
-                        None => FieldsShape::Arbitrary { offsets: vec![], memory_index: vec![] },
+                        None => FieldsShape::Arbitrary { offsets: IndexVec::new(), memory_index: IndexVec::new() },
                     },
                     abi: Abi::Uninhabited,
                     largest_niche: None,

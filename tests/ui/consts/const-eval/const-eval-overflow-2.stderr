@@ -10,12 +10,6 @@ error: could not evaluate constant pattern
 LL |         NEG_NEG_128 => println!("A"),
    |         ^^^^^^^^^^^
 
-error: could not evaluate constant pattern
-  --> $DIR/const-eval-overflow-2.rs:15:9
-   |
-LL |         NEG_NEG_128 => println!("A"),
-   |         ^^^^^^^^^^^
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

@@ -1,5 +1,4 @@
 // check-pass
-// ignore-pretty pretty-printing is unhygienic
 
 #![feature(decl_macro)]
 

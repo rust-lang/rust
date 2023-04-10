@@ -16,10 +16,18 @@ and [Blackberry QNX][BlackBerry].
 
 ## Requirements
 
-Currently, only cross-compilation for QNX Neutrino on AArch64 and x86_64 are supported (little endian).
+Currently, the following QNX Neutrino versions and compilation targets are supported:
+
+| QNX Neutrino Version | Target Architecture | Full support | `no_std` support |
+|----------------------|---------------------|:------------:|:----------------:|
+| 7.1 | AArch64 | ✓ | ✓ |
+| 7.1 | x86_64  | ✓ | ✓ |
+| 7.0 | x86     |   | ✓ |
+
 Adding other architectures that are supported by QNX Neutrino is possible.
 
-The standard library, including `core` and `alloc` (with default allocator) are supported.
+In the table above, 'full support' indicates support for building Rust applications with the full standard library.
+'`no_std` support' indicates that only `core` and `alloc` are available.
 
 For building or using the Rust toolchain for QNX Neutrino, the
 [QNX Software Development Platform (SDP)](https://blackberry.qnx.com/en/products/foundation-software/qnx-software-development-platform)
@@ -70,7 +78,7 @@ fn panic(_panic: &PanicInfo<'_>) -> ! {
 pub extern "C" fn rust_eh_personality() {}
 ```
 
-The QNX Neutrino support of Rust has been tested with QNX Neutrino 7.1.
+The QNX Neutrino support of Rust has been tested with QNX Neutrino 7.0 and 7.1.
 
 There are no further known requirements.
 
@@ -80,6 +88,7 @@ For conditional compilation, following QNX Neutrino specific attributes are defi
 
 - `target_os` = `"nto"`
 - `target_env` = `"nto71"` (for QNX Neutrino 7.1)
+- `target_env` = `"nto70"` (for QNX Neutrino 7.0)
 
 ## Building the target
 

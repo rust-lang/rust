@@ -70,7 +70,6 @@ This API is completely unstable and subject to change.
 #![feature(lazy_cell)]
 #![feature(slice_partition_dedup)]
 #![feature(try_blocks)]
-#![feature(is_some_and)]
 #![feature(type_alias_impl_trait)]
 #![recursion_limit = "256"]
 

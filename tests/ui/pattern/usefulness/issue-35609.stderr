@@ -7,7 +7,7 @@ LL |     match (A, ()) {
    = note: the matched value is of type `(Enum, ())`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown, or multiple match arms
    |
-LL ~         (A, _) => {}
+LL ~         (A, _) => {},
 LL +         _ => todo!()
    |
 
@@ -20,7 +20,7 @@ LL |     match (A, A) {
    = note: the matched value is of type `(Enum, Enum)`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown, or multiple match arms
    |
-LL ~         (_, A) => {}
+LL ~         (_, A) => {},
 LL +         _ => todo!()
    |
 
@@ -33,7 +33,7 @@ LL |     match ((A, ()), ()) {
    = note: the matched value is of type `((Enum, ()), ())`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown, or multiple match arms
    |
-LL ~         ((A, ()), _) => {}
+LL ~         ((A, ()), _) => {},
 LL +         _ => todo!()
    |
 
@@ -46,7 +46,7 @@ LL |     match ((A, ()), A) {
    = note: the matched value is of type `((Enum, ()), Enum)`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown, or multiple match arms
    |
-LL ~         ((A, ()), _) => {}
+LL ~         ((A, ()), _) => {},
 LL +         _ => todo!()
    |
 
@@ -59,7 +59,7 @@ LL |     match ((A, ()), ()) {
    = note: the matched value is of type `((Enum, ()), ())`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown, or multiple match arms
    |
-LL ~         ((A, _), _) => {}
+LL ~         ((A, _), _) => {},
 LL +         _ => todo!()
    |
 
@@ -77,7 +77,7 @@ LL | struct S(Enum, ());
    = note: the matched value is of type `S`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown, or multiple match arms
    |
-LL ~         S(A, _) => {}
+LL ~         S(A, _) => {},
 LL +         _ => todo!()
    |
 
@@ -95,7 +95,7 @@ LL | struct Sd { x: Enum, y: () }
    = note: the matched value is of type `Sd`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown, or multiple match arms
    |
-LL ~         Sd { x: A, y: _ } => {}
+LL ~         Sd { x: A, y: _ } => {},
 LL +         _ => todo!()
    |
 

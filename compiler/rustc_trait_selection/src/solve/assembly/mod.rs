@@ -1,20 +1,20 @@
 //! Code shared by trait and projection goals for candidate assembly.
 
 use super::search_graph::OverflowHandler;
-#[cfg(doc)]
-use super::trait_goals::structural_traits::*;
 use super::{EvalCtxt, SolverMode};
+use crate::solve::CanonicalResponseExt;
 use crate::traits::coherence;
-use itertools::Itertools;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
-use rustc_infer::traits::util::elaborate_predicates;
+use rustc_infer::traits::util::elaborate;
 use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, MaybeCause, QueryResult};
 use rustc_middle::ty::fast_reject::TreatProjections;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use std::fmt::Debug;
+
+pub(super) mod structural_traits;
 
 /// A candidate is a possible way to prove a goal.
 ///
@@ -270,6 +270,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// To deal with this, we first try to normalize the self type and add the candidates for the normalized
     /// self type to the list of candidates in case that succeeds. We also have to consider candidates with the
     /// projection as a self type as well
+    #[instrument(level = "debug", skip_all)]
     fn assemble_candidates_after_normalizing_self_ty<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -315,6 +316,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn assemble_impl_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -333,6 +335,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         );
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn assemble_builtin_impl_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -390,6 +393,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn assemble_param_env_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -405,6 +409,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn assemble_alias_bound_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -452,6 +457,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn assemble_object_bound_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -492,7 +498,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let tcx = self.tcx();
         let own_bounds: FxIndexSet<_> =
             bounds.iter().map(|bound| bound.with_self_ty(tcx, self_ty)).collect();
-        for assumption in elaborate_predicates(tcx, own_bounds.iter().copied()) {
+        for assumption in elaborate(tcx, own_bounds.iter().copied()) {
             // FIXME: Predicates are fully elaborated in the object type's existential bounds
             // list. We want to only consider these pre-elaborated projections, and not other
             // projection predicates that we reach by elaborating the principal trait ref,
@@ -514,6 +520,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn assemble_coherence_unknowable_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -540,61 +547,41 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
+    /// If there are multiple ways to prove a trait or projection goal, we have
+    /// to somehow try to merge the candidates into one. If that fails, we return
+    /// ambiguity.
     #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn merge_candidates(
         &mut self,
         mut candidates: Vec<Candidate<'tcx>>,
     ) -> QueryResult<'tcx> {
-        match candidates.len() {
-            0 => return Err(NoSolution),
-            1 => return Ok(candidates.pop().unwrap().result),
-            _ => {}
+        // First try merging all candidates. This is complete and fully sound.
+        let responses = candidates.iter().map(|c| c.result).collect::<Vec<_>>();
+        if let Some(result) = self.try_merge_responses(&responses) {
+            return Ok(result);
         }
 
-        if candidates.len() > 1 {
-            let mut i = 0;
-            'outer: while i < candidates.len() {
-                for j in (0..candidates.len()).filter(|&j| i != j) {
-                    if self.candidate_should_be_dropped_in_favor_of(&candidates[i], &candidates[j])
-                    {
-                        debug!(candidate = ?candidates[i], "Dropping candidate #{}/{}", i, candidates.len());
-                        candidates.swap_remove(i);
-                        continue 'outer;
+        // We then check whether we should prioritize `ParamEnv` candidates.
+        //
+        // Doing so is incomplete and would therefore be unsound during coherence.
+        match self.solver_mode() {
+            SolverMode::Coherence => (),
+            // Prioritize `ParamEnv` candidates only if they do not guide inference.
+            //
+            // This is still incomplete as we may add incorrect region bounds.
+            SolverMode::Normal => {
+                let param_env_responses = candidates
+                    .iter()
+                    .filter(|c| matches!(c.source, CandidateSource::ParamEnv(_)))
+                    .map(|c| c.result)
+                    .collect::<Vec<_>>();
+                if let Some(result) = self.try_merge_responses(&param_env_responses) {
+                    if result.has_only_region_constraints() {
+                        return Ok(result);
                     }
                 }
-
-                debug!(candidate = ?candidates[i], "Retaining candidate #{}/{}", i, candidates.len());
-                i += 1;
-            }
-
-            // If there are *STILL* multiple candidates that have *different* response
-            // results, give up and report ambiguity.
-            if candidates.len() > 1 && !candidates.iter().map(|cand| cand.result).all_equal() {
-                let certainty = if candidates.iter().all(|x| {
-                    matches!(x.result.value.certainty, Certainty::Maybe(MaybeCause::Overflow))
-                }) {
-                    Certainty::Maybe(MaybeCause::Overflow)
-                } else {
-                    Certainty::AMBIGUOUS
-                };
-                return self.evaluate_added_goals_and_make_canonical_response(certainty);
             }
         }
-
-        Ok(candidates.pop().unwrap().result)
-    }
-
-    fn candidate_should_be_dropped_in_favor_of(
-        &self,
-        candidate: &Candidate<'tcx>,
-        other: &Candidate<'tcx>,
-    ) -> bool {
-        // FIXME: implement this
-        match (candidate.source, other.source) {
-            (CandidateSource::Impl(_), _)
-            | (CandidateSource::ParamEnv(_), _)
-            | (CandidateSource::AliasBound, _)
-            | (CandidateSource::BuiltinImpl, _) => false,
-        }
+        self.flounder(&responses)
     }
 }

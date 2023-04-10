@@ -37,6 +37,10 @@ pointers. If you encounter this error you should try to avoid dereferencing the 
 You can read more about trait objects in the Trait Objects section of the Reference: \
 https://doc.rust-lang.org/reference/types.html#trait-objects";
 
+fn is_number(text: &str) -> bool {
+    text.chars().all(|c: char| c.is_digit(10))
+}
+
 /// Information about the expected type at the top level of type checking a pattern.
 ///
 /// **NOTE:** This is only for use by diagnostics. Do NOT use for type checking logic!
@@ -1673,7 +1677,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fields: &'tcx [hir::PatField<'tcx>],
         variant: &ty::VariantDef,
     ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
-        if let (Some(CtorKind::Fn), PatKind::Struct(qpath, ..)) = (variant.ctor_kind(), &pat.kind) {
+        if let (Some(CtorKind::Fn), PatKind::Struct(qpath, pattern_fields, ..)) =
+            (variant.ctor_kind(), &pat.kind)
+        {
+            let is_tuple_struct_match = !pattern_fields.is_empty()
+                && pattern_fields.iter().map(|field| field.ident.name.as_str()).all(is_number);
+            if is_tuple_struct_match {
+                return None;
+            }
+
             let path = rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| {
                 s.print_qpath(qpath, false)
             });
@@ -1895,7 +1907,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 prefix,
                 unmentioned_fields
                     .iter()
-                    .map(|(_, name)| name.to_string())
+                    .map(|(_, name)| {
+                        let field_name = name.to_string();
+                        if is_number(&field_name) {
+                            format!("{}: _", field_name)
+                        } else {
+                            field_name
+                        }
+                    })
                     .collect::<Vec<_>>()
                     .join(", "),
                 if have_inaccessible_fields { ", .." } else { "" },

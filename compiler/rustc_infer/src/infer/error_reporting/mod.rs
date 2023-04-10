@@ -170,15 +170,15 @@ fn msg_span_from_named_region<'tcx>(
         }
         ty::ReStatic => ("the static lifetime".to_owned(), alt_span),
         ty::RePlaceholder(ty::PlaceholderRegion {
-            name: ty::BoundRegionKind::BrNamed(def_id, name),
+            bound: ty::BoundRegion { kind: ty::BoundRegionKind::BrNamed(def_id, name), .. },
             ..
         }) => (format!("the lifetime `{name}` as defined here"), Some(tcx.def_span(def_id))),
         ty::RePlaceholder(ty::PlaceholderRegion {
-            name: ty::BoundRegionKind::BrAnon(_, Some(span)),
+            bound: ty::BoundRegion { kind: ty::BoundRegionKind::BrAnon(Some(span)), .. },
             ..
         }) => (format!("the anonymous lifetime defined here"), Some(span)),
         ty::RePlaceholder(ty::PlaceholderRegion {
-            name: ty::BoundRegionKind::BrAnon(_, None),
+            bound: ty::BoundRegion { kind: ty::BoundRegionKind::BrAnon(None), .. },
             ..
         }) => (format!("an anonymous lifetime"), None),
         _ => bug!("{:?}", region),
@@ -226,8 +226,8 @@ fn msg_span_from_early_bound_and_free_regions<'tcx>(
                         };
                         (text, sp)
                     }
-                    ty::BrAnon(idx, span) => (
-                        format!("the anonymous lifetime #{} defined here", idx + 1),
+                    ty::BrAnon(span) => (
+                        "the anonymous lifetime as defined here".to_string(),
                         match span {
                             Some(span) => span,
                             None => tcx.def_span(scope)
@@ -2697,11 +2697,6 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
         self.0.tcx
     }
 
-    fn intercrate(&self) -> bool {
-        assert!(!self.0.intercrate);
-        false
-    }
-
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         // Unused, only for consts which we treat as always equal
         ty::ParamEnv::empty()
@@ -2713,10 +2708,6 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
 
     fn a_is_expected(&self) -> bool {
         true
-    }
-
-    fn mark_ambiguous(&mut self) {
-        bug!()
     }
 
     fn relate_with_variance<T: relate::Relate<'tcx>>(

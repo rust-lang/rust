@@ -511,8 +511,6 @@ macro_rules! implement_ty_decoder {
                     read_isize -> isize;
 
                     read_bool -> bool;
-                    read_f64 -> f64;
-                    read_f32 -> f32;
                     read_char -> char;
                     read_str -> &str;
                 }

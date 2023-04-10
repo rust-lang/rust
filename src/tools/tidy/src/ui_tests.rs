@@ -7,8 +7,8 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const ENTRY_LIMIT: usize = 1000;
 // FIXME: The following limits should be reduced eventually.
+const ENTRY_LIMIT: usize = 885;
 const ROOT_ENTRY_LIMIT: usize = 881;
 const ISSUES_ENTRY_LIMIT: usize = 1978;
 

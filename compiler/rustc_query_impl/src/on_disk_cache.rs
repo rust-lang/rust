@@ -1046,8 +1046,6 @@ impl<'a, 'tcx> Encoder for CacheEncoder<'a, 'tcx> {
         emit_i8(i8);
 
         emit_bool(bool);
-        emit_f64(f64);
-        emit_f32(f32);
         emit_char(char);
         emit_str(&str);
         emit_raw_bytes(&[u8]);
@@ -1064,14 +1062,14 @@ impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for [u8] {
     }
 }
 
-pub fn encode_query_results<'a, 'tcx, Q>(
+pub(crate) fn encode_query_results<'a, 'tcx, Q>(
     query: Q,
     qcx: QueryCtxt<'tcx>,
     encoder: &mut CacheEncoder<'a, 'tcx>,
     query_result_index: &mut EncodedDepNodeIndex,
 ) where
-    Q: super::QueryConfig<QueryCtxt<'tcx>>,
-    Q::Value: Encodable<CacheEncoder<'a, 'tcx>>,
+    Q: super::QueryConfigRestored<'tcx>,
+    Q::RestoredValue: Encodable<CacheEncoder<'a, 'tcx>>,
 {
     let _timer = qcx
         .tcx
@@ -1089,7 +1087,7 @@ pub fn encode_query_results<'a, 'tcx, Q>(
 
             // Encode the type check tables with the `SerializedDepNodeIndex`
             // as tag.
-            encoder.encode_tagged(dep_node, value);
+            encoder.encode_tagged(dep_node, &Q::restore(*value));
         }
     });
 }

@@ -1,5 +1,5 @@
 error[E0412]: cannot find type `S` in this scope
-  --> $DIR/arguments.rs:16:8
+  --> $DIR/arguments.rs:14:8
    |
 LL |     m!(S, S);
    |        ^ not found in this scope

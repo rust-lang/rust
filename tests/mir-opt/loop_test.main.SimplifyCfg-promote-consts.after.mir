@@ -35,7 +35,7 @@ fn main() -> () {
     }
 
     bb3: {
-        falseUnwind -> [real: bb4, cleanup: bb5]; // scope 0 at $DIR/loop_test.rs:+7:5: +10:6
+        falseUnwind -> [real: bb4, unwind: bb5]; // scope 0 at $DIR/loop_test.rs:+7:5: +10:6
     }
 
     bb4: {

@@ -1,0 +1,29 @@
+warning: You have explicitly enabled MIR optimizations, overriding Miri's default which is to completely disable them. Any optimizations may hide UB that Miri would otherwise detect, and it is not necessarily possible to predict what kind of UB will be missed. If you are enabling optimizations to make Miri run faster, we advise using cfg(miri) to shrink your workload instead. The performance benefit of enabling MIR optimizations is usually marginal at best.
+
+thread 'main' panicked at 'explicit panic', $DIR/terminate-terminator.rs:LL:CC
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+error: abnormal termination: panic in a function that cannot unwind
+  --> $DIR/terminate-terminator.rs:LL:CC
+   |
+LL | / fn has_cleanup() {
+LL | |
+LL | |     // FIXME(nbdd0121): The error should be reported at the call site.
+LL | |     let _f = Foo;
+LL | |     panic!();
+LL | | }
+   | |_^ panic in a function that cannot unwind
+...
+LL |       has_cleanup();
+   |       ------------- in this inlined function call
+   |
+   = note: inside `panic_abort` at $DIR/terminate-terminator.rs:LL:CC
+note: inside `main`
+  --> $DIR/terminate-terminator.rs:LL:CC
+   |
+LL |     panic_abort();
+   |     ^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error; 1 warning emitted
+

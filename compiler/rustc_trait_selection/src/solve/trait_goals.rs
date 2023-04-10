@@ -1,6 +1,7 @@
 //! Dealing with trait goals, i.e. `T: Trait<'a, U>`.
 
-use super::{assembly, EvalCtxt, SolverMode};
+use super::assembly::{self, structural_traits};
+use super::{EvalCtxt, SolverMode};
 use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
 use rustc_infer::traits::query::NoSolution;
@@ -10,8 +11,6 @@ use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, TreatProjection
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
 use rustc_middle::ty::{TraitPredicate, TypeVisitableExt};
 use rustc_span::DUMMY_SP;
-
-pub mod structural_traits;
 
 impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
     fn self_ty(self) -> Ty<'tcx> {
@@ -221,8 +220,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         let self_ty = tcx.erase_regions(goal.predicate.self_ty());
 
         if let Ok(layout) = tcx.layout_of(goal.param_env.and(self_ty))
-            && layout.layout.size() == tcx.data_layout.pointer_size
-            && layout.layout.align().abi == tcx.data_layout.pointer_align.abi
+            && layout.layout.is_pointer_like(&tcx.data_layout)
         {
             // FIXME: We could make this faster by making a no-constraints response
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)

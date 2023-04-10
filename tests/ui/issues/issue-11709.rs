@@ -1,6 +1,5 @@
 // run-pass
 #![allow(dead_code)]
-// ignore-pretty issue #37199
 
 // Don't panic on blocks without results
 // There are several tests in this run-pass that raised

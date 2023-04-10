@@ -63,15 +63,15 @@ fn main() -> () {
     }
 
     bb6 (cleanup): {
-        drop(_7) -> bb7;                 // scope 1 at $DIR/box_expr.rs:+3:11: +3:12
+        drop(_7) -> [return: bb7, unwind terminate]; // scope 1 at $DIR/box_expr.rs:+3:11: +3:12
     }
 
     bb7 (cleanup): {
-        drop(_1) -> bb9;                 // scope 0 at $DIR/box_expr.rs:+4:1: +4:2
+        drop(_1) -> [return: bb9, unwind terminate]; // scope 0 at $DIR/box_expr.rs:+4:1: +4:2
     }
 
     bb8 (cleanup): {
-        drop(_5) -> bb9;                 // scope 0 at $DIR/box_expr.rs:+2:22: +2:23
+        drop(_5) -> [return: bb9, unwind terminate]; // scope 0 at $DIR/box_expr.rs:+2:22: +2:23
     }
 
     bb9 (cleanup): {

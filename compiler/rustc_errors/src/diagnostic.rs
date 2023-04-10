@@ -956,7 +956,7 @@ impl Diagnostic {
     // Exact iteration order of diagnostic arguments shouldn't make a difference to output because
     // they're only used in interpolation.
     #[allow(rustc::potential_query_instability)]
-    pub fn args<'a>(&'a self) -> impl Iterator<Item = DiagnosticArg<'a, 'static>> {
+    pub fn args(&self) -> impl Iterator<Item = DiagnosticArg<'_, 'static>> {
         self.args.iter()
     }
 

@@ -33,7 +33,7 @@
       }
   
       bb3 (cleanup): {
-          drop(_1) -> bb4;                 // scope 0 at $DIR/cycle.rs:+2:1: +2:2
+          drop(_1) -> [return: bb4, unwind terminate]; // scope 0 at $DIR/cycle.rs:+2:1: +2:2
       }
   
       bb4 (cleanup): {

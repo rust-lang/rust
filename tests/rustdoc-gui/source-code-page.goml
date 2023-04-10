@@ -216,3 +216,8 @@ call-function: ("check-sidebar-dir-entry", {
     "x": 0,
     "y": |source_sidebar_title_y| + |source_sidebar_title_height| + 6,
 })
+
+// Now we check that the logo has a bottom margin so it's not stuck to the search input.
+assert-css: (".sub-logo-container > img", {"margin-bottom": "8px"})
+store-property: (logo_height, ".sub-logo-container", "clientHeight")
+assert-position: (".search-form", {"y": |logo_height| + 8})

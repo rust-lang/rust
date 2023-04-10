@@ -86,12 +86,8 @@
             if (settingId === "theme") {
                 const useSystem = getSettingValue("use-system-theme");
                 if (useSystem === "true" || settingValue === null) {
-                    if (useSystem !== "false") {
-                        settingValue = "system preference";
-                    } else {
-                        // This is the default theme.
-                        settingValue = "light";
-                    }
+                    // "light" is the default theme
+                    settingValue = useSystem === "false" ? "light" : "system preference";
                 }
             }
             if (settingValue !== null && settingValue !== "null") {

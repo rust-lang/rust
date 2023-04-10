@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 // unit-test: InstCombine
 // EMIT_MIR combine_array_len.norm2.InstCombine.diff
 

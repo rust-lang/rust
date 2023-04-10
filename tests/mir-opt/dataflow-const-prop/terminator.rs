@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 // unit-test: DataflowConstProp
 
 fn foo(n: i32) {}

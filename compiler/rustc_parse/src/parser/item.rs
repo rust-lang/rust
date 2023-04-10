@@ -3,6 +3,7 @@ use crate::errors;
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, TrailingToken};
+use ast::StaticItem;
 use rustc_ast::ast::*;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, TokenKind};
@@ -227,7 +228,7 @@ impl<'a> Parser<'a> {
             self.bump(); // `static`
             let m = self.parse_mutability();
             let (ident, ty, expr) = self.parse_item_global(Some(m))?;
-            (ident, ItemKind::Static(ty, m, expr))
+            (ident, ItemKind::Static(Box::new(StaticItem { ty, mutability: m, expr })))
         } else if let Const::Yes(const_span) = self.parse_constness(Case::Sensitive) {
             // CONST ITEM
             if self.token.is_keyword(kw::Impl) {
@@ -236,7 +237,7 @@ impl<'a> Parser<'a> {
             } else {
                 self.recover_const_mut(const_span);
                 let (ident, ty, expr) = self.parse_item_global(None)?;
-                (ident, ItemKind::Const(def_(), ty, expr))
+                (ident, ItemKind::Const(Box::new(ConstItem { defaultness: def_(), ty, expr })))
             }
         } else if self.check_keyword(kw::Trait) || self.check_auto_or_unsafe_trait_item() {
             // TRAIT ITEM
@@ -862,9 +863,13 @@ impl<'a> Parser<'a> {
                 let kind = match AssocItemKind::try_from(kind) {
                     Ok(kind) => kind,
                     Err(kind) => match kind {
-                        ItemKind::Static(a, _, b) => {
+                        ItemKind::Static(box StaticItem { ty, mutability: _, expr }) => {
                             self.sess.emit_err(errors::AssociatedStaticItemNotAllowed { span });
-                            AssocItemKind::Const(Defaultness::Final, a, b)
+                            AssocItemKind::Const(Box::new(ConstItem {
+                                defaultness: Defaultness::Final,
+                                ty,
+                                expr,
+                            }))
                         }
                         _ => return self.error_bad_item_kind(span, &kind, "`trait`s or `impl`s"),
                     },
@@ -1114,12 +1119,12 @@ impl<'a> Parser<'a> {
                 let kind = match ForeignItemKind::try_from(kind) {
                     Ok(kind) => kind,
                     Err(kind) => match kind {
-                        ItemKind::Const(_, a, b) => {
+                        ItemKind::Const(box ConstItem { ty, expr, .. }) => {
                             self.sess.emit_err(errors::ExternItemCannotBeConst {
                                 ident_span: ident.span,
                                 const_span: span.with_hi(ident.span.lo()),
                             });
-                            ForeignItemKind::Static(a, Mutability::Not, b)
+                            ForeignItemKind::Static(ty, Mutability::Not, expr)
                         }
                         _ => return self.error_bad_item_kind(span, &kind, "`extern` blocks"),
                     },

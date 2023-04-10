@@ -404,11 +404,14 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     );
                 } else {
                     // And if it isn't, cancel the early-pass warning.
-                    self.sess
+                    if let Some(err) = self
+                        .sess
                         .parse_sess
                         .span_diagnostic
                         .steal_diagnostic(e.span, StashKey::EarlySyntaxWarning)
-                        .map(|err| err.cancel());
+                    {
+                        err.cancel()
+                    }
                 }
             }
             ast::ExprKind::TryBlock(_) => {
@@ -485,17 +488,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             if let Some(args) = constraint.gen_args.as_ref()
                 && matches!(
                     args,
-                    ast::GenericArgs::ReturnTypeNotation(..) | ast::GenericArgs::Parenthesized(..)
+                    ast::GenericArgs::ReturnTypeNotation(..)
                 )
             {
-                // RTN is gated elsewhere, and parenthesized args will turn into
-                // another error.
-                if matches!(args, ast::GenericArgs::Parenthesized(..)) {
-                    self.sess.delay_span_bug(
-                        constraint.span,
-                        "should have emitted a parenthesized generics error",
-                    );
-                }
+                // RTN is gated below with a `gate_all`.
             } else {
                 gate_feature_post!(
                     &self,

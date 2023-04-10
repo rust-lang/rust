@@ -105,6 +105,10 @@ impl<'tcx> Cx<'tcx> {
                             }
                         }
 
+                        let span = match local.init {
+                            Some(init) => local.span.with_hi(init.span.hi()),
+                            None => local.span,
+                        };
                         let stmt = Stmt {
                             kind: StmtKind::Let {
                                 remainder_scope,
@@ -116,6 +120,7 @@ impl<'tcx> Cx<'tcx> {
                                 initializer: local.init.map(|init| self.mirror_expr(init)),
                                 else_block,
                                 lint_level: LintLevel::Explicit(local.hir_id),
+                                span,
                             },
                             opt_destruction_scope: opt_dxn_ext,
                         };

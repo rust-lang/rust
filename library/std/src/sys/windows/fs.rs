@@ -1403,24 +1403,40 @@ fn symlink_junction_inner(original: &Path, junction: &Path) -> io::Result<()> {
     opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT | c::FILE_FLAG_BACKUP_SEMANTICS);
     let f = File::open(junction, &opts)?;
     let h = f.as_inner().as_raw_handle();
-
     unsafe {
         let mut data = Align8([MaybeUninit::<u8>::uninit(); c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
         let data_ptr = data.0.as_mut_ptr();
+        let data_end = data_ptr.add(c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE);
         let db = data_ptr.cast::<c::REPARSE_MOUNTPOINT_DATA_BUFFER>();
         // Zero the header to ensure it's fully initialized, including reserved parameters.
         *db = mem::zeroed();
-        let buf = ptr::addr_of_mut!((*db).ReparseTarget).cast::<c::WCHAR>();
-        let mut i = 0;
+        let reparse_target_slice = {
+            let buf_start = ptr::addr_of_mut!((*db).ReparseTarget).cast::<c::WCHAR>();
+            // Compute offset in bytes and then divide so that we round down
+            // rather than hit any UB (admittedly this arithmetic should work
+            // out so that this isn't necessary)
+            let buf_len_bytes = usize::try_from(data_end.byte_offset_from(buf_start)).unwrap();
+            let buf_len_wchars = buf_len_bytes / core::mem::size_of::<c::WCHAR>();
+            core::slice::from_raw_parts_mut(buf_start, buf_len_wchars)
+        };
+
         // FIXME: this conversion is very hacky
-        let v = br"\??\";
-        let v = v.iter().map(|x| *x as u16);
-        for c in v.chain(original.as_os_str().encode_wide()) {
-            *buf.add(i) = c;
+        let iter = br"\??\"
+            .iter()
+            .map(|x| *x as u16)
+            .chain(original.as_os_str().encode_wide())
+            .chain(core::iter::once(0));
+        let mut i = 0;
+        for c in iter {
+            if i >= reparse_target_slice.len() {
+                return Err(crate::io::const_io_error!(
+                    crate::io::ErrorKind::InvalidFilename,
+                    "Input filename is too long"
+                ));
+            }
+            reparse_target_slice[i] = c;
             i += 1;
         }
-        *buf.add(i) = 0;
-        i += 1;
         (*db).ReparseTag = c::IO_REPARSE_TAG_MOUNT_POINT;
         (*db).ReparseTargetMaximumLength = (i * 2) as c::WORD;
         (*db).ReparseTargetLength = ((i - 1) * 2) as c::WORD;

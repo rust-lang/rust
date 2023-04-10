@@ -462,7 +462,7 @@ macro_rules! make_mir_visitor {
                 match kind {
                     TerminatorKind::Goto { .. } |
                     TerminatorKind::Resume |
-                    TerminatorKind::Abort |
+                    TerminatorKind::Terminate |
                     TerminatorKind::GeneratorDrop |
                     TerminatorKind::Unreachable |
                     TerminatorKind::FalseEdge { .. } |
@@ -509,7 +509,7 @@ macro_rules! make_mir_visitor {
                         args,
                         destination,
                         target: _,
-                        cleanup: _,
+                        unwind: _,
                         from_hir_call: _,
                         fn_span: _
                     } => {
@@ -529,7 +529,7 @@ macro_rules! make_mir_visitor {
                         expected: _,
                         msg,
                         target: _,
-                        cleanup: _,
+                        unwind: _,
                     } => {
                         self.visit_operand(cond, location);
                         self.visit_assert_message(msg, location);
@@ -555,7 +555,7 @@ macro_rules! make_mir_visitor {
                         options: _,
                         line_spans: _,
                         destination: _,
-                        cleanup: _,
+                        unwind: _,
                     } => {
                         for op in operands {
                             match op {

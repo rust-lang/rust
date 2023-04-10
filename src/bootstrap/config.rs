@@ -77,7 +77,7 @@ pub struct Config {
     pub tools: Option<HashSet<String>>,
     pub sanitizers: bool,
     pub profiler: bool,
-    pub ignore_git: bool,
+    pub omit_git_hash: bool,
     pub exclude: Vec<TaskPath>,
     pub include_default_paths: bool,
     pub rustc_error_format: Option<String>,
@@ -227,25 +227,34 @@ pub struct Config {
     pub reuse: Option<PathBuf>,
     pub cargo_native_static: bool,
     pub configure_args: Vec<String>,
+    pub out: PathBuf,
+    pub rust_info: channel::GitInfo,
 
     // These are either the stage0 downloaded binaries or the locally installed ones.
     pub initial_cargo: PathBuf,
     pub initial_rustc: PathBuf,
+
     #[cfg(not(test))]
     initial_rustfmt: RefCell<RustfmtState>,
     #[cfg(test)]
     pub initial_rustfmt: RefCell<RustfmtState>,
-    pub out: PathBuf,
-    pub rust_info: channel::GitInfo,
 }
 
 #[derive(Default, Deserialize)]
 #[cfg_attr(test, derive(Clone))]
 pub struct Stage0Metadata {
+    pub compiler: CompilerMetadata,
     pub config: Stage0Config,
     pub checksums_sha256: HashMap<String, String>,
     pub rustfmt: Option<RustfmtMetadata>,
 }
+#[derive(Default, Deserialize)]
+#[cfg_attr(test, derive(Clone))]
+pub struct CompilerMetadata {
+    pub date: String,
+    pub version: String,
+}
+
 #[derive(Default, Deserialize)]
 #[cfg_attr(test, derive(Clone))]
 pub struct Stage0Config {
@@ -755,7 +764,7 @@ define_config! {
         verbose_tests: Option<bool> = "verbose-tests",
         optimize_tests: Option<bool> = "optimize-tests",
         codegen_tests: Option<bool> = "codegen-tests",
-        ignore_git: Option<bool> = "ignore-git",
+        omit_git_hash: Option<bool> = "omit-git-hash",
         dist_src: Option<bool> = "dist-src",
         save_toolstates: Option<String> = "save-toolstates",
         codegen_backends: Option<Vec<String>> = "codegen-backends",
@@ -1000,10 +1009,10 @@ impl Config {
             config.out = crate::util::absolute(&config.out);
         }
 
-        config.initial_rustc = build
-            .rustc
-            .map(PathBuf::from)
-            .unwrap_or_else(|| config.out.join(config.build.triple).join("stage0/bin/rustc"));
+        config.initial_rustc = build.rustc.map(PathBuf::from).unwrap_or_else(|| {
+            config.download_beta_toolchain();
+            config.out.join(config.build.triple).join("stage0/bin/rustc")
+        });
         config.initial_cargo = build
             .cargo
             .map(PathBuf::from)
@@ -1088,7 +1097,7 @@ impl Config {
         let mut debuginfo_level_tools = None;
         let mut debuginfo_level_tests = None;
         let mut optimize = None;
-        let mut ignore_git = None;
+        let mut omit_git_hash = None;
 
         if let Some(rust) = toml.rust {
             debug = rust.debug;
@@ -1109,7 +1118,7 @@ impl Config {
                 .map(|v| v.expect("invalid value for rust.split_debuginfo"))
                 .unwrap_or(SplitDebuginfo::default_for_platform(&config.build.triple));
             optimize = rust.optimize;
-            ignore_git = rust.ignore_git;
+            omit_git_hash = rust.omit_git_hash;
             config.rust_new_symbol_mangling = rust.new_symbol_mangling;
             set(&mut config.rust_optimize_tests, rust.optimize_tests);
             set(&mut config.codegen_tests, rust.codegen_tests);
@@ -1166,8 +1175,8 @@ impl Config {
 
         // rust_info must be set before is_ci_llvm_available() is called.
         let default = config.channel == "dev";
-        config.ignore_git = ignore_git.unwrap_or(default);
-        config.rust_info = GitInfo::new(config.ignore_git, &config.src);
+        config.omit_git_hash = omit_git_hash.unwrap_or(default);
+        config.rust_info = GitInfo::new(config.omit_git_hash, &config.src);
 
         if let Some(llvm) = toml.llvm {
             match llvm.ccache {

@@ -48,7 +48,7 @@ fn foo(_1: Box<[T]>) -> T {
     }
 
     bb5 (cleanup): {
-        drop(_1) -> bb6;                 // scope 0 at $DIR/issue_91633.rs:+4:2: +4:3
+        drop(_1) -> [return: bb6, unwind terminate]; // scope 0 at $DIR/issue_91633.rs:+4:2: +4:3
     }
 
     bb6 (cleanup): {

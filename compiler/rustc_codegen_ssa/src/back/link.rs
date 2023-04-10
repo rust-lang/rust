@@ -2301,7 +2301,7 @@ fn add_native_libs_from_crate(
                         || (whole_archive == None
                             && bundle
                             && cnum == LOCAL_CRATE
-                            && sess.opts.test);
+                            && sess.is_test_crate());
 
                     if bundle && cnum != LOCAL_CRATE {
                         if let Some(filename) = lib.filename {

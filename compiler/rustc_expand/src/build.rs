@@ -620,10 +620,15 @@ impl<'a> ExtCtxt<'a> {
         span: Span,
         name: Ident,
         ty: P<ast::Ty>,
-        mutbl: ast::Mutability,
+        mutability: ast::Mutability,
         expr: P<ast::Expr>,
     ) -> P<ast::Item> {
-        self.item(span, name, AttrVec::new(), ast::ItemKind::Static(ty, mutbl, Some(expr)))
+        self.item(
+            span,
+            name,
+            AttrVec::new(),
+            ast::ItemKind::Static(ast::StaticItem { ty, mutability, expr: Some(expr) }.into()),
+        )
     }
 
     pub fn item_const(
@@ -633,8 +638,13 @@ impl<'a> ExtCtxt<'a> {
         ty: P<ast::Ty>,
         expr: P<ast::Expr>,
     ) -> P<ast::Item> {
-        let def = ast::Defaultness::Final;
-        self.item(span, name, AttrVec::new(), ast::ItemKind::Const(def, ty, Some(expr)))
+        let defaultness = ast::Defaultness::Final;
+        self.item(
+            span,
+            name,
+            AttrVec::new(),
+            ast::ItemKind::Const(ast::ConstItem { defaultness, ty, expr: Some(expr) }.into()),
+        )
     }
 
     // Builds `#[name]`.

@@ -17,12 +17,6 @@ error: could not evaluate constant pattern
 LL |     let FOO = FOO;
    |         ^^^
 
-error: could not evaluate constant pattern
-  --> $DIR/issue-78655.rs:7:9
-   |
-LL |     let FOO = FOO;
-   |         ^^^
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0381`.

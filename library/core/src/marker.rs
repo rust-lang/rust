@@ -879,7 +879,7 @@ pub trait Tuple {}
 #[unstable(feature = "pointer_like_trait", issue = "none")]
 #[lang = "pointer_like"]
 #[rustc_on_unimplemented(
-    message = "`{Self}` needs to have the same alignment and size as a pointer",
+    message = "`{Self}` needs to have the same ABI as a pointer",
     label = "`{Self}` needs to be a pointer-like type"
 )]
 pub trait PointerLike {}

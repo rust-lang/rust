@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 enum Empty {}
 
 fn empty() -> Option<Empty> {

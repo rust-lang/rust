@@ -23,7 +23,7 @@ fn foo(_1: T, _2: i32) -> i32 {
         StorageLive(_3);                 // scope 0 at $DIR/inline_closure.rs:+1:9: +1:10
         _3 = [closure@foo::<T>::{closure#0}]; // scope 0 at $DIR/inline_closure.rs:+1:13: +1:24
                                          // closure
-                                         // + def_id: DefId(0:6 ~ inline_closure[92ba]::foo::{closure#0})
+                                         // + def_id: DefId(0:6 ~ inline_closure[8f32]::foo::{closure#0})
                                          // + substs: [
                                          //     T,
                                          //     i8,

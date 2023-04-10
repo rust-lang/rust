@@ -33,7 +33,7 @@ fn main() -> () {
 
     bb1 (cleanup): {
         (_1.0: Aligned) = move _4;       // scope 1 at $DIR/packed_struct_drop_aligned.rs:+2:5: +2:8
-        drop(_1) -> bb3;                 // scope 0 at $DIR/packed_struct_drop_aligned.rs:+3:1: +3:2
+        drop(_1) -> [return: bb3, unwind terminate]; // scope 0 at $DIR/packed_struct_drop_aligned.rs:+3:1: +3:2
     }
 
     bb2: {

@@ -12,7 +12,7 @@ use rustc_errors::{pluralize, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_infer::traits::util::elaborate_predicates_with_span;
+use rustc_infer::traits::util::elaborate;
 use rustc_middle::ty::adjustment;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::Symbol;
@@ -254,24 +254,21 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 }
                 ty::Adt(def, _) => is_def_must_use(cx, def.did(), span),
                 ty::Alias(ty::Opaque, ty::AliasTy { def_id: def, .. }) => {
-                    elaborate_predicates_with_span(
-                        cx.tcx,
-                        cx.tcx.explicit_item_bounds(def).iter().cloned(),
-                    )
-                    .find_map(|(pred, _span)| {
-                        // We only look at the `DefId`, so it is safe to skip the binder here.
-                        if let ty::PredicateKind::Clause(ty::Clause::Trait(
-                            ref poly_trait_predicate,
-                        )) = pred.kind().skip_binder()
-                        {
-                            let def_id = poly_trait_predicate.trait_ref.def_id;
+                    elaborate(cx.tcx, cx.tcx.explicit_item_bounds(def).iter().cloned())
+                        .find_map(|(pred, _span)| {
+                            // We only look at the `DefId`, so it is safe to skip the binder here.
+                            if let ty::PredicateKind::Clause(ty::Clause::Trait(
+                                ref poly_trait_predicate,
+                            )) = pred.kind().skip_binder()
+                            {
+                                let def_id = poly_trait_predicate.trait_ref.def_id;
 
-                            is_def_must_use(cx, def_id, span)
-                        } else {
-                            None
-                        }
-                    })
-                    .map(|inner| MustUsePath::Opaque(Box::new(inner)))
+                                is_def_must_use(cx, def_id, span)
+                            } else {
+                                None
+                            }
+                        })
+                        .map(|inner| MustUsePath::Opaque(Box::new(inner)))
                 }
                 ty::Dynamic(binders, _, _) => binders.iter().find_map(|predicate| {
                     if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder()
@@ -805,7 +802,9 @@ trait UnusedDelimLint {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
         use ast::ItemKind::*;
 
-        if let Const(.., Some(expr)) | Static(.., Some(expr)) = &item.kind {
+        if let Const(box ast::ConstItem { expr: Some(expr), .. })
+        | Static(box ast::StaticItem { expr: Some(expr), .. }) = &item.kind
+        {
             self.check_unused_delims_expr(
                 cx,
                 expr,

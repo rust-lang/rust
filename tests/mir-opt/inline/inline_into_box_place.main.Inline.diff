@@ -75,7 +75,7 @@
   
       bb4 (cleanup): {
 -         resume;                          // scope 0 at $DIR/inline_into_box_place.rs:+0:1: +2:2
-+         drop(_2) -> bb2;                 // scope 3 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
++         drop(_2) -> [return: bb2, unwind terminate]; // scope 3 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
       }
   }
   

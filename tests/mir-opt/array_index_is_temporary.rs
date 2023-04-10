@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 // Retagging (from Stacked Borrows) relies on the array index being a fresh
 // temporary, so that side-effects cannot change it.
 // Test that this is indeed the case.

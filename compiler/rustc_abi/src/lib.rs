@@ -1108,7 +1108,7 @@ pub enum FieldsShape {
         /// ordered to match the source definition order.
         /// This vector does not go in increasing order.
         // FIXME(eddyb) use small vector optimization for the common case.
-        offsets: Vec<Size>,
+        offsets: IndexVec<FieldIdx, Size>,
 
         /// Maps source order field indices to memory order indices,
         /// depending on how the fields were reordered (if at all).
@@ -1122,7 +1122,7 @@ pub enum FieldsShape {
         ///
         // FIXME(eddyb) build a better abstraction for permutations, if possible.
         // FIXME(camlorn) also consider small vector optimization here.
-        memory_index: Vec<u32>,
+        memory_index: IndexVec<FieldIdx, u32>,
     },
 }
 
@@ -1157,7 +1157,7 @@ impl FieldsShape {
                 assert!(i < count);
                 stride * i
             }
-            FieldsShape::Arbitrary { ref offsets, .. } => offsets[i],
+            FieldsShape::Arbitrary { ref offsets, .. } => offsets[FieldIdx::from_usize(i)],
         }
     }
 
@@ -1168,28 +1168,27 @@ impl FieldsShape {
                 unreachable!("FieldsShape::memory_index: `Primitive`s have no fields")
             }
             FieldsShape::Union(_) | FieldsShape::Array { .. } => i,
-            FieldsShape::Arbitrary { ref memory_index, .. } => memory_index[i].try_into().unwrap(),
+            FieldsShape::Arbitrary { ref memory_index, .. } => {
+                memory_index[FieldIdx::from_usize(i)].try_into().unwrap()
+            }
         }
     }
 
     /// Gets source indices of the fields by increasing offsets.
     #[inline]
-    pub fn index_by_increasing_offset<'a>(&'a self) -> impl Iterator<Item = usize> + 'a {
+    pub fn index_by_increasing_offset(&self) -> impl Iterator<Item = usize> + '_ {
         let mut inverse_small = [0u8; 64];
-        let mut inverse_big = vec![];
+        let mut inverse_big = IndexVec::new();
         let use_small = self.count() <= inverse_small.len();
 
         // We have to write this logic twice in order to keep the array small.
         if let FieldsShape::Arbitrary { ref memory_index, .. } = *self {
             if use_small {
-                for i in 0..self.count() {
-                    inverse_small[memory_index[i] as usize] = i as u8;
+                for (field_idx, &mem_idx) in memory_index.iter_enumerated() {
+                    inverse_small[mem_idx as usize] = field_idx.as_u32() as u8;
                 }
             } else {
-                inverse_big = vec![0; self.count()];
-                for i in 0..self.count() {
-                    inverse_big[memory_index[i] as usize] = i as u32;
-                }
+                inverse_big = memory_index.invert_bijective_mapping();
             }
         }
 
@@ -1199,7 +1198,7 @@ impl FieldsShape {
                 if use_small {
                     inverse_small[i] as usize
                 } else {
-                    inverse_big[i] as usize
+                    inverse_big[i as u32].as_usize()
                 }
             }
         })
@@ -1522,6 +1521,16 @@ impl<'a> Layout<'a> {
 
     pub fn size(self) -> Size {
         self.0.0.size
+    }
+
+    /// Whether the layout is from a type that implements [`std::marker::PointerLike`].
+    ///
+    /// Currently, that means that the type is pointer-sized, pointer-aligned,
+    /// and has a scalar ABI.
+    pub fn is_pointer_like(self, data_layout: &TargetDataLayout) -> bool {
+        self.size() == data_layout.pointer_size
+            && self.align().abi == data_layout.pointer_align.abi
+            && matches!(self.abi(), Abi::Scalar(..))
     }
 }
 

@@ -1488,7 +1488,7 @@ impl Step for Extended {
 
         let xform = |p: &Path| {
             let mut contents = t!(fs::read_to_string(p));
-            for tool in &["rust-demangler", "miri"] {
+            for tool in &["rust-demangler", "miri", "rust-docs"] {
                 if !built_tools.contains(tool) {
                     contents = filter(&contents, tool);
                 }
@@ -1585,11 +1585,10 @@ impl Step for Extended {
             prepare("rustc");
             prepare("cargo");
             prepare("rust-analysis");
-            prepare("rust-docs");
             prepare("rust-std");
             prepare("clippy");
             prepare("rust-analyzer");
-            for tool in &["rust-demangler", "miri"] {
+            for tool in &["rust-docs", "rust-demangler", "miri"] {
                 if built_tools.contains(tool) {
                     prepare(tool);
                 }
@@ -1624,23 +1623,25 @@ impl Step for Extended {
                     .arg("-out")
                     .arg(exe.join("RustcGroup.wxs")),
             );
-            builder.run(
-                Command::new(&heat)
-                    .current_dir(&exe)
-                    .arg("dir")
-                    .arg("rust-docs")
-                    .args(&heat_flags)
-                    .arg("-cg")
-                    .arg("DocsGroup")
-                    .arg("-dr")
-                    .arg("Docs")
-                    .arg("-var")
-                    .arg("var.DocsDir")
-                    .arg("-out")
-                    .arg(exe.join("DocsGroup.wxs"))
-                    .arg("-t")
-                    .arg(etc.join("msi/squash-components.xsl")),
-            );
+            if built_tools.contains("rust-docs") {
+                builder.run(
+                    Command::new(&heat)
+                        .current_dir(&exe)
+                        .arg("dir")
+                        .arg("rust-docs")
+                        .args(&heat_flags)
+                        .arg("-cg")
+                        .arg("DocsGroup")
+                        .arg("-dr")
+                        .arg("Docs")
+                        .arg("-var")
+                        .arg("var.DocsDir")
+                        .arg("-out")
+                        .arg(exe.join("DocsGroup.wxs"))
+                        .arg("-t")
+                        .arg(etc.join("msi/squash-components.xsl")),
+                );
+            }
             builder.run(
                 Command::new(&heat)
                     .current_dir(&exe)
@@ -1787,7 +1788,6 @@ impl Step for Extended {
                 cmd.current_dir(&exe)
                     .arg("-nologo")
                     .arg("-dRustcDir=rustc")
-                    .arg("-dDocsDir=rust-docs")
                     .arg("-dCargoDir=cargo")
                     .arg("-dStdDir=rust-std")
                     .arg("-dAnalysisDir=rust-analysis")
@@ -1799,6 +1799,9 @@ impl Step for Extended {
                     .arg(&input);
                 add_env(builder, &mut cmd, target);
 
+                if built_tools.contains("rust-docs") {
+                    cmd.arg("-dDocsDir=rust-docs");
+                }
                 if built_tools.contains("rust-demangler") {
                     cmd.arg("-dRustDemanglerDir=rust-demangler");
                 }
@@ -1817,7 +1820,9 @@ impl Step for Extended {
             candle(&etc.join("msi/ui.wxs"));
             candle(&etc.join("msi/rustwelcomedlg.wxs"));
             candle("RustcGroup.wxs".as_ref());
-            candle("DocsGroup.wxs".as_ref());
+            if built_tools.contains("rust-docs") {
+                candle("DocsGroup.wxs".as_ref());
+            }
             candle("CargoGroup.wxs".as_ref());
             candle("StdGroup.wxs".as_ref());
             candle("ClippyGroup.wxs".as_ref());
@@ -1854,7 +1859,6 @@ impl Step for Extended {
                 .arg("ui.wixobj")
                 .arg("rustwelcomedlg.wixobj")
                 .arg("RustcGroup.wixobj")
-                .arg("DocsGroup.wixobj")
                 .arg("CargoGroup.wixobj")
                 .arg("StdGroup.wixobj")
                 .arg("AnalysisGroup.wixobj")
@@ -1869,6 +1873,9 @@ impl Step for Extended {
             }
             if built_tools.contains("rust-demangler") {
                 cmd.arg("RustDemanglerGroup.wixobj");
+            }
+            if built_tools.contains("rust-docs") {
+                cmd.arg("DocsGroup.wixobj");
             }
 
             if target.ends_with("windows-gnu") {

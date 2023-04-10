@@ -110,7 +110,7 @@ yields ()
 
     bb13 (cleanup): {
         StorageDead(_3);                 // scope 0 at $DIR/generator_storage_dead_unwind.rs:+6:5: +6:6
-        drop(_1) -> bb14;                // scope 0 at $DIR/generator_storage_dead_unwind.rs:+6:5: +6:6
+        drop(_1) -> [return: bb14, unwind terminate]; // scope 0 at $DIR/generator_storage_dead_unwind.rs:+6:5: +6:6
     }
 
     bb14 (cleanup): {
@@ -119,6 +119,6 @@ yields ()
 
     bb15 (cleanup): {
         StorageDead(_3);                 // scope 0 at $DIR/generator_storage_dead_unwind.rs:+6:5: +6:6
-        drop(_1) -> bb14;                // scope 0 at $DIR/generator_storage_dead_unwind.rs:+6:5: +6:6
+        drop(_1) -> [return: bb14, unwind terminate]; // scope 0 at $DIR/generator_storage_dead_unwind.rs:+6:5: +6:6
     }
 }

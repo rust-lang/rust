@@ -904,9 +904,9 @@ unsafe fn embed_bitcode(
         // We need custom section flags, so emit module-level inline assembly.
         let section_flags = if cgcx.is_pe_coff { "n" } else { "e" };
         let asm = create_section_with_flags_asm(".llvmbc", section_flags, bitcode);
-        llvm::LLVMRustAppendModuleInlineAsm(llmod, asm.as_ptr().cast(), asm.len());
+        llvm::LLVMAppendModuleInlineAsm(llmod, asm.as_ptr().cast(), asm.len());
         let asm = create_section_with_flags_asm(".llvmcmd", section_flags, cmdline.as_bytes());
-        llvm::LLVMRustAppendModuleInlineAsm(llmod, asm.as_ptr().cast(), asm.len());
+        llvm::LLVMAppendModuleInlineAsm(llmod, asm.as_ptr().cast(), asm.len());
     }
 }
 

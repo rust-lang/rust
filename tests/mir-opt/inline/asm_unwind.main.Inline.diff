@@ -35,7 +35,7 @@
 +     }
 + 
 +     bb3 (cleanup): {
-+         drop(_2) -> bb4;                 // scope 1 at $DIR/asm_unwind.rs:17:1: 17:2
++         drop(_2) -> [return: bb4, unwind terminate]; // scope 1 at $DIR/asm_unwind.rs:17:1: 17:2
 +     }
 + 
 +     bb4 (cleanup): {

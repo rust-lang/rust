@@ -6,6 +6,7 @@ use std::{io, ops, str};
 
 use regex::Regex;
 use rustc_graphviz as dot;
+use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::graphviz_safe_def_name;
 use rustc_middle::mir::{self, BasicBlock, Body, Location};
 
@@ -34,6 +35,7 @@ where
     body: &'a Body<'tcx>,
     results: &'a Results<'tcx, A>,
     style: OutputStyle,
+    reachable: BitSet<BasicBlock>,
 }
 
 impl<'a, 'tcx, A> Formatter<'a, 'tcx, A>
@@ -41,7 +43,8 @@ where
     A: Analysis<'tcx>,
 {
     pub fn new(body: &'a Body<'tcx>, results: &'a Results<'tcx, A>, style: OutputStyle) -> Self {
-        Formatter { body, results, style }
+        let reachable = mir::traversal::reachable_as_bitset(body);
+        Formatter { body, results, style, reachable }
     }
 }
 
@@ -108,7 +111,12 @@ where
     type Edge = CfgEdge;
 
     fn nodes(&self) -> dot::Nodes<'_, Self::Node> {
-        self.body.basic_blocks.indices().collect::<Vec<_>>().into()
+        self.body
+            .basic_blocks
+            .indices()
+            .filter(|&idx| self.reachable.contains(idx))
+            .collect::<Vec<_>>()
+            .into()
     }
 
     fn edges(&self) -> dot::Edges<'_, Self::Edge> {

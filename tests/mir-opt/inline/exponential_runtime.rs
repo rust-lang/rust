@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 // Checks that code with exponential runtime does not have exponential behavior in inlining.
 
 trait A {

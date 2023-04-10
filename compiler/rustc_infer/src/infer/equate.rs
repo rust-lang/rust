@@ -35,20 +35,12 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
         self.fields.tcx()
     }
 
-    fn intercrate(&self) -> bool {
-        self.fields.infcx.intercrate
-    }
-
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.fields.param_env
     }
 
     fn a_is_expected(&self) -> bool {
         self.a_is_expected
-    }
-
-    fn mark_ambiguous(&mut self) {
-        self.fields.mark_ambiguous();
     }
 
     fn relate_item_substs(

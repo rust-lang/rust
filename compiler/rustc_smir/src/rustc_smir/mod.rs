@@ -143,7 +143,7 @@ fn rustc_terminator_to_terminator(
             otherwise: targets.otherwise().as_usize(),
         },
         Resume => Terminator::Resume,
-        Abort => Terminator::Abort,
+        Terminate => Terminator::Abort,
         Return => Terminator::Return,
         Unreachable => Terminator::Unreachable,
         Drop { .. } => todo!(),

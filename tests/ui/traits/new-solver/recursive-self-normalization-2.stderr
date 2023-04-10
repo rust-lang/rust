@@ -1,9 +1,16 @@
-error[E0282]: type annotations needed
+error[E0283]: type annotations needed: cannot satisfy `<T as Foo1>::Assoc1: Bar`
   --> $DIR/recursive-self-normalization-2.rs:15:5
    |
 LL |     needs_bar::<T::Assoc1>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `S` declared on the function `needs_bar`
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: cannot satisfy `<T as Foo1>::Assoc1: Bar`
+note: required by a bound in `needs_bar`
+  --> $DIR/recursive-self-normalization-2.rs:12:17
+   |
+LL | fn needs_bar<S: Bar>() {}
+   |                 ^^^ required by this bound in `needs_bar`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0282`.
+For more information about this error, try `rustc --explain E0283`.

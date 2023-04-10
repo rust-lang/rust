@@ -515,16 +515,12 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             let vis = self.tcx.local_visibility(item_id.owner_id.def_id);
             self.update_macro_reachable_def(item_id.owner_id.def_id, def_kind, vis, defining_mod);
         }
-        if let Some(exports) = self.tcx.module_reexports(module_def_id) {
-            for export in exports {
-                if export.vis.is_accessible_from(defining_mod, self.tcx) {
-                    if let Res::Def(def_kind, def_id) = export.res {
-                        if let Some(def_id) = def_id.as_local() {
-                            let vis = self.tcx.local_visibility(def_id);
-                            self.update_macro_reachable_def(def_id, def_kind, vis, defining_mod);
-                        }
-                    }
-                }
+        for export in self.tcx.module_reexports(module_def_id) {
+            if export.vis.is_accessible_from(defining_mod, self.tcx)
+                && let Res::Def(def_kind, def_id) = export.res
+                && let Some(def_id) = def_id.as_local() {
+                let vis = self.tcx.local_visibility(def_id);
+                self.update_macro_reachable_def(def_id, def_kind, vis, defining_mod);
             }
         }
     }

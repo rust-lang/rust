@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 #![crate_type = "lib"]
 #![feature(unchecked_math)]
 

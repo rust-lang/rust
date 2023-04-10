@@ -49,7 +49,7 @@ impl LanguageItems {
         self.get(it).ok_or_else(|| LangItemError(it))
     }
 
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = (LangItem, DefId)> + 'a {
+    pub fn iter(&self) -> impl Iterator<Item = (LangItem, DefId)> + '_ {
         self.items
             .iter()
             .enumerate()

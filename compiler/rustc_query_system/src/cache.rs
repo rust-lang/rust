@@ -7,9 +7,14 @@ use rustc_data_structures::sync::Lock;
 
 use std::hash::Hash;
 
-#[derive(Clone)]
 pub struct Cache<Key, Value> {
     hashmap: Lock<FxHashMap<Key, WithDepNode<Value>>>,
+}
+
+impl<Key: Clone, Value: Clone> Clone for Cache<Key, Value> {
+    fn clone(&self) -> Self {
+        Self { hashmap: Lock::new(self.hashmap.borrow().clone()) }
+    }
 }
 
 impl<Key, Value> Default for Cache<Key, Value> {

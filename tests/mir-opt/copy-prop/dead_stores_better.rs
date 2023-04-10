@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 // This is a copy of the `dead_stores_79191` test, except that we turn on DSE. This demonstrates
 // that that pass enables this one to do more optimizations.
 

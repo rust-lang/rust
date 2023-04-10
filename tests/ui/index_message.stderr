@@ -1,4 +1,4 @@
-error[E0608]: cannot index into a value of type `()`
+error[E0608]: cannot index into a value of type `({integer},)`
   --> $DIR/index_message.rs:3:13
    |
 LL |     let _ = z[0];

@@ -1,5 +1,5 @@
 error: type `fn() -> u32 {foo::bar::f}` is private
-  --> $DIR/intercrate.rs:10:16
+  --> $DIR/intercrate.rs:8:16
    |
 LL |     assert_eq!(intercrate::foo::m!(), 1);
    |                ^^^^^^^^^^^^^^^^^^^^^ private type

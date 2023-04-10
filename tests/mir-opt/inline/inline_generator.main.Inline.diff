@@ -44,7 +44,7 @@
 -     bb1: {
 +         _4 = [generator@$DIR/inline_generator.rs:15:5: 15:8 (#0)]; // scope 2 at $DIR/inline_generator.rs:15:5: 15:41
 +                                          // generator
-+                                          // + def_id: DefId(0:7 ~ inline_generator[ea31]::g::{closure#0})
++                                          // + def_id: DefId(0:7 ~ inline_generator[e37e]::g::{closure#0})
 +                                          // + substs: [
 +                                          //     bool,
 +                                          //     i32,

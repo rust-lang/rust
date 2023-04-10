@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 // unit-test: CopyProp
 
 fn id<T>(x: T) -> T {

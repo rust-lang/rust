@@ -23,6 +23,7 @@ pub fn target() -> Target {
                 LinkerFlavor::Gnu(Cc::Yes, Lld::No),
                 &["-Vgcc_ntoaarch64le_cxx"],
             ),
+            env: "nto71".into(),
             ..nto_qnx_base::opts()
         },
     }

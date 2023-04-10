@@ -574,7 +574,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     ) -> Option<Span> {
         let sized_def_id = self.tcx.lang_items().sized_trait()?;
 
-        traits::elaborate_predicates(self.tcx, predicates.predicates.iter().copied())
+        traits::elaborate(self.tcx, predicates.predicates.iter().copied())
             // We don't care about regions here.
             .filter_map(|pred| match pred.kind().skip_binder() {
                 ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred))

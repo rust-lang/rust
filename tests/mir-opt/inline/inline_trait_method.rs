@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 // compile-flags: -Z span_free_formats
 
 fn main() {

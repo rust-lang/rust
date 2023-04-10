@@ -526,8 +526,9 @@ impl DropRangesBuilder {
         let mut next = <_>::from(0u32);
         for value in tracked_values {
             for_each_consumable(hir, value, |value| {
-                if !tracked_value_map.contains_key(&value) {
-                    tracked_value_map.insert(value, next);
+                if let std::collections::hash_map::Entry::Vacant(e) = tracked_value_map.entry(value)
+                {
+                    e.insert(next);
                     next = next + 1;
                 }
             });

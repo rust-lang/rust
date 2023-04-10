@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 // compile-flags: -Zmir-opt-level=1
 
 fn foo<T>() {

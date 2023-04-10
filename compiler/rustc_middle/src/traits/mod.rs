@@ -923,7 +923,7 @@ impl ObjectSafetyViolation {
                 }
             }
             ObjectSafetyViolation::SupertraitNonLifetimeBinder(_) => {
-                format!("where clause cannot reference non-lifetime `for<...>` variables").into()
+                "where clause cannot reference non-lifetime `for<...>` variables".into()
             }
             ObjectSafetyViolation::Method(name, MethodViolationCode::StaticMethod(_), _) => {
                 format!("associated function `{}` has no `self` parameter", name).into()

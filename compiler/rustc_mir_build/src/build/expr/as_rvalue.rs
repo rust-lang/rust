@@ -171,7 +171,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         args: vec![Operand::Move(size), Operand::Move(align)],
                         destination: storage,
                         target: Some(success),
-                        cleanup: None,
+                        unwind: UnwindAction::Continue,
                         from_hir_call: false,
                         fn_span: expr_span,
                     },
@@ -702,7 +702,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.terminate(
                     block,
                     outer_source_info,
-                    TerminatorKind::Drop { place: to_drop, target: success, unwind: None },
+                    TerminatorKind::Drop {
+                        place: to_drop,
+                        target: success,
+                        unwind: UnwindAction::Continue,
+                    },
                 );
                 this.diverge_from(block);
                 block = success;

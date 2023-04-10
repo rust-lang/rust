@@ -8,24 +8,65 @@ use std::process::Command;
 use std::str::FromStr;
 
 use crate::util::{add_dylib_path, PathBufExt};
-use lazycell::LazyCell;
+use lazycell::AtomicLazyCell;
+use serde::de::{Deserialize, Deserializer, Error as _};
+use std::collections::{HashMap, HashSet};
 use test::{ColorConfig, OutputFormat};
 
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub enum Mode {
-    RunPassValgrind,
-    Pretty,
-    DebugInfo,
-    Codegen,
-    Rustdoc,
-    RustdocJson,
-    CodegenUnits,
-    Incremental,
-    RunMake,
-    Ui,
-    JsDocTest,
-    MirOpt,
-    Assembly,
+macro_rules! string_enum {
+    ($(#[$meta:meta])* $vis:vis enum $name:ident { $($variant:ident => $repr:expr,)* }) => {
+        $(#[$meta])*
+        $vis enum $name {
+            $($variant,)*
+        }
+
+        impl $name {
+            $vis const VARIANTS: &'static [Self] = &[$(Self::$variant,)*];
+            $vis const STR_VARIANTS: &'static [&'static str] = &[$(Self::$variant.to_str(),)*];
+
+            $vis const fn to_str(&self) -> &'static str {
+                match self {
+                    $(Self::$variant => $repr,)*
+                }
+            }
+        }
+
+        impl fmt::Display for $name {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt::Display::fmt(self.to_str(), f)
+            }
+        }
+
+        impl FromStr for $name {
+            type Err = ();
+
+            fn from_str(s: &str) -> Result<Self, ()> {
+                match s {
+                    $($repr => Ok(Self::$variant),)*
+                    _ => Err(()),
+                }
+            }
+        }
+    }
+}
+
+string_enum! {
+    #[derive(Clone, Copy, PartialEq, Debug)]
+    pub enum Mode {
+        RunPassValgrind => "run-pass-valgrind",
+        Pretty => "pretty",
+        DebugInfo => "debuginfo",
+        Codegen => "codegen",
+        Rustdoc => "rustdoc",
+        RustdocJson => "rustdoc-json",
+        CodegenUnits => "codegen-units",
+        Incremental => "incremental",
+        RunMake => "run-make",
+        Ui => "ui",
+        JsDocTest => "js-doc-test",
+        MirOpt => "mir-opt",
+        Assembly => "assembly",
+    }
 }
 
 impl Mode {
@@ -39,76 +80,12 @@ impl Mode {
     }
 }
 
-impl FromStr for Mode {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Mode, ()> {
-        match s {
-            "run-pass-valgrind" => Ok(RunPassValgrind),
-            "pretty" => Ok(Pretty),
-            "debuginfo" => Ok(DebugInfo),
-            "codegen" => Ok(Codegen),
-            "rustdoc" => Ok(Rustdoc),
-            "rustdoc-json" => Ok(RustdocJson),
-            "codegen-units" => Ok(CodegenUnits),
-            "incremental" => Ok(Incremental),
-            "run-make" => Ok(RunMake),
-            "ui" => Ok(Ui),
-            "js-doc-test" => Ok(JsDocTest),
-            "mir-opt" => Ok(MirOpt),
-            "assembly" => Ok(Assembly),
-            _ => Err(()),
-        }
-    }
-}
-
-impl fmt::Display for Mode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match *self {
-            RunPassValgrind => "run-pass-valgrind",
-            Pretty => "pretty",
-            DebugInfo => "debuginfo",
-            Codegen => "codegen",
-            Rustdoc => "rustdoc",
-            RustdocJson => "rustdoc-json",
-            CodegenUnits => "codegen-units",
-            Incremental => "incremental",
-            RunMake => "run-make",
-            Ui => "ui",
-            JsDocTest => "js-doc-test",
-            MirOpt => "mir-opt",
-            Assembly => "assembly",
-        };
-        fmt::Display::fmt(s, f)
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Debug, Hash)]
-pub enum PassMode {
-    Check,
-    Build,
-    Run,
-}
-
-impl FromStr for PassMode {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Self, ()> {
-        match s {
-            "check" => Ok(PassMode::Check),
-            "build" => Ok(PassMode::Build),
-            "run" => Ok(PassMode::Run),
-            _ => Err(()),
-        }
-    }
-}
-
-impl fmt::Display for PassMode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match *self {
-            PassMode::Check => "check",
-            PassMode::Build => "build",
-            PassMode::Run => "run",
-        };
-        fmt::Display::fmt(s, f)
+string_enum! {
+    #[derive(Clone, Copy, PartialEq, Debug, Hash)]
+    pub enum PassMode {
+        Check => "check",
+        Build => "build",
+        Run => "run",
     }
 }
 
@@ -119,63 +96,30 @@ pub enum FailMode {
     Run,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum CompareMode {
-    Polonius,
-    Chalk,
-    NextSolver,
-    SplitDwarf,
-    SplitDwarfSingle,
-}
-
-impl CompareMode {
-    pub(crate) fn to_str(&self) -> &'static str {
-        match *self {
-            CompareMode::Polonius => "polonius",
-            CompareMode::Chalk => "chalk",
-            CompareMode::NextSolver => "next-solver",
-            CompareMode::SplitDwarf => "split-dwarf",
-            CompareMode::SplitDwarfSingle => "split-dwarf-single",
-        }
-    }
-
-    pub fn parse(s: String) -> CompareMode {
-        match s.as_str() {
-            "polonius" => CompareMode::Polonius,
-            "chalk" => CompareMode::Chalk,
-            "next-solver" => CompareMode::NextSolver,
-            "split-dwarf" => CompareMode::SplitDwarf,
-            "split-dwarf-single" => CompareMode::SplitDwarfSingle,
-            x => panic!("unknown --compare-mode option: {}", x),
-        }
+string_enum! {
+    #[derive(Clone, Debug, PartialEq)]
+    pub enum CompareMode {
+        Polonius => "polonius",
+        Chalk => "chalk",
+        NextSolver => "next-solver",
+        SplitDwarf => "split-dwarf",
+        SplitDwarfSingle => "split-dwarf-single",
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum Debugger {
-    Cdb,
-    Gdb,
-    Lldb,
-}
-
-impl Debugger {
-    fn to_str(&self) -> &'static str {
-        match self {
-            Debugger::Cdb => "cdb",
-            Debugger::Gdb => "gdb",
-            Debugger::Lldb => "lldb",
-        }
+string_enum! {
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    pub enum Debugger {
+        Cdb => "cdb",
+        Gdb => "gdb",
+        Lldb => "lldb",
     }
 }
 
-impl fmt::Display for Debugger {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self.to_str(), f)
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default, serde::Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum PanicStrategy {
+    #[default]
     Unwind,
     Abort,
 }
@@ -383,7 +327,7 @@ pub struct Config {
     /// Only rerun the tests that result has been modified accoring to Git status
     pub only_modified: bool,
 
-    pub target_cfg: LazyCell<TargetCfg>,
+    pub target_cfgs: AtomicLazyCell<TargetCfgs>,
 
     pub nocapture: bool,
 }
@@ -396,8 +340,18 @@ impl Config {
         })
     }
 
-    fn target_cfg(&self) -> &TargetCfg {
-        self.target_cfg.borrow_with(|| TargetCfg::new(self))
+    pub fn target_cfgs(&self) -> &TargetCfgs {
+        match self.target_cfgs.borrow() {
+            Some(cfgs) => cfgs,
+            None => {
+                let _ = self.target_cfgs.fill(TargetCfgs::new(self));
+                self.target_cfgs.borrow().unwrap()
+            }
+        }
+    }
+
+    pub fn target_cfg(&self) -> &TargetCfg {
+        &self.target_cfgs().current
     }
 
     pub fn matches_arch(&self, arch: &str) -> bool {
@@ -449,94 +403,154 @@ impl Config {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone)]
+pub struct TargetCfgs {
+    pub current: TargetCfg,
+    pub all_targets: HashSet<String>,
+    pub all_archs: HashSet<String>,
+    pub all_oses: HashSet<String>,
+    pub all_oses_and_envs: HashSet<String>,
+    pub all_envs: HashSet<String>,
+    pub all_abis: HashSet<String>,
+    pub all_families: HashSet<String>,
+    pub all_pointer_widths: HashSet<String>,
+}
+
+impl TargetCfgs {
+    fn new(config: &Config) -> TargetCfgs {
+        let targets: HashMap<String, TargetCfg> = if config.stage_id.starts_with("stage0-") {
+            // #[cfg(bootstrap)]
+            // Needed only for one cycle, remove during the bootstrap bump.
+            Self::collect_all_slow(config)
+        } else {
+            serde_json::from_str(&rustc_output(
+                config,
+                &["--print=all-target-specs-json", "-Zunstable-options"],
+            ))
+            .unwrap()
+        };
+
+        let mut current = None;
+        let mut all_targets = HashSet::new();
+        let mut all_archs = HashSet::new();
+        let mut all_oses = HashSet::new();
+        let mut all_oses_and_envs = HashSet::new();
+        let mut all_envs = HashSet::new();
+        let mut all_abis = HashSet::new();
+        let mut all_families = HashSet::new();
+        let mut all_pointer_widths = HashSet::new();
+
+        for (target, cfg) in targets.into_iter() {
+            all_archs.insert(cfg.arch.clone());
+            all_oses.insert(cfg.os.clone());
+            all_oses_and_envs.insert(cfg.os_and_env());
+            all_envs.insert(cfg.env.clone());
+            all_abis.insert(cfg.abi.clone());
+            for family in &cfg.families {
+                all_families.insert(family.clone());
+            }
+            all_pointer_widths.insert(format!("{}bit", cfg.pointer_width));
+
+            if target == config.target {
+                current = Some(cfg);
+            }
+            all_targets.insert(target.into());
+        }
+
+        Self {
+            current: current.expect("current target not found"),
+            all_targets,
+            all_archs,
+            all_oses,
+            all_oses_and_envs,
+            all_envs,
+            all_abis,
+            all_families,
+            all_pointer_widths,
+        }
+    }
+
+    // #[cfg(bootstrap)]
+    // Needed only for one cycle, remove during the bootstrap bump.
+    fn collect_all_slow(config: &Config) -> HashMap<String, TargetCfg> {
+        let mut result = HashMap::new();
+        for target in rustc_output(config, &["--print=target-list"]).trim().lines() {
+            let json = rustc_output(
+                config,
+                &["--print=target-spec-json", "-Zunstable-options", "--target", target],
+            );
+            match serde_json::from_str(&json) {
+                Ok(res) => {
+                    result.insert(target.into(), res);
+                }
+                Err(err) => panic!("failed to parse target spec for {target}: {err}"),
+            }
+        }
+        result
+    }
+}
+
+#[derive(Clone, Debug, serde::Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct TargetCfg {
-    arch: String,
-    os: String,
-    env: String,
-    abi: String,
-    families: Vec<String>,
-    pointer_width: u32,
+    pub(crate) arch: String,
+    #[serde(default = "default_os")]
+    pub(crate) os: String,
+    #[serde(default)]
+    pub(crate) env: String,
+    #[serde(default)]
+    pub(crate) abi: String,
+    #[serde(rename = "target-family", default)]
+    pub(crate) families: Vec<String>,
+    #[serde(rename = "target-pointer-width", deserialize_with = "serde_parse_u32")]
+    pub(crate) pointer_width: u32,
+    #[serde(rename = "target-endian", default)]
     endian: Endian,
+    #[serde(rename = "panic-strategy", default)]
     panic: PanicStrategy,
 }
 
-#[derive(Eq, PartialEq, Clone, Debug)]
+impl TargetCfg {
+    pub(crate) fn os_and_env(&self) -> String {
+        format!("{}-{}", self.os, self.env)
+    }
+}
+
+fn default_os() -> String {
+    "none".into()
+}
+
+#[derive(Eq, PartialEq, Clone, Debug, Default, serde::Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum Endian {
+    #[default]
     Little,
     Big,
 }
 
-impl TargetCfg {
-    fn new(config: &Config) -> TargetCfg {
-        let mut command = Command::new(&config.rustc_path);
-        add_dylib_path(&mut command, iter::once(&config.compile_lib_path));
-        let output = match command
-            .arg("--print=cfg")
-            .arg("--target")
-            .arg(&config.target)
-            .args(&config.target_rustcflags)
-            .output()
-        {
-            Ok(output) => output,
-            Err(e) => panic!("error: failed to get cfg info from {:?}: {e}", config.rustc_path),
-        };
-        if !output.status.success() {
-            panic!(
-                "error: failed to get cfg info from {:?}\n--- stdout\n{}\n--- stderr\n{}",
-                config.rustc_path,
-                String::from_utf8(output.stdout).unwrap(),
-                String::from_utf8(output.stderr).unwrap(),
-            );
-        }
-        let print_cfg = String::from_utf8(output.stdout).unwrap();
-        let mut arch = None;
-        let mut os = None;
-        let mut env = None;
-        let mut abi = None;
-        let mut families = Vec::new();
-        let mut pointer_width = None;
-        let mut endian = None;
-        let mut panic = None;
-        for line in print_cfg.lines() {
-            if let Some((name, value)) = line.split_once('=') {
-                let value = value.trim_matches('"');
-                match name {
-                    "target_arch" => arch = Some(value),
-                    "target_os" => os = Some(value),
-                    "target_env" => env = Some(value),
-                    "target_abi" => abi = Some(value),
-                    "target_family" => families.push(value.to_string()),
-                    "target_pointer_width" => pointer_width = Some(value.parse().unwrap()),
-                    "target_endian" => {
-                        endian = Some(match value {
-                            "little" => Endian::Little,
-                            "big" => Endian::Big,
-                            s => panic!("unexpected {s}"),
-                        })
-                    }
-                    "panic" => {
-                        panic = match value {
-                            "abort" => Some(PanicStrategy::Abort),
-                            "unwind" => Some(PanicStrategy::Unwind),
-                            s => panic!("unexpected {s}"),
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-        TargetCfg {
-            arch: arch.unwrap().to_string(),
-            os: os.unwrap().to_string(),
-            env: env.unwrap().to_string(),
-            abi: abi.unwrap().to_string(),
-            families,
-            pointer_width: pointer_width.unwrap(),
-            endian: endian.unwrap(),
-            panic: panic.unwrap(),
-        }
+fn rustc_output(config: &Config, args: &[&str]) -> String {
+    let mut command = Command::new(&config.rustc_path);
+    add_dylib_path(&mut command, iter::once(&config.compile_lib_path));
+    command.args(&config.target_rustcflags).args(args);
+    command.env("RUSTC_BOOTSTRAP", "1");
+
+    let output = match command.output() {
+        Ok(output) => output,
+        Err(e) => panic!("error: failed to run {command:?}: {e}"),
+    };
+    if !output.status.success() {
+        panic!(
+            "error: failed to run {command:?}\n--- stdout\n{}\n--- stderr\n{}",
+            String::from_utf8(output.stdout).unwrap(),
+            String::from_utf8(output.stderr).unwrap(),
+        );
     }
+    String::from_utf8(output.stdout).unwrap()
+}
+
+fn serde_parse_u32<'de, D: Deserializer<'de>>(deserializer: D) -> Result<u32, D::Error> {
+    let string = String::deserialize(deserializer)?;
+    string.parse().map_err(D::Error::custom)
 }
 
 #[derive(Debug, Clone)]

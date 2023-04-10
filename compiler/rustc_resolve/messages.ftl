@@ -207,5 +207,9 @@ resolve_expected_found =
 resolve_indeterminate =
     cannot determine resolution for the visibility
 
+resolve_tool_module_imported =
+    cannot use a tool module through an import
+    .note = the tool module imported here
+
 resolve_module_only =
     visibility must resolve to a module

@@ -324,8 +324,6 @@ impl Abi {
 
 impl fmt::Display for Abi {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            abi => write!(f, "\"{}\"", abi.name()),
-        }
+        write!(f, "\"{}\"", self.name())
     }
 }

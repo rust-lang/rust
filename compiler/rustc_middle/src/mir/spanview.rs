@@ -262,7 +262,7 @@ pub fn terminator_kind_name(term: &Terminator<'_>) -> &'static str {
         Goto { .. } => "Goto",
         SwitchInt { .. } => "SwitchInt",
         Resume => "Resume",
-        Abort => "Abort",
+        Terminate => "Terminate",
         Return => "Return",
         Unreachable => "Unreachable",
         Drop { .. } => "Drop",

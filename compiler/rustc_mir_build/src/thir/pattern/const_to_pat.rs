@@ -59,8 +59,6 @@ struct ConstToPat<'tcx> {
     // inference context used for checking `T: Structural` bounds.
     infcx: InferCtxt<'tcx>,
 
-    include_lint_checks: bool,
-
     treat_byte_string_as_slice: bool,
 }
 
@@ -93,7 +91,6 @@ impl<'tcx> ConstToPat<'tcx> {
             span,
             infcx,
             param_env: pat_ctxt.param_env,
-            include_lint_checks: pat_ctxt.include_lint_checks,
             saw_const_match_error: Cell::new(false),
             saw_const_match_lint: Cell::new(false),
             behind_reference: Cell::new(false),
@@ -134,7 +131,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 })
             });
 
-        if self.include_lint_checks && !self.saw_const_match_error.get() {
+        if !self.saw_const_match_error.get() {
             // If we were able to successfully convert the const to some pat,
             // double-check that all types in the const implement `Structural`.
 
@@ -239,21 +236,19 @@ impl<'tcx> ConstToPat<'tcx> {
 
         let kind = match cv.ty().kind() {
             ty::Float(_) => {
-                if self.include_lint_checks {
                     tcx.emit_spanned_lint(
                         lint::builtin::ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
                         id,
                         span,
                         FloatPattern,
                     );
-                }
                 PatKind::Constant { value: cv }
             }
             ty::Adt(adt_def, _) if adt_def.is_union() => {
                 // Matching on union fields is unsafe, we can't hide it in constants
                 self.saw_const_match_error.set(true);
                 let err = UnionPattern { span };
-                tcx.sess.create_err(err).emit_unless(!self.include_lint_checks);
+                tcx.sess.emit_err(err);
                 PatKind::Wild
             }
             ty::Adt(..)
@@ -267,7 +262,7 @@ impl<'tcx> ConstToPat<'tcx> {
             {
                 self.saw_const_match_error.set(true);
                 let err = TypeNotStructural { span, non_sm_ty };
-                tcx.sess.create_err(err).emit_unless(!self.include_lint_checks);
+                tcx.sess.emit_err(err);
                 PatKind::Wild
             }
             // If the type is not structurally comparable, just emit the constant directly,
@@ -280,8 +275,7 @@ impl<'tcx> ConstToPat<'tcx> {
             // Backwards compatibility hack because we can't cause hard errors on these
             // types, so we compare them via `PartialEq::eq` at runtime.
             ty::Adt(..) if !self.type_marked_structural(cv.ty()) && self.behind_reference.get() => {
-                if self.include_lint_checks
-                    && !self.saw_const_match_error.get()
+                if !self.saw_const_match_error.get()
                     && !self.saw_const_match_lint.get()
                 {
                     self.saw_const_match_lint.set(true);
@@ -305,7 +299,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 );
                 self.saw_const_match_error.set(true);
                 let err = TypeNotStructural { span, non_sm_ty: cv.ty() };
-                tcx.sess.create_err(err).emit_unless(!self.include_lint_checks);
+                tcx.sess.emit_err(err);
                 PatKind::Wild
             }
             ty::Adt(adt_def, substs) if adt_def.is_enum() => {
@@ -339,7 +333,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 ty::Dynamic(..) => {
                     self.saw_const_match_error.set(true);
                     let err = InvalidPattern { span, non_sm_ty: cv.ty() };
-                    tcx.sess.create_err(err).emit_unless(!self.include_lint_checks);
+                    tcx.sess.emit_err(err);
                     PatKind::Wild
                 }
                 // `&str` is represented as `ConstValue::Slice`, let's keep using this
@@ -406,8 +400,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 // to figure out how to get a reference again.
                 ty::Adt(_, _) if !self.type_marked_structural(*pointee_ty) => {
                     if self.behind_reference.get() {
-                        if self.include_lint_checks
-                            && !self.saw_const_match_error.get()
+                        if !self.saw_const_match_error.get()
                             && !self.saw_const_match_lint.get()
                         {
                            self.saw_const_match_lint.set(true);
@@ -423,7 +416,7 @@ impl<'tcx> ConstToPat<'tcx> {
                         if !self.saw_const_match_error.get() {
                             self.saw_const_match_error.set(true);
                             let err = TypeNotStructural { span, non_sm_ty: *pointee_ty };
-                            tcx.sess.create_err(err).emit_unless(!self.include_lint_checks);
+                            tcx.sess.emit_err(err);
                         }
                         PatKind::Wild
                     }
@@ -437,7 +430,7 @@ impl<'tcx> ConstToPat<'tcx> {
                         // (except slices, which are handled in a separate arm above).
 
                         let err = UnsizedPattern { span, non_sm_ty: *pointee_ty };
-                        tcx.sess.create_err(err).emit_unless(!self.include_lint_checks);
+                        tcx.sess.emit_err(err);
 
                         PatKind::Wild
                     } else {
@@ -465,8 +458,7 @@ impl<'tcx> ConstToPat<'tcx> {
             // compilation choices change the runtime behaviour of the match.
             // See https://github.com/rust-lang/rust/issues/70861 for examples.
             ty::FnPtr(..) | ty::RawPtr(..) => {
-                if self.include_lint_checks
-                    && !self.saw_const_match_error.get()
+                if !self.saw_const_match_error.get()
                     && !self.saw_const_match_lint.get()
                 {
                     self.saw_const_match_lint.set(true);
@@ -482,13 +474,12 @@ impl<'tcx> ConstToPat<'tcx> {
             _ => {
                 self.saw_const_match_error.set(true);
                 let err = InvalidPattern { span, non_sm_ty: cv.ty() };
-                    tcx.sess.create_err(err).emit_unless(!self.include_lint_checks);
+                    tcx.sess.emit_err(err);
                 PatKind::Wild
             }
         };
 
-        if self.include_lint_checks
-            && !self.saw_const_match_error.get()
+        if !self.saw_const_match_error.get()
             && !self.saw_const_match_lint.get()
             && mir_structural_match_violation
             // FIXME(#73448): Find a way to bring const qualification into parity with

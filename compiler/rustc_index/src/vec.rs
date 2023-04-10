@@ -24,6 +24,7 @@ pub trait Idx: Copy + 'static + Eq + PartialEq + Debug + Hash {
     }
 
     #[inline]
+    #[must_use = "Use `increment_by` if you wanted to update the index in-place"]
     fn plus(self, amount: usize) -> Self {
         Self::new(self.index() + amount)
     }
@@ -129,6 +130,17 @@ impl<I: Idx, T> IndexVec<I, T> {
         IndexVec { raw: Vec::with_capacity(capacity), _marker: PhantomData }
     }
 
+    /// Creates a new vector with a copy of `elem` for each index in `universe`.
+    ///
+    /// Thus `IndexVec::from_elem(elem, &universe)` is equivalent to
+    /// `IndexVec::<I, _>::from_elem_n(elem, universe.len())`. That can help
+    /// type inference as it ensures that the resulting vector uses the same
+    /// index type as `universe`, rather than something potentially surprising.
+    ///
+    /// For example, if you want to store data for each local in a MIR body,
+    /// using `let mut uses = IndexVec::from_elem(vec![], &body.local_decls);`
+    /// ensures that `uses` is an `IndexVec<Local, _>`, and thus can give
+    /// better error messages later if one accidentally mismatches indices.
     #[inline]
     pub fn from_elem<S>(elem: T, universe: &IndexSlice<I, S>) -> Self
     where
@@ -189,18 +201,15 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn drain<'a, R: RangeBounds<usize>>(
-        &'a mut self,
-        range: R,
-    ) -> impl Iterator<Item = T> + 'a {
+    pub fn drain<R: RangeBounds<usize>>(&mut self, range: R) -> impl Iterator<Item = T> + '_ {
         self.raw.drain(range)
     }
 
     #[inline]
-    pub fn drain_enumerated<'a, R: RangeBounds<usize>>(
-        &'a mut self,
+    pub fn drain_enumerated<R: RangeBounds<usize>>(
+        &mut self,
         range: R,
-    ) -> impl Iterator<Item = (I, T)> + 'a {
+    ) -> impl Iterator<Item = (I, T)> + '_ {
         let begin = match range.start_bound() {
             std::ops::Bound::Included(i) => *i,
             std::ops::Bound::Excluded(i) => i.checked_add(1).unwrap(),
@@ -283,6 +292,11 @@ impl<I: Idx, T: Clone> ToOwned for IndexSlice<I, T> {
 }
 
 impl<I: Idx, T> IndexSlice<I, T> {
+    #[inline]
+    pub fn empty() -> &'static Self {
+        Default::default()
+    }
+
     #[inline]
     pub fn from_raw(raw: &[T]) -> &Self {
         let ptr: *const [T] = raw;
@@ -398,6 +412,36 @@ impl<I: Idx, T> IndexSlice<I, T> {
     }
 }
 
+impl<I: Idx, J: Idx> IndexSlice<I, J> {
+    /// Invert a bijective mapping, i.e. `invert(map)[y] = x` if `map[x] = y`,
+    /// assuming the values in `self` are a permutation of `0..self.len()`.
+    ///
+    /// This is used to go between `memory_index` (source field order to memory order)
+    /// and `inverse_memory_index` (memory order to source field order).
+    /// See also `FieldsShape::Arbitrary::memory_index` for more details.
+    // FIXME(eddyb) build a better abstraction for permutations, if possible.
+    pub fn invert_bijective_mapping(&self) -> IndexVec<J, I> {
+        debug_assert_eq!(
+            self.iter().map(|x| x.index() as u128).sum::<u128>(),
+            (0..self.len() as u128).sum::<u128>(),
+            "The values aren't 0..N in input {self:?}",
+        );
+
+        let mut inverse = IndexVec::from_elem_n(Idx::new(0), self.len());
+        for (i1, &i2) in self.iter_enumerated() {
+            inverse[i2] = i1;
+        }
+
+        debug_assert_eq!(
+            inverse.iter().map(|x| x.index() as u128).sum::<u128>(),
+            (0..inverse.len() as u128).sum::<u128>(),
+            "The values aren't 0..N in result {self:?}",
+        );
+
+        inverse
+    }
+}
+
 /// `IndexVec` is often used as a map, so it provides some map-like APIs.
 impl<I: Idx, T> IndexVec<I, Option<T>> {
     #[inline]
@@ -499,6 +543,13 @@ impl<I: Idx, T> FromIterator<T> for IndexVec<I, T> {
         J: IntoIterator<Item = T>,
     {
         IndexVec { raw: FromIterator::from_iter(iter), _marker: PhantomData }
+    }
+}
+
+impl<I: Idx, T, const N: usize> From<[T; N]> for IndexVec<I, T> {
+    #[inline]
+    fn from(array: [T; N]) -> Self {
+        IndexVec::from_raw(array.into())
     }
 }
 

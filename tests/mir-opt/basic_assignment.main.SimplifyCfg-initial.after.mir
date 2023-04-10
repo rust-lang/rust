@@ -1,8 +1,8 @@
 // MIR for `main` after SimplifyCfg-initial
 
 | User Type Annotations
-| 0: user_ty: Canonical { max_universe: U0, variables: [], value: Ty(std::option::Option<std::boxed::Box<u32>>) }, span: $DIR/basic_assignment.rs:20:17: 20:33, inferred_ty: std::option::Option<std::boxed::Box<u32>>
-| 1: user_ty: Canonical { max_universe: U0, variables: [], value: Ty(std::option::Option<std::boxed::Box<u32>>) }, span: $DIR/basic_assignment.rs:20:17: 20:33, inferred_ty: std::option::Option<std::boxed::Box<u32>>
+| 0: user_ty: Canonical { value: Ty(std::option::Option<std::boxed::Box<u32>>), max_universe: U0, variables: [] }, span: $DIR/basic_assignment.rs:20:17: 20:33, inferred_ty: std::option::Option<std::boxed::Box<u32>>
+| 1: user_ty: Canonical { value: Ty(std::option::Option<std::boxed::Box<u32>>), max_universe: U0, variables: [] }, span: $DIR/basic_assignment.rs:20:17: 20:33, inferred_ty: std::option::Option<std::boxed::Box<u32>>
 |
 fn main() -> () {
     let mut _0: ();                      // return place in scope 0 at $DIR/basic_assignment.rs:+0:11: +0:11
@@ -51,7 +51,7 @@ fn main() -> () {
 
     bb2 (cleanup): {
         _5 = move _6;                    // scope 4 at $DIR/basic_assignment.rs:+13:5: +13:11
-        drop(_6) -> bb6;                 // scope 4 at $DIR/basic_assignment.rs:+13:19: +13:20
+        drop(_6) -> [return: bb6, unwind terminate]; // scope 4 at $DIR/basic_assignment.rs:+13:19: +13:20
     }
 
     bb3: {
@@ -73,11 +73,11 @@ fn main() -> () {
     }
 
     bb6 (cleanup): {
-        drop(_5) -> bb7;                 // scope 3 at $DIR/basic_assignment.rs:+14:1: +14:2
+        drop(_5) -> [return: bb7, unwind terminate]; // scope 3 at $DIR/basic_assignment.rs:+14:1: +14:2
     }
 
     bb7 (cleanup): {
-        drop(_4) -> bb8;                 // scope 2 at $DIR/basic_assignment.rs:+14:1: +14:2
+        drop(_4) -> [return: bb8, unwind terminate]; // scope 2 at $DIR/basic_assignment.rs:+14:1: +14:2
     }
 
     bb8 (cleanup): {
