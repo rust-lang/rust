@@ -1,6 +1,6 @@
 // check-pass
 
-// Here we check that a `:vis` macro matcher subsititued for the empty visibility
+// Here we check that a `:vis` macro matcher substituted for the empty visibility
 // (`VisibilityKind::Inherited`) is accepted when used before an item in a trait.
 
 fn main() {}
