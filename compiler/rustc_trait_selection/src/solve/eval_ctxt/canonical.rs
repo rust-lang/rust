@@ -42,7 +42,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ///
     /// - `var_values`: a map from bound variables in the canonical goal to
     ///   the values inferred while solving the instantiated goal.
-    /// - `external_constraints`: additional constraints which aren't expressable
+    /// - `external_constraints`: additional constraints which aren't expressible
     ///   using simple unification of inference variables.
     #[instrument(level = "debug", skip(self))]
     pub(in crate::solve) fn evaluate_added_goals_and_make_canonical_response(
@@ -113,7 +113,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     }
 
     /// This returns the substitutions to instantiate the bound variables of
-    /// the canonical reponse. This depends on the `original_values` for the
+    /// the canonical response. This depends on the `original_values` for the
     /// bound variables.
     fn compute_query_response_substitution(
         &self,
