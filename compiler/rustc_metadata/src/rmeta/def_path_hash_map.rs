@@ -1,6 +1,5 @@
 use crate::rmeta::DecodeContext;
 use crate::rmeta::EncodeContext;
-use rustc_data_structures::owned_slice::slice_owned;
 use rustc_data_structures::owned_slice::OwnedSlice;
 use rustc_hir::def_path_hash_map::{Config as HashMapConfig, DefPathHashMap};
 use rustc_middle::parameterized_over_tcx;
@@ -47,7 +46,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for DefPathHashMapRef<'static>
     fn decode(d: &mut DecodeContext<'a, 'tcx>) -> DefPathHashMapRef<'static> {
         let len = d.read_usize();
         let pos = d.position();
-        let o = slice_owned(d.blob().clone(), |blob| &blob[pos..pos + len]);
+        let o = d.blob().clone().0.slice(|blob| &blob[pos..pos + len]);
 
         // Although we already have the data we need via the `OwnedSlice`, we still need
         // to advance the `DecodeContext`'s position so it's in a valid state after

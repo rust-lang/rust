@@ -1,5 +1,6 @@
 use std::{borrow::Borrow, ops::Deref};
 
+use crate::sync::Lrc;
 // Use our fake Send/Sync traits when on not parallel compiler,
 // so that `OwnedSlice` only implements/requires Send/Sync
 // for parallel compiler builds.
@@ -7,7 +8,7 @@ use crate::sync::{Send, Sync};
 
 /// An owned slice.
 ///
-/// This is similar to `Box<[u8]>` but allows slicing and using anything as the
+/// This is similar to `Lrc<[u8]>` but allows slicing and using anything as the
 /// backing buffer.
 ///
 /// See [`slice_owned`] for `OwnedSlice` construction and examples.
@@ -16,6 +17,7 @@ use crate::sync::{Send, Sync};
 ///
 /// This is essentially a replacement for `owning_ref` which is a lot simpler
 /// and even sound! 🌸
+#[derive(Clone)]
 pub struct OwnedSlice {
     /// This is conceptually a `&'self.owner [u8]`.
     bytes: *const [u8],
@@ -31,7 +33,7 @@ pub struct OwnedSlice {
     //       \/
     //      ⊂(´･◡･⊂ )∘˚˳° (I am the phantom remnant of #97770)
     #[expect(dead_code)]
-    owner: Box<dyn Send + Sync>,
+    owner: Lrc<dyn Send + Sync>,
 }
 
 /// Makes an [`OwnedSlice`] out of an `owner` and a `slicer` function.
@@ -83,10 +85,37 @@ where
     // N.B. the HRTB on the `slicer` is important — without it the caller could provide
     // a short lived slice, unrelated to the owner.
 
-    let owner = Box::new(owner);
+    let owner = Lrc::new(owner);
     let bytes = slicer(&*owner)?;
 
     Ok(OwnedSlice { bytes, owner })
+}
+
+impl OwnedSlice {
+    /// Slice this slice by `slicer`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use rustc_data_structures::owned_slice::{OwnedSlice, slice_owned};
+    /// let vec = vec![1, 2, 3, 4];
+    ///
+    /// // Identical to slicing via `&v[1..3]` but produces an owned slice
+    /// let slice: OwnedSlice = slice_owned(vec, |v| &v[..]);
+    /// assert_eq!(&*slice, [1, 2, 3, 4]);
+    ///
+    /// let slice = slice.slice(|slice| &slice[1..][..2]);
+    /// assert_eq!(&*slice, [2, 3]);
+    /// ```
+    ///
+    pub fn slice(self, slicer: impl FnOnce(&[u8]) -> &[u8]) -> OwnedSlice {
+        // This is basically identical to `try_slice_owned`,
+        // `slicer` can only return slices of its argument or some static data,
+        // both of which are valid while `owner` is alive.
+
+        let bytes = slicer(&self);
+        OwnedSlice { bytes, ..self }
+    }
 }
 
 impl Deref for OwnedSlice {
