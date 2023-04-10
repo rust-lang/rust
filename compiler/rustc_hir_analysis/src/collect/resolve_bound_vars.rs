@@ -1333,7 +1333,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
 
         // We may fail to resolve higher-ranked lifetimes that are mentioned by APIT.
         // AST-based resolution does not care for impl-trait desugaring, which are the
-        // responibility of lowering. This may create a mismatch between the resolution
+        // responsibility of lowering. This may create a mismatch between the resolution
         // AST found (`region_def_id`) which points to HRTB, and what HIR allows.
         // ```
         // fn foo(x: impl for<'a> Trait<'a, Assoc = impl Copy + 'a>) {}
