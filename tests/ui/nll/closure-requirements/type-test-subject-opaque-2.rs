@@ -1,4 +1,4 @@
-// Resgression test for #107516.
+// Regression test for #107516.
 // check-pass
 
 fn iter1<'a: 'a>() -> impl Iterator<Item = &'static str> {
