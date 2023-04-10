@@ -1,7 +1,7 @@
 // build-pass
 
 // Ensures that we don't regress on "implementation is not general enough" when
-// normalizating under binders.
+// normalizing under binders.
 
 #![feature(no_core)]
 
