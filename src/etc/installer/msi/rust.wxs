@@ -119,7 +119,7 @@
         <SetProperty Sequence="ui" Before="CostFinalize"
             Id="WixAppFolder" Value="WixPerUserFolder">NOT ALLUSERS</SetProperty>
 
-        <!-- UI sets ALLUSERS per user selection; progagate this choice to MSIINSTALLPERUSER before executing installation actions -->
+        <!-- UI sets ALLUSERS per user selection; propagate this choice to MSIINSTALLPERUSER before executing installation actions -->
         <SetProperty Sequence="ui" Before="ExecuteAction"
             Id="MSIINSTALLPERUSER" Value="1">NOT ALLUSERS</SetProperty>
 

@@ -1796,10 +1796,10 @@ fn render_struct(
     }
     match ty {
         None => {
-            let where_diplayed = g.map(|g| print_where_clause_and_check(w, g, cx)).unwrap_or(false);
+            let where_displayed = g.map(|g| print_where_clause_and_check(w, g, cx)).unwrap_or(false);
 
             // If there wasn't a `where` clause, we add a whitespace.
-            if !where_diplayed {
+            if !where_displayed {
                 w.write_str(" {");
             } else {
                 w.write_str("{");
