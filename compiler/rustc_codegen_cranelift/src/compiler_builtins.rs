@@ -3,7 +3,7 @@ use std::ffi::c_int;
 #[cfg(feature = "jit")]
 use std::ffi::c_void;
 
-// FIXME replace with core::ffi::c_size_t once stablized
+// FIXME replace with core::ffi::c_size_t once stabilized
 #[allow(non_camel_case_types)]
 #[cfg(feature = "jit")]
 type size_t = usize;

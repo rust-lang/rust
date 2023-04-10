@@ -1,6 +1,6 @@
 use crate::{sug, Suggestion};
 
-// FIXME: perhaps this could use `std::lazy` when it is stablizied
+// FIXME: perhaps this could use `std::lazy` when it is stabilized
 macro_rules! static_suggestions {
     ($( $glob:expr => [ $( $suggestion:expr ),* ] ),*) => {
         pub(crate) const STATIC_SUGGESTIONS: ::once_cell::unsync::Lazy<Vec<(&'static str, Vec<Suggestion>)>>
