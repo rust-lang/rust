@@ -80,7 +80,7 @@ infer_subtype = ...so that the {$requirement ->
     [no_else] `if` missing an `else` returns `()`
     [fn_main_correct_type] `main` function has the correct type
     [fn_start_correct_type] `#[start]` function has the correct type
-    [intristic_correct_type] intrinsic has the correct type
+    [intrinsic_correct_type] intrinsic has the correct type
     [method_correct_type] method receiver has the correct type
     *[other] types are compatible
 }
@@ -93,7 +93,7 @@ infer_subtype_2 = ...so that {$requirement ->
     [no_else] `if` missing an `else` returns `()`
     [fn_main_correct_type] `main` function has the correct type
     [fn_start_correct_type] `#[start]` function has the correct type
-    [intristic_correct_type] intrinsic has the correct type
+    [intrinsic_correct_type] intrinsic has the correct type
     [method_correct_type] method receiver has the correct type
     *[other] types are compatible
 }
@@ -380,7 +380,7 @@ infer_oc_no_else = `if` may be missing an `else` clause
 infer_oc_no_diverge = `else` clause of `let...else` does not diverge
 infer_oc_fn_main_correct_type = `main` function has wrong type
 infer_oc_fn_start_correct_type = `#[start]` function has wrong type
-infer_oc_intristic_correct_type = intrinsic has wrong type
+infer_oc_intrinsic_correct_type = intrinsic has wrong type
 infer_oc_method_correct_type = mismatched `self` parameter type
 infer_oc_closure_selfref = closure/generator type that references itself
 infer_oc_cant_coerce = cannot coerce intrinsics to function pointers
