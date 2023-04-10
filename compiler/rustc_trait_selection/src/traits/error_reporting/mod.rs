@@ -467,7 +467,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
         }
 
-        self.tcx.sess.delay_span_bug(DUMMY_SP, "expected fullfillment errors")
+        self.tcx.sess.delay_span_bug(DUMMY_SP, "expected fulfillment errors")
     }
 
     /// Reports that an overflow has occurred and halts compilation. We
