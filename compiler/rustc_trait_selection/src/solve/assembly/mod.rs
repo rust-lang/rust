@@ -241,7 +241,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
         // HACK: `_: Trait` is ambiguous, because it may be satisfied via a builtin rule,
         // object bound, alias bound, etc. We are unable to determine this until we can at
-        // least structually resolve the type one layer.
+        // least structurally resolve the type one layer.
         if goal.predicate.self_ty().is_ty_var() {
             return vec![Candidate {
                 source: CandidateSource::BuiltinImpl,
