@@ -1402,7 +1402,7 @@ pub fn is_trivially_const_drop(ty: Ty<'_>) -> bool {
 }
 
 /// Does the equivalent of
-/// ```ignore (ilustrative)
+/// ```ignore (illustrative)
 /// let v = self.iter().map(|p| p.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
 /// folder.tcx().intern_*(&v)
 /// ```
