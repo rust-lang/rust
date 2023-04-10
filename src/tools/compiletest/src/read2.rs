@@ -76,7 +76,7 @@ impl ProcOutput {
                         .count();
                     *filtered_len -= matches * path_bytes.len();
 
-                    // We can't just remove the length of the filtered path from the output lenght,
+                    // We can't just remove the length of the filtered path from the output length,
                     // otherwise a compiler emitting only filtered paths would OOM compiletest. Add
                     // a fixed placeholder length for each path to prevent that.
                     *filtered_len += matches * FILTERED_PATHS_PLACEHOLDER_LEN;
