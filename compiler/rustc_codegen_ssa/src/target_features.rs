@@ -251,6 +251,7 @@ const RISCV_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("e", Some(sym::riscv_target_feature)),
     ("f", Some(sym::riscv_target_feature)),
     ("m", Some(sym::riscv_target_feature)),
+    ("relax", Some(sym::riscv_target_feature)),
     ("v", Some(sym::riscv_target_feature)),
     ("zba", Some(sym::riscv_target_feature)),
     ("zbb", Some(sym::riscv_target_feature)),
