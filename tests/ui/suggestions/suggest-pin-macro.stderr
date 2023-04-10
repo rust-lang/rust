@@ -4,8 +4,8 @@ error[E0277]: `PhantomPinned` cannot be unpinned
 LL |     dummy(test1.get_mut());
    |                 ^^^^^^^ within `Test`, the trait `Unpin` is not implemented for `PhantomPinned`
    |
-   = note: consider using `core::pin::pin!`
-           consider using `Box::pin` if you want ownership of the pinned value
+   = note: consider using `std::pin::pin!`
+           consider using `Box::pin` if you need to access the pinned value outside of the current scope
 note: required because it appears within the type `Test`
   --> $DIR/suggest-pin-macro.rs:5:8
    |
