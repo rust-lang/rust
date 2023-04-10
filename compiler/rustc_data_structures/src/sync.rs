@@ -92,6 +92,9 @@ mod mode {
 }
 
 pub use mode::{is_dyn_thread_safe, set_dyn_thread_safe_mode};
+
+pub type MetadataRef = OwnedSlice;
+
 cfg_if! {
     if #[cfg(not(parallel_compiler))] {
         pub unsafe auto trait Send {}
@@ -243,8 +246,6 @@ cfg_if! {
             }
             r
         }
-
-        pub type MetadataRef = OwnedSlice;
 
         pub use std::rc::Rc as Lrc;
         pub use std::rc::Weak as Weak;
@@ -516,8 +517,6 @@ cfg_if! {
                 r
             }
         }
-
-        pub type MetadataRef = OwnedSlice;
 
         /// This makes locks panic if they are already held.
         /// It is only useful when you are running in a single thread
