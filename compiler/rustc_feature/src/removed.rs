@@ -139,7 +139,7 @@ declare_features! (
     /// Allows using `#[on_unimplemented(..)]` on traits.
     /// (Moved to `rustc_attrs`.)
     (removed, on_unimplemented, "1.40.0", None, None, None),
-    /// A way to temporarily opt out of opt in copy. This will *never* be accepted.
+    /// A way to temporarily opt out of opt-in copy. This will *never* be accepted.
     (removed, opt_out_copy, "1.0.0", None, None, None),
     /// Allows features specific to OIBIT (now called auto traits).
     /// Renamed to `auto_traits`.
