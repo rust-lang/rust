@@ -527,14 +527,6 @@ fn make_format_args(
         })
         .collect::<Vec<_>>();
 
-    // Get symbol names
-    // let mut unused_symbol = Vec::with_capacity(unused.len());
-    // unused.iter().for_each(|(unused_span, _)| {
-    //     // Logic to extract symbol(string) from `Span` type
-    // });
-
-    // Some logic to check if the symbol has redundant argument associated with it.
-
     if !unused.is_empty() {
         // If there's a lot of unused arguments,
         // let's check if this format arguments looks like another syntax (printf / shell).
