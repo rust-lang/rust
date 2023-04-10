@@ -1,7 +1,7 @@
 // run-pass
 #![feature(unsize, coerce_unsized)]
 
-// Verfies that PhantomData is ignored for DST coercions
+// Verifies that PhantomData is ignored for DST coercions
 
 use std::marker::{Unsize, PhantomData};
 use std::ops::CoerceUnsized;
