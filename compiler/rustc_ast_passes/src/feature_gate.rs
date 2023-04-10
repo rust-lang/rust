@@ -404,11 +404,14 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     );
                 } else {
                     // And if it isn't, cancel the early-pass warning.
-                    self.sess
+                    if let Some(err) = self
+                        .sess
                         .parse_sess
                         .span_diagnostic
                         .steal_diagnostic(e.span, StashKey::EarlySyntaxWarning)
-                        .map(|err| err.cancel());
+                    {
+                        err.cancel()
+                    }
                 }
             }
             ast::ExprKind::TryBlock(_) => {

@@ -242,7 +242,7 @@ pub fn enum_def_to_string(
 impl<'a> State<'a> {
     pub fn bclose_maybe_open(&mut self, span: rustc_span::Span, close_box: bool) {
         self.maybe_print_comment(span.hi());
-        self.break_offset_if_not_bol(1, -(INDENT_UNIT as isize));
+        self.break_offset_if_not_bol(1, -INDENT_UNIT);
         self.word("}");
         if close_box {
             self.end(); // close the outer-box

@@ -924,7 +924,7 @@ impl<'tcx> TyCtxt<'tcx> {
             crate_name,
             // Don't print the whole stable crate id. That's just
             // annoying in debug output.
-            stable_crate_id.to_u64() >> 8 * 6,
+            stable_crate_id.to_u64() >> (8 * 6),
             self.def_path(def_id).to_string_no_crate_verbose()
         )
     }
@@ -2379,7 +2379,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn in_scope_traits(self, id: HirId) -> Option<&'tcx [TraitCandidate]> {
         let map = self.in_scope_traits_map(id.owner)?;
         let candidates = map.get(&id.local_id)?;
-        Some(&*candidates)
+        Some(candidates)
     }
 
     pub fn named_bound_var(self, id: HirId) -> Option<resolve_bound_vars::ResolvedArg> {

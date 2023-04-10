@@ -109,26 +109,34 @@ const MAX_HASHED_BUFFER_LEN: usize = 2 * MAX_BYTES_TO_HASH;
 // large.
 impl hash::Hash for Allocation {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        let Self {
+            bytes,
+            provenance,
+            init_mask,
+            align,
+            mutability,
+            extra: (), // don't bother hashing ()
+        } = self;
+
         // Partially hash the `bytes` buffer when it is large. To limit collisions with common
         // prefixes and suffixes, we hash the length and some slices of the buffer.
-        let byte_count = self.bytes.len();
+        let byte_count = bytes.len();
         if byte_count > MAX_HASHED_BUFFER_LEN {
             // Hash the buffer's length.
             byte_count.hash(state);
 
             // And its head and tail.
-            self.bytes[..MAX_BYTES_TO_HASH].hash(state);
-            self.bytes[byte_count - MAX_BYTES_TO_HASH..].hash(state);
+            bytes[..MAX_BYTES_TO_HASH].hash(state);
+            bytes[byte_count - MAX_BYTES_TO_HASH..].hash(state);
         } else {
-            self.bytes.hash(state);
+            bytes.hash(state);
         }
 
         // Hash the other fields as usual.
-        self.provenance.hash(state);
-        self.init_mask.hash(state);
-        self.align.hash(state);
-        self.mutability.hash(state);
-        self.extra.hash(state);
+        provenance.hash(state);
+        init_mask.hash(state);
+        align.hash(state);
+        mutability.hash(state);
     }
 }
 

@@ -136,7 +136,9 @@ where
     }
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
-        self.cache.lock().as_ref().map(|value| f(&(), &value.0, value.1));
+        if let Some(value) = self.cache.lock().as_ref() {
+            f(&(), &value.0, value.1)
+        }
     }
 }
 

@@ -84,7 +84,7 @@ impl<T: Copy> AppendOnlyVec<T> {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = T> + '_ {
-        (0..).map(|i| self.get(i)).take_while(|o| o.is_some()).filter_map(|o| o)
+        (0..).map(|i| self.get(i)).take_while(|o| o.is_some()).flatten()
     }
 }
 

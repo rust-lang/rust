@@ -40,7 +40,7 @@ impl Deref for Mmap {
 
 impl AsRef<[u8]> for Mmap {
     fn as_ref(&self) -> &[u8] {
-        &*self.0
+        &self.0
     }
 }
 

@@ -1353,16 +1353,16 @@ impl Clone for SourceFile {
         Self {
             name: self.name.clone(),
             src: self.src.clone(),
-            src_hash: self.src_hash.clone(),
+            src_hash: self.src_hash,
             external_src: Lock::new(self.external_src.borrow().clone()),
-            start_pos: self.start_pos.clone(),
-            end_pos: self.end_pos.clone(),
+            start_pos: self.start_pos,
+            end_pos: self.end_pos,
             lines: Lock::new(self.lines.borrow().clone()),
             multibyte_chars: self.multibyte_chars.clone(),
             non_narrow_chars: self.non_narrow_chars.clone(),
             normalized_pos: self.normalized_pos.clone(),
-            name_hash: self.name_hash.clone(),
-            cnum: self.cnum.clone(),
+            name_hash: self.name_hash,
+            cnum: self.cnum,
         }
     }
 }
@@ -2051,13 +2051,13 @@ pub type FileLinesResult = Result<FileLines, SpanLinesError>;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum SpanLinesError {
-    DistinctSources(DistinctSources),
+    DistinctSources(Box<DistinctSources>),
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum SpanSnippetError {
     IllFormedSpan(Span),
-    DistinctSources(DistinctSources),
+    DistinctSources(Box<DistinctSources>),
     MalformedForSourcemap(MalformedSourceMapPositions),
     SourceNotAvailable { filename: FileName },
 }
