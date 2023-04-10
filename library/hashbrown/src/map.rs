@@ -972,10 +972,10 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// In other words, move all pairs `(k, v)` such that `f(&k, &mut v)` returns `true` out
     /// into another iterator.
     ///
-    /// Note that `drain_filter` lets you mutate every value in the filter closure, regardless of
+    /// Note that `extract_if` lets you mutate every value in the filter closure, regardless of
     /// whether you choose to keep or remove it.
     ///
-    /// If the returned `DrainFilter` is not exhausted, e.g. because it is dropped without iterating
+    /// If the returned `ExtractIf` is not exhausted, e.g. because it is dropped without iterating
     /// or the iteration short-circuits, then the remaining elements will be retained.
     /// Use [`retain()`] with a negated predicate if you do not need the returned iterator.
     ///
@@ -988,7 +988,7 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     ///
     /// let mut map: HashMap<i32, i32> = (0..8).map(|x| (x, x)).collect();
     ///
-    /// let drained: HashMap<i32, i32> = map.drain_filter(|k, _v| k % 2 == 0).collect();
+    /// let drained: HashMap<i32, i32> = map.extract_if(|k, _v| k % 2 == 0).collect();
     ///
     /// let mut evens = drained.keys().cloned().collect::<Vec<_>>();
     /// let mut odds = map.keys().cloned().collect::<Vec<_>>();
@@ -1001,20 +1001,20 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// let mut map: HashMap<i32, i32> = (0..8).map(|x| (x, x)).collect();
     ///
     /// {   // Iterator is dropped without being consumed.
-    ///     let d = map.drain_filter(|k, _v| k % 2 != 0);
+    ///     let d = map.extract_if(|k, _v| k % 2 != 0);
     /// }
     ///
-    /// // DrainFilter was not exhausted, therefore no elements were drained.
+    /// // ExtractIf was not exhausted, therefore no elements were drained.
     /// assert_eq!(map.len(), 8);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn drain_filter<F>(&mut self, f: F) -> DrainFilter<'_, K, V, F, A>
+    pub fn extract_if<F>(&mut self, f: F) -> ExtractIf<'_, K, V, F, A>
     where
         F: FnMut(&K, &mut V) -> bool,
     {
-        DrainFilter {
+        ExtractIf {
             f,
-            inner: DrainFilterInner {
+            inner: ExtractIfInner {
                 iter: unsafe { self.table.iter() },
                 table: &mut self.table,
             },
@@ -2728,10 +2728,10 @@ impl<K, V, A: Allocator + Clone> Drain<'_, K, V, A> {
 /// A draining iterator over entries of a `HashMap` which don't satisfy the predicate
 /// `f(&k, &mut v)` in arbitrary order. The iterator element type is `(K, V)`.
 ///
-/// This `struct` is created by the [`drain_filter`] method on [`HashMap`]. See its
+/// This `struct` is created by the [`extract_if`] method on [`HashMap`]. See its
 /// documentation for more.
 ///
-/// [`drain_filter`]: struct.HashMap.html#method.drain_filter
+/// [`extract_if`]: struct.HashMap.html#method.extract_if
 /// [`HashMap`]: struct.HashMap.html
 ///
 /// # Examples
@@ -2741,31 +2741,31 @@ impl<K, V, A: Allocator + Clone> Drain<'_, K, V, A> {
 ///
 /// let mut map: HashMap<i32, &str> = [(1, "a"), (2, "b"), (3, "c")].into();
 ///
-/// let mut drain_filter = map.drain_filter(|k, _v| k % 2 != 0);
-/// let mut vec = vec![drain_filter.next(), drain_filter.next()];
+/// let mut extract_if = map.extract_if(|k, _v| k % 2 != 0);
+/// let mut vec = vec![extract_if.next(), extract_if.next()];
 ///
-/// // The `DrainFilter` iterator produces items in arbitrary order, so the
+/// // The `ExtractIf` iterator produces items in arbitrary order, so the
 /// // items must be sorted to test them against a sorted array.
 /// vec.sort_unstable();
 /// assert_eq!(vec, [Some((1, "a")),Some((3, "c"))]);
 ///
 /// // It is fused iterator
-/// assert_eq!(drain_filter.next(), None);
-/// assert_eq!(drain_filter.next(), None);
-/// drop(drain_filter);
+/// assert_eq!(extract_if.next(), None);
+/// assert_eq!(extract_if.next(), None);
+/// drop(extract_if);
 ///
 /// assert_eq!(map.len(), 1);
 /// ```
 #[must_use = "Iterators are lazy unless consumed"]
-pub struct DrainFilter<'a, K, V, F, A: Allocator + Clone = Global>
+pub struct ExtractIf<'a, K, V, F, A: Allocator + Clone = Global>
 where
     F: FnMut(&K, &mut V) -> bool,
 {
     f: F,
-    inner: DrainFilterInner<'a, K, V, A>,
+    inner: ExtractIfInner<'a, K, V, A>,
 }
 
-impl<K, V, F, A> Iterator for DrainFilter<'_, K, V, F, A>
+impl<K, V, F, A> Iterator for ExtractIf<'_, K, V, F, A>
 where
     F: FnMut(&K, &mut V) -> bool,
     A: Allocator + Clone,
@@ -2783,15 +2783,15 @@ where
     }
 }
 
-impl<K, V, F> FusedIterator for DrainFilter<'_, K, V, F> where F: FnMut(&K, &mut V) -> bool {}
+impl<K, V, F> FusedIterator for ExtractIf<'_, K, V, F> where F: FnMut(&K, &mut V) -> bool {}
 
-/// Portions of `DrainFilter` shared with `set::DrainFilter`
-pub(super) struct DrainFilterInner<'a, K, V, A: Allocator + Clone> {
+/// Portions of `ExtractIf` shared with `set::ExtractIf`
+pub(super) struct ExtractIfInner<'a, K, V, A: Allocator + Clone> {
     pub iter: RawIter<(K, V)>,
     pub table: &'a mut RawTable<(K, V), A>,
 }
 
-impl<K, V, A: Allocator + Clone> DrainFilterInner<'_, K, V, A> {
+impl<K, V, A: Allocator + Clone> ExtractIfInner<'_, K, V, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     pub(super) fn next<F>(&mut self, f: &mut F) -> Option<(K, V)>
     where
@@ -8142,10 +8142,10 @@ mod test_map {
     }
 
     #[test]
-    fn test_drain_filter() {
+    fn test_extract_if() {
         {
             let mut map: HashMap<i32, i32> = (0..8).map(|x| (x, x * 10)).collect();
-            let drained = map.drain_filter(|&k, _| k % 2 == 0);
+            let drained = map.extract_if(|&k, _| k % 2 == 0);
             let mut out = drained.collect::<Vec<_>>();
             out.sort_unstable();
             assert_eq!(vec![(0, 0), (2, 20), (4, 40), (6, 60)], out);
@@ -8153,7 +8153,7 @@ mod test_map {
         }
         {
             let mut map: HashMap<i32, i32> = (0..8).map(|x| (x, x * 10)).collect();
-            map.drain_filter(|&k, _| k % 2 == 0).for_each(drop);
+            map.extract_if(|&k, _| k % 2 == 0).for_each(drop);
             assert_eq!(map.len(), 4);
         }
     }
