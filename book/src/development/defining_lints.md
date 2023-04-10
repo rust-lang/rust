@@ -41,7 +41,6 @@ There are two things to note here:
 is an `early` lint pass. We will discuss this difference in a later chapter.
 <!-- FIXME: Link that "later chapter" when lint_passes.md is merged -->
 2. If not provided, the `category` of this new lint will default to `nursery`.
-See Clippy's [lint types](../lints.md) for more information on categories.
 
 The `cargo dev new_lint` command will create a new file: `clippy_lints/src/foo_functions.rs`
 as well as [register the lint](#lint-registration).
@@ -66,6 +65,8 @@ Untracked files:
 ```
 
 ### Specific Type
+
+> **Note**: Lint types are listed in the ["Lint types"](#lint-types) section
 
 If you believe that this new lint belongs to a specific type of lints,
 you can run `cargo dev new_lint` with a `--type` option.
@@ -135,7 +136,7 @@ the lint pass in question will not be run.
 
 ## Lint types
 
-As of the writing of this documentation update, there are 12 categories (a.k.a. _types_)
+As of the writing of this documentation update, there are 12 groups (a.k.a. _types_)
 of lints besides the numerous standalone lints living under `clippy_lints/src/`:
 
 - `cargo`
