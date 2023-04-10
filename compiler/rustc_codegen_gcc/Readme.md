@@ -164,7 +164,7 @@ debug_tree(expr);
 
 (defined in print-tree.h)
 
-To print a debug reprensentation of a gimple struct:
+To print a debug representation of a gimple struct:
 
 ```c
 debug_gimple_stmt(gimple_struct)
