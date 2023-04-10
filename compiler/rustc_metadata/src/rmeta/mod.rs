@@ -361,7 +361,8 @@ define_tables! {
 
 - optional:
     attributes: Table<DefIndex, LazyArray<ast::Attribute>>,
-    children: Table<DefIndex, LazyArray<DefIndex>>,
+    module_children_non_reexports: Table<DefIndex, LazyArray<DefIndex>>,
+    associated_item_or_field_def_ids: Table<DefIndex, LazyArray<DefIndex>>,
     opt_def_kind: Table<DefIndex, DefKind>,
     visibility: Table<DefIndex, LazyValue<ty::Visibility<DefIndex>>>,
     def_span: Table<DefIndex, LazyValue<Span>>,
