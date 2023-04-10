@@ -53,7 +53,7 @@ fn is_signaling() {
 fn next() {
     // 1. Test Special Cases Values.
     //
-    // Test all special values for nextUp and nextDown perscribed by IEEE-754R
+    // Test all special values for nextUp and nextDown prescribed by IEEE-754R
     // 2008. These are:
     //   1. +inf
     //   2. -inf
