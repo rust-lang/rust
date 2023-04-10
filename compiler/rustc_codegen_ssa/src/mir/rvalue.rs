@@ -158,17 +158,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         debug_assert!(src.layout.is_sized());
         debug_assert!(dst.layout.is_sized());
 
-        if src.layout.size != dst.layout.size
-            || src.layout.abi.is_uninhabited()
-            || dst.layout.abi.is_uninhabited()
-        {
-            // In all of these cases it's UB to run this transmute, but that's
-            // known statically so might as well trap for it, rather than just
-            // making it unreachable.
-            bx.abort();
-            return;
-        }
-
         if let Some(val) = self.codegen_transmute_operand(bx, src, dst.layout) {
             val.store(bx, dst);
             return;
@@ -202,8 +191,21 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         operand: OperandRef<'tcx, Bx::Value>,
         cast: TyAndLayout<'tcx>,
     ) -> Option<OperandValue<Bx::Value>> {
-        // Callers already checked that the layout sizes match
-        debug_assert_eq!(operand.layout.size, cast.size);
+        // Check for transmutes that are always UB.
+        if operand.layout.size != cast.size
+            || operand.layout.abi.is_uninhabited()
+            || cast.abi.is_uninhabited()
+        {
+            if !operand.layout.abi.is_uninhabited() {
+                // Since this is known statically and the input could have existed
+                // without already having hit UB, might as well trap for it.
+                bx.abort();
+            }
+
+            // Because this transmute is UB, return something easy to generate,
+            // since it's fine that later uses of the value are probably UB.
+            return Some(OperandValue::poison(bx, cast));
+        }
 
         let operand_kind = self.value_kind(operand.layout);
         let cast_kind = self.value_kind(cast);
@@ -222,10 +224,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bug!("Found {operand_kind:?} for operand {operand:?}");
                 };
                 if let OperandValueKind::Immediate(out_scalar) = cast_kind {
-                    let cast_bty = bx.backend_type(cast);
-                    Some(OperandValue::Immediate(Self::transmute_immediate(
-                        bx, imm, in_scalar, out_scalar, cast_bty,
-                    )))
+                    match (in_scalar, out_scalar) {
+                        (ScalarOrZst::Zst, ScalarOrZst::Zst) => {
+                            Some(OperandRef::new_zst(bx, cast).val)
+                        }
+                        (ScalarOrZst::Scalar(in_scalar), ScalarOrZst::Scalar(out_scalar))
+                            if in_scalar.size(self.cx) == out_scalar.size(self.cx) =>
+                        {
+                            let cast_bty = bx.backend_type(cast);
+                            Some(OperandValue::Immediate(
+                                self.transmute_immediate(bx, imm, in_scalar, out_scalar, cast_bty),
+                            ))
+                        }
+                        _ => None,
+                    }
                 } else {
                     None
                 }
@@ -234,12 +246,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let OperandValueKind::Pair(in_a, in_b) = operand_kind else {
                     bug!("Found {operand_kind:?} for operand {operand:?}");
                 };
-                if let OperandValueKind::Pair(out_a, out_b) = cast_kind {
+                if let OperandValueKind::Pair(out_a, out_b) = cast_kind
+                    && in_a.size(self.cx) == out_a.size(self.cx)
+                    && in_b.size(self.cx) == out_b.size(self.cx)
+                {
                     let out_a_ibty = bx.scalar_pair_element_backend_type(cast, 0, false);
                     let out_b_ibty = bx.scalar_pair_element_backend_type(cast, 1, false);
                     Some(OperandValue::Pair(
-                        Self::transmute_immediate(bx, imm_a, in_a, out_a, out_a_ibty),
-                        Self::transmute_immediate(bx, imm_b, in_b, out_b, out_b_ibty),
+                        self.transmute_immediate(bx, imm_a, in_a, out_a, out_a_ibty),
+                        self.transmute_immediate(bx, imm_b, in_b, out_b, out_b_ibty),
                     ))
                 } else {
                     None
@@ -254,12 +269,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     /// `to_backend_ty` must be the *non*-immediate backend type (so it will be
     /// `i8`, not `i1`, for `bool`-like types.)
     fn transmute_immediate(
+        &self,
         bx: &mut Bx,
         mut imm: Bx::Value,
         from_scalar: abi::Scalar,
         to_scalar: abi::Scalar,
         to_backend_ty: Bx::Type,
     ) -> Bx::Value {
+        debug_assert_eq!(from_scalar.size(self.cx), to_scalar.size(self.cx));
+
         use abi::Primitive::*;
         imm = bx.from_immediate(imm);
         imm = match (from_scalar.primitive(), to_scalar.primitive()) {
@@ -831,14 +849,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let operand_ty = operand.ty(self.mir, self.cx.tcx());
                 let cast_layout = self.cx.layout_of(self.monomorphize(cast_ty));
                 let operand_layout = self.cx.layout_of(self.monomorphize(operand_ty));
-                if operand_layout.size != cast_layout.size
-                    || operand_layout.abi.is_uninhabited()
-                    || cast_layout.abi.is_uninhabited()
-                {
-                    // Send UB cases to the full form so the operand version can
-                    // `bitcast` without worrying about malformed IR.
-                    return false;
-                }
 
                 match (self.value_kind(operand_layout), self.value_kind(cast_layout)) {
                     // Can always load from a pointer as needed
@@ -847,9 +857,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // Need to generate an `alloc` to get a pointer from an immediate
                     (OperandValueKind::Immediate(..) | OperandValueKind::Pair(..), OperandValueKind::Ref) => false,
 
-                    // When we have scalar immediates, we can convert them as needed
-                    (OperandValueKind::Immediate(..), OperandValueKind::Immediate(..)) |
-                    (OperandValueKind::Pair(..), OperandValueKind::Pair(..)) => true,
+                    // When we have scalar immediates, we can only convert things
+                    // where the sizes match, to avoid endianness questions.
+                    (OperandValueKind::Immediate(a), OperandValueKind::Immediate(b)) =>
+                        a.size(self.cx) == b.size(self.cx),
+                    (OperandValueKind::Pair(a0, a1), OperandValueKind::Pair(b0, b1)) =>
+                        a0.size(self.cx) == b0.size(self.cx) && a1.size(self.cx) == b1.size(self.cx),
 
                     // Send mixings between scalars and pairs through the memory route
                     // FIXME: Maybe this could use insertvalue/extractvalue instead?
@@ -887,13 +900,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if self.cx.is_backend_immediate(layout) {
             debug_assert!(!self.cx.is_backend_scalar_pair(layout));
             OperandValueKind::Immediate(match layout.abi {
-                abi::Abi::Scalar(s) => s,
-                abi::Abi::Vector { element, .. } => element,
-                x => bug!("Couldn't translate {x:?} as backend immediate"),
+                abi::Abi::Scalar(s) => ScalarOrZst::Scalar(s),
+                abi::Abi::Vector { element, .. } => ScalarOrZst::Scalar(element),
+                _ if layout.is_zst() => ScalarOrZst::Zst,
+                x => span_bug!(self.mir.span, "Couldn't translate {x:?} as backend immediate"),
             })
         } else if self.cx.is_backend_scalar_pair(layout) {
             let abi::Abi::ScalarPair(s1, s2) = layout.abi else {
-                bug!("Couldn't translate {:?} as backend scalar pair", layout.abi)
+                span_bug!(
+                    self.mir.span,
+                    "Couldn't translate {:?} as backend scalar pair",
+                    layout.abi,
+                );
             };
             OperandValueKind::Pair(s1, s2)
         } else {
@@ -902,9 +920,26 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 }
 
+/// The variants of this match [`OperandValue`], giving details about the
+/// backend values that will be held in that other type.
 #[derive(Debug, Copy, Clone)]
 enum OperandValueKind {
     Ref,
-    Immediate(abi::Scalar),
+    Immediate(ScalarOrZst),
     Pair(abi::Scalar, abi::Scalar),
+}
+
+#[derive(Debug, Copy, Clone)]
+enum ScalarOrZst {
+    Zst,
+    Scalar(abi::Scalar),
+}
+
+impl ScalarOrZst {
+    pub fn size(self, cx: &impl abi::HasDataLayout) -> abi::Size {
+        match self {
+            ScalarOrZst::Zst => abi::Size::ZERO,
+            ScalarOrZst::Scalar(s) => s.size(cx),
+        }
+    }
 }

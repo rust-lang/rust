@@ -259,6 +259,31 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
 }
 
 impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
+    /// Returns an `OperandValue` that's generally UB to use in any way.
+    ///
+    /// Depending on the `layout`, returns an `Immediate` or `Pair` containing
+    /// poison value(s), or a `Ref` containing a poison pointer.
+    ///
+    /// Supports sized types only.
+    pub fn poison<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+        bx: &mut Bx,
+        layout: TyAndLayout<'tcx>,
+    ) -> OperandValue<V> {
+        assert!(layout.is_sized());
+        if bx.cx().is_backend_immediate(layout) {
+            let ibty = bx.cx().immediate_backend_type(layout);
+            OperandValue::Immediate(bx.const_poison(ibty))
+        } else if bx.cx().is_backend_scalar_pair(layout) {
+            let ibty0 = bx.cx().scalar_pair_element_backend_type(layout, 0, true);
+            let ibty1 = bx.cx().scalar_pair_element_backend_type(layout, 1, true);
+            OperandValue::Pair(bx.const_poison(ibty0), bx.const_poison(ibty1))
+        } else {
+            let bty = bx.cx().backend_type(layout);
+            let ptr_bty = bx.cx().type_ptr_to(bty);
+            OperandValue::Ref(bx.const_poison(ptr_bty), None, layout.align.abi)
+        }
+    }
+
     pub fn store<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         self,
         bx: &mut Bx,
