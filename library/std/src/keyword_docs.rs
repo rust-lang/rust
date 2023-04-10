@@ -1925,7 +1925,7 @@ mod type_keyword {}
 /// `unsafe_op_in_unsafe_fn` lint can be enabled to warn against that and require explicit unsafe
 /// blocks even inside `unsafe fn`.
 ///
-/// See the [Rustnomicon] and the [Reference] for more information.
+/// See the [Rustonomicon] and the [Reference] for more information.
 ///
 /// # Examples
 ///
@@ -2129,7 +2129,7 @@ mod type_keyword {}
 /// [`impl`]: keyword.impl.html
 /// [raw pointers]: ../reference/types/pointer.html
 /// [memory safety]: ../book/ch19-01-unsafe-rust.html
-/// [Rustnomicon]: ../nomicon/index.html
+/// [Rustonomicon]: ../nomicon/index.html
 /// [nomicon-soundness]: ../nomicon/safe-unsafe-meaning.html
 /// [soundness]: https://rust-lang.github.io/unsafe-code-guidelines/glossary.html#soundness-of-code--of-a-library
 /// [Reference]: ../reference/unsafety.html
