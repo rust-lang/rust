@@ -1447,8 +1447,8 @@ fn exec_linker(
 
     #[cfg(windows)]
     fn command_line_too_big(err: &io::Error) -> bool {
-        const ERROR_FILENAME_EXCEED_RANGE: i32 = 206;
-        err.raw_os_error() == Some(ERROR_FILENAME_EXCEED_RANGE)
+        const ERROR_FILENAME_EXCED_RANGE: i32 = 206;
+        err.raw_os_error() == Some(ERROR_FILENAME_EXCED_RANGE)
     }
 
     #[cfg(not(any(unix, windows)))]
