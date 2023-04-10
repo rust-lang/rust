@@ -10,7 +10,7 @@ fn once_cell() {
     c.get_or_init(|| 92);
     assert_eq!(c.get(), Some(&92));
 
-    c.get_or_init(|| panic!("Kabom!"));
+    c.get_or_init(|| panic!("Kaboom!"));
     assert_eq!(c.get(), Some(&92));
 }
 
