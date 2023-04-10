@@ -157,7 +157,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 &[catch_unwind.data.into(), payload.into()],
                 None,
                 // Directly return to caller of `try`.
-                StackPopCleanup::Goto { ret: Some(catch_unwind.ret), unwind: mir::UnwindAction::Continue },
+                StackPopCleanup::Goto {
+                    ret: Some(catch_unwind.ret),
+                    unwind: mir::UnwindAction::Continue,
+                },
             )?;
 
             // We pushed a new stack frame, the engine should not do any jumping now!
@@ -211,10 +214,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     Abi::Rust,
                     &[index.into(), len.into()],
                     None,
-                    StackPopCleanup::Goto {
-                        ret: None,
-                        unwind,
-                    },
+                    StackPopCleanup::Goto { ret: None, unwind },
                 )?;
             }
             MisalignedPointerDereference { required, found } => {
@@ -235,19 +235,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     Abi::Rust,
                     &[required.into(), found.into()],
                     None,
-                    StackPopCleanup::Goto {
-                        ret: None,
-                        unwind,
-                    },
+                    StackPopCleanup::Goto { ret: None, unwind },
                 )?;
             }
 
             _ => {
                 // Forward everything else to `panic` lang item.
-                this.start_panic(
-                    msg.description(),
-                    unwind,
-                )?;
+                this.start_panic(msg.description(), unwind)?;
             }
         }
         Ok(())
