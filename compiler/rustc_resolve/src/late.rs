@@ -3803,7 +3803,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             // use std::u8; // bring module u8 in scope
             // fn f() -> u8 { // OK, resolves to primitive u8, not to std::u8
             //     u8::max_value() // OK, resolves to associated function <u8>::max_value,
-            //                     // not to non-existent std::u8::max_value
+            //                     // not to nonexistent std::u8::max_value
             // }
             //
             // Such behavior is required for backward compatibility.

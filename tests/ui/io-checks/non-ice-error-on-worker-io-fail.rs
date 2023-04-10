@@ -6,7 +6,7 @@
 // be an error; but not an ICE.
 //
 // However, some folks run tests as root, which can write `/dev/` and end
-// up clobbering `/dev/null`. Instead we'll use a non-existent path, which
+// up clobbering `/dev/null`. Instead we'll use a nonexistent path, which
 // also used to ICE, but even root can't magically write there.
 
 // compile-flags: -o /does-not-exist/output

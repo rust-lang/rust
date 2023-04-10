@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `xcrate`
-  --> $DIR/non-existent-1.rs:3:5
+  --> $DIR/nonexistent-1.rs:3:5
    |
 LL | use xcrate::S;
    |     ^^^^^^ use of undeclared crate or module `xcrate`

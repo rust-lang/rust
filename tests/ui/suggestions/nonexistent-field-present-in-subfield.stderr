@@ -1,5 +1,5 @@
 error[E0609]: no field `c` on type `Foo`
-  --> $DIR/non-existent-field-present-in-subfield.rs:37:24
+  --> $DIR/nonexistent-field-present-in-subfield.rs:37:24
    |
 LL |     let _test = &fooer.c;
    |                        ^ unknown field
@@ -11,7 +11,7 @@ LL |     let _test = &fooer.first.bar.c;
    |                        ++++++++++
 
 error[E0609]: no field `test` on type `Foo`
-  --> $DIR/non-existent-field-present-in-subfield.rs:40:24
+  --> $DIR/nonexistent-field-present-in-subfield.rs:40:24
    |
 LL |     let _test2 = fooer.test;
    |                        ^^^^ unknown field

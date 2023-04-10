@@ -249,7 +249,7 @@ impl<K: DepKind> DepGraph<K> {
     /// get an ICE. Normally, we would have tried (and failed) to mark
     /// some other query green (e.g. `item_children`) which was used
     /// to obtain `C`, which would prevent us from ever trying to force
-    /// a non-existent `D`.
+    /// a nonexistent `D`.
     ///
     /// It might be possible to enforce that all `DepNode`s read during
     /// deserialization already exist in the previous `DepGraph`. In

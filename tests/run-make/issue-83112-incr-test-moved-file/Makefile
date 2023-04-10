@@ -9,7 +9,7 @@ include ../tools.mk
 # these spans as a full span (with a source file index), instead of skipping
 # the encoding of the location information. If the file gest moved, the hash
 # of the span will be unchanged (since it has a dummy location), so the incr
-# cache would end up try to load a non-existent file using the previously
+# cache would end up try to load a nonexistent file using the previously
 # encoded source file id.
 
 SRC=$(TMPDIR)/src

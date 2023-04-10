@@ -1,4 +1,4 @@
-// Macro from prelude is shadowed by non-existent import recovered as `Res::Err`.
+// Macro from prelude is shadowed by nonexistent import recovered as `Res::Err`.
 
 mod m {}
 use m::assert; //~ ERROR unresolved import `m::assert`

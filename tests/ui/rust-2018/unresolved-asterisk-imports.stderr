@@ -1,8 +1,8 @@
-error[E0432]: unresolved import `not_existing_crate`
+error[E0432]: unresolved import `nonexistent_crate`
   --> $DIR/unresolved-asterisk-imports.rs:3:5
    |
-LL | use not_existing_crate::*;
-   |     ^^^^^^^^^^^^^^^^^^ use of undeclared crate or module `not_existing_crate`
+LL | use nonexistent_crate::*;
+   |     ^^^^^^^^^^^^^^^^^ use of undeclared crate or module `nonexistent_crate`
 
 error: aborting due to previous error
 

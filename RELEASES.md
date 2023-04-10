@@ -1794,10 +1794,10 @@ Libraries
 - [impl Default, Copy, Clone for std::io::Sink and std::io::Empty][rust#86744]
 - [`impl From<[(K, V); N]>` for all collections.][rust#84111]
 - [Remove `P: Unpin` bound on impl Future for Pin.][rust#81363]
-- [Treat invalid environment variable names as non-existent.][rust#86183]
+- [Treat invalid environment variable names as nonexistent.][rust#86183]
   Previously, the environment functions would panic if given a variable name
   with an internal null character or equal sign (`=`). Now, these functions will
-  just treat such names as non-existent variables, since the OS cannot represent
+  just treat such names as nonexistent variables, since the OS cannot represent
   the existence of a variable with such a name.
 
 Stabilised APIs

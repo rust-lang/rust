@@ -1,18 +1,18 @@
 // edition:2018
 
 mod inner {
-    fn global_inner(_: ::nonexistant::Foo) {
-        //~^ ERROR failed to resolve: could not find `nonexistant` in the list of imported crates
+    fn global_inner(_: ::nonexistent::Foo) {
+        //~^ ERROR failed to resolve: could not find `nonexistent` in the list of imported crates
     }
-    fn crate_inner(_: crate::nonexistant::Foo) {
-        //~^ ERROR failed to resolve: could not find `nonexistant` in the crate root
+    fn crate_inner(_: crate::nonexistent::Foo) {
+        //~^ ERROR failed to resolve: could not find `nonexistent` in the crate root
     }
 
-    fn bare_global(_: ::nonexistant) {
-        //~^ ERROR cannot find crate `nonexistant` in the list of imported crates
+    fn bare_global(_: ::nonexistent) {
+        //~^ ERROR cannot find crate `nonexistent` in the list of imported crates
     }
-    fn bare_crate(_: crate::nonexistant) {
-        //~^ ERROR cannot find type `nonexistant` in the crate root
+    fn bare_crate(_: crate::nonexistent) {
+        //~^ ERROR cannot find type `nonexistent` in the crate root
     }
 }
 

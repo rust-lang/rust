@@ -61,7 +61,7 @@ pub fn error_name(er: abi::ER) -> Option<&'static str> {
         abi::E_NOMEM => Some("insufficient memory"),
         abi::E_NOID => Some("no ID number available"),
         abi::E_OBJ => Some("object state error"),
-        abi::E_NOEXS => Some("non-existent object"),
+        abi::E_NOEXS => Some("nonexistent object"),
         abi::E_QOVR => Some("queue overflow"),
         abi::E_RLWAI => Some("forced release from waiting"),
         abi::E_TMOUT => Some("polling failure or timeout"),
@@ -98,7 +98,7 @@ pub fn decode_error_kind(er: abi::ER) -> ErrorKind {
         abi::E_NOMEM => ErrorKind::OutOfMemory, // Some("insufficient memory"),
         abi::E_NOID => ErrorKind::OutOfMemory,  // Some("no ID number available"),
         // abi::E_OBJ
-        abi::E_NOEXS => ErrorKind::NotFound, // Some("non-existent object"),
+        abi::E_NOEXS => ErrorKind::NotFound, // Some("nonexistent object"),
         // abi::E_QOVR
         abi::E_RLWAI => ErrorKind::Interrupted, // Some("forced release from waiting"),
         abi::E_TMOUT => ErrorKind::TimedOut,    // Some("polling failure or timeout"),

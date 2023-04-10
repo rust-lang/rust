@@ -68,7 +68,7 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
                     }
                 } else {
                     // The non-error case can happen with e.g. `#[foo = 1+1]`. The error case can
-                    // happen with e.g. `#[foo = include_str!("non-existent-file.rs")]`; in that
+                    // happen with e.g. `#[foo = include_str!("nonexistent-file.rs")]`; in that
                     // case we delay the error because an earlier error will have already been
                     // reported.
                     let msg = format!("unexpected expression: `{}`", pprust::expr_to_string(expr));
