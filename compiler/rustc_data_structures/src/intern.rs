@@ -1,12 +1,34 @@
 use crate::stable_hasher::{HashStable, StableHasher};
+use crate::tagged_ptr::{self, CopyTaggedPtr};
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
+use std::marker::PhantomData;
 use std::ops::Deref;
 use std::ptr;
 
 mod private {
+    use std::marker::PhantomData;
+
     #[derive(Clone, Copy, Debug)]
-    pub struct PrivateZst;
+    pub struct PrivateZst<T>(pub(super) PhantomData<T>);
+}
+
+trait InternedPtr<'a, T>: Copy {
+    fn as_ref(self) -> &'a T;
+}
+
+impl<'a, T> InternedPtr<'a, T> for &'a T {
+    fn as_ref(self) -> &'a T {
+        self
+    }
+}
+
+impl<'a, T, P: tagged_ptr::Pointer + Copy + InternedPtr<'a, T>, Tag: tagged_ptr::Tag>
+    InternedPtr<'a, T> for CopyTaggedPtr<P, Tag, false>
+{
+    fn as_ref(self) -> &'a T {
+        InternedPtr::as_ref(self.pointer())
+    }
 }
 
 /// A reference to a value that is interned, and is known to be unique.
@@ -22,7 +44,7 @@ mod private {
 /// directly.
 #[derive(Debug)]
 #[rustc_pass_by_value]
-pub struct Interned<'a, T>(pub &'a T, pub private::PrivateZst);
+pub struct Interned<'a, T, P = &'a T>(pub P, pub private::PrivateZst<&'a T>);
 
 impl<'a, T> Interned<'a, T> {
     /// Create a new `Interned` value. The value referred to *must* be interned
@@ -32,79 +54,79 @@ impl<'a, T> Interned<'a, T> {
     /// behaviour but will not affect memory safety.
     #[inline]
     pub const fn new_unchecked(t: &'a T) -> Self {
-        Interned(t, private::PrivateZst)
+        Interned(t, private::PrivateZst(PhantomData))
     }
 }
 
-impl<'a, T> Clone for Interned<'a, T> {
+impl<'a, T, P: InternedPtr<'a, T>> Clone for Interned<'a, T, P> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<'a, T> Copy for Interned<'a, T> {}
+impl<'a, T, P: InternedPtr<'a, T>> Copy for Interned<'a, T, P> {}
 
-impl<'a, T> Deref for Interned<'a, T> {
+impl<'a, T, P: InternedPtr<'a, T>> Deref for Interned<'a, T, P> {
     type Target = T;
 
     #[inline]
     fn deref(&self) -> &T {
-        self.0
+        self.0.as_ref()
     }
 }
 
-impl<'a, T> PartialEq for Interned<'a, T> {
+impl<'a, T, P: InternedPtr<'a, T>> PartialEq for Interned<'a, T, P> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         // Pointer equality implies equality, due to the uniqueness constraint.
-        ptr::eq(self.0, other.0)
+        ptr::eq(self.0.as_ref(), other.0.as_ref())
     }
 }
 
-impl<'a, T> Eq for Interned<'a, T> {}
+impl<'a, T, P: InternedPtr<'a, T>> Eq for Interned<'a, T, P> {}
 
-impl<'a, T: PartialOrd> PartialOrd for Interned<'a, T> {
-    fn partial_cmp(&self, other: &Interned<'a, T>) -> Option<Ordering> {
+impl<'a, T: PartialOrd, P: InternedPtr<'a, T>> PartialOrd for Interned<'a, T, P> {
+    fn partial_cmp(&self, other: &Interned<'a, T, P>) -> Option<Ordering> {
         // Pointer equality implies equality, due to the uniqueness constraint,
         // but the contents must be compared otherwise.
-        if ptr::eq(self.0, other.0) {
+        if ptr::eq(self.0.as_ref(), other.0.as_ref()) {
             Some(Ordering::Equal)
         } else {
-            let res = self.0.partial_cmp(other.0);
+            let res = self.0.as_ref().partial_cmp(other.0.as_ref());
             debug_assert_ne!(res, Some(Ordering::Equal));
             res
         }
     }
 }
 
-impl<'a, T: Ord> Ord for Interned<'a, T> {
-    fn cmp(&self, other: &Interned<'a, T>) -> Ordering {
+impl<'a, T: Ord, P: InternedPtr<'a, T>> Ord for Interned<'a, T, P> {
+    fn cmp(&self, other: &Interned<'a, T, P>) -> Ordering {
         // Pointer equality implies equality, due to the uniqueness constraint,
         // but the contents must be compared otherwise.
-        if ptr::eq(self.0, other.0) {
+        if ptr::eq(self.0.as_ref(), other.0.as_ref()) {
             Ordering::Equal
         } else {
-            let res = self.0.cmp(other.0);
+            let res = self.0.as_ref().cmp(other.0.as_ref());
             debug_assert_ne!(res, Ordering::Equal);
             res
         }
     }
 }
 
-impl<'a, T> Hash for Interned<'a, T> {
+impl<'a, T, P: InternedPtr<'a, T>> Hash for Interned<'a, T, P> {
     #[inline]
     fn hash<H: Hasher>(&self, s: &mut H) {
         // Pointer hashing is sufficient, due to the uniqueness constraint.
-        ptr::hash(self.0, s)
+        ptr::hash(self.0.as_ref(), s)
     }
 }
 
-impl<T, CTX> HashStable<CTX> for Interned<'_, T>
+impl<'a, T, CTX, P: InternedPtr<'a, T>> HashStable<CTX> for Interned<'a, T, P>
 where
     T: HashStable<CTX>,
 {
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        self.0.hash_stable(hcx, hasher);
+        self.0.as_ref().hash_stable(hcx, hasher);
     }
 }
 
