@@ -1,5 +1,5 @@
 // Checks that the reexports are present in the search index, can have
-// doc aliases and are highligted when their ID is the hash of the page.
+// doc aliases and are highlighted when their ID is the hash of the page.
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 set-local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
 reload:
