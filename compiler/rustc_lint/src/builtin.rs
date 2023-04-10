@@ -1711,13 +1711,13 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
             }
         }
 
-        let (parenthesise, endpoints) = match &pat.kind {
+        let (parentheses, endpoints) = match &pat.kind {
             PatKind::Ref(subpat, _) => (true, matches_ellipsis_pat(&subpat)),
             _ => (false, matches_ellipsis_pat(pat)),
         };
 
         if let Some((start, end, join)) = endpoints {
-            if parenthesise {
+            if parentheses {
                 self.node_id = Some(pat.id);
                 let end = expr_to_string(&end);
                 let replace = match start {
