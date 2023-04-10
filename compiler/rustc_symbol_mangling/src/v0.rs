@@ -1,6 +1,5 @@
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::intern::Interned;
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{CrateNum, DefId};
@@ -431,8 +430,11 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
             }
 
             // Mangle all nominal types as paths.
-            ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), substs)
-            | ty::FnDef(def_id, substs)
+            ty::Adt(adt_def, substs) => {
+                let def_id = adt_def.did();
+                self = self.print_def_path(def_id, substs)?;
+            }
+            ty::FnDef(def_id, substs)
             | ty::Alias(_, ty::AliasTy { def_id, substs, .. })
             | ty::Closure(def_id, substs)
             | ty::Generator(def_id, substs, _) => {

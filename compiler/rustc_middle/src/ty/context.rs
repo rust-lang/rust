@@ -1563,9 +1563,44 @@ direct_interners! {
     const_: intern_const(ConstData<'tcx>): Const -> Const<'tcx>,
     const_allocation: pub mk_const_alloc(Allocation): ConstAllocation -> ConstAllocation<'tcx>,
     layout: pub mk_layout(LayoutS): Layout -> Layout<'tcx>,
-    adt_def: pub mk_adt_def_from_data(AdtDefData): AdtDef -> AdtDef<'tcx>,
+    // adt_def: pub mk_adt_def_from_data(AdtDefData): AdtDef -> AdtDef<'tcx>,
     external_constraints: pub mk_external_constraints(ExternalConstraintsData<'tcx>):
         ExternalConstraints -> ExternalConstraints<'tcx>,
+}
+
+impl<'tcx> Borrow<AdtDefData> for InternedInSet<'tcx, AdtDefData> {
+    fn borrow<'a>(&'a self) -> &'a AdtDefData {
+        &self.0
+    }
+}
+
+impl<'tcx> PartialEq for InternedInSet<'tcx, AdtDefData> {
+    fn eq(&self, other: &Self) -> bool {
+        // The `Borrow` trait requires that `x.borrow() == y.borrow()`
+        // equals `x == y`.
+        self.0 == other.0
+    }
+}
+
+impl<'tcx> Eq for InternedInSet<'tcx, AdtDefData> {}
+
+impl<'tcx> Hash for InternedInSet<'tcx, AdtDefData> {
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        // The `Borrow` trait requires that `x.borrow().hash(s) ==
+        // x.hash(s)`.
+        self.0.hash(s)
+    }
+}
+
+impl<'tcx> TyCtxt<'tcx> {
+    pub fn mk_adt_def_from_data(self, v: AdtDefData) -> AdtDef<'tcx> {
+        let def_data =
+            self.interners.adt_def.intern(v, |v| InternedInSet(self.interners.arena.alloc(v))).0;
+        AdtDef(Interned::new_unchecked(rustc_data_structures::tagged_ptr::CopyTaggedPtr::new(
+            def_data,
+            super::adt::PackedAdtTag::from_adt_def_data(def_data),
+        )))
+    }
 }
 
 macro_rules! slice_interners {

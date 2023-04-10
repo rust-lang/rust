@@ -70,6 +70,10 @@ where
         }
     }
 
+    pub fn packed_repr(&self) -> NonZeroUsize {
+        self.packed
+    }
+
     pub(super) fn pointer_raw(&self) -> usize {
         self.packed.get() << T::BITS
     }

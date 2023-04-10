@@ -1,4 +1,3 @@
-use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::CrateNum;
 use rustc_hir::definitions::DisambiguatedDefPathData;
 use rustc_middle::ty::{
@@ -56,8 +55,8 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             }
 
             // Types with identity (print the module path).
-            ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), substs)
-            | ty::FnDef(def_id, substs)
+            ty::Adt(adt_def, substs) => self.print_def_path(adt_def.did(), substs),
+            ty::FnDef(def_id, substs)
             | ty::Alias(_, ty::AliasTy { def_id, substs, .. })
             | ty::Closure(def_id, substs)
             | ty::Generator(def_id, substs, _) => self.print_def_path(def_id, substs),

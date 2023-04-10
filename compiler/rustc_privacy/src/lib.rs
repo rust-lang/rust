@@ -15,7 +15,6 @@ mod errors;
 use rustc_ast::MacroDef;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::intern::Interned;
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -204,8 +203,30 @@ where
         // InternalSubsts are not visited here because they are visited below
         // in `super_visit_with`.
         match *ty.kind() {
-            ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), ..)
-            | ty::Foreign(def_id)
+            ty::Adt(adt_def, ..) => {
+                let def_id = adt_def.did();
+                self.def_id_visitor.visit_def_id(def_id, "type", &ty)?;
+                if self.def_id_visitor.shallow() {
+                    return ControlFlow::Continue(());
+                }
+                // Default type visitor doesn't visit signatures of fn types.
+                // Something like `fn() -> Priv {my_func}` is considered a private type even if
+                // `my_func` is public, so we need to visit signatures.
+                if let ty::FnDef(..) = ty.kind() {
+                    // FIXME: this should probably use `substs` from `FnDef`
+                    tcx.fn_sig(def_id).subst_identity().visit_with(self)?;
+                }
+                // Inherent static methods don't have self type in substs.
+                // Something like `fn() {my_method}` type of the method
+                // `impl Pub<Priv> { pub fn my_method() {} }` is considered a private type,
+                // so we need to visit the self type additionally.
+                if let Some(assoc_item) = tcx.opt_associated_item(def_id) {
+                    if let Some(impl_def_id) = assoc_item.impl_container(tcx) {
+                        tcx.type_of(impl_def_id).subst_identity().visit_with(self)?;
+                    }
+                }
+            }
+            ty::Foreign(def_id)
             | ty::FnDef(def_id, ..)
             | ty::Closure(def_id, ..)
             | ty::Generator(def_id, ..) => {

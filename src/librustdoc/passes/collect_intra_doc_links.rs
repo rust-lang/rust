@@ -4,10 +4,7 @@
 
 use pulldown_cmark::LinkType;
 use rustc_ast::util::comments::may_have_doc_links;
-use rustc_data_structures::{
-    fx::{FxHashMap, FxHashSet},
-    intern::Interned,
-};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{DefKind, Namespace, PerNS};
@@ -504,9 +501,8 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             ty::FnDef(..) => panic!("type alias to a function definition"),
             ty::FnPtr(_) => Res::Primitive(Fn),
             ty::Never => Res::Primitive(Never),
-            ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did, .. }, _)), _) | ty::Foreign(did) => {
-                Res::from_def_id(self.cx.tcx, did)
-            }
+            ty::Adt(adt_def, _) => Res::from_def_id(self.cx.tcx, adt_def.did()),
+            ty::Foreign(did) => Res::from_def_id(self.cx.tcx, did),
             ty::Alias(..)
             | ty::Closure(..)
             | ty::Generator(..)

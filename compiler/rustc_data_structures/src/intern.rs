@@ -4,7 +4,6 @@ use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::ops::Deref;
-use std::ptr;
 
 mod private {
     use std::marker::PhantomData;
@@ -13,8 +12,12 @@ mod private {
     pub struct PrivateZst<T>(pub(super) PhantomData<T>);
 }
 
-trait InternedPtr<'a, T>: Copy {
+pub trait InternedPtr<'a, T: 'a>: Copy {
     fn as_ref(self) -> &'a T;
+
+    fn as_key(self) -> usize {
+        (self.as_ref() as *const T).addr()
+    }
 }
 
 impl<'a, T> InternedPtr<'a, T> for &'a T {
@@ -23,11 +26,23 @@ impl<'a, T> InternedPtr<'a, T> for &'a T {
     }
 }
 
-impl<'a, T, P: tagged_ptr::Pointer + Copy + InternedPtr<'a, T>, Tag: tagged_ptr::Tag>
+impl<'a, T: 'a, P: tagged_ptr::Pointer + Copy + InternedPtr<'a, T>, Tag: tagged_ptr::Tag>
     InternedPtr<'a, T> for CopyTaggedPtr<P, Tag, false>
 {
     fn as_ref(self) -> &'a T {
         InternedPtr::as_ref(self.pointer())
+    }
+}
+
+impl<'a, T: 'a, P: tagged_ptr::Pointer + Copy + InternedPtr<'a, T>, Tag: tagged_ptr::Tag>
+    InternedPtr<'a, T> for CopyTaggedPtr<P, Tag, true>
+{
+    fn as_ref(self) -> &'a T {
+        InternedPtr::as_ref(self.pointer())
+    }
+
+    fn as_key(self) -> usize {
+        self.packed_repr().get()
     }
 }
 
@@ -46,14 +61,14 @@ impl<'a, T, P: tagged_ptr::Pointer + Copy + InternedPtr<'a, T>, Tag: tagged_ptr:
 #[rustc_pass_by_value]
 pub struct Interned<'a, T, P = &'a T>(pub P, pub private::PrivateZst<&'a T>);
 
-impl<'a, T> Interned<'a, T> {
+impl<'a, T, P> Interned<'a, T, P> {
     /// Create a new `Interned` value. The value referred to *must* be interned
     /// and thus be unique, and it *must* remain unique in the future. This
     /// function has `_unchecked` in the name but is not `unsafe`, because if
     /// the uniqueness condition is violated condition it will cause incorrect
     /// behaviour but will not affect memory safety.
     #[inline]
-    pub const fn new_unchecked(t: &'a T) -> Self {
+    pub const fn new_unchecked(t: P) -> Self {
         Interned(t, private::PrivateZst(PhantomData))
     }
 }
@@ -70,7 +85,7 @@ impl<'a, T, P: InternedPtr<'a, T>> Deref for Interned<'a, T, P> {
     type Target = T;
 
     #[inline]
-    fn deref(&self) -> &T {
+    fn deref(&self) -> &'a T {
         self.0.as_ref()
     }
 }
@@ -79,7 +94,7 @@ impl<'a, T, P: InternedPtr<'a, T>> PartialEq for Interned<'a, T, P> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         // Pointer equality implies equality, due to the uniqueness constraint.
-        ptr::eq(self.0.as_ref(), other.0.as_ref())
+        self.0.as_key() == other.0.as_key()
     }
 }
 
@@ -89,7 +104,7 @@ impl<'a, T: PartialOrd, P: InternedPtr<'a, T>> PartialOrd for Interned<'a, T, P>
     fn partial_cmp(&self, other: &Interned<'a, T, P>) -> Option<Ordering> {
         // Pointer equality implies equality, due to the uniqueness constraint,
         // but the contents must be compared otherwise.
-        if ptr::eq(self.0.as_ref(), other.0.as_ref()) {
+        if self.0.as_key() == other.0.as_key() {
             Some(Ordering::Equal)
         } else {
             let res = self.0.as_ref().partial_cmp(other.0.as_ref());
@@ -103,7 +118,7 @@ impl<'a, T: Ord, P: InternedPtr<'a, T>> Ord for Interned<'a, T, P> {
     fn cmp(&self, other: &Interned<'a, T, P>) -> Ordering {
         // Pointer equality implies equality, due to the uniqueness constraint,
         // but the contents must be compared otherwise.
-        if ptr::eq(self.0.as_ref(), other.0.as_ref()) {
+        if self.0.as_key() == other.0.as_key() {
             Ordering::Equal
         } else {
             let res = self.0.as_ref().cmp(other.0.as_ref());
@@ -117,7 +132,7 @@ impl<'a, T, P: InternedPtr<'a, T>> Hash for Interned<'a, T, P> {
     #[inline]
     fn hash<H: Hasher>(&self, s: &mut H) {
         // Pointer hashing is sufficient, due to the uniqueness constraint.
-        ptr::hash(self.0.as_ref(), s)
+        self.0.as_key().hash(s)
     }
 }
 

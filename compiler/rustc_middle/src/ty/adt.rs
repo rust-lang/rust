@@ -7,6 +7,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::HashingControls;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::tagged_ptr;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -52,6 +53,68 @@ bitflags! {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PackedAdtKind {
+    Union = 0b00,
+    Enum = 0b01,
+    Struct = 0b10,
+    Box = 0b11, // Implies Struct
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct PackedAdtTag {
+    kind: PackedAdtKind,
+    is_non_exhaustive: bool,
+}
+
+unsafe impl tagged_ptr::Tag for PackedAdtTag {
+    const BITS: usize = 3;
+
+    fn into_usize(self) -> usize {
+        let is_non_exhaustive = self.is_non_exhaustive as usize;
+
+        let lower = self.kind as usize;
+
+        lower | (is_non_exhaustive << 2)
+    }
+
+    /// # Safety
+    ///
+    /// The passed `tag` must be returned from `into_usize`.
+    unsafe fn from_usize(tag: usize) -> Self {
+        let is_non_exhaustive = if ((tag >> 2) & 1) == 1 { true } else { false };
+        let lower = tag & 0b11;
+        let kind = match lower {
+            0b00 => PackedAdtKind::Union,
+            0b01 => PackedAdtKind::Enum,
+            0b10 => PackedAdtKind::Struct,
+            0b11 => PackedAdtKind::Box,
+            _ => unreachable!(),
+        };
+        Self { kind, is_non_exhaustive }
+    }
+}
+
+impl PackedAdtTag {
+    pub(super) fn from_adt_def_data(adt: &AdtDefData) -> Self {
+        let kind = if adt.flags.contains(AdtFlags::IS_BOX) {
+            PackedAdtKind::Box
+        } else if adt.flags.contains(AdtFlags::IS_STRUCT) {
+            PackedAdtKind::Struct
+        } else if adt.flags.contains(AdtFlags::IS_ENUM) {
+            PackedAdtKind::Enum
+        } else if adt.flags.contains(AdtFlags::IS_UNION) {
+            PackedAdtKind::Union
+        } else {
+            unreachable!("Adt is neither struct nor enum nor union: {:?}", adt.did)
+        };
+
+        let is_non_exhaustive = adt.flags.contains(AdtFlags::IS_VARIANT_LIST_NON_EXHAUSTIVE);
+
+        Self { kind, is_non_exhaustive }
+    }
+}
+
 /// The definition of a user-defined type, e.g., a `struct`, `enum`, or `union`.
 ///
 /// These are all interned (by `mk_adt_def`) into the global arena.
@@ -86,6 +149,7 @@ bitflags! {
 /// where `x` here represents the `DefId` of `S.x`. Then, the `DefId`
 /// can be used with [`TyCtxt::type_of()`] to get the type of the field.
 #[derive(TyEncodable, TyDecodable)]
+#[repr(align(8))] // This is already true on 64-bit.
 pub struct AdtDefData {
     /// The `DefId` of the struct, enum or union item.
     pub did: DefId,
@@ -159,32 +223,40 @@ impl<'a> HashStable<StableHashingContext<'a>> for AdtDefData {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, HashStable)]
 #[rustc_pass_by_value]
-pub struct AdtDef<'tcx>(pub Interned<'tcx, AdtDefData>);
+pub struct AdtDef<'tcx>(
+    pub Interned<'tcx, AdtDefData, tagged_ptr::CopyTaggedPtr<&'tcx AdtDefData, PackedAdtTag, true>>,
+);
 
 impl<'tcx> AdtDef<'tcx> {
     #[inline]
+    fn data(self) -> &'tcx AdtDefData {
+        use rustc_data_structures::intern::InternedPtr;
+        self.0.0.as_ref()
+    }
+
+    #[inline]
     pub fn did(self) -> DefId {
-        self.0.0.did
+        self.data().did
     }
 
     #[inline]
     pub fn variants(self) -> &'tcx IndexSlice<VariantIdx, VariantDef> {
-        &self.0.0.variants
+        &self.data().variants
     }
 
     #[inline]
     pub fn variant(self, idx: VariantIdx) -> &'tcx VariantDef {
-        &self.0.0.variants[idx]
+        &self.data().variants[idx]
     }
 
     #[inline]
     pub fn flags(self) -> AdtFlags {
-        self.0.0.flags
+        self.data().flags
     }
 
     #[inline]
     pub fn repr(self) -> ReprOptions {
-        self.0.0.repr
+        self.data().repr
     }
 }
 
@@ -253,28 +325,33 @@ impl AdtDefData {
 }
 
 impl<'tcx> AdtDef<'tcx> {
+    fn packed_data(self) -> PackedAdtTag {
+        self.0.0.tag()
+    }
+
     /// Returns `true` if this is a struct.
     #[inline]
     pub fn is_struct(self) -> bool {
-        self.flags().contains(AdtFlags::IS_STRUCT)
+        // Box | Struct
+        ((self.packed_data().kind as usize) >> 1) == 1
     }
 
     /// Returns `true` if this is a union.
     #[inline]
     pub fn is_union(self) -> bool {
-        self.flags().contains(AdtFlags::IS_UNION)
+        self.packed_data().kind == PackedAdtKind::Union
     }
 
     /// Returns `true` if this is an enum.
     #[inline]
     pub fn is_enum(self) -> bool {
-        self.flags().contains(AdtFlags::IS_ENUM)
+        self.packed_data().kind == PackedAdtKind::Enum
     }
 
     /// Returns `true` if the variant list of this ADT is `#[non_exhaustive]`.
     #[inline]
     pub fn is_variant_list_non_exhaustive(self) -> bool {
-        self.flags().contains(AdtFlags::IS_VARIANT_LIST_NON_EXHAUSTIVE)
+        self.packed_data().is_non_exhaustive
     }
 
     /// Returns the kind of the ADT.
@@ -330,7 +407,7 @@ impl<'tcx> AdtDef<'tcx> {
     /// Returns `true` if this is `Box<T>`.
     #[inline]
     pub fn is_box(self) -> bool {
-        self.flags().contains(AdtFlags::IS_BOX)
+        self.packed_data().kind == PackedAdtKind::Box
     }
 
     /// Returns `true` if this is `UnsafeCell<T>`.
