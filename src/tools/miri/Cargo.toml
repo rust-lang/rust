@@ -24,6 +24,9 @@ log = "0.4"
 rand = "0.8"
 smallvec = "1.7"
 
+libffi = "3.2.0"
+libloading = "0.7"
+
 # A noop dependency that changes in the Rust repository, it's a bit of a hack.
 # See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`
 # for more information.
@@ -33,11 +36,8 @@ measureme = "10.0.0"
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 
-[target.'cfg(target_os = "linux")'.dependencies]
-libffi = "3.2.0"
-libloading = "0.7"
-
 [dev-dependencies]
+cc = "1.0"
 colored = "2"
 ui_test = "0.5"
 rustc_version = "0.4"

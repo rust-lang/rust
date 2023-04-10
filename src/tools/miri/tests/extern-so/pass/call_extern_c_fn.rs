@@ -1,4 +1,3 @@
-//@only-target-linux
 //@only-on-host
 
 extern "C" {

@@ -1,11 +1,11 @@
 use std::ffi::c_void;
 use libffi::{high::call as ffi, low::CodePtr};
 use std::ops::Deref;
+use std::path::Path;
 
 use rustc_middle::ty::{self as ty, IntTy, UintTy};
 use rustc_span::Symbol;
-use rustc_target::abi::HasDataLayout;
-use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::layout::{HasParamEnv, TyAndLayout};
 
 use crate::*;
 use crate::intptrcast::GlobalStateInner;
@@ -19,8 +19,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         &mut self,
         k: Scalar<Provenance>,
         arg_type: TyAndLayout<'tcx>,
-        cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx, CArg> {
+        let this = self.eval_context_mut();
+
         match arg_type.ty.kind() {
             // If the primitive provided can be converted to a type matching the type pattern
             // then create a `CArg` of this primitive value with the corresponding `CArg` constructor.
@@ -40,7 +41,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             ty::Int(IntTy::Isize) => {
                 // This will fail if host != target, but then the entire FFI thing probably won't work well
                 // in that situation.
-                return Ok(CArg::ISize(k.to_target_isize(cx)?.try_into().unwrap()));
+                return Ok(CArg::ISize(k.to_target_isize(this)?.try_into().unwrap()));
             }
             // the uints
             ty::Uint(UintTy::U8) => {
@@ -58,28 +59,33 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             ty::Uint(UintTy::Usize) => {
                 // This will fail if host != target, but then the entire FFI thing probably won't work well
                 // in that situation.
-                return Ok(CArg::USize(k.to_target_usize(cx)?.try_into().unwrap()));
+                return Ok(CArg::USize(k.to_target_usize(this)?.try_into().unwrap()));
             }
             // pointers
             ty::RawPtr(ty::TypeAndMut { mutbl, ty }) if mutbl.is_not() => {
                 // FIXME: Add warning for types that are probably not C-portable
                 // FIXME: This should
                 //        - expose the pointer
-                //        - if it contains another pointer, and outer is mut, mark the *inner* pointer as having wildcard provenance
                 if let Scalar::Ptr(ptr, _) = k {
                     if let Provenance::Concrete { alloc_id, tag } = ptr.provenance {
                         GlobalStateInner::expose_ptr(
-                            self.eval_context_mut(),
+                            this,
                             alloc_id,
                             tag,
                         )?;
                     }
-                    let alloc = self.eval_context_ref().get_ptr_alloc(
+
+                    let pointee = this.tcx.layout_of(this.param_env().and(*ty))
+                        .unwrap();
+                    let alloc = this.get_ptr_alloc(
                         ptr.into(),
-                        arg_type.layout.size(),
-                        arg_type.layout.align().abi,
+                        pointee.layout.size(),
+                        pointee.layout.align().abi,
                     )?;
-                    let addr = alloc.base_addr();
+
+                    // If none, the pointee is a ZST, so we can just magic up an address for it
+                    let addr = alloc.map(|a| a.base_addr())
+                        .unwrap_or_else(|| arg_type.layout.align().abi.bytes() as usize as *const _);
                     return Ok(CArg::Ptr(addr as *const c_void));
                 }
             }
@@ -181,14 +187,50 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
+    /// Check whether a loaded symbol is correct to use - on linux this ensures it comes from
+    /// the expected so, on windows this always returns true currently because lookup doesn't check
+    /// dependencies.
+    fn verify_sym(_func: &libloading::Symbol<'_, unsafe extern "C" fn()>, _lib_path: &Path) -> bool {
+        #[cfg(unix)]
+        {
+            // FIXME: this is a hack!
+            // The `libloading` crate will automatically load system libraries like `libc`.
+            // On linux `libloading` is based on `dlsym`: https://docs.rs/libloading/0.7.3/src/libloading/os/unix/mod.rs.html#202
+            // and `dlsym`(https://linux.die.net/man/3/dlsym) looks through the dependency tree of the
+            // library if it can't find the symbol in the library itself.
+            // So, in order to check if the function was actually found in the specified
+            // `machine.external_so_lib` we need to check its `dli_fname` and compare it to
+            // the specified SO file path.
+            // This code is a reimplementation of the mechanism for getting `dli_fname` in `libloading`,
+            // from: https://docs.rs/libloading/0.7.3/src/libloading/os/unix/mod.rs.html#411
+            // using the `libc` crate where this interface is public.
+            // No `libc::dladdr` on windows.
+            let mut info = std::mem::MaybeUninit::<libc::Dl_info>::uninit();
+            unsafe {
+                if libc::dladdr(*_func.deref() as *const _, info.as_mut_ptr()) != 0 {
+                    if std::ffi::CStr::from_ptr(info.assume_init().dli_fname).to_str().unwrap()
+                        != _lib_path.to_str().unwrap()
+                    {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        #[cfg(windows)]
+        {
+            return true;
+        }
+    }
+
     /// Get the pointer to the function of the specified name in the shared object file,
     /// if it exists. The function must be in the shared object file specified: we do *not*
     /// return pointers to functions in dependencies of the library.  
     fn get_func_ptr_explicitly_from_lib(&mut self, link_name: Symbol) -> Option<CodePtr> {
         let this = self.eval_context_mut();
         // Try getting the function from the shared library.
-        // On windows `_lib_path` will be unused, hence the name starting with `_`.
-        let (lib, _lib_path) = this.machine.external_so_lib.as_ref().unwrap();
+        let (lib, lib_path) = this.machine.external_so_lib.as_ref().unwrap();
         let func: libloading::Symbol<'_, unsafe extern "C" fn()> = unsafe {
             match lib.get(link_name.as_str().as_bytes()) {
                 Ok(x) => x,
@@ -198,30 +240,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
         };
 
-        // FIXME: this is a hack!
-        // The `libloading` crate will automatically load system libraries like `libc`.
-        // On linux `libloading` is based on `dlsym`: https://docs.rs/libloading/0.7.3/src/libloading/os/unix/mod.rs.html#202
-        // and `dlsym`(https://linux.die.net/man/3/dlsym) looks through the dependency tree of the
-        // library if it can't find the symbol in the library itself.
-        // So, in order to check if the function was actually found in the specified
-        // `machine.external_so_lib` we need to check its `dli_fname` and compare it to
-        // the specified SO file path.
-        // This code is a reimplementation of the mechanism for getting `dli_fname` in `libloading`,
-        // from: https://docs.rs/libloading/0.7.3/src/libloading/os/unix/mod.rs.html#411
-        // using the `libc` crate where this interface is public.
-        // No `libc::dladdr` on windows.
-        let mut info = std::mem::MaybeUninit::<libc::Dl_info>::uninit();
-        unsafe {
-            if libc::dladdr(*func.deref() as *const _, info.as_mut_ptr()) != 0 {
-                if std::ffi::CStr::from_ptr(info.assume_init().dli_fname).to_str().unwrap()
-                    != _lib_path.to_str().unwrap()
-                {
-                    return None;
-                }
-            }
+        if Self::verify_sym(&func, lib_path) {
+            // Return a pointer to the function.
+            Some(CodePtr(*func.deref() as *mut _))
+        } else {
+            None
         }
-        // Return a pointer to the function.
-        Some(CodePtr(*func.deref() as *mut _))
     }
 
     /// Call specified external C function, with supplied arguments.
@@ -244,15 +268,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
         };
 
-        let this = self.eval_context_mut();
-
         // Get the function arguments, and convert them to `libffi`-compatible form.
         let mut libffi_args = Vec::<CArg>::with_capacity(args.len());
         for cur_arg in args.iter() {
+            let scalar = self.eval_context_mut().read_scalar(cur_arg)?;
             libffi_args.push(self.scalar_to_carg(
-                this.read_scalar(cur_arg)?,
+                scalar,
                 cur_arg.layout,
-                this,
             )?);
         }
 

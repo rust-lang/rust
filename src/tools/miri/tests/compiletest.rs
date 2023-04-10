@@ -1,7 +1,8 @@
+use std::borrow::Cow;
 use colored::*;
 use regex::bytes::Regex;
 use std::path::{Path, PathBuf};
-use std::{env, process::Command};
+use std::env;
 use ui_test::{color_eyre::Result, Config, Mode, OutputConflictHandling};
 
 fn miri_path() -> PathBuf {
@@ -14,34 +15,68 @@ fn get_host() -> String {
         .host
 }
 
+fn get_args(output: &Path) -> Vec<Cow<'_, str>> {
+    #[cfg(target_os = "linux")]
+    return vec![
+        "-shared",
+        "-o",
+        output.to_str().unwrap(),
+        "tests/extern-so/test.c",
+        // Only add the functions specified in libcode.version to the shared object file.
+        // This is to avoid automatically adding `malloc`, etc.
+        // Source: https://anadoxin.org/blog/control-over-symbol-exports-in-gcc.html/
+        "-fPIC",
+        "-Wl,--version-script=tests/extern-so/libcode.version",
+    ].into_iter().map(Cow::Borrowed).collect();
+    #[cfg(target_os = "windows")]
+    return vec![
+        Cow::Borrowed("/LD"),
+        Cow::Borrowed("tests/extern-so/test.c"),
+        Cow::Borrowed("/link"),
+        Cow::Owned(format!("/OUT:{}", output.to_str().unwrap())),
+    ];
+}
+
 // Build the shared object file for testing external C function calls.
 fn build_so_for_c_ffi_tests() -> PathBuf {
     // TODO: Support multiple so files with individual tests
-    let cc = option_env!("CC").unwrap_or("cc");
     // Target directory that we can write to.
     let so_target_dir = Path::new(&env::var_os("CARGO_TARGET_DIR").unwrap()).join("miri-extern-so");
     // Create the directory if it does not already exist.
     std::fs::create_dir_all(&so_target_dir)
         .expect("Failed to create directory for shared object file");
-    let so_file_path = so_target_dir.join("libtestlib.so");
-    let cc_output = Command::new(cc)
-        .args([
-            "-shared",
-            "-o",
-            so_file_path.to_str().unwrap(),
-            "tests/extern-so/test.c",
-            // Only add the functions specified in libcode.version to the shared object file.
-            // This is to avoid automatically adding `malloc`, etc.
-            // Source: https://anadoxin.org/blog/control-over-symbol-exports-in-gcc.html/
-            "-fPIC",
-            "-Wl,--version-script=tests/extern-so/libcode.version",
-        ])
-        .output()
+
+    #[cfg(not(windows))]
+    let ext = "libtestlib.so";
+    #[cfg(windows)]
+    let ext = "testlib.dll";
+    let so_file_path = so_target_dir.join(ext);
+
+    #[cfg(not(windows))]
+    let mut cc = Command::new(option_env!("CC").unwrap_or("cc"));
+    #[cfg(windows)]
+    let mut cc = cc::windows_registry::find(
+        &get_host(),
+        "cl.exe",
+    ).unwrap();
+
+    let args = get_args(&so_file_path);
+    cc.args(args.iter().map(|c| &**c));
+
+    let output = cc.output()
         .expect("failed to generate shared object file for testing external C function calls");
-    if !cc_output.status.success() {
-        panic!("error in generating shared object file for testing external C function calls");
+
+    if !output.status.success() {
+        panic!(
+            "error in generating shared object file for testing external C function calls:\n--------STDOUT--------\n{}\n--------STDERR--------\n{}",
+            std::str::from_utf8(&output.stdout)
+                .unwrap_or("<non-utf8 output>"),
+            std::str::from_utf8(&output.stderr)
+                .unwrap_or("<non-utf8 output>"),
+        );
     }
-    so_file_path
+
+    so_target_dir.join(ext)
 }
 
 fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> Result<()> {
@@ -81,10 +116,10 @@ fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> R
         config.args.push(target.into());
     }
 
-    // If we're on linux, and we're testing the extern-so functionality,
+    // If we're testing the extern-so functionality,
     // then build the shared object file for testing external C function calls
     // and push the relevant compiler flag.
-    if cfg!(target_os = "linux") && path.starts_with("tests/extern-so/") {
+    if path.starts_with("tests/extern-so/") {
         let so_file_path = build_so_for_c_ffi_tests();
         let mut flag = std::ffi::OsString::from("-Zmiri-extern-so-file=");
         flag.push(so_file_path.into_os_string());
@@ -101,15 +136,12 @@ fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> R
     };
 
     // Handle command-line arguments.
-    config.path_filter.extend(std::env::args().skip(1).filter(|arg| {
-        match &**arg {
-            "--quiet" => {
-                config.quiet = true;
-                false
-            }
-            _ => true,
-        }
-    }));
+    config.path_filter.extend(std::env::args()
+        .skip_while(|arg| arg != "--"));
+
+    config.path_filter.extend(["extern-so".to_string()]);
+
+    eprintln!("Path Filter: {:?}", config.path_filter);
 
     let use_std = env::var_os("MIRI_NO_STD").is_none();
 
@@ -213,15 +245,13 @@ fn main() -> Result<()> {
     ui(Mode::Pass, "tests/pass-dep", &target, WithDependencies)?;
     ui(Mode::Panic, "tests/panic", &target, WithDependencies)?;
     ui(Mode::Fail { require_patterns: true }, "tests/fail", &target, WithDependencies)?;
-    if cfg!(target_os = "linux") {
-        ui(Mode::Pass, "tests/extern-so/pass", &target, WithoutDependencies)?;
-        ui(
-            Mode::Fail { require_patterns: true },
-            "tests/extern-so/fail",
-            &target,
-            WithoutDependencies,
-        )?;
-    }
+    ui(Mode::Pass, "tests/extern-so/pass", &target, WithoutDependencies)?;
+    ui(
+        Mode::Fail { require_patterns: true },
+        "tests/extern-so/fail",
+        &target,
+        WithoutDependencies,
+    )?;
 
     Ok(())
 }

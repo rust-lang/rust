@@ -1,4 +1,3 @@
-//@only-target-linux
 //@only-on-host
 
 #[repr(C)]
@@ -17,10 +16,20 @@ extern "C" {
 fn main() {
     let foo = Foo { a: -10, b: -1.0 };
 
+    let a = &20 as *const _;
+    let b = &a as *const _;
+
+    let alloc = Box::new(20);
+    let alloc_ptr = &(&*alloc as *const _) as *const _;
+
     unsafe {
         assert_eq!(single_deref(&10), 10);
 
-        assert_eq!(double_deref(&&20), 20);
+        println!("Double Alloc");
+        assert_eq!(double_deref(alloc_ptr), 20);
+
+        println!("Double Global");
+        assert_eq!(double_deref(b), 20);
 
         assert_eq!(struct_a(&foo), -10);
 

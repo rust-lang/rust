@@ -1,7 +1,7 @@
 #![warn(clippy::integer_arithmetic)]
 
 mod backtrace;
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "windows"))]
 pub mod ffi_support;
 pub mod foreign_items;
 pub mod intrinsics;

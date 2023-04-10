@@ -1,48 +1,61 @@
 #include <stdio.h>
+#include <stdint.h>
 
-int add_one_int(int x) {
+#ifdef _WIN32
+#define EXPORT __declspec(dllexport)
+#else
+#define EXPORT
+#endif
+
+typedef int16_t i16;
+typedef int32_t i32;
+typedef int64_t i64;
+typedef uint32_t u32;
+
+EXPORT i32 add_one_int(i32 x) {
   return 2 + x;
 }
 
-void printer() {
+EXPORT void printer() {
   printf("printing from C\n");
 }
 
 // function with many arguments, to test functionality when some args are stored
 // on the stack
-int test_stack_spill(int a, int b, int c, int d, int e, int f, int g, int h, int i, int j, int k, int l) {
+EXPORT i32 test_stack_spill(i32 a, i32 b, i32 c, i32 d, i32 e, i32 f, i32 g, i32 h, i32 i, i32 j, i32 k, i32 l) {
   return a+b+c+d+e+f+g+h+i+j+k+l;
 }
 
-unsigned int get_unsigned_int() {
+EXPORT u32 get_unsigned_int() {
   return -10;
 }
 
-short add_int16(short x) {
+EXPORT i16 add_int16(i16 x) {
   return x + 3;
 }
 
-long add_short_to_long(short x, long y) {
+EXPORT i64 add_short_to_long(i16 x, i64 y) {
   return x + y;
 }
 
-int single_deref(const int *p) {
+EXPORT i32 single_deref(const i32 *p) {
     return *p;
 }
 
-int double_deref(const int **p) {
+EXPORT i32 double_deref(const i32 **p) {
+    fprintf(stderr, "%p\n", *p);
     return **p;
 }
 
 struct Foo {
-    int a;
+    i32 a;
     float b;
 };
 
-int struct_int(const struct Foo* p) {
+EXPORT i32 struct_int(const struct Foo* p) {
     return p->a;
 }
 
-float struct_float(const struct Foo* p) {
+EXPORT float struct_float(const struct Foo* p) {
     return p->b;
 }
