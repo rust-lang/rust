@@ -4,7 +4,7 @@
 #[cfg_attr()] //~ error: malformed `cfg_attr` attribute input
 struct NoConfigurationPredicate;
 
-// Zero attributes, zero trailing comma (comma manatory here)
+// Zero attributes, zero trailing comma (comma mandatory here)
 #[cfg_attr(all())] //~ error: expected `,`, found end of `cfg_attr`
 struct A0C0;
 
