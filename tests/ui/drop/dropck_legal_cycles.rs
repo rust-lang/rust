@@ -415,7 +415,7 @@ pub fn main() {
 
     if PRINT { println!(); }
 
-    // Cycle 14: { arc0 -> (arc1, arc2), arc1 -> (), arc2 -> arc0 }, mutexs
+    // Cycle 14: { arc0 -> (arc1, arc2), arc1 -> (), arc2 -> arc0 }, mutexes
     let (arc0, arc1, arc2): (ARCM, ARCM, ARCM);
     arc0 = ARCM::new("arcm0");
     arc1 = ARCM::new("arcm1");
