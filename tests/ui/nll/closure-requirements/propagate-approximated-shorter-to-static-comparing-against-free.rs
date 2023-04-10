@@ -30,7 +30,7 @@ fn case2() {
     let cell = Cell::new(&a);
     //~^ ERROR `a` does not live long enough
 
-    // As you can see in the stderr output, this closure propoagates a
+    // As you can see in the stderr output, this closure propagates a
     // requirement that `'a: 'static'.
     foo(cell, |cell_a, cell_x| {
         cell_x.set(cell_a.get()); // forces 'a: 'x, implies 'a = 'static -> borrow error
