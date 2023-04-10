@@ -13,7 +13,7 @@ fn use_bound<S: Sync>(val: S) {
 }
 
 fn use_bound_2<
-    S // Make sure we can synthezise a correct suggestion span for this case
+    S // Make sure we can synthesize a correct suggestion span for this case
     :
     Sync
 >(val: S) {
