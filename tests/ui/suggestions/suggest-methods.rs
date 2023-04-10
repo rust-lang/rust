@@ -18,7 +18,7 @@ fn main() {
     f.bat(1.0); //~ ERROR no method named
 
     let s = "foo".to_string();
-    let _ = s.is_emtpy(); //~ ERROR no method named
+    let _ = s.in_empty(); //~ ERROR no method named
 
     // Generates a warning for `count_zeros()`. `count_ones()` is also a close
     // match, but the former is closer.
