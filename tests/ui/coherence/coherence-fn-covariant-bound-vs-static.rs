@@ -1,4 +1,4 @@
-// Test that impls for these two types are considered ovelapping:
+// Test that impls for these two types are considered overlapping:
 //
 // * `for<'r> fn(fn(&'r u32))`
 // * `fn(fn(&'a u32)` where `'a` is free
