@@ -149,7 +149,7 @@ mod rustc {
                     .iter()
                     .enumerate()
                     .find(|(_, field_def)| name == field_def.name)
-                    .expect(&format!("There were no fields named `{name}`."));
+                    .unwrap_or_else(|| panic!("There were no fields named `{name}`."));
                 fields[field_idx].unwrap_leaf() == ScalarInt::TRUE
             };
 

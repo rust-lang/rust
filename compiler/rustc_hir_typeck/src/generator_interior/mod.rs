@@ -313,8 +313,7 @@ pub fn resolve_interior<'a, 'tcx>(
     // Extract type components to build the witness type.
     let type_list = fcx.tcx.mk_type_list_from_iter(type_causes.iter().map(|cause| cause.ty));
     let bound_vars = fcx.tcx.mk_bound_variable_kinds(&bound_vars);
-    let witness =
-        fcx.tcx.mk_generator_witness(ty::Binder::bind_with_vars(type_list, bound_vars.clone()));
+    let witness = fcx.tcx.mk_generator_witness(ty::Binder::bind_with_vars(type_list, bound_vars));
 
     drop(typeck_results);
     // Store the generator types and spans into the typeck results for this generator.

@@ -337,7 +337,7 @@ impl ScalarInt {
     /// Fails if the size of the `ScalarInt` is not equal to `Size { raw: 16 }`
     /// and returns the `ScalarInt`s size in that case.
     pub fn try_to_i128(self) -> Result<i128, Size> {
-        self.try_to_int(Size::from_bits(128)).map(|v| i128::try_from(v).unwrap())
+        self.try_to_int(Size::from_bits(128))
     }
 }
 

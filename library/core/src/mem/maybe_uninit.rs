@@ -1241,13 +1241,9 @@ impl<T> MaybeUninit<T> {
     /// ```
     #[unstable(feature = "maybe_uninit_as_bytes", issue = "93092")]
     pub fn slice_as_bytes(this: &[MaybeUninit<T>]) -> &[MaybeUninit<u8>] {
+        let bytes = mem::size_of_val(this);
         // SAFETY: MaybeUninit<u8> is always valid, even for padding bytes
-        unsafe {
-            slice::from_raw_parts(
-                this.as_ptr() as *const MaybeUninit<u8>,
-                this.len() * mem::size_of::<T>(),
-            )
-        }
+        unsafe { slice::from_raw_parts(this.as_ptr() as *const MaybeUninit<u8>, bytes) }
     }
 
     /// Returns the contents of this mutable slice of `MaybeUninit` as a mutable slice of
@@ -1274,13 +1270,9 @@ impl<T> MaybeUninit<T> {
     /// ```
     #[unstable(feature = "maybe_uninit_as_bytes", issue = "93092")]
     pub fn slice_as_bytes_mut(this: &mut [MaybeUninit<T>]) -> &mut [MaybeUninit<u8>] {
+        let bytes = mem::size_of_val(this);
         // SAFETY: MaybeUninit<u8> is always valid, even for padding bytes
-        unsafe {
-            slice::from_raw_parts_mut(
-                this.as_mut_ptr() as *mut MaybeUninit<u8>,
-                this.len() * mem::size_of::<T>(),
-            )
-        }
+        unsafe { slice::from_raw_parts_mut(this.as_mut_ptr() as *mut MaybeUninit<u8>, bytes) }
     }
 }
 

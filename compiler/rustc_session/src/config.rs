@@ -1426,7 +1426,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
         opt::opt_s(
             "",
             "edition",
-            &*EDITION_STRING,
+            &EDITION_STRING,
             EDITION_NAME_LIST,
         ),
         opt::multi_s(

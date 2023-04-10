@@ -302,7 +302,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
                         .iter()
                         .flatten()
                         .map(|r| r.impl_blocks.len() as isize - avg as isize)
-                        .map(|v| v.abs() as usize)
+                        .map(|v| v.unsigned_abs())
                         .sum::<usize>();
                     s / connected_regions.len()
                 },

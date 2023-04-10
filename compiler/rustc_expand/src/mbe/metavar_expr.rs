@@ -41,7 +41,7 @@ impl MetaVarExpr {
         };
         check_trailing_token(&mut tts, sess)?;
         let mut iter = args.trees();
-        let rslt = match &*ident.as_str() {
+        let rslt = match ident.as_str() {
             "count" => parse_count(&mut iter, sess, ident.span)?,
             "ignore" => MetaVarExpr::Ignore(parse_ident(&mut iter, sess, ident.span)?),
             "index" => MetaVarExpr::Index(parse_depth(&mut iter, sess, ident.span)?),

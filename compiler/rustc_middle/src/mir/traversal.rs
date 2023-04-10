@@ -178,17 +178,7 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
         // When we yield `B` and call `traverse_successor`, we push `C` to the stack, but
         // since we've already visited `E`, that child isn't added to the stack. The last
         // two iterations yield `C` and finally `A` for a final traversal of [E, D, B, C, A]
-        loop {
-            let bb = if let Some(&mut (_, ref mut iter)) = self.visit_stack.last_mut() {
-                if let Some(bb) = iter.next() {
-                    bb
-                } else {
-                    break;
-                }
-            } else {
-                break;
-            };
-
+        while let Some(&mut (_, ref mut iter)) = self.visit_stack.last_mut() && let Some(bb) = iter.next() {
             if self.visited.insert(bb) {
                 if let Some(term) = &self.basic_blocks[bb].terminator {
                     self.visit_stack.push((bb, term.successors()));

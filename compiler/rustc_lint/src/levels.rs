@@ -266,12 +266,12 @@ impl LintLevelsProvider for QueryMapExpectationsWrapper<'_> {
         let LintExpectationId::Stable { attr_id: Some(attr_id), hir_id, attr_index, .. } = id else { bug!("unstable expectation id should already be mapped") };
         let key = LintExpectationId::Unstable { attr_id, lint_index: None };
 
-        if !self.unstable_to_stable_ids.contains_key(&key) {
-            self.unstable_to_stable_ids.insert(
-                key,
-                LintExpectationId::Stable { hir_id, attr_index, lint_index: None, attr_id: None },
-            );
-        }
+        self.unstable_to_stable_ids.entry(key).or_insert(LintExpectationId::Stable {
+            hir_id,
+            attr_index,
+            lint_index: None,
+            attr_id: None,
+        });
 
         self.expectations.push((id.normalize(), expectation));
     }

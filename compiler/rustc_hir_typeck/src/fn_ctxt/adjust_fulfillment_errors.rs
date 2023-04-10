@@ -242,8 +242,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let Some(arg) = segment
             .args()
             .args
-            .iter()
-            .nth(index) else { return false; };
+            .get(index) else { return false; };
         error.obligation.cause.span = arg
             .span()
             .find_ancestor_in_same_ctxt(error.obligation.cause.span)

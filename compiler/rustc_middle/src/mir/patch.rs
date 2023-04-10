@@ -133,21 +133,21 @@ impl<'tcx> MirPatch<'tcx> {
         let mut new_decl = LocalDecl::new(ty, span).internal();
         **new_decl.local_info.as_mut().assert_crate_local() = local_info;
         self.new_locals.push(new_decl);
-        Local::new(index as usize)
+        Local::new(index)
     }
 
     pub fn new_temp(&mut self, ty: Ty<'tcx>, span: Span) -> Local {
         let index = self.next_local;
         self.next_local += 1;
         self.new_locals.push(LocalDecl::new(ty, span));
-        Local::new(index as usize)
+        Local::new(index)
     }
 
     pub fn new_internal(&mut self, ty: Ty<'tcx>, span: Span) -> Local {
         let index = self.next_local;
         self.next_local += 1;
         self.new_locals.push(LocalDecl::new(ty, span).internal());
-        Local::new(index as usize)
+        Local::new(index)
     }
 
     pub fn new_block(&mut self, data: BasicBlockData<'tcx>) -> BasicBlock {
