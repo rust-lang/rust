@@ -1085,7 +1085,7 @@ pub enum PlaceholderRelationLfNotSatisfied {
         span: Span,
         #[note(infer_prlf_defined_with_sub)]
         sub_span: Span,
-        #[note(infer_prlf_must_oultive_with_sup)]
+        #[note(infer_prlf_must_outlive_with_sup)]
         sup_span: Span,
         sub_symbol: Symbol,
         sup_symbol: Symbol,
@@ -1098,7 +1098,7 @@ pub enum PlaceholderRelationLfNotSatisfied {
         span: Span,
         #[note(infer_prlf_defined_with_sub)]
         sub_span: Span,
-        #[note(infer_prlf_must_oultive_without_sup)]
+        #[note(infer_prlf_must_outlive_without_sup)]
         sup_span: Span,
         sub_symbol: Symbol,
         #[note(infer_prlf_known_limitation)]
@@ -1110,7 +1110,7 @@ pub enum PlaceholderRelationLfNotSatisfied {
         span: Span,
         #[note(infer_prlf_defined_without_sub)]
         sub_span: Span,
-        #[note(infer_prlf_must_oultive_with_sup)]
+        #[note(infer_prlf_must_outlive_with_sup)]
         sup_span: Span,
         sup_symbol: Symbol,
         #[note(infer_prlf_known_limitation)]
@@ -1122,7 +1122,7 @@ pub enum PlaceholderRelationLfNotSatisfied {
         span: Span,
         #[note(infer_prlf_defined_without_sub)]
         sub_span: Span,
-        #[note(infer_prlf_must_oultive_without_sup)]
+        #[note(infer_prlf_must_outlive_without_sup)]
         sup_span: Span,
         #[note(infer_prlf_known_limitation)]
         note: (),
