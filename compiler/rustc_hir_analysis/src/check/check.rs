@@ -170,9 +170,7 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             if matches!(tcx.def_kind(def_id), DefKind::Static(_)
                 if tcx.def_kind(tcx.local_parent(def_id)) == DefKind::ForeignMod) =>
         {
-            tcx.sess
-                .struct_span_err(span, "extern static is too large for the current architecture")
-                .emit();
+            tcx.sess.emit_err(errors::TooLargeStatic { span });
             return;
         }
         // Generic statics are rejected, but we still reach this case.

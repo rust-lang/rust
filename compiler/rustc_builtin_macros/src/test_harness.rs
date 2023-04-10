@@ -19,6 +19,8 @@ use tracing::debug;
 
 use std::{iter, mem};
 
+use crate::errors;
+
 #[derive(Clone)]
 struct Test {
     span: Span,
@@ -385,11 +387,11 @@ fn get_test_runner(sd: &rustc_errors::Handler, krate: &ast::Crate) -> Option<ast
         [single] => match single.meta_item() {
             Some(meta_item) if meta_item.is_word() => return Some(meta_item.path.clone()),
             _ => {
-                sd.struct_span_err(span, "`test_runner` argument must be a path").emit();
+                sd.emit_err(errors::TestRunnerInvalid { span });
             }
         },
         _ => {
-            sd.struct_span_err(span, "`#![test_runner(..)]` accepts exactly 1 argument").emit();
+            sd.emit_err(errors::TestRunnerNargs { span });
         }
     }
     None

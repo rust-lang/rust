@@ -149,6 +149,25 @@ builtin_macros_format_pos_mismatch = {$n} positional {$n ->
     [one] argument
     *[more] arguments
     } in format string, but {$desc}
+
 builtin_macros_offset_of_expected_field = expected field
 
 builtin_macros_offset_of_expected_two_args = expected 2 arguments
+
+builtin_macros_test_case_non_item = `#[test_case]` attribute is only allowed on items
+
+builtin_macros_test_bad_fn = {$kind} functions cannot be used for tests
+    .label = `{$kind}` because of this
+
+builtin_macros_asm_explicit_register_name = explicit register arguments cannot have names
+
+builtin_macros_asm_mutually_exclusive = the `{$opt1}` and `{$opt2}` options are mutually exclusive
+
+builtin_macros_asm_pure_combine = the `pure` option must be combined with either `nomem` or `readonly`
+
+builtin_macros_asm_pure_no_output = asm with the `pure` option must have at least one output
+
+builtin_macros_asm_modifier_invalid = asm template modifier must be a single character
+
+builtin_macros_test_runner_invalid = `test_runner` argument must be a path
+builtin_macros_test_runner_nargs = `#![test_runner(..)]` accepts exactly 1 argument

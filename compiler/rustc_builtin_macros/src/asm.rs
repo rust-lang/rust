@@ -15,6 +15,8 @@ use rustc_span::{InnerSpan, Span};
 use rustc_target::asm::InlineAsmArch;
 use smallvec::smallvec;
 
+use crate::errors;
+
 pub struct AsmArgs {
     pub templates: Vec<P<ast::Expr>>,
     pub operands: Vec<(ast::InlineAsmOperand, Span)>,
@@ -205,7 +207,7 @@ pub fn parse_asm_args<'a>(
         // of the argument available.
         if explicit_reg {
             if name.is_some() {
-                diag.struct_span_err(span, "explicit register arguments cannot have names").emit();
+                diag.emit_err(errors::AsmExplicitRegisterName { span });
             }
             args.reg_args.insert(slot);
         } else if let Some(name) = name {
@@ -240,25 +242,19 @@ pub fn parse_asm_args<'a>(
         && args.options.contains(ast::InlineAsmOptions::READONLY)
     {
         let spans = args.options_spans.clone();
-        diag.struct_span_err(spans, "the `nomem` and `readonly` options are mutually exclusive")
-            .emit();
+        diag.emit_err(errors::AsmMutuallyExclusive { spans, opt1: "nomem", opt2: "readonly" });
     }
     if args.options.contains(ast::InlineAsmOptions::PURE)
         && args.options.contains(ast::InlineAsmOptions::NORETURN)
     {
         let spans = args.options_spans.clone();
-        diag.struct_span_err(spans, "the `pure` and `noreturn` options are mutually exclusive")
-            .emit();
+        diag.emit_err(errors::AsmMutuallyExclusive { spans, opt1: "pure", opt2: "noreturn" });
     }
     if args.options.contains(ast::InlineAsmOptions::PURE)
         && !args.options.intersects(ast::InlineAsmOptions::NOMEM | ast::InlineAsmOptions::READONLY)
     {
         let spans = args.options_spans.clone();
-        diag.struct_span_err(
-            spans,
-            "the `pure` option must be combined with either `nomem` or `readonly`",
-        )
-        .emit();
+        diag.emit_err(errors::AsmPureCombine { spans });
     }
 
     let mut have_real_output = false;
@@ -285,11 +281,7 @@ pub fn parse_asm_args<'a>(
         }
     }
     if args.options.contains(ast::InlineAsmOptions::PURE) && !have_real_output {
-        diag.struct_span_err(
-            args.options_spans.clone(),
-            "asm with the `pure` option must have at least one output",
-        )
-        .emit();
+        diag.emit_err(errors::AsmPureNoOutput { spans: args.options_spans.clone() });
     }
     if args.options.contains(ast::InlineAsmOptions::NORETURN) && !outputs_sp.is_empty() {
         let err = diag
@@ -705,11 +697,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                             .ty_span
                             .map(|sp| template_sp.from_inner(InnerSpan::new(sp.start, sp.end)))
                             .unwrap_or(template_sp);
-                        ecx.struct_span_err(
-                            span,
-                            "asm template modifier must be a single character",
-                        )
-                        .emit();
+                        ecx.emit_err(errors::AsmModifierInvalid { span });
                         modifier = None;
                     }
 

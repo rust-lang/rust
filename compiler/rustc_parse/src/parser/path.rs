@@ -150,16 +150,13 @@ impl<'a> Parser<'a> {
             //
             if style == PathStyle::Mod && path.segments.iter().any(|segment| segment.args.is_some())
             {
-                parser
-                    .struct_span_err(
-                        path.segments
-                            .iter()
-                            .filter_map(|segment| segment.args.as_ref())
-                            .map(|arg| arg.span())
-                            .collect::<Vec<_>>(),
-                        "unexpected generic arguments in path",
-                    )
-                    .emit();
+                let span = path
+                    .segments
+                    .iter()
+                    .filter_map(|segment| segment.args.as_ref())
+                    .map(|arg| arg.span())
+                    .collect::<Vec<_>>();
+                parser.sess.emit_err(errors::GenericsInPath { span });
             }
         };
 
@@ -620,10 +617,7 @@ impl<'a> Parser<'a> {
                 c.into()
             }
             Some(GenericArg::Lifetime(lt)) => {
-                self.struct_span_err(span, "associated lifetimes are not supported")
-                    .span_label(lt.ident.span, "the lifetime is given here")
-                    .help("if you meant to specify a trait object, write `dyn Trait + 'lifetime`")
-                    .emit();
+                self.sess.emit_err(errors::AssocLifetime { span, lifetime: lt.ident.span });
                 self.mk_ty(span, ast::TyKind::Err).into()
             }
             None => {

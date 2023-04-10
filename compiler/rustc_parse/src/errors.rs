@@ -2332,3 +2332,92 @@ pub(crate) struct BadReturnTypeNotationDotDot {
     #[suggestion(code = "", applicability = "maybe-incorrect")]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(parse_bad_assoc_type_bounds)]
+pub(crate) struct BadAssocTypeBounds {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_attr_after_generic)]
+pub(crate) struct AttrAfterGeneric {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_attr_without_generics)]
+pub(crate) struct AttrWithoutGenerics {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_where_generics)]
+pub(crate) struct WhereOnGenerics {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_generics_in_path)]
+pub(crate) struct GenericsInPath {
+    #[primary_span]
+    pub span: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_assoc_lifetime)]
+#[help]
+pub(crate) struct AssocLifetime {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub lifetime: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_tilde_const_lifetime)]
+pub(crate) struct TildeConstLifetime {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_maybe_lifetime)]
+pub(crate) struct MaybeLifetime {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_parenthesized_lifetime)]
+pub(crate) struct ParenthesizedLifetime {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(style = "short", applicability = "machine-applicable", code = "{snippet}")]
+    pub sugg: Option<Span>,
+    pub snippet: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_const_bounds_missing_tilde)]
+pub(crate) struct ConstMissingTilde {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code = "~", applicability = "machine-applicable")]
+    pub start: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_underscore_literal_suffix)]
+pub(crate) struct UnderscoreLiteralSuffix {
+    #[primary_span]
+    pub span: Span,
+}

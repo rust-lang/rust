@@ -62,3 +62,16 @@ hir_typeck_fru_suggestion =
         [NONE]{""}
         *[other] {" "}from `{$expr}`
     }, separate the last named field with a comma
+
+hir_typeck_const_select_must_be_const = this argument must be a `const fn`
+    .help = consult the documentation on `const_eval_select` for more information
+
+hir_typeck_const_select_must_be_fn = this argument must be a function item
+    .note = expected a function item, found {$ty}
+    .help = consult the documentation on `const_eval_select` for more information
+
+hir_typeck_union_pat_multiple_fields = union patterns should have exactly one field
+hir_typeck_union_pat_dotdot = `..` cannot be used in union patterns
+
+hir_typeck_arg_mismatch_indeterminate = argument type mismatch was detected, but rustc had trouble determining where
+    .note = we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new
