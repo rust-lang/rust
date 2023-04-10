@@ -69,6 +69,6 @@ fn drop_drops() {
 
 #[test]
 fn send_sync() {
-    crate::sync::assert_send::<OwnedSlice>();
-    crate::sync::assert_sync::<OwnedSlice>();
+    crate::sync::assert_dyn_send::<OwnedSlice>();
+    crate::sync::assert_dyn_sync::<OwnedSlice>();
 }

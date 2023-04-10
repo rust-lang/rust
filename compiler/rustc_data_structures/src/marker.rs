@@ -72,6 +72,7 @@ cfg_if!(
             [rustc_arena::DroplessArena]
             [crate::memmap::Mmap]
             [crate::profiling::SelfProfiler]
+            [crate::owned_slice::OwnedSlice]
         );
 
         macro_rules! impl_dyn_send {
@@ -98,11 +99,6 @@ cfg_if!(
             [indexmap::IndexMap<K, V, S> where K: DynSend, V: DynSend, S: DynSend]
             [thin_vec::ThinVec<T> where T: DynSend]
             [smallvec::SmallVec<A> where A: smallvec::Array + DynSend]
-
-            // We use `Send` here, since they are only used in `Send` situations now.
-            // In this case we don't need copy or change the codes in `crate::owning_ref`.
-            [crate::owning_ref::OwningRef<O, T> where O: Send, T: ?Sized + Send]
-            [crate::owning_ref::OwningRefMut<O, T> where O: Send, T: ?Sized + Send]
         );
 
         macro_rules! impls_dyn_sync_neg {
@@ -154,6 +150,7 @@ cfg_if!(
             [jobserver_crate::Client]
             [crate::memmap::Mmap]
             [crate::profiling::SelfProfiler]
+            [crate::owned_slice::OwnedSlice]
         );
 
         macro_rules! impl_dyn_sync {
@@ -184,11 +181,6 @@ cfg_if!(
             [indexmap::IndexMap<K, V, S> where K: DynSync, V: DynSync, S: DynSync]
             [smallvec::SmallVec<A> where A: smallvec::Array + DynSync]
             [thin_vec::ThinVec<T> where T: DynSync]
-
-            // We use `Sync` here, since they are only used in `Sync` situations now.
-            // In this case we don't need copy or change the codes in `crate::owning_ref`.
-            [crate::owning_ref::OwningRef<O, T> where O: Sync, T: ?Sized + Sync]
-            [crate::owning_ref::OwningRefMut<O, T> where O: Sync, T: ?Sized + Sync]
         );
     }
 );
