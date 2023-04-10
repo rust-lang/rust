@@ -67,7 +67,7 @@ fn indirect_enum_example(mut f: &mut E) {
     x;
 }
 
-fn match_on_muatbly_borrowed_ref(mut p: &bool) {
+fn match_on_mutably_borrowed_ref(mut p: &bool) {
     let r = &mut p;
     match *p { // OK, no access at all
         _ if false => (),
