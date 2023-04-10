@@ -1,5 +1,5 @@
 use crate::errors::{
-    AmbigousImpl, AmbigousReturn, AnnotationRequired, InferenceBadError, NeedTypeInfoInGenerator,
+    AmbigousReturn, AmbiguousImpl, AnnotationRequired, InferenceBadError, NeedTypeInfoInGenerator,
     SourceKindMultiSuggestion, SourceKindSubdiag,
 };
 use crate::infer::error_reporting::TypeErrCtxt;
@@ -358,7 +358,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 bad_label,
             }
             .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic),
-            TypeAnnotationNeeded::E0283 => AmbigousImpl {
+            TypeAnnotationNeeded::E0283 => AmbiguousImpl {
                 span,
                 source_kind,
                 source_name,
@@ -563,7 +563,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 bad_label: None,
             }
             .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic),
-            TypeAnnotationNeeded::E0283 => AmbigousImpl {
+            TypeAnnotationNeeded::E0283 => AmbiguousImpl {
                 span,
                 source_kind,
                 source_name: &name,

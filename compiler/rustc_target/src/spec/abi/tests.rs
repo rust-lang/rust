@@ -21,7 +21,7 @@ fn lookup_baz() {
 
 #[test]
 fn indices_are_correct() {
-    for (i, abi_data) in AbiDatas.iter().enumerate() {
+    for (i, abi_data) in AbiData.iter().enumerate() {
         assert_eq!(i, abi_data.abi.index());
     }
 }

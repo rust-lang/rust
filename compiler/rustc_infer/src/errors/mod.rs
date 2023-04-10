@@ -53,7 +53,7 @@ pub struct AnnotationRequired<'a> {
 // Copy of `AnnotationRequired` for E0283
 #[derive(Diagnostic)]
 #[diag(infer_type_annotations_needed, code = "E0283")]
-pub struct AmbigousImpl<'a> {
+pub struct AmbiguousImpl<'a> {
     #[primary_span]
     pub span: Span,
     pub source_kind: &'static str,

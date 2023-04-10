@@ -137,7 +137,7 @@ pub struct AsyncNonMoveClosureNotSupported {
 
 #[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering_functional_record_update_destructuring_assignment)]
-pub struct FunctionalRecordUpdateDestructuringAssignemnt {
+pub struct FunctionalRecordUpdateDestructuringAssignment {
     #[primary_span]
     #[suggestion(code = "", applicability = "machine-applicable")]
     pub span: Span,

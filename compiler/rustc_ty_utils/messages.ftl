@@ -12,7 +12,7 @@ ty_utils_array_not_supported = array construction is not supported in generic co
 
 ty_utils_block_not_supported = blocks are not supported in generic constants
 
-ty_utils_never_to_any_not_supported = converting nevers to any is not supported in generic constants
+ty_utils_never_to_any_not_supported = converting never to any is not supported in generic constants
 
 ty_utils_tuple_not_supported = tuple construction is not supported in generic constants
 
@@ -54,4 +54,4 @@ ty_utils_multiple_array_fields_simd_type = monomorphising SIMD type `{$ty}` with
 
 ty_utils_oversized_simd_type = monomorphising SIMD type `{$ty}` of length greater than {$max_lanes}
 
-ty_utils_non_primative_simd_type = monomorphising SIMD type `{$ty}` with a non-primitive-scalar (integer/float/pointer) element type `{$e_ty}`
+ty_utils_non_primitive_simd_type = monomorphising SIMD type `{$ty}` with a non-primitive-scalar (integer/float/pointer) element type `{$e_ty}`

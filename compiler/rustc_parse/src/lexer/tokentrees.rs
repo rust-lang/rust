@@ -1,5 +1,5 @@
 use super::diagnostics::report_suspicious_mismatch_block;
-use super::diagnostics::same_identation_level;
+use super::diagnostics::same_indentation_level;
 use super::diagnostics::TokenTreeDiagInfo;
 use super::{StringReader, UnmatchedDelim};
 use rustc_ast::token::{self, Delimiter, Token};
@@ -153,7 +153,7 @@ impl<'a> TokenTreesReader<'a> {
                         unclosed_delimiter = Some(sp);
                     };
                     for (brace, brace_span) in &self.diag_info.open_braces {
-                        if same_identation_level(&sm, self.token.span, *brace_span)
+                        if same_indentation_level(&sm, self.token.span, *brace_span)
                             && brace == &close_delim
                         {
                             // high likelihood of these two corresponding

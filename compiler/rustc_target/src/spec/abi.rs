@@ -63,7 +63,7 @@ impl Abi {
 }
 
 #[derive(Copy, Clone)]
-pub struct AbiData {
+pub struct AbiDatum {
     abi: Abi,
 
     /// Name of this ABI as we like it called.
@@ -71,59 +71,55 @@ pub struct AbiData {
 }
 
 #[allow(non_upper_case_globals)]
-const AbiDatas: &[AbiData] = &[
-    AbiData { abi: Abi::Rust, name: "Rust" },
-    AbiData { abi: Abi::C { unwind: false }, name: "C" },
-    AbiData { abi: Abi::C { unwind: true }, name: "C-unwind" },
-    AbiData { abi: Abi::Cdecl { unwind: false }, name: "cdecl" },
-    AbiData { abi: Abi::Cdecl { unwind: true }, name: "cdecl-unwind" },
-    AbiData { abi: Abi::Stdcall { unwind: false }, name: "stdcall" },
-    AbiData { abi: Abi::Stdcall { unwind: true }, name: "stdcall-unwind" },
-    AbiData { abi: Abi::Fastcall { unwind: false }, name: "fastcall" },
-    AbiData { abi: Abi::Fastcall { unwind: true }, name: "fastcall-unwind" },
-    AbiData { abi: Abi::Vectorcall { unwind: false }, name: "vectorcall" },
-    AbiData { abi: Abi::Vectorcall { unwind: true }, name: "vectorcall-unwind" },
-    AbiData { abi: Abi::Thiscall { unwind: false }, name: "thiscall" },
-    AbiData { abi: Abi::Thiscall { unwind: true }, name: "thiscall-unwind" },
-    AbiData { abi: Abi::Aapcs { unwind: false }, name: "aapcs" },
-    AbiData { abi: Abi::Aapcs { unwind: true }, name: "aapcs-unwind" },
-    AbiData { abi: Abi::Win64 { unwind: false }, name: "win64" },
-    AbiData { abi: Abi::Win64 { unwind: true }, name: "win64-unwind" },
-    AbiData { abi: Abi::SysV64 { unwind: false }, name: "sysv64" },
-    AbiData { abi: Abi::SysV64 { unwind: true }, name: "sysv64-unwind" },
-    AbiData { abi: Abi::PtxKernel, name: "ptx-kernel" },
-    AbiData { abi: Abi::Msp430Interrupt, name: "msp430-interrupt" },
-    AbiData { abi: Abi::X86Interrupt, name: "x86-interrupt" },
-    AbiData { abi: Abi::AmdGpuKernel, name: "amdgpu-kernel" },
-    AbiData { abi: Abi::EfiApi, name: "efiapi" },
-    AbiData { abi: Abi::AvrInterrupt, name: "avr-interrupt" },
-    AbiData { abi: Abi::AvrNonBlockingInterrupt, name: "avr-non-blocking-interrupt" },
-    AbiData { abi: Abi::CCmseNonSecureCall, name: "C-cmse-nonsecure-call" },
-    AbiData { abi: Abi::Wasm, name: "wasm" },
-    AbiData { abi: Abi::System { unwind: false }, name: "system" },
-    AbiData { abi: Abi::System { unwind: true }, name: "system-unwind" },
-    AbiData { abi: Abi::RustIntrinsic, name: "rust-intrinsic" },
-    AbiData { abi: Abi::RustCall, name: "rust-call" },
-    AbiData { abi: Abi::PlatformIntrinsic, name: "platform-intrinsic" },
-    AbiData { abi: Abi::Unadjusted, name: "unadjusted" },
-    AbiData { abi: Abi::RustCold, name: "rust-cold" },
+const AbiData: &[AbiDatum] = &[
+    AbiDatum { abi: Abi::Rust, name: "Rust" },
+    AbiDatum { abi: Abi::C { unwind: false }, name: "C" },
+    AbiDatum { abi: Abi::C { unwind: true }, name: "C-unwind" },
+    AbiDatum { abi: Abi::Cdecl { unwind: false }, name: "cdecl" },
+    AbiDatum { abi: Abi::Cdecl { unwind: true }, name: "cdecl-unwind" },
+    AbiDatum { abi: Abi::Stdcall { unwind: false }, name: "stdcall" },
+    AbiDatum { abi: Abi::Stdcall { unwind: true }, name: "stdcall-unwind" },
+    AbiDatum { abi: Abi::Fastcall { unwind: false }, name: "fastcall" },
+    AbiDatum { abi: Abi::Fastcall { unwind: true }, name: "fastcall-unwind" },
+    AbiDatum { abi: Abi::Vectorcall { unwind: false }, name: "vectorcall" },
+    AbiDatum { abi: Abi::Vectorcall { unwind: true }, name: "vectorcall-unwind" },
+    AbiDatum { abi: Abi::Thiscall { unwind: false }, name: "thiscall" },
+    AbiDatum { abi: Abi::Thiscall { unwind: true }, name: "thiscall-unwind" },
+    AbiDatum { abi: Abi::Aapcs { unwind: false }, name: "aapcs" },
+    AbiDatum { abi: Abi::Aapcs { unwind: true }, name: "aapcs-unwind" },
+    AbiDatum { abi: Abi::Win64 { unwind: false }, name: "win64" },
+    AbiDatum { abi: Abi::Win64 { unwind: true }, name: "win64-unwind" },
+    AbiDatum { abi: Abi::SysV64 { unwind: false }, name: "sysv64" },
+    AbiDatum { abi: Abi::SysV64 { unwind: true }, name: "sysv64-unwind" },
+    AbiDatum { abi: Abi::PtxKernel, name: "ptx-kernel" },
+    AbiDatum { abi: Abi::Msp430Interrupt, name: "msp430-interrupt" },
+    AbiDatum { abi: Abi::X86Interrupt, name: "x86-interrupt" },
+    AbiDatum { abi: Abi::AmdGpuKernel, name: "amdgpu-kernel" },
+    AbiDatum { abi: Abi::EfiApi, name: "efiapi" },
+    AbiDatum { abi: Abi::AvrInterrupt, name: "avr-interrupt" },
+    AbiDatum { abi: Abi::AvrNonBlockingInterrupt, name: "avr-non-blocking-interrupt" },
+    AbiDatum { abi: Abi::CCmseNonSecureCall, name: "C-cmse-nonsecure-call" },
+    AbiDatum { abi: Abi::Wasm, name: "wasm" },
+    AbiDatum { abi: Abi::System { unwind: false }, name: "system" },
+    AbiDatum { abi: Abi::System { unwind: true }, name: "system-unwind" },
+    AbiDatum { abi: Abi::RustIntrinsic, name: "rust-intrinsic" },
+    AbiDatum { abi: Abi::RustCall, name: "rust-call" },
+    AbiDatum { abi: Abi::PlatformIntrinsic, name: "platform-intrinsic" },
+    AbiDatum { abi: Abi::Unadjusted, name: "unadjusted" },
+    AbiDatum { abi: Abi::RustCold, name: "rust-cold" },
 ];
 
 /// Returns the ABI with the given name (if any).
 pub fn lookup(name: &str) -> Option<Abi> {
-    AbiDatas.iter().find(|abi_data| name == abi_data.name).map(|&x| x.abi)
+    AbiData.iter().find(|abi_data| name == abi_data.name).map(|&x| x.abi)
 }
 
 pub fn all_names() -> Vec<&'static str> {
-    AbiDatas.iter().map(|d| d.name).collect()
+    AbiData.iter().map(|d| d.name).collect()
 }
 
 pub fn enabled_names(features: &rustc_feature::Features, span: Span) -> Vec<&'static str> {
-    AbiDatas
-        .iter()
-        .map(|d| d.name)
-        .filter(|name| is_enabled(features, span, name).is_ok())
-        .collect()
+    AbiData.iter().map(|d| d.name).filter(|name| is_enabled(features, span, name).is_ok()).collect()
 }
 
 pub enum AbiDisabled {
@@ -256,7 +252,7 @@ impl Abi {
 
     #[inline]
     pub fn index(self) -> usize {
-        // N.B., this ordering MUST match the AbiDatas array above.
+        // N.B., this ordering MUST match the AbiData array above.
         // (This is ensured by the test indices_are_correct().)
         use Abi::*;
         let i = match self {
@@ -300,21 +296,21 @@ impl Abi {
             RustCold => 34,
         };
         debug_assert!(
-            AbiDatas
+            AbiData
                 .iter()
                 .enumerate()
-                .find(|(_, AbiData { abi, .. })| *abi == self)
+                .find(|(_, AbiDatum { abi, .. })| *abi == self)
                 .map(|(index, _)| index)
                 .expect("abi variant has associated data")
                 == i,
-            "Abi index did not match `AbiDatas` ordering"
+            "Abi index did not match `AbiData` ordering"
         );
         i
     }
 
     #[inline]
-    pub fn data(self) -> &'static AbiData {
-        &AbiDatas[self.index()]
+    pub fn data(self) -> &'static AbiDatum {
+        &AbiData[self.index()]
     }
 
     pub fn name(self) -> &'static str {

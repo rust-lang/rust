@@ -923,7 +923,7 @@ fn link_natively<'a>(
             if sess.target.is_like_msvc && linker_not_found {
                 sess.emit_note(errors::MsvcMissingLinker);
                 sess.emit_note(errors::CheckInstalledVisualStudio);
-                sess.emit_note(errors::UnsufficientVSCodeProduct);
+                sess.emit_note(errors::InsufficientVSCodeProduct);
             }
             sess.abort_if_errors();
         }
@@ -1447,8 +1447,8 @@ fn exec_linker(
 
     #[cfg(windows)]
     fn command_line_too_big(err: &io::Error) -> bool {
-        const ERROR_FILENAME_EXCED_RANGE: i32 = 206;
-        err.raw_os_error() == Some(ERROR_FILENAME_EXCED_RANGE)
+        const ERROR_FILENAME_EXCEED_RANGE: i32 = 206;
+        err.raw_os_error() == Some(ERROR_FILENAME_EXCEED_RANGE)
     }
 
     #[cfg(not(any(unix, windows)))]
