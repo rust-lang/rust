@@ -69,7 +69,7 @@
 //!   of this is that such liveness analysis can report more accurate results about whole locals at
 //!   a time. For example, consider:
 //!
-//!   ```ignore (syntax-highliting-only)
+//!   ```ignore (syntax-highlighting-only)
 //!   _1 = u;
 //!   // unrelated code
 //!   _1.f1 = v;
