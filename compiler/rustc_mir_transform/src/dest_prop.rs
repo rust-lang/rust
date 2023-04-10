@@ -360,7 +360,7 @@ struct FilterInformation<'a, 'body, 'alloc, 'tcx> {
 }
 
 // We first implement some utility functions which we will expose removing candidates according to
-// different needs. Throughout the livenss filtering, the `candidates` are only ever accessed
+// different needs. Throughout the liveness filtering, the `candidates` are only ever accessed
 // through these methods, and not directly.
 impl<'alloc> Candidates<'alloc> {
     /// Just `Vec::retain`, but the condition is inverted and we add debugging output
