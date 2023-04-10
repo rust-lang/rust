@@ -1079,7 +1079,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                     for rib in self.lifetime_ribs.iter().rev() {
                         match rib.kind {
                             // We are inside a `PolyTraitRef`. The lifetimes are
-                            // to be intoduced in that (maybe implicit) `for<>` binder.
+                            // to be introduced in that (maybe implicit) `for<>` binder.
                             LifetimeRibKind::Generics {
                                 binder,
                                 kind: LifetimeBinderKind::PolyTrait,
