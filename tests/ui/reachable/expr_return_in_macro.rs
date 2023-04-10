@@ -1,5 +1,5 @@
 // Tests that we generate nice error messages
-// when an expression is unreachble due to control
+// when an expression is unreachable due to control
 // flow inside of a macro expansion.
 #![deny(unreachable_code)]
 
