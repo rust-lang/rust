@@ -17,7 +17,7 @@ impl<T> Id_ for T {
     default type Out = T;
 }
 
-fn test_proection() {
+fn test_protection() {
     let x: Id<bool> = panic!();
 }
 
