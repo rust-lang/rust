@@ -43,7 +43,6 @@ use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
 use std::hash::Hash;
 use std::io::{Read, Seek, Write};
-use std::iter;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 
@@ -456,7 +455,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_info_for_items(&mut self) {
-        self.encode_info_for_mod(CRATE_DEF_ID, self.tcx.hir().root_module());
+        self.encode_info_for_mod(CRATE_DEF_ID);
 
         // Proc-macro crates only export proc-macro items, which are looked
         // up using `proc_macro_data`
@@ -1324,7 +1323,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.implied_predicates_of[def_id] <- self.tcx.implied_predicates_of(def_id));
             }
             if let DefKind::Enum | DefKind::Struct | DefKind::Union = def_kind {
-                self.encode_info_for_adt(def_id);
+                self.encode_info_for_adt(local_id);
             }
             if tcx.impl_method_has_trait_impl_trait_tys(def_id)
                 && let Ok(table) = self.tcx.collect_return_position_impl_trait_in_trait_tys(def_id)
@@ -1357,7 +1356,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn encode_info_for_adt(&mut self, def_id: DefId) {
+    fn encode_info_for_adt(&mut self, local_def_id: LocalDefId) {
+        let def_id = local_def_id.to_def_id();
         let tcx = self.tcx;
         let adt_def = tcx.adt_def(def_id);
         record!(self.tables.repr_options[def_id] <- adt_def.repr());
@@ -1366,15 +1366,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         record!(self.tables.params_in_repr[def_id] <- params_in_repr);
 
         if adt_def.is_enum() {
-            record_array!(self.tables.children[def_id] <- iter::from_generator(||
-                for variant in tcx.adt_def(def_id).variants() {
-                    yield variant.def_id.index;
-                    // Encode constructors which take a separate slot in value namespace.
-                    if let Some(ctor_def_id) = variant.ctor_def_id() {
-                        yield ctor_def_id.index;
-                    }
-                }
-            ));
+            let module_children = tcx.module_children_non_reexports(local_def_id);
+            record_array!(self.tables.children[def_id] <-
+                module_children.iter().map(|def_id| def_id.local_def_index));
         } else {
             // For non-enum, there is only one variant, and its def_id is the adt's.
             debug_assert_eq!(adt_def.variants().len(), 1);
@@ -1406,7 +1400,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_info_for_mod(&mut self, local_def_id: LocalDefId, md: &hir::Mod<'_>) {
+    fn encode_info_for_mod(&mut self, local_def_id: LocalDefId) {
         let tcx = self.tcx;
         let def_id = local_def_id.to_def_id();
         debug!("EncodeContext::encode_info_for_mod({:?})", def_id);
@@ -1420,38 +1414,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             // Encode this here because we don't do it in encode_def_ids.
             record!(self.tables.expn_that_defined[def_id] <- tcx.expn_that_defined(local_def_id));
         } else {
-            record_array!(self.tables.children[def_id] <- iter::from_generator(|| {
-                for item_id in md.item_ids {
-                    match tcx.hir().item(*item_id).kind {
-                        // Foreign items are planted into their parent modules
-                        // from name resolution point of view.
-                        hir::ItemKind::ForeignMod { items, .. } => {
-                            for foreign_item in items {
-                                yield foreign_item.id.owner_id.def_id.local_def_index;
-                            }
-                        }
-                        // Only encode named non-reexport children, reexports are encoded
-                        // separately and unnamed items are not used by name resolution.
-                        hir::ItemKind::ExternCrate(..) => continue,
-                        hir::ItemKind::Struct(ref vdata, _) => {
-                            yield item_id.owner_id.def_id.local_def_index;
-                            // Encode constructors which take a separate slot in value namespace.
-                            if let Some(ctor_def_id) = vdata.ctor_def_id() {
-                                yield ctor_def_id.local_def_index;
-                            }
-                        }
-                        _ if tcx.def_key(item_id.owner_id.to_def_id()).get_opt_name().is_some() => {
-                            yield item_id.owner_id.def_id.local_def_index;
-                        }
-                        _ => continue,
-                    }
-                }
-            }));
+            let non_reexports = tcx.module_children_non_reexports(local_def_id);
+            record_array!(self.tables.children[def_id] <-
+                non_reexports.iter().map(|def_id| def_id.local_def_index));
 
-            let reexports = tcx.module_reexports(local_def_id);
-            if !reexports.is_empty() {
-                record_array!(self.tables.module_reexports[def_id] <- reexports);
-            }
+            record_defaulted_array!(self.tables.module_children_reexports[def_id] <-
+                tcx.module_children_reexports(local_def_id));
         }
     }
 
@@ -1668,8 +1636,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.tables.is_macro_rules.set(def_id.index, macro_def.macro_rules);
                 record!(self.tables.macro_definition[def_id] <- &*macro_def.body);
             }
-            hir::ItemKind::Mod(ref m) => {
-                self.encode_info_for_mod(item.owner_id.def_id, m);
+            hir::ItemKind::Mod(..) => {
+                self.encode_info_for_mod(item.owner_id.def_id);
             }
             hir::ItemKind::OpaqueTy(ref opaque) => {
                 self.encode_explicit_item_bounds(def_id);

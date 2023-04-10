@@ -8,6 +8,7 @@ use crate::arena::Arena;
 use crate::dep_graph::{DepGraph, DepKindStruct};
 use crate::infer::canonical::CanonicalVarInfo;
 use crate::lint::struct_lint_level;
+use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::resolve_bound_vars;
 use crate::middle::stability;
@@ -2459,6 +2460,28 @@ impl<'tcx> TyCtxt<'tcx> {
             self.def_kind(def_id) == DefKind::ImplTraitPlaceholder
         }
     }
+
+    /// Named module children from all items except `use` and `extern crate` imports.
+    ///
+    /// In addition to regular items this list also includes struct or variant constructors, and
+    /// items inside `extern {}` blocks because all of them introduce names into parent module.
+    /// For non-reexported children every such name is associated with a separate `DefId`.
+    ///
+    /// Module here is understood in name resolution sense - it can be a `mod` item,
+    /// or a crate root, or an enum, or a trait.
+    pub fn module_children_non_reexports(self, def_id: LocalDefId) -> &'tcx [LocalDefId] {
+        self.resolutions(()).module_children_non_reexports.get(&def_id).map_or(&[], |v| &v[..])
+    }
+
+    /// Named module children from `use` and `extern crate` imports.
+    ///
+    /// Reexported names are not associated with individual `DefId`s,
+    /// e.g. a glob import can introduce a lot of names, all with the same `DefId`.
+    /// That's why the list needs to contain `ModChild` structures describing all the names
+    /// individually instead of `DefId`s.
+    pub fn module_children_reexports(self, def_id: LocalDefId) -> &'tcx [ModChild] {
+        self.resolutions(()).module_children_reexports.get(&def_id).map_or(&[], |v| &v[..])
+    }
 }
 
 impl<'tcx> TyCtxtAt<'tcx> {
@@ -2501,8 +2524,6 @@ pub struct DeducedParamAttrs {
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {
-    providers.module_reexports =
-        |tcx, id| tcx.resolutions(()).reexport_map.get(&id).map_or(&[], |v| &v[..]);
     providers.maybe_unused_trait_imports =
         |tcx, ()| &tcx.resolutions(()).maybe_unused_trait_imports;
     providers.names_imported_by_glob_use = |tcx, id| {

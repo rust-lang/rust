@@ -931,7 +931,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
     /// Builds the reduced graph for a single item in an external crate.
     fn build_reduced_graph_for_external_crate_res(&mut self, child: ModChild) {
         let parent = self.parent_scope.module;
-        let ModChild { ident, res, vis, span, macro_rules, .. } = child;
+        let ModChild { ident, res, vis, span, .. } = child;
         let res = res.expect_non_local();
         let expansion = self.parent_scope.expansion;
         // Record primary definitions.
@@ -964,9 +964,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 _,
             ) => self.r.define(parent, ident, ValueNS, (res, vis, span, expansion)),
             Res::Def(DefKind::Macro(..), _) | Res::NonMacroAttr(..) => {
-                if !macro_rules {
-                    self.r.define(parent, ident, MacroNS, (res, vis, span, expansion))
-                }
+                self.r.define(parent, ident, MacroNS, (res, vis, span, expansion))
             }
             Res::Def(
                 DefKind::TyParam
