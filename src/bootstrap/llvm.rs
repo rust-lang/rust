@@ -1153,7 +1153,7 @@ impl Step for Libunwind {
         run.builder.ensure(Libunwind { target: run.target });
     }
 
-    /// Build linunwind.a
+    /// Build libunwind.a
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         builder.update_submodule(&Path::new("src/llvm-project"));
 
