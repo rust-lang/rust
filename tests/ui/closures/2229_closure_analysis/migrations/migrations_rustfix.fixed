@@ -2,7 +2,7 @@
 #![deny(rust_2021_incompatible_closure_captures)]
 //~^ NOTE: the lint level is defined here
 
-// Test the two possible cases for automated migartion using rustfix
+// Test the two possible cases for automated migration using rustfix
 // - Closure contains a block i.e.  `|| { .. };`
 // - Closure contains just an expr `|| ..;`
 
