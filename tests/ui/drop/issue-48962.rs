@@ -15,7 +15,7 @@ impl Drop for Dropee {
     }
 }
 
-fn add_sentintel() {
+fn add_sentinel() {
     unsafe {
         ORDER[INDEX] = 2;
         INDEX = INDEX + 1;
@@ -25,7 +25,7 @@ fn add_sentintel() {
 fn main() {
     let mut x = Box::new(Dropee(1));
     *x;  // move out from `*x`
-    add_sentintel();
+    add_sentinel();
     *x = Dropee(3); // re-initialize `*x`
     {x}; // drop value
     unsafe {
