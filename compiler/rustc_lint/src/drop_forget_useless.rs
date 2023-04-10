@@ -123,16 +123,16 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
             let drop_is_single_call_in_arm = is_single_call_in_arm(cx, arg, expr);
             match fn_name {
                 sym::mem_drop if arg_ty.is_ref() && !drop_is_single_call_in_arm => {
-                    cx.emit_spanned_lint(DROP_REF, expr.span, DropRefDiag { arg_ty, note: arg.span });
+                    cx.emit_spanned_lint(DROP_REF, expr.span, DropRefDiag { arg_ty, label: arg.span });
                 },
                 sym::mem_forget if arg_ty.is_ref() => {
-                    cx.emit_spanned_lint(FORGET_REF, expr.span, ForgetRefDiag { arg_ty, note: arg.span });
+                    cx.emit_spanned_lint(FORGET_REF, expr.span, ForgetRefDiag { arg_ty, label: arg.span });
                 },
                 sym::mem_drop if is_copy && !drop_is_single_call_in_arm => {
-                    cx.emit_spanned_lint(DROP_COPY, expr.span, DropCopyDiag { arg_ty, note: arg.span });
+                    cx.emit_spanned_lint(DROP_COPY, expr.span, DropCopyDiag { arg_ty, label: arg.span });
                 }
                 sym::mem_forget if is_copy => {
-                    cx.emit_spanned_lint(FORGET_COPY, expr.span, ForgetCopyDiag { arg_ty, note: arg.span });
+                    cx.emit_spanned_lint(FORGET_COPY, expr.span, ForgetCopyDiag { arg_ty, label: arg.span });
                 }
                 _ => return,
             };

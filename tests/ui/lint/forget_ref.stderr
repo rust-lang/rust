@@ -2,13 +2,10 @@ warning: calls to `std::mem::forget` with a reference instead of an owned value
   --> $DIR/forget_ref.rs:10:5
    |
 LL |     forget(&SomeStruct);
-   |     ^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^-----------^
+   |            |
+   |            argument has type `&SomeStruct`
    |
-note: argument has type `&SomeStruct`
-  --> $DIR/forget_ref.rs:10:12
-   |
-LL |     forget(&SomeStruct);
-   |            ^^^^^^^^^^^
 note: the lint level is defined here
   --> $DIR/forget_ref.rs:3:9
    |
@@ -19,97 +16,65 @@ warning: calls to `std::mem::forget` with a reference instead of an owned value
   --> $DIR/forget_ref.rs:13:5
    |
 LL |     forget(&owned);
-   |     ^^^^^^^^^^^^^^
-   |
-note: argument has type `&SomeStruct`
-  --> $DIR/forget_ref.rs:13:12
-   |
-LL |     forget(&owned);
-   |            ^^^^^^
+   |     ^^^^^^^------^
+   |            |
+   |            argument has type `&SomeStruct`
 
 warning: calls to `std::mem::forget` with a reference instead of an owned value
   --> $DIR/forget_ref.rs:14:5
    |
 LL |     forget(&&owned);
-   |     ^^^^^^^^^^^^^^^
-   |
-note: argument has type `&&SomeStruct`
-  --> $DIR/forget_ref.rs:14:12
-   |
-LL |     forget(&&owned);
-   |            ^^^^^^^
+   |     ^^^^^^^-------^
+   |            |
+   |            argument has type `&&SomeStruct`
 
 warning: calls to `std::mem::forget` with a reference instead of an owned value
   --> $DIR/forget_ref.rs:15:5
    |
 LL |     forget(&mut owned);
-   |     ^^^^^^^^^^^^^^^^^^
-   |
-note: argument has type `&mut SomeStruct`
-  --> $DIR/forget_ref.rs:15:12
-   |
-LL |     forget(&mut owned);
-   |            ^^^^^^^^^^
+   |     ^^^^^^^----------^
+   |            |
+   |            argument has type `&mut SomeStruct`
 
 warning: calls to `std::mem::forget` with a reference instead of an owned value
   --> $DIR/forget_ref.rs:19:5
    |
 LL |     forget(&*reference1);
-   |     ^^^^^^^^^^^^^^^^^^^^
-   |
-note: argument has type `&SomeStruct`
-  --> $DIR/forget_ref.rs:19:12
-   |
-LL |     forget(&*reference1);
-   |            ^^^^^^^^^^^^
+   |     ^^^^^^^------------^
+   |            |
+   |            argument has type `&SomeStruct`
 
 warning: calls to `std::mem::forget` with a reference instead of an owned value
   --> $DIR/forget_ref.rs:22:5
    |
 LL |     forget(reference2);
-   |     ^^^^^^^^^^^^^^^^^^
-   |
-note: argument has type `&mut SomeStruct`
-  --> $DIR/forget_ref.rs:22:12
-   |
-LL |     forget(reference2);
-   |            ^^^^^^^^^^
+   |     ^^^^^^^----------^
+   |            |
+   |            argument has type `&mut SomeStruct`
 
 warning: calls to `std::mem::forget` with a reference instead of an owned value
   --> $DIR/forget_ref.rs:25:5
    |
 LL |     forget(reference3);
-   |     ^^^^^^^^^^^^^^^^^^
-   |
-note: argument has type `&SomeStruct`
-  --> $DIR/forget_ref.rs:25:12
-   |
-LL |     forget(reference3);
-   |            ^^^^^^^^^^
+   |     ^^^^^^^----------^
+   |            |
+   |            argument has type `&SomeStruct`
 
 warning: calls to `std::mem::forget` with a reference instead of an owned value
   --> $DIR/forget_ref.rs:30:5
    |
 LL |     forget(&val);
-   |     ^^^^^^^^^^^^
-   |
-note: argument has type `&T`
-  --> $DIR/forget_ref.rs:30:12
-   |
-LL |     forget(&val);
-   |            ^^^^
+   |     ^^^^^^^----^
+   |            |
+   |            argument has type `&T`
 
 warning: calls to `std::mem::forget` with a reference instead of an owned value
   --> $DIR/forget_ref.rs:38:5
    |
 LL |     std::mem::forget(&SomeStruct);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: argument has type `&SomeStruct`
-  --> $DIR/forget_ref.rs:38:22
-   |
-LL |     std::mem::forget(&SomeStruct);
-   |                      ^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^-----------^
+   |                      |
+   |                      argument has type `&SomeStruct`
 
 warning: 9 warnings emitted
 
