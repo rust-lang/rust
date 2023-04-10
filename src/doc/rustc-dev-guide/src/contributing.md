@@ -280,7 +280,7 @@ from the source code itself (e.g. [`library/std/src/lib.rs`][std-root]). Documen
 function in the same way as other pull requests.
 
 [`src/doc`]: https://github.com/rust-lang/rust/tree/master/src/doc
-[`std-root`]: https://github.com/rust-lang/rust/blob/master/library/std/src/lib.rs#L1
+[std-root]: https://github.com/rust-lang/rust/blob/master/library/std/src/lib.rs#L1
 
 To find documentation-related issues, sort by the [A-docs label][adocs].
 
