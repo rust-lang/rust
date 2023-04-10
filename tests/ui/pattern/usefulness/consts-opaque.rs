@@ -2,7 +2,7 @@
 // unnecessary warnings because const_to_pat.rs converts a constant pattern to a wildcard when the
 // constant is not allowed as a pattern. This is an edge case so we may not care to fix it.
 // See also https://github.com/rust-lang/rust/issues/78057
-
+#![allow(pointer_structural_match)]
 #![deny(unreachable_patterns)]
 
 #[derive(PartialEq)]

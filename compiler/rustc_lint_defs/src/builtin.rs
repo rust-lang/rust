@@ -2277,19 +2277,16 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// Previous versions of Rust allowed function pointers and wide raw pointers in patterns.
-    /// While these work in many cases as expected by users, it is possible that due to
-    /// optimizations pointers are "not equal to themselves" or pointers to different functions
-    /// compare as equal during runtime. This is because LLVM optimizations can deduplicate
-    /// functions if their bodies are the same, thus also making pointers to these functions point
-    /// to the same location. Additionally functions may get duplicated if they are instantiated
+    /// Use of function pointers and wide raw pointers in patterns works in many cases as
+    /// expected by users. However, it is possible that due to optimizations pointers are "not equal
+    /// to themselves" or pointers to different functions compare as equal during runtime.
+    /// This is because LLVM optimizations can deduplicate functions if their bodies are the same,
+    /// thus also making pointers to these functions point to the same location.
+    /// Additionally, functions may get duplicated if they are instantiated
     /// in different crates and not deduplicated again via LTO.
     pub POINTER_STRUCTURAL_MATCH,
-    Allow,
-    "pointers are not structural-match",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #62411 <https://github.com/rust-lang/rust/issues/70861>",
-    };
+    Warn,
+    "pointers are not structural-match"
 }
 
 declare_lint! {

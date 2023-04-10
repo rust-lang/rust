@@ -1,7 +1,5 @@
 // run-pass
 
-#![warn(pointer_structural_match)]
-
 type Func = fn(usize, usize) -> usize;
 
 fn foo(a: usize, b: usize) -> usize { a + b }
@@ -17,9 +15,7 @@ const BAR: Func = bar;
 fn main() {
     match test(std::env::consts::ARCH.len()) {
         FOO => println!("foo"), //~ WARN pointers in patterns behave unpredictably
-        //~^ WARN will become a hard error
         BAR => println!("bar"), //~ WARN pointers in patterns behave unpredictably
-        //~^ WARN will become a hard error
         _ => unreachable!(),
     }
 }

@@ -3,7 +3,7 @@
 
 // run-pass
 
-#![warn(pointer_structural_match)]
+#![deny(pointer_structural_match)]
 
 struct NoDerive(#[allow(unused_tuple_struct_fields)] i32);
 

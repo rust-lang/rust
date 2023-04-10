@@ -3,6 +3,8 @@
 // This file checks that fn ptrs are considered structurally matchable.
 // See also rust-lang/rust#63479.
 
+#![allow(pointer_structural_match)]
+
 fn main() {
     let mut count = 0;
 

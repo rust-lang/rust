@@ -243,6 +243,7 @@ pub trait StructuralPartialEq {
 ///
 /// const CFN: Wrap<fn(&())> = Wrap(higher_order);
 ///
+/// # #[allow(pointer_structural_match)]
 /// fn main() {
 ///     match CFN {
 ///         CFN => {}
