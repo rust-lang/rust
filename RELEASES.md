@@ -6367,7 +6367,7 @@ eg. `static MINUTE: Duration = Duration::from_secs(60);`
 
 Cargo
 -----
-- [`cargo new` no longer removes `rust` or `rs` prefixes/suffixs.][cargo/5013]
+- [`cargo new` no longer removes `rust` or `rs` prefixes/suffixes.][cargo/5013]
 - [`cargo new` now defaults to creating a binary crate, instead of a
   library crate.][cargo/5029]
 
