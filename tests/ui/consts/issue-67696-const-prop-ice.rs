@@ -1,7 +1,7 @@
 // check-pass
 // compile-flags: --emit=mir,link
 // Checks that we don't ICE due to attempting to run const prop
-// on a function with unsatisifable 'where' clauses
+// on a function with unsatisfiable 'where' clauses
 
 #![allow(unused)]
 
