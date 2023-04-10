@@ -37,7 +37,7 @@ fn should_ok_3() {
     if true && if true { true } else { false } {}
 }
 
-fn shoule_match_ok() {
+fn should_match_ok() {
     #[cfg(feature = "full")]
     {
         let a = 1;

@@ -42,11 +42,11 @@ pub trait Extra<Request> {
     type Error;
 }
 
-struct ImplShoulExist<D, Req> {
+struct ImplShouldExist<D, Req> {
     _gen: (D, Req),
 }
 
-impl<D, Req> ImplShoulExist<D, Req>
+impl<D, Req> ImplShouldExist<D, Req>
 where
     D: FourthTrait,
     D::Item4: Extra<Req>,
@@ -57,7 +57,7 @@ where
     }
 }
 
-impl<D, Req> Extra<Req> for ImplShoulExist<D, Req> {
+impl<D, Req> Extra<Req> for ImplShouldExist<D, Req> {
     type Error = ();
 }
 
@@ -67,7 +67,7 @@ where
     MS::Item: Into<()>,
 {
     // Error: Apparently Balance::new doesn't exist during MIR validation
-    let _ = ImplShoulExist::<MS, ()>::access_fn(ms);
+    let _ = ImplShouldExist::<MS, ()>::access_fn(ms);
 }
 
 fn main() {}

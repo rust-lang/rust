@@ -39,6 +39,6 @@ const C: S = {
 };
 
 fn main() { //~ ERROR it is undefined behavior to use this value
-    // FIXME the span here is wrong, sould be pointing at the line below, not above.
+    // FIXME the span here is wrong, should be pointing at the line below, not above.
     let _: &'static _ = &C;
 }
