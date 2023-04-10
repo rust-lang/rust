@@ -1,6 +1,6 @@
 #![feature(associated_type_defaults)]
 
-// FIXME(#44265) add tests for type-generic and const-genertic associated types.
+// FIXME(#44265) add tests for type-generic and const-generic associated types.
 
 trait Foo {
     type A<'a>;
