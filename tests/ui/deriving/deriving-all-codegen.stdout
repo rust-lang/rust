@@ -79,7 +79,7 @@ impl ::core::cmp::Ord for Empty {
 }
 
 // A basic struct. Note: because this derives `Copy`, it gets the simple
-// `clone` implemention that just does `*self`.
+// `clone` implementation that just does `*self`.
 struct Point {
     x: u32,
     y: u32,
@@ -163,7 +163,7 @@ impl ::core::cmp::Ord for Point {
 }
 
 // A basic packed struct. Note: because this derives `Copy`, it gets the simple
-// `clone` implemention that just does `*self`.
+// `clone` implementation that just does `*self`.
 #[repr(packed)]
 struct PackedPoint {
     x: u32,
@@ -250,7 +250,7 @@ impl ::core::cmp::Ord for PackedPoint {
 }
 
 // A large struct. Note: because this derives `Copy`, it gets the simple
-// `clone` implemention that just does `*self`.
+// `clone` implementation that just does `*self`.
 struct Big {
     b1: u32,
     b2: u32,
@@ -420,7 +420,7 @@ impl ::core::cmp::Ord for Big {
 }
 
 // A struct that doesn't impl `Copy`, which means it gets the non-simple
-// `clone` implemention that clones the fields individually.
+// `clone` implementation that clones the fields individually.
 struct NonCopy(u32);
 #[automatically_derived]
 impl ::core::clone::Clone for NonCopy {
@@ -431,7 +431,7 @@ impl ::core::clone::Clone for NonCopy {
 }
 
 // A packed struct that doesn't impl `Copy`, which means it gets the non-simple
-// `clone` implemention that clones the fields individually.
+// `clone` implementation that clones the fields individually.
 #[repr(packed)]
 struct PackedNonCopy(u32);
 #[automatically_derived]
@@ -443,7 +443,7 @@ impl ::core::clone::Clone for PackedNonCopy {
 }
 
 // A struct that impls `Copy` manually, which means it gets the non-simple
-// `clone` implemention that clones the fields individually.
+// `clone` implementation that clones the fields individually.
 struct ManualCopy(u32);
 #[automatically_derived]
 impl ::core::clone::Clone for ManualCopy {
@@ -455,7 +455,7 @@ impl ::core::clone::Clone for ManualCopy {
 impl Copy for ManualCopy {}
 
 // A packed struct that impls `Copy` manually, which means it gets the
-// non-simple `clone` implemention that clones the fields individually.
+// non-simple `clone` implementation that clones the fields individually.
 #[repr(packed)]
 struct PackedManualCopy(u32);
 #[automatically_derived]
