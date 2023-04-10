@@ -1,5 +1,5 @@
 // Test that we do not get a privacy error here.  Initially, we did,
-// because we inferred an outlives predciate of `<Foo<'a> as
+// because we inferred an outlives predicate of `<Foo<'a> as
 // Private>::Out: 'a`, but the private trait is -- well -- private,
 // and hence it was not something that a pub trait could refer to.
 //
