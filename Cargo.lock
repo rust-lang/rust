@@ -1674,12 +1674,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "64db3e262960f0662f43a6366788d5f10f7f244b8f7d7d987f560baf5ded5c50"
 
 [[package]]
-name = "fs_extra"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f2a4a2034423744d2cc7ca2068453168dcdb82c438419e639a26bd87839c674"
-
-[[package]]
 name = "futf"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2861,12 +2855,11 @@ checksum = "453ad9f582a441959e5f0d088b02ce04cfe8d51a8eaf077f12ac6d3e94164ca6"
 
 [[package]]
 name = "jemalloc-sys"
-version = "0.5.0+5.3.0"
+version = "0.5.3+5.3.0-patched"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f655c3ecfa6b0d03634595b4b54551d4bd5ac208b9e0124873949a7ab168f70b"
+checksum = "f9bd5d616ea7ed58b571b2e209a65759664d7fb021a0819d7a790afc67e47ca1"
 dependencies = [
  "cc",
- "fs_extra",
  "libc",
 ]
 
@@ -3475,16 +3468,28 @@ dependencies = [
 
 [[package]]
 name = "openssl"
-version = "0.10.38"
+version = "0.10.49"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c7ae222234c30df141154f159066c5093ff73b63204dcda7121eb082fc56a95"
+checksum = "4d2f106ab837a24e03672c59b1239669a0596406ff657c3c0835b6b7f0f35a33"
 dependencies = [
  "bitflags",
  "cfg-if",
  "foreign-types",
  "libc",
  "once_cell",
+ "openssl-macros",
  "openssl-sys",
+]
+
+[[package]]
+name = "openssl-macros"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a948666b637a0f465e8564c73e89d4dde00d72d4d473cc972f390fc3dcee7d9c"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.8",
 ]
 
 [[package]]
@@ -3495,20 +3500,19 @@ checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
 
 [[package]]
 name = "openssl-src"
-version = "111.22.0+1.1.1q"
+version = "111.25.0+1.1.1t"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f31f0d509d1c1ae9cada2f9539ff8f37933831fd5098879e482aa687d659853"
+checksum = "3173cd3626c43e3854b1b727422a276e568d9ec5fe8cec197822cf52cfb743d6"
 dependencies = [
  "cc",
 ]
 
 [[package]]
 name = "openssl-sys"
-version = "0.9.72"
+version = "0.9.84"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e46109c383602735fa0a2e48dd2b7c892b048e1bf69e5c3b1d804b7d9c203cb"
+checksum = "3a20eace9dc2d82904039cb76dcf50fb1a0bba071cfd1629720b5d6f1ddba0fa"
 dependencies = [
- "autocfg",
  "cc",
  "libc",
  "openssl-src",
@@ -4178,7 +4182,7 @@ name = "rustbook"
 version = "0.1.0"
 dependencies = [
  "clap 4.2.1",
- "env_logger 0.7.1",
+ "env_logger 0.10.0",
  "mdbook",
 ]
 
@@ -6311,7 +6315,7 @@ name = "tidy"
 version = "0.1.0"
 dependencies = [
  "cargo-platform 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "cargo_metadata 0.14.0",
+ "cargo_metadata 0.15.3",
  "ignore",
  "lazy_static",
  "miropt-test-tools",
