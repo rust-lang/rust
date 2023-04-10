@@ -357,7 +357,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                             // deal with `has_changed` in the next iteration.
                             new_goals.normalizes_to_hack_goal =
                                 Some(this.resolve_vars_if_possible(goal));
-                            has_changed = has_changed.map_err(|c| c.unify_and(certainty));
+                            has_changed = has_changed.map_err(|c| c.unify_with(certainty));
                         }
                     }
                 }
@@ -378,7 +378,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                         Certainty::Yes => {}
                         Certainty::Maybe(_) => {
                             new_goals.goals.push(goal);
-                            has_changed = has_changed.map_err(|c| c.unify_and(certainty));
+                            has_changed = has_changed.map_err(|c| c.unify_with(certainty));
                         }
                     }
                 }

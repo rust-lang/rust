@@ -46,12 +46,19 @@ enum SolverMode {
 
 trait CanonicalResponseExt {
     fn has_no_inference_or_external_constraints(&self) -> bool;
+
+    fn has_only_region_constraints(&self) -> bool;
 }
 
 impl<'tcx> CanonicalResponseExt for Canonical<'tcx, Response<'tcx>> {
     fn has_no_inference_or_external_constraints(&self) -> bool {
         self.value.external_constraints.region_constraints.is_empty()
             && self.value.var_values.is_identity()
+            && self.value.external_constraints.opaque_types.is_empty()
+    }
+
+    fn has_only_region_constraints(&self) -> bool {
+        self.value.var_values.is_identity_modulo_regions()
             && self.value.external_constraints.opaque_types.is_empty()
     }
 }
@@ -221,12 +228,17 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             (Some(alias_lhs), Some(alias_rhs)) => {
                 debug!("both sides are aliases");
 
-                let candidates = vec![
-                    // LHS normalizes-to RHS
-                    evaluate_normalizes_to(self, alias_lhs, rhs, direction, Invert::No),
-                    // RHS normalizes-to RHS
-                    evaluate_normalizes_to(self, alias_rhs, lhs, direction, Invert::Yes),
-                    // Relate via substs
+                let mut candidates = Vec::new();
+                // LHS normalizes-to RHS
+                candidates.extend(
+                    evaluate_normalizes_to(self, alias_lhs, rhs, direction, Invert::No).ok(),
+                );
+                // RHS normalizes-to RHS
+                candidates.extend(
+                    evaluate_normalizes_to(self, alias_rhs, lhs, direction, Invert::Yes).ok(),
+                );
+                // Relate via substs
+                candidates.extend(
                     self.probe(|ecx| {
                         let span = tracing::span!(
                             tracing::Level::DEBUG,
@@ -247,11 +259,16 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                         }
 
                         ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                    }),
-                ];
+                    })
+                    .ok(),
+                );
                 debug!(?candidates);
 
-                self.try_merge_responses(candidates.into_iter())
+                if let Some(merged) = self.try_merge_responses(&candidates) {
+                    Ok(merged)
+                } else {
+                    self.flounder(&candidates)
+                }
             }
         }
     }
@@ -289,43 +306,51 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         debug!("added_goals={:?}", &self.nested_goals.goals[current_len..]);
     }
 
-    #[instrument(level = "debug", skip(self, responses))]
+    /// Try to merge multiple possible ways to prove a goal, if that is not possible returns `None`.
+    ///
+    /// In this case we tend to flounder and return ambiguity by calling `[EvalCtxt::flounder]`.
+    #[instrument(level = "debug", skip(self), ret)]
     fn try_merge_responses(
         &mut self,
-        responses: impl Iterator<Item = QueryResult<'tcx>>,
-    ) -> QueryResult<'tcx> {
-        let candidates = responses.into_iter().flatten().collect::<Box<[_]>>();
-
-        if candidates.is_empty() {
-            return Err(NoSolution);
+        responses: &[CanonicalResponse<'tcx>],
+    ) -> Option<CanonicalResponse<'tcx>> {
+        if responses.is_empty() {
+            return None;
         }
 
         // FIXME(-Ztrait-solver=next): We should instead try to find a `Certainty::Yes` response with
         // a subset of the constraints that all the other responses have.
-        let one = candidates[0];
-        if candidates[1..].iter().all(|resp| resp == &one) {
-            return Ok(one);
+        let one = responses[0];
+        if responses[1..].iter().all(|&resp| resp == one) {
+            return Some(one);
         }
 
-        if let Some(response) = candidates.iter().find(|response| {
-            response.value.certainty == Certainty::Yes
-                && response.has_no_inference_or_external_constraints()
-        }) {
-            return Ok(*response);
-        }
+        responses
+            .iter()
+            .find(|response| {
+                response.value.certainty == Certainty::Yes
+                    && response.has_no_inference_or_external_constraints()
+            })
+            .copied()
+    }
 
-        let certainty = candidates.iter().fold(Certainty::AMBIGUOUS, |certainty, response| {
-            certainty.unify_and(response.value.certainty)
+    /// If we fail to merge responses we flounder and return overflow or ambiguity.
+    #[instrument(level = "debug", skip(self), ret)]
+    fn flounder(&mut self, responses: &[CanonicalResponse<'tcx>]) -> QueryResult<'tcx> {
+        if responses.is_empty() {
+            return Err(NoSolution);
+        }
+        let certainty = responses.iter().fold(Certainty::AMBIGUOUS, |certainty, response| {
+            certainty.unify_with(response.value.certainty)
         });
-        // FIXME(-Ztrait-solver=next): We should take the intersection of the constraints on all the
-        // responses and use that for the constraints of this ambiguous response.
-        debug!(">1 response, bailing with {certainty:?}");
-        let response = self.evaluate_added_goals_and_make_canonical_response(certainty);
-        if let Ok(response) = &response {
-            assert!(response.has_no_inference_or_external_constraints());
-        }
 
-        response
+        let response = self.evaluate_added_goals_and_make_canonical_response(certainty);
+        if let Ok(response) = response {
+            assert!(response.has_no_inference_or_external_constraints());
+            Ok(response)
+        } else {
+            bug!("failed to make floundered response: {responses:?}");
+        }
     }
 }
 

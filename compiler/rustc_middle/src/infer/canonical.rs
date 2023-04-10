@@ -80,6 +80,18 @@ impl CanonicalVarValues<'_> {
             }
         })
     }
+
+    pub fn is_identity_modulo_regions(&self) -> bool {
+        self.var_values.iter().enumerate().all(|(bv, arg)| match arg.unpack() {
+            ty::GenericArgKind::Lifetime(_) => true,
+            ty::GenericArgKind::Type(ty) => {
+                matches!(*ty.kind(), ty::Bound(ty::INNERMOST, bt) if bt.var.as_usize() == bv)
+            }
+            ty::GenericArgKind::Const(ct) => {
+                matches!(ct.kind(), ty::ConstKind::Bound(ty::INNERMOST, bc) if bc.as_usize() == bv)
+            }
+        })
+    }
 }
 
 /// When we canonicalize a value to form a query, we wind up replacing
