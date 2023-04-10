@@ -709,7 +709,7 @@ where
             Mask::from_int_unchecked(tfvec)
         };
 
-        // Two vectors are equal if they are elementwise equal
+        // Two vectors are equal if all elements are equal when compared elementwise
         mask.all()
     }
 
@@ -722,7 +722,7 @@ where
             Mask::from_int_unchecked(tfvec)
         };
 
-        // Two vectors are non-equal if they are elementwise non-equal
+        // Two vectors are non-equal if any elements are non-equal when compared elementwise
         mask.any()
     }
 }
