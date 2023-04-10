@@ -1,5 +1,5 @@
 // Checks that inliner doesn't introduce cycles when optimizing generators.
-// The outcome of optimization is not verfied, just the absence of the cycle.
+// The outcome of optimization is not verified, just the absence of the cycle.
 // Regression test for #76181.
 //
 // edition:2018
