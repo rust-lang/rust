@@ -2560,7 +2560,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                             .subst(cx.tcx, substs)
                             .apply_any_module(cx.tcx, cx.param_env)
                         {
-                            // Entirely skip uninhbaited variants.
+                            // Entirely skip uninhabited variants.
                             Some(false) => return None,
                             // Forward the others, but remember which ones are definitely inhabited.
                             Some(true) => true,
