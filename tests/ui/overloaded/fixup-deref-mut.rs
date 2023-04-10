@@ -5,7 +5,7 @@
 
 use std::ops::{Deref, DerefMut};
 
-// Generic unique/owned smaht pointer.
+// Generic unique/owned smart pointer.
 struct Own<T> {
     value: *mut T
 }
