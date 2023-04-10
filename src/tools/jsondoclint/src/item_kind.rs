@@ -53,7 +53,7 @@ impl Kind {
             Primitive => true,
             ForeignType => true,
 
-            // FIXME(adotinthevoid): I'm not sure if these are corrent
+            // FIXME(adotinthevoid): I'm not sure if these are correct
             Keyword => false,
             OpaqueTy => false,
             ProcAttribute => false,

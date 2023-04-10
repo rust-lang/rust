@@ -954,8 +954,8 @@ pub struct OutlivesBound<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(infer_fullfill_req_lifetime, code = "E0477")]
-pub struct FullfillReqLifetime<'a> {
+#[diag(infer_fulfill_req_lifetime, code = "E0477")]
+pub struct FulfillReqLifetime<'a> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'a>,
