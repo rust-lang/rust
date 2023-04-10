@@ -2381,7 +2381,8 @@ fn clean_extern_crate<'tcx>(
                     Some(l) => attr::list_contains_name(&l, sym::inline),
                     None => false,
                 }
-        });
+        })
+        && !cx.output_format.is_json();
 
     let krate_owner_def_id = krate.owner_id.to_def_id();
     if please_inline {
