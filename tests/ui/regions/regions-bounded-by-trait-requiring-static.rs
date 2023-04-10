@@ -7,7 +7,7 @@ fn assert_send<T:'static>() { }
 
 // lifetime pointers with 'static lifetime are ok
 
-fn static_lifime_ok<'a,T,U:Send>(_: &'a isize) {
+fn static_lifetime_ok<'a,T,U:Send>(_: &'a isize) {
     assert_send::<&'static isize>();
     assert_send::<&'static str>();
     assert_send::<&'static [isize]>();
