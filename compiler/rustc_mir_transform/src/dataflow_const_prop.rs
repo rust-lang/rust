@@ -351,7 +351,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             }
             (FlatSet::Bottom, _) | (_, FlatSet::Bottom) => (FlatSet::Bottom, FlatSet::Bottom),
             (_, _) => {
-                // Could attempt some algebraic simplifcations here.
+                // Could attempt some algebraic simplifications here.
                 (FlatSet::Top, FlatSet::Top)
             }
         }
