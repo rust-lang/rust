@@ -9,7 +9,7 @@ enum Bar { }
 
 type A = Baz; // Misspelled type name.
 //~^ ERROR cannot find
-type B = Opiton<u8>; // Misspelled type name from the prelude.
+type B = Option_<u8>; // Misspelled type name from the prelude.
 //~^ ERROR cannot find
 
 mod m {

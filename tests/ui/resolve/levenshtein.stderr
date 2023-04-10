@@ -13,11 +13,11 @@ LL |
 LL | type A = Baz; // Misspelled type name.
    |          ^^^ help: an enum with a similar name exists: `Bar`
 
-error[E0412]: cannot find type `Opiton` in this scope
+error[E0412]: cannot find type `Option_` in this scope
   --> $DIR/levenshtein.rs:12:10
    |
-LL | type B = Opiton<u8>; // Misspelled type name from the prelude.
-   |          ^^^^^^ help: an enum with a similar name exists: `Option`
+LL | type B = Option_<u8>; // Misspelled type name from the prelude.
+   |          ^^^^^^^ help: an enum with a similar name exists: `Option`
   --> $SRC_DIR/core/src/option.rs:LL:COL
    |
    = note: similarly named enum `Option` defined here
