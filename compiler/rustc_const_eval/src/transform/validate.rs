@@ -262,7 +262,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // We sometimes have to use `defining_opaque_types` for subtyping
         // to succeed here and figuring out how exactly that should work
         // is annoying. It is harmless enough to just not validate anything
-        // in that case. We still check this after analysis as all opque
+        // in that case. We still check this after analysis as all opaque
         // types have been revealed at this point.
         if (src, dest).has_opaque_types() {
             return true;
