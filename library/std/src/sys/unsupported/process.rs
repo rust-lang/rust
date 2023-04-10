@@ -40,6 +40,13 @@ impl Command {
 
     pub fn arg(&mut self, _arg: &OsStr) {}
 
+    pub fn args<I, S>(&mut self, args: I)
+    where
+        I: Iterator<Item = S>,
+        S: AsRef<OsStr>,
+    {
+    }
+
     pub fn env_mut(&mut self) -> &mut CommandEnv {
         &mut self.env
     }

@@ -245,6 +245,19 @@ impl Command {
         self.args.push(arg);
     }
 
+    pub fn args<I, S>(&mut self, args: I)
+    where
+        I: Iterator<Item = S>,
+        S: AsRef<OsStr>,
+    {
+        let (lower, _) = args.size_hint();
+        self.argv.0.reserve(lower);
+        self.args.reserve(lower);
+        args.for_each(|arg| {
+            self.arg(AsRef::as_ref(&arg));
+        });
+    }
+
     pub fn cwd(&mut self, dir: &OsStr) {
         self.cwd = Some(os2c(dir, &mut self.saw_nul));
     }

@@ -201,6 +201,13 @@ impl Command {
     pub fn arg(&mut self, arg: &OsStr) {
         self.args.push(Arg::Regular(arg.to_os_string()))
     }
+    pub fn args<I, S>(&mut self, args: I)
+    where
+        I: Iterator<Item = S>,
+        S: AsRef<OsStr>,
+    {
+        self.args.extend(args.map(|arg| AsRef::as_ref(&arg).to_os_string()));
+    }
     pub fn env_mut(&mut self) -> &mut CommandEnv {
         &mut self.env
     }

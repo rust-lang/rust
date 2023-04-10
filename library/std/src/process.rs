@@ -646,9 +646,7 @@ impl Command {
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,
     {
-        for arg in args {
-            self.arg(arg.as_ref());
-        }
+        self.inner.args(args.into_iter());
         self
     }
 
