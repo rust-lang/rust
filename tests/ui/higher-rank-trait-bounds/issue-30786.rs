@@ -114,7 +114,7 @@ fn variant1() {
     // signature.
     //
     // Why *exactly* we opt for this signature is a bit unclear to me,
-    // we deduce it somehow from a reuqirement that `Map: Stream` I
+    // we deduce it somehow from a requirement that `Map: Stream` I
     // guess.
     let map = source.mapx(|x: &_| x);
     let filter = map.filterx(|x: &_| true);
