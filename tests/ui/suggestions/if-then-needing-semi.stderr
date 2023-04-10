@@ -1,5 +1,5 @@
 error[E0308]: `if` and `else` have incompatible types
-  --> $DIR/if-then-neeing-semi.rs:28:9
+  --> $DIR/if-then-needing-semi.rs:28:9
    |
 LL |       let _ = if true {
    |  _____________-
@@ -16,7 +16,7 @@ LL | |     };
    | |_____- `if` and `else` have incompatible types
    |
 note: calling an async function returns a future
-  --> $DIR/if-then-neeing-semi.rs:28:9
+  --> $DIR/if-then-needing-semi.rs:28:9
    |
 LL |         async_dummy()
    |         ^^^^^^^^^^^^^
@@ -31,7 +31,7 @@ LL +         async_dummy()
    |
 
 error[E0308]: `if` and `else` have incompatible types
-  --> $DIR/if-then-neeing-semi.rs:41:9
+  --> $DIR/if-then-needing-semi.rs:41:9
    |
 LL |       let _ = if true {
    |  _____________-
@@ -48,7 +48,7 @@ LL | |     };
    | |_____- `if` and `else` have incompatible types
    |
 note: calling an async function returns a future
-  --> $DIR/if-then-neeing-semi.rs:41:9
+  --> $DIR/if-then-needing-semi.rs:41:9
    |
 LL |         async_dummy2()
    |         ^^^^^^^^^^^^^^
@@ -65,7 +65,7 @@ LL ~         Box::new(async_dummy2())
    |
 
 error[E0308]: `if` and `else` have incompatible types
-  --> $DIR/if-then-neeing-semi.rs:54:9
+  --> $DIR/if-then-needing-semi.rs:54:9
    |
 LL |       let _ = if true {
    |  _____________-
@@ -91,7 +91,7 @@ LL ~         async_dummy2().await
    |
 
 error[E0308]: `if` and `else` have incompatible types
-  --> $DIR/if-then-neeing-semi.rs:13:9
+  --> $DIR/if-then-needing-semi.rs:13:9
    |
 LL |       let _ = if true {
    |  _____________-
