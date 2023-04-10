@@ -175,14 +175,14 @@ fn parse_cfgs(contents: &str) -> Vec<(usize, &str)> {
         let contents_after = &contents[*i..];
         let first_paren = contents_after.find('(');
         let paren_idx = first_paren.map(|ip| i + ip);
-        let preceeds_whitespace_and_paren = paren_idx
+        let precedes_whitespace_and_paren = paren_idx
             .map(|ip| {
                 let maybe_space = &contents[*i + "cfg".len()..ip];
                 maybe_space.chars().all(|c| char::is_whitespace(c) || c == '!')
             })
             .unwrap_or(false);
 
-        succeeds_non_ident && preceeds_whitespace_and_paren
+        succeeds_non_ident && precedes_whitespace_and_paren
     });
 
     cfgs.flat_map(|i| {
