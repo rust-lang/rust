@@ -1,5 +1,5 @@
 // check-pass
-// This test ensures that rustdoc does not panic on inherented associated types
+// This test ensures that rustdoc does not panic on inherited associated types
 // that are referred to without fully-qualified syntax.
 
 #![feature(inherent_associated_types)]
