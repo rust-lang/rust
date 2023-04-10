@@ -62,12 +62,12 @@ impl Other {
 }
 
 struct Struct<T> {
-    _phatom: PhantomData<T>,
+    _phantom: PhantomData<T>,
 }
 
 impl<T> Default for Struct<T> {
     fn default() -> Self {
-        Self { _phatom: PhantomData }
+        Self { _phantom: PhantomData }
     }
 }
 
