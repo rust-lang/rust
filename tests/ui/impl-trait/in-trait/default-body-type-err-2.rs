@@ -6,7 +6,7 @@
 #![feature(async_fn_in_trait)]
 
 pub trait Foo {
-    async fn woopsie_async(&self) -> String {
+    async fn whoopsie_async(&self) -> String {
         42
         //~^ ERROR mismatched types
     }
