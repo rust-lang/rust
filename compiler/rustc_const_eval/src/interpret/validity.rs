@@ -784,7 +784,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             Abi::Scalar(scalar_layout) => {
                 if !scalar_layout.is_uninit_valid() {
                     // There is something to check here.
-                    let scalar = self.read_scalar(op, "initiailized scalar value")?;
+                    let scalar = self.read_scalar(op, "initialized scalar value")?;
                     self.visit_scalar(scalar, scalar_layout)?;
                 }
             }
@@ -794,7 +794,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 // the other must be init.
                 if !a_layout.is_uninit_valid() && !b_layout.is_uninit_valid() {
                     let (a, b) =
-                        self.read_immediate(op, "initiailized scalar value")?.to_scalar_pair();
+                        self.read_immediate(op, "initialized scalar value")?.to_scalar_pair();
                     self.visit_scalar(a, a_layout)?;
                     self.visit_scalar(b, b_layout)?;
                 }
