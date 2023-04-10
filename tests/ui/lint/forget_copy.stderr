@@ -2,13 +2,10 @@ warning: calls to `std::mem::forget` with a value that implements `Copy`.
   --> $DIR/forget_copy.rs:34:5
    |
 LL |     forget(s1);
-   |     ^^^^^^^^^^
+   |     ^^^^^^^--^
+   |            |
+   |            argument has type `SomeStruct`
    |
-note: argument has type `SomeStruct`
-  --> $DIR/forget_copy.rs:34:12
-   |
-LL |     forget(s1);
-   |            ^^
 note: the lint level is defined here
   --> $DIR/forget_copy.rs:3:9
    |
@@ -19,86 +16,59 @@ warning: calls to `std::mem::forget` with a value that implements `Copy`.
   --> $DIR/forget_copy.rs:35:5
    |
 LL |     forget(s2);
-   |     ^^^^^^^^^^
-   |
-note: argument has type `SomeStruct`
-  --> $DIR/forget_copy.rs:35:12
-   |
-LL |     forget(s2);
-   |            ^^
+   |     ^^^^^^^--^
+   |            |
+   |            argument has type `SomeStruct`
 
 warning: calls to `std::mem::forget` with a reference instead of an owned value
   --> $DIR/forget_copy.rs:36:5
    |
 LL |     forget(s3);
-   |     ^^^^^^^^^^
+   |     ^^^^^^^--^
+   |            |
+   |            argument has type `&SomeStruct`
    |
-note: argument has type `&SomeStruct`
-  --> $DIR/forget_copy.rs:36:12
-   |
-LL |     forget(s3);
-   |            ^^
    = note: `#[warn(forget_ref)]` on by default
 
 warning: calls to `std::mem::forget` with a value that implements `Copy`.
   --> $DIR/forget_copy.rs:37:5
    |
 LL |     forget(s4);
-   |     ^^^^^^^^^^
-   |
-note: argument has type `SomeStruct`
-  --> $DIR/forget_copy.rs:37:12
-   |
-LL |     forget(s4);
-   |            ^^
+   |     ^^^^^^^--^
+   |            |
+   |            argument has type `SomeStruct`
 
 warning: calls to `std::mem::forget` with a reference instead of an owned value
   --> $DIR/forget_copy.rs:38:5
    |
 LL |     forget(s5);
-   |     ^^^^^^^^^^
-   |
-note: argument has type `&SomeStruct`
-  --> $DIR/forget_copy.rs:38:12
-   |
-LL |     forget(s5);
-   |            ^^
+   |     ^^^^^^^--^
+   |            |
+   |            argument has type `&SomeStruct`
 
 warning: calls to `std::mem::forget` with a reference instead of an owned value
   --> $DIR/forget_copy.rs:50:5
    |
 LL |     forget(a2);
-   |     ^^^^^^^^^^
-   |
-note: argument has type `&AnotherStruct`
-  --> $DIR/forget_copy.rs:50:12
-   |
-LL |     forget(a2);
-   |            ^^
+   |     ^^^^^^^--^
+   |            |
+   |            argument has type `&AnotherStruct`
 
 warning: calls to `std::mem::forget` with a reference instead of an owned value
   --> $DIR/forget_copy.rs:52:5
    |
 LL |     forget(a3);
-   |     ^^^^^^^^^^
-   |
-note: argument has type `&AnotherStruct`
-  --> $DIR/forget_copy.rs:52:12
-   |
-LL |     forget(a3);
-   |            ^^
+   |     ^^^^^^^--^
+   |            |
+   |            argument has type `&AnotherStruct`
 
 warning: calls to `std::mem::forget` with a reference instead of an owned value
   --> $DIR/forget_copy.rs:53:5
    |
 LL |     forget(a4);
-   |     ^^^^^^^^^^
-   |
-note: argument has type `&AnotherStruct`
-  --> $DIR/forget_copy.rs:53:12
-   |
-LL |     forget(a4);
-   |            ^^
+   |     ^^^^^^^--^
+   |            |
+   |            argument has type `&AnotherStruct`
 
 warning: 8 warnings emitted
 
