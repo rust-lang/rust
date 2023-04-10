@@ -40,7 +40,6 @@
 //! [^2] `MTLockRef` is a typedef.
 
 pub use crate::marker::*;
-use crate::owned_slice::OwnedSlice;
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
 use std::ops::{Deref, DerefMut};
@@ -92,8 +91,6 @@ mod mode {
 }
 
 pub use mode::{is_dyn_thread_safe, set_dyn_thread_safe_mode};
-
-pub type MetadataRef = OwnedSlice;
 
 cfg_if! {
     if #[cfg(not(parallel_compiler))] {
