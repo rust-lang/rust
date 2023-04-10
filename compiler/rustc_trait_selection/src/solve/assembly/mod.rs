@@ -51,7 +51,7 @@ pub(super) enum CandidateSource {
     BuiltinImpl,
     /// An assumption from the environment.
     ///
-    /// More precicely we've used the `n-th` assumption in the `param_env`.
+    /// More precisely we've used the `n-th` assumption in the `param_env`.
     ///
     /// ## Examples
     ///
