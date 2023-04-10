@@ -335,70 +335,70 @@ jobs:
             <<: *job-aarch64-linux
 
           - name: arm-android
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: armhf-gnu
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: dist-aarch64-linux
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: dist-android
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: dist-arm-linux
             <<: *job-linux-16c
 
           - name: dist-armhf-linux
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: dist-armv7-linux
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: dist-i586-gnu-i586-i686-musl
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: dist-i686-linux
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: dist-mips-linux
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: dist-mips64-linux
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: dist-mips64el-linux
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: dist-mipsel-linux
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: dist-powerpc-linux
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: dist-powerpc64-linux
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: dist-powerpc64le-linux
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: dist-riscv64-linux
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: dist-s390x-linux
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: dist-various-1
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: dist-various-2
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: dist-x86_64-freebsd
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: dist-x86_64-illumos
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - &dist-x86_64-linux
             name: dist-x86_64-linux
@@ -410,10 +410,10 @@ jobs:
             <<: *job-linux-16c
 
           - name: dist-x86_64-musl
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: dist-x86_64-netbsd
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: i686-gnu
             <<: *job-linux-16c
@@ -422,16 +422,16 @@ jobs:
             <<: *job-linux-16c
 
           - name: mingw-check
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: test-various
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: wasm32
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: x86_64-gnu
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           # This job ensures commits landing on nightly still pass the full
           # test suite on the stable channel. There are some UI tests that
@@ -446,39 +446,39 @@ jobs:
               # could cause failures when `dev: 1` in `stage0.txt`, and running
               # this on stable is useless.
               CI_ONLY_WHEN_CHANNEL: nightly
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: x86_64-gnu-aux
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: x86_64-gnu-debug
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: x86_64-gnu-distcheck
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: x86_64-gnu-llvm-15
             env:
               RUST_BACKTRACE: 1
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: x86_64-gnu-llvm-14
             env:
               RUST_BACKTRACE: 1
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: x86_64-gnu-llvm-14-stage1
             env:
               RUST_BACKTRACE: 1
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: x86_64-gnu-nopt
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: x86_64-gnu-tools
             env:
               DEPLOY_TOOLSTATES_JSON: toolstates-linux.json
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           ####################
           #  macOS Builders  #

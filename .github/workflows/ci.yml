@@ -181,70 +181,70 @@ jobs:
               - ARM64
               - linux
           - name: arm-android
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: armhf-gnu
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: dist-aarch64-linux
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: dist-android
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: dist-arm-linux
             os: ubuntu-20.04-16core-64gb
             env: {}
           - name: dist-armhf-linux
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: dist-armv7-linux
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: dist-i586-gnu-i586-i686-musl
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: dist-i686-linux
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: dist-mips-linux
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: dist-mips64-linux
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: dist-mips64el-linux
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: dist-mipsel-linux
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: dist-powerpc-linux
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: dist-powerpc64-linux
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: dist-powerpc64le-linux
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: dist-riscv64-linux
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: dist-s390x-linux
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: dist-various-1
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: dist-various-2
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: dist-x86_64-freebsd
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: dist-x86_64-illumos
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: dist-x86_64-linux
             os: ubuntu-20.04-16core-64gb
@@ -254,10 +254,10 @@ jobs:
               IMAGE: dist-x86_64-linux
             os: ubuntu-20.04-16core-64gb
           - name: dist-x86_64-musl
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: dist-x86_64-netbsd
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: i686-gnu
             os: ubuntu-20.04-16core-64gb
@@ -266,51 +266,51 @@ jobs:
             os: ubuntu-20.04-16core-64gb
             env: {}
           - name: mingw-check
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: test-various
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: wasm32
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: x86_64-gnu
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: x86_64-gnu-stable
             env:
               IMAGE: x86_64-gnu
               RUST_CI_OVERRIDE_RELEASE_CHANNEL: stable
               CI_ONLY_WHEN_CHANNEL: nightly
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
           - name: x86_64-gnu-aux
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: x86_64-gnu-debug
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: x86_64-gnu-distcheck
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: x86_64-gnu-llvm-15
             env:
               RUST_BACKTRACE: 1
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
           - name: x86_64-gnu-llvm-14
             env:
               RUST_BACKTRACE: 1
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
           - name: x86_64-gnu-llvm-14-stage1
             env:
               RUST_BACKTRACE: 1
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
           - name: x86_64-gnu-nopt
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: x86_64-gnu-tools
             env:
               DEPLOY_TOOLSTATES_JSON: toolstates-linux.json
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
           - name: dist-x86_64-apple
             env:
               SCRIPT: "./x.py dist bootstrap --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin"
