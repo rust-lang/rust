@@ -10,8 +10,8 @@ use std::path::{Path, PathBuf};
 #[derive(serde::Serialize)]
 #[serde(rename_all = "kebab-case", tag = "type")]
 pub(crate) enum Node<L> {
-    Root { childs: Vec<Node<L>> },
-    Directory { name: PathBuf, childs: Vec<Node<L>>, license: Option<L> },
+    Root { children: Vec<Node<L>> },
+    Directory { name: PathBuf, children: Vec<Node<L>>, license: Option<L> },
     File { name: PathBuf, license: L },
     Group { files: Vec<PathBuf>, directories: Vec<PathBuf>, license: L },
     Empty,
@@ -48,14 +48,14 @@ impl Node<LicenseId> {
     /// ```
     fn merge_directories(&mut self) {
         match self {
-            Node::Root { childs } | Node::Directory { childs, license: None, .. } => {
+            Node::Root { children } | Node::Directory { children, license: None, .. } => {
                 let mut directories = BTreeMap::new();
                 let mut files = Vec::new();
 
-                for child in childs.drain(..) {
+                for child in children.drain(..) {
                     match child {
-                        Node::Directory { name, mut childs, license: None } => {
-                            directories.entry(name).or_insert_with(Vec::new).append(&mut childs);
+                        Node::Directory { name, mut children, license: None } => {
+                            directories.entry(name).or_insert_with(Vec::new).append(&mut children);
                         }
                         file @ Node::File { .. } => {
                             files.push(file);
@@ -73,14 +73,14 @@ impl Node<LicenseId> {
                     }
                 }
 
-                childs.extend(directories.into_iter().map(|(name, childs)| Node::Directory {
+                children.extend(directories.into_iter().map(|(name, children)| Node::Directory {
                     name,
-                    childs,
+                    children,
                     license: None,
                 }));
-                childs.append(&mut files);
+                children.append(&mut files);
 
-                for child in &mut *childs {
+                for child in &mut *children {
                     child.merge_directories();
                 }
             }
@@ -105,13 +105,13 @@ impl Node<LicenseId> {
     /// our inclusion of LLVM.
     fn collapse_in_licensed_directories(&mut self) {
         match self {
-            Node::Directory { childs, license, .. } => {
-                for child in &mut *childs {
+            Node::Directory { children, license, .. } => {
+                for child in &mut *children {
                     child.collapse_in_licensed_directories();
                 }
 
                 let mut licenses_count = BTreeMap::new();
-                for child in &*childs {
+                for child in &*children {
                     let Some(license) = child.license() else { continue };
                     *licenses_count.entry(license).or_insert(0) += 1;
                 }
@@ -122,12 +122,12 @@ impl Node<LicenseId> {
                     .map(|(license, _)| license);
 
                 if let Some(most_popular_license) = most_popular_license {
-                    childs.retain(|child| child.license() != Some(most_popular_license));
+                    children.retain(|child| child.license() != Some(most_popular_license));
                     *license = Some(most_popular_license);
                 }
             }
-            Node::Root { childs } => {
-                for child in &mut *childs {
+            Node::Root { children } => {
+                for child in &mut *children {
                     child.collapse_in_licensed_directories();
                 }
             }
@@ -138,29 +138,29 @@ impl Node<LicenseId> {
     }
 
     /// Reduce the depth of the tree by merging subdirectories with the same license as their
-    /// parent directory into their parent, and adjusting the paths of the childs accordingly.
+    /// parent directory into their parent, and adjusting the paths of the children accordingly.
     fn merge_directory_licenses(&mut self) {
         match self {
-            Node::Root { childs } => {
-                for child in &mut *childs {
+            Node::Root { children } => {
+                for child in &mut *children {
                     child.merge_directory_licenses();
                 }
             }
-            Node::Directory { childs, license, .. } => {
+            Node::Directory { children, license, .. } => {
                 let mut to_add = Vec::new();
-                for child in &mut *childs {
+                for child in &mut *children {
                     child.merge_directory_licenses();
 
                     let Node::Directory {
                         name: child_name,
-                        childs: child_childs,
+                        children: child_children,
                         license: child_license,
                     } = child else { continue };
 
                     if child_license != license {
                         continue;
                     }
-                    for mut child_child in child_childs.drain(..) {
+                    for mut child_child in child_children.drain(..) {
                         match &mut child_child {
                             Node::Root { .. } => {
                                 panic!("can't have a root inside another element");
@@ -181,7 +181,7 @@ impl Node<LicenseId> {
 
                     *child = Node::Empty;
                 }
-                childs.append(&mut to_add);
+                children.append(&mut to_add);
             }
             Node::Empty => {}
             Node::File { .. } => {}
@@ -203,14 +203,14 @@ impl Node<LicenseId> {
             directories: Vec<PathBuf>,
         }
         match self {
-            Node::Root { childs } | Node::Directory { childs, .. } => {
+            Node::Root { children } | Node::Directory { children, .. } => {
                 let mut grouped: BTreeMap<LicenseId, Grouped> = BTreeMap::new();
 
-                for child in &mut *childs {
+                for child in &mut *children {
                     child.merge_groups();
                     match child {
-                        Node::Directory { name, childs, license: Some(license) } => {
-                            if childs.is_empty() {
+                        Node::Directory { name, children, license: Some(license) } => {
+                            if children.is_empty() {
                                 grouped
                                     .entry(*license)
                                     .or_insert_with(Grouped::default)
@@ -234,16 +234,16 @@ impl Node<LicenseId> {
                 for (license, mut grouped) in grouped.into_iter() {
                     if grouped.files.len() + grouped.directories.len() <= 1 {
                         if let Some(name) = grouped.files.pop() {
-                            childs.push(Node::File { license, name });
+                            children.push(Node::File { license, name });
                         } else if let Some(name) = grouped.directories.pop() {
-                            childs.push(Node::Directory {
+                            children.push(Node::Directory {
                                 name,
-                                childs: Vec::new(),
+                                children: Vec::new(),
                                 license: Some(license),
                             });
                         }
                     } else {
-                        childs.push(Node::Group {
+                        children.push(Node::Group {
                             license,
                             files: grouped.files,
                             directories: grouped.directories,
@@ -261,11 +261,11 @@ impl Node<LicenseId> {
     /// sure to remove them from the tree.
     fn remove_empty(&mut self) {
         match self {
-            Node::Root { childs } | Node::Directory { childs, .. } => {
-                for child in &mut *childs {
+            Node::Root { children } | Node::Directory { children, .. } => {
+                for child in &mut *children {
                     child.remove_empty();
                 }
-                childs.retain(|child| !matches!(child, Node::Empty));
+                children.retain(|child| !matches!(child, Node::Empty));
             }
             Node::Group { .. } => {}
             Node::File { .. } => {}
@@ -275,7 +275,7 @@ impl Node<LicenseId> {
 
     fn license(&self) -> Option<LicenseId> {
         match self {
-            Node::Directory { childs, license: Some(license), .. } if childs.is_empty() => {
+            Node::Directory { children, license: Some(license), .. } if children.is_empty() => {
                 Some(*license)
             }
             Node::File { license, .. } => Some(*license),
@@ -285,7 +285,7 @@ impl Node<LicenseId> {
 }
 
 pub(crate) fn build(mut input: Vec<(PathBuf, LicenseId)>) -> Node<LicenseId> {
-    let mut childs = Vec::new();
+    let mut children = Vec::new();
 
     // Ensure reproducibility of all future steps.
     input.sort();
@@ -295,15 +295,15 @@ pub(crate) fn build(mut input: Vec<(PathBuf, LicenseId)>) -> Node<LicenseId> {
         for component in path.parent().unwrap_or_else(|| Path::new(".")).components().rev() {
             node = Node::Directory {
                 name: component.as_os_str().into(),
-                childs: vec![node],
+                children: vec![node],
                 license: None,
             };
         }
 
-        childs.push(node);
+        children.push(node);
     }
 
-    Node::Root { childs }
+    Node::Root { children }
 }
 
 /// Convert a `Node<LicenseId>` into a `Node<&License>`, expanding all interned license IDs with a
@@ -313,14 +313,14 @@ pub(crate) fn expand_interned_licenses(
     interner: &LicensesInterner,
 ) -> Node<&License> {
     match node {
-        Node::Root { childs } => Node::Root {
-            childs: childs
+        Node::Root { children } => Node::Root {
+            children: children
                 .into_iter()
                 .map(|child| expand_interned_licenses(child, interner))
                 .collect(),
         },
-        Node::Directory { name, childs, license } => Node::Directory {
-            childs: childs
+        Node::Directory { name, children, license } => Node::Directory {
+            children: children
                 .into_iter()
                 .map(|child| expand_interned_licenses(child, interner))
                 .collect(),

@@ -257,7 +257,7 @@ changelog-seen = 2
 #python = "python"
 
 # The path to the REUSE executable to use. Note that REUSE is not required in
-# most cases, as our tooling relies on a cached (and shrinked) copy of the
+# most cases, as our tooling relies on a cached (and shrunk) copy of the
 # REUSE output present in the git repository and in our source tarballs.
 #
 # REUSE is only needed if your changes caused the overall licensing of the

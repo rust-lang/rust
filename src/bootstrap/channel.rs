@@ -139,7 +139,7 @@ pub fn read_commit_info_file(root: &Path) -> Option<Info> {
                 sha: sha.to_owned(),
                 short_sha: short_sha.to_owned(),
             },
-            _ => panic!("the `git-comit-info` file is malformed"),
+            _ => panic!("the `git-commit-info` file is malformed"),
         };
         Some(info)
     } else {

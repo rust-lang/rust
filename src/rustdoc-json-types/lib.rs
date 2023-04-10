@@ -550,7 +550,7 @@ pub enum Type {
     DynTrait(DynTrait),
     /// Parameterized types
     Generic(String),
-    /// Built in numberic (i*, u*, f*) types, bool, and char
+    /// Built in numeric (i*, u*, f*) types, bool, and char
     Primitive(String),
     /// `extern "ABI" fn`
     FunctionPointer(Box<FunctionPointer>),

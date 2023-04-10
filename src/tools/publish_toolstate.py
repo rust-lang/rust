@@ -86,7 +86,7 @@ def gh_url():
     return os.environ['TOOLSTATE_ISSUES_API_URL']
 
 
-def maybe_delink(message):
+def maybe_unlink(message):
     # type: (str) -> str
     if os.environ.get('TOOLSTATE_SKIP_MENTIONS') is not None:
         return message.replace("@", "")
@@ -109,7 +109,7 @@ def issue(
     else:
         status_description = 'no longer builds'
     request = json.dumps({
-        'body': maybe_delink(textwrap.dedent('''\
+        'body': maybe_unlink(textwrap.dedent('''\
         Hello, this is your friendly neighborhood mergebot.
         After merging PR {}, I observed that the tool {} {}.
         A follow-up PR to the repository {} is needed to fix the fallout.
@@ -285,7 +285,7 @@ try:
     issue_url = gh_url() + '/{}/comments'.format(number)
     response = urllib2.urlopen(urllib2.Request(
         issue_url,
-        json.dumps({'body': maybe_delink(message)}).encode(),
+        json.dumps({'body': maybe_unlink(message)}).encode(),
         {
             'Authorization': 'token ' + github_token,
             'Content-Type': 'application/json',
