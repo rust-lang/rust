@@ -69,9 +69,9 @@ def unwrap_unique_or_non_null(unique_or_nonnull):
     return ptr if ptr.TypeIsPointerType() else ptr.GetChildAtIndex(0)
 
 
-class DefaultSynthteticProvider:
+class DefaultSyntheticProvider:
     def __init__(self, valobj, dict):
-        # type: (SBValue, dict) -> DefaultSynthteticProvider
+        # type: (SBValue, dict) -> DefaultSyntheticProvider
         # logger = Logger.Logger()
         # logger >> "Default synthetic provider for " + str(valobj.GetName())
         self.valobj = valobj
