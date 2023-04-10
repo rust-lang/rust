@@ -2645,7 +2645,7 @@ mod sig {
 
         // Convert the result having "2 * precision" significant-bits back to the one
         // having "precision" significant-bits. First, move the radix point from
-        // poision "2*precision - 1" to "precision - 1". The exponent need to be
+        // poisson "2*precision - 1" to "precision - 1". The exponent need to be
         // adjusted by "2*precision - 1" - "precision - 1" = "precision".
         *exp -= precision as ExpInt + 1;
 
