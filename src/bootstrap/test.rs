@@ -694,7 +694,7 @@ impl Step for CompiletestTest {
     /// Runs `cargo test` for compiletest.
     fn run(self, builder: &Builder<'_>) {
         let host = self.host;
-        let compiler = builder.compiler(0, host);
+        let compiler = builder.compiler(1, host);
 
         // We need `ToolStd` for the locally-built sysroot because
         // compiletest uses unstable features of the `test` crate.
@@ -1133,7 +1133,7 @@ impl Step for Tidy {
         if builder.config.channel == "dev" || builder.config.channel == "nightly" {
             builder.info("fmt check");
             if builder.initial_rustfmt().is_none() {
-                let inferred_rustfmt_dir = builder.config.initial_rustc.parent().unwrap();
+                let inferred_rustfmt_dir = builder.initial_rustc.parent().unwrap();
                 eprintln!(
                     "\
 error: no `rustfmt` binary found in {PATH}

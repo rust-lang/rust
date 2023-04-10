@@ -30,6 +30,7 @@ use std::iter;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
 use std::str;
+use std::sync::Arc;
 
 use glob::glob;
 use once_cell::sync::Lazy;
@@ -96,7 +97,7 @@ pub fn get_lib_name(lib: &str, dylib: bool) -> String {
     }
 }
 
-pub fn run(config: Config, testpaths: &TestPaths, revision: Option<&str>) {
+pub fn run(config: Arc<Config>, testpaths: &TestPaths, revision: Option<&str>) {
     match &*config.target {
         "arm-linux-androideabi"
         | "armv7-linux-androideabi"
@@ -309,7 +310,9 @@ impl<'test> TestCx<'test> {
                 );
             }
 
-            self.check_correct_failure_status(proc_res);
+            if !self.props.dont_check_failure_status {
+                self.check_correct_failure_status(proc_res);
+            }
         }
     }
 
@@ -2132,7 +2135,7 @@ impl<'test> TestCx<'test> {
             if let Some(ref p) = self.config.nodejs {
                 args.push(p.clone());
             } else {
-                self.fatal("no NodeJS binary found (--nodejs)");
+                self.fatal("emscripten target requested and no NodeJS binary found (--nodejs)");
             }
         // If this is otherwise wasm, then run tests under nodejs with our
         // shim
@@ -2140,7 +2143,7 @@ impl<'test> TestCx<'test> {
             if let Some(ref p) = self.config.nodejs {
                 args.push(p.clone());
             } else {
-                self.fatal("no NodeJS binary found (--nodejs)");
+                self.fatal("wasm32 target requested and no NodeJS binary found (--nodejs)");
             }
 
             let src = self
@@ -2996,6 +2999,7 @@ impl<'test> TestCx<'test> {
             || host.contains("freebsd")
             || host.contains("netbsd")
             || host.contains("openbsd")
+            || host.contains("aix")
         {
             "gmake"
         } else {

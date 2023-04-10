@@ -2810,23 +2810,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "cannot index into a value of type `{base_t}`",
                     );
                     // Try to give some advice about indexing tuples.
-                    if let ty::Tuple(..) = base_t.kind() {
+                    if let ty::Tuple(types) = base_t.kind() {
                         let mut needs_note = true;
                         // If the index is an integer, we can show the actual
                         // fixed expression:
-                        if let ExprKind::Lit(ref lit) = idx.kind {
-                            if let ast::LitKind::Int(i, ast::LitIntType::Unsuffixed) = lit.node {
-                                let snip = self.tcx.sess.source_map().span_to_snippet(base.span);
-                                if let Ok(snip) = snip {
-                                    err.span_suggestion(
-                                        expr.span,
-                                        "to access tuple elements, use",
-                                        format!("{snip}.{i}"),
-                                        Applicability::MachineApplicable,
-                                    );
-                                    needs_note = false;
-                                }
+                        if let ExprKind::Lit(ref lit) = idx.kind
+                            && let ast::LitKind::Int(i, ast::LitIntType::Unsuffixed) = lit.node
+                            && i < types.len().try_into().expect("expected tuple index to be < usize length")
+                        {
+                            let snip = self.tcx.sess.source_map().span_to_snippet(base.span);
+                            if let Ok(snip) = snip {
+                                err.span_suggestion(
+                                    expr.span,
+                                    "to access tuple elements, use",
+                                    format!("{snip}.{i}"),
+                                    Applicability::MachineApplicable,
+                                );
+                                needs_note = false;
                             }
+                        } else if let ExprKind::Path(..) = idx.peel_borrows().kind {
+                            err.span_label(idx.span, "cannot access tuple elements at a variable index");
                         }
                         if needs_note {
                             err.help(

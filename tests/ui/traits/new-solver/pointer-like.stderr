@@ -1,4 +1,4 @@
-error[E0277]: `u16` needs to have the same alignment and size as a pointer
+error[E0277]: `u16` needs to have the same ABI as a pointer
   --> $DIR/pointer-like.rs:11:14
    |
 LL |     require_(1u16);

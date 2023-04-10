@@ -25,7 +25,7 @@ fn main() -> () {
         _5 = const 1_u8;                 // scope 1 at $DIR/aggregate.rs:+2:9: +2:10
         _4 = foo(move _5) -> bb1;        // scope 1 at $DIR/aggregate.rs:+2:5: +2:11
                                          // mir::Constant
-                                         // + span: $DIR/aggregate.rs:8:5: 8:8
+                                         // + span: $DIR/aggregate.rs:9:5: 9:8
                                          // + literal: Const { ty: fn(u8) {foo}, val: Value(<ZST>) }
     }
 

@@ -77,10 +77,10 @@ impl Unwind {
         }
     }
 
-    fn into_option(self) -> Option<BasicBlock> {
+    fn into_action(self) -> UnwindAction {
         match self {
-            Unwind::To(bb) => Some(bb),
-            Unwind::InCleanup => None,
+            Unwind::To(bb) => UnwindAction::Cleanup(bb),
+            Unwind::InCleanup => UnwindAction::Terminate,
         }
     }
 
@@ -236,7 +236,7 @@ where
                     TerminatorKind::Drop {
                         place: self.place,
                         target: self.succ,
-                        unwind: self.unwind.into_option(),
+                        unwind: self.unwind.into_action(),
                     },
                 );
             }
@@ -640,7 +640,7 @@ where
                     args: vec![Operand::Move(Place::from(ref_place))],
                     destination: unit_temp,
                     target: Some(succ),
-                    cleanup: unwind.into_option(),
+                    unwind: unwind.into_action(),
                     from_hir_call: true,
                     fn_span: self.source_info.span,
                 },
@@ -717,7 +717,7 @@ where
             TerminatorKind::Drop {
                 place: tcx.mk_place_deref(ptr),
                 target: loop_block,
-                unwind: unwind.into_option(),
+                unwind: unwind.into_action(),
             },
         );
 
@@ -946,7 +946,11 @@ where
             args,
             destination: unit_temp,
             target: Some(target),
-            cleanup: None,
+            unwind: if unwind.is_cleanup() {
+                UnwindAction::Terminate
+            } else {
+                UnwindAction::Continue
+            },
             from_hir_call: false,
             fn_span: self.source_info.span,
         }; // FIXME(#43234)
@@ -959,7 +963,7 @@ where
 
     fn drop_block(&mut self, target: BasicBlock, unwind: Unwind) -> BasicBlock {
         let block =
-            TerminatorKind::Drop { place: self.place, target, unwind: unwind.into_option() };
+            TerminatorKind::Drop { place: self.place, target, unwind: unwind.into_action() };
         self.new_block(unwind, block)
     }
 

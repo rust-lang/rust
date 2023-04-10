@@ -18,6 +18,7 @@ pub fn target() -> Target {
             features: "+reserve-x18".into(),
             mcount: "\u{1}_mcount".into(),
             force_emulated_tls: true,
+            has_thread_local: false,
             supported_sanitizers: SanitizerSet::ADDRESS
                 | SanitizerSet::CFI
                 | SanitizerSet::LEAK

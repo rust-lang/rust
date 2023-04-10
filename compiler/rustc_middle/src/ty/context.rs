@@ -311,7 +311,7 @@ pub struct CommonLifetimes<'tcx> {
     pub re_vars: Vec<Region<'tcx>>,
 
     /// Pre-interned values of the form:
-    /// `ReLateBound(DebruijnIndex(i), BoundRegion { var: v, kind: BrAnon(v, None) })`
+    /// `ReLateBound(DebruijnIndex(i), BoundRegion { var: v, kind: BrAnon(None) })`
     /// for small values of `i` and `v`.
     pub re_late_bounds: Vec<Vec<Region<'tcx>>>,
 }
@@ -386,10 +386,7 @@ impl<'tcx> CommonLifetimes<'tcx> {
                     .map(|v| {
                         mk(ty::ReLateBound(
                             ty::DebruijnIndex::from(i),
-                            ty::BoundRegion {
-                                var: ty::BoundVar::from(v),
-                                kind: ty::BrAnon(v, None),
-                            },
+                            ty::BoundRegion { var: ty::BoundVar::from(v), kind: ty::BrAnon(None) },
                         ))
                     })
                     .collect()
@@ -927,7 +924,7 @@ impl<'tcx> TyCtxt<'tcx> {
             crate_name,
             // Don't print the whole stable crate id. That's just
             // annoying in debug output.
-            stable_crate_id.to_u64() >> 8 * 6,
+            stable_crate_id.to_u64() >> (8 * 6),
             self.def_path(def_id).to_string_no_crate_verbose()
         )
     }
@@ -2075,10 +2072,9 @@ impl<'tcx> TyCtxt<'tcx> {
         bound_region: ty::BoundRegion,
     ) -> Region<'tcx> {
         // Use a pre-interned one when possible.
-        if let ty::BoundRegion { var, kind: ty::BrAnon(v, None) } = bound_region
-            && var.as_u32() == v
+        if let ty::BoundRegion { var, kind: ty::BrAnon(None) } = bound_region
             && let Some(inner) = self.lifetimes.re_late_bounds.get(debruijn.as_usize())
-            && let Some(re) = inner.get(v as usize).copied()
+            && let Some(re) = inner.get(var.as_usize()).copied()
         {
             re
         } else {
@@ -2383,7 +2379,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn in_scope_traits(self, id: HirId) -> Option<&'tcx [TraitCandidate]> {
         let map = self.in_scope_traits_map(id.owner)?;
         let candidates = map.get(&id.local_id)?;
-        Some(&*candidates)
+        Some(candidates)
     }
 
     pub fn named_bound_var(self, id: HirId) -> Option<resolve_bound_vars::ResolvedArg> {
@@ -2506,7 +2502,7 @@ pub struct DeducedParamAttrs {
 
 pub fn provide(providers: &mut ty::query::Providers) {
     providers.module_reexports =
-        |tcx, id| tcx.resolutions(()).reexport_map.get(&id).map(|v| &v[..]);
+        |tcx, id| tcx.resolutions(()).reexport_map.get(&id).map_or(&[], |v| &v[..]);
     providers.maybe_unused_trait_imports =
         |tcx, ()| &tcx.resolutions(()).maybe_unused_trait_imports;
     providers.names_imported_by_glob_use = |tcx, id| {

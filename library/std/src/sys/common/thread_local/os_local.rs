@@ -49,7 +49,9 @@ macro_rules! __thread_local_inner {
             #[inline]
             fn __init() -> $t { $init }
 
-            #[cfg_attr(not(bootstrap), inline)]
+            // `#[inline] does not work on windows-gnu due to linking errors around dllimports.
+            // See https://github.com/rust-lang/rust/issues/109797.
+            #[cfg_attr(not(windows), inline)]
             unsafe fn __getit(
                 init: $crate::option::Option<&mut $crate::option::Option<$t>>,
             ) -> $crate::option::Option<&'static $t> {

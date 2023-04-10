@@ -50,7 +50,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         certainty: Certainty,
     ) -> QueryResult<'tcx> {
         let goals_certainty = self.try_evaluate_added_goals()?;
-        let certainty = certainty.unify_and(goals_certainty);
+        let certainty = certainty.unify_with(goals_certainty);
 
         let external_constraints = self.compute_external_query_constraints()?;
 
@@ -188,7 +188,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 } else {
                     // For placeholders which were already part of the input, we simply map this
                     // universal bound variable back the placeholder of the input.
-                    original_values[info.expect_anon_placeholder() as usize]
+                    original_values[info.expect_placeholder_index()]
                 }
             },
         ));

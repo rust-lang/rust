@@ -793,6 +793,14 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // a `&self` method will wind up with an argument type like `&dyn Trait`.
         let trait_ref = principal.with_self_ty(self.tcx, self_ty);
         self.elaborate_bounds(iter::once(trait_ref), |this, new_trait_ref, item| {
+            if new_trait_ref.has_non_region_late_bound() {
+                this.tcx.sess.delay_span_bug(
+                    this.span,
+                    "tried to select method from HRTB with non-lifetime bound vars",
+                );
+                return;
+            }
+
             let new_trait_ref = this.erase_late_bound_regions(new_trait_ref);
 
             let (xform_self_ty, xform_ret_ty) =
@@ -843,17 +851,14 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         });
 
         self.elaborate_bounds(bounds, |this, poly_trait_ref, item| {
-            let trait_ref = this.erase_late_bound_regions(poly_trait_ref);
+            let trait_ref = this.instantiate_binder_with_fresh_vars(
+                this.span,
+                infer::LateBoundRegionConversionTime::FnCall,
+                poly_trait_ref,
+            );
 
             let (xform_self_ty, xform_ret_ty) =
                 this.xform_self_ty(item, trait_ref.self_ty(), trait_ref.substs);
-
-            // Because this trait derives from a where-clause, it
-            // should not contain any inference variables or other
-            // artifacts. This means it is safe to put into the
-            // `WhereClauseCandidate` and (eventually) into the
-            // `WhereClausePick`.
-            assert!(!trait_ref.substs.needs_infer());
 
             this.push_candidate(
                 Candidate {
@@ -964,7 +969,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                             bound_trait_ref.def_id(),
                         ));
                     } else {
-                        let new_trait_ref = self.erase_late_bound_regions(bound_trait_ref);
+                        let new_trait_ref = self.instantiate_binder_with_fresh_vars(
+                            self.span,
+                            infer::LateBoundRegionConversionTime::FnCall,
+                            bound_trait_ref,
+                        );
 
                         let (xform_self_ty, xform_ret_ty) =
                             self.xform_self_ty(item, new_trait_ref.self_ty(), new_trait_ref.substs);
@@ -1555,8 +1564,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         if !self.predicate_may_hold(&o) {
                             result = ProbeResult::NoMatch;
                             let parent_o = o.clone();
-                            let implied_obligations =
-                                traits::elaborate_obligations(self.tcx, vec![o]);
+                            let implied_obligations = traits::elaborate(self.tcx, vec![o]);
                             for o in implied_obligations {
                                 let parent = if o == parent_o {
                                     None
@@ -1756,7 +1764,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     fn probe_for_similar_candidate(&mut self) -> Result<Option<ty::AssocItem>, MethodError<'tcx>> {
         debug!("probing for method names similar to {:?}", self.method_name);
 
-        let steps = self.steps.clone();
         self.probe(|_| {
             let mut pcx = ProbeContext::new(
                 self.fcx,
@@ -1764,8 +1771,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 self.mode,
                 self.method_name,
                 self.return_type,
-                &self.orig_steps_var_values,
-                steps,
+                self.orig_steps_var_values,
+                self.steps,
                 self.scope_expr_id,
             );
             pcx.allow_similar_names = true;

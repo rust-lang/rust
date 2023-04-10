@@ -8,7 +8,7 @@
 //!   - not reference the erased type `Self` except for in this receiver;
 //!   - not have generic type parameters.
 
-use super::{elaborate_predicates, elaborate_trait_ref};
+use super::elaborate;
 
 use crate::infer::TyCtxtInferExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
@@ -379,7 +379,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     // Search for a predicate like `Self : Sized` amongst the trait bounds.
     let predicates = tcx.predicates_of(def_id);
     let predicates = predicates.instantiate_identity(tcx).predicates;
-    elaborate_predicates(tcx, predicates.into_iter()).any(|pred| match pred.kind().skip_binder() {
+    elaborate(tcx, predicates.into_iter()).any(|pred| match pred.kind().skip_binder() {
         ty::PredicateKind::Clause(ty::Clause::Trait(ref trait_pred)) => {
             trait_pred.def_id() == sized_def_id && trait_pred.self_ty().is_param(0)
         }
@@ -666,7 +666,8 @@ fn object_ty_for_trait<'tcx>(
     });
     debug!(?trait_predicate);
 
-    let mut elaborated_predicates: Vec<_> = elaborate_trait_ref(tcx, trait_ref)
+    let pred: ty::Predicate<'tcx> = trait_ref.to_predicate(tcx);
+    let mut elaborated_predicates: Vec<_> = elaborate(tcx, [pred])
         .filter_map(|pred| {
             debug!(?pred);
             let pred = pred.to_opt_poly_projection_pred()?;

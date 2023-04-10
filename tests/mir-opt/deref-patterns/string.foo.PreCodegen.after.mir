@@ -25,19 +25,19 @@ fn foo(_1: Option<String>) -> i32 {
         _7 = const false;                // scope 0 at $DIR/string.rs:+3:9: +3:10
         _6 = move _1;                    // scope 0 at $DIR/string.rs:+3:9: +3:10
         _0 = const 4321_i32;             // scope 1 at $DIR/string.rs:+3:14: +3:18
-        drop(_6) -> bb6;                 // scope 0 at $DIR/string.rs:+3:17: +3:18
+        drop(_6) -> [return: bb6, unwind unreachable]; // scope 0 at $DIR/string.rs:+3:17: +3:18
     }
 
     bb2: {
         _2 = &((_1 as Some).0: std::string::String); // scope 0 at $DIR/string.rs:+2:14: +2:17
-        _3 = <String as Deref>::deref(move _2) -> bb3; // scope 0 at $DIR/string.rs:+2:14: +2:17
+        _3 = <String as Deref>::deref(move _2) -> [return: bb3, unwind unreachable]; // scope 0 at $DIR/string.rs:+2:14: +2:17
                                          // mir::Constant
                                          // + span: $DIR/string.rs:9:14: 9:17
                                          // + literal: Const { ty: for<'a> fn(&'a String) -> &'a <String as Deref>::Target {<String as Deref>::deref}, val: Value(<ZST>) }
     }
 
     bb3: {
-        _4 = <str as PartialEq>::eq(_3, const "a") -> bb4; // scope 0 at $DIR/string.rs:+2:14: +2:17
+        _4 = <str as PartialEq>::eq(_3, const "a") -> [return: bb4, unwind unreachable]; // scope 0 at $DIR/string.rs:+2:14: +2:17
                                          // mir::Constant
                                          // + span: $DIR/string.rs:9:14: 9:17
                                          // + literal: Const { ty: for<'a, 'b> fn(&'a str, &'b str) -> bool {<str as PartialEq>::eq}, val: Value(<ZST>) }
@@ -65,7 +65,7 @@ fn foo(_1: Option<String>) -> i32 {
     }
 
     bb8: {
-        drop(_1) -> bb7;                 // scope 0 at $DIR/string.rs:+5:1: +5:2
+        drop(_1) -> [return: bb7, unwind unreachable]; // scope 0 at $DIR/string.rs:+5:1: +5:2
     }
 
     bb9: {

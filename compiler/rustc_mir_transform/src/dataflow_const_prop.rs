@@ -567,7 +567,7 @@ impl<'mir, 'tcx> rustc_const_eval::interpret::Machine<'mir, 'tcx> for DummyMachi
         _args: &[rustc_const_eval::interpret::OpTy<'tcx, Self::Provenance>],
         _destination: &rustc_const_eval::interpret::PlaceTy<'tcx, Self::Provenance>,
         _target: Option<BasicBlock>,
-        _unwind: rustc_const_eval::interpret::StackPopUnwind,
+        _unwind: UnwindAction,
     ) -> interpret::InterpResult<'tcx, Option<(&'mir Body<'tcx>, ty::Instance<'tcx>)>> {
         unimplemented!()
     }
@@ -578,7 +578,7 @@ impl<'mir, 'tcx> rustc_const_eval::interpret::Machine<'mir, 'tcx> for DummyMachi
         _args: &[rustc_const_eval::interpret::OpTy<'tcx, Self::Provenance>],
         _destination: &rustc_const_eval::interpret::PlaceTy<'tcx, Self::Provenance>,
         _target: Option<BasicBlock>,
-        _unwind: rustc_const_eval::interpret::StackPopUnwind,
+        _unwind: UnwindAction,
     ) -> interpret::InterpResult<'tcx> {
         unimplemented!()
     }
@@ -586,7 +586,7 @@ impl<'mir, 'tcx> rustc_const_eval::interpret::Machine<'mir, 'tcx> for DummyMachi
     fn assert_panic(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _msg: &rustc_middle::mir::AssertMessage<'tcx>,
-        _unwind: Option<BasicBlock>,
+        _unwind: UnwindAction,
     ) -> interpret::InterpResult<'tcx> {
         unimplemented!()
     }

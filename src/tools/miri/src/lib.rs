@@ -5,7 +5,6 @@
 #![feature(io_error_more)]
 #![feature(variant_count)]
 #![feature(yeet_expr)]
-#![feature(is_some_and)]
 #![feature(nonzero_ops)]
 #![feature(local_key_cell_methods)]
 #![feature(is_terminal)]

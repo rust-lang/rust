@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 // Check that CopyProp considers reborrows as not mutating the pointer.
 // unit-test: CopyProp
 

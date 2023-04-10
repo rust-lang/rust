@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 #[inline(never)]
 fn foo(_: i32) { }
 

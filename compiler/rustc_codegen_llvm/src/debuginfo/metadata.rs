@@ -830,24 +830,7 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
     }
     .unwrap_or_default();
     let split_name = split_name.to_str().unwrap();
-
-    // FIXME(#60020):
-    //
-    //    This should actually be
-    //
-    //        let kind = DebugEmissionKind::from_generic(tcx.sess.opts.debuginfo);
-    //
-    //    That is, we should set LLVM's emission kind to `LineTablesOnly` if
-    //    we are compiling with "limited" debuginfo. However, some of the
-    //    existing tools relied on slightly more debuginfo being generated than
-    //    would be the case with `LineTablesOnly`, and we did not want to break
-    //    these tools in a "drive-by fix", without a good idea or plan about
-    //    what limited debuginfo should exactly look like. So for now we keep
-    //    the emission kind as `FullDebug`.
-    //
-    //    See https://github.com/rust-lang/rust/issues/60020 for details.
-    let kind = DebugEmissionKind::FullDebug;
-    assert!(tcx.sess.opts.debuginfo != DebugInfo::None);
+    let kind = DebugEmissionKind::from_generic(tcx.sess.opts.debuginfo);
 
     unsafe {
         let compile_unit_file = llvm::LLVMRustDIBuilderCreateFile(
@@ -881,8 +864,6 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
         );
 
         if tcx.sess.opts.unstable_opts.profile {
-            let cu_desc_metadata =
-                llvm::LLVMRustMetadataAsValue(debug_context.llcontext, unit_metadata);
             let default_gcda_path = &output_filenames.with_extension("gcda");
             let gcda_path =
                 tcx.sess.opts.unstable_opts.profile_emit.as_ref().unwrap_or(default_gcda_path);
@@ -890,20 +871,17 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
             let gcov_cu_info = [
                 path_to_mdstring(debug_context.llcontext, &output_filenames.with_extension("gcno")),
                 path_to_mdstring(debug_context.llcontext, gcda_path),
-                cu_desc_metadata,
+                unit_metadata,
             ];
-            let gcov_metadata = llvm::LLVMMDNodeInContext(
+            let gcov_metadata = llvm::LLVMMDNodeInContext2(
                 debug_context.llcontext,
                 gcov_cu_info.as_ptr(),
-                gcov_cu_info.len() as c_uint,
+                gcov_cu_info.len(),
             );
+            let val = llvm::LLVMMetadataAsValue(debug_context.llcontext, gcov_metadata);
 
             let llvm_gcov_ident = cstr!("llvm.gcov");
-            llvm::LLVMAddNamedMetadataOperand(
-                debug_context.llmod,
-                llvm_gcov_ident.as_ptr(),
-                gcov_metadata,
-            );
+            llvm::LLVMAddNamedMetadataOperand(debug_context.llmod, llvm_gcov_ident.as_ptr(), val);
         }
 
         // Insert `llvm.ident` metadata on the wasm targets since that will
@@ -924,15 +902,9 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
         return unit_metadata;
     };
 
-    fn path_to_mdstring<'ll>(llcx: &'ll llvm::Context, path: &Path) -> &'ll Value {
+    fn path_to_mdstring<'ll>(llcx: &'ll llvm::Context, path: &Path) -> &'ll llvm::Metadata {
         let path_str = path_to_c_string(path);
-        unsafe {
-            llvm::LLVMMDStringInContext(
-                llcx,
-                path_str.as_ptr(),
-                path_str.as_bytes().len() as c_uint,
-            )
-        }
+        unsafe { llvm::LLVMMDStringInContext2(llcx, path_str.as_ptr(), path_str.as_bytes().len()) }
     }
 }
 

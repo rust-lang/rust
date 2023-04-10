@@ -63,7 +63,7 @@ fn main::{closure#0}(_1: Pin<&mut [generator@$DIR/generator_tiny.rs:19:16: 19:24
         StorageDead(_7);                 // scope 1 at $DIR/generator_tiny.rs:+3:17: +3:18
         StorageDead(_6);                 // scope 1 at $DIR/generator_tiny.rs:+3:18: +3:19
         StorageLive(_8);                 // scope 1 at $DIR/generator_tiny.rs:+4:13: +4:21
-        _8 = callee() -> bb4;            // scope 1 at $DIR/generator_tiny.rs:+4:13: +4:21
+        _8 = callee() -> [return: bb4, unwind unreachable]; // scope 1 at $DIR/generator_tiny.rs:+4:13: +4:21
                                          // mir::Constant
                                          // + span: $DIR/generator_tiny.rs:23:13: 23:19
                                          // + literal: Const { ty: fn() {callee}, val: Value(<ZST>) }

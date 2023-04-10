@@ -50,7 +50,7 @@
   
       bb3 (cleanup): {
           _2 = move _5;                    // scope 2 at $DIR/issue_41110.rs:+4:5: +4:6
-          drop(_5) -> bb8;                 // scope 2 at $DIR/issue_41110.rs:+4:9: +4:10
+          drop(_5) -> [return: bb8, unwind terminate]; // scope 2 at $DIR/issue_41110.rs:+4:9: +4:10
       }
   
       bb4: {
@@ -72,18 +72,18 @@
       }
   
       bb7 (cleanup): {
--         drop(_4) -> bb8;                 // scope 2 at $DIR/issue_41110.rs:+3:11: +3:12
+-         drop(_4) -> [return: bb8, unwind terminate]; // scope 2 at $DIR/issue_41110.rs:+3:11: +3:12
 +         goto -> bb8;                     // scope 2 at $DIR/issue_41110.rs:+3:11: +3:12
       }
   
       bb8 (cleanup): {
--         drop(_2) -> bb9;                 // scope 1 at $DIR/issue_41110.rs:+5:1: +5:2
+-         drop(_2) -> [return: bb9, unwind terminate]; // scope 1 at $DIR/issue_41110.rs:+5:1: +5:2
 +         goto -> bb9;                     // scope 1 at $DIR/issue_41110.rs:+5:1: +5:2
       }
   
       bb9 (cleanup): {
--         drop(_1) -> bb10;                // scope 0 at $DIR/issue_41110.rs:+5:1: +5:2
-+         goto -> bb12;                    // scope 0 at $DIR/issue_41110.rs:+5:1: +5:2
+-         drop(_1) -> [return: bb10, unwind terminate]; // scope 0 at $DIR/issue_41110.rs:+5:1: +5:2
++         goto -> bb13;                    // scope 0 at $DIR/issue_41110.rs:+5:1: +5:2
       }
   
       bb10 (cleanup): {
@@ -91,11 +91,15 @@
 +     }
 + 
 +     bb11 (cleanup): {
-+         drop(_1) -> bb10;                // scope 0 at $DIR/issue_41110.rs:+5:1: +5:2
++         unreachable;                     // scope 0 at $DIR/issue_41110.rs:+0:1: +5:2
 +     }
 + 
 +     bb12 (cleanup): {
-+         switchInt(_6) -> [0: bb10, otherwise: bb11]; // scope 0 at $DIR/issue_41110.rs:+5:1: +5:2
++         drop(_1) -> [return: bb10, unwind terminate]; // scope 0 at $DIR/issue_41110.rs:+5:1: +5:2
++     }
++ 
++     bb13 (cleanup): {
++         switchInt(_6) -> [0: bb10, otherwise: bb12]; // scope 0 at $DIR/issue_41110.rs:+5:1: +5:2
       }
   }
   

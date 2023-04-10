@@ -45,6 +45,7 @@ dependencies = [
  "hex",
  "ignore",
  "is-terminal",
+ "junction",
  "libc",
  "object",
  "once_cell",
@@ -348,6 +349,16 @@ name = "itoa"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "112c678d4050afce233f4f2852bb2eb519230b3cf12f33585275537d7e41578d"
+
+[[package]]
+name = "junction"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ca39ef0d69b18e6a2fd14c2f0a1d593200f4a4ed949b240b5917ab51fac754cb"
+dependencies = [
+ "scopeguard",
+ "winapi",
+]
 
 [[package]]
 name = "lazy_static"

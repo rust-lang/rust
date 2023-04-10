@@ -11,7 +11,6 @@ use crate::query::job::QueryLatch;
 use crate::query::job::{report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo};
 use crate::query::SerializedDepNodeIndex;
 use crate::query::{QueryContext, QueryMap, QuerySideEffects, QueryStackFrame};
-use crate::values::Value;
 use crate::HandleCycleError;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
@@ -120,43 +119,45 @@ where
 
 #[cold]
 #[inline(never)]
-fn mk_cycle<Qcx, R, D: DepKind>(
+fn mk_cycle<Q, Qcx>(
+    query: Q,
     qcx: Qcx,
-    cycle_error: CycleError<D>,
+    cycle_error: CycleError<Qcx::DepKind>,
     handler: HandleCycleError,
-) -> R
+) -> Q::Value
 where
-    Qcx: QueryContext + HasDepContext<DepKind = D>,
-    R: std::fmt::Debug + Value<Qcx::DepContext, Qcx::DepKind>,
+    Q: QueryConfig<Qcx>,
+    Qcx: QueryContext,
 {
     let error = report_cycle(qcx.dep_context().sess(), &cycle_error);
-    handle_cycle_error(*qcx.dep_context(), &cycle_error, error, handler)
+    handle_cycle_error(query, qcx, &cycle_error, error, handler)
 }
 
-fn handle_cycle_error<Tcx, V>(
-    tcx: Tcx,
-    cycle_error: &CycleError<Tcx::DepKind>,
+fn handle_cycle_error<Q, Qcx>(
+    query: Q,
+    qcx: Qcx,
+    cycle_error: &CycleError<Qcx::DepKind>,
     mut error: DiagnosticBuilder<'_, ErrorGuaranteed>,
     handler: HandleCycleError,
-) -> V
+) -> Q::Value
 where
-    Tcx: DepContext,
-    V: Value<Tcx, Tcx::DepKind>,
+    Q: QueryConfig<Qcx>,
+    Qcx: QueryContext,
 {
     use HandleCycleError::*;
     match handler {
         Error => {
             error.emit();
-            Value::from_cycle_error(tcx, &cycle_error.cycle)
+            query.value_from_cycle_error(*qcx.dep_context(), &cycle_error.cycle)
         }
         Fatal => {
             error.emit();
-            tcx.sess().abort_if_errors();
+            qcx.dep_context().sess().abort_if_errors();
             unreachable!()
         }
         DelayBug => {
             error.delay_as_bug();
-            Value::from_cycle_error(tcx, &cycle_error.cycle)
+            query.value_from_cycle_error(*qcx.dep_context(), &cycle_error.cycle)
         }
     }
 }
@@ -269,7 +270,7 @@ where
         &qcx.current_query_job(),
         span,
     );
-    (mk_cycle(qcx, error, query.handle_cycle_error()), None)
+    (mk_cycle(query, qcx, error, query.handle_cycle_error()), None)
 }
 
 #[inline(always)]
@@ -306,7 +307,7 @@ where
 
             (v, Some(index))
         }
-        Err(cycle) => (mk_cycle(qcx, cycle, query.handle_cycle_error()), None),
+        Err(cycle) => (mk_cycle(query, qcx, cycle, query.handle_cycle_error()), None),
     }
 }
 
@@ -410,7 +411,8 @@ where
         // get evaluated first, and re-feed the query.
         if let Some((cached_result, _)) = cache.lookup(&key) {
             panic!(
-                "fed query later has its value computed. The already cached value: {cached_result:?}"
+                "fed query later has its value computed. The already cached value: {}",
+                (query.format_value())(&cached_result)
             );
         }
     }
@@ -581,6 +583,7 @@ where
                     &result,
                     prev_dep_node_index,
                     query.hash_result(),
+                    query.format_value(),
                 );
             }
 
@@ -626,19 +629,21 @@ where
         &result,
         prev_dep_node_index,
         query.hash_result(),
+        query.format_value(),
     );
 
     Some((result, dep_node_index))
 }
 
 #[inline]
-#[instrument(skip(tcx, dep_graph_data, result, hash_result), level = "debug")]
-pub(crate) fn incremental_verify_ich<Tcx, V: Debug>(
+#[instrument(skip(tcx, dep_graph_data, result, hash_result, format_value), level = "debug")]
+pub(crate) fn incremental_verify_ich<Tcx, V>(
     tcx: Tcx,
     dep_graph_data: &DepGraphData<Tcx::DepKind>,
     result: &V,
     prev_index: SerializedDepNodeIndex,
     hash_result: Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>,
+    format_value: fn(&V) -> String,
 ) where
     Tcx: DepContext,
 {
@@ -653,7 +658,7 @@ pub(crate) fn incremental_verify_ich<Tcx, V: Debug>(
     let old_hash = dep_graph_data.prev_fingerprint_of(prev_index);
 
     if new_hash != old_hash {
-        incremental_verify_ich_failed(tcx, prev_index, result);
+        incremental_verify_ich_failed(tcx, prev_index, &|| format_value(&result));
     }
 }
 
@@ -677,7 +682,7 @@ where
 fn incremental_verify_ich_failed<Tcx>(
     tcx: Tcx,
     prev_index: SerializedDepNodeIndex,
-    result: &dyn Debug,
+    result: &dyn Fn() -> String,
 ) where
     Tcx: DepContext,
 {
@@ -707,7 +712,7 @@ fn incremental_verify_ich_failed<Tcx>(
             run_cmd,
             dep_node: format!("{dep_node:?}"),
         });
-        panic!("Found unstable fingerprints for {dep_node:?}: {result:?}");
+        panic!("Found unstable fingerprints for {dep_node:?}: {}", result());
     }
 
     INSIDE_VERIFY_PANIC.with(|in_panic| in_panic.set(old_in_panic));

@@ -175,7 +175,7 @@ impl<'a> StringReader<'a> {
                     if !sym.can_be_raw() {
                         self.sess.emit_err(errors::CannotBeRawIdent { span, ident: sym });
                     }
-                    self.sess.raw_identifier_spans.borrow_mut().push(span);
+                    self.sess.raw_identifier_spans.push(span);
                     token::Ident(sym, true)
                 }
                 rustc_lexer::TokenKind::UnknownPrefix => {
@@ -558,8 +558,8 @@ impl<'a> StringReader<'a> {
         }
 
         if let Some(possible_offset) = possible_offset {
-            let lo = start + BytePos(possible_offset as u32);
-            let hi = lo + BytePos(found_terminators as u32);
+            let lo = start + BytePos(possible_offset);
+            let hi = lo + BytePos(found_terminators);
             let span = self.mk_sp(lo, hi);
             err.span_suggestion(
                 span,

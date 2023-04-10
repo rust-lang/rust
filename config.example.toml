@@ -16,7 +16,7 @@
 # Use different pre-set defaults than the global defaults.
 #
 # See `src/bootstrap/defaults` for more information.
-# Note that this has no default value (x.py uses the defaults in `config.toml.example`).
+# Note that this has no default value (x.py uses the defaults in `config.example.toml`).
 #profile = <none>
 
 # Keeps track of the last version of `x.py` used.
@@ -585,7 +585,7 @@ changelog-seen = 2
 # Having the git information can cause a lot of rebuilds during development.
 #
 # FIXME(#76720): this can causes bugs if different compilers reuse the same metadata cache.
-#ignore-git = if rust.channel == "dev" { true } else { false }
+#omit-git-hash = if rust.channel == "dev" { true } else { false }
 
 # Whether to create a source tarball by default when running `x dist`.
 #

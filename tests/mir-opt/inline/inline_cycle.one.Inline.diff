@@ -4,9 +4,9 @@
   fn one() -> () {
       let mut _0: ();                      // return place in scope 0 at $DIR/inline_cycle.rs:+0:10: +0:10
       let _1: ();                          // in scope 0 at $DIR/inline_cycle.rs:+1:5: +1:24
-+     scope 1 (inlined <C as Call>::call) { // at $DIR/inline_cycle.rs:14:5: 14:24
-+         scope 2 (inlined <A<C> as Call>::call) { // at $DIR/inline_cycle.rs:43:9: 43:23
-+             scope 3 (inlined <B<C> as Call>::call) { // at $DIR/inline_cycle.rs:28:9: 28:31
++     scope 1 (inlined <C as Call>::call) { // at $DIR/inline_cycle.rs:15:5: 15:24
++         scope 2 (inlined <A<C> as Call>::call) { // at $DIR/inline_cycle.rs:44:9: 44:23
++             scope 3 (inlined <B<C> as Call>::call) { // at $DIR/inline_cycle.rs:29:9: 29:31
 +             }
 +         }
 +     }
@@ -14,10 +14,10 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/inline_cycle.rs:+1:5: +1:24
 -         _1 = <C as Call>::call() -> bb1; // scope 0 at $DIR/inline_cycle.rs:+1:5: +1:24
-+         _1 = <C as Call>::call() -> bb1; // scope 3 at $DIR/inline_cycle.rs:36:9: 36:28
++         _1 = <C as Call>::call() -> bb1; // scope 3 at $DIR/inline_cycle.rs:37:9: 37:28
                                            // mir::Constant
--                                          // + span: $DIR/inline_cycle.rs:14:5: 14:22
-+                                          // + span: $DIR/inline_cycle.rs:36:9: 36:26
+-                                          // + span: $DIR/inline_cycle.rs:15:5: 15:22
++                                          // + span: $DIR/inline_cycle.rs:37:9: 37:26
                                            // + literal: Const { ty: fn() {<C as Call>::call}, val: Value(<ZST>) }
       }
   

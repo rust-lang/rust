@@ -33,21 +33,6 @@ help: to link to the associated type, prefix with `type@`
 LL | /// [`type@Self::IDENT2`]
    |       +++++
 
-error: `Self::IDENT2` is both an associated constant and an associated type
-  --> $DIR/issue-108653-associated-items.rs:30:7
-   |
-LL | /// [`Self::IDENT2`]
-   |       ^^^^^^^^^^^^ ambiguous link
-   |
-help: to link to the associated constant, prefix with `const@`
-   |
-LL | /// [`const@Self::IDENT2`]
-   |       ++++++
-help: to link to the associated type, prefix with `type@`
-   |
-LL | /// [`type@Self::IDENT2`]
-   |       +++++
-
 error: `Self::IDENT` is both an associated function and a variant
   --> $DIR/issue-108653-associated-items.rs:16:7
    |
@@ -61,6 +46,21 @@ LL | /// [`Self::IDENT()`]
 help: to link to the variant, prefix with `type@`
    |
 LL | /// [`type@Self::IDENT`]
+   |       +++++
+
+error: `Self::IDENT2` is both an associated constant and an associated type
+  --> $DIR/issue-108653-associated-items.rs:30:7
+   |
+LL | /// [`Self::IDENT2`]
+   |       ^^^^^^^^^^^^ ambiguous link
+   |
+help: to link to the associated constant, prefix with `const@`
+   |
+LL | /// [`const@Self::IDENT2`]
+   |       ++++++
+help: to link to the associated type, prefix with `type@`
+   |
+LL | /// [`type@Self::IDENT2`]
    |       +++++
 
 error: aborting due to 4 previous errors

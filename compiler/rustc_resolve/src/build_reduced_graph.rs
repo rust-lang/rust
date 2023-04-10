@@ -688,8 +688,8 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             }
 
             // These items live in the value namespace.
-            ItemKind::Static(_, mt, _) => {
-                let res = Res::Def(DefKind::Static(mt), def_id);
+            ItemKind::Static(box ast::StaticItem { mutability, .. }) => {
+                let res = Res::Def(DefKind::Static(mutability), def_id);
                 self.r.define(parent, ident, ValueNS, (res, vis, sp, expansion));
             }
             ItemKind::Const(..) => {
@@ -931,7 +931,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
     /// Builds the reduced graph for a single item in an external crate.
     fn build_reduced_graph_for_external_crate_res(&mut self, child: ModChild) {
         let parent = self.parent_scope.module;
-        let ModChild { ident, res, vis, span, macro_rules } = child;
+        let ModChild { ident, res, vis, span, macro_rules, .. } = child;
         let res = res.expect_non_local();
         let expansion = self.parent_scope.expansion;
         // Record primary definitions.

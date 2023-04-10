@@ -852,7 +852,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     self.output.push(create_fn_mono_item(tcx, instance, source));
                 }
             }
-            mir::TerminatorKind::Abort { .. } => {
+            mir::TerminatorKind::Terminate { .. } => {
                 let instance = Instance::mono(
                     tcx,
                     tcx.require_lang_item(LangItem::PanicCannotUnwind, Some(source)),
@@ -870,6 +870,16 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             | mir::TerminatorKind::Yield { .. }
             | mir::TerminatorKind::FalseEdge { .. }
             | mir::TerminatorKind::FalseUnwind { .. } => bug!(),
+        }
+
+        if let Some(mir::UnwindAction::Terminate) = terminator.unwind() {
+            let instance = Instance::mono(
+                tcx,
+                tcx.require_lang_item(LangItem::PanicCannotUnwind, Some(source)),
+            );
+            if should_codegen_locally(tcx, &instance) {
+                self.output.push(create_fn_mono_item(tcx, instance, source));
+            }
         }
 
         self.super_terminator(terminator, location);

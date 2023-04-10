@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 // Check that inliner handles various forms of recursion and doesn't fall into
 // an infinite inlining cycle. The particular outcome of inlining is not
 // crucial otherwise.

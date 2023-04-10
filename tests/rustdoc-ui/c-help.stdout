@@ -3,7 +3,7 @@
     -C            codegen-units=val -- divide crate into N units to optimize in parallel
     -C       control-flow-guard=val -- use Windows Control Flow Guard (default: no)
     -C         debug-assertions=val -- explicitly enable the `cfg(debug_assertions)` directive
-    -C                debuginfo=val -- debug info emission level (0 = no debug info, 1 = line tables only, 2 = full debug info with variable and type information; default: 0)
+    -C                debuginfo=val -- debug info emission level (0-2, none, line-directives-only, line-tables-only, limited, or full; default: 0)
     -C default-linker-libraries=val -- allow the linker to link its default libraries (default: no)
     -C            embed-bitcode=val -- emit bitcode in rlibs (default: yes)
     -C           extra-filename=val -- extra data to put in each output filename

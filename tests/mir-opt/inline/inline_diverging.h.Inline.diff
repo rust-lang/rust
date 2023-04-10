@@ -58,11 +58,11 @@
 +     }
 + 
 +     bb3 (cleanup): {
-+         drop(_3) -> bb4;                 // scope 1 at $DIR/inline_diverging.rs:30:1: 30:2
++         drop(_3) -> [return: bb4, unwind terminate]; // scope 1 at $DIR/inline_diverging.rs:30:1: 30:2
 +     }
 + 
 +     bb4 (cleanup): {
-+         drop(_2) -> bb5;                 // scope 1 at $DIR/inline_diverging.rs:30:1: 30:2
++         drop(_2) -> [return: bb5, unwind terminate]; // scope 1 at $DIR/inline_diverging.rs:30:1: 30:2
 +     }
 + 
 +     bb5 (cleanup): {

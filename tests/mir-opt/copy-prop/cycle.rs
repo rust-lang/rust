@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 //! Tests that cyclic assignments don't hang CopyProp, and result in reasonable code.
 // unit-test: CopyProp
 fn val() -> i32 {

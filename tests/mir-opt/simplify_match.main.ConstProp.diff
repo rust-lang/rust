@@ -22,7 +22,7 @@
       bb2: {
           _0 = noop() -> bb3;              // scope 0 at $DIR/simplify_match.rs:+2:17: +2:23
                                            // mir::Constant
-                                           // + span: $DIR/simplify_match.rs:7:17: 7:21
+                                           // + span: $DIR/simplify_match.rs:8:17: 8:21
                                            // + literal: Const { ty: fn() {noop}, val: Value(<ZST>) }
       }
   

@@ -23,10 +23,26 @@ pub enum OperandValue<V> {
     /// to be valid for the operand's lifetime.
     /// The second value, if any, is the extra data (vtable or length)
     /// which indicates that it refers to an unsized rvalue.
+    ///
+    /// An `OperandValue` has this variant for types which are neither
+    /// `Immediate` nor `Pair`s. The backend value in this variant must be a
+    /// pointer to the *non*-immediate backend type. That pointee type is the
+    /// one returned by [`LayoutTypeMethods::backend_type`].
     Ref(V, Option<V>, Align),
-    /// A single LLVM value.
+    /// A single LLVM immediate value.
+    ///
+    /// An `OperandValue` *must* be this variant for any type for which
+    /// [`LayoutTypeMethods::is_backend_immediate`] returns `true`.
+    /// The backend value in this variant must be the *immediate* backend type,
+    /// as returned by [`LayoutTypeMethods::immediate_backend_type`].
     Immediate(V),
     /// A pair of immediate LLVM values. Used by fat pointers too.
+    ///
+    /// An `OperandValue` *must* be this variant for any type for which
+    /// [`LayoutTypeMethods::is_backend_scalar_pair`] returns `true`.
+    /// The backend values in this variant must be the *immediate* backend types,
+    /// as returned by [`LayoutTypeMethods::scalar_pair_element_backend_type`]
+    /// with `immediate: true`.
     Pair(V, V),
 }
 
@@ -243,6 +259,31 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
 }
 
 impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
+    /// Returns an `OperandValue` that's generally UB to use in any way.
+    ///
+    /// Depending on the `layout`, returns an `Immediate` or `Pair` containing
+    /// poison value(s), or a `Ref` containing a poison pointer.
+    ///
+    /// Supports sized types only.
+    pub fn poison<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+        bx: &mut Bx,
+        layout: TyAndLayout<'tcx>,
+    ) -> OperandValue<V> {
+        assert!(layout.is_sized());
+        if bx.cx().is_backend_immediate(layout) {
+            let ibty = bx.cx().immediate_backend_type(layout);
+            OperandValue::Immediate(bx.const_poison(ibty))
+        } else if bx.cx().is_backend_scalar_pair(layout) {
+            let ibty0 = bx.cx().scalar_pair_element_backend_type(layout, 0, true);
+            let ibty1 = bx.cx().scalar_pair_element_backend_type(layout, 1, true);
+            OperandValue::Pair(bx.const_poison(ibty0), bx.const_poison(ibty1))
+        } else {
+            let bty = bx.cx().backend_type(layout);
+            let ptr_bty = bx.cx().type_ptr_to(bty);
+            OperandValue::Ref(bx.const_poison(ptr_bty), None, layout.align.abi)
+        }
+    }
+
     pub fn store<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         self,
         bx: &mut Bx,

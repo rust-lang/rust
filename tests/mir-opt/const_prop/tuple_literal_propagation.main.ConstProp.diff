@@ -15,7 +15,7 @@
 +         _1 = const (1_u32, 2_u32);       // scope 0 at $DIR/tuple_literal_propagation.rs:+1:13: +1:19
           _2 = consume(_1) -> bb1;         // scope 1 at $DIR/tuple_literal_propagation.rs:+3:5: +3:15
                                            // mir::Constant
-                                           // + span: $DIR/tuple_literal_propagation.rs:5:5: 5:12
+                                           // + span: $DIR/tuple_literal_propagation.rs:6:5: 6:12
                                            // + literal: Const { ty: fn((u32, u32)) {consume}, val: Value(<ZST>) }
       }
   

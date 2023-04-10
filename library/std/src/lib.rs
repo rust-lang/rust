@@ -289,7 +289,6 @@
 #![feature(hashmap_internals)]
 #![feature(ip)]
 #![feature(ip_in_core)]
-#![feature(is_some_and)]
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_write_slice)]
 #![feature(panic_can_unwind)]

@@ -47,7 +47,7 @@
   
       bb2 (cleanup): {
           _5 = move _6;                    // scope 4 at $DIR/basic_assignment.rs:+13:5: +13:11
-          drop(_6) -> bb6;                 // scope 4 at $DIR/basic_assignment.rs:+13:19: +13:20
+          drop(_6) -> [return: bb6, unwind terminate]; // scope 4 at $DIR/basic_assignment.rs:+13:19: +13:20
       }
   
       bb3: {
@@ -70,16 +70,20 @@
       }
   
       bb6 (cleanup): {
-          drop(_5) -> bb7;                 // scope 3 at $DIR/basic_assignment.rs:+14:1: +14:2
+          drop(_5) -> [return: bb7, unwind terminate]; // scope 3 at $DIR/basic_assignment.rs:+14:1: +14:2
       }
   
       bb7 (cleanup): {
--         drop(_4) -> bb8;                 // scope 2 at $DIR/basic_assignment.rs:+14:1: +14:2
+-         drop(_4) -> [return: bb8, unwind terminate]; // scope 2 at $DIR/basic_assignment.rs:+14:1: +14:2
 +         goto -> bb8;                     // scope 2 at $DIR/basic_assignment.rs:+14:1: +14:2
       }
   
       bb8 (cleanup): {
           resume;                          // scope 0 at $DIR/basic_assignment.rs:+0:1: +14:2
++     }
++ 
++     bb9 (cleanup): {
++         unreachable;                     // scope 0 at $DIR/basic_assignment.rs:+0:1: +14:2
       }
   }
   

@@ -4,8 +4,9 @@ use std::collections::BTreeSet;
 use std::env;
 use std::ffi::OsStr;
 use std::fmt::{Debug, Write};
-use std::fs::{self};
+use std::fs::{self, File};
 use std::hash::Hash;
+use std::io::{BufRead, BufReader};
 use std::ops::Deref;
 use std::path::{Component, Path, PathBuf};
 use std::process::Command;
@@ -28,8 +29,11 @@ use crate::{clean, dist};
 use crate::{Build, CLang, DocTests, GitRepo, Mode};
 
 pub use crate::Compiler;
-// FIXME: replace with std::lazy after it gets stabilized and reaches beta
-use once_cell::sync::Lazy;
+// FIXME:
+// - use std::lazy for `Lazy`
+// - use std::cell for `OnceCell`
+// Once they get stabilized and reach beta.
+use once_cell::sync::{Lazy, OnceCell};
 
 pub struct Builder<'a> {
     pub build: &'a Build,
@@ -484,17 +488,43 @@ impl<'a> ShouldRun<'a> {
 
     // multiple aliases for the same job
     pub fn paths(mut self, paths: &[&str]) -> Self {
+        static SUBMODULES_PATHS: OnceCell<Vec<String>> = OnceCell::new();
+
+        let init_submodules_paths = |src: &PathBuf| {
+            let file = File::open(src.join(".gitmodules")).unwrap();
+
+            let mut submodules_paths = vec![];
+            for line in BufReader::new(file).lines() {
+                if let Ok(line) = line {
+                    let line = line.trim();
+
+                    if line.starts_with("path") {
+                        let actual_path =
+                            line.split(' ').last().expect("Couldn't get value of path");
+                        submodules_paths.push(actual_path.to_owned());
+                    }
+                }
+            }
+
+            submodules_paths
+        };
+
+        let submodules_paths =
+            SUBMODULES_PATHS.get_or_init(|| init_submodules_paths(&self.builder.src));
+
         self.paths.insert(PathSet::Set(
             paths
                 .iter()
                 .map(|p| {
-                    // FIXME(#96188): make sure this is actually a path.
-                    // This currently breaks for paths within submodules.
-                    //assert!(
-                    //    self.builder.src.join(p).exists(),
-                    //    "`should_run.paths` should correspond to real on-disk paths - use `alias` if there is no relevant path: {}",
-                    //    p
-                    //);
+                    // assert only if `p` isn't submodule
+                    if !submodules_paths.iter().find(|sm_p| p.contains(*sm_p)).is_some() {
+                        assert!(
+                            self.builder.src.join(p).exists(),
+                            "`should_run.paths` should correspond to real on-disk paths - use `alias` if there is no relevant path: {}",
+                            p
+                        );
+                    }
+
                     TaskPath { path: p.into(), kind: Some(self.kind) }
                 })
                 .collect(),

@@ -20,8 +20,8 @@ pub type EvaluationCache<'tcx> = Cache<CanonicalGoal<'tcx>, QueryResult<'tcx>>;
 /// we're currently typechecking while the `predicate` is some trait bound.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, TypeFoldable, TypeVisitable)]
 pub struct Goal<'tcx, P> {
-    pub param_env: ty::ParamEnv<'tcx>,
     pub predicate: P,
+    pub param_env: ty::ParamEnv<'tcx>,
 }
 
 impl<'tcx, P> Goal<'tcx, P> {
@@ -41,10 +41,10 @@ impl<'tcx, P> Goal<'tcx, P> {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, TypeFoldable, TypeVisitable)]
 pub struct Response<'tcx> {
+    pub certainty: Certainty,
     pub var_values: CanonicalVarValues<'tcx>,
     /// Additional constraints returned by this query.
     pub external_constraints: ExternalConstraints<'tcx>,
-    pub certainty: Certainty,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, TypeFoldable, TypeVisitable)]
@@ -56,9 +56,19 @@ pub enum Certainty {
 impl Certainty {
     pub const AMBIGUOUS: Certainty = Certainty::Maybe(MaybeCause::Ambiguity);
 
-    /// When proving multiple goals using **AND**, e.g. nested obligations for an impl,
-    /// use this function to unify the certainty of these goals
-    pub fn unify_and(self, other: Certainty) -> Certainty {
+    /// Use this function to merge the certainty of multiple nested subgoals.
+    ///
+    /// Given an impl like `impl<T: Foo + Bar> Baz for T {}`, we have 2 nested
+    /// subgoals whenever we use the impl as a candidate: `T: Foo` and `T: Bar`.
+    /// If evaluating `T: Foo` results in ambiguity and `T: Bar` results in
+    /// success, we merge these two responses. This results in ambiguity.
+    ///
+    /// If we unify ambiguity with overflow, we return overflow. This doesn't matter
+    /// inside of the solver as we distinguish ambiguity from overflow. It does
+    /// however matter for diagnostics. If `T: Foo` resulted in overflow and `T: Bar`
+    /// in ambiguity without changing the inference state, we still want to tell the
+    /// user that `T: Baz` results in overflow.
+    pub fn unify_with(self, other: Certainty) -> Certainty {
         match (self, other) {
             (Certainty::Yes, Certainty::Yes) => Certainty::Yes,
             (Certainty::Yes, Certainty::Maybe(_)) => other,
@@ -105,7 +115,7 @@ impl<'tcx> std::ops::Deref for ExternalConstraints<'tcx> {
     type Target = ExternalConstraintsData<'tcx>;
 
     fn deref(&self) -> &Self::Target {
-        &*self.0
+        &self.0
     }
 }
 

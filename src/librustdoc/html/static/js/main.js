@@ -332,13 +332,7 @@ function preLoadCss(cssUrl) {
     };
 
     function getPageId() {
-        if (window.location.hash) {
-            const tmp = window.location.hash.replace(/^#/, "");
-            if (tmp.length > 0) {
-                return tmp;
-            }
-        }
-        return null;
+        return window.location.hash.replace(/^#/, "");
     }
 
     const toggleAllDocsId = "toggle-all-docs";
@@ -707,7 +701,7 @@ function preLoadCss(cssUrl) {
         });
 
         const pageId = getPageId();
-        if (pageId !== null) {
+        if (pageId !== "") {
             expandSection(pageId);
         }
     }());

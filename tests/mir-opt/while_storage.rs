@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 // Test that we correctly generate StorageDead statements for while loop
 // conditions on all branches
 

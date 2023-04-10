@@ -106,7 +106,7 @@ pub trait InferCtxtEvalExt<'tcx> {
 }
 
 impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self), ret)]
     fn evaluate_root_goal(
         &self,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
@@ -357,7 +357,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                             // deal with `has_changed` in the next iteration.
                             new_goals.normalizes_to_hack_goal =
                                 Some(this.resolve_vars_if_possible(goal));
-                            has_changed = has_changed.map_err(|c| c.unify_and(certainty));
+                            has_changed = has_changed.map_err(|c| c.unify_with(certainty));
                         }
                     }
                 }
@@ -378,7 +378,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                         Certainty::Yes => {}
                         Certainty::Maybe(_) => {
                             new_goals.goals.push(goal);
-                            has_changed = has_changed.map_err(|c| c.unify_and(certainty));
+                            has_changed = has_changed.map_err(|c| c.unify_with(certainty));
                         }
                     }
                 }
@@ -552,7 +552,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ///
     /// If possible, try using `eq` instead which automatically handles nested
     /// goals correctly.
-    #[instrument(level = "debug", skip(self, param_env), ret)]
+    #[instrument(level = "trace", skip(self, param_env), ret)]
     pub(super) fn eq_and_get_goals<T: ToTrace<'tcx>>(
         &self,
         param_env: ty::ParamEnv<'tcx>,

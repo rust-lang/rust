@@ -24,7 +24,7 @@
 -         _3 = g::<T>(move _4, move _5) -> bb1; // scope 1 at $DIR/move_arg.rs:+2:5: +2:12
 +         _3 = g::<T>(_1, _1) -> bb1;      // scope 1 at $DIR/move_arg.rs:+2:5: +2:12
                                            // mir::Constant
-                                           // + span: $DIR/move_arg.rs:7:5: 7:6
+                                           // + span: $DIR/move_arg.rs:8:5: 8:6
                                            // + literal: Const { ty: fn(T, T) {g::<T>}, val: Value(<ZST>) }
       }
   

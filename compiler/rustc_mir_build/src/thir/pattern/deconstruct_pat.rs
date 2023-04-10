@@ -258,7 +258,7 @@ impl IntRange {
         pcx: &PatCtxt<'_, 'p, 'tcx>,
         pats: impl Iterator<Item = &'a DeconstructedPat<'p, 'tcx>>,
         column_count: usize,
-        hir_id: HirId,
+        lint_root: HirId,
     ) {
         if self.is_singleton() {
             return;
@@ -290,7 +290,7 @@ impl IntRange {
         if !overlap.is_empty() {
             pcx.cx.tcx.emit_spanned_lint(
                 lint::builtin::OVERLAPPING_RANGE_ENDPOINTS,
-                hir_id,
+                lint_root,
                 pcx.span,
                 OverlappingRangeEndpoints { overlap, range: pcx.span },
             );
@@ -1154,8 +1154,9 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
     fn wildcards_from_tys(
         cx: &MatchCheckCtxt<'p, 'tcx>,
         tys: impl IntoIterator<Item = Ty<'tcx>>,
+        span: Span,
     ) -> Self {
-        Fields::from_iter(cx, tys.into_iter().map(DeconstructedPat::wildcard))
+        Fields::from_iter(cx, tys.into_iter().map(|ty| DeconstructedPat::wildcard(ty, span)))
     }
 
     // In the cases of either a `#[non_exhaustive]` field list or a non-public field, we hide
@@ -1191,18 +1192,18 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
     pub(super) fn wildcards(pcx: &PatCtxt<'_, 'p, 'tcx>, constructor: &Constructor<'tcx>) -> Self {
         let ret = match constructor {
             Single | Variant(_) => match pcx.ty.kind() {
-                ty::Tuple(fs) => Fields::wildcards_from_tys(pcx.cx, fs.iter()),
-                ty::Ref(_, rty, _) => Fields::wildcards_from_tys(pcx.cx, once(*rty)),
+                ty::Tuple(fs) => Fields::wildcards_from_tys(pcx.cx, fs.iter(), pcx.span),
+                ty::Ref(_, rty, _) => Fields::wildcards_from_tys(pcx.cx, once(*rty), pcx.span),
                 ty::Adt(adt, substs) => {
                     if adt.is_box() {
                         // The only legal patterns of type `Box` (outside `std`) are `_` and box
                         // patterns. If we're here we can assume this is a box pattern.
-                        Fields::wildcards_from_tys(pcx.cx, once(substs.type_at(0)))
+                        Fields::wildcards_from_tys(pcx.cx, once(substs.type_at(0)), pcx.span)
                     } else {
                         let variant = &adt.variant(constructor.variant_index_for_adt(*adt));
                         let tys = Fields::list_variant_nonhidden_fields(pcx.cx, pcx.ty, variant)
                             .map(|(_, ty)| ty);
-                        Fields::wildcards_from_tys(pcx.cx, tys)
+                        Fields::wildcards_from_tys(pcx.cx, tys, pcx.span)
                     }
                 }
                 _ => bug!("Unexpected type for `Single` constructor: {:?}", pcx),
@@ -1210,7 +1211,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
             Slice(slice) => match *pcx.ty.kind() {
                 ty::Slice(ty) | ty::Array(ty, _) => {
                     let arity = slice.arity();
-                    Fields::wildcards_from_tys(pcx.cx, (0..arity).map(|_| ty))
+                    Fields::wildcards_from_tys(pcx.cx, (0..arity).map(|_| ty), pcx.span)
                 }
                 _ => bug!("bad slice pattern {:?} {:?}", constructor, pcx),
             },
@@ -1251,8 +1252,8 @@ pub(crate) struct DeconstructedPat<'p, 'tcx> {
 }
 
 impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
-    pub(super) fn wildcard(ty: Ty<'tcx>) -> Self {
-        Self::new(Wildcard, Fields::empty(), ty, DUMMY_SP)
+    pub(super) fn wildcard(ty: Ty<'tcx>, span: Span) -> Self {
+        Self::new(Wildcard, Fields::empty(), ty, span)
     }
 
     pub(super) fn new(
@@ -1269,7 +1270,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
     /// `Some(_)`.
     pub(super) fn wild_from_ctor(pcx: &PatCtxt<'_, 'p, 'tcx>, ctor: Constructor<'tcx>) -> Self {
         let fields = Fields::wildcards(pcx, &ctor);
-        DeconstructedPat::new(ctor, fields, pcx.ty, DUMMY_SP)
+        DeconstructedPat::new(ctor, fields, pcx.ty, pcx.span)
     }
 
     /// Clone this value. This method emphasizes that cloning loses reachability information and
@@ -1298,7 +1299,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                     ty::Tuple(fs) => {
                         ctor = Single;
                         let mut wilds: SmallVec<[_; 2]> =
-                            fs.iter().map(DeconstructedPat::wildcard).collect();
+                            fs.iter().map(|ty| DeconstructedPat::wildcard(ty, pat.span)).collect();
                         for pat in subpatterns {
                             wilds[pat.field.index()] = mkpat(&pat.pattern);
                         }
@@ -1317,11 +1318,11 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                         // normally or through box-patterns. We'll have to figure out a proper
                         // solution when we introduce generalized deref patterns. Also need to
                         // prevent mixing of those two options.
-                        let pat = subpatterns.into_iter().find(|pat| pat.field.index() == 0);
-                        let pat = if let Some(pat) = pat {
+                        let pattern = subpatterns.into_iter().find(|pat| pat.field.index() == 0);
+                        let pat = if let Some(pat) = pattern {
                             mkpat(&pat.pattern)
                         } else {
-                            DeconstructedPat::wildcard(substs.type_at(0))
+                            DeconstructedPat::wildcard(substs.type_at(0), pat.span)
                         };
                         ctor = Single;
                         fields = Fields::singleton(cx, pat);
@@ -1343,7 +1344,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                                 ty
                             });
                         let mut wilds: SmallVec<[_; 2]> =
-                            tys.map(DeconstructedPat::wildcard).collect();
+                            tys.map(|ty| DeconstructedPat::wildcard(ty, pat.span)).collect();
                         for pat in subpatterns {
                             if let Some(i) = field_id_to_id[pat.field.index()] {
                                 wilds[i] = mkpat(&pat.pattern);
@@ -1566,8 +1567,10 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                         };
                         let prefix = &self.fields.fields[..prefix];
                         let suffix = &self.fields.fields[self_slice.arity() - suffix..];
-                        let wildcard: &_ =
-                            pcx.cx.pattern_arena.alloc(DeconstructedPat::wildcard(inner_ty));
+                        let wildcard: &_ = pcx
+                            .cx
+                            .pattern_arena
+                            .alloc(DeconstructedPat::wildcard(inner_ty, pcx.span));
                         let extra_wildcards = other_slice.arity() - self_slice.arity();
                         let extra_wildcards = (0..extra_wildcards).map(|_| wildcard);
                         prefix.iter().chain(extra_wildcards).chain(suffix).collect()

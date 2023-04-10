@@ -21,6 +21,7 @@ pub fn target() -> Target {
             crt_static_default: false,
             mcount: "\u{1}mcount".into(),
             force_emulated_tls: true,
+            has_thread_local: false,
             ..super::linux_musl_base::opts()
         },
     }

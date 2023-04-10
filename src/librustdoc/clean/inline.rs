@@ -153,7 +153,6 @@ pub(crate) fn try_inline_glob(
             let reexports = cx
                 .tcx
                 .module_reexports(current_mod)
-                .unwrap_or_default()
                 .iter()
                 .filter_map(|child| child.res.opt_def_id())
                 .collect();
@@ -558,7 +557,7 @@ fn build_module_items(
     // If we're re-exporting a re-export it may actually re-export something in
     // two namespaces, so the target may be listed twice. Make sure we only
     // visit each node at most once.
-    for &item in cx.tcx.module_children(did).iter() {
+    for item in cx.tcx.module_children(did).iter() {
         if item.vis.is_public() {
             let res = item.res.expect_non_local();
             if let Some(def_id) = res.opt_def_id()

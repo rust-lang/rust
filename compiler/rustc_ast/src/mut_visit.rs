@@ -7,10 +7,10 @@
 //! a `MutVisitor` renaming item names in a module will miss all of those
 //! that are created by the expansion of a macro.
 
-use crate::ast::*;
 use crate::ptr::P;
 use crate::token::{self, Token};
 use crate::tokenstream::*;
+use crate::{ast::*, StaticItem};
 
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::sync::Lrc;
@@ -1030,14 +1030,12 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
     match kind {
         ItemKind::ExternCrate(_orig_name) => {}
         ItemKind::Use(use_tree) => vis.visit_use_tree(use_tree),
-        ItemKind::Static(ty, _, expr) => {
+        ItemKind::Static(box StaticItem { ty, mutability: _, expr }) => {
             vis.visit_ty(ty);
             visit_opt(expr, |expr| vis.visit_expr(expr));
         }
-        ItemKind::Const(defaultness, ty, expr) => {
-            visit_defaultness(defaultness, vis);
-            vis.visit_ty(ty);
-            visit_opt(expr, |expr| vis.visit_expr(expr));
+        ItemKind::Const(item) => {
+            visit_const_item(item, vis);
         }
         ItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
             visit_defaultness(defaultness, vis);
@@ -1120,10 +1118,8 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
     visitor.visit_vis(vis);
     visit_attrs(attrs, visitor);
     match kind {
-        AssocItemKind::Const(defaultness, ty, expr) => {
-            visit_defaultness(defaultness, visitor);
-            visitor.visit_ty(ty);
-            visit_opt(expr, |expr| visitor.visit_expr(expr));
+        AssocItemKind::Const(item) => {
+            visit_const_item(item, visitor);
         }
         AssocItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
             visit_defaultness(defaultness, visitor);
@@ -1151,6 +1147,15 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
     visitor.visit_span(span);
     visit_lazy_tts(tokens, visitor);
     smallvec![item]
+}
+
+fn visit_const_item<T: MutVisitor>(
+    ConstItem { defaultness, ty, expr }: &mut ConstItem,
+    visitor: &mut T,
+) {
+    visit_defaultness(defaultness, visitor);
+    visitor.visit_ty(ty);
+    visit_opt(expr, |expr| visitor.visit_expr(expr));
 }
 
 pub fn noop_visit_fn_header<T: MutVisitor>(header: &mut FnHeader, vis: &mut T) {

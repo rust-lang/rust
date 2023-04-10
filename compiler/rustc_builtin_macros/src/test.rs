@@ -254,25 +254,27 @@ pub fn expand_test_or_bench(
 
     let location_info = get_location_info(cx, &item);
 
-    let mut test_const = cx.item(
-        sp,
-        Ident::new(item.ident.name, sp),
-        thin_vec![
-            // #[cfg(test)]
-            cx.attr_nested_word(sym::cfg, sym::test, attr_sp),
-            // #[rustc_test_marker = "test_case_sort_key"]
-            cx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, attr_sp),
-        ],
-        // const $ident: test::TestDescAndFn =
-        ast::ItemKind::Const(
-            ast::Defaultness::Final,
-            cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
-            // test::TestDescAndFn {
-            Some(
-                cx.expr_struct(
-                    sp,
-                    test_path("TestDescAndFn"),
-                    thin_vec![
+    let mut test_const =
+        cx.item(
+            sp,
+            Ident::new(item.ident.name, sp),
+            thin_vec![
+                // #[cfg(test)]
+                cx.attr_nested_word(sym::cfg, sym::test, attr_sp),
+                // #[rustc_test_marker = "test_case_sort_key"]
+                cx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, attr_sp),
+            ],
+            // const $ident: test::TestDescAndFn =
+            ast::ItemKind::Const(
+                ast::ConstItem {
+                    defaultness: ast::Defaultness::Final,
+                    ty: cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
+                    // test::TestDescAndFn {
+                    expr: Some(
+                        cx.expr_struct(
+                            sp,
+                            test_path("TestDescAndFn"),
+                            thin_vec![
                         // desc: test::TestDesc {
                         field(
                             "desc",
@@ -359,10 +361,12 @@ pub fn expand_test_or_bench(
                         // testfn: test::StaticTestFn(...) | test::StaticBenchFn(...)
                         field("testfn", test_fn), // }
                     ],
-                ), // }
+                        ), // }
+                    ),
+                }
+                .into(),
             ),
-        ),
-    );
+        );
     test_const = test_const.map(|mut tc| {
         tc.vis.kind = ast::VisibilityKind::Public;
         tc

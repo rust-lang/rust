@@ -13,14 +13,14 @@
 +         _3 = (_1.0: u8);                 // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
 +         _0 = opaque::<Foo>(_1) -> bb1;   // scope 0 at $DIR/move_projection.rs:+6:13: +6:44
                                            // mir::Constant
-                                           // + span: $DIR/move_projection.rs:19:28: 19:34
+                                           // + span: $DIR/move_projection.rs:20:28: 20:34
                                            // + literal: Const { ty: fn(Foo) -> bool {opaque::<Foo>}, val: Value(<ZST>) }
       }
   
       bb1: {
           _0 = opaque::<u8>(move _3) -> bb2; // scope 0 at $DIR/move_projection.rs:+9:13: +9:44
                                            // mir::Constant
-                                           // + span: $DIR/move_projection.rs:22:28: 22:34
+                                           // + span: $DIR/move_projection.rs:23:28: 23:34
                                            // + literal: Const { ty: fn(u8) -> bool {opaque::<u8>}, val: Value(<ZST>) }
       }
   

@@ -17,7 +17,7 @@
                                            // + literal: Const { ty: extern "rust-intrinsic" fn() -> usize {std::intrinsics::size_of::<T>}, val: Value(<ZST>) }
           StorageLive(_2);                 // scope 1 at $DIR/lower_intrinsics.rs:+3:5: +3:14
           _2 = _1;                         // scope 1 at $DIR/lower_intrinsics.rs:+3:5: +3:14
--         _0 = move _2() -> bb1;           // scope 1 at $DIR/lower_intrinsics.rs:+3:5: +3:16
+-         _0 = move _2() -> [return: bb1, unwind unreachable]; // scope 1 at $DIR/lower_intrinsics.rs:+3:5: +3:16
 +         _0 = SizeOf(T);                  // scope 1 at $DIR/lower_intrinsics.rs:+3:5: +3:16
 +         goto -> bb1;                     // scope 1 at $DIR/lower_intrinsics.rs:+3:5: +3:16
       }

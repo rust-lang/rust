@@ -263,7 +263,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             args: vec![Operand::Move(ref_string)],
                             destination: ref_str,
                             target: Some(eq_block),
-                            cleanup: None,
+                            unwind: UnwindAction::Continue,
                             from_hir_call: false,
                             fn_span: source_info.span
                         }
@@ -466,7 +466,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 args: vec![val, expect],
                 destination: eq_result,
                 target: Some(eq_block),
-                cleanup: None,
+                unwind: UnwindAction::Continue,
                 from_hir_call: false,
                 fn_span: source_info.span,
             },

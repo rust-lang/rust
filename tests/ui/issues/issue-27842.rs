@@ -8,4 +8,9 @@ fn main() {
     let i = 0_usize;
     let _ = tup[i];
     //~^ ERROR cannot index into a value of type
+
+    // the case where the index is out of bounds
+    let tup = (10,);
+    let _ = tup[3];
+    //~^ ERROR cannot index into a value of type
 }

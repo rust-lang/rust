@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 // compile-flags: -Zmir-enable-passes=-NormalizeArrayLen
 // Check that we do not insert StorageDead at each target if StorageDead was never seen
 

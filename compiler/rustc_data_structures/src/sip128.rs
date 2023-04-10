@@ -247,7 +247,7 @@ impl SipHasher128 {
         for i in 0..BUFFER_CAPACITY {
             let elem = self.buf.get_unchecked(i).assume_init().to_le();
             self.state.v3 ^= elem;
-            Sip24Rounds::c_rounds(&mut self.state);
+            Sip13Rounds::c_rounds(&mut self.state);
             self.state.v0 ^= elem;
         }
 
@@ -327,7 +327,7 @@ impl SipHasher128 {
         for i in 0..last {
             let elem = self.buf.get_unchecked(i).assume_init().to_le();
             self.state.v3 ^= elem;
-            Sip24Rounds::c_rounds(&mut self.state);
+            Sip13Rounds::c_rounds(&mut self.state);
             self.state.v0 ^= elem;
         }
 
@@ -340,7 +340,7 @@ impl SipHasher128 {
         for _ in 0..elems_left {
             let elem = (msg.as_ptr().add(processed) as *const u64).read_unaligned().to_le();
             self.state.v3 ^= elem;
-            Sip24Rounds::c_rounds(&mut self.state);
+            Sip13Rounds::c_rounds(&mut self.state);
             self.state.v0 ^= elem;
             processed += ELEM_SIZE;
         }
@@ -368,7 +368,7 @@ impl SipHasher128 {
         for i in 0..last {
             let elem = unsafe { self.buf.get_unchecked(i).assume_init().to_le() };
             state.v3 ^= elem;
-            Sip24Rounds::c_rounds(&mut state);
+            Sip13Rounds::c_rounds(&mut state);
             state.v0 ^= elem;
         }
 
@@ -392,15 +392,15 @@ impl SipHasher128 {
         let b: u64 = ((length as u64 & 0xff) << 56) | elem;
 
         state.v3 ^= b;
-        Sip24Rounds::c_rounds(&mut state);
+        Sip13Rounds::c_rounds(&mut state);
         state.v0 ^= b;
 
         state.v2 ^= 0xee;
-        Sip24Rounds::d_rounds(&mut state);
+        Sip13Rounds::d_rounds(&mut state);
         let _0 = state.v0 ^ state.v1 ^ state.v2 ^ state.v3;
 
         state.v1 ^= 0xdd;
-        Sip24Rounds::d_rounds(&mut state);
+        Sip13Rounds::d_rounds(&mut state);
         let _1 = state.v0 ^ state.v1 ^ state.v2 ^ state.v3;
 
         (_0, _1)
@@ -477,18 +477,16 @@ impl Hasher for SipHasher128 {
 }
 
 #[derive(Debug, Clone, Default)]
-struct Sip24Rounds;
+struct Sip13Rounds;
 
-impl Sip24Rounds {
+impl Sip13Rounds {
     #[inline]
     fn c_rounds(state: &mut State) {
-        compress!(state);
         compress!(state);
     }
 
     #[inline]
     fn d_rounds(state: &mut State) {
-        compress!(state);
         compress!(state);
         compress!(state);
         compress!(state);

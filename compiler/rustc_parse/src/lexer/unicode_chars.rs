@@ -336,8 +336,8 @@ const ASCII_ARRAY: &[(&str, &str, Option<token::TokenKind>)] = &[
     ("\"", "Quotation Mark", None),
 ];
 
-pub(super) fn check_for_substitution<'a>(
-    reader: &StringReader<'a>,
+pub(super) fn check_for_substitution(
+    reader: &StringReader<'_>,
     pos: BytePos,
     ch: char,
     count: usize,

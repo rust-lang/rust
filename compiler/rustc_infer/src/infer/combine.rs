@@ -137,6 +137,18 @@ impl<'tcx> InferCtxt<'tcx> {
                 Err(TypeError::Sorts(ty::relate::expected_found(relation, a, b)))
             }
 
+            // During coherence, opaque types should be treated as *possibly*
+            // equal to each other, even if their generic params differ, as
+            // they could resolve to the same hidden type, even for different
+            // generic params.
+            (
+                &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
+                &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
+            ) if self.intercrate && a_def_id == b_def_id => {
+                relation.register_predicates([ty::Binder::dummy(ty::PredicateKind::Ambiguous)]);
+                Ok(a)
+            }
+
             _ => ty::relate::super_relate_tys(relation, a, b),
         }
     }
@@ -505,10 +517,6 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
             Obligation::new(self.infcx.tcx, self.trace.cause.clone(), self.param_env, to_pred)
         }))
     }
-
-    pub fn mark_ambiguous(&mut self) {
-        self.register_predicates([ty::Binder::dummy(ty::PredicateKind::Ambiguous)]);
-    }
 }
 
 struct Generalizer<'cx, 'tcx> {
@@ -581,10 +589,6 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
         self.infcx.tcx
     }
 
-    fn intercrate(&self) -> bool {
-        self.infcx.intercrate
-    }
-
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env
     }
@@ -595,10 +599,6 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
 
     fn a_is_expected(&self) -> bool {
         true
-    }
-
-    fn mark_ambiguous(&mut self) {
-        span_bug!(self.cause.span, "opaque types are handled in `tys`");
     }
 
     fn binders<T>(

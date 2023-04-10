@@ -185,7 +185,7 @@ impl CStore {
     fn push_dependencies_in_postorder(&self, deps: &mut Vec<CrateNum>, cnum: CrateNum) {
         if !deps.contains(&cnum) {
             let data = self.get_crate_data(cnum);
-            for &dep in data.dependencies().iter() {
+            for dep in data.dependencies() {
                 if dep != cnum {
                     self.push_dependencies_in_postorder(deps, dep);
                 }
@@ -605,7 +605,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         if cmeta.update_extern_crate(extern_crate) {
             // Propagate the extern crate info to dependencies if it was updated.
             let extern_crate = ExternCrate { dependency_of: cnum, ..extern_crate };
-            for &dep_cnum in cmeta.dependencies().iter() {
+            for dep_cnum in cmeta.dependencies() {
                 self.update_extern_crate(dep_cnum, extern_crate);
             }
         }

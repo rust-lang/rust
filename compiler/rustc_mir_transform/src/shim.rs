@@ -499,7 +499,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
                 args: vec![Operand::Move(ref_loc)],
                 destination: dest,
                 target: Some(next),
-                cleanup: Some(cleanup),
+                unwind: UnwindAction::Cleanup(cleanup),
                 from_hir_call: true,
                 fn_span: self.span,
             },
@@ -540,7 +540,11 @@ impl<'tcx> CloneShimBuilder<'tcx> {
             self.make_clone_call(dest_field, src_field, ity, next_block, unwind);
             self.block(
                 vec![],
-                TerminatorKind::Drop { place: dest_field, target: unwind, unwind: None },
+                TerminatorKind::Drop {
+                    place: dest_field,
+                    target: unwind,
+                    unwind: UnwindAction::Terminate,
+                },
                 true,
             );
             unwind = next_unwind;
@@ -776,10 +780,10 @@ fn build_call_shim<'tcx>(
             args,
             destination: Place::return_place(),
             target: Some(BasicBlock::new(1)),
-            cleanup: if let Some(Adjustment::RefMut) = rcvr_adjustment {
-                Some(BasicBlock::new(3))
+            unwind: if let Some(Adjustment::RefMut) = rcvr_adjustment {
+                UnwindAction::Cleanup(BasicBlock::new(3))
             } else {
-                None
+                UnwindAction::Continue
             },
             from_hir_call: true,
             fn_span: span,
@@ -792,7 +796,11 @@ fn build_call_shim<'tcx>(
         block(
             &mut blocks,
             vec![],
-            TerminatorKind::Drop { place: rcvr_place(), target: BasicBlock::new(2), unwind: None },
+            TerminatorKind::Drop {
+                place: rcvr_place(),
+                target: BasicBlock::new(2),
+                unwind: UnwindAction::Continue,
+            },
             false,
         );
     }
@@ -803,7 +811,11 @@ fn build_call_shim<'tcx>(
         block(
             &mut blocks,
             vec![],
-            TerminatorKind::Drop { place: rcvr_place(), target: BasicBlock::new(4), unwind: None },
+            TerminatorKind::Drop {
+                place: rcvr_place(),
+                target: BasicBlock::new(4),
+                unwind: UnwindAction::Terminate,
+            },
             true,
         );
 

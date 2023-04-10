@@ -1,7 +1,9 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{def_id::DefId, Movability, Mutability};
 use rustc_infer::traits::query::NoSolution;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::{
+    self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+};
 
 use crate::solve::EvalCtxt;
 
@@ -9,7 +11,7 @@ use crate::solve::EvalCtxt;
 //
 // For types with an "existential" binder, i.e. generator witnesses, we also
 // instantiate the binder with placeholders eagerly.
-pub(super) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
+pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
     ecx: &EvalCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
 ) -> Result<Vec<Ty<'tcx>>, NoSolution> {
@@ -60,7 +62,16 @@ pub(super) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
 
         ty::GeneratorWitness(types) => Ok(ecx.instantiate_binder_with_placeholders(types).to_vec()),
 
-        ty::GeneratorWitnessMIR(..) => todo!(),
+        ty::GeneratorWitnessMIR(def_id, substs) => Ok(ecx
+            .tcx()
+            .generator_hidden_types(def_id)
+            .map(|bty| {
+                ecx.instantiate_binder_with_placeholders(replace_erased_lifetimes_with_bound_vars(
+                    tcx,
+                    bty.subst(tcx, substs),
+                ))
+            })
+            .collect()),
 
         // For `PhantomData<T>`, we pass `T`.
         ty::Adt(def, substs) if def.is_phantom_data() => Ok(vec![substs.type_at(0)]),
@@ -76,7 +87,28 @@ pub(super) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
     }
 }
 
-pub(super) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
+pub(in crate::solve) fn replace_erased_lifetimes_with_bound_vars<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+) -> ty::Binder<'tcx, Ty<'tcx>> {
+    debug_assert!(!ty.has_late_bound_regions());
+    let mut counter = 0;
+    let ty = tcx.fold_regions(ty, |mut r, current_depth| {
+        if let ty::ReErased = r.kind() {
+            let br =
+                ty::BoundRegion { var: ty::BoundVar::from_u32(counter), kind: ty::BrAnon(None) };
+            counter += 1;
+            r = tcx.mk_re_late_bound(current_depth, br);
+        }
+        r
+    });
+    let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
+        (0..counter).map(|_| ty::BoundVariableKind::Region(ty::BrAnon(None))),
+    );
+    ty::Binder::bind_with_vars(ty, bound_vars)
+}
+
+pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
     ecx: &EvalCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
 ) -> Result<Vec<Ty<'tcx>>, NoSolution> {
@@ -126,7 +158,7 @@ pub(super) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
     }
 }
 
-pub(super) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
+pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
     ecx: &EvalCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
 ) -> Result<Vec<Ty<'tcx>>, NoSolution> {
@@ -178,12 +210,21 @@ pub(super) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
 
         ty::GeneratorWitness(types) => Ok(ecx.instantiate_binder_with_placeholders(types).to_vec()),
 
-        ty::GeneratorWitnessMIR(..) => todo!(),
+        ty::GeneratorWitnessMIR(def_id, substs) => Ok(ecx
+            .tcx()
+            .generator_hidden_types(def_id)
+            .map(|bty| {
+                ecx.instantiate_binder_with_placeholders(replace_erased_lifetimes_with_bound_vars(
+                    ecx.tcx(),
+                    bty.subst(ecx.tcx(), substs),
+                ))
+            })
+            .collect()),
     }
 }
 
 // Returns a binder of the tupled inputs types and output type from a builtin callable type.
-pub(crate) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
+pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
     tcx: TyCtxt<'tcx>,
     self_ty: Ty<'tcx>,
     goal_kind: ty::ClosureKind,
@@ -296,7 +337,13 @@ pub(crate) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
 /// additional step of eagerly folding the associated types in the where
 /// clauses of the impl. In this example, that means replacing
 /// `<Self as Foo>::Bar` with `Ty` in the first impl.
-pub(crate) fn predicates_for_object_candidate<'tcx>(
+///
+// FIXME: This is only necessary as `<Self as Trait>::Assoc: ItemBound`
+// bounds in impls are trivially proven using the item bound candidates.
+// This is unsound in general and once that is fixed, we don't need to
+// normalize eagerly here. See https://github.com/lcnr/solver-woes/issues/9
+// for more details.
+pub(in crate::solve) fn predicates_for_object_candidate<'tcx>(
     ecx: &EvalCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,

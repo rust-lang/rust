@@ -530,7 +530,7 @@ struct MissingStabilityAnnotations<'tcx> {
 impl<'tcx> MissingStabilityAnnotations<'tcx> {
     fn check_missing_stability(&self, def_id: LocalDefId, span: Span) {
         let stab = self.tcx.stability().local_stability(def_id);
-        if !self.tcx.sess.opts.test
+        if !self.tcx.sess.is_test_crate()
             && stab.is_none()
             && self.effective_visibilities.is_reachable(def_id)
         {

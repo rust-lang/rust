@@ -24,7 +24,7 @@
           StorageLive(_1);                 // scope 0 at $DIR/cycle.rs:+1:9: +1:14
           _1 = val() -> bb1;               // scope 0 at $DIR/cycle.rs:+1:17: +1:22
                                            // mir::Constant
-                                           // + span: $DIR/cycle.rs:9:17: 9:20
+                                           // + span: $DIR/cycle.rs:10:17: 10:20
                                            // + literal: Const { ty: fn() -> i32 {val}, val: Value(<ZST>) }
       }
   
@@ -43,7 +43,7 @@
           _6 = _1;                         // scope 3 at $DIR/cycle.rs:+6:10: +6:11
           _5 = std::mem::drop::<i32>(move _6) -> bb2; // scope 3 at $DIR/cycle.rs:+6:5: +6:12
                                            // mir::Constant
-                                           // + span: $DIR/cycle.rs:14:5: 14:9
+                                           // + span: $DIR/cycle.rs:15:5: 15:9
                                            // + literal: Const { ty: fn(i32) {std::mem::drop::<i32>}, val: Value(<ZST>) }
       }
   

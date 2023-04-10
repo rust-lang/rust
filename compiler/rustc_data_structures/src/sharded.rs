@@ -140,6 +140,7 @@ pub fn make_hash<K: Hash + ?Sized>(val: &K) -> u64 {
 /// `hash` can be computed with any hasher, so long as that hasher is used
 /// consistently for each `Sharded` instance.
 #[inline]
+#[allow(clippy::modulo_one)]
 pub fn get_shard_index_by_hash(hash: u64) -> usize {
     let hash_len = mem::size_of::<usize>();
     // Ignore the top 7 bits as hashbrown uses these and get the next SHARD_BITS highest bits.

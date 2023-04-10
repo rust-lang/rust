@@ -27,7 +27,7 @@ LL | const U8_MUT: &u8 = {
            }
 
 error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:43:9
+  --> $DIR/const_refers_to_static_cross_crate.rs:42:9
    |
 LL |         U8_MUT => true,
    |         ^^^^^^
@@ -39,7 +39,7 @@ LL |     unsafe { &(*static_cross_crate::ZERO_REF)[0] }
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant accesses static
 
 error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:54:9
+  --> $DIR/const_refers_to_static_cross_crate.rs:52:9
    |
 LL |         U8_MUT2 => true,
    |         ^^^^^^^
@@ -51,31 +51,7 @@ LL |     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None =>
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant accesses static
 
 error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:62:9
-   |
-LL |         U8_MUT3 => true,
-   |         ^^^^^^^
-
-error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:34:9
-   |
-LL |         SLICE_MUT => true,
-   |         ^^^^^^^^^
-
-error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:43:9
-   |
-LL |         U8_MUT => true,
-   |         ^^^^^^
-
-error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:54:9
-   |
-LL |         U8_MUT2 => true,
-   |         ^^^^^^^
-
-error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:62:9
+  --> $DIR/const_refers_to_static_cross_crate.rs:59:9
    |
 LL |         U8_MUT3 => true,
    |         ^^^^^^^
@@ -133,6 +109,6 @@ help: skipping check that does not even have a feature gate
 LL |     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 12 previous errors; 1 warning emitted
+error: aborting due to 8 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0080`.

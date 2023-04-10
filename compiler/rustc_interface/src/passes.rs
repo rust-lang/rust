@@ -230,7 +230,7 @@ fn configure_and_expand(
             features: Some(features),
             recursion_limit,
             trace_mac: sess.opts.unstable_opts.trace_macros,
-            should_test: sess.opts.test,
+            should_test: sess.is_test_crate(),
             span_debug: sess.opts.unstable_opts.span_debug,
             proc_macro_backtrace: sess.opts.unstable_opts.proc_macro_backtrace,
             ..rustc_expand::expand::ExpansionConfig::default(crate_name.to_string())
@@ -292,7 +292,7 @@ fn configure_and_expand(
     }
 
     sess.time("maybe_create_a_macro_crate", || {
-        let is_test_crate = sess.opts.test;
+        let is_test_crate = sess.is_test_crate();
         rustc_builtin_macros::proc_macro_harness::inject(
             &mut krate,
             sess,
@@ -765,7 +765,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
         parallel!(
             {
                 sess.time("match_checking", || {
-                    tcx.hir().par_body_owners(|def_id| tcx.ensure().check_match(def_id.to_def_id()))
+                    tcx.hir().par_body_owners(|def_id| tcx.ensure().check_match(def_id))
                 });
             },
             {

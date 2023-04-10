@@ -234,7 +234,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     /// constructed once for a given type. As part of the construction process, the `ParamEnv` will
     /// have any supertrait bounds normalized -- e.g., if we have a type `struct Foo<T: Copy>`, the
     /// `ParamEnv` will contain `T: Copy` and `T: Clone`, since `Copy: Clone`. When we construct our
-    /// own `ParamEnv`, we need to do this ourselves, through `traits::elaborate_predicates`, or
+    /// own `ParamEnv`, we need to do this ourselves, through `traits::elaborate`, or
     /// else `SelectionContext` will choke on the missing predicates. However, this should never
     /// show up in the final synthesized generics: we don't want our generated docs page to contain
     /// something like `T: Copy + Clone`, as that's redundant. Therefore, we keep track of a
@@ -346,10 +346,8 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 _ => panic!("Unexpected error for '{:?}': {:?}", ty, result),
             };
 
-            let normalized_preds = elaborate_predicates(
-                tcx,
-                computed_preds.clone().chain(user_computed_preds.iter().cloned()),
-            );
+            let normalized_preds =
+                elaborate(tcx, computed_preds.clone().chain(user_computed_preds.iter().cloned()));
             new_env = ty::ParamEnv::new(
                 tcx.mk_predicates_from_iter(normalized_preds),
                 param_env.reveal(),

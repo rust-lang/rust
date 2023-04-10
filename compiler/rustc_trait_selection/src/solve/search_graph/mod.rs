@@ -209,6 +209,7 @@ impl<'tcx> SearchGraph<'tcx> {
     ) -> QueryResult<'tcx> {
         if self.should_use_global_cache() {
             if let Some(result) = tcx.new_solver_evaluation_cache.get(&canonical_goal, tcx) {
+                debug!(?canonical_goal, ?result, "cache hit");
                 return result;
             }
         }

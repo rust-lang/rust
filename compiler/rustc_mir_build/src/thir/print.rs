@@ -151,6 +151,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 initializer,
                 else_block,
                 lint_level,
+                span,
             } => {
                 print_indented!(self, "kind: Let {", depth_lvl + 1);
                 print_indented!(
@@ -181,6 +182,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 }
 
                 print_indented!(self, format!("lint_level: {:?}", lint_level), depth_lvl + 2);
+                print_indented!(self, format!("span: {:?}", span), depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl + 1);
             }
         }

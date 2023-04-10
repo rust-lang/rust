@@ -73,8 +73,8 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     /// Cached unreachable block
     unreachable_block: Option<Bx::BasicBlock>,
 
-    /// Cached double unwind guarding block
-    double_unwind_guard: Option<Bx::BasicBlock>,
+    /// Cached terminate upon unwinding block
+    terminate_block: Option<Bx::BasicBlock>,
 
     /// The location where each MIR arg/var/tmp/ret is stored. This is
     /// usually an `PlaceRef` representing an alloca, but not always:
@@ -166,7 +166,9 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let start_llbb = Bx::append_block(cx, llfn, "start");
     let mut start_bx = Bx::build(cx, start_llbb);
 
-    if mir.basic_blocks.iter().any(|bb| bb.is_cleanup) {
+    if mir.basic_blocks.iter().any(|bb| {
+        bb.is_cleanup || matches!(bb.terminator().unwind(), Some(mir::UnwindAction::Terminate))
+    }) {
         start_bx.set_personality_fn(cx.eh_personality());
     }
 
@@ -189,7 +191,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         personality_slot: None,
         cached_llbbs,
         unreachable_block: None,
-        double_unwind_guard: None,
+        terminate_block: None,
         cleanup_kinds,
         landing_pads: IndexVec::from_elem(None, &mir.basic_blocks),
         funclets: IndexVec::from_fn_n(|_| None, mir.basic_blocks.len()),

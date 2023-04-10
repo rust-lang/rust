@@ -9,8 +9,8 @@
 use itertools::{Either, Itertools};
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
-use rustc_ast::walk_list;
 use rustc_ast::*;
+use rustc_ast::{walk_list, StaticItem};
 use rustc_ast_pretty::pprust::{self, State};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_macros::Subdiagnostic;
@@ -691,7 +691,7 @@ fn validate_generic_param_order(
                 GenericParamKind::Lifetime => (),
                 GenericParamKind::Const { ty: _, kw_span: _, default: Some(default) } => {
                     ordered_params += " = ";
-                    ordered_params += &pprust::expr_to_string(&*default.value);
+                    ordered_params += &pprust::expr_to_string(&default.value);
                 }
                 GenericParamKind::Const { ty: _, kw_span: _, default: None } => (),
             }
@@ -983,14 +983,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.err_handler().emit_err(errors::FieldlessUnion { span: item.span });
                 }
             }
-            ItemKind::Const(def, .., None) => {
-                self.check_defaultness(item.span, *def);
+            ItemKind::Const(box ConstItem { defaultness, expr: None, .. }) => {
+                self.check_defaultness(item.span, *defaultness);
                 self.session.emit_err(errors::ConstWithoutBody {
                     span: item.span,
                     replace_span: self.ending_semi_or_hi(item.span),
                 });
             }
-            ItemKind::Static(.., None) => {
+            ItemKind::Static(box StaticItem { expr: None, .. }) => {
                 self.session.emit_err(errors::StaticWithoutBody {
                     span: item.span,
                     replace_span: self.ending_semi_or_hi(item.span),
@@ -1259,13 +1259,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         if ctxt == AssocCtxt::Impl {
             match &item.kind {
-                AssocItemKind::Const(_, _, body) => {
-                    if body.is_none() {
-                        self.session.emit_err(errors::AssocConstWithoutBody {
-                            span: item.span,
-                            replace_span: self.ending_semi_or_hi(item.span),
-                        });
-                    }
+                AssocItemKind::Const(box ConstItem { expr: None, .. }) => {
+                    self.session.emit_err(errors::AssocConstWithoutBody {
+                        span: item.span,
+                        replace_span: self.ending_semi_or_hi(item.span),
+                    });
                 }
                 AssocItemKind::Fn(box Fn { body, .. }) => {
                     if body.is_none() {

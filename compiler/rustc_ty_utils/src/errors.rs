@@ -67,3 +67,36 @@ pub enum GenericConstantTooComplexSub {
     #[label(ty_utils_operation_not_supported)]
     OperationNotSupported(#[primary_span] Span),
 }
+
+#[derive(Diagnostic)]
+#[diag(ty_utils_unexpected_fnptr_associated_item)]
+pub struct UnexpectedFnPtrAssociatedItem {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ty_utils_zero_length_simd_type)]
+pub struct ZeroLengthSimdType<'tcx> {
+    pub ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag(ty_utils_multiple_array_fields_simd_type)]
+pub struct MultipleArrayFieldsSimdType<'tcx> {
+    pub ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag(ty_utils_oversized_simd_type)]
+pub struct OversizedSimdType<'tcx> {
+    pub ty: Ty<'tcx>,
+    pub max_lanes: u64,
+}
+
+#[derive(Diagnostic)]
+#[diag(ty_utils_non_primative_simd_type)]
+pub struct NonPrimitiveSimdType<'tcx> {
+    pub ty: Ty<'tcx>,
+    pub e_ty: Ty<'tcx>,
+}

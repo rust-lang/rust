@@ -8,7 +8,7 @@
       let mut _3: u8;                      // in scope 0 at $DIR/inherit_overflow.rs:+3:13: +3:47
       scope 1 {
       }
-      scope 2 (inlined <u8 as Add>::add) { // at $DIR/inherit_overflow.rs:8:13: 8:47
+      scope 2 (inlined <u8 as Add>::add) { // at $DIR/inherit_overflow.rs:9:13: 9:47
           debug self => _2;                // in scope 2 at $SRC_DIR/core/src/ops/arith.rs:LL:COL
           debug other => _3;               // in scope 2 at $SRC_DIR/core/src/ops/arith.rs:LL:COL
           let mut _4: (u8, bool);          // in scope 2 at $SRC_DIR/core/src/ops/arith.rs:LL:COL

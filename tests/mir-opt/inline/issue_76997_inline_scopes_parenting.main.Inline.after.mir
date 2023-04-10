@@ -21,7 +21,7 @@ fn main() -> () {
         StorageLive(_1);                 // scope 0 at $DIR/issue_76997_inline_scopes_parenting.rs:+1:9: +1:10
         _1 = [closure@$DIR/issue_76997_inline_scopes_parenting.rs:5:13: 5:16]; // scope 0 at $DIR/issue_76997_inline_scopes_parenting.rs:+1:13: +1:33
                                          // closure
-                                         // + def_id: DefId(0:4 ~ issue_76997_inline_scopes_parenting[bc59]::main::{closure#0})
+                                         // + def_id: DefId(0:4 ~ issue_76997_inline_scopes_parenting[5cd2]::main::{closure#0})
                                          // + substs: [
                                          //     i8,
                                          //     extern "rust-call" fn(((),)),

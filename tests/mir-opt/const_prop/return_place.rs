@@ -1,3 +1,4 @@
+// ignore-wasm32 compiled with panic=abort by default
 // compile-flags: -C overflow-checks=on
 
 // EMIT_MIR return_place.add.ConstProp.diff

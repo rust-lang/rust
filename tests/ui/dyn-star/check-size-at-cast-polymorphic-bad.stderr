@@ -1,4 +1,4 @@
-error[E0277]: `&T` needs to have the same alignment and size as a pointer
+error[E0277]: `&T` needs to have the same ABI as a pointer
   --> $DIR/check-size-at-cast-polymorphic-bad.rs:11:15
    |
 LL |     dyn_debug(t);

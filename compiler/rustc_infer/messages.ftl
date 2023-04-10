@@ -30,8 +30,8 @@ infer_source_kind_subdiag_let = {$kind ->
 }{$x_kind ->
     [has_name] , where the {$prefix_kind ->
         *[type] type for {$prefix}
-        [const_with_param] the value of const parameter
-        [const] the value of the constant
+        [const_with_param] value of const parameter
+        [const] value of the constant
     } `{$arg_name}` is specified
     [underscore] , where the placeholders `_` are specified
     *[empty] {""}

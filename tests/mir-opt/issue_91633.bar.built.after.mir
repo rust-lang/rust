@@ -31,7 +31,7 @@ fn bar(_1: Box<[T]>) -> () {
     }
 
     bb3 (cleanup): {
-        drop(_1) -> bb4;                 // scope 0 at $DIR/issue_91633.rs:+5:2: +5:3
+        drop(_1) -> [return: bb4, unwind terminate]; // scope 0 at $DIR/issue_91633.rs:+5:2: +5:3
     }
 
     bb4 (cleanup): {
