@@ -9,7 +9,7 @@ include ../tools.mk
 # the fault in the staticlib is detected correctly.
 
 # Note that checking for the link failure actually checks two things at once:
-#   1) That the library has the sanitizer intrumentation
+#   1) That the library has the sanitizer instrumentation
 #   2) and that library does not have the sanitizer runtime
 
 all:
