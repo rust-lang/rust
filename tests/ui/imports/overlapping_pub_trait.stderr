@@ -13,7 +13,6 @@ LL |     pub trait Tr { fn method(&self); }
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
 LL + use overlapping_pub_trait_source::m::Tr;
-LL | extern crate overlapping_pub_trait_source;
    |
 
 error: aborting due to previous error

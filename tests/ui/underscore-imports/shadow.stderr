@@ -8,7 +8,6 @@ LL |         x.deref();
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
 LL +     use std::ops::Deref;
-LL |     use crate::b::Shadow as _; // Only imports the struct
    |
 
 error: aborting due to previous error

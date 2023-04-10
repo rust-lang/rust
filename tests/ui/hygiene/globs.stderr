@@ -14,7 +14,6 @@ LL |         g();
 help: consider importing this function
    |
 LL + use foo::f;
-LL | mod foo {
    |
 
 error[E0425]: cannot find function `g` in this scope
@@ -41,7 +40,6 @@ LL |     f();
 help: consider importing this function
    |
 LL + use bar::g;
-LL | mod foo {
    |
 
 error[E0425]: cannot find function `f` in this scope

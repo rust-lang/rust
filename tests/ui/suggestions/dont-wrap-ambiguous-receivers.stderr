@@ -11,10 +11,8 @@ LL |     banana::Chaenomeles.pick()
 help: the following traits are implemented but not in scope; perhaps add a `use` for one of them:
    |
 LL + use banana::Apple;
-LL | mod banana {
    |
 LL + use banana::Peach;
-LL | mod banana {
    |
 
 error: aborting due to previous error

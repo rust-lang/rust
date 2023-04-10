@@ -7,7 +7,6 @@ LL | type Output = Option<Foo>;
 help: consider importing this struct
    |
 LL + use foo::Foo;
-LL | extern crate foo;
    |
 
 error: aborting due to previous error

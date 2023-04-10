@@ -9,10 +9,8 @@ LL |     let _i: i16 = TryFrom::try_from(0_i32).unwrap();
 help: consider importing one of these items
    |
 LL + use core::convert::TryFrom;
-LL | fn test() {
    |
 LL + use std::convert::TryFrom;
-LL | fn test() {
    |
 
 error[E0433]: failed to resolve: use of undeclared type `TryInto`
@@ -26,10 +24,8 @@ LL |     let _i: i16 = TryInto::try_into(0_i32).unwrap();
 help: consider importing one of these items
    |
 LL + use core::convert::TryInto;
-LL | fn test() {
    |
 LL + use std::convert::TryInto;
-LL | fn test() {
    |
 
 error[E0433]: failed to resolve: use of undeclared type `FromIterator`
@@ -47,10 +43,8 @@ LL |     let _v: Vec<_> = IntoIterator::from_iter(&[1]);
 help: consider importing one of these items
    |
 LL + use core::iter::FromIterator;
-LL | fn test() {
    |
 LL + use std::iter::FromIterator;
-LL | fn test() {
    |
 
 error[E0599]: no method named `try_into` found for type `i32` in the current scope
@@ -67,7 +61,6 @@ LL |     let _i: i16 = 0_i32.try_into().unwrap();
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
 LL + use std::convert::TryInto;
-LL | fn test() {
    |
 
 error: aborting due to 4 previous errors

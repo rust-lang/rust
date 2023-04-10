@@ -14,7 +14,6 @@ LL |     pub struct S;
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
 LL + use m::Foo;
-LL | fn main() {
    |
 
 error: aborting due to previous error

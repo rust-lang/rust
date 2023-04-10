@@ -13,7 +13,6 @@ LL |         fn trait_method(&self) {
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
 LL + use reexported_trait::Trait;
-LL | fn main() {
    |
 
 error[E0599]: no method named `trait_method_b` found for struct `FooStruct` in the current scope
@@ -31,7 +30,6 @@ LL |         fn trait_method_b(&self) {
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
 LL + use reexported_trait::TraitBRename;
-LL | fn main() {
    |
 
 error: aborting due to 2 previous errors

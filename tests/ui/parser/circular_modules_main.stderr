@@ -13,7 +13,6 @@ LL |     println!("{}", circular_modules_main::hi_str());
 help: consider importing this function
    |
 LL + use hi_str;
-LL | #[path = "circular_modules_main.rs"]
    |
 help: if you import `hi_str`, refer to it directly
    |

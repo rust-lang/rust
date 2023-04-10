@@ -25,16 +25,12 @@ LL | fn setup() -> Set { Set }
 help: consider importing one of these items
    |
 LL + use AffixHeart::Set;
-LL | enum PutDown { Set }
    |
 LL + use CauseToBe::Set;
-LL | enum PutDown { Set }
    |
 LL + use Determine::Set;
-LL | enum PutDown { Set }
    |
 LL + use PutDown::Set;
-LL | enum PutDown { Set }
    |
      and 3 other candidates
 

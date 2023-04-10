@@ -7,13 +7,10 @@ LL |         Result {
 help: consider importing one of these items instead
    |
 LL + use std::fmt::Result;
-LL | pub struct GslResult {
    |
 LL + use std::io::Result;
-LL | pub struct GslResult {
    |
 LL + use std::thread::Result;
-LL | pub struct GslResult {
    |
 
 error: aborting due to previous error

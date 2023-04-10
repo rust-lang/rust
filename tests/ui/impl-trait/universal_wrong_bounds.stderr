@@ -7,7 +7,6 @@ LL | fn wants_debug(g: impl Debug) { }
 help: consider importing this trait instead
    |
 LL + use std::fmt::Debug;
-LL | use std::fmt::Display;
    |
 
 error[E0404]: expected trait, found derive macro `Debug`
@@ -19,7 +18,6 @@ LL | fn wants_display(g: impl Debug) { }
 help: consider importing this trait instead
    |
 LL + use std::fmt::Debug;
-LL | use std::fmt::Display;
    |
 
 error: aborting due to 2 previous errors

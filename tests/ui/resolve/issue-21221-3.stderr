@@ -7,7 +7,6 @@ LL | impl OuterTrait for Foo {}
 help: consider importing this trait
    |
 LL + use issue_21221_3::outer::OuterTrait;
-LL | extern crate issue_21221_3;
    |
 
 error: aborting due to previous error

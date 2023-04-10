@@ -16,7 +16,6 @@ LL |         interval: Duration,
 help: consider importing this struct
    |
 LL + use std::time::Duration;
-LL | fn main() {}
    |
 
 error: aborting due to 2 previous errors

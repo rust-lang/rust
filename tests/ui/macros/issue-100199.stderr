@@ -8,7 +8,6 @@ LL | #[issue_100199::struct_with_bound]
 help: consider importing this trait
    |
 LL + use traits::MyTrait;
-LL | #[issue_100199::struct_with_bound]
    |
 
 error: aborting due to previous error

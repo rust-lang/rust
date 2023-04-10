@@ -15,10 +15,8 @@ LL |     check(m1::TS);
 help: consider importing one of these items instead
    |
 LL + use m2::S;
-LL | use namespace_mix::*;
    |
 LL + use xm2::S;
-LL | use namespace_mix::*;
    |
 help: if you import `S`, refer to it directly
    |
@@ -45,10 +43,8 @@ LL |     check(xm1::TS);
 help: consider importing one of these items instead
    |
 LL + use m2::S;
-LL | use namespace_mix::*;
    |
 LL + use xm2::S;
-LL | use namespace_mix::*;
    |
 help: if you import `S`, refer to it directly
    |
@@ -73,10 +69,8 @@ LL |     check(m7::TV);
 help: consider importing one of these items instead
    |
 LL + use m8::V;
-LL | use namespace_mix::*;
    |
 LL + use xm8::V;
-LL | use namespace_mix::*;
    |
 help: if you import `V`, refer to it directly
    |
@@ -103,10 +97,8 @@ LL |     check(xm7::TV);
 help: consider importing one of these items instead
    |
 LL + use m8::V;
-LL | use namespace_mix::*;
    |
 LL + use xm8::V;
-LL | use namespace_mix::*;
    |
 help: if you import `V`, refer to it directly
    |

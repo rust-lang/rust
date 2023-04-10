@@ -7,10 +7,8 @@ LL | impl T for Foo { }
 help: consider importing one of these items
    |
 LL + use baz::T;
-LL | pub mod foo {
    |
 LL + use foo::bar::T;
-LL | pub mod foo {
    |
 
 error: aborting due to previous error

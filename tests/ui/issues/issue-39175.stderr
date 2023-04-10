@@ -8,7 +8,6 @@ LL |     Command::new("echo").arg("hello").exec();
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
 LL + use std::os::unix::process::CommandExt;
-LL | use std::process::Command;
    |
 
 error: aborting due to previous error

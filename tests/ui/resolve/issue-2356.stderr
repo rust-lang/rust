@@ -11,7 +11,6 @@ LL |     Self::default();
 help: consider importing this function
    |
 LL + use std::default::default;
-LL | trait Groom {
    |
 
 error[E0425]: cannot find value `whiskers` in this scope

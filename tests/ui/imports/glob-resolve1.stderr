@@ -61,7 +61,6 @@ LL |     import();
 help: consider importing this function
    |
 LL + use other::import;
-LL | use bar::*;
    |
 
 error[E0412]: cannot find type `A` in this scope

@@ -11,7 +11,6 @@ LL |         Vec::new();
 help: consider importing this struct
    |
 LL +     use std::vec::Vec;
-LL |     pub macro m() { Vec::<i32>::new(); ().clone() }
    |
 
 error[E0599]: no method named `clone` found for unit type `()` in the current scope
@@ -28,7 +27,6 @@ LL |         ().clone()
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
 LL +     use std::clone::Clone;
-LL |     pub macro m() { Vec::<i32>::new(); ().clone() }
    |
 
 error: aborting due to 2 previous errors

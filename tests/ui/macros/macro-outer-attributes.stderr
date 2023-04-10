@@ -7,7 +7,6 @@ LL |     a::bar();
 help: consider importing this function
    |
 LL + use b::bar;
-LL | macro_rules! test { ($nm:ident,
    |
 help: if you import `bar`, refer to it directly
    |

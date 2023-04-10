@@ -1886,6 +1886,7 @@ impl EmitterWriter {
             }
             let mut unhighlighted_lines = Vec::new();
             let mut last_pos = 0;
+            let mut is_item_attribute = false;
             for (line_pos, (line, highlight_parts)) in lines.by_ref().zip(highlights).enumerate() {
                 last_pos = line_pos;
                 debug!(%line_pos, %line, ?highlight_parts);
@@ -1894,6 +1895,12 @@ impl EmitterWriter {
                 if highlight_parts.is_empty() {
                     unhighlighted_lines.push((line_pos, line));
                     continue;
+                }
+                if highlight_parts.len() == 1
+                    && line.trim().starts_with("#[")
+                    && line.trim().ends_with(']')
+                {
+                    is_item_attribute = true;
                 }
 
                 match unhighlighted_lines.len() {
@@ -1971,11 +1978,13 @@ impl EmitterWriter {
                     is_multiline,
                 )
             }
-            if let DisplaySuggestion::Add = show_code_change {
+            if let DisplaySuggestion::Add = show_code_change && is_item_attribute {
                 // The suggestion adds an entire line of code, ending on a newline, so we'll also
                 // print the *following* line, to provide context of what we're advicing people to
                 // do. Otherwise you would only see contextless code that can be confused for
                 // already existing code, despite the colors and UI elements.
+                // We special case `#[derive(_)]\n` and other attribute suggestions, because those
+                // are the ones where context is most useful.
                 let file_lines = sm
                     .span_to_lines(span.primary_span().unwrap().shrink_to_hi())
                     .expect("span_to_lines failed when emitting suggestion");

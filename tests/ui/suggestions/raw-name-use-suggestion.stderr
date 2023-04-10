@@ -29,7 +29,6 @@ LL |     r#break();
 help: consider importing this function
    |
 LL + use foo::r#break;
-LL | mod foo {
    |
 
 error: aborting due to 3 previous errors

@@ -7,7 +7,6 @@ LL |     Command::new("git");
 help: consider importing this struct
    |
 LL + use std::process::Command;
-LL | #[amputate_span::drop_first_token]
    |
 
 error[E0433]: failed to resolve: use of undeclared type `Command`
@@ -19,7 +18,6 @@ LL |         Command::new("git");
 help: consider importing this struct
    |
 LL +     use std::process::Command;
-LL |     #[amputate_span::drop_first_token]
    |
 
 error: aborting due to 2 previous errors

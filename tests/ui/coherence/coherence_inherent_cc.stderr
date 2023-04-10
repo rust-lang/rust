@@ -8,7 +8,6 @@ LL |         s.the_fn();
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
 LL +     use coherence_inherent_cc_lib::TheTrait;
-LL |     use coherence_inherent_cc_lib::TheStruct;
    |
 
 error: aborting due to previous error

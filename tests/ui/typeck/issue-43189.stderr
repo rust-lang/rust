@@ -13,7 +13,6 @@ LL |     fn a(&self) {}
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
 LL + use xcrate_issue_43189_b::xcrate_issue_43189_a::A;
-LL | extern crate xcrate_issue_43189_b;
    |
 
 error: aborting due to previous error

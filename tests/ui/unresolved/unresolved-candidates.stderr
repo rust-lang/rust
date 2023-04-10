@@ -18,7 +18,6 @@ LL |     impl Trait for () {}
 help: consider importing this trait
    |
 LL +     use a::Trait;
-LL |     impl Trait for () {}
    |
 
 error: aborting due to 2 previous errors

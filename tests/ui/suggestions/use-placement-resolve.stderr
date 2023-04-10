@@ -7,7 +7,6 @@ LL | fn foobar<T: Debug>(x: T) {}
 help: consider importing this trait instead
    |
 LL + use std::fmt::Debug;
-LL | fn main() {}
    |
 
 error: aborting due to previous error

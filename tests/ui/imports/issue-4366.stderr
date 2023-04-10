@@ -7,7 +7,6 @@ LL |         fn sub() -> isize { foo(); 1 }
 help: consider importing this function
    |
 LL +         use foo::foo;
-LL |         use a::b::*;
    |
 
 error: aborting due to previous error

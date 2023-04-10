@@ -11,7 +11,6 @@ LL |     A::deserialize();
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
 LL + use <crate::A as issue_87932_a::Deserialize>::deserialize::_a::Deserialize;
-LL | pub struct A {}
    |
 
 error: aborting due to previous error

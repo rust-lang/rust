@@ -7,7 +7,6 @@ LL |     E { name: "foobar" };
 help: consider importing this variant
    |
 LL + use SomeEnum::E;
-LL | enum SomeEnum {
    |
 
 error: aborting due to previous error
