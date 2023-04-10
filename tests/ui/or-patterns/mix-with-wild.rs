@@ -1,7 +1,7 @@
 // Test that an or-pattern works with a wild pattern. This tests two things:
 //
 //  1) The Wild pattern should cause the pattern to always succeed.
-//  2) or-patterns should work with simplifyable patterns.
+//  2) or-patterns should work with simplifiable patterns.
 
 // run-pass
 

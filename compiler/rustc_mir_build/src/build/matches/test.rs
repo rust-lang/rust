@@ -77,7 +77,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | PatKind::Wild
             | PatKind::Binding { .. }
             | PatKind::Leaf { .. }
-            | PatKind::Deref { .. } => self.error_simplifyable(match_pair),
+            | PatKind::Deref { .. } => self.error_simplifiable(match_pair),
         }
     }
 
@@ -763,8 +763,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate.match_pairs.extend(consequent_match_pairs);
     }
 
-    fn error_simplifyable<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> ! {
-        span_bug!(match_pair.pattern.span, "simplifyable pattern found: {:?}", match_pair.pattern)
+    fn error_simplifiable<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> ! {
+        span_bug!(match_pair.pattern.span, "simplifiable pattern found: {:?}", match_pair.pattern)
     }
 
     fn const_range_contains(
