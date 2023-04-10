@@ -27,7 +27,7 @@ use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use rustc_target::spec::abi::{self, Abi};
 use std::borrow::Cow;
 use std::cmp::Ordering;
-use std::fmt::{self, Display};
+use std::fmt;
 use std::marker::PhantomData;
 use std::ops::{ControlFlow, Deref, Range};
 use ty::util::IntTypeExt;
@@ -878,6 +878,12 @@ impl<'tcx> PolyTraitRef<'tcx> {
     }
 }
 
+impl<'tcx> IntoDiagnosticArg for TraitRef<'tcx> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        self.to_string().into_diagnostic_arg()
+    }
+}
+
 /// An existential reference to a trait, where `Self` is erased.
 /// For example, the trait object `Trait<'a, 'b, X, Y>` is:
 /// ```ignore (illustrative)
@@ -915,6 +921,12 @@ impl<'tcx> ExistentialTraitRef<'tcx> {
         // debug_assert!(!self_ty.has_escaping_bound_vars());
 
         tcx.mk_trait_ref(self.def_id, [self_ty.into()].into_iter().chain(self.substs.iter()))
+    }
+}
+
+impl<'tcx> IntoDiagnosticArg for ExistentialTraitRef<'tcx> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        self.to_string().into_diagnostic_arg()
     }
 }
 
@@ -1150,10 +1162,10 @@ impl<'tcx, T: IntoIterator> Binder<'tcx, T> {
 
 impl<'tcx, T> IntoDiagnosticArg for Binder<'tcx, T>
 where
-    Binder<'tcx, T>: Display,
+    T: IntoDiagnosticArg,
 {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        self.to_string().into_diagnostic_arg()
+        self.0.into_diagnostic_arg()
     }
 }
 
@@ -1370,6 +1382,12 @@ impl<'tcx> FnSig<'tcx> {
             unsafety: hir::Unsafety::Normal,
             abi: abi::Abi::Rust,
         }
+    }
+}
+
+impl<'tcx> IntoDiagnosticArg for FnSig<'tcx> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        self.to_string().into_diagnostic_arg()
     }
 }
 
