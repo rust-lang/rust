@@ -32,7 +32,7 @@ fn bomb() {
     //~^ ERROR mismatched types
     x = Some(()); // set $2 = (), allowing impl selection
                   // to proceed for <() as Foo<$0, $1>> = impl A.
-                  // kaboom, this *used* to trigge an ICE
+                  // kaboom, this *used* to trigger an ICE
 }
 
 fn main() {}
