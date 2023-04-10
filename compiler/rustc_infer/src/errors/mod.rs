@@ -184,18 +184,6 @@ pub enum SourceKindMultiSuggestion<'a> {
     },
 }
 
-#[derive(Subdiagnostic)]
-#[suggestion(
-    infer_suggest_add_let_for_letchains,
-    style = "verbose",
-    applicability = "machine-applicable",
-    code = "let "
-)]
-pub(crate) struct SuggAddLetForLetChains {
-    #[primary_span]
-    pub span: Span,
-}
-
 impl<'a> SourceKindMultiSuggestion<'a> {
     pub fn new_fully_qualified(
         span: Span,
@@ -1156,4 +1144,381 @@ pub struct OpaqueCapturesLifetime<'tcx> {
     #[label]
     pub opaque_ty_span: Span,
     pub opaque_ty: Ty<'tcx>,
+}
+
+#[derive(Subdiagnostic)]
+pub enum FunctionPointerSuggestion<'a> {
+    #[suggestion(
+        infer_fps_use_ref,
+        code = "&{fn_name}",
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    UseRef {
+        #[primary_span]
+        span: Span,
+        #[skip_arg]
+        fn_name: String,
+    },
+    #[suggestion(
+        infer_fps_remove_ref,
+        code = "{fn_name}",
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    RemoveRef {
+        #[primary_span]
+        span: Span,
+        #[skip_arg]
+        fn_name: String,
+    },
+    #[suggestion(
+        infer_fps_cast,
+        code = "&({fn_name} as {sig})",
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    CastRef {
+        #[primary_span]
+        span: Span,
+        #[skip_arg]
+        fn_name: String,
+        #[skip_arg]
+        sig: Binder<'a, FnSig<'a>>,
+    },
+    #[suggestion(
+        infer_fps_cast,
+        code = "{fn_name} as {sig}",
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    Cast {
+        #[primary_span]
+        span: Span,
+        #[skip_arg]
+        fn_name: String,
+        #[skip_arg]
+        sig: Binder<'a, FnSig<'a>>,
+    },
+    #[suggestion(
+        infer_fps_cast_both,
+        code = "{fn_name} as {found_sig}",
+        style = "hidden",
+        applicability = "maybe-incorrect"
+    )]
+    CastBoth {
+        #[primary_span]
+        span: Span,
+        #[skip_arg]
+        fn_name: String,
+        #[skip_arg]
+        found_sig: Binder<'a, FnSig<'a>>,
+        expected_sig: Binder<'a, FnSig<'a>>,
+    },
+    #[suggestion(
+        infer_fps_cast_both,
+        code = "&({fn_name} as {found_sig})",
+        style = "hidden",
+        applicability = "maybe-incorrect"
+    )]
+    CastBothRef {
+        #[primary_span]
+        span: Span,
+        #[skip_arg]
+        fn_name: String,
+        #[skip_arg]
+        found_sig: Binder<'a, FnSig<'a>>,
+        expected_sig: Binder<'a, FnSig<'a>>,
+    },
+}
+
+#[derive(Subdiagnostic)]
+#[note(infer_fps_items_are_distinct)]
+pub struct FnItemsAreDistinct;
+
+#[derive(Subdiagnostic)]
+#[note(infer_fn_uniq_types)]
+pub struct FnUniqTypes;
+
+#[derive(Subdiagnostic)]
+#[help(infer_fn_consider_casting)]
+pub struct FnConsiderCasting {
+    pub casting: String,
+}
+
+#[derive(Subdiagnostic)]
+pub enum SuggestAsRefWhereAppropriate<'a> {
+    #[suggestion(
+        infer_sarwa_option,
+        code = "{snippet}.as_ref()",
+        applicability = "machine-applicable"
+    )]
+    Option {
+        #[primary_span]
+        span: Span,
+        snippet: &'a str,
+    },
+    #[suggestion(
+        infer_sarwa_result,
+        code = "{snippet}.as_ref()",
+        applicability = "machine-applicable"
+    )]
+    Result {
+        #[primary_span]
+        span: Span,
+        snippet: &'a str,
+    },
+}
+
+#[derive(Subdiagnostic)]
+pub enum SuggestAccessingField<'a> {
+    #[suggestion(
+        infer_suggest_accessing_field,
+        code = "{snippet}.{name}",
+        applicability = "maybe-incorrect"
+    )]
+    Safe {
+        #[primary_span]
+        span: Span,
+        snippet: String,
+        name: Symbol,
+        ty: Ty<'a>,
+    },
+    #[suggestion(
+        infer_suggest_accessing_field,
+        code = "unsafe {{ {snippet}.{name} }}",
+        applicability = "maybe-incorrect"
+    )]
+    Unsafe {
+        #[primary_span]
+        span: Span,
+        snippet: String,
+        name: Symbol,
+        ty: Ty<'a>,
+    },
+}
+
+#[derive(Subdiagnostic)]
+pub enum SuggestBoxingForReturnImplTrait {
+    #[multipart_suggestion(infer_sbfrit_change_return_type, applicability = "maybe-incorrect")]
+    ChangeReturnType {
+        #[suggestion_part(code = "Box<dyn")]
+        start_sp: Span,
+        #[suggestion_part(code = ">")]
+        end_sp: Span,
+    },
+    #[multipart_suggestion(infer_sbfrit_box_return_expr, applicability = "maybe-incorrect")]
+    BoxReturnExpr {
+        #[suggestion_part(code = "Box::new(")]
+        starts: Vec<Span>,
+        #[suggestion_part(code = ")")]
+        ends: Vec<Span>,
+    },
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(infer_stp_wrap_one, applicability = "maybe-incorrect")]
+pub struct SuggestTuplePatternOne {
+    pub variant: String,
+    #[suggestion_part(code = "{variant}(")]
+    pub span_low: Span,
+    #[suggestion_part(code = ")")]
+    pub span_high: Span,
+}
+
+pub struct SuggestTuplePatternMany {
+    pub path: String,
+    pub cause_span: Span,
+    pub compatible_variants: Vec<String>,
+}
+
+impl AddToDiagnostic for SuggestTuplePatternMany {
+    fn add_to_diagnostic_with<F>(self, diag: &mut rustc_errors::Diagnostic, f: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
+        diag.set_arg("path", self.path);
+        let message = f(diag, crate::fluent_generated::infer_stp_wrap_many.into());
+        diag.multipart_suggestions(
+            message,
+            self.compatible_variants.into_iter().map(|variant| {
+                vec![
+                    (self.cause_span.shrink_to_lo(), format!("{}(", variant)),
+                    (self.cause_span.shrink_to_hi(), ")".to_string()),
+                ]
+            }),
+            rustc_errors::Applicability::MaybeIncorrect,
+        );
+    }
+}
+
+#[derive(Subdiagnostic)]
+pub enum TypeErrorAdditionalDiags {
+    #[suggestion(
+        infer_meant_byte_literal,
+        code = "b'{code}'",
+        applicability = "machine-applicable"
+    )]
+    MeantByteLiteral {
+        #[primary_span]
+        span: Span,
+        code: String,
+    },
+    #[suggestion(
+        infer_meant_char_literal,
+        code = "'{code}'",
+        applicability = "machine-applicable"
+    )]
+    MeantCharLiteral {
+        #[primary_span]
+        span: Span,
+        code: String,
+    },
+    #[suggestion(
+        infer_meant_str_literal,
+        code = "\"{code}\"",
+        applicability = "machine-applicable"
+    )]
+    MeantStrLiteral {
+        #[primary_span]
+        span: Span,
+        code: String,
+    },
+    #[suggestion(
+        infer_consider_specifying_length,
+        code = "{length}",
+        applicability = "maybe-incorrect"
+    )]
+    ConsiderSpecifyingLength {
+        #[primary_span]
+        span: Span,
+        length: u64,
+    },
+    #[note(infer_try_cannot_convert)]
+    TryCannotConvert { found: String, expected: String },
+    #[suggestion(infer_tuple_trailing_comma, code = ",", applicability = "machine-applicable")]
+    TupleOnlyComma {
+        #[primary_span]
+        span: Span,
+    },
+    #[multipart_suggestion(infer_tuple_trailing_comma, applicability = "machine-applicable")]
+    TupleAlsoParentheses {
+        #[suggestion_part(code = "(")]
+        span_low: Span,
+        #[suggestion_part(code = ",)")]
+        span_high: Span,
+    },
+    #[suggestion(
+        infer_suggest_add_let_for_letchains,
+        style = "verbose",
+        applicability = "machine-applicable",
+        code = "let "
+    )]
+    AddLetForLetChains {
+        #[primary_span]
+        span: Span,
+    },
+}
+
+#[derive(Diagnostic)]
+pub enum ObligationCauseFailureCode {
+    #[diag(infer_oc_method_compat, code = "E0308")]
+    MethodCompat {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiags: Vec<TypeErrorAdditionalDiags>,
+    },
+    #[diag(infer_oc_type_compat, code = "E0308")]
+    TypeCompat {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiags: Vec<TypeErrorAdditionalDiags>,
+    },
+    #[diag(infer_oc_const_compat, code = "E0308")]
+    ConstCompat {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiags: Vec<TypeErrorAdditionalDiags>,
+    },
+    #[diag(infer_oc_try_compat, code = "E0308")]
+    TryCompat {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiags: Vec<TypeErrorAdditionalDiags>,
+    },
+    #[diag(infer_oc_match_compat, code = "E0308")]
+    MatchCompat {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiags: Vec<TypeErrorAdditionalDiags>,
+    },
+    #[diag(infer_oc_if_else_different, code = "E0308")]
+    IfElseDifferent {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiags: Vec<TypeErrorAdditionalDiags>,
+    },
+    #[diag(infer_oc_no_else, code = "E0317")]
+    NoElse {
+        #[primary_span]
+        span: Span,
+    },
+    #[diag(infer_oc_no_diverge, code = "E0308")]
+    NoDiverge {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiags: Vec<TypeErrorAdditionalDiags>,
+    },
+    #[diag(infer_oc_fn_main_correct_type, code = "E0580")]
+    FnMainCorrectType {
+        #[primary_span]
+        span: Span,
+    },
+    #[diag(infer_oc_fn_start_correct_type, code = "E0308")]
+    FnStartCorrectType {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiags: Vec<TypeErrorAdditionalDiags>,
+    },
+    #[diag(infer_oc_intristic_correct_type, code = "E0308")]
+    IntristicCorrectType {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiags: Vec<TypeErrorAdditionalDiags>,
+    },
+    #[diag(infer_oc_method_correct_type, code = "E0308")]
+    MethodCorrectType {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiags: Vec<TypeErrorAdditionalDiags>,
+    },
+    #[diag(infer_oc_closure_selfref, code = "E0644")]
+    ClosureSelfref {
+        #[primary_span]
+        span: Span,
+    },
+    #[diag(infer_oc_cant_coerce, code = "E0308")]
+    CantCoerce {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiags: Vec<TypeErrorAdditionalDiags>,
+    },
+    #[diag(infer_oc_generic, code = "E0308")]
+    Generic {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiags: Vec<TypeErrorAdditionalDiags>,
+    },
 }
