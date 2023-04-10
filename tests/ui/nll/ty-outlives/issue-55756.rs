@@ -2,7 +2,7 @@
 //
 // In this test, the result of `self.callee` is a projection `<D as
 // Database<'?0>>::Guard`. As it may contain a destructor, the dropck
-// rules require that this type outlivess the scope of `state`. Unfortunately,
+// rules require that this type outlives the scope of `state`. Unfortunately,
 // our region inference is not smart enough to figure out how to
 // translate a requirement like
 //
