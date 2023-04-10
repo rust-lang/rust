@@ -2305,7 +2305,7 @@ impl Impl {
 pub(crate) enum ImplKind {
     Normal,
     Auto,
-    FakeVaradic,
+    FakeVariadic,
     Blanket(Box<Type>),
 }
 
@@ -2319,7 +2319,7 @@ impl ImplKind {
     }
 
     pub(crate) fn is_fake_variadic(&self) -> bool {
-        matches!(self, ImplKind::FakeVaradic)
+        matches!(self, ImplKind::FakeVariadic)
     }
 
     pub(crate) fn as_blanket_ty(&self) -> Option<&Type> {

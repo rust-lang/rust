@@ -665,7 +665,7 @@ impl FromWithTcx<clean::Impl> for Impl {
         let clean::Impl { unsafety, generics, trait_, for_, items, polarity, kind } = impl_;
         // FIXME: use something like ImplKind in JSON?
         let (synthetic, blanket_impl) = match kind {
-            clean::ImplKind::Normal | clean::ImplKind::FakeVaradic => (false, None),
+            clean::ImplKind::Normal | clean::ImplKind::FakeVariadic => (false, None),
             clean::ImplKind::Auto => (true, None),
             clean::ImplKind::Blanket(ty) => (false, Some(*ty)),
         };
