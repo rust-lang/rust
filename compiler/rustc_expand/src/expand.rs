@@ -1039,7 +1039,12 @@ trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
     ) -> Result<Self::OutputTy, Self> {
         Ok(noop_flat_map(node, collector))
     }
-    fn expand_cfg_false(&mut self, collector: &mut InvocationCollector<'_, '_>, span: Span) {
+    fn expand_cfg_false(
+        &mut self,
+        collector: &mut InvocationCollector<'_, '_>,
+        _pos: usize,
+        span: Span,
+    ) {
         collector.cx.emit_err(RemoveNodeNotSupported { span, descr: Self::descr() });
     }
 
@@ -1409,8 +1414,15 @@ impl InvocationCollectorNode for ast::Crate {
     fn noop_visit<V: MutVisitor>(&mut self, visitor: &mut V) {
         noop_visit_crate(self, visitor)
     }
-    fn expand_cfg_false(&mut self, collector: &mut InvocationCollector<'_, '_>, _span: Span) {
-        self.attrs.clear();
+    fn expand_cfg_false(
+        &mut self,
+        collector: &mut InvocationCollector<'_, '_>,
+        pos: usize,
+        _span: Span,
+    ) {
+        // Attributes above `cfg(FALSE)` are left in place, because we may want to configure
+        // some global crate properties even on fully unconfigured crates.
+        self.attrs.truncate(pos);
         // Standard prelude imports are left in the crate for backward compatibility.
         self.items.truncate(collector.cx.num_standard_library_imports);
     }
@@ -1804,7 +1816,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                             continue;
                         }
 
-                        node.expand_cfg_false(self, span);
+                        node.expand_cfg_false(self, pos, span);
                         continue;
                     }
                     sym::cfg_attr => {
