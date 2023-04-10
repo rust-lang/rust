@@ -1,4 +1,4 @@
-// Test explores how `#[structral_match]` behaves in tandem with
+// Test explores how `#[structural_match]` behaves in tandem with
 // `*const` and `*mut` pointers.
 
 // run-pass
