@@ -152,7 +152,7 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, supports_128bit_i
             context.set_keep_intermediates(true);
         }
 
-        // NOTE: The codegen generates unrechable blocks.
+        // NOTE: The codegen generates unreachable blocks.
         context.set_allow_unreachable_blocks(true);
 
         {
