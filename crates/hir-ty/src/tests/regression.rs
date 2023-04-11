@@ -1068,6 +1068,23 @@ fn parse_arule() {
 }
 
 #[test]
+fn nested_closure() {
+    check_types(
+        r#"
+//- minicore: fn, option
+
+fn map<T, U>(o: Option<T>, f: impl FnOnce(T) -> U) -> Option<U> { loop {} }
+
+fn test() {
+    let o = Some(Some(2));
+    map(o, |s| map(s, |x| x));
+                    // ^ i32
+}
+        "#,
+    );
+}
+
+#[test]
 fn call_expected_type_closure() {
     check_types(
         r#"

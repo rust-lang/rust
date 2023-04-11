@@ -462,7 +462,7 @@ impl InferenceContext<'_> {
     }
 
     fn expr_ty(&mut self, expr: ExprId) -> Ty {
-        self.infer_expr_no_expect(expr)
+        self.result[expr].clone()
     }
 
     fn is_upvar(&self, place: &HirPlace) -> bool {
