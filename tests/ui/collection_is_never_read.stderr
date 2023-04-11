@@ -48,5 +48,17 @@ error: collection is never read
 LL |     let x = vec![1, 2, 3]; // WARNING
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 8 previous errors
+error: collection is never read
+  --> $DIR/collection_is_never_read.rs:169:5
+   |
+LL |     let mut s = String::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: collection is never read
+  --> $DIR/collection_is_never_read.rs:182:5
+   |
+LL |     let mut s = String::from("Hello, World!");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 10 previous errors
 

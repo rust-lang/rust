@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
 use clippy_utils::visitors::for_each_expr_with_closures;
 use clippy_utils::{get_enclosing_block, get_parent_node, path_to_local_id};
 use core::ops::ControlFlow;
-use rustc_hir::{Block, ExprKind, HirId, Local, Node, PatKind};
+use rustc_hir::{Block, ExprKind, HirId, LangItem, Local, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::sym;
@@ -44,7 +44,8 @@ declare_clippy_lint! {
 }
 declare_lint_pass!(CollectionIsNeverRead => [COLLECTION_IS_NEVER_READ]);
 
-static COLLECTIONS: [Symbol; 10] = [
+// Add `String` here when it is added to diagnostic items
+static COLLECTIONS: [Symbol; 9] = [
     sym::BTreeMap,
     sym::BTreeSet,
     sym::BinaryHeap,
@@ -52,7 +53,6 @@ static COLLECTIONS: [Symbol; 10] = [
     sym::HashSet,
     sym::LinkedList,
     sym::Option,
-    sym::String,
     sym::Vec,
     sym::VecDeque,
 ];
@@ -60,8 +60,7 @@ static COLLECTIONS: [Symbol; 10] = [
 impl<'tcx> LateLintPass<'tcx> for CollectionIsNeverRead {
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'tcx>) {
         // Look for local variables whose type is a container. Search surrounding bock for read access.
-        let ty = cx.typeck_results().pat_ty(local.pat);
-        if COLLECTIONS.iter().any(|&sym| is_type_diagnostic_item(cx, ty, sym))
+        if match_acceptable_type(cx, local, &COLLECTIONS)
             && let PatKind::Binding(_, local_id, _, _) = local.pat.kind
             && let Some(enclosing_block) = get_enclosing_block(cx, local.hir_id)
             && has_no_read_access(cx, local_id, enclosing_block)
@@ -69,6 +68,13 @@ impl<'tcx> LateLintPass<'tcx> for CollectionIsNeverRead {
             span_lint(cx, COLLECTION_IS_NEVER_READ, local.span, "collection is never read");
         }
     }
+}
+
+fn match_acceptable_type(cx: &LateContext<'_>, local: &Local<'_>, collections: &[rustc_span::Symbol]) -> bool {
+    let ty = cx.typeck_results().pat_ty(local.pat);
+    collections.iter().any(|&sym| is_type_diagnostic_item(cx, ty, sym))
+    // String type is a lang item but not a diagnostic item for now so we need a separate check
+        || is_type_lang_item(cx, ty, LangItem::String)
 }
 
 fn has_no_read_access<'tcx>(cx: &LateContext<'tcx>, id: HirId, block: &'tcx Block<'tcx>) -> bool {

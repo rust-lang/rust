@@ -3193,7 +3193,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `.drain(..)` for the sole purpose of clearing a `Vec`.
+    /// Checks for usage of `.drain(..)` for the sole purpose of clearing a container.
     ///
     /// ### Why is this bad?
     /// This creates an unnecessary iterator that is dropped immediately.
@@ -3213,7 +3213,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.69.0"]
     pub CLEAR_WITH_DRAIN,
     nursery,
-    "calling `drain` in order to `clear` a `Vec`"
+    "calling `drain` in order to `clear` a container"
 }
 
 pub struct Methods {
@@ -3589,12 +3589,13 @@ impl Methods {
                     Some(("bytes", recv2, [], _, _)) => bytes_count_to_len::check(cx, expr, recv, recv2),
                     _ => {},
                 },
-                ("drain", [arg]) => {
-                if let Node::Stmt(Stmt { hir_id: _, kind, .. }) = cx.tcx.hir().get_parent(expr.hir_id)
-                    && matches!(kind, StmtKind::Semi(_))
+                ("drain", ..) => {
+                    if let Node::Stmt(Stmt { hir_id: _, kind, .. }) = cx.tcx.hir().get_parent(expr.hir_id)
+                        && matches!(kind, StmtKind::Semi(_))
+                        && args.len() <= 1
                     {
-                        clear_with_drain::check(cx, expr, recv, span, arg);
-                    } else {
+                        clear_with_drain::check(cx, expr, recv, span, args.first());
+                    } else if let [arg] = args {
                         iter_with_drain::check(cx, expr, recv, span, arg);
                     }
                 },
