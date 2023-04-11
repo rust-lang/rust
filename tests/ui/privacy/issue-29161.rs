@@ -2,7 +2,7 @@ mod a {
     struct A;
 
     impl Default for A {
-        pub fn default() -> A { //~ ERROR unnecessary visibility qualifier
+        pub fn default() -> A { //~ ERROR visibility qualifiers are not permitted here
             A
         }
     }
