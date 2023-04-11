@@ -895,6 +895,7 @@ pub mod consts {
     /// - x86_64
     /// - arm
     /// - aarch64
+    /// - loongarch64
     /// - m68k
     /// - mips
     /// - mips64
