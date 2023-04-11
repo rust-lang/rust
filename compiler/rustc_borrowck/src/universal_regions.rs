@@ -24,6 +24,7 @@ use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, InlineConstSubsts, InlineConstSubstsParts, RegionVid, Ty, TyCtxt};
 use rustc_middle::ty::{InternalSubsts, SubstsRef};
+use rustc_span::symbol::kw;
 use rustc_span::Symbol;
 use std::iter;
 
@@ -404,10 +405,8 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         assert_eq!(FIRST_GLOBAL_INDEX, self.infcx.num_region_vars());
 
         // Create the "global" region that is always free in all contexts: 'static.
-        let fr_static = self
-            .infcx
-            .next_nll_region_var(FR, || RegionCtxt::Free(Symbol::intern("static")))
-            .to_region_vid();
+        let fr_static =
+            self.infcx.next_nll_region_var(FR, || RegionCtxt::Free(kw::Static)).to_region_vid();
 
         // We've now added all the global regions. The next ones we
         // add will be external.

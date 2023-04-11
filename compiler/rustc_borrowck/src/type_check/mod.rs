@@ -35,6 +35,7 @@ use rustc_middle::ty::{
     OpaqueHiddenType, OpaqueTypeKey, RegionVid, Ty, TyCtxt, UserType, UserTypeAnnotationIndex,
 };
 use rustc_span::def_id::CRATE_DEF_ID;
+use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
@@ -1347,9 +1348,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 BoundRegionInfo::Name(Symbol::intern("anon"))
                             }
                             ty::BoundRegionKind::BrNamed(_, name) => BoundRegionInfo::Name(name),
-                            ty::BoundRegionKind::BrEnv => {
-                                BoundRegionInfo::Name(Symbol::intern("env"))
-                            }
+                            ty::BoundRegionKind::BrEnv => BoundRegionInfo::Name(sym::env),
                         };
 
                         RegionCtxt::LateBound(reg_info)
