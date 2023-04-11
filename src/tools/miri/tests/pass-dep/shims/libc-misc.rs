@@ -302,6 +302,24 @@ fn test_posix_mkstemp() {
     }
 }
 
+#[cfg(target_os = "linux")]
+fn test_sigrt() {
+    let min = libc::SIGRTMIN();
+    let max = libc::SIGRTMAX();
+
+    // "The Linux kernel supports a range of 33 different real-time
+    // signals, numbered 32 to 64"
+    assert!(min >= 32);
+    assert!(max >= 32);
+    assert!(min <= 64);
+    assert!(max <= 64);
+
+    // "POSIX.1-2001 requires that an implementation support at least
+    // _POSIX_RTSIG_MAX (8) real-time signals."
+    assert!(min < max);
+    assert!(max - min >= 8)
+}
+
 fn main() {
     test_posix_gettimeofday();
     test_posix_mkstemp();
@@ -319,5 +337,6 @@ fn main() {
     {
         test_posix_fadvise();
         test_sync_file_range();
+        test_sigrt();
     }
 }
