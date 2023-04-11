@@ -70,8 +70,8 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
     }
 
     let node = ctx.covering_element();
-    if node.kind() == SyntaxKind::L_CURLY || node.kind() == SyntaxKind::R_CURLY {
-        cov_mark::hit!(extract_function_in_curly_bracket_is_not_applicable);
+    if matches!(node.kind(), T!['{'] | T!['}'] | T!['('] | T![')'] | T!['['] | T![']']) {
+        cov_mark::hit!(extract_function_in_braces_is_not_applicable);
         return None;
     }
 
@@ -5808,13 +5808,37 @@ fn $0fun_name() -> ControlFlow<()> {
 
     #[test]
     fn in_left_curly_is_not_applicable() {
-        cov_mark::check!(extract_function_in_curly_bracket_is_not_applicable);
-        check_assist_not_applicable(extract_function, r"fn foo() { $0}$0 ");
+        cov_mark::check!(extract_function_in_braces_is_not_applicable);
+        check_assist_not_applicable(extract_function, r"fn foo() { $0}$0");
     }
 
     #[test]
     fn in_right_curly_is_not_applicable() {
-        cov_mark::check!(extract_function_in_curly_bracket_is_not_applicable);
-        check_assist_not_applicable(extract_function, r"fn foo() $0{$0 } ");
+        cov_mark::check!(extract_function_in_braces_is_not_applicable);
+        check_assist_not_applicable(extract_function, r"fn foo() $0{$0 }");
+    }
+
+    #[test]
+    fn in_left_paren_is_not_applicable() {
+        cov_mark::check!(extract_function_in_braces_is_not_applicable);
+        check_assist_not_applicable(extract_function, r"fn foo( $0)$0 { }");
+    }
+
+    #[test]
+    fn in_right_paren_is_not_applicable() {
+        cov_mark::check!(extract_function_in_braces_is_not_applicable);
+        check_assist_not_applicable(extract_function, r"fn foo $0($0 ) { }");
+    }
+
+    #[test]
+    fn in_left_brack_is_not_applicable() {
+        cov_mark::check!(extract_function_in_braces_is_not_applicable);
+        check_assist_not_applicable(extract_function, r"fn foo(arr: &mut [i32$0]$0) {}");
+    }
+
+    #[test]
+    fn in_right_brack_is_not_applicable() {
+        cov_mark::check!(extract_function_in_braces_is_not_applicable);
+        check_assist_not_applicable(extract_function, r"fn foo(arr: &mut $0[$0i32]) {}");
     }
 }
