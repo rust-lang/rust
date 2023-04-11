@@ -27,6 +27,13 @@ use rustc_span::Span;
 pub trait TraitEngineExt<'tcx> {
     fn new(tcx: TyCtxt<'tcx>) -> Box<Self>;
     fn new_in_snapshot(tcx: TyCtxt<'tcx>) -> Box<Self>;
+    /// Creates a new fulfillment context which does not abort compilation
+    /// on overflow.
+    ///
+    /// WARNING: Overflow will be returned as an error in `select_where_possible`
+    /// even though the overflow may not be the final result for the given obligation,
+    /// so you have to be incredibly careful when using `select_where_possible.
+    fn with_query_mode_canonical(tcx: TyCtxt<'tcx>) -> Box<Self>;
 }
 
 impl<'tcx> TraitEngineExt<'tcx> for dyn TraitEngine<'tcx> {
@@ -42,6 +49,14 @@ impl<'tcx> TraitEngineExt<'tcx> for dyn TraitEngine<'tcx> {
         match tcx.sess.opts.unstable_opts.trait_solver {
             TraitSolver::Classic => Box::new(FulfillmentContext::new_in_snapshot()),
             TraitSolver::Chalk => Box::new(ChalkFulfillmentContext::new_in_snapshot()),
+            TraitSolver::Next => Box::new(NextFulfillmentCtxt::new()),
+        }
+    }
+
+    fn with_query_mode_canonical(tcx: TyCtxt<'tcx>) -> Box<Self> {
+        match tcx.sess.opts.unstable_opts.trait_solver {
+            TraitSolver::Classic => Box::new(FulfillmentContext::with_query_mode_canonical()),
+            TraitSolver::Chalk => Box::new(ChalkFulfillmentContext::new()),
             TraitSolver::Next => Box::new(NextFulfillmentCtxt::new()),
         }
     }
@@ -61,6 +76,18 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
 
     pub fn new_in_snapshot(infcx: &'a InferCtxt<'tcx>) -> Self {
         Self { infcx, engine: RefCell::new(<dyn TraitEngine<'_>>::new_in_snapshot(infcx.tcx)) }
+    }
+
+    /// You have to be incredibly careful when using this method.
+    ///
+    /// Used in places where we have to deal with overflow in a non-fatal way.
+    /// Note that by using this the trait solver ends up being incomplete in a
+    /// may way because overflow is returned as a hard error instead of ambiguity.
+    pub fn with_query_mode_canonical(infcx: &'a InferCtxt<'tcx>) -> Self {
+        Self {
+            infcx,
+            engine: RefCell::new(<dyn TraitEngine<'_>>::with_query_mode_canonical(infcx.tcx)),
+        }
     }
 
     pub fn register_obligation(&self, obligation: PredicateObligation<'tcx>) {

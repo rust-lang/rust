@@ -12,7 +12,6 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Binder, Const, TypeVisitableExt};
 use std::marker::PhantomData;
 
-use super::const_evaluatable;
 use super::project::{self, ProjectAndUnifyResult};
 use super::select::SelectionContext;
 use super::wf;
@@ -22,6 +21,7 @@ use super::CodeSelectionError;
 use super::EvaluationResult;
 use super::PredicateObligation;
 use super::Unimplemented;
+use super::{const_evaluatable, TraitQueryMode};
 use super::{FulfillmentError, FulfillmentErrorCode};
 
 use crate::traits::project::PolyProjectionObligation;
@@ -64,6 +64,8 @@ pub struct FulfillmentContext<'tcx> {
     // a snapshot (they don't *straddle* a snapshot, so there
     // is no trouble there).
     usable_in_snapshot: bool,
+
+    query_mode: TraitQueryMode,
 }
 
 #[derive(Clone, Debug)]
@@ -80,38 +82,30 @@ pub struct PendingPredicateObligation<'tcx> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(PendingPredicateObligation<'_>, 72);
 
-impl<'a, 'tcx> FulfillmentContext<'tcx> {
+impl<'tcx> FulfillmentContext<'tcx> {
     /// Creates a new fulfillment context.
     pub(super) fn new() -> FulfillmentContext<'tcx> {
-        FulfillmentContext { predicates: ObligationForest::new(), usable_in_snapshot: false }
+        FulfillmentContext {
+            predicates: ObligationForest::new(),
+            usable_in_snapshot: false,
+            query_mode: TraitQueryMode::Standard,
+        }
     }
 
     pub(super) fn new_in_snapshot() -> FulfillmentContext<'tcx> {
-        FulfillmentContext { predicates: ObligationForest::new(), usable_in_snapshot: true }
+        FulfillmentContext {
+            predicates: ObligationForest::new(),
+            usable_in_snapshot: true,
+            query_mode: TraitQueryMode::Standard,
+        }
     }
 
-    /// Attempts to select obligations using `selcx`.
-    fn select(&mut self, selcx: SelectionContext<'a, 'tcx>) -> Vec<FulfillmentError<'tcx>> {
-        let span = debug_span!("select", obligation_forest_size = ?self.predicates.len());
-        let _enter = span.enter();
-
-        // Process pending obligations.
-        let outcome: Outcome<_, _> =
-            self.predicates.process_obligations(&mut FulfillProcessor { selcx });
-
-        // FIXME: if we kept the original cache key, we could mark projection
-        // obligations as complete for the projection cache here.
-
-        let errors: Vec<FulfillmentError<'tcx>> =
-            outcome.errors.into_iter().map(to_fulfillment_error).collect();
-
-        debug!(
-            "select({} predicates remaining, {} errors) done",
-            self.predicates.len(),
-            errors.len()
-        );
-
-        errors
+    pub(super) fn with_query_mode_canonical() -> FulfillmentContext<'tcx> {
+        FulfillmentContext {
+            predicates: ObligationForest::new(),
+            usable_in_snapshot: false,
+            query_mode: TraitQueryMode::Canonical,
+        }
     }
 }
 
@@ -138,8 +132,27 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
     }
 
     fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
-        let selcx = SelectionContext::new(infcx);
-        self.select(selcx)
+        let span = debug_span!("select", obligation_forest_size = ?self.predicates.len());
+        let selcx = SelectionContext::with_query_mode(infcx, self.query_mode);
+        let _enter = span.enter();
+
+        // Process pending obligations.
+        let outcome: Outcome<_, _> =
+            self.predicates.process_obligations(&mut FulfillProcessor { selcx });
+
+        // FIXME: if we kept the original cache key, we could mark projection
+        // obligations as complete for the projection cache here.
+
+        let errors: Vec<FulfillmentError<'tcx>> =
+            outcome.errors.into_iter().map(to_fulfillment_error).collect();
+
+        debug!(
+            "select({} predicates remaining, {} errors) done",
+            self.predicates.len(),
+            errors.len()
+        );
+
+        errors
     }
 
     fn drain_unstalled_obligations(
