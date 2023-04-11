@@ -33,7 +33,7 @@ use hir_def::{
     TraitId, TypeAliasId, VariantId,
 };
 use hir_expand::name::{name, Name};
-use la_arena::ArenaMap;
+use la_arena::{ArenaMap, Entry};
 use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::{always, never};
 
@@ -676,42 +676,66 @@ impl<'a> InferenceContext<'a> {
         let return_ty = if let Some(rpits) = self.db.return_type_impl_traits(func) {
             // RPIT opaque types use substitution of their parent function.
             let fn_placeholders = TyBuilder::placeholder_subst(self.db, func);
-            fold_tys(
-                return_ty,
-                |ty, _| {
-                    let opaque_ty_id = match ty.kind(Interner) {
-                        TyKind::OpaqueType(opaque_ty_id, _) => *opaque_ty_id,
-                        _ => return ty,
-                    };
-                    let idx = match self.db.lookup_intern_impl_trait_id(opaque_ty_id.into()) {
-                        ImplTraitId::ReturnTypeImplTrait(_, idx) => idx,
-                        _ => unreachable!(),
-                    };
-                    let bounds = (*rpits).map_ref(|rpits| {
-                        rpits.impl_traits[idx].bounds.map_ref(|it| it.into_iter())
-                    });
-                    let var = self.table.new_type_var();
-                    let var_subst = Substitution::from1(Interner, var.clone());
-                    for bound in bounds {
-                        let predicate =
-                            bound.map(|it| it.cloned()).substitute(Interner, &fn_placeholders);
-                        let (var_predicate, binders) = predicate
-                            .substitute(Interner, &var_subst)
-                            .into_value_and_skipped_binders();
-                        always!(binders.is_empty(Interner)); // quantified where clauses not yet handled
-                        self.push_obligation(var_predicate.cast(Interner));
-                    }
-                    self.result.type_of_rpit.insert(idx, var.clone());
-                    var
-                },
-                DebruijnIndex::INNERMOST,
-            )
+            let result =
+                self.insert_inference_vars_for_rpit(return_ty, rpits.clone(), fn_placeholders);
+            let rpits = rpits.skip_binders();
+            for (id, _) in rpits.impl_traits.iter() {
+                if let Entry::Vacant(e) = self.result.type_of_rpit.entry(id) {
+                    never!("Missed RPIT in `insert_inference_vars_for_rpit`");
+                    e.insert(TyKind::Error.intern(Interner));
+                }
+            }
+            result
         } else {
             return_ty
         };
 
         self.return_ty = self.normalize_associated_types_in(return_ty);
         self.return_coercion = Some(CoerceMany::new(self.return_ty.clone()));
+    }
+
+    fn insert_inference_vars_for_rpit<T>(
+        &mut self,
+        t: T,
+        rpits: Arc<chalk_ir::Binders<crate::ReturnTypeImplTraits>>,
+        fn_placeholders: Substitution,
+    ) -> T
+    where
+        T: crate::HasInterner<Interner = Interner> + crate::TypeFoldable<Interner>,
+    {
+        fold_tys(
+            t,
+            |ty, _| {
+                let opaque_ty_id = match ty.kind(Interner) {
+                    TyKind::OpaqueType(opaque_ty_id, _) => *opaque_ty_id,
+                    _ => return ty,
+                };
+                let idx = match self.db.lookup_intern_impl_trait_id(opaque_ty_id.into()) {
+                    ImplTraitId::ReturnTypeImplTrait(_, idx) => idx,
+                    _ => unreachable!(),
+                };
+                let bounds = (*rpits)
+                    .map_ref(|rpits| rpits.impl_traits[idx].bounds.map_ref(|it| it.into_iter()));
+                let var = self.table.new_type_var();
+                let var_subst = Substitution::from1(Interner, var.clone());
+                for bound in bounds {
+                    let predicate =
+                        bound.map(|it| it.cloned()).substitute(Interner, &fn_placeholders);
+                    let (var_predicate, binders) =
+                        predicate.substitute(Interner, &var_subst).into_value_and_skipped_binders();
+                    always!(binders.is_empty(Interner)); // quantified where clauses not yet handled
+                    let var_predicate = self.insert_inference_vars_for_rpit(
+                        var_predicate,
+                        rpits.clone(),
+                        fn_placeholders.clone(),
+                    );
+                    self.push_obligation(var_predicate.cast(Interner));
+                }
+                self.result.type_of_rpit.insert(idx, var.clone());
+                var
+            },
+            DebruijnIndex::INNERMOST,
+        )
     }
 
     fn infer_body(&mut self) {

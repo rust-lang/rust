@@ -233,6 +233,45 @@ fn return_position_impl_trait() {
         foo()
     }
     size_and_align_expr! {
+        minicore: iterators;
+        stmts: []
+        trait Tr {}
+        impl Tr for i32 {}
+        fn foo() -> impl Iterator<Item = impl Tr> {
+            [1, 2, 3].into_iter()
+        }
+        let mut iter = foo();
+        let item = iter.next();
+        (iter, item)
+    }
+    size_and_align_expr! {
+        minicore: future;
+        stmts: []
+        use core::{future::Future, task::{Poll, Context}, pin::pin};
+        use std::{task::Wake, sync::Arc};
+        trait Tr {}
+        impl Tr for i32 {}
+        async fn f() -> impl Tr {
+            2
+        }
+        fn unwrap_fut<T>(inp: impl Future<Output = T>) -> Poll<T> {
+            // In a normal test we could use `loop {}` or `panic!()` here,
+            // but rustc actually runs this code.
+            let pinned = pin!(inp);
+            struct EmptyWaker;
+            impl Wake for EmptyWaker {
+                fn wake(self: Arc<Self>) {
+                }
+            }
+            let waker = Arc::new(EmptyWaker).into();
+            let mut context = Context::from_waker(&waker);
+            let x = pinned.poll(&mut context);
+            x
+        }
+        let x = unwrap_fut(f());
+        x
+    }
+    size_and_align_expr! {
         struct Foo<T>(T, T, (T, T));
         trait T {}
         impl T for Foo<i32> {}
