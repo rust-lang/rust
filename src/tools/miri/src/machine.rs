@@ -264,7 +264,8 @@ pub struct AllocExtra<'tcx> {
     pub weak_memory: Option<weak_memory::AllocState>,
     /// A backtrace to where this allocation was allocated.
     /// As this is recorded for leak reports, it only exists
-    /// if this allocation is leakable.
+    /// if this allocation is leakable. The backtrace is not
+    /// pruned yet; that should be done before printing it.
     pub backtrace: Option<Vec<FrameInfo<'tcx>>>,
 }
 
