@@ -2,6 +2,7 @@ use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 
 use crate::machine::SIGRTMAX;
+use crate::machine::SIGRTMIN;
 use crate::*;
 use shims::foreign_items::EmulateByNameResult;
 use shims::unix::fs::EvalContextExt as _;
@@ -73,6 +74,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 let result = this.socketpair(domain, type_, protocol, sv)?;
                 this.write_scalar(result, dest)?;
+            }
+            "__libc_current_sigrtmin" => {
+                let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+
+                this.write_scalar(Scalar::from_i32(SIGRTMIN), dest)?;
             }
             "__libc_current_sigrtmax" => {
                 let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
