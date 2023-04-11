@@ -463,12 +463,18 @@ fn check_literal(cx: &LateContext<'_>, format_args: &FormatArgs, name: &str) {
             && let Some(value_string) = snippet_opt(cx, arg.expr.span)
     {
             let (replacement, replace_raw) = match lit.kind {
-                LitKind::Str | LitKind::StrRaw(_)  => extract_str_literal(&value_string),
+                LitKind::Str | LitKind::StrRaw(_)  => match extract_str_literal(&value_string) {
+                    Some(extracted) => extracted,
+                    None => return,
+                },
                 LitKind::Char => (
                     match lit.symbol.as_str() {
                         "\"" => "\\\"",
                         "\\'" => "'",
-                        _ => &value_string[1..value_string.len() - 1],
+                        _ => match value_string.strip_prefix('\'').and_then(|s| s.strip_suffix('\'')) {
+                            Some(stripped) => stripped,
+                            None => return,
+                        },
                     }
                     .to_string(),
                     false,
@@ -533,13 +539,13 @@ fn check_literal(cx: &LateContext<'_>, format_args: &FormatArgs, name: &str) {
 /// `r#"a"#` -> (`a`, true)
 ///
 /// `"b"` -> (`b`, false)
-fn extract_str_literal(literal: &str) -> (String, bool) {
+fn extract_str_literal(literal: &str) -> Option<(String, bool)> {
     let (literal, raw) = match literal.strip_prefix('r') {
         Some(stripped) => (stripped.trim_matches('#'), true),
         None => (literal, false),
     };
 
-    (literal[1..literal.len() - 1].to_string(), raw)
+    Some((literal.strip_prefix('"')?.strip_suffix('"')?.to_string(), raw))
 }
 
 enum UnescapeErr {

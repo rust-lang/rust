@@ -541,9 +541,25 @@ pub fn same_type_and_consts<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
 pub fn is_uninit_value_valid_for_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     cx.tcx
         .check_validity_requirement((ValidityRequirement::Uninit, cx.param_env.and(ty)))
-        // For types containing generic parameters we cannot get a layout to check.
-        // Therefore, we are conservative and assume that they don't allow uninit.
-        .unwrap_or(false)
+        .unwrap_or_else(|_| is_uninit_value_valid_for_ty_fallback(cx, ty))
+}
+
+/// A fallback for polymorphic types, which are not supported by `check_validity_requirement`.
+fn is_uninit_value_valid_for_ty_fallback<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    match *ty.kind() {
+        // The array length may be polymorphic, let's try the inner type.
+        ty::Array(component, _) => is_uninit_value_valid_for_ty(cx, component),
+        // Peek through tuples and try their fallbacks.
+        ty::Tuple(types) => types.iter().all(|ty| is_uninit_value_valid_for_ty(cx, ty)),
+        // Unions are always fine right now.
+        // This includes MaybeUninit, the main way people use uninitialized memory.
+        // For ADTs, we could look at all fields just like for tuples, but that's potentially
+        // exponential, so let's avoid doing that for now. Code doing that is sketchy enough to
+        // just use an `#[allow()]`.
+        ty::Adt(adt, _) => adt.is_union(),
+        // For the rest, conservatively assume that they cannot be uninit.
+        _ => false,
+    }
 }
 
 /// Gets an iterator over all predicates which apply to the given item.
