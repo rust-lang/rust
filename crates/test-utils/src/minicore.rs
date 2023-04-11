@@ -891,12 +891,19 @@ pub mod iter {
                     self
                 }
             }
-            pub struct IntoIter<T, const N: usize>([T; N]);
+            struct IndexRange {
+                start: usize,
+                end: usize,
+            }
+            pub struct IntoIter<T, const N: usize> {
+                data: [T; N],
+                range: IndexRange,
+            }
             impl<T, const N: usize> IntoIterator for [T; N] {
                 type Item = T;
                 type IntoIter = IntoIter<T, N>;
                 fn into_iter(self) -> I {
-                    IntoIter(self)
+                    IntoIter { data: self, range: IndexRange { start: 0, end: self.len() } }
                 }
             }
             impl<T, const N: usize> Iterator for IntoIter<T, N> {
