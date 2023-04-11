@@ -2768,13 +2768,11 @@ dependencies = [
  "anyhow",
  "clap 3.2.20",
  "flate2",
- "lazy_static",
  "num_cpus",
  "rayon",
  "remove_dir_all",
  "tar",
  "walkdir",
- "winapi",
  "xz2",
 ]
 

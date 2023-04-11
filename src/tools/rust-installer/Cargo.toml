@@ -22,7 +22,3 @@ remove_dir_all = "0.5"
 [dependencies.clap]
 features = ["derive"]
 version = "3.1"
-
-[target."cfg(windows)".dependencies]
-lazy_static = "1"
-winapi = { version = "0.3", features = ["errhandlingapi", "handleapi", "ioapiset", "winerror", "winioctl", "winnt"] }
