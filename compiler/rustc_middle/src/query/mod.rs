@@ -97,7 +97,7 @@ rustc_queries! {
 
     /// Gives access to the HIR ID for the given `LocalDefId` owner `key` if any.
     ///
-    /// Definitions that were generated with no HIR, would be feeded to return `None`.
+    /// Definitions that were generated with no HIR, would be fed to return `None`.
     query opt_local_def_id_to_hir_id(key: LocalDefId) -> Option<hir::HirId>{
         desc { |tcx| "getting HIR ID of `{}`", tcx.def_path_str(key.to_def_id()) }
         feedable

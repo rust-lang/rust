@@ -322,7 +322,7 @@ fn layout_of_uncached<'tcx>(
                 if fi.ty(tcx, substs) != f0_ty {
                     tcx.sess.delay_span_bug(
                         DUMMY_SP,
-                        "#[repr(simd)] was applied to an ADT with hetrogeneous field type",
+                        "#[repr(simd)] was applied to an ADT with heterogeneous field type",
                     );
                     return Err(LayoutError::Unknown(ty));
                 }

@@ -91,7 +91,7 @@ lint_ty_qualified = usage of qualified `ty::{$ty}`
 lint_lintpass_by_hand = implementing `LintPass` by hand
     .help = try using `declare_lint_pass!` or `impl_lint_pass!` instead
 
-lint_non_existant_doc_keyword = found non-existing keyword `{$keyword}` used in `#[doc(keyword = "...")]`
+lint_non_existent_doc_keyword = found non-existing keyword `{$keyword}` used in `#[doc(keyword = "...")]`
     .help = only existing keywords are allowed in core/std
 
 lint_diag_out_of_impl =
@@ -107,7 +107,7 @@ lint_cstring_ptr = getting the inner pointer of a temporary `CString`
     .note = pointers do not have a lifetime; when calling `as_ptr` the `CString` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
     .help = for more information, see https://doc.rust-lang.org/reference/destructors.html
 
-lint_multple_supertrait_upcastable = `{$ident}` is object-safe and has multiple supertraits
+lint_multiple_supertrait_upcastable = `{$ident}` is object-safe and has multiple supertraits
 
 lint_identifier_non_ascii_char = identifier contains non-ASCII characters
 

@@ -135,4 +135,4 @@ expand_proc_macro_panicked =
     .help = message: {$message}
 
 expand_proc_macro_derive_tokens =
-    proc-macro derive produced unparseable tokens
+    proc-macro derive produced unparsable tokens

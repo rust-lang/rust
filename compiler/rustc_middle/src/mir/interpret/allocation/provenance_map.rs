@@ -14,7 +14,7 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 #[derive(HashStable)]
 pub struct ProvenanceMap<Prov = AllocId> {
     /// Provenance in this map applies from the given offset for an entire pointer-size worth of
-    /// bytes. Two entires in this map are always at least a pointer size apart.
+    /// bytes. Two entries in this map are always at least a pointer size apart.
     ptrs: SortedMap<Size, Prov>,
     /// Provenance in this map only applies to the given single byte.
     /// This map is disjoint from the previous. It will always be empty when

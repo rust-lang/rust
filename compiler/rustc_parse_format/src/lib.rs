@@ -909,7 +909,7 @@ fn find_width_map_from_snippet(
     // Strip quotes.
     let snippet = &snippet[1..snippet.len() - 1];
 
-    // Macros like `println` add a newline at the end. That technically doens't make them "literals" anymore, but it's fine
+    // Macros like `println` add a newline at the end. That technically doesn't make them "literals" anymore, but it's fine
     // since we will never need to point our spans there, so we lie about it here by ignoring it.
     // Since there might actually be newlines in the source code, we need to normalize away all trailing newlines.
     // If we only trimmed it off the input, `format!("\n")` would cause a mismatch as here we they actually match up.

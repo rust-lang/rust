@@ -120,7 +120,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty
     }
 
-    pub(super) fn check_expr_coercable_to_type(
+    pub(super) fn check_expr_coercible_to_type(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         expected: Ty<'tcx>,
@@ -1128,7 +1128,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
-        // This is (basically) inlined `check_expr_coercable_to_type`, but we want
+        // This is (basically) inlined `check_expr_coercible_to_type`, but we want
         // to suggest an additional fixup here in `suggest_deref_binop`.
         let rhs_ty = self.check_expr_with_hint(&rhs, lhs_ty);
         if let (_, Some(mut diag)) =
@@ -1401,7 +1401,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let (element_ty, t) = match uty {
             Some(uty) => {
-                self.check_expr_coercable_to_type(&element, uty, None);
+                self.check_expr_coercible_to_type(&element, uty, None);
                 (uty, uty)
             }
             None => {
@@ -1478,7 +1478,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let elt_ts_iter = elts.iter().enumerate().map(|(i, e)| match flds {
             Some(fs) if i < fs.len() => {
                 let ety = fs[i];
-                self.check_expr_coercable_to_type(&e, ety, None);
+                self.check_expr_coercible_to_type(&e, ety, None);
                 ety
             }
             _ => self.check_expr_with_expectation(&e, NoExpectation),
@@ -2869,7 +2869,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         match self.resume_yield_tys {
             Some((resume_ty, yield_ty)) => {
-                self.check_expr_coercable_to_type(&value, yield_ty, None);
+                self.check_expr_coercible_to_type(&value, yield_ty, None);
 
                 resume_ty
             }
@@ -2878,7 +2878,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // information. Hence, we check the source of the yield expression here and check its
             // value's type against `()` (this check should always hold).
             None if src.is_await() => {
-                self.check_expr_coercable_to_type(&value, self.tcx.mk_unit(), None);
+                self.check_expr_coercible_to_type(&value, self.tcx.mk_unit(), None);
                 self.tcx.mk_unit()
             }
             _ => {

@@ -1829,7 +1829,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             // will try to hide in some case such as `async fn`, so
                             // to make an error more use friendly we will
                             // avoid to suggest a mismatch type with a
-                            // type that the user usually are not usign
+                            // type that the user usually are not using
                             // directly such as `impl Future<Output = u8>`.
                             if !self.tcx.ty_is_opaque_future(found_ty) {
                                 diag.note_expected_found_extra(

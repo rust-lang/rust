@@ -2600,7 +2600,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.implicit_region_bound,
                 self.param_env,
                 location.to_locations(),
-                DUMMY_SP,                   // irrelevant; will be overrided.
+                DUMMY_SP,                   // irrelevant; will be overridden.
                 ConstraintCategory::Boring, // same as above.
                 &mut self.borrowck_context.constraints,
             )
