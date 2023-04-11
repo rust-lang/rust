@@ -28,9 +28,11 @@ use rustc_middle::{
     middle::exported_symbols::{
         ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
     },
-    ty::{query::ExternProviders, TyCtxt},
     query::LocalCrate,
+    ty::{query::ExternProviders, TyCtxt},
 };
+use rustc_session::config::OptLevel;
+
 use rustc_session::{config::CrateType, search_paths::PathKind, CtfeBacktrace};
 
 use miri::{BacktraceStyle, BorrowTrackerMethod, ProvenanceMode, RetagFields};
@@ -81,6 +83,21 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
             // Adjust working directory for interpretation.
             if let Some(cwd) = env::var_os("MIRI_CWD") {
                 env::set_current_dir(cwd).unwrap();
+            }
+
+            if tcx.sess.opts.optimize != OptLevel::No {
+                tcx.sess.warn("Miri does not support optimizations. If you have enabled optimizations \
+                    by selecting a Cargo profile (such as --release) which changes other profile settings \
+                    such as whether debug assertions and overflow checks are enabled, those settings are \
+                    still applied.");
+            }
+            if tcx.sess.mir_opt_level() > 0 {
+                tcx.sess.warn("You have explicitly enabled MIR optimizations, overriding Miri's default \
+                    which is to completely disable them. Any optimizations may hide UB that Miri would \
+                    otherwise detect, and it is not necessarily possible to predict what kind of UB will \
+                    be missed. If you are enabling optimizations to make Miri run faster, we advise using \
+                    cfg(miri) to shrink your workload instead. The performance benefit of enabling MIR \
+                    optimizations is usually marginal at best.");
             }
 
             if let Some(return_code) = miri::eval_entry(tcx, entry_def_id, entry_type, config) {

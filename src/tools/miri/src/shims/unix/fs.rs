@@ -628,13 +628,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let fd = this.read_scalar(&args[0])?.to_i32()?;
         let cmd = this.read_scalar(&args[1])?.to_i32()?;
 
-        // Reject if isolation is enabled.
-        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("`fcntl`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
-            return Ok(-1);
-        }
-
         // We only support getting the flags for a descriptor.
         if cmd == this.eval_libc_i32("F_GETFD") {
             // Currently this is the only flag that `F_GETFD` returns. It is OK to just return the
@@ -677,6 +670,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 None => this.handle_not_found(),
             }
         } else if this.tcx.sess.target.os == "macos" && cmd == this.eval_libc_i32("F_FULLFSYNC") {
+            // Reject if isolation is enabled.
+            if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
+                this.reject_in_isolation("`fcntl`", reject_with)?;
+                this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
+                return Ok(-1);
+            }
+
             if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
                 // FIXME: Support fullfsync for all FDs
                 let FileHandle { file, writable } =

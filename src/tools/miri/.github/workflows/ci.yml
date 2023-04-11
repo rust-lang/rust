@@ -174,7 +174,12 @@ jobs:
           ~/.local/bin/zulip-send --stream miri --subject "Cron Job Failure (miri, $(date -u +%Y-%m))" \
             --message 'Dear @*T-miri*,
 
-          It would appear that the Miri cron job build failed. Would you mind investigating this issue?
+          It would appear that the [Miri cron job build]('"https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"') failed.
+          
+          This likely means that rustc changed the miri directory and
+          we now need to do a [`./miri rustc-pull`](https://github.com/rust-lang/miri/blob/master/CONTRIBUTING.md#importing-changes-from-the-rustc-repo).
+
+          Would you mind investigating this issue?
 
           Thanks in advance!
           Sincerely,

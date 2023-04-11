@@ -15,7 +15,7 @@ for example:
   or an invalid enum discriminant)
 * **Experimental**: Violations of the [Stacked Borrows] rules governing aliasing
   for reference types
-* **Experimental**: Violations of the Tree Borrows aliasing rules, as an optional
+* **Experimental**: Violations of the [Tree Borrows] aliasing rules, as an optional
   alternative to [Stacked Borrows]
 * **Experimental**: Data races
 
@@ -79,6 +79,7 @@ behavior** in your program, and cannot run all programs:
 [`unreachable_unchecked`]: https://doc.rust-lang.org/stable/std/hint/fn.unreachable_unchecked.html
 [`copy_nonoverlapping`]: https://doc.rust-lang.org/stable/std/ptr/fn.copy_nonoverlapping.html
 [Stacked Borrows]: https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md
+[Tree Borrows]: https://perso.crans.org/vanille/treebor/
 
 
 ## Using Miri
@@ -359,7 +360,7 @@ to Miri failing to detect cases of undefined behavior in a program.
 * `-Zmiri-disable-data-race-detector` disables checking for data races.  Using
   this flag is **unsound**. This implies `-Zmiri-disable-weak-memory-emulation`.
 * `-Zmiri-disable-stacked-borrows` disables checking the experimental
-  aliasing rules to track borrows ([Stacked Borrows] and Tree Borrows).
+  aliasing rules to track borrows ([Stacked Borrows] and [Tree Borrows]).
   This can make Miri run faster, but it also means no aliasing violations will
   be detected. Using this flag is **unsound** (but the affected soundness rules
   are experimental). Later flags take precedence: borrow tracking can be reactivated
@@ -425,7 +426,7 @@ to Miri failing to detect cases of undefined behavior in a program.
 * `-Zmiri-track-weak-memory-loads` shows a backtrace when weak memory emulation returns an outdated
   value from a load. This can help diagnose problems that disappear under
   `-Zmiri-disable-weak-memory-emulation`.
-* `-Zmiri-tree-borrows` replaces [Stacked Borrows] with the Tree Borrows rules.
+* `-Zmiri-tree-borrows` replaces [Stacked Borrows] with the [Tree Borrows] rules.
   The soundness rules are already experimental without this flag, but even more
   so with this flag.
 * `-Zmiri-force-page-size=<num>` overrides the default page size for an architecture, in multiples of 1k.
@@ -442,7 +443,7 @@ Some native rustc `-Z` flags are also very relevant for Miri:
   functions.  This is needed so that Miri can execute such functions, so Miri
   sets this flag per default.
 * `-Zmir-emit-retag` controls whether `Retag` statements are emitted. Miri
-  enables this per default because it is needed for [Stacked Borrows] and Tree Borrows.
+  enables this per default because it is needed for [Stacked Borrows] and [Tree Borrows].
 
 Moreover, Miri recognizes some environment variables:
 
