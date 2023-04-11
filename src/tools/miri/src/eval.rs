@@ -146,6 +146,8 @@ pub struct MiriConfig {
     pub num_cpus: u32,
     /// Requires Miri to emulate pages of a certain size
     pub page_size: Option<u64>,
+    /// Whether to collect a backtrace when each allocation is created, just in case it leaks.
+    pub collect_leak_backtraces: bool,
 }
 
 impl Default for MiriConfig {
@@ -180,6 +182,7 @@ impl Default for MiriConfig {
             gc_interval: 10_000,
             num_cpus: 1,
             page_size: None,
+            collect_leak_backtraces: true,
         }
     }
 }
@@ -461,9 +464,14 @@ pub fn eval_entry<'tcx>(
         let leaks = ecx.find_leaked_allocations(&ecx.machine.static_roots);
         if !leaks.is_empty() {
             report_leaks(&ecx, leaks);
-            tcx.sess.note_without_error(
-                "the evaluated program leaked memory, pass `-Zmiri-ignore-leaks` to disable this check",
-            );
+            let leak_message = "the evaluated program leaked memory, pass `-Zmiri-ignore-leaks` to disable this check";
+            if ecx.machine.collect_leak_backtraces {
+                // If we are collecting leak backtraces, each leak is a distinct error diagnostic.
+                tcx.sess.note_without_error(leak_message);
+            } else {
+                // If we do not have backtraces, we just report an error without any span.
+                tcx.sess.err(leak_message);
+            };
             // Ignore the provided return code - let the reported error
             // determine the return code.
             return None;

@@ -471,12 +471,17 @@ pub struct MiriMachine<'mir, 'tcx> {
     pub(crate) gc_interval: u32,
     /// The number of blocks that passed since the last BorTag GC pass.
     pub(crate) since_gc: u32,
+
     /// The number of CPUs to be reported by miri.
     pub(crate) num_cpus: u32,
+
     /// Determines Miri's page size and associated values
     pub(crate) page_size: u64,
     pub(crate) stack_addr: u64,
     pub(crate) stack_size: u64,
+
+    /// Whether to collect a backtrace when each allocation is created, just in case it leaks.
+    pub(crate) collect_leak_backtraces: bool,
 }
 
 impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
@@ -585,6 +590,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             page_size,
             stack_addr,
             stack_size,
+            collect_leak_backtraces: config.collect_leak_backtraces,
         }
     }
 
@@ -732,6 +738,7 @@ impl VisitTags for MiriMachine<'_, '_> {
             page_size: _,
             stack_addr: _,
             stack_size: _,
+            collect_leak_backtraces: _,
         } = self;
 
         threads.visit_tags(visit);
@@ -975,7 +982,11 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         // If an allocation is leaked, we want to report a backtrace to indicate where it was
         // allocated. We don't need to record a backtrace for allocations which are allowed to
         // leak.
-        let backtrace = if kind.may_leak() { None } else { Some(ecx.generate_stacktrace()) };
+        let backtrace = if kind.may_leak() || !ecx.machine.collect_leak_backtraces {
+            None
+        } else {
+            Some(ecx.generate_stacktrace())
+        };
 
         let alloc: Allocation<Provenance, Self::AllocExtra> = alloc.adjust_from_tcx(
             &ecx.tcx,
