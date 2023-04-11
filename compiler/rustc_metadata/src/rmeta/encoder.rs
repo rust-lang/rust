@@ -811,6 +811,117 @@ fn analyze_attr(attr: &Attribute, state: &mut AnalyzeAttrState) -> bool {
     should_encode
 }
 
+fn should_encode_span(def_kind: DefKind) -> bool {
+    match def_kind {
+        DefKind::Mod
+        | DefKind::Struct
+        | DefKind::Union
+        | DefKind::Enum
+        | DefKind::Variant
+        | DefKind::Trait
+        | DefKind::TyAlias
+        | DefKind::ForeignTy
+        | DefKind::TraitAlias
+        | DefKind::AssocTy
+        | DefKind::TyParam
+        | DefKind::Fn
+        | DefKind::Const
+        | DefKind::Static(_)
+        | DefKind::Ctor(..)
+        | DefKind::AssocFn
+        | DefKind::AssocConst
+        | DefKind::Macro(_)
+        | DefKind::AnonConst
+        | DefKind::InlineConst
+        | DefKind::OpaqueTy
+        | DefKind::Field
+        | DefKind::Impl { .. }
+        | DefKind::Closure
+        | DefKind::Generator => true,
+        DefKind::ConstParam
+        | DefKind::ExternCrate
+        | DefKind::Use
+        | DefKind::ForeignMod
+        | DefKind::ImplTraitPlaceholder
+        | DefKind::LifetimeParam
+        | DefKind::GlobalAsm => false,
+    }
+}
+
+fn should_encode_attrs(def_kind: DefKind) -> bool {
+    match def_kind {
+        DefKind::Mod
+        | DefKind::Struct
+        | DefKind::Union
+        | DefKind::Enum
+        | DefKind::Variant
+        | DefKind::Trait
+        | DefKind::TyAlias
+        | DefKind::ForeignTy
+        | DefKind::TraitAlias
+        | DefKind::AssocTy
+        | DefKind::Fn
+        | DefKind::Const
+        | DefKind::Static(_)
+        | DefKind::AssocFn
+        | DefKind::AssocConst
+        | DefKind::Macro(_)
+        | DefKind::Field
+        | DefKind::Impl { .. } => true,
+        DefKind::TyParam
+        | DefKind::ConstParam
+        | DefKind::Ctor(..)
+        | DefKind::ExternCrate
+        | DefKind::Use
+        | DefKind::ForeignMod
+        | DefKind::AnonConst
+        | DefKind::InlineConst
+        | DefKind::OpaqueTy
+        | DefKind::ImplTraitPlaceholder
+        | DefKind::LifetimeParam
+        | DefKind::GlobalAsm
+        | DefKind::Closure
+        | DefKind::Generator => false,
+    }
+}
+
+fn should_encode_expn_that_defined(def_kind: DefKind) -> bool {
+    match def_kind {
+        DefKind::Mod
+        | DefKind::Struct
+        | DefKind::Union
+        | DefKind::Enum
+        | DefKind::Variant
+        | DefKind::Trait
+        | DefKind::Impl { .. } => true,
+        DefKind::TyAlias
+        | DefKind::ForeignTy
+        | DefKind::TraitAlias
+        | DefKind::AssocTy
+        | DefKind::TyParam
+        | DefKind::Fn
+        | DefKind::Const
+        | DefKind::ConstParam
+        | DefKind::Static(_)
+        | DefKind::Ctor(..)
+        | DefKind::AssocFn
+        | DefKind::AssocConst
+        | DefKind::Macro(_)
+        | DefKind::ExternCrate
+        | DefKind::Use
+        | DefKind::ForeignMod
+        | DefKind::AnonConst
+        | DefKind::InlineConst
+        | DefKind::OpaqueTy
+        | DefKind::ImplTraitPlaceholder
+        | DefKind::Field
+        | DefKind::LifetimeParam
+        | DefKind::GlobalAsm
+        | DefKind::Closure
+        | DefKind::Generator => false,
+    }
+}
+
 fn should_encode_visibility(def_kind: DefKind) -> bool {
     match def_kind {
         DefKind::Mod
@@ -830,18 +941,18 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::AssocFn
         | DefKind::AssocConst
         | DefKind::Macro(..)
-        | DefKind::Use
-        | DefKind::ForeignMod
-        | DefKind::OpaqueTy
-        | DefKind::ImplTraitPlaceholder
-        | DefKind::Impl { .. }
         | DefKind::Field => true,
-        DefKind::TyParam
+        DefKind::Use
+        | DefKind::ForeignMod
+        | DefKind::TyParam
         | DefKind::ConstParam
         | DefKind::LifetimeParam
         | DefKind::AnonConst
         | DefKind::InlineConst
+        | DefKind::OpaqueTy
+        | DefKind::ImplTraitPlaceholder
         | DefKind::GlobalAsm
+        | DefKind::Impl { .. }
         | DefKind::Closure
         | DefKind::Generator
         | DefKind::ExternCrate => false,
@@ -1160,11 +1271,17 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let def_kind = tcx.opt_def_kind(local_id);
             let Some(def_kind) = def_kind else { continue };
             self.tables.opt_def_kind.set_some(def_id.index, def_kind);
-            let def_span = tcx.def_span(local_id);
-            record!(self.tables.def_span[def_id] <- def_span);
-            self.encode_attrs(local_id);
-            record!(self.tables.expn_that_defined[def_id] <- self.tcx.expn_that_defined(def_id));
-            if let Some(ident_span) = tcx.def_ident_span(def_id) {
+            if should_encode_span(def_kind) {
+                let def_span = tcx.def_span(local_id);
+                record!(self.tables.def_span[def_id] <- def_span);
+            }
+            if should_encode_attrs(def_kind) {
+                self.encode_attrs(local_id);
+            }
+            if should_encode_expn_that_defined(def_kind) {
+                record!(self.tables.expn_that_defined[def_id] <- self.tcx.expn_that_defined(def_id));
+            }
+            if should_encode_span(def_kind) && let Some(ident_span) = tcx.def_ident_span(def_id) {
                 record!(self.tables.def_ident_span[def_id] <- ident_span);
             }
             if def_kind.has_codegen_attrs() {
@@ -1523,23 +1640,32 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         })
     }
 
-    fn encode_info_for_item(&mut self, def_id: DefId, item: &'tcx hir::Item<'tcx>) {
+    fn encode_info_for_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         let tcx = self.tcx;
-
+        let def_id = item.owner_id.to_def_id();
         debug!("EncodeContext::encode_info_for_item({:?})", def_id);
+
+        let record_associated_item_def_ids = |this: &mut Self, def_ids: &[DefId]| {
+            record_array!(this.tables.children[def_id] <- def_ids.iter().map(|&def_id| {
+                assert!(def_id.is_local());
+                def_id.index
+            }))
+        };
 
         match item.kind {
             hir::ItemKind::Fn(ref sig, .., body) => {
                 self.tables.asyncness.set_some(def_id.index, sig.header.asyncness);
                 record_array!(self.tables.fn_arg_names[def_id] <- self.tcx.hir().body_param_names(body));
                 self.tables.constness.set_some(def_id.index, sig.header.constness);
+                record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
+                self.tables.is_intrinsic.set(def_id.index, tcx.is_intrinsic(def_id));
             }
             hir::ItemKind::Macro(ref macro_def, _) => {
                 self.tables.is_macro_rules.set(def_id.index, macro_def.macro_rules);
                 record!(self.tables.macro_definition[def_id] <- &*macro_def.body);
             }
             hir::ItemKind::Mod(ref m) => {
-                return self.encode_info_for_mod(item.owner_id.def_id, m);
+                self.encode_info_for_mod(item.owner_id.def_id, m);
             }
             hir::ItemKind::OpaqueTy(ref opaque) => {
                 self.encode_explicit_item_bounds(def_id);
@@ -1550,9 +1676,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             hir::ItemKind::Impl(hir::Impl { defaultness, constness, .. }) => {
                 self.tables.impl_defaultness.set_some(def_id.index, *defaultness);
                 self.tables.constness.set_some(def_id.index, *constness);
+                self.tables.impl_polarity.set_some(def_id.index, self.tcx.impl_polarity(def_id));
 
-                let trait_ref = self.tcx.impl_trait_ref(def_id);
-                if let Some(trait_ref) = trait_ref {
+                if let Some(trait_ref) = self.tcx.impl_trait_ref(def_id) {
+                    record!(self.tables.impl_trait_ref[def_id] <- trait_ref);
+
                     let trait_ref = trait_ref.skip_binder();
                     let trait_def = self.tcx.trait_def(trait_ref.def_id);
                     if let Ok(mut an) = trait_def.ancestors(self.tcx, def_id) {
@@ -1570,21 +1698,27 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     }
                 }
 
-                let polarity = self.tcx.impl_polarity(def_id);
-                self.tables.impl_polarity.set_some(def_id.index, polarity);
+                let associated_item_def_ids = self.tcx.associated_item_def_ids(def_id);
+                record_associated_item_def_ids(self, associated_item_def_ids);
+                for &trait_item_def_id in associated_item_def_ids {
+                    self.encode_info_for_impl_item(trait_item_def_id);
+                }
             }
             hir::ItemKind::Trait(..) => {
-                let trait_def = self.tcx.trait_def(def_id);
-                record!(self.tables.trait_def[def_id] <- trait_def);
+                record!(self.tables.trait_def[def_id] <- self.tcx.trait_def(def_id));
+
+                let associated_item_def_ids = self.tcx.associated_item_def_ids(def_id);
+                record_associated_item_def_ids(self, associated_item_def_ids);
+                for &item_def_id in associated_item_def_ids {
+                    self.encode_info_for_trait_item(item_def_id);
+                }
             }
             hir::ItemKind::TraitAlias(..) => {
-                let trait_def = self.tcx.trait_def(def_id);
-                record!(self.tables.trait_def[def_id] <- trait_def);
+                record!(self.tables.trait_def[def_id] <- self.tcx.trait_def(def_id));
             }
-            hir::ItemKind::ExternCrate(_) | hir::ItemKind::Use(..) => {
-                bug!("cannot encode info for item {:?}", item)
-            }
-            hir::ItemKind::Static(..)
+            hir::ItemKind::ExternCrate(_)
+            | hir::ItemKind::Use(..)
+            | hir::ItemKind::Static(..)
             | hir::ItemKind::Const(..)
             | hir::ItemKind::Enum(..)
             | hir::ItemKind::Struct(..)
@@ -1592,49 +1726,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             | hir::ItemKind::ForeignMod { .. }
             | hir::ItemKind::GlobalAsm(..)
             | hir::ItemKind::TyAlias(..) => {}
-        };
-        // FIXME(eddyb) there should be a nicer way to do this.
-        match item.kind {
-            hir::ItemKind::Impl { .. } | hir::ItemKind::Trait(..) => {
-                let associated_item_def_ids = self.tcx.associated_item_def_ids(def_id);
-                record_array!(self.tables.children[def_id] <-
-                    associated_item_def_ids.iter().map(|&def_id| {
-                        assert!(def_id.is_local());
-                        def_id.index
-                    })
-                );
-            }
-            _ => {}
-        }
-        if let hir::ItemKind::Fn(..) = item.kind {
-            record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
-            self.tables.is_intrinsic.set(def_id.index, tcx.is_intrinsic(def_id));
-        }
-        if let hir::ItemKind::Impl { .. } = item.kind {
-            if let Some(trait_ref) = self.tcx.impl_trait_ref(def_id) {
-                record!(self.tables.impl_trait_ref[def_id] <- trait_ref);
-            }
-        }
-        // In some cases, along with the item itself, we also
-        // encode some sub-items. Usually we want some info from the item
-        // so it's easier to do that here then to wait until we would encounter
-        // normally in the visitor walk.
-        match item.kind {
-            hir::ItemKind::Impl { .. } => {
-                for &trait_item_def_id in
-                    self.tcx.associated_item_def_ids(item.owner_id.to_def_id()).iter()
-                {
-                    self.encode_info_for_impl_item(trait_item_def_id);
-                }
-            }
-            hir::ItemKind::Trait(..) => {
-                for &item_def_id in
-                    self.tcx.associated_item_def_ids(item.owner_id.to_def_id()).iter()
-                {
-                    self.encode_info_for_trait_item(item_def_id);
-                }
-            }
-            _ => {}
         }
     }
 
@@ -2020,10 +2111,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EncodeContext<'a, 'tcx> {
     }
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         intravisit::walk_item(self, item);
-        match item.kind {
-            hir::ItemKind::ExternCrate(_) | hir::ItemKind::Use(..) => {} // ignore these
-            _ => self.encode_info_for_item(item.owner_id.to_def_id(), item),
-        }
+        self.encode_info_for_item(item);
     }
     fn visit_foreign_item(&mut self, ni: &'tcx hir::ForeignItem<'tcx>) {
         intravisit::walk_foreign_item(self, ni);

@@ -687,7 +687,7 @@ impl Item {
                 return None;
             }
             // Variants always inherit visibility
-            VariantItem(..) => return None,
+            VariantItem(..) | ImplItem(..) => return None,
             // Trait items inherit the trait's visibility
             AssocConstItem(..) | TyAssocConstItem(..) | AssocTypeItem(..) | TyAssocTypeItem(..)
             | TyMethodItem(..) | MethodItem(..) => {

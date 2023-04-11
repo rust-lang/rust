@@ -1,5 +1,5 @@
 error[E0223]: ambiguous associated type
-  --> $DIR/associated-types-in-ambiguous-context.rs:6:36
+  --> $DIR/associated-types-in-ambiguous-context.rs:8:36
    |
 LL | fn get<T:Get,U:Get>(x: T, y: U) -> Get::Value {}
    |                                    ^^^^^^^^^^
@@ -10,30 +10,37 @@ LL | fn get<T:Get,U:Get>(x: T, y: U) -> <Example as Get>::Value {}
    |                                    ~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0223]: ambiguous associated type
-  --> $DIR/associated-types-in-ambiguous-context.rs:20:17
+  --> $DIR/associated-types-in-ambiguous-context.rs:22:17
    |
 LL | trait Foo where Foo::Assoc: Bar {
    |                 ^^^^^^^^^^ help: use the fully-qualified path: `<Self as Foo>::Assoc`
 
 error[E0223]: ambiguous associated type
-  --> $DIR/associated-types-in-ambiguous-context.rs:25:10
+  --> $DIR/associated-types-in-ambiguous-context.rs:27:10
    |
 LL | type X = std::ops::Deref::Target;
    |          ^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: if there were a type named `Example` that implemented `Deref`, you could use the fully-qualified path
+help: use the fully-qualified path
    |
-LL | type X = <Example as Deref>::Target;
+LL | type X = <CString as Deref>::Target;
    |          ~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL | type X = <IoSlice<'_> as Deref>::Target;
+   |          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL | type X = <IoSliceMut<'_> as Deref>::Target;
+   |          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL | type X = <OsString as Deref>::Target;
+   |          ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     and N other candidates
 
 error[E0223]: ambiguous associated type
-  --> $DIR/associated-types-in-ambiguous-context.rs:11:23
+  --> $DIR/associated-types-in-ambiguous-context.rs:13:23
    |
 LL |     fn grab(&self) -> Grab::Value;
    |                       ^^^^^^^^^^^ help: use the fully-qualified path: `<Self as Grab>::Value`
 
 error[E0223]: ambiguous associated type
-  --> $DIR/associated-types-in-ambiguous-context.rs:14:22
+  --> $DIR/associated-types-in-ambiguous-context.rs:16:22
    |
 LL |     fn get(&self) -> Get::Value;
    |                      ^^^^^^^^^^
