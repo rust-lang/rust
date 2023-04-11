@@ -1339,14 +1339,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 };
                 let (sig, map) = tcx.replace_late_bound_regions(sig, |br| {
                     use crate::renumber::{BoundRegionInfo, RegionCtxt};
-                    use rustc_span::Symbol;
 
                     let region_ctxt_fn = || {
                         let reg_info = match br.kind {
                             ty::BoundRegionKind::BrAnon(Some(span)) => BoundRegionInfo::Span(span),
-                            ty::BoundRegionKind::BrAnon(..) => {
-                                BoundRegionInfo::Name(Symbol::intern("anon"))
-                            }
+                            ty::BoundRegionKind::BrAnon(..) => BoundRegionInfo::Name(sym::anon),
                             ty::BoundRegionKind::BrNamed(_, name) => BoundRegionInfo::Name(name),
                             ty::BoundRegionKind::BrEnv => BoundRegionInfo::Name(sym::env),
                         };

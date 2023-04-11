@@ -24,7 +24,7 @@ use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, InlineConstSubsts, InlineConstSubstsParts, RegionVid, Ty, TyCtxt};
 use rustc_middle::ty::{InternalSubsts, SubstsRef};
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, sym};
 use rustc_span::Symbol;
 use std::iter;
 
@@ -783,7 +783,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
             let region_vid = {
                 let name = match br.kind.get_name() {
                     Some(name) => name,
-                    _ => Symbol::intern("anon"),
+                    _ => sym::anon,
                 };
 
                 self.next_nll_region_var(origin, || RegionCtxt::Bound(BoundRegionInfo::Name(name)))

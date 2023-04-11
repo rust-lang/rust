@@ -1637,7 +1637,7 @@ impl<'tcx> Region<'tcx> {
     pub fn get_name_or_anon(self) -> Symbol {
         match self.get_name() {
             Some(name) => name,
-            None => Symbol::intern("anon"),
+            None => sym::anon,
         }
     }
 
