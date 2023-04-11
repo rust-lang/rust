@@ -1084,7 +1084,7 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 ///
 /// ```rust
 /// #![feature(generators, generator_trait)]
-/// use core::{
+/// use std::{
 ///     ops::{Generator, GeneratorState},
 ///     pin::pin,
 /// };
