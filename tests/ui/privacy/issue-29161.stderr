@@ -1,8 +1,10 @@
-error[E0449]: unnecessary visibility qualifier
+error[E0449]: visibility qualifiers are not permitted here
   --> $DIR/issue-29161.rs:5:9
    |
 LL |         pub fn default() -> A {
-   |         ^^^ `pub` not permitted here because it's implied
+   |         ^^^
+   |
+   = note: trait items always share the visibility of their trait
 
 error[E0603]: struct `A` is private
   --> $DIR/issue-29161.rs:13:8

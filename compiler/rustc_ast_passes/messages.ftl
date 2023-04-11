@@ -17,9 +17,10 @@ ast_passes_keyword_lifetime =
 ast_passes_invalid_label =
     invalid label name `{$name}`
 
-ast_passes_invalid_visibility =
-    unnecessary visibility qualifier
-    .implied = `pub` not permitted here because it's implied
+ast_passes_visibility_not_permitted =
+    visibility qualifiers are not permitted here
+    .enum_variant = enum variants and their fields always share the visibility of the enum they are in
+    .trait_impl = trait items always share the visibility of their trait
     .individual_impl_items = place qualifiers on individual impl items instead
     .individual_foreign_items = place qualifiers on individual foreign items instead
 
