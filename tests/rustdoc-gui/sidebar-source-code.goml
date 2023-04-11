@@ -1,6 +1,6 @@
 // The goal of this test is to ensure that the sidebar is working as expected in the source
 // code pages.
-goto: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
+go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
 show-text: true
 
 // First, check the sidebar colors.
@@ -8,7 +8,7 @@ define-function: (
     "check-colors",
     (theme, color, background_color),
     block {
-        local-storage: {
+        set-local-storage: {
             "rustdoc-theme": |theme|,
             "rustdoc-use-system-theme": "false",
         }
@@ -47,7 +47,7 @@ call-function: (
 )
 
 // Next, desktop mode layout.
-size: (1100, 800)
+set-window-size: (1100, 800)
 // We check that the sidebar isn't expanded and has the expected width.
 assert-css: ("nav.sidebar", {"width": "50px"})
 // We now click on the button to expand the sidebar.
@@ -62,7 +62,7 @@ wait-for: "html:not(.expanded)"
 assert: "nav.sidebar"
 
 // Checking that only the path to the current file is "open".
-goto: "file://" + |DOC_PATH| + "/src/lib2/another_folder/sub_mod/mod.rs.html"
+go-to: "file://" + |DOC_PATH| + "/src/lib2/another_folder/sub_mod/mod.rs.html"
 // First we expand the sidebar again.
 click: (10, 10)
 // We wait for the sidebar to be expanded.
@@ -76,7 +76,7 @@ assert: "//*[@class='dir-entry' and not(@open)]/*[text()='another_mod']"
 assert-count: ("//*[@id='source-sidebar']/details[not(text()='lib2') and not(@open)]", 8)
 
 // We now switch to mobile mode.
-size: (600, 600)
+set-window-size: (600, 600)
 wait-for-css: (".source-sidebar-expanded nav.sidebar", {"left": "0px"})
 // We collapse the sidebar.
 click: (10, 10)

@@ -1,9 +1,9 @@
 // This test ensures that the elements in ".search-form" have the expected display.
-goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 show-text: true
 
 // Ayu theme
-local-storage: {
+set-local-storage: {
     "rustdoc-theme": "ayu",
     "rustdoc-use-system-theme": "false",
 }
@@ -89,7 +89,7 @@ assert-css: (
 )
 
 // Dark theme
-local-storage: {
+set-local-storage: {
     "rustdoc-theme": "dark",
     "rustdoc-use-system-theme": "false",
 }
@@ -176,7 +176,7 @@ assert-css: (
 )
 
 // Light theme
-local-storage: {
+set-local-storage: {
     "rustdoc-theme": "light",
     "rustdoc-use-system-theme": "false",
 }

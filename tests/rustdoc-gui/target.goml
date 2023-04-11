@@ -1,5 +1,5 @@
 // Check that the targetted element has the expected styles.
-goto: "file://" + |DOC_PATH| + "/lib2/struct.Foo.html#method.a_method"
+go-to: "file://" + |DOC_PATH| + "/lib2/struct.Foo.html#method.a_method"
 show-text: true
 
 // Confirming that the method is the target.
@@ -9,7 +9,7 @@ define-function: (
     "check-style",
     (theme, background, border),
     block {
-        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         reload:
         assert-css: ("#method\.a_method:target", {
             "background-color": |background|,

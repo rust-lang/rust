@@ -1,7 +1,7 @@
 // Ensures that the theme is working when going back in history.
-goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 // Set the theme to dark.
-local-storage: {
+set-local-storage: {
     "rustdoc-theme": "dark",
     "rustdoc-use-system-theme": "false",
 }
@@ -11,7 +11,7 @@ assert-css: ("body", { "background-color": "rgb(53, 53, 53)" })
 assert-local-storage: { "rustdoc-theme": "dark" }
 
 // Now we go to the settings page.
-goto: "file://" + |DOC_PATH| + "/settings.html"
+go-to: "file://" + |DOC_PATH| + "/settings.html"
 wait-for: "#settings"
 // We change the theme to "light".
 click: "#theme-light"

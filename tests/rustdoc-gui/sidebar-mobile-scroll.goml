@@ -1,7 +1,7 @@
 // This test ensures that the mobile sidebar preserves scroll position.
-goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
 // Switching to "mobile view" by reducing the width to 600px.
-size: (700, 600)
+set-window-size: (700, 600)
 assert-css: (".sidebar", {"display": "block", "left": "-1000px"})
 
 // Scroll down.
@@ -27,5 +27,5 @@ assert-window-property: {"pageYOffset": "622"}
 click: ".sidebar-menu-toggle"
 wait-for-css: (".sidebar", {"left": "0px"})
 assert-window-property: {"pageYOffset": "0"}
-size: (900, 600)
+set-window-size: (900, 600)
 assert-window-property: {"pageYOffset": "622"}

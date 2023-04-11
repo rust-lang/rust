@@ -1,6 +1,6 @@
 // This test ensures that the scraped examples buttons are working as expecting
 // when 'Enter' key is pressed when they're focused.
-goto: "file://" + |DOC_PATH| + "/scrape_examples/fn.test.html"
+go-to: "file://" + |DOC_PATH| + "/scrape_examples/fn.test.html"
 
 // The next/prev buttons vertically scroll the code viewport between examples
 store-property: (initialScrollTop, ".scraped-example-list > .scraped-example pre", "scrollTop")
