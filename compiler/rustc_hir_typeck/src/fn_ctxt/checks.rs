@@ -1191,11 +1191,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // index position where it *should have been*, which is *after* the previous one.
             if let Some(provided_idx) = provided_idx {
                 prev = provided_idx.index() as i64;
+                continue;
             }
             let idx = ProvidedIdx::from_usize((prev + 1) as usize);
-            if let None = provided_idx
-                && let Some((_, arg_span)) = provided_arg_tys.get(idx)
-            {
+            if let Some((_, arg_span)) = provided_arg_tys.get(idx) {
+                prev += 1;
                 // There is a type that was *not* found anywhere, so it isn't a move, but a
                 // replacement and we look at what type it should have been. This will allow us
                 // To suggest a multipart suggestion when encountering `foo(1, "")` where the def
