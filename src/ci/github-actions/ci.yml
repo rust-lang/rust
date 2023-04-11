@@ -73,7 +73,11 @@ x--expand-yaml-anchors--remove:
   - &base-job
     env: {}
 
-  - &job-linux-xl
+  - &job-linux-8c
+    os: ubuntu-20.04-8core-32gb
+    <<: *base-job
+
+  - &job-linux-16c
     os: ubuntu-20.04-16core-64gb
     <<: *base-job
 
@@ -81,8 +85,12 @@ x--expand-yaml-anchors--remove:
     os: macos-12-xl
     <<: *base-job
 
-  - &job-windows-xl
+  - &job-windows-8c
     os: windows-2019-8core-32gb
+    <<: *base-job
+
+  - &job-windows-16c
+    os: windows-2019-16core-64gb
     <<: *base-job
 
   - &job-aarch64-linux
@@ -293,19 +301,19 @@ jobs:
       matrix:
         include:
           - name: mingw-check
-            <<: *job-linux-xl
+            <<: *job-linux-16c
             tidy: false
 
           - name: mingw-check-tidy
-            <<: *job-linux-xl
+            <<: *job-linux-16c
             tidy: true
 
           - name: x86_64-gnu-llvm-14
-            <<: *job-linux-xl
+            <<: *job-linux-16c
             tidy: false
 
           - name: x86_64-gnu-tools
-            <<: *job-linux-xl
+            <<: *job-linux-16c
             tidy: false
 
   auto:
@@ -327,103 +335,103 @@ jobs:
             <<: *job-aarch64-linux
 
           - name: arm-android
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: armhf-gnu
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: dist-aarch64-linux
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: dist-android
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: dist-arm-linux
-            <<: *job-linux-xl
+            <<: *job-linux-16c
 
           - name: dist-armhf-linux
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: dist-armv7-linux
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: dist-i586-gnu-i586-i686-musl
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: dist-i686-linux
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: dist-mips-linux
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: dist-mips64-linux
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: dist-mips64el-linux
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: dist-mipsel-linux
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: dist-powerpc-linux
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: dist-powerpc64-linux
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: dist-powerpc64le-linux
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: dist-riscv64-linux
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: dist-s390x-linux
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: dist-various-1
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: dist-various-2
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: dist-x86_64-freebsd
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: dist-x86_64-illumos
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - &dist-x86_64-linux
             name: dist-x86_64-linux
-            <<: *job-linux-xl
+            <<: *job-linux-16c
 
           - name: dist-x86_64-linux-alt
             env:
               IMAGE: dist-x86_64-linux
-            <<: *job-linux-xl
+            <<: *job-linux-16c
 
           - name: dist-x86_64-musl
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: dist-x86_64-netbsd
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: i686-gnu
-            <<: *job-linux-xl
+            <<: *job-linux-16c
 
           - name: i686-gnu-nopt
-            <<: *job-linux-xl
+            <<: *job-linux-16c
 
           - name: mingw-check
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: test-various
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: wasm32
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: x86_64-gnu
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           # This job ensures commits landing on nightly still pass the full
           # test suite on the stable channel. There are some UI tests that
@@ -438,39 +446,39 @@ jobs:
               # could cause failures when `dev: 1` in `stage0.txt`, and running
               # this on stable is useless.
               CI_ONLY_WHEN_CHANNEL: nightly
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: x86_64-gnu-aux
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: x86_64-gnu-debug
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: x86_64-gnu-distcheck
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: x86_64-gnu-llvm-15
             env:
               RUST_BACKTRACE: 1
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: x86_64-gnu-llvm-14
             env:
               RUST_BACKTRACE: 1
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: x86_64-gnu-llvm-14-stage1
             env:
               RUST_BACKTRACE: 1
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: x86_64-gnu-nopt
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           - name: x86_64-gnu-tools
             env:
               DEPLOY_TOOLSTATES_JSON: toolstates-linux.json
-            <<: *job-linux-xl
+            <<: *job-linux-8c
 
           ####################
           #  macOS Builders  #
@@ -572,38 +580,38 @@ jobs:
             env:
               RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
               SCRIPT: make ci-subset-1
-            <<: *job-windows-xl
+            <<: *job-windows-8c
 
           - name: x86_64-msvc-2
             env:
               RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
               SCRIPT: make ci-subset-2
-            <<: *job-windows-xl
+            <<: *job-windows-8c
 
           - name: i686-msvc-1
             env:
               RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
               SCRIPT: make ci-subset-1
-            <<: *job-windows-xl
+            <<: *job-windows-8c
 
           - name: i686-msvc-2
             env:
               RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
               SCRIPT: make ci-subset-2
-            <<: *job-windows-xl
+            <<: *job-windows-8c
 
           - name: x86_64-msvc-cargo
             env:
               SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo
               RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld
-            <<: *job-windows-xl
+            <<: *job-windows-8c
 
           - name: x86_64-msvc-tools
             env:
               SCRIPT: src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
               RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --save-toolstates=/tmp/toolstate/toolstates.json
               DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
-            <<: *job-windows-xl
+            <<: *job-windows-8c
 
           # 32/64-bit MinGW builds.
           #
@@ -629,7 +637,7 @@ jobs:
               # incompatible with LLVM downloads today).
               NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
-            <<: *job-windows-xl
+            <<: *job-windows-8c
 
           - name: i686-mingw-2
             env:
@@ -639,7 +647,7 @@ jobs:
               # incompatible with LLVM downloads today).
               NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
-            <<: *job-windows-xl
+            <<: *job-windows-8c
 
           - name: x86_64-mingw-1
             env:
@@ -651,7 +659,7 @@ jobs:
               # incompatible with LLVM downloads today).
               NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
-            <<: *job-windows-xl
+            <<: *job-windows-8c
 
           - name: x86_64-mingw-2
             env:
@@ -663,7 +671,7 @@ jobs:
               # incompatible with LLVM downloads today).
               NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
-            <<: *job-windows-xl
+            <<: *job-windows-8c
 
           - name: dist-x86_64-msvc
             env:
@@ -675,7 +683,7 @@ jobs:
                 --enable-profiler
               SCRIPT: PGO_HOST=x86_64-pc-windows-msvc python src/ci/stage-build.py python x.py dist bootstrap --include-default-paths
               DIST_REQUIRE_ALL_TOOLS: 1
-            <<: *job-windows-xl
+            <<: *job-windows-8c
 
           - name: dist-i686-msvc
             env:
@@ -687,7 +695,7 @@ jobs:
                 --enable-profiler
               SCRIPT: python x.py dist bootstrap --include-default-paths
               DIST_REQUIRE_ALL_TOOLS: 1
-            <<: *job-windows-xl
+            <<: *job-windows-8c
 
           - name: dist-aarch64-msvc
             env:
@@ -701,7 +709,7 @@ jobs:
               # Hack around this SDK version, because it doesn't work with clang.
               # See https://github.com/rust-lang/rust/issues/88796
               WINDOWS_SDK_20348_HACK: 1
-            <<: *job-windows-xl
+            <<: *job-windows-8c
 
           - name: dist-i686-mingw
             env:
@@ -715,7 +723,7 @@ jobs:
               SCRIPT: python x.py dist bootstrap --include-default-paths
               CUSTOM_MINGW: 1
               DIST_REQUIRE_ALL_TOOLS: 1
-            <<: *job-windows-xl
+            <<: *job-windows-8c
 
           - name: dist-x86_64-mingw
             env:
@@ -729,13 +737,13 @@ jobs:
               NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
               DIST_REQUIRE_ALL_TOOLS: 1
-            <<: *job-windows-xl
+            <<: *job-windows-8c
 
           - name: dist-x86_64-msvc-alt
             env:
               RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
               SCRIPT: python x.py dist bootstrap --include-default-paths
-            <<: *job-windows-xl
+            <<: *job-windows-8c
 
   try:
     permissions:
@@ -750,7 +758,7 @@ jobs:
         include:
           - &dist-x86_64-linux
             name: dist-x86_64-linux
-            <<: *job-linux-xl
+            <<: *job-linux-16c
 
   master:
     name: master
