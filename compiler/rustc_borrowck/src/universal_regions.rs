@@ -24,6 +24,7 @@ use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, InlineConstSubsts, InlineConstSubstsParts, RegionVid, Ty, TyCtxt};
 use rustc_middle::ty::{InternalSubsts, SubstsRef};
+use rustc_span::symbol::{kw, sym};
 use rustc_span::Symbol;
 use std::iter;
 
@@ -404,10 +405,8 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         assert_eq!(FIRST_GLOBAL_INDEX, self.infcx.num_region_vars());
 
         // Create the "global" region that is always free in all contexts: 'static.
-        let fr_static = self
-            .infcx
-            .next_nll_region_var(FR, || RegionCtxt::Free(Symbol::intern("static")))
-            .to_region_vid();
+        let fr_static =
+            self.infcx.next_nll_region_var(FR, || RegionCtxt::Free(kw::Static)).to_region_vid();
 
         // We've now added all the global regions. The next ones we
         // add will be external.
@@ -440,11 +439,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     debug!(?r);
                     if !indices.indices.contains_key(&r) {
                         let region_vid = {
-                            let name = match r.get_name() {
-                                Some(name) => name,
-                                _ => Symbol::intern("anon"),
-                            };
-
+                            let name = r.get_name_or_anon();
                             self.infcx.next_nll_region_var(FR, || {
                                 RegionCtxt::LateBound(BoundRegionInfo::Name(name))
                             })
@@ -478,11 +473,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             debug!(?r);
             if !indices.indices.contains_key(&r) {
                 let region_vid = {
-                    let name = match r.get_name() {
-                        Some(name) => name,
-                        _ => Symbol::intern("anon"),
-                    };
-
+                    let name = r.get_name_or_anon();
                     self.infcx.next_nll_region_var(FR, || {
                         RegionCtxt::LateBound(BoundRegionInfo::Name(name))
                     })
@@ -768,15 +759,10 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.infcx.tcx.fold_regions(value, |region, _depth| {
-            let name = match region.get_name() {
-                Some(name) => name,
-                _ => Symbol::intern("anon"),
-            };
+            let name = region.get_name_or_anon();
             debug!(?region, ?name);
 
-            let reg_var = self.next_nll_region_var(origin, || RegionCtxt::Free(name));
-
-            reg_var
+            self.next_nll_region_var(origin, || RegionCtxt::Free(name))
         })
     }
 
@@ -797,7 +783,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
             let region_vid = {
                 let name = match br.kind.get_name() {
                     Some(name) => name,
-                    _ => Symbol::intern("anon"),
+                    _ => sym::anon,
                 };
 
                 self.next_nll_region_var(origin, || RegionCtxt::Bound(BoundRegionInfo::Name(name)))
@@ -829,11 +815,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
             debug!(?r);
             if !indices.indices.contains_key(&r) {
                 let region_vid = {
-                    let name = match r.get_name() {
-                        Some(name) => name,
-                        _ => Symbol::intern("anon"),
-                    };
-
+                    let name = r.get_name_or_anon();
                     self.next_nll_region_var(FR, || {
                         RegionCtxt::LateBound(BoundRegionInfo::Name(name))
                     })
@@ -855,11 +837,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
             debug!(?r);
             if !indices.indices.contains_key(&r) {
                 let region_vid = {
-                    let name = match r.get_name() {
-                        Some(name) => name,
-                        _ => Symbol::intern("anon"),
-                    };
-
+                    let name = r.get_name_or_anon();
                     self.next_nll_region_var(FR, || {
                         RegionCtxt::LateBound(BoundRegionInfo::Name(name))
                     })
