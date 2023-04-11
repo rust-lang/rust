@@ -638,7 +638,10 @@ impl Step for Miri {
         // Forward test filters.
         cargo.arg("--").args(builder.config.cmd.test_args());
 
-        add_flags_and_try_run_tests(builder, &mut cargo.into());
+        // This can NOT be `add_flags_and_try_run_tests` since the Miri test runner
+        // does not understand those flags!
+        let mut cargo = Command::from(cargo);
+        builder.run(&mut cargo);
 
         // # Run `cargo miri test`.
         // This is just a smoke test (Miri's own CI invokes this in a bunch of different ways and ensures
