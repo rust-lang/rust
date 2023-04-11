@@ -12,7 +12,7 @@ use rustc_hir::{GenericParamKind, ImplItemKind};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::util;
+use rustc_infer::traits::{util, Obligation};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::util::ExplicitSelf;
 use rustc_middle::ty::{
@@ -190,15 +190,13 @@ fn compare_method_predicate_entailment<'tcx>(
             .map(|(predicate, _)| predicate),
     );
 
+    let caller_bounds = filter_trivial_predicates(tcx, hybrid_preds.predicates);
+
     // Construct trait parameter environment and then shift it into the placeholder viewpoint.
     // The key step here is to update the caller_bounds's predicates to be
     // the new hybrid bounds we computed.
     let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_def_id);
-    let param_env = ty::ParamEnv::new(
-        tcx.mk_predicates(&hybrid_preds.predicates),
-        Reveal::UserFacing,
-        hir::Constness::NotConst,
-    );
+    let param_env = ty::ParamEnv::new(caller_bounds, Reveal::UserFacing, hir::Constness::NotConst);
     let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause);
 
     let infcx = &tcx.infer_ctxt().build();
@@ -2078,5 +2076,85 @@ fn assoc_item_kind_str(impl_item: &ty::AssocItem) -> &'static str {
         ty::AssocKind::Const => "const",
         ty::AssocKind::Fn => "method",
         ty::AssocKind::Type => "type",
+    }
+}
+
+// FIXME(-Ztrait-solver=next): This hack should be unnecessary with the new trait
+// solver as it is better at dealing with ambiguity.
+//
+// Even if this code isn't completely trivial, it only removes predicates so it
+// should always remain sound.
+#[instrument(level = "debug", skip(tcx, predicates))]
+fn filter_trivial_predicates<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    mut predicates: Vec<ty::Predicate<'tcx>>,
+) -> &'tcx ty::List<ty::Predicate<'tcx>> {
+    // We start with a bad approximation of whether a predicate is trivial and put all
+    // non-trivial predicates into the environment used when checking whether the
+    // remaining ones are trivial.
+    let mut non_trivial_predicates = Vec::new();
+    for &predicate in predicates.iter() {
+        if !may_be_trivial_predicate(predicate) {
+            non_trivial_predicates.push(predicate);
+        }
+    }
+
+    let non_trivial_predicates = tcx.mk_predicates(&non_trivial_predicates);
+    if non_trivial_predicates.len() == predicates.len() {
+        non_trivial_predicates
+    } else {
+        let param_env =
+            ty::ParamEnv::new(non_trivial_predicates, Reveal::UserFacing, hir::Constness::NotConst);
+        predicates.retain(|&p| !is_trivial_predicate(tcx, param_env, p));
+        tcx.mk_predicates(&predicates)
+    }
+}
+
+// A bad approximation of whether a predicate is trivial. Used to put all non-trivial
+// predicates into the environment while checking whether the remaining ones are trivial.
+fn may_be_trivial_predicate<'tcx>(predicate: ty::Predicate<'tcx>) -> bool {
+    // We only consider trait and projection predicates which don't have a parameter
+    // as a self type as potentially non-trivial.
+    match predicate.kind().skip_binder() {
+        ty::PredicateKind::Clause(ty::Clause::Trait(predicate)) => {
+            !matches!(predicate.self_ty().kind(), ty::Param(_))
+        }
+        ty::PredicateKind::Clause(ty::Clause::Projection(predicate)) => {
+            !matches!(predicate.self_ty().kind(), ty::Param(_))
+        }
+        _ => false,
+    }
+}
+
+/// Returns whether `predicate` is trivially provable in the empty environment.
+///
+/// While it's definitely trivial if we return `Yes`,  this function is incomplete,
+/// so it may incorrectly return `No` even though the `predicate` is actually trivial.
+#[instrument(level = "debug", skip(tcx), ret)]
+fn is_trivial_predicate<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    predicate: ty::Predicate<'tcx>,
+) -> bool {
+    if !may_be_trivial_predicate(predicate) {
+        return false;
+    }
+
+    let infcx = tcx.infer_ctxt().build();
+    // HACK: This can overflow and we must not abort here as that would break existing
+    // crates, most notably `typenum`.
+    //
+    // To deal with this we change overflow to only abort trait solving without
+    // aborting compilation. This means that this code isn't complete and may
+    // incorrectly error which is acceptable as this is just a best effort.
+    let ocx = ObligationCtxt::with_query_mode_canonical(&infcx);
+    let obligation = Obligation::new(tcx, ObligationCause::dummy(), param_env, predicate);
+    ocx.register_obligation(obligation);
+    if ocx.select_all_or_error().is_empty() {
+        let outlives_env = OutlivesEnvironment::new(param_env);
+        infcx.process_registered_region_obligations(outlives_env.region_bound_pairs(), param_env);
+        infcx.resolve_regions(&outlives_env).is_empty()
+    } else {
+        false
     }
 }
