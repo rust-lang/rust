@@ -56,8 +56,7 @@ pub enum DryRun {
 /// filled out from the decoded forms of the structs below. For documentation
 /// each field, see the corresponding fields in
 /// `config.example.toml`.
-#[derive(Default)]
-#[cfg_attr(test, derive(Clone))]
+#[derive(Default, Clone)]
 pub struct Config {
     pub changelog_seen: Option<usize>,
     pub ccache: Option<String>,
@@ -240,23 +239,20 @@ pub struct Config {
     pub initial_rustfmt: RefCell<RustfmtState>,
 }
 
-#[derive(Default, Deserialize)]
-#[cfg_attr(test, derive(Clone))]
+#[derive(Default, Deserialize, Clone)]
 pub struct Stage0Metadata {
     pub compiler: CompilerMetadata,
     pub config: Stage0Config,
     pub checksums_sha256: HashMap<String, String>,
     pub rustfmt: Option<RustfmtMetadata>,
 }
-#[derive(Default, Deserialize)]
-#[cfg_attr(test, derive(Clone))]
+#[derive(Default, Deserialize, Clone)]
 pub struct CompilerMetadata {
     pub date: String,
     pub version: String,
 }
 
-#[derive(Default, Deserialize)]
-#[cfg_attr(test, derive(Clone))]
+#[derive(Default, Deserialize, Clone)]
 pub struct Stage0Config {
     pub dist_server: String,
     pub artifacts_server: String,
@@ -264,8 +260,7 @@ pub struct Stage0Config {
     pub git_merge_commit_email: String,
     pub nightly_branch: String,
 }
-#[derive(Default, Deserialize)]
-#[cfg_attr(test, derive(Clone))]
+#[derive(Default, Deserialize, Clone)]
 pub struct RustfmtMetadata {
     pub date: String,
     pub version: String,
@@ -443,8 +438,7 @@ impl PartialEq<&str> for TargetSelection {
 }
 
 /// Per-target configuration stored in the global configuration structure.
-#[derive(Default)]
-#[cfg_attr(test, derive(Clone))]
+#[derive(Default, Clone)]
 pub struct Target {
     /// Some(path to llvm-config) if using an external LLVM.
     pub llvm_config: Option<PathBuf>,
@@ -1396,7 +1390,8 @@ impl Config {
             | Subcommand::Fix { .. }
             | Subcommand::Run { .. }
             | Subcommand::Setup { .. }
-            | Subcommand::Format { .. } => flags.stage.unwrap_or(0),
+            | Subcommand::Format { .. }
+            | Subcommand::Suggest { .. } => flags.stage.unwrap_or(0),
         };
 
         // CI should always run stage 2 builds, unless it specifically states otherwise
@@ -1421,7 +1416,8 @@ impl Config {
                 | Subcommand::Fix { .. }
                 | Subcommand::Run { .. }
                 | Subcommand::Setup { .. }
-                | Subcommand::Format { .. } => {}
+                | Subcommand::Format { .. }
+                | Subcommand::Suggest { .. } => {}
             }
         }
 
