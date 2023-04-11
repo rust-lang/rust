@@ -92,6 +92,7 @@ pub enum LayoutError {
     SizeOverflow,
     TargetLayoutNotAvailable,
     HasPlaceholder,
+    HasErrorType,
     NotImplemented,
     Unknown,
 }

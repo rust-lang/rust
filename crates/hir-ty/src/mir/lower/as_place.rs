@@ -141,7 +141,7 @@ impl MirLowerCtx<'_> {
                 }
             }
             Expr::UnaryOp { expr, op } => match op {
-                hir_def::expr::UnaryOp::Deref => {
+                hir_def::hir::UnaryOp::Deref => {
                     if !matches!(
                         self.expr_ty(*expr).kind(Interner),
                         TyKind::Ref(..) | TyKind::Raw(..)

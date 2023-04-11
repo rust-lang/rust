@@ -12,7 +12,6 @@ use hir_expand::{
 use intern::Interned;
 use la_arena::{Arena, ArenaMap, Idx};
 use once_cell::unsync::Lazy;
-use std::ops::DerefMut;
 use stdx::impl_from;
 use syntax::ast::{self, HasGenericParams, HasName, HasTypeBounds};
 
@@ -20,8 +19,7 @@ use crate::{
     body::{Expander, LowerCtx},
     child_by_source::ChildBySource,
     db::DefDatabase,
-    dyn_map::DynMap,
-    keys,
+    dyn_map::{keys, DynMap},
     src::{HasChildSource, HasSource},
     type_ref::{LifetimeRef, TypeBound, TypeRef},
     AdtId, ConstParamId, GenericDefId, HasModule, LifetimeParamId, LocalLifetimeParamId,
@@ -177,7 +175,7 @@ impl GenericParams {
                 // Don't create an `Expander` nor call `loc.source(db)` if not needed since this
                 // causes a reparse after the `ItemTree` has been created.
                 let mut expander = Lazy::new(|| Expander::new(db, loc.source(db).file_id, module));
-                for (_, param) in &func_data.params {
+                for param in &func_data.params {
                     generic_params.fill_implicit_impl_trait_args(db, &mut expander, param);
                 }
 
@@ -329,7 +327,7 @@ impl GenericParams {
     pub(crate) fn fill_implicit_impl_trait_args(
         &mut self,
         db: &dyn DefDatabase,
-        expander: &mut impl DerefMut<Target = Expander>,
+        expander: &mut Expander,
         type_ref: &TypeRef,
     ) {
         type_ref.walk(&mut |type_ref| {
@@ -351,7 +349,7 @@ impl GenericParams {
                 let macro_call = mc.to_node(db.upcast());
                 match expander.enter_expand::<ast::Type>(db, macro_call) {
                     Ok(ExpandResult { value: Some((mark, expanded)), .. }) => {
-                        let ctx = LowerCtx::new(db, expander.current_file_id());
+                        let ctx = expander.ctx(db);
                         let type_ref = TypeRef::from_ast(&ctx, expanded);
                         self.fill_implicit_impl_trait_args(db, expander, &type_ref);
                         expander.exit(db, mark);

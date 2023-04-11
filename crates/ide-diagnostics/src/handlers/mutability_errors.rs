@@ -772,6 +772,88 @@ fn fn_once(mut x: impl FnOnce(u8) -> u8) -> u8 {
     }
 
     #[test]
+    fn closure() {
+        // FIXME: Diagnositc spans are too large
+        check_diagnostics(
+            r#"
+        //- minicore: copy, fn
+        struct X;
+
+        impl X {
+            fn mutate(&mut self) {}
+        }
+
+        fn f() {
+            let x = 5;
+            let closure1 = || { x = 2; };
+                         //^^^^^^^^^^^^^ 💡 error: cannot mutate immutable variable `x`
+            let _ = closure1();
+                  //^^^^^^^^ 💡 error: cannot mutate immutable variable `closure1`
+            let closure2 = || { x = x; };
+                         //^^^^^^^^^^^^^ 💡 error: cannot mutate immutable variable `x`
+            let closure3 = || {
+                let x = 2;
+                x = 5;
+              //^^^^^ 💡 error: cannot mutate immutable variable `x`
+                x
+            };
+            let x = X;
+            let closure4 = || { x.mutate(); };
+                         //^^^^^^^^^^^^^^^^^^ 💡 error: cannot mutate immutable variable `x`
+        }
+                    "#,
+        );
+        check_diagnostics(
+            r#"
+        //- minicore: copy, fn
+        fn f() {
+            let mut x = 5;
+              //^^^^^ 💡 weak: variable does not need to be mutable
+            let mut y = 2;
+            y = 7;
+            let closure = || {
+                let mut z = 8;
+                z = 3;
+                let mut k = z;
+                  //^^^^^ 💡 weak: variable does not need to be mutable
+            };
+        }
+                    "#,
+        );
+        check_diagnostics(
+            r#"
+//- minicore: copy, fn
+fn f() {
+    let closure = || {
+        || {
+            || {
+                let x = 2;
+                || { || { x = 5; } }
+              //^^^^^^^^^^^^^^^^^^^^ 💡 error: cannot mutate immutable variable `x`
+            }
+        }
+    };
+}
+            "#,
+        );
+        check_diagnostics(
+            r#"
+//- minicore: copy, fn
+fn f() {
+    struct X;
+    let mut x = X;
+      //^^^^^ 💡 weak: variable does not need to be mutable
+    let c1 = || x;
+    let mut x = X;
+    let c2 = || { x = X; x };
+    let mut x = X;
+    let c2 = move || { x = X; };
+}
+            "#,
+        );
+    }
+
+    #[test]
     fn respect_allow_unused_mut() {
         // FIXME: respect
         check_diagnostics(

@@ -495,6 +495,31 @@ impl Point {
 }
 
 #[test]
+fn doctest_convert_nested_function_to_closure() {
+    check_doc_test(
+        "convert_nested_function_to_closure",
+        r#####"
+fn main() {
+    fn fo$0o(label: &str, number: u64) {
+        println!("{}: {}", label, number);
+    }
+
+    foo("Bar", 100);
+}
+"#####,
+        r#####"
+fn main() {
+    let foo = |label: &str, number: u64| {
+        println!("{}: {}", label, number);
+    };
+
+    foo("Bar", 100);
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_convert_to_guarded_return() {
     check_doc_test(
         "convert_to_guarded_return",
@@ -2116,7 +2141,7 @@ trait Foo {
 }
 
 struct Bar;
-$0impl Foo for Bar {
+$0impl Foo for Bar$0 {
     const B: u8 = 17;
     fn c() {}
     type A = String;

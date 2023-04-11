@@ -575,7 +575,7 @@ fn two_closures_lub() {
 fn foo(c: i32) {
     let add = |a: i32, b: i32| a + b;
     let sub = |a, b| a - b;
-            //^^^^^^^^^^^^ |i32, i32| -> i32
+            //^^^^^^^^^^^^ impl Fn(i32, i32) -> i32
     if c > 42 { add } else { sub };
   //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ fn(i32, i32) -> i32
 }
@@ -875,6 +875,16 @@ fn test() {
 fn adjust_index() {
     check_no_mismatches(
         r"
+//- minicore: index, slice, coerce_unsized
+fn test() {
+    let x = [1, 2, 3];
+    x[2] = 6;
+ // ^ adjustments: Borrow(Ref(Mut))
+}
+    ",
+    );
+    check_no_mismatches(
+        r"
 //- minicore: index
 struct Struct;
 impl core::ops::Index<usize> for Struct {
@@ -901,4 +911,33 @@ fn test() {
       // ^^^^^^^^^ adjustments: Borrow(Ref(Mut))
 }",
     );
+}
+
+#[test]
+fn regression_14443_dyn_coercion_block_impls() {
+    check_no_mismatches(
+        r#"
+//- minicore: coerce_unsized
+trait T {}
+
+fn dyn_t(d: &dyn T) {}
+
+fn main() {
+    struct A;
+    impl T for A {}
+
+    let a = A;
+
+    let b = {
+        struct B;
+        impl T for B {}
+
+        B
+    };
+
+    dyn_t(&a);
+    dyn_t(&b);
+}
+"#,
+    )
 }

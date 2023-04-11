@@ -17,7 +17,7 @@ use expect_test::Expect;
 use hir_def::{
     body::{Body, BodySourceMap, SyntheticSyntax},
     db::{DefDatabase, InternDatabase},
-    expr::{ExprId, PatId},
+    hir::{ExprId, PatId},
     item_scope::ItemScope,
     nameres::DefMap,
     src::HasSource,
@@ -198,8 +198,8 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
 
         for (expr_or_pat, mismatch) in inference_result.type_mismatches() {
             let Some(node) = (match expr_or_pat {
-                hir_def::expr::ExprOrPatId::ExprId(expr) => expr_node(&body_source_map, expr, &db),
-                hir_def::expr::ExprOrPatId::PatId(pat) => pat_node(&body_source_map, pat, &db),
+                hir_def::hir::ExprOrPatId::ExprId(expr) => expr_node(&body_source_map, expr, &db),
+                hir_def::hir::ExprOrPatId::PatId(pat) => pat_node(&body_source_map, pat, &db),
             }) else { continue; };
             let range = node.as_ref().original_file_range(&db);
             let actual = format!(

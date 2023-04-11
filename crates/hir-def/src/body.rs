@@ -13,10 +13,12 @@ use cfg::{CfgExpr, CfgOptions};
 use drop_bomb::DropBomb;
 use either::Either;
 use hir_expand::{
-    attrs::RawAttrs, hygiene::Hygiene, ExpandError, ExpandResult, HirFileId, InFile, MacroCallId,
+    ast_id_map::AstIdMap, attrs::RawAttrs, hygiene::Hygiene, name::Name, AstId, ExpandError,
+    ExpandResult, HirFileId, InFile, MacroCallId,
 };
 use la_arena::{Arena, ArenaMap};
 use limit::Limit;
+use once_cell::unsync::OnceCell;
 use profile::Count;
 use rustc_hash::FxHashMap;
 use syntax::{ast, AstPtr, SyntaxNode, SyntaxNodePtr};
@@ -24,7 +26,7 @@ use syntax::{ast, AstPtr, SyntaxNode, SyntaxNodePtr};
 use crate::{
     attr::Attrs,
     db::DefDatabase,
-    expr::{
+    hir::{
         dummy_expr_id, Binding, BindingId, Expr, ExprId, Label, LabelId, Pat, PatId, RecordFieldPat,
     },
     item_scope::BuiltinShadowMode,
@@ -36,7 +38,43 @@ use crate::{
     UnresolvedMacro,
 };
 
-pub use lower::LowerCtx;
+pub struct LowerCtx<'a> {
+    pub db: &'a dyn DefDatabase,
+    hygiene: Hygiene,
+    ast_id_map: Option<(HirFileId, OnceCell<Arc<AstIdMap>>)>,
+}
+
+impl<'a> LowerCtx<'a> {
+    pub fn new(db: &'a dyn DefDatabase, hygiene: &Hygiene, file_id: HirFileId) -> Self {
+        LowerCtx { db, hygiene: hygiene.clone(), ast_id_map: Some((file_id, OnceCell::new())) }
+    }
+
+    pub fn with_file_id(db: &'a dyn DefDatabase, file_id: HirFileId) -> Self {
+        LowerCtx {
+            db,
+            hygiene: Hygiene::new(db.upcast(), file_id),
+            ast_id_map: Some((file_id, OnceCell::new())),
+        }
+    }
+
+    pub fn with_hygiene(db: &'a dyn DefDatabase, hygiene: &Hygiene) -> Self {
+        LowerCtx { db, hygiene: hygiene.clone(), ast_id_map: None }
+    }
+
+    pub(crate) fn hygiene(&self) -> &Hygiene {
+        &self.hygiene
+    }
+
+    pub(crate) fn lower_path(&self, ast: ast::Path) -> Option<Path> {
+        Path::from_src(ast, self)
+    }
+
+    pub(crate) fn ast_id<N: syntax::AstNode>(&self, item: &N) -> Option<AstId<N>> {
+        let &(file_id, ref ast_id_map) = self.ast_id_map.as_ref()?;
+        let ast_id_map = ast_id_map.get_or_init(|| self.db.ast_id_map(file_id));
+        Some(InFile::new(file_id, ast_id_map.ast_id(item)))
+    }
+}
 
 /// A subset of Expander that only deals with cfg attributes. We only need it to
 /// avoid cyclic queries in crate def map during enum processing.
@@ -75,6 +113,10 @@ impl CfgExpander {
     pub(crate) fn is_cfg_enabled(&self, db: &dyn DefDatabase, owner: &dyn ast::HasAttrs) -> bool {
         let attrs = self.parse_attrs(db, owner);
         attrs.is_cfg_enabled(&self.cfg_options)
+    }
+
+    pub(crate) fn hygiene(&self) -> &Hygiene {
+        &self.hygiene
     }
 }
 
@@ -180,6 +222,10 @@ impl Expander {
         mark.bomb.defuse();
     }
 
+    pub fn ctx<'a>(&self, db: &'a dyn DefDatabase) -> LowerCtx<'a> {
+        LowerCtx::new(db, &self.cfg_expander.hygiene, self.current_file_id)
+    }
+
     pub(crate) fn to_source<T>(&self, value: T) -> InFile<T> {
         InFile { file_id: self.current_file_id, value }
     }
@@ -232,7 +278,7 @@ impl Expander {
             // The overflow error should have been reported when it occurred (see the next branch),
             // so don't return overflow error here to avoid diagnostics duplication.
             cov_mark::hit!(overflow_but_not_me);
-            return ExpandResult::only_err(ExpandError::RecursionOverflowPosioned);
+            return ExpandResult::only_err(ExpandError::RecursionOverflowPoisoned);
         } else if self.recursion_limit(db).check(self.recursion_depth + 1).is_err() {
             self.recursion_depth = usize::MAX;
             cov_mark::hit!(your_stack_belongs_to_me);
@@ -343,6 +389,8 @@ pub enum BodyDiagnostic {
     MacroError { node: InFile<AstPtr<ast::MacroCall>>, message: String },
     UnresolvedProcMacro { node: InFile<AstPtr<ast::MacroCall>>, krate: CrateId },
     UnresolvedMacroCall { node: InFile<AstPtr<ast::MacroCall>>, path: ModPath },
+    UnreachableLabel { node: InFile<AstPtr<ast::Lifetime>>, name: Name },
+    UndeclaredLabel { node: InFile<AstPtr<ast::Lifetime>>, name: Name },
 }
 
 impl Body {

@@ -4,7 +4,7 @@
 use std::iter;
 
 use base_db::CrateId;
-use chalk_ir::{cast::Cast, fold::Shift, BoundVar, DebruijnIndex};
+use chalk_ir::{cast::Cast, fold::Shift, BoundVar, DebruijnIndex, Mutability};
 use either::Either;
 use hir_def::{
     db::DefDatabase,
@@ -12,6 +12,7 @@ use hir_def::{
         GenericParams, TypeOrConstParamData, TypeParamProvenance, WherePredicate,
         WherePredicateTypeTarget,
     },
+    hir::BindingAnnotation,
     lang_item::LangItem,
     resolver::{HasResolver, TypeNs},
     type_ref::{TraitBoundModifier, TypeRef},
@@ -24,7 +25,8 @@ use rustc_hash::FxHashSet;
 use smallvec::{smallvec, SmallVec};
 
 use crate::{
-    db::HirDatabase, ChalkTraitId, Interner, Substitution, TraitRef, TraitRefExt, WhereClause,
+    db::HirDatabase, ChalkTraitId, Interner, Substitution, TraitRef, TraitRefExt, Ty, TyExt,
+    WhereClause,
 };
 
 pub(crate) fn fn_traits(
@@ -351,4 +353,21 @@ pub fn is_fn_unsafe_to_call(db: &dyn HirDatabase, func: FunctionId) -> bool {
         }
         _ => false,
     }
+}
+
+pub(crate) fn pattern_matching_dereference_count(
+    cond_ty: &mut Ty,
+    binding_mode: &mut BindingAnnotation,
+) -> usize {
+    let mut r = 0;
+    while let Some((ty, _, mu)) = cond_ty.as_reference() {
+        if mu == Mutability::Mut && *binding_mode != BindingAnnotation::Ref {
+            *binding_mode = BindingAnnotation::RefMut;
+        } else {
+            *binding_mode = BindingAnnotation::Ref;
+        }
+        *cond_ty = ty.clone();
+        r += 1;
+    }
+    r
 }

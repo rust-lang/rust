@@ -270,7 +270,7 @@ fn infer_std_crash_5() {
             61..320 '{     ...     }': ()
             75..79 'name': &{unknown}
             82..166 'if doe...     }': &{unknown}
-            85..98 'doesnt_matter': {unknown}
+            85..98 'doesnt_matter': bool
             99..128 '{     ...     }': &{unknown}
             113..118 'first': &{unknown}
             134..166 '{     ...     }': &{unknown}
@@ -279,7 +279,7 @@ fn infer_std_crash_5() {
             181..188 'content': &{unknown}
             191..313 'if ICE...     }': &{unknown}
             194..231 'ICE_RE..._VALUE': {unknown}
-            194..247 'ICE_RE...&name)': {unknown}
+            194..247 'ICE_RE...&name)': bool
             241..246 '&name': &&{unknown}
             242..246 'name': &{unknown}
             248..276 '{     ...     }': &{unknown}
@@ -805,19 +805,19 @@ fn issue_4966() {
             225..229 'iter': T
             244..246 '{}': Vec<A>
             258..402 '{     ...r(); }': ()
-            268..273 'inner': Map<|&f64| -> f64>
-            276..300 'Map { ... 0.0 }': Map<|&f64| -> f64>
-            285..298 '|_: &f64| 0.0': |&f64| -> f64
+            268..273 'inner': Map<impl Fn(&f64) -> f64>
+            276..300 'Map { ... 0.0 }': Map<impl Fn(&f64) -> f64>
+            285..298 '|_: &f64| 0.0': impl Fn(&f64) -> f64
             286..287 '_': &f64
             295..298 '0.0': f64
-            311..317 'repeat': Repeat<Map<|&f64| -> f64>>
-            320..345 'Repeat...nner }': Repeat<Map<|&f64| -> f64>>
-            338..343 'inner': Map<|&f64| -> f64>
-            356..359 'vec': Vec<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>>
-            362..371 'from_iter': fn from_iter<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>, Repeat<Map<|&f64| -> f64>>>(Repeat<Map<|&f64| -> f64>>) -> Vec<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>>
-            362..379 'from_i...epeat)': Vec<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>>
-            372..378 'repeat': Repeat<Map<|&f64| -> f64>>
-            386..389 'vec': Vec<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>>
+            311..317 'repeat': Repeat<Map<impl Fn(&f64) -> f64>>
+            320..345 'Repeat...nner }': Repeat<Map<impl Fn(&f64) -> f64>>
+            338..343 'inner': Map<impl Fn(&f64) -> f64>
+            356..359 'vec': Vec<IntoIterator::Item<Repeat<Map<impl Fn(&f64) -> f64>>>>
+            362..371 'from_iter': fn from_iter<IntoIterator::Item<Repeat<Map<impl Fn(&f64) -> f64>>>, Repeat<Map<impl Fn(&f64) -> f64>>>(Repeat<Map<impl Fn(&f64) -> f64>>) -> Vec<IntoIterator::Item<Repeat<Map<impl Fn(&f64) -> f64>>>>
+            362..379 'from_i...epeat)': Vec<IntoIterator::Item<Repeat<Map<impl Fn(&f64) -> f64>>>>
+            372..378 'repeat': Repeat<Map<impl Fn(&f64) -> f64>>
+            386..389 'vec': Vec<IntoIterator::Item<Repeat<Map<impl Fn(&f64) -> f64>>>>
             386..399 'vec.foo_bar()': {unknown}
         "#]],
     );
@@ -852,7 +852,7 @@ fn main() {
             123..126 'S()': S<i32>
             132..133 's': S<i32>
             132..144 's.g(|_x| {})': ()
-            136..143 '|_x| {}': |&i32| -> ()
+            136..143 '|_x| {}': impl Fn(&i32)
             137..139 '_x': &i32
             141..143 '{}': ()
             150..151 's': S<i32>
@@ -1065,6 +1065,23 @@ fn parse_arule() {
 }
         "#,
     )
+}
+
+#[test]
+fn nested_closure() {
+    check_types(
+        r#"
+//- minicore: fn, option
+
+fn map<T, U>(o: Option<T>, f: impl FnOnce(T) -> U) -> Option<U> { loop {} }
+
+fn test() {
+    let o = Some(Some(2));
+    map(o, |s| map(s, |x| x));
+                    // ^ i32
+}
+        "#,
+    );
 }
 
 #[test]
@@ -1759,13 +1776,14 @@ const C: usize = 2 + 2;
 
 #[test]
 fn regression_14456() {
-    check_no_mismatches(
+    check_types(
         r#"
 //- minicore: future
 async fn x() {}
 fn f() {
     let fut = x();
-    let t = [0u8; 2 + 2];
+    let t = [0u8; { let a = 2 + 2; a }];
+      //^ [u8; 4]
 }
 "#,
     );
@@ -1800,5 +1818,23 @@ where
     E::foo(head);
 }
 "#,
+    );
+}
+
+#[test]
+fn match_ergonomics_with_binding_modes_interaction() {
+    check_types(
+        r"
+enum E { A }
+fn foo() {
+    match &E::A {
+        b @ (x @ E::A | x) => {
+            b;
+          //^ &E
+            x;
+          //^ &E
+        }
+    }
+}",
     );
 }

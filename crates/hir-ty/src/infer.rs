@@ -18,11 +18,12 @@ use std::{convert::identity, ops::Index};
 
 use chalk_ir::{cast::Cast, DebruijnIndex, Mutability, Safety, Scalar, TypeFlags};
 use either::Either;
+use hir_def::hir::LabelId;
 use hir_def::{
     body::Body,
     builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
     data::{ConstData, StaticData},
-    expr::{BindingAnnotation, BindingId, ExprId, ExprOrPatId, PatId},
+    hir::{BindingAnnotation, BindingId, ExprId, ExprOrPatId, PatId},
     lang_item::{LangItem, LangItemTarget},
     layout::Integer,
     path::{ModPath, Path},
@@ -32,15 +33,15 @@ use hir_def::{
     TraitId, TypeAliasId, VariantId,
 };
 use hir_expand::name::{name, Name};
-use la_arena::ArenaMap;
+use la_arena::{ArenaMap, Entry};
 use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::{always, never};
 
 use crate::{
     db::HirDatabase, fold_tys, infer::coerce::CoerceMany, lower::ImplTraitLoweringMode,
-    static_lifetime, to_assoc_type_id, AliasEq, AliasTy, DomainGoal, GenericArg, Goal, ImplTraitId,
-    InEnvironment, Interner, ProjectionTy, RpitId, Substitution, TraitRef, Ty, TyBuilder, TyExt,
-    TyKind,
+    static_lifetime, to_assoc_type_id, traits::FnTrait, AliasEq, AliasTy, ClosureId, DomainGoal,
+    GenericArg, Goal, ImplTraitId, InEnvironment, Interner, ProjectionTy, RpitId, Substitution,
+    TraitRef, Ty, TyBuilder, TyExt, TyKind,
 };
 
 // This lint has a false positive here. See the link below for details.
@@ -50,6 +51,8 @@ use crate::{
 pub use coerce::could_coerce;
 #[allow(unreachable_pub)]
 pub use unify::could_unify;
+
+pub(crate) use self::closure::{CaptureKind, CapturedItem, CapturedItemWithoutTy};
 
 pub(crate) mod unify;
 mod path;
@@ -101,6 +104,8 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
     ctx.infer_body();
 
     ctx.infer_mut_body();
+
+    ctx.infer_closures();
 
     Arc::new(ctx.resolve_all())
 }
@@ -188,7 +193,7 @@ pub enum InferenceDiagnostic {
         /// Contains the type the field resolves to
         field_with_same_name: Option<Ty>,
     },
-    // FIXME: Make this proper
+    // FIXME: This should be emitted in body lowering
     BreakOutsideOfLoop {
         expr: ExprId,
         is_break: bool,
@@ -311,6 +316,13 @@ pub enum AutoBorrow {
     RawPtr(Mutability),
 }
 
+impl AutoBorrow {
+    fn mutability(self) -> Mutability {
+        let (AutoBorrow::Ref(m) | AutoBorrow::RawPtr(m)) = self;
+        m
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PointerCast {
     /// Go from a fn-item type to a fn-pointer type.
@@ -372,6 +384,9 @@ pub struct InferenceResult {
     pub pat_adjustments: FxHashMap<PatId, Vec<Ty>>,
     pub pat_binding_modes: FxHashMap<PatId, BindingMode>,
     pub expr_adjustments: FxHashMap<ExprId, Vec<Adjustment>>,
+    pub(crate) closure_info: FxHashMap<ClosureId, (Vec<CapturedItem>, FnTrait)>,
+    // FIXME: remove this field
+    pub mutated_bindings_in_closure: FxHashSet<BindingId>,
 }
 
 impl InferenceResult {
@@ -407,6 +422,9 @@ impl InferenceResult {
             ExprOrPatId::ExprId(expr) => Some((expr, mismatch)),
             _ => None,
         })
+    }
+    pub(crate) fn closure_info(&self, closure: &ClosureId) -> &(Vec<CapturedItem>, FnTrait) {
+        self.closure_info.get(closure).unwrap()
     }
 }
 
@@ -459,6 +477,14 @@ pub(crate) struct InferenceContext<'a> {
     resume_yield_tys: Option<(Ty, Ty)>,
     diverges: Diverges,
     breakables: Vec<BreakableContext>,
+
+    // fields related to closure capture
+    current_captures: Vec<CapturedItemWithoutTy>,
+    current_closure: Option<ClosureId>,
+    /// Stores the list of closure ids that need to be analyzed before this closure. See the
+    /// comment on `InferenceContext::sort_closures`
+    closure_dependecies: FxHashMap<ClosureId, Vec<ClosureId>>,
+    deferred_closures: FxHashMap<ClosureId, Vec<(Ty, Ty, Vec<Ty>, ExprId)>>,
 }
 
 #[derive(Clone, Debug)]
@@ -468,7 +494,7 @@ struct BreakableContext {
     /// The coercion target of the context.
     coerce: Option<CoerceMany>,
     /// The optional label of the context.
-    label: Option<name::Name>,
+    label: Option<LabelId>,
     kind: BreakableKind,
 }
 
@@ -483,21 +509,21 @@ enum BreakableKind {
 
 fn find_breakable<'c>(
     ctxs: &'c mut [BreakableContext],
-    label: Option<&name::Name>,
+    label: Option<LabelId>,
 ) -> Option<&'c mut BreakableContext> {
     let mut ctxs = ctxs
         .iter_mut()
         .rev()
         .take_while(|it| matches!(it.kind, BreakableKind::Block | BreakableKind::Loop));
     match label {
-        Some(_) => ctxs.find(|ctx| ctx.label.as_ref() == label),
+        Some(_) => ctxs.find(|ctx| ctx.label == label),
         None => ctxs.find(|ctx| matches!(ctx.kind, BreakableKind::Loop)),
     }
 }
 
 fn find_continuable<'c>(
     ctxs: &'c mut [BreakableContext],
-    label: Option<&name::Name>,
+    label: Option<LabelId>,
 ) -> Option<&'c mut BreakableContext> {
     match label {
         Some(_) => find_breakable(ctxs, label).filter(|it| matches!(it.kind, BreakableKind::Loop)),
@@ -526,6 +552,10 @@ impl<'a> InferenceContext<'a> {
             resolver,
             diverges: Diverges::Maybe,
             breakables: Vec::new(),
+            current_captures: vec![],
+            current_closure: None,
+            deferred_closures: FxHashMap::default(),
+            closure_dependecies: FxHashMap::default(),
         }
     }
 
@@ -617,7 +647,7 @@ impl<'a> InferenceContext<'a> {
         let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver)
             .with_impl_trait_mode(ImplTraitLoweringMode::Param);
         let mut param_tys =
-            data.params.iter().map(|(_, type_ref)| ctx.lower_ty(type_ref)).collect::<Vec<_>>();
+            data.params.iter().map(|type_ref| ctx.lower_ty(type_ref)).collect::<Vec<_>>();
         // Check if function contains a va_list, if it does then we append it to the parameter types
         // that are collected from the function data
         if data.is_varargs() {
@@ -646,42 +676,66 @@ impl<'a> InferenceContext<'a> {
         let return_ty = if let Some(rpits) = self.db.return_type_impl_traits(func) {
             // RPIT opaque types use substitution of their parent function.
             let fn_placeholders = TyBuilder::placeholder_subst(self.db, func);
-            fold_tys(
-                return_ty,
-                |ty, _| {
-                    let opaque_ty_id = match ty.kind(Interner) {
-                        TyKind::OpaqueType(opaque_ty_id, _) => *opaque_ty_id,
-                        _ => return ty,
-                    };
-                    let idx = match self.db.lookup_intern_impl_trait_id(opaque_ty_id.into()) {
-                        ImplTraitId::ReturnTypeImplTrait(_, idx) => idx,
-                        _ => unreachable!(),
-                    };
-                    let bounds = (*rpits).map_ref(|rpits| {
-                        rpits.impl_traits[idx].bounds.map_ref(|it| it.into_iter())
-                    });
-                    let var = self.table.new_type_var();
-                    let var_subst = Substitution::from1(Interner, var.clone());
-                    for bound in bounds {
-                        let predicate =
-                            bound.map(|it| it.cloned()).substitute(Interner, &fn_placeholders);
-                        let (var_predicate, binders) = predicate
-                            .substitute(Interner, &var_subst)
-                            .into_value_and_skipped_binders();
-                        always!(binders.is_empty(Interner)); // quantified where clauses not yet handled
-                        self.push_obligation(var_predicate.cast(Interner));
-                    }
-                    self.result.type_of_rpit.insert(idx, var.clone());
-                    var
-                },
-                DebruijnIndex::INNERMOST,
-            )
+            let result =
+                self.insert_inference_vars_for_rpit(return_ty, rpits.clone(), fn_placeholders);
+            let rpits = rpits.skip_binders();
+            for (id, _) in rpits.impl_traits.iter() {
+                if let Entry::Vacant(e) = self.result.type_of_rpit.entry(id) {
+                    never!("Missed RPIT in `insert_inference_vars_for_rpit`");
+                    e.insert(TyKind::Error.intern(Interner));
+                }
+            }
+            result
         } else {
             return_ty
         };
 
         self.return_ty = self.normalize_associated_types_in(return_ty);
         self.return_coercion = Some(CoerceMany::new(self.return_ty.clone()));
+    }
+
+    fn insert_inference_vars_for_rpit<T>(
+        &mut self,
+        t: T,
+        rpits: Arc<chalk_ir::Binders<crate::ReturnTypeImplTraits>>,
+        fn_placeholders: Substitution,
+    ) -> T
+    where
+        T: crate::HasInterner<Interner = Interner> + crate::TypeFoldable<Interner>,
+    {
+        fold_tys(
+            t,
+            |ty, _| {
+                let opaque_ty_id = match ty.kind(Interner) {
+                    TyKind::OpaqueType(opaque_ty_id, _) => *opaque_ty_id,
+                    _ => return ty,
+                };
+                let idx = match self.db.lookup_intern_impl_trait_id(opaque_ty_id.into()) {
+                    ImplTraitId::ReturnTypeImplTrait(_, idx) => idx,
+                    _ => unreachable!(),
+                };
+                let bounds = (*rpits)
+                    .map_ref(|rpits| rpits.impl_traits[idx].bounds.map_ref(|it| it.into_iter()));
+                let var = self.table.new_type_var();
+                let var_subst = Substitution::from1(Interner, var.clone());
+                for bound in bounds {
+                    let predicate =
+                        bound.map(|it| it.cloned()).substitute(Interner, &fn_placeholders);
+                    let (var_predicate, binders) =
+                        predicate.substitute(Interner, &var_subst).into_value_and_skipped_binders();
+                    always!(binders.is_empty(Interner)); // quantified where clauses not yet handled
+                    let var_predicate = self.insert_inference_vars_for_rpit(
+                        var_predicate,
+                        rpits.clone(),
+                        fn_placeholders.clone(),
+                    );
+                    self.push_obligation(var_predicate.cast(Interner));
+                }
+                self.result.type_of_rpit.insert(idx, var.clone());
+                var
+            },
+            DebruijnIndex::INNERMOST,
+        )
     }
 
     fn infer_body(&mut self) {

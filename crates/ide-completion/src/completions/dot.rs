@@ -173,6 +173,43 @@ fn foo(s: S) { s.$0 }
     }
 
     #[test]
+    fn no_unstable_method_on_stable() {
+        check(
+            r#"
+//- /main.rs crate:main deps:std
+fn foo(s: std::S) { s.$0 }
+//- /std.rs crate:std
+pub struct S;
+impl S {
+    #[unstable]
+    pub fn bar(&self) {}
+}
+"#,
+            expect![""],
+        );
+    }
+
+    #[test]
+    fn unstable_method_on_nightly() {
+        check(
+            r#"
+//- toolchain:nightly
+//- /main.rs crate:main deps:std
+fn foo(s: std::S) { s.$0 }
+//- /std.rs crate:std
+pub struct S;
+impl S {
+    #[unstable]
+    pub fn bar(&self) {}
+}
+"#,
+            expect![[r#"
+                me bar() fn(&self)
+            "#]],
+        );
+    }
+
+    #[test]
     fn test_struct_field_completion_self() {
         check(
             r#"

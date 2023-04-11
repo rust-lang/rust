@@ -3,13 +3,13 @@
 // Currently it is an ad-hoc implementation, only useful for mutability analysis. Feel free to remove all of these
 // if needed for implementing a proper borrow checker.
 
-use std::sync::Arc;
+use std::{iter, sync::Arc};
 
 use hir_def::DefWithBodyId;
 use la_arena::ArenaMap;
 use stdx::never;
 
-use crate::db::HirDatabase;
+use crate::{db::HirDatabase, ClosureId};
 
 use super::{
     BasicBlockId, BorrowKind, LocalId, MirBody, MirLowerError, MirSpan, Place, ProjectionElem,
@@ -29,14 +29,48 @@ pub struct BorrowckResult {
     pub mutability_of_locals: ArenaMap<LocalId, MutabilityReason>,
 }
 
+fn all_mir_bodies(
+    db: &dyn HirDatabase,
+    def: DefWithBodyId,
+) -> Box<dyn Iterator<Item = Result<Arc<MirBody>, MirLowerError>> + '_> {
+    fn for_closure(
+        db: &dyn HirDatabase,
+        c: ClosureId,
+    ) -> Box<dyn Iterator<Item = Result<Arc<MirBody>, MirLowerError>> + '_> {
+        match db.mir_body_for_closure(c) {
+            Ok(body) => {
+                let closures = body.closures.clone();
+                Box::new(
+                    iter::once(Ok(body))
+                        .chain(closures.into_iter().flat_map(|x| for_closure(db, x))),
+                )
+            }
+            Err(e) => Box::new(iter::once(Err(e))),
+        }
+    }
+    match db.mir_body(def) {
+        Ok(body) => {
+            let closures = body.closures.clone();
+            Box::new(
+                iter::once(Ok(body)).chain(closures.into_iter().flat_map(|x| for_closure(db, x))),
+            )
+        }
+        Err(e) => Box::new(iter::once(Err(e))),
+    }
+}
+
 pub fn borrowck_query(
     db: &dyn HirDatabase,
     def: DefWithBodyId,
-) -> Result<Arc<BorrowckResult>, MirLowerError> {
+) -> Result<Arc<[BorrowckResult]>, MirLowerError> {
     let _p = profile::span("borrowck_query");
-    let body = db.mir_body(def)?;
-    let r = BorrowckResult { mutability_of_locals: mutability_of_locals(&body), mir_body: body };
-    Ok(Arc::new(r))
+    let r = all_mir_bodies(db, def)
+        .map(|body| {
+            let body = body?;
+            Ok(BorrowckResult { mutability_of_locals: mutability_of_locals(&body), mir_body: body })
+        })
+        .collect::<Result<Vec<_>, MirLowerError>>()?;
+    Ok(r.into())
 }
 
 fn is_place_direct(lvalue: &Place) -> bool {
@@ -60,7 +94,7 @@ fn place_case(lvalue: &Place) -> ProjectionCase {
             ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Field(_)
-            | ProjectionElem::TupleField(_)
+            | ProjectionElem::TupleOrClosureField(_)
             | ProjectionElem::Index(_) => {
                 is_part_of = true;
             }

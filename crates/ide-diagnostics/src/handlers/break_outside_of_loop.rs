@@ -31,12 +31,8 @@ mod tests {
 fn foo() {
     break;
   //^^^^^ error: break outside of loop
-    break 'a;
-  //^^^^^^^^ error: break outside of loop
     continue;
   //^^^^^^^^ error: continue outside of loop
-    continue 'a;
-  //^^^^^^^^^^^ error: continue outside of loop
 }
 "#,
         );
@@ -51,12 +47,8 @@ fn foo() {
         async {
                 break;
               //^^^^^ error: break outside of loop
-                break 'a;
-              //^^^^^^^^ error: break outside of loop
                 continue;
               //^^^^^^^^ error: continue outside of loop
-                continue 'a;
-              //^^^^^^^^^^^ error: continue outside of loop
         };
     }
 }
@@ -73,12 +65,8 @@ fn foo() {
         || {
                 break;
               //^^^^^ error: break outside of loop
-                break 'a;
-              //^^^^^^^^ error: break outside of loop
                 continue;
               //^^^^^^^^ error: continue outside of loop
-                continue 'a;
-              //^^^^^^^^^^^ error: continue outside of loop
         };
     }
 }
@@ -94,9 +82,7 @@ fn foo() {
     'a: loop {
         {
             break;
-            break 'a;
             continue;
-            continue 'a;
         }
     }
 }
@@ -112,9 +98,7 @@ fn foo() {
     'a: loop {
         try {
                 break;
-                break 'a;
                 continue;
-                continue 'a;
         };
     }
 }
@@ -130,11 +114,8 @@ fn foo() {
     'a: {
         break;
       //^^^^^ error: break outside of loop
-        break 'a;
         continue;
       //^^^^^^^^ error: continue outside of loop
-        continue 'a;
-      //^^^^^^^^^^^ error: continue outside of loop
     }
 }
 "#,

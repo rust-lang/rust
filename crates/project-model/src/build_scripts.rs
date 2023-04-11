@@ -415,7 +415,6 @@ impl WorkspaceBuildScripts {
                     let dir_entry = entry.ok()?;
                     if dir_entry.file_type().ok()?.is_file() {
                         let path = dir_entry.path();
-                        tracing::info!("p{:?}", path);
                         let extension = path.extension()?;
                         if extension == std::env::consts::DLL_EXTENSION {
                             let name = path.file_stem()?.to_str()?.split_once('-')?.0.to_owned();

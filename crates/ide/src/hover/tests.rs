@@ -225,7 +225,7 @@ fn main() {
                 *iter*
 
                 ```rust
-                let mut iter: Iter<Scan<OtherStruct<OtherStruct<i32>>, |&mut u32, &u32, &mut u32| -> Option<u32>, u32>>
+                let mut iter: Iter<Scan<OtherStruct<OtherStruct<i32>>, impl Fn(&mut u32, &u32, &mut u32) -> Option<u32>, u32>>
                 ```
             "#]],
     );
@@ -4242,7 +4242,7 @@ fn foo() {
 /// [threads]: ../book/ch16-01-threads.html#using-move-closures-with-threads
 mod move_keyword {}
 "#,
-        expect![[r##"
+        expect![[r#"
             *move*
 
             ```rust
@@ -4251,11 +4251,11 @@ mod move_keyword {}
 
             ---
 
-            [closure](https://doc.rust-lang.org/nightly/book/ch13-01-closures.html)
-            [closures](https://doc.rust-lang.org/nightly/book/ch13-01-closures.html)
-            [threads](https://doc.rust-lang.org/nightly/book/ch16-01-threads.html#using-move-closures-with-threads)
+            [closure](https://doc.rust-lang.org/stable/book/ch13-01-closures.html)
+            [closures](https://doc.rust-lang.org/stable/book/ch13-01-closures.html)
+            [threads](https://doc.rust-lang.org/stable/book/ch16-01-threads.html#using-move-closures-with-threads)
             <https://doc.rust-lang.org/nightly/book/ch13-01-closures.html>
-        "##]],
+        "#]],
     );
 }
 

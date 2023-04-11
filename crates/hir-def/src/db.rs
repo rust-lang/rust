@@ -9,10 +9,10 @@ use la_arena::ArenaMap;
 use syntax::{ast, AstPtr};
 
 use crate::{
-    adt::{EnumData, StructData},
     attr::{Attrs, AttrsWithOwner},
     body::{scope::ExprScopes, Body, BodySourceMap},
     data::{
+        adt::{EnumData, StructData},
         ConstData, FunctionData, ImplData, Macro2Data, MacroRulesData, ProcMacroData, StaticData,
         TraitAliasData, TraitData, TypeAliasData,
     },

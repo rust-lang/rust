@@ -675,14 +675,12 @@ fn is_consumed_lvalue(node: &SyntaxNode, local: &hir::Local, db: &RootDatabase) 
 
 /// Returns true if the parent nodes of `node` all match the `SyntaxKind`s in `kinds` exactly.
 fn parents_match(mut node: NodeOrToken<SyntaxNode, SyntaxToken>, mut kinds: &[SyntaxKind]) -> bool {
-    while let (Some(parent), [kind, rest @ ..]) = (&node.parent(), kinds) {
+    while let (Some(parent), [kind, rest @ ..]) = (node.parent(), kinds) {
         if parent.kind() != *kind {
             return false;
         }
 
-        // FIXME: Would be nice to get parent out of the match, but binding by-move and by-value
-        // in the same pattern is unstable: rust-lang/rust#68354.
-        node = node.parent().unwrap().into();
+        node = parent.into();
         kinds = rest;
     }
 

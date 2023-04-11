@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import * as lc from "vscode-languageclient/node";
 import * as ra from "./lsp_ext";
+import * as path from "path";
 
 import { Config, prepareVSCodeConfig } from "./config";
 import { createClient } from "./client";
@@ -192,12 +193,13 @@ export class Ctx {
             const discoverProjectCommand = this.config.discoverProjectCommand;
             if (discoverProjectCommand) {
                 const workspaces: JsonProject[] = await Promise.all(
-                    vscode.workspace.workspaceFolders!.map(async (folder): Promise<JsonProject> => {
-                        const rustDocuments = vscode.workspace.textDocuments.filter(isRustDocument);
-                        return discoverWorkspace(rustDocuments, discoverProjectCommand, {
-                            cwd: folder.uri.fsPath,
-                        });
-                    })
+                    vscode.workspace.textDocuments
+                        .filter(isRustDocument)
+                        .map(async (file): Promise<JsonProject> => {
+                            return discoverWorkspace([file], discoverProjectCommand, {
+                                cwd: path.dirname(file.uri.fsPath),
+                            });
+                        })
                 );
 
                 this.addToDiscoveredWorkspaces(workspaces);

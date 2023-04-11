@@ -52,6 +52,9 @@ pub(crate) fn complete_use_path(
                         )
                     };
                     for (name, def) in module_scope {
+                        if !ctx.check_stability(def.attrs(ctx.db).as_deref()) {
+                            continue;
+                        }
                         let is_name_already_imported = name
                             .as_text()
                             .map_or(false, |text| already_imported_names.contains(text.as_str()));

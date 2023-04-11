@@ -10,9 +10,8 @@ use syntax::ast::HasDocComments;
 
 use crate::{
     db::DefDatabase,
-    dyn_map::DynMap,
+    dyn_map::{keys, DynMap},
     item_scope::ItemScope,
-    keys,
     src::{HasChildSource, HasSource},
     AdtId, AssocItemId, DefWithBodyId, EnumId, EnumVariantId, FieldId, ImplId, Lookup, MacroId,
     ModuleDefId, ModuleId, TraitId, VariantId,

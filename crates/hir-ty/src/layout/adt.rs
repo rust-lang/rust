@@ -3,7 +3,7 @@
 use std::ops::Bound;
 
 use hir_def::{
-    adt::VariantData,
+    data::adt::VariantData,
     layout::{Integer, IntegerExt, Layout, LayoutCalculator, LayoutError, RustcEnumVariantIdx},
     AdtId, EnumVariantId, HasModule, LocalEnumVariantId, VariantId,
 };

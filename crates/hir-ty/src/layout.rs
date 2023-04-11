@@ -229,11 +229,24 @@ pub fn layout_of_ty(db: &dyn HirDatabase, ty: &Ty, krate: CrateId) -> Result<Lay
                 }
             }
         }
-        TyKind::Closure(_, _) | TyKind::Generator(_, _) | TyKind::GeneratorWitness(_, _) => {
+        TyKind::Closure(c, _) => {
+            let (def, _) = db.lookup_intern_closure((*c).into());
+            let infer = db.infer(def);
+            let (captures, _) = infer.closure_info(c);
+            let fields = captures
+                .iter()
+                .map(|x| layout_of_ty(db, &x.ty, krate))
+                .collect::<Result<Vec<_>, _>>()?;
+            let fields = fields.iter().collect::<Vec<_>>();
+            let fields = fields.iter().collect::<Vec<_>>();
+            cx.univariant(dl, &fields, &ReprOptions::default(), StructKind::AlwaysSized)
+                .ok_or(LayoutError::Unknown)?
+        }
+        TyKind::Generator(_, _) | TyKind::GeneratorWitness(_, _) => {
             return Err(LayoutError::NotImplemented)
         }
+        TyKind::Error => return Err(LayoutError::HasErrorType),
         TyKind::AssociatedType(_, _)
-        | TyKind::Error
         | TyKind::Alias(_)
         | TyKind::Placeholder(_)
         | TyKind::BoundVar(_)

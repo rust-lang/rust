@@ -4,7 +4,7 @@ use std::{env::var, sync::Arc};
 
 use chalk_ir::GoalData;
 use chalk_recursive::Cache;
-use chalk_solve::{logging_db::LoggingRustIrDatabase, Solver};
+use chalk_solve::{logging_db::LoggingRustIrDatabase, rust_ir, Solver};
 
 use base_db::CrateId;
 use hir_def::{
@@ -177,8 +177,10 @@ fn is_chalk_print() -> bool {
     std::env::var("CHALK_PRINT").is_ok()
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum FnTrait {
+    // Warning: Order is important. If something implements `x` it should also implement
+    // `y` if `y <= x`.
     FnOnce,
     FnMut,
     Fn,
@@ -190,6 +192,14 @@ impl FnTrait {
             FnTrait::FnOnce => LangItem::FnOnce,
             FnTrait::FnMut => LangItem::FnMut,
             FnTrait::Fn => LangItem::Fn,
+        }
+    }
+
+    pub const fn to_chalk_ir(self) -> rust_ir::ClosureKind {
+        match self {
+            FnTrait::FnOnce => rust_ir::ClosureKind::FnOnce,
+            FnTrait::FnMut => rust_ir::ClosureKind::FnMut,
+            FnTrait::Fn => rust_ir::ClosureKind::Fn,
         }
     }
 

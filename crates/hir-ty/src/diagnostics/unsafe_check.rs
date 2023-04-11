@@ -3,7 +3,7 @@
 
 use hir_def::{
     body::Body,
-    expr::{Expr, ExprId, UnaryOp},
+    hir::{Expr, ExprId, UnaryOp},
     resolver::{resolver_for_expr, ResolveValueResult, ValueNs},
     DefWithBodyId,
 };

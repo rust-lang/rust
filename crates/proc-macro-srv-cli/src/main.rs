@@ -1,6 +1,5 @@
 //! A standalone binary for `proc-macro-srv`.
-
-use proc_macro_srv::cli;
+//! Driver for proc macro server
 
 fn main() -> std::io::Result<()> {
     let v = std::env::var("RUST_ANALYZER_INTERNALS_DO_NOT_USE");
@@ -15,5 +14,5 @@ fn main() -> std::io::Result<()> {
         }
     }
 
-    cli::run()
+    proc_macro_srv_cli::run()
 }

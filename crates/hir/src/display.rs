@@ -1,6 +1,6 @@
 //! HirDisplay implementations for various hir types.
 use hir_def::{
-    adt::VariantData,
+    data::adt::VariantData,
     generics::{
         TypeOrConstParamData, TypeParamProvenance, WherePredicate, WherePredicateTypeTarget,
     },
@@ -8,6 +8,7 @@ use hir_def::{
     type_ref::{TypeBound, TypeRef},
     AdtId, GenericDefId,
 };
+use hir_expand::name;
 use hir_ty::{
     display::{
         write_bounds_like_dyn_trait_with_prefix, write_visibility, HirDisplay, HirDisplayError,
@@ -76,22 +77,22 @@ impl HirDisplay for Function {
         };
 
         let mut first = true;
-        for (name, type_ref) in &data.params {
+        // FIXME: Use resolved `param.ty` once we no longer discard lifetimes
+        for (type_ref, param) in data.params.iter().zip(self.assoc_fn_params(db)) {
+            let local = param.as_local(db).map(|it| it.name(db));
             if !first {
                 f.write_str(", ")?;
             } else {
                 first = false;
-                if data.has_self_param() {
+                if local == Some(name!(self)) {
                     write_self_param(type_ref, f)?;
                     continue;
                 }
             }
-            match name {
+            match local {
                 Some(name) => write!(f, "{name}: ")?,
                 None => f.write_str("_: ")?,
             }
-            // FIXME: Use resolved `param.ty` or raw `type_ref`?
-            // The former will ignore lifetime arguments currently.
             type_ref.hir_fmt(f)?;
         }
 

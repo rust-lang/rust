@@ -12,12 +12,15 @@
 //!
 //! See also a neighboring `body` module.
 
+pub mod type_ref;
+
 use std::fmt;
 
 use hir_expand::name::Name;
 use intern::Interned;
 use la_arena::{Idx, RawIdx};
 use smallvec::SmallVec;
+use syntax::ast;
 
 use crate::{
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinUint},
@@ -28,9 +31,9 @@ use crate::{
 
 pub use syntax::ast::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp};
 
-pub type ExprId = Idx<Expr>;
-
 pub type BindingId = Idx<Binding>;
+
+pub type ExprId = Idx<Expr>;
 
 /// FIXME: this is a hacky function which should be removed
 pub(crate) fn dummy_expr_id() -> ExprId {
@@ -102,6 +105,45 @@ impl Literal {
     }
 }
 
+impl From<ast::LiteralKind> for Literal {
+    fn from(ast_lit_kind: ast::LiteralKind) -> Self {
+        use ast::LiteralKind;
+        match ast_lit_kind {
+            // FIXME: these should have actual values filled in, but unsure on perf impact
+            LiteralKind::IntNumber(lit) => {
+                if let builtin @ Some(_) = lit.suffix().and_then(BuiltinFloat::from_suffix) {
+                    Literal::Float(
+                        FloatTypeWrapper::new(lit.float_value().unwrap_or(Default::default())),
+                        builtin,
+                    )
+                } else if let builtin @ Some(_) = lit.suffix().and_then(BuiltinUint::from_suffix) {
+                    Literal::Uint(lit.value().unwrap_or(0), builtin)
+                } else {
+                    let builtin = lit.suffix().and_then(BuiltinInt::from_suffix);
+                    Literal::Int(lit.value().unwrap_or(0) as i128, builtin)
+                }
+            }
+            LiteralKind::FloatNumber(lit) => {
+                let ty = lit.suffix().and_then(BuiltinFloat::from_suffix);
+                Literal::Float(FloatTypeWrapper::new(lit.value().unwrap_or(Default::default())), ty)
+            }
+            LiteralKind::ByteString(bs) => {
+                let text = bs.value().map(Box::from).unwrap_or_else(Default::default);
+                Literal::ByteString(text)
+            }
+            LiteralKind::String(s) => {
+                let text = s.value().map(Box::from).unwrap_or_else(Default::default);
+                Literal::String(text)
+            }
+            LiteralKind::Byte(b) => {
+                Literal::Uint(b.value().unwrap_or_default() as u128, Some(BuiltinUint::U8))
+            }
+            LiteralKind::Char(c) => Literal::Char(c.value().unwrap_or_default()),
+            LiteralKind::Bool(val) => Literal::Bool(val),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Expr {
     /// This is produced if the syntax tree does not have a required expression piece.
@@ -168,11 +210,11 @@ pub enum Expr {
         arms: Box<[MatchArm]>,
     },
     Continue {
-        label: Option<Name>,
+        label: Option<LabelId>,
     },
     Break {
         expr: Option<ExprId>,
-        label: Option<Name>,
+        label: Option<LabelId>,
     },
     Return {
         expr: Option<ExprId>,
@@ -233,6 +275,7 @@ pub enum Expr {
         ret_type: Option<Interned<TypeRef>>,
         body: ExprId,
         closure_kind: ClosureKind,
+        capture_by: CaptureBy,
     },
     Tuple {
         exprs: Box<[ExprId]>,
@@ -248,6 +291,14 @@ pub enum ClosureKind {
     Closure,
     Generator(Movability),
     Async,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CaptureBy {
+    /// `move |x| y + x`.
+    Value,
+    /// `move` keyword was not specified.
+    Ref,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -442,6 +493,22 @@ pub struct Binding {
     pub name: Name,
     pub mode: BindingAnnotation,
     pub definitions: SmallVec<[PatId; 1]>,
+    /// Id of the closure/generator that owns this binding. If it is owned by the
+    /// top level expression, this field would be `None`.
+    pub owner: Option<ExprId>,
+}
+
+impl Binding {
+    pub fn is_upvar(&self, relative_to: ExprId) -> bool {
+        match self.owner {
+            Some(x) => {
+                // We assign expression ids in a way that outer closures will recieve
+                // a lower id
+                x.into_raw() < relative_to.into_raw()
+            }
+            None => true,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

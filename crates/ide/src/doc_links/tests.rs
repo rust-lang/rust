@@ -116,7 +116,7 @@ fn external_docs_doc_url_std_crate() {
 //- /main.rs crate:std
 use self$0;
 "#,
-        expect![[r#"https://doc.rust-lang.org/nightly/std/index.html"#]],
+        expect!["https://doc.rust-lang.org/stable/std/index.html"],
     );
 }
 

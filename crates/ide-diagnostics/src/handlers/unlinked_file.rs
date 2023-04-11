@@ -10,7 +10,7 @@ use ide_db::{
 };
 use syntax::{
     ast::{self, edit::IndentLevel, HasModuleItem, HasName},
-    AstNode, TextRange, TextSize,
+    AstNode, TextRange,
 };
 use text_edit::TextEdit;
 
@@ -27,14 +27,28 @@ pub(crate) fn unlinked_file(
 ) {
     // Limit diagnostic to the first few characters in the file. This matches how VS Code
     // renders it with the full span, but on other editors, and is less invasive.
+    let fixes = fixes(ctx, file_id);
+    // FIXME: This is a hack for the vscode extension to notice whether there is an autofix or not before having to resolve diagnostics.
+    // This is to prevent project linking popups from appearing when there is an autofix. https://github.com/rust-lang/rust-analyzer/issues/14523
+    let message = if fixes.is_none() {
+        "file not included in crate hierarchy"
+    } else {
+        "file not included in module tree"
+    };
+
     let range = ctx.sema.db.parse(file_id).syntax_node().text_range();
-    // FIXME: This is wrong if one of the first three characters is not ascii: `//Ы`.
-    let range = range.intersect(TextRange::up_to(TextSize::of("..."))).unwrap_or(range);
+    let range = FileLoader::file_text(ctx.sema.db, file_id)
+        .char_indices()
+        .take(3)
+        .last()
+        .map(|(i, _)| i)
+        .map(|i| TextRange::up_to(i.try_into().unwrap()))
+        .unwrap_or(range);
 
     acc.push(
-        Diagnostic::new("unlinked-file", "file not included in module tree", range)
+        Diagnostic::new("unlinked-file", message, range)
             .severity(Severity::WeakWarning)
-            .with_fixes(fixes(ctx, file_id)),
+            .with_fixes(fixes),
     );
 }
 

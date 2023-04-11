@@ -473,7 +473,7 @@ fn lower_struct(
     trace: &mut Trace<FieldData, Either<ast::TupleField, ast::RecordField>>,
     ast: &InFile<ast::StructKind>,
 ) -> StructKind {
-    let ctx = LowerCtx::new(db, ast.file_id);
+    let ctx = LowerCtx::new(db, &expander.hygiene(), ast.file_id);
 
     match &ast.value {
         ast::StructKind::Tuple(fl) => {

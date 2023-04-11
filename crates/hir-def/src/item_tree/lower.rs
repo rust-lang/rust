@@ -29,7 +29,7 @@ impl<'a> Ctx<'a> {
             db,
             tree: ItemTree::default(),
             source_ast_id_map: db.ast_id_map(file),
-            body_ctx: crate::body::LowerCtx::new(db, file),
+            body_ctx: crate::body::LowerCtx::with_file_id(db, file),
         }
     }
 
@@ -99,34 +99,6 @@ impl<'a> Ctx<'a> {
         }
 
         self.tree
-    }
-
-    pub(super) fn block_has_items(mut self, block: &ast::BlockExpr) -> bool {
-        let statement_has_item = block
-            .statements()
-            .find_map(|stmt| match stmt {
-                ast::Stmt::Item(item) => self.lower_mod_item(&item),
-                // Macro calls can be both items and expressions. The syntax library always treats
-                // them as expressions here, so we undo that.
-                ast::Stmt::ExprStmt(es) => match es.expr()? {
-                    ast::Expr::MacroExpr(expr) => self.lower_mod_item(&expr.macro_call()?.into()),
-                    _ => None,
-                },
-                _ => None,
-            })
-            .is_some();
-        if statement_has_item {
-            return true;
-        }
-
-        if let Some(ast::Expr::MacroExpr(expr)) = block.tail_expr() {
-            if let Some(call) = expr.macro_call() {
-                if let Some(_) = self.lower_mod_item(&call.into()) {
-                    return true;
-                }
-            }
-        }
-        false
     }
 
     fn data(&mut self) -> &mut ItemTreeData {
@@ -321,7 +293,7 @@ impl<'a> Ctx<'a> {
                     }
                 };
                 let ty = Interned::new(self_type);
-                let idx = self.data().params.alloc(Param::Normal(None, ty));
+                let idx = self.data().params.alloc(Param::Normal(ty));
                 self.add_attrs(
                     idx.into(),
                     RawAttrs::new(self.db.upcast(), &self_param, self.hygiene()),
@@ -334,19 +306,7 @@ impl<'a> Ctx<'a> {
                     None => {
                         let type_ref = TypeRef::from_ast_opt(&self.body_ctx, param.ty());
                         let ty = Interned::new(type_ref);
-                        let mut pat = param.pat();
-                        // FIXME: This really shouldn't be here, in fact FunctionData/ItemTree's function shouldn't know about
-                        // pattern names at all
-                        let name = 'name: loop {
-                            match pat {
-                                Some(ast::Pat::RefPat(ref_pat)) => pat = ref_pat.pat(),
-                                Some(ast::Pat::IdentPat(ident)) => {
-                                    break 'name ident.name().map(|it| it.as_name())
-                                }
-                                _ => break 'name None,
-                            }
-                        };
-                        self.data().params.alloc(Param::Normal(name, ty))
+                        self.data().params.alloc(Param::Normal(ty))
                     }
                 };
                 self.add_attrs(idx.into(), RawAttrs::new(self.db.upcast(), &param, self.hygiene()));

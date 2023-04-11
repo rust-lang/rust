@@ -13,7 +13,7 @@ use hir::{
 };
 use hir_def::{
     body::{BodySourceMap, SyntheticSyntax},
-    expr::{ExprId, PatId},
+    hir::{ExprId, PatId},
     FunctionId,
 };
 use hir_ty::{Interner, TyExt, TypeFlags};

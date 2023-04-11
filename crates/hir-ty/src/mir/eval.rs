@@ -25,8 +25,8 @@ use crate::{
     mapping::from_chalk,
     method_resolution::{is_dyn_method, lookup_impl_method},
     traits::FnTrait,
-    CallableDefId, Const, ConstScalar, FnDefId, GenericArgData, Interner, MemoryMap, Substitution,
-    TraitEnvironment, Ty, TyBuilder, TyExt,
+    CallableDefId, ClosureId, Const, ConstScalar, FnDefId, GenericArgData, Interner, MemoryMap,
+    Substitution, TraitEnvironment, Ty, TyBuilder, TyExt,
 };
 
 use super::{
@@ -92,6 +92,7 @@ pub struct Evaluator<'a> {
 enum Address {
     Stack(usize),
     Heap(usize),
+    Invalid(usize),
 }
 
 use Address::*;
@@ -169,8 +170,10 @@ impl Address {
     fn from_usize(x: usize) -> Self {
         if x > usize::MAX / 2 {
             Stack(x - usize::MAX / 2)
+        } else if x > usize::MAX / 4 {
+            Heap(x - usize::MAX / 4)
         } else {
-            Heap(x)
+            Invalid(x)
         }
     }
 
@@ -181,7 +184,8 @@ impl Address {
     fn to_usize(&self) -> usize {
         let as_num = match self {
             Stack(x) => *x + usize::MAX / 2,
-            Heap(x) => *x,
+            Heap(x) => *x + usize::MAX / 4,
+            Invalid(x) => *x,
         };
         as_num
     }
@@ -190,6 +194,7 @@ impl Address {
         match self {
             Stack(x) => Stack(f(*x)),
             Heap(x) => Heap(f(*x)),
+            Invalid(x) => Invalid(f(*x)),
         }
     }
 
@@ -209,6 +214,7 @@ pub enum MirEvalError {
     UndefinedBehavior(&'static str),
     Panic(String),
     MirLowerError(FunctionId, MirLowerError),
+    MirLowerErrorForClosure(ClosureId, MirLowerError),
     TypeIsUnsized(Ty, &'static str),
     NotSupported(String),
     InvalidConst(Const),
@@ -236,6 +242,9 @@ impl std::fmt::Debug for MirEvalError {
             Self::ExecutionLimitExceeded => write!(f, "execution limit exceeded"),
             Self::StackOverflow => write!(f, "stack overflow"),
             Self::MirLowerError(arg0, arg1) => {
+                f.debug_tuple("MirLowerError").field(arg0).field(arg1).finish()
+            }
+            Self::MirLowerErrorForClosure(arg0, arg1) => {
                 f.debug_tuple("MirLowerError").field(arg0).field(arg1).finish()
             }
             Self::InvalidVTableId(arg0) => f.debug_tuple("InvalidVTableId").field(arg0).finish(),
@@ -355,16 +364,15 @@ impl Evaluator<'_> {
             self.ty_filler(&locals.body.locals[p.local].ty, locals.subst, locals.body.owner)?;
         let mut metadata = None; // locals are always sized
         for proj in &p.projection {
+            let prev_ty = ty.clone();
+            ty = proj.projected_ty(ty, self.db, |c, f| {
+                let (def, _) = self.db.lookup_intern_closure(c.into());
+                let infer = self.db.infer(def);
+                let (captures, _) = infer.closure_info(&c);
+                captures.get(f).expect("broken closure field").ty.clone()
+            });
             match proj {
                 ProjectionElem::Deref => {
-                    ty = match &ty.data(Interner).kind {
-                        TyKind::Raw(_, inner) | TyKind::Ref(_, _, inner) => inner.clone(),
-                        _ => {
-                            return Err(MirEvalError::TypeError(
-                                "Overloaded deref in MIR is disallowed",
-                            ))
-                        }
-                    };
                     metadata = if self.size_of(&ty, locals)?.is_none() {
                         Some(Interval { addr: addr.offset(self.ptr_size()), size: self.ptr_size() })
                     } else {
@@ -377,78 +385,41 @@ impl Evaluator<'_> {
                     let offset =
                         from_bytes!(usize, self.read_memory(locals.ptr[*op], self.ptr_size())?);
                     metadata = None; // Result of index is always sized
-                    match &ty.data(Interner).kind {
-                        TyKind::Ref(_, _, inner) => match &inner.data(Interner).kind {
-                            TyKind::Slice(inner) => {
-                                ty = inner.clone();
-                                let ty_size = self.size_of_sized(
-                                    &ty,
-                                    locals,
-                                    "slice inner type should be sized",
-                                )?;
-                                let value = self.read_memory(addr, self.ptr_size() * 2)?;
-                                addr = Address::from_bytes(&value[0..8])?.offset(ty_size * offset);
-                            }
-                            x => not_supported!("MIR index for ref type {x:?}"),
-                        },
-                        TyKind::Array(inner, _) | TyKind::Slice(inner) => {
-                            ty = inner.clone();
-                            let ty_size = self.size_of_sized(
-                                &ty,
-                                locals,
-                                "array inner type should be sized",
-                            )?;
-                            addr = addr.offset(ty_size * offset);
-                        }
-                        x => not_supported!("MIR index for type {x:?}"),
-                    }
+                    let ty_size =
+                        self.size_of_sized(&ty, locals, "array inner type should be sized")?;
+                    addr = addr.offset(ty_size * offset);
                 }
-                &ProjectionElem::TupleField(f) => match &ty.data(Interner).kind {
-                    TyKind::Tuple(_, subst) => {
-                        let layout = self.layout(&ty)?;
-                        ty = subst
-                            .as_slice(Interner)
-                            .get(f)
-                            .ok_or(MirEvalError::TypeError("not enough tuple fields"))?
-                            .assert_ty_ref(Interner)
-                            .clone();
-                        let offset = layout.fields.offset(f).bytes_usize();
-                        addr = addr.offset(offset);
-                        metadata = None; // tuple field is always sized
-                    }
-                    _ => return Err(MirEvalError::TypeError("Only tuple has tuple fields")),
-                },
-                ProjectionElem::Field(f) => match &ty.data(Interner).kind {
-                    TyKind::Adt(adt, subst) => {
-                        let layout = self.layout_adt(adt.0, subst.clone())?;
-                        let variant_layout = match &layout.variants {
-                            Variants::Single { .. } => &layout,
-                            Variants::Multiple { variants, .. } => {
-                                &variants[match f.parent {
-                                    hir_def::VariantId::EnumVariantId(x) => {
-                                        RustcEnumVariantIdx(x.local_id)
-                                    }
-                                    _ => {
-                                        return Err(MirEvalError::TypeError(
-                                            "Multivariant layout only happens for enums",
-                                        ))
-                                    }
-                                }]
-                            }
-                        };
-                        ty = self.db.field_types(f.parent)[f.local_id]
-                            .clone()
-                            .substitute(Interner, subst);
-                        let offset = variant_layout
-                            .fields
-                            .offset(u32::from(f.local_id.into_raw()) as usize)
-                            .bytes_usize();
-                        addr = addr.offset(offset);
-                        // FIXME: support structs with unsized fields
-                        metadata = None;
-                    }
-                    _ => return Err(MirEvalError::TypeError("Only adt has fields")),
-                },
+                &ProjectionElem::TupleOrClosureField(f) => {
+                    let layout = self.layout(&prev_ty)?;
+                    let offset = layout.fields.offset(f).bytes_usize();
+                    addr = addr.offset(offset);
+                    metadata = None; // tuple field is always sized
+                }
+                ProjectionElem::Field(f) => {
+                    let layout = self.layout(&prev_ty)?;
+                    let variant_layout = match &layout.variants {
+                        Variants::Single { .. } => &layout,
+                        Variants::Multiple { variants, .. } => {
+                            &variants[match f.parent {
+                                hir_def::VariantId::EnumVariantId(x) => {
+                                    RustcEnumVariantIdx(x.local_id)
+                                }
+                                _ => {
+                                    return Err(MirEvalError::TypeError(
+                                        "Multivariant layout only happens for enums",
+                                    ))
+                                }
+                            }]
+                        }
+                    };
+                    let offset = variant_layout
+                        .fields
+                        .offset(u32::from(f.local_id.into_raw()) as usize)
+                        .bytes_usize();
+                    addr = addr.offset(offset);
+                    // FIXME: support structs with unsized fields
+                    metadata = None;
+                }
                 ProjectionElem::ConstantIndex { .. } => {
                     not_supported!("constant index")
                 }
@@ -845,6 +816,15 @@ impl Evaluator<'_> {
                             values.iter().copied(),
                         )?)
                     }
+                    AggregateKind::Closure(ty) => {
+                        let layout = self.layout(&ty)?;
+                        Owned(self.make_by_layout(
+                            layout.size.bytes_usize(),
+                            &layout,
+                            None,
+                            values.iter().copied(),
+                        )?)
+                    }
                 }
             }
             Rvalue::Cast(kind, operand, target_ty) => match kind {
@@ -1065,6 +1045,9 @@ impl Evaluator<'_> {
         let (mem, pos) = match addr {
             Stack(x) => (&self.stack, x),
             Heap(x) => (&self.heap, x),
+            Invalid(_) => {
+                return Err(MirEvalError::UndefinedBehavior("read invalid memory address"))
+            }
         };
         mem.get(pos..pos + size).ok_or(MirEvalError::UndefinedBehavior("out of bound memory read"))
     }
@@ -1073,6 +1056,9 @@ impl Evaluator<'_> {
         let (mem, pos) = match addr {
             Stack(x) => (&mut self.stack, x),
             Heap(x) => (&mut self.heap, x),
+            Invalid(_) => {
+                return Err(MirEvalError::UndefinedBehavior("write invalid memory address"))
+            }
         };
         mem.get_mut(pos..pos + r.len())
             .ok_or(MirEvalError::UndefinedBehavior("out of bound memory write"))?
@@ -1394,6 +1380,25 @@ impl Evaluator<'_> {
         Ok(())
     }
 
+    fn exec_closure(
+        &mut self,
+        closure: ClosureId,
+        closure_data: Interval,
+        generic_args: &Substitution,
+        destination: Interval,
+        args: &[IntervalAndTy],
+    ) -> Result<()> {
+        let mir_body = self
+            .db
+            .mir_body_for_closure(closure)
+            .map_err(|x| MirEvalError::MirLowerErrorForClosure(closure, x))?;
+        let arg_bytes = iter::once(Ok(closure_data.get(self)?.to_owned()))
+            .chain(args.iter().map(|x| Ok(x.get(&self)?.to_owned())))
+            .collect::<Result<Vec<_>>>()?;
+        let bytes = self.interpret_mir(&mir_body, arg_bytes.into_iter(), generic_args.clone())?;
+        destination.write_from_bytes(self, &bytes)
+    }
+
     fn exec_fn_def(
         &mut self,
         def: FnDefId,
@@ -1545,6 +1550,9 @@ impl Evaluator<'_> {
             }
             TyKind::Function(_) => {
                 self.exec_fn_pointer(func_data, destination, &args[1..], locals)?;
+            }
+            TyKind::Closure(closure, subst) => {
+                self.exec_closure(*closure, func_data, subst, destination, &args[1..])?;
             }
             x => not_supported!("Call FnTrait methods with type {x:?}"),
         }

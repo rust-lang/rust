@@ -39,10 +39,10 @@ use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateId, CrateOrigin, Edition, FileId, ProcMacroKind};
 use either::Either;
 use hir_def::{
-    adt::VariantData,
     body::{BodyDiagnostic, SyntheticSyntax},
-    expr::{BindingAnnotation, BindingId, ExprOrPatId, LabelId, Pat},
+    data::adt::VariantData,
     generics::{LifetimeParamData, TypeOrConstParamData, TypeParamProvenance},
+    hir::{BindingAnnotation, BindingId, ExprOrPatId, LabelId, Pat},
     item_tree::ItemTreeNode,
     lang_item::{LangItem, LangItemTarget},
     layout::{Layout, LayoutError, ReprOptions},
@@ -88,9 +88,10 @@ pub use crate::{
         AnyDiagnostic, BreakOutsideOfLoop, ExpectedFunction, InactiveCode, IncoherentImpl,
         IncorrectCase, InvalidDeriveTarget, MacroError, MalformedDerive, MismatchedArgCount,
         MissingFields, MissingMatchArms, MissingUnsafe, NeedMut, NoSuchField, PrivateAssocItem,
-        PrivateField, ReplaceFilterMapNextWithFindMap, TypeMismatch, UnimplementedBuiltinMacro,
-        UnresolvedExternCrate, UnresolvedField, UnresolvedImport, UnresolvedMacroCall,
-        UnresolvedMethodCall, UnresolvedModule, UnresolvedProcMacro, UnusedMut,
+        PrivateField, ReplaceFilterMapNextWithFindMap, TypeMismatch, UndeclaredLabel,
+        UnimplementedBuiltinMacro, UnreachableLabel, UnresolvedExternCrate, UnresolvedField,
+        UnresolvedImport, UnresolvedMacroCall, UnresolvedMethodCall, UnresolvedModule,
+        UnresolvedProcMacro, UnusedMut,
     },
     has_source::HasSource,
     semantics::{PathResolution, Semantics, SemanticsScope, TypeInfo, VisibleTraits},
@@ -108,9 +109,8 @@ pub use crate::{
 pub use {
     cfg::{CfgAtom, CfgExpr, CfgOptions},
     hir_def::{
-        adt::StructKind,
-        attr::{Attrs, AttrsWithOwner, Documentation},
-        builtin_attr::AttributeTemplate,
+        attr::{builtin::AttributeTemplate, Attrs, AttrsWithOwner, Documentation},
+        data::adt::StructKind,
         find_path::PrefixKind,
         import_map,
         nameres::ModuleSource,
@@ -129,7 +129,7 @@ pub use {
         ExpandResult, HirFileId, InFile, MacroFile, Origin,
     },
     hir_ty::{
-        display::{HirDisplay, HirDisplayError, HirWrite},
+        display::{ClosureStyle, HirDisplay, HirDisplayError, HirWrite},
         mir::MirEvalError,
         PointerCast, Safety,
     },
@@ -1393,6 +1393,12 @@ impl DefWithBody {
                     }
                     .into(),
                 ),
+                BodyDiagnostic::UnreachableLabel { node, name } => {
+                    acc.push(UnreachableLabel { node: node.clone(), name: name.clone() }.into())
+                }
+                BodyDiagnostic::UndeclaredLabel { node, name } => {
+                    acc.push(UndeclaredLabel { node: node.clone(), name: name.clone() }.into())
+                }
             }
         }
 
@@ -1404,14 +1410,6 @@ impl DefWithBody {
                 &hir_ty::InferenceDiagnostic::NoSuchField { expr } => {
                     let field = source_map.field_syntax(expr);
                     acc.push(NoSuchField { field }.into())
-                }
-                &hir_ty::InferenceDiagnostic::BreakOutsideOfLoop {
-                    expr,
-                    is_break,
-                    bad_value_break,
-                } => {
-                    let expr = expr_syntax(expr);
-                    acc.push(BreakOutsideOfLoop { expr, is_break, bad_value_break }.into())
                 }
                 &hir_ty::InferenceDiagnostic::MismatchedArgCount { call_expr, expected, found } => {
                     acc.push(
@@ -1484,6 +1482,14 @@ impl DefWithBody {
                         .into(),
                     )
                 }
+                &hir_ty::InferenceDiagnostic::BreakOutsideOfLoop {
+                    expr,
+                    is_break,
+                    bad_value_break,
+                } => {
+                    let expr = expr_syntax(expr);
+                    acc.push(BreakOutsideOfLoop { expr, is_break, bad_value_break }.into())
+                }
             }
         }
         for (pat_or_expr, mismatch) in infer.type_mismatches() {
@@ -1524,35 +1530,44 @@ impl DefWithBody {
 
         let hir_body = db.body(self.into());
 
-        if let Ok(borrowck_result) = db.borrowck(self.into()) {
-            let mir_body = &borrowck_result.mir_body;
-            let mol = &borrowck_result.mutability_of_locals;
-            for (binding_id, _) in hir_body.bindings.iter() {
-                let need_mut = &mol[mir_body.binding_locals[binding_id]];
-                let local = Local { parent: self.into(), binding_id };
-                match (need_mut, local.is_mut(db)) {
-                    (mir::MutabilityReason::Mut { .. }, true)
-                    | (mir::MutabilityReason::Not, false) => (),
-                    (mir::MutabilityReason::Mut { spans }, false) => {
-                        for span in spans {
-                            let span: InFile<SyntaxNodePtr> = match span {
-                                mir::MirSpan::ExprId(e) => match source_map.expr_syntax(*e) {
-                                    Ok(s) => s.map(|x| x.into()),
-                                    Err(_) => continue,
-                                },
-                                mir::MirSpan::PatId(p) => match source_map.pat_syntax(*p) {
-                                    Ok(s) => s.map(|x| match x {
-                                        Either::Left(e) => e.into(),
-                                        Either::Right(e) => e.into(),
-                                    }),
-                                    Err(_) => continue,
-                                },
-                                mir::MirSpan::Unknown => continue,
-                            };
-                            acc.push(NeedMut { local, span }.into());
+        if let Ok(borrowck_results) = db.borrowck(self.into()) {
+            for borrowck_result in borrowck_results.iter() {
+                let mir_body = &borrowck_result.mir_body;
+                let mol = &borrowck_result.mutability_of_locals;
+                for (binding_id, _) in hir_body.bindings.iter() {
+                    let Some(&local) = mir_body.binding_locals.get(binding_id) else {
+                        continue;
+                    };
+                    let need_mut = &mol[local];
+                    let local = Local { parent: self.into(), binding_id };
+                    match (need_mut, local.is_mut(db)) {
+                        (mir::MutabilityReason::Mut { .. }, true)
+                        | (mir::MutabilityReason::Not, false) => (),
+                        (mir::MutabilityReason::Mut { spans }, false) => {
+                            for span in spans {
+                                let span: InFile<SyntaxNodePtr> = match span {
+                                    mir::MirSpan::ExprId(e) => match source_map.expr_syntax(*e) {
+                                        Ok(s) => s.map(|x| x.into()),
+                                        Err(_) => continue,
+                                    },
+                                    mir::MirSpan::PatId(p) => match source_map.pat_syntax(*p) {
+                                        Ok(s) => s.map(|x| match x {
+                                            Either::Left(e) => e.into(),
+                                            Either::Right(e) => e.into(),
+                                        }),
+                                        Err(_) => continue,
+                                    },
+                                    mir::MirSpan::Unknown => continue,
+                                };
+                                acc.push(NeedMut { local, span }.into());
+                            }
+                        }
+                        (mir::MutabilityReason::Not, true) => {
+                            if !infer.mutated_bindings_in_closure.contains(&binding_id) {
+                                acc.push(UnusedMut { local }.into())
+                            }
                         }
                     }
-                    (mir::MutabilityReason::Not, true) => acc.push(UnusedMut { local }.into()),
                 }
             }
         }
@@ -1838,7 +1853,7 @@ impl Param {
     }
 
     pub fn name(&self, db: &dyn HirDatabase) -> Option<Name> {
-        db.function_data(self.func.id).params[self.idx].0.clone()
+        Some(self.as_local(db)?.name(db))
     }
 
     pub fn as_local(&self, db: &dyn HirDatabase) -> Option<Local> {
@@ -1879,7 +1894,7 @@ impl SelfParam {
         func_data
             .params
             .first()
-            .map(|(_, param)| match &**param {
+            .map(|param| match &**param {
                 TypeRef::Reference(.., mutability) => match mutability {
                     hir_def::type_ref::Mutability::Shared => Access::Shared,
                     hir_def::type_ref::Mutability::Mut => Access::Exclusive,
@@ -2690,9 +2705,7 @@ impl BuiltinAttr {
     }
 
     fn builtin(name: &str) -> Option<Self> {
-        hir_def::builtin_attr::INERT_ATTRIBUTES
-            .iter()
-            .position(|tool| tool.name == name)
+        hir_def::attr::builtin::find_builtin_attr_idx(name)
             .map(|idx| BuiltinAttr { krate: None, idx: idx as u32 })
     }
 
@@ -2700,14 +2713,14 @@ impl BuiltinAttr {
         // FIXME: Return a `Name` here
         match self.krate {
             Some(krate) => db.crate_def_map(krate).registered_attrs()[self.idx as usize].clone(),
-            None => SmolStr::new(hir_def::builtin_attr::INERT_ATTRIBUTES[self.idx as usize].name),
+            None => SmolStr::new(hir_def::attr::builtin::INERT_ATTRIBUTES[self.idx as usize].name),
         }
     }
 
     pub fn template(&self, _: &dyn HirDatabase) -> Option<AttributeTemplate> {
         match self.krate {
             Some(_) => None,
-            None => Some(hir_def::builtin_attr::INERT_ATTRIBUTES[self.idx as usize].template),
+            None => Some(hir_def::attr::builtin::INERT_ATTRIBUTES[self.idx as usize].template),
         }
     }
 }
@@ -2730,7 +2743,7 @@ impl ToolModule {
     }
 
     fn builtin(name: &str) -> Option<Self> {
-        hir_def::builtin_attr::TOOL_MODULES
+        hir_def::attr::builtin::TOOL_MODULES
             .iter()
             .position(|&tool| tool == name)
             .map(|idx| ToolModule { krate: None, idx: idx as u32 })
@@ -2740,7 +2753,7 @@ impl ToolModule {
         // FIXME: Return a `Name` here
         match self.krate {
             Some(krate) => db.crate_def_map(krate).registered_tools()[self.idx as usize].clone(),
-            None => SmolStr::new(hir_def::builtin_attr::TOOL_MODULES[self.idx as usize]),
+            None => SmolStr::new(hir_def::attr::builtin::TOOL_MODULES[self.idx as usize]),
         }
     }
 }
@@ -3379,7 +3392,12 @@ impl Type {
     }
 
     pub fn as_callable(&self, db: &dyn HirDatabase) -> Option<Callable> {
+        let mut the_ty = &self.ty;
         let callee = match self.ty.kind(Interner) {
+            TyKind::Ref(_, _, ty) if ty.as_closure().is_some() => {
+                the_ty = ty;
+                Callee::Closure(ty.as_closure().unwrap())
+            }
             TyKind::Closure(id, _) => Callee::Closure(*id),
             TyKind::Function(_) => Callee::FnPtr,
             TyKind::FnDef(..) => Callee::Def(self.ty.callable_def(db)?),
@@ -3394,7 +3412,7 @@ impl Type {
             }
         };
 
-        let sig = self.ty.callable_sig(db)?;
+        let sig = the_ty.callable_sig(db)?;
         Some(Callable { ty: self.clone(), sig, callee, is_bound_method: false })
     }
 

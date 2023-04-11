@@ -7,8 +7,8 @@ use std::fmt::{self, Debug};
 use base_db::CrateId;
 use chalk_ir::{BoundVar, TyKind};
 use hir_def::{
-    adt::VariantData,
     body,
+    data::adt::VariantData,
     db::DefDatabase,
     find_path,
     generics::{TypeOrConstParamData, TypeParamProvenance},
@@ -23,6 +23,7 @@ use hir_expand::{hygiene::Hygiene, name::Name};
 use intern::{Internable, Interned};
 use itertools::Itertools;
 use smallvec::SmallVec;
+use stdx::never;
 
 use crate::{
     db::HirDatabase,
@@ -64,6 +65,7 @@ pub struct HirFormatter<'a> {
     curr_size: usize,
     pub(crate) max_size: Option<usize>,
     omit_verbose_types: bool,
+    closure_style: ClosureStyle,
     display_target: DisplayTarget,
 }
 
@@ -87,6 +89,7 @@ pub trait HirDisplay {
         max_size: Option<usize>,
         omit_verbose_types: bool,
         display_target: DisplayTarget,
+        closure_style: ClosureStyle,
     ) -> HirDisplayWrapper<'a, Self>
     where
         Self: Sized,
@@ -95,7 +98,14 @@ pub trait HirDisplay {
             !matches!(display_target, DisplayTarget::SourceCode { .. }),
             "HirDisplayWrapper cannot fail with DisplaySourceCodeError, use HirDisplay::hir_fmt directly instead"
         );
-        HirDisplayWrapper { db, t: self, max_size, omit_verbose_types, display_target }
+        HirDisplayWrapper {
+            db,
+            t: self,
+            max_size,
+            omit_verbose_types,
+            display_target,
+            closure_style,
+        }
     }
 
     /// Returns a `Display`able type that is human-readable.
@@ -109,6 +119,7 @@ pub trait HirDisplay {
             t: self,
             max_size: None,
             omit_verbose_types: false,
+            closure_style: ClosureStyle::ImplFn,
             display_target: DisplayTarget::Diagnostics,
         }
     }
@@ -128,6 +139,7 @@ pub trait HirDisplay {
             t: self,
             max_size,
             omit_verbose_types: true,
+            closure_style: ClosureStyle::ImplFn,
             display_target: DisplayTarget::Diagnostics,
         }
     }
@@ -147,6 +159,7 @@ pub trait HirDisplay {
             curr_size: 0,
             max_size: None,
             omit_verbose_types: false,
+            closure_style: ClosureStyle::ImplFn,
             display_target: DisplayTarget::SourceCode { module_id },
         }) {
             Ok(()) => {}
@@ -166,6 +179,7 @@ pub trait HirDisplay {
             t: self,
             max_size: None,
             omit_verbose_types: false,
+            closure_style: ClosureStyle::ImplFn,
             display_target: DisplayTarget::Test,
         }
     }
@@ -253,7 +267,6 @@ impl DisplayTarget {
 pub enum DisplaySourceCodeError {
     PathNotFound,
     UnknownType,
-    Closure,
     Generator,
 }
 
@@ -274,7 +287,21 @@ pub struct HirDisplayWrapper<'a, T> {
     t: &'a T,
     max_size: Option<usize>,
     omit_verbose_types: bool,
+    closure_style: ClosureStyle,
     display_target: DisplayTarget,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum ClosureStyle {
+    /// `impl FnX(i32, i32) -> i32`, where `FnX` is the most special trait between `Fn`, `FnMut`, `FnOnce` that the
+    /// closure implements. This is the default.
+    ImplFn,
+    /// `|i32, i32| -> i32`
+    RANotation,
+    /// `{closure#14825}`, useful for some diagnostics (like type mismatch) and internal usage.
+    ClosureWithId,
+    /// `…`, which is the `TYPE_HINT_TRUNCATION`
+    Hide,
 }
 
 impl<T: HirDisplay> HirDisplayWrapper<'_, T> {
@@ -287,7 +314,13 @@ impl<T: HirDisplay> HirDisplayWrapper<'_, T> {
             max_size: self.max_size,
             omit_verbose_types: self.omit_verbose_types,
             display_target: self.display_target,
+            closure_style: self.closure_style,
         })
+    }
+
+    pub fn with_closure_style(mut self, c: ClosureStyle) -> Self {
+        self.closure_style = c;
+        self
     }
 }
 
@@ -919,26 +952,42 @@ impl HirDisplay for Ty {
                     }
                 }
             }
-            TyKind::Closure(.., substs) => {
-                if f.display_target.is_source_code() {
-                    return Err(HirDisplayError::DisplaySourceCodeError(
-                        DisplaySourceCodeError::Closure,
-                    ));
+            TyKind::Closure(id, substs) => {
+                if f.display_target.is_source_code() && f.closure_style != ClosureStyle::ImplFn {
+                    never!("Only `impl Fn` is valid for displaying closures in source code");
+                }
+                match f.closure_style {
+                    ClosureStyle::Hide => return write!(f, "{TYPE_HINT_TRUNCATION}"),
+                    ClosureStyle::ClosureWithId => {
+                        return write!(f, "{{closure#{:?}}}", id.0.as_u32())
+                    }
+                    _ => (),
                 }
                 let sig = substs.at(Interner, 0).assert_ty_ref(Interner).callable_sig(db);
                 if let Some(sig) = sig {
+                    let (def, _) = db.lookup_intern_closure((*id).into());
+                    let infer = db.infer(def);
+                    let (_, kind) = infer.closure_info(id);
+                    match f.closure_style {
+                        ClosureStyle::ImplFn => write!(f, "impl {kind:?}(")?,
+                        ClosureStyle::RANotation => write!(f, "|")?,
+                        _ => unreachable!(),
+                    }
                     if sig.params().is_empty() {
-                        write!(f, "||")?;
                     } else if f.should_truncate() {
-                        write!(f, "|{TYPE_HINT_TRUNCATION}|")?;
+                        write!(f, "{TYPE_HINT_TRUNCATION}")?;
                     } else {
-                        write!(f, "|")?;
                         f.write_joined(sig.params(), ", ")?;
-                        write!(f, "|")?;
                     };
-
-                    write!(f, " -> ")?;
-                    sig.ret().hir_fmt(f)?;
+                    match f.closure_style {
+                        ClosureStyle::ImplFn => write!(f, ")")?,
+                        ClosureStyle::RANotation => write!(f, "|")?,
+                        _ => unreachable!(),
+                    }
+                    if f.closure_style == ClosureStyle::RANotation || !sig.ret().is_unit() {
+                        write!(f, " -> ")?;
+                        sig.ret().hir_fmt(f)?;
+                    }
                 } else {
                     write!(f, "{{closure}}")?;
                 }

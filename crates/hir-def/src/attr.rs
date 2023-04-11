@@ -1,5 +1,7 @@
 //! A higher level attributes based on TokenTree, with also some shortcuts.
 
+pub mod builtin;
+
 #[cfg(test)]
 mod tests;
 
@@ -266,6 +268,10 @@ impl Attrs {
 
     pub fn is_proc_macro_derive(&self) -> bool {
         self.by_key("proc_macro_derive").exists()
+    }
+
+    pub fn is_unstable(&self) -> bool {
+        self.by_key("unstable").exists()
     }
 }
 

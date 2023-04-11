@@ -17,7 +17,7 @@ use hir_def::{
         scope::{ExprScopes, ScopeId},
         Body, BodySourceMap,
     },
-    expr::{ExprId, Pat, PatId},
+    hir::{ExprId, Pat, PatId},
     lang_item::LangItem,
     macro_id_to_def_id,
     path::{ModPath, Path, PathKind},
@@ -463,7 +463,7 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         macro_call: InFile<&ast::MacroCall>,
     ) -> Option<Macro> {
-        let ctx = body::LowerCtx::new(db.upcast(), macro_call.file_id);
+        let ctx = body::LowerCtx::with_file_id(db.upcast(), macro_call.file_id);
         let path = macro_call.value.path().and_then(|ast| Path::from_src(ast, &ctx))?;
         self.resolver.resolve_path_as_macro(db.upcast(), path.mod_path()?).map(|it| it.into())
     }
