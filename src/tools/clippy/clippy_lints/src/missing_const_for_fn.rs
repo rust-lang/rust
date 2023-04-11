@@ -41,6 +41,7 @@ declare_clippy_lint! {
     /// can't be const as it calls a non-const function. Making `a` const and running Clippy again,
     /// will suggest to make `b` const, too.
     ///
+    /// If you are marking a public function with `const`, removing it again will break API compatibility.
     /// ### Example
     /// ```rust
     /// # struct Foo {

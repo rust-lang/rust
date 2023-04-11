@@ -1,6 +1,6 @@
 // run-rustfix
 
-#![allow(unused)]
+#![allow(unused, clippy::manual_async_fn)]
 #![warn(clippy::redundant_async_block)]
 
 use std::future::Future;
@@ -16,40 +16,16 @@ async fn func2() -> String {
     x.await
 }
 
-macro_rules! await_in_macro {
-    ($e:expr) => {
-        std::convert::identity($e).await
-    };
-}
-
-async fn func3(n: usize) -> usize {
-    // Do not lint (suggestion would be `std::convert::identity(func1(n))`
-    // which copies code from inside the macro)
-    async move { await_in_macro!(func1(n)) }.await
-}
-
-// This macro should never be linted as `$e` might contain `.await`
-macro_rules! async_await_parameter_in_macro {
-    ($e:expr) => {
-        async { $e.await }
-    };
-}
-
-// MISSED OPPORTUNITY: this macro could be linted as the `async` block does not
-// contain code coming from the parameters
-macro_rules! async_await_in_macro {
-    ($f:expr) => {
-        ($f)(async { func2().await })
-    };
-}
-
 fn main() {
     let fut1 = async { 17 };
+    // Lint
     let fut2 = fut1;
 
     let fut1 = async { 25 };
+    // Lint
     let fut2 = fut1;
 
+    // Lint
     let fut = async { 42 };
 
     // Do not lint: not a single expression
@@ -60,15 +36,12 @@ fn main() {
 
     // Do not lint: expression contains `.await`
     let fut = async { func1(func2().await.len()).await };
-
-    let fut = async_await_parameter_in_macro!(func2());
-    let fut = async_await_in_macro!(std::convert::identity);
 }
 
 #[allow(clippy::let_and_return)]
 fn capture_local() -> impl Future<Output = i32> {
-    // Lint
     let fut = async { 17 };
+    // Lint
     fut
 }
 
@@ -80,9 +53,37 @@ fn capture_local_closure(s: &str) -> impl Future<Output = &str> {
 
 #[allow(clippy::let_and_return)]
 fn capture_arg(s: &str) -> impl Future<Output = &str> {
-    // Lint
     let fut = async move { s };
+    // Lint
     fut
+}
+
+fn capture_future_arg<T>(f: impl Future<Output = T>) -> impl Future<Output = T> {
+    // Lint
+    f
+}
+
+fn capture_func_result<FN, F, T>(f: FN) -> impl Future<Output = T>
+where
+    F: Future<Output = T>,
+    FN: FnOnce() -> F,
+{
+    // Do not lint, as f() would be evaluated prematurely
+    async { f().await }
+}
+
+fn double_future(f: impl Future<Output = impl Future<Output = u32>>) -> impl Future<Output = u32> {
+    // Do not lint, we will get a `.await` outside a `.async`
+    async { f.await.await }
+}
+
+fn await_in_async<F, R>(f: F) -> impl Future<Output = u32>
+where
+    F: FnOnce() -> R,
+    R: Future<Output = u32>,
+{
+    // Lint
+    async { f().await + 1 }
 }
 
 #[derive(Debug, Clone)]
@@ -108,4 +109,85 @@ fn capture() {
     let val = "Hello World".to_owned();
     // Do not lint: `val` would not live long enough
     spawn(async { work(&{ val }).await });
+}
+
+fn await_from_macro() -> impl Future<Output = u32> {
+    macro_rules! mac {
+        ($e:expr) => {
+            $e.await
+        };
+    }
+    // Do not lint: the macro may change in the future
+    // or return different things depending on its argument
+    async { mac!(async { 42 }) }
+}
+
+fn async_expr_from_macro() -> impl Future<Output = u32> {
+    macro_rules! mac {
+        () => {
+            async { 42 }
+        };
+    }
+    // Do not lint: the macro may change in the future
+    async { mac!().await }
+}
+
+fn async_expr_from_macro_deep() -> impl Future<Output = u32> {
+    macro_rules! mac {
+        () => {
+            async { 42 }
+        };
+    }
+    // Do not lint: the macro may change in the future
+    async { ({ mac!() }).await }
+}
+
+fn all_from_macro() -> impl Future<Output = u32> {
+    macro_rules! mac {
+        () => {
+            // Lint
+            async { 42 }
+        };
+    }
+    mac!()
+}
+
+fn parts_from_macro() -> impl Future<Output = u32> {
+    macro_rules! mac {
+        ($e: expr) => {
+            // Do not lint: `$e` might not always be side-effect free
+            async { $e.await }
+        };
+    }
+    mac!(async { 42 })
+}
+
+fn safe_parts_from_macro() -> impl Future<Output = u32> {
+    macro_rules! mac {
+        ($e: expr) => {
+            // Lint
+            async { $e }
+        };
+    }
+    mac!(42)
+}
+
+fn parts_from_macro_deep() -> impl Future<Output = u32> {
+    macro_rules! mac {
+        ($e: expr) => {
+            // Do not lint: `$e` might not always be side-effect free
+            async { ($e,).0.await }
+        };
+    }
+    let f = std::future::ready(42);
+    mac!(f)
+}
+
+fn await_from_macro_deep() -> impl Future<Output = u32> {
+    macro_rules! mac {
+        ($e:expr) => {{ $e }.await};
+    }
+    // Do not lint: the macro may change in the future
+    // or return different things depending on its argument
+    async { mac!(async { 42 }) }
 }

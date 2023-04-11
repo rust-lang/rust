@@ -35,7 +35,7 @@ relicensing are archived on GitHub. We also have saved Wayback Machine copies of
 
 The usernames of commenters on these issues can be found in relicense_comments.txt
 
-There are a couple people in relicense_comments.txt who are not found in contributors.txt:
+There are a few people in relicense_comments.txt who are not found in contributors.txt:
 
 - @EpocSquadron has [made minor text contributions to the
   README](https://github.com/rust-lang/rust-clippy/commits?author=EpocSquadron) which have since been overwritten, and
@@ -55,7 +55,7 @@ There are a couple people in relicense_comments.txt who are not found in contrib
   we rewrote (see below)
 
 
-Two of these contributors had nonminor contributions (#2184, #427) requiring a rewrite, carried out in #3251
+Two of these contributors had non-minor contributions (#2184, #427) requiring a rewrite, carried out in #3251
 ([archive](http://web.archive.org/web/20181005192411/https://github.com/rust-lang-nursery/rust-clippy/pull/3251),
 [screenshot](https://user-images.githubusercontent.com/1617736/46573515-5cb69580-c94b-11e8-86e5-b456452121b2.png))
 

@@ -180,6 +180,8 @@ jobs:
 
     # Run
     - name: Build Integration Test
+      env:
+        CARGO_PROFILE_DEV_SPLIT_DEBUGINFO: off
       run: cargo test --test integration --features integration --no-run
 
     # Upload

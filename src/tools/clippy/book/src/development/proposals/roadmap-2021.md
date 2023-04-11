@@ -52,8 +52,8 @@ In the following, plans to improve the usability are covered.
 
 #### No Output After `cargo check`
 
-Currently when `cargo clippy` is run after `cargo check`, it does not produce
-any output. This is especially problematic since `rust-analyzer` is on the rise
+Currently, when `cargo clippy` is run after `cargo check`, it does not produce
+any output. This is especially problematic since `rust-analyzer` is on the rise,
 and it uses `cargo check` for checking code. A fix is already implemented, but
 it still has to be pushed over the finish line. This also includes the
 stabilization of the `cargo clippy --fix` command or the support of multi-span
@@ -221,7 +221,7 @@ regarding the user facing issues.
 
 Rust's roadmap process was established by [RFC 1728] in 2016. Since then every
 year a roadmap was published, that defined the bigger plans for the coming
-years. This years roadmap can be found [here][Rust Roadmap 2021].
+years. This year roadmap can be found [here][Rust Roadmap 2021].
 
 [RFC 1728]: https://rust-lang.github.io/rfcs/1728-north-star.html
 

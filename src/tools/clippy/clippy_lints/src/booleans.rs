@@ -7,7 +7,7 @@ use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
 use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, UnOp};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, Level};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Span;
@@ -430,23 +430,25 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                 }
             }
             let nonminimal_bool_lint = |suggestions: Vec<_>| {
-                span_lint_hir_and_then(
-                    self.cx,
-                    NONMINIMAL_BOOL,
-                    e.hir_id,
-                    e.span,
-                    "this boolean expression can be simplified",
-                    |diag| {
-                        diag.span_suggestions(
-                            e.span,
-                            "try",
-                            suggestions.into_iter(),
-                            // nonminimal_bool can produce minimal but
-                            // not human readable expressions (#3141)
-                            Applicability::Unspecified,
-                        );
-                    },
-                );
+                if self.cx.tcx.lint_level_at_node(NONMINIMAL_BOOL, e.hir_id).0 != Level::Allow {
+                    span_lint_hir_and_then(
+                        self.cx,
+                        NONMINIMAL_BOOL,
+                        e.hir_id,
+                        e.span,
+                        "this boolean expression can be simplified",
+                        |diag| {
+                            diag.span_suggestions(
+                                e.span,
+                                "try",
+                                suggestions.into_iter(),
+                                // nonminimal_bool can produce minimal but
+                                // not human readable expressions (#3141)
+                                Applicability::Unspecified,
+                            );
+                        },
+                    );
+                }
             };
             if improvements.is_empty() {
                 let mut visitor = NotSimplificationVisitor { cx: self.cx };
@@ -498,6 +500,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NotSimplificationVisitor<'a, 'tcx> {
         if let ExprKind::Unary(UnOp::Not, inner) = &expr.kind &&
             !inner.span.from_expansion() &&
             let Some(suggestion) = simplify_not(self.cx, inner)
+			&& self.cx.tcx.lint_level_at_node(NONMINIMAL_BOOL, expr.hir_id).0 != Level::Allow
         {
             span_lint_and_sugg(
                 self.cx,

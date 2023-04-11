@@ -11,7 +11,7 @@ Lints are divided into categories, each with a default [lint level](https://doc.
 You can choose how much Clippy is supposed to ~~annoy~~ help you by changing the lint level by category.
 
 | Category              | Description                                                                         | Default level |
-| --------------------- | ----------------------------------------------------------------------------------- | ------------- |
+|-----------------------|-------------------------------------------------------------------------------------|---------------|
 | `clippy::all`         | all lints that are on by default (correctness, suspicious, style, complexity, perf) | **warn/deny** |
 | `clippy::correctness` | code that is outright wrong or useless                                              | **deny**      |
 | `clippy::suspicious`  | code that is most likely wrong or useless                                           | **warn**      |
@@ -130,7 +130,7 @@ for example.
 
 You can add Clippy to Travis CI in the same way you use it locally:
 
-```yml
+```yaml
 language: rust
 rust:
   - stable
@@ -253,7 +253,7 @@ rust-version = "1.30"
 
 The MSRV can also be specified as an attribute, like below.
 
-```rust
+```rust,ignore
 #![feature(custom_inner_attributes)]
 #![clippy::msrv = "1.30.0"]
 
