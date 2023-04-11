@@ -315,7 +315,7 @@ fn test_sigrt() {
     assert!(max <= 64);
 
     // "POSIX.1-2001 requires that an implementation support at least
-    // _POSIX_RTSIG_MAX (8) real-time signals.""
+    // _POSIX_RTSIG_MAX (8) real-time signals."
     assert!(min < max);
     assert!(max - min >= 8)
 }
