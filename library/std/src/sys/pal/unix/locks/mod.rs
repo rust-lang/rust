@@ -22,10 +22,10 @@ cfg_if::cfg_if! {
         pub(crate) use futex_condvar::Condvar;
     } else {
         mod pthread_mutex;
-        mod pthread_rwlock;
         mod pthread_condvar;
+        mod queue_rwlock;
         pub(crate) use pthread_mutex::Mutex;
-        pub(crate) use pthread_rwlock::RwLock;
+        pub(crate) use queue_rwlock::RwLock;
         pub(crate) use pthread_condvar::Condvar;
     }
 }

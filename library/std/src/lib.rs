@@ -339,12 +339,14 @@
 #![feature(portable_simd)]
 #![feature(prelude_2024)]
 #![feature(ptr_as_uninit)]
+#![feature(ptr_mask)]
 #![feature(slice_internals)]
 #![feature(slice_ptr_get)]
 #![feature(slice_range)]
 #![feature(std_internals)]
 #![feature(str_internals)]
 #![feature(strict_provenance)]
+#![feature(strict_provenance_atomic_ptr)]
 // tidy-alphabetical-end
 //
 // Library features (alloc):
