@@ -267,10 +267,10 @@ fn import_on_the_fly(
             .into_iter()
             .filter(ns_filter)
             .filter(|import| {
-                let item = &import.item_to_import;
-                !ctx.is_item_hidden(item)
-                    && !ctx.is_item_hidden(item)
-                    && ctx.check_stability(item.attrs(ctx.db).as_deref())
+                let original_item = &import.original_item;
+                !ctx.is_item_hidden(&import.item_to_import)
+                    && !ctx.is_item_hidden(original_item)
+                    && ctx.check_stability(original_item.attrs(ctx.db).as_deref())
             })
             .sorted_by_key(|located_import| {
                 compute_fuzzy_completion_order_key(
@@ -317,10 +317,10 @@ fn import_on_the_fly_pat_(
             .into_iter()
             .filter(ns_filter)
             .filter(|import| {
-                let item = &import.item_to_import;
-                !ctx.is_item_hidden(item)
-                    && !ctx.is_item_hidden(item)
-                    && ctx.check_stability(item.attrs(ctx.db).as_deref())
+                let original_item = &import.original_item;
+                !ctx.is_item_hidden(&import.item_to_import)
+                    && !ctx.is_item_hidden(original_item)
+                    && ctx.check_stability(original_item.attrs(ctx.db).as_deref())
             })
             .sorted_by_key(|located_import| {
                 compute_fuzzy_completion_order_key(
