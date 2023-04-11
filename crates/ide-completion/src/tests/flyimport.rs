@@ -1108,6 +1108,41 @@ fn function() {
 }
 
 #[test]
+fn flyimport_pattern_no_unstable_item_on_stable() {
+    check(
+        r#"
+//- /main.rs crate:main deps:std
+fn function() {
+    let foo$0
+}
+//- /std.rs crate:std
+#[unstable]
+pub struct FooStruct {}
+"#,
+        expect![""],
+    );
+}
+
+#[test]
+fn flyimport_pattern_unstable_item_on_nightly() {
+    check(
+        r#"
+//- toolchain:nightly
+//- /main.rs crate:main deps:std
+fn function() {
+    let foo$0
+}
+//- /std.rs crate:std
+#[unstable]
+pub struct FooStruct {}
+"#,
+        expect![[r#"
+            st FooStruct (use std::FooStruct)
+        "#]],
+    );
+}
+
+#[test]
 fn flyimport_item_name() {
     check(
         r#"

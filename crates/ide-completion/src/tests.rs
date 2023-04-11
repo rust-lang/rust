@@ -23,6 +23,7 @@ mod type_pos;
 mod use_tree;
 mod visibility;
 
+use expect_test::Expect;
 use hir::PrefixKind;
 use ide_db::{
     base_db::{fixture::ChangeFixture, FileLoader, FilePosition},
@@ -213,6 +214,11 @@ pub(crate) fn check_edit_with_config(
 
     combined_edit.apply(&mut actual);
     assert_eq_text!(&ra_fixture_after, &actual)
+}
+
+fn check_empty(ra_fixture: &str, expect: Expect) {
+    let actual = completion_list(ra_fixture);
+    expect.assert_eq(&actual);
 }
 
 pub(crate) fn get_all_items(
