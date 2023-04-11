@@ -24,32 +24,45 @@ mod drop;
 pub use copy::CopyTaggedPtr;
 pub use drop::TaggedPtr;
 
-/// This describes the pointer type encapsulated by TaggedPtr.
+/// This describes the pointer type encapsulated by [`TaggedPtr`] and
+/// [`CopyTaggedPtr`].
 ///
 /// # Safety
 ///
 /// The usize returned from `into_usize` must be a valid, dereferenceable,
-/// pointer to `<Self as Deref>::Target`. Note that pointers to `Pointee` must
-/// be thin, even though `Pointee` may not be sized.
+/// pointer to [`<Self as Deref>::Target`]. Note that pointers to
+/// [`Self::Target`] must be thin, even though [`Self::Target`] may not be
+/// `Sized`.
 ///
 /// Note that the returned pointer from `into_usize` should be castable to `&mut
-/// <Self as Deref>::Target` if `Pointer: DerefMut`.
+/// <Self as Deref>::Target` if `Self: DerefMut`.
 ///
 /// The BITS constant must be correct. At least `BITS` bits, least-significant,
 /// must be zero on all returned pointers from `into_usize`.
 ///
-/// For example, if the alignment of `Pointee` is 2, then `BITS` should be 1.
+/// For example, if the alignment of [`Self::Target`] is 2, then `BITS` should be 1.
+///
+/// [`<Self as Deref>::Target`]: Deref::Target
+/// [`Self::Target`]: Deref::Target
 pub unsafe trait Pointer: Deref {
-    /// Most likely the value you want to use here is the following, unless
-    /// your Pointee type is unsized (e.g., `ty::List<T>` in rustc) in which
-    /// case you'll need to manually figure out what the right type to pass to
-    /// align_of is.
+    /// Number of unused (always zero) **least significant bits** in this
+    /// pointer, usually related to the pointees alignment.
     ///
-    /// ```ignore UNSOLVED (what to do about the Self)
+    /// Most likely the value you want to use here is the following, unless
+    /// your [`Self::Target`] type is unsized (e.g., `ty::List<T>` in rustc)
+    /// or your pointer is over/under aligned, in which case you'll need to
+    /// manually figure out what the right type to pass to [`bits_for`] is, or
+    /// what the value to set here.
+    ///
+    /// ```rust
     /// # use std::ops::Deref;
-    /// std::mem::align_of::<<Self as Deref>::Target>().trailing_zeros() as usize;
+    /// # type Self = &'static u64;
+    /// bits_for::<Self::Target>()
     /// ```
+    ///
+    /// [`Self::Target`]: Deref::Target
     const BITS: usize;
+
     fn into_usize(self) -> usize;
 
     /// # Safety
@@ -90,7 +103,7 @@ pub unsafe trait Tag: Copy {
 }
 
 unsafe impl<T> Pointer for Box<T> {
-    const BITS: usize = std::mem::align_of::<T>().trailing_zeros() as usize;
+    const BITS: usize = bits_for::<Self::Target>();
     #[inline]
     fn into_usize(self) -> usize {
         Box::into_raw(self) as usize
@@ -106,7 +119,7 @@ unsafe impl<T> Pointer for Box<T> {
 }
 
 unsafe impl<T> Pointer for Rc<T> {
-    const BITS: usize = std::mem::align_of::<T>().trailing_zeros() as usize;
+    const BITS: usize = bits_for::<Self::Target>();
     #[inline]
     fn into_usize(self) -> usize {
         Rc::into_raw(self) as usize
@@ -122,7 +135,7 @@ unsafe impl<T> Pointer for Rc<T> {
 }
 
 unsafe impl<T> Pointer for Arc<T> {
-    const BITS: usize = std::mem::align_of::<T>().trailing_zeros() as usize;
+    const BITS: usize = bits_for::<Self::Target>();
     #[inline]
     fn into_usize(self) -> usize {
         Arc::into_raw(self) as usize
@@ -138,7 +151,7 @@ unsafe impl<T> Pointer for Arc<T> {
 }
 
 unsafe impl<'a, T: 'a> Pointer for &'a T {
-    const BITS: usize = std::mem::align_of::<T>().trailing_zeros() as usize;
+    const BITS: usize = bits_for::<Self::Target>();
     #[inline]
     fn into_usize(self) -> usize {
         self as *const T as usize
@@ -153,7 +166,7 @@ unsafe impl<'a, T: 'a> Pointer for &'a T {
 }
 
 unsafe impl<'a, T: 'a> Pointer for &'a mut T {
-    const BITS: usize = std::mem::align_of::<T>().trailing_zeros() as usize;
+    const BITS: usize = bits_for::<Self::Target>();
     #[inline]
     fn into_usize(self) -> usize {
         self as *mut T as usize
@@ -165,4 +178,16 @@ unsafe impl<'a, T: 'a> Pointer for &'a mut T {
     unsafe fn with_ref<R, F: FnOnce(&Self) -> R>(ptr: usize, f: F) -> R {
         f(&*(&ptr as *const usize as *const Self))
     }
+}
+
+/// Returns the number of bits available for use for tags in a pointer to `T`
+/// (this is based on `T`'s alignment).
+pub const fn bits_for<T>() -> usize {
+    let bits = std::mem::align_of::<T>().trailing_zeros();
+
+    // This is a replacement for `.try_into().unwrap()` unavailable in `const`
+    // (it's fine to make an assert here, since this is only called in compile time)
+    assert!((bits as u128) < usize::MAX as u128);
+
+    bits as usize
 }

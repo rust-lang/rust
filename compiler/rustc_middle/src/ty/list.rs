@@ -1,4 +1,5 @@
 use crate::arena::Arena;
+use rustc_data_structures::tagged_ptr::bits_for;
 use rustc_serialize::{Encodable, Encoder};
 use std::alloc::Layout;
 use std::cmp::Ordering;
@@ -199,7 +200,7 @@ impl<'a, T: Copy> IntoIterator for &'a List<T> {
 unsafe impl<T: Sync> Sync for List<T> {}
 
 unsafe impl<'a, T: 'a> rustc_data_structures::tagged_ptr::Pointer for &'a List<T> {
-    const BITS: usize = std::mem::align_of::<usize>().trailing_zeros() as usize;
+    const BITS: usize = bits_for::<usize>();
 
     #[inline]
     fn into_usize(self) -> usize {
