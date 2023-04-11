@@ -64,7 +64,7 @@ pub(crate) fn parse_long_mantissa<F: RawFloat>(s: &[u8]) -> BiasedFp {
                 _ => 1,
             }
         } else {
-            get_shift((-d.decimal_point) as _)
+            get_shift(-d.decimal_point as _)
         };
         d.left_shift(shift);
         if d.decimal_point > Decimal::DECIMAL_POINT_RANGE {

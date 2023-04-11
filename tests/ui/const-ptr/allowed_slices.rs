@@ -20,13 +20,13 @@ pub static S2: &[u32] = unsafe { from_raw_parts(&D0, 1) };
 pub static S3: &[MaybeUninit<&u32>] = unsafe { from_raw_parts(&D1, 1) };
 
 // Reinterpreting data is fine, as long as layouts match
-pub static S4: &[u8] = unsafe { from_raw_parts((&D0) as *const _ as _, 3) };
+pub static S4: &[u8] = unsafe { from_raw_parts(&D0 as *const _ as _, 3) };
 // This is only valid because D1 has uninitialized bytes, if it was an initialized pointer,
 // that would reinterpret pointers as integers which is UB in CTFE.
-pub static S5: &[MaybeUninit<u8>] = unsafe { from_raw_parts((&D1) as *const _ as _, 2) };
+pub static S5: &[MaybeUninit<u8>] = unsafe { from_raw_parts(&D1 as *const _ as _, 2) };
 // Even though u32 and [bool; 4] have different layouts, D0 has a value that
 // is valid as [bool; 4], so this is not UB (it's basically a transmute)
-pub static S6: &[bool] = unsafe { from_raw_parts((&D0) as *const _ as _, 4) };
+pub static S6: &[bool] = unsafe { from_raw_parts(&D0 as *const _ as _, 4) };
 
 // Structs are considered single allocated objects,
 // as long as you don't reinterpret padding as initialized

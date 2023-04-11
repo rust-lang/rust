@@ -63,7 +63,7 @@ impl Number {
                 // normal fast path
                 let value = F::from_u64(self.mantissa);
                 if self.exponent < 0 {
-                    value / F::pow10_fast_path((-self.exponent) as _)
+                    value / F::pow10_fast_path(-self.exponent as _)
                 } else {
                     value * F::pow10_fast_path(self.exponent as _)
                 }

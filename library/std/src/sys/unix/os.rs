@@ -73,7 +73,7 @@ extern "C" {
 /// Returns the platform-specific value of errno
 #[cfg(not(any(target_os = "dragonfly", target_os = "vxworks")))]
 pub fn errno() -> i32 {
-    unsafe { (*errno_location()) as i32 }
+    unsafe { *errno_location() as i32 }
 }
 
 /// Sets the platform-specific value of errno

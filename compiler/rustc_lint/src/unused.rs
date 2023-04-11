@@ -572,6 +572,7 @@ enum UnusedDelimsCtx {
     AnonConst,
     MatchArmExpr,
     IndexExpr,
+    CastExpr,
 }
 
 impl From<UnusedDelimsCtx> for &'static str {
@@ -592,8 +593,16 @@ impl From<UnusedDelimsCtx> for &'static str {
             UnusedDelimsCtx::ArrayLenExpr | UnusedDelimsCtx::AnonConst => "const expression",
             UnusedDelimsCtx::MatchArmExpr => "match arm expression",
             UnusedDelimsCtx::IndexExpr => "index expression",
+            UnusedDelimsCtx::CastExpr => "cast expression",
         }
     }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+enum UnusedDelimCtxFollowedTokenKind {
+    Block,
+    Else,
+    Cast,
 }
 
 /// Used by both `UnusedParens` and `UnusedBraces` to prevent code duplication.
@@ -629,13 +638,32 @@ trait UnusedDelimLint {
 
     fn is_expr_delims_necessary(
         inner: &ast::Expr,
-        followed_by_block: bool,
-        followed_by_else: bool,
+        followed_token: Option<UnusedDelimCtxFollowedTokenKind>,
     ) -> bool {
+        let followed_by_block =
+            matches!(followed_token, Some(UnusedDelimCtxFollowedTokenKind::Block));
+        let followed_by_else =
+            matches!(followed_token, Some(UnusedDelimCtxFollowedTokenKind::Else));
+        let followed_by_cast =
+            matches!(followed_token, Some(UnusedDelimCtxFollowedTokenKind::Cast));
         if followed_by_else {
             match inner.kind {
                 ast::ExprKind::Binary(op, ..) if op.node.lazy() => return true,
                 _ if classify::expr_trailing_brace(inner).is_some() => return true,
+                _ => {}
+            }
+        }
+
+        if followed_by_cast {
+            match inner.kind {
+                // `as` has higher precedence than any binary operator
+                ast::ExprKind::Binary(..)
+                // #88519
+                | ast::ExprKind::Block(..)
+                | ast::ExprKind::Match(..)
+                | ast::ExprKind::If(..)
+                // #51185
+                | ast::ExprKind::Closure(..) => return true,
                 _ => {}
             }
         }
@@ -964,9 +992,18 @@ impl UnusedDelimLint for UnusedParens {
     ) {
         match value.kind {
             ast::ExprKind::Paren(ref inner) => {
-                let followed_by_else = ctx == UnusedDelimsCtx::AssignedValueLetElse;
-                if !Self::is_expr_delims_necessary(inner, followed_by_block, followed_by_else)
-                    && value.attrs.is_empty()
+                if !Self::is_expr_delims_necessary(
+                    inner,
+                    if followed_by_block {
+                        Some(UnusedDelimCtxFollowedTokenKind::Block)
+                    } else if ctx == UnusedDelimsCtx::AssignedValueLetElse {
+                        Some(UnusedDelimCtxFollowedTokenKind::Else)
+                    } else if ctx == UnusedDelimsCtx::CastExpr {
+                        Some(UnusedDelimCtxFollowedTokenKind::Cast)
+                    } else {
+                        None
+                    },
+                ) && value.attrs.is_empty()
                     && !value.span.from_expansion()
                     && (ctx != UnusedDelimsCtx::LetScrutineeExpr
                         || !matches!(inner.kind, ast::ExprKind::Binary(
@@ -989,6 +1026,15 @@ impl UnusedDelimLint for UnusedParens {
                     false,
                 );
             }
+            ast::ExprKind::Cast(ref expr, _) => self.check_unused_delims_expr(
+                cx,
+                expr,
+                UnusedDelimsCtx::CastExpr,
+                followed_by_block,
+                None,
+                None,
+            ),
+
             _ => {}
         }
     }
@@ -1248,10 +1294,12 @@ impl UnusedDelimLint for UnusedBraces {
                 // FIXME(const_generics): handle paths when #67075 is fixed.
                 if let [stmt] = inner.stmts.as_slice() {
                     if let ast::StmtKind::Expr(ref expr) = stmt.kind {
-                        if !Self::is_expr_delims_necessary(expr, followed_by_block, false)
-                            && (ctx != UnusedDelimsCtx::AnonConst
-                                || (matches!(expr.kind, ast::ExprKind::Lit(_))
-                                    && !expr.span.from_expansion()))
+                        if !Self::is_expr_delims_necessary(
+                            expr,
+                            followed_by_block.then_some(UnusedDelimCtxFollowedTokenKind::Block),
+                        ) && (ctx != UnusedDelimsCtx::AnonConst
+                            || (matches!(expr.kind, ast::ExprKind::Lit(_))
+                                && !expr.span.from_expansion()))
                             && !cx.sess().source_map().is_multiline(value.span)
                             && value.attrs.is_empty()
                             && !value.span.from_expansion()

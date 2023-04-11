@@ -55,7 +55,7 @@ mod tests;
 /// This is a global invariant, and also applies when using a compare-exchange loop.
 ///
 /// See comment in `Arc::clone`.
-const MAX_REFCOUNT: usize = (isize::MAX) as usize;
+const MAX_REFCOUNT: usize = isize::MAX as usize;
 
 /// The error in case either counter reaches above `MAX_REFCOUNT`, and we can `panic` safely.
 const INTERNAL_OVERFLOW_ERROR: &str = "Arc counter overflow";
