@@ -111,9 +111,9 @@ impl<'a, 'tcx> MutVisitor<'tcx> for NllVisitor<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn visit_constant(&mut self, constant: &mut Constant<'tcx>, _location: Location) {
+    fn visit_constant(&mut self, constant: &mut Constant<'tcx>, location: Location) {
         let literal = constant.literal;
-        constant.literal = self.renumber_regions(literal, || RegionCtxt::Location(_location));
+        constant.literal = self.renumber_regions(literal, || RegionCtxt::Location(location));
         debug!("constant: {:#?}", constant);
     }
 }
