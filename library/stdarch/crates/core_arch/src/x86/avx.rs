@@ -2687,7 +2687,9 @@ pub unsafe fn _mm256_zextpd128_pd256(a: __m128d) -> __m256d {
     simd_shuffle!(a, _mm_setzero_pd(), [0, 1, 2, 3])
 }
 
-/// Returns vector of type `__m256` with undefined elements.
+/// Returns vector of type `__m256` with indeterminate elements.
+/// Despite being "undefined", this is some valid value and not equivalent to [`mem::MaybeUninit`].
+/// In practice, this is equivalent to [`mem::zeroed`].
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_undefined_ps)
 #[inline]
@@ -2698,7 +2700,9 @@ pub unsafe fn _mm256_undefined_ps() -> __m256 {
     _mm256_set1_ps(0.0)
 }
 
-/// Returns vector of type `__m256d` with undefined elements.
+/// Returns vector of type `__m256d` with indeterminate elements.
+/// Despite being "undefined", this is some valid value and not equivalent to [`mem::MaybeUninit`].
+/// In practice, this is equivalent to [`mem::zeroed`].
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_undefined_pd)
 #[inline]
@@ -2709,7 +2713,9 @@ pub unsafe fn _mm256_undefined_pd() -> __m256d {
     _mm256_set1_pd(0.0)
 }
 
-/// Returns vector of type __m256i with undefined elements.
+/// Returns vector of type __m256i with with indeterminate elements.
+/// Despite being "undefined", this is some valid value and not equivalent to [`mem::MaybeUninit`].
+/// In practice, this is equivalent to [`mem::zeroed`].
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_undefined_si256)
 #[inline]

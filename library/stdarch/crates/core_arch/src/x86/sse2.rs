@@ -2737,7 +2737,9 @@ pub unsafe fn _mm_castsi128_ps(a: __m128i) -> __m128 {
     transmute(a)
 }
 
-/// Returns vector of type __m128d with undefined elements.
+/// Returns vector of type __m128d with indeterminate elements.
+/// Despite being "undefined", this is some valid value and not equivalent to [`mem::MaybeUninit`].
+/// In practice, this is equivalent to [`mem::zeroed`].
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_undefined_pd)
 #[inline]
@@ -2747,7 +2749,9 @@ pub unsafe fn _mm_undefined_pd() -> __m128d {
     __m128d(0.0, 0.0)
 }
 
-/// Returns vector of type __m128i with undefined elements.
+/// Returns vector of type __m128i with indeterminate elements.
+/// Despite being "undefined", this is some valid value and not equivalent to [`mem::MaybeUninit`].
+/// In practice, this is equivalent to [`mem::zeroed`].
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_undefined_si128)
 #[inline]
