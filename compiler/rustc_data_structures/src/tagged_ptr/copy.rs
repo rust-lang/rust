@@ -4,6 +4,7 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::num::NonZeroUsize;
 use std::ops::{Deref, DerefMut};
+use std::ptr::NonNull;
 
 /// A `Copy` TaggedPtr.
 ///
@@ -18,7 +19,7 @@ where
     P: Pointer,
     T: Tag,
 {
-    packed: NonZeroUsize,
+    packed: NonNull<P::Target>,
     data: PhantomData<(P, T)>,
 }
 
@@ -53,26 +54,36 @@ where
     const ASSERTION: () = {
         assert!(T::BITS <= P::BITS);
         // Used for the transmute_copy's below
+        // TODO(waffle): do we need this assert anymore?
         assert!(std::mem::size_of::<&P::Target>() == std::mem::size_of::<usize>());
     };
 
     pub fn new(pointer: P, tag: T) -> Self {
         // Trigger assert!
         let () = Self::ASSERTION;
+
         let packed_tag = tag.into_usize() << Self::TAG_BIT_SHIFT;
 
         Self {
-            // SAFETY: We know that the pointer is non-null, as it must be
-            // dereferenceable per `Pointer` safety contract.
-            packed: unsafe {
-                NonZeroUsize::new_unchecked((P::into_usize(pointer) >> T::BITS) | packed_tag)
-            },
+            packed: P::into_ptr(pointer).map_addr(|addr| {
+                // SAFETY:
+                // - The pointer is `NonNull` => it's address is `NonZeroUsize`
+                // - `P::BITS` least significant bits are always zero (`Pointer` contract)
+                // - `T::BITS <= P::BITS` (from `Self::ASSERTION`)
+                //
+                // Thus `addr >> T::BITS` is guaranteed to be non-zero.
+                //
+                // `{non_zero} | packed_tag` can't make the value zero.
+
+                let packed = (addr.get() >> T::BITS) | packed_tag;
+                unsafe { NonZeroUsize::new_unchecked(packed) }
+            }),
             data: PhantomData,
         }
     }
 
-    pub(super) fn pointer_raw(&self) -> usize {
-        self.packed.get() << T::BITS
+    pub(super) fn pointer_raw(&self) -> NonNull<P::Target> {
+        self.packed.map_addr(|addr| unsafe { NonZeroUsize::new_unchecked(addr.get() << T::BITS) })
     }
 
     pub fn pointer(self) -> P
@@ -83,12 +94,12 @@ where
         //
         // Note that this isn't going to double-drop or anything because we have
         // P: Copy
-        unsafe { P::from_usize(self.pointer_raw()) }
+        unsafe { P::from_ptr(self.pointer_raw()) }
     }
 
     pub fn pointer_ref(&self) -> &P::Target {
         // SAFETY: pointer_raw returns the original pointer
-        unsafe { std::mem::transmute_copy(&self.pointer_raw()) }
+        unsafe { self.pointer_raw().as_ref() }
     }
 
     pub fn pointer_mut(&mut self) -> &mut P::Target
@@ -96,22 +107,22 @@ where
         P: DerefMut,
     {
         // SAFETY: pointer_raw returns the original pointer
-        unsafe { std::mem::transmute_copy(&self.pointer_raw()) }
+        unsafe { self.pointer_raw().as_mut() }
     }
 
     #[inline]
     pub fn tag(&self) -> T {
-        unsafe { T::from_usize(self.packed.get() >> Self::TAG_BIT_SHIFT) }
+        unsafe { T::from_usize(self.packed.addr().get() >> Self::TAG_BIT_SHIFT) }
     }
 
     #[inline]
     pub fn set_tag(&mut self, tag: T) {
-        let mut packed = self.packed.get();
+        // TODO: refactor packing into a function and reuse it here
         let new_tag = T::into_usize(tag) << Self::TAG_BIT_SHIFT;
         let tag_mask = (1 << T::BITS) - 1;
-        packed &= !(tag_mask << Self::TAG_BIT_SHIFT);
-        packed |= new_tag;
-        self.packed = unsafe { NonZeroUsize::new_unchecked(packed) };
+        self.packed = self.packed.map_addr(|addr| unsafe {
+            NonZeroUsize::new_unchecked(addr.get() & !(tag_mask << Self::TAG_BIT_SHIFT) | new_tag)
+        });
     }
 }
 

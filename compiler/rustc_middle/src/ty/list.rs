@@ -8,7 +8,7 @@ use std::hash::{Hash, Hasher};
 use std::iter;
 use std::mem;
 use std::ops::Deref;
-use std::ptr;
+use std::ptr::{self, NonNull};
 use std::slice;
 
 /// `List<T>` is a bit like `&[T]`, but with some critical differences.
@@ -203,18 +203,16 @@ unsafe impl<'a, T: 'a> rustc_data_structures::tagged_ptr::Pointer for &'a List<T
     const BITS: usize = bits_for::<usize>();
 
     #[inline]
-    fn into_usize(self) -> usize {
-        self as *const List<T> as usize
+    fn into_ptr(self) -> NonNull<List<T>> {
+        NonNull::from(self)
     }
 
     #[inline]
-    unsafe fn from_usize(ptr: usize) -> &'a List<T> {
-        &*(ptr as *const List<T>)
+    unsafe fn from_ptr(ptr: NonNull<List<T>>) -> &'a List<T> {
+        ptr.as_ref()
     }
 
-    unsafe fn with_ref<R, F: FnOnce(&Self) -> R>(ptr: usize, f: F) -> R {
-        // `Self` is `&'a List<T>` which impls `Copy`, so this is fine.
-        let ptr = Self::from_usize(ptr);
-        f(&ptr)
+    unsafe fn with_ref<R, F: FnOnce(&Self) -> R>(ptr: NonNull<List<T>>, f: F) -> R {
+        f(&ptr.as_ref())
     }
 }

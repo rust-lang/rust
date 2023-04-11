@@ -15,6 +15,7 @@
 
 use std::mem::{self, ManuallyDrop};
 use std::ops::Deref;
+use std::ptr::NonNull;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -29,21 +30,24 @@ pub use drop::TaggedPtr;
 ///
 /// # Safety
 ///
-/// The usize returned from `into_usize` must be a valid, dereferenceable,
-/// pointer to [`<Self as Deref>::Target`]. Note that pointers to
-/// [`Self::Target`] must be thin, even though [`Self::Target`] may not be
-/// `Sized`.
+/// The pointer returned from [`into_ptr`] must be a [valid], pointer to
+/// [`<Self as Deref>::Target`]. Note that pointers to [`Self::Target`] must be
+/// thin, even though [`Self::Target`] may not be `Sized`.
 ///
-/// Note that the returned pointer from `into_usize` should be castable to `&mut
-/// <Self as Deref>::Target` if `Self: DerefMut`.
+/// Note that if `Self` implements [`DerefMut`] the pointer returned from
+/// [`into_ptr`] must be valid for writes (and thus calling [`NonNull::as_mut`]
+/// on it must be safe).
 ///
-/// The BITS constant must be correct. At least `BITS` bits, least-significant,
-/// must be zero on all returned pointers from `into_usize`.
+/// The `BITS` constant must be correct. At least `BITS` bits, least-significant,
+/// must be zero on all pointers returned from [`into_ptr`].
 ///
 /// For example, if the alignment of [`Self::Target`] is 2, then `BITS` should be 1.
 ///
+/// [`into_ptr`]: Pointer::into_ptr
+/// [valid]: std::ptr#safety
 /// [`<Self as Deref>::Target`]: Deref::Target
 /// [`Self::Target`]: Deref::Target
+/// [`DerefMut`]: std::ops::DerefMut
 pub unsafe trait Pointer: Deref {
     /// Number of unused (always zero) **least significant bits** in this
     /// pointer, usually related to the pointees alignment.
@@ -63,7 +67,7 @@ pub unsafe trait Pointer: Deref {
     /// [`Self::Target`]: Deref::Target
     const BITS: usize;
 
-    fn into_usize(self) -> usize;
+    fn into_ptr(self) -> NonNull<Self::Target>;
 
     /// # Safety
     ///
@@ -71,7 +75,7 @@ pub unsafe trait Pointer: Deref {
     ///
     /// This acts as `ptr::read` semantically, it should not be called more than
     /// once on non-`Copy` `Pointer`s.
-    unsafe fn from_usize(ptr: usize) -> Self;
+    unsafe fn from_ptr(ptr: NonNull<Self::Target>) -> Self;
 
     /// This provides a reference to the `Pointer` itself, rather than the
     /// `Deref::Target`. It is used for cases where we want to call methods that
@@ -81,7 +85,7 @@ pub unsafe trait Pointer: Deref {
     /// # Safety
     ///
     /// The passed `ptr` must be returned from `into_usize`.
-    unsafe fn with_ref<R, F: FnOnce(&Self) -> R>(ptr: usize, f: F) -> R;
+    unsafe fn with_ref<R, F: FnOnce(&Self) -> R>(ptr: NonNull<Self::Target>, f: F) -> R;
 }
 
 /// This describes tags that the `TaggedPtr` struct can hold.
@@ -106,17 +110,18 @@ unsafe impl<T> Pointer for Box<T> {
     const BITS: usize = bits_for::<Self::Target>();
 
     #[inline]
-    fn into_usize(self) -> usize {
-        Box::into_raw(self) as usize
+    fn into_ptr(self) -> NonNull<T> {
+        // Safety: pointers from `Box::into_raw` are valid & non-null
+        unsafe { NonNull::new_unchecked(Box::into_raw(self)) }
     }
 
     #[inline]
-    unsafe fn from_usize(ptr: usize) -> Self {
-        Box::from_raw(ptr as *mut T)
+    unsafe fn from_ptr(ptr: NonNull<T>) -> Self {
+        Box::from_raw(ptr.as_ptr())
     }
 
-    unsafe fn with_ref<R, F: FnOnce(&Self) -> R>(ptr: usize, f: F) -> R {
-        let raw = ManuallyDrop::new(Self::from_usize(ptr));
+    unsafe fn with_ref<R, F: FnOnce(&Self) -> R>(ptr: NonNull<T>, f: F) -> R {
+        let raw = ManuallyDrop::new(Self::from_ptr(ptr));
         f(&raw)
     }
 }
@@ -125,17 +130,17 @@ unsafe impl<T> Pointer for Rc<T> {
     const BITS: usize = bits_for::<Self::Target>();
 
     #[inline]
-    fn into_usize(self) -> usize {
-        Rc::into_raw(self) as usize
+    fn into_ptr(self) -> NonNull<T> {
+        unsafe { NonNull::new_unchecked(Rc::into_raw(self).cast_mut()) }
     }
 
     #[inline]
-    unsafe fn from_usize(ptr: usize) -> Self {
-        Rc::from_raw(ptr as *const T)
+    unsafe fn from_ptr(ptr: NonNull<T>) -> Self {
+        Rc::from_raw(ptr.as_ptr())
     }
 
-    unsafe fn with_ref<R, F: FnOnce(&Self) -> R>(ptr: usize, f: F) -> R {
-        let raw = ManuallyDrop::new(Self::from_usize(ptr));
+    unsafe fn with_ref<R, F: FnOnce(&Self) -> R>(ptr: NonNull<T>, f: F) -> R {
+        let raw = ManuallyDrop::new(Self::from_ptr(ptr));
         f(&raw)
     }
 }
@@ -144,17 +149,17 @@ unsafe impl<T> Pointer for Arc<T> {
     const BITS: usize = bits_for::<Self::Target>();
 
     #[inline]
-    fn into_usize(self) -> usize {
-        Arc::into_raw(self) as usize
+    fn into_ptr(self) -> NonNull<T> {
+        unsafe { NonNull::new_unchecked(Arc::into_raw(self).cast_mut()) }
     }
 
     #[inline]
-    unsafe fn from_usize(ptr: usize) -> Self {
-        Arc::from_raw(ptr as *const T)
+    unsafe fn from_ptr(ptr: NonNull<T>) -> Self {
+        Arc::from_raw(ptr.as_ptr())
     }
 
-    unsafe fn with_ref<R, F: FnOnce(&Self) -> R>(ptr: usize, f: F) -> R {
-        let raw = ManuallyDrop::new(Self::from_usize(ptr));
+    unsafe fn with_ref<R, F: FnOnce(&Self) -> R>(ptr: NonNull<T>, f: F) -> R {
+        let raw = ManuallyDrop::new(Self::from_ptr(ptr));
         f(&raw)
     }
 }
@@ -163,32 +168,35 @@ unsafe impl<'a, T: 'a> Pointer for &'a T {
     const BITS: usize = bits_for::<Self::Target>();
 
     #[inline]
-    fn into_usize(self) -> usize {
-        self as *const T as usize
+    fn into_ptr(self) -> NonNull<T> {
+        NonNull::from(self)
     }
 
     #[inline]
-    unsafe fn from_usize(ptr: usize) -> Self {
-        &*(ptr as *const T)
+    unsafe fn from_ptr(ptr: NonNull<T>) -> Self {
+        ptr.as_ref()
     }
 
-    unsafe fn with_ref<R, F: FnOnce(&Self) -> R>(ptr: usize, f: F) -> R {
-        f(&*(&ptr as *const usize as *const Self))
+    unsafe fn with_ref<R, F: FnOnce(&Self) -> R>(ptr: NonNull<T>, f: F) -> R {
+        f(&ptr.as_ref())
     }
 }
 
 unsafe impl<'a, T: 'a> Pointer for &'a mut T {
     const BITS: usize = bits_for::<Self::Target>();
+
     #[inline]
-    fn into_usize(self) -> usize {
-        self as *mut T as usize
+    fn into_ptr(self) -> NonNull<T> {
+        NonNull::from(self)
     }
+
     #[inline]
-    unsafe fn from_usize(ptr: usize) -> Self {
-        &mut *(ptr as *mut T)
+    unsafe fn from_ptr(mut ptr: NonNull<T>) -> Self {
+        ptr.as_mut()
     }
-    unsafe fn with_ref<R, F: FnOnce(&Self) -> R>(ptr: usize, f: F) -> R {
-        f(&*(&ptr as *const usize as *const Self))
+
+    unsafe fn with_ref<R, F: FnOnce(&Self) -> R>(mut ptr: NonNull<T>, f: F) -> R {
+        f(&ptr.as_mut())
     }
 }
 
