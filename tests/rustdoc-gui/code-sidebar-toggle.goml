@@ -1,7 +1,7 @@
 // This test checks that the source code pages sidebar toggle is working as expected.
-goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 click: ".srclink"
 wait-for: "#src-sidebar-toggle"
 click: "#src-sidebar-toggle"
-fail: true
+expect-failure: true
 assert-css: ("#source-sidebar", { "left": "-300px" })

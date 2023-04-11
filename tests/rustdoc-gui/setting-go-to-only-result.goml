@@ -11,7 +11,7 @@ define-function: (
     }
 )
 
-goto: "file://" + |DOC_PATH| + "/lib2/index.html"
+go-to: "file://" + |DOC_PATH| + "/lib2/index.html"
 
 call-function: ("check-setting", {
     "storage_value": null,
@@ -19,7 +19,7 @@ call-function: ("check-setting", {
 })
 
 // By default, the search doesn't automatically go to the page if there is only one result.
-goto: "file://" + |DOC_PATH| + "/lib2/index.html?search=HasALongTraitWithParams"
+go-to: "file://" + |DOC_PATH| + "/lib2/index.html?search=HasALongTraitWithParams"
 // It will timeout if the setting isn't working.
 wait-for: "#search"
 assert-document-property: ({"URL": "/lib2/index.html"}, CONTAINS)
@@ -30,14 +30,14 @@ wait-for: "#settings"
 click: "#go-to-only-result"
 assert-local-storage: {"rustdoc-go-to-only-result": "true"}
 
-goto: "file://" + |DOC_PATH| + "/lib2/index.html"
+go-to: "file://" + |DOC_PATH| + "/lib2/index.html"
 // We enter it into the search.
 write: (".search-input", "HasALongTraitWithParams")
 wait-for-document-property: {"title": "HasALongTraitWithParams in lib2 - Rust"}
 assert-document-property: ({"URL": "/lib2/struct.HasALongTraitWithParams.html"}, ENDS_WITH)
 
 // We try again to see if it goes to the only result
-goto: "file://" + |DOC_PATH| + "/lib2/index.html?search=HasALongTraitWithParams"
+go-to: "file://" + |DOC_PATH| + "/lib2/index.html?search=HasALongTraitWithParams"
 wait-for-document-property: {"title": "HasALongTraitWithParams in lib2 - Rust"}
 assert-document-property: ({"URL": "/lib2/struct.HasALongTraitWithParams.html"}, ENDS_WITH)
 
@@ -51,7 +51,7 @@ call-function: ("check-setting", {
 click: "#go-to-only-result"
 assert-local-storage: {"rustdoc-go-to-only-result": "false"}
 
-goto: "file://" + |DOC_PATH| + "/lib2/index.html?search=HasALongTraitWithParams"
+go-to: "file://" + |DOC_PATH| + "/lib2/index.html?search=HasALongTraitWithParams"
 // It will timeout if the setting isn't working.
 wait-for: "#search"
 assert-document-property: ({"URL": "/lib2/index.html"}, CONTAINS)

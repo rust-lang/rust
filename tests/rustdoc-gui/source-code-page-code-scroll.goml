@@ -1,6 +1,6 @@
 // Checks that the scrollbar is visible on the page rather than the code block.
-goto: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
-size: (800, 1000)
+go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
+set-window-size: (800, 1000)
 // "scrollWidth" should be superior than "clientWidth".
 assert-property: ("body", {"scrollWidth": 1047, "clientWidth": 800})
 

@@ -1,6 +1,6 @@
 // This test ensures that the settings menu display is working as expected and that
 // the settings page is also rendered as expected.
-goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 show-text: true // needed when we check for colors below.
 // First, we check that the settings page doesn't exist.
 assert-false: "#settings"
@@ -35,7 +35,7 @@ wait-for: "#alternative-display #search"
 assert: "#main-content.hidden"
 
 // Now let's check the content of the settings menu.
-local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
+set-local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
 reload:
 click: "#settings-menu"
 wait-for: "#settings"
@@ -189,7 +189,7 @@ assert-text: ("#preferred-light-theme .setting-radio-name", "Preferred light the
 
 // We now check that clicking on the toggles' text is like clicking on the checkbox.
 // To test it, we use the "Disable keyboard shortcuts".
-local-storage: {"rustdoc-disable-shortcuts": "false"}
+set-local-storage: {"rustdoc-disable-shortcuts": "false"}
 click: ".setting-line:last-child .setting-check span"
 assert-local-storage: {"rustdoc-disable-shortcuts": "true"}
 
@@ -227,7 +227,7 @@ wait-for-css: ("#settings-menu .popover", {"display": "none"})
 wait-for-css: ("#help-button .popover", {"display": "block"})
 
 // Now we go to the settings page to check that the CSS is loaded as expected.
-goto: "file://" + |DOC_PATH| + "/settings.html"
+go-to: "file://" + |DOC_PATH| + "/settings.html"
 wait-for: "#settings"
 assert-css: (".setting-line", {"position": "relative"})
 
@@ -247,7 +247,7 @@ javascript: true
 // Check for the display on small screen
 show-text: true
 reload:
-size: (300, 1000)
+set-window-size: (300, 1000)
 click: "#settings-menu"
 wait-for: "#settings"
 assert-css: (".setting-line", {"position": "relative"})

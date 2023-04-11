@@ -1,5 +1,5 @@
 // Checks that the interactions with the source code pages are working as expected.
-goto: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
+go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
 show-text: true
 // Check that we can click on the line number.
 click: ".src-line-numbers > a:nth-child(4)" // This is the anchor for line 4.
@@ -12,7 +12,7 @@ reload:
 assert-attribute: ("//*[@id='4']", {"class": "line-highlighted"})
 assert-css: ("//*[@id='4']", {"border-right-width": "0px"})
 // We now check that the good anchors are highlighted
-goto: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html#4-6"
+go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html#4-6"
 assert-attribute-false: (".src-line-numbers > a:nth-child(3)", {"class": "line-highlighted"})
 assert-attribute: (".src-line-numbers > a:nth-child(4)", {"class": "line-highlighted"})
 assert-attribute: (".src-line-numbers > a:nth-child(5)", {"class": "line-highlighted"})
@@ -23,7 +23,7 @@ define-function: (
     "check-colors",
     (theme, color, background_color, highlight_color, highlight_background_color),
     block {
-        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         reload:
         assert-css: (
             ".src-line-numbers > a:not(.line-highlighted)",
@@ -87,7 +87,7 @@ assert-css: (".src-line-numbers", {"text-align": "right"})
 
 // Now let's check that clicking on something else than the line number doesn't
 // do anything (and certainly not add a `#NaN` to the URL!).
-goto: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
+go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
 // We use this assert-position to know where we will click.
 assert-position: ("//*[@id='1']", {"x": 88, "y": 112})
 // We click on the left of the "1" anchor but still in the "src-line-number" `<pre>`.
@@ -175,7 +175,7 @@ assert-property: ("#main-content", {"offsetTop": 90})
 // 28 = 90 - 34 - 28
 
 // Now do the same check on moderately-sized, tablet mobile.
-size: (700, 700)
+set-window-size: (700, 700)
 assert-css: ("nav.sub", {"flex-direction": "row"})
 assert-property: ("nav.sub form", {"offsetTop": 21, "offsetHeight": 34})
 assert-property: ("#main-content", {"offsetTop": 76})
@@ -198,7 +198,7 @@ call-function: ("check-sidebar-dir-entry", {
 })
 
 // Tiny, phone mobile gets a different display where the logo is stacked on top.
-size: (450, 700)
+set-window-size: (450, 700)
 assert-css: ("nav.sub", {"flex-direction": "column"})
 
 // Check the sidebar directory entries have a marker and spacing (phone).

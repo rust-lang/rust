@@ -13,7 +13,7 @@ define-function: (
     }
 )
 
-goto: "file://" + |DOC_PATH| + "/lib2/struct.Foo.html"
+go-to: "file://" + |DOC_PATH| + "/lib2/struct.Foo.html"
 
 // We check that the setting is disabled by default.
 call-function: ("check-setting", {

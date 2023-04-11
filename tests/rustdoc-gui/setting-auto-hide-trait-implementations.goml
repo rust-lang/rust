@@ -12,7 +12,7 @@ define-function: (
     }
 )
 
-goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
 
 // By default, the trait implementations are not collapsed.
 call-function: ("check-setting", {

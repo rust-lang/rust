@@ -1,5 +1,5 @@
 // Checks that the documentation toggles have the correct position, style and work as expected.
-goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 assert-attribute: ("#main-content > details.top-doc", {"open": ""})
 assert-text: ("#toggle-all-docs", "[−]")
 click: "#toggle-all-docs"
@@ -17,7 +17,7 @@ wait-for-attribute: ("#main-content > details.top-doc", {"open": ""})
 assert-text: ("#toggle-all-docs", "[−]")
 
 // Check that it works on non-module pages as well.
-goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
 // We first check that everything is visible.
 assert-text: ("#toggle-all-docs", "[−]")
 assert-attribute: ("#implementations-list details.toggle", {"open": ""}, ALL)
@@ -52,7 +52,7 @@ define-function: (
     (theme, filter),
     block {
         // Setting the theme.
-        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         // We reload the page so the local storage settings are being used.
         reload:
 
