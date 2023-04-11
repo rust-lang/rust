@@ -148,6 +148,11 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                     )),
                 )
             },
+            @call("mir_offset", args) => {
+                let ptr = self.parse_operand(args[0])?;
+                let offset = self.parse_operand(args[1])?;
+                Ok(Rvalue::BinaryOp(BinOp::Offset, Box::new((ptr, offset))))
+            },
             @call("mir_len", args) => Ok(Rvalue::Len(self.parse_place(args[0])?)),
             ExprKind::Borrow { borrow_kind, arg } => Ok(
                 Rvalue::Ref(self.tcx.lifetimes.re_erased, *borrow_kind, self.parse_place(*arg)?)
