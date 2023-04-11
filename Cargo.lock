@@ -4575,6 +4575,7 @@ dependencies = [
  "elsa",
  "ena",
  "indexmap",
+ "itertools",
  "jobserver",
  "libc",
  "measureme",
