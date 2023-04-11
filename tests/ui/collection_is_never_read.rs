@@ -84,11 +84,16 @@ fn shadowing_2() {
 }
 
 #[allow(clippy::let_unit_value)]
-fn fake_read() {
-    let mut x = vec![1, 2, 3]; // Ok
+fn fake_read_1() {
+    let mut x = vec![1, 2, 3]; // WARNING
     x.reverse();
-    // `collection_is_never_read` gets fooled, but other lints should catch this.
     let _: () = x.clear();
+}
+
+fn fake_read_2() {
+    let mut x = vec![1, 2, 3]; // WARNING
+    x.reverse();
+    println!("{:?}", x.push(5));
 }
 
 fn assignment() {
