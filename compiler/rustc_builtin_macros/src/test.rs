@@ -107,36 +107,6 @@ pub fn expand_test_or_bench(
         return vec![];
     }
 
-    let not_testable_error = |item: Option<&ast::Item>| {
-        let diag = &cx.sess.parse_sess.span_diagnostic;
-        let msg = "the `#[test]` attribute may only be used on a non-associated function";
-        let mut err = match item.map(|i| &i.kind) {
-            // These were a warning before #92959 and need to continue being that to avoid breaking
-            // stable user code (#94508).
-            Some(ast::ItemKind::MacCall(_)) => diag.struct_span_warn(attr_sp, msg),
-            // `.forget_guarantee()` needed to get these two arms to match types. Because of how
-            // locally close the `.emit()` call is I'm comfortable with it, but if it can be
-            // reworked in the future to not need it, it'd be nice.
-            _ => diag.struct_span_err(attr_sp, msg).forget_guarantee(),
-        };
-        if let Some(item) = item {
-            err.span_label(
-                item.span,
-                format!(
-                    "expected a non-associated function, found {} {}",
-                    item.kind.article(),
-                    item.kind.descr()
-                ),
-            );
-        }
-        err.span_label(attr_sp, "the `#[test]` macro causes a function to be run as a test and has no effect on non-functions")
-            .span_suggestion(attr_sp,
-                "replace with conditional compilation to make the item only exist when tests are being run",
-                "#[cfg(test)]",
-                Applicability::MaybeIncorrect)
-            .emit();
-    };
-
     let (item, is_stmt) = match item {
         Annotatable::Item(i) => (i, false),
         Annotatable::Stmt(stmt) if matches!(stmt.kind, ast::StmtKind::Item(_)) => {
@@ -148,13 +118,13 @@ pub fn expand_test_or_bench(
             }
         }
         other => {
-            not_testable_error(None);
+            not_testable_error(cx, attr_sp, None);
             return vec![other];
         }
     };
 
     let ast::ItemKind::Fn(fn_) = &item.kind else {
-        not_testable_error(Some(&item));
+        not_testable_error(cx, attr_sp, Some(&item));
         return if is_stmt {
             vec![Annotatable::Stmt(P(ast::Stmt {
                 id: ast::DUMMY_NODE_ID,
@@ -414,6 +384,36 @@ pub fn expand_test_or_bench(
             Annotatable::Item(item),
         ]
     }
+}
+
+fn not_testable_error(cx: &ExtCtxt<'_>, attr_sp: Span, item: Option<&ast::Item>) {
+    let diag = &cx.sess.parse_sess.span_diagnostic;
+    let msg = "the `#[test]` attribute may only be used on a non-associated function";
+    let mut err = match item.map(|i| &i.kind) {
+        // These were a warning before #92959 and need to continue being that to avoid breaking
+        // stable user code (#94508).
+        Some(ast::ItemKind::MacCall(_)) => diag.struct_span_warn(attr_sp, msg),
+        // `.forget_guarantee()` needed to get these two arms to match types. Because of how
+        // locally close the `.emit()` call is I'm comfortable with it, but if it can be
+        // reworked in the future to not need it, it'd be nice.
+        _ => diag.struct_span_err(attr_sp, msg).forget_guarantee(),
+    };
+    if let Some(item) = item {
+        err.span_label(
+            item.span,
+            format!(
+                "expected a non-associated function, found {} {}",
+                item.kind.article(),
+                item.kind.descr()
+            ),
+        );
+    }
+    err.span_label(attr_sp, "the `#[test]` macro causes a function to be run as a test and has no effect on non-functions")
+        .span_suggestion(attr_sp,
+            "replace with conditional compilation to make the item only exist when tests are being run",
+            "#[cfg(test)]",
+            Applicability::MaybeIncorrect)
+        .emit();
 }
 
 fn get_location_info(cx: &ExtCtxt<'_>, item: &ast::Item) -> (Symbol, usize, usize, usize, usize) {
