@@ -830,6 +830,7 @@ dependencies = [
 name = "clippy_lints"
 version = "0.1.70"
 dependencies = [
+ "arrayvec 0.7.0",
  "cargo_metadata 0.15.3",
  "clippy_utils",
  "declare_clippy_lint",
