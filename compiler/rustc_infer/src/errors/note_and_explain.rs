@@ -108,11 +108,6 @@ impl<'a> DescriptionCtx<'a> {
         }
         Some(me)
     }
-
-    fn add_to(self, diag: &mut rustc_errors::Diagnostic) {
-        diag.set_arg("desc_kind", self.kind);
-        diag.set_arg("desc_arg", self.arg);
-    }
 }
 
 pub enum PrefixKind {
@@ -196,10 +191,11 @@ impl AddToDiagnostic for RegionExplanation<'_> {
     {
         diag.set_arg("pref_kind", self.prefix);
         diag.set_arg("suff_kind", self.suffix);
-        let desc_span = self.desc.span;
-        self.desc.add_to(diag);
+        diag.set_arg("desc_kind", self.desc.kind);
+        diag.set_arg("desc_arg", self.desc.arg);
+
         let msg = f(diag, fluent::infer_region_explanation.into());
-        if let Some(span) = desc_span {
+        if let Some(span) = self.desc.span {
             diag.span_note(span, msg);
         } else {
             diag.note(msg);
