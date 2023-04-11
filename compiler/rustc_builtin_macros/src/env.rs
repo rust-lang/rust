@@ -11,6 +11,8 @@ use rustc_span::Span;
 use std::env;
 use thin_vec::thin_vec;
 
+use crate::errors;
+
 pub fn expand_option_env<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
@@ -54,7 +56,7 @@ pub fn expand_env<'cx>(
 ) -> Box<dyn base::MacResult + 'cx> {
     let mut exprs = match get_exprs_from_tts(cx, tts) {
         Some(exprs) if exprs.is_empty() || exprs.len() > 2 => {
-            cx.span_err(sp, "env! takes 1 or 2 arguments");
+            cx.emit_err(errors::EnvTakesArgs { span: sp });
             return DummyResult::any(sp);
         }
         None => return DummyResult::any(sp),
@@ -78,18 +80,12 @@ pub fn expand_env<'cx>(
     cx.sess.parse_sess.env_depinfo.borrow_mut().insert((var, value));
     let e = match value {
         None => {
-            let (msg, help) = match custom_msg {
-                None => (
-                    format!("environment variable `{var}` not defined at compile time"),
-                    Some(help_for_missing_env_var(var.as_str())),
-                ),
-                Some(s) => (s.to_string(), None),
-            };
-            let mut diag = cx.struct_span_err(sp, &msg);
-            if let Some(help) = help {
-                diag.help(help);
-            }
-            diag.emit();
+            cx.emit_err(errors::EnvNotDefined {
+                span: sp,
+                msg: custom_msg,
+                var,
+                help: custom_msg.is_none().then(|| help_for_missing_env_var(var.as_str())),
+            });
             return DummyResult::any(sp);
         }
         Some(value) => cx.expr_str(sp, value),
@@ -97,15 +93,13 @@ pub fn expand_env<'cx>(
     MacEager::expr(e)
 }
 
-fn help_for_missing_env_var(var: &str) -> String {
+fn help_for_missing_env_var(var: &str) -> errors::EnvNotDefinedHelp {
     if var.starts_with("CARGO_")
         || var.starts_with("DEP_")
         || matches!(var, "OUT_DIR" | "OPT_LEVEL" | "PROFILE" | "HOST" | "TARGET")
     {
-        format!(
-            "Cargo sets build script variables at run time. Use `std::env::var(\"{var}\")` instead"
-        )
+        errors::EnvNotDefinedHelp::CargoVar
     } else {
-        format!("Use `std::env::var(\"{var}\")` to read the variable at run time")
+        errors::EnvNotDefinedHelp::Other
     }
 }

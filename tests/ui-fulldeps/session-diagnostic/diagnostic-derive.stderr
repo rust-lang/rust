@@ -323,7 +323,7 @@ error: invalid applicability
 LL |     #[suggestion(no_crate_suggestion, code = "...", applicability = "batman")]
    |                                                                     ^^^^^^^^
 
-error: the `#[help(...)]` attribute can only be applied to fields of type `Span`, `bool` or `()`
+error: the `#[help(...)]` attribute can only be applied to fields of type `Span`, `MultiSpan`, `bool` or `()`
   --> $DIR/diagnostic-derive.rs:520:5
    |
 LL |     #[help(no_crate_help)]

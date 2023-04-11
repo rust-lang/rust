@@ -6,13 +6,15 @@ use rustc_expand::base::{self, *};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
 
+use crate::errors;
+
 pub fn expand_concat_idents<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'cx> {
     if tts.is_empty() {
-        cx.span_err(sp, "concat_idents! takes 1 or more arguments");
+        cx.emit_err(errors::ConcatIdentsMissingArgs { span: sp });
         return DummyResult::any(sp);
     }
 
@@ -22,7 +24,7 @@ pub fn expand_concat_idents<'cx>(
             match e {
                 TokenTree::Token(Token { kind: token::Comma, .. }, _) => {}
                 _ => {
-                    cx.span_err(sp, "concat_idents! expecting comma");
+                    cx.emit_err(errors::ConcatIdentsMissingComma { span: sp });
                     return DummyResult::any(sp);
                 }
             }
@@ -34,7 +36,7 @@ pub fn expand_concat_idents<'cx>(
                 }
             }
 
-            cx.span_err(sp, "concat_idents! requires ident args");
+            cx.emit_err(errors::ConcatIdentsIdentArgs { span: sp });
             return DummyResult::any(sp);
         }
     }
