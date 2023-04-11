@@ -8,7 +8,12 @@ use crate::simd::{
 /// `Simd<T, N>` supports the operators (+, *, etc.) that `T` does in "elementwise" fashion.
 /// These take the element at each index from the left-hand side and right-hand side,
 /// perform the operation, then return the result in the same index in a vector of equal size.
-/// In other words, an elementwise operation is equivalent to a zip, then map.
+/// However, `Simd` differs from normal iteration and normal arrays:
+/// - `Simd<T, N>` executes `N` operations in a single step with no `break`s
+/// - `Simd<T, N>` can have an alignment greater than `T`, for better mechanical sympathy
+///
+/// By always imposing these constraints on `Simd`, it is easier to compile elementwise operations
+/// into machine instructions that can themselves be executed in parallel.
 ///
 /// ```rust
 /// # #![feature(portable_simd)]
