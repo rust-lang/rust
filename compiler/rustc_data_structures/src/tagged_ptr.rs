@@ -60,8 +60,12 @@ pub unsafe trait Pointer: Deref {
     ///
     /// ```rust
     /// # use std::ops::Deref;
-    /// # type Self = &'static u64;
-    /// bits_for::<Self::Target>()
+    /// # use rustc_data_structures::tagged_ptr::bits_for;
+    /// # struct T;
+    /// # impl Deref for T { type Target = u8; fn deref(&self) -> &u8 { &0 } }
+    /// # impl T {
+    /// const BITS: usize = bits_for::<<Self as Deref>::Target>();
+    /// # }
     /// ```
     ///
     /// [`Self::Target`]: Deref::Target
