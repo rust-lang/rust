@@ -1,3 +1,0 @@
-[submodule "crates/intrinsic-test/acle"]
-	path = crates/intrinsic-test/acle
-	url = https://github.com/ARM-software/acle.git

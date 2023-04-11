@@ -23,39 +23,6 @@ vusdotq_lane_s32
 vusdotq_s32
 vusdot_s32
 
-# Implemented in Clang but missing from CSV
-vcmla_f64
-vcmla_lane_f64
-vcmla_laneq_f64
-vcmlaq_lane_f64
-vcmlaq_laneq_f64
-vcmlaq_rot180_lane_f64
-vcmlaq_rot180_laneq_f64
-vcmlaq_rot270_lane_f64
-vcmlaq_rot270_laneq_f64
-vcmlaq_rot90_lane_f64
-vcmlaq_rot90_laneq_f64
-vcmla_rot180_f64
-vcmla_rot180_lane_f64
-vcmla_rot180_laneq_f64
-vcmla_rot270_f64
-vcmla_rot270_lane_f64
-vcmla_rot270_laneq_f64
-vcmla_rot90_f64
-vcmla_rot90_lane_f64
-vcmla_rot90_laneq_f64
-
-# Implemented in Clang and stdarch but missing from CSV
-vmov_n_p64
-vmovq_n_p64
-vreinterpret_f32_p64
-vreinterpret_p64_s64
-vreinterpretq_f32_p128
-vreinterpretq_f32_p64
-vreinterpretq_p128_p64
-vreinterpretq_p64_p128
-vtst_p16
-vtstq_p16
 
 # Missing from both Clang and stdarch
 vrnd32x_f64
@@ -67,30 +34,17 @@ vrnd64xq_f64
 vrnd64z_f64
 vrnd64zq_f64
 
-# QEMU 6.0 doesn't support these instructions
-vmmlaq_s32
-vmmlaq_u32
-vsm3partw1q_u32
-vsm3partw2q_u32
-vsm3ss1q_u32
-vsm3tt1aq_u32
-vsm3tt1bq_u32
-vsm3tt2aq_u32
-vsm3tt2bq_u32
-vsm4ekeyq_u32
-vsm4eq_u32
-vusmmlaq_s32
-
 # LLVM select error in debug builds
-vqshlu_n_s16
-vqshlu_n_s32
-vqshlu_n_s64
-vqshlu_n_s8
-vqshlub_n_s8
-vqshlud_n_s64
-vqshluh_n_s16
-vqshluq_n_s16
-vqshluq_n_s32
-vqshluq_n_s64
-vqshluq_n_s8
-vqshlus_n_s32
+#vqshlu_n_s16
+#vqshlu_n_s32
+#vqshlu_n_s64
+#vqshlu_n_s8
+#vqshlub_n_s8
+#vqshlud_n_s64
+#vqshluh_n_s16
+#vqshluq_n_s16
+#vqshluq_n_s32
+#vqshluq_n_s64
+#vqshluq_n_s8
+#vqshlus_n_s32
+

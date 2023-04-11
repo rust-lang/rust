@@ -1,13 +1,16 @@
 [package]
 name = "intrinsic-test"
 version = "0.1.0"
-authors = ["Jamie Cunliffe <Jamie.Cunliffe@arm.com>"]
-edition = "2021"
+authors = ["Jamie Cunliffe <Jamie.Cunliffe@arm.com>",
+    "James McGregor <James.McGregor2@arm.com",
+    "Adam Gemmell <Adam.Gemmell@arm.com"]
 license = "MIT OR Apache-2.0"
+edition = "2021"
 
 [dependencies]
 lazy_static = "1.4.0"
 serde = { version = "1", features = ["derive"] }
+serde_json = "1.0"
 csv = "1.1"
 clap = "2.33.3"
 regex = "1.4.2"

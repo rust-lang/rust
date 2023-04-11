@@ -1,7 +1,5 @@
 #![feature(slice_partition_dedup)]
 #[macro_use]
-extern crate lazy_static;
-#[macro_use]
 extern crate log;
 
 use std::fs::File;
@@ -14,12 +12,12 @@ use itertools::Itertools;
 use rayon::prelude::*;
 use types::TypeKind;
 
-use crate::acle_csv_parser::{get_acle_intrinsics, CsvMetadata};
 use crate::argument::Argument;
+use crate::json_parser::get_neon_intrinsics;
 
-mod acle_csv_parser;
 mod argument;
 mod intrinsic;
+mod json_parser;
 mod types;
 mod values;
 
@@ -191,7 +189,8 @@ fn compile_c(c_filename: &str, intrinsic: &Intrinsic, compiler: &str, a32: bool)
     let output = Command::new("sh")
         .arg("-c")
         .arg(format!(
-            "{cpp} {cppflags} {arch_flags} -Wno-narrowing -O2 -target {target} -o c_programs/{intrinsic} {filename}",
+            // -ffp-contract=off emulates Rust's approach of not fusing separate mul-add operations
+            "{cpp} {cppflags} {arch_flags} -ffp-contract=off -Wno-narrowing -O2 -target {target} -o c_programs/{intrinsic} {filename}",
             target = if a32 { "armv7-unknown-linux-gnueabihf" } else { "aarch64-unknown-linux-gnu" },
             arch_flags = if a32 { "-march=armv8.6-a+crypto+crc+dotprod" } else { "-march=armv8.6-a+crypto+sha3+crc+dotprod" },
             filename = c_filename,
@@ -218,20 +217,14 @@ fn compile_c(c_filename: &str, intrinsic: &Intrinsic, compiler: &str, a32: bool)
     }
 }
 
-fn build_notices(csv_metadata: &CsvMetadata, line_prefix: &str) -> String {
-    let mut notices = format!(
+fn build_notices(line_prefix: &str) -> String {
+    format!(
         "\
 {line_prefix}This is a transient test file, not intended for distribution. Some aspects of the
-{line_prefix}test are derived from a CSV specification, published with the following notices:
-{line_prefix}
+{line_prefix}test are derived from a JSON specification, published under the same license as the
+{line_prefix}`intrinsic-test` crate.\n
 "
-    );
-    let lines = csv_metadata
-        .notices_lines()
-        .map(|line| format!("{line_prefix}    {line}\n"));
-    notices.extend(lines);
-    notices.push_str("\n");
-    notices
+    )
 }
 
 fn build_c(notices: &str, intrinsics: &Vec<Intrinsic>, compiler: &str, a32: bool) -> bool {
@@ -250,13 +243,7 @@ fn build_c(notices: &str, intrinsics: &Vec<Intrinsic>, compiler: &str, a32: bool
         .is_none()
 }
 
-fn build_rust(
-    notices: &str,
-    spdx_lic: &str,
-    intrinsics: &Vec<Intrinsic>,
-    toolchain: &str,
-    a32: bool,
-) -> bool {
+fn build_rust(notices: &str, intrinsics: &[Intrinsic], toolchain: &str, a32: bool) -> bool {
     intrinsics.iter().for_each(|i| {
         let rust_dir = format!(r#"rust_programs/{}"#, i.name);
         let _ = std::fs::create_dir_all(&rust_dir);
@@ -275,7 +262,7 @@ fn build_rust(
 name = "intrinsic-test-programs"
 version = "{version}"
 authors = ["{authors}"]
-license = "{spdx_lic}"
+license = "{license}"
 edition = "2018"
 [workspace]
 [dependencies]
@@ -283,6 +270,7 @@ core_arch = {{ path = "../crates/core_arch" }}
 {binaries}"#,
                 version = env!("CARGO_PKG_VERSION"),
                 authors = env!("CARGO_PKG_AUTHORS"),
+                license = env!("CARGO_PKG_LICENSE"),
                 binaries = intrinsics
                     .iter()
                     .map(|i| {
@@ -394,8 +382,9 @@ fn main() {
         Default::default()
     };
     let a32 = matches.is_present("A32");
+    let mut intrinsics = get_neon_intrinsics(filename).expect("Error parsing input file");
 
-    let (csv_metadata, intrinsics) = get_acle_intrinsics(filename);
+    intrinsics.sort_by(|a, b| a.name.cmp(&b.name));
 
     let mut intrinsics = intrinsics
         .into_iter()
@@ -418,14 +407,13 @@ fn main() {
         .collect::<Vec<_>>();
     intrinsics.dedup();
 
-    let notices = build_notices(&csv_metadata, "// ");
-    let spdx_lic = csv_metadata.spdx_license_identifier();
+    let notices = build_notices("// ");
 
     if !build_c(&notices, &intrinsics, cpp_compiler, a32) {
         std::process::exit(2);
     }
 
-    if !build_rust(&notices, spdx_lic, &intrinsics, &toolchain, a32) {
+    if !build_rust(&notices, &intrinsics, &toolchain, a32) {
         std::process::exit(3);
     }
 

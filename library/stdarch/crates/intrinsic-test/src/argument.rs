@@ -1,5 +1,6 @@
 use std::ops::Range;
 
+use crate::json_parser::ArgPrep;
 use crate::types::{IntrinsicType, TypeKind};
 use crate::Language;
 
@@ -20,6 +21,26 @@ pub struct Argument {
 pub enum Constraint {
     Equal(i64),
     Range(Range<i64>),
+}
+
+impl TryFrom<ArgPrep> for Constraint {
+    type Error = ();
+
+    fn try_from(prep: ArgPrep) -> Result<Self, Self::Error> {
+        let parsed_ints = match prep {
+            ArgPrep::Immediate { min, max } => Ok((min, max)),
+            _ => Err(()),
+        };
+        if let Ok((min, max)) = parsed_ints {
+            if min == max {
+                Ok(Constraint::Equal(min))
+            } else {
+                Ok(Constraint::Range(min..max + 1))
+            }
+        } else {
+            Err(())
+        }
+    }
 }
 
 impl Constraint {
@@ -46,6 +67,30 @@ impl Argument {
 
     pub fn has_constraint(&self) -> bool {
         !self.constraints.is_empty()
+    }
+
+    pub fn type_and_name_from_c(arg: &str) -> (&str, &str) {
+        let split_index = arg
+            .rfind([' ', '*'])
+            .expect("Couldn't split type and argname");
+
+        (arg[..split_index + 1].trim_end(), &arg[split_index + 1..])
+    }
+
+    pub fn from_c(pos: usize, arg: &str, arg_prep: Option<ArgPrep>) -> Argument {
+        let (ty, var_name) = Self::type_and_name_from_c(arg);
+
+        let ty = IntrinsicType::from_c(ty)
+            .unwrap_or_else(|_| panic!("Failed to parse argument '{arg}'"));
+
+        let constraint = arg_prep.and_then(|a| a.try_into().ok());
+
+        Argument {
+            pos,
+            name: String::from(var_name),
+            ty,
+            constraints: constraint.map_or(vec![], |r| vec![r]),
+        }
     }
 }
 

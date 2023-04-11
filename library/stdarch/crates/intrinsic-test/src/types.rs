@@ -110,11 +110,11 @@ impl IntrinsicType {
     /// pointers, i.e. a pointer to a u16 would be 16 rather than the size
     /// of a pointer.
     pub fn inner_size(&self) -> u32 {
-        match *self {
-            IntrinsicType::Ptr { ref child, .. } => child.inner_size(),
+        match self {
+            IntrinsicType::Ptr { child, .. } => child.inner_size(),
             IntrinsicType::Type {
                 bit_len: Some(bl), ..
-            } => bl,
+            } => *bl,
             _ => unreachable!(""),
         }
     }
@@ -431,6 +431,69 @@ impl IntrinsicType {
                 )
             }
             _ => todo!("get_lane_function IntrinsicType: {:#?}", self),
+        }
+    }
+
+    pub fn from_c(s: &str) -> Result<IntrinsicType, String> {
+        const CONST_STR: &str = "const";
+        if let Some(s) = s.strip_suffix('*') {
+            let (s, constant) = match s.trim().strip_suffix(CONST_STR) {
+                Some(stripped) => (stripped, true),
+                None => (s, false),
+            };
+            let s = s.trim_end();
+            Ok(IntrinsicType::Ptr {
+                constant,
+                child: Box::new(IntrinsicType::from_c(s)?),
+            })
+        } else {
+            // [const ]TYPE[{bitlen}[x{simdlen}[x{vec_len}]]][_t]
+            let (mut s, constant) = match s.strip_prefix(CONST_STR) {
+                Some(stripped) => (stripped.trim(), true),
+                None => (s, false),
+            };
+            s = s.strip_suffix("_t").unwrap_or(s);
+            let mut parts = s.split('x'); // [[{bitlen}], [{simdlen}], [{vec_len}] ]
+            let start = parts.next().ok_or("Impossible to parse type")?;
+            if let Some(digit_start) = start.find(|c: char| c.is_ascii_digit()) {
+                let (arg_kind, bit_len) = start.split_at(digit_start);
+                let arg_kind = arg_kind.parse::<TypeKind>()?;
+                let bit_len = bit_len.parse::<u32>().map_err(|err| err.to_string())?;
+                let simd_len = match parts.next() {
+                    Some(part) => Some(
+                        part.parse::<u32>()
+                            .map_err(|_| "Couldn't parse simd_len: {part}")?,
+                    ),
+                    None => None,
+                };
+                let vec_len = match parts.next() {
+                    Some(part) => Some(
+                        part.parse::<u32>()
+                            .map_err(|_| "Couldn't parse vec_len: {part}")?,
+                    ),
+                    None => None,
+                };
+                Ok(IntrinsicType::Type {
+                    constant,
+                    kind: arg_kind,
+                    bit_len: Some(bit_len),
+                    simd_len,
+                    vec_len,
+                })
+            } else {
+                let kind = start.parse::<TypeKind>()?;
+                let bit_len = match kind {
+                    TypeKind::Int => Some(32),
+                    _ => None,
+                };
+                Ok(IntrinsicType::Type {
+                    constant,
+                    kind: start.parse::<TypeKind>()?,
+                    bit_len,
+                    simd_len: None,
+                    vec_len: None,
+                })
+            }
         }
     }
 }
