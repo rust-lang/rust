@@ -9,7 +9,6 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
-use rustc_infer::infer::InferCtxt;
 use rustc_middle::hir::place::Place as HirPlace;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};
@@ -737,8 +736,7 @@ impl Locatable for hir::HirId {
 /// The Resolver. This is the type folding engine that detects
 /// unresolved types and so forth.
 struct Resolver<'cx, 'tcx> {
-    tcx: TyCtxt<'tcx>,
-    infcx: &'cx InferCtxt<'tcx>,
+    fcx: &'cx FnCtxt<'cx, 'tcx>,
     span: &'cx dyn Locatable,
     body: &'tcx hir::Body<'tcx>,
 
@@ -752,18 +750,18 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
         span: &'cx dyn Locatable,
         body: &'tcx hir::Body<'tcx>,
     ) -> Resolver<'cx, 'tcx> {
-        Resolver { tcx: fcx.tcx, infcx: fcx, span, body, replaced_with_error: None }
+        Resolver { fcx, span, body, replaced_with_error: None }
     }
 
     fn report_error(&self, p: impl Into<ty::GenericArg<'tcx>>) -> ErrorGuaranteed {
-        match self.tcx.sess.has_errors() {
+        match self.fcx.tcx.sess.has_errors() {
             Some(e) => e,
             None => self
-                .infcx
+                .fcx
                 .err_ctxt()
                 .emit_inference_failure_err(
-                    self.tcx.hir().body_owner_def_id(self.body.id()),
-                    self.span.to_span(self.tcx),
+                    self.fcx.tcx.hir().body_owner_def_id(self.body.id()),
+                    self.span.to_span(self.fcx.tcx),
                     p.into(),
                     E0282,
                     false,
@@ -795,40 +793,46 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EraseEarlyRegions<'tcx> {
 
 impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Resolver<'cx, 'tcx> {
     fn interner(&self) -> TyCtxt<'tcx> {
-        self.tcx
+        self.fcx.tcx
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        match self.infcx.fully_resolve(t) {
+        match self.fcx.fully_resolve(t) {
+            Ok(t) if self.fcx.tcx.trait_solver_next() => {
+                // We must normalize erasing regions here, since later lints
+                // expect that types that show up in the typeck are fully
+                // normalized.
+                self.fcx.tcx.try_normalize_erasing_regions(self.fcx.param_env, t).unwrap_or(t)
+            }
             Ok(t) => {
                 // Do not anonymize late-bound regions
                 // (e.g. keep `for<'a>` named `for<'a>`).
                 // This allows NLL to generate error messages that
                 // refer to the higher-ranked lifetime names written by the user.
-                EraseEarlyRegions { tcx: self.tcx }.fold_ty(t)
+                EraseEarlyRegions { tcx: self.fcx.tcx }.fold_ty(t)
             }
             Err(_) => {
                 debug!("Resolver::fold_ty: input type `{:?}` not fully resolvable", t);
                 let e = self.report_error(t);
                 self.replaced_with_error = Some(e);
-                self.interner().ty_error(e)
+                self.fcx.tcx.ty_error(e)
             }
         }
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         debug_assert!(!r.is_late_bound(), "Should not be resolving bound region.");
-        self.tcx.lifetimes.re_erased
+        self.fcx.tcx.lifetimes.re_erased
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        match self.infcx.fully_resolve(ct) {
-            Ok(ct) => self.tcx.erase_regions(ct),
+        match self.fcx.fully_resolve(ct) {
+            Ok(ct) => self.fcx.tcx.erase_regions(ct),
             Err(_) => {
                 debug!("Resolver::fold_const: input const `{:?}` not fully resolvable", ct);
                 let e = self.report_error(ct);
                 self.replaced_with_error = Some(e);
-                self.interner().const_error(ct.ty(), e)
+                self.fcx.tcx.const_error(ct.ty(), e)
             }
         }
     }
