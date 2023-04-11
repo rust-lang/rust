@@ -20,13 +20,13 @@ pub fn renumber_mir<'tcx>(
 ) {
     debug!(?body.arg_count);
 
-    let mut visitor = NllVisitor { infcx };
+    let mut renumberer = RegionRenumberer { infcx };
 
     for body in promoted.iter_mut() {
-        visitor.visit_body(body);
+        renumberer.visit_body(body);
     }
 
-    visitor.visit_body(body);
+    renumberer.visit_body(body);
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -64,11 +64,11 @@ impl RegionCtxt {
     }
 }
 
-struct NllVisitor<'a, 'tcx> {
+struct RegionRenumberer<'a, 'tcx> {
     infcx: &'a BorrowckInferCtxt<'a, 'tcx>,
 }
 
-impl<'a, 'tcx> NllVisitor<'a, 'tcx> {
+impl<'a, 'tcx> RegionRenumberer<'a, 'tcx> {
     /// Replaces all regions appearing in `value` with fresh inference
     /// variables.
     fn renumber_regions<T, F>(&mut self, value: T, region_ctxt_fn: F) -> T
@@ -83,7 +83,7 @@ impl<'a, 'tcx> NllVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> MutVisitor<'tcx> for NllVisitor<'a, 'tcx> {
+impl<'a, 'tcx> MutVisitor<'tcx> for RegionRenumberer<'a, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
