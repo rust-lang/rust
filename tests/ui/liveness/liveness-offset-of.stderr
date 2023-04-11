@@ -29,5 +29,22 @@ LL | struct Gamma {
 LL |     a: (),
    |     ^
 
-error: aborting due to 3 previous errors
+error: field `b` is never read
+  --> $DIR/liveness-offset-of.rs:24:5
+   |
+LL | struct Delta {
+   |        ----- field in this struct
+LL |     a: (),
+LL |     b: (),
+   |     ^
+
+error: field `a` is never read
+  --> $DIR/liveness-offset-of.rs:35:5
+   |
+LL | struct Project<T: Trait> {
+   |        ------- field in this struct
+LL |     a: u8,
+   |     ^
+
+error: aborting due to 5 previous errors
 

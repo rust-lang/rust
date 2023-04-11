@@ -438,3 +438,24 @@ fn offset_of_dst() {
     assert_eq!(offset_of!(Foo, x), 0);
     assert_eq!(offset_of!(Foo, y), 2);
 }
+
+#[test]
+#[cfg(not(bootstrap))]
+fn offset_of_addr() {
+    #[repr(C)]
+    struct Foo {
+        x: u8,
+        y: u16,
+        z: Bar,
+    }
+
+    #[repr(C)]
+    struct Bar(u8, u8);
+
+    let base = Foo { x: 0, y: 0, z: Bar(0, 0) };
+
+    assert_eq!(ptr::addr_of!(base).addr() + offset_of!(Foo, x), ptr::addr_of!(base.x).addr());
+    assert_eq!(ptr::addr_of!(base).addr() + offset_of!(Foo, y), ptr::addr_of!(base.y).addr());
+    assert_eq!(ptr::addr_of!(base).addr() + offset_of!(Foo, z.0), ptr::addr_of!(base.z.0).addr());
+    assert_eq!(ptr::addr_of!(base).addr() + offset_of!(Foo, z.1), ptr::addr_of!(base.z.1).addr());
+}
