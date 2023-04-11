@@ -147,24 +147,66 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
-        // This differs from the current stable behavior and
-        // fixes #84857. Due to breakage found via crater, we
-        // currently instead lint patterns which can be used to
-        // exploit this unsoundness on stable, see #93367 for
-        // more details.
-        //
-        // Using `TreatProjections::NextSolverLookup` is fine here because
-        // `instantiate_constituent_tys_for_auto_trait` returns nothing for
-        // projection types anyways. So it doesn't really matter what we do
-        // here, and this is faster.
-        if let Some(def_id) = ecx.tcx().find_map_relevant_impl(
-            goal.predicate.def_id(),
-            goal.predicate.self_ty(),
-            TreatProjections::NextSolverLookup,
-            Some,
-        ) {
-            debug!(?def_id, ?goal, "disqualified auto-trait implementation");
-            return Err(NoSolution);
+        let self_ty = goal.predicate.self_ty();
+        match *self_ty.kind() {
+            // Stall int and float vars until they are resolved to a concrete
+            // numerical type. That's because the check for impls below treats
+            // int vars as matching any impl. Even if we filtered such impls,
+            // we probably don't want to treat an `impl !AutoTrait for i32` as
+            // disqualifying the built-in auto impl for `i64: AutoTrait` either.
+            ty::Infer(ty::IntVar(_) | ty::FloatVar(_)) => {
+                return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
+            }
+
+            // These types cannot be structurally decomposed into constitutent
+            // types, and therefore have no builtin impl.
+            ty::Dynamic(..)
+            | ty::Param(..)
+            | ty::Foreign(..)
+            | ty::Alias(ty::Projection, ..)
+            | ty::Placeholder(..) => return Err(NoSolution),
+
+            ty::Infer(_) | ty::Bound(_, _) => bug!("unexpected type `{self_ty}`"),
+
+            // For rigid types, we only register a builtin auto implementation
+            // if there is no implementation that could ever apply to the self
+            // type.
+            //
+            // This differs from the current stable behavior and fixes #84857.
+            // Due to breakage found via crater, we currently instead lint
+            // patterns which can be used to exploit this unsoundness on stable,
+            // see #93367 for more details.
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Str
+            | ty::Array(_, _)
+            | ty::Slice(_)
+            | ty::RawPtr(_)
+            | ty::Ref(_, _, _)
+            | ty::FnDef(_, _)
+            | ty::FnPtr(_)
+            | ty::Closure(_, _)
+            | ty::Generator(_, _, _)
+            | ty::GeneratorWitness(_)
+            | ty::GeneratorWitnessMIR(_, _)
+            | ty::Never
+            | ty::Tuple(_)
+            | ty::Error(_)
+            | ty::Adt(_, _)
+            | ty::Alias(ty::Opaque, _) => {
+                if let Some(def_id) = ecx.tcx().find_map_relevant_impl(
+                    goal.predicate.def_id(),
+                    goal.predicate.self_ty(),
+                    TreatProjections::NextSolverLookup,
+                    Some,
+                ) {
+                    debug!(?def_id, ?goal, "disqualified auto-trait implementation");
+                    return Err(NoSolution);
+                }
+            }
         }
 
         ecx.probe_and_evaluate_goal_for_constituent_tys(
