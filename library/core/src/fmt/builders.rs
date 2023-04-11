@@ -109,14 +109,14 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     ///            .field("bar", &self.bar) // We add `bar` field.
     ///            .field("another", &self.another) // We add `another` field.
     ///            // We even add a field which doesn't exist (because why not?).
-    ///            .field("not_existing_field", &1)
+    ///            .field("nonexistent_field", &1)
     ///            .finish() // We're good to go!
     ///     }
     /// }
     ///
     /// assert_eq!(
     ///     format!("{:?}", Bar { bar: 10, another: "Hello World".to_string() }),
-    ///     "Bar { bar: 10, another: \"Hello World\", not_existing_field: 1 }",
+    ///     "Bar { bar: 10, another: \"Hello World\", nonexistent_field: 1 }",
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
