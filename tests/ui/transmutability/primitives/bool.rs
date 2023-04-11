@@ -1,8 +1,10 @@
+// revisions: current next
+//[next] compile-flags: -Ztrait-solver=next
+
 #![crate_type = "lib"]
 #![feature(transmutability)]
 #![allow(dead_code)]
 #![allow(incomplete_features)]
-
 mod assert {
     use std::mem::{Assume, BikeshedIntrinsicFrom};
     pub struct Context;

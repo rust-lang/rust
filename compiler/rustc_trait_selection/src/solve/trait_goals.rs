@@ -598,6 +598,35 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             Err(NoSolution)
         }
     }
+
+    fn consider_builtin_transmute_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        // `rustc_transmute` does not have support for type or const params
+        if goal.has_non_region_placeholders() {
+            return Err(NoSolution);
+        }
+
+        // Erase regions because we compute layouts in `rustc_transmute`,
+        // which will ICE for region vars.
+        let substs = ecx.tcx().erase_regions(goal.predicate.trait_ref.substs);
+
+        let Some(assume) = rustc_transmute::Assume::from_const(
+            ecx.tcx(),
+            goal.param_env,
+            substs.const_at(3),
+        ) else {
+            return Err(NoSolution);
+        };
+
+        let certainty = ecx.is_transmutable(
+            rustc_transmute::Types { dst: substs.type_at(0), src: substs.type_at(1) },
+            substs.type_at(2),
+            assume,
+        )?;
+        ecx.evaluate_added_goals_and_make_canonical_response(certainty)
+    }
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
