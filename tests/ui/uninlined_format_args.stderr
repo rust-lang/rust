@@ -775,18 +775,6 @@ LL +     println!("{width:width$.prec$}");
    |
 
 error: variables can be used directly in the `format!` string
-  --> $DIR/uninlined_format_args.rs:125:20
-   |
-LL |     println!("{}", format!("{}", local_i32));
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: change this to
-   |
-LL -     println!("{}", format!("{}", local_i32));
-LL +     println!("{}", format!("{local_i32}"));
-   |
-
-error: variables can be used directly in the `format!` string
   --> $DIR/uninlined_format_args.rs:143:5
    |
 LL | /     println!(
@@ -856,5 +844,5 @@ LL -     println!("expand='{}'", local_i32);
 LL +     println!("expand='{local_i32}'");
    |
 
-error: aborting due to 72 previous errors
+error: aborting due to 71 previous errors
 

@@ -101,7 +101,7 @@ Look for the [`beta-accepted`] label and make sure to also include the PRs with
 that label in the changelog. If you can, remove the `beta-accepted` labels
 **after** the changelog PR was merged.
 
-> _Note:_ Some of those PRs might even got backported to the previous `beta`.
+> _Note:_ Some of those PRs might even get backported to the previous `beta`.
 > Those have to be included in the changelog of the _previous_ release.
 
 ### 4. Update `clippy::version` attributes
