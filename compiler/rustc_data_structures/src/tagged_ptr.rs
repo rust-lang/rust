@@ -13,7 +13,7 @@
 //! The tag must implement the `Tag` trait. We assert that the tag and `Pointer`
 //! are compatible at compile time.
 
-use std::mem::ManuallyDrop;
+use std::mem::{self, ManuallyDrop};
 use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -104,14 +104,17 @@ pub unsafe trait Tag: Copy {
 
 unsafe impl<T> Pointer for Box<T> {
     const BITS: usize = bits_for::<Self::Target>();
+
     #[inline]
     fn into_usize(self) -> usize {
         Box::into_raw(self) as usize
     }
+
     #[inline]
     unsafe fn from_usize(ptr: usize) -> Self {
         Box::from_raw(ptr as *mut T)
     }
+
     unsafe fn with_ref<R, F: FnOnce(&Self) -> R>(ptr: usize, f: F) -> R {
         let raw = ManuallyDrop::new(Self::from_usize(ptr));
         f(&raw)
@@ -120,14 +123,17 @@ unsafe impl<T> Pointer for Box<T> {
 
 unsafe impl<T> Pointer for Rc<T> {
     const BITS: usize = bits_for::<Self::Target>();
+
     #[inline]
     fn into_usize(self) -> usize {
         Rc::into_raw(self) as usize
     }
+
     #[inline]
     unsafe fn from_usize(ptr: usize) -> Self {
         Rc::from_raw(ptr as *const T)
     }
+
     unsafe fn with_ref<R, F: FnOnce(&Self) -> R>(ptr: usize, f: F) -> R {
         let raw = ManuallyDrop::new(Self::from_usize(ptr));
         f(&raw)
@@ -136,14 +142,17 @@ unsafe impl<T> Pointer for Rc<T> {
 
 unsafe impl<T> Pointer for Arc<T> {
     const BITS: usize = bits_for::<Self::Target>();
+
     #[inline]
     fn into_usize(self) -> usize {
         Arc::into_raw(self) as usize
     }
+
     #[inline]
     unsafe fn from_usize(ptr: usize) -> Self {
         Arc::from_raw(ptr as *const T)
     }
+
     unsafe fn with_ref<R, F: FnOnce(&Self) -> R>(ptr: usize, f: F) -> R {
         let raw = ManuallyDrop::new(Self::from_usize(ptr));
         f(&raw)
@@ -152,14 +161,17 @@ unsafe impl<T> Pointer for Arc<T> {
 
 unsafe impl<'a, T: 'a> Pointer for &'a T {
     const BITS: usize = bits_for::<Self::Target>();
+
     #[inline]
     fn into_usize(self) -> usize {
         self as *const T as usize
     }
+
     #[inline]
     unsafe fn from_usize(ptr: usize) -> Self {
         &*(ptr as *const T)
     }
+
     unsafe fn with_ref<R, F: FnOnce(&Self) -> R>(ptr: usize, f: F) -> R {
         f(&*(&ptr as *const usize as *const Self))
     }
@@ -183,7 +195,7 @@ unsafe impl<'a, T: 'a> Pointer for &'a mut T {
 /// Returns the number of bits available for use for tags in a pointer to `T`
 /// (this is based on `T`'s alignment).
 pub const fn bits_for<T>() -> usize {
-    let bits = std::mem::align_of::<T>().trailing_zeros();
+    let bits = mem::align_of::<T>().trailing_zeros();
 
     // This is a replacement for `.try_into().unwrap()` unavailable in `const`
     // (it's fine to make an assert here, since this is only called in compile time)

@@ -3,6 +3,7 @@ use crate::stable_hasher::{HashStable, StableHasher};
 use std::fmt;
 use std::marker::PhantomData;
 use std::num::NonZeroUsize;
+use std::ops::{Deref, DerefMut};
 
 /// A `Copy` TaggedPtr.
 ///
@@ -73,6 +74,7 @@ where
     pub(super) fn pointer_raw(&self) -> usize {
         self.packed.get() << T::BITS
     }
+
     pub fn pointer(self) -> P
     where
         P: Copy,
@@ -83,21 +85,25 @@ where
         // P: Copy
         unsafe { P::from_usize(self.pointer_raw()) }
     }
+
     pub fn pointer_ref(&self) -> &P::Target {
         // SAFETY: pointer_raw returns the original pointer
         unsafe { std::mem::transmute_copy(&self.pointer_raw()) }
     }
+
     pub fn pointer_mut(&mut self) -> &mut P::Target
     where
-        P: std::ops::DerefMut,
+        P: DerefMut,
     {
         // SAFETY: pointer_raw returns the original pointer
         unsafe { std::mem::transmute_copy(&self.pointer_raw()) }
     }
+
     #[inline]
     pub fn tag(&self) -> T {
         unsafe { T::from_usize(self.packed.get() >> Self::TAG_BIT_SHIFT) }
     }
+
     #[inline]
     pub fn set_tag(&mut self, tag: T) {
         let mut packed = self.packed.get();
@@ -109,20 +115,21 @@ where
     }
 }
 
-impl<P, T, const COMPARE_PACKED: bool> std::ops::Deref for CopyTaggedPtr<P, T, COMPARE_PACKED>
+impl<P, T, const COMPARE_PACKED: bool> Deref for CopyTaggedPtr<P, T, COMPARE_PACKED>
 where
     P: Pointer,
     T: Tag,
 {
     type Target = P::Target;
+
     fn deref(&self) -> &Self::Target {
         self.pointer_ref()
     }
 }
 
-impl<P, T, const COMPARE_PACKED: bool> std::ops::DerefMut for CopyTaggedPtr<P, T, COMPARE_PACKED>
+impl<P, T, const COMPARE_PACKED: bool> DerefMut for CopyTaggedPtr<P, T, COMPARE_PACKED>
 where
-    P: Pointer + std::ops::DerefMut,
+    P: Pointer + DerefMut,
     T: Tag,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
