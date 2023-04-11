@@ -1,0 +1,11 @@
+error[E0277]: `AlignedUsize` needs to have the same ABI as a pointer
+  --> $DIR/issue-104631.rs:11:14
+   |
+LL |     let _x = AlignedUsize(12) as dyn* Debug;
+   |              ^^^^^^^^^^^^^^^^ `AlignedUsize` needs to be a pointer-like type
+   |
+   = help: the trait `PointerLike` is not implemented for `AlignedUsize`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
