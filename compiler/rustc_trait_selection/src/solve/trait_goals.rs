@@ -3,7 +3,7 @@
 use super::assembly::{self, structural_traits};
 use super::{EvalCtxt, SolverMode};
 use rustc_hir::def_id::DefId;
-use rustc_hir::LangItem;
+use rustc_hir::{LangItem, Movability};
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::util::supertraits;
 use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, QueryResult};
@@ -167,6 +167,23 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             | ty::Placeholder(..) => return Err(NoSolution),
 
             ty::Infer(_) | ty::Bound(_, _) => bug!("unexpected type `{self_ty}`"),
+
+            // Generators have one special built-in candidate, `Unpin`, which
+            // takes precedence over the structural auto trait candidate being
+            // assembled.
+            ty::Generator(_, _, movability)
+                if Some(goal.predicate.def_id()) == ecx.tcx().lang_items().unpin_trait() =>
+            {
+                match movability {
+                    Movability::Static => {
+                        return Err(NoSolution);
+                    }
+                    Movability::Movable => {
+                        return ecx
+                            .evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
+                    }
+                }
+            }
 
             // For rigid types, we only register a builtin auto implementation
             // if there is no implementation that could ever apply to the self
