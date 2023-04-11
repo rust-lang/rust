@@ -349,10 +349,10 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
             let mut br_with_padding = String::with_capacity(6 * indent + 28);
             br_with_padding.push_str("\n");
 
-            let padding_amout =
+            let padding_amount =
                 if ending == Ending::Newline { indent + 4 } else { indent + "fn where ".len() };
 
-            for _ in 0..padding_amout {
+            for _ in 0..padding_amount {
                 br_with_padding.push_str(" ");
             }
             let where_preds = where_preds.to_string().replace('\n', &br_with_padding);

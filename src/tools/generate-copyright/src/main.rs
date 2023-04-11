@@ -20,17 +20,17 @@ fn render_recursive(node: &Node, buffer: &mut Vec<u8>, depth: usize) -> Result<(
     let prefix = std::iter::repeat("> ").take(depth + 1).collect::<String>();
 
     match node {
-        Node::Root { childs } => {
-            for child in childs {
+        Node::Root { children } => {
+            for child in children {
                 render_recursive(child, buffer, depth)?;
             }
         }
-        Node::Directory { name, childs, license } => {
+        Node::Directory { name, children, license } => {
             render_license(&prefix, std::iter::once(name), license, buffer)?;
-            if !childs.is_empty() {
+            if !children.is_empty() {
                 writeln!(buffer, "{prefix}")?;
                 writeln!(buffer, "{prefix}*Exceptions:*")?;
-                for child in childs {
+                for child in children {
                     writeln!(buffer, "{prefix}")?;
                     render_recursive(child, buffer, depth + 1)?;
                 }
@@ -73,8 +73,8 @@ struct Metadata {
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "kebab-case", tag = "type")]
 pub(crate) enum Node {
-    Root { childs: Vec<Node> },
-    Directory { name: String, childs: Vec<Node>, license: License },
+    Root { children: Vec<Node> },
+    Directory { name: String, children: Vec<Node>, license: License },
     File { name: String, license: License },
     Group { files: Vec<String>, directories: Vec<String>, license: License },
 }
