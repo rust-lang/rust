@@ -4,7 +4,8 @@ use std::{mem, str::FromStr, sync::Arc};
 use cfg::CfgOptions;
 use rustc_hash::FxHashMap;
 use test_utils::{
-    extract_range_or_offset, Fixture, RangeOrOffset, CURSOR_MARKER, ESCAPED_CURSOR_MARKER,
+    extract_range_or_offset, Fixture, FixtureWithProjectMeta, RangeOrOffset, CURSOR_MARKER,
+    ESCAPED_CURSOR_MARKER,
 };
 use tt::token_id::{Leaf, Subtree, TokenTree};
 use vfs::{file_set::FileSet, VfsPath};
@@ -12,7 +13,7 @@ use vfs::{file_set::FileSet, VfsPath};
 use crate::{
     input::{CrateName, CrateOrigin, LangCrateOrigin},
     Change, CrateDisplayName, CrateGraph, CrateId, Dependency, Edition, Env, FileId, FilePosition,
-    FileRange, ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacros,
+    FileRange, ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacros, ReleaseChannel,
     SourceDatabaseExt, SourceRoot, SourceRootId,
 };
 
@@ -102,7 +103,14 @@ impl ChangeFixture {
         ra_fixture: &str,
         mut proc_macro_defs: Vec<(String, ProcMacro)>,
     ) -> ChangeFixture {
-        let (mini_core, proc_macro_names, fixture) = Fixture::parse(ra_fixture);
+        let FixtureWithProjectMeta { fixture, mini_core, proc_macro_names, toolchain } =
+            FixtureWithProjectMeta::parse(ra_fixture);
+        let toolchain = toolchain
+            .map(|it| {
+                ReleaseChannel::from_str(&it)
+                    .unwrap_or_else(|| panic!("unknown release channel found: {it}"))
+            })
+            .unwrap_or(ReleaseChannel::Stable);
         let mut change = Change::new();
 
         let mut files = Vec::new();
@@ -166,7 +174,7 @@ impl ChangeFixture {
                         .as_deref()
                         .map(Arc::from)
                         .ok_or_else(|| "target_data_layout unset".into()),
-                    None,
+                    Some(toolchain),
                 );
                 let prev = crates.insert(crate_name.clone(), crate_id);
                 assert!(prev.is_none());
@@ -205,7 +213,7 @@ impl ChangeFixture {
                 default_target_data_layout
                     .map(|x| x.into())
                     .ok_or_else(|| "target_data_layout unset".into()),
-                None,
+                Some(toolchain),
             );
         } else {
             for (from, to, prelude) in crate_deps {
@@ -247,7 +255,7 @@ impl ChangeFixture {
                 false,
                 CrateOrigin::Lang(LangCrateOrigin::Core),
                 target_layout.clone(),
-                None,
+                Some(toolchain),
             );
 
             for krate in all_crates {
@@ -286,7 +294,7 @@ impl ChangeFixture {
                 true,
                 CrateOrigin::Local { repo: None, name: None },
                 target_layout,
-                None,
+                Some(toolchain),
             );
             proc_macros.insert(proc_macros_crate, Ok(proc_macro));
 

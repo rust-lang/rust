@@ -23,7 +23,7 @@ pub(crate) mod env_vars;
 
 use std::iter;
 
-use hir::{known, ScopeDef, Variant};
+use hir::{known, HasAttrs, ScopeDef, Variant};
 use ide_db::{imports::import_assets::LocatedImport, SymbolKind};
 use syntax::ast;
 
@@ -181,6 +181,9 @@ impl Completions {
         resolution: hir::ScopeDef,
         doc_aliases: Vec<syntax::SmolStr>,
     ) {
+        if !ctx.check_stability(resolution.attrs(ctx.db).as_deref()) {
+            return;
+        }
         let is_private_editable = match ctx.def_is_visible(&resolution) {
             Visible::Yes => false,
             Visible::Editable => true,
@@ -206,6 +209,9 @@ impl Completions {
         local_name: hir::Name,
         resolution: hir::ScopeDef,
     ) {
+        if !ctx.check_stability(resolution.attrs(ctx.db).as_deref()) {
+            return;
+        }
         let is_private_editable = match ctx.def_is_visible(&resolution) {
             Visible::Yes => false,
             Visible::Editable => true,
@@ -228,6 +234,9 @@ impl Completions {
         path_ctx: &PathCompletionCtx,
         e: hir::Enum,
     ) {
+        if !ctx.check_stability(Some(&e.attrs(ctx.db))) {
+            return;
+        }
         e.variants(ctx.db)
             .into_iter()
             .for_each(|variant| self.add_enum_variant(ctx, path_ctx, variant, None));
@@ -241,6 +250,9 @@ impl Completions {
         local_name: hir::Name,
         doc_aliases: Vec<syntax::SmolStr>,
     ) {
+        if !ctx.check_stability(Some(&module.attrs(ctx.db))) {
+            return;
+        }
         self.add_path_resolution(
             ctx,
             path_ctx,
@@ -257,6 +269,9 @@ impl Completions {
         mac: hir::Macro,
         local_name: hir::Name,
     ) {
+        if !ctx.check_stability(Some(&mac.attrs(ctx.db))) {
+            return;
+        }
         let is_private_editable = match ctx.is_visible(&mac) {
             Visible::Yes => false,
             Visible::Editable => true,
@@ -280,6 +295,9 @@ impl Completions {
         func: hir::Function,
         local_name: Option<hir::Name>,
     ) {
+        if !ctx.check_stability(Some(&func.attrs(ctx.db))) {
+            return;
+        }
         let is_private_editable = match ctx.is_visible(&func) {
             Visible::Yes => false,
             Visible::Editable => true,
@@ -304,6 +322,9 @@ impl Completions {
         receiver: Option<hir::Name>,
         local_name: Option<hir::Name>,
     ) {
+        if !ctx.check_stability(Some(&func.attrs(ctx.db))) {
+            return;
+        }
         let is_private_editable = match ctx.is_visible(&func) {
             Visible::Yes => false,
             Visible::Editable => true,
@@ -328,6 +349,9 @@ impl Completions {
         func: hir::Function,
         import: LocatedImport,
     ) {
+        if !ctx.check_stability(Some(&func.attrs(ctx.db))) {
+            return;
+        }
         let is_private_editable = match ctx.is_visible(&func) {
             Visible::Yes => false,
             Visible::Editable => true,
@@ -348,6 +372,9 @@ impl Completions {
     }
 
     pub(crate) fn add_const(&mut self, ctx: &CompletionContext<'_>, konst: hir::Const) {
+        if !ctx.check_stability(Some(&konst.attrs(ctx.db))) {
+            return;
+        }
         let is_private_editable = match ctx.is_visible(&konst) {
             Visible::Yes => false,
             Visible::Editable => true,
@@ -364,6 +391,9 @@ impl Completions {
         ctx: &CompletionContext<'_>,
         type_alias: hir::TypeAlias,
     ) {
+        if !ctx.check_stability(Some(&type_alias.attrs(ctx.db))) {
+            return;
+        }
         let is_private_editable = match ctx.is_visible(&type_alias) {
             Visible::Yes => false,
             Visible::Editable => true,
@@ -380,6 +410,9 @@ impl Completions {
         ctx: &CompletionContext<'_>,
         type_alias: hir::TypeAlias,
     ) {
+        if !ctx.check_stability(Some(&type_alias.attrs(ctx.db))) {
+            return;
+        }
         self.add_opt(render_type_alias_with_eq(RenderContext::new(ctx), type_alias));
     }
 
@@ -390,6 +423,9 @@ impl Completions {
         variant: hir::Variant,
         path: hir::ModPath,
     ) {
+        if !ctx.check_stability(Some(&variant.attrs(ctx.db))) {
+            return;
+        }
         if let Some(builder) =
             render_variant_lit(RenderContext::new(ctx), path_ctx, None, variant, Some(path))
         {
@@ -404,6 +440,9 @@ impl Completions {
         variant: hir::Variant,
         local_name: Option<hir::Name>,
     ) {
+        if !ctx.check_stability(Some(&variant.attrs(ctx.db))) {
+            return;
+        }
         if let PathCompletionCtx { kind: PathKind::Pat { pat_ctx }, .. } = path_ctx {
             cov_mark::hit!(enum_variant_pattern_path);
             self.add_variant_pat(ctx, pat_ctx, Some(path_ctx), variant, local_name);
@@ -425,6 +464,9 @@ impl Completions {
         field: hir::Field,
         ty: &hir::Type,
     ) {
+        if !ctx.check_stability(Some(&field.attrs(ctx.db))) {
+            return;
+        }
         let is_private_editable = match ctx.is_visible(&field) {
             Visible::Yes => false,
             Visible::Editable => true,
@@ -448,6 +490,9 @@ impl Completions {
         path: Option<hir::ModPath>,
         local_name: Option<hir::Name>,
     ) {
+        if !ctx.check_stability(Some(&strukt.attrs(ctx.db))) {
+            return;
+        }
         if let Some(builder) =
             render_struct_literal(RenderContext::new(ctx), path_ctx, strukt, path, local_name)
         {
@@ -462,6 +507,9 @@ impl Completions {
         path: Option<hir::ModPath>,
         local_name: Option<hir::Name>,
     ) {
+        if !ctx.check_stability(Some(&un.attrs(ctx.db))) {
+            return;
+        }
         let item = render_union_literal(RenderContext::new(ctx), un, path, local_name);
         self.add_opt(item);
     }
@@ -473,6 +521,8 @@ impl Completions {
         field: usize,
         ty: &hir::Type,
     ) {
+        // Only used for (unnamed) tuples, whose all fields *are* stable. No need to check
+        // stability here.
         let item = render_tuple_field(RenderContext::new(ctx), receiver, field, ty);
         self.add(item);
     }
@@ -494,6 +544,9 @@ impl Completions {
         variant: hir::Variant,
         local_name: Option<hir::Name>,
     ) {
+        if !ctx.check_stability(Some(&variant.attrs(ctx.db))) {
+            return;
+        }
         self.add_opt(render_variant_pat(
             RenderContext::new(ctx),
             pattern_ctx,
@@ -511,6 +564,9 @@ impl Completions {
         variant: hir::Variant,
         path: hir::ModPath,
     ) {
+        if !ctx.check_stability(Some(&variant.attrs(ctx.db))) {
+            return;
+        }
         let path = Some(&path);
         self.add_opt(render_variant_pat(
             RenderContext::new(ctx),
@@ -529,6 +585,9 @@ impl Completions {
         strukt: hir::Struct,
         local_name: Option<hir::Name>,
     ) {
+        if !ctx.check_stability(Some(&strukt.attrs(ctx.db))) {
+            return;
+        }
         self.add_opt(render_struct_pat(RenderContext::new(ctx), pattern_ctx, strukt, local_name));
     }
 }

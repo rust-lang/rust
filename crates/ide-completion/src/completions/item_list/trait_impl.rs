@@ -150,21 +150,24 @@ fn complete_trait_impl(
     impl_def: &ast::Impl,
 ) {
     if let Some(hir_impl) = ctx.sema.to_def(impl_def) {
-        get_missing_assoc_items(&ctx.sema, impl_def).into_iter().for_each(|item| {
-            use self::ImplCompletionKind::*;
-            match (item, kind) {
-                (hir::AssocItem::Function(func), All | Fn) => {
-                    add_function_impl(acc, ctx, replacement_range, func, hir_impl)
+        get_missing_assoc_items(&ctx.sema, impl_def)
+            .into_iter()
+            .filter(|item| ctx.check_stability(Some(&item.attrs(ctx.db))))
+            .for_each(|item| {
+                use self::ImplCompletionKind::*;
+                match (item, kind) {
+                    (hir::AssocItem::Function(func), All | Fn) => {
+                        add_function_impl(acc, ctx, replacement_range, func, hir_impl)
+                    }
+                    (hir::AssocItem::TypeAlias(type_alias), All | TypeAlias) => {
+                        add_type_alias_impl(acc, ctx, replacement_range, type_alias, hir_impl)
+                    }
+                    (hir::AssocItem::Const(const_), All | Const) => {
+                        add_const_impl(acc, ctx, replacement_range, const_, hir_impl)
+                    }
+                    _ => {}
                 }
-                (hir::AssocItem::TypeAlias(type_alias), All | TypeAlias) => {
-                    add_type_alias_impl(acc, ctx, replacement_range, type_alias, hir_impl)
-                }
-                (hir::AssocItem::Const(const_), All | Const) => {
-                    add_const_impl(acc, ctx, replacement_range, const_, hir_impl)
-                }
-                _ => {}
-            }
-        });
+            });
     }
 }
 

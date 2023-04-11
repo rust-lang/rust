@@ -27,7 +27,7 @@ pub use rustc_hash::FxHashMap;
 
 pub use crate::{
     assert_linear::AssertLinear,
-    fixture::{Fixture, MiniCore},
+    fixture::{Fixture, FixtureWithProjectMeta, MiniCore},
 };
 
 pub const CURSOR_MARKER: &str = "$0";

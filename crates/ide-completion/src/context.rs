@@ -367,6 +367,8 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) krate: hir::Crate,
     /// The module of the `scope`.
     pub(super) module: hir::Module,
+    /// Whether nightly toolchain is used. Cached since this is looked up a lot.
+    is_nightly: bool,
 
     /// The expected name of what we are completing.
     /// This is usually the parameter name of the function argument we are completing.
@@ -386,7 +388,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) depth_from_crate_root: usize,
 }
 
-impl<'a> CompletionContext<'a> {
+impl CompletionContext<'_> {
     /// The range of the identifier that is being completed.
     pub(crate) fn source_range(&self) -> TextRange {
         let kind = self.original_token.kind();
@@ -449,6 +451,12 @@ impl<'a> CompletionContext<'a> {
             (Some(attrs), Some(krate)) => self.is_doc_hidden(&attrs, krate),
             _ => false,
         }
+    }
+
+    /// Checks whether this item should be listed in regards to stability. Returns `true` if we should.
+    pub(crate) fn check_stability(&self, attrs: Option<&hir::Attrs>) -> bool {
+        let Some(attrs) = attrs else { return true; };
+        !attrs.is_unstable() || self.is_nightly
     }
 
     /// Whether the given trait is an operator trait or not.
@@ -624,6 +632,11 @@ impl<'a> CompletionContext<'a> {
         let krate = scope.krate();
         let module = scope.module();
 
+        let toolchain = db.crate_graph()[krate.into()].channel;
+        // `toolchain == None` means we're in some detached files. Since we have no information on
+        // the toolchain being used, let's just allow unstable items to be listed.
+        let is_nightly = matches!(toolchain, Some(base_db::ReleaseChannel::Nightly) | None);
+
         let mut locals = FxHashMap::default();
         scope.process_all_names(&mut |name, scope| {
             if let ScopeDef::Local(local) = scope {
@@ -643,6 +656,7 @@ impl<'a> CompletionContext<'a> {
             token,
             krate,
             module,
+            is_nightly,
             expected_name,
             expected_type,
             qualifier_ctx,

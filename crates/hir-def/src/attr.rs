@@ -269,6 +269,10 @@ impl Attrs {
     pub fn is_proc_macro_derive(&self) -> bool {
         self.by_key("proc_macro_derive").exists()
     }
+
+    pub fn is_unstable(&self) -> bool {
+        self.by_key("unstable").exists()
+    }
 }
 
 use std::slice::Iter as SliceIter;
