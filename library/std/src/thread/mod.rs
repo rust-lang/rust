@@ -891,8 +891,8 @@ pub fn sleep(dur: Duration) {
 /// performs the corresponding `Acquire` operation. Calls to `unpark` for the same
 /// thread form a [release sequence].
 ///
-/// Note that being unblocked does not imply synchronization with a call to `unpark`,
-/// the wakeup could also be spurious. For example, a valid, but inefficient,
+/// Note that being unblocked does not imply a call was made to `unpark`, because
+/// wakeups can also be spurious. For example, a valid, but inefficient,
 /// implementation could have `park` and `unpark` return immediately without doing anything.
 ///
 /// # Examples
