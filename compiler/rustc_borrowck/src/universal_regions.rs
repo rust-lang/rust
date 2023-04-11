@@ -440,11 +440,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     debug!(?r);
                     if !indices.indices.contains_key(&r) {
                         let region_vid = {
-                            let name = match r.get_name() {
-                                Some(name) => name,
-                                _ => Symbol::intern("anon"),
-                            };
-
+                            let name = r.get_name_or_anon();
                             self.infcx.next_nll_region_var(FR, || {
                                 RegionCtxt::LateBound(BoundRegionInfo::Name(name))
                             })
@@ -478,11 +474,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             debug!(?r);
             if !indices.indices.contains_key(&r) {
                 let region_vid = {
-                    let name = match r.get_name() {
-                        Some(name) => name,
-                        _ => Symbol::intern("anon"),
-                    };
-
+                    let name = r.get_name_or_anon();
                     self.infcx.next_nll_region_var(FR, || {
                         RegionCtxt::LateBound(BoundRegionInfo::Name(name))
                     })
@@ -768,15 +760,10 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.infcx.tcx.fold_regions(value, |region, _depth| {
-            let name = match region.get_name() {
-                Some(name) => name,
-                _ => Symbol::intern("anon"),
-            };
+            let name = region.get_name_or_anon();
             debug!(?region, ?name);
 
-            let reg_var = self.next_nll_region_var(origin, || RegionCtxt::Free(name));
-
-            reg_var
+            self.next_nll_region_var(origin, || RegionCtxt::Free(name))
         })
     }
 
@@ -829,11 +816,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
             debug!(?r);
             if !indices.indices.contains_key(&r) {
                 let region_vid = {
-                    let name = match r.get_name() {
-                        Some(name) => name,
-                        _ => Symbol::intern("anon"),
-                    };
-
+                    let name = r.get_name_or_anon();
                     self.next_nll_region_var(FR, || {
                         RegionCtxt::LateBound(BoundRegionInfo::Name(name))
                     })
@@ -855,11 +838,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
             debug!(?r);
             if !indices.indices.contains_key(&r) {
                 let region_vid = {
-                    let name = match r.get_name() {
-                        Some(name) => name,
-                        _ => Symbol::intern("anon"),
-                    };
-
+                    let name = r.get_name_or_anon();
                     self.next_nll_region_var(FR, || {
                         RegionCtxt::LateBound(BoundRegionInfo::Name(name))
                     })
