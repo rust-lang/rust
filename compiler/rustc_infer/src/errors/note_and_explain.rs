@@ -9,7 +9,6 @@ struct DescriptionCtx<'a> {
     span: Option<Span>,
     kind: &'a str,
     arg: String,
-    num_arg: u32,
 }
 
 impl<'a> DescriptionCtx<'a> {
@@ -113,7 +112,6 @@ impl<'a> DescriptionCtx<'a> {
     fn add_to(self, diag: &mut rustc_errors::Diagnostic) {
         diag.set_arg("desc_kind", self.kind);
         diag.set_arg("desc_arg", self.arg);
-        diag.set_arg("desc_num_arg", self.num_arg);
     }
 }
 
