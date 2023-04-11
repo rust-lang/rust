@@ -29,24 +29,6 @@ pub fn renumber_mir<'tcx>(
     visitor.visit_body(body);
 }
 
-/// Replaces all regions appearing in `value` with fresh inference
-/// variables.
-#[instrument(skip(infcx, get_ctxt_fn), level = "debug")]
-pub(crate) fn renumber_regions<'tcx, T, F>(
-    infcx: &BorrowckInferCtxt<'_, 'tcx>,
-    value: T,
-    get_ctxt_fn: F,
-) -> T
-where
-    T: TypeFoldable<TyCtxt<'tcx>>,
-    F: Fn() -> RegionCtxt,
-{
-    infcx.tcx.fold_regions(value, |_region, _depth| {
-        let origin = NllRegionVariableOrigin::Existential { from_forall: false };
-        infcx.next_nll_region_var(origin, || get_ctxt_fn())
-    })
-}
-
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) enum BoundRegionInfo {
     Name(Symbol),
@@ -87,12 +69,17 @@ struct NllVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> NllVisitor<'a, 'tcx> {
+    /// Replaces all regions appearing in `value` with fresh inference
+    /// variables.
     fn renumber_regions<T, F>(&mut self, value: T, region_ctxt_fn: F) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
         F: Fn() -> RegionCtxt,
     {
-        renumber_regions(self.infcx, value, region_ctxt_fn)
+        let origin = NllRegionVariableOrigin::Existential { from_forall: false };
+        self.infcx.tcx.fold_regions(value, |_region, _depth| {
+            self.infcx.next_nll_region_var(origin, || region_ctxt_fn())
+        })
     }
 }
 
