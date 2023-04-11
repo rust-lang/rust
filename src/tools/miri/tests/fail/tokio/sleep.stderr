@@ -1,0 +1,68 @@
+error: unsupported operation: returning ready events from epoll_wait is not yet implemented
+  --> CARGO_REGISTRY/.../epoll.rs:LL:CC
+   |
+LL | /         syscall!(epoll_wait(
+LL | |             self.ep,
+LL | |             events.as_mut_ptr(),
+LL | |             events.capacity() as i32,
+LL | |             timeout,
+LL | |         ))
+   | |__________^ returning ready events from epoll_wait is not yet implemented
+   |
+   = help: this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support
+   = note: BACKTRACE:
+   = note: inside `mio::sys::PLATFORM::selector::epoll::Selector::select` at CARGO_REGISTRY/.../mod.rs:LL:CC
+   = note: inside `mio::poll::Poll::poll` at CARGO_REGISTRY/.../poll.rs:LL:CC
+   = note: inside `tokio::runtime::io::Driver::turn` at CARGO_REGISTRY/.../mod.rs:LL:CC
+   = note: inside `tokio::runtime::io::Driver::park_timeout` at CARGO_REGISTRY/.../mod.rs:LL:CC
+   = note: inside `tokio::runtime::signal::Driver::park_timeout` at CARGO_REGISTRY/.../mod.rs:LL:CC
+   = note: inside `tokio::runtime::process::Driver::park_timeout` at CARGO_REGISTRY/.../process.rs:LL:CC
+   = note: inside `tokio::runtime::driver::IoStack::park_timeout` at CARGO_REGISTRY/.../driver.rs:LL:CC
+   = note: inside `tokio::runtime::time::Driver::park_thread_timeout` at CARGO_REGISTRY/.../mod.rs:LL:CC
+   = note: inside `tokio::runtime::time::Driver::park_internal` at CARGO_REGISTRY/.../mod.rs:LL:CC
+   = note: inside `tokio::runtime::time::Driver::park` at CARGO_REGISTRY/.../mod.rs:LL:CC
+   = note: inside `tokio::runtime::driver::TimeDriver::park` at CARGO_REGISTRY/.../driver.rs:LL:CC
+   = note: inside `tokio::runtime::driver::Driver::park` at CARGO_REGISTRY/.../driver.rs:LL:CC
+   = note: inside `tokio::runtime::scheduler::multi_thread::park::Inner::park_driver` at CARGO_REGISTRY/.../park.rs:LL:CC
+   = note: inside `tokio::runtime::scheduler::multi_thread::park::Inner::park` at CARGO_REGISTRY/.../park.rs:LL:CC
+   = note: inside `tokio::runtime::scheduler::multi_thread::park::Parker::park` at CARGO_REGISTRY/.../park.rs:LL:CC
+   = note: inside `tokio::runtime::scheduler::multi_thread::worker::Context::park_timeout` at CARGO_REGISTRY/.../worker.rs:LL:CC
+   = note: inside `tokio::runtime::scheduler::multi_thread::worker::Context::park` at CARGO_REGISTRY/.../worker.rs:LL:CC
+   = note: inside `tokio::runtime::scheduler::multi_thread::worker::Context::run` at CARGO_REGISTRY/.../worker.rs:LL:CC
+   = note: inside closure at CARGO_REGISTRY/.../worker.rs:LL:CC
+   = note: inside `tokio::macros::scoped_tls::ScopedKey::<tokio::runtime::scheduler::multi_thread::worker::Context>::set::<[closure@tokio::runtime::scheduler::multi_thread::worker::run::{closure#0}], ()>` at CARGO_REGISTRY/.../scoped_tls.rs:LL:CC
+   = note: inside `tokio::runtime::scheduler::multi_thread::worker::run` at CARGO_REGISTRY/.../worker.rs:LL:CC
+   = note: inside closure at CARGO_REGISTRY/.../worker.rs:LL:CC
+   = note: inside `<tokio::runtime::blocking::task::BlockingTask<[closure@tokio::runtime::scheduler::multi_thread::worker::Launch::launch::{closure#0}]> as std::future::Future>::poll` at CARGO_REGISTRY/.../task.rs:LL:CC
+   = note: inside closure at CARGO_REGISTRY/.../core.rs:LL:CC
+   = note: inside `tokio::loom::std::unsafe_cell::UnsafeCell::<tokio::runtime::task::core::Stage<tokio::runtime::blocking::task::BlockingTask<[closure@tokio::runtime::scheduler::multi_thread::worker::Launch::launch::{closure#0}]>>>::with_mut::<std::task::Poll<()>, [closure@tokio::runtime::task::core::Core<tokio::runtime::blocking::task::BlockingTask<[closure@tokio::runtime::scheduler::multi_thread::worker::Launch::launch::{closure#0}]>, tokio::runtime::blocking::schedule::BlockingSchedule>::poll::{closure#0}]>` at CARGO_REGISTRY/.../unsafe_cell.rs:LL:CC
+   = note: inside `tokio::runtime::task::core::Core::<tokio::runtime::blocking::task::BlockingTask<[closure@tokio::runtime::scheduler::multi_thread::worker::Launch::launch::{closure#0}]>, tokio::runtime::blocking::schedule::BlockingSchedule>::poll` at CARGO_REGISTRY/.../core.rs:LL:CC
+   = note: inside closure at CARGO_REGISTRY/.../harness.rs:LL:CC
+   = note: inside `<std::panic::AssertUnwindSafe<[closure@tokio::runtime::task::harness::poll_future<tokio::runtime::blocking::task::BlockingTask<[closure@tokio::runtime::scheduler::multi_thread::worker::Launch::launch::{closure#0}]>, tokio::runtime::blocking::schedule::BlockingSchedule>::{closure#0}]> as std::ops::FnOnce<()>>::call_once` at RUSTLIB/core/src/panic/unwind_safe.rs:LL:CC
+   = note: inside `std::panicking::r#try::do_call::<std::panic::AssertUnwindSafe<[closure@tokio::runtime::task::harness::poll_future<tokio::runtime::blocking::task::BlockingTask<[closure@tokio::runtime::scheduler::multi_thread::worker::Launch::launch::{closure#0}]>, tokio::runtime::blocking::schedule::BlockingSchedule>::{closure#0}]>, std::task::Poll<()>>` at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside `std::panicking::r#try::<std::task::Poll<()>, std::panic::AssertUnwindSafe<[closure@tokio::runtime::task::harness::poll_future<tokio::runtime::blocking::task::BlockingTask<[closure@tokio::runtime::scheduler::multi_thread::worker::Launch::launch::{closure#0}]>, tokio::runtime::blocking::schedule::BlockingSchedule>::{closure#0}]>>` at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside `std::panic::catch_unwind::<std::panic::AssertUnwindSafe<[closure@tokio::runtime::task::harness::poll_future<tokio::runtime::blocking::task::BlockingTask<[closure@tokio::runtime::scheduler::multi_thread::worker::Launch::launch::{closure#0}]>, tokio::runtime::blocking::schedule::BlockingSchedule>::{closure#0}]>, std::task::Poll<()>>` at RUSTLIB/std/src/panic.rs:LL:CC
+   = note: inside `tokio::runtime::task::harness::poll_future::<tokio::runtime::blocking::task::BlockingTask<[closure@tokio::runtime::scheduler::multi_thread::worker::Launch::launch::{closure#0}]>, tokio::runtime::blocking::schedule::BlockingSchedule>` at CARGO_REGISTRY/.../harness.rs:LL:CC
+   = note: inside `tokio::runtime::task::harness::Harness::<tokio::runtime::blocking::task::BlockingTask<[closure@tokio::runtime::scheduler::multi_thread::worker::Launch::launch::{closure#0}]>, tokio::runtime::blocking::schedule::BlockingSchedule>::poll_inner` at CARGO_REGISTRY/.../harness.rs:LL:CC
+   = note: inside `tokio::runtime::task::harness::Harness::<tokio::runtime::blocking::task::BlockingTask<[closure@tokio::runtime::scheduler::multi_thread::worker::Launch::launch::{closure#0}]>, tokio::runtime::blocking::schedule::BlockingSchedule>::poll` at CARGO_REGISTRY/.../harness.rs:LL:CC
+   = note: inside `tokio::runtime::task::raw::poll::<tokio::runtime::blocking::task::BlockingTask<[closure@tokio::runtime::scheduler::multi_thread::worker::Launch::launch::{closure#0}]>, tokio::runtime::blocking::schedule::BlockingSchedule>` at CARGO_REGISTRY/.../raw.rs:LL:CC
+   = note: inside `tokio::runtime::task::raw::RawTask::poll` at CARGO_REGISTRY/.../raw.rs:LL:CC
+   = note: inside `tokio::runtime::task::UnownedTask::<tokio::runtime::blocking::schedule::BlockingSchedule>::run` at CARGO_REGISTRY/.../mod.rs:LL:CC
+   = note: inside `tokio::runtime::blocking::pool::Task::run` at CARGO_REGISTRY/.../pool.rs:LL:CC
+   = note: inside `tokio::runtime::blocking::pool::Inner::run` at CARGO_REGISTRY/.../pool.rs:LL:CC
+   = note: inside closure at CARGO_REGISTRY/.../pool.rs:LL:CC
+   = note: inside `std::sys_common::backtrace::__rust_begin_short_backtrace::<[closure@tokio::runtime::blocking::pool::Spawner::spawn_thread::{closure#0}], ()>` at RUSTLIB/std/src/sys_common/backtrace.rs:LL:CC
+   = note: inside closure at RUSTLIB/std/src/thread/mod.rs:LL:CC
+   = note: inside `<std::panic::AssertUnwindSafe<[closure@std::thread::Builder::spawn_unchecked_<'_, '_, [closure@tokio::runtime::blocking::pool::Spawner::spawn_thread::{closure#0}], ()>::{closure#1}::{closure#0}]> as std::ops::FnOnce<()>>::call_once` at RUSTLIB/core/src/panic/unwind_safe.rs:LL:CC
+   = note: inside `std::panicking::r#try::do_call::<std::panic::AssertUnwindSafe<[closure@std::thread::Builder::spawn_unchecked_<'_, '_, [closure@tokio::runtime::blocking::pool::Spawner::spawn_thread::{closure#0}], ()>::{closure#1}::{closure#0}]>, ()>` at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside `std::panicking::r#try::<(), std::panic::AssertUnwindSafe<[closure@std::thread::Builder::spawn_unchecked_<'_, '_, [closure@tokio::runtime::blocking::pool::Spawner::spawn_thread::{closure#0}], ()>::{closure#1}::{closure#0}]>>` at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside `std::panic::catch_unwind::<std::panic::AssertUnwindSafe<[closure@std::thread::Builder::spawn_unchecked_<'_, '_, [closure@tokio::runtime::blocking::pool::Spawner::spawn_thread::{closure#0}], ()>::{closure#1}::{closure#0}]>, ()>` at RUSTLIB/std/src/panic.rs:LL:CC
+   = note: inside closure at RUSTLIB/std/src/thread/mod.rs:LL:CC
+   = note: inside `<[closure@std::thread::Builder::spawn_unchecked_<'_, '_, [closure@tokio::runtime::blocking::pool::Spawner::spawn_thread::{closure#0}], ()>::{closure#1}] as std::ops::FnOnce<()>>::call_once - shim(vtable)` at RUSTLIB/core/src/ops/function.rs:LL:CC
+   = note: inside `<std::boxed::Box<dyn std::ops::FnOnce()> as std::ops::FnOnce<()>>::call_once` at RUSTLIB/alloc/src/boxed.rs:LL:CC
+   = note: inside `<std::boxed::Box<std::boxed::Box<dyn std::ops::FnOnce()>> as std::ops::FnOnce<()>>::call_once` at RUSTLIB/alloc/src/boxed.rs:LL:CC
+   = note: inside `std::sys::PLATFORM::thread::Thread::new::thread_start` at RUSTLIB/std/src/sys/PLATFORM/thread.rs:LL:CC
+   = note: this error originates in the macro `syscall` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+
