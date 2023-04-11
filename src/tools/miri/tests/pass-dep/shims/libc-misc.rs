@@ -302,6 +302,83 @@ fn test_posix_mkstemp() {
     }
 }
 
+fn test_memcpy() {
+    unsafe {
+        let src = [1i8, 2, 3];
+        let dest = libc::calloc(3, 1);
+        libc::memcpy(dest, src.as_ptr() as *const libc::c_void, 3);
+        let slc = std::slice::from_raw_parts(dest as *const i8, 3);
+        assert_eq!(*slc, [1i8, 2, 3]);
+        libc::free(dest);
+    }
+
+    unsafe {
+        let src = [1i8, 2, 3];
+        let dest = libc::calloc(4, 1);
+        libc::memcpy(dest, src.as_ptr() as *const libc::c_void, 3);
+        let slc = std::slice::from_raw_parts(dest as *const i8, 4);
+        assert_eq!(*slc, [1i8, 2, 3, 0]);
+        libc::free(dest);
+    }
+
+    unsafe {
+        let src = 123_i32;
+        let mut dest = 0_i32;
+        libc::memcpy(
+            &mut dest as *mut i32 as *mut libc::c_void,
+            &src as *const i32 as *const libc::c_void,
+            std::mem::size_of::<i32>(),
+        );
+        assert_eq!(dest, src);
+    }
+
+    unsafe {
+        let src = Some(123);
+        let mut dest: Option<i32> = None;
+        libc::memcpy(
+            &mut dest as *mut Option<i32> as *mut libc::c_void,
+            &src as *const Option<i32> as *const libc::c_void,
+            std::mem::size_of::<Option<i32>>(),
+        );
+        assert_eq!(dest, src);
+    }
+
+    unsafe {
+        let src = &123;
+        let mut dest = &42;
+        libc::memcpy(
+            &mut dest as *mut &'static i32 as *mut libc::c_void,
+            &src as *const &'static i32 as *const libc::c_void,
+            std::mem::size_of::<&'static i32>(),
+        );
+        assert_eq!(*dest, 123);
+    }
+}
+
+fn test_strcpy() {
+    use std::ffi::{CStr, CString};
+
+    // case: src_size equals dest_size
+    unsafe {
+        let src = CString::new("rust").unwrap();
+        let size = src.as_bytes_with_nul().len();
+        let dest = libc::malloc(size);
+        libc::strcpy(dest as *mut libc::c_char, src.as_ptr());
+        assert_eq!(CStr::from_ptr(dest as *const libc::c_char), src.as_ref());
+        libc::free(dest);
+    }
+
+    // case: src_size is less than dest_size
+    unsafe {
+        let src = CString::new("rust").unwrap();
+        let size = src.as_bytes_with_nul().len();
+        let dest = libc::malloc(size + 1);
+        libc::strcpy(dest as *mut libc::c_char, src.as_ptr());
+        assert_eq!(CStr::from_ptr(dest as *const libc::c_char), src.as_ref());
+        libc::free(dest);
+    }
+}
+
 #[cfg(target_os = "linux")]
 fn test_sigrt() {
     let min = libc::SIGRTMIN();
@@ -332,6 +409,9 @@ fn main() {
 
     test_isatty();
     test_clocks();
+
+    test_memcpy();
+    test_strcpy();
 
     #[cfg(target_os = "linux")]
     {
