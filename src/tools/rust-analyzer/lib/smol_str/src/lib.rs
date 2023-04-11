@@ -2,6 +2,8 @@
 extern crate alloc;
 
 use alloc::{
+    borrow::Cow,
+    boxed::Box,
     string::{String, ToString},
     sync::Arc,
 };
@@ -17,7 +19,7 @@ use core::{
 
 /// A `SmolStr` is a string type that has the following properties:
 ///
-/// * `size_of::<SmolStr>() == size_of::<String>()`
+/// * `size_of::<SmolStr>() == 24 (therefor == size_of::<String>() on 64 bit platforms)
 /// * `Clone` is `O(1)`
 /// * Strings are stack-allocated if they are:
 ///     * Up to 23 bytes long
@@ -290,22 +292,64 @@ impl<'a> iter::FromIterator<&'a str> for SmolStr {
     }
 }
 
-impl<T> From<T> for SmolStr
-where
-    T: AsRef<str>,
-{
-    fn from(text: T) -> Self {
+impl AsRef<str> for SmolStr {
+    #[inline(always)]
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl From<&str> for SmolStr {
+    #[inline]
+    fn from(s: &str) -> SmolStr {
+        SmolStr::new(s)
+    }
+}
+
+impl From<&mut str> for SmolStr {
+    #[inline]
+    fn from(s: &mut str) -> SmolStr {
+        SmolStr::new(s)
+    }
+}
+
+impl From<&String> for SmolStr {
+    #[inline]
+    fn from(s: &String) -> SmolStr {
+        SmolStr::new(s)
+    }
+}
+
+impl From<String> for SmolStr {
+    #[inline(always)]
+    fn from(text: String) -> Self {
         Self::new(text)
     }
 }
 
+impl From<Box<str>> for SmolStr {
+    #[inline]
+    fn from(s: Box<str>) -> SmolStr {
+        SmolStr::new(s)
+    }
+}
+
+impl<'a> From<Cow<'a, str>> for SmolStr {
+    #[inline]
+    fn from(s: Cow<'a, str>) -> SmolStr {
+        SmolStr::new(s)
+    }
+}
+
 impl From<SmolStr> for String {
+    #[inline(always)]
     fn from(text: SmolStr) -> Self {
         text.as_str().into()
     }
 }
 
 impl Borrow<str> for SmolStr {
+    #[inline(always)]
     fn borrow(&self) -> &str {
         self.as_str()
     }
