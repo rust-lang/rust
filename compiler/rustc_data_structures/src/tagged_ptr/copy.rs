@@ -50,6 +50,10 @@ where
     P: Pointer,
     T: Tag,
 {
+    pub fn new(pointer: P, tag: T) -> Self {
+        Self { packed: Self::pack(P::into_ptr(pointer), tag), data: PhantomData }
+    }
+
     const TAG_BIT_SHIFT: usize = usize::BITS as usize - T::BITS;
     const ASSERTION: () = {
         assert!(T::BITS <= P::BITS);
@@ -58,28 +62,28 @@ where
         assert!(std::mem::size_of::<&P::Target>() == std::mem::size_of::<usize>());
     };
 
-    pub fn new(pointer: P, tag: T) -> Self {
+    /// Pack pointer `ptr` that comes from [`P::into_ptr`] with a `tag`.
+    ///
+    /// [`P::into_ptr`]: Pointer::into_ptr
+    fn pack(ptr: NonNull<P::Target>, tag: T) -> NonNull<P::Target> {
         // Trigger assert!
         let () = Self::ASSERTION;
 
         let packed_tag = tag.into_usize() << Self::TAG_BIT_SHIFT;
 
-        Self {
-            packed: P::into_ptr(pointer).map_addr(|addr| {
-                // SAFETY:
-                // - The pointer is `NonNull` => it's address is `NonZeroUsize`
-                // - `P::BITS` least significant bits are always zero (`Pointer` contract)
-                // - `T::BITS <= P::BITS` (from `Self::ASSERTION`)
-                //
-                // Thus `addr >> T::BITS` is guaranteed to be non-zero.
-                //
-                // `{non_zero} | packed_tag` can't make the value zero.
+        ptr.map_addr(|addr| {
+            // SAFETY:
+            // - The pointer is `NonNull` => it's address is `NonZeroUsize`
+            // - `P::BITS` least significant bits are always zero (`Pointer` contract)
+            // - `T::BITS <= P::BITS` (from `Self::ASSERTION`)
+            //
+            // Thus `addr >> T::BITS` is guaranteed to be non-zero.
+            //
+            // `{non_zero} | packed_tag` can't make the value zero.
 
-                let packed = (addr.get() >> T::BITS) | packed_tag;
-                unsafe { NonZeroUsize::new_unchecked(packed) }
-            }),
-            data: PhantomData,
-        }
+            let packed = (addr.get() >> T::BITS) | packed_tag;
+            unsafe { NonZeroUsize::new_unchecked(packed) }
+        })
     }
 
     pub(super) fn pointer_raw(&self) -> NonNull<P::Target> {
@@ -117,12 +121,7 @@ where
 
     #[inline]
     pub fn set_tag(&mut self, tag: T) {
-        // TODO: refactor packing into a function and reuse it here
-        let new_tag = T::into_usize(tag) << Self::TAG_BIT_SHIFT;
-        let tag_mask = (1 << T::BITS) - 1;
-        self.packed = self.packed.map_addr(|addr| unsafe {
-            NonZeroUsize::new_unchecked(addr.get() & !(tag_mask << Self::TAG_BIT_SHIFT) | new_tag)
-        });
+        self.packed = Self::pack(self.pointer_raw(), tag);
     }
 }
 
