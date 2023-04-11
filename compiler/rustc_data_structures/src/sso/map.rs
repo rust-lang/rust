@@ -5,20 +5,20 @@ use std::fmt;
 use std::hash::Hash;
 use std::ops::Index;
 
-// For pointer-sized arguments arrays
-// are faster than set/map for up to 64
-// arguments.
-//
-// On the other hand such a big array
-// hurts cache performance, makes passing
-// sso structures around very expensive.
-//
-// Biggest performance benefit is gained
-// for reasonably small arrays that stay
-// small in vast majority of cases.
-//
-// '8' is chosen as a sane default, to be
-// reevaluated later.
+/// For pointer-sized arguments arrays
+/// are faster than set/map for up to 64
+/// arguments.
+///
+/// On the other hand such a big array
+/// hurts cache performance, makes passing
+/// sso structures around very expensive.
+///
+/// Biggest performance benefit is gained
+/// for reasonably small arrays that stay
+/// small in vast majority of cases.
+///
+/// '8' is chosen as a sane default, to be
+/// reevaluated later.
 const SSO_ARRAY_SIZE: usize = 8;
 
 /// Small-storage-optimized implementation of a map.
@@ -407,7 +407,7 @@ where
 
 impl<K, V> IntoIterator for SsoHashMap<K, V> {
     type IntoIter = Either<
-        <ArrayVec<(K, V), 8> as IntoIterator>::IntoIter,
+        <ArrayVec<(K, V), SSO_ARRAY_SIZE> as IntoIterator>::IntoIter,
         <FxHashMap<K, V> as IntoIterator>::IntoIter,
     >;
     type Item = <Self::IntoIter as Iterator>::Item;
@@ -437,7 +437,7 @@ fn adapt_array_mut_it<K, V>(pair: &mut (K, V)) -> (&K, &mut V) {
 impl<'a, K, V> IntoIterator for &'a SsoHashMap<K, V> {
     type IntoIter = Either<
         std::iter::Map<
-            <&'a ArrayVec<(K, V), 8> as IntoIterator>::IntoIter,
+            <&'a ArrayVec<(K, V), SSO_ARRAY_SIZE> as IntoIterator>::IntoIter,
             fn(&'a (K, V)) -> (&'a K, &'a V),
         >,
         <&'a FxHashMap<K, V> as IntoIterator>::IntoIter,
@@ -455,7 +455,7 @@ impl<'a, K, V> IntoIterator for &'a SsoHashMap<K, V> {
 impl<'a, K, V> IntoIterator for &'a mut SsoHashMap<K, V> {
     type IntoIter = Either<
         std::iter::Map<
-            <&'a mut ArrayVec<(K, V), 8> as IntoIterator>::IntoIter,
+            <&'a mut ArrayVec<(K, V), SSO_ARRAY_SIZE> as IntoIterator>::IntoIter,
             fn(&'a mut (K, V)) -> (&'a K, &'a mut V),
         >,
         <&'a mut FxHashMap<K, V> as IntoIterator>::IntoIter,
