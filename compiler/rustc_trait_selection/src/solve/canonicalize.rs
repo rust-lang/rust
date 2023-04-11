@@ -125,8 +125,9 @@ impl<'a, 'tcx> Canonicalizer<'a, 'tcx> {
         // - var_infos: [E0, U1, E1, U1, E1, E6, U6], curr_compressed_uv: 1, next_orig_uv: 6
         // - var_infos: [E0, U1, E1, U1, E1, E2, U2], curr_compressed_uv: 2, next_orig_uv: -
         //
-        // This algorithm runs in `O(n²)` where `n` is the number of different universe
-        // indices in the input. This should be fine as `n` is expected to be small.
+        // This algorithm runs in `O(nm)` where `n` is the number of different universe
+        // indices in the input and `m` is the number of canonical variables.
+        // This should be fine as both `n` and `m` are expected to be small.
         let mut curr_compressed_uv = ty::UniverseIndex::ROOT;
         let mut existential_in_new_uv = false;
         let mut next_orig_uv = Some(ty::UniverseIndex::ROOT);
@@ -245,18 +246,14 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
             ty::ReError(_) => return r,
         };
 
-        let existing_bound_var = match self.canonicalize_mode {
-            CanonicalizeMode::Input => None,
-            CanonicalizeMode::Response { .. } => {
-                self.variables.iter().position(|&v| v == r.into()).map(ty::BoundVar::from)
-            }
-        };
-        let var = existing_bound_var.unwrap_or_else(|| {
-            let var = ty::BoundVar::from(self.variables.len());
-            self.variables.push(r.into());
-            self.primitive_var_infos.push(CanonicalVarInfo { kind });
-            var
-        });
+        let var = ty::BoundVar::from(
+            self.variables.iter().position(|&v| v == r.into()).unwrap_or_else(|| {
+                let var = self.variables.len();
+                self.variables.push(r.into());
+                self.primitive_var_infos.push(CanonicalVarInfo { kind });
+                var
+            }),
+        );
         let br = ty::BoundRegion { var, kind: BrAnon(None) };
         self.interner().mk_re_late_bound(self.binder_index, br)
     }
