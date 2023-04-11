@@ -36,10 +36,11 @@ const EXCEPTIONS: &[(&str, &str)] = &[
     ("mdbook", "MPL-2.0"),                                   // mdbook
     ("colored", "MPL-2.0"),                                  // rustfmt
     ("ryu", "Apache-2.0 OR BSL-1.0"),                        // cargo/... (because of serde)
-    ("instant", "BSD-3-Clause"), // rustc_driver/tracing-subscriber/parking_lot
-    ("snap", "BSD-3-Clause"),    // rustc
-    ("fluent-langneg", "Apache-2.0"), // rustc (fluent translations)
-    ("self_cell", "Apache-2.0"), // rustc (fluent translations)
+    ("codespan-reporting", "Apache-2.0"), // cxx via iana-time-zone-haiku via time, only on haiku
+    ("instant", "BSD-3-Clause"),          // rustc_driver/tracing-subscriber/parking_lot
+    ("snap", "BSD-3-Clause"),             // rustc
+    ("fluent-langneg", "Apache-2.0"),     // rustc (fluent translations)
+    ("self_cell", "Apache-2.0"),          // rustc (fluent translations)
     // FIXME: this dependency violates the documentation comment above:
     ("fortanix-sgx-abi", "MPL-2.0"), // libstd but only for `sgx` target
     ("dissimilar", "Apache-2.0"),    // rustdoc, rustc_lexer (few tests) via expect-test, (dev deps)
