@@ -1413,7 +1413,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.demand_eqtype(init.span, local_ty, init_ty);
             init_ty
         } else {
-            self.check_expr_coercable_to_type(init, local_ty, None)
+            self.check_expr_coercible_to_type(init, local_ty, None)
         }
     }
 

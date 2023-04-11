@@ -83,7 +83,7 @@ pub trait CollectAndApply<T, R>: Sized {
     /// Produce a result of type `Self::Output` from `iter`. The result will
     /// typically be produced by applying `f` on the elements produced by
     /// `iter`, though this may not happen in some impls, e.g. if an error
-    /// occured during iteration.
+    /// occurred during iteration.
     fn collect_and_apply<I, F>(iter: I, f: F) -> Self::Output
     where
         I: Iterator<Item = Self>,

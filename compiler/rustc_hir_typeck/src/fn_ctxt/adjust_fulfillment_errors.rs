@@ -466,7 +466,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// obligation. Hence we refine the `expr` "outwards-in" and bail at the first kind of expression/impl we don't recognize.
     ///
     /// This function returns a `Result<&Expr, &Expr>` - either way, it returns the `Expr` whose span should be
-    /// reported as an error. If it is `Ok`, then it means it refined successfull. If it is `Err`, then it may be
+    /// reported as an error. If it is `Ok`, then it means it refined successful. If it is `Err`, then it may be
     /// only a partial success - but it cannot be refined even further.
     fn blame_specific_expr_if_possible_for_derived_predicate_obligation(
         &self,
@@ -534,7 +534,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// - in_ty: `(Option<Vec<T>, bool)`
     /// we would drill until we arrive at `vec![1, 2, 3]`.
     ///
-    /// If successful, we return `Ok(refined_expr)`. If unsuccesful, we return `Err(partially_refined_expr`),
+    /// If successful, we return `Ok(refined_expr)`. If unsuccessful, we return `Err(partially_refined_expr`),
     /// which will go as far as possible. For example, given `(foo(), false)` instead, we would drill to
     /// `foo()` and then return `Err("foo()")`.
     ///

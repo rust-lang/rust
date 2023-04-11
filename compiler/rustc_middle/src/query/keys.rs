@@ -26,7 +26,7 @@ pub trait Key: Sized {
     //
     //      ...But r-a doesn't support them yet and using a default here causes r-a to not infer
     //      return types of queries which is very annoying. Thus, until r-a support associated
-    //      type defaults, plese restrain from using them here <3
+    //      type defaults, please restrain from using them here <3
     //
     //      r-a issue: <https://github.com/rust-lang/rust-analyzer/issues/13693>
     type CacheSelector;

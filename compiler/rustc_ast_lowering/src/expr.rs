@@ -1,6 +1,6 @@
 use super::errors::{
     AsyncGeneratorsNotSupported, AsyncNonMoveClosureNotSupported, AwaitOnlyInAsyncFnAndBlocks,
-    BaseExpressionDoubleDot, ClosureCannotBeStatic, FunctionalRecordUpdateDestructuringAssignemnt,
+    BaseExpressionDoubleDot, ClosureCannotBeStatic, FunctionalRecordUpdateDestructuringAssignment,
     GeneratorTooManyParameters, InclusiveRangeWithNoEnd, NotSupportedForLifetimeBinderAsyncClosure,
     UnderscoreExprLhsAssign,
 };
@@ -434,7 +434,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // `if let pat = val` or `if foo && let pat = val`, as we _do_ want `val` to live beyond the
         // condition in this case.
         //
-        // In order to mantain the drop behavior for the non `let` parts of the condition,
+        // In order to maintain the drop behavior for the non `let` parts of the condition,
         // we still wrap them in terminating scopes, e.g. `if foo && let pat = val` essentially
         // gets transformed into `if { let _t = foo; _t } && let pat = val`
         match &cond.kind {
@@ -1232,7 +1232,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 let fields_omitted = match &se.rest {
                     StructRest::Base(e) => {
-                        self.tcx.sess.emit_err(FunctionalRecordUpdateDestructuringAssignemnt {
+                        self.tcx.sess.emit_err(FunctionalRecordUpdateDestructuringAssignment {
                             span: e.span,
                         });
                         true

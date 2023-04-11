@@ -532,7 +532,7 @@ pub enum BuiltinLintDiagnostics {
     AmbiguousGlobReexports {
         /// The name for which collision(s) have occurred.
         name: String,
-        /// The name space for whihc the collision(s) occurred in.
+        /// The name space for which the collision(s) occurred in.
         namespace: String,
         /// Span where the name is first re-exported.
         first_reexport_span: Span,
