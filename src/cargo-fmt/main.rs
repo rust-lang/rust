@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str;
 
-use clap::{AppSettings, CommandFactory, Parser};
+use clap::{CommandFactory, Parser};
 
 #[path = "test/mod.rs"]
 #[cfg(test)]
@@ -22,7 +22,7 @@ mod cargo_fmt_tests;
 
 #[derive(Parser)]
 #[clap(
-    global_setting(AppSettings::NoAutoVersion),
+    disable_version_flag = true,
     bin_name = "cargo fmt",
     about = "This utility formats all bin and lib files of \
              the current crate using rustfmt."
@@ -45,7 +45,7 @@ pub struct Opts {
         short = 'p',
         long = "package",
         value_name = "package",
-        multiple_values = true
+        num_args = 1..
     )]
     packages: Vec<String>,
 

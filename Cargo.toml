@@ -37,7 +37,7 @@ annotate-snippets = { version = "0.9", features = ["color"] }
 anyhow = "1.0"
 bytecount = "0.6"
 cargo_metadata = "0.14"
-clap = { version = "3.1", features = ["derive"] }
+clap = { version = "4.2.1", features = ["derive"] }
 derive-new = "0.5"
 diff = "0.1"
 dirs = "4.0"
@@ -48,10 +48,10 @@ itertools = "0.10"
 lazy_static = "1.4"
 log = "0.4"
 regex = "1.5"
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1.0.160", features = ["derive"] }
 serde_json = "1.0"
 term = "0.7"
-thiserror = "1.0"
+thiserror = "1.0.40"
 toml = "0.5"
 unicode-segmentation = "1.9"
 unicode-width = "0.1"
