@@ -2276,6 +2276,8 @@ extern "rust-intrinsic" {
     /// takes the data pointer and a pointer to the target-specific exception
     /// object that was caught. For more information see the compiler's
     /// source as well as std's catch implementation.
+    ///
+    /// `catch_fn` must not unwind.
     #[rustc_nounwind]
     pub fn r#try(try_fn: fn(*mut u8), data: *mut u8, catch_fn: fn(*mut u8, *mut u8)) -> i32;
 

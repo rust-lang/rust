@@ -498,6 +498,7 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
     // This function cannot be marked as `unsafe` because `intrinsics::r#try`
     // expects normal function pointers.
     #[inline]
+    #[rustc_nounwind] // `intrinsic::r#try` requires catch fn to be nounwind
     fn do_catch<F: FnOnce() -> R, R>(data: *mut u8, payload: *mut u8) {
         // SAFETY: this is the responsibility of the caller, see above.
         //
