@@ -300,7 +300,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // We could pass the file for long types into these two, but it isn't strictly necessary
-        // given how targetted they are.
+        // given how targeted they are.
         if self.suggest_wrapping_range_with_parens(
             tcx,
             rcvr_ty,

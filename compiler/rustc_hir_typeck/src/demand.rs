@@ -308,7 +308,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let rcvr_ty = self.node_ty(rcvr.hir_id);
                 // Get the evaluated type *after* calling the method call, so that the influence
                 // of the arguments can be reflected in the receiver type. The receiver
-                // expression has the type *before* theis analysis is done.
+                // expression has the type *before* this analysis is done.
                 let ty = match self.lookup_probe_for_diagnostic(
                     segment.ident,
                     rcvr_ty,

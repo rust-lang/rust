@@ -755,7 +755,7 @@ impl FromStr for Conv {
             "AmdGpuKernel" => Ok(Conv::AmdGpuKernel),
             "AvrInterrupt" => Ok(Conv::AvrInterrupt),
             "AvrNonBlockingInterrupt" => Ok(Conv::AvrNonBlockingInterrupt),
-            _ => Err(format!("'{s}' is not a valid value for entry function call convetion.")),
+            _ => Err(format!("'{s}' is not a valid value for entry function call convention.")),
         }
     }
 }

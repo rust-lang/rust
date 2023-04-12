@@ -123,7 +123,7 @@ pub enum Lld {
 /// target properties, in accordance with the first design goal.
 ///
 /// The first component of the flavor is tightly coupled with the compilation target,
-/// while the `Cc` and `Lld` flags can vary withing the same target.
+/// while the `Cc` and `Lld` flags can vary within the same target.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum LinkerFlavor {
     /// Unix-like linker with GNU extensions (both naked and compiler-wrapped forms).

@@ -37,7 +37,7 @@ pub fn erase<T: EraseType>(src: T) -> Erase<T> {
 #[inline(always)]
 pub fn restore<T: EraseType>(value: Erase<T>) -> T {
     let value: Erased<<T as EraseType>::Result> = value;
-    // SAFETY: Due to the use of impl Trait in `Erase` the only way to safetly create an instance
+    // SAFETY: Due to the use of impl Trait in `Erase` the only way to safely create an instance
     // of `Erase` is to call `erase`, so we know that `value.data` is a valid instance of `T` of
     // the right size.
     unsafe { transmute_copy(&value.data) }
