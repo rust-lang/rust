@@ -35,6 +35,7 @@ use rustc_middle::ty::{
     OpaqueHiddenType, OpaqueTypeKey, RegionVid, Ty, TyCtxt, UserType, UserTypeAnnotationIndex,
 };
 use rustc_span::def_id::CRATE_DEF_ID;
+use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
@@ -1338,18 +1339,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 };
                 let (sig, map) = tcx.replace_late_bound_regions(sig, |br| {
                     use crate::renumber::{BoundRegionInfo, RegionCtxt};
-                    use rustc_span::Symbol;
 
                     let region_ctxt_fn = || {
                         let reg_info = match br.kind {
                             ty::BoundRegionKind::BrAnon(Some(span)) => BoundRegionInfo::Span(span),
-                            ty::BoundRegionKind::BrAnon(..) => {
-                                BoundRegionInfo::Name(Symbol::intern("anon"))
-                            }
+                            ty::BoundRegionKind::BrAnon(..) => BoundRegionInfo::Name(sym::anon),
                             ty::BoundRegionKind::BrNamed(_, name) => BoundRegionInfo::Name(name),
-                            ty::BoundRegionKind::BrEnv => {
-                                BoundRegionInfo::Name(Symbol::intern("env"))
-                            }
+                            ty::BoundRegionKind::BrEnv => BoundRegionInfo::Name(sym::env),
                         };
 
                         RegionCtxt::LateBound(reg_info)
