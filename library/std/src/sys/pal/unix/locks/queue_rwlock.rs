@@ -341,7 +341,7 @@ impl RwLock {
                 node.tail.set((state.addr() & QUEUED == 0).then_some(NonNull::from(&node)));
 
                 let next = ptr::from_ref(&node)
-                    .map_addr(|addr| addr | QUEUED | state.addr() & LOCKED)
+                    .map_addr(|addr| addr | QUEUED | (state.addr() & LOCKED))
                     as State;
                 // Use release ordering to propagate our changes to the waking
                 // thread.
