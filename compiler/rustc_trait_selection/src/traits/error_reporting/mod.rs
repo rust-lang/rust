@@ -1764,7 +1764,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // constrain inference variables a bit more to nested obligations from normalize so
                 // we can have more helpful errors.
                 //
-                // we intentionally errors from normalization here.
+                // we intentionally drop errors from normalization here,
+                // since the normalization is just done to improve the error message.
                 let _ = ocx.select_where_possible();
 
                 if let Err(new_err) = ocx.eq_exp(
