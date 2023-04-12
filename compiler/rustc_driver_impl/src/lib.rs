@@ -37,7 +37,7 @@ use rustc_metadata::locator;
 use rustc_session::config::{nightly_options, CG_OPTIONS, Z_OPTIONS};
 use rustc_session::config::{ErrorOutputType, Input, OutputType, PrintRequest, TrimmedDefPaths};
 use rustc_session::cstore::MetadataLoader;
-use rustc_session::getopts;
+use rustc_session::getopts::{self, Matches};
 use rustc_session::lint::{Lint, LintId};
 use rustc_session::{config, Session};
 use rustc_session::{early_error, early_error_no_abort, early_warn};
@@ -956,6 +956,46 @@ Available lint options:
     }
 }
 
+/// Show help for flag categories shared between rustdoc and rustc.
+///
+/// Returns whether a help option was printed.
+pub fn describe_flag_categories(matches: &Matches) -> bool {
+    // Handle the special case of -Wall.
+    let wall = matches.opt_strs("W");
+    if wall.iter().any(|x| *x == "all") {
+        print_wall_help();
+        rustc_errors::FatalError.raise();
+    }
+
+    // Don't handle -W help here, because we might first load plugins.
+    let debug_flags = matches.opt_strs("Z");
+    if debug_flags.iter().any(|x| *x == "help") {
+        describe_debug_flags();
+        return true;
+    }
+
+    let cg_flags = matches.opt_strs("C");
+    if cg_flags.iter().any(|x| *x == "help") {
+        describe_codegen_flags();
+        return true;
+    }
+
+    if cg_flags.iter().any(|x| *x == "no-stack-check") {
+        early_warn(
+            ErrorOutputType::default(),
+            "the --no-stack-check flag is deprecated and does nothing",
+        );
+    }
+
+    if cg_flags.iter().any(|x| *x == "passes=list") {
+        let backend_name = debug_flags.iter().find_map(|x| x.strip_prefix("codegen-backend="));
+        get_codegen_backend(&None, backend_name).print_passes();
+        return true;
+    }
+
+    false
+}
+
 fn describe_debug_flags() {
     println!("\nAvailable options:\n");
     print_flag_list("-Z", config::Z_OPTIONS);
@@ -966,7 +1006,7 @@ fn describe_codegen_flags() {
     print_flag_list("-C", config::CG_OPTIONS);
 }
 
-pub fn print_flag_list<T>(
+fn print_flag_list<T>(
     cmdline_opt: &str,
     flag_list: &[(&'static str, T, &'static str, &'static str)],
 ) {
@@ -1059,37 +1099,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
         return None;
     }
 
-    // Handle the special case of -Wall.
-    let wall = matches.opt_strs("W");
-    if wall.iter().any(|x| *x == "all") {
-        print_wall_help();
-        rustc_errors::FatalError.raise();
-    }
-
-    // Don't handle -W help here, because we might first load plugins.
-    let debug_flags = matches.opt_strs("Z");
-    if debug_flags.iter().any(|x| *x == "help") {
-        describe_debug_flags();
-        return None;
-    }
-
-    let cg_flags = matches.opt_strs("C");
-
-    if cg_flags.iter().any(|x| *x == "help") {
-        describe_codegen_flags();
-        return None;
-    }
-
-    if cg_flags.iter().any(|x| *x == "no-stack-check") {
-        early_warn(
-            ErrorOutputType::default(),
-            "the --no-stack-check flag is deprecated and does nothing",
-        );
-    }
-
-    if cg_flags.iter().any(|x| *x == "passes=list") {
-        let backend_name = debug_flags.iter().find_map(|x| x.strip_prefix("codegen-backend="));
-        get_codegen_backend(&None, backend_name).print_passes();
+    if describe_flag_categories(&matches) {
         return None;
     }
 
