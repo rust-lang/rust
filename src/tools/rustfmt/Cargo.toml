@@ -37,7 +37,7 @@ annotate-snippets = { version = "0.9", features = ["color"] }
 anyhow = "1.0"
 bytecount = "0.6"
 cargo_metadata = "0.14"
-clap = { version = "3.1", features = ["derive"] }
+clap = { version = "4.2.1", features = ["derive"] }
 derive-new = "0.5"
 diff = "0.1"
 dirs = "4.0"

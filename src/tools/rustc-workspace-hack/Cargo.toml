@@ -73,7 +73,7 @@ features = [
 
 [dependencies]
 bstr = { version = "0.2.17", features = ["default"] }
-clap = { version = "3.1.1", features = ["derive", "clap_derive"]}
+clap = { version = "4.2.1", features = ["derive"] }
 curl-sys = { version = "0.4.13", features = ["http2", "libnghttp2-sys"], optional = true }
 # Ensure `extra_traits` of libc, which is used transitively by Cargo.
 libc = { version = "0.2", features = ["extra_traits"] }
@@ -91,7 +91,7 @@ rand = { version = "0.8.5" }
 
 # Ensure features of `hashbrown`, `smallvec`, and `once_cell`,
 # which are used transitively by Cargo (via `gix`).
-hashbrown = { version = "0.12.3", default-features = false, features = ["inline-more"] }
+hashbrown = { version = "0.12.3", default-features = false, features = ["inline-more", "raw"] }
 once_cell = { version = "1.16.0", default-features = false, features = ["unstable"] }
 smallvec = { version = "1.10.0", features = ["write"] }
 
