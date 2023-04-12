@@ -102,7 +102,7 @@ assert: ".source-sidebar-expanded"
 
 // We check that the first entry of the sidebar is collapsed
 assert-property: ("#source-sidebar details:first-of-type", {"open": "false"})
-assert-text: ("#source-sidebar details:first-of-type > summary", "http")
+assert-text: ("#source-sidebar details:first-of-type > summary", "extend_css")
 // We now click on it.
 click: "#source-sidebar details:first-of-type > summary"
 assert-property: ("#source-sidebar details:first-of-type", {"open": "true"})

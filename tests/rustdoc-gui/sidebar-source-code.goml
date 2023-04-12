@@ -73,7 +73,7 @@ assert: "//*[@class='dir-entry' and @open]/*[text()='sub_mod']"
 // Only "another_folder" should be "open" in "lib2".
 assert: "//*[@class='dir-entry' and not(@open)]/*[text()='another_mod']"
 // All other trees should be collapsed.
-assert-count: ("//*[@id='source-sidebar']/details[not(text()='lib2') and not(@open)]", 8)
+assert-count: ("//*[@id='source-sidebar']/details[not(text()='lib2') and not(@open)]", 9)
 
 // We now switch to mobile mode.
 set-window-size: (600, 600)
