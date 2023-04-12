@@ -459,12 +459,6 @@ impl<'tcx> ToRegionVid for Region<'tcx> {
     }
 }
 
-impl ToRegionVid for RegionVid {
-    fn to_region_vid(self) -> RegionVid {
-        self
-    }
-}
-
 pub(crate) trait ConstraintDescription {
     fn description(&self) -> &'static str;
 }
