@@ -1,3 +1,5 @@
+#![cfg_attr(feature = "build-metrics", allow(unused))]
+
 use std::str::FromStr;
 
 use std::path::PathBuf;
@@ -7,7 +9,13 @@ use crate::{
     tool::Tool,
 };
 
+#[cfg(feature = "build-metrics")]
+pub fn suggest(builder: &Builder<'_>, run: bool) {
+    panic!("`x suggest` is not supported with `build-metrics`")
+}
+
 /// Suggests a list of possible `x.py` commands to run based on modified files in branch.
+#[cfg(not(feature = "build-metrics"))]
 pub fn suggest(builder: &Builder<'_>, run: bool) {
     let suggestions =
         builder.tool_cmd(Tool::SuggestTests).output().expect("failed to run `suggest-tests` tool");
