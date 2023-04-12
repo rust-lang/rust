@@ -163,7 +163,6 @@ infer_region_explanation = {$pref_kind ->
     [as_defined] the lifetime `{$desc_arg}` as defined here
     [as_defined_anon] the anonymous lifetime as defined here
     [defined_here] the anonymous lifetime defined here
-    [anon_num_here] the anonymous lifetime #{$desc_num_arg} defined here
     [defined_here_reg] the lifetime `{$desc_arg}` as defined here
 }{$suff_kind ->
     *[should_not_happen] [{$suff_kind}]

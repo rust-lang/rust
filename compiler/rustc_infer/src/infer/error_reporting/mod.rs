@@ -185,9 +185,58 @@ fn msg_span_from_named_region<'tcx>(
     alt_span: Option<Span>,
 ) -> (String, Option<Span>) {
     match *region {
-        ty::ReEarlyBound(_) | ty::ReFree(_) => {
-            let (msg, span) = msg_span_from_early_bound_and_free_regions(tcx, region);
-            (msg, Some(span))
+        ty::ReEarlyBound(ref br) => {
+            let scope = region.free_region_binding_scope(tcx).expect_local();
+            let span = if let Some(param) =
+                tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(br.name))
+            {
+                param.span
+            } else {
+                tcx.def_span(scope)
+            };
+            let text = if br.has_name() {
+                format!("the lifetime `{}` as defined here", br.name)
+            } else {
+                "the anonymous lifetime as defined here".to_string()
+            };
+            (text, Some(span))
+        }
+        ty::ReFree(ref fr) => {
+            if !fr.bound_region.is_named()
+                && let Some((ty, _)) = find_anon_type(tcx, region, &fr.bound_region)
+            {
+                ("the anonymous lifetime defined here".to_string(), Some(ty.span))
+            } else {
+                let scope = region.free_region_binding_scope(tcx).expect_local();
+                match fr.bound_region {
+                    ty::BoundRegionKind::BrNamed(_, name) => {
+                        let span = if let Some(param) =
+                            tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(name))
+                        {
+                            param.span
+                        } else {
+                            tcx.def_span(scope)
+                        };
+                        let text = if name == kw::UnderscoreLifetime {
+                            "the anonymous lifetime as defined here".to_string()
+                        } else {
+                            format!("the lifetime `{}` as defined here", name)
+                        };
+                        (text, Some(span))
+                    }
+                    ty::BrAnon(span) => (
+                        "the anonymous lifetime as defined here".to_string(),
+                        Some(match span {
+                            Some(span) => span,
+                            None => tcx.def_span(scope)
+                        })
+                    ),
+                    _ => (
+                        format!("the lifetime `{}` as defined here", region),
+                        Some(tcx.def_span(scope)),
+                    ),
+                }
+            }
         }
         ty::ReStatic => ("the static lifetime".to_owned(), alt_span),
         ty::RePlaceholder(ty::PlaceholderRegion {
@@ -203,65 +252,6 @@ fn msg_span_from_named_region<'tcx>(
             ..
         }) => (format!("an anonymous lifetime"), None),
         _ => bug!("{:?}", region),
-    }
-}
-
-fn msg_span_from_early_bound_and_free_regions<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    region: ty::Region<'tcx>,
-) -> (String, Span) {
-    let scope = region.free_region_binding_scope(tcx).expect_local();
-    match *region {
-        ty::ReEarlyBound(ref br) => {
-            let mut sp = tcx.def_span(scope);
-            if let Some(param) =
-                tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(br.name))
-            {
-                sp = param.span;
-            }
-            let text = if br.has_name() {
-                format!("the lifetime `{}` as defined here", br.name)
-            } else {
-                "the anonymous lifetime as defined here".to_string()
-            };
-            (text, sp)
-        }
-        ty::ReFree(ref fr) => {
-            if !fr.bound_region.is_named()
-                && let Some((ty, _)) = find_anon_type(tcx, region, &fr.bound_region)
-            {
-                ("the anonymous lifetime defined here".to_string(), ty.span)
-            } else {
-                match fr.bound_region {
-                    ty::BoundRegionKind::BrNamed(_, name) => {
-                        let mut sp = tcx.def_span(scope);
-                        if let Some(param) =
-                            tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(name))
-                        {
-                            sp = param.span;
-                        }
-                        let text = if name == kw::UnderscoreLifetime {
-                            "the anonymous lifetime as defined here".to_string()
-                        } else {
-                            format!("the lifetime `{}` as defined here", name)
-                        };
-                        (text, sp)
-                    }
-                    ty::BrAnon(span) => (
-                        "the anonymous lifetime as defined here".to_string(),
-                        match span {
-                            Some(span) => span,
-                            None => tcx.def_span(scope)
-                        }
-                    ),
-                    _ => (
-                        format!("the lifetime `{}` as defined here", region),
-                        tcx.def_span(scope),
-                    ),
-                }
-            }
-        }
-        _ => bug!(),
     }
 }
 
