@@ -836,6 +836,13 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
     let module_items = tcx.hir_module_items(module);
 
     for item in module_items.items() {
+        if let hir::ItemKind::Impl(impl_item) = tcx.hir().item(item).kind {
+            for item in impl_item.items {
+                visitor.check_definition(item.id.owner_id.def_id);
+            }
+            continue;
+        }
+
         if !live_symbols.contains(&item.owner_id.def_id) {
             let parent = tcx.local_parent(item.owner_id.def_id);
             if parent != module && !live_symbols.contains(&parent) {
@@ -898,10 +905,6 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
                 false,
             );
         }
-    }
-
-    for impl_item in module_items.impl_items() {
-        visitor.check_definition(impl_item.owner_id.def_id);
     }
 
     for foreign_item in module_items.foreign_items() {
