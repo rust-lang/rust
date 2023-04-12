@@ -13,6 +13,8 @@ use rustc_hir_analysis::astconv::InferCtxtExt as _;
 use rustc_hir_analysis::autoderef::{self, Autoderef};
 use rustc_infer::infer::canonical::OriginalQueryValues;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
+use rustc_infer::infer::type_variable::TypeVariableOrigin;
+use rustc_infer::infer::type_variable::TypeVariableOriginKind;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
 use rustc_middle::middle::stability;
@@ -38,6 +40,7 @@ use rustc_trait_selection::traits::query::method_autoderef::{
 use rustc_trait_selection::traits::query::CanonicalTyGoal;
 use rustc_trait_selection::traits::NormalizeExt;
 use rustc_trait_selection::traits::{self, ObligationCause};
+use rustc_trait_selection::traits::{TraitEngine, TraitEngineExt};
 use std::cell::RefCell;
 use std::cmp::max;
 use std::iter;
@@ -636,52 +639,65 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     }
 
     fn assemble_probe(&mut self, self_ty: &Canonical<'tcx, QueryResponse<'tcx, Ty<'tcx>>>) {
-        debug!("assemble_probe: self_ty={:?}", self_ty);
-        let raw_self_ty = self_ty.value.value;
-        match *raw_self_ty.kind() {
-            ty::Dynamic(data, ..) if let Some(p) = data.principal() => {
-                // Subtle: we can't use `instantiate_query_response` here: using it will
-                // commit to all of the type equalities assumed by inference going through
-                // autoderef (see the `method-probe-no-guessing` test).
-                //
-                // However, in this code, it is OK if we end up with an object type that is
-                // "more general" than the object type that we are evaluating. For *every*
-                // object type `MY_OBJECT`, a function call that goes through a trait-ref
-                // of the form `<MY_OBJECT as SuperTraitOf(MY_OBJECT)>::func` is a valid
-                // `ObjectCandidate`, and it should be discoverable "exactly" through one
-                // of the iterations in the autoderef loop, so there is no problem with it
-                // being discoverable in another one of these iterations.
-                //
-                // Using `instantiate_canonical_with_fresh_inference_vars` on our
-                // `Canonical<QueryResponse<Ty<'tcx>>>` and then *throwing away* the
-                // `CanonicalVarValues` will exactly give us such a generalization - it
-                // will still match the original object type, but it won't pollute our
-                // type variables in any form, so just do that!
-                let (QueryResponse { value: generalized_self_ty, .. }, _ignored_var_values) =
-                    self.fcx
-                        .instantiate_canonical_with_fresh_inference_vars(self.span, self_ty);
+        // Subtle: we can't use `instantiate_query_response` here: using it will
+        // commit to all of the type equalities assumed by inference going through
+        // autoderef (see the `method-probe-no-guessing` test).
+        //
+        // However, in this code, it is OK if we end up with a type that is "more
+        // general" than the type that we are probing for methods.
+        let (QueryResponse { value: generalized_self_ty, .. }, _ignored_var_values) =
+            self.fcx.instantiate_canonical_with_fresh_inference_vars(self.span, self_ty);
+        self.assemble_probe_inner(generalized_self_ty);
+    }
 
+    fn assemble_probe_inner(&mut self, generalized_self_ty: Ty<'tcx>) {
+        debug!("assemble_probe: self_ty={:?}", generalized_self_ty);
+        match *generalized_self_ty.kind() {
+            ty::Dynamic(data, ..) if let Some(p) = data.principal() => {
                 self.assemble_inherent_candidates_from_object(generalized_self_ty);
                 self.assemble_inherent_impl_candidates_for_type(p.def_id());
                 if self.tcx.has_attr(p.def_id(), sym::rustc_has_incoherent_inherent_impls) {
-                    self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty);
+                    self.assemble_inherent_candidates_for_incoherent_ty(generalized_self_ty);
                 }
             }
             ty::Adt(def, _) => {
                 let def_id = def.did();
                 self.assemble_inherent_impl_candidates_for_type(def_id);
                 if self.tcx.has_attr(def_id, sym::rustc_has_incoherent_inherent_impls) {
-                    self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty);
+                    self.assemble_inherent_candidates_for_incoherent_ty(generalized_self_ty);
                 }
             }
             ty::Foreign(did) => {
                 self.assemble_inherent_impl_candidates_for_type(did);
                 if self.tcx.has_attr(did, sym::rustc_has_incoherent_inherent_impls) {
-                    self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty);
+                    self.assemble_inherent_candidates_for_incoherent_ty(generalized_self_ty);
                 }
             }
             ty::Param(p) => {
                 self.assemble_inherent_candidates_from_param(p);
+            }
+            ty::Alias(ty::Projection, projection_ty) if self.tcx.trait_solver_next() => {
+                let new_infer_ty = self.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::NormalizeProjectionType,
+                    span: self.span,
+                });
+                let obligation = traits::Obligation::new(
+                    self.tcx,
+                    self.misc(self.span),
+                    self.param_env,
+                    ty::Binder::dummy(ty::ProjectionPredicate {
+                        projection_ty,
+                        term: new_infer_ty.into(),
+                    }),
+                );
+                if self.predicate_may_hold(&obligation) {
+                    let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new_in_snapshot(self.tcx);
+                    fulfill_cx.register_predicate_obligation(self, obligation);
+                    let errors = fulfill_cx.select_where_possible(self);
+                    if errors.is_empty() {
+                        self.assemble_probe_inner(self.resolve_vars_if_possible(new_infer_ty))
+                    }
+                }
             }
             ty::Bool
             | ty::Char
@@ -694,7 +710,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             | ty::RawPtr(_)
             | ty::Ref(..)
             | ty::Never
-            | ty::Tuple(..) => self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty),
+            | ty::Tuple(..) => self.assemble_inherent_candidates_for_incoherent_ty(generalized_self_ty),
             _ => {}
         }
     }
