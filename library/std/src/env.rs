@@ -236,21 +236,14 @@ fn _var(key: &OsStr) -> Result<String, VarError> {
 }
 
 /// Fetches the environment variable `key` from the current process, returning
-/// [`None`] if the variable isn't set or there's another error.
+/// [`None`] if the variable isn't set or if there is another error.
 ///
-/// Note that the method will not check if the environment variable
-/// is valid Unicode. If you want to have an error on invalid UTF-8,
-/// use the [`var`] function instead.
-///
-/// # Errors
-///
-/// This function returns an error if the environment variable isn't set.
-///
-/// This function may return an error if the environment variable's name contains
+/// It may return `None` if the environment variable's name contains
 /// the equal sign character (`=`) or the NUL character.
 ///
-/// This function may return an error if the environment variable's value contains
-/// the NUL character.
+/// Note that this function will not check if the environment variable
+/// is valid Unicode. If you want to have an error on invalid UTF-8,
+/// use the [`var`] function instead.
 ///
 /// # Examples
 ///
