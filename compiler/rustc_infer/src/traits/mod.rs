@@ -128,7 +128,11 @@ pub enum FulfillmentErrorCode<'tcx> {
     CodeProjectionError(MismatchedProjectionTypes<'tcx>),
     CodeSubtypeError(ExpectedFound<Ty<'tcx>>, TypeError<'tcx>), // always comes from a SubtypePredicate
     CodeConstEquateError(ExpectedFound<Const<'tcx>>, TypeError<'tcx>),
-    CodeAmbiguity,
+    CodeAmbiguity {
+        /// Overflow reported from the new solver `-Ztrait-solver=next`, which will
+        /// be reported as an regular error as opposed to a fatal error.
+        overflow: bool,
+    },
 }
 
 impl<'tcx, O> Obligation<'tcx, O> {
