@@ -40,11 +40,12 @@ pub use drop::TaggedPtr;
 /// [`into_ptr`] must be valid for writes (and thus calling [`NonNull::as_mut`]
 /// on it must be safe).
 ///
-/// The `BITS` constant must be correct. At least `BITS` bits, least-significant,
-/// must be zero on all pointers returned from [`into_ptr`].
+/// The [`BITS`] constant must be correct. At least [`BITS`] least significant
+/// bits, must be zero on all pointers returned from [`into_ptr`].
 ///
 /// For example, if the alignment of [`Self::Target`] is 2, then `BITS` should be 1.
 ///
+/// [`BITS`]: Pointer::BITS
 /// [`into_ptr`]: Pointer::into_ptr
 /// [valid]: std::ptr#safety
 /// [`<Self as Deref>::Target`]: Deref::Target
@@ -122,7 +123,7 @@ pub unsafe trait Tag: Copy {
     /// This function guarantees that only the least-significant [`Self::BITS`]
     /// bits can be non-zero.
     ///
-    /// [`from_usize`]: Pointer::from_usize
+    /// [`from_usize`]: Tag::from_usize
     /// [`Self::BITS`]: Tag::BITS
     fn into_usize(self) -> usize;
 
