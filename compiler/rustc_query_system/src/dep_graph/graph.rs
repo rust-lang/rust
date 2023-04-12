@@ -143,7 +143,7 @@ impl<K: DepKind> DepGraph<K> {
         assert_eq!(_green_node_index, DepNodeIndex::SINGLETON_DEPENDENCYLESS_ANON_NODE);
 
         // Instantiate a dependy-less red node only once for anonymous queries.
-        let (_red_node_index, _prev_and_index) = current.intern_node(
+        let (red_node_index, red_node_prev_index_and_color) = current.intern_node(
             profiler,
             &prev_graph,
             DepNode { kind: DepKind::RED, hash: Fingerprint::ZERO.into() },
@@ -151,8 +151,21 @@ impl<K: DepKind> DepGraph<K> {
             None,
             false,
         );
-        assert_eq!(_red_node_index, DepNodeIndex::FOREVER_RED_NODE);
-        assert!(matches!(_prev_and_index, None | Some((_, DepNodeColor::Red))));
+        assert_eq!(red_node_index, DepNodeIndex::FOREVER_RED_NODE);
+        match red_node_prev_index_and_color {
+            None => {
+                // This is expected when we have no previous compilation session.
+                assert!(prev_graph_node_count == 0);
+            }
+            Some((prev_red_node_index, DepNodeColor::Red)) => {
+                assert_eq!(prev_red_node_index.as_usize(), red_node_index.as_usize());
+                colors.insert(prev_red_node_index, DepNodeColor::Red);
+            }
+            Some((_, DepNodeColor::Green(_))) => {
+                // There must be a logic error somewhere if we hit this branch.
+                panic!("DepNodeIndex::FOREVER_RED_NODE evaluated to DepNodeColor::Green")
+            }
+        }
 
         DepGraph {
             data: Some(Lrc::new(DepGraphData {
@@ -353,10 +366,8 @@ impl<K: DepKind> DepGraphData<K> {
             }))
         };
 
-        let task_deps_ref = match &task_deps {
-            Some(deps) => TaskDepsRef::Allow(deps),
-            None => TaskDepsRef::Ignore,
-        };
+        let task_deps_ref =
+            task_deps.as_ref().map(TaskDepsRef::Allow).unwrap_or(TaskDepsRef::EvalAlways);
 
         let result = K::with_deps(task_deps_ref, || task(cx, arg));
         let edges = task_deps.map_or_else(|| smallvec![], |lock| lock.into_inner().reads);
@@ -461,6 +472,11 @@ impl<K: DepKind> DepGraph<K> {
             K::read_deps(|task_deps| {
                 let mut task_deps = match task_deps {
                     TaskDepsRef::Allow(deps) => deps.lock(),
+                    TaskDepsRef::EvalAlways => {
+                        // We don't need to record dependencies of eval_always
+                        // queries. They are re-evaluated unconditionally anyway.
+                        return;
+                    }
                     TaskDepsRef::Ignore => return,
                     TaskDepsRef::Forbid => {
                         panic!("Illegal read of: {dep_node_index:?}")
@@ -563,7 +579,10 @@ impl<K: DepKind> DepGraph<K> {
             let mut edges = SmallVec::new();
             K::read_deps(|task_deps| match task_deps {
                 TaskDepsRef::Allow(deps) => edges.extend(deps.lock().reads.iter().copied()),
-                TaskDepsRef::Ignore => {} // During HIR lowering, we have no dependencies.
+                TaskDepsRef::EvalAlways => {
+                    edges.push(DepNodeIndex::FOREVER_RED_NODE);
+                }
+                TaskDepsRef::Ignore => {}
                 TaskDepsRef::Forbid => {
                     panic!("Cannot summarize when dependencies are not recorded.")
                 }
@@ -1356,10 +1375,13 @@ pub enum TaskDepsRef<'a, K: DepKind> {
     /// `TaskDeps`. This is used when executing a 'normal' query
     /// (no `eval_always` modifier)
     Allow(&'a Lock<TaskDeps<K>>),
-    /// New dependencies are ignored. This is used when
-    /// executing an `eval_always` query, since there's no
+    /// This is used when executing an `eval_always` query. We don't
     /// need to track dependencies for a query that's always
-    /// re-executed. This is also used for `dep_graph.with_ignore`
+    /// re-executed -- but we need to know that this is an `eval_always`
+    /// query in order to emit dependencies to `DepNodeIndex::FOREVER_RED_NODE`
+    /// when directly feeding other queries.
+    EvalAlways,
+    /// New dependencies are ignored. This is also used for `dep_graph.with_ignore`.
     Ignore,
     /// Any attempt to add new dependencies will cause a panic.
     /// This is used when decoding a query result from disk,
