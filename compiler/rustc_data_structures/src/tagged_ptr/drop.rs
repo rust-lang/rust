@@ -41,9 +41,6 @@ where
         TaggedPtr { raw: CopyTaggedPtr::new(pointer, tag) }
     }
 
-    pub fn pointer_ref(&self) -> &P::Target {
-        self.raw.pointer_ref()
-    }
     pub fn tag(&self) -> T {
         self.raw.tag()
     }
@@ -56,7 +53,7 @@ where
 {
     type Target = P::Target;
     fn deref(&self) -> &Self::Target {
-        self.raw.pointer_ref()
+        self.raw.deref()
     }
 }
 
@@ -66,7 +63,7 @@ where
     T: Tag,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.raw.pointer_mut()
+        self.raw.deref_mut()
     }
 }
 

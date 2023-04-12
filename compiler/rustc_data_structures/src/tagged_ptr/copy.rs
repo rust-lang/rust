@@ -115,19 +115,6 @@ where
         unsafe { P::from_ptr(self.pointer_raw()) }
     }
 
-    pub fn pointer_ref(&self) -> &P::Target {
-        // SAFETY: pointer_raw returns the original pointer
-        unsafe { self.pointer_raw().as_ref() }
-    }
-
-    pub fn pointer_mut(&mut self) -> &mut P::Target
-    where
-        P: DerefMut,
-    {
-        // SAFETY: pointer_raw returns the original pointer
-        unsafe { self.pointer_raw().as_mut() }
-    }
-
     #[inline]
     pub fn tag(&self) -> T {
         unsafe { T::from_usize(self.packed.addr().get() >> Self::TAG_BIT_SHIFT) }
@@ -147,7 +134,10 @@ where
     type Target = P::Target;
 
     fn deref(&self) -> &Self::Target {
-        self.pointer_ref()
+        // Safety:
+        // `pointer_raw` returns the original pointer from `P::into_ptr` which,
+        // by the `Pointer`'s contract, must be valid.
+        unsafe { self.pointer_raw().as_ref() }
     }
 }
 
@@ -157,7 +147,11 @@ where
     T: Tag,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.pointer_mut()
+        // Safety:
+        // `pointer_raw` returns the original pointer from `P::into_ptr` which,
+        // by the `Pointer`'s contract, must be valid for writes if
+        // `P: DerefMut`.
+        unsafe { self.pointer_raw().as_mut() }
     }
 }
 
