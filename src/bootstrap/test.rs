@@ -1064,6 +1064,8 @@ impl Step for RustdocGUI {
                     cargo.env("RUSTDOCFLAGS", "-Zunstable-options --generate-link-to-definition");
                 } else if entry.file_name() == "scrape_examples" {
                     cargo.arg("-Zrustdoc-scrape-examples");
+                } else if entry.file_name() == "extend_css" {
+                    cargo.env("RUSTDOCFLAGS", &format!("--extend-css extra.css"));
                 }
                 builder.run(&mut cargo);
             }
