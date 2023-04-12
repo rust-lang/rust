@@ -635,7 +635,7 @@ where
     Some((result, dep_node_index))
 }
 
-#[inline]
+#[inline(always)]
 #[instrument(skip(tcx, dep_graph_data, result, hash_result, format_value), level = "debug")]
 pub(crate) fn incremental_verify_ich<Tcx, V>(
     tcx: Tcx,
