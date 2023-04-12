@@ -735,6 +735,9 @@ parse_unknown_start_of_token = unknown start of token: {$escaped}
 parse_box_syntax_removed = `box_syntax` has been removed
     .suggestion = use `Box::new()` instead
 
+parse_elif = `elif` is not valid syntax
+    .suggestion = use `else if` instead
+
 parse_bad_return_type_notation_output =
     return type not allowed with return type notation
     .suggestion = remove the return type

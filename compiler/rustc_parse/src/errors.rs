@@ -2318,6 +2318,14 @@ pub struct BoxSyntaxRemoved<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_elif)]
+pub struct Elif {
+    #[primary_span]
+    #[suggestion(code = "else if", applicability = "machine-applicable", style = "short")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_bad_return_type_notation_output)]
 pub(crate) struct BadReturnTypeNotationOutput {
     #[primary_span]

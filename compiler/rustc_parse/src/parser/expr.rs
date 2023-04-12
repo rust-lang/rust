@@ -2332,7 +2332,31 @@ impl<'a> Parser<'a> {
             self.error_on_if_block_attrs(lo, false, block.span, attrs);
             block
         };
-        let els = if self.eat_keyword(kw::Else) { Some(self.parse_expr_else()?) } else { None };
+        let els = if self.eat_keyword(kw::Else) {
+            Some(self.parse_expr_else(false)?)
+        } else if self.may_recover() && self.token.is_keyword(sym::elif) {
+            // Snapshot as this may be valid code, e.g.
+            // ```
+            // let elif = ();
+            // if true {} elif
+            // ```
+            let snapshot = self.create_snapshot_for_diagnostic();
+            let span = self.token.span;
+            self.bump();
+            match self.parse_expr_else(true) {
+                Ok(expr) => {
+                    self.sess.emit_err(errors::Elif { span });
+                    Some(expr)
+                }
+                Err(e) => {
+                    e.cancel();
+                    self.restore_snapshot(snapshot);
+                    None
+                }
+            }
+        } else {
+            None
+        };
         Ok(self.mk_expr(lo.to(self.prev_token.span), ExprKind::If(cond, thn, els)))
     }
 
@@ -2388,10 +2412,11 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an `else { ... }` expression (`else` token already eaten).
-    fn parse_expr_else(&mut self) -> PResult<'a, P<Expr>> {
+    /// If `recover_elif` is set, we are recovering from `elif` in place of `else if`
+    fn parse_expr_else(&mut self, recover_elif: bool) -> PResult<'a, P<Expr>> {
         let else_span = self.prev_token.span; // `else`
         let attrs = self.parse_outer_attributes()?; // For recovery.
-        let expr = if self.eat_keyword(kw::If) {
+        let expr = if recover_elif || self.eat_keyword(kw::If) {
             self.parse_expr_if()?
         } else if self.check(&TokenKind::OpenDelim(Delimiter::Brace)) {
             self.parse_simple_block()?
@@ -2518,7 +2543,7 @@ impl<'a> Parser<'a> {
         if self.token.is_keyword(kw::Else) && self.may_recover() {
             let else_span = self.token.span;
             self.bump();
-            let else_clause = self.parse_expr_else()?;
+            let else_clause = self.parse_expr_else(false)?;
             self.sess.emit_err(errors::LoopElseNotSupported {
                 span: else_span.to(else_clause.span),
                 loop_kind,
