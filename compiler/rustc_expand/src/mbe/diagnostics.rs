@@ -66,7 +66,9 @@ pub(super) fn failed_to_match_macro<'cx>(
         && (matches!(expected_token.kind, TokenKind::Interpolated(_))
             || matches!(token.kind, TokenKind::Interpolated(_)))
     {
-        err.note("captured metavariables except for `$tt`, `$ident` and `$lifetime` cannot be compared to other tokens");
+        err.note("captured metavariables except for `:tt`, `:ident` and `:lifetime` cannot be compared to other tokens");
+        err.note("see https://doc.rust-lang.org/nightly/reference/macros-by-example.html#forwarding-a-matched-fragment for more information");
+        err.help("try using `:tt` instead in the macro definition");
     }
 
     // Check whether there's a missing comma in this macro call, like `println!("{}" a);`
