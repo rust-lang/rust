@@ -1374,7 +1374,7 @@ pub unsafe fn _mm_sfence() {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_getcsr() -> u32 {
     let mut result = 0_i32;
-    stmxcsr((&mut result) as *mut _ as *mut i8);
+    stmxcsr(&mut result as *mut _ as *mut i8);
     result as u32
 }
 
