@@ -6,12 +6,12 @@
 
 [LoongArch]: https://loongson.github.io/LoongArch-Documentation/README-EN.html
 
-The target name follow this format: `<machine>-<vendor>-<os><fabi_suffix>, where `<machine>` specifies the CPU family/model, `<vendor>` specifies the vendor and `<os>` the operating system name.
+The target name follow this format: `<machine>-<vendor>-<os><fabi_suffix>`, where `<machine>` specifies the CPU family/model, `<vendor>` specifies the vendor and `<os>` the operating system name.
 While the integer base ABI is implied by the machine field, the floating point base ABI type is encoded into the os field of the specifier using the string suffix `<fabi-suffix>`.
 
 |    `<fabi-suffix>`     |                           `Description`                            |
 |------------------------|--------------------------------------------------------------------|
-|          f64           | The base ABI use 64-bits FPRs for parameter passing.(lp64d)|
+|          f64           | The base ABI use 64-bits FPRs for parameter passing. (lp64d)|
 |          f32           | The base ABI uses 32-bit FPRs for parameter passing. (lp64f)|
 |          sf            | The base ABI uses no FPR for parameter passing. (lp64s)     |
 
@@ -26,9 +26,9 @@ While the integer base ABI is implied by the machine field, the floating po
 
 ## Target maintainers
 
-- [ZHAI xiaojuan](https://github.com/zhaixiaojuan) `zhaixiaojuan@loongson.cn`
-- [WANG rui](https://github.com/heiher) `wangrui@loongson.cn`
-- [ZHAI xiang](https://github.com/xiangzhai) `zhaixiang@loongson.cn`
+- [ZHAI Xiaojuan](https://github.com/zhaixiaojuan) `zhaixiaojuan@loongson.cn`
+- [WANG Rui](https://github.com/heiher) `wangrui@loongson.cn`
+- [ZHAI Xiang](https://github.com/xiangzhai) `zhaixiang@loongson.cn`
 - [WANG Xuerui](https://github.com/xen0n) `git@xen0n.name`
 
 ## Requirements
