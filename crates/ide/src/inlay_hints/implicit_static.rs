@@ -34,6 +34,7 @@ pub(super) fn hints(
                 range: t.text_range(),
                 kind: InlayKind::Lifetime,
                 label: "'static".to_owned().into(),
+                text_edit: None,
             });
         }
     }

@@ -510,7 +510,7 @@ pub(crate) fn inlay_hint(
             | InlayKind::AdjustmentPostfix
             | InlayKind::ClosingBrace => None,
         },
-        text_edits: None,
+        text_edits: inlay_hint.text_edit.map(|it| text_edit_vec(line_index, it)),
         data: None,
         tooltip,
         label,

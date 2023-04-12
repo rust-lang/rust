@@ -150,6 +150,7 @@ pub trait HirDisplay {
         &'a self,
         db: &'a dyn HirDatabase,
         module_id: ModuleId,
+        allow_opaque: bool,
     ) -> Result<String, DisplaySourceCodeError> {
         let mut result = String::new();
         match self.hir_fmt(&mut HirFormatter {
@@ -160,7 +161,7 @@ pub trait HirDisplay {
             max_size: None,
             omit_verbose_types: false,
             closure_style: ClosureStyle::ImplFn,
-            display_target: DisplayTarget::SourceCode { module_id },
+            display_target: DisplayTarget::SourceCode { module_id, allow_opaque },
         }) {
             Ok(()) => {}
             Err(HirDisplayError::FmtError) => panic!("Writing to String can't fail!"),
@@ -249,17 +250,25 @@ pub enum DisplayTarget {
     Diagnostics,
     /// Display types for inserting them in source files.
     /// The generated code should compile, so paths need to be qualified.
-    SourceCode { module_id: ModuleId },
+    SourceCode { module_id: ModuleId, allow_opaque: bool },
     /// Only for test purpose to keep real types
     Test,
 }
 
 impl DisplayTarget {
-    fn is_source_code(&self) -> bool {
+    fn is_source_code(self) -> bool {
         matches!(self, Self::SourceCode { .. })
     }
-    fn is_test(&self) -> bool {
+
+    fn is_test(self) -> bool {
         matches!(self, Self::Test)
+    }
+
+    fn allows_opaque(self) -> bool {
+        match self {
+            Self::SourceCode { allow_opaque, .. } => allow_opaque,
+            _ => true,
+        }
     }
 }
 
@@ -268,6 +277,7 @@ pub enum DisplaySourceCodeError {
     PathNotFound,
     UnknownType,
     Generator,
+    OpaqueType,
 }
 
 pub enum HirDisplayError {
@@ -768,7 +778,7 @@ impl HirDisplay for Ty {
                         };
                         write!(f, "{name}")?;
                     }
-                    DisplayTarget::SourceCode { module_id } => {
+                    DisplayTarget::SourceCode { module_id, allow_opaque: _ } => {
                         if let Some(path) = find_path::find_path(
                             db.upcast(),
                             ItemInNs::Types((*def_id).into()),
@@ -906,6 +916,11 @@ impl HirDisplay for Ty {
                 f.end_location_link();
             }
             TyKind::OpaqueType(opaque_ty_id, parameters) => {
+                if !f.display_target.allows_opaque() {
+                    return Err(HirDisplayError::DisplaySourceCodeError(
+                        DisplaySourceCodeError::OpaqueType,
+                    ));
+                }
                 let impl_trait_id = db.lookup_intern_impl_trait_id((*opaque_ty_id).into());
                 match impl_trait_id {
                     ImplTraitId::ReturnTypeImplTrait(func, idx) => {
@@ -953,8 +968,14 @@ impl HirDisplay for Ty {
                 }
             }
             TyKind::Closure(id, substs) => {
-                if f.display_target.is_source_code() && f.closure_style != ClosureStyle::ImplFn {
-                    never!("Only `impl Fn` is valid for displaying closures in source code");
+                if f.display_target.is_source_code() {
+                    if !f.display_target.allows_opaque() {
+                        return Err(HirDisplayError::DisplaySourceCodeError(
+                            DisplaySourceCodeError::OpaqueType,
+                        ));
+                    } else if f.closure_style != ClosureStyle::ImplFn {
+                        never!("Only `impl Fn` is valid for displaying closures in source code");
+                    }
                 }
                 match f.closure_style {
                     ClosureStyle::Hide => return write!(f, "{TYPE_HINT_TRUNCATION}"),
@@ -1053,6 +1074,11 @@ impl HirDisplay for Ty {
             }
             TyKind::Alias(AliasTy::Projection(p_ty)) => p_ty.hir_fmt(f)?,
             TyKind::Alias(AliasTy::Opaque(opaque_ty)) => {
+                if !f.display_target.allows_opaque() {
+                    return Err(HirDisplayError::DisplaySourceCodeError(
+                        DisplaySourceCodeError::OpaqueType,
+                    ));
+                }
                 let impl_trait_id = db.lookup_intern_impl_trait_id(opaque_ty.opaque_ty_id.into());
                 match impl_trait_id {
                     ImplTraitId::ReturnTypeImplTrait(func, idx) => {

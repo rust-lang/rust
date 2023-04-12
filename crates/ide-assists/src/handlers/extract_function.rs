@@ -1884,7 +1884,7 @@ fn with_tail_expr(block: ast::BlockExpr, tail_expr: ast::Expr) -> ast::BlockExpr
 }
 
 fn format_type(ty: &hir::Type, ctx: &AssistContext<'_>, module: hir::Module) -> String {
-    ty.display_source_code(ctx.db(), module.into()).ok().unwrap_or_else(|| "_".to_string())
+    ty.display_source_code(ctx.db(), module.into(), true).ok().unwrap_or_else(|| "_".to_string())
 }
 
 fn make_ty(ty: &hir::Type, ctx: &AssistContext<'_>, module: hir::Module) -> ast::Type {

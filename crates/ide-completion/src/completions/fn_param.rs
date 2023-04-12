@@ -127,7 +127,7 @@ fn params_from_stmt_list_scope(
         let module = scope.module().into();
         scope.process_all_names(&mut |name, def| {
             if let hir::ScopeDef::Local(local) = def {
-                if let Ok(ty) = local.ty(ctx.db).display_source_code(ctx.db, module) {
+                if let Ok(ty) = local.ty(ctx.db).display_source_code(ctx.db, module, true) {
                     cb(name, ty);
                 }
             }

@@ -46,7 +46,8 @@ pub(crate) fn generate_constant(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
     let ty = ctx.sema.type_of_expr(&expr)?;
     let scope = ctx.sema.scope(statement.syntax())?;
     let constant_module = scope.module();
-    let type_name = ty.original().display_source_code(ctx.db(), constant_module.into()).ok()?;
+    let type_name =
+        ty.original().display_source_code(ctx.db(), constant_module.into(), false).ok()?;
     let target = statement.syntax().parent()?.text_range();
     let path = constant_token.syntax().ancestors().find_map(ast::Path::cast)?;
 

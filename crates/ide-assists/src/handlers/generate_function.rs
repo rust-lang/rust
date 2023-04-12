@@ -438,7 +438,7 @@ fn make_return_type(
             Some(ty) if ty.is_unit() => (None, false),
             Some(ty) => {
                 necessary_generic_params.extend(ty.generic_params(ctx.db()));
-                let rendered = ty.display_source_code(ctx.db(), target_module.into());
+                let rendered = ty.display_source_code(ctx.db(), target_module.into(), true);
                 match rendered {
                     Ok(rendered) => (Some(make::ty(&rendered)), false),
                     Err(_) => (Some(make::ty_placeholder()), true),
@@ -992,9 +992,9 @@ fn fn_arg_type(
             let famous_defs = &FamousDefs(&ctx.sema, ctx.sema.scope(fn_arg.syntax())?.krate());
             convert_reference_type(ty.strip_references(), ctx.db(), famous_defs)
                 .map(|conversion| conversion.convert_type(ctx.db()))
-                .or_else(|| ty.display_source_code(ctx.db(), target_module.into()).ok())
+                .or_else(|| ty.display_source_code(ctx.db(), target_module.into(), true).ok())
         } else {
-            ty.display_source_code(ctx.db(), target_module.into()).ok()
+            ty.display_source_code(ctx.db(), target_module.into(), true).ok()
         }
     }
 

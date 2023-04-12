@@ -75,6 +75,7 @@ fn variant_hints(
             })),
             None,
         ),
+        text_edit: None,
     });
 
     Some(())
