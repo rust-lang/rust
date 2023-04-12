@@ -61,7 +61,6 @@ These APIs are now stable in const contexts:
 Cargo
 -----
 
-- [Added '-C' flag for changing current dir before build](https://github.com/rust-lang/cargo/pull/10952/)
 - [Cargo now suggests `cargo fix` or `cargo clippy --fix` when compilation warnings are auto-fixable.](https://github.com/rust-lang/cargo/pull/11558/)
 - [Cargo now suggests `cargo add` if you try to install a library crate.](https://github.com/rust-lang/cargo/pull/11410/)
 - [Cargo now sets the `CARGO_BIN_NAME` environment variable also for binary examples.](https://github.com/rust-lang/cargo/pull/11705/)
