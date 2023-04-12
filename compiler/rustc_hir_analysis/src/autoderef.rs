@@ -2,6 +2,7 @@ use crate::errors::AutoDerefReachedRecursionLimit;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::NormalizeExt;
 use crate::traits::{self, TraitEngine, TraitEngineExt};
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -138,14 +139,34 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             return None;
         }
 
-        let normalized_ty = self
-            .infcx
-            .at(&cause, self.param_env)
-            .normalize(tcx.mk_projection(tcx.lang_items().deref_target()?, trait_ref.substs));
-        let mut fulfillcx = <dyn TraitEngine<'tcx>>::new_in_snapshot(tcx);
-        let normalized_ty =
-            normalized_ty.into_value_registering_obligations(self.infcx, &mut *fulfillcx);
-        let errors = fulfillcx.select_where_possible(&self.infcx);
+        let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new_in_snapshot(tcx);
+        let normalized_ty = if tcx.trait_solver_next() {
+            let ty_var = self.infcx.next_ty_var(TypeVariableOrigin {
+                span: self.span,
+                kind: TypeVariableOriginKind::NormalizeProjectionType,
+            });
+            fulfill_cx.register_predicate_obligation(
+                self.infcx,
+                traits::Obligation::new(
+                    tcx,
+                    cause.clone(),
+                    self.param_env,
+                    ty::Binder::dummy(ty::ProjectionPredicate {
+                        projection_ty: tcx.mk_alias_ty(tcx.lang_items().deref_target()?, [ty]),
+                        term: ty_var.into(),
+                    }),
+                ),
+            );
+            ty_var
+        } else {
+            let normalized_ty = self
+                .infcx
+                .at(&cause, self.param_env)
+                .normalize(tcx.mk_projection(tcx.lang_items().deref_target()?, trait_ref.substs));
+            normalized_ty.into_value_registering_obligations(self.infcx, &mut *fulfill_cx)
+        };
+
+        let errors = fulfill_cx.select_where_possible(&self.infcx);
         if !errors.is_empty() {
             // This shouldn't happen, except for evaluate/fulfill mismatches,
             // but that's not a reason for an ICE (`predicate_may_hold` is conservative
@@ -153,7 +174,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             debug!("overloaded_deref_ty: encountered errors {:?} while fulfilling", errors);
             return None;
         }
-        let obligations = fulfillcx.pending_obligations();
+        let obligations = fulfill_cx.pending_obligations();
         debug!("overloaded_deref_ty({:?}) = ({:?}, {:?})", ty, normalized_ty, obligations);
         self.state.obligations.extend(obligations);
 

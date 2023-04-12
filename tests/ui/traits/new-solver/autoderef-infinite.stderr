@@ -1,0 +1,16 @@
+error[E0282]: type annotations needed
+  --> $DIR/autoderef-infinite.rs:5:10
+   |
+LL |     y[0].method();
+   |          ^^^^^^ cannot infer type
+
+error[E0599]: no method named `method` found for associated type `<usize as SliceIndex<[_]>>::Output` in the current scope
+  --> $DIR/autoderef-infinite.rs:5:10
+   |
+LL |     y[0].method();
+   |          ^^^^^^ method not found in `<usize as SliceIndex<[_]>>::Output`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0282, E0599.
+For more information about an error, try `rustc --explain E0282`.
