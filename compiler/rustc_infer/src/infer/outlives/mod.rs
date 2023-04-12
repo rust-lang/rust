@@ -75,6 +75,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// result. After this, no more unification operations should be
     /// done -- or the compiler will panic -- but it is legal to use
     /// `resolve_vars_if_possible` as well as `fully_resolve`.
+    #[must_use]
     pub fn resolve_regions(
         &self,
         outlives_env: &OutlivesEnvironment<'tcx>,

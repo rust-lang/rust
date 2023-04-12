@@ -175,10 +175,12 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
+    #[must_use]
     pub fn select_where_possible(&self) -> Vec<FulfillmentError<'tcx>> {
         self.engine.borrow_mut().select_where_possible(self.infcx)
     }
 
+    #[must_use]
     pub fn select_all_or_error(&self) -> Vec<FulfillmentError<'tcx>> {
         self.engine.borrow_mut().select_all_or_error(self.infcx)
     }
