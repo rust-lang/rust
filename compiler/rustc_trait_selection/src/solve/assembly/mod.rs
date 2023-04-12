@@ -225,6 +225,11 @@ pub(super) trait GoalKind<'tcx>: TypeFoldable<TyCtxt<'tcx>> + Copy + Eq {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
+
+    fn consider_builtin_transmute_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
@@ -373,6 +378,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             G::consider_builtin_discriminant_kind_candidate(self, goal)
         } else if lang_items.destruct_trait() == Some(trait_def_id) {
             G::consider_builtin_destruct_candidate(self, goal)
+        } else if lang_items.transmute_trait() == Some(trait_def_id) {
+            G::consider_builtin_transmute_candidate(self, goal)
         } else {
             Err(NoSolution)
         };
