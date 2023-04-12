@@ -163,15 +163,13 @@ where
 
 impl<P, T, const COMPARE_PACKED: bool> fmt::Debug for CopyTaggedPtr<P, T, COMPARE_PACKED>
 where
-    P: Pointer,
-    P::Target: fmt::Debug,
+    P: Pointer + fmt::Debug,
     T: Tag + fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("CopyTaggedPtr")
-            .field("pointer", &self.pointer_ref())
-            .field("tag", &self.tag())
-            .finish()
+        self.with_pointer_ref(|ptr| {
+            f.debug_struct("CopyTaggedPtr").field("pointer", ptr).field("tag", &self.tag()).finish()
+        })
     }
 }
 

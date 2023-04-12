@@ -85,15 +85,13 @@ where
 
 impl<P, T, const COMPARE_PACKED: bool> fmt::Debug for TaggedPtr<P, T, COMPARE_PACKED>
 where
-    P: Pointer,
-    P::Target: fmt::Debug,
+    P: Pointer + fmt::Debug,
     T: Tag + fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("TaggedPtr")
-            .field("pointer", &self.pointer_ref())
-            .field("tag", &self.tag())
-            .finish()
+        self.raw.with_pointer_ref(|ptr| {
+            f.debug_struct("TaggedPtr").field("pointer", ptr).field("tag", &self.tag()).finish()
+        })
     }
 }
 
