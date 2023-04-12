@@ -685,7 +685,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for uses of bitwise and/or operators between booleans, where performance may be improved by using
+    /// Checks for usage of bitwise and/or operators between booleans, where performance may be improved by using
     /// a lazy and.
     ///
     /// ### Why is this bad?
