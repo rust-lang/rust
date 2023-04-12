@@ -769,7 +769,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // We use `read_c_str` to determine the amount of data to copy,
                 // and then use `mem_copy` for the actual copy. This means
                 // pointer provenance is preserved by this implementation of `strcpy`.
-                // That is properly overly cautious, but there also is no fundamental
+                // That is probably overly cautious, but there also is no fundamental
                 // reason to have `strcpy` destroy pointer provenance.
                 let n = this.read_c_str(ptr_src)?.len().checked_add(1).unwrap();
                 this.mem_copy(
