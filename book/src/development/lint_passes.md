@@ -4,7 +4,7 @@ Before working on the logic of a new lint, there is an important decision
 that every Clippy developers must make: to use
 [`EarlyLintPass`][early_lint_pass] or [`LateLintPass`][late_lint_pass].
 
-In short, the `LateLintPass` has access to type information while the
+In short, the `LateLintPass` has access to type and symbol information while the
 `EarlyLintPass` doesn't. If you don't need access to type information, use the
 `EarlyLintPass`.
 
@@ -20,14 +20,14 @@ you'll see that every method defined for this trait utilizes a
 
 Voilà. `EarlyLintPass` works only on the Abstract Syntax Tree (AST) level.
 And AST is generated during the [lexing and parsing][lexing_and_parsing] phase
-of code compilation. Therefore, this is our trait choice for a new lint if
-the lint only deals with syntax-related issues.
+of code compilation. Therefore, it doesn't know what a symbol means or information about types, and it should
+be our trait choice for a new lint if the lint only deals with syntax-related issues.
 
 While linting speed has not been a concern for Clippy,
-the `EarlyLintPass` is faster and it should be your choice
+the `EarlyLintPass` is faster, and it should be your choice
 if you know for sure a lint does not need type information.
 
-As a reminder, run the following command to generate boilerplates for lints
+As a reminder, run the following command to generate boilerplate for lints
 that use `EarlyLintPass`:
 
 ```sh
