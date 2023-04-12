@@ -8,35 +8,75 @@ use std::num::NonZeroUsize;
 use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
 
-/// A `Copy` TaggedPtr.
+/// A [`Copy`] tagged pointer.
 ///
-/// You should use this instead of the `TaggedPtr` type in all cases where
-/// `P: Copy`.
+/// This is essentially `{ pointer: P, tag: T }` packed in a single pointer.
+///
+/// You should use this instead of the [`TaggedPtr`] type in all cases where
+/// `P` implements [`Copy`].
 ///
 /// If `COMPARE_PACKED` is true, then the pointers will be compared and hashed without
-/// unpacking. Otherwise we don't implement PartialEq/Eq/Hash; if you want that,
-/// wrap the TaggedPtr.
+/// unpacking. Otherwise we don't implement [`PartialEq`], [`Eq`] and [`Hash`];
+/// if you want that, wrap the [`CopyTaggedPtr`].
+///
+/// [`TaggedPtr`]: crate::tagged_ptr::TaggedPtr
 pub struct CopyTaggedPtr<P, T, const COMPARE_PACKED: bool>
 where
     P: Pointer,
     T: Tag,
 {
+    /// This is semantically a pair of `pointer: P` and `tag: T` fields,
+    /// however we pack them in a single pointer, to save space.
+    ///
+    /// We pack the tag into the **most**-significant bits of the pointer to
+    /// ease retrieval of the value. A left shift is a multiplication and
+    /// those are embeddable in instruction encoding, for example:
+    ///
+    /// ```asm
+    /// // (https://godbolt.org/z/jqcYPWEr3)
+    /// example::shift_read3:
+    ///     mov     eax, dword ptr [8*rdi]
+    ///     ret
+    ///
+    /// example::mask_read3:
+    ///     and     rdi, -8
+    ///     mov     eax, dword ptr [rdi]
+    ///     ret
+    /// ```
+    ///
+    /// This is ASM outputted by rustc for reads of values behind tagged
+    /// pointers for different approaches of tagging:
+    /// - `shift_read3` uses `<< 3` (the tag is in the most-significant bits)
+    /// - `mask_read3` uses `& !0b111` (the tag is in the least-significant bits)
+    ///
+    /// The shift approach thus produces less instructions and is likely faster.
+    ///
+    /// Encoding diagram:
+    /// ```text
+    /// [ packed.addr                     ]
+    /// [ tag ] [ pointer.addr >> T::BITS ] <-- usize::BITS - T::BITS bits
+    ///    ^
+    ///    |
+    /// T::BITS bits
+    /// ```
+    ///
+    /// The tag can be retrieved by `packed.addr() >> T::BITS` and the pointer
+    /// can be retrieved by `packed.map_addr(|addr| addr << T::BITS)`.
     packed: NonNull<P::Target>,
     tag_ghost: PhantomData<T>,
 }
 
-// We pack the tag into the *upper* bits of the pointer to ease retrieval of the
-// value; a left shift is a multiplication and those are embeddable in
-// instruction encoding.
 impl<P, T, const CP: bool> CopyTaggedPtr<P, T, CP>
 where
     P: Pointer,
     T: Tag,
 {
+    /// Tags `pointer` with `tag`.
     pub fn new(pointer: P, tag: T) -> Self {
         Self { packed: Self::pack(P::into_ptr(pointer), tag), tag_ghost: PhantomData }
     }
 
+    /// Retrieves the pointer.
     pub fn pointer(self) -> P
     where
         P: Copy,
@@ -48,11 +88,18 @@ where
         unsafe { P::from_ptr(self.pointer_raw()) }
     }
 
+    /// Retrieves the tag.
     #[inline]
     pub fn tag(&self) -> T {
-        unsafe { T::from_usize(self.packed.addr().get() >> Self::TAG_BIT_SHIFT) }
+        // Unpack the tag, according to the `self.packed` encoding scheme
+        let tag = self.packed.addr().get() >> Self::TAG_BIT_SHIFT;
+
+        // Safety:
+        //
+        unsafe { T::from_usize(tag) }
     }
 
+    /// Sets the tag to a new value.
     #[inline]
     pub fn set_tag(&mut self, tag: T) {
         self.packed = Self::pack(self.pointer_raw(), tag);
@@ -61,7 +108,8 @@ where
     const TAG_BIT_SHIFT: usize = usize::BITS as usize - T::BITS;
     const ASSERTION: () = { assert!(T::BITS <= P::BITS) };
 
-    /// Pack pointer `ptr` that comes from [`P::into_ptr`] with a `tag`.
+    /// Pack pointer `ptr` that comes from [`P::into_ptr`] with a `tag`,
+    /// according to `self.packed` encoding scheme.
     ///
     /// [`P::into_ptr`]: Pointer::into_ptr
     fn pack(ptr: NonNull<P::Target>, tag: T) -> NonNull<P::Target> {
@@ -71,7 +119,7 @@ where
         let packed_tag = tag.into_usize() << Self::TAG_BIT_SHIFT;
 
         ptr.map_addr(|addr| {
-            // SAFETY:
+            // Safety:
             // - The pointer is `NonNull` => it's address is `NonZeroUsize`
             // - `P::BITS` least significant bits are always zero (`Pointer` contract)
             // - `T::BITS <= P::BITS` (from `Self::ASSERTION`)
@@ -85,6 +133,7 @@ where
         })
     }
 
+    /// Retrieves the original raw pointer from `self.packed`.
     pub(super) fn pointer_raw(&self) -> NonNull<P::Target> {
         self.packed.map_addr(|addr| unsafe { NonZeroUsize::new_unchecked(addr.get() << T::BITS) })
     }

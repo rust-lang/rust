@@ -3,15 +3,17 @@
 //! In order to utilize the pointer packing, you must have two types: a pointer,
 //! and a tag.
 //!
-//! The pointer must implement the `Pointer` trait, with the primary requirement
-//! being conversion to and from a usize. Note that the pointer must be
-//! dereferenceable, so raw pointers generally cannot implement the `Pointer`
-//! trait. This implies that the pointer must also be nonzero.
+//! The pointer must implement the [`Pointer`] trait, with the primary
+//! requirement being convertible to and from a raw pointer. Note that the
+//! pointer must be dereferenceable, so raw pointers generally cannot implement
+//! the [`Pointer`] trait. This implies that the pointer must also be non-null.
 //!
-//! Many common pointer types already implement the `Pointer` trait.
+//! Many common pointer types already implement the [`Pointer`] trait.
 //!
-//! The tag must implement the `Tag` trait. We assert that the tag and `Pointer`
-//! are compatible at compile time.
+//! The tag must implement the [`Tag`] trait.
+//!
+//! We assert that the tag and the [`Pointer`] types are compatible at compile
+//! time.
 
 use std::ops::Deref;
 use std::ptr::NonNull;
@@ -71,32 +73,66 @@ pub unsafe trait Pointer: Deref {
     /// [`Self::Target`]: Deref::Target
     const BITS: usize;
 
+    /// Turns this pointer into a raw, non-null pointer.
+    ///
+    /// The inverse of this function is [`from_ptr`].
+    ///
+    /// This function guarantees that the least-significant [`Self::BITS`] bits
+    /// are zero.
+    ///
+    /// [`from_ptr`]: Pointer::from_ptr
+    /// [`Self::BITS`]: Pointer::BITS
     fn into_ptr(self) -> NonNull<Self::Target>;
 
+    /// Re-creates the original pointer, from a raw pointer returned by [`into_ptr`].
+    ///
     /// # Safety
     ///
-    /// The passed `ptr` must be returned from `into_usize`.
+    /// The passed `ptr` must be returned from [`into_ptr`].
     ///
-    /// This acts as `ptr::read` semantically, it should not be called more than
-    /// once on non-`Copy` `Pointer`s.
+    /// This acts as [`ptr::read::<Self>()`] semantically, it should not be called more than
+    /// once on non-[`Copy`] `Pointer`s.
+    ///
+    /// [`into_ptr`]: Pointer::into_ptr
+    /// [`ptr::read::<Self>()`]: std::ptr::read
     unsafe fn from_ptr(ptr: NonNull<Self::Target>) -> Self;
 }
 
-/// This describes tags that the `TaggedPtr` struct can hold.
+/// This describes tags that the [`TaggedPtr`] struct can hold.
 ///
 /// # Safety
 ///
-/// The BITS constant must be correct.
+/// The [`BITS`] constant must be correct.
 ///
-/// No more than `BITS` least significant bits may be set in the returned usize.
+/// No more than [`BITS`] least significant bits may be set in the returned usize.
+///
+/// [`BITS`]: Tag::BITS
 pub unsafe trait Tag: Copy {
+    /// Number of least-significant bits in the return value of [`into_usize`]
+    /// which may be non-zero. In other words this is the bit width of the
+    /// value.
+    ///
+    /// [`into_usize`]: Tag::into_usize
     const BITS: usize;
 
+    /// Turns this tag into an integer.
+    ///
+    /// The inverse of this function is [`from_usize`].
+    ///
+    /// This function guarantees that only the least-significant [`Self::BITS`]
+    /// bits can be non-zero.
+    ///
+    /// [`from_usize`]: Pointer::from_usize
+    /// [`Self::BITS`]: Tag::BITS
     fn into_usize(self) -> usize;
 
+    /// Re-creates the tag from the integer returned by [`into_usize`].
+    ///
     /// # Safety
     ///
-    /// The passed `tag` must be returned from `into_usize`.
+    /// The passed `tag` must be returned from [`into_usize`].
+    ///
+    /// [`into_usize`]: Tag::into_usize
     unsafe fn from_usize(tag: usize) -> Self;
 }
 
@@ -111,6 +147,7 @@ unsafe impl<T: ?Sized + Aligned> Pointer for Box<T> {
 
     #[inline]
     unsafe fn from_ptr(ptr: NonNull<T>) -> Self {
+        // Safety: `ptr` comes from `into_ptr` which calls `Box::into_raw`
         Box::from_raw(ptr.as_ptr())
     }
 }
@@ -120,11 +157,13 @@ unsafe impl<T: ?Sized + Aligned> Pointer for Rc<T> {
 
     #[inline]
     fn into_ptr(self) -> NonNull<T> {
+        // Safety: pointers from `Rc::into_raw` are valid & non-null
         unsafe { NonNull::new_unchecked(Rc::into_raw(self).cast_mut()) }
     }
 
     #[inline]
     unsafe fn from_ptr(ptr: NonNull<T>) -> Self {
+        // Safety: `ptr` comes from `into_ptr` which calls `Rc::into_raw`
         Rc::from_raw(ptr.as_ptr())
     }
 }
@@ -134,11 +173,13 @@ unsafe impl<T: ?Sized + Aligned> Pointer for Arc<T> {
 
     #[inline]
     fn into_ptr(self) -> NonNull<T> {
+        // Safety: pointers from `Arc::into_raw` are valid & non-null
         unsafe { NonNull::new_unchecked(Arc::into_raw(self).cast_mut()) }
     }
 
     #[inline]
     unsafe fn from_ptr(ptr: NonNull<T>) -> Self {
+        // Safety: `ptr` comes from `into_ptr` which calls `Arc::into_raw`
         Arc::from_raw(ptr.as_ptr())
     }
 }
@@ -153,6 +194,8 @@ unsafe impl<'a, T: 'a + ?Sized + Aligned> Pointer for &'a T {
 
     #[inline]
     unsafe fn from_ptr(ptr: NonNull<T>) -> Self {
+        // Safety:
+        // `ptr` comes from `into_ptr` which gets the pointer from a reference
         ptr.as_ref()
     }
 }
@@ -167,6 +210,8 @@ unsafe impl<'a, T: 'a + ?Sized + Aligned> Pointer for &'a mut T {
 
     #[inline]
     unsafe fn from_ptr(mut ptr: NonNull<T>) -> Self {
+        // Safety:
+        // `ptr` comes from `into_ptr` which gets the pointer from a reference
         ptr.as_mut()
     }
 }

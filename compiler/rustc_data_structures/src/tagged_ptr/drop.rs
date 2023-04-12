@@ -6,11 +6,16 @@ use super::CopyTaggedPtr;
 use super::{Pointer, Tag};
 use crate::stable_hasher::{HashStable, StableHasher};
 
-/// A TaggedPtr implementing `Drop`.
+/// A tagged pointer that supports pointers that implement [`Drop`].
+///
+/// This is essentially `{ pointer: P, tag: T }` packed in a single pointer.
+///
+/// You should use [`CopyTaggedPtr`] instead of the this type in all cases
+/// where `P` implements [`Copy`].
 ///
 /// If `COMPARE_PACKED` is true, then the pointers will be compared and hashed without
-/// unpacking. Otherwise we don't implement PartialEq/Eq/Hash; if you want that,
-/// wrap the TaggedPtr.
+/// unpacking. Otherwise we don't implement [`PartialEq`], [`Eq`] and [`Hash`];
+/// if you want that, wrap the [`TaggedPtr`].
 pub struct TaggedPtr<P, T, const COMPARE_PACKED: bool>
 where
     P: Pointer,
@@ -19,22 +24,22 @@ where
     raw: CopyTaggedPtr<P, T, COMPARE_PACKED>,
 }
 
-// We pack the tag into the *upper* bits of the pointer to ease retrieval of the
-// value; a right shift is a multiplication and those are embeddable in
-// instruction encoding.
 impl<P, T, const CP: bool> TaggedPtr<P, T, CP>
 where
     P: Pointer,
     T: Tag,
 {
+    /// Tags `pointer` with `tag`.
     pub fn new(pointer: P, tag: T) -> Self {
         TaggedPtr { raw: CopyTaggedPtr::new(pointer, tag) }
     }
 
+    /// Retrieves the tag.
     pub fn tag(&self) -> T {
         self.raw.tag()
     }
 
+    /// Sets the tag to a new value.
     pub fn set_tag(&mut self, tag: T) {
         self.raw.set_tag(tag)
     }
