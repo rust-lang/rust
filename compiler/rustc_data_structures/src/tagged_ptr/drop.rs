@@ -34,6 +34,10 @@ where
     pub fn tag(&self) -> T {
         self.raw.tag()
     }
+
+    pub fn set_tag(&mut self, tag: T) {
+        self.raw.set_tag(tag)
+    }
 }
 
 impl<P, T, const CP: bool> Clone for TaggedPtr<P, T, CP>
