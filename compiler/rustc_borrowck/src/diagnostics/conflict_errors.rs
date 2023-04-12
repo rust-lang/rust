@@ -1306,26 +1306,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let local_ty = self.body.local_decls[local].ty;
 
         // Get the body the error happens in
-        let &body_id =
-            if let hir::Node::Item(hir::Item { kind, .. }) = hir.get(self.mir_hir_id())
-                && let hir::ItemKind::Static(_, _, body_id)
-                     | hir::ItemKind::Const(_, body_id)
-                     | hir::ItemKind::Fn(_, _, body_id) = kind
-            {
-                body_id
-            } else if let hir::Node::TraitItem(hir::TraitItem { kind, .. }) = hir.get(self.mir_hir_id())
-                && let hir::TraitItemKind::Const(_, Some(body_id))
-                     | hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(body_id)) = kind
-            {
-                body_id
-            }else if let hir::Node::ImplItem(hir::ImplItem { kind, .. }) = hir.get(self.mir_hir_id())
-                && let hir::ImplItemKind::Const(_, body_id)
-                     | hir::ImplItemKind::Fn(_, body_id) = kind
-            {
-                body_id
-            } else {
-                return
-            };
+        let Some(body_id) = hir.get(self.mir_hir_id()).body_id() else { return };
 
         let body_expr = hir.body(body_id).value;
 
