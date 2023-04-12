@@ -17,7 +17,7 @@ where
     raw: CopyTaggedPtr<P, T, COMPARE_PACKED>,
 }
 
-impl<P, T, const COMPARE_PACKED: bool> Clone for TaggedPtr<P, T, COMPARE_PACKED>
+impl<P, T, const CP: bool> Clone for TaggedPtr<P, T, CP>
 where
     P: Pointer + Clone,
     T: Tag,
@@ -32,7 +32,7 @@ where
 // We pack the tag into the *upper* bits of the pointer to ease retrieval of the
 // value; a right shift is a multiplication and those are embeddable in
 // instruction encoding.
-impl<P, T, const COMPARE_PACKED: bool> TaggedPtr<P, T, COMPARE_PACKED>
+impl<P, T, const CP: bool> TaggedPtr<P, T, CP>
 where
     P: Pointer,
     T: Tag,
@@ -46,7 +46,7 @@ where
     }
 }
 
-impl<P, T, const COMPARE_PACKED: bool> std::ops::Deref for TaggedPtr<P, T, COMPARE_PACKED>
+impl<P, T, const CP: bool> std::ops::Deref for TaggedPtr<P, T, CP>
 where
     P: Pointer,
     T: Tag,
@@ -57,7 +57,7 @@ where
     }
 }
 
-impl<P, T, const COMPARE_PACKED: bool> std::ops::DerefMut for TaggedPtr<P, T, COMPARE_PACKED>
+impl<P, T, const CP: bool> std::ops::DerefMut for TaggedPtr<P, T, CP>
 where
     P: Pointer + std::ops::DerefMut,
     T: Tag,
@@ -67,7 +67,7 @@ where
     }
 }
 
-impl<P, T, const COMPARE_PACKED: bool> Drop for TaggedPtr<P, T, COMPARE_PACKED>
+impl<P, T, const CP: bool> Drop for TaggedPtr<P, T, CP>
 where
     P: Pointer,
     T: Tag,
@@ -80,7 +80,7 @@ where
     }
 }
 
-impl<P, T, const COMPARE_PACKED: bool> fmt::Debug for TaggedPtr<P, T, COMPARE_PACKED>
+impl<P, T, const CP: bool> fmt::Debug for TaggedPtr<P, T, CP>
 where
     P: Pointer + fmt::Debug,
     T: Tag + fmt::Debug,
@@ -119,7 +119,7 @@ where
     }
 }
 
-impl<P, T, HCX, const COMPARE_PACKED: bool> HashStable<HCX> for TaggedPtr<P, T, COMPARE_PACKED>
+impl<P, T, HCX, const CP: bool> HashStable<HCX> for TaggedPtr<P, T, CP>
 where
     P: Pointer + HashStable<HCX>,
     T: Tag + HashStable<HCX>,

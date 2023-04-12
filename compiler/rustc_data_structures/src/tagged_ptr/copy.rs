@@ -24,7 +24,7 @@ where
     tag_ghost: PhantomData<T>,
 }
 
-impl<P, T, const COMPARE_PACKED: bool> Copy for CopyTaggedPtr<P, T, COMPARE_PACKED>
+impl<P, T, const CP: bool> Copy for CopyTaggedPtr<P, T, CP>
 where
     P: Pointer,
     T: Tag,
@@ -32,7 +32,7 @@ where
 {
 }
 
-impl<P, T, const COMPARE_PACKED: bool> Clone for CopyTaggedPtr<P, T, COMPARE_PACKED>
+impl<P, T, const CP: bool> Clone for CopyTaggedPtr<P, T, CP>
 where
     P: Pointer,
     T: Tag,
@@ -46,7 +46,7 @@ where
 // We pack the tag into the *upper* bits of the pointer to ease retrieval of the
 // value; a left shift is a multiplication and those are embeddable in
 // instruction encoding.
-impl<P, T, const COMPARE_PACKED: bool> CopyTaggedPtr<P, T, COMPARE_PACKED>
+impl<P, T, const CP: bool> CopyTaggedPtr<P, T, CP>
 where
     P: Pointer,
     T: Tag,
@@ -126,7 +126,7 @@ where
     }
 }
 
-impl<P, T, const COMPARE_PACKED: bool> Deref for CopyTaggedPtr<P, T, COMPARE_PACKED>
+impl<P, T, const CP: bool> Deref for CopyTaggedPtr<P, T, CP>
 where
     P: Pointer,
     T: Tag,
@@ -141,7 +141,7 @@ where
     }
 }
 
-impl<P, T, const COMPARE_PACKED: bool> DerefMut for CopyTaggedPtr<P, T, COMPARE_PACKED>
+impl<P, T, const CP: bool> DerefMut for CopyTaggedPtr<P, T, CP>
 where
     P: Pointer + DerefMut,
     T: Tag,
@@ -155,7 +155,7 @@ where
     }
 }
 
-impl<P, T, const COMPARE_PACKED: bool> fmt::Debug for CopyTaggedPtr<P, T, COMPARE_PACKED>
+impl<P, T, const CP: bool> fmt::Debug for CopyTaggedPtr<P, T, CP>
 where
     P: Pointer + fmt::Debug,
     T: Tag + fmt::Debug,
@@ -194,7 +194,7 @@ where
     }
 }
 
-impl<P, T, HCX, const COMPARE_PACKED: bool> HashStable<HCX> for CopyTaggedPtr<P, T, COMPARE_PACKED>
+impl<P, T, HCX, const CP: bool> HashStable<HCX> for CopyTaggedPtr<P, T, CP>
 where
     P: Pointer + HashStable<HCX>,
     T: Tag + HashStable<HCX>,
