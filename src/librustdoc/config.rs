@@ -230,7 +230,7 @@ pub(crate) struct RenderOptions {
     pub(crate) extension_css: Option<PathBuf>,
     /// A map of crate names to the URL to use instead of querying the crate's `html_root_url`.
     pub(crate) extern_html_root_urls: BTreeMap<String, String>,
-    /// Whether to give precedence to `html_root_url` or `--exten-html-root-url`.
+    /// Whether to give precedence to `html_root_url` or `--extern-html-root-url`.
     pub(crate) extern_html_root_takes_precedence: bool,
     /// A map of the default settings (values are as for DOM storage API). Keys should lack the
     /// `rustdoc-` prefix.

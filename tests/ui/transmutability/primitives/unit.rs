@@ -1,3 +1,6 @@
+// revisions: current next
+//[next] compile-flags: -Ztrait-solver=next
+
 //! The unit type, `()`, should be one byte.
 
 #![crate_type = "lib"]
