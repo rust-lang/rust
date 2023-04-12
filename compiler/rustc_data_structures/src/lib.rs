@@ -83,6 +83,7 @@ pub mod transitive_relation;
 pub mod vec_linked_list;
 pub mod work_queue;
 pub use atomic_ref::AtomicRef;
+pub mod aligned;
 pub mod frozen;
 pub mod owned_slice;
 pub mod sso;

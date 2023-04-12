@@ -1,5 +1,5 @@
 use crate::arena::Arena;
-use rustc_data_structures::tagged_ptr::bits_for;
+use rustc_data_structures::aligned::Aligned;
 use rustc_serialize::{Encodable, Encoder};
 use std::alloc::Layout;
 use std::cmp::Ordering;
@@ -8,7 +8,7 @@ use std::hash::{Hash, Hasher};
 use std::iter;
 use std::mem;
 use std::ops::Deref;
-use std::ptr::{self, NonNull};
+use std::ptr;
 use std::slice;
 
 /// `List<T>` is a bit like `&[T]`, but with some critical differences.
@@ -199,20 +199,17 @@ impl<'a, T: Copy> IntoIterator for &'a List<T> {
 
 unsafe impl<T: Sync> Sync for List<T> {}
 
-unsafe impl<'a, T: 'a> rustc_data_structures::tagged_ptr::Pointer for &'a List<T> {
-    const BITS: usize = bits_for::<usize>();
+// Safety:
+// Layouts of `Equivalent<T>` and `List<T>` are the same, modulo opaque tail,
+// thus aligns of `Equivalent<T>` and `List<T>` must be the same.
+unsafe impl<T> Aligned for List<T> {
+    const ALIGN: usize = {
+        #[repr(C)]
+        struct Equivalent<T> {
+            _len: usize,
+            _data: [T; 0],
+        }
 
-    #[inline]
-    fn into_ptr(self) -> NonNull<List<T>> {
-        NonNull::from(self)
-    }
-
-    #[inline]
-    unsafe fn from_ptr(ptr: NonNull<List<T>>) -> &'a List<T> {
-        ptr.as_ref()
-    }
-
-    unsafe fn with_ref<R, F: FnOnce(&Self) -> R>(ptr: NonNull<List<T>>, f: F) -> R {
-        f(&ptr.as_ref())
-    }
+        mem::align_of::<Equivalent<T>>()
+    };
 }

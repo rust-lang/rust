@@ -55,12 +55,7 @@ where
     }
 
     const TAG_BIT_SHIFT: usize = usize::BITS as usize - T::BITS;
-    const ASSERTION: () = {
-        assert!(T::BITS <= P::BITS);
-        // Used for the transmute_copy's below
-        // TODO(waffle): do we need this assert anymore?
-        assert!(std::mem::size_of::<&P::Target>() == std::mem::size_of::<usize>());
-    };
+    const ASSERTION: () = { assert!(T::BITS <= P::BITS) };
 
     /// Pack pointer `ptr` that comes from [`P::into_ptr`] with a `tag`.
     ///

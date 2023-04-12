@@ -13,11 +13,13 @@
 //! The tag must implement the `Tag` trait. We assert that the tag and `Pointer`
 //! are compatible at compile time.
 
-use std::mem::{self, ManuallyDrop};
+use std::mem::ManuallyDrop;
 use std::ops::Deref;
 use std::ptr::NonNull;
 use std::rc::Rc;
 use std::sync::Arc;
+
+use crate::aligned::Aligned;
 
 mod copy;
 mod drop;
@@ -31,8 +33,7 @@ pub use drop::TaggedPtr;
 /// # Safety
 ///
 /// The pointer returned from [`into_ptr`] must be a [valid], pointer to
-/// [`<Self as Deref>::Target`]. Note that pointers to [`Self::Target`] must be
-/// thin, even though [`Self::Target`] may not be `Sized`.
+/// [`<Self as Deref>::Target`].
 ///
 /// Note that if `Self` implements [`DerefMut`] the pointer returned from
 /// [`into_ptr`] must be valid for writes (and thus calling [`NonNull::as_mut`]
@@ -110,7 +111,7 @@ pub unsafe trait Tag: Copy {
     unsafe fn from_usize(tag: usize) -> Self;
 }
 
-unsafe impl<T> Pointer for Box<T> {
+unsafe impl<T: ?Sized + Aligned> Pointer for Box<T> {
     const BITS: usize = bits_for::<Self::Target>();
 
     #[inline]
@@ -130,7 +131,7 @@ unsafe impl<T> Pointer for Box<T> {
     }
 }
 
-unsafe impl<T> Pointer for Rc<T> {
+unsafe impl<T: ?Sized + Aligned> Pointer for Rc<T> {
     const BITS: usize = bits_for::<Self::Target>();
 
     #[inline]
@@ -149,7 +150,7 @@ unsafe impl<T> Pointer for Rc<T> {
     }
 }
 
-unsafe impl<T> Pointer for Arc<T> {
+unsafe impl<T: ?Sized + Aligned> Pointer for Arc<T> {
     const BITS: usize = bits_for::<Self::Target>();
 
     #[inline]
@@ -168,7 +169,7 @@ unsafe impl<T> Pointer for Arc<T> {
     }
 }
 
-unsafe impl<'a, T: 'a> Pointer for &'a T {
+unsafe impl<'a, T: 'a + ?Sized + Aligned> Pointer for &'a T {
     const BITS: usize = bits_for::<Self::Target>();
 
     #[inline]
@@ -186,7 +187,7 @@ unsafe impl<'a, T: 'a> Pointer for &'a T {
     }
 }
 
-unsafe impl<'a, T: 'a> Pointer for &'a mut T {
+unsafe impl<'a, T: 'a + ?Sized + Aligned> Pointer for &'a mut T {
     const BITS: usize = bits_for::<Self::Target>();
 
     #[inline]
@@ -206,8 +207,8 @@ unsafe impl<'a, T: 'a> Pointer for &'a mut T {
 
 /// Returns the number of bits available for use for tags in a pointer to `T`
 /// (this is based on `T`'s alignment).
-pub const fn bits_for<T>() -> usize {
-    let bits = mem::align_of::<T>().trailing_zeros();
+pub const fn bits_for<T: ?Sized + Aligned>() -> usize {
+    let bits = crate::aligned::align_of::<T>().trailing_zeros();
 
     // This is a replacement for `.try_into().unwrap()` unavailable in `const`
     // (it's fine to make an assert here, since this is only called in compile time)
