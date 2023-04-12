@@ -1663,39 +1663,45 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             })
         });
 
-        let existential_projections = projection_bounds.iter().map(|(bound, _)| {
-            bound.map_bound(|mut b| {
-                assert_eq!(b.projection_ty.self_ty(), dummy_self);
+        let existential_projections = projection_bounds
+            .iter()
+            // We filter out traits that don't have `Self` as their self type above,
+            // we need to do the same for projections.
+            .filter(|(bound, _)| bound.skip_binder().self_ty() == dummy_self)
+            .map(|(bound, _)| {
+                bound.map_bound(|mut b| {
+                    assert_eq!(b.projection_ty.self_ty(), dummy_self);
 
-                // Like for trait refs, verify that `dummy_self` did not leak inside default type
-                // parameters.
-                let references_self = b.projection_ty.substs.iter().skip(1).any(|arg| {
-                    if arg.walk().any(|arg| arg == dummy_self.into()) {
-                        return true;
+                    // Like for trait refs, verify that `dummy_self` did not leak inside default type
+                    // parameters.
+                    let references_self = b.projection_ty.substs.iter().skip(1).any(|arg| {
+                        if arg.walk().any(|arg| arg == dummy_self.into()) {
+                            return true;
+                        }
+                        false
+                    });
+                    if references_self {
+                        let guar = tcx.sess.delay_span_bug(
+                            span,
+                            "trait object projection bounds reference `Self`",
+                        );
+                        let substs: Vec<_> = b
+                            .projection_ty
+                            .substs
+                            .iter()
+                            .map(|arg| {
+                                if arg.walk().any(|arg| arg == dummy_self.into()) {
+                                    return tcx.ty_error(guar).into();
+                                }
+                                arg
+                            })
+                            .collect();
+                        b.projection_ty.substs = tcx.mk_substs(&substs);
                     }
-                    false
-                });
-                if references_self {
-                    let guar = tcx
-                        .sess
-                        .delay_span_bug(span, "trait object projection bounds reference `Self`");
-                    let substs: Vec<_> = b
-                        .projection_ty
-                        .substs
-                        .iter()
-                        .map(|arg| {
-                            if arg.walk().any(|arg| arg == dummy_self.into()) {
-                                return tcx.ty_error(guar).into();
-                            }
-                            arg
-                        })
-                        .collect();
-                    b.projection_ty.substs = tcx.mk_substs(&substs);
-                }
 
-                ty::ExistentialProjection::erase_self_ty(tcx, b)
-            })
-        });
+                    ty::ExistentialProjection::erase_self_ty(tcx, b)
+                })
+            });
 
         let regular_trait_predicates = existential_trait_refs
             .map(|trait_ref| trait_ref.map_bound(ty::ExistentialPredicate::Trait));

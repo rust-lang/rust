@@ -69,6 +69,7 @@ impl<'tcx> Extend<ty::Predicate<'tcx>> for PredicateSet<'tcx> {
 pub struct Elaborator<'tcx, O> {
     stack: Vec<O>,
     visited: PredicateSet<'tcx>,
+    only_self: bool,
 }
 
 /// Describes how to elaborate an obligation into a sub-obligation.
@@ -170,7 +171,8 @@ pub fn elaborate<'tcx, O: Elaboratable<'tcx>>(
     tcx: TyCtxt<'tcx>,
     obligations: impl IntoIterator<Item = O>,
 ) -> Elaborator<'tcx, O> {
-    let mut elaborator = Elaborator { stack: Vec::new(), visited: PredicateSet::new(tcx) };
+    let mut elaborator =
+        Elaborator { stack: Vec::new(), visited: PredicateSet::new(tcx), only_self: false };
     elaborator.extend_deduped(obligations);
     elaborator
 }
@@ -185,14 +187,25 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
         self.stack.extend(obligations.into_iter().filter(|o| self.visited.insert(o.predicate())));
     }
 
+    /// Filter to only the supertraits of trait predicates, i.e. only the predicates
+    /// that have `Self` as their self type, instead of all implied predicates.
+    pub fn filter_only_self(mut self) -> Self {
+        self.only_self = true;
+        self
+    }
+
     fn elaborate(&mut self, elaboratable: &O) {
         let tcx = self.visited.tcx;
 
         let bound_predicate = elaboratable.predicate().kind();
         match bound_predicate.skip_binder() {
             ty::PredicateKind::Clause(ty::Clause::Trait(data)) => {
-                // Get predicates declared on the trait.
-                let predicates = tcx.super_predicates_of(data.def_id());
+                // Get predicates implied by the trait, or only super predicates if we only care about self predicates.
+                let predicates = if self.only_self {
+                    tcx.super_predicates_of(data.def_id())
+                } else {
+                    tcx.implied_predicates_of(data.def_id())
+                };
 
                 let obligations =
                     predicates.predicates.iter().enumerate().map(|(index, &(mut pred, span))| {
@@ -350,18 +363,16 @@ pub fn supertraits<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>,
 ) -> impl Iterator<Item = ty::PolyTraitRef<'tcx>> {
-    let pred: ty::Predicate<'tcx> = trait_ref.to_predicate(tcx);
-    FilterToTraits::new(elaborate(tcx, [pred]))
+    elaborate(tcx, [trait_ref.to_predicate(tcx)]).filter_only_self().filter_to_traits()
 }
 
 pub fn transitive_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_refs: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
 ) -> impl Iterator<Item = ty::PolyTraitRef<'tcx>> {
-    FilterToTraits::new(elaborate(
-        tcx,
-        trait_refs.map(|trait_ref| -> ty::Predicate<'tcx> { trait_ref.to_predicate(tcx) }),
-    ))
+    elaborate(tcx, trait_refs.map(|trait_ref| trait_ref.to_predicate(tcx)))
+        .filter_only_self()
+        .filter_to_traits()
 }
 
 /// A specialized variant of `elaborate` that only elaborates trait references that may
@@ -381,10 +392,8 @@ pub fn transitive_bounds_that_define_assoc_type<'tcx>(
         while let Some(trait_ref) = stack.pop() {
             let anon_trait_ref = tcx.anonymize_bound_vars(trait_ref);
             if visited.insert(anon_trait_ref) {
-                let super_predicates = tcx.super_predicates_that_define_assoc_type((
-                    trait_ref.def_id(),
-                    Some(assoc_name),
-                ));
+                let super_predicates =
+                    tcx.super_predicates_that_define_assoc_type((trait_ref.def_id(), assoc_name));
                 for (super_predicate, _) in super_predicates.predicates {
                     let subst_predicate = super_predicate.subst_supertrait(tcx, &trait_ref);
                     if let Some(binder) = subst_predicate.to_opt_poly_trait_pred() {
@@ -404,16 +413,16 @@ pub fn transitive_bounds_that_define_assoc_type<'tcx>(
 // Other
 ///////////////////////////////////////////////////////////////////////////
 
+impl<'tcx> Elaborator<'tcx, ty::Predicate<'tcx>> {
+    fn filter_to_traits(self) -> FilterToTraits<Self> {
+        FilterToTraits { base_iterator: self }
+    }
+}
+
 /// A filter around an iterator of predicates that makes it yield up
 /// just trait references.
 pub struct FilterToTraits<I> {
     base_iterator: I,
-}
-
-impl<I> FilterToTraits<I> {
-    fn new(base: I) -> FilterToTraits<I> {
-        FilterToTraits { base_iterator: base }
-    }
 }
 
 impl<'tcx, I: Iterator<Item = ty::Predicate<'tcx>>> Iterator for FilterToTraits<I> {

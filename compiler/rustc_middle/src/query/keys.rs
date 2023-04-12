@@ -230,7 +230,7 @@ impl Key for (LocalDefId, LocalDefId) {
     }
 }
 
-impl Key for (DefId, Option<Ident>) {
+impl Key for (DefId, Ident) {
     type CacheSelector = DefaultCacheSelector<Self>;
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
