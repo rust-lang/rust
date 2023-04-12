@@ -134,3 +134,33 @@ where
         self.raw.hash_stable(hcx, hasher);
     }
 }
+
+/// Test that `new` does not compile if there is not enough alignment for the
+/// tag in the pointer.
+///
+/// ```compile_fail,E0080
+/// use rustc_data_structures::tagged_ptr::{TaggedPtr, Tag};
+///
+/// #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+/// enum Tag2 { B00 = 0b00, B01 = 0b01, B10 = 0b10, B11 = 0b11 };
+///
+/// unsafe impl Tag for Tag2 {
+///     const BITS: usize = 2;
+///
+///     fn into_usize(self) -> usize { todo!() }
+///     unsafe fn from_usize(tag: usize) -> Self { todo!() }
+/// }
+///
+/// let value = 12u16;
+/// let reference = &value;
+/// let tag = Tag2::B01;
+///
+/// let _ptr = TaggedPtr::<_, _, true>::new(reference, tag);
+/// ```
+// For some reason miri does not get the compile error
+// probably it `check`s instead of `build`ing?
+#[cfg(not(miri))]
+const _: () = ();
+
+#[cfg(test)]
+mod tests;
