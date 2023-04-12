@@ -599,10 +599,12 @@ trait UnusedDelimLint {
                 ExprKind::AssignOp(_op, _lhs, rhs) => rhs,
                 ExprKind::Assign(_lhs, rhs, _span) => rhs,
 
-                ExprKind::Ret(_)
-                | ExprKind::Break(..)
-                | ExprKind::Yield(..)
-                | ExprKind::Yeet(..) => return true,
+                ExprKind::Ret(_) | ExprKind::Yield(..) | ExprKind::Yeet(..) => return true,
+
+                ExprKind::Break(_label, None) => return false,
+                ExprKind::Break(_label, Some(break_expr)) => {
+                    return matches!(break_expr.kind, ExprKind::Block(..));
+                }
 
                 ExprKind::Range(_lhs, Some(rhs), _limits) => {
                     return matches!(rhs.kind, ExprKind::Block(..));
