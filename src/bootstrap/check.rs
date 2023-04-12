@@ -237,7 +237,7 @@ impl Step for Rustc {
             target,
             cargo_subcommand(builder.kind),
         );
-        rustc_cargo(builder, &mut cargo, target);
+        rustc_cargo(builder, &mut cargo, target, compiler.stage);
 
         // For ./x.py clippy, don't run with --all-targets because
         // linting tests and benchmarks can produce very noisy results
@@ -323,7 +323,7 @@ impl Step for CodegenBackend {
         cargo
             .arg("--manifest-path")
             .arg(builder.src.join(format!("compiler/rustc_codegen_{}/Cargo.toml", backend)));
-        rustc_cargo_env(builder, &mut cargo, target);
+        rustc_cargo_env(builder, &mut cargo, target, compiler.stage);
 
         let msg = if compiler.host == target {
             format!("Checking stage{} {} artifacts ({target})", builder.top_stage, backend)
