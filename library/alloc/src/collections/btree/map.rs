@@ -3183,7 +3183,7 @@ impl<'a, K: Ord, V, A: Allocator + Clone> CursorMut<'a, K, V, A> {
                 panic!("key must be ordered above the current element");
             }
         }
-        if let Some((next, _)) = self.peek_prev() {
+        if let Some((next, _)) = self.peek_next() {
             if &key >= next {
                 panic!("key must be ordered below the next element");
             }
