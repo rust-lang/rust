@@ -1,4 +1,6 @@
 use std::fmt;
+use std::hash::{Hash, Hasher};
+use std::ops::{Deref, DerefMut};
 
 use super::CopyTaggedPtr;
 use super::{Pointer, Tag};
@@ -15,18 +17,6 @@ where
     T: Tag,
 {
     raw: CopyTaggedPtr<P, T, COMPARE_PACKED>,
-}
-
-impl<P, T, const CP: bool> Clone for TaggedPtr<P, T, CP>
-where
-    P: Pointer + Clone,
-    T: Tag,
-{
-    fn clone(&self) -> Self {
-        let ptr = self.raw.with_pointer_ref(P::clone);
-
-        Self::new(ptr, self.tag())
-    }
 }
 
 // We pack the tag into the *upper* bits of the pointer to ease retrieval of the
@@ -46,7 +36,19 @@ where
     }
 }
 
-impl<P, T, const CP: bool> std::ops::Deref for TaggedPtr<P, T, CP>
+impl<P, T, const CP: bool> Clone for TaggedPtr<P, T, CP>
+where
+    P: Pointer + Clone,
+    T: Tag,
+{
+    fn clone(&self) -> Self {
+        let ptr = self.raw.with_pointer_ref(P::clone);
+
+        Self::new(ptr, self.tag())
+    }
+}
+
+impl<P, T, const CP: bool> Deref for TaggedPtr<P, T, CP>
 where
     P: Pointer,
     T: Tag,
@@ -57,9 +59,9 @@ where
     }
 }
 
-impl<P, T, const CP: bool> std::ops::DerefMut for TaggedPtr<P, T, CP>
+impl<P, T, const CP: bool> DerefMut for TaggedPtr<P, T, CP>
 where
-    P: Pointer + std::ops::DerefMut,
+    P: Pointer + DerefMut,
     T: Tag,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
@@ -109,12 +111,12 @@ where
 {
 }
 
-impl<P, T> std::hash::Hash for TaggedPtr<P, T, true>
+impl<P, T> Hash for TaggedPtr<P, T, true>
 where
     P: Pointer,
     T: Tag,
 {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         self.raw.hash(state);
     }
 }

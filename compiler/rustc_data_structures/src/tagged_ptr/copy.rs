@@ -1,6 +1,7 @@
 use super::{Pointer, Tag};
 use crate::stable_hasher::{HashStable, StableHasher};
 use std::fmt;
+use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
 use std::num::NonZeroUsize;
@@ -24,25 +25,6 @@ where
     tag_ghost: PhantomData<T>,
 }
 
-impl<P, T, const CP: bool> Copy for CopyTaggedPtr<P, T, CP>
-where
-    P: Pointer,
-    T: Tag,
-    P: Copy,
-{
-}
-
-impl<P, T, const CP: bool> Clone for CopyTaggedPtr<P, T, CP>
-where
-    P: Pointer,
-    T: Tag,
-    P: Copy,
-{
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
 // We pack the tag into the *upper* bits of the pointer to ease retrieval of the
 // value; a left shift is a multiplication and those are embeddable in
 // instruction encoding.
@@ -53,6 +35,27 @@ where
 {
     pub fn new(pointer: P, tag: T) -> Self {
         Self { packed: Self::pack(P::into_ptr(pointer), tag), tag_ghost: PhantomData }
+    }
+
+    pub fn pointer(self) -> P
+    where
+        P: Copy,
+    {
+        // SAFETY: pointer_raw returns the original pointer
+        //
+        // Note that this isn't going to double-drop or anything because we have
+        // P: Copy
+        unsafe { P::from_ptr(self.pointer_raw()) }
+    }
+
+    #[inline]
+    pub fn tag(&self) -> T {
+        unsafe { T::from_usize(self.packed.addr().get() >> Self::TAG_BIT_SHIFT) }
+    }
+
+    #[inline]
+    pub fn set_tag(&mut self, tag: T) {
+        self.packed = Self::pack(self.pointer_raw(), tag);
     }
 
     const TAG_BIT_SHIFT: usize = usize::BITS as usize - T::BITS;
@@ -103,26 +106,22 @@ where
         let ptr = unsafe { ManuallyDrop::new(P::from_ptr(self.pointer_raw())) };
         f(&ptr)
     }
+}
 
-    pub fn pointer(self) -> P
-    where
-        P: Copy,
-    {
-        // SAFETY: pointer_raw returns the original pointer
-        //
-        // Note that this isn't going to double-drop or anything because we have
-        // P: Copy
-        unsafe { P::from_ptr(self.pointer_raw()) }
-    }
+impl<P, T, const CP: bool> Copy for CopyTaggedPtr<P, T, CP>
+where
+    P: Pointer + Copy,
+    T: Tag,
+{
+}
 
-    #[inline]
-    pub fn tag(&self) -> T {
-        unsafe { T::from_usize(self.packed.addr().get() >> Self::TAG_BIT_SHIFT) }
-    }
-
-    #[inline]
-    pub fn set_tag(&mut self, tag: T) {
-        self.packed = Self::pack(self.pointer_raw(), tag);
+impl<P, T, const CP: bool> Clone for CopyTaggedPtr<P, T, CP>
+where
+    P: Pointer + Copy,
+    T: Tag,
+{
+    fn clone(&self) -> Self {
+        *self
     }
 }
 
@@ -184,12 +183,12 @@ where
 {
 }
 
-impl<P, T> std::hash::Hash for CopyTaggedPtr<P, T, true>
+impl<P, T> Hash for CopyTaggedPtr<P, T, true>
 where
     P: Pointer,
     T: Tag,
 {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         self.packed.hash(state);
     }
 }
