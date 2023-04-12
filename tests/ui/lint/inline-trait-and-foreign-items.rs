@@ -1,5 +1,5 @@
 #![feature(extern_types)]
-#![feature(type_alias_impl_trait)]
+#![feature(impl_trait_in_assoc_type)]
 
 #![warn(unused_attributes)]
 

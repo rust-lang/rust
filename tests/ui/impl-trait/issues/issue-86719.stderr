@@ -8,12 +8,13 @@ error[E0407]: method `foo` is not a member of trait `Bar`
   --> $DIR/issue-86719.rs:8:5
    |
 LL | /     fn foo() -> Self::E {
+LL | |
 LL | |         |_| true
 LL | |     }
    | |_____^ not a member of trait `Bar`
 
 error[E0282]: type annotations needed
-  --> $DIR/issue-86719.rs:9:10
+  --> $DIR/issue-86719.rs:10:10
    |
 LL |         |_| true
    |          ^

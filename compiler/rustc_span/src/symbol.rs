@@ -801,6 +801,7 @@ symbols! {
         ignore,
         impl_header_lifetime_elision,
         impl_lint_pass,
+        impl_trait_in_assoc_type,
         impl_trait_in_bindings,
         impl_trait_in_fn_trait_return,
         impl_trait_projections,

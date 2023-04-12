@@ -4,7 +4,7 @@
 // revisions: current next
 
 #![feature(async_fn_in_trait)]
-#![feature(type_alias_impl_trait)]
+#![feature(impl_trait_in_assoc_type)]
 #![allow(incomplete_features)]
 
 use std::future::Future;
@@ -23,9 +23,7 @@ impl MyTrait for i32 {
         Self: 'a;
 
     fn foo<'a>(&'a self) -> Self::Fut<'a> {
-        async {
-            *self
-        }
+        async { *self }
     }
 }
 
