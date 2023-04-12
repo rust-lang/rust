@@ -1130,7 +1130,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             let r_vid = self.to_region_vid(r);
             let r_scc = self.constraint_sccs.scc(r_vid);
 
-            // The challenge if this. We have some region variable `r`
+            // The challenge is this. We have some region variable `r`
             // whose value is a set of CFG points and universal
             // regions. We want to find if that set is *equivalent* to
             // any of the named regions found in the closure.
