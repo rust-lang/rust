@@ -119,9 +119,9 @@ impl Step for ToolBuild {
             &self.target,
         );
         builder.info(&msg);
-        let is_expected = compile::stream_cargo(builder, cargo, vec![], &mut |_msg| {
-            return;
-        });
+
+        let mut cargo = Command::from(cargo);
+        let is_expected = builder.try_run_quiet(&mut cargo);
 
         builder.save_toolstate(
             tool,
