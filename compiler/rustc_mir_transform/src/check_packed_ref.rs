@@ -56,8 +56,9 @@ impl<'tcx> Visitor<'tcx> for PackedRefChecker<'_, 'tcx> {
                         "reference to packed field is unaligned"
                     )
                     .note(
-                        "fields of packed structs are not properly aligned, and creating \
-                        a misaligned reference is undefined behavior (even if that \
+                        "packed structs are only aligned by one byte. therefore, fields of packed \
+                        structs are not properly aligned and many modern architectures may penalize this. \
+                        creating a misaligned reference is undefined behavior (even if that \
                         reference is never dereferenced)",
                     ).help(
                         "copy the field contents to a local variable, or replace the \
