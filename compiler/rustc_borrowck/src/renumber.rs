@@ -51,12 +51,10 @@ impl RegionCtxt {
     /// Used to determine the representative of a component in the strongly connected
     /// constraint graph
     pub(crate) fn preference_value(self) -> usize {
-        let _anon = Symbol::intern("anon");
-
         match self {
             RegionCtxt::Unknown => 1,
             RegionCtxt::Existential(None) => 2,
-            RegionCtxt::Existential(Some(_anon)) | RegionCtxt::Free(_anon) => 2,
+            RegionCtxt::Existential(Some(_)) | RegionCtxt::Free(_) => 2,
             RegionCtxt::Location(_) => 3,
             RegionCtxt::TyContext(_) => 4,
             _ => 5,

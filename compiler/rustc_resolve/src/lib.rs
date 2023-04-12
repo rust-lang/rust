@@ -312,7 +312,6 @@ impl<'a> From<&'a ast::PathSegment> for Segment {
                     (args.span, found_lifetimes)
                 }
                 GenericArgs::Parenthesized(args) => (args.span, true),
-                GenericArgs::ReturnTypeNotation(span) => (*span, false),
             }
         } else {
             (DUMMY_SP, false)
@@ -1652,7 +1651,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 misc2: AmbiguityErrorMisc::None,
             };
             if !self.matches_previous_ambiguity_error(&ambiguity_error) {
-                // avoid dumplicated span information to be emitt out
+                // avoid duplicated span information to be emitt out
                 self.ambiguity_errors.push(ambiguity_error);
             }
         }

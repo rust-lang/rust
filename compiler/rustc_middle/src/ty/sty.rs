@@ -1621,19 +1621,24 @@ impl<'tcx> Region<'tcx> {
 
     pub fn get_name(self) -> Option<Symbol> {
         if self.has_name() {
-            let name = match *self {
+            match *self {
                 ty::ReEarlyBound(ebr) => Some(ebr.name),
                 ty::ReLateBound(_, br) => br.kind.get_name(),
                 ty::ReFree(fr) => fr.bound_region.get_name(),
                 ty::ReStatic => Some(kw::StaticLifetime),
                 ty::RePlaceholder(placeholder) => placeholder.bound.kind.get_name(),
                 _ => None,
-            };
-
-            return name;
+            }
+        } else {
+            None
         }
+    }
 
-        None
+    pub fn get_name_or_anon(self) -> Symbol {
+        match self.get_name() {
+            Some(name) => name,
+            None => sym::anon,
+        }
     }
 
     /// Is this region named by the user?

@@ -56,11 +56,12 @@ move-cursor-to: "#settings-menu > a"
 assert-css: (
     "#theme-dark",
     {
-        "border-color": "rgb(221, 221, 221)",
+        "border-color": "rgb(153, 153, 153)",
         "box-shadow": "rgb(53, 53, 53) 0px 0px 0px 3px inset",
+        "border-width": "2px",
     },
 )
-assert-css: ("#theme-light", {"border-color": "rgb(221, 221, 221)", "box-shadow": "none"})
+assert-css: ("#theme-light", {"border-color": "rgb(153, 153, 153)", "box-shadow": "none"})
 // Let's start with the hover for radio buttons.
 move-cursor-to: "#theme-dark"
 assert-css: (
@@ -68,26 +69,36 @@ assert-css: (
     {
         "border-color": "rgb(33, 150, 243)",
         "box-shadow": "rgb(53, 53, 53) 0px 0px 0px 3px inset",
+        "border-width": "2px",
     },
 )
 move-cursor-to: "#theme-light"
-assert-css: ("#theme-light", {"border-color": "rgb(33, 150, 243)", "box-shadow": "none"})
+assert-css: (
+    "#theme-light",
+    {
+        "border-color": "rgb(33, 150, 243)",
+        "box-shadow": "none",
+        "border-width": "2px",
+    }
+)
 move-cursor-to: "#theme-ayu"
 // Let's now check with the focus for radio buttons.
 focus: "#theme-dark"
 assert-css: (
     "#theme-dark",
     {
-        "border-color": "rgb(221, 221, 221)",
+        "border-color": "rgb(153, 153, 153)",
         "box-shadow": "rgb(53, 53, 53) 0px 0px 0px 3px inset, rgb(33, 150, 243) 0px 0px 2px 2px",
+        "border-width": "2px",
     },
 )
 focus: "#theme-light"
 assert-css: (
     "#theme-light",
     {
-        "border-color": "rgb(221, 221, 221)",
+        "border-color": "rgb(153, 153, 153)",
         "box-shadow": "rgb(33, 150, 243) 0px 0px 1px 1px",
+        "border-width": "2px",
     },
 )
 // Now we check we both focus and hover for radio buttons.
@@ -98,6 +109,7 @@ assert-css: (
     {
         "border-color": "rgb(33, 150, 243)",
         "box-shadow": "rgb(53, 53, 53) 0px 0px 0px 3px inset, rgb(33, 150, 243) 0px 0px 2px 2px",
+        "border-width": "2px",
     },
 )
 move-cursor-to: "#theme-light"
@@ -107,6 +119,7 @@ assert-css: (
     {
         "border-color": "rgb(33, 150, 243)",
         "box-shadow": "rgb(33, 150, 243) 0px 0px 1px 1px",
+        "border-width": "2px",
     },
 )
 // Now we check the setting-radio-name is on a different line than the label.
@@ -142,7 +155,18 @@ assert-css: (
     "#auto-hide-large-items",
     {
         "background-color": "rgb(33, 150, 243)",
-        "border-color": "rgb(221, 221, 221)",
+        "border-color": "rgb(153, 153, 153)",
+        // 1px border when checked
+        "border-width": "1px",
+    },
+)
+assert-css: (
+    "#auto-hide-method-docs",
+    {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "border-color": "rgb(153, 153, 153)",
+        // 2px border when unchecked
+        "border-width": "2px",
     },
 )
 // Let's start with the hover for toggles.
@@ -152,6 +176,18 @@ assert-css: (
     {
         "background-color": "rgb(33, 150, 243)",
         "border-color": "rgb(33, 150, 243)",
+        // 1px border when checked
+        "border-width": "1px",
+    },
+)
+move-cursor-to: "#auto-hide-method-docs"
+assert-css: (
+    "#auto-hide-method-docs",
+    {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "border-color": "rgb(33, 150, 243)",
+        // 2px border when unchecked
+        "border-width": "2px",
     },
 )
 move-cursor-to: "#settings-menu > a"
@@ -161,8 +197,21 @@ assert-css: (
     "#auto-hide-large-items",
     {
         "background-color": "rgb(33, 150, 243)",
-        "border-color": "rgb(221, 221, 221)",
+        "border-color": "rgb(153, 153, 153)",
         "box-shadow": "rgb(33, 150, 243) 0px 0px 1px 1px",
+        // 1px border when checked
+        "border-width": "1px",
+    },
+)
+focus: "#auto-hide-method-docs"
+assert-css: (
+    "#auto-hide-method-docs",
+    {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "border-color": "rgb(153, 153, 153)",
+        "box-shadow": "rgb(33, 150, 243) 0px 0px 1px 1px",
+        // 2px border when unchecked
+        "border-width": "2px",
     },
 )
 // Now we check we both focus and hover for toggles.
@@ -174,6 +223,20 @@ assert-css: (
         "background-color": "rgb(33, 150, 243)",
         "border-color": "rgb(33, 150, 243)",
         "box-shadow": "rgb(33, 150, 243) 0px 0px 1px 1px",
+        // 1px border when checked
+        "border-width": "1px",
+    },
+)
+move-cursor-to: "#auto-hide-method-docs"
+focus: "#auto-hide-method-docs"
+assert-css: (
+    "#auto-hide-method-docs",
+    {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "border-color": "rgb(33, 150, 243)",
+        "box-shadow": "rgb(33, 150, 243) 0px 0px 1px 1px",
+        // 2px border when unchecked
+        "border-width": "2px",
     },
 )
 

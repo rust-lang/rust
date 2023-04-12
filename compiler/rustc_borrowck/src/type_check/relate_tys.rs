@@ -4,6 +4,7 @@ use rustc_infer::traits::PredicateObligations;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::{self, Ty};
+use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
 use rustc_trait_selection::traits::query::Fallible;
 
@@ -125,9 +126,9 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
 
         let reg_info = match placeholder.bound.kind {
             ty::BoundRegionKind::BrAnon(Some(span)) => BoundRegionInfo::Span(span),
-            ty::BoundRegionKind::BrAnon(..) => BoundRegionInfo::Name(Symbol::intern("anon")),
+            ty::BoundRegionKind::BrAnon(..) => BoundRegionInfo::Name(sym::anon),
             ty::BoundRegionKind::BrNamed(_, name) => BoundRegionInfo::Name(name),
-            ty::BoundRegionKind::BrEnv => BoundRegionInfo::Name(Symbol::intern("env")),
+            ty::BoundRegionKind::BrEnv => BoundRegionInfo::Name(sym::env),
         };
 
         let reg_var =

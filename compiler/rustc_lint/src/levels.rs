@@ -3,7 +3,7 @@ use crate::{
     fluent_generated as fluent,
     late::unerased_lint_store,
     lints::{
-        DeprecatedLintName, IgnoredUnlessCrateSpecified, OverruledAtributeLint,
+        DeprecatedLintName, IgnoredUnlessCrateSpecified, OverruledAttributeLint,
         RenamedOrRemovedLint, RenamedOrRemovedLintSuggestion, UnknownLint, UnknownLintSuggestion,
     },
 };
@@ -612,7 +612,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                     self.emit_spanned_lint(
                         FORBIDDEN_LINT_GROUPS,
                         src.span().into(),
-                        OverruledAtributeLint {
+                        OverruledAttributeLint {
                             overruled: src.span(),
                             lint_level: level.as_str(),
                             lint_source: src.name(),

@@ -42,7 +42,7 @@ struct MacroInput {
     fmtstr: P<Expr>,
     args: FormatArguments,
     /// Whether the first argument was a string literal or a result from eager macro expansion.
-    /// If it's not a string literal, we disallow implicit arugment capturing.
+    /// If it's not a string literal, we disallow implicit argument capturing.
     ///
     /// This does not correspond to whether we can treat spans to the literal normally, as the whole
     /// invocation might be the result of another macro expansion, in which case this flag may still be true.

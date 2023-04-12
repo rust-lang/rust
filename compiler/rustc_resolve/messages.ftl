@@ -42,7 +42,7 @@ resolve_try_adding_local_generic_param_on_method =
     try adding a local generic parameter in this method instead
 
 resolve_help_try_using_local_generic_param =
-    try using a local generic paramter instead
+    try using a local generic parameter instead
 
 resolve_name_is_already_used_as_generic_parameter =
     the name `{$name}` is already used for a generic parameter in this item's generic parameters

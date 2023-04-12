@@ -1,14 +1,14 @@
 error[E0477]: the type `&mut ()` does not fulfill the required lifetime
-  --> $DIR/issue-90014.rs:13:20
+  --> $DIR/issue-90014.rs:15:20
    |
-LL |     type Fut<'a> where Self: 'a;
+LL |     type Fut<'a>
    |     ------------ definition of `Fut` from trait
 ...
 LL |     type Fut<'a> = impl Future<Output = ()>;
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: type must outlive the lifetime `'a` as defined here
-  --> $DIR/issue-90014.rs:13:14
+  --> $DIR/issue-90014.rs:15:14
    |
 LL |     type Fut<'a> = impl Future<Output = ()>;
    |              ^^

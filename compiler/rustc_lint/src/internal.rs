@@ -2,7 +2,7 @@
 //! Clippy.
 
 use crate::lints::{
-    BadOptAccessDiag, DefaultHashTypesDiag, DiagOutOfImpl, LintPassByHand, NonExistantDocKeyword,
+    BadOptAccessDiag, DefaultHashTypesDiag, DiagOutOfImpl, LintPassByHand, NonExistentDocKeyword,
     QueryInstability, TyQualified, TykindDiag, TykindKind, UntranslatableDiag,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
@@ -334,7 +334,7 @@ impl<'tcx> LateLintPass<'tcx> for ExistingDocKeyword {
                         cx.emit_spanned_lint(
                             EXISTING_DOC_KEYWORD,
                             attr.span,
-                            NonExistantDocKeyword { keyword },
+                            NonExistentDocKeyword { keyword },
                         );
                     }
                 }
@@ -424,7 +424,7 @@ impl LateLintPass<'_> for Diagnostics {
 }
 
 declare_tool_lint! {
-    /// The `bad_opt_access` lint detects accessing options by field instad of
+    /// The `bad_opt_access` lint detects accessing options by field instead of
     /// the wrapper function.
     pub rustc::BAD_OPT_ACCESS,
     Deny,

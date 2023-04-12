@@ -290,16 +290,17 @@ impl<'a> Parser<'a> {
                     })?;
                     let span = lo.to(self.prev_token.span);
                     AngleBracketedArgs { args, span }.into()
-                } else if self.token.kind == token::OpenDelim(Delimiter::Parenthesis)
+                } else if self.may_recover()
+                    && self.token.kind == token::OpenDelim(Delimiter::Parenthesis)
                     // FIXME(return_type_notation): Could also recover `...` here.
                     && self.look_ahead(1, |tok| tok.kind == token::DotDot)
                 {
-                    let lo = self.token.span;
                     self.bump();
+                    self.sess
+                        .emit_err(errors::BadReturnTypeNotationDotDot { span: self.token.span });
                     self.bump();
                     self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
                     let span = lo.to(self.prev_token.span);
-                    self.sess.gated_spans.gate(sym::return_type_notation, span);
 
                     if self.eat_noexpect(&token::RArrow) {
                         let lo = self.prev_token.span;
@@ -308,7 +309,13 @@ impl<'a> Parser<'a> {
                             .emit_err(errors::BadReturnTypeNotationOutput { span: lo.to(ty.span) });
                     }
 
-                    P(GenericArgs::ReturnTypeNotation(span))
+                    ParenthesizedArgs {
+                        span,
+                        inputs: ThinVec::new(),
+                        inputs_span: span,
+                        output: ast::FnRetTy::Default(self.prev_token.span.shrink_to_hi()),
+                    }
+                    .into()
                 } else {
                     // `(T, U) -> R`
                     let (inputs, _) = self.parse_paren_comma_seq(|p| p.parse_ty())?;
@@ -566,13 +573,13 @@ impl<'a> Parser<'a> {
                     };
 
                     let span = lo.to(self.prev_token.span);
-
                     // Gate associated type bounds, e.g., `Iterator<Item: Ord>`.
                     if let AssocConstraintKind::Bound { .. } = kind {
-                        if gen_args.as_ref().map_or(false, |args| {
-                            matches!(args, GenericArgs::ReturnTypeNotation(..))
-                        }) {
-                            // This is already gated in `parse_path_segment`
+                        if let Some(ast::GenericArgs::Parenthesized(args)) = &gen_args
+                            && args.inputs.is_empty()
+                            && matches!(args.output, ast::FnRetTy::Default(..))
+                        {
+                            self.sess.gated_spans.gate(sym::return_type_notation, span);
                         } else {
                             self.sess.gated_spans.gate(sym::associated_type_bounds, span);
                         }
