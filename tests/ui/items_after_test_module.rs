@@ -1,4 +1,4 @@
-// compile-flags: --test
+//@compile-flags: --test
 #![allow(unused)]
 #![warn(clippy::items_after_test_module)]
 
@@ -18,7 +18,6 @@ mod tests {
 fn should_lint() {}
 
 const SHOULD_ALSO_LINT: usize = 1;
-
 macro_rules! should_not_lint {
     () => {};
 }
