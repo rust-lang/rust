@@ -32,6 +32,14 @@ fn _no_lint_yeet() -> Result<(), ()> {
     Ok(())
 }
 
+fn _no_lint_ops() {
+    #![allow(unreachable_code, irrefutable_let_patterns)]
+    if ((..{}) == ..{}) {}
+    if (!return) {}
+    loop { match (() = () = () = break {}) {} }
+    while let () = (*&mut false |= true && return) {}
+}
+
 // Don't lint in these cases (#64106).
 fn or_patterns_no_lint() {
     match Box::new(0) {
