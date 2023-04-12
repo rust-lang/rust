@@ -1,6 +1,6 @@
 #![feature(extern_types)]
 #![feature(no_coverage)]
-#![feature(type_alias_impl_trait)]
+#![feature(impl_trait_in_assoc_type)]
 #![warn(unused_attributes)]
 #![no_coverage]
 //~^ WARN: `#[no_coverage]` does not propagate into items and must be applied to the contained functions directly

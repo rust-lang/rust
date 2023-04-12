@@ -121,24 +121,34 @@ impl<'a> PostExpansionVisitor<'a> {
     }
 
     /// Feature gate `impl Trait` inside `type Alias = $type_expr;`.
-    fn check_impl_trait(&self, ty: &ast::Ty) {
+    fn check_impl_trait(&self, ty: &ast::Ty, in_associated_ty: bool) {
         struct ImplTraitVisitor<'a> {
             vis: &'a PostExpansionVisitor<'a>,
+            in_associated_ty: bool,
         }
         impl Visitor<'_> for ImplTraitVisitor<'_> {
             fn visit_ty(&mut self, ty: &ast::Ty) {
                 if let ast::TyKind::ImplTrait(..) = ty.kind {
-                    gate_feature_post!(
-                        &self.vis,
-                        type_alias_impl_trait,
-                        ty.span,
-                        "`impl Trait` in type aliases is unstable"
-                    );
+                    if self.in_associated_ty {
+                        gate_feature_post!(
+                            &self.vis,
+                            impl_trait_in_assoc_type,
+                            ty.span,
+                            "`impl Trait` in associated types is unstable"
+                        );
+                    } else {
+                        gate_feature_post!(
+                            &self.vis,
+                            type_alias_impl_trait,
+                            ty.span,
+                            "`impl Trait` in type aliases is unstable"
+                        );
+                    }
                 }
                 visit::walk_ty(self, ty);
             }
         }
-        ImplTraitVisitor { vis: self }.visit_ty(ty);
+        ImplTraitVisitor { vis: self, in_associated_ty }.visit_ty(ty);
     }
 
     fn check_late_bound_lifetime_defs(&self, params: &[ast::GenericParam]) {
@@ -294,7 +304,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
 
             ast::ItemKind::TyAlias(box ast::TyAlias { ty: Some(ty), .. }) => {
-                self.check_impl_trait(&ty)
+                self.check_impl_trait(&ty, false)
             }
 
             _ => {}
@@ -517,7 +527,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     );
                 }
                 if let Some(ty) = ty {
-                    self.check_impl_trait(ty);
+                    self.check_impl_trait(ty, true);
                 }
                 false
             }

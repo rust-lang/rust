@@ -416,6 +416,8 @@ declare_features! (
     (active, half_open_range_patterns_in_slices, "1.66.0", Some(67264), None),
     /// Allows `if let` guard in match arms.
     (active, if_let_guard, "1.47.0", Some(51114), None),
+    /// Allows `impl Trait` to be used inside associated types (RFC 2515).
+    (active, impl_trait_in_assoc_type, "CURRENT_RUSTC_VERSION", Some(63063), None),
     /// Allows `impl Trait` as output type in `Fn` traits in return position of functions.
     (active, impl_trait_in_fn_trait_return, "1.64.0", Some(99697), None),
     /// Allows referencing `Self` and projections in impl-trait.
