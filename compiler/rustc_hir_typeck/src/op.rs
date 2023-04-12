@@ -12,9 +12,7 @@ use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{
-    self, IsSuggestable, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
-};
+use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Ident};
@@ -962,24 +960,6 @@ fn is_builtin_binop<'tcx>(lhs: Ty<'tcx>, rhs: Ty<'tcx>, op: hir::BinOp) -> bool 
 
         BinOpCategory::Comparison => {
             lhs.references_error() || rhs.references_error() || lhs.is_scalar() && rhs.is_scalar()
-        }
-    }
-}
-
-struct TypeParamEraser<'a, 'tcx>(&'a FnCtxt<'a, 'tcx>, Span);
-
-impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TypeParamEraser<'_, 'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
-        self.0.tcx
-    }
-
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        match ty.kind() {
-            ty::Param(_) => self.0.next_ty_var(TypeVariableOrigin {
-                kind: TypeVariableOriginKind::MiscVariable,
-                span: self.1,
-            }),
-            _ => ty.super_fold_with(self),
         }
     }
 }
