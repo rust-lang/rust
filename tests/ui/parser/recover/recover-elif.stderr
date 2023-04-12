@@ -1,0 +1,8 @@
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `2`
+  --> $DIR/recover-elif.rs:4:11
+   |
+LL |    } elif 2 > 1 {
+   |           ^ expected one of 8 possible tokens
+
+error: aborting due to previous error
+
