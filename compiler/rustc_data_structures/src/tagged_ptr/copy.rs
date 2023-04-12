@@ -20,7 +20,7 @@ where
     T: Tag,
 {
     packed: NonNull<P::Target>,
-    data: PhantomData<(P, T)>,
+    tag_ghost: PhantomData<T>,
 }
 
 impl<P, T, const COMPARE_PACKED: bool> Copy for CopyTaggedPtr<P, T, COMPARE_PACKED>
@@ -51,7 +51,7 @@ where
     T: Tag,
 {
     pub fn new(pointer: P, tag: T) -> Self {
-        Self { packed: Self::pack(P::into_ptr(pointer), tag), data: PhantomData }
+        Self { packed: Self::pack(P::into_ptr(pointer), tag), tag_ghost: PhantomData }
     }
 
     const TAG_BIT_SHIFT: usize = usize::BITS as usize - T::BITS;
