@@ -1290,8 +1290,8 @@ impl Thread {
         Thread { inner }
     }
 
-    /// Like the public [`park`], but callable on any handle. Used to allow
-    /// parking in TLS destructors.
+    /// Like the public [`park`], but callable on any handle. This is used to
+    /// allow parking in TLS destructors.
     ///
     /// # Safety
     /// May only be called from the thread to which this handle belongs.

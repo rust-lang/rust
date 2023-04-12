@@ -13,7 +13,7 @@
 //! * On some platforms (e.g. macOS), the lock is very slow.
 //!
 //! Therefore, we implement our own `RwLock`! Naively, one might reach for a
-//! spinlock, but those [are quite problematic] when the lock is contended.
+//! spinlock, but those [can be quite problematic] when the lock is contended.
 //! Instead, this readers-writer lock copies its implementation strategy from
 //! the Windows [SRWLOCK] and the [usync] library. Spinning is still used for the
 //! fast path, but it is bounded: after spinning fails, threads will locklessly
@@ -429,7 +429,7 @@ impl RwLock {
             // The next waiter is a writer. Remove it from the queue and wake it.
             let prev = match unsafe { tail.as_ref().prev.get() } {
                 // If the lock was read-locked, multiple threads have invoked
-                // `find_tail` above. Therefore, it is possible that one  of
+                // `find_tail` above. Therefore, it is possible that one of
                 // them observed a newer state than this thread did, meaning
                 // there is a set `tail` field in a node before `state`. To
                 // make sure that the queue is valid after the link update
