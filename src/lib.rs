@@ -4,8 +4,6 @@
 #![recursion_limit = "256"]
 #![allow(clippy::match_like_matches_macro)]
 
-#[macro_use]
-extern crate derive_new;
 #[cfg(test)]
 #[macro_use]
 extern crate lazy_static;
