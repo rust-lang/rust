@@ -91,7 +91,7 @@ rand = { version = "0.8.5" }
 
 # Ensure features of `hashbrown`, `smallvec`, and `once_cell`,
 # which are used transitively by Cargo (via `gix`).
-hashbrown = { version = "0.12.3", default-features = false, features = ["inline-more"] }
+hashbrown = { version = "0.12.3", default-features = false, features = ["inline-more", "raw"] }
 once_cell = { version = "1.16.0", default-features = false, features = ["unstable"] }
 smallvec = { version = "1.10.0", features = ["write"] }
 
