@@ -1,8 +1,8 @@
-use super::{Pointer, Tag};
-use crate::stable_hasher::{HashStable, StableHasher};
 use std::fmt;
 
 use super::CopyTaggedPtr;
+use super::{Pointer, Tag};
+use crate::stable_hasher::{HashStable, StableHasher};
 
 /// A TaggedPtr implementing `Drop`.
 ///
@@ -23,7 +23,9 @@ where
     T: Tag,
 {
     fn clone(&self) -> Self {
-        unsafe { Self::new(P::with_ref(self.raw.pointer_raw(), |p| p.clone()), self.raw.tag()) }
+        let ptr = self.raw.with_pointer_ref(P::clone);
+
+        Self::new(ptr, self.tag())
     }
 }
 

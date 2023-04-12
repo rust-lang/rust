@@ -13,7 +13,6 @@
 //! The tag must implement the `Tag` trait. We assert that the tag and `Pointer`
 //! are compatible at compile time.
 
-use std::mem::ManuallyDrop;
 use std::ops::Deref;
 use std::ptr::NonNull;
 use std::rc::Rc;
@@ -81,16 +80,6 @@ pub unsafe trait Pointer: Deref {
     /// This acts as `ptr::read` semantically, it should not be called more than
     /// once on non-`Copy` `Pointer`s.
     unsafe fn from_ptr(ptr: NonNull<Self::Target>) -> Self;
-
-    /// This provides a reference to the `Pointer` itself, rather than the
-    /// `Deref::Target`. It is used for cases where we want to call methods that
-    /// may be implement differently for the Pointer than the Pointee (e.g.,
-    /// `Rc::clone` vs cloning the inner value).
-    ///
-    /// # Safety
-    ///
-    /// The passed `ptr` must be returned from `into_usize`.
-    unsafe fn with_ref<R, F: FnOnce(&Self) -> R>(ptr: NonNull<Self::Target>, f: F) -> R;
 }
 
 /// This describes tags that the `TaggedPtr` struct can hold.
@@ -124,11 +113,6 @@ unsafe impl<T: ?Sized + Aligned> Pointer for Box<T> {
     unsafe fn from_ptr(ptr: NonNull<T>) -> Self {
         Box::from_raw(ptr.as_ptr())
     }
-
-    unsafe fn with_ref<R, F: FnOnce(&Self) -> R>(ptr: NonNull<T>, f: F) -> R {
-        let raw = ManuallyDrop::new(Self::from_ptr(ptr));
-        f(&raw)
-    }
 }
 
 unsafe impl<T: ?Sized + Aligned> Pointer for Rc<T> {
@@ -142,11 +126,6 @@ unsafe impl<T: ?Sized + Aligned> Pointer for Rc<T> {
     #[inline]
     unsafe fn from_ptr(ptr: NonNull<T>) -> Self {
         Rc::from_raw(ptr.as_ptr())
-    }
-
-    unsafe fn with_ref<R, F: FnOnce(&Self) -> R>(ptr: NonNull<T>, f: F) -> R {
-        let raw = ManuallyDrop::new(Self::from_ptr(ptr));
-        f(&raw)
     }
 }
 
@@ -162,11 +141,6 @@ unsafe impl<T: ?Sized + Aligned> Pointer for Arc<T> {
     unsafe fn from_ptr(ptr: NonNull<T>) -> Self {
         Arc::from_raw(ptr.as_ptr())
     }
-
-    unsafe fn with_ref<R, F: FnOnce(&Self) -> R>(ptr: NonNull<T>, f: F) -> R {
-        let raw = ManuallyDrop::new(Self::from_ptr(ptr));
-        f(&raw)
-    }
 }
 
 unsafe impl<'a, T: 'a + ?Sized + Aligned> Pointer for &'a T {
@@ -181,10 +155,6 @@ unsafe impl<'a, T: 'a + ?Sized + Aligned> Pointer for &'a T {
     unsafe fn from_ptr(ptr: NonNull<T>) -> Self {
         ptr.as_ref()
     }
-
-    unsafe fn with_ref<R, F: FnOnce(&Self) -> R>(ptr: NonNull<T>, f: F) -> R {
-        f(&ptr.as_ref())
-    }
 }
 
 unsafe impl<'a, T: 'a + ?Sized + Aligned> Pointer for &'a mut T {
@@ -198,10 +168,6 @@ unsafe impl<'a, T: 'a + ?Sized + Aligned> Pointer for &'a mut T {
     #[inline]
     unsafe fn from_ptr(mut ptr: NonNull<T>) -> Self {
         ptr.as_mut()
-    }
-
-    unsafe fn with_ref<R, F: FnOnce(&Self) -> R>(mut ptr: NonNull<T>, f: F) -> R {
-        f(&ptr.as_mut())
     }
 }
 

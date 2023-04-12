@@ -2,6 +2,7 @@ use super::{Pointer, Tag};
 use crate::stable_hasher::{HashStable, StableHasher};
 use std::fmt;
 use std::marker::PhantomData;
+use std::mem::ManuallyDrop;
 use std::num::NonZeroUsize;
 use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
@@ -83,6 +84,24 @@ where
 
     pub(super) fn pointer_raw(&self) -> NonNull<P::Target> {
         self.packed.map_addr(|addr| unsafe { NonZeroUsize::new_unchecked(addr.get() << T::BITS) })
+    }
+
+    /// This provides a reference to the `P` pointer itself, rather than the
+    /// `Deref::Target`. It is used for cases where we want to call methods
+    /// that may be implement differently for the Pointer than the Pointee
+    /// (e.g., `Rc::clone` vs cloning the inner value).
+    pub(super) fn with_pointer_ref<R>(&self, f: impl FnOnce(&P) -> R) -> R {
+        // Safety:
+        // - `self.raw.pointer_raw()` is originally returned from `P::into_ptr`
+        //   and as such is valid for `P::from_ptr`.
+        //   - This also allows us to not care whatever `f` panics or not.
+        // - Even though we create a copy of the pointer, we store it inside
+        //   `ManuallyDrop` and only access it by-ref, so we don't double-drop.
+        //
+        // Semantically this is just `f(&self.pointer)` (where `self.pointer`
+        // is non-packed original pointer).
+        let ptr = unsafe { ManuallyDrop::new(P::from_ptr(self.pointer_raw())) };
+        f(&ptr)
     }
 
     pub fn pointer(self) -> P
@@ -189,9 +208,7 @@ where
     T: Tag + HashStable<HCX>,
 {
     fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
-        unsafe {
-            Pointer::with_ref(self.pointer_raw(), |p: &P| p.hash_stable(hcx, hasher));
-        }
+        self.with_pointer_ref(|ptr| ptr.hash_stable(hcx, hasher));
         self.tag().hash_stable(hcx, hasher);
     }
 }
