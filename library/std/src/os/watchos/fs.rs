@@ -1,7 +1,9 @@
 #![stable(feature = "metadata_ext", since = "1.1.0")]
 
-use crate::fs::Metadata;
-use crate::sys_common::AsInner;
+use crate::fs::{self, Metadata};
+use crate::sealed::Sealed;
+use crate::sys_common::{AsInner, AsInnerMut, IntoInner};
+use crate::time::SystemTime;
 
 #[allow(deprecated)]
 use crate::os::watchos::raw;
@@ -138,5 +140,21 @@ impl MetadataExt for Metadata {
     }
     fn st_lspare(&self) -> u32 {
         self.as_inner().as_inner().st_lspare as u32
+    }
+}
+
+/// OS-specific extensions to [`fs::FileTimes`].
+#[unstable(feature = "file_set_times", issue = "98245")]
+pub trait FileTimesExt: Sealed {
+    /// Set the creation time of a file.
+    #[unstable(feature = "file_set_times", issue = "98245")]
+    fn set_created(self, t: SystemTime) -> Self;
+}
+
+#[unstable(feature = "file_set_times", issue = "98245")]
+impl FileTimesExt for fs::FileTimes {
+    fn set_created(mut self, t: SystemTime) -> Self {
+        self.as_inner_mut().set_created(t.into_inner());
+        self
     }
 }
