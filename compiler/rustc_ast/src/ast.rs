@@ -167,9 +167,6 @@ pub enum GenericArgs {
     AngleBracketed(AngleBracketedArgs),
     /// The `(A, B)` and `C` in `Foo(A, B) -> C`.
     Parenthesized(ParenthesizedArgs),
-    /// Associated return type bounds, like `T: Trait<method(..): Send>`
-    /// which applies the `Send` bound to the return-type of `method`.
-    ReturnTypeNotation(Span),
 }
 
 impl GenericArgs {
@@ -181,7 +178,6 @@ impl GenericArgs {
         match self {
             AngleBracketed(data) => data.span,
             Parenthesized(data) => data.span,
-            ReturnTypeNotation(span) => *span,
         }
     }
 }

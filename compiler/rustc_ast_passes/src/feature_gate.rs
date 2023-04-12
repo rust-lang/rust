@@ -485,20 +485,23 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_assoc_constraint(&mut self, constraint: &'a AssocConstraint) {
         if let AssocConstraintKind::Bound { .. } = constraint.kind {
-            if let Some(args) = constraint.gen_args.as_ref()
-                && matches!(
-                    args,
-                    ast::GenericArgs::ReturnTypeNotation(..)
-                )
+            if let Some(ast::GenericArgs::Parenthesized(args)) = constraint.gen_args.as_ref()
+                && args.inputs.is_empty()
+                && matches!(args.output, ast::FnRetTy::Default(..))
             {
-                // RTN is gated below with a `gate_all`.
+                gate_feature_post!(
+                    &self,
+                    return_type_notation,
+                    constraint.span,
+                    "return type notation is experimental"
+                );
             } else {
                 gate_feature_post!(
                     &self,
                     associated_type_bounds,
                     constraint.span,
                     "associated type bounds are unstable"
-                )
+                );
             }
         }
         visit::walk_assoc_constraint(self, constraint)
@@ -589,7 +592,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(yeet_expr, "`do yeet` expression is experimental");
     gate_all!(dyn_star, "`dyn*` trait objects are experimental");
     gate_all!(const_closures, "const closures are experimental");
-    gate_all!(return_type_notation, "return type notation is experimental");
 
     // All uses of `gate_all!` below this point were added in #65742,
     // and subsequently disabled (with the non-early gating readded).
@@ -605,6 +607,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
 
     gate_all!(trait_alias, "trait aliases are experimental");
     gate_all!(associated_type_bounds, "associated type bounds are unstable");
+    gate_all!(return_type_notation, "return type notation is experimental");
     gate_all!(decl_macro, "`macro` is experimental");
     gate_all!(box_patterns, "box pattern syntax is experimental");
     gate_all!(exclusive_range_pattern, "exclusive range pattern syntax is experimental");

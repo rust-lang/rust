@@ -1080,7 +1080,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.with_impl_trait(None, |this| this.visit_ty(ty));
                 }
             }
-            GenericArgs::ReturnTypeNotation(_span) => {}
         }
     }
 
@@ -1391,7 +1390,6 @@ fn deny_equality_constraints(
                                     match &mut assoc_path.segments[len].args {
                                         Some(args) => match args.deref_mut() {
                                             GenericArgs::Parenthesized(_) => continue,
-                                            GenericArgs::ReturnTypeNotation(_span) => continue,
                                             GenericArgs::AngleBracketed(args) => {
                                                 args.args.push(arg);
                                             }

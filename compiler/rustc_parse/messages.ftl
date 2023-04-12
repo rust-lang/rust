@@ -738,3 +738,7 @@ parse_box_syntax_removed = `box_syntax` has been removed
 parse_bad_return_type_notation_output =
     return type not allowed with return type notation
     .suggestion = remove the return type
+
+parse_bad_return_type_notation_dotdot =
+    return type notation uses `()` instead of `(..)` for elided arguments
+    .suggestion = remove the `..`
