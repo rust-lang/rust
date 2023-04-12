@@ -1301,8 +1301,8 @@ impl<'tcx> Predicate<'tcx> {
 /// [usize:Bar<isize>]]`.
 #[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
 pub struct InstantiatedPredicates<'tcx> {
-    pub predicates: smallvec::SmallVec<[Predicate<'tcx>; 4]>,
-    pub spans: smallvec::SmallVec<[Span; 4]>,
+    pub predicates: smallvec::SmallVec<[Predicate<'tcx>; 3]>,
+    pub spans: smallvec::SmallVec<[Span; 3]>,
 }
 
 impl<'tcx> InstantiatedPredicates<'tcx> {
@@ -1326,7 +1326,7 @@ impl<'tcx> IntoIterator for InstantiatedPredicates<'tcx> {
     type Item = (Predicate<'tcx>, Span);
 
     type IntoIter =
-        std::iter::Zip<smallvec::IntoIter<[Predicate<'tcx>; 4]>, smallvec::IntoIter<[Span; 4]>>;
+        std::iter::Zip<smallvec::IntoIter<[Predicate<'tcx>; 3]>, smallvec::IntoIter<[Span; 3]>>;
 
     fn into_iter(self) -> Self::IntoIter {
         debug_assert_eq!(self.predicates.len(), self.spans.len());
