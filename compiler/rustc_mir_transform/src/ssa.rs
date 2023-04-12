@@ -164,6 +164,24 @@ impl SsaLocals {
         })
     }
 
+    pub fn for_each_assignment_mut<'tcx>(
+        &self,
+        basic_blocks: &mut BasicBlocks<'tcx>,
+        mut f: impl FnMut(Local, &mut Rvalue<'tcx>, Location),
+    ) {
+        for &local in &self.assignment_order {
+            if let Set1::One(LocationExtended::Plain(loc)) = self.assignments[local] {
+                // `loc` must point to a direct assignment to `local`.
+                let bbs = basic_blocks.as_mut_preserves_cfg();
+                let bb = &mut bbs[loc.block];
+                let stmt = &mut bb.statements[loc.statement_index];
+                let StatementKind::Assign(box (target, ref mut rvalue)) = stmt.kind else { bug!() };
+                assert_eq!(target.as_local(), Some(local));
+                f(local, rvalue, loc)
+            }
+        }
+    }
+
     /// Compute the equivalence classes for locals, based on copy statements.
     ///
     /// The returned vector maps each local to the one it copies. In the following case:

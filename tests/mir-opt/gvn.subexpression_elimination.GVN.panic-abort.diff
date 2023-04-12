@@ -420,20 +420,20 @@
           StorageDead(_52);
           StorageLive(_55);
 -         StorageLive(_56);
-          StorageLive(_57);
+-         StorageLive(_57);
 -         StorageLive(_58);
 -         _58 = _1;
 -         _57 = S::<u64>(move _58);
 -         StorageDead(_58);
-+         _57 = _53;
-          _56 = (_57.0: u64);
+-         _56 = (_57.0: u64);
 -         _55 = opaque::<u64>(move _56) -> [return: bb16, unwind unreachable];
++         _56 = (_53.0: u64);
 +         _55 = opaque::<u64>(_56) -> [return: bb16, unwind unreachable];
       }
   
       bb16: {
 -         StorageDead(_56);
-          StorageDead(_57);
+-         StorageDead(_57);
           StorageDead(_55);
           StorageLive(_59);
           StorageLive(_60);

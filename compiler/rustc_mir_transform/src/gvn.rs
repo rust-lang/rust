@@ -86,7 +86,7 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     // Clone dominators as we need them while mutating the body.
     let dominators = body.basic_blocks.dominators().clone();
 
-    let mut state = VnState::new(tcx, param_env, &body.local_decls);
+    let mut state = VnState::new(tcx, param_env, &ssa, &dominators, &body.local_decls);
     for arg in body.args_iter() {
         if ssa.is_ssa(arg) {
             let value = state.new_opaque().unwrap();
@@ -94,38 +94,29 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         }
     }
 
-    for (local, rvalue, _) in ssa.assignments(body) {
-        let value = state.insert_rvalue(rvalue).or_else(|| state.new_opaque()).unwrap();
+    ssa.for_each_assignment_mut(&mut body.basic_blocks, |local, rvalue, location| {
+        let value = state.simplify_rvalue(rvalue, location).or_else(|| state.new_opaque()).unwrap();
         // FIXME(#112651) `rvalue` may have a subtype to `local`. We can only mark `local` as
         // reusable if we have an exact type match.
         if state.local_decls[local].ty == rvalue.ty(state.local_decls, tcx) {
             state.assign(local, value);
         }
-    }
+    });
 
     // Stop creating opaques during replacement as it is useless.
     state.next_opaque = None;
 
-    let mut any_replacement = false;
-    let mut replacer = Replacer {
-        tcx,
-        ssa,
-        dominators,
-        state,
-        reused_locals: BitSet::new_empty(body.local_decls.len()),
-        any_replacement: &mut any_replacement,
-    };
-
     let reverse_postorder = body.basic_blocks.reverse_postorder().to_vec();
     for bb in reverse_postorder {
         let data = &mut body.basic_blocks.as_mut_preserves_cfg()[bb];
-        replacer.visit_basic_block_data(bb, data);
+        state.visit_basic_block_data(bb, data);
     }
+    let any_replacement = state.any_replacement;
 
     // For each local that is reused (`y` above), we remove its storage statements do avoid any
     // difficulty. Those locals are SSA, so should be easy to optimize by LLVM without storage
     // statements.
-    StorageRemover { tcx, reused_locals: replacer.reused_locals }.visit_body_preserves_cfg(body);
+    StorageRemover { tcx, reused_locals: state.reused_locals }.visit_body_preserves_cfg(body);
 
     if any_replacement {
         crate::simplify::remove_unused_definitions(body);
@@ -189,12 +180,18 @@ struct VnState<'body, 'tcx> {
     /// Counter to generate different values.
     /// This is an option to stop creating opaques during replacement.
     next_opaque: Option<usize>,
+    ssa: &'body SsaLocals,
+    dominators: &'body Dominators<BasicBlock>,
+    reused_locals: BitSet<Local>,
+    any_replacement: bool,
 }
 
 impl<'body, 'tcx> VnState<'body, 'tcx> {
     fn new(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
+        ssa: &'body SsaLocals,
+        dominators: &'body Dominators<BasicBlock>,
         local_decls: &'body LocalDecls<'tcx>,
     ) -> Self {
         VnState {
@@ -205,6 +202,10 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             rev_locals: FxHashMap::default(),
             values: FxIndexSet::default(),
             next_opaque: Some(0),
+            ssa,
+            dominators,
+            reused_locals: BitSet::new_empty(local_decls.len()),
+            any_replacement: false,
         }
     }
 
@@ -252,10 +253,16 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
     /// Represent the *value* which would be read from `place`.
     #[instrument(level = "trace", skip(self), ret)]
-    fn insert_place(&mut self, place: Place<'tcx>) -> Option<VnIndex> {
+    fn simplify_place(&mut self, place: &mut Place<'tcx>, location: Location) -> Option<VnIndex> {
+        // Another place that holds the same value.
+        let mut place_ref = place.as_ref();
         let mut value = self.locals[place.local]?;
 
         for (index, proj) in place.projection.iter().enumerate() {
+            if let Some(local) = self.try_as_local(value, location) {
+                place_ref = PlaceRef { local, projection: &place.projection[index..] };
+            }
+
             let proj = match proj {
                 ProjectionElem::Deref => {
                     let ty = Place::ty_from(
@@ -293,31 +300,65 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             value = self.insert(Value::Projection(value, proj));
         }
 
+        if let Some(local) = self.try_as_local(value, location)
+            && local != place.local
+        {
+            *place = local.into();
+            self.reused_locals.insert(local);
+            self.any_replacement = true;
+        } else if place_ref.local != place.local
+            || place_ref.projection.len() < place.projection.len()
+        {
+            *place = place_ref.project_deeper(&[], self.tcx);
+            self.reused_locals.insert(place_ref.local);
+            self.any_replacement = true;
+        }
+
         Some(value)
     }
 
     #[instrument(level = "trace", skip(self), ret)]
-    fn insert_operand(&mut self, operand: &Operand<'tcx>) -> Option<VnIndex> {
+    fn simplify_operand(
+        &mut self,
+        operand: &mut Operand<'tcx>,
+        location: Location,
+    ) -> Option<VnIndex> {
         match *operand {
             Operand::Constant(ref constant) => Some(self.insert(Value::Constant(constant.const_))),
-            Operand::Copy(place) | Operand::Move(place) => self.insert_place(place),
+            Operand::Copy(ref mut place) | Operand::Move(ref mut place) => {
+                let value = self.simplify_place(place, location)?;
+                if let Some(const_) = self.try_as_constant(value) {
+                    *operand = Operand::Constant(Box::new(const_));
+                    self.any_replacement = true;
+                }
+                Some(value)
+            }
         }
     }
 
     #[instrument(level = "trace", skip(self), ret)]
-    fn insert_rvalue(&mut self, rvalue: &Rvalue<'tcx>) -> Option<VnIndex> {
+    fn simplify_rvalue(
+        &mut self,
+        rvalue: &mut Rvalue<'tcx>,
+        location: Location,
+    ) -> Option<VnIndex> {
         let value = match *rvalue {
             // Forward values.
-            Rvalue::Use(ref operand) => return self.insert_operand(operand),
-            Rvalue::CopyForDeref(place) => return self.insert_operand(&Operand::Copy(place)),
+            Rvalue::Use(ref mut operand) => return self.simplify_operand(operand, location),
+            Rvalue::CopyForDeref(place) => {
+                let mut operand = Operand::Copy(place);
+                let val = self.simplify_operand(&mut operand, location);
+                *rvalue = Rvalue::Use(operand);
+                return val;
+            }
 
             // Roots.
-            Rvalue::Repeat(ref op, amount) => {
-                let op = self.insert_operand(op)?;
+            Rvalue::Repeat(ref mut op, amount) => {
+                let op = self.simplify_operand(op, location)?;
                 Value::Repeat(op, amount)
             }
             Rvalue::NullaryOp(op, ty) => Value::NullaryOp(op, ty),
-            Rvalue::Aggregate(box ref kind, ref fields) => {
+            Rvalue::Aggregate(box ref kind, ref mut fields) => {
                 let variant_index = match *kind {
                     AggregateKind::Array(..)
                     | AggregateKind::Tuple
@@ -328,8 +369,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     AggregateKind::Adt(_, _, _, _, Some(_)) => return None,
                 };
                 let fields: Option<Vec<_>> = fields
-                    .iter()
-                    .map(|op| self.insert_operand(op).or_else(|| self.new_opaque()))
+                    .iter_mut()
+                    .map(|op| self.simplify_operand(op, location).or_else(|| self.new_opaque()))
                     .collect();
                 let ty = rvalue.ty(self.local_decls, self.tcx);
                 Value::Aggregate(ty, variant_index, fields?)
@@ -337,31 +378,31 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             Rvalue::Ref(.., place) | Rvalue::AddressOf(_, place) => return self.new_pointer(place),
 
             // Operations.
-            Rvalue::Len(place) => {
-                let place = self.insert_place(place)?;
+            Rvalue::Len(ref mut place) => {
+                let place = self.simplify_place(place, location)?;
                 Value::Len(place)
             }
-            Rvalue::Cast(kind, ref value, to) => {
+            Rvalue::Cast(kind, ref mut value, to) => {
                 let from = value.ty(self.local_decls, self.tcx);
-                let value = self.insert_operand(value)?;
+                let value = self.simplify_operand(value, location)?;
                 Value::Cast { kind, value, from, to }
             }
-            Rvalue::BinaryOp(op, box (ref lhs, ref rhs)) => {
-                let lhs = self.insert_operand(lhs)?;
-                let rhs = self.insert_operand(rhs)?;
-                Value::BinaryOp(op, lhs, rhs)
+            Rvalue::BinaryOp(op, box (ref mut lhs, ref mut rhs)) => {
+                let lhs = self.simplify_operand(lhs, location);
+                let rhs = self.simplify_operand(rhs, location);
+                Value::BinaryOp(op, lhs?, rhs?)
             }
-            Rvalue::CheckedBinaryOp(op, box (ref lhs, ref rhs)) => {
-                let lhs = self.insert_operand(lhs)?;
-                let rhs = self.insert_operand(rhs)?;
-                Value::CheckedBinaryOp(op, lhs, rhs)
+            Rvalue::CheckedBinaryOp(op, box (ref mut lhs, ref mut rhs)) => {
+                let lhs = self.simplify_operand(lhs, location);
+                let rhs = self.simplify_operand(rhs, location);
+                Value::CheckedBinaryOp(op, lhs?, rhs?)
             }
-            Rvalue::UnaryOp(op, ref arg) => {
-                let arg = self.insert_operand(arg)?;
+            Rvalue::UnaryOp(op, ref mut arg) => {
+                let arg = self.simplify_operand(arg, location)?;
                 Value::UnaryOp(op, arg)
             }
-            Rvalue::Discriminant(place) => {
-                let place = self.insert_place(place)?;
+            Rvalue::Discriminant(ref mut place) => {
+                let place = self.simplify_place(place, location)?;
                 Value::Discriminant(place)
             }
 
@@ -373,22 +414,11 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
     }
 }
 
-struct Replacer<'a, 'tcx> {
-    tcx: TyCtxt<'tcx>,
-    ssa: SsaLocals,
-    dominators: Dominators<BasicBlock>,
-    state: VnState<'a, 'tcx>,
-    /// Set of locals that are reused, and for which we should remove storage statements to avoid a
-    /// use-after-StorageDead.
-    reused_locals: BitSet<Local>,
-    any_replacement: &'a mut bool,
-}
-
-impl<'tcx> Replacer<'_, 'tcx> {
+impl<'tcx> VnState<'_, 'tcx> {
     /// If `index` is a `Value::Constant`, return the `Constant` to be put in the MIR.
     fn try_as_constant(&mut self, index: VnIndex) -> Option<ConstOperand<'tcx>> {
-        if let Value::Constant(const_) = self.state.get(index) {
-            Some(ConstOperand { span: rustc_span::DUMMY_SP, user_ty: None, const_: const_.clone() })
+        if let Value::Constant(const_) = *self.get(index) {
+            Some(ConstOperand { span: rustc_span::DUMMY_SP, user_ty: None, const_ })
         } else {
             None
         }
@@ -397,50 +427,37 @@ impl<'tcx> Replacer<'_, 'tcx> {
     /// If there is a local which is assigned `index`, and its assignment strictly dominates `loc`,
     /// return it.
     fn try_as_local(&mut self, index: VnIndex, loc: Location) -> Option<Local> {
-        let other = self.state.rev_locals.get(&index)?;
+        let other = self.rev_locals.get(&index)?;
         other
             .iter()
             .copied()
-            .find(|&other| self.ssa.assignment_dominates(&self.dominators, other, loc))
+            .find(|&other| self.ssa.assignment_dominates(self.dominators, other, loc))
     }
 }
 
-impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
+impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, location: Location) {
-        if let Some(place) = operand.place()
-            && let Some(value) = self.state.insert_place(place)
-        {
-            if let Some(const_) = self.try_as_constant(value) {
-                *operand = Operand::Constant(Box::new(const_));
-                *self.any_replacement = true;
-            } else if let Some(local) = self.try_as_local(value, location)
-                && *operand != Operand::Move(local.into())
-            {
-                *operand = Operand::Copy(local.into());
-                self.reused_locals.insert(local);
-                *self.any_replacement = true;
-            }
-        }
+        self.simplify_operand(operand, location);
     }
 
     fn visit_statement(&mut self, stmt: &mut Statement<'tcx>, location: Location) {
         self.super_statement(stmt, location);
         if let StatementKind::Assign(box (_, ref mut rvalue)) = stmt.kind
-            && let Some(value) = self.state.insert_rvalue(rvalue)
+            && let Some(value) = self.simplify_rvalue(rvalue, location)
         {
             if let Some(const_) = self.try_as_constant(value) {
                 *rvalue = Rvalue::Use(Operand::Constant(Box::new(const_)));
-                *self.any_replacement = true;
+                self.any_replacement = true;
             } else if let Some(local) = self.try_as_local(value, location)
                 && *rvalue != Rvalue::Use(Operand::Move(local.into()))
             {
                 *rvalue = Rvalue::Use(Operand::Copy(local.into()));
                 self.reused_locals.insert(local);
-                *self.any_replacement = true;
+                self.any_replacement = true;
             }
         }
     }

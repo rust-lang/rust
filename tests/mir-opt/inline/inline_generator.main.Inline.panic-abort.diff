@@ -40,7 +40,7 @@
 +         StorageDead(_3);
 +         StorageLive(_5);
 +         _5 = const false;
-+         _6 = deref_copy (_2.0: &mut {generator@$DIR/inline_generator.rs:16:5: 16:8});
++         _6 = (_2.0: &mut {generator@$DIR/inline_generator.rs:16:5: 16:8});
 +         _7 = discriminant((*_6));
 +         switchInt(move _7) -> [0: bb3, 1: bb7, 3: bb8, otherwise: bb9];
       }
