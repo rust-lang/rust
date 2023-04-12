@@ -103,6 +103,14 @@ pub fn initialize_available_targets() {
         LLVMInitializeM68kAsmParser
     );
     init_target!(
+        llvm_component = "loongarch",
+        LLVMInitializeLoongArchTargetInfo,
+        LLVMInitializeLoongArchTarget,
+        LLVMInitializeLoongArchTargetMC,
+        LLVMInitializeLoongArchAsmPrinter,
+        LLVMInitializeLoongArchAsmParser
+    );
+    init_target!(
         llvm_component = "mips",
         LLVMInitializeMipsTargetInfo,
         LLVMInitializeMipsTarget,
