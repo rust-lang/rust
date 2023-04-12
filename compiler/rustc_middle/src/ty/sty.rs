@@ -1772,10 +1772,10 @@ impl<'tcx> Region<'tcx> {
         matches!(self.kind(), ty::ReVar(_))
     }
 
-    pub fn as_var(self) -> Option<RegionVid> {
+    pub fn as_var(self) -> RegionVid {
         match self.kind() {
-            ty::ReVar(vid) => Some(vid),
-            _ => None,
+            ty::ReVar(vid) => vid,
+            _ => bug!("expected region {:?} to be of kind ReVar", self),
         }
     }
 }

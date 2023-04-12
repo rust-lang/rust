@@ -507,9 +507,7 @@ impl<'cx, 'tcx> BorrowckInferCtxt<'cx, 'tcx> {
         F: Fn() -> RegionCtxt,
     {
         let next_region = self.infcx.next_region_var(origin);
-        let vid = next_region
-            .as_var()
-            .unwrap_or_else(|| bug!("expected RegionKind::RegionVar on {:?}", next_region));
+        let vid = next_region.as_var();
 
         if cfg!(debug_assertions) && !self.inside_canonicalization_ctxt() {
             debug!("inserting vid {:?} with origin {:?} into var_to_origin", vid, origin);
@@ -531,9 +529,7 @@ impl<'cx, 'tcx> BorrowckInferCtxt<'cx, 'tcx> {
         F: Fn() -> RegionCtxt,
     {
         let next_region = self.infcx.next_nll_region_var(origin.clone());
-        let vid = next_region
-            .as_var()
-            .unwrap_or_else(|| bug!("expected RegionKind::RegionVar on {:?}", next_region));
+        let vid = next_region.as_var();
 
         if cfg!(debug_assertions) && !self.inside_canonicalization_ctxt() {
             debug!("inserting vid {:?} with origin {:?} into var_to_origin", vid, origin);
