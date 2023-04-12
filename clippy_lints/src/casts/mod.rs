@@ -506,7 +506,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for uses of the `abs()` method that cast the result to unsigned.
+    /// Checks for usage of the `abs()` method that cast the result to unsigned.
     ///
     /// ### Why is this bad?
     /// The `unsigned_abs()` method avoids panic when called on the MIN value.
