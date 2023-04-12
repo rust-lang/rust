@@ -98,7 +98,7 @@ impl<T: Sized> NonNull<T> {
         }
     }
 
-    /// Returns a shared references to the value. In contrast to [`as_ref`], this does not require
+    /// Returns a shared reference to the value. In contrast to [`as_ref`], this does not require
     /// that the value has to be initialized.
     ///
     /// For the mutable counterpart see [`as_uninit_mut`].
@@ -132,7 +132,7 @@ impl<T: Sized> NonNull<T> {
         unsafe { &*self.cast().as_ptr() }
     }
 
-    /// Returns a unique references to the value. In contrast to [`as_mut`], this does not require
+    /// Returns a unique reference to the value. In contrast to [`as_mut`], this does not require
     /// that the value has to be initialized.
     ///
     /// For the shared counterpart see [`as_uninit_ref`].
