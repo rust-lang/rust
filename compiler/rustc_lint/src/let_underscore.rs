@@ -25,7 +25,7 @@ declare_lint! {
     ///
     /// fn main() {
     ///    #[warn(let_underscore_drop)]
-    ///     // SomeStuct is dropped immediately instead of at end of scope,
+    ///     // SomeStruct is dropped immediately instead of at end of scope,
     ///     // so "Dropping SomeStruct" is printed before "end of main".
     ///     // The order of prints would be reversed if SomeStruct was bound to
     ///     // a name (such as "_foo").

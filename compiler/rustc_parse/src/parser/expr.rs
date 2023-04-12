@@ -2767,7 +2767,7 @@ impl<'a> Parser<'a> {
                     (token::DotDotEq, token::Gt)
                 ) {
                     // `error_inclusive_range_match_arrow` handles cases like `0..=> {}`,
-                    // so we supress the error here
+                    // so we suppress the error here
                     err.delay_as_bug();
                     this.bump();
                 } else {

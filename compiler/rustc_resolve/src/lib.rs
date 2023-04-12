@@ -1652,7 +1652,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 misc2: AmbiguityErrorMisc::None,
             };
             if !self.matches_previous_ambiguity_error(&ambiguity_error) {
-                // avoid dumplicated span information to be emitt out
+                // avoid duplicated span information to be emitt out
                 self.ambiguity_errors.push(ambiguity_error);
             }
         }

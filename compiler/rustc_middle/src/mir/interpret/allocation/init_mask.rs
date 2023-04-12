@@ -63,7 +63,7 @@ impl InitMask {
     }
 
     /// Sets a specified range to a value. If the range is out-of-bounds, the mask will grow to
-    /// accomodate it entirely.
+    /// accommodate it entirely.
     pub fn set_range(&mut self, range: AllocRange, new_state: bool) {
         let start = range.start;
         let end = range.end();

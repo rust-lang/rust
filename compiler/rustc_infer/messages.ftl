@@ -174,7 +174,7 @@ infer_region_explanation = {$pref_kind ->
 
 infer_outlives_content = lifetime of reference outlives lifetime of borrowed content...
 infer_outlives_bound = lifetime of the source pointer does not outlive lifetime bound of the object type
-infer_fullfill_req_lifetime = the type `{$ty}` does not fulfill the required lifetime
+infer_fulfill_req_lifetime = the type `{$ty}` does not fulfill the required lifetime
 infer_lf_bound_not_satisfied = lifetime bound not satisfied
 infer_borrowed_too_long = a value of type `{$ty}` is borrowed for too long
 infer_ref_longer_than_data = in type `{$ty}`, reference has a longer lifetime than the data it references

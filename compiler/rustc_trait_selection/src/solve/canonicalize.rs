@@ -13,7 +13,7 @@ use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, Ty};
 use rustc_middle::ty::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 
-/// Whether we're canonicalizing a query input or the query reponse.
+/// Whether we're canonicalizing a query input or the query response.
 ///
 /// When canonicalizing an input we're in the context of the caller
 /// while canonicalizing the response happens in the context of the
@@ -21,7 +21,7 @@ use rustc_middle::ty::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 #[derive(Debug, Clone, Copy)]
 pub enum CanonicalizeMode {
     Input,
-    /// FIXME: We currently return region constraints refering to
+    /// FIXME: We currently return region constraints referring to
     /// placeholders and inference variables from a binder instantiated
     /// inside of the query.
     ///
