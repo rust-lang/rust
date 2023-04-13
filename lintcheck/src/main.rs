@@ -421,7 +421,7 @@ impl Crate {
             {
                 let subcrate = &stderr[63..];
                 println!(
-                    "ERROR: failed to apply some suggetion to {} / to (sub)crate {subcrate}",
+                    "ERROR: failed to apply some suggestion to {} / to (sub)crate {subcrate}",
                     self.name
                 );
             }

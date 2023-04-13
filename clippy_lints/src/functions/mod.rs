@@ -330,7 +330,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Lints when `impl Trait` is being used in a function's paremeters.
+    /// Lints when `impl Trait` is being used in a function's parameters.
     /// ### Why is this bad?
     /// Turbofish syntax (`::<>`) cannot be used when `impl Trait` is being used, making `impl Trait` less powerful. Readability may also be a factor.
     ///

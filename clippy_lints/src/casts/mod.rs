@@ -638,7 +638,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.66.0"]
     pub AS_PTR_CAST_MUT,
     nursery,
-    "casting the result of the `&self`-taking `as_ptr` to a mutabe pointer"
+    "casting the result of the `&self`-taking `as_ptr` to a mutable pointer"
 }
 
 declare_clippy_lint! {
