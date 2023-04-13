@@ -6,7 +6,6 @@
 #![feature(array_windows)]
 #![feature(drain_filter)]
 #![feature(if_let_guard)]
-#![feature(is_terminal)]
 #![feature(adt_const_params)]
 #![feature(let_chains)]
 #![feature(never_type)]

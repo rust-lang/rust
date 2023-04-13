@@ -5,7 +5,6 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![feature(is_terminal)]
 #![feature(lazy_cell)]
 #![feature(decl_macro)]
 #![recursion_limit = "256"]
