@@ -6,8 +6,6 @@ error: abnormal termination: panic in a function that cannot unwind
   --> $DIR/terminate-terminator.rs:LL:CC
    |
 LL | / fn has_cleanup() {
-LL | |
-LL | |     // FIXME(nbdd0121): The error should be reported at the call site.
 LL | |     let _f = Foo;
 LL | |     panic!();
 LL | | }
