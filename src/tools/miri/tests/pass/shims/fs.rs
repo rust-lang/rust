@@ -3,7 +3,6 @@
 
 #![feature(io_error_more)]
 #![feature(io_error_uncategorized)]
-#![feature(is_terminal)]
 
 use std::collections::HashMap;
 use std::ffi::{c_char, OsString};
