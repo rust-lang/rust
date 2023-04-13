@@ -18,6 +18,21 @@ env:
   RUSTUP_MAX_RETRIES: 10
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      typescript: ${{ steps.filter.outputs.typescript }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            typescript:
+              - 'editors/code/**'
+
   rust:
     if: github.repository == 'rust-lang/rust-analyzer'
     name: Rust
@@ -105,6 +120,7 @@ jobs:
           done
 
   typescript:
+    needs: changes
     if: github.repository == 'rust-lang/rust-analyzer'
     name: TypeScript
     strategy:
@@ -117,18 +133,21 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        if: needs.changes.outputs.typescript == 'true'
 
       - name: Install Nodejs
         uses: actions/setup-node@v3
         with:
           node-version: 16
+        if: needs.changes.outputs.typescript == 'true'
 
       - name: Install xvfb
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest' && needs.changes.outputs.typescript == 'true'
         run: sudo apt-get install -y xvfb
 
       - run: npm ci
         working-directory: ./editors/code
+        if: needs.changes.outputs.typescript == 'true'
 
       #    - run: npm audit || { sleep 10 && npm audit; } || { sleep 30 && npm audit; }
       #      if: runner.os == 'Linux'
@@ -136,16 +155,17 @@ jobs:
 
       - run: npm run lint
         working-directory: ./editors/code
+        if: needs.changes.outputs.typescript == 'true'
 
       - name: Run VS Code tests (Linux)
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest' && needs.changes.outputs.typescript == 'true'
         env:
           VSCODE_CLI: 1
         run: xvfb-run npm test
         working-directory: ./editors/code
 
       - name: Run VS Code tests (Windows)
-        if: matrix.os == 'windows-latest'
+        if: matrix.os == 'windows-latest' && needs.changes.outputs.typescript == 'true'
         env:
           VSCODE_CLI: 1
         run: npm test
@@ -153,9 +173,11 @@ jobs:
 
       - run: npm run pretest
         working-directory: ./editors/code
+        if: needs.changes.outputs.typescript == 'true'
 
       - run: npm run package --scripts-prepend-node-path
         working-directory: ./editors/code
+        if: needs.changes.outputs.typescript == 'true'
 
   end-success:
     name: bors build finished
@@ -168,7 +190,7 @@ jobs:
 
   end-failure:
     name: bors build finished
-    if: github.event.pusher.name == 'bors' && (failure() || cancelled())
+    if: github.event.pusher.name == 'bors' && !success()
     runs-on: ubuntu-latest
     needs: [rust, rust-cross, typescript]
     steps:
