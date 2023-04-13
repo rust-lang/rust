@@ -1,5 +1,6 @@
 use crate::MirPass;
 use rustc_hir::def_id::DefId;
+use rustc_hir::lang_items::LangItem;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::*;
 use rustc_middle::mir::{
@@ -17,6 +18,12 @@ impl<'tcx> MirPass<'tcx> for CheckAlignment {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        // This pass emits new panics. If for whatever reason we do not have a panic
+        // implementation, running this pass may cause otherwise-valid code to not compile.
+        if tcx.lang_items().get(LangItem::PanicImpl).is_none() {
+            return;
+        }
+
         let basic_blocks = body.basic_blocks.as_mut();
         let local_decls = &mut body.local_decls;
 
