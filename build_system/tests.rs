@@ -2,7 +2,6 @@ use super::build_sysroot;
 use super::config;
 use super::path::{Dirs, RelPath};
 use super::prepare::GitRepo;
-use super::rustc_info::get_host_triple;
 use super::utils::{spawn_and_wait, spawn_and_wait_with_input, CargoProject, Compiler};
 use super::SysrootKind;
 use std::env;
@@ -230,8 +229,11 @@ pub(crate) fn run_tests(
             target_triple.clone(),
         );
 
-        let runner =
-            TestRunner::new(dirs.clone(), target_compiler, get_host_triple() == target_triple);
+        let runner = TestRunner::new(
+            dirs.clone(),
+            target_compiler,
+            bootstrap_host_compiler.triple == target_triple,
+        );
 
         BUILD_EXAMPLE_OUT_DIR.ensure_fresh(dirs);
         runner.run_testsuite(NO_SYSROOT_SUITE);
@@ -252,8 +254,11 @@ pub(crate) fn run_tests(
             target_triple.clone(),
         );
 
-        let runner =
-            TestRunner::new(dirs.clone(), target_compiler, get_host_triple() == target_triple);
+        let runner = TestRunner::new(
+            dirs.clone(),
+            target_compiler,
+            bootstrap_host_compiler.triple == target_triple,
+        );
 
         if run_base_sysroot {
             runner.run_testsuite(BASE_SYSROOT_SUITE);
