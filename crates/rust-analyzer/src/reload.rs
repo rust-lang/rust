@@ -138,10 +138,20 @@ impl GlobalState {
             let (ProjectWorkspace::Cargo { sysroot, .. }
             | ProjectWorkspace::Json { sysroot, .. }
             | ProjectWorkspace::DetachedFiles { sysroot, .. }) = ws;
-            if let Err(Some(e)) = sysroot {
-                status.health = lsp_ext::Health::Warning;
-                message.push_str(e);
-                message.push_str("\n\n");
+            match sysroot {
+                Err(None) => (),
+                Err(Some(e)) => {
+                    status.health = lsp_ext::Health::Warning;
+                    message.push_str(e);
+                    message.push_str("\n\n");
+                }
+                Ok(s) => {
+                    if let Some(e) = s.loading_warning() {
+                        status.health = lsp_ext::Health::Warning;
+                        message.push_str(&e);
+                        message.push_str("\n\n");
+                    }
+                }
             }
             if let ProjectWorkspace::Cargo { rustc: Err(Some(e)), .. } = ws {
                 status.health = lsp_ext::Health::Warning;
