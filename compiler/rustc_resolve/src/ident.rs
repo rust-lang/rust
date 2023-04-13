@@ -1032,6 +1032,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 Some(_) => continue,
                 None => return Err((Undetermined, Weak::Yes)),
             };
+
+            if ptr::eq(module, glob_import.parent_scope.module) {
+                // do not glob-import a module into itself
+                continue;
+            }
+
             let tmp_parent_scope;
             let (mut adjusted_parent_scope, mut ident) =
                 (parent_scope, ident.normalize_to_macros_2_0());
