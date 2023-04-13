@@ -90,7 +90,7 @@ fn mut_raw_mut() {
         assert_eq!(unsafe { *xraw }, 4);
         assert_eq!(*xref1, 4);
         assert_eq!(unsafe { *xraw }, 4);
-        // we cannot use xref2; see `compile-fail/stacked-borows/illegal_read4.rs`
+        // we cannot use xref2; see `compile-fail/stacked-borrows/illegal_read4.rs`
     }
     assert_eq!(x, 4);
 }
@@ -104,7 +104,7 @@ fn partially_invalidate_mut() {
     assert_eq!(*data, (1, 1));
 }
 
-// Make sure that we can handle the situation where a loaction is frozen when being dropped.
+// Make sure that we can handle the situation where a location is frozen when being dropped.
 fn drop_after_sharing() {
     let x = String::from("hello!");
     let _len = x.len();
@@ -224,7 +224,7 @@ fn wide_raw_ptr_in_tuple() {
 fn not_unpin_not_protected() {
     // `&mut !Unpin`, at least for now, does not get `noalias` nor `dereferenceable`, so we also
     // don't add protectors. (We could, but until we have a better idea for where we want to go with
-    // the self-referntial-generator situation, it does not seem worth the potential trouble.)
+    // the self-referential-generator situation, it does not seem worth the potential trouble.)
     use std::marker::PhantomPinned;
 
     pub struct NotUnpin(i32, PhantomPinned);

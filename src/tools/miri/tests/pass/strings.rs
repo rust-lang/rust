@@ -29,7 +29,7 @@ fn unique_aliasing() {
     // This is a regression test for the aliasing rules of a `Unique<T>` pointer.
     // At the time of writing this test case, Miri does not treat `Unique<T>`
     // pointers as a special case, these are treated like any other raw pointer.
-    // However, there are existing Github issues which may lead to `Unique<T>`
+    // However, there are existing GitHub issues which may lead to `Unique<T>`
     // becoming a special case through asserting unique ownership over the pointee:
     // - https://github.com/rust-lang/unsafe-code-guidelines/issues/258
     // - https://github.com/rust-lang/unsafe-code-guidelines/issues/262

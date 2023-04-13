@@ -169,7 +169,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             this.linux_statx(&args[1], &args[2], &args[3], &args[4], &args[5])?;
                         this.write_scalar(Scalar::from_target_isize(result.into(), this), dest)?;
                     }
-                    // `futex` is used by some synchonization primitives.
+                    // `futex` is used by some synchronization primitives.
                     id if id == sys_futex => {
                         futex(this, &args[1..], dest)?;
                     }
@@ -180,7 +180,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 }
             }
 
-            // Miscelanneous
+            // Miscellaneous
             "getrandom" => {
                 let [ptr, len, flags] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;

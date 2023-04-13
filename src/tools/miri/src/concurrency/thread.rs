@@ -821,7 +821,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
 
         // Write the current thread-id, switch to the next thread later
-        // to treat this write operation as occuring on the current thread.
+        // to treat this write operation as occurring on the current thread.
         if let Some(thread_info_place) = thread {
             this.write_scalar(
                 Scalar::from_uint(new_thread_id.to_u32(), thread_info_place.layout.size),
@@ -830,7 +830,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
 
         // Finally switch to new thread so that we can push the first stackframe.
-        // After this all accesses will be treated as occuring in the new thread.
+        // After this all accesses will be treated as occurring in the new thread.
         let old_thread_id = this.set_active_thread(new_thread_id);
 
         // Perform the function pointer load in the new thread frame.

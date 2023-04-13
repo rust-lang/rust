@@ -292,7 +292,7 @@ impl<'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
             .rev()
             .find_map(|event| {
                 // First, look for a Creation event where the tag and the offset matches. This
-                // ensrues that we pick the right Creation event when a retag isn't uniform due to
+                // ensures that we pick the right Creation event when a retag isn't uniform due to
                 // Freeze.
                 let range = event.retag.range;
                 if event.retag.new_tag == tag

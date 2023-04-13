@@ -90,7 +90,7 @@ fn test_posix_realpath_errors() {
     use std::ffi::CString;
     use std::io::ErrorKind;
 
-    // Test non-existent path returns an error.
+    // Test nonexistent path returns an error.
     let c_path = CString::new("./nothing_to_see_here").expect("CString::new failed");
     let r = unsafe { libc::realpath(c_path.as_ptr(), std::ptr::null_mut()) };
     assert!(r.is_null());

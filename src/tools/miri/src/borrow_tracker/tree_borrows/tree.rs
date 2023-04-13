@@ -34,7 +34,7 @@ pub(super) struct LocationState {
     /// Before initialization we still apply some preemptive transitions on
     /// `permission` to know what to do in case it ever gets initialized,
     /// but these can never cause any immediate UB. There can however be UB
-    /// the moment we attempt to initalize (i.e. child-access) because some
+    /// the moment we attempt to initialize (i.e. child-access) because some
     /// foreign access done between the creation and the initialization is
     /// incompatible with child accesses.
     initialized: bool,

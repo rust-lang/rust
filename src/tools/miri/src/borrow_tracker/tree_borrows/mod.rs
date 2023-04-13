@@ -283,7 +283,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         Ok(Some((alloc_id, new_tag)))
     }
 
-    /// Retags an indidual pointer, returning the retagged version.
+    /// Retags an individual pointer, returning the retagged version.
     fn tb_retag_reference(
         &mut self,
         val: &ImmTy<'tcx, Provenance>,
