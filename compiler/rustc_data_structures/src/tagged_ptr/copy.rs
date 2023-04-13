@@ -253,6 +253,26 @@ where
     }
 }
 
+// Safety:
+// `CopyTaggedPtr<P, T, ..>` is semantically just `{ ptr: P, tag: T }`, as such
+// it's ok to implement `Sync` as long as `P: Sync, T: Sync`
+unsafe impl<P, T, const CP: bool> Sync for CopyTaggedPtr<P, T, CP>
+where
+    P: Sync + Pointer,
+    T: Sync + Tag,
+{
+}
+
+// Safety:
+// `CopyTaggedPtr<P, T, ..>` is semantically just `{ ptr: P, tag: T }`, as such
+// it's ok to implement `Send` as long as `P: Send, T: Send`
+unsafe impl<P, T, const CP: bool> Send for CopyTaggedPtr<P, T, CP>
+where
+    P: Send + Pointer,
+    T: Send + Tag,
+{
+}
+
 /// Test that `new` does not compile if there is not enough alignment for the
 /// tag in the pointer.
 ///
