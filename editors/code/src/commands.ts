@@ -667,16 +667,21 @@ function crateGraph(ctx: CtxInit, full: boolean): Cmd {
                 <script type="text/javascript" src="${uri}/d3-graphviz/build/d3-graphviz.min.js"></script>
                 <div id="graph"></div>
                 <script>
+                    let dot = \`${dot}\`;
                     let graph = d3.select("#graph")
                                   .graphviz({ useWorker: false, useSharedWorker: false })
                                   .fit(true)
                                   .zoomScaleExtent([0.1, Infinity])
-                                  .renderDot(\`${dot}\`);
+                                  .renderDot(dot);
 
                     d3.select(window).on("click", (event) => {
                         if (event.ctrlKey) {
                             graph.resetZoom(d3.transition().duration(100));
                         }
+                    });
+                    d3.select(window).on("copy", (event) => {
+                        event.clipboardData.setData("text/plain", dot);
+                        event.preventDefault();
                     });
                 </script>
             </body>
