@@ -74,6 +74,23 @@ impl Sysroot {
     pub fn is_empty(&self) -> bool {
         self.crates.is_empty()
     }
+
+    pub fn loading_warning(&self) -> Option<String> {
+        if self.by_name("core").is_none() {
+            let var_note = if env::var_os("RUST_SRC_PATH").is_some() {
+                " (`RUST_SRC_PATH` might be incorrect, try unsetting it)"
+            } else {
+                " try running `rustup component add rust-src` to possible fix this"
+            };
+            Some(format!(
+                "could not find libcore in loaded sysroot at `{}`{}",
+                self.src_root.as_path().display(),
+                var_note,
+            ))
+        } else {
+            None
+        }
+    }
 }
 
 // FIXME: Expose a builder api as loading the sysroot got way too modular and complicated.
@@ -103,7 +120,7 @@ impl Sysroot {
 
     pub fn with_sysroot_dir(sysroot_dir: AbsPathBuf) -> Result<Sysroot> {
         let sysroot_src_dir = discover_sysroot_src_dir(&sysroot_dir).ok_or_else(|| {
-            format_err!("can't load standard library from sysroot {}", sysroot_dir.display())
+            format_err!("can't load standard library from sysroot path {}", sysroot_dir.display())
         })?;
         Ok(Sysroot::load(sysroot_dir, sysroot_src_dir))
     }
@@ -151,19 +168,6 @@ impl Sysroot {
                     sysroot.crates[proc_macro].deps.push(dep)
                 }
             }
-        }
-
-        if sysroot.by_name("core").is_none() {
-            let var_note = if env::var_os("RUST_SRC_PATH").is_some() {
-                " (`RUST_SRC_PATH` might be incorrect, try unsetting it)"
-            } else {
-                ""
-            };
-            tracing::error!(
-                "could not find libcore in sysroot path `{}`{}",
-                sysroot.src_root.as_path().display(),
-                var_note,
-            );
         }
 
         sysroot
