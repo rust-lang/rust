@@ -409,7 +409,7 @@ changelog-seen = 2
 #       unconfigured in this file.
 #
 # Note: changes to the `debug` setting do *not* affect `optimize`
-#       above. In theory, a "maximally debuggable" environment would
+#       above. In theory, a "maximally debugable" environment would
 #       set `optimize` to `false` above to assist the introspection
 #       facilities of debuggers like lldb and gdb. To recreate such an
 #       environment, explicitly set `optimize` to `false` and `debug`
@@ -417,7 +417,7 @@ changelog-seen = 2
 #       `true`, because an unoptimized rustc with debugging
 #       enabled becomes *unusably slow* (e.g. rust-lang/rust#24840
 #       reported a 25x slowdown) and bootstrapping the supposed
-#       "maximally debuggable" environment (notably libstd) takes
+#       "maximally debugable" environment (notably libstd) takes
 #       hours to build.
 #
 #debug = false

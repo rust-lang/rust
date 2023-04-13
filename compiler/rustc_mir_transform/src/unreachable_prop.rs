@@ -12,7 +12,7 @@ pub struct UnreachablePropagation;
 
 impl MirPass<'_> for UnreachablePropagation {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        // Enable only under -Zmir-opt-level=2 as this can make programs less debuggable.
+        // Enable only under -Zmir-opt-level=2 as this can make programs less debugable.
         sess.mir_opt_level() >= 2
     }
 
