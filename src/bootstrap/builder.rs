@@ -591,6 +591,7 @@ pub enum Kind {
     Install,
     Run,
     Setup,
+    Suggest,
 }
 
 impl Kind {
@@ -610,6 +611,7 @@ impl Kind {
             "install" => Kind::Install,
             "run" | "r" => Kind::Run,
             "setup" => Kind::Setup,
+            "suggest" => Kind::Suggest,
             _ => return None,
         })
     }
@@ -629,6 +631,7 @@ impl Kind {
             Kind::Install => "install",
             Kind::Run => "run",
             Kind::Setup => "setup",
+            Kind::Suggest => "suggest",
         }
     }
 }
@@ -709,6 +712,7 @@ impl<'a> Builder<'a> {
                 test::CrateRustdoc,
                 test::CrateRustdocJsonTypes,
                 test::CrateJsonDocLint,
+                test::SuggestTestsCrate,
                 test::Linkcheck,
                 test::TierCheck,
                 test::ReplacePlaceholderTest,
@@ -827,7 +831,7 @@ impl<'a> Builder<'a> {
             Kind::Setup => describe!(setup::Profile, setup::Hook, setup::Link, setup::Vscode),
             Kind::Clean => describe!(clean::CleanAll, clean::Rustc, clean::Std),
             // special-cased in Build::build()
-            Kind::Format => vec![],
+            Kind::Format | Kind::Suggest => vec![],
         }
     }
 
@@ -891,11 +895,27 @@ impl<'a> Builder<'a> {
             Subcommand::Run { ref paths, .. } => (Kind::Run, &paths[..]),
             Subcommand::Clean { ref paths, .. } => (Kind::Clean, &paths[..]),
             Subcommand::Format { .. } => (Kind::Format, &[][..]),
+            Subcommand::Suggest { .. } => (Kind::Suggest, &[][..]),
             Subcommand::Setup { profile: ref path } => (
                 Kind::Setup,
                 path.as_ref().map_or([].as_slice(), |path| std::slice::from_ref(path)),
             ),
         };
+
+        Self::new_internal(build, kind, paths.to_owned())
+    }
+
+    /// Creates a new standalone builder for use outside of the normal process
+    pub fn new_standalone(
+        build: &mut Build,
+        kind: Kind,
+        paths: Vec<PathBuf>,
+        stage: Option<u32>,
+    ) -> Builder<'_> {
+        // FIXME: don't mutate `build`
+        if let Some(stage) = stage {
+            build.config.stage = stage;
+        }
 
         Self::new_internal(build, kind, paths.to_owned())
     }

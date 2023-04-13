@@ -129,6 +129,42 @@ impl Step for CrateJsonDocLint {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct SuggestTestsCrate {
+    host: TargetSelection,
+}
+
+impl Step for SuggestTestsCrate {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/suggest-tests")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(SuggestTestsCrate { host: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let bootstrap_host = builder.config.build;
+        let compiler = builder.compiler(0, bootstrap_host);
+
+        let suggest_tests = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolBootstrap,
+            bootstrap_host,
+            "test",
+            "src/tools/suggest-tests",
+            SourceType::InTree,
+            &[],
+        );
+        add_flags_and_try_run_tests(builder, &mut suggest_tests.into());
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Linkcheck {
     host: TargetSelection,
 }
