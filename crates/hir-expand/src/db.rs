@@ -13,10 +13,11 @@ use syntax::{
 };
 
 use crate::{
-    ast_id_map::AstIdMap, builtin_attr_macro::pseudo_derive_attr_expansion, fixup,
-    hygiene::HygieneFrame, tt, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander,
-    ExpandError, ExpandResult, ExpandTo, HirFileId, HirFileIdRepr, MacroCallId, MacroCallKind,
-    MacroCallLoc, MacroDefId, MacroDefKind, MacroFile, ProcMacroExpander,
+    ast_id_map::AstIdMap, builtin_attr_macro::pseudo_derive_attr_expansion,
+    builtin_fn_macro::EagerExpander, fixup, hygiene::HygieneFrame, tt, BuiltinAttrExpander,
+    BuiltinDeriveExpander, BuiltinFnLikeExpander, ExpandError, ExpandResult, ExpandTo, HirFileId,
+    HirFileIdRepr, MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind, MacroFile,
+    ProcMacroExpander,
 };
 
 /// Total limit on the number of tokens produced by any macro invocation.
@@ -33,6 +34,8 @@ pub enum TokenExpander {
     DeclarativeMacro { mac: mbe::DeclarativeMacro, def_site_token_map: mbe::TokenMap },
     /// Stuff like `line!` and `file!`.
     Builtin(BuiltinFnLikeExpander),
+    /// Built-in eagerly expanded fn-like macros (`include!`, `concat!`, etc.)
+    BuiltinEager(EagerExpander),
     /// `global_allocator` and such.
     BuiltinAttr(BuiltinAttrExpander),
     /// `derive(Copy)` and such.
@@ -51,6 +54,9 @@ impl TokenExpander {
         match self {
             TokenExpander::DeclarativeMacro { mac, .. } => mac.expand(tt).map_err(Into::into),
             TokenExpander::Builtin(it) => it.expand(db, id, tt).map_err(Into::into),
+            TokenExpander::BuiltinEager(it) => {
+                it.expand(db, id, tt).map_err(Into::into).map(|res| res.subtree)
+            }
             TokenExpander::BuiltinAttr(it) => it.expand(db, id, tt),
             TokenExpander::BuiltinDerive(it) => it.expand(db, id, tt),
             TokenExpander::ProcMacro(_) => {
@@ -66,6 +72,7 @@ impl TokenExpander {
         match self {
             TokenExpander::DeclarativeMacro { mac, .. } => mac.map_id_down(id),
             TokenExpander::Builtin(..)
+            | TokenExpander::BuiltinEager(..)
             | TokenExpander::BuiltinAttr(..)
             | TokenExpander::BuiltinDerive(..)
             | TokenExpander::ProcMacro(..) => id,
@@ -76,6 +83,7 @@ impl TokenExpander {
         match self {
             TokenExpander::DeclarativeMacro { mac, .. } => mac.map_id_up(id),
             TokenExpander::Builtin(..)
+            | TokenExpander::BuiltinEager(..)
             | TokenExpander::BuiltinAttr(..)
             | TokenExpander::BuiltinDerive(..)
             | TokenExpander::ProcMacro(..) => (id, mbe::Origin::Call),
@@ -412,10 +420,8 @@ fn macro_def(
         MacroDefKind::BuiltInDerive(expander, _) => {
             Ok(Arc::new(TokenExpander::BuiltinDerive(expander)))
         }
-        MacroDefKind::BuiltInEager(..) => {
-            // FIXME: Return a random error here just to make the types align.
-            // This obviously should do something real instead.
-            Err(mbe::ParseError::UnexpectedToken("unexpected eager macro".into()))
+        MacroDefKind::BuiltInEager(expander, ..) => {
+            Ok(Arc::new(TokenExpander::BuiltinEager(expander)))
         }
         MacroDefKind::ProcMacro(expander, ..) => Ok(Arc::new(TokenExpander::ProcMacro(expander))),
     }

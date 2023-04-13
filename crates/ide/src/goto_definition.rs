@@ -833,8 +833,7 @@ fn test() {
 #[rustc_builtin_macro]
 macro_rules! include {}
 
-  include!("foo.rs");
-//^^^^^^^^^^^^^^^^^^^
+include!("foo.rs");
 
 fn f() {
     foo$0();
@@ -846,6 +845,7 @@ mod confuse_index {
 
 //- /foo.rs
 fn foo() {}
+ //^^^
         "#,
         );
     }
