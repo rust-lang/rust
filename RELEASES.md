@@ -18,7 +18,7 @@ Language
 Compiler
 --------
 
-- [Upgrade mingw-w64 on CI to GCC 12.3.](https://github.com/rust-lang/rust/pull/100178/)
+- [Upgrade `*-pc-windows-gnu` on CI to mingw-w64 v10 and GCC 12.2.](https://github.com/rust-lang/rust/pull/100178/)
 - [Rework min_choice algorithm of member constraints.](https://github.com/rust-lang/rust/pull/105300/)
 - [Support `true` and `false` as boolean flags in compiler arguments.](https://github.com/rust-lang/rust/pull/107043/)
 - [Default `repr(C)` enums to `c_int` size.](https://github.com/rust-lang/rust/pull/107592/)
