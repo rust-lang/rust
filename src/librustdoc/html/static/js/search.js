@@ -906,7 +906,7 @@ function initSearch(rawSearchIndex) {
         const results_others = {}, results_in_args = {}, results_returned = {};
 
         function transformResults(results) {
-            const duplicates = {};
+            const duplicates = new Set();
             const out = [];
 
             for (const result of results) {
@@ -919,10 +919,10 @@ function initSearch(rawSearchIndex) {
                     // To be sure than it some items aren't considered as duplicate.
                     obj.fullPath += "|" + obj.ty;
 
-                    if (duplicates[obj.fullPath]) {
+                    if (duplicates.has(obj.fullPath)) {
                         continue;
                     }
-                    duplicates[obj.fullPath] = true;
+                    duplicates.add(obj.fullPath);
 
                     obj.href = res[1];
                     out.push(obj);
