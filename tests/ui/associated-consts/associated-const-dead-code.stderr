@@ -1,6 +1,8 @@
 error: associated constant `BAR` is never used
   --> $DIR/associated-const-dead-code.rs:6:11
    |
+LL | impl MyFoo {
+   | ---------- associated constant in this implementation
 LL |     const BAR: u32 = 1;
    |           ^^^
    |
