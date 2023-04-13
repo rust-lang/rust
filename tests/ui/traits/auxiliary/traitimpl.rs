@@ -1,4 +1,4 @@
-// Test inherent trait impls work cross-crait.
+// Test inherent trait impls work cross-crate.
 
 pub trait Bar<'a> : 'a {}
 

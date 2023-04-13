@@ -35,7 +35,7 @@ fn main() {
 
     unsafe { assert_eq!(COUNT, 12); }
 
-    // Cross-crait case
+    // Cross-crate case
     let x: &dyn Bar = &Foo;
     x.bar();
 }
