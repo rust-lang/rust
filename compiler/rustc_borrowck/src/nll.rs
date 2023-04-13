@@ -10,7 +10,7 @@ use rustc_middle::mir::{
     BasicBlock, Body, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind, Location,
     Promoted,
 };
-use rustc_middle::ty::{self, OpaqueHiddenType, Region, RegionVid, TyCtxt};
+use rustc_middle::ty::{self, OpaqueHiddenType, TyCtxt};
 use rustc_span::symbol::sym;
 use std::env;
 use std::io;
@@ -442,27 +442,6 @@ fn for_each_region_constraint<'tcx>(
         with_msg(&format!("where {}: {:?}", subject, req.outlived_free_region,))?;
     }
     Ok(())
-}
-
-/// Right now, we piggy back on the `ReVar` to store our NLL inference
-/// regions. These are indexed with `RegionVid`. This method will
-/// assert that the region is a `ReVar` and extract its internal index.
-/// This is reasonable because in our MIR we replace all universal regions
-/// with inference variables.
-pub trait ToRegionVid {
-    fn to_region_vid(self) -> RegionVid;
-}
-
-impl<'tcx> ToRegionVid for Region<'tcx> {
-    fn to_region_vid(self) -> RegionVid {
-        if let ty::ReVar(vid) = *self { vid } else { bug!("region is not an ReVar: {:?}", self) }
-    }
-}
-
-impl ToRegionVid for RegionVid {
-    fn to_region_vid(self) -> RegionVid {
-        self
-    }
 }
 
 pub(crate) trait ConstraintDescription {
