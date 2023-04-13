@@ -93,7 +93,7 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
             if let hir::ItemKind::Use(path, _kind) = &item.kind;
             let hir_id = item.hir_id();
             let attrs = cx.tcx.hir().attrs(hir_id);
-            if let Some(mac_attr) = attrs.iter().find(|attr| attr.has_name(sym::macro_use));
+            if let Some(mac_attr) = attrs.find_by_name(sym::macro_use);
             if let Some(id) = path.res.iter().find_map(|res| match res {
                 Res::Def(DefKind::Mod, id) => Some(id),
                 _ => None,

@@ -6,12 +6,11 @@ use clippy_utils::ty::{
 };
 use clippy_utils::{get_trait_def_id, is_self, paths};
 use if_chain::if_chain;
-use rustc_ast::ast::Attribute;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    BindingAnnotation, Body, FnDecl, GenericArg, HirId, Impl, ItemKind, Mutability, Node, PatKind, QPath, TyKind,
+    BindingAnnotation, Body, FnDecl, GenericArg, HirId, Impl, ItemKind, Mutability, Node, PatKind, QPath, TyKind, ItemAttributes,
 };
 use rustc_hir::{HirIdMap, HirIdSet, LangItem};
 use rustc_hir_typeck::expr_use_visitor as euv;
@@ -312,11 +311,9 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
 }
 
 /// Functions marked with these attributes must have the exact signature.
-fn requires_exact_signature(attrs: &[Attribute]) -> bool {
-    attrs.iter().any(|attr| {
-        [sym::proc_macro, sym::proc_macro_attribute, sym::proc_macro_derive]
-            .iter()
-            .any(|&allow| attr.has_name(allow))
+fn requires_exact_signature(attrs: &ItemAttributes<'_>) -> bool {
+    attrs.iter().any(|(name, _)| {
+        matches!(name, sym::proc_macro | sym::proc_macro_attribute | sym::proc_macro_derive)
     })
 }
 

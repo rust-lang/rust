@@ -8,7 +8,7 @@ use if_chain::if_chain;
 use rustc_ast::{AttrKind, AttrStyle, Attribute, LitKind, MetaItemKind, MetaItemLit, NestedMetaItem};
 use rustc_errors::Applicability;
 use rustc_hir::{
-    Block, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, StmtKind, TraitFn, TraitItem, TraitItemKind,
+    Block, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, StmtKind, TraitFn, TraitItem, TraitItemKind, ItemAttributes,
 };
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -354,9 +354,9 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
         }
         match item.kind {
             ItemKind::ExternCrate(..) | ItemKind::Use(..) => {
-                let skip_unused_imports = attrs.iter().any(|attr| attr.has_name(sym::macro_use));
+                let skip_unused_imports = attrs.contains(sym::macro_use);
 
-                for attr in attrs {
+                for attr in attrs.values() {
                     if in_external_macro(cx.sess(), attr.span) {
                         return;
                     }
@@ -552,12 +552,12 @@ fn is_relevant_expr(cx: &LateContext<'_>, typeck_results: &ty::TypeckResults<'_>
     }
 }
 
-fn check_attrs(cx: &LateContext<'_>, span: Span, name: Symbol, attrs: &[Attribute]) {
+fn check_attrs(cx: &LateContext<'_>, span: Span, name: Symbol, attrs: &ItemAttributes<'_>) {
     if span.from_expansion() {
         return;
     }
 
-    for attr in attrs {
+    for attr in attrs.values() {
         if let Some(values) = attr.meta_item_list() {
             if values.len() != 1 || !attr.has_name(sym::inline) {
                 continue;

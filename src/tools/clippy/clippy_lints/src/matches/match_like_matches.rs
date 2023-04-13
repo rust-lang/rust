@@ -2,9 +2,9 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::is_wild;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::span_contains_comment;
-use rustc_ast::{Attribute, LitKind};
+use rustc_ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::{Arm, BorrowKind, Expr, ExprKind, Guard, Pat};
+use rustc_hir::{Arm, BorrowKind, Expr, ExprKind, Guard, Pat, ItemAttributes};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty;
 use rustc_span::source_map::Spanned;
@@ -24,8 +24,8 @@ pub(crate) fn check_if_let<'tcx>(
         cx,
         let_expr,
         IntoIterator::into_iter([
-            (&[][..], Some(let_pat), then_expr, None),
-            (&[][..], None, else_expr, None),
+            (ItemAttributes::EMPTY, Some(let_pat), then_expr, None),
+            (ItemAttributes::EMPTY, None, else_expr, None),
         ]),
         expr,
         true,
@@ -69,7 +69,7 @@ where
         + ExactSizeIterator
         + Iterator<
             Item = (
-                &'a [Attribute],
+                &'a ItemAttributes<'a>,
                 Option<&'a Pat<'b>>,
                 &'a Expr<'b>,
                 Option<&'a Guard<'b>>,

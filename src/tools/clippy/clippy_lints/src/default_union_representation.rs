@@ -82,21 +82,15 @@ fn is_zst(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>) -> bool {
         return false;
     }
     let ty = hir_ty_to_ty(cx.tcx, hir_ty);
-    if let Ok(layout) = cx.layout_of(ty) {
-        layout.is_zst()
-    } else {
-        false
-    }
+    if let Ok(layout) = cx.layout_of(ty) { layout.is_zst() } else { false }
 }
 
 fn has_c_repr_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
-    cx.tcx.hir().attrs(hir_id).iter().any(|attr| {
-        if attr.has_name(sym::repr) {
-            if let Some(items) = attr.meta_item_list() {
-                for item in items {
-                    if item.is_word() && matches!(item.name_or_empty(), sym::C) {
-                        return true;
-                    }
+    cx.tcx.hir().attrs(hir_id).with_name(sym::repr).any(|attr| {
+        if let Some(items) = attr.meta_item_list() {
+            for item in items {
+                if item.is_word() && matches!(item.name_or_empty(), sym::C) {
+                    return true;
                 }
             }
         }

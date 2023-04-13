@@ -1,5 +1,6 @@
 use rustc_ast::ast;
 use rustc_ast::attr;
+use rustc_hir as hir;
 use rustc_errors::Applicability;
 use rustc_session::Session;
 use rustc_span::sym;
@@ -43,11 +44,11 @@ impl LimitStack {
     pub fn limit(&self) -> u64 {
         *self.stack.last().expect("there should always be a value in the stack")
     }
-    pub fn push_attrs(&mut self, sess: &Session, attrs: &[ast::Attribute], name: &'static str) {
+    pub fn push_attrs(&mut self, sess: &Session, attrs: &hir::ItemAttributes<'_>, name: &'static str) {
         let stack = &mut self.stack;
         parse_attrs(sess, attrs, name, |val| stack.push(val));
     }
-    pub fn pop_attrs(&mut self, sess: &Session, attrs: &[ast::Attribute], name: &'static str) {
+    pub fn pop_attrs(&mut self, sess: &Session, attrs: &hir::ItemAttributes<'_>, name: &'static str) {
         let stack = &mut self.stack;
         parse_attrs(sess, attrs, name, |val| assert_eq!(stack.pop(), Some(val)));
     }
@@ -55,10 +56,10 @@ impl LimitStack {
 
 pub fn get_attr<'a>(
     sess: &'a Session,
-    attrs: &'a [ast::Attribute],
+    attrs: &'a hir::ItemAttributes<'a>,
     name: &'static str,
 ) -> impl Iterator<Item = &'a ast::Attribute> {
-    attrs.iter().filter(move |attr| {
+    attrs.values().filter(move |attr| {
         let attr = if let ast::AttrKind::Normal(ref normal) = attr.kind {
             &normal.item
         } else {
@@ -111,7 +112,7 @@ pub fn get_attr<'a>(
     })
 }
 
-fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'static str, mut f: F) {
+fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &hir::ItemAttributes<'_>, name: &'static str, mut f: F) {
     for attr in get_attr(sess, attrs, name) {
         if let Some(ref value) = attr.value_str() {
             if let Ok(value) = FromStr::from_str(value.as_str()) {
@@ -127,7 +128,7 @@ fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'
 
 pub fn get_unique_attr<'a>(
     sess: &'a Session,
-    attrs: &'a [ast::Attribute],
+    attrs: &'a hir::ItemAttributes<'a>,
     name: &'static str,
 ) -> Option<&'a ast::Attribute> {
     let mut unique_attr: Option<&ast::Attribute> = None;
@@ -145,15 +146,13 @@ pub fn get_unique_attr<'a>(
 
 /// Return true if the attributes contain any of `proc_macro`,
 /// `proc_macro_derive` or `proc_macro_attribute`, false otherwise
-pub fn is_proc_macro(attrs: &[ast::Attribute]) -> bool {
-    attrs.iter().any(rustc_ast::Attribute::is_proc_macro_attr)
+pub fn is_proc_macro(attrs: &hir::ItemAttributes<'_>) -> bool {
+    attrs.values().any(rustc_ast::Attribute::is_proc_macro_attr)
 }
 
 /// Return true if the attributes contain `#[doc(hidden)]`
-pub fn is_doc_hidden(attrs: &[ast::Attribute]) -> bool {
-    attrs
-        .iter()
-        .filter(|attr| attr.has_name(sym::doc))
+pub fn is_doc_hidden(attrs: &hir::ItemAttributes<'_>) -> bool {
+    attrs.with_name(sym::doc)
         .filter_map(ast::Attribute::meta_item_list)
         .any(|l| attr::list_contains_name(&l, sym::hidden))
 }

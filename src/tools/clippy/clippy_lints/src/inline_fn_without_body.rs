@@ -2,9 +2,8 @@
 
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::sugg::DiagnosticExt;
-use rustc_ast::ast::Attribute;
 use rustc_errors::Applicability;
-use rustc_hir::{TraitFn, TraitItem, TraitItemKind};
+use rustc_hir::{TraitFn, TraitItem, TraitItemKind, ItemAttributes};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{sym, Symbol};
@@ -41,12 +40,8 @@ impl<'tcx> LateLintPass<'tcx> for InlineFnWithoutBody {
     }
 }
 
-fn check_attrs(cx: &LateContext<'_>, name: Symbol, attrs: &[Attribute]) {
-    for attr in attrs {
-        if !attr.has_name(sym::inline) {
-            continue;
-        }
-
+fn check_attrs(cx: &LateContext<'_>, name: Symbol, attrs: &ItemAttributes<'_>) {
+    for attr in attrs.with_name(sym::inline) {
         span_lint_and_then(
             cx,
             INLINE_FN_WITHOUT_BODY,

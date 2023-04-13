@@ -285,10 +285,10 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
                     return;
                 }
                 let attrs = cx.tcx.hir().attrs(hir_id);
-                for a in attrs {
+                for (name, a) in attrs.iter() {
                     if let Some(meta_items) = a.meta_item_list() {
-                        if a.has_name(sym::proc_macro_derive)
-                            || (a.has_name(sym::inline) && attr::list_contains_name(&meta_items, sym::always))
+                        if name == sym::proc_macro_derive
+                            || (name == sym::inline && attr::list_contains_name(&meta_items, sym::always))
                         {
                             return;
                         }

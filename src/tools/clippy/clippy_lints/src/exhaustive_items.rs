@@ -75,7 +75,7 @@ impl LateLintPass<'_> for ExhaustiveItems {
             if let ItemKind::Enum(..) | ItemKind::Struct(..) = item.kind;
             if cx.effective_visibilities.is_exported(item.owner_id.def_id);
             let attrs = cx.tcx.hir().attrs(item.hir_id());
-            if !attrs.iter().any(|a| a.has_name(sym::non_exhaustive));
+            if !attrs.contains(sym::non_exhaustive);
             then {
                 let (lint, msg) = if let ItemKind::Struct(ref v, ..) = item.kind {
                     if v.fields().iter().any(|f| {

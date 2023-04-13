@@ -4,6 +4,7 @@ use clippy_utils::macros::{is_panic, root_macro_call_first_node};
 use clippy_utils::source::{first_line_of_span, snippet_with_applicability};
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use clippy_utils::{is_entrypoint_fn, method_chain_args, return_ty};
+use hir::ItemAttributes;
 use if_chain::if_chain;
 use itertools::Itertools;
 use pulldown_cmark::Event::{
@@ -11,7 +12,7 @@ use pulldown_cmark::Event::{
 };
 use pulldown_cmark::Tag::{CodeBlock, Heading, Item, Link, Paragraph};
 use pulldown_cmark::{BrokenLink, CodeBlockKind, CowStr, Options};
-use rustc_ast::ast::{Async, AttrKind, Attribute, Fn, FnRetTy, ItemKind};
+use rustc_ast::ast::{Async, AttrKind, Fn, FnRetTy, ItemKind};
 use rustc_ast::token::CommentKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
@@ -501,7 +502,7 @@ struct DocHeaders {
     panics: bool,
 }
 
-fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[Attribute]) -> Option<DocHeaders> {
+fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &ItemAttributes<'_>) -> Option<DocHeaders> {
     /// We don't want the parser to choke on intra doc links. Since we don't
     /// actually care about rendering them, just pretend that all broken links are
     /// point to a fake address.
@@ -513,7 +514,7 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
     let mut doc = String::new();
     let mut spans = vec![];
 
-    for attr in attrs {
+    for attr in attrs.values() {
         if let AttrKind::DocComment(comment_kind, comment) = attr.kind {
             let (comment, current_spans) = strip_doc_comment_decoration(comment.as_str(), comment_kind, attr.span);
             spans.extend_from_slice(&current_spans);

@@ -30,7 +30,7 @@ pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
         if let Some(attr) = attr {
             check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, attr, sig);
-        } else if is_public && !is_proc_macro(attrs) && !attrs.iter().any(|a| a.has_name(sym::no_mangle)) {
+        } else if is_public && !is_proc_macro(attrs) && !attrs.contains(sym::no_mangle) {
             check_must_use_candidate(
                 cx,
                 sig.decl,

@@ -6,9 +6,8 @@ use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{get_async_fn_body, is_async_fn, LimitStack};
 use core::ops::ControlFlow;
-use rustc_ast::ast::Attribute;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, Expr, ExprKind, FnDecl};
+use rustc_hir::{Body, Expr, ExprKind, FnDecl, ItemAttributes};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::def_id::LocalDefId;
@@ -159,10 +158,10 @@ impl<'tcx> LateLintPass<'tcx> for CognitiveComplexity {
         }
     }
 
-    fn enter_lint_attrs(&mut self, cx: &LateContext<'tcx>, attrs: &'tcx [Attribute]) {
+    fn enter_lint_attrs(&mut self, cx: &LateContext<'tcx>, attrs: &'tcx ItemAttributes<'tcx>) {
         self.limit.push_attrs(cx.sess(), attrs, "cognitive_complexity");
     }
-    fn exit_lint_attrs(&mut self, cx: &LateContext<'tcx>, attrs: &'tcx [Attribute]) {
+    fn exit_lint_attrs(&mut self, cx: &LateContext<'tcx>, attrs: &'tcx ItemAttributes<'tcx>) {
         self.limit.pop_attrs(cx.sess(), attrs, "cognitive_complexity");
     }
 }

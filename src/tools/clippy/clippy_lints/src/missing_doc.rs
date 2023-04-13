@@ -9,7 +9,7 @@ use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_from_proc_macro;
 use if_chain::if_chain;
-use rustc_ast::ast::{self, MetaItem, MetaItemKind};
+use rustc_ast::ast::{MetaItem, MetaItemKind};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -81,7 +81,7 @@ impl MissingDoc {
         &self,
         cx: &LateContext<'_>,
         def_id: LocalDefId,
-        attrs: &[ast::Attribute],
+        attrs: &hir::ItemAttributes<'_>,
         sp: Span,
         article: &'static str,
         desc: &'static str,
@@ -111,7 +111,7 @@ impl MissingDoc {
         }
 
         let has_doc = attrs
-            .iter()
+            .values()
             .any(|a| a.doc_str().is_some() || Self::has_include(a.meta()));
 
         if !has_doc {
@@ -128,12 +128,12 @@ impl MissingDoc {
 impl_lint_pass!(MissingDoc => [MISSING_DOCS_IN_PRIVATE_ITEMS]);
 
 impl<'tcx> LateLintPass<'tcx> for MissingDoc {
-    fn enter_lint_attrs(&mut self, _: &LateContext<'tcx>, attrs: &'tcx [ast::Attribute]) {
+    fn enter_lint_attrs(&mut self, _: &LateContext<'tcx>, attrs: &'tcx hir::ItemAttributes<'tcx>) {
         let doc_hidden = self.doc_hidden() || is_doc_hidden(attrs);
         self.doc_hidden_stack.push(doc_hidden);
     }
 
-    fn exit_lint_attrs(&mut self, _: &LateContext<'tcx>, _: &'tcx [ast::Attribute]) {
+    fn exit_lint_attrs(&mut self, _: &LateContext<'tcx>, _: &'tcx hir::ItemAttributes<'tcx>) {
         self.doc_hidden_stack.pop().expect("empty doc_hidden_stack");
     }
 

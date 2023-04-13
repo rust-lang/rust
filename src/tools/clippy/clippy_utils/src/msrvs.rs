@@ -1,6 +1,6 @@
 use std::sync::OnceLock;
 
-use rustc_ast::Attribute;
+use rustc_hir as hir;
 use rustc_semver::RustcVersion;
 use rustc_session::Session;
 use rustc_span::Span;
@@ -118,7 +118,7 @@ impl Msrv {
         self.current().map_or(true, |version| version.meets(required))
     }
 
-    fn parse_attr(sess: &Session, attrs: &[Attribute]) -> Option<RustcVersion> {
+    fn parse_attr(sess: &Session, attrs: &hir::ItemAttributes<'_>) -> Option<RustcVersion> {
         if let Some(msrv_attr) = get_unique_attr(sess, attrs, "msrv") {
             if let Some(msrv) = msrv_attr.value_str() {
                 return parse_msrv(&msrv.to_string(), Some(sess), Some(msrv_attr.span));
@@ -130,13 +130,13 @@ impl Msrv {
         None
     }
 
-    pub fn enter_lint_attrs(&mut self, sess: &Session, attrs: &[Attribute]) {
+    pub fn enter_lint_attrs(&mut self, sess: &Session, attrs: &hir::ItemAttributes<'_>) {
         if let Some(version) = Self::parse_attr(sess, attrs) {
             self.stack.push(version);
         }
     }
 
-    pub fn exit_lint_attrs(&mut self, sess: &Session, attrs: &[Attribute]) {
+    pub fn exit_lint_attrs(&mut self, sess: &Session, attrs: &hir::ItemAttributes<'_>) {
         if Self::parse_attr(sess, attrs).is_some() {
             self.stack.pop();
         }

@@ -89,7 +89,7 @@ use rustc_hir::{
     self as hir, def, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Closure, Constness, Destination,
     Expr, ExprKind, FnDecl, HirId, Impl, ImplItem, ImplItemKind, ImplItemRef, IsAsync, Item, ItemKind, LangItem, Local,
     MatchSource, Mutability, Node, OwnerId, Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind,
-    TraitItem, TraitItemKind, TraitItemRef, TraitRef, TyKind, UnOp,
+    TraitItem, TraitItemKind, TraitItemRef, TraitRef, TyKind, UnOp, ItemAttributes,
 };
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::{LateContext, Level, Lint, LintContext};
@@ -122,13 +122,24 @@ use rustc_middle::hir::nested_filter;
 
 #[macro_export]
 macro_rules! extract_msrv_attr {
-    ($context:ident) => {
-        fn enter_lint_attrs(&mut self, cx: &rustc_lint::$context<'_>, attrs: &[rustc_ast::ast::Attribute]) {
+    (EarlyContext) => {
+        fn enter_lint_attrs(&mut self, cx: &rustc_lint::EarlyContext<'_>, attrs: &[rustc_ast::ast::Attribute]) {
+            let sess = rustc_lint::LintContext::sess(cx);
+            self.msrv.enter_lint_attrs(sess, &attrs.into_iter().collect());
+        }
+
+        fn exit_lint_attrs(&mut self, cx: &rustc_lint::EarlyContext<'_>, attrs: &[rustc_ast::ast::Attribute]) {
+            let sess = rustc_lint::LintContext::sess(cx);
+            self.msrv.exit_lint_attrs(sess, &attrs.into_iter().collect());
+        }
+    };
+    (LateContext) => {
+        fn enter_lint_attrs(&mut self, cx: &rustc_lint::LateContext<'_>, attrs: &rustc_hir::ItemAttributes<'_>) {
             let sess = rustc_lint::LintContext::sess(cx);
             self.msrv.enter_lint_attrs(sess, attrs);
         }
 
-        fn exit_lint_attrs(&mut self, cx: &rustc_lint::$context<'_>, attrs: &[rustc_ast::ast::Attribute]) {
+        fn exit_lint_attrs(&mut self, cx: &rustc_lint::LateContext<'_>, attrs: &rustc_hir::ItemAttributes<'_>) {
             let sess = rustc_lint::LintContext::sess(cx);
             self.msrv.exit_lint_attrs(sess, attrs);
         }
@@ -1828,8 +1839,8 @@ pub fn clip(tcx: TyCtxt<'_>, u: u128, ity: rustc_ty::UintTy) -> u128 {
     (u << amt) >> amt
 }
 
-pub fn has_attr(attrs: &[ast::Attribute], symbol: Symbol) -> bool {
-    attrs.iter().any(|attr| attr.has_name(symbol))
+pub fn has_attr(attrs: &ItemAttributes<'_>, symbol: Symbol) -> bool {
+    attrs.contains(symbol)
 }
 
 pub fn has_repr_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
@@ -2112,23 +2123,11 @@ pub fn std_or_core(cx: &LateContext<'_>) -> Option<&'static str> {
 }
 
 pub fn is_no_std_crate(cx: &LateContext<'_>) -> bool {
-    cx.tcx.hir().attrs(hir::CRATE_HIR_ID).iter().any(|attr| {
-        if let ast::AttrKind::Normal(ref normal) = attr.kind {
-            normal.item.path == sym::no_std
-        } else {
-            false
-        }
-    })
+    cx.tcx.hir().attrs(hir::CRATE_HIR_ID).contains(sym::no_std)
 }
 
 pub fn is_no_core_crate(cx: &LateContext<'_>) -> bool {
-    cx.tcx.hir().attrs(hir::CRATE_HIR_ID).iter().any(|attr| {
-        if let ast::AttrKind::Normal(ref normal) = attr.kind {
-            normal.item.path == sym::no_core
-        } else {
-            false
-        }
-    })
+    cx.tcx.hir().attrs(hir::CRATE_HIR_ID).contains(sym::no_core)
 }
 
 /// Check if parent of a hir node is a trait implementation block.
@@ -2391,8 +2390,7 @@ fn with_test_item_names(tcx: TyCtxt<'_>, module: LocalDefId, f: impl Fn(&[Symbol
                             let has_test_marker = tcx
                                 .hir()
                                 .attrs(item.hir_id())
-                                .iter()
-                                .any(|a| a.has_name(sym::rustc_test_marker));
+                                .contains(sym::rustc_test_marker);
                             if has_test_marker {
                                 names.push(item.ident.name);
                             }
@@ -2445,7 +2443,7 @@ pub fn is_in_cfg_test(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
     }
     tcx.hir()
         .parent_iter(id)
-        .flat_map(|(parent_id, _)| tcx.hir().attrs(parent_id))
+        .flat_map(|(parent_id, _)| tcx.hir().attrs(parent_id).values())
         .any(is_cfg_test)
 }
 
