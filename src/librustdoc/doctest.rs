@@ -1,3 +1,4 @@
+use hir::ItemAttributes;
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
@@ -213,14 +214,13 @@ pub(crate) fn run_tests(
 }
 
 // Look for `#![doc(test(no_crate_inject))]`, used by crates in the std facade.
-fn scrape_test_config(attrs: &[ast::Attribute]) -> GlobalTestOptions {
+fn scrape_test_config(attrs: &ItemAttributes<'_>) -> GlobalTestOptions {
     use rustc_ast_pretty::pprust;
 
     let mut opts = GlobalTestOptions { no_crate_inject: false, attrs: Vec::new() };
 
     let test_attrs: Vec<_> = attrs
-        .iter()
-        .filter(|a| a.has_name(sym::doc))
+        .with_name(sym::doc)
         .flat_map(|a| a.meta_item_list().unwrap_or_default())
         .filter(|a| a.has_name(sym::test))
         .collect();
@@ -1237,11 +1237,11 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
 
         // The collapse-docs pass won't combine sugared/raw doc attributes, or included files with
         // anything else, this will combine them for us.
-        let attrs = Attributes::from_ast(ast_attrs);
+        let attrs = Attributes::from_hir(ast_attrs);
         if let Some(doc) = attrs.collapsed_doc_value() {
             // Use the outermost invocation, so that doctest names come from where the docs were written.
             let span = ast_attrs
-                .iter()
+                .values()
                 .find(|attr| attr.doc_str().is_some())
                 .map(|attr| attr.span.ctxt().outer_expn().expansion_cause().unwrap_or(attr.span))
                 .unwrap_or(DUMMY_SP);

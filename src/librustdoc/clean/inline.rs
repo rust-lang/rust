@@ -7,10 +7,10 @@ use thin_vec::{thin_vec, ThinVec};
 
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdSet, LocalDefId};
 use rustc_hir::Mutability;
+use rustc_hir::{self as hir, ItemAttributes};
 use rustc_metadata::creader::{CStore, LoadedMacro};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::hygiene::MacroKind;
@@ -40,7 +40,7 @@ pub(crate) fn try_inline(
     cx: &mut DocContext<'_>,
     res: Res,
     name: Symbol,
-    attrs: Option<(&[ast::Attribute], Option<DefId>)>,
+    attrs: Option<(&ItemAttributes<'_>, Option<DefId>)>,
     visited: &mut DefIdSet,
 ) -> Option<Vec<clean::Item>> {
     let did = res.opt_def_id()?;
@@ -52,7 +52,7 @@ pub(crate) fn try_inline(
     debug!("attrs={:?}", attrs);
 
     let attrs_without_docs = attrs.map(|(attrs, def_id)| {
-        (attrs.into_iter().filter(|a| a.doc_str().is_none()).cloned().collect::<Vec<_>>(), def_id)
+        (attrs.values().filter(|a| a.doc_str().is_none()).cloned().collect::<Vec<_>>(), def_id)
     });
     let attrs_without_docs =
         attrs_without_docs.as_ref().map(|(attrs, def_id)| (&attrs[..], *def_id));
@@ -124,7 +124,11 @@ pub(crate) fn try_inline(
         _ => return None,
     };
 
-    let (attrs, cfg) = merge_attrs(cx, load_attrs(cx, did), attrs);
+    let (attrs, cfg) = merge_attrs(
+        cx,
+        load_attrs(cx, did).values(),
+        attrs.map(|(attrs, did)| (attrs.values(), did)),
+    );
     cx.inlined.insert(did.into());
     let mut item =
         clean::Item::from_def_id_and_attrs_and_parts(did, Some(name), kind, Box::new(attrs), cfg);
@@ -173,7 +177,7 @@ pub(crate) fn try_inline_glob(
     }
 }
 
-pub(crate) fn load_attrs<'hir>(cx: &DocContext<'hir>, did: DefId) -> &'hir [ast::Attribute] {
+pub(crate) fn load_attrs<'hir>(cx: &DocContext<'hir>, did: DefId) -> &'hir ItemAttributes<'hir> {
     cx.tcx.get_attrs_unchecked(did)
 }
 
@@ -318,21 +322,23 @@ pub(crate) fn build_impls(
     }
 }
 
-pub(crate) fn merge_attrs(
+pub(crate) fn merge_attrs<'a>(
     cx: &mut DocContext<'_>,
-    old_attrs: &[ast::Attribute],
-    new_attrs: Option<(&[ast::Attribute], Option<DefId>)>,
+    old_attrs: impl Iterator<Item = &'a ast::Attribute>,
+    new_attrs: Option<(impl Iterator<Item = &'a ast::Attribute>, Option<DefId>)>,
 ) -> (clean::Attributes, Option<Arc<clean::cfg::Cfg>>) {
     // NOTE: If we have additional attributes (from a re-export),
     // always insert them first. This ensure that re-export
     // doc comments show up before the original doc comments
     // when we render them.
+    let old_attrs = old_attrs.cloned().collect::<Vec<_>>();
     if let Some((inner, item_id)) = new_attrs {
-        let mut both = inner.to_vec();
-        both.extend_from_slice(old_attrs);
+        let inner = inner.cloned().collect::<Vec<_>>();
+        let mut both = inner.clone();
+        both.extend_from_slice(&old_attrs);
         (
             if let Some(item_id) = item_id {
-                Attributes::from_ast_with_additional(old_attrs, (inner, item_id))
+                Attributes::from_ast_with_additional(&old_attrs, (&inner, item_id))
             } else {
                 Attributes::from_ast(&both)
             },
@@ -509,7 +515,11 @@ pub(crate) fn build_impl(
         record_extern_trait(cx, did);
     }
 
-    let (merged_attrs, cfg) = merge_attrs(cx, load_attrs(cx, did), attrs);
+    let (merged_attrs, cfg) = merge_attrs(
+        cx,
+        load_attrs(cx, did).values(),
+        attrs.map(|(attrs, did)| (attrs.iter(), did)),
+    );
     trace!("merged_attrs={:?}", merged_attrs);
 
     trace!(

@@ -10,6 +10,7 @@ mod simplify;
 pub(crate) mod types;
 pub(crate) mod utils;
 
+use hir::ItemAttributes;
 use rustc_ast as ast;
 use rustc_ast::token::{Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
@@ -949,16 +950,11 @@ fn clean_fn_or_proc_macro<'tcx>(
     cx: &mut DocContext<'tcx>,
 ) -> ItemKind {
     let attrs = cx.tcx.hir().attrs(item.hir_id());
-    let macro_kind = attrs.iter().find_map(|a| {
-        if a.has_name(sym::proc_macro) {
-            Some(MacroKind::Bang)
-        } else if a.has_name(sym::proc_macro_derive) {
-            Some(MacroKind::Derive)
-        } else if a.has_name(sym::proc_macro_attribute) {
-            Some(MacroKind::Attr)
-        } else {
-            None
-        }
+    let macro_kind = attrs.iter().find_map(|(name, _)| match name {
+        sym::proc_macro => Some(MacroKind::Bang),
+        sym::proc_macro_derive => Some(MacroKind::Derive),
+        sym::proc_macro_attribute => Some(MacroKind::Attr),
+        _ => None,
     });
     match macro_kind {
         Some(kind) => clean_proc_macro(item, name, kind, cx),
@@ -973,11 +969,9 @@ fn clean_fn_or_proc_macro<'tcx>(
 /// This is needed to make it more "readable" when documenting functions using
 /// `rustc_legacy_const_generics`. More information in
 /// <https://github.com/rust-lang/rust/issues/83167>.
-fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[ast::Attribute]) {
-    for meta_item_list in attrs
-        .iter()
-        .filter(|a| a.has_name(sym::rustc_legacy_const_generics))
-        .filter_map(|a| a.meta_item_list())
+fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &ItemAttributes<'_>) {
+    for meta_item_list in
+        attrs.with_name(sym::rustc_legacy_const_generics).filter_map(|a| a.meta_item_list())
     {
         for (pos, literal) in meta_item_list.iter().filter_map(|meta| meta.lit()).enumerate() {
             match literal.kind {
@@ -2095,7 +2089,7 @@ fn get_all_import_attributes<'hir>(
         let import_attrs = inline::load_attrs(cx, def_id);
         if first {
             // This is the "original" reexport so we get all its attributes without filtering them.
-            attrs = import_attrs.iter().map(|attr| (Cow::Borrowed(attr), Some(def_id))).collect();
+            attrs = import_attrs.values().map(|attr| (Cow::Borrowed(attr), Some(def_id))).collect();
             first = false;
         } else {
             add_without_unwanted_attributes(&mut attrs, import_attrs, is_inline, Some(def_id));
@@ -2149,18 +2143,18 @@ fn filter_tokens_from_list(
 /// * `doc(hidden)`
 fn add_without_unwanted_attributes<'hir>(
     attrs: &mut Vec<(Cow<'hir, ast::Attribute>, Option<DefId>)>,
-    new_attrs: &'hir [ast::Attribute],
+    new_attrs: &'hir hir::ItemAttributes<'hir>,
     is_inline: bool,
     import_parent: Option<DefId>,
 ) {
     // If it's not `#[doc(inline)]`, we don't want all attributes, otherwise we keep everything.
     if !is_inline {
-        for attr in new_attrs {
+        for attr in new_attrs.values() {
             attrs.push((Cow::Borrowed(attr), import_parent));
         }
         return;
     }
-    for attr in new_attrs {
+    for attr in new_attrs.values() {
         if matches!(attr.kind, ast::AttrKind::DocComment(..)) {
             attrs.push((Cow::Borrowed(attr), import_parent));
             continue;
@@ -2299,7 +2293,7 @@ fn clean_maybe_renamed_item<'tcx>(
             attrs
         } else {
             // We only keep the item's attributes.
-            target_attrs.iter().map(|attr| (Cow::Borrowed(attr), None)).collect()
+            target_attrs.values().map(|attr| (Cow::Borrowed(attr), None)).collect()
         };
 
         let cfg = attrs.cfg(cx.tcx, &cx.cache.hidden_cfg);
@@ -2383,12 +2377,9 @@ fn clean_extern_crate<'tcx>(
     let attrs = cx.tcx.hir().attrs(krate.hir_id());
     let ty_vis = cx.tcx.visibility(krate.owner_id);
     let please_inline = ty_vis.is_public()
-        && attrs.iter().any(|a| {
-            a.has_name(sym::doc)
-                && match a.meta_item_list() {
-                    Some(l) => attr::list_contains_name(&l, sym::inline),
-                    None => false,
-                }
+        && attrs.with_name(sym::doc).any(|a| match a.meta_item_list() {
+            Some(l) => attr::list_contains_name(&l, sym::inline),
+            None => false,
         })
         && !cx.output_format.is_json();
 
@@ -2408,7 +2399,7 @@ fn clean_extern_crate<'tcx>(
     // FIXME: using `from_def_id_and_kind` breaks `rustdoc/masked` for some reason
     vec![Item {
         name: Some(name),
-        attrs: Box::new(Attributes::from_ast(attrs)),
+        attrs: Box::new(Attributes::from_hir(attrs)),
         item_id: crate_def_id.into(),
         kind: Box::new(ExternCrateItem { src: orig_name }),
         cfg: attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
@@ -2489,15 +2480,12 @@ fn clean_use_statement_inner<'tcx>(
         || !(visibility.is_public()
             || (cx.render_options.document_private && is_visible_from_parent_mod))
         || pub_underscore
-        || attrs.iter().any(|a| {
-            a.has_name(sym::doc)
-                && match a.meta_item_list() {
-                    Some(l) => {
-                        attr::list_contains_name(&l, sym::no_inline)
-                            || attr::list_contains_name(&l, sym::hidden)
-                    }
-                    None => false,
-                }
+        || attrs.with_name(sym::doc).any(|a| match a.meta_item_list() {
+            Some(l) => {
+                attr::list_contains_name(&l, sym::no_inline)
+                    || attr::list_contains_name(&l, sym::hidden)
+            }
+            None => false,
         });
 
     // Also check whether imports were asked to be inlined, in case we're trying to re-export a

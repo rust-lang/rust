@@ -53,12 +53,15 @@ impl<'a, 'tcx> CfgPropagator<'a, 'tcx> {
         let mut attrs = Vec::new();
         let mut next_def_id = def_id;
         while let Some(parent_def_id) = self.cx.tcx.opt_local_parent(next_def_id) {
-            attrs.extend_from_slice(load_attrs(self.cx, parent_def_id.to_def_id()));
+            attrs.extend(load_attrs(self.cx, parent_def_id.to_def_id()).values());
             next_def_id = parent_def_id;
         }
 
-        let (_, cfg) =
-            merge_attrs(self.cx, item.attrs.other_attrs.as_slice(), Some((&attrs, None)));
+        let (_, cfg) = merge_attrs(
+            self.cx,
+            item.attrs.other_attrs.iter(),
+            Some((attrs.iter().copied(), None)),
+        );
         item.cfg = cfg;
     }
 }

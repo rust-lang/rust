@@ -372,7 +372,7 @@ impl Item {
     pub(crate) fn inner_docs(&self, tcx: TyCtxt<'_>) -> bool {
         self.item_id
             .as_def_id()
-            .map(|did| inner_docs(tcx.get_attrs_unchecked(did)))
+            .map(|did| inner_docs(tcx.get_attrs_unchecked(did).values()))
             .unwrap_or(false)
     }
 
@@ -412,14 +412,14 @@ impl Item {
         kind: ItemKind,
         cx: &mut DocContext<'_>,
     ) -> Item {
-        let ast_attrs = cx.tcx.get_attrs_unchecked(def_id);
+        let hir_attrs = cx.tcx.get_attrs_unchecked(def_id);
 
         Self::from_def_id_and_attrs_and_parts(
             def_id,
             name,
             kind,
-            Box::new(Attributes::from_ast(ast_attrs)),
-            ast_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
+            Box::new(Attributes::from_hir(hir_attrs)),
+            hir_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
         )
     }
 
@@ -937,6 +937,20 @@ pub(crate) trait AttributesExt {
         if cfg == Cfg::True { None } else { Some(Arc::new(cfg)) }
     }
 }
+impl<'tcx> AttributesExt for hir::ItemAttributes<'tcx> {
+    type AttributeIterator<'a> = impl Iterator<Item = ast::NestedMetaItem> + 'a
+    where 'tcx: 'a;
+    type Attributes<'a> = impl Iterator<Item = &'a ast::Attribute> + 'a
+    where 'tcx: 'a;
+
+    fn lists<'a>(&'a self, name: Symbol) -> Self::AttributeIterator<'a> {
+        self.with_name(name).filter_map(ast::Attribute::meta_item_list).flatten()
+    }
+
+    fn iter<'a>(&'a self) -> Self::Attributes<'a> {
+        self.values()
+    }
+}
 
 impl AttributesExt for [ast::Attribute] {
     type AttributeIterator<'a> = impl Iterator<Item = ast::NestedMetaItem> + 'a;
@@ -1070,6 +1084,10 @@ impl Attributes {
 
     pub(crate) fn from_ast(attrs: &[ast::Attribute]) -> Attributes {
         Attributes::from_ast_iter(attrs.iter().map(|attr| (attr, None)), false)
+    }
+
+    pub(crate) fn from_hir(attrs: &hir::ItemAttributes<'_>) -> Attributes {
+        Attributes::from_ast_iter(attrs.values().map(|attr| (attr, None)), false)
     }
 
     pub(crate) fn from_ast_with_additional(

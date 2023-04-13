@@ -359,7 +359,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
             clean::ImportItem(ref import) => {
                 let stab_tags = if let Some(import_def_id) = import.source.did {
                     let ast_attrs = cx.tcx().get_attrs_unchecked(import_def_id);
-                    let import_attrs = Box::new(clean::Attributes::from_ast(ast_attrs));
+                    let import_attrs = Box::new(clean::Attributes::from_hir(ast_attrs));
 
                     // Just need an item with the correct def_id and attrs
                     let import_item = clean::Item {
