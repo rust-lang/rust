@@ -191,7 +191,7 @@ function initSearch(rawSearchIndex) {
      */
     let searchIndex;
     let currentResults;
-    const ALIASES = Object.create(null);
+    const ALIASES = new Map();
 
     function isWhitespace(c) {
         return " \t\n\r".indexOf(c) !== -1;
@@ -1424,22 +1424,22 @@ function initSearch(rawSearchIndex) {
             const aliases = [];
             const crateAliases = [];
             if (filterCrates !== null) {
-                if (ALIASES[filterCrates] && ALIASES[filterCrates][lowerQuery]) {
-                    const query_aliases = ALIASES[filterCrates][lowerQuery];
+                if (ALIASES.has(filterCrates) && ALIASES.get(filterCrates).has(lowerQuery)) {
+                    const query_aliases = ALIASES.get(filterCrates).get(lowerQuery);
                     for (const alias of query_aliases) {
                         aliases.push(createAliasFromItem(searchIndex[alias]));
                     }
                 }
             } else {
-                Object.keys(ALIASES).forEach(crate => {
-                    if (ALIASES[crate][lowerQuery]) {
+                for (const [crate, crateAliasesIndex] of ALIASES) {
+                    if (crateAliasesIndex.has(lowerQuery)) {
                         const pushTo = crate === currentCrate ? crateAliases : aliases;
-                        const query_aliases = ALIASES[crate][lowerQuery];
+                        const query_aliases = crateAliasesIndex.get(lowerQuery);
                         for (const alias of query_aliases) {
                             pushTo.push(createAliasFromItem(searchIndex[alias]));
                         }
                     }
-                });
+                }
             }
 
             const sortFunc = (aaa, bbb) => {
@@ -2345,17 +2345,22 @@ function initSearch(rawSearchIndex) {
             }
 
             if (aliases) {
-                ALIASES[crate] = Object.create(null);
+                const currentCrateAliases = new Map();
+                ALIASES.set(crate, currentCrateAliases);
                 for (const alias_name in aliases) {
                     if (!hasOwnPropertyRustdoc(aliases, alias_name)) {
                         continue;
                     }
 
-                    if (!hasOwnPropertyRustdoc(ALIASES[crate], alias_name)) {
-                        ALIASES[crate][alias_name] = [];
+                    let currentNameAliases;
+                    if (currentCrateAliases.has(alias_name)) {
+                        currentNameAliases = currentCrateAliases.get(alias_name);
+                    } else {
+                        currentNameAliases = [];
+                        currentCrateAliases.set(alias_name, currentNameAliases);
                     }
                     for (const local_alias of aliases[alias_name]) {
-                        ALIASES[crate][alias_name].push(local_alias + currentIndex);
+                        currentNameAliases.push(local_alias + currentIndex);
                     }
                 }
             }
