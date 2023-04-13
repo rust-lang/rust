@@ -934,6 +934,20 @@ pub fn make_test_description<R: Read>(
                 }
             };
         }
+        macro_rules! decision {
+            ($e:expr) => {
+                match $e {
+                    IgnoreDecision::Ignore { reason } => {
+                        ignore = true;
+                        // The ignore reason must be a &'static str, so we have to leak memory to
+                        // create it. This is fine, as the header is parsed only at the start of
+                        // compiletest so it won't grow indefinitely.
+                        ignore_message = Some(Box::leak(Box::<str>::from(reason)));
+                    }
+                    IgnoreDecision::Continue => {}
+                }
+            };
+        }
 
         {
             let parsed = parse_cfg_name_directive(config, ln, "ignore");
@@ -975,7 +989,11 @@ pub fn make_test_description<R: Read>(
             };
         }
 
-        reason!(ignore_llvm(config, ln));
+        decision!(ignore_llvm(config, ln));
+        decision!(ignore_cdb(config, ln));
+        decision!(ignore_gdb(config, ln));
+        decision!(ignore_lldb(config, ln));
+
         reason!(
             config.run_clang_based_tests_with.is_none() && config.parse_needs_matching_clang(ln)
         );
@@ -1005,12 +1023,15 @@ pub fn make_test_description<R: Read>(
             config.target == "wasm32-unknown-unknown"
                 && config.parse_name_directive(ln, directives::CHECK_RUN_RESULTS)
         );
-        reason!(config.debugger == Some(Debugger::Cdb) && ignore_cdb(config, ln));
-        reason!(config.debugger == Some(Debugger::Gdb) && ignore_gdb(config, ln));
-        reason!(config.debugger == Some(Debugger::Lldb) && ignore_lldb(config, ln));
         reason!(!has_rust_lld && config.parse_name_directive(ln, "needs-rust-lld"));
         reason!(config.parse_name_directive(ln, "needs-i686-dlltool") && !has_i686_dlltool());
         reason!(config.parse_name_directive(ln, "needs-x86_64-dlltool") && !has_x86_64_dlltool());
+        reason!(
+            config.parse_name_directive(ln, "rust-lldb")
+                && config.debugger == Some(Debugger::Lldb)
+                && !config.lldb_native_rust
+        );
+
         should_fail |= config.parse_name_directive(ln, "should-fail");
     });
 
@@ -1044,22 +1065,34 @@ pub fn make_test_description<R: Read>(
     }
 }
 
-fn ignore_cdb(config: &Config, line: &str) -> bool {
+fn ignore_cdb(config: &Config, line: &str) -> IgnoreDecision {
+    if config.debugger != Some(Debugger::Cdb) {
+        return IgnoreDecision::Continue;
+    }
+
     if let Some(actual_version) = config.cdb_version {
-        if let Some(min_version) = line.strip_prefix("min-cdb-version:").map(str::trim) {
-            let min_version = extract_cdb_version(min_version).unwrap_or_else(|| {
-                panic!("couldn't parse version range: {:?}", min_version);
+        if let Some(rest) = line.strip_prefix("min-cdb-version:").map(str::trim) {
+            let min_version = extract_cdb_version(rest).unwrap_or_else(|| {
+                panic!("couldn't parse version range: {:?}", rest);
             });
 
             // Ignore if actual version is smaller than the minimum
             // required version
-            return actual_version < min_version;
+            if actual_version < min_version {
+                return IgnoreDecision::Ignore {
+                    reason: format!("ignored when the CDB version is lower than {rest}"),
+                };
+            }
         }
     }
-    false
+    IgnoreDecision::Continue
 }
 
-fn ignore_gdb(config: &Config, line: &str) -> bool {
+fn ignore_gdb(config: &Config, line: &str) -> IgnoreDecision {
+    if config.debugger != Some(Debugger::Gdb) {
+        return IgnoreDecision::Continue;
+    }
+
     if let Some(actual_version) = config.gdb_version {
         if let Some(rest) = line.strip_prefix("min-gdb-version:").map(str::trim) {
             let (start_ver, end_ver) = extract_version_range(rest, extract_gdb_version)
@@ -1072,7 +1105,11 @@ fn ignore_gdb(config: &Config, line: &str) -> bool {
             }
             // Ignore if actual version is smaller than the minimum
             // required version
-            return actual_version < start_ver;
+            if actual_version < start_ver {
+                return IgnoreDecision::Ignore {
+                    reason: format!("ignored when the GDB version is lower than {rest}"),
+                };
+            }
         } else if let Some(rest) = line.strip_prefix("ignore-gdb-version:").map(str::trim) {
             let (min_version, max_version) = extract_version_range(rest, extract_gdb_version)
                 .unwrap_or_else(|| {
@@ -1083,32 +1120,47 @@ fn ignore_gdb(config: &Config, line: &str) -> bool {
                 panic!("Malformed GDB version range: max < min")
             }
 
-            return actual_version >= min_version && actual_version <= max_version;
+            if actual_version >= min_version && actual_version <= max_version {
+                if min_version == max_version {
+                    return IgnoreDecision::Ignore {
+                        reason: format!("ignored when the GDB version is {rest}"),
+                    };
+                } else {
+                    return IgnoreDecision::Ignore {
+                        reason: format!("ignored when the GDB version is between {rest}"),
+                    };
+                }
+            }
         }
     }
-    false
+    IgnoreDecision::Continue
 }
 
-fn ignore_lldb(config: &Config, line: &str) -> bool {
+fn ignore_lldb(config: &Config, line: &str) -> IgnoreDecision {
+    if config.debugger != Some(Debugger::Lldb) {
+        return IgnoreDecision::Continue;
+    }
+
     if let Some(actual_version) = config.lldb_version {
-        if let Some(min_version) = line.strip_prefix("min-lldb-version:").map(str::trim) {
-            let min_version = min_version.parse().unwrap_or_else(|e| {
-                panic!("Unexpected format of LLDB version string: {}\n{:?}", min_version, e);
+        if let Some(rest) = line.strip_prefix("min-lldb-version:").map(str::trim) {
+            let min_version = rest.parse().unwrap_or_else(|e| {
+                panic!("Unexpected format of LLDB version string: {}\n{:?}", rest, e);
             });
             // Ignore if actual version is smaller the minimum required
             // version
-            actual_version < min_version
-        } else {
-            line.starts_with("rust-lldb") && !config.lldb_native_rust
+            if actual_version < min_version {
+                return IgnoreDecision::Ignore {
+                    reason: format!("ignored when the LLDB version is {rest}"),
+                };
+            }
         }
-    } else {
-        false
     }
+    IgnoreDecision::Continue
 }
 
-fn ignore_llvm(config: &Config, line: &str) -> bool {
+fn ignore_llvm(config: &Config, line: &str) -> IgnoreDecision {
     if config.system_llvm && line.starts_with("no-system-llvm") {
-        return true;
+        return IgnoreDecision::Ignore { reason: "ignored when the system LLVM is used".into() };
     }
     if let Some(needed_components) =
         config.parse_name_value_directive(line, "needs-llvm-components")
@@ -1121,7 +1173,9 @@ fn ignore_llvm(config: &Config, line: &str) -> bool {
             if env::var_os("COMPILETEST_NEEDS_ALL_LLVM_COMPONENTS").is_some() {
                 panic!("missing LLVM component: {}", missing_component);
             }
-            return true;
+            return IgnoreDecision::Ignore {
+                reason: format!("ignored when the {missing_component} LLVM component is missing"),
+            };
         }
     }
     if let Some(actual_version) = config.llvm_version {
@@ -1129,12 +1183,20 @@ fn ignore_llvm(config: &Config, line: &str) -> bool {
             let min_version = extract_llvm_version(rest).unwrap();
             // Ignore if actual version is smaller the minimum required
             // version
-            actual_version < min_version
+            if actual_version < min_version {
+                return IgnoreDecision::Ignore {
+                    reason: format!("ignored when the LLVM version is older than {rest}"),
+                };
+            }
         } else if let Some(rest) = line.strip_prefix("min-system-llvm-version:").map(str::trim) {
             let min_version = extract_llvm_version(rest).unwrap();
             // Ignore if using system LLVM and actual version
             // is smaller the minimum required version
-            config.system_llvm && actual_version < min_version
+            if config.system_llvm && actual_version < min_version {
+                return IgnoreDecision::Ignore {
+                    reason: format!("ignored when the system LLVM version is older than {rest}"),
+                };
+            }
         } else if let Some(rest) = line.strip_prefix("ignore-llvm-version:").map(str::trim) {
             // Syntax is: "ignore-llvm-version: <version1> [- <version2>]"
             let (v_min, v_max) =
@@ -1145,11 +1207,23 @@ fn ignore_llvm(config: &Config, line: &str) -> bool {
                 panic!("Malformed LLVM version range: max < min")
             }
             // Ignore if version lies inside of range.
-            actual_version >= v_min && actual_version <= v_max
-        } else {
-            false
+            if actual_version >= v_min && actual_version <= v_max {
+                if v_min == v_max {
+                    return IgnoreDecision::Ignore {
+                        reason: format!("ignored when the LLVM version is {rest}"),
+                    };
+                } else {
+                    return IgnoreDecision::Ignore {
+                        reason: format!("ignored when the LLVM version is between {rest}"),
+                    };
+                }
+            }
         }
-    } else {
-        false
     }
+    IgnoreDecision::Continue
+}
+
+enum IgnoreDecision {
+    Ignore { reason: String },
+    Continue,
 }
