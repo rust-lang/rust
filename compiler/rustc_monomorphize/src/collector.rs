@@ -173,6 +173,7 @@
 //! this is not implemented however: a mono item will be produced
 //! regardless of whether it is actually needed or not.
 
+use hir::{Impl, ItemKind, Node};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{par_for_each_in, MTLock, MTLockRef};
 use rustc_hir as hir;
@@ -198,6 +199,7 @@ use rustc_session::config::EntryFnType;
 use rustc_session::lint::builtin::LARGE_ASSIGNMENTS;
 use rustc_session::Limit;
 use rustc_span::source_map::{dummy_spanned, respan, Span, Spanned, DUMMY_SP};
+use rustc_span::sym;
 use rustc_target::abi::Size;
 use std::ops::Range;
 use std::path::PathBuf;
@@ -1260,9 +1262,33 @@ impl<'v> RootCollector<'_, 'v> {
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn process_impl_item(&mut self, id: hir::ImplItemId) {
         if matches!(self.tcx.def_kind(id.owner_id), DefKind::AssocFn) {
             self.push_if_root(id.owner_id.def_id);
+
+            // generate drop glue along with the Drop impl to make it shared
+            if self.tcx.sess.opts.share_generics()
+                && self.tcx.item_name(id.owner_id.to_def_id()) == sym::drop
+            {
+                let hir_id = self.tcx.hir().local_def_id_to_hir_id(id.owner_id.def_id);
+                let parent_impl = self.tcx.hir().get_parent_item(hir_id);
+                if let Node::Item(item) = self.tcx.hir().get_by_def_id(parent_impl.def_id) {
+                    if let ItemKind::Impl(Impl { of_trait, self_ty, .. }) = &item.kind {
+                        if self.tcx.lang_items().drop_trait()
+                            == of_trait.as_ref().and_then(|t| t.trait_def_id())
+                        {
+                            let def_id = self_ty.hir_id.owner.to_def_id();
+                            if self.tcx.generics_of(self_ty.hir_id.owner).count() == 0
+                                && def_id.is_local()
+                            {
+                                let ty = self.tcx.type_of(def_id).no_bound_vars().unwrap();
+                                visit_drop_use(self.tcx, ty, true, DUMMY_SP, self.output);
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
