@@ -700,6 +700,13 @@ impl<'tcx> DeadVisitor<'tcx> {
             .collect();
 
         let descr = tcx.def_descr(first_id.to_def_id());
+        // `impl` blocks are "batched" and (unlike other batching) might
+        // contain different kinds of associated items.
+        let descr = if dead_codes.iter().any(|did| tcx.def_descr(did.to_def_id()) != descr) {
+            "associated item"
+        } else {
+            descr
+        };
         let num = dead_codes.len();
         let multiple = num > 6;
         let name_list = names.into();
@@ -842,16 +849,9 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
         if let hir::ItemKind::Impl(impl_item) = tcx.hir().item(item).kind {
             let mut dead_items = Vec::new();
             for item in impl_item.items {
-                match item.kind {
-                    hir::AssocItemKind::Const | hir::AssocItemKind::Type => {
-                        visitor.check_definition(item.id.owner_id.def_id)
-                    }
-                    hir::AssocItemKind::Fn { .. } => {
-                        let did = item.id.owner_id.def_id;
-                        if !visitor.is_live_code(did) {
-                            dead_items.push(did)
-                        }
-                    }
+                let did = item.id.owner_id.def_id;
+                if !visitor.is_live_code(did) {
+                    dead_items.push(did)
                 }
             }
             visitor.warn_multiple_dead_codes(
@@ -860,7 +860,6 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
                 Some(item.owner_id.def_id),
                 false,
             );
-            continue;
         }
 
         if !live_symbols.contains(&item.owner_id.def_id) {
