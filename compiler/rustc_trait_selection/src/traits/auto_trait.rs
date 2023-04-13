@@ -186,7 +186,8 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             panic!("Unable to fulfill trait {:?} for '{:?}': {:?}", trait_did, ty, errors);
         }
 
-        infcx.process_registered_region_obligations(&Default::default(), full_env);
+        let outlives_env = OutlivesEnvironment::new(full_env);
+        infcx.process_registered_region_obligations(&outlives_env);
 
         let region_data =
             infcx.inner.borrow_mut().unwrap_region_constraints().region_constraint_data().clone();
