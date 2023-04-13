@@ -28,7 +28,7 @@ use crate::task::{Context, Poll};
 /// 2. This broken invariant is then later observed.
 ///
 /// Typically in Rust, it is difficult to perform step (2) because catching a
-/// panic involves either spawning a thread (which in turns makes it difficult
+/// panic involves either spawning a thread (which in turn makes it difficult
 /// to later witness broken invariants) or using the `catch_unwind` function in this
 /// module. Additionally, even if an invariant is witnessed, it typically isn't a
 /// problem in Rust because there are no uninitialized values (like in C or C++).

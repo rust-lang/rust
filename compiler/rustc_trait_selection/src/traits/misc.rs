@@ -117,10 +117,6 @@ pub fn type_allowed_to_implement_copy<'tcx>(
                     FxIndexSet::from_iter([self_type]),
                 ),
             );
-            infcx.process_registered_region_obligations(
-                outlives_env.region_bound_pairs(),
-                param_env,
-            );
             let errors = infcx.resolve_regions(&outlives_env);
             if !errors.is_empty() {
                 infringing.push((field, ty, InfringingFieldsReason::Regions(errors)));

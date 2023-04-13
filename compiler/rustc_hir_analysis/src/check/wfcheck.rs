@@ -114,11 +114,9 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
         return;
     }
 
-    let outlives_environment = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
+    let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
 
-    let _ = infcx
-        .err_ctxt()
-        .check_region_obligations_and_report_errors(body_def_id, &outlives_environment);
+    let _ = wfcx.ocx.resolve_regions_and_report_errors(body_def_id, &outlives_env);
 }
 
 fn check_well_formed(tcx: TyCtxt<'_>, def_id: hir::OwnerId) {
@@ -680,12 +678,7 @@ fn resolve_regions_with_wf_tys<'tcx>(
 
     add_constraints(&infcx, region_bound_pairs);
 
-    infcx.process_registered_region_obligations(
-        outlives_environment.region_bound_pairs(),
-        param_env,
-    );
     let errors = infcx.resolve_regions(&outlives_environment);
-
     debug!(?errors, "errors");
 
     // If we were able to prove that the type outlives the region without
