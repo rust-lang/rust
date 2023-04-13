@@ -8,17 +8,17 @@
 
 extern crate core;
 
-use core::panicking::panic_source;
 use core::error;
+use core::panicking::panic_source;
 
 use std::error::Error;
 
-#[derive (Debug)]
+#[derive(Debug)]
 struct MyErr {
     super_source: SourceError,
 }
 
-#[derive (Debug)]
+#[derive(Debug)]
 struct SourceError {}
 
 use std::fmt;
@@ -29,7 +29,7 @@ impl fmt::Display for MyErr {
 }
 
 impl error::Error for MyErr {
-    fn source(&self) -> Option<& (dyn Error + 'static)> {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
         Some(&self.super_source)
     }
 }
@@ -40,12 +40,10 @@ impl fmt::Display for SourceError {
     }
 }
 
-impl error::Error for SourceError {
-
-}
+impl error::Error for SourceError {}
 
 fn main() {
     let source_error = SourceError {};
-    let source = MyErr {super_source: source_error};
+    let source = MyErr { super_source: source_error };
     panic_source(format_args!("here's my panic error message"), &source);
 }
