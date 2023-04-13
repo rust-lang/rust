@@ -16,7 +16,7 @@ LL |       self.sleep();
    |       +++++
 help: consider importing this function
    |
-LL | use std::thread::sleep;
+LL + use std::thread::sleep;
    |
 
 error: aborting due to 2 previous errors

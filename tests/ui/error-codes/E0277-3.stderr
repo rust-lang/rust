@@ -14,7 +14,8 @@ LL | fn foo<T: PartialEq>(_: T) {}
    |           ^^^^^^^^^ required by this bound in `foo`
 help: consider annotating `S` with `#[derive(PartialEq)]`
    |
-LL | #[derive(PartialEq)]
+LL + #[derive(PartialEq)]
+LL | struct S;
    |
 
 error: aborting due to previous error

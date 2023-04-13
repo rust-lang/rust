@@ -13,7 +13,8 @@ LL | enum A {
    | ^^^^^^ must implement `PartialEq<_>`
 help: consider annotating `A` with `#[derive(PartialEq)]`
    |
-LL | #[derive(PartialEq)]
+LL + #[derive(PartialEq)]
+LL | enum A {
    |
 
 error: aborting due to previous error

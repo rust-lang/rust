@@ -7,7 +7,8 @@ LL |     let headers = [Header{value: &[]}; 128];
    = note: the `Copy` trait is required because this value will be copied for each element of the array
 help: consider annotating `Header<'_>` with `#[derive(Copy)]`
    |
-LL | #[derive(Copy)]
+LL + #[derive(Copy)]
+LL | pub struct Header<'a> {
    |
 
 error[E0277]: the trait bound `Header<'_>: Copy` is not satisfied
@@ -19,7 +20,8 @@ LL |     let headers = [Header{value: &[0]}; 128];
    = note: the `Copy` trait is required because this value will be copied for each element of the array
 help: consider annotating `Header<'_>` with `#[derive(Copy)]`
    |
-LL | #[derive(Copy)]
+LL + #[derive(Copy)]
+LL | pub struct Header<'a> {
    |
 
 error: aborting due to 2 previous errors

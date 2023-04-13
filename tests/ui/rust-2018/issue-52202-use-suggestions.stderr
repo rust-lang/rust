@@ -6,13 +6,13 @@ LL |     let _d = Drain {};
    |
 help: consider importing one of these items
    |
-LL | use crate::plumbing::Drain;
+LL + use crate::plumbing::Drain;
    |
-LL | use std::collections::binary_heap::Drain;
+LL + use std::collections::binary_heap::Drain;
    |
-LL | use std::collections::hash_map::Drain;
+LL + use std::collections::hash_map::Drain;
    |
-LL | use std::collections::hash_set::Drain;
+LL + use std::collections::hash_set::Drain;
    |
      and 3 other candidates
 

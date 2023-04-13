@@ -9,7 +9,8 @@ LL |     let _: NotDebug = dbg!(NotDebug);
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider annotating `NotDebug` with `#[derive(Debug)]`
    |
-LL | #[derive(Debug)]
+LL + #[derive(Debug)]
+LL | struct NotDebug;
    |
 
 error: aborting due to previous error

@@ -12,7 +12,7 @@ LL |         fn trait_method(&self) {
    = help: items from traits can only be used if the trait is in scope
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
-LL | use reexported_trait::Trait;
+LL + use reexported_trait::Trait;
    |
 
 error[E0599]: no method named `trait_method_b` found for struct `FooStruct` in the current scope
@@ -29,7 +29,7 @@ LL |         fn trait_method_b(&self) {
    = help: items from traits can only be used if the trait is in scope
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
-LL | use reexported_trait::TraitBRename;
+LL + use reexported_trait::TraitBRename;
    |
 
 error: aborting due to 2 previous errors
