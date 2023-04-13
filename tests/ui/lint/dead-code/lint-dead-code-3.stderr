@@ -13,6 +13,8 @@ LL | #![deny(dead_code)]
 error: method `foo` is never used
   --> $DIR/lint-dead-code-3.rs:16:8
    |
+LL | impl Foo {
+   | -------- method in this implementation
 LL |     fn foo(&self) {
    |        ^^^
 
