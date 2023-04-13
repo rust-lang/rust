@@ -36,6 +36,7 @@ pub trait TraitEngine<'tcx>: 'tcx {
         obligation: PredicateObligation<'tcx>,
     );
 
+    #[must_use]
     fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>>;
 
     fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>>;
@@ -58,6 +59,7 @@ pub trait TraitEngineExt<'tcx> {
         obligations: impl IntoIterator<Item = PredicateObligation<'tcx>>,
     );
 
+    #[must_use]
     fn select_all_or_error(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>>;
 }
 
