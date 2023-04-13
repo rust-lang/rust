@@ -2396,8 +2396,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
 
                 if let Some(ty::subst::GenericArgKind::Type(_)) = subst.map(|subst| subst.unpack())
+                    && let Some(body_id) = self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id)
                 {
-                    let body_id = self.tcx.hir().body_owned_by(obligation.cause.body_id);
                     let mut expr_finder = FindExprBySpan::new(span);
                     expr_finder.visit_expr(&self.tcx.hir().body(body_id).value);
 
