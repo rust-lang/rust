@@ -100,11 +100,23 @@ fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> R
     };
 
     // Handle command-line arguments.
+    let mut after_dashdash = false;
     config.path_filter.extend(std::env::args().skip(1).filter(|arg| {
+        if after_dashdash {
+            // Just propagate everything.
+            return true;
+        }
         match &**arg {
             "--quiet" => {
                 config.quiet = true;
                 false
+            }
+            "--" => {
+                after_dashdash = true;
+                false
+            }
+            s if s.starts_with('-') => {
+                panic!("unknown compiletest flag `{s}`");
             }
             _ => true,
         }
