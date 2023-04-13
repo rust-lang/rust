@@ -8,6 +8,7 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc, Ordering};
 use rustc_index::IndexVec;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
+use rustc_session::Session;
 use smallvec::{smallvec, SmallVec};
 use std::assert_matches::assert_matches;
 use std::collections::hash_map::Entry;
@@ -114,7 +115,7 @@ where
 
 impl<K: DepKind> DepGraph<K> {
     pub fn new(
-        profiler: &SelfProfilerRef,
+        session: &Session,
         prev_graph: SerializedDepGraph<K>,
         prev_work_products: FxHashMap<WorkProductId, WorkProduct>,
         encoder: FileEncoder,
@@ -124,7 +125,7 @@ impl<K: DepKind> DepGraph<K> {
         let prev_graph_node_count = prev_graph.node_count();
 
         let current = CurrentDepGraph::new(
-            profiler,
+            session,
             prev_graph_node_count,
             encoder,
             record_graph,
@@ -135,7 +136,7 @@ impl<K: DepKind> DepGraph<K> {
 
         // Instantiate a dependy-less node only once for anonymous queries.
         let _green_node_index = current.intern_new_node(
-            profiler,
+            &session.prof,
             DepNode { kind: DepKind::NULL, hash: current.anon_id_seed.into() },
             smallvec![],
             Fingerprint::ZERO,
@@ -144,7 +145,7 @@ impl<K: DepKind> DepGraph<K> {
 
         // Instantiate a dependy-less red node only once for anonymous queries.
         let (red_node_index, red_node_prev_index_and_color) = current.intern_node(
-            profiler,
+            &session.prof,
             &prev_graph,
             DepNode { kind: DepKind::RED, hash: Fingerprint::ZERO.into() },
             smallvec![],
@@ -1075,6 +1076,11 @@ pub(super) struct CurrentDepGraph<K: DepKind> {
     #[cfg(debug_assertions)]
     forbidden_edge: Option<EdgeFilter<K>>,
 
+    /// Used to verify the absence of hash collisions among DepNodes.
+    /// This field is only `Some` if the `-Z incremental_verify_depnodes` option is present.
+    #[cfg(debug_assertions)]
+    seen_dep_nodes: Option<Lock<FxHashSet<DepNode<K>>>>,
+
     /// Anonymous `DepNode`s are nodes whose IDs we compute from the list of
     /// their edges. This has the beneficial side-effect that multiple anonymous
     /// nodes can be coalesced into one without changing the semantics of the
@@ -1102,7 +1108,7 @@ pub(super) struct CurrentDepGraph<K: DepKind> {
 
 impl<K: DepKind> CurrentDepGraph<K> {
     fn new(
-        profiler: &SelfProfilerRef,
+        session: &Session,
         prev_graph_node_count: usize,
         encoder: FileEncoder,
         record_graph: bool,
@@ -1132,7 +1138,8 @@ impl<K: DepKind> CurrentDepGraph<K> {
 
         let new_node_count_estimate = 102 * prev_graph_node_count / 100 + 200;
 
-        let node_intern_event_id = profiler
+        let node_intern_event_id = session
+            .prof
             .get_or_alloc_cached_string("incr_comp_intern_dep_graph_node")
             .map(EventId::from_label);
 
@@ -1155,6 +1162,13 @@ impl<K: DepKind> CurrentDepGraph<K> {
             forbidden_edge,
             #[cfg(debug_assertions)]
             fingerprints: Lock::new(IndexVec::from_elem_n(None, new_node_count_estimate)),
+            #[cfg(debug_assertions)]
+            seen_dep_nodes: session.opts.unstable_opts.incremental_verify_depnodes.then(|| {
+                Lock::new(FxHashSet::with_capacity_and_hasher(
+                    new_node_count_estimate,
+                    Default::default(),
+                ))
+            }),
             total_read_count: AtomicU64::new(0),
             total_duplicate_read_count: AtomicU64::new(0),
             node_intern_event_id,
@@ -1184,6 +1198,13 @@ impl<K: DepKind> CurrentDepGraph<K> {
 
         #[cfg(debug_assertions)]
         self.record_edge(dep_node_index, key, current_fingerprint);
+
+        #[cfg(debug_assertions)]
+        if let Some(ref seen_dep_nodes) = self.seen_dep_nodes {
+            if !seen_dep_nodes.lock().insert(key) {
+                panic!("Found duplicate dep-node {key:?}");
+            }
+        }
 
         dep_node_index
     }
