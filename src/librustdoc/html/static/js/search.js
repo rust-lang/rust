@@ -1096,7 +1096,7 @@ function initSearch(rawSearchIndex) {
             // The names match, but we need to be sure that all generics kinda
             // match as well.
             if (elem.generics.length > 0 && row.generics.length >= elem.generics.length) {
-                const elems = Object.create(null);
+                const elems = new Map();
                 for (const entry of row.generics) {
                     if (entry.name === "") {
                         // Pure generic, needs to check into it.
@@ -1106,39 +1106,30 @@ function initSearch(rawSearchIndex) {
                         }
                         continue;
                     }
-                    if (elems[entry.name] === undefined) {
-                        elems[entry.name] = [];
+                    let currentEntryElems;
+                    if (elems.has(entry.name)) {
+                        currentEntryElems = elems.get(entry.name);
+                    } else {
+                        currentEntryElems = [];
+                        elems.set(entry.name, currentEntryElems);
                     }
-                    elems[entry.name].push(entry.ty);
+                    currentEntryElems.push(entry.ty);
                 }
                 // We need to find the type that matches the most to remove it in order
                 // to move forward.
                 const handleGeneric = generic => {
-                    let match = null;
-                    if (elems[generic.name]) {
-                        match = generic.name;
-                    } else {
-                        for (const elem_name in elems) {
-                            if (!hasOwnPropertyRustdoc(elems, elem_name)) {
-                                continue;
-                            }
-                            if (elem_name === generic) {
-                                match = elem_name;
-                                break;
-                            }
-                        }
-                    }
-                    if (match === null) {
+                    if (!elems.has(generic.name)) {
                         return false;
                     }
-                    const matchIdx = elems[match].findIndex(tmp_elem =>
+                    const matchElems = elems.get(generic.name);
+                    const matchIdx = matchElems.findIndex(tmp_elem =>
                         typePassesFilter(generic.typeFilter, tmp_elem));
                     if (matchIdx === -1) {
                         return false;
                     }
-                    elems[match].splice(matchIdx, 1);
-                    if (elems[match].length === 0) {
-                        delete elems[match];
+                    matchElems.splice(matchIdx, 1);
+                    if (matchElems.length === 0) {
+                        elems.delete(generic.name);
                     }
                     return true;
                 };
