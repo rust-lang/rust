@@ -110,11 +110,8 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for TypeFreshener<'a, 'tcx> {
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
-            ty::ReLateBound(..) => {
-                // leave bound regions alone
-                r
-            }
-
+            // All region variants occur in this match.
+            ty::ReLateBound(..) => r, // leave bound regions alone
             ty::ReEarlyBound(..)
             | ty::ReFree(_)
             | ty::ReVar(_)

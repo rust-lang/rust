@@ -75,8 +75,11 @@ impl<'a, 'tcx> RegionRenumberer<'a, 'tcx> {
         F: Fn() -> RegionCtxt,
     {
         let origin = NllRegionVariableOrigin::Existential { from_forall: false };
-        self.infcx.tcx.fold_regions(value, |_region, _depth| {
-            self.infcx.next_nll_region_var(origin, || region_ctxt_fn())
+        self.infcx.tcx.fold_regions(value, |region, _depth| match region.kind() {
+            ty::ReErased | ty::ReError(_) => {
+                self.infcx.next_nll_region_var(origin, || region_ctxt_fn())
+            }
+            r => bug!("unexpected region: {r:?}"),
         })
     }
 }

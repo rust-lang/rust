@@ -116,11 +116,19 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
     #[instrument(skip(self), level = "debug", ret)]
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
+            // All region variants occur in this match.
             ty::ReLateBound(debruijn, _) if debruijn < self.current_index => {
                 debug!(?self.current_index, "skipped bound region");
                 r
             }
-            _ => {
+            ty::ReEarlyBound(_)
+            | ty::ReLateBound(..)
+            | ty::ReFree(_)
+            | ty::ReStatic
+            | ty::ReVar(_)
+            | ty::RePlaceholder(_)
+            | ty::ReErased
+            | ty::ReError(_) => {
                 debug!(?self.current_index, "folding free region");
                 (self.fold_region_fn)(r, self.current_index)
             }
@@ -204,6 +212,7 @@ where
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
+            // All region variants occur in this match.
             ty::ReLateBound(debruijn, br) if debruijn == self.current_index => {
                 let region = self.delegate.replace_region(br);
                 if let ty::ReLateBound(debruijn1, br) = *region {
@@ -217,7 +226,14 @@ where
                     region
                 }
             }
-            _ => r,
+            ty::ReEarlyBound(..)
+            | ty::ReLateBound(..)
+            | ty::ReFree(_)
+            | ty::ReStatic
+            | ty::ReVar(_)
+            | ty::RePlaceholder(_)
+            | ty::ReErased
+            | ty::ReError(_) => r,
         }
     }
 
@@ -452,7 +468,8 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Shifter<'tcx> {
                 let debruijn = debruijn.shifted_in(self.amount);
                 self.tcx.mk_re_late_bound(debruijn, br)
             }
-            _ => r,
+            ty::ReEarlyBound(_) | ty::ReLateBound(..) | ty::ReStatic => r,
+            r => bug!("unexpected region: {r:?}"),
         }
     }
 

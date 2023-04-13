@@ -774,7 +774,16 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EraseEarlyRegions<'tcx> {
         }
     }
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        if r.is_late_bound() { r } else { self.tcx.lifetimes.re_erased }
+        match r.kind() {
+            ty::ReLateBound(..) => r,
+            ty::ReEarlyBound(_)
+            | ty::ReFree(..)
+            | ty::ReStatic
+            | ty::RePlaceholder(_)
+            | ty::ReErased
+            | ty::ReError(_) => self.tcx.lifetimes.re_erased,
+            ty::ReVar(_) => bug!("unexpected region: {r:?}"),
+        }
     }
 }
 
@@ -802,8 +811,15 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Resolver<'cx, 'tcx> {
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        debug_assert!(!r.is_late_bound(), "Should not be resolving bound region.");
-        self.tcx.lifetimes.re_erased
+        match r.kind() {
+            ty::ReEarlyBound(_)
+            | ty::ReFree(_)
+            | ty::ReStatic
+            | ty::ReVar(_)
+            | ty::RePlaceholder(_)
+            | ty::ReError(_) => self.tcx.lifetimes.re_erased,
+            r => bug!("unexpected region: {r:?}"),
+        }
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {

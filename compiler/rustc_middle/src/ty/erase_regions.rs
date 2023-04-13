@@ -52,7 +52,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RegionEraserVisitor<'tcx> {
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        // because late-bound regions affect subtyping, we can't
+        // Because late-bound regions affect subtyping, we can't
         // erase the bound/free distinction, but we can replace
         // all free regions with 'erased.
         //
@@ -61,8 +61,15 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RegionEraserVisitor<'tcx> {
         // away. In codegen, they will always be erased to 'erased
         // whenever a substitution occurs.
         match *r {
+            // All region variants occur in this match.
             ty::ReLateBound(..) => r,
-            _ => self.tcx.lifetimes.re_erased,
+            ty::ReEarlyBound(_)
+            | ty::ReFree(_)
+            | ty::ReStatic
+            | ty::ReVar(_)
+            | ty::RePlaceholder(_)
+            | ty::ReErased
+            | ty::ReError(_) => self.tcx.lifetimes.re_erased,
         }
     }
 }

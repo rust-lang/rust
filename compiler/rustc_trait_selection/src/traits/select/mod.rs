@@ -2459,7 +2459,13 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 let value = value.fold_with(&mut BottomUpFolder {
                     tcx: self.tcx(),
                     ty_op: |_| err,
-                    lt_op: |l| l,
+                    lt_op: |lt| {
+                        match lt {
+                            // This is never reached in practice. If it ever is reached,
+                            // it should just return `ReErased`.
+                            r => bug!("unexpected region: {r:?}"),
+                        }
+                    },
                     ct_op: |c| c,
                 });
                 Normalized { value, obligations: vec![] }
@@ -3007,16 +3013,16 @@ fn bind_generator_hidden_types_above<'tcx>(
 
             // Only remap erased regions if we use them.
             if considering_regions {
-                ty = tcx.fold_regions(ty, |mut r, current_depth| {
-                    if let ty::ReErased = r.kind() {
+                ty = tcx.fold_regions(ty, |r, current_depth| match r.kind() {
+                    ty::ReErased => {
                         let br = ty::BoundRegion {
                             var: ty::BoundVar::from_u32(counter),
                             kind: ty::BrAnon(None),
                         };
                         counter += 1;
-                        r = tcx.mk_re_late_bound(current_depth, br);
+                        tcx.mk_re_late_bound(current_depth, br)
                     }
-                    r
+                    r => bug!("unexpected region: {r:?}"),
                 })
             }
 

@@ -91,7 +91,13 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for OpportunisticRegionResolver<'a, 'tcx
                 .borrow_mut()
                 .unwrap_region_constraints()
                 .opportunistic_resolve_var(TypeFolder::interner(self), vid),
-            _ => r,
+            ty::ReEarlyBound(_)
+            | ty::ReLateBound(..)
+            | ty::ReFree(_)
+            | ty::ReStatic
+            | ty::RePlaceholder(_)
+            | ty::ReErased => r,
+            r => bug!("unexpected region: {r:?}"),
         }
     }
 
@@ -238,7 +244,13 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for FullTypeResolver<'a, 'tcx> {
                 .as_ref()
                 .expect("region resolution not performed")
                 .resolve_region(self.infcx.tcx, r)),
-            _ => Ok(r),
+            ty::ReEarlyBound(_)
+            | ty::ReLateBound(..)
+            | ty::ReFree(_)
+            | ty::ReStatic
+            | ty::RePlaceholder(_)
+            | ty::ReError(_) => Ok(r),
+            r => bug!("unexpected region: {r:?}"),
         }
     }
 

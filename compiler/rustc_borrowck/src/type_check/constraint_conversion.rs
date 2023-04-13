@@ -178,7 +178,8 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                 ty::RePlaceholder(placeholder) => {
                     self.constraints.placeholder_region(self.infcx, placeholder)
                 }
-                _ => r,
+                ty::ReStatic | ty::ReVar(_) => r,
+                r => bug!("unexpected region: {r:?}"),
             })
         } else {
             value

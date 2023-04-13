@@ -939,30 +939,25 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for ConstInferUnifier<'_, 'tcx> {
     ) -> Result<ty::Region<'tcx>, TypeError<'tcx>> {
         debug!("ConstInferUnifier: r={:?}", r);
 
-        match *r {
+        Ok(match *r {
             // Never make variables for regions bound within the type itself,
             // nor for erased regions.
-            ty::ReLateBound(..) | ty::ReErased | ty::ReError(_) => {
-                return Ok(r);
-            }
+            ty::ReLateBound(..) | ty::ReErased | ty::ReError(_) => r,
 
-            ty::RePlaceholder(..)
-            | ty::ReVar(..)
-            | ty::ReStatic
-            | ty::ReEarlyBound(..)
-            | ty::ReFree(..) => {
-                // see common code below
+            // ty::RePlaceholder(..)
+            ty::ReVar(..) | ty::ReStatic | ty::ReEarlyBound(..) | ty::ReFree(..) => {
+                let r_universe = self.infcx.universe_of_region(r);
+                if self.for_universe.can_name(r_universe) {
+                    r
+                } else {
+                    // FIXME: This is non-ideal because we don't give a
+                    // very descriptive origin for this region variable.
+                    self.infcx
+                        .next_region_var_in_universe(MiscVariable(self.span), self.for_universe)
+                }
             }
-        }
-
-        let r_universe = self.infcx.universe_of_region(r);
-        if self.for_universe.can_name(r_universe) {
-            return Ok(r);
-        } else {
-            // FIXME: This is non-ideal because we don't give a
-            // very descriptive origin for this region variable.
-            Ok(self.infcx.next_region_var_in_universe(MiscVariable(self.span), self.for_universe))
-        }
+            r => bug!("unexpected region: {r:?}"),
+        })
     }
 
     #[instrument(level = "debug", skip(self), ret)]

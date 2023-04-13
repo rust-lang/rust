@@ -458,13 +458,13 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RemapLateBound<'_, 'tcx> {
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        if let ty::ReFree(fr) = *r {
-            self.tcx.mk_re_free(
+        match r.kind() {
+            ty::ReFree(fr) => self.tcx.mk_re_free(
                 fr.scope,
                 self.mapping.get(&fr.bound_region).copied().unwrap_or(fr.bound_region),
-            )
-        } else {
-            r
+            ),
+            ty::ReEarlyBound(_) | ty::ReStatic => r,
+            r => bug!("unexpected region: {r:?}"),
         }
     }
 }
@@ -765,11 +765,15 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 let num_impl_substs = tcx.generics_of(impl_m.container_id(tcx)).params.len();
                 let ty = tcx.fold_regions(ty, |region, _| {
                     match region.kind() {
-                        // Remap all free regions, which correspond to late-bound regions in the function.
+                        // Remap all free regions, which correspond to late-bound regions in the
+                        // function.
                         ty::ReFree(_) => {}
-                        // Remap early-bound regions as long as they don't come from the `impl` itself.
+                        // Remap early-bound regions as long as they don't come from the `impl`
+                        // itself.
                         ty::ReEarlyBound(ebr) if tcx.parent(ebr.def_id) != impl_m.container_id(tcx) => {}
-                        _ => return region,
+                        ty::ReEarlyBound(_) |
+                        ty::ReStatic => return region,
+                        r => bug!("unexpected region: {r:?}"),
                     }
                     let Some(ty::ReEarlyBound(e)) = map.get(&region.into()).map(|r| r.expect_region().kind())
                     else {

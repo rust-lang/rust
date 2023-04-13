@@ -989,7 +989,18 @@ impl<'tcx> LexicalRegionResolutions<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        tcx.fold_regions(value, |r, _db| self.resolve_region(tcx, r))
+        tcx.fold_regions(value, |r, _db| {
+            match r.kind() {
+                ty::ReEarlyBound(_)
+                | ty::ReFree(_)
+                | ty::ReStatic
+                | ty::ReVar(_)
+                | ty::RePlaceholder(_)
+                | ty::ReError(_) => {}
+                r => bug!("unexpected region: {r:?}"),
+            }
+            self.resolve_region(tcx, r)
+        })
     }
 
     fn value(&self, rid: RegionVid) -> &VarValue<'tcx> {

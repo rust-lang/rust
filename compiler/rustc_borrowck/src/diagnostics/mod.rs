@@ -466,12 +466,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // lifetimes without names with the value `'0`.
         if let ty::Ref(region, ..) = ty.kind() {
             match **region {
-                ty::ReLateBound(_, ty::BoundRegion { kind: br, .. })
-                | ty::RePlaceholder(ty::PlaceholderRegion {
-                    bound: ty::BoundRegion { kind: br, .. },
-                    ..
-                }) => printer.region_highlight_mode.highlighting_bound_region(br, counter),
-                _ => {}
+                ty::ReLateBound(_, ty::BoundRegion { kind: br, .. }) => {
+                    printer.region_highlight_mode.highlighting_bound_region(br, counter)
+                }
+                r => bug!("unexpected region: {r:?}"),
             }
         }
 
@@ -485,12 +483,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         let region = if let ty::Ref(region, ..) = ty.kind() {
             match **region {
-                ty::ReLateBound(_, ty::BoundRegion { kind: br, .. })
-                | ty::RePlaceholder(ty::PlaceholderRegion {
-                    bound: ty::BoundRegion { kind: br, .. },
-                    ..
-                }) => printer.region_highlight_mode.highlighting_bound_region(br, counter),
-                _ => {}
+                ty::ReLateBound(_, ty::BoundRegion { kind: br, .. }) => {
+                    printer.region_highlight_mode.highlighting_bound_region(br, counter)
+                }
+                r => bug!("unexpected region: {r:?}"),
             }
             region
         } else {

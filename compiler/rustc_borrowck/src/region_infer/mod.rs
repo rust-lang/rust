@@ -1127,22 +1127,27 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let ty = ty.fold_with(&mut OpaqueFolder { tcx });
 
         let ty = tcx.fold_regions(ty, |r, _depth| {
-            let r_vid = self.to_region_vid(r);
-            let r_scc = self.constraint_sccs.scc(r_vid);
+            match r.kind() {
+                ty::ReStatic | ty::ReVar(_) => {
+                    let r_vid = self.to_region_vid(r);
+                    let r_scc = self.constraint_sccs.scc(r_vid);
 
-            // The challenge is this. We have some region variable `r`
-            // whose value is a set of CFG points and universal
-            // regions. We want to find if that set is *equivalent* to
-            // any of the named regions found in the closure.
-            // To do so, we simply check every candidate `u_r` for equality.
-            self.scc_values
-                .universal_regions_outlived_by(r_scc)
-                .filter(|&u_r| !self.universal_regions.is_local_free_region(u_r))
-                .find(|&u_r| self.eval_equal(u_r, r_vid))
-                .map(|u_r| tcx.mk_re_var(u_r))
-                // In the case of a failure, use `ReErased`. We will eventually
-                // return `None` in this case.
-                .unwrap_or(tcx.lifetimes.re_erased)
+                    // The challenge is this. We have some region variable `r`
+                    // whose value is a set of CFG points and universal
+                    // regions. We want to find if that set is *equivalent* to
+                    // any of the named regions found in the closure.
+                    // To do so, we simply check every candidate `u_r` for equality.
+                    self.scc_values
+                        .universal_regions_outlived_by(r_scc)
+                        .filter(|&u_r| !self.universal_regions.is_local_free_region(u_r))
+                        .find(|&u_r| self.eval_equal(u_r, r_vid))
+                        .map(|u_r| tcx.mk_re_var(u_r))
+                        // In the case of a failure, use `ReErased`. We will eventually
+                        // return `None` in this case.
+                        .unwrap_or(tcx.lifetimes.re_erased)
+                }
+                r => bug!("unexpected region: {r:?}"),
+            }
         });
 
         debug!("try_promote_type_test_subject: folded ty = {:?}", ty);
@@ -1332,11 +1337,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        tcx.fold_regions(value, |r, _db| {
-            let vid = self.to_region_vid(r);
-            let scc = self.constraint_sccs.scc(vid);
-            let repr = self.scc_representatives[scc];
-            tcx.mk_re_var(repr)
+        tcx.fold_regions(value, |r, _db| match r.kind() {
+            ty::ReEarlyBound(_) | ty::ReStatic | ty::ReVar(_) => {
+                let vid = self.to_region_vid(r);
+                let scc = self.constraint_sccs.scc(vid);
+                let repr = self.scc_representatives[scc];
+                tcx.mk_re_var(repr)
+            }
+            r => bug!("unexpected region: {r:?}"),
         })
     }
 

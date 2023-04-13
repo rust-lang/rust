@@ -57,7 +57,19 @@ impl<'tcx> InferCtxt<'tcx> {
         };
         let value = value.fold_with(&mut BottomUpFolder {
             tcx: self.tcx,
-            lt_op: |lt| lt,
+            lt_op: |lt| {
+                // All region variants occur in this match.
+                match lt.kind() {
+                    ty::ReEarlyBound(_)
+                    | ty::ReLateBound(..)
+                    | ty::ReFree(_)
+                    | ty::ReStatic
+                    | ty::ReVar(_)
+                    | ty::RePlaceholder(_)
+                    | ty::ReErased
+                    | ty::ReError(_) => lt,
+                }
+            },
             ct_op: |ct| ct,
             ty_op: |ty| match *ty.kind() {
                 ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. })
@@ -580,7 +592,10 @@ impl<'tcx> InferCtxt<'tcx> {
                     ) if def_id.to_def_id() == def_id2 && substs == substs2 => hidden_ty,
                     _ => ty,
                 },
-                lt_op: |lt| lt,
+                lt_op: |lt| {
+                    // All region variants occur in this function.
+                    lt
+                },
                 ct_op: |ct| ct,
             });
 

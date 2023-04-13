@@ -776,7 +776,12 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'_, 'tcx> {
                 self.mapped_regions.insert(p, br);
                 self.infcx.tcx.mk_re_placeholder(p)
             }
-            _ => r,
+            ty::ReEarlyBound(_)
+            | ty::ReLateBound(..)
+            | ty::ReFree(_)
+            | ty::ReStatic
+            | ty::RePlaceholder(_) => r,
+            r => bug!("unexpected region: {r:?}"),
         }
     }
 
@@ -879,7 +884,12 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
                 .borrow_mut()
                 .unwrap_region_constraints()
                 .opportunistic_resolve_var(self.infcx.tcx, vid),
-            _ => r0,
+            ty::ReEarlyBound(_)
+            | ty::ReLateBound(..)
+            | ty::ReStatic
+            | ty::RePlaceholder(_)
+            | ty::ReErased => r0,
+            r => bug!("unexpected region: {r:?}"),
         };
 
         let r2 = match *r1 {

@@ -257,19 +257,20 @@ pub fn resolve_interior<'a, 'tcx>(
                             _ => mk_bound_region(None),
                         }
                     }
-                    // FIXME: these should use `BrNamed`
+                    // // FIXME: these should use `BrNamed`
                     ty::ReEarlyBound(region) => {
                         mk_bound_region(Some(fcx.tcx.def_span(region.def_id)))
                     }
-                    ty::ReLateBound(_, ty::BoundRegion { kind, .. })
-                    | ty::ReFree(ty::FreeRegion { bound_region: kind, .. }) => match kind {
+                    // ty::ReLateBound(_, ty::BoundRegion { kind, .. })
+                    ty::ReFree(ty::FreeRegion { bound_region: kind, .. }) => match kind {
                         ty::BoundRegionKind::BrAnon(span) => mk_bound_region(span),
                         ty::BoundRegionKind::BrNamed(def_id, _) => {
                             mk_bound_region(Some(fcx.tcx.def_span(def_id)))
                         }
                         ty::BoundRegionKind::BrEnv => mk_bound_region(None),
                     },
-                    _ => mk_bound_region(None),
+                    ty::ReStatic | ty::ReErased => mk_bound_region(None),
+                    r => bug!("unexpected region: {r:?}"),
                 };
                 let r = fcx.tcx.mk_re_late_bound(current_depth, br);
                 r

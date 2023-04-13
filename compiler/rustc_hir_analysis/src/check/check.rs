@@ -419,7 +419,8 @@ fn check_opaque_meets_bounds<'tcx>(
     let hidden_ty = tcx.type_of(def_id.to_def_id()).subst(tcx, substs);
     let hidden_ty = tcx.fold_regions(hidden_ty, |re, _dbi| match re.kind() {
         ty::ReErased => infcx.next_region_var(RegionVariableOrigin::MiscVariable(span)),
-        _ => re,
+        ty::ReEarlyBound(_) | ty::ReStatic | ty::ReError(_) => re,
+        r => bug!("unexpected region: {r:?}"),
     });
 
     let misc_cause = traits::ObligationCause::misc(span, def_id);

@@ -428,7 +428,7 @@ fn try_extract_error_from_region_constraints<'tcx>(
             placeholder_region,
             vec![],
         ),
-        (Some(error_region), _) => {
+        (Some(error_region), ty::RePlaceholder(_)) => {
             RegionResolutionError::ConcreteFailure(cause.clone(), error_region, placeholder_region)
         }
         // Note universe here is wrong...
@@ -439,9 +439,11 @@ fn try_extract_error_from_region_constraints<'tcx>(
             cause.clone(),
             placeholder_region,
         ),
-        (None, _) => {
+        (None, ty::ReStatic) => {
             RegionResolutionError::ConcreteFailure(cause.clone(), sub_region, placeholder_region)
         }
+        (Some(_), r) => bug!("unexpected region with `Some`: {r:?}"),
+        (None, r) => bug!("unexpected region with `None`: {r:?}"),
     };
     NiceRegionError::new(&infcx.err_ctxt(), error).try_report_from_nll().or_else(|| {
         if let SubregionOrigin::Subtype(trace) = cause {

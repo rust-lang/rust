@@ -220,12 +220,19 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceFudger<'a, 'tcx> {
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        if let ty::ReVar(vid) = *r && self.region_vars.0.contains(&vid) {
-            let idx = vid.index() - self.region_vars.0.start.index();
-            let origin = self.region_vars.1[idx];
-            return self.infcx.next_region_var(origin);
+        match r.kind() {
+            ty::ReVar(vid) if self.region_vars.0.contains(&vid) => {
+                let idx = vid.index() - self.region_vars.0.start.index();
+                let origin = self.region_vars.1[idx];
+                return self.infcx.next_region_var(origin);
+            }
+            ty::ReEarlyBound(_)
+            | ty::ReLateBound(..)
+            | ty::ReFree(_)
+            | ty::ReStatic
+            | ty::ReVar(_) => r,
+            r => bug!("unexpected region: {r:?}"),
         }
-        r
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {

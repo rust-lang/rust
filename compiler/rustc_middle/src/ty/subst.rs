@@ -840,7 +840,8 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for SubstFolder<'a, 'tcx> {
                     None => region_param_out_of_range(data, self.substs),
                 }
             }
-            _ => r,
+            ty::ReLateBound(..) | ty::ReFree(_) | ty::ReStatic | ty::ReErased | ty::ReError(_) => r,
+            r => bug!("unexpected region: {r:?}"),
         }
     }
 

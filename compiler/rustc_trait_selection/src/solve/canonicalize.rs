@@ -242,7 +242,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
                 }
             },
 
-            ty::ReError(_) => return r,
+            r => bug!("unexpected region: {r:?}"),
         };
 
         let existing_bound_var = match self.canonicalize_mode {

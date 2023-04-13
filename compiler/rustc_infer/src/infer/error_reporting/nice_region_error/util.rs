@@ -82,13 +82,16 @@ pub fn find_param_with_region<'tcx>(
             // May return None; sometimes the tables are not yet populated.
             let ty = fn_sig.inputs()[index];
             let mut found_anon_region = false;
-            let new_param_ty = tcx.fold_regions(ty, |r, _| {
-                if r == anon_region {
-                    found_anon_region = true;
-                    replace_region
-                } else {
-                    r
+            let new_param_ty = tcx.fold_regions(ty, |r, _| match r.kind() {
+                ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic => {
+                    if r == anon_region {
+                        found_anon_region = true;
+                        replace_region
+                    } else {
+                        r
+                    }
                 }
+                r => bug!("unexpected region: {r:?}"),
             });
             found_anon_region.then(|| {
                 let ty_hir_id = fn_decl.inputs[index].hir_id;

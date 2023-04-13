@@ -1045,7 +1045,8 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for NamedBoundVarSubstitutor<'a, 'tcx> {
                 ty::BrEnv => unimplemented!(),
                 ty::BrAnon(..) => {}
             },
-            _ => (),
+            ty::ReLateBound(..) | ty::ReStatic => (),
+            r => bug!("unexpected region: {r:?}"),
         };
 
         r.super_fold_with(self)
@@ -1141,8 +1142,9 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ParamsSubstitutor<'tcx> {
                     self.tcx.mk_re_late_bound(self.binder_index, br)
                 }
             },
-
-            _ => r.super_fold_with(self),
+            // Other region kinds might need the same treatment here.
+            ty::ReLateBound(..) => r.super_fold_with(self),
+            r => bug!("unexpected region: {r:?}"),
         }
     }
 }

@@ -757,11 +757,13 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.infcx.tcx.fold_regions(value, |region, _depth| {
-            let name = region.get_name_or_anon();
-            debug!(?region, ?name);
-
-            self.next_nll_region_var(origin, || RegionCtxt::Free(name))
+        self.infcx.tcx.fold_regions(value, |region, _depth| match region.kind() {
+            ty::ReEarlyBound(_) | ty::ReStatic | ty::ReErased | ty::ReError(_) => {
+                let name = region.get_name_or_anon();
+                debug!(?region, ?name);
+                self.next_nll_region_var(origin, || RegionCtxt::Free(name))
+            }
+            r => bug!("unexpected region: {r:?}"),
         })
     }
 
@@ -889,7 +891,12 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        tcx.fold_regions(value, |region, _| tcx.mk_re_var(self.to_region_vid(region)))
+        tcx.fold_regions(value, |region, _| match region.kind() {
+            ty::ReEarlyBound(_) | ty::ReStatic | ty::ReError(_) => {
+                tcx.mk_re_var(self.to_region_vid(region))
+            }
+            r => bug!("unexpected region: {r:?}"),
+        })
     }
 }
 

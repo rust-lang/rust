@@ -114,12 +114,10 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
             // The regions that we expect from borrow checking.
             ty::ReEarlyBound(_) | ty::ReFree(_) => {}
 
-            ty::RePlaceholder(_) | ty::ReVar(_) => {
-                // All of the regions in the type should either have been
-                // erased by writeback, or mapped back to named regions by
-                // borrow checking.
-                bug!("unexpected region kind in opaque type: {:?}", r);
-            }
+            // All of the regions in the type should either have been
+            // erased by writeback, or mapped back to named regions by
+            // borrow checking.
+            ty::RePlaceholder(_) | ty::ReVar(_) => bug!("unexpected region: {r:?}"),
         }
 
         match self.map.get(&r.into()).map(|k| k.unpack()) {

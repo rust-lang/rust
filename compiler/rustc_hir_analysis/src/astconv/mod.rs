@@ -3226,8 +3226,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             hir::TyKind::Typeof(e) => {
                 let ty_erased = tcx.type_of(e.def_id).subst_identity();
-                let ty = tcx.fold_regions(ty_erased, |r, _| {
-                    if r.is_erased() { tcx.lifetimes.re_static } else { r }
+                let ty = tcx.fold_regions(ty_erased, |r, _| match r.kind() {
+                    ty::ReErased => tcx.lifetimes.re_static,
+                    r => bug!("unexpected region: {r:?}"),
                 });
                 let span = ast_ty.span;
                 let (ty, opt_sugg) = if let Some(ty) = ty.make_suggestable(tcx, false) {

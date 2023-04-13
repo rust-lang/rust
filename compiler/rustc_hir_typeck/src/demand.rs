@@ -270,7 +270,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Hack to make equality checks on types with inference variables and regions useful.
         let mut eraser = BottomUpFolder {
             tcx: self.tcx,
-            lt_op: |_| self.tcx.lifetimes.re_erased,
+            lt_op: |r| match r.kind() {
+                ty::ReStatic | ty::ReVar(_) | ty::ReErased => self.tcx.lifetimes.re_erased,
+                r => bug!("unexpected region: {r:?}"),
+            },
             ct_op: |c| c,
             ty_op: |t| match *t.kind() {
                 ty::Infer(ty::TyVar(_)) => self.tcx.mk_ty_var(ty::TyVid::from_u32(0)),

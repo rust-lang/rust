@@ -104,7 +104,13 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
             let proj_replacer = &mut BottomUpFolder {
                 tcx: cx.tcx,
                 ty_op: |ty| if ty == proj_ty { proj_term } else { ty },
-                lt_op: |lt| lt,
+                lt_op: |lt| {
+                    match lt.kind() {
+                        ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic => {}
+                        r => bug!("unexpected region: {r:?}"),
+                    }
+                    lt
+                },
                 ct_op: |ct| ct,
             };
             // For example, in `impl Trait<Assoc = impl Send>`, for all of the bounds on `Assoc`,

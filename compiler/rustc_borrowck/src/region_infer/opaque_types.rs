@@ -110,14 +110,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             // Next, insert universal regions from substs, so we can translate regions that appear
             // in them but are not subject to member constraints, for instance closure substs.
-            let universal_substs = infcx.tcx.fold_regions(substs, |region, _| {
-                if let ty::RePlaceholder(..) = region.kind() {
-                    // Higher kinded regions don't need remapping, they don't refer to anything outside of this the substs.
-                    return region;
-                }
-                let vid = self.to_region_vid(region);
-                to_universal_region(vid, &mut subst_regions)
-            });
+            let universal_substs =
+                infcx.tcx.fold_regions(substs, |region, _| match region.kind() {
+                    ty::ReVar(_) => {
+                        let vid = self.to_region_vid(region);
+                        to_universal_region(vid, &mut subst_regions)
+                    }
+                    r => bug!("unexpected region: {r:?}"),
+                });
             debug!(?universal_substs);
             debug!(?subst_regions);
 
@@ -132,7 +132,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         .find(|ur_vid| self.eval_equal(vid, **ur_vid))
                         .and_then(|ur_vid| self.definitions[*ur_vid].external_name)
                         .unwrap_or(infcx.tcx.lifetimes.re_erased),
-                    _ => region,
+                    ty::ReEarlyBound(_) | ty::ReStatic => region,
+                    r => bug!("unexpected region: {r:?}"),
                 });
             debug!(?universal_concrete_type);
 
@@ -201,7 +202,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     }
                 }
             }
-            _ => region,
+            r => bug!("unexpected region: {r:?}"),
         })
     }
 }
