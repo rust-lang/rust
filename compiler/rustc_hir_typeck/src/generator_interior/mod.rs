@@ -293,10 +293,7 @@ pub fn resolve_interior<'a, 'tcx>(
             type_causes,
             FnMutDelegate {
                 regions: &mut |br| {
-                    let kind = match br.kind {
-                        ty::BrAnon(span) => ty::BrAnon(span),
-                        _ => br.kind,
-                    };
+                    let kind = br.kind;
                     let var = ty::BoundVar::from_usize(bound_vars.len());
                     bound_vars.push(ty::BoundVariableKind::Region(kind));
                     counter += 1;
