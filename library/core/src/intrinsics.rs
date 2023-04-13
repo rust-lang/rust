@@ -2460,7 +2460,7 @@ extern "rust-intrinsic" {
 /// This macro should be called as `assert_unsafe_precondition!([Generics](name: Type) => Expression)`
 /// where the names specified will be moved into the macro as captured variables, and defines an item
 /// to call `const_eval_select` on. The tokens inside the square brackets are used to denote generics
-/// for the function declaractions and can be omitted if there is no generics.
+/// for the function declarations and can be omitted if there is no generics.
 ///
 /// # Safety
 ///
