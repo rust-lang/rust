@@ -56,7 +56,6 @@ use crate::{
     facts::AllFacts,
     location::LocationTable,
     member_constraints::MemberConstraintSet,
-    nll::ToRegionVid,
     path_utils,
     region_infer::values::{
         LivenessValues, PlaceholderIndex, PlaceholderIndices, RegionValueElements,
@@ -2419,7 +2418,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if let Some(all_facts) = all_facts {
             let _prof_timer = self.infcx.tcx.prof.generic_activity("polonius_fact_generation");
             if let Some(borrow_index) = borrow_set.get_index_of(&location) {
-                let region_vid = borrow_region.to_region_vid();
+                let region_vid = borrow_region.as_var();
                 all_facts.loan_issued_at.push((
                     region_vid,
                     borrow_index,
@@ -2465,8 +2464,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     match base_ty.kind() {
                         ty::Ref(ref_region, _, mutbl) => {
                             constraints.outlives_constraints.push(OutlivesConstraint {
-                                sup: ref_region.to_region_vid(),
-                                sub: borrow_region.to_region_vid(),
+                                sup: ref_region.as_var(),
+                                sub: borrow_region.as_var(),
                                 locations: location.to_locations(),
                                 span: location.to_locations().span(body),
                                 category,
