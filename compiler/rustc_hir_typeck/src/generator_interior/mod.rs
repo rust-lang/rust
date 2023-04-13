@@ -258,7 +258,7 @@ pub fn resolve_interior<'a, 'tcx>(
                     }
                     // FIXME: these should use `BrNamed`
                     ty::ReEarlyBound(region) => {
-                        mk_bound_region(ty::BrAnon(Some(fcx.tcx.def_span(region.def_id))))
+                        mk_bound_region(ty::BrNamed(region.def_id, region.name))
                     }
                     ty::ReLateBound(_, ty::BoundRegion { kind, .. })
                     | ty::ReFree(ty::FreeRegion { bound_region: kind, .. }) => match kind {
