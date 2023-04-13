@@ -74,8 +74,8 @@ export interface FetchDependencyListParams {}
 
 export interface FetchDependencyListResult {
     crates: {
-        name: string;
-        version: string;
+        name: string | undefined;
+        version: string | undefined;
         path: string;
     }[];
 }

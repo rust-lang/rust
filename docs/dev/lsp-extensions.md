@@ -860,12 +860,12 @@ export interface Diagnostic {
 **Request:**
 
 ```typescript
-export interface FetchDependencyGraphParams {}
+export interface FetchDependencyListParams {}
 ```
 
 **Response:** 
 ```typescript
-export interface FetchDependencyGraphResult {
+export interface FetchDependencyListResult {
     crates: {
         name: string;
         version: string;

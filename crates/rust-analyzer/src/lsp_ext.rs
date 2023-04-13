@@ -30,8 +30,8 @@ pub struct AnalyzerStatusParams {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CrateInfoResult {
-    pub name: String,
-    pub version: String,
+    pub name: Option<String>,
+    pub version: Option<String>,
     pub path: String,
 }
 pub enum FetchDependencyList {}

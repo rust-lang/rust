@@ -57,7 +57,35 @@ pub(crate) fn fetch_dependency_list(
     Ok(FetchDependencyListResult {
         crates: crates
             .into_iter()
-            .map(|it| CrateInfoResult { name: it.name, version: it.version, path: it.path })
+            .filter_map(|it| {
+                let root_file_path = state.file_id_to_file_path(it.root_file_id);
+                crate_path(it.name.as_ref(), root_file_path).map(|crate_path| CrateInfoResult {
+                    name: it.name,
+                    version: it.version,
+                    path: crate_path.to_string(),
+                })
+            })
             .collect(),
+    })
+}
+
+//Thats a best effort to try and find the crate path
+fn crate_path(crate_name: Option<&String>, root_file_path: VfsPath) -> Option<VfsPath> {
+    crate_name.and_then(|crate_name| {
+        let mut crate_path = None;
+        let mut root_path = root_file_path;
+        while let Some(path) = root_path.parent() {
+            match path.name_and_extension() {
+                Some((name, _)) => {
+                    if name.starts_with(crate_name.as_str()) {
+                        crate_path = Some(path);
+                        break;
+                    }
+                }
+                None => break,
+            }
+            root_path = path;
+        }
+        crate_path
     })
 }

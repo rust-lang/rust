@@ -1,13 +1,13 @@
 use ide_db::{
-    base_db::{CrateOrigin, SourceDatabase},
+    base_db::{CrateOrigin, FileId, SourceDatabase},
     FxIndexSet, RootDatabase,
 };
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CrateInfo {
-    pub name: String,
-    pub version: String,
-    pub path: String,
+    pub name: Option<String>,
+    pub version: Option<String>,
+    pub root_file_id: FileId,
 }
 
 // Feature: Show Dependency Tree
@@ -22,24 +22,16 @@ pub(crate) fn fetch_crates(db: &RootDatabase) -> FxIndexSet<CrateInfo> {
         .iter()
         .map(|crate_id| &crate_graph[crate_id])
         .filter(|&data| !matches!(data.origin, CrateOrigin::Local { .. }))
-        .filter_map(|data| crate_info(data))
+        .map(|data| crate_info(data))
         .collect()
 }
 
-fn crate_info(data: &ide_db::base_db::CrateData) -> Option<CrateInfo> {
+fn crate_info(data: &ide_db::base_db::CrateData) -> CrateInfo {
     let crate_name = crate_name(data);
-    let crate_path = data.crate_root_path.as_ref().map(|p| p.display().to_string());
-    if let Some(crate_path) = crate_path {
-        let version = data.version.clone().unwrap_or_else(|| "".to_owned());
-        Some(CrateInfo { name: crate_name, version, path: crate_path })
-    } else {
-        None
-    }
+    let version = data.version.clone();
+    CrateInfo { name: crate_name, version, root_file_id: data.root_file_id }
 }
 
-fn crate_name(data: &ide_db::base_db::CrateData) -> String {
-    data.display_name
-        .clone()
-        .map(|it| it.canonical_name().to_owned())
-        .unwrap_or("unknown".to_string())
+fn crate_name(data: &ide_db::base_db::CrateData) -> Option<String> {
+    data.display_name.as_ref().map(|it| it.canonical_name().to_owned())
 }

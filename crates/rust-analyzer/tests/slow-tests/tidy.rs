@@ -45,7 +45,7 @@ fn check_lsp_extensions_docs() {
             sh.read_file(sourcegen::project_root().join("docs/dev/lsp-extensions.md")).unwrap();
         let text = lsp_extensions_md
             .lines()
-            .find_map(|line| dbg!(line.strip_prefix("lsp_ext.rs hash:")))
+            .find_map(|line| line.strip_prefix("lsp_ext.rs hash:"))
             .unwrap()
             .trim();
         u64::from_str_radix(text, 16).unwrap()
