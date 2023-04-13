@@ -80,6 +80,7 @@ ENV RUST_CONFIGURE_ARGS \
       --set llvm.ninja=false \
       --set rust.jemalloc \
       --set rust.use-lld=true \
+      --set rust.debug-assertions-std=true \
       --set rust.lto=thin
 ENV SCRIPT python3 ../src/ci/stage-build.py python3 ../x.py dist \
     --host $HOSTS --target $HOSTS \
