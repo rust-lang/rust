@@ -20,6 +20,7 @@ pub mod mod_path;
 pub mod attrs;
 mod fixup;
 
+use mbe::TokenMap;
 pub use mbe::{Origin, ValueResult};
 
 use ::tt::token_id as tt;
@@ -139,7 +140,7 @@ pub enum MacroDefKind {
 struct EagerCallInfo {
     /// NOTE: This can be *either* the expansion result, *or* the argument to the eager macro!
     arg_or_expansion: Arc<tt::Subtree>,
-    included_file: Option<FileId>,
+    included_file: Option<(FileId, TokenMap)>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -206,7 +207,7 @@ impl HirFileId {
                 HirFileIdRepr::MacroFile(MacroFile { macro_call_id }) => {
                     let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_call_id);
                     file_id = match loc.eager {
-                        Some(EagerCallInfo { included_file: Some(file), .. }) => file.into(),
+                        Some(EagerCallInfo { included_file: Some((file, _)), .. }) => file.into(),
                         _ => loc.kind.file_id(),
                     };
                 }
@@ -319,7 +320,7 @@ impl HirFileId {
         match self.macro_file() {
             Some(macro_file) => {
                 let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
-                matches!(loc.eager, Some(EagerCallInfo { included_file: Some(_), .. }))
+                matches!(loc.eager, Some(EagerCallInfo { included_file: Some(..), .. }))
             }
             _ => false,
         }
@@ -676,6 +677,16 @@ impl ExpansionInfo {
 
         let call_id = self.expanded.file_id.macro_file()?.macro_call_id;
         let loc = db.lookup_intern_macro_call(call_id);
+
+        if let Some((file, map)) = loc.eager.and_then(|e| e.included_file) {
+            // Special case: map tokens from `include!` expansions to the included file
+            let range = map.first_range_by_token(token_id, token.value.kind())?;
+            let source = db.parse(file);
+
+            let token = source.syntax_node().covering_element(range).into_token()?;
+
+            return Some((InFile::new(file.into(), token), Origin::Call));
+        }
 
         // Attributes are a bit special for us, they have two inputs, the input tokentree and the annotated item.
         let (token_map, tt) = match &loc.kind {
