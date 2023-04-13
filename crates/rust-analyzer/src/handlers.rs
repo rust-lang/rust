@@ -1270,7 +1270,7 @@ pub(crate) fn handle_code_lens_resolve(
     snap: GlobalStateSnapshot,
     code_lens: CodeLens,
 ) -> Result<CodeLens> {
-    let annotation = from_proto::annotation(&snap, code_lens.clone())?;
+    let Some(annotation) = from_proto::annotation(&snap, code_lens.clone())? else { return Ok(code_lens) };
     let annotation = snap.analysis.resolve_annotation(annotation)?;
 
     let mut acc = Vec::new();

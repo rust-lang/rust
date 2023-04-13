@@ -495,7 +495,14 @@ pub struct OpenCargoTomlParams {
 /// Information about CodeLens, that is to be resolved.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) enum CodeLensResolveData {
+pub struct CodeLensResolveData {
+    pub version: i32,
+    pub kind: CodeLensResolveDataKind,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum CodeLensResolveDataKind {
     Impls(lsp_types::request::GotoImplementationParams),
     References(lsp_types::TextDocumentPositionParams),
 }
