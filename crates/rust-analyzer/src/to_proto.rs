@@ -1257,7 +1257,16 @@ pub(crate) fn code_lens(
             acc.push(lsp_types::CodeLens {
                 range: annotation_range,
                 command,
-                data: Some(to_value(lsp_ext::CodeLensResolveData::Impls(goto_params)).unwrap()),
+                data: (|| {
+                    let version = snap.url_file_version(&url)?;
+                    Some(
+                        to_value(lsp_ext::CodeLensResolveData {
+                            version,
+                            kind: lsp_ext::CodeLensResolveDataKind::Impls(goto_params),
+                        })
+                        .unwrap(),
+                    )
+                })(),
             })
         }
         AnnotationKind::HasReferences { pos: file_range, data } => {
@@ -1287,7 +1296,16 @@ pub(crate) fn code_lens(
             acc.push(lsp_types::CodeLens {
                 range: annotation_range,
                 command,
-                data: Some(to_value(lsp_ext::CodeLensResolveData::References(doc_pos)).unwrap()),
+                data: (|| {
+                    let version = snap.url_file_version(&url)?;
+                    Some(
+                        to_value(lsp_ext::CodeLensResolveData {
+                            version,
+                            kind: lsp_ext::CodeLensResolveDataKind::References(doc_pos),
+                        })
+                        .unwrap(),
+                    )
+                })(),
             })
         }
     }
