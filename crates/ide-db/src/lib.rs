@@ -43,7 +43,7 @@ pub mod syntax_helpers {
     pub use parser::LexedStr;
 }
 
-use std::{fmt, mem::ManuallyDrop, sync::Arc};
+use std::{fmt, hash::BuildHasherDefault, mem::ManuallyDrop, sync::Arc};
 
 use base_db::{
     salsa::{self, Durability},
@@ -53,6 +53,7 @@ use hir::{
     db::{DefDatabase, ExpandDatabase, HirDatabase},
     symbols::FileSymbolKind,
 };
+use indexmap::IndexSet;
 
 use crate::{line_index::LineIndex, symbol_index::SymbolsDatabase};
 pub use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
@@ -119,7 +120,10 @@ impl FileLoader for RootDatabase {
     fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId> {
         FileLoaderDelegate(self).resolve_path(path)
     }
-    fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>> {
+    fn relevant_crates(
+        &self,
+        file_id: FileId,
+    ) -> Arc<IndexSet<CrateId, BuildHasherDefault<FxHasher>>> {
         FileLoaderDelegate(self).relevant_crates(file_id)
     }
 }

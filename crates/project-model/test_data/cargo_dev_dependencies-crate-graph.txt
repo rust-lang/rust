@@ -244,14 +244,14 @@
                 prelude: true,
             },
             Dependency {
-                crate_id: Idx::<CrateData>(8),
+                crate_id: Idx::<CrateData>(7),
                 name: CrateName(
                     "ra_playground",
                 ),
                 prelude: true,
             },
             Dependency {
-                crate_id: Idx::<CrateData>(7),
+                crate_id: Idx::<CrateData>(5),
                 name: CrateName(
                     "regex",
                 ),
@@ -328,14 +328,14 @@
                 prelude: true,
             },
             Dependency {
-                crate_id: Idx::<CrateData>(8),
+                crate_id: Idx::<CrateData>(7),
                 name: CrateName(
                     "ra_playground",
                 ),
                 prelude: true,
             },
             Dependency {
-                crate_id: Idx::<CrateData>(7),
+                crate_id: Idx::<CrateData>(5),
                 name: CrateName(
                     "regex",
                 ),
@@ -552,104 +552,6 @@
         channel: None,
     },
     7: CrateData {
-        root_file_id: FileId(
-            6,
-        ),
-        edition: Edition2018,
-        version: Some(
-            "1.7.3",
-        ),
-        display_name: Some(
-            CrateDisplayName {
-                crate_name: CrateName(
-                    "regex",
-                ),
-                canonical_name: "regex",
-            },
-        ),
-        cfg_options: CfgOptions(
-            [
-                "debug_assertions",
-                "feature=aho-corasick",
-                "feature=default",
-                "feature=memchr",
-                "feature=perf",
-                "feature=perf-cache",
-                "feature=perf-dfa",
-                "feature=perf-inline",
-                "feature=perf-literal",
-                "feature=std",
-                "feature=unicode",
-                "feature=unicode-age",
-                "feature=unicode-bool",
-                "feature=unicode-case",
-                "feature=unicode-gencat",
-                "feature=unicode-perl",
-                "feature=unicode-script",
-                "feature=unicode-segment",
-                "test",
-            ],
-        ),
-        potential_cfg_options: Some(
-            CfgOptions(
-                [
-                    "debug_assertions",
-                    "feature=aho-corasick",
-                    "feature=default",
-                    "feature=memchr",
-                    "feature=pattern",
-                    "feature=perf",
-                    "feature=perf-cache",
-                    "feature=perf-dfa",
-                    "feature=perf-inline",
-                    "feature=perf-literal",
-                    "feature=std",
-                    "feature=unicode",
-                    "feature=unicode-age",
-                    "feature=unicode-bool",
-                    "feature=unicode-case",
-                    "feature=unicode-gencat",
-                    "feature=unicode-perl",
-                    "feature=unicode-script",
-                    "feature=unicode-segment",
-                    "feature=unstable",
-                    "feature=use_std",
-                ],
-            ),
-        ),
-        env: Env {
-            entries: {
-                "CARGO_PKG_LICENSE": "",
-                "CARGO_PKG_VERSION_MAJOR": "1",
-                "CARGO_MANIFEST_DIR": "$ROOT$.cargo/registry/src/github.com-1ecc6299db9ec823/regex-1.7.3",
-                "CARGO_PKG_VERSION": "1.7.3",
-                "CARGO_PKG_AUTHORS": "",
-                "CARGO_CRATE_NAME": "regex",
-                "CARGO_PKG_LICENSE_FILE": "",
-                "CARGO_PKG_HOMEPAGE": "",
-                "CARGO_PKG_DESCRIPTION": "",
-                "CARGO_PKG_NAME": "regex",
-                "CARGO_PKG_VERSION_PATCH": "3",
-                "CARGO": "cargo",
-                "CARGO_PKG_REPOSITORY": "",
-                "CARGO_PKG_VERSION_MINOR": "7",
-                "CARGO_PKG_VERSION_PRE": "",
-            },
-        },
-        dependencies: [],
-        origin: Library {
-            repo: Some(
-                "https://github.com/rust-lang/regex",
-            ),
-            name: "regex",
-        },
-        is_proc_macro: false,
-        target_layout: Err(
-            "target_data_layout not loaded",
-        ),
-        channel: None,
-    },
-    8: CrateData {
         root_file_id: FileId(
             4,
         ),

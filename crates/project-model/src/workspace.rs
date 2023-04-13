@@ -938,7 +938,7 @@ fn cargo_to_crate_graph(
     // Get all dependencies of the workspace members that are used as dev-dependencies
     for pkg in cargo.packages() {
         for dep in &cargo[pkg].dependencies {
-            if dep.kind == DepKind::Dev {
+            if dep.kind == DepKind::Dev && cargo[dep.pkg].is_member {
                 work.push(dep.pkg);
             }
         }
@@ -955,6 +955,10 @@ fn cargo_to_crate_graph(
                 }
                 v.insert({
                     let duped = crate_graph.duplicate(to);
+                    tracing::info!(
+                        "duplicating workspace crate {:?} as it is being used as a dev-dependency: {to:?} -> {duped:?}",
+                        crate_graph[to].display_name
+                    );
                     if let Some(proc_macro) = proc_macros.get(&to).cloned() {
                         proc_macros.insert(duped, proc_macro);
                     }
@@ -1008,7 +1012,12 @@ fn cargo_to_crate_graph(
 
     for (&pkg, targets) in &pkg_crates {
         for &(krate, _) in targets {
-            if test_dupes.get(&krate).is_some() {
+            if let Some(&dupe) = test_dupes.get(&krate) {
+                tracing::info!(
+                    "{krate:?} {:?} {dupe:?} {:?}",
+                    crate_graph[krate].cfg_options,
+                    crate_graph[dupe].cfg_options
+                );
                 // if the crate got duped as a dev-dep the dupe already has test set
                 continue;
             }
