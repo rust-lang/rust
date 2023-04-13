@@ -17,7 +17,6 @@
 #![unstable(feature = "test", issue = "50297")]
 #![doc(test(attr(deny(warnings))))]
 #![feature(internal_output_capture)]
-#![feature(is_terminal)]
 #![feature(staged_api)]
 #![feature(process_exitcode_internals)]
 #![feature(panic_can_unwind)]

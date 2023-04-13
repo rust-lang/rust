@@ -254,7 +254,6 @@
 #![feature(exhaustive_patterns)]
 #![feature(if_let_guard)]
 #![feature(intra_doc_pointers)]
-#![feature(is_terminal)]
 #![feature(lang_items)]
 #![feature(let_chains)]
 #![feature(linkage)]
