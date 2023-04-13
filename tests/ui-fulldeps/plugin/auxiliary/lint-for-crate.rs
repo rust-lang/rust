@@ -28,7 +28,7 @@ impl<'tcx> LateLintPass<'tcx> for Pass {
     fn check_crate(&mut self, cx: &LateContext) {
         let attrs = cx.tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
         let span = cx.tcx.def_span(CRATE_DEF_ID);
-        if !attr::contains_name(attrs, Symbol::intern("crate_okay")) {
+        if !attrs.contains(Symbol::intern("crate_okay")) {
             cx.lint(CRATE_NOT_OKAY, "crate is not marked with #![crate_okay]", |lint| {
                 lint.set_span(span)
             });
