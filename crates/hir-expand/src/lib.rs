@@ -694,7 +694,7 @@ impl ExpansionInfo {
                 (&attr_args.1, self.attr_input_or_mac_def.clone()?.syntax().cloned())
             }
             MacroCallKind::Attr { attr_args, .. } => {
-                // try unshifting the the token id, if unshifting fails, the token resides in the non-item attribute input
+                // try unshifting the token id, if unshifting fails, the token resides in the non-item attribute input
                 // note that the `TokenExpander::map_id_up` earlier only unshifts for declarative macros, so we don't double unshift with this
                 match self.macro_arg_shift.unshift(token_id) {
                     Some(unshifted) => {

@@ -3115,7 +3115,7 @@ mod Foo$0 {
 }
 
 #[test]
-fn hover_doc_outer_inner_attribue() {
+fn hover_doc_outer_inner_attribute() {
     check(
         r#"
 #[doc = "Be quick;"]
@@ -3146,7 +3146,7 @@ mod Foo$0 {
 }
 
 #[test]
-fn hover_doc_block_style_indentend() {
+fn hover_doc_block_style_indent_end() {
     check(
         r#"
 /**
@@ -4288,7 +4288,7 @@ fn hover_builtin() {
     check(
         r#"
 //- /main.rs crate:main deps:std
-cosnt _: &str$0 = ""; }
+const _: &str$0 = ""; }
 
 //- /libstd.rs crate:std
 /// Docs for prim_str

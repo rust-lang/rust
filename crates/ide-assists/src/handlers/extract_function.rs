@@ -374,7 +374,7 @@ struct OutlivedLocal {
 
 /// Container of local variable usages
 ///
-/// Semanticall same as `UsageSearchResult`, but provides more convenient interface
+/// Semantically same as `UsageSearchResult`, but provides more convenient interface
 struct LocalUsages(ide_db::search::UsageSearchResult);
 
 impl LocalUsages {
@@ -1291,8 +1291,8 @@ fn find_non_trait_impl(trait_impl: &SyntaxNode) -> Option<ast::Impl> {
     let as_impl = ast::Impl::cast(trait_impl.clone())?;
     let impl_type = Some(impl_type_name(&as_impl)?);
 
-    let sibblings = trait_impl.parent()?.children();
-    sibblings
+    let siblings = trait_impl.parent()?.children();
+    siblings
         .filter_map(ast::Impl::cast)
         .find(|s| impl_type_name(s) == impl_type && !is_trait_impl(s))
 }

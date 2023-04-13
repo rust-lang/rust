@@ -801,7 +801,7 @@ fn precise_macro_call_location(
     ast: &MacroCallKind,
     db: &dyn HirDatabase,
 ) -> (InFile<SyntaxNodePtr>, Option<TextRange>, Option<String>, MacroKind) {
-    // FIXME: maaybe we actually want slightly different ranges for the different macro diagnostics
+    // FIXME: maybe we actually want slightly different ranges for the different macro diagnostics
     // - e.g. the full attribute for macro errors, but only the name for name resolution
     match ast {
         MacroCallKind::FnLike { ast_id, .. } => {
@@ -1522,7 +1522,7 @@ impl DefWithBody {
             match source_map.expr_syntax(expr) {
                 Ok(expr) => acc.push(MissingUnsafe { expr }.into()),
                 Err(SyntheticSyntax) => {
-                    // FIXME: Here and eslwhere in this file, the `expr` was
+                    // FIXME: Here and elsewhere in this file, the `expr` was
                     // desugared, report or assert that this doesn't happen.
                 }
             }
@@ -3654,7 +3654,7 @@ impl Type {
         self.as_adt()
             .and_then(|a| a.lifetime(db).and_then(|lt| Some((&lt.name).to_smol_str())))
             .into_iter()
-            // add the type and const paramaters
+            // add the type and const parameters
             .chain(self.type_and_const_arguments(db))
     }
 

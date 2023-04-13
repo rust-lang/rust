@@ -386,7 +386,7 @@ fn foo() {
     }
 
     #[test]
-    fn pull_assignment_up_if_missing_assigment_not_applicable() {
+    fn pull_assignment_up_if_missing_assignment_not_applicable() {
         check_assist_not_applicable(
             pull_assignment_up,
             r#"
@@ -401,7 +401,7 @@ fn foo() {
     }
 
     #[test]
-    fn pull_assignment_up_match_missing_assigment_not_applicable() {
+    fn pull_assignment_up_match_missing_assignment_not_applicable() {
         check_assist_not_applicable(
             pull_assignment_up,
             r#"

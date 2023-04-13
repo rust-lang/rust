@@ -1006,7 +1006,7 @@ enum X<'a, 'b, 'x> {
     }
 
     #[test]
-    fn test_extract_struct_with_liftime_type_const() {
+    fn test_extract_struct_with_lifetime_type_const() {
         check_assist(
             extract_struct_from_enum_variant,
             r#"

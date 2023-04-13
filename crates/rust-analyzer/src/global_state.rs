@@ -288,7 +288,7 @@ impl GlobalState {
         {
             let raw_database = self.analysis_host.raw_database();
             // FIXME: ideally we should only trigger a workspace fetch for non-library changes
-            // but somethings going wrong with the source root business when we add a new local
+            // but something's going wrong with the source root business when we add a new local
             // crate see https://github.com/rust-lang/rust-analyzer/issues/13029
             if let Some(path) = workspace_structure_change {
                 self.fetch_workspaces_queue

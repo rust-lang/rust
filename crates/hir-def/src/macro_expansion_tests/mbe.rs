@@ -98,7 +98,7 @@ fn#19 main#20(#21)#21 {#22
     );
 }
 #[test]
-fn float_field_acces_macro_input() {
+fn float_field_access_macro_input() {
     check(
         r#"
 macro_rules! foo {

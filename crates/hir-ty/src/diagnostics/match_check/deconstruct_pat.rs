@@ -82,7 +82,7 @@ fn expand_or_pat(pat: &Pat) -> Vec<&Pat> {
     pats
 }
 
-/// [Constructor] uses this in umimplemented variants.
+/// [Constructor] uses this in unimplemented variants.
 /// It allows porting match expressions from upstream algorithm without losing semantics.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(super) enum Void {}

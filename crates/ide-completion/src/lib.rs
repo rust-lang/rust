@@ -133,7 +133,7 @@ pub use crate::{
 ///
 /// Another case where this would be instrumental is macro expansion. We want to
 /// insert a fake ident and re-expand code. There's `expand_speculative` as a
-/// work-around for this.
+/// workaround for this.
 ///
 /// A different use-case is completion of injection (examples and links in doc
 /// comments). When computing completion for a path in a doc-comment, you want

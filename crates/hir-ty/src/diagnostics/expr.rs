@@ -207,7 +207,7 @@ impl ExprValidator {
 
         let report = compute_match_usefulness(&cx, &m_arms, scrut_ty);
 
-        // FIXME Report unreacheble arms
+        // FIXME Report unreachable arms
         // https://github.com/rust-lang/rust/blob/f31622a50/compiler/rustc_mir_build/src/thir/pattern/check_match.rs#L200
 
         let witnesses = report.non_exhaustiveness_witnesses;

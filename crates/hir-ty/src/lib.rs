@@ -148,7 +148,7 @@ pub type Guidance = chalk_solve::Guidance<Interner>;
 pub type WhereClause = chalk_ir::WhereClause<Interner>;
 
 /// A constant can have reference to other things. Memory map job is holding
-/// the neccessary bits of memory of the const eval session to keep the constant
+/// the necessary bits of memory of the const eval session to keep the constant
 /// meaningful.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct MemoryMap(pub HashMap<usize, Vec<u8>>);

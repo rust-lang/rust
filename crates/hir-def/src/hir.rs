@@ -502,7 +502,7 @@ impl Binding {
     pub fn is_upvar(&self, relative_to: ExprId) -> bool {
         match self.owner {
             Some(x) => {
-                // We assign expression ids in a way that outer closures will recieve
+                // We assign expression ids in a way that outer closures will receive
                 // a lower id
                 x.into_raw() < relative_to.into_raw()
             }

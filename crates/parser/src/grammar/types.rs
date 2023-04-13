@@ -59,7 +59,7 @@ pub(super) fn ascription(p: &mut Parser<'_>) {
     assert!(p.at(T![:]));
     p.bump(T![:]);
     if p.at(T![=]) {
-        // recover from `let x: = expr;`, `const X: = expr;` and similars
+        // recover from `let x: = expr;`, `const X: = expr;` and similar
         // hopefully no type starts with `=`
         p.error("missing type");
         return;

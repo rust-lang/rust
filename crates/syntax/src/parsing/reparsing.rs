@@ -166,8 +166,8 @@ fn merge_errors(
     }
     res.extend(new_errors.into_iter().map(|new_err| {
         // fighting borrow checker with a variable ;)
-        let offseted_range = new_err.range() + range_before_reparse.start();
-        new_err.with_range(offseted_range)
+        let offsetted_range = new_err.range() + range_before_reparse.start();
+        new_err.with_range(offsetted_range)
     }));
     res
 }
@@ -408,7 +408,7 @@ enum Foo {
 
     #[test]
     fn reparse_str_token_with_error_fixed() {
-        do_check(r#""unterinated$0$0"#, "\"", 12);
+        do_check(r#""unterminated$0$0"#, "\"", 13);
     }
 
     #[test]

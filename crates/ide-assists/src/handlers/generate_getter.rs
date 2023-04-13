@@ -174,7 +174,7 @@ pub(crate) fn generate_getter_impl(
                 // this buf inserts a newline at the end of a getter
                 // automatically, if one wants to add one more newline
                 // for separating it from other assoc items, that needs
-                // to be handled spearately
+                // to be handled separately
                 let mut getter_buf =
                     generate_getter_from_info(ctx, &getter_info, record_field_info);
 

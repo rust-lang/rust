@@ -332,7 +332,7 @@ struct MatchState<'t> {
     /// Cached result of meta variable parsing
     meta_result: Option<(TtIter<'t>, ExpandResult<Option<Fragment>>)>,
 
-    /// Is error occuried in this state, will `poised` to "parent"
+    /// Is error occurred in this state, will `poised` to "parent"
     is_error: bool,
 }
 

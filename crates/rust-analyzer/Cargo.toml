@@ -48,7 +48,7 @@ tracing-tree = "0.2.1"
 always-assert = "0.1.2"
 
 # These dependencies are unused, but we pin them to a version here to restrict them for our transitive dependencies
-# so that we don't pull in duplicates of their depdendenceies like windows-sys and syn 1 vs 2
+# so that we don't pull in duplicates of their dependencies like windows-sys and syn 1 vs 2
 # these would pull in serde 2
 thiserror = "=1.0.39"
 serde_repr = "=0.1.11"

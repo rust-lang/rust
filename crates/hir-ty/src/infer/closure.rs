@@ -756,7 +756,7 @@ impl InferenceContext<'_> {
         let mut deferred_closures = mem::take(&mut self.deferred_closures);
         let mut dependents_count: FxHashMap<ClosureId, usize> =
             deferred_closures.keys().map(|x| (*x, 0)).collect();
-        for (_, deps) in &self.closure_dependecies {
+        for (_, deps) in &self.closure_dependencies {
             for dep in deps {
                 *dependents_count.entry(*dep).or_default() += 1;
             }
@@ -768,7 +768,7 @@ impl InferenceContext<'_> {
             if let Some(d) = deferred_closures.remove(&x) {
                 result.push((x, d));
             }
-            for dep in self.closure_dependecies.get(&x).into_iter().flat_map(|x| x.iter()) {
+            for dep in self.closure_dependencies.get(&x).into_iter().flat_map(|x| x.iter()) {
                 let cnt = dependents_count.get_mut(dep).unwrap();
                 *cnt -= 1;
                 if *cnt == 0 {

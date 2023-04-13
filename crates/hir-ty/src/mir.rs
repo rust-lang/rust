@@ -55,7 +55,7 @@ pub struct Local {
 /// This is what is implemented in miri today. Are these the semantics we want for MIR? Is this
 /// something we can even decide without knowing more about Rust's memory model?
 ///
-/// **Needs clarifiation:** Is loading a place that has its variant index set well-formed? Miri
+/// **Needs clarification:** Is loading a place that has its variant index set well-formed? Miri
 /// currently implements it, but it seems like this may be something to check against in the
 /// validator.
 #[derive(Debug, PartialEq, Eq, Clone)]

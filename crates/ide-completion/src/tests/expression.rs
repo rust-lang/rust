@@ -667,7 +667,7 @@ fn main() {
 }
 
 #[test]
-fn varaiant_with_struct() {
+fn variant_with_struct() {
     check_empty(
         r#"
 pub struct YoloVariant {

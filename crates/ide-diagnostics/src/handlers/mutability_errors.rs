@@ -368,7 +368,7 @@ fn main() {
     #[test]
     fn mutation_in_dead_code() {
         // This one is interesting. Dead code is not represented at all in the MIR, so
-        // there would be no mutablility error for locals in dead code. Rustc tries to
+        // there would be no mutability error for locals in dead code. Rustc tries to
         // not emit `unused_mut` in this case, but since it works without `mut`, and
         // special casing it is not trivial, we emit it.
         check_diagnostics(
@@ -773,7 +773,7 @@ fn fn_once(mut x: impl FnOnce(u8) -> u8) -> u8 {
 
     #[test]
     fn closure() {
-        // FIXME: Diagnositc spans are too large
+        // FIXME: Diagnostic spans are too large
         check_diagnostics(
             r#"
         //- minicore: copy, fn

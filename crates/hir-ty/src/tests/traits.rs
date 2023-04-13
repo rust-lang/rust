@@ -4250,7 +4250,7 @@ impl Trait for () {
 }
 
 #[test]
-fn associted_type_in_struct_expr_path_enum() {
+fn associated_type_in_struct_expr_path_enum() {
     // FIXME: All annotation should be resolvable.
     // For lines marked as unstable, see rust-lang/rust#86935.
     // FIXME: Remove the comments once stablized.

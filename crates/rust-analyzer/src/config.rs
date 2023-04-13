@@ -338,7 +338,7 @@ config_data! {
         inlayHints_closingBraceHints_minLines: usize               = "25",
         /// Whether to show inlay type hints for return types of closures.
         inlayHints_closureReturnTypeHints_enable: ClosureReturnTypeHintsDef  = "\"never\"",
-        /// Closure notation in type and chaining inaly hints.
+        /// Closure notation in type and chaining inlay hints.
         inlayHints_closureStyle: ClosureStyle                                = "\"impl_fn\"",
         /// Whether to show enum variant discriminant hints.
         inlayHints_discriminantHints_enable: DiscriminantHintsDef            = "\"never\"",
@@ -488,7 +488,7 @@ config_data! {
         /// When enabled, rust-analyzer will emit special token types for operator tokens instead
         /// of the generic `operator` token type.
         semanticHighlighting_operator_specialization_enable: bool = "false",
-        /// Use semantic tokens for punctuations.
+        /// Use semantic tokens for punctuation.
         ///
         /// When disabled, rust-analyzer will emit semantic tokens only for punctuation tokens when
         /// they are tagged with modifiers or have a special role.
@@ -496,7 +496,7 @@ config_data! {
         /// When enabled, rust-analyzer will emit a punctuation semantic token for the `!` of macro
         /// calls.
         semanticHighlighting_punctuation_separate_macro_bang: bool = "false",
-        /// Use specialized semantic tokens for punctuations.
+        /// Use specialized semantic tokens for punctuation.
         ///
         /// When enabled, rust-analyzer will emit special token types for punctuation tokens instead
         /// of the generic `punctuation` token type.
@@ -1967,7 +1967,7 @@ fn get_field<T: DeserializeOwned>(
     alias: Option<&'static str>,
     default: &str,
 ) -> T {
-    // XXX: check alias first, to work-around the VS Code where it pre-fills the
+    // XXX: check alias first, to work around the VS Code where it pre-fills the
     // defaults instead of sending an empty object.
     alias
         .into_iter()
@@ -2199,8 +2199,8 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "enumDescriptions": [
                 "Always show adjustment hints as prefix (`*expr`).",
                 "Always show adjustment hints as postfix (`expr.*`).",
-                "Show prefix or postfix depending on which uses less parenthesis, prefering prefix.",
-                "Show prefix or postfix depending on which uses less parenthesis, prefering postfix.",
+                "Show prefix or postfix depending on which uses less parenthesis, preferring prefix.",
+                "Show prefix or postfix depending on which uses less parenthesis, preferring postfix.",
             ]
         },
         "CargoFeaturesDef" => set! {

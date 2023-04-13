@@ -123,7 +123,7 @@ impl Interval {
     }
 
     fn write_from_interval(&self, memory: &mut Evaluator<'_>, interval: Interval) -> Result<()> {
-        // FIXME: this could be more efficent
+        // FIXME: this could be more efficient
         let bytes = &interval.get(memory)?.to_vec();
         memory.write_memory(self.addr, bytes)
     }
@@ -692,7 +692,7 @@ impl Evaluator<'_> {
                         Owned(r[0..lc.len()].into())
                     }
                     BinOp::Shl | BinOp::Shr => {
-                        let shift_amout = if r128 < 0 {
+                        let shift_amount = if r128 < 0 {
                             return Err(MirEvalError::Panic(format!("Overflow in {op:?}")));
                         } else if r128 > 128 {
                             return Err(MirEvalError::Panic(format!("Overflow in {op:?}")));
@@ -700,8 +700,8 @@ impl Evaluator<'_> {
                             r128 as u8
                         };
                         let r = match op {
-                            BinOp::Shl => l128 << shift_amout,
-                            BinOp::Shr => l128 >> shift_amout,
+                            BinOp::Shl => l128 << shift_amount,
+                            BinOp::Shr => l128 >> shift_amount,
                             _ => unreachable!(),
                         };
                         Owned(r.to_le_bytes()[0..lc.len()].into())
@@ -966,7 +966,7 @@ impl Evaluator<'_> {
 
     fn make_by_layout(
         &mut self,
-        size: usize, // Not neccessarily equal to variant_layout.size
+        size: usize, // Not necessarily equal to variant_layout.size
         variant_layout: &Layout,
         tag: Option<(usize, usize, i128)>,
         values: impl Iterator<Item = Interval>,
@@ -1481,7 +1481,7 @@ impl Evaluator<'_> {
                 is_dyn_method(self.db, self.trait_env.clone(), def, generic_args.clone())
             {
                 // In the layout of current possible receiver, which at the moment of writing this code is one of
-                // `&T`, `&mut T`, `Box<T>`, `Rc<T>`, `Arc<T>`, and `Pin<P>` where `P` is one of possible recievers,
+                // `&T`, `&mut T`, `Box<T>`, `Rc<T>`, `Arc<T>`, and `Pin<P>` where `P` is one of possible receivers,
                 // the vtable is exactly in the `[ptr_size..2*ptr_size]` bytes. So we can use it without branching on
                 // the type.
                 let ty = self

@@ -108,7 +108,7 @@ fn invocation_fixtures(rules: &FxHashMap<String, DeclarativeMacro>) -> Vec<(Stri
                     }
                     try_cnt += 1;
                     if try_cnt > 100 {
-                        panic!("invocaton fixture {name} cannot be generated.\n");
+                        panic!("invocation fixture {name} cannot be generated.\n");
                     }
                 }
             }
@@ -195,7 +195,7 @@ fn invocation_fixtures(rules: &FxHashMap<String, DeclarativeMacro>) -> Vec<(Stri
             Op::Ignore { .. } | Op::Index { .. } => {}
         };
 
-        // Simple linear congruential generator for determistic result
+        // Simple linear congruential generator for deterministic result
         fn rand(seed: &mut usize) -> usize {
             let a = 1664525;
             let c = 1013904223;

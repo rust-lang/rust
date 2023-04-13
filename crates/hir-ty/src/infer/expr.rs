@@ -287,7 +287,7 @@ impl<'a> InferenceContext<'a> {
                         .intern(Interner);
                         self.deferred_closures.entry(closure_id).or_default();
                         if let Some(c) = self.current_closure {
-                            self.closure_dependecies.entry(c).or_default().push(closure_id);
+                            self.closure_dependencies.entry(c).or_default().push(closure_id);
                         }
                         (Some(closure_id), closure_ty, None)
                     }
@@ -349,7 +349,7 @@ impl<'a> InferenceContext<'a> {
                             self.table.resolve_completely(callee_ty.clone()).kind(Interner)
                         {
                             if let Some(par) = self.current_closure {
-                                self.closure_dependecies.entry(par).or_default().push(*c);
+                                self.closure_dependencies.entry(par).or_default().push(*c);
                             }
                             self.deferred_closures.entry(*c).or_default().push((
                                 derefed_callee.clone(),
