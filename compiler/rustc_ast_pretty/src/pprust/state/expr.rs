@@ -151,7 +151,7 @@ impl<'a> State<'a> {
         self.cbox(0);
         for field in fields.iter().delimited() {
             self.maybe_print_comment(field.span.hi());
-            self.print_outer_attributes(&field.attrs);
+            self.print_outer_attributes(field.attrs.iter());
             if field.is_first {
                 self.space_if_not_bol();
             }
@@ -290,7 +290,7 @@ impl<'a> State<'a> {
         if is_inline {
             self.print_outer_attributes_inline(attrs);
         } else {
-            self.print_outer_attributes(attrs);
+            self.print_outer_attributes(attrs.iter());
         }
 
         self.ibox(INDENT_UNIT);
@@ -591,7 +591,7 @@ impl<'a> State<'a> {
         self.cbox(INDENT_UNIT);
         self.ibox(0);
         self.maybe_print_comment(arm.pat.span.lo());
-        self.print_outer_attributes(&arm.attrs);
+        self.print_outer_attributes(arm.attrs.iter());
         self.print_pat(&arm.pat);
         self.space();
         if let Some(e) = &arm.guard {

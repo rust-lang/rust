@@ -911,5 +911,5 @@ fn get_recursion_limit(krate_attrs: &[ast::Attribute], sess: &Session) -> Limit 
             sym::recursion_limit,
         );
     }
-    rustc_middle::middle::limits::get_recursion_limit(krate_attrs, sess)
+    rustc_middle::middle::limits::get_recursion_limit(krate_attrs.iter(), sess)
 }

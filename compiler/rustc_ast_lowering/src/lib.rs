@@ -657,6 +657,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         bodies.sort_by_key(|(k, _)| *k);
         let bodies = SortedMap::from_presorted_elements(bodies);
+        let attrs: SortedMap<ItemLocalId, hir::ItemAttributes<'_>> = attrs
+            .into_iter()
+            .map(|(id, attrs)| {
+                (
+                    id,
+                    hir::ItemAttributes(
+                        attrs.into_iter().map(|attr| (attr.name_or_empty(), attr)).collect(),
+                    ),
+                )
+            })
+            .collect();
 
         // Don't hash unless necessary, because it's expensive.
         let (opt_hash_including_bodies, attrs_hash) = if self.tcx.sess.needs_crate_hash() {

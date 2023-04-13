@@ -466,7 +466,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
 
         let hir_id = self.tcx.hir().local_def_id_to_hir_id(local_def_id);
         let attrs = self.tcx.hir().attrs(hir_id);
-        if attr::find_transparency(attrs, md.macro_rules).0 != Transparency::Opaque {
+        if attr::find_transparency(attrs.values(), md.macro_rules).0 != Transparency::Opaque {
             return;
         }
 

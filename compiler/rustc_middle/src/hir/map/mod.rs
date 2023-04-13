@@ -1,7 +1,6 @@
 use crate::hir::{ModuleItems, Owner};
 use crate::query::LocalCrate;
 use crate::ty::TyCtxt;
-use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
@@ -535,12 +534,12 @@ impl<'hir> Map<'hir> {
     /// Gets the attributes on the crate. This is preferable to
     /// invoking `krate.attrs` because it registers a tighter
     /// dep-graph access.
-    pub fn krate_attrs(self) -> &'hir [ast::Attribute] {
+    pub fn krate_attrs(self) -> &'hir ItemAttributes<'hir> {
         self.attrs(CRATE_HIR_ID)
     }
 
     pub fn rustc_coherence_is_core(self) -> bool {
-        self.krate_attrs().iter().any(|attr| attr.has_name(sym::rustc_coherence_is_core))
+        self.krate_attrs().contains(sym::rustc_coherence_is_core)
     }
 
     pub fn get_module(self, module: LocalDefId) -> (&'hir Mod<'hir>, Span, HirId) {
@@ -566,7 +565,7 @@ impl<'hir> Map<'hir> {
         for info in krate.owners.iter() {
             if let MaybeOwner::Owner(info) = info {
                 for attrs in info.attrs.map.values() {
-                    for a in *attrs {
+                    for a in attrs.values() {
                         visitor.visit_attribute(a)
                     }
                 }
@@ -933,7 +932,7 @@ impl<'hir> Map<'hir> {
 
     /// Given a node ID, gets a list of attributes associated with the AST
     /// corresponding to the node-ID.
-    pub fn attrs(self, id: HirId) -> &'hir [ast::Attribute] {
+    pub fn attrs(self, id: HirId) -> &'hir ItemAttributes<'hir> {
         self.tcx.hir_attrs(id.owner).get(id.local_id)
     }
 

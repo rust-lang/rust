@@ -1,4 +1,3 @@
-use rustc_ast::attr;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
@@ -9,7 +8,7 @@ fn proc_macro_decls_static(tcx: TyCtxt<'_>, (): ()) -> Option<LocalDefId> {
 
     for id in tcx.hir().items() {
         let attrs = tcx.hir().attrs(id.hir_id());
-        if attr::contains_name(attrs, sym::rustc_proc_macro_decls) {
+        if attrs.contains(sym::rustc_proc_macro_decls) {
             decls = Some(id.owner_id.def_id);
         }
     }

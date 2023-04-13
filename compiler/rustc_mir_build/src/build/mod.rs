@@ -3,7 +3,6 @@ use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::scope::DropKind;
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
-use rustc_ast::attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_errors::ErrorGuaranteed;
@@ -478,9 +477,7 @@ fn construct_fn<'tcx>(
         (None, fn_sig.output())
     };
 
-    if let Some(custom_mir_attr) =
-        tcx.hir().attrs(fn_id).iter().find(|attr| attr.name_or_empty() == sym::custom_mir)
-    {
+    if let Some(custom_mir_attr) = tcx.hir().attrs(fn_id).find_by_name(sym::custom_mir) {
         return custom::build_custom_mir(
             tcx,
             fn_def.did.to_def_id(),
@@ -683,7 +680,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Some functions always have overflow checks enabled,
         // however, they may not get codegen'd, depending on
         // the settings for the crate they are codegened in.
-        let mut check_overflow = attr::contains_name(attrs, sym::rustc_inherit_overflow_checks);
+        let mut check_overflow = attrs.contains(sym::rustc_inherit_overflow_checks);
         // Respect -C overflow-checks.
         check_overflow |= tcx.sess.overflow_checks();
         // Constants always need overflow checks.

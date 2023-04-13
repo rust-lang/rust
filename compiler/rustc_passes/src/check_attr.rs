@@ -10,12 +10,12 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, IntoDiagnosticArg, MultiSpan};
 use rustc_expand::base::resolve_path;
 use rustc_feature::{AttributeDuplicates, AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
-use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
     self, FnSig, ForeignItem, HirId, Item, ItemKind, TraitItem, CRATE_HIR_ID, CRATE_OWNER_ID,
 };
+use rustc_hir::{self as hir, ItemAttributes};
 use rustc_hir::{MethodKind, Target, Unsafety};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
@@ -105,8 +105,8 @@ impl CheckAttrVisitor<'_> {
         let mut specified_inline = None;
         let mut seen = FxHashMap::default();
         let attrs = self.tcx.hir().attrs(hir_id);
-        for attr in attrs {
-            let attr_is_valid = match attr.name_or_empty() {
+        for (name, attr) in attrs.iter() {
+            let attr_is_valid = match name {
                 sym::do_not_recommend => self.check_do_not_recommend(attr.span, target),
                 sym::inline => self.check_inline(hir_id, attr, span, target),
                 sym::no_coverage => self.check_no_coverage(hir_id, attr, span, target),
@@ -493,12 +493,12 @@ impl CheckAttrVisitor<'_> {
         &self,
         hir_id: HirId,
         attr_span: Span,
-        attrs: &[Attribute],
+        attrs: &ItemAttributes<'_>,
         span: Span,
         target: Target,
     ) -> bool {
         match target {
-            _ if attrs.iter().any(|attr| attr.has_name(sym::naked)) => {
+            _ if attrs.contains(sym::naked) => {
                 self.tcx.sess.emit_err(errors::NakedTrackedCaller { attr_span });
                 false
             }
@@ -508,7 +508,7 @@ impl CheckAttrVisitor<'_> {
             // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
-                for attr in attrs {
+                for attr in attrs.values() {
                     self.inline_attr_str_error_with_macro_def(hir_id, attr, "track_caller");
                 }
                 true
@@ -1207,12 +1207,12 @@ impl CheckAttrVisitor<'_> {
         }
     }
 
-    fn check_ffi_pure(&self, attr_span: Span, attrs: &[Attribute], target: Target) -> bool {
+    fn check_ffi_pure(&self, attr_span: Span, attrs: &ItemAttributes<'_>, target: Target) -> bool {
         if target != Target::ForeignFn {
             self.tcx.sess.emit_err(errors::FfiPureInvalidTarget { attr_span });
             return false;
         }
-        if attrs.iter().any(|a| a.has_name(sym::ffi_const)) {
+        if attrs.contains(sym::ffi_const) {
             // `#[ffi_const]` functions cannot be `#[ffi_pure]`
             self.tcx.sess.emit_err(errors::BothFfiConstAndPure { attr_span });
             false
@@ -1685,7 +1685,7 @@ impl CheckAttrVisitor<'_> {
     /// Checks if the `#[repr]` attributes on `item` are valid.
     fn check_repr(
         &self,
-        attrs: &[Attribute],
+        attrs: &ItemAttributes<'_>,
         span: Span,
         target: Target,
         item: Option<ItemLike<'_>>,
@@ -1696,12 +1696,8 @@ impl CheckAttrVisitor<'_> {
         // #[repr(foo)]
         // #[repr(bar, align(8))]
         // ```
-        let hints: Vec<_> = attrs
-            .iter()
-            .filter(|attr| attr.has_name(sym::repr))
-            .filter_map(|attr| attr.meta_item_list())
-            .flatten()
-            .collect();
+        let hints: Vec<_> =
+            attrs.with_name(sym::repr).filter_map(|attr| attr.meta_item_list()).flatten().collect();
 
         let mut int_reprs = 0;
         let mut is_c = false;
@@ -1851,10 +1847,10 @@ impl CheckAttrVisitor<'_> {
         }
     }
 
-    fn check_used(&self, attrs: &[Attribute], target: Target) {
+    fn check_used(&self, attrs: &ItemAttributes<'_>, target: Target) {
         let mut used_linker_span = None;
         let mut used_compiler_span = None;
-        for attr in attrs.iter().filter(|attr| attr.has_name(sym::used)) {
+        for attr in attrs.with_name(sym::used) {
             if target != Target::Static {
                 self.tcx.sess.emit_err(errors::UsedStatic { span: attr.span });
             }
@@ -1896,12 +1892,12 @@ impl CheckAttrVisitor<'_> {
         attr: &Attribute,
         span: Span,
         target: Target,
-        attrs: &[Attribute],
+        attrs: &ItemAttributes<'_>,
     ) -> bool {
         debug!("Checking target: {:?}", target);
         match target {
             Target::Fn => {
-                for attr in attrs {
+                for attr in attrs.values() {
                     if attr.is_proc_macro_attr() {
                         debug!("Is proc macro attr");
                         return true;
@@ -2397,7 +2393,7 @@ fn is_c_like_enum(item: &Item<'_>) -> bool {
 
 // FIXME: Fix "Cannot determine resolution" error and remove built-in macros
 // from this check.
-fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
+fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &ItemAttributes<'_>) {
     // Check for builtin attributes at the crate level
     // which were unsuccessfully resolved due to cannot determine
     // resolution for the attribute macro error.
@@ -2416,18 +2412,16 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
         sym::bench,
     ];
 
-    for attr in attrs {
+    for (name, attr) in attrs.iter() {
         // This function should only be called with crate attributes
         // which are inner attributes always but lets check to make sure
         if attr.style == AttrStyle::Inner {
-            for attr_to_check in ATTRS_TO_CHECK {
-                if attr.has_name(*attr_to_check) {
-                    tcx.sess.emit_err(errors::InvalidAttrAtCrateLevel {
-                        span: attr.span,
-                        snippet: tcx.sess.source_map().span_to_snippet(attr.span).ok(),
-                        name: *attr_to_check,
-                    });
-                }
+            if let Some(attr_to_check) = ATTRS_TO_CHECK.iter().find(|&&a| name == a) {
+                tcx.sess.emit_err(errors::InvalidAttrAtCrateLevel {
+                    span: attr.span,
+                    snippet: tcx.sess.source_map().span_to_snippet(attr.span).ok(),
+                    name: *attr_to_check,
+                });
             }
         }
     }
@@ -2436,10 +2430,8 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
 fn check_non_exported_macro_for_invalid_attrs(tcx: TyCtxt<'_>, item: &Item<'_>) {
     let attrs = tcx.hir().attrs(item.hir_id());
 
-    for attr in attrs {
-        if attr.has_name(sym::inline) {
-            tcx.sess.emit_err(errors::NonExportedMacroInvalidAttrs { attr_span: attr.span });
-        }
+    for attr in attrs.with_name(sym::inline) {
+        tcx.sess.emit_err(errors::NonExportedMacroInvalidAttrs { attr_span: attr.span });
     }
 }
 

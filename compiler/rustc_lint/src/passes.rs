@@ -49,10 +49,10 @@ macro_rules! late_lint_methods {
 
             /// Called when entering a syntax node that can have lint attributes such
             /// as `#[allow(...)]`. Called with *all* the attributes of that node.
-            fn enter_lint_attrs(a: &'tcx [ast::Attribute]);
+            fn enter_lint_attrs(a: &'tcx hir::ItemAttributes<'tcx>);
 
             /// Counterpart to `enter_lint_attrs`.
-            fn exit_lint_attrs(a: &'tcx [ast::Attribute]);
+            fn exit_lint_attrs(a: &'tcx hir::ItemAttributes<'tcx>);
         ]);
     )
 }

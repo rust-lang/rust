@@ -809,7 +809,8 @@ impl CrateInfo {
             .collect();
         let local_crate_name = tcx.crate_name(LOCAL_CRATE);
         let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
-        let subsystem = attr::first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
+        let subsystem =
+            crate_attrs.find_by_name(sym::windows_subsystem).and_then(|attr| attr.value_str());
         let windows_subsystem = subsystem.map(|subsystem| {
             if subsystem != sym::windows && subsystem != sym::console {
                 tcx.sess.emit_fatal(errors::InvalidWindowsSubsystem { subsystem });

@@ -19,48 +19,44 @@ fn check_for_debugger_visualizer(
     debugger_visualizers: &mut FxHashSet<DebuggerVisualizerFile>,
 ) {
     let attrs = tcx.hir().attrs(hir_id);
-    for attr in attrs {
-        if attr.has_name(sym::debugger_visualizer) {
-            let Some(list) = attr.meta_item_list() else {
+    for attr in attrs.with_name(sym::debugger_visualizer) {
+        let Some(list) = attr.meta_item_list() else {
                 continue
-            };
+        };
 
-            let meta_item = match list.len() {
-                1 => match list[0].meta_item() {
-                    Some(meta_item) => meta_item,
-                    _ => continue,
-                },
+        let meta_item = match list.len() {
+            1 => match list[0].meta_item() {
+                Some(meta_item) => meta_item,
                 _ => continue,
-            };
+            },
+            _ => continue,
+        };
 
-            let visualizer_type = match meta_item.name_or_empty() {
-                sym::natvis_file => DebuggerVisualizerType::Natvis,
-                sym::gdb_script_file => DebuggerVisualizerType::GdbPrettyPrinter,
+        let visualizer_type = match meta_item.name_or_empty() {
+            sym::natvis_file => DebuggerVisualizerType::Natvis,
+            sym::gdb_script_file => DebuggerVisualizerType::GdbPrettyPrinter,
+            _ => continue,
+        };
+
+        let file = match meta_item.value_str() {
+            Some(value) => match resolve_path(&tcx.sess.parse_sess, value.as_str(), attr.span) {
+                Ok(file) => file,
                 _ => continue,
-            };
+            },
+            None => continue,
+        };
 
-            let file = match meta_item.value_str() {
-                Some(value) => {
-                    match resolve_path(&tcx.sess.parse_sess, value.as_str(), attr.span) {
-                        Ok(file) => file,
-                        _ => continue,
-                    }
-                }
-                None => continue,
-            };
-
-            match std::fs::read(&file) {
-                Ok(contents) => {
-                    debugger_visualizers
-                        .insert(DebuggerVisualizerFile::new(Arc::from(contents), visualizer_type));
-                }
-                Err(error) => {
-                    tcx.sess.emit_err(DebugVisualizerUnreadable {
-                        span: meta_item.span,
-                        file: &file,
-                        error,
-                    });
-                }
+        match std::fs::read(&file) {
+            Ok(contents) => {
+                debugger_visualizers
+                    .insert(DebuggerVisualizerFile::new(Arc::from(contents), visualizer_type));
+            }
+            Err(error) => {
+                tcx.sess.emit_err(DebugVisualizerUnreadable {
+                    span: meta_item.span,
+                    file: &file,
+                    error,
+                });
             }
         }
     }

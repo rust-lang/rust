@@ -228,9 +228,9 @@ impl UnstableReason {
 
 /// Collects stability info from `stable`/`unstable`/`rustc_allowed_through_unstable_modules`
 /// attributes in `attrs`. Returns `None` if no stability attributes are found.
-pub fn find_stability(
+pub fn find_stability<'a>(
     sess: &Session,
-    attrs: &[Attribute],
+    attrs: impl Iterator<Item = &'a Attribute>,
     item_sp: Span,
 ) -> Option<(Stability, Span)> {
     let mut stab: Option<(Stability, Span)> = None;
@@ -282,9 +282,9 @@ pub fn find_stability(
 
 /// Collects stability info from `rustc_const_stable`/`rustc_const_unstable`/`rustc_promotable`
 /// attributes in `attrs`. Returns `None` if no stability attributes are found.
-pub fn find_const_stability(
+pub fn find_const_stability<'a>(
     sess: &Session,
-    attrs: &[Attribute],
+    attrs: impl Iterator<Item = &'a Attribute>,
     item_sp: Span,
 ) -> Option<(ConstStability, Span)> {
     let mut const_stab: Option<(ConstStability, Span)> = None;
@@ -331,22 +331,20 @@ pub fn find_const_stability(
 
 /// Collects stability info from `rustc_default_body_unstable` attributes in `attrs`.
 /// Returns `None` if no stability attributes are found.
-pub fn find_body_stability(
+pub fn find_body_stability<'a>(
     sess: &Session,
-    attrs: &[Attribute],
+    attrs: impl Iterator<Item = &'a Attribute>,
 ) -> Option<(DefaultBodyStability, Span)> {
     let mut body_stab: Option<(DefaultBodyStability, Span)> = None;
 
-    for attr in attrs {
-        if attr.has_name(sym::rustc_default_body_unstable) {
-            if body_stab.is_some() {
-                handle_errors(&sess.parse_sess, attr.span, AttrError::MultipleStabilityLevels);
-                break;
-            }
+    for attr in attrs.filter(|attr| attr.has_name(sym::rustc_default_body_unstable)) {
+        if body_stab.is_some() {
+            handle_errors(&sess.parse_sess, attr.span, AttrError::MultipleStabilityLevels);
+            break;
+        }
 
-            if let Some((feature, level)) = parse_unstability(sess, attr) {
-                body_stab = Some((DefaultBodyStability { level, feature }, attr.span));
-            }
+        if let Some((feature, level)) = parse_unstability(sess, attr) {
+            body_stab = Some((DefaultBodyStability { level, feature }, attr.span));
         }
     }
 
@@ -800,18 +798,14 @@ pub struct Deprecation {
 }
 
 /// Finds the deprecation attribute. `None` if none exists.
-pub fn find_deprecation(sess: &Session, attrs: &[Attribute]) -> Option<(Deprecation, Span)> {
-    find_deprecation_generic(sess, attrs.iter())
-}
-
-fn find_deprecation_generic<'a, I>(sess: &Session, attrs_iter: I) -> Option<(Deprecation, Span)>
-where
-    I: Iterator<Item = &'a Attribute>,
-{
+pub fn find_deprecation<'a>(
+    sess: &Session,
+    attrs: impl Iterator<Item = &'a Attribute>,
+) -> Option<(Deprecation, Span)> {
     let mut depr: Option<(Deprecation, Span)> = None;
     let is_rustc = sess.features_untracked().staged_api;
 
-    'outer: for attr in attrs_iter {
+    'outer: for attr in attrs {
         if !attr.has_name(sym::deprecated) {
             continue;
         }
@@ -1130,8 +1124,8 @@ pub enum TransparencyError {
     MultipleTransparencyAttrs(Span, Span),
 }
 
-pub fn find_transparency(
-    attrs: &[Attribute],
+pub fn find_transparency<'a>(
+    attrs: impl Iterator<Item = &'a Attribute>,
     macro_rules: bool,
 ) -> (Transparency, Option<TransparencyError>) {
     let mut transparency = None;
@@ -1163,24 +1157,24 @@ pub fn find_transparency(
 
 pub fn allow_internal_unstable<'a>(
     sess: &'a Session,
-    attrs: &'a [Attribute],
+    attrs: impl Iterator<Item = &'a Attribute> + 'a,
 ) -> impl Iterator<Item = Symbol> + 'a {
     allow_unstable(sess, attrs, sym::allow_internal_unstable)
 }
 
 pub fn rustc_allow_const_fn_unstable<'a>(
     sess: &'a Session,
-    attrs: &'a [Attribute],
+    attrs: impl Iterator<Item = &'a Attribute> + 'a,
 ) -> impl Iterator<Item = Symbol> + 'a {
     allow_unstable(sess, attrs, sym::rustc_allow_const_fn_unstable)
 }
 
 fn allow_unstable<'a>(
     sess: &'a Session,
-    attrs: &'a [Attribute],
+    attrs: impl Iterator<Item = &'a Attribute> + 'a,
     symbol: Symbol,
 ) -> impl Iterator<Item = Symbol> + 'a {
-    let attrs = attr::filter_by_name(attrs, symbol);
+    let attrs = attrs.filter(move |attr| attr.has_name(symbol));
     let list = attrs
         .filter_map(move |attr| {
             attr.meta_item_list().or_else(|| {

@@ -137,7 +137,7 @@ pub fn print_crate<'a>(
         }
     }
 
-    s.print_inner_attributes(&krate.attrs);
+    s.print_inner_attributes(krate.attrs.iter());
     for item in &krate.items {
         s.print_item(item);
     }
@@ -397,29 +397,35 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         self.print_string(sym.as_str(), style);
     }
 
-    fn print_inner_attributes(&mut self, attrs: &[ast::Attribute]) -> bool {
+    fn print_inner_attributes<'b>(
+        &mut self,
+        attrs: impl Iterator<Item = &'b ast::Attribute>,
+    ) -> bool {
         self.print_either_attributes(attrs, ast::AttrStyle::Inner, false, true)
     }
 
     fn print_inner_attributes_no_trailing_hardbreak(&mut self, attrs: &[ast::Attribute]) -> bool {
-        self.print_either_attributes(attrs, ast::AttrStyle::Inner, false, false)
+        self.print_either_attributes(attrs.iter(), ast::AttrStyle::Inner, false, false)
     }
 
-    fn print_outer_attributes(&mut self, attrs: &[ast::Attribute]) -> bool {
+    fn print_outer_attributes<'b>(
+        &mut self,
+        attrs: impl Iterator<Item = &'b ast::Attribute>,
+    ) -> bool {
         self.print_either_attributes(attrs, ast::AttrStyle::Outer, false, true)
     }
 
     fn print_inner_attributes_inline(&mut self, attrs: &[ast::Attribute]) -> bool {
-        self.print_either_attributes(attrs, ast::AttrStyle::Inner, true, true)
+        self.print_either_attributes(attrs.iter(), ast::AttrStyle::Inner, true, true)
     }
 
     fn print_outer_attributes_inline(&mut self, attrs: &[ast::Attribute]) -> bool {
-        self.print_either_attributes(attrs, ast::AttrStyle::Outer, true, true)
+        self.print_either_attributes(attrs.iter(), ast::AttrStyle::Outer, true, true)
     }
 
-    fn print_either_attributes(
+    fn print_either_attributes<'b>(
         &mut self,
-        attrs: &[ast::Attribute],
+        attrs: impl Iterator<Item = &'b ast::Attribute>,
         kind: ast::AttrStyle,
         is_inline: bool,
         trailing_hardbreak: bool,
@@ -1118,7 +1124,7 @@ impl<'a> State<'a> {
         self.maybe_print_comment(st.span.lo());
         match &st.kind {
             ast::StmtKind::Local(loc) => {
-                self.print_outer_attributes(&loc.attrs);
+                self.print_outer_attributes(loc.attrs.iter());
                 self.space_if_not_bol();
                 self.ibox(INDENT_UNIT);
                 self.word_nbsp("let");
@@ -1159,7 +1165,7 @@ impl<'a> State<'a> {
             }
             ast::StmtKind::MacCall(mac) => {
                 self.space_if_not_bol();
-                self.print_outer_attributes(&mac.attrs);
+                self.print_outer_attributes(mac.attrs.iter());
                 self.print_mac(&mac.mac);
                 if mac.style == ast::MacStmtStyle::Semicolon {
                     self.word(";");
@@ -1195,7 +1201,7 @@ impl<'a> State<'a> {
         self.ann.pre(self, AnnNode::Block(blk));
         self.bopen();
 
-        let has_attrs = self.print_inner_attributes(attrs);
+        let has_attrs = self.print_inner_attributes(attrs.iter());
 
         for (i, st) in blk.stmts.iter().enumerate() {
             match &st.kind {

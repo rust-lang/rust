@@ -124,46 +124,50 @@ impl<'tcx> IfThisChanged<'tcx> {
         let def_path_hash = self.tcx.def_path_hash(def_id.to_def_id());
         let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
         let attrs = self.tcx.hir().attrs(hir_id);
-        for attr in attrs {
-            if attr.has_name(sym::rustc_if_this_changed) {
-                let dep_node_interned = self.argument(attr);
-                let dep_node = match dep_node_interned {
-                    None => {
-                        DepNode::from_def_path_hash(self.tcx, def_path_hash, DepKind::hir_owner)
-                    }
-                    Some(n) => {
-                        match DepNode::from_label_string(self.tcx, n.as_str(), def_path_hash) {
-                            Ok(n) => n,
-                            Err(()) => self.tcx.sess.emit_fatal(errors::UnrecognizedDepNode {
-                                span: attr.span,
-                                name: n,
-                            }),
+        for (name, attr) in attrs.iter() {
+            match name {
+                sym::rustc_if_this_changed => {
+                    let dep_node_interned = self.argument(attr);
+                    let dep_node = match dep_node_interned {
+                        None => {
+                            DepNode::from_def_path_hash(self.tcx, def_path_hash, DepKind::hir_owner)
                         }
-                    }
-                };
-                self.if_this_changed.push((attr.span, def_id.to_def_id(), dep_node));
-            } else if attr.has_name(sym::rustc_then_this_would_need) {
-                let dep_node_interned = self.argument(attr);
-                let dep_node = match dep_node_interned {
-                    Some(n) => {
-                        match DepNode::from_label_string(self.tcx, n.as_str(), def_path_hash) {
-                            Ok(n) => n,
-                            Err(()) => self.tcx.sess.emit_fatal(errors::UnrecognizedDepNode {
-                                span: attr.span,
-                                name: n,
-                            }),
+                        Some(n) => {
+                            match DepNode::from_label_string(self.tcx, n.as_str(), def_path_hash) {
+                                Ok(n) => n,
+                                Err(()) => self.tcx.sess.emit_fatal(errors::UnrecognizedDepNode {
+                                    span: attr.span,
+                                    name: n,
+                                }),
+                            }
                         }
-                    }
-                    None => {
-                        self.tcx.sess.emit_fatal(errors::MissingDepNode { span: attr.span });
-                    }
-                };
-                self.then_this_would_need.push((
-                    attr.span,
-                    dep_node_interned.unwrap(),
-                    hir_id,
-                    dep_node,
-                ));
+                    };
+                    self.if_this_changed.push((attr.span, def_id.to_def_id(), dep_node));
+                }
+                sym::rustc_then_this_would_need => {
+                    let dep_node_interned = self.argument(attr);
+                    let dep_node = match dep_node_interned {
+                        Some(n) => {
+                            match DepNode::from_label_string(self.tcx, n.as_str(), def_path_hash) {
+                                Ok(n) => n,
+                                Err(()) => self.tcx.sess.emit_fatal(errors::UnrecognizedDepNode {
+                                    span: attr.span,
+                                    name: n,
+                                }),
+                            }
+                        }
+                        None => {
+                            self.tcx.sess.emit_fatal(errors::MissingDepNode { span: attr.span });
+                        }
+                    };
+                    self.then_this_would_need.push((
+                        attr.span,
+                        dep_node_interned.unwrap(),
+                        hir_id,
+                        dep_node,
+                    ));
+                }
+                _ => {}
             }
         }
     }

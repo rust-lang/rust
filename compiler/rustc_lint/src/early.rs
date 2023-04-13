@@ -68,7 +68,7 @@ impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
     {
         let is_crate_node = id == ast::CRATE_NODE_ID;
         debug!(?id);
-        let push = self.context.builder.push(attrs, is_crate_node, None);
+        let push = self.context.builder.push(attrs.iter(), is_crate_node, None);
 
         self.inlined_check_id(id);
         debug!("early context: enter_attrs({:?})", attrs);

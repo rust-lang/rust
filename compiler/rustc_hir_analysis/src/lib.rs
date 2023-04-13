@@ -371,25 +371,27 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                     }
 
                     let attrs = tcx.hir().attrs(start_id);
-                    for attr in attrs {
-                        if attr.has_name(sym::track_caller) {
-                            tcx.sess.emit_err(errors::StartTrackCaller {
-                                span: attr.span,
-                                start: start_span,
-                            });
-                            error = true;
-                        }
-                        if attr.has_name(sym::target_feature)
-                            // Calling functions with `#[target_feature]` is
-                            // not unsafe on WASM, see #84988
-                            && !tcx.sess.target.is_like_wasm
-                            && !tcx.sess.opts.actually_rustdoc
-                        {
-                            tcx.sess.emit_err(errors::StartTargetFeature {
-                                span: attr.span,
-                                start: start_span,
-                            });
-                            error = true;
+                    for (name, attr) in attrs.iter() {
+                        match name {
+                            sym::track_caller => {
+                                tcx.sess.emit_err(errors::StartTrackCaller {
+                                    span: attr.span,
+                                    start: start_span,
+                                });
+                                error = true;
+                            }
+                            sym::target_feature if
+                                // Calling functions with `#[target_feature]` is
+                                // not unsafe on WASM, see #84988
+                                !tcx.sess.target.is_like_wasm
+                                && !tcx.sess.opts.actually_rustdoc => {
+                                    tcx.sess.emit_err(errors::StartTargetFeature {
+                                        span: attr.span,
+                                        start: start_span,
+                                    });
+                                    error = true;
+                                }
+                            _ => {}
                         }
                     }
 

@@ -2,6 +2,7 @@
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 
+use hir::ItemAttributes;
 use rustc_ast as ast;
 use rustc_ast::util::parser::{self, AssocOp, Fixity};
 use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
@@ -70,7 +71,7 @@ impl PpAnn for &dyn rustc_hir::intravisit::Map<'_> {
 pub struct State<'a> {
     pub s: pp::Printer,
     comments: Option<Comments<'a>>,
-    attrs: &'a dyn Fn(hir::HirId) -> &'a [ast::Attribute],
+    attrs: &'a dyn Fn(hir::HirId) -> &'a ItemAttributes<'a>,
     ann: &'a (dyn PpAnn + 'a),
 }
 
@@ -152,7 +153,7 @@ pub fn print_crate<'a>(
     krate: &hir::Mod<'_>,
     filename: FileName,
     input: String,
-    attrs: &'a dyn Fn(hir::HirId) -> &'a [ast::Attribute],
+    attrs: &'a dyn Fn(hir::HirId) -> &'a ItemAttributes<'a>,
     ann: &'a dyn PpAnn,
 ) -> String {
     let mut s = State::new_from_input(sm, filename, input, attrs, ann);
@@ -170,7 +171,7 @@ impl<'a> State<'a> {
         sm: &'a SourceMap,
         filename: FileName,
         input: String,
-        attrs: &'a dyn Fn(hir::HirId) -> &'a [ast::Attribute],
+        attrs: &'a dyn Fn(hir::HirId) -> &'a ItemAttributes<'a>,
         ann: &'a dyn PpAnn,
     ) -> State<'a> {
         State {
@@ -181,7 +182,7 @@ impl<'a> State<'a> {
         }
     }
 
-    fn attrs(&self, id: hir::HirId) -> &'a [ast::Attribute] {
+    fn attrs(&self, id: hir::HirId) -> &'a ItemAttributes<'a> {
         (self.attrs)(id)
     }
 }
@@ -190,7 +191,8 @@ pub fn to_string<F>(ann: &dyn PpAnn, f: F) -> String
 where
     F: FnOnce(&mut State<'_>),
 {
-    let mut printer = State { s: pp::Printer::new(), comments: None, attrs: &|_| &[], ann };
+    let mut printer =
+        State { s: pp::Printer::new(), comments: None, attrs: &|_| &ItemAttributes::EMPTY, ann };
     f(&mut printer);
     printer.s.eof()
 }
@@ -278,8 +280,8 @@ impl<'a> State<'a> {
         self.commasep_cmnt(b, exprs, |s, e| s.print_expr(e), |e| e.span);
     }
 
-    pub fn print_mod(&mut self, _mod: &hir::Mod<'_>, attrs: &[ast::Attribute]) {
-        self.print_inner_attributes(attrs);
+    pub fn print_mod(&mut self, _mod: &hir::Mod<'_>, attrs: &ItemAttributes<'a>) {
+        self.print_inner_attributes(attrs.values());
         for &item_id in _mod.item_ids {
             self.ann.nested(self, Nested::Item(item_id));
         }
@@ -373,7 +375,7 @@ impl<'a> State<'a> {
     pub fn print_foreign_item(&mut self, item: &hir::ForeignItem<'_>) {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
-        self.print_outer_attributes(self.attrs(item.hir_id()));
+        self.print_outer_attributes(self.attrs(item.hir_id()).values());
         match item.kind {
             hir::ForeignItemKind::Fn(decl, arg_names, generics) => {
                 self.head("");
@@ -480,7 +482,7 @@ impl<'a> State<'a> {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
         let attrs = self.attrs(item.hir_id());
-        self.print_outer_attributes(attrs);
+        self.print_outer_attributes(attrs.values());
         self.ann.pre(self, AnnNode::Item(item));
         match item.kind {
             hir::ItemKind::ExternCrate(orig_name) => {
@@ -574,7 +576,7 @@ impl<'a> State<'a> {
                 self.head("extern");
                 self.word_nbsp(abi.to_string());
                 self.bopen();
-                self.print_inner_attributes(self.attrs(item.hir_id()));
+                self.print_inner_attributes(self.attrs(item.hir_id()).values());
                 for item in items {
                     self.ann.nested(self, Nested::ForeignItem(item.id));
                 }
@@ -657,7 +659,7 @@ impl<'a> State<'a> {
 
                 self.space();
                 self.bopen();
-                self.print_inner_attributes(attrs);
+                self.print_inner_attributes(attrs.values());
                 for impl_item in items {
                     self.ann.nested(self, Nested::ImplItem(impl_item.id));
                 }
@@ -741,7 +743,7 @@ impl<'a> State<'a> {
         for v in variants {
             self.space_if_not_bol();
             self.maybe_print_comment(v.span.lo());
-            self.print_outer_attributes(self.attrs(v.hir_id));
+            self.print_outer_attributes(self.attrs(v.hir_id).values());
             self.ibox(INDENT_UNIT);
             self.print_variant(v);
             self.word(",");
@@ -774,7 +776,7 @@ impl<'a> State<'a> {
                     self.popen();
                     self.commasep(Inconsistent, struct_def.fields(), |s, field| {
                         s.maybe_print_comment(field.span.lo());
-                        s.print_outer_attributes(s.attrs(field.hir_id));
+                        s.print_outer_attributes(s.attrs(field.hir_id).values());
                         s.print_type(field.ty);
                     });
                     self.pclose();
@@ -795,7 +797,7 @@ impl<'a> State<'a> {
                 for field in struct_def.fields() {
                     self.hardbreak_if_not_bol();
                     self.maybe_print_comment(field.span.lo());
-                    self.print_outer_attributes(self.attrs(field.hir_id));
+                    self.print_outer_attributes(self.attrs(field.hir_id).values());
                     self.print_ident(field.ident);
                     self.word_nbsp(":");
                     self.print_type(field.ty);
@@ -832,7 +834,7 @@ impl<'a> State<'a> {
         self.ann.pre(self, AnnNode::SubItem(ti.hir_id()));
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(ti.span.lo());
-        self.print_outer_attributes(self.attrs(ti.hir_id()));
+        self.print_outer_attributes(self.attrs(ti.hir_id()).values());
         match ti.kind {
             hir::TraitItemKind::Const(ty, default) => {
                 self.print_associated_const(ti.ident, ty, default);
@@ -860,7 +862,7 @@ impl<'a> State<'a> {
         self.ann.pre(self, AnnNode::SubItem(ii.hir_id()));
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(ii.span.lo());
-        self.print_outer_attributes(self.attrs(ii.hir_id()));
+        self.print_outer_attributes(self.attrs(ii.hir_id()).values());
 
         match ii.kind {
             hir::ImplItemKind::Const(ty, expr) => {
@@ -963,7 +965,7 @@ impl<'a> State<'a> {
         self.ann.pre(self, AnnNode::Block(blk));
         self.bopen();
 
-        self.print_inner_attributes(attrs);
+        self.print_inner_attributes(attrs.iter());
 
         for st in blk.stmts {
             self.print_stmt(st);
@@ -1142,7 +1144,7 @@ impl<'a> State<'a> {
             self.space();
         }
         self.cbox(INDENT_UNIT);
-        self.print_outer_attributes(&self.attrs(field.hir_id));
+        self.print_outer_attributes(self.attrs(field.hir_id).values());
         if !field.is_shorthand {
             self.print_ident(field.ident);
             self.word_space(":");
@@ -1362,7 +1364,7 @@ impl<'a> State<'a> {
 
     pub fn print_expr(&mut self, expr: &hir::Expr<'_>) {
         self.maybe_print_comment(expr.span.lo());
-        self.print_outer_attributes(self.attrs(expr.hir_id));
+        self.print_outer_attributes(self.attrs(expr.hir_id).values());
         self.ibox(INDENT_UNIT);
         self.ann.pre(self, AnnNode::Expr(expr));
         match expr.kind {
@@ -1882,7 +1884,7 @@ impl<'a> State<'a> {
             self.space();
         }
         self.cbox(INDENT_UNIT);
-        self.print_outer_attributes(&self.attrs(field.hir_id));
+        self.print_outer_attributes(self.attrs(field.hir_id).values());
         if !field.is_shorthand {
             self.print_ident(field.ident);
             self.word_nbsp(":");
@@ -1892,7 +1894,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_param(&mut self, arg: &hir::Param<'_>) {
-        self.print_outer_attributes(self.attrs(arg.hir_id));
+        self.print_outer_attributes(self.attrs(arg.hir_id).values());
         self.print_pat(arg.pat);
     }
 
@@ -1905,7 +1907,7 @@ impl<'a> State<'a> {
         self.cbox(INDENT_UNIT);
         self.ann.pre(self, AnnNode::Arm(arm));
         self.ibox(0);
-        self.print_outer_attributes(self.attrs(arm.hir_id));
+        self.print_outer_attributes(self.attrs(arm.hir_id).values());
         self.print_pat(arm.pat);
         self.space();
         if let Some(ref g) = arm.guard {

@@ -179,7 +179,7 @@ impl TyCtxt<'_> {
                 return bound;
             }
 
-            if hir.attrs(id).iter().any(|attr| Level::from_attr(attr).is_some()) {
+            if hir.attrs(id).values().any(|attr| Level::from_attr(attr).is_some()) {
                 return id;
             }
             let next = hir.parent_id(id);

@@ -514,7 +514,7 @@ impl MissingDoc {
         }
 
         let attrs = cx.tcx.hir().attrs(cx.tcx.hir().local_def_id_to_hir_id(def_id));
-        let has_doc = attrs.iter().any(has_doc);
+        let has_doc = attrs.values().any(has_doc);
         if !has_doc {
             cx.emit_spanned_lint(
                 MISSING_DOCS,
@@ -527,19 +527,16 @@ impl MissingDoc {
 
 impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     #[inline]
-    fn enter_lint_attrs(&mut self, _cx: &LateContext<'_>, attrs: &[ast::Attribute]) {
+    fn enter_lint_attrs(&mut self, _cx: &LateContext<'_>, attrs: &'tcx hir::ItemAttributes<'tcx>) {
         let doc_hidden = self.doc_hidden()
-            || attrs.iter().any(|attr| {
-                attr.has_name(sym::doc)
-                    && match attr.meta_item_list() {
-                        None => false,
-                        Some(l) => attr::list_contains_name(&l, sym::hidden),
-                    }
+            || attrs.with_name(sym::doc).any(|attr| match attr.meta_item_list() {
+                None => false,
+                Some(l) => attr::list_contains_name(&l, sym::hidden),
             });
         self.doc_hidden_stack.push(doc_hidden);
     }
 
-    fn exit_lint_attrs(&mut self, _: &LateContext<'_>, _attrs: &[ast::Attribute]) {
+    fn exit_lint_attrs(&mut self, _: &LateContext<'_>, _attrs: &'tcx hir::ItemAttributes<'tcx>) {
         self.doc_hidden_stack.pop().expect("empty doc_hidden_stack");
     }
 
@@ -1122,12 +1119,12 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
         };
         match it.kind {
             hir::ItemKind::Fn(.., ref generics, _) => {
-                if let Some(no_mangle_attr) = attr::find_by_name(attrs, sym::no_mangle) {
+                if let Some(no_mangle_attr) = attrs.find_by_name(sym::no_mangle) {
                     check_no_mangle_on_generic_fn(no_mangle_attr, None, generics, it.span);
                 }
             }
             hir::ItemKind::Const(..) => {
-                if attr::contains_name(attrs, sym::no_mangle) {
+                if attrs.contains(sym::no_mangle) {
                     // account for "pub const" (#45562)
                     let start = cx
                         .tcx
@@ -1152,7 +1149,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                 for it in *items {
                     if let hir::AssocItemKind::Fn { .. } = it.kind {
                         if let Some(no_mangle_attr) =
-                            attr::find_by_name(cx.tcx.hir().attrs(it.id.hir_id()), sym::no_mangle)
+                            cx.tcx.hir().attrs(it.id.hir_id()).find_by_name(sym::no_mangle)
                         {
                             check_no_mangle_on_generic_fn(
                                 no_mangle_attr,
@@ -1834,7 +1831,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnameableTestItems {
         }
 
         let attrs = cx.tcx.hir().attrs(it.hir_id());
-        if let Some(attr) = attr::find_by_name(attrs, sym::rustc_test_marker) {
+        if let Some(attr) = attrs.find_by_name(sym::rustc_test_marker) {
             cx.emit_spanned_lint(UNNAMEABLE_TEST_ITEMS, attr.span, BuiltinUnnameableTestItems);
         }
     }

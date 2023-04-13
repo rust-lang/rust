@@ -116,7 +116,7 @@ impl<I: Idx, T: fmt::Debug> fmt::Debug for IndexSlice<I, T> {
 
 impl<I: Idx, T> IndexVec<I, T> {
     #[inline]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         IndexVec { raw: Vec::new(), _marker: PhantomData }
     }
 

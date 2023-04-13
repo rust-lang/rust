@@ -110,7 +110,7 @@ impl<'tcx> Collector<'tcx> {
             return;
         }
 
-        for m in self.tcx.hir().attrs(it.hir_id()).iter().filter(|a| a.has_name(sym::link)) {
+        for m in self.tcx.hir().attrs(it.hir_id()).with_name(sym::link) {
             let Some(items) = m.meta_item_list() else {
                 continue;
             };
@@ -382,8 +382,7 @@ impl<'tcx> Collector<'tcx> {
                                 .tcx
                                 .hir()
                                 .attrs(child_item.id.owner_id.into())
-                                .iter()
-                                .find(|a| a.has_name(sym::link_ordinal))
+                                .find_by_name(sym::link_ordinal)
                                 .unwrap();
                             sess.emit_err(errors::LinkOrdinalRawDylib {
                                 span: link_ordinal_attr.span,

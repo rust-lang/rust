@@ -281,7 +281,7 @@ impl<'tcx> LintLevelsBuilder<'_, LintLevelQueryMap<'tcx>> {
     fn add_id(&mut self, hir_id: HirId) {
         self.provider.cur = hir_id;
         self.add(
-            self.provider.attrs.get(hir_id.local_id),
+            self.provider.attrs.get(hir_id.local_id).values(),
             hir_id == hir::CRATE_HIR_ID,
             Some(hir_id),
         );
@@ -356,7 +356,11 @@ impl<'tcx> Visitor<'tcx> for LintLevelsBuilder<'_, LintLevelQueryMap<'tcx>> {
 impl<'tcx> LintLevelsBuilder<'_, QueryMapExpectationsWrapper<'tcx>> {
     fn add_id(&mut self, hir_id: HirId) {
         self.provider.cur = hir_id;
-        self.add(self.provider.tcx.hir().attrs(hir_id), hir_id == hir::CRATE_HIR_ID, Some(hir_id));
+        self.add(
+            self.provider.tcx.hir().attrs(hir_id).values(),
+            hir_id == hir::CRATE_HIR_ID,
+            Some(hir_id),
+        );
     }
 }
 
@@ -479,9 +483,9 @@ impl<'s> LintLevelsBuilder<'s, TopDown> {
     ///   `#[allow]`
     ///
     /// Don't forget to call `pop`!
-    pub(crate) fn push(
+    pub(crate) fn push<'a>(
         &mut self,
-        attrs: &[ast::Attribute],
+        attrs: impl Iterator<Item = &'a ast::Attribute>,
         is_crate_node: bool,
         source_hir_id: Option<HirId>,
     ) -> BuilderPush {
@@ -649,9 +653,14 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         };
     }
 
-    fn add(&mut self, attrs: &[ast::Attribute], is_crate_node: bool, source_hir_id: Option<HirId>) {
+    fn add<'a>(
+        &mut self,
+        attrs: impl Iterator<Item = &'a ast::Attribute>,
+        is_crate_node: bool,
+        source_hir_id: Option<HirId>,
+    ) {
         let sess = self.sess;
-        for (attr_index, attr) in attrs.iter().enumerate() {
+        for (attr_index, attr) in attrs.enumerate() {
             if attr.has_name(sym::automatically_derived) {
                 self.insert(
                     LintId::of(SINGLE_USE_LIFETIMES),

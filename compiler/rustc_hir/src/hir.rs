@@ -12,7 +12,7 @@ pub use rustc_ast::{CaptureBy, Movability, Mutability};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sorted_map::SortedMap;
+use rustc_data_structures::sorted_map::{SortedIndexMultiMap, SortedMap};
 use rustc_error_messages::MultiSpan;
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable_Generic;
@@ -830,7 +830,7 @@ pub struct ParentedNode<'tcx> {
 /// Attributes owned by a HIR owner.
 #[derive(Debug)]
 pub struct AttributeMap<'tcx> {
-    pub map: SortedMap<ItemLocalId, &'tcx [Attribute]>,
+    pub map: SortedMap<ItemLocalId, ItemAttributes<'tcx>>,
     // Only present when the crate hash is needed.
     pub opt_hash: Option<Fingerprint>,
 }
@@ -840,8 +840,61 @@ impl<'tcx> AttributeMap<'tcx> {
         &AttributeMap { map: SortedMap::new(), opt_hash: Some(Fingerprint::ZERO) };
 
     #[inline]
-    pub fn get(&self, id: ItemLocalId) -> &'tcx [Attribute] {
-        self.map.get(&id).copied().unwrap_or(&[])
+    pub fn get(&'tcx self, id: ItemLocalId) -> &'tcx ItemAttributes<'tcx> {
+        self.map.get(&id).unwrap_or(ItemAttributes::EMPTY)
+    }
+}
+
+#[derive(Debug)]
+pub struct ItemAttributes<'tcx>(pub SortedIndexMultiMap<u32, Symbol, &'tcx Attribute>);
+
+impl<'tcx> ItemAttributes<'tcx> {
+    pub const EMPTY: &'static ItemAttributes<'static> = &ItemAttributes(SortedIndexMultiMap::new());
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    #[inline]
+    pub fn first(&self) -> Option<&Attribute> {
+        self.values().next()
+    }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    #[inline]
+    pub fn with_name(&self, name: Symbol) -> impl Iterator<Item = &Attribute> {
+        self.0.get_by_key(name).copied()
+    }
+
+    #[inline]
+    pub fn find_by_name(&self, name: Symbol) -> Option<&Attribute> {
+        self.with_name(name).next()
+    }
+
+    #[inline]
+    pub fn contains(&self, name: Symbol) -> bool {
+        self.0.contains_key(name)
+    }
+
+    #[inline]
+    pub fn values(&self) -> impl Iterator<Item = &Attribute> {
+        self.0.values().copied()
+    }
+
+    #[inline]
+    pub fn iter(&self) -> impl Iterator<Item = (Symbol, &Attribute)> {
+        self.0.iter().map(|(name, attr)| (*name, *attr))
+    }
+}
+
+impl<'tcx> FromIterator<&'tcx ast::Attribute> for ItemAttributes<'tcx> {
+    fn from_iter<T: IntoIterator<Item = &'tcx ast::Attribute>>(iter: T) -> Self {
+        Self(iter.into_iter().map(|attr| (attr.name_or_empty(), attr)).collect())
     }
 }
 

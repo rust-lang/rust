@@ -14,7 +14,7 @@ fn visibility_qualified(vis: &ast::Visibility, s: &str) -> String {
 
 impl<'a> State<'a> {
     fn print_foreign_mod(&mut self, nmod: &ast::ForeignMod, attrs: &[ast::Attribute]) {
-        self.print_inner_attributes(attrs);
+        self.print_inner_attributes(attrs.iter());
         for item in &nmod.items {
             self.print_foreign_item(item);
         }
@@ -25,7 +25,7 @@ impl<'a> State<'a> {
         self.ann.pre(self, AnnNode::SubItem(id));
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(span.lo());
-        self.print_outer_attributes(attrs);
+        self.print_outer_attributes(attrs.iter());
         match kind {
             ast::ForeignItemKind::Fn(box ast::Fn { defaultness, sig, generics, body }) => {
                 self.print_fn_full(sig, ident, generics, vis, *defaultness, body.as_deref(), attrs);
@@ -135,7 +135,7 @@ impl<'a> State<'a> {
     pub(crate) fn print_item(&mut self, item: &ast::Item) {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
-        self.print_outer_attributes(&item.attrs);
+        self.print_outer_attributes(item.attrs.iter());
         self.ann.pre(self, AnnNode::Item(item));
         match &item.kind {
             ast::ItemKind::ExternCrate(orig_name) => {
@@ -201,7 +201,7 @@ impl<'a> State<'a> {
                     ModKind::Loaded(items, ..) => {
                         self.nbsp();
                         self.bopen();
-                        self.print_inner_attributes(&item.attrs);
+                        self.print_inner_attributes(item.attrs.iter());
                         for item in items {
                             self.print_item(item);
                         }
@@ -306,7 +306,7 @@ impl<'a> State<'a> {
 
                 self.space();
                 self.bopen();
-                self.print_inner_attributes(&item.attrs);
+                self.print_inner_attributes(item.attrs.iter());
                 for impl_item in items {
                     self.print_assoc_item(impl_item);
                 }
@@ -345,7 +345,7 @@ impl<'a> State<'a> {
                 self.print_where_clause(&generics.where_clause);
                 self.word(" ");
                 self.bopen();
-                self.print_inner_attributes(&item.attrs);
+                self.print_inner_attributes(item.attrs.iter());
                 for trait_item in items {
                     self.print_assoc_item(trait_item);
                 }
@@ -402,7 +402,7 @@ impl<'a> State<'a> {
         for v in variants {
             self.space_if_not_bol();
             self.maybe_print_comment(v.span.lo());
-            self.print_outer_attributes(&v.attrs);
+            self.print_outer_attributes(v.attrs.iter());
             self.ibox(0);
             self.print_variant(v);
             self.word(",");
@@ -445,7 +445,7 @@ impl<'a> State<'a> {
             for field in fields {
                 self.hardbreak_if_not_bol();
                 self.maybe_print_comment(field.span.lo());
-                self.print_outer_attributes(&field.attrs);
+                self.print_outer_attributes(field.attrs.iter());
                 self.print_visibility(&field.vis);
                 self.print_ident(field.ident.unwrap());
                 self.word_nbsp(":");
@@ -473,7 +473,7 @@ impl<'a> State<'a> {
                     self.popen();
                     self.commasep(Inconsistent, struct_def.fields(), |s, field| {
                         s.maybe_print_comment(field.span.lo());
-                        s.print_outer_attributes(&field.attrs);
+                        s.print_outer_attributes(field.attrs.iter());
                         s.print_visibility(&field.vis);
                         s.print_type(&field.ty)
                     });
@@ -510,7 +510,7 @@ impl<'a> State<'a> {
         self.ann.pre(self, AnnNode::SubItem(id));
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(span.lo());
-        self.print_outer_attributes(attrs);
+        self.print_outer_attributes(attrs.iter());
         match kind {
             ast::AssocItemKind::Fn(box ast::Fn { defaultness, sig, generics, body }) => {
                 self.print_fn_full(sig, ident, generics, vis, *defaultness, body.as_deref(), attrs);

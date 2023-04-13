@@ -774,7 +774,7 @@ impl SyntaxExtension {
         attrs: &[ast::Attribute],
     ) -> SyntaxExtension {
         let allow_internal_unstable =
-            attr::allow_internal_unstable(sess, &attrs).collect::<Vec<Symbol>>();
+            attr::allow_internal_unstable(sess, attrs.into_iter()).collect::<Vec<Symbol>>();
 
         let allow_internal_unsafe = attr::contains_name(attrs, sym::allow_internal_unsafe);
         let local_inner_macros = attr::find_by_name(attrs, sym::macro_export)
@@ -793,9 +793,9 @@ impl SyntaxExtension {
                 )
             })
             .unwrap_or_else(|| (None, helper_attrs));
-        let stability = attr::find_stability(&sess, attrs, span);
-        let const_stability = attr::find_const_stability(&sess, attrs, span);
-        let body_stability = attr::find_body_stability(&sess, attrs);
+        let stability = attr::find_stability(&sess, attrs.iter(), span);
+        let const_stability = attr::find_const_stability(&sess, attrs.iter(), span);
+        let body_stability = attr::find_body_stability(&sess, attrs.iter());
         if let Some((_, sp)) = const_stability {
             sess.emit_err(errors::MacroConstStability {
                 span: sp,
@@ -815,7 +815,7 @@ impl SyntaxExtension {
             allow_internal_unstable: (!allow_internal_unstable.is_empty())
                 .then(|| allow_internal_unstable.into()),
             stability: stability.map(|(s, _)| s),
-            deprecation: attr::find_deprecation(&sess, attrs).map(|(d, _)| d),
+            deprecation: attr::find_deprecation(&sess, attrs.iter()).map(|(d, _)| d),
             helper_attrs,
             edition,
             builtin_name,

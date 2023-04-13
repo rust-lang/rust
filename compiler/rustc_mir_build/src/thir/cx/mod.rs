@@ -114,8 +114,8 @@ impl<'tcx> Cx<'tcx> {
             adjustment_span: None,
             apply_adjustments: hir
                 .attrs(hir_id)
-                .iter()
-                .all(|attr| attr.name_or_empty() != rustc_span::sym::custom_mir),
+                .find_by_name(rustc_span::sym::custom_mir)
+                .is_none(),
         }
     }
 

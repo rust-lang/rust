@@ -34,7 +34,7 @@ pub struct SortedIndexMultiMap<I: Idx, K, V> {
 
 impl<I: Idx, K: Ord, V> SortedIndexMultiMap<I, K, V> {
     #[inline]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         SortedIndexMultiMap { items: IndexVec::new(), idx_sorted_by_item_key: Vec::new() }
     }
 
@@ -104,6 +104,12 @@ impl<I: Idx, K: Ord, V> SortedIndexMultiMap<I, K, V> {
     #[inline]
     pub fn contains_key(&self, key: K) -> bool {
         self.get_by_key(key).next().is_some()
+    }
+
+    /// Iterate over values, sorted by key
+    #[inline]
+    pub fn values(&self) -> impl Iterator<Item = &V> + ExactSizeIterator + DoubleEndedIterator {
+        self.items.iter().map(|(_k, v)| v)
     }
 }
 

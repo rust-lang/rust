@@ -65,7 +65,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     let mut link_ordinal_span = None;
     let mut no_sanitize_span = None;
 
-    for attr in attrs.iter() {
+    for attr in attrs.values() {
         // In some cases, attribute are only valid on functions, but it's the `check_attr`
         // pass that check that they aren't used anywhere else, rather this module.
         // In these cases, we bail from performing further checks that are only meaningful for
@@ -426,11 +426,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         }
     }
 
-    codegen_fn_attrs.inline = attrs.iter().fold(InlineAttr::None, |ia, attr| {
-        if !attr.has_name(sym::inline) {
-            return ia;
-        }
-        match attr.meta_kind() {
+    codegen_fn_attrs.inline =
+        attrs.with_name(sym::inline).fold(InlineAttr::None, |ia, attr| match attr.meta_kind() {
             Some(MetaItemKind::Word) => InlineAttr::Hint,
             Some(MetaItemKind::List(ref items)) => {
                 inline_span = Some(attr.span);
@@ -462,37 +459,34 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             }
             Some(MetaItemKind::NameValue(_)) => ia,
             None => ia,
-        }
-    });
+        });
 
-    codegen_fn_attrs.optimize = attrs.iter().fold(OptimizeAttr::None, |ia, attr| {
-        if !attr.has_name(sym::optimize) {
-            return ia;
-        }
-        let err = |sp, s| struct_span_err!(tcx.sess.diagnostic(), sp, E0722, "{}", s).emit();
-        match attr.meta_kind() {
-            Some(MetaItemKind::Word) => {
-                err(attr.span, "expected one argument");
-                ia
-            }
-            Some(MetaItemKind::List(ref items)) => {
-                inline_span = Some(attr.span);
-                if items.len() != 1 {
+    codegen_fn_attrs.optimize =
+        attrs.with_name(sym::optimize).fold(OptimizeAttr::None, |ia, attr| {
+            let err = |sp, s| struct_span_err!(tcx.sess.diagnostic(), sp, E0722, "{}", s).emit();
+            match attr.meta_kind() {
+                Some(MetaItemKind::Word) => {
                     err(attr.span, "expected one argument");
-                    OptimizeAttr::None
-                } else if list_contains_name(&items, sym::size) {
-                    OptimizeAttr::Size
-                } else if list_contains_name(&items, sym::speed) {
-                    OptimizeAttr::Speed
-                } else {
-                    err(items[0].span(), "invalid argument");
-                    OptimizeAttr::None
+                    ia
                 }
+                Some(MetaItemKind::List(ref items)) => {
+                    inline_span = Some(attr.span);
+                    if items.len() != 1 {
+                        err(attr.span, "expected one argument");
+                        OptimizeAttr::None
+                    } else if list_contains_name(&items, sym::size) {
+                        OptimizeAttr::Size
+                    } else if list_contains_name(&items, sym::speed) {
+                        OptimizeAttr::Speed
+                    } else {
+                        err(items[0].span(), "invalid argument");
+                        OptimizeAttr::None
+                    }
+                }
+                Some(MetaItemKind::NameValue(_)) => ia,
+                None => ia,
             }
-            Some(MetaItemKind::NameValue(_)) => ia,
-            None => ia,
-        }
-    });
+        });
 
     // #73631: closures inherit `#[target_feature]` annotations
     if tcx.features().target_feature_11 && tcx.is_closure(did.to_def_id()) {
