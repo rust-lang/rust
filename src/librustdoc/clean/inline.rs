@@ -111,7 +111,7 @@ pub(crate) fn try_inline(
             clean::ConstantItem(build_const(cx, did))
         }
         Res::Def(DefKind::Macro(kind), did) => {
-            let mac = build_macro(cx, did, name, import_def_id);
+            let mac = build_macro(cx, did, name, import_def_id, kind);
 
             let type_kind = match kind {
                 MacroKind::Bang => ItemType::Macro,
@@ -651,18 +651,24 @@ fn build_macro(
     def_id: DefId,
     name: Symbol,
     import_def_id: Option<DefId>,
+    macro_kind: MacroKind,
 ) -> clean::ItemKind {
     match CStore::from_tcx(cx.tcx).load_macro_untracked(def_id, cx.sess()) {
-        LoadedMacro::MacroDef(item_def, _) => {
-            if let ast::ItemKind::MacroDef(ref def) = item_def.kind {
-                let vis = cx.tcx.visibility(import_def_id.unwrap_or(def_id));
-                clean::MacroItem(clean::Macro {
-                    source: utils::display_macro_source(cx, name, def, def_id, vis),
-                })
-            } else {
-                unreachable!()
+        LoadedMacro::MacroDef(item_def, _) => match macro_kind {
+            MacroKind::Bang => {
+                if let ast::ItemKind::MacroDef(ref def) = item_def.kind {
+                    let vis = cx.tcx.visibility(import_def_id.unwrap_or(def_id));
+                    clean::MacroItem(clean::Macro {
+                        source: utils::display_macro_source(cx, name, def, def_id, vis),
+                    })
+                } else {
+                    unreachable!()
+                }
             }
-        }
+            MacroKind::Derive | MacroKind::Attr => {
+                clean::ProcMacroItem(clean::ProcMacro { kind: macro_kind, helpers: Vec::new() })
+            }
+        },
         LoadedMacro::ProcMacro(ext) => clean::ProcMacroItem(clean::ProcMacro {
             kind: ext.macro_kind(),
             helpers: ext.helper_attrs,
