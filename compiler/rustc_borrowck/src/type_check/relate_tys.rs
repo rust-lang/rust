@@ -131,13 +131,9 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
             ty::BoundRegionKind::BrEnv => BoundRegionInfo::Name(sym::env),
         };
 
-        let reg_var =
-            reg.as_var().unwrap_or_else(|| bug!("expected region {:?} to be of kind ReVar", reg));
-
         if cfg!(debug_assertions) && !self.type_checker.infcx.inside_canonicalization_ctxt() {
             let mut var_to_origin = self.type_checker.infcx.reg_var_to_origin.borrow_mut();
-            debug!(?reg_var);
-            var_to_origin.insert(reg_var, RegionCtxt::Placeholder(reg_info));
+            var_to_origin.insert(reg.as_var(), RegionCtxt::Placeholder(reg_info));
         }
 
         reg
@@ -150,12 +146,9 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
             universe,
         );
 
-        let reg_var =
-            reg.as_var().unwrap_or_else(|| bug!("expected region {:?} to be of kind ReVar", reg));
-
         if cfg!(debug_assertions) && !self.type_checker.infcx.inside_canonicalization_ctxt() {
             let mut var_to_origin = self.type_checker.infcx.reg_var_to_origin.borrow_mut();
-            var_to_origin.insert(reg_var, RegionCtxt::Existential(None));
+            var_to_origin.insert(reg.as_var(), RegionCtxt::Existential(None));
         }
 
         reg

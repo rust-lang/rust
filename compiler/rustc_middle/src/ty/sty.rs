@@ -7,8 +7,8 @@ use crate::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use crate::ty::visit::ValidateBoundVars;
 use crate::ty::InferTy::*;
 use crate::ty::{
-    self, AdtDef, Discr, FallibleTypeFolder, Term, Ty, TyCtxt, TypeFlags, TypeFoldable,
-    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    self, AdtDef, Discr, Term, Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor,
 };
 use crate::ty::{List, ParamEnv};
 use hir::def::DefKind;
@@ -1156,81 +1156,6 @@ where
     }
 }
 
-struct SkipBindersAt<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    index: ty::DebruijnIndex,
-}
-
-impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for SkipBindersAt<'tcx> {
-    type Error = ();
-
-    fn interner(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
-
-    fn try_fold_binder<T>(&mut self, t: Binder<'tcx, T>) -> Result<Binder<'tcx, T>, Self::Error>
-    where
-        T: ty::TypeFoldable<TyCtxt<'tcx>>,
-    {
-        self.index.shift_in(1);
-        let value = t.try_map_bound(|t| t.try_fold_with(self));
-        self.index.shift_out(1);
-        value
-    }
-
-    fn try_fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
-        if !ty.has_escaping_bound_vars() {
-            Ok(ty)
-        } else if let ty::Bound(index, bv) = *ty.kind() {
-            if index == self.index {
-                Err(())
-            } else {
-                Ok(self.interner().mk_bound(index.shifted_out(1), bv))
-            }
-        } else {
-            ty.try_super_fold_with(self)
-        }
-    }
-
-    fn try_fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, Self::Error> {
-        if !r.has_escaping_bound_vars() {
-            Ok(r)
-        } else if let ty::ReLateBound(index, bv) = r.kind() {
-            if index == self.index {
-                Err(())
-            } else {
-                Ok(self.interner().mk_re_late_bound(index.shifted_out(1), bv))
-            }
-        } else {
-            r.try_super_fold_with(self)
-        }
-    }
-
-    fn try_fold_const(&mut self, ct: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, Self::Error> {
-        if !ct.has_escaping_bound_vars() {
-            Ok(ct)
-        } else if let ty::ConstKind::Bound(index, bv) = ct.kind() {
-            if index == self.index {
-                Err(())
-            } else {
-                Ok(self.interner().mk_const(
-                    ty::ConstKind::Bound(index.shifted_out(1), bv),
-                    ct.ty().try_fold_with(self)?,
-                ))
-            }
-        } else {
-            ct.try_super_fold_with(self)
-        }
-    }
-
-    fn try_fold_predicate(
-        &mut self,
-        p: ty::Predicate<'tcx>,
-    ) -> Result<ty::Predicate<'tcx>, Self::Error> {
-        if !p.has_escaping_bound_vars() { Ok(p) } else { p.try_super_fold_with(self) }
-    }
-}
-
 /// Represents the projection of an associated type.
 ///
 /// For a projection, this would be `<Ty as Trait<...>>::N`.
@@ -1772,10 +1697,10 @@ impl<'tcx> Region<'tcx> {
         matches!(self.kind(), ty::ReVar(_))
     }
 
-    pub fn as_var(self) -> Option<RegionVid> {
+    pub fn as_var(self) -> RegionVid {
         match self.kind() {
-            ty::ReVar(vid) => Some(vid),
-            _ => None,
+            ty::ReVar(vid) => vid,
+            _ => bug!("expected region {:?} to be of kind ReVar", self),
         }
     }
 }
