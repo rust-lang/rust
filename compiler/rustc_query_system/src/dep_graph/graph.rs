@@ -8,7 +8,7 @@ use std::sync::atomic::Ordering;
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::profiling::{QueryInvocationId, SelfProfilerRef};
+use rustc_data_structures::profiling::QueryInvocationId;
 use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc};
@@ -16,6 +16,7 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable};
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
+use rustc_session::Session;
 use tracing::{debug, instrument};
 #[cfg(debug_assertions)]
 use {super::debug::EdgeFilter, std::env};
@@ -119,7 +120,7 @@ where
 
 impl<D: Deps> DepGraph<D> {
     pub fn new(
-        profiler: &SelfProfilerRef,
+        session: &Session,
         prev_graph: Arc<SerializedDepGraph>,
         prev_work_products: WorkProductMap,
         encoder: FileEncoder,
@@ -129,7 +130,7 @@ impl<D: Deps> DepGraph<D> {
         let prev_graph_node_count = prev_graph.node_count();
 
         let current = CurrentDepGraph::new(
-            profiler,
+            session,
             prev_graph_node_count,
             encoder,
             record_graph,
@@ -1047,6 +1048,11 @@ pub(super) struct CurrentDepGraph<D: Deps> {
     #[cfg(debug_assertions)]
     forbidden_edge: Option<EdgeFilter>,
 
+    /// Used to verify the absence of hash collisions among DepNodes.
+    /// This field is only `Some` if the `-Z incremental_verify_depnodes` option is present.
+    #[cfg(debug_assertions)]
+    seen_dep_nodes: Option<Lock<FxHashSet<DepNode>>>,
+
     /// Anonymous `DepNode`s are nodes whose IDs we compute from the list of
     /// their edges. This has the beneficial side-effect that multiple anonymous
     /// nodes can be coalesced into one without changing the semantics of the
@@ -1068,7 +1074,7 @@ pub(super) struct CurrentDepGraph<D: Deps> {
 
 impl<D: Deps> CurrentDepGraph<D> {
     fn new(
-        profiler: &SelfProfilerRef,
+        session: &Session,
         prev_graph_node_count: usize,
         encoder: FileEncoder,
         record_graph: bool,
@@ -1100,7 +1106,7 @@ impl<D: Deps> CurrentDepGraph<D> {
                 prev_graph_node_count,
                 record_graph,
                 record_stats,
-                profiler,
+                &session.prof,
                 previous,
             ),
             anon_node_to_index: Sharded::new(|| {
@@ -1115,6 +1121,13 @@ impl<D: Deps> CurrentDepGraph<D> {
             forbidden_edge,
             #[cfg(debug_assertions)]
             fingerprints: Lock::new(IndexVec::from_elem_n(None, new_node_count_estimate)),
+            #[cfg(debug_assertions)]
+            seen_dep_nodes: session.opts.unstable_opts.incremental_verify_depnodes.then(|| {
+                Lock::new(FxHashSet::with_capacity_and_hasher(
+                    new_node_count_estimate,
+                    Default::default(),
+                ))
+            }),
             total_read_count: AtomicU64::new(0),
             total_duplicate_read_count: AtomicU64::new(0),
         }
@@ -1142,6 +1155,13 @@ impl<D: Deps> CurrentDepGraph<D> {
 
         #[cfg(debug_assertions)]
         self.record_edge(dep_node_index, key, current_fingerprint);
+
+        #[cfg(debug_assertions)]
+        if let Some(ref seen_dep_nodes) = self.seen_dep_nodes {
+            if !seen_dep_nodes.lock().insert(key) {
+                panic!("Found duplicate dep-node {key:?}");
+            }
+        }
 
         dep_node_index
     }
