@@ -1115,6 +1115,11 @@ pub struct VarDebugInfo<'tcx> {
 
     /// Where the data for this user variable is to be found.
     pub value: VarDebugInfoContents<'tcx>,
+
+    /// When present, indicates what argument number this variable is in the function that it
+    /// originated from (starting from 1). Note, if MIR inlining is enabled, then this is the
+    /// argument number in the original function before it was inlined.
+    pub argument_index: Option<u16>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
