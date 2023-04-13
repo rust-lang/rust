@@ -219,6 +219,7 @@ impl Config {
             "30", // timeout if cannot connect within 30 seconds
             "--retry",
             "3",
+            "--retry-all-errors",
             "-Sf",
         ]);
         curl.arg(url);
