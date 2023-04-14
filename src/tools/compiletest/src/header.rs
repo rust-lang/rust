@@ -660,13 +660,6 @@ impl Config {
         }
     }
 
-    fn has_cfg_prefix(&self, line: &str, prefix: &str) -> bool {
-        // returns whether this line contains this prefix or not. For prefix
-        // "ignore", returns true if line says "ignore-x86_64", "ignore-arch",
-        // "ignore-android" etc.
-        line.starts_with(prefix) && line.as_bytes().get(prefix.len()) == Some(&b'-')
-    }
-
     fn parse_name_directive(&self, line: &str, directive: &str) -> bool {
         // Ensure the directive is a whole word. Do not match "ignore-x86" when
         // the line says "ignore-x86_64".
@@ -878,7 +871,7 @@ pub fn make_test_description<R: Read>(
                         // The ignore reason must be a &'static str, so we have to leak memory to
                         // create it. This is fine, as the header is parsed only at the start of
                         // compiletest so it won't grow indefinitely.
-                        ignore_message = Some(Box::leak(Box::<str>::from(reason)));
+                        ignore_message = Some(&*Box::leak(Box::<str>::from(reason)));
                     }
                     IgnoreDecision::Error { message } => {
                         eprintln!("error: {}: {message}", path.display());
@@ -889,46 +882,8 @@ pub fn make_test_description<R: Read>(
             };
         }
 
-        {
-            let parsed = parse_cfg_name_directive(config, ln, "ignore");
-            ignore = match parsed.outcome {
-                MatchOutcome::Match => {
-                    let reason = parsed.pretty_reason.unwrap();
-                    // The ignore reason must be a &'static str, so we have to leak memory to
-                    // create it. This is fine, as the header is parsed only at the start of
-                    // compiletest so it won't grow indefinitely.
-                    ignore_message = Some(Box::leak(Box::<str>::from(match parsed.comment {
-                        Some(comment) => format!("ignored {reason} ({comment})"),
-                        None => format!("ignored {reason}"),
-                    })) as &str);
-                    true
-                }
-                MatchOutcome::NoMatch => ignore,
-                MatchOutcome::External => ignore,
-                MatchOutcome::Invalid => panic!("invalid line in {}: {ln}", path.display()),
-            };
-        }
-
-        if config.has_cfg_prefix(ln, "only") {
-            let parsed = parse_cfg_name_directive(config, ln, "only");
-            ignore = match parsed.outcome {
-                MatchOutcome::Match => ignore,
-                MatchOutcome::NoMatch => {
-                    let reason = parsed.pretty_reason.unwrap();
-                    // The ignore reason must be a &'static str, so we have to leak memory to
-                    // create it. This is fine, as the header is parsed only at the start of
-                    // compiletest so it won't grow indefinitely.
-                    ignore_message = Some(Box::leak(Box::<str>::from(match parsed.comment {
-                        Some(comment) => format!("only executed {reason} ({comment})"),
-                        None => format!("only executed {reason}"),
-                    })) as &str);
-                    true
-                }
-                MatchOutcome::External => ignore,
-                MatchOutcome::Invalid => panic!("invalid line in {}: {ln}", path.display()),
-            };
-        }
-
+        decision!(cfg::handle_ignore(config, ln));
+        decision!(cfg::handle_only(config, ln));
         decision!(needs::handle_needs(&needs_cache, config, ln));
         decision!(ignore_llvm(config, ln));
         decision!(ignore_cdb(config, ln));
