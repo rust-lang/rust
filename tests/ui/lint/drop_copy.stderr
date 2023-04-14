@@ -1,4 +1,4 @@
-warning: calls to `std::mem::drop` with a value that implements `Copy`.
+warning: calls to `std::mem::drop` with a value that implements `Copy` does nothing
   --> $DIR/drop_copy.rs:34:5
    |
 LL |     drop(s1);
@@ -12,7 +12,7 @@ note: the lint level is defined here
 LL | #![warn(drop_copy)]
    |         ^^^^^^^^^
 
-warning: calls to `std::mem::drop` with a value that implements `Copy`.
+warning: calls to `std::mem::drop` with a value that implements `Copy` does nothing
   --> $DIR/drop_copy.rs:35:5
    |
 LL |     drop(s2);
@@ -20,7 +20,7 @@ LL |     drop(s2);
    |          |
    |          argument has type `SomeStruct`
 
-warning: calls to `std::mem::drop` with a reference instead of an owned value
+warning: calls to `std::mem::drop` with a reference instead of an owned value does nothing
   --> $DIR/drop_copy.rs:36:5
    |
 LL |     drop(s3);
@@ -30,7 +30,7 @@ LL |     drop(s3);
    |
    = note: `#[warn(drop_ref)]` on by default
 
-warning: calls to `std::mem::drop` with a value that implements `Copy`.
+warning: calls to `std::mem::drop` with a value that implements `Copy` does nothing
   --> $DIR/drop_copy.rs:37:5
    |
 LL |     drop(s4);
@@ -38,7 +38,7 @@ LL |     drop(s4);
    |          |
    |          argument has type `SomeStruct`
 
-warning: calls to `std::mem::drop` with a reference instead of an owned value
+warning: calls to `std::mem::drop` with a reference instead of an owned value does nothing
   --> $DIR/drop_copy.rs:38:5
    |
 LL |     drop(s5);
@@ -46,7 +46,7 @@ LL |     drop(s5);
    |          |
    |          argument has type `&SomeStruct`
 
-warning: calls to `std::mem::drop` with a reference instead of an owned value
+warning: calls to `std::mem::drop` with a reference instead of an owned value does nothing
   --> $DIR/drop_copy.rs:50:5
    |
 LL |     drop(a2);
@@ -54,7 +54,7 @@ LL |     drop(a2);
    |          |
    |          argument has type `&AnotherStruct`
 
-warning: calls to `std::mem::drop` with a reference instead of an owned value
+warning: calls to `std::mem::drop` with a reference instead of an owned value does nothing
   --> $DIR/drop_copy.rs:52:5
    |
 LL |     drop(a4);
@@ -62,7 +62,7 @@ LL |     drop(a4);
    |          |
    |          argument has type `&AnotherStruct`
 
-warning: calls to `std::mem::drop` with a value that implements `Copy`.
+warning: calls to `std::mem::drop` with a value that implements `Copy` does nothing
   --> $DIR/drop_copy.rs:71:13
    |
 LL |             drop(println_and(13));
@@ -70,7 +70,7 @@ LL |             drop(println_and(13));
    |                  |
    |                  argument has type `i32`
 
-warning: calls to `std::mem::drop` with a value that implements `Copy`.
+warning: calls to `std::mem::drop` with a value that implements `Copy` does nothing
   --> $DIR/drop_copy.rs:74:14
    |
 LL |         3 if drop(println_and(14)) == () => (),
@@ -78,7 +78,7 @@ LL |         3 if drop(println_and(14)) == () => (),
    |                   |
    |                   argument has type `i32`
 
-warning: calls to `std::mem::drop` with a value that implements `Copy`.
+warning: calls to `std::mem::drop` with a value that implements `Copy` does nothing
   --> $DIR/drop_copy.rs:76:14
    |
 LL |         4 => drop(2),
