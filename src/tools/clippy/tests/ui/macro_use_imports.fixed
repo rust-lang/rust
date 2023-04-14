@@ -16,7 +16,7 @@ extern crate macro_use_helper as mac;
 extern crate proc_macro_derive as mini_mac;
 
 mod a {
-    use mac::{pub_macro, function_macro, ty_macro, inner_mod_macro, pub_in_private_macro};
+    use mac::{pub_macro, inner_mod_macro, function_macro, ty_macro, pub_in_private_macro};
     use mac;
     use mini_mac::ClippyMiniMacroTest;
     use mini_mac;

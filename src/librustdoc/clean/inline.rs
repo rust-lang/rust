@@ -152,7 +152,7 @@ pub(crate) fn try_inline_glob(
             // reexported by the glob, e.g. because they are shadowed by something else.
             let reexports = cx
                 .tcx
-                .module_reexports(current_mod)
+                .module_children_reexports(current_mod)
                 .iter()
                 .filter_map(|child| child.res.opt_def_id())
                 .collect();

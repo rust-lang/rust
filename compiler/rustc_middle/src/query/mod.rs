@@ -1516,10 +1516,6 @@ rustc_queries! {
         desc { "getting traits in scope at a block" }
     }
 
-    query module_reexports(def_id: LocalDefId) -> &'tcx [ModChild] {
-        desc { |tcx| "looking up reexports of module `{}`", tcx.def_path_str(def_id.to_def_id()) }
-    }
-
     query impl_defaultness(def_id: DefId) -> hir::Defaultness {
         desc { |tcx| "looking up whether `{}` is a default impl", tcx.def_path_str(def_id) }
         cache_on_disk_if { def_id.is_local() }

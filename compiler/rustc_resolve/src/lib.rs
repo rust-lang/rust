@@ -909,7 +909,8 @@ pub struct Resolver<'a, 'tcx> {
 
     /// `CrateNum` resolutions of `extern crate` items.
     extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
-    reexport_map: FxHashMap<LocalDefId, Vec<ModChild>>,
+    module_children_non_reexports: LocalDefIdMap<Vec<LocalDefId>>,
+    module_children_reexports: LocalDefIdMap<Vec<ModChild>>,
     trait_map: NodeMap<Vec<TraitCandidate>>,
 
     /// A map from nodes to anonymous modules.
@@ -1259,7 +1260,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             lifetimes_res_map: Default::default(),
             extra_lifetime_params_map: Default::default(),
             extern_crate_map: Default::default(),
-            reexport_map: FxHashMap::default(),
+            module_children_non_reexports: Default::default(),
+            module_children_reexports: Default::default(),
             trait_map: NodeMap::default(),
             underscore_disambiguator: 0,
             empty_module,
@@ -1386,7 +1388,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let visibilities = self.visibilities;
         let has_pub_restricted = self.has_pub_restricted;
         let extern_crate_map = self.extern_crate_map;
-        let reexport_map = self.reexport_map;
         let maybe_unused_trait_imports = self.maybe_unused_trait_imports;
         let glob_map = self.glob_map;
         let main_def = self.main_def;
@@ -1398,7 +1399,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             has_pub_restricted,
             effective_visibilities,
             extern_crate_map,
-            reexport_map,
+            module_children_non_reexports: self.module_children_non_reexports,
+            module_children_reexports: self.module_children_reexports,
             glob_map,
             maybe_unused_trait_imports,
             main_def,
@@ -1948,20 +1950,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             self.record_use(ident, name_binding, false);
         }
         self.main_def = Some(MainDefinition { res, is_import, span });
-    }
-
-    // Items that go to reexport table encoded to metadata and visible through it to other crates.
-    fn is_reexport(&self, binding: &NameBinding<'a>) -> Option<def::Res<!>> {
-        if binding.is_import() {
-            let res = binding.res().expect_non_local();
-            // Ambiguous imports are treated as errors at this point and are
-            // not exposed to other crates (see #36837 for more details).
-            if res != def::Res::Err && !binding.is_ambiguity() {
-                return Some(res);
-            }
-        }
-
-        return None;
     }
 }
 

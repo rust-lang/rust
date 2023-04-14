@@ -1,6 +1,7 @@
 // Decoding metadata from a single crate's metadata
 
 use crate::creader::{CStore, CrateMetadataRef};
+use crate::rmeta::table::IsDefault;
 use crate::rmeta::*;
 
 use rustc_ast as ast;
@@ -995,17 +996,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn get_mod_child(self, id: DefIndex, sess: &Session) -> ModChild {
         let ident = self.item_ident(id, sess);
-        let kind = self.def_kind(id);
-        let def_id = self.local_def_id(id);
-        let res = Res::Def(kind, def_id);
+        let res = Res::Def(self.def_kind(id), self.local_def_id(id));
         let vis = self.get_visibility(id);
         let span = self.get_span(id, sess);
-        let macro_rules = match kind {
-            DefKind::Macro(..) => self.root.tables.is_macro_rules.get(self, id),
-            _ => false,
-        };
 
-        ModChild { ident, res, vis, span, macro_rules, reexport_chain: Default::default() }
+        ModChild { ident, res, vis, span, reexport_chain: Default::default() }
     }
 
     /// Iterates over all named children of the given module,
@@ -1029,12 +1024,14 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             } else {
                 // Iterate over all children.
                 for child_index in self.root.tables.children.get(self, id).unwrap().decode(self) {
+                    // FIXME: Do not encode RPITITs as a part of this list.
                     if self.root.tables.opt_rpitit_info.get(self, child_index).is_none() {
                         yield self.get_mod_child(child_index, sess);
                     }
                 }
 
-                if let Some(reexports) = self.root.tables.module_reexports.get(self, id) {
+                let reexports = self.root.tables.module_children_reexports.get(self, id);
+                if !reexports.is_default() {
                     for reexport in reexports.decode((self, sess)) {
                         yield reexport;
                     }
