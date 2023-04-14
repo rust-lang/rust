@@ -1564,7 +1564,10 @@ impl DefWithBody {
                         }
                         (mir::MutabilityReason::Not, true) => {
                             if !infer.mutated_bindings_in_closure.contains(&binding_id) {
-                                acc.push(UnusedMut { local }.into())
+                                let should_ignore = matches!(body[binding_id].name.as_str(), Some(x) if x.starts_with("_"));
+                                if !should_ignore {
+                                    acc.push(UnusedMut { local }.into())
+                                }
                             }
                         }
                     }

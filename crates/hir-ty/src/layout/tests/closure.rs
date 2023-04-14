@@ -41,6 +41,15 @@ fn ref_simple() {
         }
     }
     size_and_align_expr! {
+        minicore: copy, deref_mut;
+        stmts: [
+            let y: &mut i32 = &mut 5;
+        ]
+        |x: i32| {
+            *y += x;
+        }
+    }
+    size_and_align_expr! {
         minicore: copy;
         stmts: [
             struct X(i32, i64);
@@ -48,6 +57,16 @@ fn ref_simple() {
         ]
         || {
             x
+        }
+    }
+    size_and_align_expr! {
+        minicore: copy, deref_mut;
+        stmts: [
+            struct X(i32, i64);
+            let x: &mut X = &mut X(2, 6);
+        ]
+        || {
+            (*x).0 as i64 + x.1
         }
     }
 }

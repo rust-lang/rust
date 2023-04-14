@@ -190,6 +190,16 @@ impl InferenceContext<'_> {
                 }
                 return Some(place);
             }
+            Expr::UnaryOp { expr, op: UnaryOp::Deref } => {
+                if matches!(
+                    self.expr_ty_after_adjustments(*expr).kind(Interner),
+                    TyKind::Ref(..) | TyKind::Raw(..)
+                ) {
+                    let mut place = self.place_of_expr(*expr)?;
+                    place.projections.push(ProjectionElem::Deref);
+                    return Some(place);
+                }
+            }
             _ => (),
         }
         None
@@ -371,7 +381,12 @@ impl InferenceContext<'_> {
             }
             Expr::Field { expr, name: _ } => self.select_from_expr(*expr),
             Expr::UnaryOp { expr, op: UnaryOp::Deref } => {
-                if let Some((f, _)) = self.result.method_resolution(tgt_expr) {
+                if matches!(
+                    self.expr_ty_after_adjustments(*expr).kind(Interner),
+                    TyKind::Ref(..) | TyKind::Raw(..)
+                ) {
+                    self.select_from_expr(*expr);
+                } else if let Some((f, _)) = self.result.method_resolution(tgt_expr) {
                     let mutability = 'b: {
                         if let Some(deref_trait) =
                             self.resolve_lang_item(LangItem::DerefMut).and_then(|x| x.as_trait())
@@ -461,8 +476,18 @@ impl InferenceContext<'_> {
         }
     }
 
-    fn expr_ty(&mut self, expr: ExprId) -> Ty {
+    fn expr_ty(&self, expr: ExprId) -> Ty {
         self.result[expr].clone()
+    }
+
+    fn expr_ty_after_adjustments(&self, e: ExprId) -> Ty {
+        let mut ty = None;
+        if let Some(x) = self.result.expr_adjustments.get(&e) {
+            if let Some(x) = x.last() {
+                ty = Some(x.target.clone());
+            }
+        }
+        ty.unwrap_or_else(|| self.expr_ty(e))
     }
 
     fn is_upvar(&self, place: &HirPlace) -> bool {
@@ -701,7 +726,9 @@ impl InferenceContext<'_> {
         };
         self.consume_expr(*body);
         for item in &self.current_captures {
-            if matches!(item.kind, CaptureKind::ByRef(BorrowKind::Mut { .. })) {
+            if matches!(item.kind, CaptureKind::ByRef(BorrowKind::Mut { .. }))
+                && !item.place.projections.contains(&ProjectionElem::Deref)
+            {
                 // FIXME: remove the `mutated_bindings_in_closure` completely and add proper fake reads in
                 // MIR. I didn't do that due duplicate diagnostics.
                 self.result.mutated_bindings_in_closure.insert(item.place.local);
