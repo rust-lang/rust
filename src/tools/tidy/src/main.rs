@@ -110,10 +110,7 @@ fn main() {
             check!(bins, &root_path);
         }
 
-        check!(style, &src_path);
-        check!(style, &tests_path);
-        check!(style, &compiler_path);
-        check!(style, &library_path);
+        check!(style, &root_path);
 
         check!(edition, &src_path);
         check!(edition, &compiler_path);
