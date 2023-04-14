@@ -97,12 +97,12 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
 pub(crate) static RAND_REPO: GitRepo =
     GitRepo::github("rust-random", "rand", "50b9a447410860af8d6db9a208c3576886955874", "rand");
 
-pub(crate) static RAND: CargoProject = CargoProject::new(&RAND_REPO.source_dir(), "rand");
+pub(crate) static RAND: CargoProject = CargoProject::new(&RAND_REPO.source_dir(), "rand_target");
 
 pub(crate) static REGEX_REPO: GitRepo =
     GitRepo::github("rust-lang", "regex", "32fed9429eafba0ae92a64b01796a0c5a75b88c8", "regex");
 
-pub(crate) static REGEX: CargoProject = CargoProject::new(&REGEX_REPO.source_dir(), "regex");
+pub(crate) static REGEX: CargoProject = CargoProject::new(&REGEX_REPO.source_dir(), "regex_target");
 
 pub(crate) static PORTABLE_SIMD_REPO: GitRepo = GitRepo::github(
     "rust-lang",
@@ -112,9 +112,9 @@ pub(crate) static PORTABLE_SIMD_REPO: GitRepo = GitRepo::github(
 );
 
 pub(crate) static PORTABLE_SIMD: CargoProject =
-    CargoProject::new(&PORTABLE_SIMD_REPO.source_dir(), "portable_simd");
+    CargoProject::new(&PORTABLE_SIMD_REPO.source_dir(), "portable_simd_target");
 
-pub(crate) static LIBCORE_TESTS_SRC: RelPath = RelPath::DOWNLOAD.join("coretests_src");
+pub(crate) static LIBCORE_TESTS_SRC: RelPath = RelPath::BUILD.join("coretests_src");
 
 pub(crate) static LIBCORE_TESTS: CargoProject = CargoProject::new(&LIBCORE_TESTS_SRC, "core_tests");
 

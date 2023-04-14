@@ -156,7 +156,7 @@ impl SysrootTarget {
 }
 
 pub(crate) static ORIG_BUILD_SYSROOT: RelPath = RelPath::SOURCE.join("build_sysroot");
-pub(crate) static BUILD_SYSROOT: RelPath = RelPath::DOWNLOAD.join("sysroot");
+pub(crate) static BUILD_SYSROOT: RelPath = RelPath::BUILD.join("sysroot");
 pub(crate) static SYSROOT_RUSTC_VERSION: RelPath = BUILD_SYSROOT.join("rustc_version");
 pub(crate) static SYSROOT_SRC: RelPath = BUILD_SYSROOT.join("sysroot_src");
 pub(crate) static STANDARD_LIBRARY: CargoProject =

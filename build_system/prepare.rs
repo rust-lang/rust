@@ -39,9 +39,6 @@ fn prepare_stdlib(dirs: &Dirs, rustc: &Path) {
     let rustc_version = get_rustc_version(rustc);
     fs::write(SYSROOT_RUSTC_VERSION.to_path(dirs), &rustc_version).unwrap();
 
-    eprintln!("[GIT] init");
-    init_git_repo(&SYSROOT_SRC.to_path(dirs));
-
     apply_patches(dirs, "stdlib", &SYSROOT_SRC.to_path(dirs));
 }
 
@@ -51,14 +48,12 @@ fn prepare_coretests(dirs: &Dirs, rustc: &Path) {
 
     eprintln!("[COPY] coretests src");
 
-    fs::create_dir_all(LIBCORE_TESTS_SRC.to_path(dirs)).unwrap();
+    // FIXME ensure builds error out or update the copy if any of the files copied here change
+    LIBCORE_TESTS_SRC.ensure_fresh(dirs);
     copy_dir_recursively(
         &sysroot_src_orig.join("library/core/tests"),
         &LIBCORE_TESTS_SRC.to_path(dirs),
     );
-
-    eprintln!("[GIT] init");
-    init_git_repo(&LIBCORE_TESTS_SRC.to_path(dirs));
 
     apply_patches(dirs, "coretests", &LIBCORE_TESTS_SRC.to_path(dirs));
 }
@@ -85,23 +80,23 @@ impl GitRepo {
 
     pub(crate) const fn source_dir(&self) -> RelPath {
         match self.url {
-            GitRepoUrl::Github { user: _, repo } => RelPath::DOWNLOAD.join(repo),
+            GitRepoUrl::Github { user: _, repo } => RelPath::BUILD.join(repo),
         }
     }
 
     pub(crate) fn fetch(&self, dirs: &Dirs) {
+        let download_dir = match self.url {
+            GitRepoUrl::Github { user: _, repo } => RelPath::DOWNLOAD.join(repo).to_path(dirs),
+        };
+        let source_dir = self.source_dir();
         match self.url {
             GitRepoUrl::Github { user, repo } => {
-                clone_repo_shallow_github(
-                    dirs,
-                    &self.source_dir().to_path(dirs),
-                    user,
-                    repo,
-                    self.rev,
-                );
+                clone_repo_shallow_github(dirs, &download_dir, user, repo, self.rev);
             }
         }
-        apply_patches(dirs, self.patch_name, &self.source_dir().to_path(dirs));
+        source_dir.ensure_fresh(dirs);
+        copy_dir_recursively(&download_dir, &source_dir.to_path(dirs));
+        apply_patches(dirs, self.patch_name, &source_dir.to_path(dirs));
     }
 }
 
@@ -118,6 +113,8 @@ fn clone_repo(download_dir: &Path, repo: &str, rev: &str) {
     let mut checkout_cmd = git_command(download_dir, "checkout");
     checkout_cmd.arg("-q").arg(rev);
     spawn_and_wait(checkout_cmd);
+
+    std::fs::remove_dir_all(download_dir.join(".git")).unwrap();
 }
 
 fn clone_repo_shallow_github(dirs: &Dirs, download_dir: &Path, user: &str, repo: &str, rev: &str) {
@@ -165,8 +162,6 @@ fn clone_repo_shallow_github(dirs: &Dirs, download_dir: &Path, user: &str, repo:
     // Rename unpacked dir to the expected name
     std::fs::rename(archive_dir, &download_dir).unwrap();
 
-    init_git_repo(&download_dir);
-
     // Cleanup
     std::fs::remove_file(archive_file).unwrap();
 }
@@ -206,6 +201,8 @@ fn get_patches(dirs: &Dirs, crate_name: &str) -> Vec<PathBuf> {
 }
 
 fn apply_patches(dirs: &Dirs, crate_name: &str, target_dir: &Path) {
+    init_git_repo(&target_dir);
+
     if crate_name == "<none>" {
         return;
     }
