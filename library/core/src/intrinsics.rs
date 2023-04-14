@@ -84,6 +84,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange` method by passing
     /// [`Ordering::Relaxed`] as both the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange`].
+    #[rustc_nounwind]
     pub fn atomic_cxchg_relaxed_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -91,6 +92,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange` method by passing
     /// [`Ordering::Relaxed`] and [`Ordering::Acquire`] as the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange`].
+    #[rustc_nounwind]
     pub fn atomic_cxchg_relaxed_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -98,6 +100,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange` method by passing
     /// [`Ordering::Relaxed`] and [`Ordering::SeqCst`] as the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange`].
+    #[rustc_nounwind]
     pub fn atomic_cxchg_relaxed_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -105,6 +108,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange` method by passing
     /// [`Ordering::Acquire`] and [`Ordering::Relaxed`] as the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange`].
+    #[rustc_nounwind]
     pub fn atomic_cxchg_acquire_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -112,6 +116,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange` method by passing
     /// [`Ordering::Acquire`] as both the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange`].
+    #[rustc_nounwind]
     pub fn atomic_cxchg_acquire_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -119,6 +124,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange` method by passing
     /// [`Ordering::Acquire`] and [`Ordering::SeqCst`] as the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange`].
+    #[rustc_nounwind]
     pub fn atomic_cxchg_acquire_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -126,6 +132,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange` method by passing
     /// [`Ordering::Release`] and [`Ordering::Relaxed`] as the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange`].
+    #[rustc_nounwind]
     pub fn atomic_cxchg_release_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -133,6 +140,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange` method by passing
     /// [`Ordering::Release`] and [`Ordering::Acquire`] as the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange`].
+    #[rustc_nounwind]
     pub fn atomic_cxchg_release_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -140,6 +148,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange` method by passing
     /// [`Ordering::Release`] and [`Ordering::SeqCst`] as the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange`].
+    #[rustc_nounwind]
     pub fn atomic_cxchg_release_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -147,6 +156,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange` method by passing
     /// [`Ordering::AcqRel`] and [`Ordering::Relaxed`] as the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange`].
+    #[rustc_nounwind]
     pub fn atomic_cxchg_acqrel_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -154,6 +164,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange` method by passing
     /// [`Ordering::AcqRel`] and [`Ordering::Acquire`] as the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange`].
+    #[rustc_nounwind]
     pub fn atomic_cxchg_acqrel_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -161,6 +172,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange` method by passing
     /// [`Ordering::AcqRel`] and [`Ordering::SeqCst`] as the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange`].
+    #[rustc_nounwind]
     pub fn atomic_cxchg_acqrel_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -168,6 +180,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange` method by passing
     /// [`Ordering::SeqCst`] and [`Ordering::Relaxed`] as the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange`].
+    #[rustc_nounwind]
     pub fn atomic_cxchg_seqcst_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -175,6 +188,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange` method by passing
     /// [`Ordering::SeqCst`] and [`Ordering::Acquire`] as the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange`].
+    #[rustc_nounwind]
     pub fn atomic_cxchg_seqcst_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -182,6 +196,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange` method by passing
     /// [`Ordering::SeqCst`] as both the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange`].
+    #[rustc_nounwind]
     pub fn atomic_cxchg_seqcst_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 
     /// Stores a value if the current value is the same as the `old` value.
@@ -190,6 +205,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange_weak` method by passing
     /// [`Ordering::Relaxed`] as both the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange_weak`].
+    #[rustc_nounwind]
     pub fn atomic_cxchgweak_relaxed_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -197,6 +213,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange_weak` method by passing
     /// [`Ordering::Relaxed`] and [`Ordering::Acquire`] as the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange_weak`].
+    #[rustc_nounwind]
     pub fn atomic_cxchgweak_relaxed_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -204,6 +221,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange_weak` method by passing
     /// [`Ordering::Relaxed`] and [`Ordering::SeqCst`] as the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange_weak`].
+    #[rustc_nounwind]
     pub fn atomic_cxchgweak_relaxed_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -211,6 +229,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange_weak` method by passing
     /// [`Ordering::Acquire`] and [`Ordering::Relaxed`] as the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange_weak`].
+    #[rustc_nounwind]
     pub fn atomic_cxchgweak_acquire_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -218,6 +237,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange_weak` method by passing
     /// [`Ordering::Acquire`] as both the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange_weak`].
+    #[rustc_nounwind]
     pub fn atomic_cxchgweak_acquire_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -225,6 +245,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange_weak` method by passing
     /// [`Ordering::Acquire`] and [`Ordering::SeqCst`] as the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange_weak`].
+    #[rustc_nounwind]
     pub fn atomic_cxchgweak_acquire_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -232,6 +253,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange_weak` method by passing
     /// [`Ordering::Release`] and [`Ordering::Relaxed`] as the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange_weak`].
+    #[rustc_nounwind]
     pub fn atomic_cxchgweak_release_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -239,6 +261,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange_weak` method by passing
     /// [`Ordering::Release`] and [`Ordering::Acquire`] as the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange_weak`].
+    #[rustc_nounwind]
     pub fn atomic_cxchgweak_release_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -246,6 +269,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange_weak` method by passing
     /// [`Ordering::Release`] and [`Ordering::SeqCst`] as the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange_weak`].
+    #[rustc_nounwind]
     pub fn atomic_cxchgweak_release_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -253,6 +277,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange_weak` method by passing
     /// [`Ordering::AcqRel`] and [`Ordering::Relaxed`] as the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange_weak`].
+    #[rustc_nounwind]
     pub fn atomic_cxchgweak_acqrel_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -260,6 +285,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange_weak` method by passing
     /// [`Ordering::AcqRel`] and [`Ordering::Acquire`] as the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange_weak`].
+    #[rustc_nounwind]
     pub fn atomic_cxchgweak_acqrel_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -267,6 +293,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange_weak` method by passing
     /// [`Ordering::AcqRel`] and [`Ordering::SeqCst`] as the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange_weak`].
+    #[rustc_nounwind]
     pub fn atomic_cxchgweak_acqrel_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -274,6 +301,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange_weak` method by passing
     /// [`Ordering::SeqCst`] and [`Ordering::Relaxed`] as the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange_weak`].
+    #[rustc_nounwind]
     pub fn atomic_cxchgweak_seqcst_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -281,6 +309,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange_weak` method by passing
     /// [`Ordering::SeqCst`] and [`Ordering::Acquire`] as the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange_weak`].
+    #[rustc_nounwind]
     pub fn atomic_cxchgweak_seqcst_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
@@ -288,6 +317,7 @@ extern "rust-intrinsic" {
     /// [`atomic`] types via the `compare_exchange_weak` method by passing
     /// [`Ordering::SeqCst`] as both the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange_weak`].
+    #[rustc_nounwind]
     pub fn atomic_cxchgweak_seqcst_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 
     /// Loads the current value of the pointer.
@@ -295,19 +325,23 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `load` method by passing
     /// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicBool::load`].
+    #[rustc_nounwind]
     pub fn atomic_load_seqcst<T: Copy>(src: *const T) -> T;
     /// Loads the current value of the pointer.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `load` method by passing
     /// [`Ordering::Acquire`] as the `order`. For example, [`AtomicBool::load`].
+    #[rustc_nounwind]
     pub fn atomic_load_acquire<T: Copy>(src: *const T) -> T;
     /// Loads the current value of the pointer.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `load` method by passing
     /// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicBool::load`].
+    #[rustc_nounwind]
     pub fn atomic_load_relaxed<T: Copy>(src: *const T) -> T;
+    #[rustc_nounwind]
     pub fn atomic_load_unordered<T: Copy>(src: *const T) -> T;
 
     /// Stores the value at the specified memory location.
@@ -315,19 +349,23 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `store` method by passing
     /// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicBool::store`].
+    #[rustc_nounwind]
     pub fn atomic_store_seqcst<T: Copy>(dst: *mut T, val: T);
     /// Stores the value at the specified memory location.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `store` method by passing
     /// [`Ordering::Release`] as the `order`. For example, [`AtomicBool::store`].
+    #[rustc_nounwind]
     pub fn atomic_store_release<T: Copy>(dst: *mut T, val: T);
     /// Stores the value at the specified memory location.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `store` method by passing
     /// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicBool::store`].
+    #[rustc_nounwind]
     pub fn atomic_store_relaxed<T: Copy>(dst: *mut T, val: T);
+    #[rustc_nounwind]
     pub fn atomic_store_unordered<T: Copy>(dst: *mut T, val: T);
 
     /// Stores the value at the specified memory location, returning the old value.
@@ -335,30 +373,35 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `swap` method by passing
     /// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicBool::swap`].
+    #[rustc_nounwind]
     pub fn atomic_xchg_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
     /// Stores the value at the specified memory location, returning the old value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `swap` method by passing
     /// [`Ordering::Acquire`] as the `order`. For example, [`AtomicBool::swap`].
+    #[rustc_nounwind]
     pub fn atomic_xchg_acquire<T: Copy>(dst: *mut T, src: T) -> T;
     /// Stores the value at the specified memory location, returning the old value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `swap` method by passing
     /// [`Ordering::Release`] as the `order`. For example, [`AtomicBool::swap`].
+    #[rustc_nounwind]
     pub fn atomic_xchg_release<T: Copy>(dst: *mut T, src: T) -> T;
     /// Stores the value at the specified memory location, returning the old value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `swap` method by passing
     /// [`Ordering::AcqRel`] as the `order`. For example, [`AtomicBool::swap`].
+    #[rustc_nounwind]
     pub fn atomic_xchg_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Stores the value at the specified memory location, returning the old value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `swap` method by passing
     /// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicBool::swap`].
+    #[rustc_nounwind]
     pub fn atomic_xchg_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
     /// Adds to the current value, returning the previous value.
@@ -366,30 +409,35 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_add` method by passing
     /// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicIsize::fetch_add`].
+    #[rustc_nounwind]
     pub fn atomic_xadd_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
     /// Adds to the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_add` method by passing
     /// [`Ordering::Acquire`] as the `order`. For example, [`AtomicIsize::fetch_add`].
+    #[rustc_nounwind]
     pub fn atomic_xadd_acquire<T: Copy>(dst: *mut T, src: T) -> T;
     /// Adds to the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_add` method by passing
     /// [`Ordering::Release`] as the `order`. For example, [`AtomicIsize::fetch_add`].
+    #[rustc_nounwind]
     pub fn atomic_xadd_release<T: Copy>(dst: *mut T, src: T) -> T;
     /// Adds to the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_add` method by passing
     /// [`Ordering::AcqRel`] as the `order`. For example, [`AtomicIsize::fetch_add`].
+    #[rustc_nounwind]
     pub fn atomic_xadd_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Adds to the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_add` method by passing
     /// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicIsize::fetch_add`].
+    #[rustc_nounwind]
     pub fn atomic_xadd_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
     /// Subtract from the current value, returning the previous value.
@@ -397,30 +445,35 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_sub` method by passing
     /// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicIsize::fetch_sub`].
+    #[rustc_nounwind]
     pub fn atomic_xsub_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
     /// Subtract from the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_sub` method by passing
     /// [`Ordering::Acquire`] as the `order`. For example, [`AtomicIsize::fetch_sub`].
+    #[rustc_nounwind]
     pub fn atomic_xsub_acquire<T: Copy>(dst: *mut T, src: T) -> T;
     /// Subtract from the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_sub` method by passing
     /// [`Ordering::Release`] as the `order`. For example, [`AtomicIsize::fetch_sub`].
+    #[rustc_nounwind]
     pub fn atomic_xsub_release<T: Copy>(dst: *mut T, src: T) -> T;
     /// Subtract from the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_sub` method by passing
     /// [`Ordering::AcqRel`] as the `order`. For example, [`AtomicIsize::fetch_sub`].
+    #[rustc_nounwind]
     pub fn atomic_xsub_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Subtract from the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_sub` method by passing
     /// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicIsize::fetch_sub`].
+    #[rustc_nounwind]
     pub fn atomic_xsub_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
     /// Bitwise and with the current value, returning the previous value.
@@ -428,30 +481,35 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_and` method by passing
     /// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicBool::fetch_and`].
+    #[rustc_nounwind]
     pub fn atomic_and_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise and with the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_and` method by passing
     /// [`Ordering::Acquire`] as the `order`. For example, [`AtomicBool::fetch_and`].
+    #[rustc_nounwind]
     pub fn atomic_and_acquire<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise and with the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_and` method by passing
     /// [`Ordering::Release`] as the `order`. For example, [`AtomicBool::fetch_and`].
+    #[rustc_nounwind]
     pub fn atomic_and_release<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise and with the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_and` method by passing
     /// [`Ordering::AcqRel`] as the `order`. For example, [`AtomicBool::fetch_and`].
+    #[rustc_nounwind]
     pub fn atomic_and_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise and with the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_and` method by passing
     /// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicBool::fetch_and`].
+    #[rustc_nounwind]
     pub fn atomic_and_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
     /// Bitwise nand with the current value, returning the previous value.
@@ -459,30 +517,35 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available on the
     /// [`AtomicBool`] type via the `fetch_nand` method by passing
     /// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicBool::fetch_nand`].
+    #[rustc_nounwind]
     pub fn atomic_nand_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise nand with the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`AtomicBool`] type via the `fetch_nand` method by passing
     /// [`Ordering::Acquire`] as the `order`. For example, [`AtomicBool::fetch_nand`].
+    #[rustc_nounwind]
     pub fn atomic_nand_acquire<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise nand with the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`AtomicBool`] type via the `fetch_nand` method by passing
     /// [`Ordering::Release`] as the `order`. For example, [`AtomicBool::fetch_nand`].
+    #[rustc_nounwind]
     pub fn atomic_nand_release<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise nand with the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`AtomicBool`] type via the `fetch_nand` method by passing
     /// [`Ordering::AcqRel`] as the `order`. For example, [`AtomicBool::fetch_nand`].
+    #[rustc_nounwind]
     pub fn atomic_nand_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise nand with the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`AtomicBool`] type via the `fetch_nand` method by passing
     /// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicBool::fetch_nand`].
+    #[rustc_nounwind]
     pub fn atomic_nand_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
     /// Bitwise or with the current value, returning the previous value.
@@ -490,30 +553,35 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_or` method by passing
     /// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicBool::fetch_or`].
+    #[rustc_nounwind]
     pub fn atomic_or_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise or with the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_or` method by passing
     /// [`Ordering::Acquire`] as the `order`. For example, [`AtomicBool::fetch_or`].
+    #[rustc_nounwind]
     pub fn atomic_or_acquire<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise or with the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_or` method by passing
     /// [`Ordering::Release`] as the `order`. For example, [`AtomicBool::fetch_or`].
+    #[rustc_nounwind]
     pub fn atomic_or_release<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise or with the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_or` method by passing
     /// [`Ordering::AcqRel`] as the `order`. For example, [`AtomicBool::fetch_or`].
+    #[rustc_nounwind]
     pub fn atomic_or_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise or with the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_or` method by passing
     /// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicBool::fetch_or`].
+    #[rustc_nounwind]
     pub fn atomic_or_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
     /// Bitwise xor with the current value, returning the previous value.
@@ -521,30 +589,35 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_xor` method by passing
     /// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicBool::fetch_xor`].
+    #[rustc_nounwind]
     pub fn atomic_xor_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise xor with the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_xor` method by passing
     /// [`Ordering::Acquire`] as the `order`. For example, [`AtomicBool::fetch_xor`].
+    #[rustc_nounwind]
     pub fn atomic_xor_acquire<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise xor with the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_xor` method by passing
     /// [`Ordering::Release`] as the `order`. For example, [`AtomicBool::fetch_xor`].
+    #[rustc_nounwind]
     pub fn atomic_xor_release<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise xor with the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_xor` method by passing
     /// [`Ordering::AcqRel`] as the `order`. For example, [`AtomicBool::fetch_xor`].
+    #[rustc_nounwind]
     pub fn atomic_xor_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise xor with the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_xor` method by passing
     /// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicBool::fetch_xor`].
+    #[rustc_nounwind]
     pub fn atomic_xor_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
     /// Maximum with the current value using a signed comparison.
@@ -552,30 +625,35 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] signed integer types via the `fetch_max` method by passing
     /// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicI32::fetch_max`].
+    #[rustc_nounwind]
     pub fn atomic_max_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
     /// Maximum with the current value using a signed comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] signed integer types via the `fetch_max` method by passing
     /// [`Ordering::Acquire`] as the `order`. For example, [`AtomicI32::fetch_max`].
+    #[rustc_nounwind]
     pub fn atomic_max_acquire<T: Copy>(dst: *mut T, src: T) -> T;
     /// Maximum with the current value using a signed comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] signed integer types via the `fetch_max` method by passing
     /// [`Ordering::Release`] as the `order`. For example, [`AtomicI32::fetch_max`].
+    #[rustc_nounwind]
     pub fn atomic_max_release<T: Copy>(dst: *mut T, src: T) -> T;
     /// Maximum with the current value using a signed comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] signed integer types via the `fetch_max` method by passing
     /// [`Ordering::AcqRel`] as the `order`. For example, [`AtomicI32::fetch_max`].
+    #[rustc_nounwind]
     pub fn atomic_max_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Maximum with the current value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] signed integer types via the `fetch_max` method by passing
     /// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicI32::fetch_max`].
+    #[rustc_nounwind]
     pub fn atomic_max_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
     /// Minimum with the current value using a signed comparison.
@@ -583,18 +661,21 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] signed integer types via the `fetch_min` method by passing
     /// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicI32::fetch_min`].
+    #[rustc_nounwind]
     pub fn atomic_min_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
     /// Minimum with the current value using a signed comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] signed integer types via the `fetch_min` method by passing
     /// [`Ordering::Acquire`] as the `order`. For example, [`AtomicI32::fetch_min`].
+    #[rustc_nounwind]
     pub fn atomic_min_acquire<T: Copy>(dst: *mut T, src: T) -> T;
     /// Minimum with the current value using a signed comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] signed integer types via the `fetch_min` method by passing
     /// [`Ordering::Release`] as the `order`. For example, [`AtomicI32::fetch_min`].
+    #[rustc_nounwind]
     pub fn atomic_min_release<T: Copy>(dst: *mut T, src: T) -> T;
     /// Minimum with the current value using a signed comparison.
     ///
@@ -607,6 +688,7 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] signed integer types via the `fetch_min` method by passing
     /// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicI32::fetch_min`].
+    #[rustc_nounwind]
     pub fn atomic_min_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
     /// Minimum with the current value using an unsigned comparison.
@@ -614,30 +696,35 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] unsigned integer types via the `fetch_min` method by passing
     /// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicU32::fetch_min`].
+    #[rustc_nounwind]
     pub fn atomic_umin_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
     /// Minimum with the current value using an unsigned comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] unsigned integer types via the `fetch_min` method by passing
     /// [`Ordering::Acquire`] as the `order`. For example, [`AtomicU32::fetch_min`].
+    #[rustc_nounwind]
     pub fn atomic_umin_acquire<T: Copy>(dst: *mut T, src: T) -> T;
     /// Minimum with the current value using an unsigned comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] unsigned integer types via the `fetch_min` method by passing
     /// [`Ordering::Release`] as the `order`. For example, [`AtomicU32::fetch_min`].
+    #[rustc_nounwind]
     pub fn atomic_umin_release<T: Copy>(dst: *mut T, src: T) -> T;
     /// Minimum with the current value using an unsigned comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] unsigned integer types via the `fetch_min` method by passing
     /// [`Ordering::AcqRel`] as the `order`. For example, [`AtomicU32::fetch_min`].
+    #[rustc_nounwind]
     pub fn atomic_umin_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Minimum with the current value using an unsigned comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] unsigned integer types via the `fetch_min` method by passing
     /// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicU32::fetch_min`].
+    #[rustc_nounwind]
     pub fn atomic_umin_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
     /// Maximum with the current value using an unsigned comparison.
@@ -645,30 +732,35 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] unsigned integer types via the `fetch_max` method by passing
     /// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicU32::fetch_max`].
+    #[rustc_nounwind]
     pub fn atomic_umax_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
     /// Maximum with the current value using an unsigned comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] unsigned integer types via the `fetch_max` method by passing
     /// [`Ordering::Acquire`] as the `order`. For example, [`AtomicU32::fetch_max`].
+    #[rustc_nounwind]
     pub fn atomic_umax_acquire<T: Copy>(dst: *mut T, src: T) -> T;
     /// Maximum with the current value using an unsigned comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] unsigned integer types via the `fetch_max` method by passing
     /// [`Ordering::Release`] as the `order`. For example, [`AtomicU32::fetch_max`].
+    #[rustc_nounwind]
     pub fn atomic_umax_release<T: Copy>(dst: *mut T, src: T) -> T;
     /// Maximum with the current value using an unsigned comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] unsigned integer types via the `fetch_max` method by passing
     /// [`Ordering::AcqRel`] as the `order`. For example, [`AtomicU32::fetch_max`].
+    #[rustc_nounwind]
     pub fn atomic_umax_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Maximum with the current value using an unsigned comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] unsigned integer types via the `fetch_max` method by passing
     /// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicU32::fetch_max`].
+    #[rustc_nounwind]
     pub fn atomic_umax_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
     /// An atomic fence.
@@ -676,24 +768,28 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available in
     /// [`atomic::fence`] by passing [`Ordering::SeqCst`]
     /// as the `order`.
+    #[rustc_nounwind]
     pub fn atomic_fence_seqcst();
     /// An atomic fence.
     ///
     /// The stabilized version of this intrinsic is available in
     /// [`atomic::fence`] by passing [`Ordering::Acquire`]
     /// as the `order`.
+    #[rustc_nounwind]
     pub fn atomic_fence_acquire();
     /// An atomic fence.
     ///
     /// The stabilized version of this intrinsic is available in
     /// [`atomic::fence`] by passing [`Ordering::Release`]
     /// as the `order`.
+    #[rustc_nounwind]
     pub fn atomic_fence_release();
     /// An atomic fence.
     ///
     /// The stabilized version of this intrinsic is available in
     /// [`atomic::fence`] by passing [`Ordering::AcqRel`]
     /// as the `order`.
+    #[rustc_nounwind]
     pub fn atomic_fence_acqrel();
 
     /// A compiler-only memory barrier.
@@ -706,6 +802,7 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available in
     /// [`atomic::compiler_fence`] by passing [`Ordering::SeqCst`]
     /// as the `order`.
+    #[rustc_nounwind]
     pub fn atomic_singlethreadfence_seqcst();
     /// A compiler-only memory barrier.
     ///
@@ -717,6 +814,7 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available in
     /// [`atomic::compiler_fence`] by passing [`Ordering::Acquire`]
     /// as the `order`.
+    #[rustc_nounwind]
     pub fn atomic_singlethreadfence_acquire();
     /// A compiler-only memory barrier.
     ///
@@ -728,6 +826,7 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available in
     /// [`atomic::compiler_fence`] by passing [`Ordering::Release`]
     /// as the `order`.
+    #[rustc_nounwind]
     pub fn atomic_singlethreadfence_release();
     /// A compiler-only memory barrier.
     ///
@@ -739,6 +838,7 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available in
     /// [`atomic::compiler_fence`] by passing [`Ordering::AcqRel`]
     /// as the `order`.
+    #[rustc_nounwind]
     pub fn atomic_singlethreadfence_acqrel();
 
     /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
@@ -750,6 +850,7 @@ extern "rust-intrinsic" {
     /// ranging from (0) - no locality, to (3) - extremely local keep in cache.
     ///
     /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
     pub fn prefetch_read_data<T>(data: *const T, locality: i32);
     /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
     /// if supported; otherwise, it is a no-op.
@@ -760,6 +861,7 @@ extern "rust-intrinsic" {
     /// ranging from (0) - no locality, to (3) - extremely local keep in cache.
     ///
     /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
     pub fn prefetch_write_data<T>(data: *const T, locality: i32);
     /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
     /// if supported; otherwise, it is a no-op.
@@ -770,6 +872,7 @@ extern "rust-intrinsic" {
     /// ranging from (0) - no locality, to (3) - extremely local keep in cache.
     ///
     /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
     pub fn prefetch_read_instruction<T>(data: *const T, locality: i32);
     /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
     /// if supported; otherwise, it is a no-op.
@@ -780,6 +883,7 @@ extern "rust-intrinsic" {
     /// ranging from (0) - no locality, to (3) - extremely local keep in cache.
     ///
     /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
     pub fn prefetch_write_instruction<T>(data: *const T, locality: i32);
 
     /// Magic intrinsic that derives its meaning from attributes
@@ -792,6 +896,7 @@ extern "rust-intrinsic" {
     ///
     /// This intrinsic should not be used outside of the compiler.
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn rustc_peek<T>(_: T) -> T;
 
     /// Aborts the execution of the process.
@@ -810,6 +915,7 @@ extern "rust-intrinsic" {
     /// process will probably terminate with a signal like `SIGABRT`, `SIGILL`, `SIGTRAP`, `SIGSEGV` or
     /// `SIGBUS`.  The precise behaviour is not guaranteed and not stable.
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn abort() -> !;
 
     /// Informs the optimizer that this point in the code is not reachable,
@@ -821,6 +927,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is [`core::hint::unreachable_unchecked`].
     #[rustc_const_stable(feature = "const_unreachable_unchecked", since = "1.57.0")]
+    #[rustc_nounwind]
     pub fn unreachable() -> !;
 
     /// Informs the optimizer that a condition is always true.
@@ -834,6 +941,7 @@ extern "rust-intrinsic" {
     ///
     /// This intrinsic does not have a stable counterpart.
     #[rustc_const_unstable(feature = "const_assume", issue = "76972")]
+    #[rustc_nounwind]
     pub fn assume(b: bool);
 
     /// Hints to the compiler that branch condition is likely to be true.
@@ -849,6 +957,7 @@ extern "rust-intrinsic" {
     /// This intrinsic does not have a stable counterpart.
     #[rustc_const_unstable(feature = "const_likely", issue = "none")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn likely(b: bool) -> bool;
 
     /// Hints to the compiler that branch condition is likely to be false.
@@ -864,11 +973,13 @@ extern "rust-intrinsic" {
     /// This intrinsic does not have a stable counterpart.
     #[rustc_const_unstable(feature = "const_likely", issue = "none")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn unlikely(b: bool) -> bool;
 
     /// Executes a breakpoint trap, for inspection by a debugger.
     ///
     /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
     pub fn breakpoint();
 
     /// The size of a type in bytes.
@@ -884,6 +995,7 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is [`core::mem::size_of`].
     #[rustc_const_stable(feature = "const_size_of", since = "1.40.0")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn size_of<T>() -> usize;
 
     /// The minimum alignment of a type.
@@ -896,23 +1008,27 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is [`core::mem::align_of`].
     #[rustc_const_stable(feature = "const_min_align_of", since = "1.40.0")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn min_align_of<T>() -> usize;
     /// The preferred alignment of a type.
     ///
     /// This intrinsic does not have a stable counterpart.
     /// It's "tracking issue" is [#91971](https://github.com/rust-lang/rust/issues/91971).
     #[rustc_const_unstable(feature = "const_pref_align_of", issue = "91971")]
+    #[rustc_nounwind]
     pub fn pref_align_of<T>() -> usize;
 
     /// The size of the referenced value in bytes.
     ///
     /// The stabilized version of this intrinsic is [`mem::size_of_val`].
     #[rustc_const_unstable(feature = "const_size_of_val", issue = "46571")]
+    #[rustc_nounwind]
     pub fn size_of_val<T: ?Sized>(_: *const T) -> usize;
     /// The required alignment of the referenced value.
     ///
     /// The stabilized version of this intrinsic is [`core::mem::align_of_val`].
     #[rustc_const_unstable(feature = "const_align_of_val", issue = "46571")]
+    #[rustc_nounwind]
     pub fn min_align_of_val<T: ?Sized>(_: *const T) -> usize;
 
     /// Gets a static string slice containing the name of a type.
@@ -925,6 +1041,7 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is [`core::any::type_name`].
     #[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn type_name<T: ?Sized>() -> &'static str;
 
     /// Gets an identifier which is globally unique to the specified type. This
@@ -939,6 +1056,7 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is [`core::any::TypeId::of`].
     #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn type_id<T: ?Sized + 'static>() -> u64;
 
     /// A guard for unsafe functions that cannot ever be executed if `T` is uninhabited:
@@ -947,6 +1065,7 @@ extern "rust-intrinsic" {
     /// This intrinsic does not have a stable counterpart.
     #[rustc_const_stable(feature = "const_assert_type", since = "1.59.0")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn assert_inhabited<T>();
 
     /// A guard for unsafe functions that cannot ever be executed if `T` does not permit
@@ -955,6 +1074,7 @@ extern "rust-intrinsic" {
     /// This intrinsic does not have a stable counterpart.
     #[rustc_const_unstable(feature = "const_assert_type2", issue = "none")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn assert_zero_valid<T>();
 
     /// A guard for `std::mem::uninitialized`. This will statically either panic, or do nothing.
@@ -962,6 +1082,7 @@ extern "rust-intrinsic" {
     /// This intrinsic does not have a stable counterpart.
     #[rustc_const_unstable(feature = "const_assert_type2", issue = "none")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn assert_mem_uninitialized_valid<T>();
 
     /// Gets a reference to a static `Location` indicating where it was called.
@@ -974,6 +1095,7 @@ extern "rust-intrinsic" {
     /// Consider using [`core::panic::Location::caller`] instead.
     #[rustc_const_unstable(feature = "const_caller_location", issue = "76156")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn caller_location() -> &'static crate::panic::Location<'static>;
 
     /// Moves a value out of scope without running drop glue.
@@ -987,6 +1109,7 @@ extern "rust-intrinsic" {
     /// any safety invariants.
     #[rustc_const_unstable(feature = "const_intrinsic_forget", issue = "none")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn forget<T: ?Sized>(_: T);
 
     /// Reinterprets the bits of a value of one type as another type.
@@ -1250,6 +1373,7 @@ extern "rust-intrinsic" {
     #[rustc_allowed_through_unstable_modules]
     #[rustc_const_stable(feature = "const_transmute", since = "1.56.0")]
     #[rustc_diagnostic_item = "transmute"]
+    #[rustc_nounwind]
     pub fn transmute<Src, Dst>(src: Src) -> Dst;
 
     /// Returns `true` if the actual type given as `T` requires drop
@@ -1267,6 +1391,7 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is [`mem::needs_drop`](crate::mem::needs_drop).
     #[rustc_const_stable(feature = "const_needs_drop", since = "1.40.0")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn needs_drop<T: ?Sized>() -> bool;
 
     /// Calculates the offset from a pointer.
@@ -1284,6 +1409,7 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is [`pointer::offset`].
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
+    #[rustc_nounwind]
     pub fn offset<T>(dst: *const T, offset: isize) -> *const T;
 
     /// Calculates the offset from a pointer, potentially wrapping.
@@ -1301,6 +1427,7 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is [`pointer::wrapping_offset`].
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
+    #[rustc_nounwind]
     pub fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
 
     /// Masks out bits of the pointer according to a mask.
@@ -1312,6 +1439,7 @@ extern "rust-intrinsic" {
     ///
     /// Consider using [`pointer::mask`] instead.
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn ptr_mask<T>(ptr: *const T, mask: usize) -> *const T;
 
     /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
@@ -1322,6 +1450,7 @@ extern "rust-intrinsic" {
     /// unless size is equal to zero.
     ///
     /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
     pub fn volatile_copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: usize);
     /// Equivalent to the appropriate `llvm.memmove.p0i8.0i8.*` intrinsic, with
     /// a size of `count * size_of::<T>()` and an alignment of
@@ -1331,6 +1460,7 @@ extern "rust-intrinsic" {
     /// unless size is equal to zero.
     ///
     /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
     pub fn volatile_copy_memory<T>(dst: *mut T, src: *const T, count: usize);
     /// Equivalent to the appropriate `llvm.memset.p0i8.*` intrinsic, with a
     /// size of `count * size_of::<T>()` and an alignment of
@@ -1340,158 +1470,187 @@ extern "rust-intrinsic" {
     /// unless size is equal to zero.
     ///
     /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
     pub fn volatile_set_memory<T>(dst: *mut T, val: u8, count: usize);
 
     /// Performs a volatile load from the `src` pointer.
     ///
     /// The stabilized version of this intrinsic is [`core::ptr::read_volatile`].
+    #[rustc_nounwind]
     pub fn volatile_load<T>(src: *const T) -> T;
     /// Performs a volatile store to the `dst` pointer.
     ///
     /// The stabilized version of this intrinsic is [`core::ptr::write_volatile`].
+    #[rustc_nounwind]
     pub fn volatile_store<T>(dst: *mut T, val: T);
 
     /// Performs a volatile load from the `src` pointer
     /// The pointer is not required to be aligned.
     ///
     /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
     pub fn unaligned_volatile_load<T>(src: *const T) -> T;
     /// Performs a volatile store to the `dst` pointer.
     /// The pointer is not required to be aligned.
     ///
     /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
     pub fn unaligned_volatile_store<T>(dst: *mut T, val: T);
 
     /// Returns the square root of an `f32`
     ///
     /// The stabilized version of this intrinsic is
     /// [`f32::sqrt`](../../std/primitive.f32.html#method.sqrt)
+    #[rustc_nounwind]
     pub fn sqrtf32(x: f32) -> f32;
     /// Returns the square root of an `f64`
     ///
     /// The stabilized version of this intrinsic is
     /// [`f64::sqrt`](../../std/primitive.f64.html#method.sqrt)
+    #[rustc_nounwind]
     pub fn sqrtf64(x: f64) -> f64;
 
     /// Raises an `f32` to an integer power.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f32::powi`](../../std/primitive.f32.html#method.powi)
+    #[rustc_nounwind]
     pub fn powif32(a: f32, x: i32) -> f32;
     /// Raises an `f64` to an integer power.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f64::powi`](../../std/primitive.f64.html#method.powi)
+    #[rustc_nounwind]
     pub fn powif64(a: f64, x: i32) -> f64;
 
     /// Returns the sine of an `f32`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f32::sin`](../../std/primitive.f32.html#method.sin)
+    #[rustc_nounwind]
     pub fn sinf32(x: f32) -> f32;
     /// Returns the sine of an `f64`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f64::sin`](../../std/primitive.f64.html#method.sin)
+    #[rustc_nounwind]
     pub fn sinf64(x: f64) -> f64;
 
     /// Returns the cosine of an `f32`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f32::cos`](../../std/primitive.f32.html#method.cos)
+    #[rustc_nounwind]
     pub fn cosf32(x: f32) -> f32;
     /// Returns the cosine of an `f64`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f64::cos`](../../std/primitive.f64.html#method.cos)
+    #[rustc_nounwind]
     pub fn cosf64(x: f64) -> f64;
 
     /// Raises an `f32` to an `f32` power.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f32::powf`](../../std/primitive.f32.html#method.powf)
+    #[rustc_nounwind]
     pub fn powf32(a: f32, x: f32) -> f32;
     /// Raises an `f64` to an `f64` power.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f64::powf`](../../std/primitive.f64.html#method.powf)
+    #[rustc_nounwind]
     pub fn powf64(a: f64, x: f64) -> f64;
 
     /// Returns the exponential of an `f32`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f32::exp`](../../std/primitive.f32.html#method.exp)
+    #[rustc_nounwind]
     pub fn expf32(x: f32) -> f32;
     /// Returns the exponential of an `f64`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f64::exp`](../../std/primitive.f64.html#method.exp)
+    #[rustc_nounwind]
     pub fn expf64(x: f64) -> f64;
 
     /// Returns 2 raised to the power of an `f32`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f32::exp2`](../../std/primitive.f32.html#method.exp2)
+    #[rustc_nounwind]
     pub fn exp2f32(x: f32) -> f32;
     /// Returns 2 raised to the power of an `f64`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f64::exp2`](../../std/primitive.f64.html#method.exp2)
+    #[rustc_nounwind]
     pub fn exp2f64(x: f64) -> f64;
 
     /// Returns the natural logarithm of an `f32`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f32::ln`](../../std/primitive.f32.html#method.ln)
+    #[rustc_nounwind]
     pub fn logf32(x: f32) -> f32;
     /// Returns the natural logarithm of an `f64`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f64::ln`](../../std/primitive.f64.html#method.ln)
+    #[rustc_nounwind]
     pub fn logf64(x: f64) -> f64;
 
     /// Returns the base 10 logarithm of an `f32`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f32::log10`](../../std/primitive.f32.html#method.log10)
+    #[rustc_nounwind]
     pub fn log10f32(x: f32) -> f32;
     /// Returns the base 10 logarithm of an `f64`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f64::log10`](../../std/primitive.f64.html#method.log10)
+    #[rustc_nounwind]
     pub fn log10f64(x: f64) -> f64;
 
     /// Returns the base 2 logarithm of an `f32`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f32::log2`](../../std/primitive.f32.html#method.log2)
+    #[rustc_nounwind]
     pub fn log2f32(x: f32) -> f32;
     /// Returns the base 2 logarithm of an `f64`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f64::log2`](../../std/primitive.f64.html#method.log2)
+    #[rustc_nounwind]
     pub fn log2f64(x: f64) -> f64;
 
     /// Returns `a * b + c` for `f32` values.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f32::mul_add`](../../std/primitive.f32.html#method.mul_add)
+    #[rustc_nounwind]
     pub fn fmaf32(a: f32, b: f32, c: f32) -> f32;
     /// Returns `a * b + c` for `f64` values.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f64::mul_add`](../../std/primitive.f64.html#method.mul_add)
+    #[rustc_nounwind]
     pub fn fmaf64(a: f64, b: f64, c: f64) -> f64;
 
     /// Returns the absolute value of an `f32`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f32::abs`](../../std/primitive.f32.html#method.abs)
+    #[rustc_nounwind]
     pub fn fabsf32(x: f32) -> f32;
     /// Returns the absolute value of an `f64`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f64::abs`](../../std/primitive.f64.html#method.abs)
+    #[rustc_nounwind]
     pub fn fabsf64(x: f64) -> f64;
 
     /// Returns the minimum of two `f32` values.
@@ -1504,6 +1663,7 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is
     /// [`f32::min`]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn minnumf32(x: f32, y: f32) -> f32;
     /// Returns the minimum of two `f64` values.
     ///
@@ -1515,6 +1675,7 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is
     /// [`f64::min`]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn minnumf64(x: f64, y: f64) -> f64;
     /// Returns the maximum of two `f32` values.
     ///
@@ -1526,6 +1687,7 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is
     /// [`f32::max`]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn maxnumf32(x: f32, y: f32) -> f32;
     /// Returns the maximum of two `f64` values.
     ///
@@ -1537,50 +1699,59 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is
     /// [`f64::max`]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn maxnumf64(x: f64, y: f64) -> f64;
 
     /// Copies the sign from `y` to `x` for `f32` values.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f32::copysign`](../../std/primitive.f32.html#method.copysign)
+    #[rustc_nounwind]
     pub fn copysignf32(x: f32, y: f32) -> f32;
     /// Copies the sign from `y` to `x` for `f64` values.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f64::copysign`](../../std/primitive.f64.html#method.copysign)
+    #[rustc_nounwind]
     pub fn copysignf64(x: f64, y: f64) -> f64;
 
     /// Returns the largest integer less than or equal to an `f32`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f32::floor`](../../std/primitive.f32.html#method.floor)
+    #[rustc_nounwind]
     pub fn floorf32(x: f32) -> f32;
     /// Returns the largest integer less than or equal to an `f64`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f64::floor`](../../std/primitive.f64.html#method.floor)
+    #[rustc_nounwind]
     pub fn floorf64(x: f64) -> f64;
 
     /// Returns the smallest integer greater than or equal to an `f32`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f32::ceil`](../../std/primitive.f32.html#method.ceil)
+    #[rustc_nounwind]
     pub fn ceilf32(x: f32) -> f32;
     /// Returns the smallest integer greater than or equal to an `f64`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f64::ceil`](../../std/primitive.f64.html#method.ceil)
+    #[rustc_nounwind]
     pub fn ceilf64(x: f64) -> f64;
 
     /// Returns the integer part of an `f32`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f32::trunc`](../../std/primitive.f32.html#method.trunc)
+    #[rustc_nounwind]
     pub fn truncf32(x: f32) -> f32;
     /// Returns the integer part of an `f64`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f64::trunc`](../../std/primitive.f64.html#method.trunc)
+    #[rustc_nounwind]
     pub fn truncf64(x: f64) -> f64;
 
     /// Returns the nearest integer to an `f32`. May raise an inexact floating-point exception
@@ -1588,32 +1759,38 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is
     /// [`f32::round_ties_even`](../../std/primitive.f32.html#method.round_ties_even)
+    #[rustc_nounwind]
     pub fn rintf32(x: f32) -> f32;
     /// Returns the nearest integer to an `f64`. May raise an inexact floating-point exception
     /// if the argument is not an integer.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f64::round_ties_even`](../../std/primitive.f64.html#method.round_ties_even)
+    #[rustc_nounwind]
     pub fn rintf64(x: f64) -> f64;
 
     /// Returns the nearest integer to an `f32`.
     ///
     /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
     pub fn nearbyintf32(x: f32) -> f32;
     /// Returns the nearest integer to an `f64`.
     ///
     /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
     pub fn nearbyintf64(x: f64) -> f64;
 
     /// Returns the nearest integer to an `f32`. Rounds half-way cases away from zero.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f32::round`](../../std/primitive.f32.html#method.round)
+    #[rustc_nounwind]
     pub fn roundf32(x: f32) -> f32;
     /// Returns the nearest integer to an `f64`. Rounds half-way cases away from zero.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f64::round`](../../std/primitive.f64.html#method.round)
+    #[rustc_nounwind]
     pub fn roundf64(x: f64) -> f64;
 
     /// Returns the nearest integer to an `f32`. Rounds half-way cases to the number
@@ -1621,48 +1798,56 @@ extern "rust-intrinsic" {
     ///
     /// This intrinsic does not have a stable counterpart.
     #[cfg(not(bootstrap))]
+    #[rustc_nounwind]
     pub fn roundevenf32(x: f32) -> f32;
     /// Returns the nearest integer to an `f64`. Rounds half-way cases to the number
     /// with an even least significant digit.
     ///
     /// This intrinsic does not have a stable counterpart.
     #[cfg(not(bootstrap))]
+    #[rustc_nounwind]
     pub fn roundevenf64(x: f64) -> f64;
 
     /// Float addition that allows optimizations based on algebraic rules.
     /// May assume inputs are finite.
     ///
     /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
     pub fn fadd_fast<T: Copy>(a: T, b: T) -> T;
 
     /// Float subtraction that allows optimizations based on algebraic rules.
     /// May assume inputs are finite.
     ///
     /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
     pub fn fsub_fast<T: Copy>(a: T, b: T) -> T;
 
     /// Float multiplication that allows optimizations based on algebraic rules.
     /// May assume inputs are finite.
     ///
     /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
     pub fn fmul_fast<T: Copy>(a: T, b: T) -> T;
 
     /// Float division that allows optimizations based on algebraic rules.
     /// May assume inputs are finite.
     ///
     /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
     pub fn fdiv_fast<T: Copy>(a: T, b: T) -> T;
 
     /// Float remainder that allows optimizations based on algebraic rules.
     /// May assume inputs are finite.
     ///
     /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
     pub fn frem_fast<T: Copy>(a: T, b: T) -> T;
 
     /// Convert with LLVM’s fptoui/fptosi, which may return undef for values out of range
     /// (<https://github.com/rust-lang/rust/issues/10184>)
     ///
     /// Stabilized as [`f32::to_int_unchecked`] and [`f64::to_int_unchecked`].
+    #[rustc_nounwind]
     pub fn float_to_int_unchecked<Float: Copy, Int: Copy>(value: Float) -> Int;
 
     /// Returns the number of bits set in an integer type `T`
@@ -1677,6 +1862,7 @@ extern "rust-intrinsic" {
     /// [`u32::count_ones`]
     #[rustc_const_stable(feature = "const_ctpop", since = "1.40.0")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn ctpop<T: Copy>(x: T) -> T;
 
     /// Returns the number of leading unset bits (zeroes) in an integer type `T`.
@@ -1715,6 +1901,7 @@ extern "rust-intrinsic" {
     /// ```
     #[rustc_const_stable(feature = "const_ctlz", since = "1.40.0")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn ctlz<T: Copy>(x: T) -> T;
 
     /// Like `ctlz`, but extra-unsafe as it returns `undef` when
@@ -1734,6 +1921,7 @@ extern "rust-intrinsic" {
     /// assert_eq!(num_leading, 3);
     /// ```
     #[rustc_const_stable(feature = "constctlz", since = "1.50.0")]
+    #[rustc_nounwind]
     pub fn ctlz_nonzero<T: Copy>(x: T) -> T;
 
     /// Returns the number of trailing unset bits (zeroes) in an integer type `T`.
@@ -1772,6 +1960,7 @@ extern "rust-intrinsic" {
     /// ```
     #[rustc_const_stable(feature = "const_cttz", since = "1.40.0")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn cttz<T: Copy>(x: T) -> T;
 
     /// Like `cttz`, but extra-unsafe as it returns `undef` when
@@ -1791,6 +1980,7 @@ extern "rust-intrinsic" {
     /// assert_eq!(num_trailing, 3);
     /// ```
     #[rustc_const_stable(feature = "const_cttz_nonzero", since = "1.53.0")]
+    #[rustc_nounwind]
     pub fn cttz_nonzero<T: Copy>(x: T) -> T;
 
     /// Reverses the bytes in an integer type `T`.
@@ -1805,6 +1995,7 @@ extern "rust-intrinsic" {
     /// [`u32::swap_bytes`]
     #[rustc_const_stable(feature = "const_bswap", since = "1.40.0")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn bswap<T: Copy>(x: T) -> T;
 
     /// Reverses the bits in an integer type `T`.
@@ -1819,6 +2010,7 @@ extern "rust-intrinsic" {
     /// [`u32::reverse_bits`]
     #[rustc_const_stable(feature = "const_bitreverse", since = "1.40.0")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn bitreverse<T: Copy>(x: T) -> T;
 
     /// Performs checked integer addition.
@@ -1833,6 +2025,7 @@ extern "rust-intrinsic" {
     /// [`u32::overflowing_add`]
     #[rustc_const_stable(feature = "const_int_overflow", since = "1.40.0")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn add_with_overflow<T: Copy>(x: T, y: T) -> (T, bool);
 
     /// Performs checked integer subtraction
@@ -1847,6 +2040,7 @@ extern "rust-intrinsic" {
     /// [`u32::overflowing_sub`]
     #[rustc_const_stable(feature = "const_int_overflow", since = "1.40.0")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn sub_with_overflow<T: Copy>(x: T, y: T) -> (T, bool);
 
     /// Performs checked integer multiplication
@@ -1861,6 +2055,7 @@ extern "rust-intrinsic" {
     /// [`u32::overflowing_mul`]
     #[rustc_const_stable(feature = "const_int_overflow", since = "1.40.0")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn mul_with_overflow<T: Copy>(x: T, y: T) -> (T, bool);
 
     /// Performs an exact division, resulting in undefined behavior where
@@ -1868,6 +2063,7 @@ extern "rust-intrinsic" {
     ///
     /// This intrinsic does not have a stable counterpart.
     #[rustc_const_unstable(feature = "const_exact_div", issue = "none")]
+    #[rustc_nounwind]
     pub fn exact_div<T: Copy>(x: T, y: T) -> T;
 
     /// Performs an unchecked division, resulting in undefined behavior
@@ -1877,6 +2073,7 @@ extern "rust-intrinsic" {
     /// primitives via the `checked_div` method. For example,
     /// [`u32::checked_div`]
     #[rustc_const_stable(feature = "const_int_unchecked_div", since = "1.52.0")]
+    #[rustc_nounwind]
     pub fn unchecked_div<T: Copy>(x: T, y: T) -> T;
     /// Returns the remainder of an unchecked division, resulting in
     /// undefined behavior when `y == 0` or `x == T::MIN && y == -1`
@@ -1885,6 +2082,7 @@ extern "rust-intrinsic" {
     /// primitives via the `checked_rem` method. For example,
     /// [`u32::checked_rem`]
     #[rustc_const_stable(feature = "const_int_unchecked_rem", since = "1.52.0")]
+    #[rustc_nounwind]
     pub fn unchecked_rem<T: Copy>(x: T, y: T) -> T;
 
     /// Performs an unchecked left shift, resulting in undefined behavior when
@@ -1894,6 +2092,7 @@ extern "rust-intrinsic" {
     /// primitives via the `checked_shl` method. For example,
     /// [`u32::checked_shl`]
     #[rustc_const_stable(feature = "const_int_unchecked", since = "1.40.0")]
+    #[rustc_nounwind]
     pub fn unchecked_shl<T: Copy>(x: T, y: T) -> T;
     /// Performs an unchecked right shift, resulting in undefined behavior when
     /// `y < 0` or `y >= N`, where N is the width of T in bits.
@@ -1902,6 +2101,7 @@ extern "rust-intrinsic" {
     /// primitives via the `checked_shr` method. For example,
     /// [`u32::checked_shr`]
     #[rustc_const_stable(feature = "const_int_unchecked", since = "1.40.0")]
+    #[rustc_nounwind]
     pub fn unchecked_shr<T: Copy>(x: T, y: T) -> T;
 
     /// Returns the result of an unchecked addition, resulting in
@@ -1909,6 +2109,7 @@ extern "rust-intrinsic" {
     ///
     /// This intrinsic does not have a stable counterpart.
     #[rustc_const_unstable(feature = "const_int_unchecked_arith", issue = "none")]
+    #[rustc_nounwind]
     pub fn unchecked_add<T: Copy>(x: T, y: T) -> T;
 
     /// Returns the result of an unchecked subtraction, resulting in
@@ -1916,6 +2117,7 @@ extern "rust-intrinsic" {
     ///
     /// This intrinsic does not have a stable counterpart.
     #[rustc_const_unstable(feature = "const_int_unchecked_arith", issue = "none")]
+    #[rustc_nounwind]
     pub fn unchecked_sub<T: Copy>(x: T, y: T) -> T;
 
     /// Returns the result of an unchecked multiplication, resulting in
@@ -1923,6 +2125,7 @@ extern "rust-intrinsic" {
     ///
     /// This intrinsic does not have a stable counterpart.
     #[rustc_const_unstable(feature = "const_int_unchecked_arith", issue = "none")]
+    #[rustc_nounwind]
     pub fn unchecked_mul<T: Copy>(x: T, y: T) -> T;
 
     /// Performs rotate left.
@@ -1937,6 +2140,7 @@ extern "rust-intrinsic" {
     /// [`u32::rotate_left`]
     #[rustc_const_stable(feature = "const_int_rotate", since = "1.40.0")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn rotate_left<T: Copy>(x: T, y: T) -> T;
 
     /// Performs rotate right.
@@ -1951,6 +2155,7 @@ extern "rust-intrinsic" {
     /// [`u32::rotate_right`]
     #[rustc_const_stable(feature = "const_int_rotate", since = "1.40.0")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn rotate_right<T: Copy>(x: T, y: T) -> T;
 
     /// Returns (a + b) mod 2<sup>N</sup>, where N is the width of T in bits.
@@ -1965,6 +2170,7 @@ extern "rust-intrinsic" {
     /// [`u32::wrapping_add`]
     #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn wrapping_add<T: Copy>(a: T, b: T) -> T;
     /// Returns (a - b) mod 2<sup>N</sup>, where N is the width of T in bits.
     ///
@@ -1978,6 +2184,7 @@ extern "rust-intrinsic" {
     /// [`u32::wrapping_sub`]
     #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn wrapping_sub<T: Copy>(a: T, b: T) -> T;
     /// Returns (a * b) mod 2<sup>N</sup>, where N is the width of T in bits.
     ///
@@ -1991,6 +2198,7 @@ extern "rust-intrinsic" {
     /// [`u32::wrapping_mul`]
     #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn wrapping_mul<T: Copy>(a: T, b: T) -> T;
 
     /// Computes `a + b`, saturating at numeric bounds.
@@ -2005,6 +2213,7 @@ extern "rust-intrinsic" {
     /// [`u32::saturating_add`]
     #[rustc_const_stable(feature = "const_int_saturating", since = "1.40.0")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn saturating_add<T: Copy>(a: T, b: T) -> T;
     /// Computes `a - b`, saturating at numeric bounds.
     ///
@@ -2018,6 +2227,7 @@ extern "rust-intrinsic" {
     /// [`u32::saturating_sub`]
     #[rustc_const_stable(feature = "const_int_saturating", since = "1.40.0")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn saturating_sub<T: Copy>(a: T, b: T) -> T;
 
     /// This is an implementation detail of [`crate::ptr::read`] and should
@@ -2028,6 +2238,7 @@ extern "rust-intrinsic" {
     /// trivially obeys runtime-MIR rules about derefs in operands.
     #[cfg(not(bootstrap))]
     #[rustc_const_unstable(feature = "const_ptr_read", issue = "80377")]
+    #[rustc_nounwind]
     pub fn read_via_copy<T>(p: *const T) -> T;
 
     /// Returns the value of the discriminant for the variant in 'v';
@@ -2041,6 +2252,7 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is [`core::mem::discriminant`].
     #[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn discriminant_value<T>(v: &T) -> <T as DiscriminantKind>::Discriminant;
 
     /// Returns the number of variants of the type `T` cast to a `usize`;
@@ -2054,6 +2266,7 @@ extern "rust-intrinsic" {
     /// The to-be-stabilized version of this intrinsic is [`mem::variant_count`].
     #[rustc_const_unstable(feature = "variant_count", issue = "73662")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn variant_count<T>() -> usize;
 
     /// Rust's "try catch" construct which invokes the function pointer `try_fn`
@@ -2063,18 +2276,24 @@ extern "rust-intrinsic" {
     /// takes the data pointer and a pointer to the target-specific exception
     /// object that was caught. For more information see the compiler's
     /// source as well as std's catch implementation.
+    ///
+    /// `catch_fn` must not unwind.
+    #[rustc_nounwind]
     pub fn r#try(try_fn: fn(*mut u8), data: *mut u8, catch_fn: fn(*mut u8, *mut u8)) -> i32;
 
     /// Emits a `!nontemporal` store according to LLVM (see their docs).
     /// Probably will never become stable.
+    #[rustc_nounwind]
     pub fn nontemporal_store<T>(ptr: *mut T, val: T);
 
     /// See documentation of `<*const T>::offset_from` for details.
     #[rustc_const_stable(feature = "const_ptr_offset_from", since = "1.65.0")]
+    #[rustc_nounwind]
     pub fn ptr_offset_from<T>(ptr: *const T, base: *const T) -> isize;
 
     /// See documentation of `<*const T>::sub_ptr` for details.
     #[rustc_const_unstable(feature = "const_ptr_sub_ptr", issue = "95892")]
+    #[rustc_nounwind]
     pub fn ptr_offset_from_unsigned<T>(ptr: *const T, base: *const T) -> usize;
 
     /// See documentation of `<*const T>::guaranteed_eq` for details.
@@ -2088,6 +2307,7 @@ extern "rust-intrinsic" {
     /// any safety invariants.
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn ptr_guaranteed_cmp<T>(ptr: *const T, other: *const T) -> u8;
 
     /// Allocates a block of memory at compile time.
@@ -2099,6 +2319,7 @@ extern "rust-intrinsic" {
     ///    - At compile time, a compile error occurs if this constraint is violated.
     ///    - At runtime, it is not checked.
     #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    #[rustc_nounwind]
     pub fn const_allocate(size: usize, align: usize) -> *mut u8;
 
     /// Deallocates a memory which allocated by `intrinsics::const_allocate` at compile time.
@@ -2112,6 +2333,7 @@ extern "rust-intrinsic" {
     /// - If the `ptr` is created in an another const, this intrinsic doesn't deallocate it.
     /// - If the `ptr` is pointing to a local variable, this intrinsic doesn't deallocate it.
     #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    #[rustc_nounwind]
     pub fn const_deallocate(ptr: *mut u8, size: usize, align: usize);
 
     /// Determines whether the raw bytes of the two values are equal.
@@ -2136,6 +2358,7 @@ extern "rust-intrinsic" {
     /// (The implementation is allowed to branch on the results of comparisons,
     /// which is UB if any of their inputs are `undef`.)
     #[rustc_const_unstable(feature = "const_intrinsic_raw_eq", issue = "none")]
+    #[rustc_nounwind]
     pub fn raw_eq<T>(a: &T, b: &T) -> bool;
 
     /// See documentation of [`std::hint::black_box`] for details.
@@ -2143,14 +2366,17 @@ extern "rust-intrinsic" {
     /// [`std::hint::black_box`]: crate::hint::black_box
     #[rustc_const_unstable(feature = "const_black_box", issue = "none")]
     #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
     pub fn black_box<T>(dummy: T) -> T;
 
     /// `ptr` must point to a vtable.
     /// The intrinsic will return the size stored in that vtable.
+    #[rustc_nounwind]
     pub fn vtable_size(ptr: *const ()) -> usize;
 
     /// `ptr` must point to a vtable.
     /// The intrinsic will return the alignment stored in that vtable.
+    #[rustc_nounwind]
     pub fn vtable_align(ptr: *const ()) -> usize;
 
     /// Selects which function to call depending on the context.
@@ -2215,10 +2441,11 @@ extern "rust-intrinsic" {
         G: FnOnce<ARG, Output = RET>,
         F: FnOnce<ARG, Output = RET>;
 
-    #[cfg(not(bootstrap))]
     /// This method creates a pointer to any `Some` value. If the argument is
     /// `None`, an invalid within-bounds pointer (that is still acceptable for
     /// constructing an empty slice) is returned.
+    #[cfg(not(bootstrap))]
+    #[rustc_nounwind]
     pub fn option_payload_ptr<T>(arg: *const Option<T>) -> *const T;
 }
 
@@ -2392,6 +2619,7 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
 pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
     extern "rust-intrinsic" {
         #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
+        #[rustc_nounwind]
         pub fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
     }
 
@@ -2482,6 +2710,7 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     extern "rust-intrinsic" {
         #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
+        #[rustc_nounwind]
         fn copy<T>(src: *const T, dst: *mut T, count: usize);
     }
 
@@ -2554,6 +2783,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
     extern "rust-intrinsic" {
         #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
+        #[rustc_nounwind]
         fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
     }
 

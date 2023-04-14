@@ -1,6 +1,6 @@
 // This test ensures that opening the help page in its own tab works.
-goto: "file://" + |DOC_PATH| + "/help.html"
-size: (1000, 1000) // Try desktop size first.
+go-to: "file://" + |DOC_PATH| + "/help.html"
+set-window-size: (1000, 1000) // Try desktop size first.
 wait-for: "#help"
 assert-css: ("#help", {"display": "block"})
 assert-css: ("#help dd", {"font-size": "16px"})
@@ -8,7 +8,7 @@ click: "#help-button > a"
 assert-css: ("#help", {"display": "block"})
 compare-elements-property: (".sub", "#help", ["offsetWidth"])
 compare-elements-position: (".sub", "#help", ("x"))
-size: (500, 1000) // Try mobile next.
+set-window-size: (500, 1000) // Try mobile next.
 assert-css: ("#help", {"display": "block"})
 compare-elements-property: (".sub", "#help", ["offsetWidth"])
 compare-elements-position: (".sub", "#help", ("x"))
@@ -20,7 +20,7 @@ define-function: (
     (theme, color, background, box_shadow),
     block {
         // Setting the theme.
-        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         // We reload the page so the local storage settings are being used.
         reload:
         assert-css: ("#help kbd", {
@@ -51,8 +51,8 @@ call-function: ("check-colors", {
 })
 
 // This test ensures that opening the help popover without switching pages works.
-goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
-size: (1000, 1000) // Only supported on desktop.
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+set-window-size: (1000, 1000) // Only supported on desktop.
 assert-false: "#help"
 click: "#help-button > a"
 assert-css: ("#help", {"display": "block"})
@@ -63,8 +63,8 @@ compare-elements-property-false: (".sub", "#help", ["offsetWidth"])
 compare-elements-position-false: (".sub", "#help", ("x"))
 
 // This test ensures that the "the rustdoc book" anchor link within the help popover works.
-goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
-size: (1000, 1000) // Popover only appears when the screen width is >700px.
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+set-window-size: (1000, 1000) // Popover only appears when the screen width is >700px.
 assert-false: "#help"
 click: "#help-button > a"
 click: ".popover a[href='https://doc.rust-lang.org/rustdoc/']"

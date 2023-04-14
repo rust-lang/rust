@@ -77,7 +77,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         line: u32,
         col: u32,
     ) -> MPlaceTy<'tcx, M::Provenance> {
-        let loc_details = &self.tcx.sess.opts.unstable_opts.location_detail;
+        let loc_details = self.tcx.sess.opts.unstable_opts.location_detail;
         // This can fail if rustc runs out of memory right here. Trying to emit an error would be
         // pointless, since that would require allocating more memory than these short strings.
         let file = if loc_details.file {

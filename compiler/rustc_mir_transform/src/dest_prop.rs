@@ -83,7 +83,7 @@
 //!   that ever have their address taken. Of course that requires actually having alias analysis
 //!   (and a model to build it on), so this might be a bit of a ways off.
 //!
-//! * Various perf improvents. There are a bunch of comments in here marked `PERF` with ideas for
+//! * Various perf improvements. There are a bunch of comments in here marked `PERF` with ideas for
 //!   how to do things more efficiently. However, the complexity of the pass as a whole should be
 //!   kept in mind.
 //!

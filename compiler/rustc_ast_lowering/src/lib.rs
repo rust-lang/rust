@@ -987,15 +987,22 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 GenericArgs::AngleBracketed(data) => {
                     self.lower_angle_bracketed_parameter_data(data, ParamMode::Explicit, itctx).0
                 }
-                &GenericArgs::ReturnTypeNotation(span) => GenericArgsCtor {
-                    args: Default::default(),
-                    bindings: &[],
-                    parenthesized: hir::GenericArgsParentheses::ReturnTypeNotation,
-                    span,
-                },
                 GenericArgs::Parenthesized(data) => {
-                    if let Some(start_char) = constraint.ident.as_str().chars().next()
-                        && start_char.is_ascii_lowercase()
+                    if data.inputs.is_empty() && matches!(data.output, FnRetTy::Default(..)) {
+                        let parenthesized = if self.tcx.features().return_type_notation {
+                            hir::GenericArgsParentheses::ReturnTypeNotation
+                        } else {
+                            self.emit_bad_parenthesized_trait_in_assoc_ty(data);
+                            hir::GenericArgsParentheses::No
+                        };
+                        GenericArgsCtor {
+                            args: Default::default(),
+                            bindings: &[],
+                            parenthesized,
+                            span: data.inputs_span,
+                        }
+                    } else if let Some(first_char) = constraint.ident.as_str().chars().next()
+                        && first_char.is_ascii_lowercase()
                     {
                         let mut err = if !data.inputs.is_empty() {
                             self.tcx.sess.create_err(errors::BadReturnTypeNotation::Inputs {
@@ -1006,9 +1013,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 span: data.inputs_span.shrink_to_hi().to(ty.span),
                             })
                         } else {
-                            self.tcx.sess.create_err(errors::BadReturnTypeNotation::NeedsDots {
-                                span: data.inputs_span,
-                            })
+                            unreachable!("inputs are empty and return type is not provided")
                         };
                         if !self.tcx.features().return_type_notation
                             && self.tcx.sess.is_nightly_build()

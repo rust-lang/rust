@@ -10,7 +10,7 @@ LL |     h.finish()
    = help: items from traits can only be used if the trait is in scope
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
-LL | use std::hash::Hasher;
+LL + use std::hash::Hasher;
    |
 
 error[E0599]: the method `as_ref` exists for reference `&dyn Bar`, but its trait bounds were not satisfied

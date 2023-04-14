@@ -1,9 +1,9 @@
 // This test checks that using `.stab` attributes in `.docblock` elements doesn't
 // create scrollable paragraphs.
-goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 // Needs the text to be display to check for scrollable content.
 show-text: true
-size: (786, 600)
+set-window-size: (786, 600)
 // Confirms that there 3 paragraphs.
 assert-count: (".top-doc .docblock p", 3)
 // Checking that there is no scrollable content.

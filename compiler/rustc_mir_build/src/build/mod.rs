@@ -811,6 +811,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     name,
                     source_info: SourceInfo::outermost(captured_place.var_ident.span),
                     value: VarDebugInfoContents::Place(use_place),
+                    argument_index: None,
                 });
 
                 let capture = Capture { captured_place, use_place, mutability };
@@ -827,7 +828,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr: &Expr<'tcx>,
     ) -> BlockAnd<()> {
         // Allocate locals for the function arguments
-        for param in arguments.iter() {
+        for (argument_index, param) in arguments.iter().enumerate() {
             let source_info =
                 SourceInfo::outermost(param.pat.as_ref().map_or(self.fn_span, |pat| pat.span));
             let arg_local =
@@ -839,6 +840,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     name,
                     source_info,
                     value: VarDebugInfoContents::Place(arg_local.into()),
+                    argument_index: Some(argument_index as u16 + 1),
                 });
             }
         }

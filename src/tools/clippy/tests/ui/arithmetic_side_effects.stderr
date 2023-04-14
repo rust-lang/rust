@@ -577,6 +577,12 @@ LL |     i * 2;
    |     ^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
+  --> $DIR/arithmetic_side_effects.rs:394:5
+   |
+LL |     1 % i / 2;
+   |     ^^^^^
+
+error: arithmetic operation that can potentially result in unexpected side-effects
   --> $DIR/arithmetic_side_effects.rs:395:5
    |
 LL |     i - 2 + 2 - i;
@@ -642,5 +648,11 @@ error: arithmetic operation that can potentially result in unexpected side-effec
 LL |     i %= var2;
    |     ^^^^^^^^^
 
-error: aborting due to 107 previous errors
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> $DIR/arithmetic_side_effects.rs:429:5
+   |
+LL |     10 / a
+   |     ^^^^^^
+
+error: aborting due to 109 previous errors
 

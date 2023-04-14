@@ -12,7 +12,8 @@ LL |     Error
    = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider annotating `Error` with `#[derive(Debug)]`
    |
-LL | #[derive(Debug)]
+LL + #[derive(Debug)]
+LL | struct Error;
    |
 
 error: aborting due to previous error

@@ -225,6 +225,11 @@ pub(super) trait GoalKind<'tcx>: TypeFoldable<TyCtxt<'tcx>> + Copy + Eq {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
+
+    fn consider_builtin_transmute_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
@@ -343,6 +348,14 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ) {
         let lang_items = self.tcx().lang_items();
         let trait_def_id = goal.predicate.trait_def_id(self.tcx());
+
+        // N.B. When assembling built-in candidates for lang items that are also
+        // `auto` traits, then the auto trait candidate that is assembled in
+        // `consider_auto_trait_candidate` MUST be disqualified to remain sound.
+        //
+        // Instead of adding the logic here, it's a better idea to add it in
+        // `EvalCtxt::disqualify_auto_trait_candidate_due_to_possible_impl` in
+        // `solve::trait_goals` instead.
         let result = if self.tcx().trait_is_auto(trait_def_id) {
             G::consider_auto_trait_candidate(self, goal)
         } else if self.tcx().trait_is_alias(trait_def_id) {
@@ -373,6 +386,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             G::consider_builtin_discriminant_kind_candidate(self, goal)
         } else if lang_items.destruct_trait() == Some(trait_def_id) {
             G::consider_builtin_destruct_candidate(self, goal)
+        } else if lang_items.transmute_trait() == Some(trait_def_id) {
+            G::consider_builtin_transmute_candidate(self, goal)
         } else {
             Err(NoSolution)
         };
@@ -498,7 +513,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let tcx = self.tcx();
         let own_bounds: FxIndexSet<_> =
             bounds.iter().map(|bound| bound.with_self_ty(tcx, self_ty)).collect();
-        for assumption in elaborate(tcx, own_bounds.iter().copied()) {
+        for assumption in elaborate(tcx, own_bounds.iter().copied())
+            // we only care about bounds that match the `Self` type
+            .filter_only_self()
+        {
             // FIXME: Predicates are fully elaborated in the object type's existential bounds
             // list. We want to only consider these pre-elaborated projections, and not other
             // projection predicates that we reach by elaborating the principal trait ref,

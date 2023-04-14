@@ -1,6 +1,6 @@
 // Checks that the search results have the expected width.
-goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
-size: (900, 1000)
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+set-window-size: (900, 1000)
 write: (".search-input", "test")
 // To be SURE that the search will be run.
 press-key: 'Enter'
@@ -8,7 +8,7 @@ wait-for: "#crate-search"
 // The width is returned by "getComputedStyle" which returns the exact number instead of the
 // CSS rule which is "50%"...
 assert-css: (".search-results div.desc", {"width": "310px"})
-size: (600, 100)
+set-window-size: (600, 100)
 // As counter-intuitive as it may seem, in this width, the width is "100%", which is why
 // when computed it's larger.
 assert-css: (".search-results div.desc", {"width": "566px"})
@@ -18,7 +18,7 @@ assert-css: (".search-results .result-name > span", {"display": "inline"})
 
 // Check that the crate filter `<select>` is correctly handled when it goes to next line.
 // To do so we need to update the length of one of its `<option>`.
-size: (900, 900)
+set-window-size: (900, 900)
 
 // First we check the current width, height and position.
 assert-css: ("#crate-search", {"width": "223px"})
@@ -26,7 +26,7 @@ assert-css: (".search-results-title", {"height": "50px", "width": "640px"})
 assert-css: ("#search", {"width": "640px"})
 
 // Then we update the text of one of the `<option>`.
-text: (
+set-text: (
     "#crate-search option",
     "sdjfaksdjfaksjdbfkadsbfkjsadbfkdsbkfbsadkjfbkdsabfkadsfkjdsafa",
 )
@@ -43,7 +43,7 @@ define-function: (
     "check-filter",
     (theme, border, filter, hover_border, hover_filter),
     block {
-        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         reload:
         wait-for: "#crate-search"
         assert-css: ("#crate-search", {"border": "1px solid " + |border|})

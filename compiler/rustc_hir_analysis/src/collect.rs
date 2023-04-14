@@ -64,6 +64,7 @@ pub fn provide(providers: &mut Providers) {
         predicates_defined_on,
         explicit_predicates_of: predicates_of::explicit_predicates_of,
         super_predicates_of: predicates_of::super_predicates_of,
+        implied_predicates_of: predicates_of::implied_predicates_of,
         super_predicates_that_define_assoc_type:
             predicates_of::super_predicates_that_define_assoc_type,
         trait_explicit_predicates_and_bounds: predicates_of::trait_explicit_predicates_and_bounds,
@@ -596,6 +597,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
         }
         hir::ItemKind::TraitAlias(..) => {
             tcx.ensure().generics_of(def_id);
+            tcx.at(it.span).implied_predicates_of(def_id);
             tcx.at(it.span).super_predicates_of(def_id);
             tcx.ensure().predicates_of(def_id);
         }

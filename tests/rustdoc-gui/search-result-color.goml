@@ -31,13 +31,13 @@ define-function: (
     },
 )
 
-goto: "file://" + |DOC_PATH| + "/test_docs/index.html?search=coo"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=coo"
 
 // This is needed so that the text color is computed.
 show-text: true
 
 // Ayu theme
-local-storage: {
+set-local-storage: {
     "rustdoc-theme": "ayu",
     "rustdoc-use-system-theme": "false",
 }
@@ -154,7 +154,7 @@ assert-css: (
 )
 
 // Dark theme
-local-storage: {
+set-local-storage: {
     "rustdoc-theme": "dark",
     "rustdoc-use-system-theme": "false",
 }
@@ -259,7 +259,7 @@ assert-css: (
 )
 
 // Light theme
-local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
+set-local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
 reload:
 
 // Waiting for the search results to appear...
@@ -361,7 +361,7 @@ assert-css: (
 )
 
 // Check the alias.
-goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 // If the text isn't displayed, the browser doesn't compute color style correctly...
 show-text: true
 
@@ -369,7 +369,7 @@ define-function: (
     "check-alias",
     (theme, alias, grey),
     block {
-        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         reload:
         write: (".search-input", "thisisanalias")
         // To be SURE that the search will be run.

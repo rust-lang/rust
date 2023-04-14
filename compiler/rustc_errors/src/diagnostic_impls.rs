@@ -1,4 +1,4 @@
-use crate::fluent_generated as fluent;
+use crate::{fluent_generated as fluent, AddToDiagnostic};
 use crate::{DiagnosticArgValue, DiagnosticBuilder, Handler, IntoDiagnostic, IntoDiagnosticArg};
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
@@ -6,6 +6,7 @@ use rustc_hir as hir;
 use rustc_lint_defs::Level;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent, Symbol};
+use rustc_span::Span;
 use rustc_target::abi::TargetDataLayoutErrors;
 use rustc_target::spec::{PanicStrategy, SplitDebuginfo, StackProtector, TargetTriple};
 use rustc_type_ir as type_ir;
@@ -275,4 +276,27 @@ impl IntoDiagnostic<'_, !> for TargetDataLayoutErrors<'_> {
             }
         }
     }
+}
+
+/// Utility struct used to apply a single label while highlighting multiple spans
+pub struct SingleLabelManySpans {
+    pub spans: Vec<Span>,
+    pub label: &'static str,
+    pub kind: LabelKind,
+}
+impl AddToDiagnostic for SingleLabelManySpans {
+    fn add_to_diagnostic_with<F>(self, diag: &mut crate::Diagnostic, _: F) {
+        match self.kind {
+            LabelKind::Note => diag.span_note(self.spans, self.label),
+            LabelKind::Label => diag.span_labels(self.spans, self.label),
+            LabelKind::Help => diag.span_help(self.spans, self.label),
+        };
+    }
+}
+
+/// The kind of label to attach when using [`SingleLabelManySpans`]
+pub enum LabelKind {
+    Note,
+    Label,
+    Help,
 }

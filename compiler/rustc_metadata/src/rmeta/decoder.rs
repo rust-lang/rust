@@ -1,6 +1,7 @@
 // Decoding metadata from a single crate's metadata
 
 use crate::creader::{CStore, CrateMetadataRef};
+use crate::rmeta::table::IsDefault;
 use crate::rmeta::*;
 
 use rustc_ast as ast;
@@ -749,6 +750,10 @@ impl CrateRoot {
 }
 
 impl<'a, 'tcx> CrateMetadataRef<'a> {
+    fn missing(self, descr: &str, id: DefIndex) -> ! {
+        bug!("missing `{descr}` for {:?}", self.local_def_id(id))
+    }
+
     fn raw_proc_macro(self, id: DefIndex) -> &'a ProcMacro {
         // DefIndex's in root.proc_macro_data have a one-to-one correspondence
         // with items in 'raw_proc_macros'.
@@ -782,8 +787,13 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn opt_item_ident(self, item_index: DefIndex, sess: &Session) -> Option<Ident> {
         let name = self.opt_item_name(item_index)?;
-        let span =
-            self.root.tables.def_ident_span.get(self, item_index).unwrap().decode((self, sess));
+        let span = self
+            .root
+            .tables
+            .def_ident_span
+            .get(self, item_index)
+            .unwrap_or_else(|| self.missing("def_ident_span", item_index))
+            .decode((self, sess));
         Some(Ident::new(name, span))
     }
 
@@ -812,7 +822,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .tables
             .def_span
             .get(self, index)
-            .unwrap_or_else(|| panic!("Missing span for {index:?}"))
+            .unwrap_or_else(|| self.missing("def_span", index))
             .decode((self, sess))
     }
 
@@ -924,7 +934,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .tables
             .visibility
             .get(self, id)
-            .unwrap()
+            .unwrap_or_else(|| self.missing("visibility", id))
             .decode(self)
             .map_id(|index| self.local_def_id(index))
     }
@@ -934,7 +944,12 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn get_expn_that_defined(self, id: DefIndex, sess: &Session) -> ExpnId {
-        self.root.tables.expn_that_defined.get(self, id).unwrap().decode((self, sess))
+        self.root
+            .tables
+            .expn_that_defined
+            .get(self, id)
+            .unwrap_or_else(|| self.missing("expn_that_defined", id))
+            .decode((self, sess))
     }
 
     fn get_debugger_visualizers(self) -> Vec<rustc_span::DebuggerVisualizerFile> {
@@ -981,17 +996,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn get_mod_child(self, id: DefIndex, sess: &Session) -> ModChild {
         let ident = self.item_ident(id, sess);
-        let kind = self.def_kind(id);
-        let def_id = self.local_def_id(id);
-        let res = Res::Def(kind, def_id);
+        let res = Res::Def(self.def_kind(id), self.local_def_id(id));
         let vis = self.get_visibility(id);
         let span = self.get_span(id, sess);
-        let macro_rules = match kind {
-            DefKind::Macro(..) => self.root.tables.is_macro_rules.get(self, id),
-            _ => false,
-        };
 
-        ModChild { ident, res, vis, span, macro_rules, reexport_chain: Default::default() }
+        ModChild { ident, res, vis, span, reexport_chain: Default::default() }
     }
 
     /// Iterates over all named children of the given module,
@@ -1015,12 +1024,14 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             } else {
                 // Iterate over all children.
                 for child_index in self.root.tables.children.get(self, id).unwrap().decode(self) {
+                    // FIXME: Do not encode RPITITs as a part of this list.
                     if self.root.tables.opt_rpitit_info.get(self, child_index).is_none() {
                         yield self.get_mod_child(child_index, sess);
                     }
                 }
 
-                if let Some(reexports) = self.root.tables.module_reexports.get(self, id) {
+                let reexports = self.root.tables.module_children_reexports.get(self, id);
+                if !reexports.is_default() {
                     for reexport in reexports.decode((self, sess)) {
                         yield reexport;
                     }

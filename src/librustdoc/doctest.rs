@@ -398,6 +398,8 @@ fn run_test(
     compiler.stdin(Stdio::piped());
     compiler.stderr(Stdio::piped());
 
+    debug!("compiler invocation for doctest: {:?}", compiler);
+
     let mut child = compiler.spawn().expect("Failed to spawn rustc process");
     {
         let stdin = child.stdin.as_mut().expect("Failed to open stdin");

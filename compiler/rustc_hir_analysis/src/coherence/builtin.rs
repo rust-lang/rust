@@ -354,9 +354,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
 
                 // Finally, resolve all regions.
                 let outlives_env = OutlivesEnvironment::new(param_env);
-                let _ = infcx
-                    .err_ctxt()
-                    .check_region_obligations_and_report_errors(impl_did, &outlives_env);
+                let _ = ocx.resolve_regions_and_report_errors(impl_did, &outlives_env);
             }
         }
         _ => {
@@ -592,7 +590,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) -> Coe
 
     // Finally, resolve all regions.
     let outlives_env = OutlivesEnvironment::new(param_env);
-    let _ = infcx.err_ctxt().check_region_obligations_and_report_errors(impl_did, &outlives_env);
+    let _ = ocx.resolve_regions_and_report_errors(impl_did, &outlives_env);
 
     CoerceUnsizedInfo { custom_kind: kind }
 }

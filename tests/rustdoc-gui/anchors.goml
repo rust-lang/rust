@@ -4,12 +4,12 @@ define-function: (
     "check-colors",
     (theme, main_color, title_color, main_heading_color, main_heading_type_color, src_link_color, sidebar_link_color),
     block {
-        goto: "file://" + |DOC_PATH| + "/staged_api/struct.Foo.html"
+        go-to: "file://" + |DOC_PATH| + "/staged_api/struct.Foo.html"
         // This is needed to ensure that the text color is computed.
         show-text: true
 
         // Setting the theme.
-        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         // We reload the page so the local storage settings are being used.
         reload:
 
@@ -48,9 +48,9 @@ define-function: (
              {"color": |src_link_color|, "text-decoration": "none solid " + |src_link_color|},
         )
 
-        goto: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"
+        go-to: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"
         // Since we changed page, we need to set the theme again.
-        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         // We reload the page so the local storage settings are being used.
         reload:
 

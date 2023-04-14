@@ -90,3 +90,37 @@ fn msrv_1_40() {
     let mut s = String::from("foo");
     let _ = std::mem::take(&mut s);
 }
+
+fn issue9824() {
+    struct Foo<'a>(Option<&'a str>);
+    impl<'a> std::ops::Deref for Foo<'a> {
+        type Target = Option<&'a str>;
+
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+    impl<'a> std::ops::DerefMut for Foo<'a> {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            &mut self.0
+        }
+    }
+
+    struct Bar {
+        opt: Option<u8>,
+        val: String,
+    }
+
+    let mut f = Foo(Some("foo"));
+    let mut b = Bar {
+        opt: Some(1),
+        val: String::from("bar"),
+    };
+
+    // replace option with none
+    let _ = f.0.take();
+    let _ = (*f).take();
+    let _ = b.opt.take();
+    // replace with default
+    let _ = std::mem::take(&mut b.val);
+}

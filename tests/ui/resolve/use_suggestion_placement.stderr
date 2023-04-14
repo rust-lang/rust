@@ -6,7 +6,7 @@ LL |     type Bar = Path;
    |
 help: consider importing this struct
    |
-LL |     use std::path::Path;
+LL +     use std::path::Path;
    |
 
 error[E0425]: cannot find value `A` in this scope
@@ -17,7 +17,7 @@ LL |     let _ = A;
    |
 help: consider importing this constant
    |
-LL | use m::A;
+LL + use m::A;
    |
 
 error[E0412]: cannot find type `HashMap` in this scope
@@ -28,7 +28,7 @@ LL |     type Dict<K, V> = HashMap<K, V>;
    |
 help: consider importing this struct
    |
-LL | use std::collections::HashMap;
+LL + use std::collections::HashMap;
    |
 
 error: aborting due to 3 previous errors

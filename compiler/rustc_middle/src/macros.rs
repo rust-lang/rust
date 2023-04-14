@@ -1,6 +1,6 @@
 /// A macro for triggering an ICE.
 /// Calling `bug` instead of panicking will result in a nicer error message and should
-/// therefore be prefered over `panic`/`unreachable` or others.
+/// therefore be preferred over `panic`/`unreachable` or others.
 ///
 /// If you have a span available, you should use [`span_bug`] instead.
 ///

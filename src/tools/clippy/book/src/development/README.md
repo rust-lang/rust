@@ -5,7 +5,7 @@ making Clippy better by contributing to it. In that case, welcome to the
 project!
 
 > _Note:_ If you're just interested in using Clippy, there's nothing to see from
-> this point onward and you should return to one of the earlier chapters.
+> this point onward, and you should return to one of the earlier chapters.
 
 ## Getting started
 

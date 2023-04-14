@@ -452,11 +452,8 @@ fn check_opaque_meets_bounds<'tcx>(
         hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) => {}
         // Can have different predicates to their defining use
         hir::OpaqueTyOrigin::TyAlias => {
-            let outlives_environment = OutlivesEnvironment::new(param_env);
-            let _ = infcx.err_ctxt().check_region_obligations_and_report_errors(
-                defining_use_anchor,
-                &outlives_environment,
-            );
+            let outlives_env = OutlivesEnvironment::new(param_env);
+            let _ = ocx.resolve_regions_and_report_errors(defining_use_anchor, &outlives_env);
         }
     }
     // Clean up after ourselves

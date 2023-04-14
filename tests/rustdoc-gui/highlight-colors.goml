@@ -1,5 +1,5 @@
 // This test checks the highlight colors in the source code pages.
-goto: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
+go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
 show-text: true
 
 define-function: (
@@ -22,7 +22,7 @@ define-function: (
         doc_comment,
     ),
     block {
-        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         reload:
         assert-css: ("pre.rust .kw", {"color": |kw|}, ALL)
         assert-css: ("pre.rust .kw-2", {"color": |kw2|}, ALL)

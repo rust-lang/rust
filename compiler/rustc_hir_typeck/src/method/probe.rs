@@ -1531,23 +1531,18 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
                     // Convert the bounds into obligations.
                     let impl_obligations = traits::predicates_for_generics(
-                        |_idx, span| {
-                            let misc = traits::ObligationCause::misc(span, self.body_id);
-                            let parent_trait_pred = ty::Binder::dummy(ty::TraitPredicate {
-                                trait_ref: ty::TraitRef::from_method(self.tcx, impl_def_id, substs),
-                                constness: ty::BoundConstness::NotConst,
-                                polarity: ty::ImplPolarity::Positive,
-                            });
-                            misc.derived_cause(parent_trait_pred, |derived| {
-                                traits::ImplDerivedObligation(Box::new(
-                                    traits::ImplDerivedObligationCause {
-                                        derived,
-                                        impl_or_alias_def_id: impl_def_id,
-                                        impl_def_predicate_index: None,
-                                        span,
-                                    },
-                                ))
-                            })
+                        |idx, span| {
+                            let code = if span.is_dummy() {
+                                traits::ExprItemObligation(impl_def_id, self.scope_expr_id, idx)
+                            } else {
+                                traits::ExprBindingObligation(
+                                    impl_def_id,
+                                    span,
+                                    self.scope_expr_id,
+                                    idx,
+                                )
+                            };
+                            ObligationCause::new(self.span, self.body_id, code)
                         },
                         self.param_env,
                         impl_bounds,

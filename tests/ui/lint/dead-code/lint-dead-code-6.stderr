@@ -10,23 +10,19 @@ note: the lint level is defined here
 LL | #![deny(dead_code)]
    |         ^^^^^^^^^
 
-error: associated function `unused_impl_fn_1` is never used
+error: associated functions `unused_impl_fn_1`, `unused_impl_fn_2`, and `unused_impl_fn_3` are never used
   --> $DIR/lint-dead-code-6.rs:5:8
    |
+LL | impl UnusedStruct {
+   | ----------------- associated functions in this implementation
 LL |     fn unused_impl_fn_1() {
    |        ^^^^^^^^^^^^^^^^
-
-error: associated function `unused_impl_fn_2` is never used
-  --> $DIR/lint-dead-code-6.rs:9:8
-   |
+...
 LL |     fn unused_impl_fn_2(var: i32) {
    |        ^^^^^^^^^^^^^^^^
-
-error: associated function `unused_impl_fn_3` is never used
-  --> $DIR/lint-dead-code-6.rs:13:8
-   |
-LL |     fn unused_impl_fn_3(
+...
+LL |     fn unused_impl_fn_3(var: i32) {
    |        ^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 

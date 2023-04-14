@@ -8,7 +8,7 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
+use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::*;
 use rustc_index::vec::Idx;
@@ -179,7 +179,19 @@ impl<'hir> Map<'hir> {
     /// Do not call this function directly. The query should be called.
     pub(super) fn opt_def_kind(self, local_def_id: LocalDefId) -> Option<DefKind> {
         let hir_id = self.local_def_id_to_hir_id(local_def_id);
-        let def_kind = match self.find(hir_id)? {
+        let node = match self.find(hir_id) {
+            Some(node) => node,
+            None => match self.def_key(local_def_id).disambiguated_data.data {
+                // FIXME: Some anonymous constants do not have corresponding HIR nodes,
+                // so many local queries will panic on their def ids. `None` is currently
+                // returned here instead of `DefKind::{Anon,Inline}Const` to avoid such panics.
+                // Ideally all def ids should have `DefKind`s, we need to create the missing
+                // HIR nodes or feed relevant query results to achieve that.
+                DefPathData::AnonConst => return None,
+                _ => bug!("no HIR node for def id {local_def_id:?}"),
+            },
+        };
+        let def_kind = match node {
             Node::Item(item) => match item.kind {
                 ItemKind::Static(_, mt, _) => DefKind::Static(mt),
                 ItemKind::Const(..) => DefKind::Const,
@@ -266,7 +278,10 @@ impl<'hir> Map<'hir> {
             | Node::Param(_)
             | Node::Arm(_)
             | Node::Lifetime(_)
-            | Node::Block(_) => return None,
+            | Node::Block(_) => span_bug!(
+                self.span(hir_id),
+                "unexpected node with def id {local_def_id:?}: {node:?}"
+            ),
         };
         Some(def_kind)
     }

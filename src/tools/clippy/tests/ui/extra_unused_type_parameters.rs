@@ -1,3 +1,5 @@
+// run-rustfix
+
 #![allow(unused, clippy::needless_lifetimes)]
 #![warn(clippy::extra_unused_type_parameters)]
 
@@ -21,14 +23,7 @@ fn used_ret<T: Default>(x: u8) -> T {
     T::default()
 }
 
-fn unused_bounded<T: Default, U>(x: U) {
-    unimplemented!();
-}
-
-fn unused_where_clause<T, U>(x: U)
-where
-    T: Default,
-{
+fn unused_bounded<T: Default, U, V: Default>(x: U) {
     unimplemented!();
 }
 

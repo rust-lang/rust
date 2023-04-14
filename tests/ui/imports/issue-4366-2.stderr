@@ -18,7 +18,7 @@ LL |     foo();
    |
 help: consider importing this function instead
    |
-LL | use foo::foo;
+LL + use foo::foo;
    |
 
 error: aborting due to 2 previous errors

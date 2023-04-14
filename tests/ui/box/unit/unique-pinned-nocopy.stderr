@@ -1,0 +1,28 @@
+error[E0599]: the method `clone` exists for struct `Box<R>`, but its trait bounds were not satisfied
+  --> $DIR/unique-pinned-nocopy.rs:12:16
+   |
+LL |   struct R {
+   |   -------- doesn't satisfy `R: Clone`
+...
+LL |       let _j = i.clone();
+   |                  ^^^^^ method cannot be called on `Box<R>` due to unsatisfied trait bounds
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+  ::: $SRC_DIR/alloc/src/boxed.rs:LL:COL
+   |
+   = note: doesn't satisfy `Box<R>: Clone`
+   |
+   = note: the following trait bounds were not satisfied:
+           `R: Clone`
+           which is required by `Box<R>: Clone`
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `clone`, perhaps you need to implement it:
+           candidate #1: `Clone`
+help: consider annotating `R` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct R {
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.

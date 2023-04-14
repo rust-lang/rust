@@ -1,5 +1,5 @@
 // Check that the line number column has the correct layout.
-goto: "file://" + |DOC_PATH| + "/scrape_examples/fn.test_many.html"
+go-to: "file://" + |DOC_PATH| + "/scrape_examples/fn.test_many.html"
 
 // Check that it's not zero.
 assert-property-false: (
@@ -44,6 +44,6 @@ assert-position: (".scraped-example .code-wrapper", {"y": 253})
 assert-position: (".scraped-example .code-wrapper .prev", {"y": 253 + |offset_y|})
 
 // Then with mobile
-size: (600, 600)
+set-window-size: (600, 600)
 assert-position: (".scraped-example .code-wrapper", {"y": 308})
 assert-position: (".scraped-example .code-wrapper .prev", {"y": 308 + |offset_y|})

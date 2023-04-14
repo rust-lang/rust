@@ -1261,10 +1261,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         *module.globs.borrow_mut() = Vec::new();
 
         if let Some(def_id) = module.opt_def_id() {
+            let mut non_reexports = Vec::new();
             let mut reexports = Vec::new();
 
             module.for_each_child(self, |this, ident, _, binding| {
-                if let Some(res) = this.is_reexport(binding) {
+                let res = binding.res().expect_non_local();
+                if !binding.is_import() {
+                    non_reexports.push(res.def_id().expect_local());
+                } else if res != def::Res::Err && !binding.is_ambiguity() {
                     let mut reexport_chain = SmallVec::new();
                     let mut next_binding = binding;
                     while let NameBindingKind::Import { binding, import, .. } = next_binding.kind {
@@ -1277,16 +1281,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         res,
                         vis: binding.vis,
                         span: binding.span,
-                        macro_rules: false,
                         reexport_chain,
                     });
                 }
             });
 
+            // Should be fine because this code is only called for local modules.
+            let def_id = def_id.expect_local();
+            if !non_reexports.is_empty() {
+                self.module_children_non_reexports.insert(def_id, non_reexports);
+            }
             if !reexports.is_empty() {
-                // Call to `expect_local` should be fine because current
-                // code is only called for local modules.
-                self.reexport_map.insert(def_id.expect_local(), reexports);
+                self.module_children_reexports.insert(def_id, reexports);
             }
         }
     }

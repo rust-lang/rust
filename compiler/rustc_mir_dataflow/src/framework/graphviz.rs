@@ -394,8 +394,8 @@ where
     ) -> io::Result<()> {
         let diffs = StateDiffCollector::run(body, block, self.results.results(), self.style);
 
-        let mut befores = diffs.before.map(|v| v.into_iter());
-        let mut afters = diffs.after.into_iter();
+        let mut diffs_before = diffs.before.map(|v| v.into_iter());
+        let mut diffs_after = diffs.after.into_iter();
 
         let next_in_dataflow_order = |it: &mut std::vec::IntoIter<_>| {
             if A::Direction::IS_FORWARD { it.next().unwrap() } else { it.next_back().unwrap() }
@@ -405,8 +405,8 @@ where
             let statement_str = format!("{statement:?}");
             let index_str = format!("{i}");
 
-            let after = next_in_dataflow_order(&mut afters);
-            let before = befores.as_mut().map(next_in_dataflow_order);
+            let after = next_in_dataflow_order(&mut diffs_after);
+            let before = diffs_before.as_mut().map(next_in_dataflow_order);
 
             self.write_row(w, &index_str, &statement_str, |_this, w, fmt| {
                 if let Some(before) = before {
@@ -417,11 +417,11 @@ where
             })?;
         }
 
-        let after = next_in_dataflow_order(&mut afters);
-        let before = befores.as_mut().map(next_in_dataflow_order);
+        let after = next_in_dataflow_order(&mut diffs_after);
+        let before = diffs_before.as_mut().map(next_in_dataflow_order);
 
-        assert!(afters.is_empty());
-        assert!(befores.as_ref().map_or(true, ExactSizeIterator::is_empty));
+        assert!(diffs_after.is_empty());
+        assert!(diffs_before.as_ref().map_or(true, ExactSizeIterator::is_empty));
 
         let terminator = body[block].terminator();
         let mut terminator_str = String::new();

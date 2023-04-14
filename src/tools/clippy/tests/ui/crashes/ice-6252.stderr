@@ -6,11 +6,11 @@ LL |     _n: PhantomData,
    |
 help: consider importing one of these items
    |
-LL | use core::marker::PhantomData;
+LL + use core::marker::PhantomData;
    |
-LL | use serde::__private::PhantomData;
+LL + use serde::__private::PhantomData;
    |
-LL | use std::marker::PhantomData;
+LL + use std::marker::PhantomData;
    |
 
 error[E0412]: cannot find type `VAL` in this scope

@@ -1389,7 +1389,7 @@ impl f64 {
     #[stable(feature = "clamp", since = "1.50.0")]
     #[inline]
     pub fn clamp(mut self, min: f64, max: f64) -> f64 {
-        assert!(min <= max);
+        assert!(min <= max, "min > max, or either was NaN. min = {min:?}, max = {max:?}");
         if self < min {
             self = min;
         }
