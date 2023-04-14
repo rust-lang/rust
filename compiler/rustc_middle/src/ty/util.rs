@@ -1328,22 +1328,8 @@ pub fn needs_drop_components<'tcx>(
 
         ty::Dynamic(..) | ty::Error(_) => Err(AlwaysRequiresDrop),
 
-        ty::Slice(ty) => needs_drop_components(*ty, target_layout),
-        ty::Array(elem_ty, size) => {
-            match needs_drop_components(*elem_ty, target_layout) {
-                Ok(v) if v.is_empty() => Ok(v),
-                res => match size.kind().try_to_bits(target_layout.pointer_size) {
-                    // Arrays of size zero don't need drop, even if their element
-                    // type does.
-                    Some(0) => Ok(SmallVec::new()),
-                    Some(_) => res,
-                    // We don't know which of the cases above we are in, so
-                    // return the whole type and let the caller decide what to
-                    // do.
-                    None => Ok(smallvec![ty]),
-                },
-            }
-        }
+        &ty::Slice(ty) | &ty::Array(ty, _) => needs_drop_components(ty, target_layout),
+
         // If any field needs drop, then the whole tuple does.
         ty::Tuple(fields) => fields.iter().try_fold(SmallVec::new(), move |mut acc, elem| {
             acc.extend(needs_drop_components(elem, target_layout)?);

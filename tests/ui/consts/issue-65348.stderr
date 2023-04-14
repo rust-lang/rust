@@ -1,0 +1,30 @@
+error[E0493]: destructor of `[T; 0]` cannot be evaluated at compile-time
+  --> $DIR/issue-65348.rs:10:6
+   |
+LL |     &Generic::<T>::ARRAY[0]
+   |      ^^^^^^^^^^^^^^^^^^^ the destructor for this type cannot be evaluated in constant functions
+LL |
+LL | }
+   | - value is dropped here
+
+error[E0493]: destructor of `Generic<[T; 0]>` cannot be evaluated at compile-time
+  --> $DIR/issue-65348.rs:15:6
+   |
+LL |     &Generic::<T>::NEWTYPE_ARRAY.0[0]
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the destructor for this type cannot be evaluated in constant functions
+LL |
+LL | }
+   | - value is dropped here
+
+error[E0493]: destructor of `Generic<(i32, [T; 0])>` cannot be evaluated at compile-time
+  --> $DIR/issue-65348.rs:20:7
+   |
+LL |     &(Generic::<T>::ARRAY_FIELD.0).1[0]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^ the destructor for this type cannot be evaluated in constant functions
+LL |
+LL | }
+   | - value is dropped here
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0493`.

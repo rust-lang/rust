@@ -1,5 +1,23 @@
+error[E0493]: destructor of `[T; 0]` cannot be evaluated at compile-time
+  --> $DIR/generic-slice.rs:9:27
+   |
+LL |         let x: &'a [T] = &[];
+   |                           ^^ the destructor for this type cannot be evaluated in constants
+...
+LL |     };
+   |     - value is dropped here
+
+error[E0493]: destructor of `[T; 0]` cannot be evaluated at compile-time
+  --> $DIR/generic-slice.rs:15:32
+   |
+LL |         let x: &'static [T] = &[]; 
+   |                                ^^ the destructor for this type cannot be evaluated in constants
+...
+LL |     };
+   |     - value is dropped here
+
 error[E0597]: `x` does not live long enough
-  --> $DIR/generic-slice.rs:15:9
+  --> $DIR/generic-slice.rs:17:9
    |
 LL | impl<'a, T: 'static> Generic<'a, T> {
    |      -- lifetime `'a` defined here
@@ -9,12 +27,30 @@ LL |         &x
    |         |
    |         borrowed value does not live long enough
    |         using this value as a constant requires that `x` is borrowed for `'a`
-LL |
+...
 LL |     };
    |     - `x` dropped here while still borrowed
 
+error[E0493]: destructor of `[RefCell<Vec<i32>>; 0]` cannot be evaluated at compile-time
+  --> $DIR/generic-slice.rs:24:20
+   |
+LL |     let x: &[_] = &[];
+   |                    ^^ the destructor for this type cannot be evaluated in statics
+...
+LL | };
+   | - value is dropped here
+
+error[E0493]: destructor of `[RefCell<Vec<i32>>; 0]` cannot be evaluated at compile-time
+  --> $DIR/generic-slice.rs:30:20
+   |
+LL |     let x: &[_] = &[];
+   |                    ^^ the destructor for this type cannot be evaluated in statics
+...
+LL | };
+   | - value is dropped here
+
 error[E0597]: `x` does not live long enough
-  --> $DIR/generic-slice.rs:27:5
+  --> $DIR/generic-slice.rs:32:5
    |
 LL |     &x
    |     ^^
@@ -25,6 +61,7 @@ LL |
 LL | };
    | - `x` dropped here while still borrowed
 
-error: aborting due to 2 previous errors
+error: aborting due to 6 previous errors
 
-For more information about this error, try `rustc --explain E0597`.
+Some errors have detailed explanations: E0493, E0597.
+For more information about an error, try `rustc --explain E0493`.

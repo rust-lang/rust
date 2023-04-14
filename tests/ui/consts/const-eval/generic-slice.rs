@@ -7,23 +7,28 @@ struct Generic<'a, T>(std::marker::PhantomData<&'a T>);
 impl<'a, T: 'static> Generic<'a, T> {
     const EMPTY_SLICE: &'a [T] = {
         let x: &'a [T] = &[];
-        x
+        //~^ ERROR destructor of `[T; 0]` cannot be evaluated at compile-time
+        x 
     };
 
     const EMPTY_SLICE_REF: &'a &'static [T] = {
-        let x: &'static [T] = &[];
+        let x: &'static [T] = &[]; 
+        //~^ ERROR destructor of `[T; 0]` cannot be evaluated at compile-time
         &x
         //~^ ERROR `x` does not live long enough
+        
     };
 }
 
 static mut INTERIOR_MUT_AND_DROP: &'static [std::cell::RefCell<Vec<i32>>] = {
     let x: &[_] = &[];
+    //~^ ERROR destructor of `[RefCell<Vec<i32>>; 0]` cannot be evaluated at compile-time
     x
 };
 
 static mut INTERIOR_MUT_AND_DROP_REF: &'static &'static [std::cell::RefCell<Vec<i32>>] = {
     let x: &[_] = &[];
+    //~^ ERROR destructor of `[RefCell<Vec<i32>>; 0]` cannot be evaluated at compile-time
     &x
     //~^ ERROR `x` does not live long enough
 };
