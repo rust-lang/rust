@@ -126,6 +126,11 @@ pub(super) fn handle_needs(
         return IgnoreDecision::Continue;
     }
 
+    // Handled elsewhere.
+    if name == "needs-llvm-components" {
+        return IgnoreDecision::Continue;
+    }
+
     let mut found_valid = false;
     for need in needs {
         if need.name == name {
