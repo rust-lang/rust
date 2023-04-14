@@ -1391,7 +1391,7 @@ impl f32 {
     #[stable(feature = "clamp", since = "1.50.0")]
     #[inline]
     pub fn clamp(mut self, min: f32, max: f32) -> f32 {
-        assert!(min <= max);
+        assert!(min <= max, "min > max, or either was NaN. min = {min:?}, max = {max:?}");
         if self < min {
             self = min;
         }
