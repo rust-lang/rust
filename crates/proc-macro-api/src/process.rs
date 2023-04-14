@@ -56,6 +56,10 @@ impl ProcMacroProcessSrv {
         }
     }
 
+    pub(crate) fn version(&self) -> u32 {
+        self.version
+    }
+
     pub(crate) fn version_check(&mut self) -> Result<u32, ServerError> {
         let request = Request::ApiVersionCheck {};
         let response = self.send_task(request)?;

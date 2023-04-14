@@ -31,7 +31,10 @@ use std::{
     time::SystemTime,
 };
 
-use proc_macro_api::{msg, ProcMacroKind};
+use proc_macro_api::{
+    msg::{self, CURRENT_API_VERSION},
+    ProcMacroKind,
+};
 
 use ::tt::token_id as tt;
 
@@ -67,8 +70,8 @@ impl ProcMacroSrv {
             None => None,
         };
 
-        let macro_body = task.macro_body.to_subtree();
-        let attributes = task.attributes.map(|it| it.to_subtree());
+        let macro_body = task.macro_body.to_subtree(CURRENT_API_VERSION);
+        let attributes = task.attributes.map(|it| it.to_subtree(CURRENT_API_VERSION));
         let result = thread::scope(|s| {
             let thread = thread::Builder::new()
                 .stack_size(EXPANDER_STACK_SIZE)
@@ -76,7 +79,7 @@ impl ProcMacroSrv {
                 .spawn_scoped(s, || {
                     expander
                         .expand(&task.macro_name, &macro_body, attributes.as_ref())
-                        .map(|it| msg::FlatTree::new(&it))
+                        .map(|it| msg::FlatTree::new(&it, CURRENT_API_VERSION))
                 });
             let res = match thread {
                 Ok(handle) => handle.join(),
