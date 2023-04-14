@@ -1,10 +1,9 @@
-error[E0277]: `[String; 0]` cannot be safely transmuted into `()` in the defining scope of `assert::Context`.
+error[E0277]: `[String; 0]` cannot be safely transmuted into `()` in the defining scope of `assert::Context`
   --> $DIR/should_require_well_defined_layout.rs:26:52
    |
 LL |         assert::is_maybe_transmutable::<repr_rust, ()>();
-   |                                                    ^^ `[String; 0]` cannot be safely transmuted into `()` in the defining scope of `assert::Context`.
+   |                                                    ^^ `[String; 0]` does not have a well-specified layout
    |
-   = help: the trait `BikeshedIntrinsicFrom<[String; 0], assert::Context, Assume { alignment: true, lifetimes: true, safety: true, validity: true }>` is not implemented for `()`
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
    |
@@ -20,13 +19,12 @@ LL | |                 .and(Assume::VALIDITY)
 LL | |         }>
    | |__________^ required by this bound in `is_maybe_transmutable`
 
-error[E0277]: `u128` cannot be safely transmuted into `[String; 0]` in the defining scope of `assert::Context`.
+error[E0277]: `u128` cannot be safely transmuted into `[String; 0]` in the defining scope of `assert::Context`
   --> $DIR/should_require_well_defined_layout.rs:27:47
    |
 LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
-   |                                               ^^^^^^^^^ `u128` cannot be safely transmuted into `[String; 0]` in the defining scope of `assert::Context`.
+   |                                               ^^^^^^^^^ `[String; 0]` does not have a well-specified layout
    |
-   = help: the trait `BikeshedIntrinsicFrom<u128, assert::Context, Assume { alignment: true, lifetimes: true, safety: true, validity: true }>` is not implemented for `[String; 0]`
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
    |
@@ -42,13 +40,12 @@ LL | |                 .and(Assume::VALIDITY)
 LL | |         }>
    | |__________^ required by this bound in `is_maybe_transmutable`
 
-error[E0277]: `[String; 1]` cannot be safely transmuted into `()` in the defining scope of `assert::Context`.
+error[E0277]: `[String; 1]` cannot be safely transmuted into `()` in the defining scope of `assert::Context`
   --> $DIR/should_require_well_defined_layout.rs:32:52
    |
 LL |         assert::is_maybe_transmutable::<repr_rust, ()>();
-   |                                                    ^^ `[String; 1]` cannot be safely transmuted into `()` in the defining scope of `assert::Context`.
+   |                                                    ^^ `[String; 1]` does not have a well-specified layout
    |
-   = help: the trait `BikeshedIntrinsicFrom<[String; 1], assert::Context, Assume { alignment: true, lifetimes: true, safety: true, validity: true }>` is not implemented for `()`
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
    |
@@ -64,13 +61,12 @@ LL | |                 .and(Assume::VALIDITY)
 LL | |         }>
    | |__________^ required by this bound in `is_maybe_transmutable`
 
-error[E0277]: `u128` cannot be safely transmuted into `[String; 1]` in the defining scope of `assert::Context`.
+error[E0277]: `u128` cannot be safely transmuted into `[String; 1]` in the defining scope of `assert::Context`
   --> $DIR/should_require_well_defined_layout.rs:33:47
    |
 LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
-   |                                               ^^^^^^^^^ `u128` cannot be safely transmuted into `[String; 1]` in the defining scope of `assert::Context`.
+   |                                               ^^^^^^^^^ `[String; 1]` does not have a well-specified layout
    |
-   = help: the trait `BikeshedIntrinsicFrom<u128, assert::Context, Assume { alignment: true, lifetimes: true, safety: true, validity: true }>` is not implemented for `[String; 1]`
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
    |
@@ -86,13 +82,12 @@ LL | |                 .and(Assume::VALIDITY)
 LL | |         }>
    | |__________^ required by this bound in `is_maybe_transmutable`
 
-error[E0277]: `[String; 2]` cannot be safely transmuted into `()` in the defining scope of `assert::Context`.
+error[E0277]: `[String; 2]` cannot be safely transmuted into `()` in the defining scope of `assert::Context`
   --> $DIR/should_require_well_defined_layout.rs:38:52
    |
 LL |         assert::is_maybe_transmutable::<repr_rust, ()>();
-   |                                                    ^^ `[String; 2]` cannot be safely transmuted into `()` in the defining scope of `assert::Context`.
+   |                                                    ^^ `[String; 2]` does not have a well-specified layout
    |
-   = help: the trait `BikeshedIntrinsicFrom<[String; 2], assert::Context, Assume { alignment: true, lifetimes: true, safety: true, validity: true }>` is not implemented for `()`
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
    |
@@ -108,13 +103,12 @@ LL | |                 .and(Assume::VALIDITY)
 LL | |         }>
    | |__________^ required by this bound in `is_maybe_transmutable`
 
-error[E0277]: `u128` cannot be safely transmuted into `[String; 2]` in the defining scope of `assert::Context`.
+error[E0277]: `u128` cannot be safely transmuted into `[String; 2]` in the defining scope of `assert::Context`
   --> $DIR/should_require_well_defined_layout.rs:39:47
    |
 LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
-   |                                               ^^^^^^^^^ `u128` cannot be safely transmuted into `[String; 2]` in the defining scope of `assert::Context`.
+   |                                               ^^^^^^^^^ `[String; 2]` does not have a well-specified layout
    |
-   = help: the trait `BikeshedIntrinsicFrom<u128, assert::Context, Assume { alignment: true, lifetimes: true, safety: true, validity: true }>` is not implemented for `[String; 2]`
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
    |
