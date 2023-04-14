@@ -511,14 +511,14 @@ lint_opaque_hidden_inferred_bound = opaque type `{$ty}` does not satisfy its ass
 
 lint_opaque_hidden_inferred_bound_sugg = add this bound
 
-lint_drop_ref = calls to `std::mem::drop` with a reference instead of an owned value
+lint_drop_ref = calls to `std::mem::drop` with a reference instead of an owned value does nothing
     .label = argument has type `{$arg_ty}`
 
-lint_drop_copy = calls to `std::mem::drop` with a value that implements `Copy`.
+lint_drop_copy = calls to `std::mem::drop` with a value that implements `Copy` does nothing
     .label = argument has type `{$arg_ty}`
 
-lint_forget_ref = calls to `std::mem::forget` with a reference instead of an owned value
+lint_forget_ref = calls to `std::mem::forget` with a reference instead of an owned value does nothing
     .label = argument has type `{$arg_ty}`
 
-lint_forget_copy = calls to `std::mem::forget` with a value that implements `Copy`.
+lint_forget_copy = calls to `std::mem::forget` with a value that implements `Copy` does nothing
     .label = argument has type `{$arg_ty}`

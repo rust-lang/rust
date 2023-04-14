@@ -1,4 +1,4 @@
-warning: calls to `std::mem::forget` with a value that implements `Copy`.
+warning: calls to `std::mem::forget` with a value that implements `Copy` does nothing
   --> $DIR/forget_copy.rs:34:5
    |
 LL |     forget(s1);
@@ -12,7 +12,7 @@ note: the lint level is defined here
 LL | #![warn(forget_copy)]
    |         ^^^^^^^^^^^
 
-warning: calls to `std::mem::forget` with a value that implements `Copy`.
+warning: calls to `std::mem::forget` with a value that implements `Copy` does nothing
   --> $DIR/forget_copy.rs:35:5
    |
 LL |     forget(s2);
@@ -20,7 +20,7 @@ LL |     forget(s2);
    |            |
    |            argument has type `SomeStruct`
 
-warning: calls to `std::mem::forget` with a reference instead of an owned value
+warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
   --> $DIR/forget_copy.rs:36:5
    |
 LL |     forget(s3);
@@ -30,7 +30,7 @@ LL |     forget(s3);
    |
    = note: `#[warn(forget_ref)]` on by default
 
-warning: calls to `std::mem::forget` with a value that implements `Copy`.
+warning: calls to `std::mem::forget` with a value that implements `Copy` does nothing
   --> $DIR/forget_copy.rs:37:5
    |
 LL |     forget(s4);
@@ -38,7 +38,7 @@ LL |     forget(s4);
    |            |
    |            argument has type `SomeStruct`
 
-warning: calls to `std::mem::forget` with a reference instead of an owned value
+warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
   --> $DIR/forget_copy.rs:38:5
    |
 LL |     forget(s5);
@@ -46,7 +46,7 @@ LL |     forget(s5);
    |            |
    |            argument has type `&SomeStruct`
 
-warning: calls to `std::mem::forget` with a reference instead of an owned value
+warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
   --> $DIR/forget_copy.rs:50:5
    |
 LL |     forget(a2);
@@ -54,7 +54,7 @@ LL |     forget(a2);
    |            |
    |            argument has type `&AnotherStruct`
 
-warning: calls to `std::mem::forget` with a reference instead of an owned value
+warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
   --> $DIR/forget_copy.rs:52:5
    |
 LL |     forget(a3);
@@ -62,7 +62,7 @@ LL |     forget(a3);
    |            |
    |            argument has type `&AnotherStruct`
 
-warning: calls to `std::mem::forget` with a reference instead of an owned value
+warning: calls to `std::mem::forget` with a reference instead of an owned value does nothing
   --> $DIR/forget_copy.rs:53:5
    |
 LL |     forget(a4);
