@@ -348,6 +348,14 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ) {
         let lang_items = self.tcx().lang_items();
         let trait_def_id = goal.predicate.trait_def_id(self.tcx());
+
+        // N.B. When assembling built-in candidates for lang items that are also
+        // `auto` traits, then the auto trait candidate that is assembled in
+        // `consider_auto_trait_candidate` MUST be disqualified to remain sound.
+        //
+        // Instead of adding the logic here, it's a better idea to add it in
+        // `EvalCtxt::disqualify_auto_trait_candidate_due_to_possible_impl` in
+        // `solve::trait_goals` instead.
         let result = if self.tcx().trait_is_auto(trait_def_id) {
             G::consider_auto_trait_candidate(self, goal)
         } else if self.tcx().trait_is_alias(trait_def_id) {
