@@ -264,14 +264,15 @@ impl<T: ?Sized> *mut T {
         // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
         //
         // In the mean-time, this operation is defined to be "as if" it was
-        // a wrapping_offset, so we can emulate it as such. This should properly
+        // two `wrapping_offset`s, so we can emulate it as such. This should properly
         // restore pointer provenance even under today's compiler.
-        let self_addr = self.addr() as isize;
-        let dest_addr = addr as isize;
-        let offset = dest_addr.wrapping_sub(self_addr);
-
-        // This is the canonical desugarring of this operation
-        self.wrapping_byte_offset(offset)
+        //
+        // This is the canonical desugaring of this operation.
+        //
+        // Note that we are using two offsets, instead of precomputing offset
+        // with `addr - self.addr()`. This is because it is easier for LLVM to
+        // optimize such code.
+        self.wrapping_byte_sub(self.addr()).wrapping_byte_add(addr)
     }
 
     /// Creates a new pointer by mapping `self`'s address to a new one.
