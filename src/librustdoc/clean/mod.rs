@@ -909,6 +909,38 @@ fn clean_ty_generics<'tcx>(
     }
 }
 
+fn clean_proc_macro<'tcx>(
+    item: &hir::Item<'tcx>,
+    name: &mut Symbol,
+    kind: MacroKind,
+    cx: &mut DocContext<'tcx>,
+) -> ItemKind {
+    let attrs = cx.tcx.hir().attrs(item.hir_id());
+    if kind == MacroKind::Derive &&
+        let Some(derive_name) = attrs
+            .lists(sym::proc_macro_derive)
+            .find_map(|mi| mi.ident())
+    {
+        *name = derive_name.name;
+    }
+
+    let mut helpers = Vec::new();
+    for mi in attrs.lists(sym::proc_macro_derive) {
+        if !mi.has_name(sym::attributes) {
+            continue;
+        }
+
+        if let Some(list) = mi.meta_item_list() {
+            for inner_mi in list {
+                if let Some(ident) = inner_mi.ident() {
+                    helpers.push(ident.name);
+                }
+            }
+        }
+    }
+    ProcMacroItem(ProcMacro { kind, helpers })
+}
+
 fn clean_fn_or_proc_macro<'tcx>(
     item: &hir::Item<'tcx>,
     sig: &hir::FnSig<'tcx>,
@@ -930,31 +962,7 @@ fn clean_fn_or_proc_macro<'tcx>(
         }
     });
     match macro_kind {
-        Some(kind) => {
-            if kind == MacroKind::Derive {
-                *name = attrs
-                    .lists(sym::proc_macro_derive)
-                    .find_map(|mi| mi.ident())
-                    .expect("proc-macro derives require a name")
-                    .name;
-            }
-
-            let mut helpers = Vec::new();
-            for mi in attrs.lists(sym::proc_macro_derive) {
-                if !mi.has_name(sym::attributes) {
-                    continue;
-                }
-
-                if let Some(list) = mi.meta_item_list() {
-                    for inner_mi in list {
-                        if let Some(ident) = inner_mi.ident() {
-                            helpers.push(ident.name);
-                        }
-                    }
-                }
-            }
-            ProcMacroItem(ProcMacro { kind, helpers })
-        }
+        Some(kind) => clean_proc_macro(item, name, kind, cx),
         None => {
             let mut func = clean_function(cx, sig, generics, FunctionArgs::Body(body_id));
             clean_fn_decl_legacy_const_generics(&mut func, attrs);
@@ -2247,15 +2255,16 @@ fn clean_maybe_renamed_item<'tcx>(
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),
             }),
             ItemKind::Impl(impl_) => return clean_impl(impl_, item.owner_id.def_id, cx),
-            // proc macros can have a name set by attributes
-            ItemKind::Fn(ref sig, generics, body_id) => {
-                clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
-            }
-            ItemKind::Macro(ref macro_def, _) => {
+            ItemKind::Macro(ref macro_def, MacroKind::Bang) => {
                 let ty_vis = cx.tcx.visibility(def_id);
                 MacroItem(Macro {
                     source: display_macro_source(cx, name, macro_def, def_id, ty_vis),
                 })
+            }
+            ItemKind::Macro(_, macro_kind) => clean_proc_macro(item, &mut name, macro_kind, cx),
+            // proc macros can have a name set by attributes
+            ItemKind::Fn(ref sig, generics, body_id) => {
+                clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
             }
             ItemKind::Trait(_, _, generics, bounds, item_ids) => {
                 let items = item_ids
