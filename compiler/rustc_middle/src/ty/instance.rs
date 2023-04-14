@@ -578,14 +578,15 @@ impl<'tcx> Instance<'tcx> {
         self.def.has_polymorphic_mir_body().then_some(self.substs)
     }
 
-    pub fn subst_mir<T>(&self, tcx: TyCtxt<'tcx>, v: &T) -> T
+    pub fn subst_mir<T>(&self, tcx: TyCtxt<'tcx>, v: EarlyBinder<&T>) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
+        let v = v.map_bound(|v| *v);
         if let Some(substs) = self.substs_for_mir_body() {
-            EarlyBinder(*v).subst(tcx, substs)
+            v.subst(tcx, substs)
         } else {
-            *v
+            v.subst_identity()
         }
     }
 
