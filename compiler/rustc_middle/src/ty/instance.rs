@@ -594,15 +594,15 @@ impl<'tcx> Instance<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        v: T,
+        v: EarlyBinder<T>,
     ) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>> + Clone,
     {
         if let Some(substs) = self.substs_for_mir_body() {
-            tcx.subst_and_normalize_erasing_regions(substs, param_env, ty::EarlyBinder(v))
+            tcx.subst_and_normalize_erasing_regions(substs, param_env, v)
         } else {
-            tcx.normalize_erasing_regions(param_env, v)
+            tcx.normalize_erasing_regions(param_env, v.subst_identity())
         }
     }
 
@@ -611,15 +611,15 @@ impl<'tcx> Instance<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        v: T,
+        v: EarlyBinder<T>,
     ) -> Result<T, NormalizationError<'tcx>>
     where
         T: TypeFoldable<TyCtxt<'tcx>> + Clone,
     {
         if let Some(substs) = self.substs_for_mir_body() {
-            tcx.try_subst_and_normalize_erasing_regions(substs, param_env, ty::EarlyBinder(v))
+            tcx.try_subst_and_normalize_erasing_regions(substs, param_env, v)
         } else {
-            tcx.try_normalize_erasing_regions(param_env, v)
+            tcx.try_normalize_erasing_regions(param_env, v.subst_identity())
         }
     }
 

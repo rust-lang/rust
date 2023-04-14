@@ -180,7 +180,7 @@ impl<'tcx> Inliner<'tcx> {
         let Ok(callee_body) = callsite.callee.try_subst_mir_and_normalize_erasing_regions(
             self.tcx,
             self.param_env,
-            callee_body.clone(),
+            ty::EarlyBinder(callee_body.clone()),
         ) else {
             return Err("failed to normalize callee body");
         };
