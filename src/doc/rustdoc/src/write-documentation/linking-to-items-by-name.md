@@ -103,6 +103,13 @@ macro_rules! foo {
 }
 ```
 
+There is one case where the disambiguation will be performed automatically: if an intra doc
+link is resolved at the same time as a trait and as a derive proc-macro. In this case, it'll
+always generate a link to the trait and not emit a "missing disambiguation" warning. A good
+example of this case is when you link to the `Clone` trait: there is also a `Clone`
+proc-macro but it ignores it in this case. If you want to link to the proc-macro, you can
+use the `macro@` disambiguator.
+
 ## Warnings, re-exports, and scoping
 
 Links are resolved in the scope of the module where the item is defined, even
