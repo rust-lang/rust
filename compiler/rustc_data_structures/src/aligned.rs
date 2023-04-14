@@ -1,10 +1,10 @@
-use std::mem;
+use std::ptr::Alignment;
 
 /// Returns the ABI-required minimum alignment of a type in bytes.
 ///
 /// This is equivalent to [`mem::align_of`], but also works for some unsized
 /// types (e.g. slices or rustc's `List`s).
-pub const fn align_of<T: ?Sized + Aligned>() -> usize {
+pub const fn align_of<T: ?Sized + Aligned>() -> Alignment {
     T::ALIGN
 }
 
@@ -19,13 +19,13 @@ pub const fn align_of<T: ?Sized + Aligned>() -> usize {
 /// [`mem::align_of<Self>()`]: mem::align_of
 pub unsafe trait Aligned {
     /// Alignment of `Self`.
-    const ALIGN: usize;
+    const ALIGN: Alignment;
 }
 
 unsafe impl<T> Aligned for T {
-    const ALIGN: usize = mem::align_of::<Self>();
+    const ALIGN: Alignment = Alignment::of::<Self>();
 }
 
 unsafe impl<T> Aligned for [T] {
-    const ALIGN: usize = mem::align_of::<T>();
+    const ALIGN: Alignment = Alignment::of::<T>();
 }

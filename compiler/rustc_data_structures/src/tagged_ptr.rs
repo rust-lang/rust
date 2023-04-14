@@ -70,13 +70,13 @@ pub unsafe trait Pointer: Deref {
     /// # struct T;
     /// # impl Deref for T { type Target = u8; fn deref(&self) -> &u8 { &0 } }
     /// # impl T {
-    /// const BITS: usize = bits_for::<<Self as Deref>::Target>();
+    /// const BITS: u32 = bits_for::<<Self as Deref>::Target>();
     /// # }
     /// ```
     ///
     /// [`BITS`]: Pointer::BITS
     /// [`Self::Target`]: Deref::Target
-    const BITS: usize;
+    const BITS: u32;
 
     /// Turns this pointer into a raw, non-null pointer.
     ///
@@ -118,7 +118,7 @@ pub unsafe trait Tag: Copy {
     /// value.
     ///
     /// [`into_usize`]: Tag::into_usize
-    const BITS: usize;
+    const BITS: u32;
 
     /// Turns this tag into an integer.
     ///
@@ -142,7 +142,7 @@ pub unsafe trait Tag: Copy {
 }
 
 unsafe impl<T: ?Sized + Aligned> Pointer for Box<T> {
-    const BITS: usize = bits_for::<Self::Target>();
+    const BITS: u32 = bits_for::<Self::Target>();
 
     #[inline]
     fn into_ptr(self) -> NonNull<T> {
@@ -158,7 +158,7 @@ unsafe impl<T: ?Sized + Aligned> Pointer for Box<T> {
 }
 
 unsafe impl<T: ?Sized + Aligned> Pointer for Rc<T> {
-    const BITS: usize = bits_for::<Self::Target>();
+    const BITS: u32 = bits_for::<Self::Target>();
 
     #[inline]
     fn into_ptr(self) -> NonNull<T> {
@@ -174,7 +174,7 @@ unsafe impl<T: ?Sized + Aligned> Pointer for Rc<T> {
 }
 
 unsafe impl<T: ?Sized + Aligned> Pointer for Arc<T> {
-    const BITS: usize = bits_for::<Self::Target>();
+    const BITS: u32 = bits_for::<Self::Target>();
 
     #[inline]
     fn into_ptr(self) -> NonNull<T> {
@@ -190,7 +190,7 @@ unsafe impl<T: ?Sized + Aligned> Pointer for Arc<T> {
 }
 
 unsafe impl<'a, T: 'a + ?Sized + Aligned> Pointer for &'a T {
-    const BITS: usize = bits_for::<Self::Target>();
+    const BITS: u32 = bits_for::<Self::Target>();
 
     #[inline]
     fn into_ptr(self) -> NonNull<T> {
@@ -206,7 +206,7 @@ unsafe impl<'a, T: 'a + ?Sized + Aligned> Pointer for &'a T {
 }
 
 unsafe impl<'a, T: 'a + ?Sized + Aligned> Pointer for &'a mut T {
-    const BITS: usize = bits_for::<Self::Target>();
+    const BITS: u32 = bits_for::<Self::Target>();
 
     #[inline]
     fn into_ptr(self) -> NonNull<T> {
@@ -223,14 +223,8 @@ unsafe impl<'a, T: 'a + ?Sized + Aligned> Pointer for &'a mut T {
 
 /// Returns the number of bits available for use for tags in a pointer to `T`
 /// (this is based on `T`'s alignment).
-pub const fn bits_for<T: ?Sized + Aligned>() -> usize {
-    let bits = crate::aligned::align_of::<T>().trailing_zeros();
-
-    // This is a replacement for `.try_into().unwrap()` unavailable in `const`
-    // (it's fine to make an assert here, since this is only called in compile time)
-    assert!((bits as u128) < usize::MAX as u128);
-
-    bits as usize
+pub const fn bits_for<T: ?Sized + Aligned>() -> u32 {
+    crate::aligned::align_of::<T>().as_nonzero().trailing_zeros()
 }
 
 /// A tag type used in [`CopyTaggedPtr`] and [`TaggedPtr`] tests.
@@ -245,7 +239,7 @@ enum Tag2 {
 
 #[cfg(test)]
 unsafe impl Tag for Tag2 {
-    const BITS: usize = 2;
+    const BITS: u32 = 2;
 
     fn into_usize(self) -> usize {
         self as _

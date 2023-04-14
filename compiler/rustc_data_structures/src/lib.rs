@@ -30,6 +30,7 @@
 #![feature(lint_reasons)]
 #![feature(unwrap_infallible)]
 #![feature(strict_provenance)]
+#![feature(ptr_alignment_type)]
 #![allow(rustc::default_hash_types)]
 #![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]

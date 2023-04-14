@@ -150,7 +150,7 @@ where
 /// enum Tag2 { B00 = 0b00, B01 = 0b01, B10 = 0b10, B11 = 0b11 };
 ///
 /// unsafe impl Tag for Tag2 {
-///     const BITS: usize = 2;
+///     const BITS: u32 = 2;
 ///
 ///     fn into_usize(self) -> usize { todo!() }
 ///     unsafe fn from_usize(tag: usize) -> Self { todo!() }

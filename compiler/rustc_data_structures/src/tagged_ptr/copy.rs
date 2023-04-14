@@ -116,7 +116,7 @@ where
         self.packed = Self::pack(self.pointer_raw(), tag);
     }
 
-    const TAG_BIT_SHIFT: usize = usize::BITS as usize - T::BITS;
+    const TAG_BIT_SHIFT: u32 = usize::BITS - T::BITS;
     const ASSERTION: () = { assert!(T::BITS <= P::BITS) };
 
     /// Pack pointer `ptr` that comes from [`P::into_ptr`] with a `tag`,
@@ -298,7 +298,7 @@ where
 /// enum Tag2 { B00 = 0b00, B01 = 0b01, B10 = 0b10, B11 = 0b11 };
 ///
 /// unsafe impl Tag for Tag2 {
-///     const BITS: usize = 2;
+///     const BITS: u32 = 2;
 ///
 ///     fn into_usize(self) -> usize { todo!() }
 ///     unsafe fn from_usize(tag: usize) -> Self { todo!() }

@@ -1,5 +1,5 @@
 use crate::arena::Arena;
-use rustc_data_structures::aligned::Aligned;
+use rustc_data_structures::aligned::{align_of, Aligned};
 use rustc_serialize::{Encodable, Encoder};
 use std::alloc::Layout;
 use std::cmp::Ordering;
@@ -203,13 +203,13 @@ unsafe impl<T: Sync> Sync for List<T> {}
 // Layouts of `Equivalent<T>` and `List<T>` are the same, modulo opaque tail,
 // thus aligns of `Equivalent<T>` and `List<T>` must be the same.
 unsafe impl<T> Aligned for List<T> {
-    const ALIGN: usize = {
+    const ALIGN: ptr::Alignment = {
         #[repr(C)]
         struct Equivalent<T> {
             _len: usize,
             _data: [T; 0],
         }
 
-        mem::align_of::<Equivalent<T>>()
+        align_of::<Equivalent<T>>()
     };
 }
