@@ -157,7 +157,8 @@ LL | struct A;
    | ^^^^^^^^ must implement `PartialEq<_>`
 help: consider annotating `A` with `#[derive(PartialEq)]`
    |
-LL | #[derive(PartialEq)]
+LL + #[derive(PartialEq)]
+LL | struct A;
    |
 
 error[E0369]: binary operation `!=` cannot be applied to type `A`
@@ -175,7 +176,8 @@ LL | struct A;
    | ^^^^^^^^ must implement `PartialEq<_>`
 help: consider annotating `A` with `#[derive(PartialEq)]`
    |
-LL | #[derive(PartialEq)]
+LL + #[derive(PartialEq)]
+LL | struct A;
    |
 
 error[E0369]: binary operation `<` cannot be applied to type `A`
@@ -193,7 +195,8 @@ LL | struct A;
    | ^^^^^^^^ must implement `PartialOrd<_>`
 help: consider annotating `A` with `#[derive(PartialEq, PartialOrd)]`
    |
-LL | #[derive(PartialEq, PartialOrd)]
+LL + #[derive(PartialEq, PartialOrd)]
+LL | struct A;
    |
 
 error[E0369]: binary operation `<=` cannot be applied to type `A`
@@ -211,7 +214,8 @@ LL | struct A;
    | ^^^^^^^^ must implement `PartialOrd<_>`
 help: consider annotating `A` with `#[derive(PartialEq, PartialOrd)]`
    |
-LL | #[derive(PartialEq, PartialOrd)]
+LL + #[derive(PartialEq, PartialOrd)]
+LL | struct A;
    |
 
 error[E0369]: binary operation `>` cannot be applied to type `A`
@@ -229,7 +233,8 @@ LL | struct A;
    | ^^^^^^^^ must implement `PartialOrd<_>`
 help: consider annotating `A` with `#[derive(PartialEq, PartialOrd)]`
    |
-LL | #[derive(PartialEq, PartialOrd)]
+LL + #[derive(PartialEq, PartialOrd)]
+LL | struct A;
    |
 
 error[E0369]: binary operation `>=` cannot be applied to type `A`
@@ -247,7 +252,8 @@ LL | struct A;
    | ^^^^^^^^ must implement `PartialOrd<_>`
 help: consider annotating `A` with `#[derive(PartialEq, PartialOrd)]`
    |
-LL | #[derive(PartialEq, PartialOrd)]
+LL + #[derive(PartialEq, PartialOrd)]
+LL | struct A;
    |
 
 error: aborting due to 15 previous errors

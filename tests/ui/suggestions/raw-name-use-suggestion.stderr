@@ -28,7 +28,7 @@ LL |     r#break();
    |
 help: consider importing this function
    |
-LL | use foo::r#break;
+LL + use foo::r#break;
    |
 
 error: aborting due to 3 previous errors

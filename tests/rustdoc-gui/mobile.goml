@@ -1,8 +1,8 @@
 // Test various properties of the mobile UI
-goto: "file://" + |DOC_PATH| + "/staged_api/struct.Foo.html"
-size: (400, 600)
+go-to: "file://" + |DOC_PATH| + "/staged_api/struct.Foo.html"
+set-window-size: (400, 600)
 
-font-size: 18
+set-font-size: 18
 wait-for: 100 // wait a bit for the resize and the font-size change to be fully taken into account.
 
 // The out-of-band info (source, stable version, collapse) should be below the
@@ -18,14 +18,14 @@ assert-property: (".mobile-topbar h2", {"offsetHeight": 33})
 // is therefore not part of the DOM.
 assert-css: (".content .out-of-band .since::before", { "content": "\"Since \"" })
 
-size: (1000, 1000)
+set-window-size: (1000, 1000)
 wait-for: 100 // wait a bit for the resize to be fully taken into account.
 assert-css-false: (".content .out-of-band .since::before", { "content": "\"Since \"" })
 
 // On the settings page, the theme buttons should not line-wrap. Instead, they should
 // all be placed as a group on a line below the setting name "Theme."
-goto: "file://" + |DOC_PATH| + "/settings.html"
-size: (400, 600)
+go-to: "file://" + |DOC_PATH| + "/settings.html"
+set-window-size: (400, 600)
 // Ignored for now https://github.com/rust-lang/rust/issues/93784.
 // compare-elements-position-near-false: (
 //     "#preferred-light-theme .setting-radio-name",

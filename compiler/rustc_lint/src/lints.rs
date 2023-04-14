@@ -806,9 +806,9 @@ pub struct TyQualified {
 pub struct LintPassByHand;
 
 #[derive(LintDiagnostic)]
-#[diag(lint_non_existant_doc_keyword)]
+#[diag(lint_non_existent_doc_keyword)]
 #[help]
-pub struct NonExistantDocKeyword {
+pub struct NonExistentDocKeyword {
     pub keyword: Symbol,
 }
 
@@ -875,7 +875,7 @@ impl AddToDiagnostic for NonBindingLetSub {
 // levels.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_overruled_attribute)]
-pub struct OverruledAtributeLint<'a> {
+pub struct OverruledAttributeLint<'a> {
     #[label]
     pub overruled: Span,
     pub lint_level: &'a str,
@@ -947,7 +947,7 @@ pub struct CStringPtr {
 
 // multiple_supertrait_upcastable.rs
 #[derive(LintDiagnostic)]
-#[diag(lint_multple_supertrait_upcastable)]
+#[diag(lint_multiple_supertrait_upcastable)]
 pub struct MultipleSupertraitUpcastable {
     pub ident: Ident,
 }
@@ -1422,7 +1422,7 @@ pub struct UnusedResult<'a> {
     pub ty: Ty<'a>,
 }
 
-// FIXME(davidtwco): this isn't properly translatable becauses of the
+// FIXME(davidtwco): this isn't properly translatable because of the
 // pre/post strings
 #[derive(LintDiagnostic)]
 #[diag(lint_unused_closure)]
@@ -1433,7 +1433,7 @@ pub struct UnusedClosure<'a> {
     pub post: &'a str,
 }
 
-// FIXME(davidtwco): this isn't properly translatable becauses of the
+// FIXME(davidtwco): this isn't properly translatable because of the
 // pre/post strings
 #[derive(LintDiagnostic)]
 #[diag(lint_unused_generator)]
@@ -1444,7 +1444,7 @@ pub struct UnusedGenerator<'a> {
     pub post: &'a str,
 }
 
-// FIXME(davidtwco): this isn't properly translatable becauses of the pre/post
+// FIXME(davidtwco): this isn't properly translatable because of the pre/post
 // strings
 pub struct UnusedDef<'a, 'b> {
     pub pre: &'a str,

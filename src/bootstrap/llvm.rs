@@ -291,7 +291,7 @@ impl Step for Llvm {
         let llvm_targets = match &builder.config.llvm_targets {
             Some(s) => s,
             None => {
-                "AArch64;ARM;BPF;Hexagon;MSP430;Mips;NVPTX;PowerPC;RISCV;\
+                "AArch64;ARM;BPF;Hexagon;LoongArch;MSP430;Mips;NVPTX;PowerPC;RISCV;\
                      Sparc;SystemZ;WebAssembly;X86"
             }
         };
@@ -1087,6 +1087,8 @@ impl Step for CrtBeginEnd {
 
     /// Build crtbegin.o/crtend.o for musl target.
     fn run(self, builder: &Builder<'_>) -> Self::Output {
+        builder.update_submodule(&Path::new("src/llvm-project"));
+
         let out_dir = builder.native_dir(self.target).join("crt");
 
         if builder.config.dry_run() {
@@ -1153,6 +1155,8 @@ impl Step for Libunwind {
 
     /// Build linunwind.a
     fn run(self, builder: &Builder<'_>) -> Self::Output {
+        builder.update_submodule(&Path::new("src/llvm-project"));
+
         if builder.config.dry_run() {
             return PathBuf::new();
         }

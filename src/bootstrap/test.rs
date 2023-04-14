@@ -1064,6 +1064,8 @@ impl Step for RustdocGUI {
                     cargo.env("RUSTDOCFLAGS", "-Zunstable-options --generate-link-to-definition");
                 } else if entry.file_name() == "scrape_examples" {
                     cargo.arg("-Zrustdoc-scrape-examples");
+                } else if entry.file_name() == "extend_css" {
+                    cargo.env("RUSTDOCFLAGS", &format!("--extend-css extra.css"));
                 }
                 builder.run(&mut cargo);
             }
@@ -1535,7 +1537,10 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         flags.extend(builder.config.cmd.rustc_args().iter().map(|s| s.to_string()));
 
         if let Some(linker) = builder.linker(target) {
-            cmd.arg("--linker").arg(linker);
+            cmd.arg("--target-linker").arg(linker);
+        }
+        if let Some(linker) = builder.linker(compiler.host) {
+            cmd.arg("--host-linker").arg(linker);
         }
 
         let mut hostflags = flags.clone();
@@ -2143,7 +2148,7 @@ impl Step for Crate {
                 compile::std_cargo(builder, target, compiler.stage, &mut cargo);
             }
             Mode::Rustc => {
-                compile::rustc_cargo(builder, &mut cargo, target);
+                compile::rustc_cargo(builder, &mut cargo, target, compiler.stage);
             }
             _ => panic!("can only test libraries"),
         };

@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 
 // FIXME: The following limits should be reduced eventually.
 const ENTRY_LIMIT: usize = 885;
-const ROOT_ENTRY_LIMIT: usize = 881;
+const ROOT_ENTRY_LIMIT: usize = 891;
 const ISSUES_ENTRY_LIMIT: usize = 1978;
 
 fn check_entries(tests_path: &Path, bad: &mut bool) {
@@ -22,18 +22,19 @@ fn check_entries(tests_path: &Path, bad: &mut bool) {
         }
     }
 
+    let (mut max, mut max_root, mut max_issues) = (0usize, 0usize, 0usize);
     for (dir_path, count) in directories {
         // Use special values for these dirs.
         let is_root = tests_path.join("ui") == dir_path;
         let is_issues_dir = tests_path.join("ui/issues") == dir_path;
-        let limit = if is_root {
-            ROOT_ENTRY_LIMIT
+        let (limit, maxcnt) = if is_root {
+            (ROOT_ENTRY_LIMIT, &mut max_root)
         } else if is_issues_dir {
-            ISSUES_ENTRY_LIMIT
+            (ISSUES_ENTRY_LIMIT, &mut max_issues)
         } else {
-            ENTRY_LIMIT
+            (ENTRY_LIMIT, &mut max)
         };
-
+        *maxcnt = (*maxcnt).max(count);
         if count > limit {
             tidy_error!(
                 bad,
@@ -44,6 +45,21 @@ fn check_entries(tests_path: &Path, bad: &mut bool) {
                 dir_path.display()
             );
         }
+    }
+    if ENTRY_LIMIT > max {
+        tidy_error!(bad, "`ENTRY_LIMIT` is too high (is {ENTRY_LIMIT}, should be {max})");
+    }
+    if ROOT_ENTRY_LIMIT > max_root {
+        tidy_error!(
+            bad,
+            "`ROOT_ENTRY_LIMIT` is too high (is {ROOT_ENTRY_LIMIT}, should be {max_root})"
+        );
+    }
+    if ISSUES_ENTRY_LIMIT > max_issues {
+        tidy_error!(
+            bad,
+            "`ISSUES_ENTRY_LIMIT` is too high (is {ISSUES_ENTRY_LIMIT}, should be {max_issues})"
+        );
     }
 }
 

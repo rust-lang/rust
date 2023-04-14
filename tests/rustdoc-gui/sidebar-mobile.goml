@@ -1,9 +1,9 @@
 // This test ensure that the sidebar isn't "hidden" on mobile but instead moved out of the viewport.
 // This is especially important for devices for "text-first" content (like for users with
 // sight issues).
-goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
 // Switching to "mobile view" by reducing the width to 600px.
-size: (600, 600)
+set-window-size: (600, 600)
 assert-css: (".sidebar", {"display": "block", "left": "-1000px"})
 // Opening the sidebar menu.
 click: ".sidebar-menu-toggle"
@@ -59,7 +59,7 @@ define-function: (
     "check-colors",
     (theme, color, background),
     block {
-        local-storage: {"rustdoc-use-system-theme": "false", "rustdoc-theme": |theme|}
+        set-local-storage: {"rustdoc-use-system-theme": "false", "rustdoc-theme": |theme|}
         reload:
 
         // Open the sidebar menu.

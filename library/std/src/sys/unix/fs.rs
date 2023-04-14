@@ -34,7 +34,7 @@ use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
     target_os = "watchos",
 ))]
 use crate::sys::weak::syscall;
-#[cfg(any(target_os = "android", target_os = "macos"))]
+#[cfg(any(target_os = "android", target_os = "macos", target_os = "solaris"))]
 use crate::sys::weak::weak;
 
 use libc::{c_int, mode_t};
@@ -43,6 +43,7 @@ use libc::{c_int, mode_t};
     target_os = "macos",
     target_os = "ios",
     target_os = "watchos",
+    target_os = "solaris",
     all(target_os = "linux", target_env = "gnu")
 ))]
 use libc::c_char;
@@ -1497,8 +1498,8 @@ pub fn link(original: &Path, link: &Path) -> io::Result<()> {
                     // Android has `linkat` on newer versions, but we happen to know `link`
                     // always has the correct behavior, so it's here as well.
                     cvt(unsafe { libc::link(original.as_ptr(), link.as_ptr()) })?;
-                } else if #[cfg(target_os = "macos")] {
-                    // On MacOS, older versions (<=10.9) lack support for linkat while newer
+                } else if #[cfg(any(target_os = "macos", target_os = "solaris"))] {
+                    // MacOS (<=10.9) and Solaris 10 lack support for linkat while newer
                     // versions have it. We want to use linkat if it is available, so we use weak!
                     // to check. `linkat` is preferable to `link` because it gives us a flag to
                     // specify how symlinks should be handled. We pass 0 as the flags argument,

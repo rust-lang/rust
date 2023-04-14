@@ -1207,7 +1207,7 @@ impl HygieneEncodeContext {
         // a `SyntaxContext` that we haven't seen before
         while !self.latest_ctxts.lock().is_empty() || !self.latest_expns.lock().is_empty() {
             debug!(
-                "encode_hygiene: Serializing a round of {:?} SyntaxContextDatas: {:?}",
+                "encode_hygiene: Serializing a round of {:?} SyntaxContextData: {:?}",
                 self.latest_ctxts.lock().len(),
                 self.latest_ctxts
             );

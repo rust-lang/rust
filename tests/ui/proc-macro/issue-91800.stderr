@@ -6,7 +6,7 @@ LL | #[derive(MyTrait)]
    |
    = note: this error originates in the derive macro `MyTrait` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: proc-macro derive produced unparseable tokens
+error: proc-macro derive produced unparsable tokens
   --> $DIR/issue-91800.rs:6:10
    |
 LL | #[derive(MyTrait)]

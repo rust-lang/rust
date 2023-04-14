@@ -3,36 +3,48 @@ error: the `#[default]` attribute may only be used on unit enum variants
    |
 LL |     #[default]
    |     ^^^^^^^^^^
+   |
+   = help: consider a manual implementation of `Default`
 
 error: the `#[default]` attribute may only be used on unit enum variants
   --> $DIR/macros-nonfatal-errors.rs:18:36
    |
 LL | struct DefaultInnerAttrTupleStruct(#[default] ());
    |                                    ^^^^^^^^^^
+   |
+   = help: consider a manual implementation of `Default`
 
 error: the `#[default]` attribute may only be used on unit enum variants
   --> $DIR/macros-nonfatal-errors.rs:22:1
    |
 LL | #[default]
    | ^^^^^^^^^^
+   |
+   = help: consider a manual implementation of `Default`
 
 error: the `#[default]` attribute may only be used on unit enum variants
   --> $DIR/macros-nonfatal-errors.rs:26:1
    |
 LL | #[default]
    | ^^^^^^^^^^
+   |
+   = help: consider a manual implementation of `Default`
 
 error: the `#[default]` attribute may only be used on unit enum variants
   --> $DIR/macros-nonfatal-errors.rs:36:11
    |
 LL |     Foo = #[default] 0,
    |           ^^^^^^^^^^
+   |
+   = help: consider a manual implementation of `Default`
 
 error: the `#[default]` attribute may only be used on unit enum variants
   --> $DIR/macros-nonfatal-errors.rs:37:14
    |
 LL |     Bar([u8; #[default] 1]),
    |              ^^^^^^^^^^
+   |
+   = help: consider a manual implementation of `Default`
 
 error: no default declared
   --> $DIR/macros-nonfatal-errors.rs:42:10
@@ -132,7 +144,7 @@ error: asm template must be a string literal
 LL |     asm!(invalid);
    |          ^^^^^^^
 
-error: concat_idents! requires ident args
+error: `concat_idents!()` requires ident args
   --> $DIR/macros-nonfatal-errors.rs:101:5
    |
 LL |     concat_idents!("not", "idents");
@@ -150,7 +162,7 @@ error: expected string literal
 LL |     env!(invalid);
    |          ^^^^^^^
 
-error: env! takes 1 or 2 arguments
+error: `env!()` takes 1 or 2 arguments
   --> $DIR/macros-nonfatal-errors.rs:105:5
    |
 LL |     env!(foo, abr, baz);
@@ -162,7 +174,7 @@ error: environment variable `RUST_HOPEFULLY_THIS_DOESNT_EXIST` not defined at co
 LL |     env!("RUST_HOPEFULLY_THIS_DOESNT_EXIST");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: Use `std::env::var("RUST_HOPEFULLY_THIS_DOESNT_EXIST")` to read the variable at run time
+   = help: use `std::env::var("RUST_HOPEFULLY_THIS_DOESNT_EXIST")` to read the variable at run time
    = note: this error originates in the macro `env` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: format argument must be a string literal

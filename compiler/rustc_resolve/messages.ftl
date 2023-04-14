@@ -42,7 +42,7 @@ resolve_try_adding_local_generic_param_on_method =
     try adding a local generic parameter in this method instead
 
 resolve_help_try_using_local_generic_param =
-    try using a local generic paramter instead
+    try using a local generic parameter instead
 
 resolve_name_is_already_used_as_generic_parameter =
     the name `{$name}` is already used for a generic parameter in this item's generic parameters
@@ -213,3 +213,13 @@ resolve_tool_module_imported =
 
 resolve_module_only =
     visibility must resolve to a module
+
+resolve_macro_expected_found =
+    expected {$expected}, found {$found} `{$macro_path}`
+
+resolve_remove_surrounding_derive =
+    remove from the surrounding `derive()`
+
+resolve_add_as_non_derive =
+    add as non-Derive macro
+    `#[{$macro_path}]`

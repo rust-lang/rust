@@ -524,6 +524,13 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
     ) -> QueryResult<'tcx> {
         bug!("`Destruct` does not have an associated type: {:?}", goal);
     }
+
+    fn consider_builtin_transmute_candidate(
+        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        bug!("`BikeshedIntrinsicFrom` does not have an associated type: {:?}", goal)
+    }
 }
 
 /// This behavior is also implemented in `rustc_ty_utils` and in the old `project` code.

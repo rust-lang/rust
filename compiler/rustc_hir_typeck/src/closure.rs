@@ -210,7 +210,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // and we want to keep inference generally in the same order of
             // the registered obligations.
             predicates.rev(),
-        ) {
+        )
+        // We only care about self bounds
+        .filter_only_self()
+        {
             debug!(?pred);
             let bound_predicate = pred.kind();
 

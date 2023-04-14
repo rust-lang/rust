@@ -1,5 +1,5 @@
 use crate::errors::{
-    note_and_explain, FullfillReqLifetime, LfBoundNotSatisfied, OutlivesBound, OutlivesContent,
+    note_and_explain, FulfillReqLifetime, LfBoundNotSatisfied, OutlivesBound, OutlivesContent,
     RefLongerThanData, RegionOriginNote, WhereClauseSuggestions,
 };
 use crate::fluent_generated as fluent;
@@ -176,7 +176,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let note = note_and_explain::RegionExplanation::new(
                     self.tcx, sub, opt_span, prefix, suffix,
                 );
-                FullfillReqLifetime { span, ty: self.resolve_vars_if_possible(ty), note }
+                FulfillReqLifetime { span, ty: self.resolve_vars_if_possible(ty), note }
                     .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic)
             }
             infer::RelateRegionParamBound(span) => {

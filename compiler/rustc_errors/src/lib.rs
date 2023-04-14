@@ -6,7 +6,6 @@
 #![feature(array_windows)]
 #![feature(drain_filter)]
 #![feature(if_let_guard)]
-#![feature(is_terminal)]
 #![feature(adt_const_params)]
 #![feature(let_chains)]
 #![feature(never_type)]
@@ -383,7 +382,9 @@ pub use diagnostic::{
     DiagnosticStyledString, IntoDiagnosticArg, SubDiagnostic,
 };
 pub use diagnostic_builder::{DiagnosticBuilder, EmissionGuarantee, Noted};
-pub use diagnostic_impls::{DiagnosticArgFromDisplay, DiagnosticSymbolList};
+pub use diagnostic_impls::{
+    DiagnosticArgFromDisplay, DiagnosticSymbolList, LabelKind, SingleLabelManySpans,
+};
 use std::backtrace::Backtrace;
 
 /// A handler deals with errors and other compiler output.
@@ -473,8 +474,6 @@ pub enum StashKey {
     /// When an invalid lifetime e.g. `'2` should be reinterpreted
     /// as a char literal in the parser
     LifetimeIsChar,
-    /// When an invalid lifetime e.g. `'🐱` contains emoji.
-    LifetimeContainsEmoji,
     /// Maybe there was a typo where a comma was forgotten before
     /// FRU syntax
     MaybeFruTypo,

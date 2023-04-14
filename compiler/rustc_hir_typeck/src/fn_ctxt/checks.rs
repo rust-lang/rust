@@ -768,7 +768,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let (provided_ty, provided_span) = provided_arg_tys[*provided_idx];
             let trace =
                 mk_trace(provided_span, formal_and_expected_inputs[*expected_idx], provided_ty);
-            if !matches!(trace.cause.as_failure_code(*e), FailureCode::Error0308(_)) {
+            if !matches!(trace.cause.as_failure_code(*e), FailureCode::Error0308) {
                 self.err_ctxt().report_and_explain_type_error(trace, *e).emit();
                 return true;
             }
@@ -1191,11 +1191,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // index position where it *should have been*, which is *after* the previous one.
             if let Some(provided_idx) = provided_idx {
                 prev = provided_idx.index() as i64;
+                continue;
             }
             let idx = ProvidedIdx::from_usize((prev + 1) as usize);
-            if let None = provided_idx
-                && let Some((_, arg_span)) = provided_arg_tys.get(idx)
-            {
+            if let Some((_, arg_span)) = provided_arg_tys.get(idx) {
+                prev += 1;
                 // There is a type that was *not* found anywhere, so it isn't a move, but a
                 // replacement and we look at what type it should have been. This will allow us
                 // To suggest a multipart suggestion when encountering `foo(1, "")` where the def
@@ -1413,7 +1413,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.demand_eqtype(init.span, local_ty, init_ty);
             init_ty
         } else {
-            self.check_expr_coercable_to_type(init, local_ty, None)
+            self.check_expr_coercible_to_type(init, local_ty, None)
         }
     }
 

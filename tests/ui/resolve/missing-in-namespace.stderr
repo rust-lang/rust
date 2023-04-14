@@ -6,7 +6,7 @@ LL |     let _map = std::hahmap::HashMap::new();
    |
 help: consider importing this struct
    |
-LL | use std::collections::HashMap;
+LL + use std::collections::HashMap;
    |
 help: if you import `HashMap`, refer to it directly
    |

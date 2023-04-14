@@ -10,7 +10,8 @@ error[E0277]: `Dummy` doesn't implement `Debug`
 help: consider annotating `Dummy` with `#[derive(Debug)]`
    --> $DIR/auxiliary/dummy_lib.rs:2:1
     |
-2   | #[derive(Debug)]
+2   + #[derive(Debug)]
+3   | #[path = "auxiliary/dummy_lib.rs"]
     |
 
 error: aborting due to previous error

@@ -1,8 +1,8 @@
 // This test checks the position of the `i` for the notable traits.
-goto: "file://" + |DOC_PATH| + "/test_docs/struct.NotableStructWithLongName.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.NotableStructWithLongName.html"
 show-text: true
 // We start with a wide screen.
-size: (1100, 600)
+set-window-size: (1100, 600)
 // Checking they have the same y position.
 compare-elements-position: (
     "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
@@ -44,7 +44,7 @@ move-cursor-to: "//h1"
 assert-count: ("//*[@class='tooltip popover']", 0)
 
 // Now only the `i` should be on the next line.
-size: (1055, 600)
+set-window-size: (1055, 600)
 compare-elements-position-false: (
     "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
     "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']",
@@ -52,7 +52,7 @@ compare-elements-position-false: (
 )
 
 // Now both the `i` and the struct name should be on the next line.
-size: (980, 600)
+set-window-size: (980, 600)
 // Checking they have the same y position.
 compare-elements-position: (
     "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
@@ -76,7 +76,7 @@ assert-position: (
 )
 
 // Checking on mobile now.
-size: (650, 600)
+set-window-size: (650, 600)
 // Checking they have the same y position.
 compare-elements-position: (
     "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
@@ -124,12 +124,12 @@ define-function: (
     "check-colors",
     (theme, header_color, content_color, type_color, trait_color),
     block {
-        goto: "file://" + |DOC_PATH| + "/test_docs/struct.NotableStructWithLongName.html"
+        go-to: "file://" + |DOC_PATH| + "/test_docs/struct.NotableStructWithLongName.html"
         // This is needed to ensure that the text color is computed.
         show-text: true
 
         // Setting the theme.
-        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         // We reload the page so the local storage settings are being used.
         reload:
 
@@ -253,7 +253,7 @@ press-key: "Escape"
 assert-window-property-false: {"scrollY": |scroll|}
 
 // Opening the mobile sidebar should close the popover.
-size: (650, 600)
+set-window-size: (650, 600)
 click: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
 assert-count: ("//*[@class='tooltip popover']", 1)
 click: ".sidebar-menu-toggle"
@@ -266,7 +266,7 @@ assert-count: ("//*[@class='tooltip popover']", 1)
 assert-false: "//*[@class='sidebar shown']"
 
 // Also check the focus handling for the help button.
-size: (1100, 600)
+set-window-size: (1100, 600)
 reload:
 assert-count: ("//*[@class='tooltip popover']", 0)
 click: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"

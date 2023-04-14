@@ -1749,8 +1749,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             if trait_defines_associated_type_named(def_id) {
                 break Some(bound_vars.into_iter().collect());
             }
-            let predicates =
-                tcx.super_predicates_that_define_assoc_type((def_id, Some(assoc_name)));
+            let predicates = tcx.super_predicates_that_define_assoc_type((def_id, assoc_name));
             let obligations = predicates.predicates.iter().filter_map(|&(pred, _)| {
                 let bound_predicate = pred.kind();
                 match bound_predicate.skip_binder() {

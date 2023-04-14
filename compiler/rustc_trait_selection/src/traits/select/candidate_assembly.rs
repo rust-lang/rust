@@ -294,7 +294,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
-        // Keep this funtion in sync with extract_tupled_inputs_and_output_from_callable
+        // Keep this function in sync with extract_tupled_inputs_and_output_from_callable
         // until the old solver (and thus this function) is removed.
 
         // Okay to skip binder because what we are inspecting doesn't involve bound regions.
@@ -406,7 +406,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             match obligation.self_ty().skip_binder().kind() {
-                // Fast path to avoid evaluating an obligation that trivally holds.
+                // Fast path to avoid evaluating an obligation that trivially holds.
                 // There may be more bounds, but these are checked by the regular path.
                 ty::FnPtr(..) => return false,
                 // These may potentially implement `FnPtr`

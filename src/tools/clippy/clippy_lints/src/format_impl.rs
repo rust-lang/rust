@@ -1,11 +1,13 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
-use clippy_utils::macros::{is_format_macro, root_macro_call_first_node, FormatArg, FormatArgsExpn};
+use clippy_utils::macros::{find_format_arg_expr, find_format_args, is_format_macro, root_macro_call_first_node};
 use clippy_utils::{get_parent_as_impl, is_diag_trait_item, path_to_local, peel_ref_operators};
 use if_chain::if_chain;
+use rustc_ast::{FormatArgsPiece, FormatTrait};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Impl, ImplItem, ImplItemKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::Span;
 use rustc_span::{sym, symbol::kw, Symbol};
 
 declare_clippy_lint! {
@@ -89,7 +91,7 @@ declare_clippy_lint! {
 }
 
 #[derive(Clone, Copy)]
-struct FormatTrait {
+struct FormatTraitNames {
     /// e.g. `sym::Display`
     name: Symbol,
     /// `f` in `fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}`
@@ -99,7 +101,7 @@ struct FormatTrait {
 #[derive(Default)]
 pub struct FormatImpl {
     // Whether we are inside Display or Debug trait impl - None for neither
-    format_trait_impl: Option<FormatTrait>,
+    format_trait_impl: Option<FormatTraitNames>,
 }
 
 impl FormatImpl {
@@ -161,43 +163,57 @@ fn check_to_string_in_display(cx: &LateContext<'_>, expr: &Expr<'_>) {
     }
 }
 
-fn check_self_in_format_args<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, impl_trait: FormatTrait) {
+fn check_self_in_format_args<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, impl_trait: FormatTraitNames) {
     // Check each arg in format calls - do we ever use Display on self (directly or via deref)?
-    if_chain! {
-        if let Some(outer_macro) = root_macro_call_first_node(cx, expr);
-        if let macro_def_id = outer_macro.def_id;
-        if let Some(format_args) = FormatArgsExpn::find_nested(cx, expr, outer_macro.expn);
-        if is_format_macro(cx, macro_def_id);
-        then {
-            for arg in format_args.args {
-                if arg.format.r#trait != impl_trait.name {
-                    continue;
+    if let Some(outer_macro) = root_macro_call_first_node(cx, expr)
+        && let macro_def_id = outer_macro.def_id
+        && is_format_macro(cx, macro_def_id)
+    {
+        find_format_args(cx, expr, outer_macro.expn, |format_args| {
+            for piece in &format_args.template {
+                if let FormatArgsPiece::Placeholder(placeholder) = piece
+                    && let trait_name = match placeholder.format_trait {
+                        FormatTrait::Display => sym::Display,
+                        FormatTrait::Debug => sym::Debug,
+                        FormatTrait::LowerExp => sym!(LowerExp),
+                        FormatTrait::UpperExp => sym!(UpperExp),
+                        FormatTrait::Octal => sym!(Octal),
+                        FormatTrait::Pointer => sym::Pointer,
+                        FormatTrait::Binary => sym!(Binary),
+                        FormatTrait::LowerHex => sym!(LowerHex),
+                        FormatTrait::UpperHex => sym!(UpperHex),
+                    }
+                    && trait_name == impl_trait.name
+                    && let Ok(index) = placeholder.argument.index
+                    && let Some(arg) = format_args.arguments.all_args().get(index)
+                    && let Ok(arg_expr) = find_format_arg_expr(expr, arg)
+                {
+                    check_format_arg_self(cx, expr.span, arg_expr, impl_trait);
                 }
-                check_format_arg_self(cx, expr, &arg, impl_trait);
             }
-        }
+        });
     }
 }
 
-fn check_format_arg_self(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &FormatArg<'_>, impl_trait: FormatTrait) {
+fn check_format_arg_self(cx: &LateContext<'_>, span: Span, arg: &Expr<'_>, impl_trait: FormatTraitNames) {
     // Handle multiple dereferencing of references e.g. &&self
     // Handle dereference of &self -> self that is equivalent (i.e. via *self in fmt() impl)
     // Since the argument to fmt is itself a reference: &self
-    let reference = peel_ref_operators(cx, arg.param.value);
+    let reference = peel_ref_operators(cx, arg);
     let map = cx.tcx.hir();
     // Is the reference self?
     if path_to_local(reference).map(|x| map.name(x)) == Some(kw::SelfLower) {
-        let FormatTrait { name, .. } = impl_trait;
+        let FormatTraitNames { name, .. } = impl_trait;
         span_lint(
             cx,
             RECURSIVE_FORMAT_IMPL,
-            expr.span,
+            span,
             &format!("using `self` as `{name}` in `impl {name}` will cause infinite recursion"),
         );
     }
 }
 
-fn check_print_in_format_impl(cx: &LateContext<'_>, expr: &Expr<'_>, impl_trait: FormatTrait) {
+fn check_print_in_format_impl(cx: &LateContext<'_>, expr: &Expr<'_>, impl_trait: FormatTraitNames) {
     if_chain! {
         if let Some(macro_call) = root_macro_call_first_node(cx, expr);
         if let Some(name) = cx.tcx.get_diagnostic_name(macro_call.def_id);
@@ -227,7 +243,7 @@ fn check_print_in_format_impl(cx: &LateContext<'_>, expr: &Expr<'_>, impl_trait:
     }
 }
 
-fn is_format_trait_impl(cx: &LateContext<'_>, impl_item: &ImplItem<'_>) -> Option<FormatTrait> {
+fn is_format_trait_impl(cx: &LateContext<'_>, impl_item: &ImplItem<'_>) -> Option<FormatTraitNames> {
     if_chain! {
         if impl_item.ident.name == sym::fmt;
         if let ImplItemKind::Fn(_, body_id) = impl_item.kind;
@@ -241,7 +257,7 @@ fn is_format_trait_impl(cx: &LateContext<'_>, impl_item: &ImplItem<'_>) -> Optio
                 .and_then(|param| param.pat.simple_ident())
                 .map(|ident| ident.name);
 
-            Some(FormatTrait {
+            Some(FormatTraitNames {
                 name,
                 formatter_name,
             })

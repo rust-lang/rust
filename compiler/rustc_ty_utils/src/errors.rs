@@ -95,7 +95,7 @@ pub struct OversizedSimdType<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(ty_utils_non_primative_simd_type)]
+#[diag(ty_utils_non_primitive_simd_type)]
 pub struct NonPrimitiveSimdType<'tcx> {
     pub ty: Ty<'tcx>,
     pub e_ty: Ty<'tcx>,

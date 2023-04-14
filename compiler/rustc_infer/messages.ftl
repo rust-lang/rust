@@ -163,7 +163,6 @@ infer_region_explanation = {$pref_kind ->
     [as_defined] the lifetime `{$desc_arg}` as defined here
     [as_defined_anon] the anonymous lifetime as defined here
     [defined_here] the anonymous lifetime defined here
-    [anon_num_here] the anonymous lifetime #{$desc_num_arg} defined here
     [defined_here_reg] the lifetime `{$desc_arg}` as defined here
 }{$suff_kind ->
     *[should_not_happen] [{$suff_kind}]
@@ -174,7 +173,7 @@ infer_region_explanation = {$pref_kind ->
 
 infer_outlives_content = lifetime of reference outlives lifetime of borrowed content...
 infer_outlives_bound = lifetime of the source pointer does not outlive lifetime bound of the object type
-infer_fullfill_req_lifetime = the type `{$ty}` does not fulfill the required lifetime
+infer_fulfill_req_lifetime = the type `{$ty}` does not fulfill the required lifetime
 infer_lf_bound_not_satisfied = lifetime bound not satisfied
 infer_borrowed_too_long = a value of type `{$ty}` is borrowed for too long
 infer_ref_longer_than_data = in type `{$ty}`, reference has a longer lifetime than the data it references
@@ -348,3 +347,47 @@ infer_prlf_known_limitation = this is a known limitation that will be removed in
 
 infer_opaque_captures_lifetime = hidden type for `{$opaque_ty}` captures lifetime that does not appear in bounds
     .label = opaque type defined here
+
+infer_fps_use_ref = consider using a reference
+infer_fps_remove_ref = consider removing the reference
+infer_fps_cast = consider casting to a fn pointer
+infer_fps_items_are_distinct = fn items are distinct from fn pointers
+infer_fps_cast_both = consider casting both fn items to fn pointers using `as {$expected_sig}`
+
+infer_fn_uniq_types = different fn items have unique types, even if their signatures are the same
+infer_fn_consider_casting = consider casting the fn item to a fn pointer: `{$casting}`
+
+infer_sarwa_option = you can convert from `&Option<T>` to `Option<&T>` using `.as_ref()`
+infer_sarwa_result = you can convert from `&Result<T, E>` to `Result<&T, &E>` using `.as_ref()`
+
+infer_suggest_accessing_field = you might have meant to use field `{$name}` whose type is `{$ty}`
+
+infer_sbfrit_change_return_type = you could change the return type to be a boxed trait object
+infer_sbfrit_box_return_expr = if you change the return type to expect trait objects, box the returned expressions
+
+infer_stp_wrap_one = try wrapping the pattern in `{$variant}`
+infer_stp_wrap_many = try wrapping the pattern in a variant of `{$path}`
+
+infer_tuple_trailing_comma = use a trailing comma to create a tuple with one element
+
+infer_oc_method_compat = method not compatible with trait
+infer_oc_type_compat = type not compatible with trait
+infer_oc_const_compat = const not compatible with trait
+infer_oc_try_compat = `?` operator has incompatible types
+infer_oc_match_compat = `match` arms have incompatible types
+infer_oc_if_else_different = `if` and `else` have incompatible types
+infer_oc_no_else = `if` may be missing an `else` clause
+infer_oc_no_diverge = `else` clause of `let...else` does not diverge
+infer_oc_fn_main_correct_type = `main` function has wrong type
+infer_oc_fn_start_correct_type = `#[start]` function has wrong type
+infer_oc_intristic_correct_type = intrinsic has wrong type
+infer_oc_method_correct_type = mismatched `self` parameter type
+infer_oc_closure_selfref = closure/generator type that references itself
+infer_oc_cant_coerce = cannot coerce intrinsics to function pointers
+infer_oc_generic = mismatched types
+
+infer_meant_byte_literal = if you meant to write a byte literal, prefix with `b`
+infer_meant_char_literal = if you meant to write a `char` literal, use single quotes
+infer_meant_str_literal = if you meant to write a `str` literal, use double quotes
+infer_consider_specifying_length = consider specifying the actual array length
+infer_try_cannot_convert = `?` operator cannot convert from `{$found}` to `{$expected}`

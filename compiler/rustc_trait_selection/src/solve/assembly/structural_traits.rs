@@ -24,21 +24,19 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
         | ty::FnDef(..)
         | ty::FnPtr(_)
         | ty::Error(_)
-        | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
         | ty::Never
         | ty::Char => Ok(vec![]),
 
-        // Treat this like `struct str([u8]);`
+        // Treat `str` like it's defined as `struct str([u8]);`
         ty::Str => Ok(vec![tcx.mk_slice(tcx.types.u8)]),
 
         ty::Dynamic(..)
         | ty::Param(..)
         | ty::Foreign(..)
         | ty::Alias(ty::Projection, ..)
-        | ty::Placeholder(..) => Err(NoSolution),
-
-        ty::Bound(..)
-        | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+        | ty::Placeholder(..)
+        | ty::Bound(..)
+        | ty::Infer(_) => {
             bug!("unexpected type `{ty}`")
         }
 

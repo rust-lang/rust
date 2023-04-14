@@ -537,17 +537,13 @@ fn declare_deprecated(name: &str, path: &Path, reason: &str) -> io::Result<()> {
             /// Nothing. This lint has been deprecated.
             ///
             /// ### Deprecation reason
-            /// {}
-            #[clippy::version = \"{}\"]
-            pub {},
-            \"{}\"
+            /// {deprecation_reason}
+            #[clippy::version = \"{version}\"]
+            pub {name},
+            \"{reason}\"
         }}
 
-        ",
-        deprecation_reason,
-        version,
-        name,
-        reason,
+        "
     )
 }
 

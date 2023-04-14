@@ -222,7 +222,7 @@ impl LinkerPluginLto {
 }
 
 /// The different settings that can be enabled via the `-Z location-detail` flag.
-#[derive(Clone, PartialEq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Hash, Debug)]
 pub struct LocationDetail {
     pub file: bool,
     pub line: bool,

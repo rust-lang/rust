@@ -1,10 +1,9 @@
-error[E0277]: `B` cannot be safely transmuted into `A` in the defining scope of `assert::Context`.
+error[E0277]: `B` cannot be safely transmuted into `A` in the defining scope of `assert::Context`
   --> $DIR/transmute-padding-ice.rs:27:40
    |
 LL |     assert::is_maybe_transmutable::<B, A>();
-   |                                        ^ `B` cannot be safely transmuted into `A` in the defining scope of `assert::Context`.
+   |                                        ^ The size of `B` is smaller than the size of `A`
    |
-   = help: the trait `BikeshedIntrinsicFrom<B, assert::Context, Assume { alignment: true, lifetimes: true, safety: true, validity: true }>` is not implemented for `A`
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/transmute-padding-ice.rs:11:14
    |

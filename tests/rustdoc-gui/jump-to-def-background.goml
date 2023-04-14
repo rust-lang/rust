@@ -1,12 +1,12 @@
 // We check the background color on the jump to definition links in the source code page.
-goto: "file://" + |DOC_PATH| + "/src/link_to_definition/lib.rs.html"
+go-to: "file://" + |DOC_PATH| + "/src/link_to_definition/lib.rs.html"
 
 define-function: (
     "check-background-color",
     (theme, background_color),
     block {
         // Set the theme.
-        local-storage: { "rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false" }
+        set-local-storage: { "rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false" }
         // We reload the page so the local storage settings are being used.
         reload:
         assert-css: (

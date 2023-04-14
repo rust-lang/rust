@@ -936,10 +936,6 @@ impl<'a> PrintState<'a> for State<'a> {
                 self.word(")");
                 self.print_fn_ret_ty(&data.output);
             }
-
-            ast::GenericArgs::ReturnTypeNotation(_span) => {
-                self.word("(..)");
-            }
         }
     }
 }

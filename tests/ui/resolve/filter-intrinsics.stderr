@@ -6,7 +6,7 @@ LL |     let _ = size_of::<usize>();
    |
 help: consider importing this function
    |
-LL | use std::mem::size_of;
+LL + use std::mem::size_of;
    |
 
 error[E0425]: cannot find function `fabsf64` in this scope
@@ -17,7 +17,7 @@ LL |     let _ = fabsf64(1.0);
    |
 help: consider importing this function
    |
-LL | use std::intrinsics::fabsf64;
+LL + use std::intrinsics::fabsf64;
    |
 
 error: aborting due to 2 previous errors

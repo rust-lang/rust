@@ -6,7 +6,7 @@ LL | impl Add for Test {}
    |
 help: consider importing this trait
    |
-LL | use std::ops::Add;
+LL + use std::ops::Add;
    |
 
 error[E0404]: expected trait, found derive macro `Clone`
@@ -17,7 +17,7 @@ LL | impl Clone for Test {}
    |
 help: consider importing this trait instead
    |
-LL | use std::clone::Clone;
+LL + use std::clone::Clone;
    |
 
 error[E0405]: cannot find trait `Iterator` in this scope
@@ -28,7 +28,7 @@ LL | impl Iterator for Test {}
    |
 help: consider importing this trait
    |
-LL | use std::iter::Iterator;
+LL + use std::iter::Iterator;
    |
 
 error[E0405]: cannot find trait `ToString` in this scope
@@ -39,7 +39,7 @@ LL | impl ToString for Test {}
    |
 help: consider importing this trait
    |
-LL | use std::string::ToString;
+LL + use std::string::ToString;
    |
 
 error[E0405]: cannot find trait `Writer` in this scope
@@ -56,7 +56,7 @@ LL |     drop(2)
    |
 help: consider importing this function
    |
-LL | use std::mem::drop;
+LL + use std::mem::drop;
    |
 
 error: aborting due to 6 previous errors

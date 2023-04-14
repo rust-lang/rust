@@ -20,31 +20,13 @@ pub fn renumber_mir<'tcx>(
 ) {
     debug!(?body.arg_count);
 
-    let mut visitor = NllVisitor { infcx };
+    let mut renumberer = RegionRenumberer { infcx };
 
     for body in promoted.iter_mut() {
-        visitor.visit_body(body);
+        renumberer.visit_body(body);
     }
 
-    visitor.visit_body(body);
-}
-
-/// Replaces all regions appearing in `value` with fresh inference
-/// variables.
-#[instrument(skip(infcx, get_ctxt_fn), level = "debug")]
-pub(crate) fn renumber_regions<'tcx, T, F>(
-    infcx: &BorrowckInferCtxt<'_, 'tcx>,
-    value: T,
-    get_ctxt_fn: F,
-) -> T
-where
-    T: TypeFoldable<TyCtxt<'tcx>>,
-    F: Fn() -> RegionCtxt,
-{
-    infcx.tcx.fold_regions(value, |_region, _depth| {
-        let origin = NllRegionVariableOrigin::Existential { from_forall: false };
-        infcx.next_nll_region_var(origin, || get_ctxt_fn())
-    })
+    renumberer.visit_body(body);
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -69,12 +51,10 @@ impl RegionCtxt {
     /// Used to determine the representative of a component in the strongly connected
     /// constraint graph
     pub(crate) fn preference_value(self) -> usize {
-        let _anon = Symbol::intern("anon");
-
         match self {
             RegionCtxt::Unknown => 1,
             RegionCtxt::Existential(None) => 2,
-            RegionCtxt::Existential(Some(_anon)) | RegionCtxt::Free(_anon) => 2,
+            RegionCtxt::Existential(Some(_)) | RegionCtxt::Free(_) => 2,
             RegionCtxt::Location(_) => 3,
             RegionCtxt::TyContext(_) => 4,
             _ => 5,
@@ -82,21 +62,26 @@ impl RegionCtxt {
     }
 }
 
-struct NllVisitor<'a, 'tcx> {
+struct RegionRenumberer<'a, 'tcx> {
     infcx: &'a BorrowckInferCtxt<'a, 'tcx>,
 }
 
-impl<'a, 'tcx> NllVisitor<'a, 'tcx> {
+impl<'a, 'tcx> RegionRenumberer<'a, 'tcx> {
+    /// Replaces all regions appearing in `value` with fresh inference
+    /// variables.
     fn renumber_regions<T, F>(&mut self, value: T, region_ctxt_fn: F) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
         F: Fn() -> RegionCtxt,
     {
-        renumber_regions(self.infcx, value, region_ctxt_fn)
+        let origin = NllRegionVariableOrigin::Existential { from_forall: false };
+        self.infcx.tcx.fold_regions(value, |_region, _depth| {
+            self.infcx.next_nll_region_var(origin, || region_ctxt_fn())
+        })
     }
 }
 
-impl<'a, 'tcx> MutVisitor<'tcx> for NllVisitor<'a, 'tcx> {
+impl<'a, 'tcx> MutVisitor<'tcx> for RegionRenumberer<'a, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
@@ -124,9 +109,9 @@ impl<'a, 'tcx> MutVisitor<'tcx> for NllVisitor<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn visit_constant(&mut self, constant: &mut Constant<'tcx>, _location: Location) {
+    fn visit_constant(&mut self, constant: &mut Constant<'tcx>, location: Location) {
         let literal = constant.literal;
-        constant.literal = self.renumber_regions(literal, || RegionCtxt::Location(_location));
+        constant.literal = self.renumber_regions(literal, || RegionCtxt::Location(location));
         debug!("constant: {:#?}", constant);
     }
 }

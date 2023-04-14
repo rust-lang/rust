@@ -8,7 +8,8 @@ note: required by a bound in `slice::<impl [T]>::sort`
   --> $SRC_DIR/alloc/src/slice.rs:LL:COL
 help: consider annotating `X` with `#[derive(Ord)]`
    |
-LL | #[derive(Ord)]
+LL + #[derive(Ord)]
+LL | struct X { x: i32 }
    |
 
 error: aborting due to previous error

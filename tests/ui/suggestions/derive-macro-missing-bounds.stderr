@@ -11,7 +11,8 @@ LL |     struct Outer<T>(Inner<T>);
    = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider annotating `a::Inner<T>` with `#[derive(Debug)]`
    |
-LL |     #[derive(Debug)]
+LL +     #[derive(Debug)]
+LL |     struct Inner<T>(T);
    |
 help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
    |

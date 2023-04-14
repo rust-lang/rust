@@ -35,7 +35,8 @@ LL |     t.clone()
    |     ^
 help: consider annotating `Foo` with `#[derive(Clone)]`
    |
-LL | #[derive(Clone)]
+LL + #[derive(Clone)]
+LL | struct Foo;
    |
 
 error: aborting due to 2 previous errors

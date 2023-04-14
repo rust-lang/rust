@@ -1,8 +1,8 @@
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
+use crate::errors;
 use rustc_ast as ast;
 use rustc_ast::{attr, walk_list, EnumDef, VariantData};
-use rustc_errors::Applicability;
 use rustc_expand::base::{Annotatable, DummyResult, ExtCtxt};
 use rustc_span::symbol::Ident;
 use rustc_span::symbol::{kw, sym};
@@ -118,67 +118,50 @@ fn extract_default_variant<'a>(
                 .filter(|variant| matches!(variant.data, VariantData::Unit(..)))
                 .filter(|variant| !attr::contains_name(&variant.attrs, sym::non_exhaustive));
 
-            let mut diag = cx.struct_span_err(trait_span, "no default declared");
-            diag.help("make a unit variant default by placing `#[default]` above it");
-            for variant in possible_defaults {
-                // Suggest making each unit variant default.
-                diag.tool_only_span_suggestion(
-                    variant.span,
-                    &format!("make `{}` default", variant.ident),
-                    format!("#[default] {}", variant.ident),
-                    Applicability::MaybeIncorrect,
-                );
-            }
-            diag.emit();
+            let suggs = possible_defaults
+                .map(|v| errors::NoDefaultVariantSugg { span: v.span, ident: v.ident })
+                .collect();
+            cx.emit_err(errors::NoDefaultVariant { span: trait_span, suggs });
 
             return Err(());
         }
         [first, rest @ ..] => {
-            let mut diag = cx.struct_span_err(trait_span, "multiple declared defaults");
-            diag.span_label(first.span, "first default");
-            diag.span_labels(rest.iter().map(|variant| variant.span), "additional default");
-            diag.note("only one variant can be default");
-            for variant in &default_variants {
-                // Suggest making each variant already tagged default.
-                let suggestion = default_variants
-                    .iter()
-                    .filter_map(|v| {
-                        if v.span == variant.span {
-                            None
-                        } else {
-                            Some((attr::find_by_name(&v.attrs, kw::Default)?.span, String::new()))
-                        }
-                    })
-                    .collect();
-
-                diag.tool_only_multipart_suggestion(
-                    &format!("make `{}` default", variant.ident),
-                    suggestion,
-                    Applicability::MaybeIncorrect,
-                );
-            }
-            diag.emit();
-
+            let suggs = default_variants
+                .iter()
+                .map(|variant| {
+                    let spans = default_variants
+                        .iter()
+                        .filter_map(|v| {
+                            if v.span == variant.span {
+                                None
+                            } else {
+                                Some(attr::find_by_name(&v.attrs, kw::Default)?.span)
+                            }
+                        })
+                        .collect();
+                    errors::MultipleDefaultsSugg { spans, ident: variant.ident }
+                })
+                .collect();
+            cx.emit_err(errors::MultipleDefaults {
+                span: trait_span,
+                first: first.span,
+                additional: rest.iter().map(|v| v.span).collect(),
+                suggs,
+            });
             return Err(());
         }
     };
 
     if !matches!(variant.data, VariantData::Unit(..)) {
-        cx.struct_span_err(
-            variant.ident.span,
-            "the `#[default]` attribute may only be used on unit enum variants",
-        )
-        .help("consider a manual implementation of `Default`")
-        .emit();
-
+        cx.emit_err(errors::NonUnitDefault { span: variant.ident.span });
         return Err(());
     }
 
     if let Some(non_exhaustive_attr) = attr::find_by_name(&variant.attrs, sym::non_exhaustive) {
-        cx.struct_span_err(variant.ident.span, "default variant must be exhaustive")
-            .span_label(non_exhaustive_attr.span, "declared `#[non_exhaustive]` here")
-            .help("consider a manual implementation of `Default`")
-            .emit();
+        cx.emit_err(errors::NonExhaustiveDefault {
+            span: variant.ident.span,
+            non_exhaustive: non_exhaustive_attr.span,
+        });
 
         return Err(());
     }
@@ -199,35 +182,23 @@ fn validate_default_attribute(
             "this method must only be called with a variant that has a `#[default]` attribute",
         ),
         [first, rest @ ..] => {
-            let suggestion_text =
-                if rest.len() == 1 { "try removing this" } else { "try removing these" };
-
-            cx.struct_span_err(default_variant.ident.span, "multiple `#[default]` attributes")
-                .note("only one `#[default]` attribute is needed")
-                .span_label(first.span, "`#[default]` used here")
-                .span_label(rest[0].span, "`#[default]` used again here")
-                .span_help(rest.iter().map(|attr| attr.span).collect::<Vec<_>>(), suggestion_text)
-                // This would otherwise display the empty replacement, hence the otherwise
-                // repetitive `.span_help` call above.
-                .tool_only_multipart_suggestion(
-                    suggestion_text,
-                    rest.iter().map(|attr| (attr.span, String::new())).collect(),
-                    Applicability::MachineApplicable,
-                )
-                .emit();
+            let sugg = errors::MultipleDefaultAttrsSugg {
+                spans: rest.iter().map(|attr| attr.span).collect(),
+            };
+            cx.emit_err(errors::MultipleDefaultAttrs {
+                span: default_variant.ident.span,
+                first: first.span,
+                first_rest: rest[0].span,
+                rest: rest.iter().map(|attr| attr.span).collect::<Vec<_>>().into(),
+                only_one: rest.len() == 1,
+                sugg,
+            });
 
             return Err(());
         }
     };
     if !attr.is_word() {
-        cx.struct_span_err(attr.span, "`#[default]` attribute does not accept a value")
-            .span_suggestion_hidden(
-                attr.span,
-                "try using `#[default]`",
-                "#[default]",
-                Applicability::MaybeIncorrect,
-            )
-            .emit();
+        cx.emit_err(errors::DefaultHasArg { span: attr.span });
 
         return Err(());
     }
@@ -241,12 +212,7 @@ struct DetectNonVariantDefaultAttr<'a, 'b> {
 impl<'a, 'b> rustc_ast::visit::Visitor<'a> for DetectNonVariantDefaultAttr<'a, 'b> {
     fn visit_attribute(&mut self, attr: &'a rustc_ast::Attribute) {
         if attr.has_name(kw::Default) {
-            self.cx
-                .struct_span_err(
-                    attr.span,
-                    "the `#[default]` attribute may only be used on unit enum variants",
-                )
-                .emit();
+            self.cx.emit_err(errors::NonUnitDefault { span: attr.span });
         }
 
         rustc_ast::visit::walk_attribute(self, attr);
