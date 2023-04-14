@@ -10,14 +10,18 @@ use super::tests::LIBCORE_TESTS_SRC;
 use super::utils::{copy_dir_recursively, git_command, retry_spawn_and_wait, spawn_and_wait};
 
 pub(crate) fn prepare(dirs: &Dirs, rustc: &Path) {
-    RelPath::DOWNLOAD.ensure_fresh(dirs);
-
-    prepare_stdlib(dirs, rustc);
-    prepare_coretests(dirs, rustc);
-
+    RelPath::DOWNLOAD.ensure_exists(dirs);
     super::tests::RAND_REPO.fetch(dirs);
     super::tests::REGEX_REPO.fetch(dirs);
     super::tests::PORTABLE_SIMD_REPO.fetch(dirs);
+
+    // FIXME do this on the fly?
+    prepare_stdlib(dirs, rustc);
+    prepare_coretests(dirs, rustc);
+
+    super::tests::RAND_REPO.patch(dirs);
+    super::tests::REGEX_REPO.patch(dirs);
+    super::tests::PORTABLE_SIMD_REPO.patch(dirs);
 }
 
 fn prepare_stdlib(dirs: &Dirs, rustc: &Path) {
@@ -61,6 +65,7 @@ fn prepare_coretests(dirs: &Dirs, rustc: &Path) {
 pub(crate) struct GitRepo {
     url: GitRepoUrl,
     rev: &'static str,
+    content_hash: &'static str,
     patch_name: &'static str,
 }
 
@@ -68,14 +73,49 @@ enum GitRepoUrl {
     Github { user: &'static str, repo: &'static str },
 }
 
+// Note: This uses a hasher which is not cryptographically secure. This is fine as the hash is meant
+// to protect against accidental modification and outdated downloads, not against manipulation.
+fn hash_file(file: &std::path::Path) -> u64 {
+    let contents = std::fs::read(file).unwrap();
+    #[allow(deprecated)]
+    let mut hasher = std::hash::SipHasher::new();
+    std::hash::Hash::hash(&contents, &mut hasher);
+    std::hash::Hasher::finish(&hasher)
+}
+
+fn hash_dir(dir: &std::path::Path) -> u64 {
+    let mut sub_hashes = std::collections::BTreeMap::new();
+    for entry in std::fs::read_dir(dir).unwrap() {
+        let entry = entry.unwrap();
+        if entry.file_type().unwrap().is_dir() {
+            sub_hashes
+                .insert(entry.file_name().to_str().unwrap().to_owned(), hash_dir(&entry.path()));
+        } else {
+            sub_hashes
+                .insert(entry.file_name().to_str().unwrap().to_owned(), hash_file(&entry.path()));
+        }
+    }
+    #[allow(deprecated)]
+    let mut hasher = std::hash::SipHasher::new();
+    std::hash::Hash::hash(&sub_hashes, &mut hasher);
+    std::hash::Hasher::finish(&hasher)
+}
+
 impl GitRepo {
     pub(crate) const fn github(
         user: &'static str,
         repo: &'static str,
         rev: &'static str,
+        content_hash: &'static str,
         patch_name: &'static str,
     ) -> GitRepo {
-        GitRepo { url: GitRepoUrl::Github { user, repo }, rev, patch_name }
+        GitRepo { url: GitRepoUrl::Github { user, repo }, rev, content_hash, patch_name }
+    }
+
+    fn download_dir(&self, dirs: &Dirs) -> PathBuf {
+        match self.url {
+            GitRepoUrl::Github { user: _, repo } => RelPath::DOWNLOAD.join(repo).to_path(dirs),
+        }
     }
 
     pub(crate) const fn source_dir(&self) -> RelPath {
@@ -85,15 +125,42 @@ impl GitRepo {
     }
 
     pub(crate) fn fetch(&self, dirs: &Dirs) {
-        let download_dir = match self.url {
-            GitRepoUrl::Github { user: _, repo } => RelPath::DOWNLOAD.join(repo).to_path(dirs),
-        };
-        let source_dir = self.source_dir();
+        let download_dir = self.download_dir(dirs);
+
+        if download_dir.exists() {
+            let actual_hash = format!("{:016x}", hash_dir(&download_dir));
+            if actual_hash == self.content_hash {
+                println!("[FRESH] {}", download_dir.display());
+                return;
+            } else {
+                println!(
+                    "Mismatched content hash for {download_dir}: {actual_hash} != {content_hash}. Downloading again.",
+                    download_dir = download_dir.display(),
+                    content_hash = self.content_hash,
+                );
+            }
+        }
+
         match self.url {
             GitRepoUrl::Github { user, repo } => {
                 clone_repo_shallow_github(dirs, &download_dir, user, repo, self.rev);
             }
         }
+
+        let actual_hash = format!("{:016x}", hash_dir(&download_dir));
+        if actual_hash != self.content_hash {
+            println!(
+                "Download of {download_dir} failed with mismatched content hash: {actual_hash} != {content_hash}",
+                download_dir = download_dir.display(),
+                content_hash = self.content_hash,
+            );
+            std::process::exit(1);
+        }
+    }
+
+    pub(crate) fn patch(&self, dirs: &Dirs) {
+        let download_dir = self.download_dir(dirs);
+        let source_dir = self.source_dir();
         source_dir.ensure_fresh(dirs);
         copy_dir_recursively(&download_dir, &source_dir.to_path(dirs));
         apply_patches(dirs, self.patch_name, &source_dir.to_path(dirs));

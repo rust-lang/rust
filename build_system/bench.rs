@@ -10,6 +10,7 @@ static SIMPLE_RAYTRACER_REPO: GitRepo = GitRepo::github(
     "ebobby",
     "simple-raytracer",
     "804a7a21b9e673a482797aa289a18ed480e4d813",
+    "ad6f59a2331a3f56",
     "<none>",
 );
 
@@ -24,9 +25,8 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
         std::process::exit(1);
     }
 
-    if !SIMPLE_RAYTRACER_REPO.source_dir().to_path(dirs).exists() {
-        SIMPLE_RAYTRACER_REPO.fetch(dirs);
-    }
+    SIMPLE_RAYTRACER_REPO.fetch(dirs);
+    SIMPLE_RAYTRACER_REPO.patch(dirs);
 
     let bench_runs = env::var("BENCH_RUNS").unwrap_or_else(|_| "10".to_string()).parse().unwrap();
 

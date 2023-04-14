@@ -94,13 +94,23 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
 
 // FIXME(rust-random/rand#1293): Newer rand versions fail to test on Windows. Update once this is
 // fixed.
-pub(crate) static RAND_REPO: GitRepo =
-    GitRepo::github("rust-random", "rand", "50b9a447410860af8d6db9a208c3576886955874", "rand");
+pub(crate) static RAND_REPO: GitRepo = GitRepo::github(
+    "rust-random",
+    "rand",
+    "50b9a447410860af8d6db9a208c3576886955874",
+    "98b2276210b30e43",
+    "rand",
+);
 
 pub(crate) static RAND: CargoProject = CargoProject::new(&RAND_REPO.source_dir(), "rand_target");
 
-pub(crate) static REGEX_REPO: GitRepo =
-    GitRepo::github("rust-lang", "regex", "32fed9429eafba0ae92a64b01796a0c5a75b88c8", "regex");
+pub(crate) static REGEX_REPO: GitRepo = GitRepo::github(
+    "rust-lang",
+    "regex",
+    "32fed9429eafba0ae92a64b01796a0c5a75b88c8",
+    "d6af6507d565aa66",
+    "regex",
+);
 
 pub(crate) static REGEX: CargoProject = CargoProject::new(&REGEX_REPO.source_dir(), "regex_target");
 
@@ -108,6 +118,7 @@ pub(crate) static PORTABLE_SIMD_REPO: GitRepo = GitRepo::github(
     "rust-lang",
     "portable-simd",
     "ad8afa8c81273b3b49acbea38cd3bcf17a34cf2b",
+    "1ba291009510070b",
     "portable-simd",
 );
 
