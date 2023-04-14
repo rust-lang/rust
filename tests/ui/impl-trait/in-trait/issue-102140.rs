@@ -26,7 +26,6 @@ impl dyn MyTrait {
         MyTrait::foo(&self)
         //~^ ERROR the trait bound `&dyn MyTrait: MyTrait` is not satisfied
         //~| ERROR the trait bound `&dyn MyTrait: MyTrait` is not satisfied
-        //~| ERROR the trait bound `&dyn MyTrait: MyTrait` is not satisfied
     }
 }
 

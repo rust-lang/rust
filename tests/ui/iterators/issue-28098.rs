@@ -2,7 +2,6 @@ fn main() {
     let _ = Iterator::next(&mut ());
     //~^ ERROR `()` is not an iterator
     //~| ERROR `()` is not an iterator
-    //~| ERROR `()` is not an iterator
 
     for _ in false {}
     //~^ ERROR `bool` is not an iterator
@@ -19,7 +18,6 @@ pub fn other() {
 
     let _ = Iterator::next(&mut ());
     //~^ ERROR `()` is not an iterator
-    //~| ERROR `()` is not an iterator
     //~| ERROR `()` is not an iterator
 
     let _ = Iterator::next(&mut ());
