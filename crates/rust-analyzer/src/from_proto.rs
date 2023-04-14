@@ -105,7 +105,8 @@ pub(crate) fn annotation(
 
     match resolve.kind {
         lsp_ext::CodeLensResolveDataKind::Impls(params) => {
-            if matches!(snap.url_file_version(&params.text_document_position_params.text_document.uri), Some(version) if version == resolve.version)
+            if snap.url_file_version(&params.text_document_position_params.text_document.uri)
+                != Some(resolve.version)
             {
                 return Ok(None);
             }
@@ -119,8 +120,7 @@ pub(crate) fn annotation(
             })
         }
         lsp_ext::CodeLensResolveDataKind::References(params) => {
-            if matches!(snap.url_file_version(&params.text_document.uri), Some(version) if version == resolve.version)
-            {
+            if snap.url_file_version(&params.text_document.uri) != Some(resolve.version) {
                 return Ok(None);
             }
             let pos @ FilePosition { file_id, .. } = file_position(snap, params)?;
@@ -131,5 +131,6 @@ pub(crate) fn annotation(
                 kind: AnnotationKind::HasReferences { pos, data: None },
             })
         }
-    }.map(Some)
+    }
+    .map(Some)
 }
