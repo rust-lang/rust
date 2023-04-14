@@ -33,7 +33,7 @@ where
     /// those are embeddable in instruction encoding, for example:
     ///
     /// ```asm
-    /// // (https://godbolt.org/z/jqcYPWEr3)
+    /// // (<https://godbolt.org/z/jqcYPWEr3>)
     /// example::shift_read3:
     ///     mov     eax, dword ptr [8*rdi]
     ///     ret
@@ -49,7 +49,8 @@ where
     /// - `shift_read3` uses `<< 3` (the tag is in the most-significant bits)
     /// - `mask_read3` uses `& !0b111` (the tag is in the least-significant bits)
     ///
-    /// The shift approach thus produces less instructions and is likely faster.
+    /// The shift approach thus produces less instructions and is likely faster
+    /// (see <https://godbolt.org/z/Y913sMdWb>).
     ///
     /// Encoding diagram:
     /// ```text
@@ -66,12 +67,21 @@ where
     tag_ghost: PhantomData<T>,
 }
 
+// Note that even though `CopyTaggedPtr` is only really expected to work with
+// `P: Copy`, can't add `P: Copy` bound, because `CopyTaggedPtr` is used in the
+// `TaggedPtr`'s implementation.
 impl<P, T, const CP: bool> CopyTaggedPtr<P, T, CP>
 where
     P: Pointer,
     T: Tag,
 {
     /// Tags `pointer` with `tag`.
+    ///
+    /// Note that this leaks `pointer`: it won't be dropped when
+    /// `CopyTaggedPtr` is dropped. If you have a pointer with a significant
+    /// drop, use [`TaggedPtr`] instead.
+    ///
+    /// [`TaggedPtr`]: crate::tagged_ptr::TaggedPtr
     pub fn new(pointer: P, tag: T) -> Self {
         Self { packed: Self::pack(P::into_ptr(pointer), tag), tag_ghost: PhantomData }
     }
@@ -95,7 +105,8 @@ where
         let tag = self.packed.addr().get() >> Self::TAG_BIT_SHIFT;
 
         // Safety:
-        //
+        // The shift retrieves the original value from `T::into_usize`,
+        // satisfying `T::from_usize`'s preconditions.
         unsafe { T::from_usize(tag) }
     }
 
@@ -152,6 +163,10 @@ where
         //
         // Semantically this is just `f(&self.pointer)` (where `self.pointer`
         // is non-packed original pointer).
+        //
+        // Note that even though `CopyTaggedPtr` is only really expected to
+        // work with `P: Copy`, we have to assume `P: ?Copy`, because
+        // `CopyTaggedPtr` is used in the `TaggedPtr`'s implementation.
         let ptr = unsafe { ManuallyDrop::new(P::from_ptr(self.pointer_raw())) };
         f(&ptr)
     }

@@ -40,8 +40,8 @@ pub use drop::TaggedPtr;
 /// [`into_ptr`] must be valid for writes (and thus calling [`NonNull::as_mut`]
 /// on it must be safe).
 ///
-/// The [`BITS`] constant must be correct. At least [`BITS`] least significant
-/// bits, must be zero on all pointers returned from [`into_ptr`].
+/// The [`BITS`] constant must be correct. [`BITS`] least-significant bits,
+/// must be zero on all pointers returned from [`into_ptr`].
 ///
 /// For example, if the alignment of [`Self::Target`] is 2, then `BITS` should be 1.
 ///
@@ -52,8 +52,11 @@ pub use drop::TaggedPtr;
 /// [`Self::Target`]: Deref::Target
 /// [`DerefMut`]: std::ops::DerefMut
 pub unsafe trait Pointer: Deref {
-    /// Number of unused (always zero) **least significant bits** in this
+    /// Number of unused (always zero) **least-significant bits** in this
     /// pointer, usually related to the pointees alignment.
+    ///
+    /// For example if [`BITS`] = `2`, then given `ptr = Self::into_ptr(..)`,
+    /// `ptr.addr() & 0b11 == 0` must be true.
     ///
     /// Most likely the value you want to use here is the following, unless
     /// your [`Self::Target`] type is unsized (e.g., `ty::List<T>` in rustc)
@@ -71,6 +74,7 @@ pub unsafe trait Pointer: Deref {
     /// # }
     /// ```
     ///
+    /// [`BITS`]: Pointer::BITS
     /// [`Self::Target`]: Deref::Target
     const BITS: usize;
 
@@ -105,7 +109,7 @@ pub unsafe trait Pointer: Deref {
 ///
 /// The [`BITS`] constant must be correct.
 ///
-/// No more than [`BITS`] least significant bits may be set in the returned usize.
+/// No more than [`BITS`] least-significant bits may be set in the returned usize.
 ///
 /// [`BITS`]: Tag::BITS
 pub unsafe trait Tag: Copy {
