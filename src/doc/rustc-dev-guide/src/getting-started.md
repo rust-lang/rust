@@ -169,7 +169,7 @@ incredibly helpful:
 
 ## Cloning and Building
 
-See ["How to build and run the compiler"](./building//how-to-build-and-run.md).
+See ["How to build and run the compiler"](./building/how-to-build-and-run.md).
 
 ## Contributor Procedures
 
