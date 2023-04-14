@@ -903,8 +903,16 @@ function initSearch(rawSearchIndex) {
      * @return {ResultsTable}
      */
     function execQuery(parsedQuery, searchWords, filterCrates, currentCrate) {
-        const results_others = {}, results_in_args = {}, results_returned = {};
+        const results_others = new Map(), results_in_args = new Map(),
+            results_returned = new Map();
 
+        /**
+         * Add extra data to result objects, and filter items that have been
+         * marked for removal.
+         *
+         * @param {[ResultObject]} results
+         * @returns {[ResultObject]}
+         */
         function transformResults(results) {
             const duplicates = new Set();
             const out = [];
@@ -934,24 +942,30 @@ function initSearch(rawSearchIndex) {
             return out;
         }
 
+        /**
+         * This function takes a result map, and sorts it by various criteria, including edit
+         * distance, substring match, and the crate it comes from.
+         *
+         * @param {Results} results
+         * @param {boolean} isType
+         * @param {string} preferredCrate
+         * @returns {[ResultObject]}
+         */
         function sortResults(results, isType, preferredCrate) {
-            const userQuery = parsedQuery.userQuery;
-            const ar = [];
-            for (const entry in results) {
-                if (hasOwnPropertyRustdoc(results, entry)) {
-                    const result = results[entry];
-                    result.word = searchWords[result.id];
-                    result.item = searchIndex[result.id] || {};
-                    ar.push(result);
-                }
-            }
-            results = ar;
             // if there are no results then return to default and fail
-            if (results.length === 0) {
+            if (results.size === 0) {
                 return [];
             }
 
-            results.sort((aaa, bbb) => {
+            const userQuery = parsedQuery.userQuery;
+            const result_list = [];
+            for (const result of results.values()) {
+                result.word = searchWords[result.id];
+                result.item = searchIndex[result.id] || {};
+                result_list.push(result);
+            }
+
+            result_list.sort((aaa, bbb) => {
                 let a, b;
 
                 // sort by exact match with regard to the last word (mismatch goes later)
@@ -1060,7 +1074,7 @@ function initSearch(rawSearchIndex) {
                 nameSplit = hasPath ? null : parsedQuery.elems[0].path;
             }
 
-            for (const result of results) {
+            for (const result of result_list) {
                 // this validation does not make sense when searching by types
                 if (result.dontValidate) {
                     continue;
@@ -1073,7 +1087,7 @@ function initSearch(rawSearchIndex) {
                     result.id = -1;
                 }
             }
-            return transformResults(results);
+            return transformResults(result_list);
         }
 
         /**
@@ -1487,19 +1501,19 @@ function initSearch(rawSearchIndex) {
         function addIntoResults(results, fullId, id, index, dist, path_dist, maxEditDistance) {
             const inBounds = dist <= maxEditDistance || index !== -1;
             if (dist === 0 || (!parsedQuery.literalSearch && inBounds)) {
-                if (results[fullId] !== undefined) {
-                    const result = results[fullId];
+                if (results.has(fullId)) {
+                    const result = results.get(fullId);
                     if (result.dontValidate || result.dist <= dist) {
                         return;
                     }
                 }
-                results[fullId] = {
+                results.set(fullId, {
                     id: id,
                     index: index,
                     dontValidate: parsedQuery.literalSearch,
                     dist: dist,
                     path_dist: path_dist,
-                };
+                });
             }
         }
 

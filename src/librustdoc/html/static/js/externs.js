@@ -66,6 +66,11 @@ let Row;
 let ResultsTable;
 
 /**
+ * @typedef {Map<String, ResultObject>}
+ */
+let Results;
+
+/**
  * @typedef {{
  *     desc: string,
  *     displayPath: string,
@@ -80,7 +85,7 @@ let ResultsTable;
  *     ty: number,
  * }}
  */
-let Results;
+let ResultObject;
 
 /**
  * A pair of [inputs, outputs], or 0 for null. This is stored in the search index.
