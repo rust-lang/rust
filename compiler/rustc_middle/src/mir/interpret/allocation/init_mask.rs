@@ -5,7 +5,9 @@ use std::hash;
 use std::iter;
 use std::ops::Range;
 
+use rustc_serialize::{Decodable, Encodable};
 use rustc_target::abi::Size;
+use rustc_type_ir::{TyDecoder, TyEncoder};
 
 use super::AllocRange;
 
@@ -182,9 +184,37 @@ impl InitMask {
 /// The actual materialized blocks of the bitmask, when we can't keep the `InitMask` lazy.
 // Note: for performance reasons when interning, some of the fields can be partially
 // hashed. (see the `Hash` impl below for more details), so the impl is not derived.
-#[derive(Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable, HashStable)]
+#[derive(Clone, Debug, Eq, PartialEq, HashStable)]
 struct InitMaskMaterialized {
     blocks: Vec<Block>,
+}
+
+// `Block` is a `u64`, but it is a bitmask not a numeric value. If we were to just derive
+// Encodable and Decodable we would apply varint encoding to the bitmasks, which is slower
+// and also produces more output when the high bits of each `u64` are occupied.
+// Note: There is probably a remaining optimization for masks that do not use an entire
+// `Block`.
+impl<E: TyEncoder> Encodable<E> for InitMaskMaterialized {
+    fn encode(&self, encoder: &mut E) {
+        encoder.emit_usize(self.blocks.len());
+        for block in &self.blocks {
+            encoder.emit_raw_bytes(&block.to_le_bytes());
+        }
+    }
+}
+
+// This implementation is deliberately not derived, see the matching `Encodable` impl.
+impl<D: TyDecoder> Decodable<D> for InitMaskMaterialized {
+    fn decode(decoder: &mut D) -> Self {
+        let num_blocks = decoder.read_usize();
+        let mut blocks = Vec::with_capacity(num_blocks);
+        for _ in 0..num_blocks {
+            let bytes = decoder.read_raw_bytes(8);
+            let block = u64::from_le_bytes(bytes.try_into().unwrap());
+            blocks.push(block);
+        }
+        InitMaskMaterialized { blocks }
+    }
 }
 
 // Const allocations are only hashed for interning. However, they can be large, making the hashing
