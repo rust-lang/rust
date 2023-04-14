@@ -1,6 +1,6 @@
 //@compile-flags: -Zmiri-ignore-leaks
 
-// Tests operations not perfomable through C++'s atomic API
+// Tests operations not performable through C++'s atomic API
 // but doable in unsafe Rust which we think *should* be fine.
 // Nonetheless they may be determined as inconsistent with the
 // memory model in the future.

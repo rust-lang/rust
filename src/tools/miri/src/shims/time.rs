@@ -40,7 +40,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.eval_libc_i32("CLOCK_REALTIME_COARSE"),
                 ];
                 // The second kind is MONOTONIC clocks for which 0 is an arbitrary time point, but they are
-                // never allowed to go backwards. We don't need to do any additonal monotonicity
+                // never allowed to go backwards. We don't need to do any additional monotonicity
                 // enforcement because std::time::Instant already guarantees that it is monotonic.
                 relative_clocks = vec![
                     this.eval_libc_i32("CLOCK_MONOTONIC"),

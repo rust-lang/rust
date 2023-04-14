@@ -120,7 +120,7 @@ impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
     #[allow(rustc::potential_query_instability)] // rustc_codegen_ssa (where this code is copied from) also allows this lint
     fn config(&mut self, config: &mut Config) {
         if config.opts.prints.is_empty() && self.target_crate {
-            // Queries overriden here affect the data stored in `rmeta` files of dependencies,
+            // Queries overridden here affect the data stored in `rmeta` files of dependencies,
             // which will be used later in non-`MIRI_BE_RUSTC` mode.
             config.override_queries = Some(|_, local_providers, _| {
                 // `exported_symbols` and `reachable_non_generics` provided by rustc always returns

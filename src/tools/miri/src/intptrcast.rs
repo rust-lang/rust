@@ -77,7 +77,7 @@ impl<'mir, 'tcx> GlobalStateInner {
             Ok(pos) => Some(global_state.int_to_ptr_map[pos].1),
             Err(0) => None,
             Err(pos) => {
-                // This is the largest of the adresses smaller than `int`,
+                // This is the largest of the addresses smaller than `int`,
                 // i.e. the greatest lower bound (glb)
                 let (glb, alloc_id) = global_state.int_to_ptr_map[pos - 1];
                 // This never overflows because `addr >= glb`

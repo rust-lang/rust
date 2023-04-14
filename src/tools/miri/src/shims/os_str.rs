@@ -329,7 +329,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             match direction {
                 PathConversion::HostToTarget => {
                     // If this start withs a `\`, we add `\\?` so it starts with `\\?\` which is
-                    // some magic path on Windos that *is* considered absolute.
+                    // some magic path on Windows that *is* considered absolute.
                     if converted.get(0).copied() == Some(b'\\') {
                         converted.splice(0..0, b"\\\\?".iter().copied());
                     }

@@ -143,7 +143,7 @@ struct Condvar {
     waiters: VecDeque<CondvarWaiter>,
     /// Tracks the happens-before relationship
     /// between a cond-var signal and a cond-var
-    /// wait during a non-suprious signal event.
+    /// wait during a non-spurious signal event.
     /// Contains the clock of the last thread to
     /// perform a futex-signal.
     data_race: VClock,
@@ -373,7 +373,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 .expect("invariant violation: lock_count == 0 iff the thread is unlocked");
             if mutex.lock_count == 0 {
                 mutex.owner = None;
-                // The mutex is completely unlocked. Try transfering ownership
+                // The mutex is completely unlocked. Try transferring ownership
                 // to another thread.
                 if let Some(data_race) = &this.machine.data_race {
                     data_race.validate_lock_release(

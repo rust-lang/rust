@@ -96,7 +96,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 if byte_offset != 0 {
                     throw_unsup_format!(
-                        "`NtWriteFile` `ByteOffset` paremeter is non-null, which is unsupported"
+                        "`NtWriteFile` `ByteOffset` parameter is non-null, which is unsupported"
                     );
                 }
 

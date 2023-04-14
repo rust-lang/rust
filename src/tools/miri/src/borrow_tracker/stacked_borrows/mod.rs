@@ -433,7 +433,7 @@ impl<'tcx> Stack {
             let (Some(granting_idx), ProvenanceExtra::Concrete(_)) = (granting_idx, derived_from) else {
                 // The parent is a wildcard pointer or matched the unknown bottom.
                 // This is approximate. Nobody knows what happened, so forget everything.
-                // The new thing is SRW anyway, so we cannot push it "on top of the unkown part"
+                // The new thing is SRW anyway, so we cannot push it "on top of the unknown part"
                 // (for all we know, it might join an SRW group inside the unknown).
                 trace!("reborrow: forgetting stack entirely due to SharedReadWrite reborrow from wildcard or unknown");
                 self.set_unknown_bottom(global.next_ptr_tag);
@@ -825,7 +825,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         Ok(Some(alloc_id))
     }
 
-    /// Retags an indidual pointer, returning the retagged version.
+    /// Retags an individual pointer, returning the retagged version.
     /// `kind` indicates what kind of reference is being created.
     fn sb_retag_reference(
         &mut self,

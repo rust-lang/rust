@@ -113,7 +113,7 @@ mod transition {
 }
 
 impl PermissionPriv {
-    /// Determines whether a transition that occured is compatible with the presence
+    /// Determines whether a transition that occurred is compatible with the presence
     /// of a Protector. This is not included in the `transition` functions because
     /// it would distract from the few places where the transition is modified
     /// because of a protector, but not forbidden.

@@ -1199,7 +1199,7 @@ pub struct GlobalState {
 
     /// A flag to mark we are currently performing
     /// a data race free action (such as atomic access)
-    /// to supress the race detector
+    /// to suppress the race detector
     ongoing_action_data_race_free: Cell<bool>,
 
     /// Mapping of a vector index to a known set of thread

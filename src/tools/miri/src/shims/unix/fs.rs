@@ -1015,8 +1015,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let path = this.read_path_from_c_str(pathname_ptr)?.into_owned();
         // See <https://github.com/rust-lang/rust/pull/79196> for a discussion of argument sizes.
-        let at_ampty_path = this.eval_libc_i32("AT_EMPTY_PATH");
-        let empty_path_flag = flags & at_ampty_path == at_ampty_path;
+        let at_empty_path = this.eval_libc_i32("AT_EMPTY_PATH");
+        let empty_path_flag = flags & at_empty_path == at_empty_path;
         // We only support:
         // * interpreting `path` as an absolute directory,
         // * interpreting `path` as a path relative to `dirfd` when the latter is `AT_FDCWD`, or
@@ -1053,7 +1053,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             return Ok(-1);
         }
 
-        // the `_mask_op` paramter specifies the file information that the caller requested.
+        // the `_mask_op` parameter specifies the file information that the caller requested.
         // However `statx` is allowed to return information that was not requested or to not
         // return information that was requested. This `mask` represents the information we can
         // actually provide for any target.

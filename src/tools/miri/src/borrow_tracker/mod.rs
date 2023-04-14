@@ -238,7 +238,7 @@ pub enum BorrowTrackerMethod {
 }
 
 impl BorrowTrackerMethod {
-    pub fn instanciate_global_state(self, config: &MiriConfig) -> GlobalState {
+    pub fn instantiate_global_state(self, config: &MiriConfig) -> GlobalState {
         RefCell::new(GlobalStateInner::new(
             self,
             config.tracked_pointer_tags.clone(),
