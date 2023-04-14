@@ -191,7 +191,7 @@ function initSearch(rawSearchIndex) {
      */
     let searchIndex;
     let currentResults;
-    const ALIASES = Object.create(null);
+    const ALIASES = new Map();
 
     function isWhitespace(c) {
         return " \t\n\r".indexOf(c) !== -1;
@@ -903,10 +903,18 @@ function initSearch(rawSearchIndex) {
      * @return {ResultsTable}
      */
     function execQuery(parsedQuery, searchWords, filterCrates, currentCrate) {
-        const results_others = {}, results_in_args = {}, results_returned = {};
+        const results_others = new Map(), results_in_args = new Map(),
+            results_returned = new Map();
 
+        /**
+         * Add extra data to result objects, and filter items that have been
+         * marked for removal.
+         *
+         * @param {[ResultObject]} results
+         * @returns {[ResultObject]}
+         */
         function transformResults(results) {
-            const duplicates = {};
+            const duplicates = new Set();
             const out = [];
 
             for (const result of results) {
@@ -919,10 +927,10 @@ function initSearch(rawSearchIndex) {
                     // To be sure than it some items aren't considered as duplicate.
                     obj.fullPath += "|" + obj.ty;
 
-                    if (duplicates[obj.fullPath]) {
+                    if (duplicates.has(obj.fullPath)) {
                         continue;
                     }
-                    duplicates[obj.fullPath] = true;
+                    duplicates.add(obj.fullPath);
 
                     obj.href = res[1];
                     out.push(obj);
@@ -934,24 +942,30 @@ function initSearch(rawSearchIndex) {
             return out;
         }
 
+        /**
+         * This function takes a result map, and sorts it by various criteria, including edit
+         * distance, substring match, and the crate it comes from.
+         *
+         * @param {Results} results
+         * @param {boolean} isType
+         * @param {string} preferredCrate
+         * @returns {[ResultObject]}
+         */
         function sortResults(results, isType, preferredCrate) {
-            const userQuery = parsedQuery.userQuery;
-            const ar = [];
-            for (const entry in results) {
-                if (hasOwnPropertyRustdoc(results, entry)) {
-                    const result = results[entry];
-                    result.word = searchWords[result.id];
-                    result.item = searchIndex[result.id] || {};
-                    ar.push(result);
-                }
-            }
-            results = ar;
             // if there are no results then return to default and fail
-            if (results.length === 0) {
+            if (results.size === 0) {
                 return [];
             }
 
-            results.sort((aaa, bbb) => {
+            const userQuery = parsedQuery.userQuery;
+            const result_list = [];
+            for (const result of results.values()) {
+                result.word = searchWords[result.id];
+                result.item = searchIndex[result.id] || {};
+                result_list.push(result);
+            }
+
+            result_list.sort((aaa, bbb) => {
                 let a, b;
 
                 // sort by exact match with regard to the last word (mismatch goes later)
@@ -1060,7 +1074,7 @@ function initSearch(rawSearchIndex) {
                 nameSplit = hasPath ? null : parsedQuery.elems[0].path;
             }
 
-            for (const result of results) {
+            for (const result of result_list) {
                 // this validation does not make sense when searching by types
                 if (result.dontValidate) {
                     continue;
@@ -1073,7 +1087,7 @@ function initSearch(rawSearchIndex) {
                     result.id = -1;
                 }
             }
-            return transformResults(results);
+            return transformResults(result_list);
         }
 
         /**
@@ -1096,7 +1110,7 @@ function initSearch(rawSearchIndex) {
             // The names match, but we need to be sure that all generics kinda
             // match as well.
             if (elem.generics.length > 0 && row.generics.length >= elem.generics.length) {
-                const elems = Object.create(null);
+                const elems = new Map();
                 for (const entry of row.generics) {
                     if (entry.name === "") {
                         // Pure generic, needs to check into it.
@@ -1106,39 +1120,30 @@ function initSearch(rawSearchIndex) {
                         }
                         continue;
                     }
-                    if (elems[entry.name] === undefined) {
-                        elems[entry.name] = [];
+                    let currentEntryElems;
+                    if (elems.has(entry.name)) {
+                        currentEntryElems = elems.get(entry.name);
+                    } else {
+                        currentEntryElems = [];
+                        elems.set(entry.name, currentEntryElems);
                     }
-                    elems[entry.name].push(entry.ty);
+                    currentEntryElems.push(entry.ty);
                 }
                 // We need to find the type that matches the most to remove it in order
                 // to move forward.
                 const handleGeneric = generic => {
-                    let match = null;
-                    if (elems[generic.name]) {
-                        match = generic.name;
-                    } else {
-                        for (const elem_name in elems) {
-                            if (!hasOwnPropertyRustdoc(elems, elem_name)) {
-                                continue;
-                            }
-                            if (elem_name === generic) {
-                                match = elem_name;
-                                break;
-                            }
-                        }
-                    }
-                    if (match === null) {
+                    if (!elems.has(generic.name)) {
                         return false;
                     }
-                    const matchIdx = elems[match].findIndex(tmp_elem =>
+                    const matchElems = elems.get(generic.name);
+                    const matchIdx = matchElems.findIndex(tmp_elem =>
                         typePassesFilter(generic.typeFilter, tmp_elem));
                     if (matchIdx === -1) {
                         return false;
                     }
-                    elems[match].splice(matchIdx, 1);
-                    if (elems[match].length === 0) {
-                        delete elems[match];
+                    matchElems.splice(matchIdx, 1);
+                    if (matchElems.length === 0) {
+                        elems.delete(generic.name);
                     }
                     return true;
                 };
@@ -1424,22 +1429,22 @@ function initSearch(rawSearchIndex) {
             const aliases = [];
             const crateAliases = [];
             if (filterCrates !== null) {
-                if (ALIASES[filterCrates] && ALIASES[filterCrates][lowerQuery]) {
-                    const query_aliases = ALIASES[filterCrates][lowerQuery];
+                if (ALIASES.has(filterCrates) && ALIASES.get(filterCrates).has(lowerQuery)) {
+                    const query_aliases = ALIASES.get(filterCrates).get(lowerQuery);
                     for (const alias of query_aliases) {
                         aliases.push(createAliasFromItem(searchIndex[alias]));
                     }
                 }
             } else {
-                Object.keys(ALIASES).forEach(crate => {
-                    if (ALIASES[crate][lowerQuery]) {
+                for (const [crate, crateAliasesIndex] of ALIASES) {
+                    if (crateAliasesIndex.has(lowerQuery)) {
                         const pushTo = crate === currentCrate ? crateAliases : aliases;
-                        const query_aliases = ALIASES[crate][lowerQuery];
+                        const query_aliases = crateAliasesIndex.get(lowerQuery);
                         for (const alias of query_aliases) {
                             pushTo.push(createAliasFromItem(searchIndex[alias]));
                         }
                     }
-                });
+                }
             }
 
             const sortFunc = (aaa, bbb) => {
@@ -1496,19 +1501,19 @@ function initSearch(rawSearchIndex) {
         function addIntoResults(results, fullId, id, index, dist, path_dist, maxEditDistance) {
             const inBounds = dist <= maxEditDistance || index !== -1;
             if (dist === 0 || (!parsedQuery.literalSearch && inBounds)) {
-                if (results[fullId] !== undefined) {
-                    const result = results[fullId];
+                if (results.has(fullId)) {
+                    const result = results.get(fullId);
                     if (result.dontValidate || result.dist <= dist) {
                         return;
                     }
                 }
-                results[fullId] = {
+                results.set(fullId, {
                     id: id,
                     index: index,
                     dontValidate: parsedQuery.literalSearch,
                     dist: dist,
                     path_dist: path_dist,
-                };
+                });
             }
         }
 
@@ -2345,17 +2350,22 @@ function initSearch(rawSearchIndex) {
             }
 
             if (aliases) {
-                ALIASES[crate] = Object.create(null);
+                const currentCrateAliases = new Map();
+                ALIASES.set(crate, currentCrateAliases);
                 for (const alias_name in aliases) {
                     if (!hasOwnPropertyRustdoc(aliases, alias_name)) {
                         continue;
                     }
 
-                    if (!hasOwnPropertyRustdoc(ALIASES[crate], alias_name)) {
-                        ALIASES[crate][alias_name] = [];
+                    let currentNameAliases;
+                    if (currentCrateAliases.has(alias_name)) {
+                        currentNameAliases = currentCrateAliases.get(alias_name);
+                    } else {
+                        currentNameAliases = [];
+                        currentCrateAliases.set(alias_name, currentNameAliases);
                     }
                     for (const local_alias of aliases[alias_name]) {
-                        ALIASES[crate][alias_name].push(local_alias + currentIndex);
+                        currentNameAliases.push(local_alias + currentIndex);
                     }
                 }
             }
