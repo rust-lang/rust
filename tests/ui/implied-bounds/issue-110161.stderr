@@ -4,8 +4,8 @@ error[E0046]: not all trait items implemented, missing: `Ty`
 LL |     type Ty;
    |     ------- `Ty` from trait
 ...
-LL | impl Trait for () {
-   | ^^^^^^^^^^^^^^^^^ missing `Ty` in implementation
+LL | impl LtTrait for () {
+   | ^^^^^^^^^^^^^^^^^^^ missing `Ty` in implementation
 
 error: aborting due to previous error
 
