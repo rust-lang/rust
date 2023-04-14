@@ -101,16 +101,7 @@ pub fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>) -> ! {
         super::intrinsics::abort()
     }
 
-    // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
-    // that gets resolved to the `#[panic_handler]` function.
-    extern "Rust" {
-        #[lang = "panic_impl"]
-        fn panic_impl(pi: &PanicInfo<'_>) -> !;
-    }
-
     // PanicInfo with the `can_unwind` flag set to false forces an abort.
-    let pieces = [msg];
-    let fmt = fmt::Arguments::new_v1(&pieces, &[]);
     let pi = PanicInfo::internal_constructor(Some(&fmt), Location::caller(), None, false);
 
     // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
