@@ -943,14 +943,6 @@ pub fn make_test_description<R: Read>(
             }
         }
 
-        if config.debugger == Some(Debugger::Lldb) && !config.lldb_native_rust {
-            if config.parse_name_directive(ln, "rust-lldb") {
-                decision!(IgnoreDecision::Ignore {
-                    reason: "ignored on targets wihtout Rust's LLDB".into()
-                });
-            }
-        }
-
         should_fail |= config.parse_name_directive(ln, "should-fail");
     });
 
