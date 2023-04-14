@@ -306,7 +306,7 @@ fn negative_impl(tcx: TyCtxt<'_>, impl1_def_id: DefId, impl2_def_id: DefId) -> b
         &infcx,
         ObligationCause::dummy(),
         impl_env,
-        tcx.impl_subject(impl1_def_id),
+        tcx.impl_subject(impl1_def_id).subst_identity(),
     ) {
         Ok(s) => s,
         Err(err) => {
