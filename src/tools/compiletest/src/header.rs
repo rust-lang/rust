@@ -35,7 +35,7 @@ impl EarlyProps {
 
     pub fn from_reader<R: Read>(config: &Config, testfile: &Path, rdr: R) -> Self {
         let mut props = EarlyProps::default();
-        iter_header(testfile, rdr, &mut |_, ln| {
+        iter_header(testfile, rdr, &mut |_, ln, _| {
             config.push_name_value_directive(ln, directives::AUX_BUILD, &mut props.aux, |r| {
                 r.trim().to_string()
             });
@@ -283,7 +283,7 @@ impl TestProps {
         if !testfile.is_dir() {
             let file = File::open(testfile).unwrap();
 
-            iter_header(testfile, file, &mut |revision, ln| {
+            iter_header(testfile, file, &mut |revision, ln, _| {
                 if revision.is_some() && revision != cfg {
                     return;
                 }
@@ -577,7 +577,7 @@ pub fn line_directive<'line>(
     }
 }
 
-fn iter_header<R: Read>(testfile: &Path, rdr: R, it: &mut dyn FnMut(Option<&str>, &str)) {
+fn iter_header<R: Read>(testfile: &Path, rdr: R, it: &mut dyn FnMut(Option<&str>, &str, usize)) {
     if testfile.is_dir() {
         return;
     }
@@ -586,8 +586,10 @@ fn iter_header<R: Read>(testfile: &Path, rdr: R, it: &mut dyn FnMut(Option<&str>
 
     let mut rdr = BufReader::new(rdr);
     let mut ln = String::new();
+    let mut line_number = 0;
 
     loop {
+        line_number += 1;
         ln.clear();
         if rdr.read_line(&mut ln).unwrap() == 0 {
             break;
@@ -600,7 +602,7 @@ fn iter_header<R: Read>(testfile: &Path, rdr: R, it: &mut dyn FnMut(Option<&str>
         if ln.starts_with("fn") || ln.starts_with("mod") {
             return;
         } else if let Some((lncfg, ln)) = line_directive(comment, ln) {
-            it(lncfg, ln);
+            it(lncfg, ln, line_number);
         }
     }
 }
@@ -859,7 +861,7 @@ pub fn make_test_description<R: Read>(
 
     let needs_cache = needs::CachedNeedsConditions::load(config);
 
-    iter_header(path, src, &mut |revision, ln| {
+    iter_header(path, src, &mut |revision, ln, line_number| {
         if revision.is_some() && revision != cfg {
             return;
         }
@@ -875,7 +877,7 @@ pub fn make_test_description<R: Read>(
                         ignore_message = Some(&*Box::leak(Box::<str>::from(reason)));
                     }
                     IgnoreDecision::Error { message } => {
-                        eprintln!("error: {}: {message}", path.display());
+                        eprintln!("error: {}:{line_number}: {message}", path.display());
                         *poisoned = true;
                         return;
                     }
