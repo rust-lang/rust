@@ -11,12 +11,23 @@ use tracing::*;
 use crate::common::{Config, Debugger, FailMode, Mode, PassMode};
 use crate::header::cfg::parse_cfg_name_directive;
 use crate::header::cfg::MatchOutcome;
+use crate::header::needs::CachedNeedsConditions;
 use crate::{extract_cdb_version, extract_gdb_version};
 
 mod cfg;
 mod needs;
 #[cfg(test)]
 mod tests;
+
+pub struct HeadersCache {
+    needs: CachedNeedsConditions,
+}
+
+impl HeadersCache {
+    pub fn load(config: &Config) -> Self {
+        Self { needs: CachedNeedsConditions::load(config) }
+    }
+}
 
 /// Properties which must be known very early, before actually running
 /// the test.
@@ -849,6 +860,7 @@ where
 
 pub fn make_test_description<R: Read>(
     config: &Config,
+    cache: &HeadersCache,
     name: test::TestName,
     path: &Path,
     src: R,
@@ -858,8 +870,6 @@ pub fn make_test_description<R: Read>(
     let mut ignore = false;
     let mut ignore_message = None;
     let mut should_fail = false;
-
-    let needs_cache = needs::CachedNeedsConditions::load(config);
 
     iter_header(path, src, &mut |revision, ln, line_number| {
         if revision.is_some() && revision != cfg {
@@ -888,7 +898,7 @@ pub fn make_test_description<R: Read>(
 
         decision!(cfg::handle_ignore(config, ln));
         decision!(cfg::handle_only(config, ln));
-        decision!(needs::handle_needs(&needs_cache, config, ln));
+        decision!(needs::handle_needs(&cache.needs, config, ln));
         decision!(ignore_llvm(config, ln));
         decision!(ignore_cdb(config, ln));
         decision!(ignore_gdb(config, ln));
