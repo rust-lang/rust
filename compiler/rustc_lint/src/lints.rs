@@ -665,6 +665,7 @@ pub struct ForLoopsOverFalliblesSuggestion<'a> {
 // drop_ref.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_drop_ref)]
+#[note]
 pub struct DropRefDiag<'a> {
     pub arg_ty: Ty<'a>,
     #[label]
@@ -673,6 +674,7 @@ pub struct DropRefDiag<'a> {
 
 #[derive(LintDiagnostic)]
 #[diag(lint_drop_copy)]
+#[note]
 pub struct DropCopyDiag<'a> {
     pub arg_ty: Ty<'a>,
     #[label]
@@ -681,6 +683,7 @@ pub struct DropCopyDiag<'a> {
 
 #[derive(LintDiagnostic)]
 #[diag(lint_forget_ref)]
+#[note]
 pub struct ForgetRefDiag<'a> {
     pub arg_ty: Ty<'a>,
     #[label]
@@ -689,6 +692,7 @@ pub struct ForgetRefDiag<'a> {
 
 #[derive(LintDiagnostic)]
 #[diag(lint_forget_copy)]
+#[note]
 pub struct ForgetCopyDiag<'a> {
     pub arg_ty: Ty<'a>,
     #[label]
