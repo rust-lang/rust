@@ -146,15 +146,16 @@ impl ProcMacro {
         attr: Option<&tt::Subtree>,
         env: Vec<(String, String)>,
     ) -> Result<Result<tt::Subtree, PanicMessage>, ServerError> {
+        let version = self.process.lock().unwrap_or_else(|e| e.into_inner()).version();
         let current_dir = env
             .iter()
             .find(|(name, _)| name == "CARGO_MANIFEST_DIR")
             .map(|(_, value)| value.clone());
 
         let task = ExpandMacro {
-            macro_body: FlatTree::new(subtree),
+            macro_body: FlatTree::new(subtree, version),
             macro_name: self.name.to_string(),
-            attributes: attr.map(FlatTree::new),
+            attributes: attr.map(|subtree| FlatTree::new(subtree, version)),
             lib: self.dylib_path.to_path_buf().into(),
             env,
             current_dir,
@@ -163,7 +164,9 @@ impl ProcMacro {
         let request = msg::Request::ExpandMacro(task);
         let response = self.process.lock().unwrap_or_else(|e| e.into_inner()).send_task(request)?;
         match response {
-            msg::Response::ExpandMacro(it) => Ok(it.map(FlatTree::to_subtree)),
+            msg::Response::ExpandMacro(it) => {
+                Ok(it.map(|tree| FlatTree::to_subtree(tree, version)))
+            }
             msg::Response::ListMacros(..) | msg::Response::ApiVersionCheck(..) => {
                 Err(ServerError { message: "unexpected response".to_string(), io: None })
             }
