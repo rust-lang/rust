@@ -139,6 +139,11 @@ pub macro unreachable_2021 {
     ),
 }
 
+/// Asserts that a boolean expression is `true`, and perform a non-unwinding panic otherwise.
+///
+/// This macro is similar to `debug_assert!`, but is intended to be used in code that should not
+/// unwind. For example, checks in `_unchecked` functions that are intended for debugging but should
+/// not compromise unwind safety.
 #[doc(hidden)]
 #[unstable(feature = "core_panic", issue = "none")]
 #[allow_internal_unstable(core_panic, const_format_args)]
