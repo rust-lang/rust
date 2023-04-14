@@ -2,7 +2,7 @@
 use std::sync::Arc;
 
 use hir_expand::name::Name;
-use la_arena::{Arena, Idx};
+use la_arena::{Arena, Idx, IdxRange, RawIdx};
 use rustc_hash::FxHashMap;
 
 use crate::{
@@ -17,6 +17,7 @@ pub type ScopeId = Idx<ScopeData>;
 #[derive(Debug, PartialEq, Eq)]
 pub struct ExprScopes {
     scopes: Arena<ScopeData>,
+    scope_entries: Arena<ScopeEntry>,
     scope_by_expr: FxHashMap<ExprId, ScopeId>,
 }
 
@@ -41,7 +42,7 @@ pub struct ScopeData {
     parent: Option<ScopeId>,
     block: Option<BlockId>,
     label: Option<(LabelId, Name)>,
-    entries: Vec<ScopeEntry>,
+    entries: IdxRange<ScopeEntry>,
 }
 
 impl ExprScopes {
@@ -53,7 +54,7 @@ impl ExprScopes {
     }
 
     pub fn entries(&self, scope: ScopeId) -> &[ScopeEntry] {
-        &self.scopes[scope].entries
+        &self.scope_entries[self.scopes[scope].entries.clone()]
     }
 
     /// If `scope` refers to a block expression scope, returns the corresponding `BlockId`.
@@ -85,10 +86,17 @@ impl ExprScopes {
     }
 }
 
+fn empty_entries(idx: usize) -> IdxRange<ScopeEntry> {
+    IdxRange::new(Idx::from_raw(RawIdx::from(idx as u32))..Idx::from_raw(RawIdx::from(idx as u32)))
+}
+
 impl ExprScopes {
     fn new(body: &Body) -> ExprScopes {
-        let mut scopes =
-            ExprScopes { scopes: Arena::default(), scope_by_expr: FxHashMap::default() };
+        let mut scopes = ExprScopes {
+            scopes: Arena::default(),
+            scope_entries: Arena::default(),
+            scope_by_expr: FxHashMap::default(),
+        };
         let mut root = scopes.root_scope();
         scopes.add_params_bindings(body, root, &body.params);
         compute_expr_scopes(body.body_expr, body, &mut scopes, &mut root);
@@ -96,7 +104,12 @@ impl ExprScopes {
     }
 
     fn root_scope(&mut self) -> ScopeId {
-        self.scopes.alloc(ScopeData { parent: None, block: None, label: None, entries: vec![] })
+        self.scopes.alloc(ScopeData {
+            parent: None,
+            block: None,
+            label: None,
+            entries: empty_entries(self.scope_entries.len()),
+        })
     }
 
     fn new_scope(&mut self, parent: ScopeId) -> ScopeId {
@@ -104,12 +117,17 @@ impl ExprScopes {
             parent: Some(parent),
             block: None,
             label: None,
-            entries: vec![],
+            entries: empty_entries(self.scope_entries.len()),
         })
     }
 
     fn new_labeled_scope(&mut self, parent: ScopeId, label: Option<(LabelId, Name)>) -> ScopeId {
-        self.scopes.alloc(ScopeData { parent: Some(parent), block: None, label, entries: vec![] })
+        self.scopes.alloc(ScopeData {
+            parent: Some(parent),
+            block: None,
+            label,
+            entries: empty_entries(self.scope_entries.len()),
+        })
     }
 
     fn new_block_scope(
@@ -118,13 +136,19 @@ impl ExprScopes {
         block: Option<BlockId>,
         label: Option<(LabelId, Name)>,
     ) -> ScopeId {
-        self.scopes.alloc(ScopeData { parent: Some(parent), block, label, entries: vec![] })
+        self.scopes.alloc(ScopeData {
+            parent: Some(parent),
+            block,
+            label,
+            entries: empty_entries(self.scope_entries.len()),
+        })
     }
 
     fn add_bindings(&mut self, body: &Body, scope: ScopeId, binding: BindingId) {
         let Binding { name, .. } = &body.bindings[binding];
-        let entry = ScopeEntry { name: name.clone(), binding };
-        self.scopes[scope].entries.push(entry);
+        let entry = self.scope_entries.alloc(ScopeEntry { name: name.clone(), binding });
+        self.scopes[scope].entries =
+            IdxRange::new_inclusive(self.scopes[scope].entries.start()..=entry);
     }
 
     fn add_pat_bindings(&mut self, body: &Body, scope: ScopeId, pat: PatId) {
@@ -145,9 +169,9 @@ impl ExprScopes {
     }
 
     fn shrink_to_fit(&mut self) {
-        let ExprScopes { scopes, scope_by_expr } = self;
+        let ExprScopes { scopes, scope_entries, scope_by_expr } = self;
         scopes.shrink_to_fit();
-        scopes.values_mut().for_each(|it| it.entries.shrink_to_fit());
+        scope_entries.shrink_to_fit();
         scope_by_expr.shrink_to_fit();
     }
 }

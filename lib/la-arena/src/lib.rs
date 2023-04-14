@@ -19,12 +19,14 @@ pub use map::{ArenaMap, Entry, OccupiedEntry, VacantEntry};
 pub struct RawIdx(u32);
 
 impl From<RawIdx> for u32 {
+    #[inline]
     fn from(raw: RawIdx) -> u32 {
         raw.0
     }
 }
 
 impl From<u32> for RawIdx {
+    #[inline]
     fn from(idx: u32) -> RawIdx {
         RawIdx(idx)
     }
@@ -159,6 +161,16 @@ impl<T> IdxRange<T> {
     /// ```
     pub fn is_empty(&self) -> bool {
         self.range.is_empty()
+    }
+
+    /// Returns the start of the index range.
+    pub fn start(&self) -> Idx<T> {
+        Idx::from_raw(RawIdx::from(self.range.start))
+    }
+
+    /// Returns the start of the index range.
+    pub fn end(&self) -> Idx<T> {
+        Idx::from_raw(RawIdx::from(self.range.end))
     }
 }
 
