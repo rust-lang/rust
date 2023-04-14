@@ -98,6 +98,8 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
     #[salsa::invoke(DefMap::block_def_map_query)]
     fn block_def_map(&self, block: BlockId) -> Option<Arc<DefMap>>;
 
+    // region:data
+
     #[salsa::invoke(StructData::struct_data_query)]
     fn struct_data(&self, id: StructId) -> Arc<StructData>;
 
@@ -153,6 +155,8 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
     #[salsa::invoke(ProcMacroData::proc_macro_data_query)]
     fn proc_macro_data(&self, makro: ProcMacroId) -> Arc<ProcMacroData>;
 
+    // endregion:data
+
     #[salsa::invoke(Body::body_with_source_map_query)]
     fn body_with_source_map(&self, def: DefWithBodyId) -> (Arc<Body>, Arc<BodySourceMap>);
 
@@ -164,6 +168,8 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
 
     #[salsa::invoke(GenericParams::generic_params_query)]
     fn generic_params(&self, def: GenericDefId) -> Interned<GenericParams>;
+
+    // region:attrs
 
     #[salsa::invoke(Attrs::variants_attrs_query)]
     fn variants_attrs(&self, def: EnumId) -> Arc<ArenaMap<LocalEnumVariantId, Attrs>>;
@@ -184,7 +190,13 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
     ) -> Arc<ArenaMap<LocalFieldId, Either<AstPtr<ast::TupleField>, AstPtr<ast::RecordField>>>>;
 
     #[salsa::invoke(AttrsWithOwner::attrs_query)]
-    fn attrs(&self, def: AttrDefId) -> AttrsWithOwner;
+    fn attrs(&self, def: AttrDefId) -> Attrs;
+
+    #[salsa::transparent]
+    #[salsa::invoke(AttrsWithOwner::attrs_with_owner)]
+    fn attrs_with_owner(&self, def: AttrDefId) -> AttrsWithOwner;
+
+    // endregion:attrs
 
     #[salsa::invoke(LangItems::crate_lang_items_query)]
     fn crate_lang_items(&self, krate: CrateId) -> Arc<LangItems>;

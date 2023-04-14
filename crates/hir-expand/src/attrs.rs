@@ -21,6 +21,7 @@ use crate::{
 /// Syntactical attributes, without filtering of `cfg_attr`s.
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct RawAttrs {
+    // FIXME: Make this a ThinArc
     entries: Option<Arc<[Attr]>>,
 }
 
