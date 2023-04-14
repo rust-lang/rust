@@ -131,7 +131,8 @@
 //!
 //! * Build the thread with [`Builder`] and pass the desired stack size to [`Builder::stack_size`].
 //! * Set the `RUST_MIN_STACK` environment variable to an integer representing the desired stack
-//!   size (in bytes). Note that setting [`Builder::stack_size`] will override this.
+//!   size (in bytes). Note that setting [`Builder::stack_size`] will override this. Be aware that
+//!   changes to `RUST_MIN_STACK` may be ignored after program start.
 //!
 //! Note that the stack size of the main thread is *not* determined by Rust.
 //!
