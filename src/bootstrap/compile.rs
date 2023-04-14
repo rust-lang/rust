@@ -1281,9 +1281,7 @@ impl Step for Sysroot {
             }
 
             // Copy the compiler into the correct sysroot.
-            let ci_rustc_dir =
-                builder.config.out.join(&*builder.config.build.triple).join("ci-rustc");
-            builder.cp_r(&ci_rustc_dir, &sysroot);
+            builder.cp_r(&builder.ci_rustc_dir(builder.build.build), &sysroot);
             return INTERNER.intern_path(sysroot);
         }
 
@@ -1385,7 +1383,10 @@ impl Step for Assemble {
 
         // If we're downloading a compiler from CI, we can use the same compiler for all stages other than 0.
         if builder.download_rustc() {
-            builder.ensure(Sysroot { compiler: target_compiler });
+            let sysroot = builder.ensure(Sysroot { compiler: target_compiler });
+            // Ensure that `libLLVM.so` ends up in the newly created target directory,
+            // so that tools using `rustc_private` can use it.
+            dist::maybe_install_llvm_target(builder, target_compiler.host, &sysroot);
             return target_compiler;
         }
 

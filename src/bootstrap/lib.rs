@@ -814,6 +814,11 @@ impl Build {
         self.stage_out(compiler, mode).join(&*target.triple).join(self.cargo_dir())
     }
 
+    /// Directory where the extracted `rustc-dev` component is stored.
+    fn ci_rustc_dir(&self, target: TargetSelection) -> PathBuf {
+        self.out.join(&*target.triple).join("ci-rustc")
+    }
+
     /// Root output directory for LLVM compiled for `target`
     ///
     /// Note that if LLVM is configured externally then the directory returned

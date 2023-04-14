@@ -1962,6 +1962,20 @@ fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir
         }
     }
 
+    // FIXME: for reasons I don't understand, the LLVM so in the `rustc` component is different than the one in `rust-dev`.
+    // Only the one in `rustc` works with the downloaded compiler.
+    if builder.download_rustc() && target == builder.build.build {
+        let src_libdir = builder.ci_rustc_dir(target).join("lib");
+        for entry in t!(std::fs::read_dir(&src_libdir)) {
+            let entry = t!(entry);
+            if entry.file_name().to_str().unwrap().starts_with("libLLVM-") {
+                install_llvm_file(builder, &entry.path(), dst_libdir);
+                return !builder.config.dry_run();
+            }
+        }
+        panic!("libLLVM.so not found in src_libdir {}!", src_libdir.display());
+    }
+
     // On macOS, rustc (and LLVM tools) link to an unversioned libLLVM.dylib
     // instead of libLLVM-11-rust-....dylib, as on linux. It's not entirely
     // clear why this is the case, though. llvm-config will emit the versioned
