@@ -581,8 +581,10 @@ impl f32 {
         unsafe { cmath::cbrtf(self) }
     }
 
-    /// Calculates the length of the hypotenuse of a right-angle triangle given
-    /// legs of length `x` and `y`.
+    /// Compute the distance between the origin and a point (`x`, `y`) on the
+    /// Euclidean plane. Equivalently, compute the length of the hypotenuse of a
+    /// right-angle triangle with other sides having length `x.abs()` and
+    /// `y.abs()`.
     ///
     /// # Examples
     ///
