@@ -38,7 +38,6 @@ pub(crate) use self::context::*;
 pub(crate) use self::span_map::{collect_spans_and_sources, LinkFromSrc};
 
 use std::collections::VecDeque;
-use std::default::Default;
 use std::fmt::{self, Write};
 use std::fs;
 use std::iter::Peekable;

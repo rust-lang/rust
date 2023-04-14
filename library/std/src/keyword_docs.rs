@@ -1678,7 +1678,7 @@ mod super_keyword {}
 /// below `Iterator` is a **supertrait** and `ThreeIterator` is a **subtrait**:
 ///
 /// ```rust
-/// trait ThreeIterator: std::iter::Iterator {
+/// trait ThreeIterator: Iterator {
 ///     fn next_three(&mut self) -> Option<[Self::Item; 3]>;
 /// }
 /// ```

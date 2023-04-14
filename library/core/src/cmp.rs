@@ -231,7 +231,8 @@ pub trait PartialEq<Rhs: ?Sized = Self> {
     }
 }
 
-/// Derive macro generating an impl of the trait `PartialEq`.
+/// Derive macro generating an impl of the trait [`PartialEq`].
+/// The behavior of this macro is described in detail [here](PartialEq#derivable).
 #[rustc_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow_internal_unstable(core_intrinsics, structural_match)]
@@ -297,7 +298,7 @@ pub trait Eq: PartialEq<Self> {
     fn assert_receiver_is_total_eq(&self) {}
 }
 
-/// Derive macro generating an impl of the trait `Eq`.
+/// Derive macro generating an impl of the trait [`Eq`].
 #[rustc_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow_internal_unstable(core_intrinsics, derive_eq, structural_match, no_coverage)]
@@ -859,7 +860,8 @@ pub trait Ord: Eq + PartialOrd<Self> {
     }
 }
 
-/// Derive macro generating an impl of the trait `Ord`.
+/// Derive macro generating an impl of the trait [`Ord`].
+/// The behavior of this macro is described in detail [here](Ord#derivable).
 #[rustc_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow_internal_unstable(core_intrinsics)]
@@ -1138,7 +1140,8 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     }
 }
 
-/// Derive macro generating an impl of the trait `PartialOrd`.
+/// Derive macro generating an impl of the trait [`PartialOrd`].
+/// The behavior of this macro is described in detail [here](PartialOrd#derivable).
 #[rustc_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow_internal_unstable(core_intrinsics)]

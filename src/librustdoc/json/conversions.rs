@@ -4,7 +4,6 @@
 
 #![allow(rustc::default_hash_types)]
 
-use std::convert::From;
 use std::fmt;
 
 use rustc_ast::ast;

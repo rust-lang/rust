@@ -35,7 +35,6 @@ use rustc_span::{self, ExpnKind};
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::collections::BTreeMap;
-use std::default::Default;
 use std::hash::Hash;
 use std::mem;
 use thin_vec::ThinVec;

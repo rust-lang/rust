@@ -1,9 +1,8 @@
 use std::any::{Any, TypeId};
 use std::borrow::Borrow;
 use std::cell::RefCell;
-use std::cmp::{Ord, Ordering, PartialOrd};
+use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::convert::AsRef;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;

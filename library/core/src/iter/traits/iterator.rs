@@ -764,7 +764,6 @@ pub trait Iterator {
     /// more idiomatic to use [`for`] than `map()`.
     ///
     /// [`for`]: ../../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
-    /// [`FnMut`]: crate::ops::FnMut
     ///
     /// # Examples
     ///

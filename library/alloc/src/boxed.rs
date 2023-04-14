@@ -150,16 +150,13 @@ use core::any::Any;
 use core::async_iter::AsyncIterator;
 use core::borrow;
 use core::cmp::Ordering;
-use core::convert::{From, TryFrom};
 use core::error::Error;
 use core::fmt;
 use core::future::Future;
 use core::hash::{Hash, Hasher};
-#[cfg(not(no_global_oom_handling))]
-use core::iter::FromIterator;
-use core::iter::{FusedIterator, Iterator};
+use core::iter::FusedIterator;
 use core::marker::Tuple;
-use core::marker::{Unpin, Unsize};
+use core::marker::Unsize;
 use core::mem;
 use core::ops::{
     CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Generator, GeneratorState, Receiver,

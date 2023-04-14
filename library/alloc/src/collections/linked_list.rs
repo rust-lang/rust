@@ -15,7 +15,7 @@
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
-use core::iter::{FromIterator, FusedIterator};
+use core::iter::FusedIterator;
 use core::marker::PhantomData;
 use core::mem;
 use core::ptr::NonNull;
@@ -130,7 +130,6 @@ impl<T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
 /// (provided by the [`IntoIterator`] trait). See its documentation for more.
 ///
 /// [`into_iter`]: LinkedList::into_iter
-/// [`IntoIterator`]: core::iter::IntoIterator
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {

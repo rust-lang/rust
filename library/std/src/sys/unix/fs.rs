@@ -1893,7 +1893,7 @@ mod remove_dir_impl {
         // file descriptor is automatically closed by libc::closedir() now, so give up ownership
         let new_parent_fd = dir_fd.into_raw_fd();
         // a valid root is not needed because we do not call any functions involving the full path
-        // of the DirEntrys.
+        // of the `DirEntry`s.
         let dummy_root = PathBuf::new();
         let inner = InnerReadDir { dirp, root: dummy_root };
         Ok((ReadDir::new(inner), new_parent_fd))

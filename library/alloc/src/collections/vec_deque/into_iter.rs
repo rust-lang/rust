@@ -12,7 +12,6 @@ use super::VecDeque;
 /// (provided by the [`IntoIterator`] trait). See its documentation for more.
 ///
 /// [`into_iter`]: VecDeque::into_iter
-/// [`IntoIterator`]: core::iter::IntoIterator
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<

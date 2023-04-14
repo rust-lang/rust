@@ -398,8 +398,6 @@
 //! // ...but the key hasn't changed. b is still "baz", not "xyz".
 //! assert_eq!(map.keys().next().unwrap().b, "baz");
 //! ```
-//!
-//! [IntoIterator]: crate::iter::IntoIterator "iter::IntoIterator"
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

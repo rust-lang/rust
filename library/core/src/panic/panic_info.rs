@@ -15,14 +15,10 @@ use crate::panic::Location;
 /// use std::panic;
 ///
 /// panic::set_hook(Box::new(|panic_info| {
-///     if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
-///         println!("panic occurred: {s:?}");
-///     } else {
-///         println!("panic occurred");
-///     }
+///     println!("panic occurred: {panic_info}");
 /// }));
 ///
-/// panic!("Normal panic");
+/// panic!("critical system failure");
 /// ```
 #[lang = "panic_info"]
 #[stable(feature = "panic_hooks", since = "1.10.0")]

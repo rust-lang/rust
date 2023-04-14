@@ -472,7 +472,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err_code: &str,
         fn_def_id: Option<DefId>,
         call_span: Span,
-        call_expr: &hir::Expr<'tcx>,
+        call_expr: &'tcx hir::Expr<'tcx>,
     ) {
         // Next, let's construct the error
         let (error_span, full_call_span, call_name, is_method) = match &call_expr.kind {
@@ -807,24 +807,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 full_call_span,
                 format!("arguments to this {} are incorrect", call_name),
             );
-            if let (Some(callee_ty), hir::ExprKind::MethodCall(_, rcvr, _, _)) =
-                (callee_ty, &call_expr.kind)
+
+            if let hir::ExprKind::MethodCall(_, rcvr, _, _) = call_expr.kind
+                && provided_idx.as_usize() == expected_idx.as_usize()
             {
-                // Type that would have accepted this argument if it hadn't been inferred earlier.
-                // FIXME: We leave an inference variable for now, but it'd be nice to get a more
-                // specific type to increase the accuracy of the diagnostic.
-                let expected = self.infcx.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::MiscVariable,
-                    span: full_call_span,
-                });
-                self.point_at_expr_source_of_inferred_type(
+                self.note_source_of_type_mismatch_constraint(
                     &mut err,
                     rcvr,
-                    expected,
-                    callee_ty,
-                    provided_arg_span,
+                    crate::demand::TypeMismatchSource::Arg {
+                        call_expr,
+                        incompatible_arg: provided_idx.as_usize(),
+                    },
                 );
             }
+
             // Call out where the function is defined
             self.label_fn_like(
                 &mut err,

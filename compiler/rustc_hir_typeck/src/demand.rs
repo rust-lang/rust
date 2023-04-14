@@ -1,6 +1,5 @@
 use crate::FnCtxt;
 use rustc_ast::util::parser::PREC_POSTFIX;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::MultiSpan;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
@@ -13,15 +12,13 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::fold::{BottomUpFolder, TypeFolder};
-use rustc_middle::ty::print::{with_forced_trimmed_paths, with_no_trimmed_paths};
-use rustc_middle::ty::relate::TypeRelation;
-use rustc_middle::ty::{self, Article, AssocItem, Ty, TypeAndMut, TypeVisitableExt};
+use rustc_middle::ty::fold::BottomUpFolder;
+use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::{self, Article, AssocItem, Ty, TypeAndMut, TypeFoldable};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, Span, DUMMY_SP};
 use rustc_target::abi::FieldIdx;
 use rustc_trait_selection::infer::InferCtxtExt as _;
-use rustc_trait_selection::traits::error_reporting::method_chain::CollectAllMismatches;
 use rustc_trait_selection::traits::ObligationCause;
 
 use super::method::probe;
@@ -62,9 +59,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self.suggest_into(err, expr, expr_ty, expected)
             || self.suggest_floating_point_literal(err, expr, expected)
             || self.suggest_null_ptr_for_literal_zero_given_to_ptr_arg(err, expr, expected)
-            || self.note_result_coercion(err, expr, expected, expr_ty);
+            || self.suggest_coercing_result_via_try_operator(err, expr, expected, expr_ty);
+
         if !suggested {
-            self.point_at_expr_source_of_inferred_type(err, expr, expr_ty, expected, expr.span);
+            self.note_source_of_type_mismatch_constraint(
+                err,
+                expr,
+                TypeMismatchSource::Ty(expected),
+            );
         }
     }
 
@@ -218,37 +220,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         (expected, Some(err))
     }
 
-    pub fn point_at_expr_source_of_inferred_type(
+    /// Notes the point at which a variable is constrained to some type incompatible
+    /// with some expectation given by `source`.
+    pub fn note_source_of_type_mismatch_constraint(
         &self,
         err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
-        found: Ty<'tcx>,
-        expected: Ty<'tcx>,
-        mismatch_span: Span,
+        source: TypeMismatchSource<'tcx>,
     ) -> bool {
-        let map = self.tcx.hir();
+        let hir = self.tcx.hir();
 
         let hir::ExprKind::Path(hir::QPath::Resolved(None, p)) = expr.kind else { return false; };
         let [hir::PathSegment { ident, args: None, .. }] = p.segments else { return false; };
-        let hir::def::Res::Local(hir_id) = p.res else { return false; };
-        let Some(hir::Node::Pat(pat)) = map.find(hir_id) else { return false; };
-        let Some(hir::Node::Local(hir::Local {
-            ty: None,
-            init: Some(init),
-            ..
-        })) = map.find_parent(pat.hir_id) else { return false; };
-        let Some(ty) = self.node_ty_opt(init.hir_id) else { return false; };
-        if ty.is_closure() || init.span.overlaps(expr.span) || pat.span.from_expansion() {
-            return false;
-        }
+        let hir::def::Res::Local(local_hir_id) = p.res else { return false; };
+        let hir::Node::Pat(pat) = hir.get(local_hir_id) else { return false; };
+        let (init_ty_hir_id, init) = match hir.get_parent(pat.hir_id) {
+            hir::Node::Local(hir::Local { ty: Some(ty), init, .. }) => (ty.hir_id, *init),
+            hir::Node::Local(hir::Local { init: Some(init), .. }) => (init.hir_id, Some(*init)),
+            _ => return false,
+        };
+        let Some(init_ty) = self.node_ty_opt(init_ty_hir_id) else { return false; };
 
         // Locate all the usages of the relevant binding.
-        struct FindExprs<'hir> {
+        struct FindExprs<'tcx> {
             hir_id: hir::HirId,
-            uses: Vec<&'hir hir::Expr<'hir>>,
+            uses: Vec<&'tcx hir::Expr<'tcx>>,
         }
-        impl<'v> Visitor<'v> for FindExprs<'v> {
-            fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
+        impl<'tcx> Visitor<'tcx> for FindExprs<'tcx> {
+            fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
                 if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = ex.kind
                     && let hir::def::Res::Local(hir_id) = path.res
                     && hir_id == self.hir_id
@@ -259,180 +258,205 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        let mut expr_finder = FindExprs { hir_id, uses: vec![] };
-        let id = map.get_parent_item(hir_id);
-        let hir_id: hir::HirId = id.into();
-
-        let Some(node) = map.find(hir_id) else { return false; };
-        let Some(body_id) = node.body_id() else { return false; };
-        let body = map.body(body_id);
+        let mut expr_finder = FindExprs { hir_id: local_hir_id, uses: init.into_iter().collect() };
+        let body =
+            hir.body(hir.maybe_body_owned_by(self.body_id).expect("expected item to have body"));
         expr_finder.visit_expr(body.value);
-        // Hack to make equality checks on types with inference variables and regions useful.
-        let mut eraser = BottomUpFolder {
+
+        use rustc_infer::infer::type_variable::*;
+        use rustc_middle::infer::unify_key::*;
+        // Replaces all of the variables in the given type with a fresh inference variable.
+        let mut fudger = BottomUpFolder {
             tcx: self.tcx,
+            ty_op: |ty| {
+                if let ty::Infer(infer) = ty.kind() {
+                    match infer {
+                        ty::InferTy::TyVar(_) => self.next_ty_var(TypeVariableOrigin {
+                            kind: TypeVariableOriginKind::MiscVariable,
+                            span: DUMMY_SP,
+                        }),
+                        ty::InferTy::IntVar(_) => self.next_int_var(),
+                        ty::InferTy::FloatVar(_) => self.next_float_var(),
+                        _ => bug!(),
+                    }
+                } else {
+                    ty
+                }
+            },
             lt_op: |_| self.tcx.lifetimes.re_erased,
-            ct_op: |c| c,
-            ty_op: |t| match *t.kind() {
-                ty::Infer(ty::TyVar(_)) => self.tcx.mk_ty_var(ty::TyVid::from_u32(0)),
-                ty::Infer(ty::IntVar(_)) => self.tcx.mk_int_var(ty::IntVid { index: 0 }),
-                ty::Infer(ty::FloatVar(_)) => self.tcx.mk_float_var(ty::FloatVid { index: 0 }),
-                _ => t,
+            ct_op: |ct| {
+                if let ty::ConstKind::Infer(_) = ct.kind() {
+                    self.next_const_var(
+                        ct.ty(),
+                        ConstVariableOrigin {
+                            kind: ConstVariableOriginKind::MiscVariable,
+                            span: DUMMY_SP,
+                        },
+                    )
+                } else {
+                    ct
+                }
             },
         };
-        let mut prev = eraser.fold_ty(ty);
-        let mut prev_span: Option<Span> = None;
 
-        for binding in expr_finder.uses {
-            // In every expression where the binding is referenced, we will look at that
-            // expression's type and see if it is where the incorrect found type was fully
-            // "materialized" and point at it. We will also try to provide a suggestion there.
-            if let Some(hir::Node::Expr(expr)
-            | hir::Node::Stmt(hir::Stmt {
-                kind: hir::StmtKind::Expr(expr) | hir::StmtKind::Semi(expr),
-                ..
-            })) = &map.find_parent(binding.hir_id)
-                && let hir::ExprKind::MethodCall(segment, rcvr, args, _span) = expr.kind
-                && rcvr.hir_id == binding.hir_id
-                && let Some(def_id) = self.typeck_results.borrow().type_dependent_def_id(expr.hir_id)
-            {
-                // We special case methods, because they can influence inference through the
-                // call's arguments and we can provide a more explicit span.
-                let sig = self.tcx.fn_sig(def_id).subst_identity();
-                let def_self_ty = sig.input(0).skip_binder();
-                let param_tys = sig.inputs().skip_binder().iter().skip(1);
-                // If there's an arity mismatch, pointing out the call as the source of an inference
-                // can be misleading, so we skip it.
-                if param_tys.len() != args.len() {
-                    continue;
-                }
-                let rcvr_ty = self.node_ty(rcvr.hir_id);
-                // Get the evaluated type *after* calling the method call, so that the influence
-                // of the arguments can be reflected in the receiver type. The receiver
-                // expression has the type *before* this analysis is done.
-                let ty = match self.lookup_probe_for_diagnostic(
-                    segment.ident,
-                    rcvr_ty,
-                    expr,
-                    probe::ProbeScope::TraitsInScope,
-                    None,
-                ) {
-                    Ok(pick) => eraser.fold_ty(pick.self_ty),
-                    Err(_) => rcvr_ty,
+        let expected_ty = match source {
+            TypeMismatchSource::Ty(expected_ty) => expected_ty,
+            // Try to deduce what the possible value of `expr` would be if the
+            // incompatible arg were compatible. For example, given `Vec<i32>`
+            // and `vec.push(1u32)`, we ideally want to deduce that the type of
+            // `vec` *should* have been `Vec<u32>`. This will allow us to then
+            // run the subsequent code with this expectation, finding out exactly
+            // when this type diverged from our expectation.
+            TypeMismatchSource::Arg { call_expr, incompatible_arg: idx } => {
+                let hir::ExprKind::MethodCall(segment, _, args, _) = call_expr.kind else {
+                    return false;
                 };
-                // Remove one layer of references to account for `&mut self` and
-                // `&self`, so that we can compare it against the binding.
-                let (ty, def_self_ty) = match (ty.kind(), def_self_ty.kind()) {
-                    (ty::Ref(_, ty, a), ty::Ref(_, self_ty, b)) if a == b => (*ty, *self_ty),
-                    _ => (ty, def_self_ty),
+                let Some(arg_ty) = self.node_ty_opt(args[idx].hir_id) else {
+                    return false;
                 };
-                let mut param_args = FxHashMap::default();
-                let mut param_expected = FxHashMap::default();
-                let mut param_found = FxHashMap::default();
-                if self.can_eq(self.param_env, ty, found) {
-                    // We only point at the first place where the found type was inferred.
-                    for (param_ty, arg) in param_tys.zip(args) {
-                        if def_self_ty.contains(*param_ty) && let ty::Param(_) = param_ty.kind() {
-                            // We found an argument that references a type parameter in `Self`,
-                            // so we assume that this is the argument that caused the found
-                            // type, which we know already because of `can_eq` above was first
-                            // inferred in this method call.
-                            let arg_ty = self.node_ty(arg.hir_id);
-                            if !arg.span.overlaps(mismatch_span) {
-                                err.span_label(
-                                    arg.span,
-                                    &format!(
-                                        "this is of type `{arg_ty}`, which causes `{ident}` to be \
-                                        inferred as `{ty}`",
-                                    ),
-                                );
-                            }
-                            param_args.insert(param_ty, (arg, arg_ty));
-                        }
-                    }
+                let possible_rcvr_ty = expr_finder.uses.iter().find_map(|binding| {
+                    let possible_rcvr_ty = self.node_ty_opt(binding.hir_id)?;
+                    // Fudge the receiver, so we can do new inference on it.
+                    let possible_rcvr_ty = possible_rcvr_ty.fold_with(&mut fudger);
+                    let method = self
+                        .lookup_method(
+                            possible_rcvr_ty,
+                            segment,
+                            DUMMY_SP,
+                            call_expr,
+                            binding,
+                            args,
+                        )
+                        .ok()?;
+                    // Unify the method signature with our incompatible arg, to
+                    // do inference in the *opposite* direction and to find out
+                    // what our ideal rcvr ty would look like.
+                    let _ = self
+                        .at(&ObligationCause::dummy(), self.param_env)
+                        .eq(DefineOpaqueTypes::No, method.sig.inputs()[idx + 1], arg_ty)
+                        .ok()?;
+                    self.select_obligations_where_possible(|errs| {
+                        // Yeet the errors, we're already reporting errors.
+                        errs.clear();
+                    });
+                    Some(self.resolve_vars_if_possible(possible_rcvr_ty))
+                });
+                if let Some(rcvr_ty) = possible_rcvr_ty {
+                    rcvr_ty
+                } else {
+                    return false;
                 }
-
-                // Here we find, for a type param `T`, the type that `T` is in the current
-                // method call *and* in the original expected type. That way, we can see if we
-                // can give any structured suggestion for the function argument.
-                let mut c = CollectAllMismatches {
-                    infcx: &self.infcx,
-                    param_env: self.param_env,
-                    errors: vec![],
-                };
-                let _ = c.relate(def_self_ty, ty);
-                for error in c.errors {
-                    if let TypeError::Sorts(error) = error {
-                        param_found.insert(error.expected, error.found);
-                    }
-                }
-                c.errors = vec![];
-                let _ = c.relate(def_self_ty, expected);
-                for error in c.errors {
-                    if let TypeError::Sorts(error) = error {
-                        param_expected.insert(error.expected, error.found);
-                    }
-                }
-                for (param, (arg, arg_ty)) in param_args.iter() {
-                    let Some(expected) = param_expected.get(param) else { continue; };
-                    let Some(found) = param_found.get(param) else { continue; };
-                    if !self.can_eq(self.param_env, *arg_ty, *found) { continue; }
-                    self.emit_coerce_suggestions(err, arg, *found, *expected, None, None);
-                }
-
-                let ty = eraser.fold_ty(ty);
-                if ty.references_error() {
-                    break;
-                }
-                if ty != prev
-                    && param_args.is_empty()
-                    && self.can_eq(self.param_env, ty, found)
-                {
-                    // We only point at the first place where the found type was inferred.
-                    if !segment.ident.span.overlaps(mismatch_span) {
-                    err.span_label(
-                        segment.ident.span,
-                        with_forced_trimmed_paths!(format!(
-                            "here the type of `{ident}` is inferred to be `{ty}`",
-                        )),
-                    );}
-                    break;
-                } else if !param_args.is_empty() {
-                    break;
-                }
-                prev = ty;
-            } else {
-                let ty = eraser.fold_ty(self.node_ty(binding.hir_id));
-                if ty.references_error() {
-                    break;
-                }
-                if ty != prev
-                    && let Some(span) = prev_span
-                    && self.can_eq(self.param_env, ty, found)
-                {
-                    // We only point at the first place where the found type was inferred.
-                    // We use the *previous* span because if the type is known *here* it means
-                    // it was *evaluated earlier*. We don't do this for method calls because we
-                    // evaluate the method's self type eagerly, but not in any other case.
-                    if !span.overlaps(mismatch_span) {
-                        err.span_label(
-                            span,
-                            with_forced_trimmed_paths!(format!(
-                                "here the type of `{ident}` is inferred to be `{ty}`",
-                            )),
-                        );
-                    }
-                    break;
-                }
-                prev = ty;
             }
+        };
+
+        // If our expected_ty does not equal init_ty, then it *began* as incompatible.
+        // No need to note in this case...
+        if !self.can_eq(self.param_env, expected_ty, init_ty.fold_with(&mut fudger)) {
+            return false;
+        }
+
+        for window in expr_finder.uses.windows(2) {
+            // Bindings always update their recorded type after the fact, so we
+            // need to look at the *following* usage's type to see when the
+            // binding became incompatible.
+            let [binding, next_usage] = *window else { continue; };
+
+            // Don't go past the binding (always gonna be a nonsense label if so)
             if binding.hir_id == expr.hir_id {
-                // Do not look at expressions that come after the expression we were originally
-                // evaluating and had a type error.
                 break;
             }
-            prev_span = Some(binding.span);
+
+            let Some(next_use_ty) = self.node_ty_opt(next_usage.hir_id) else { continue; };
+
+            // If the type is not constrained in a way making it not possible to
+            // equate with `expected_ty` by this point, skip.
+            if self.can_eq(self.param_env, expected_ty, next_use_ty.fold_with(&mut fudger)) {
+                continue;
+            }
+
+            if let hir::Node::Expr(parent_expr) = hir.get_parent(binding.hir_id)
+                && let hir::ExprKind::MethodCall(segment, rcvr, args, _) = parent_expr.kind
+                && rcvr.hir_id == binding.hir_id
+            {
+                // If our binding became incompatible while it was a receiver
+                // to a method call, we may be able to make a better guess to
+                // the source of a type mismatch.
+                let Some(rcvr_ty) = self.node_ty_opt(rcvr.hir_id) else { continue; };
+                let rcvr_ty = rcvr_ty.fold_with(&mut fudger);
+                let Ok(method) =
+                    self.lookup_method(rcvr_ty, segment, DUMMY_SP, parent_expr, rcvr, args)
+                else {
+                    continue;
+                };
+
+                let ideal_rcvr_ty = rcvr_ty.fold_with(&mut fudger);
+                let ideal_method = self
+                    .lookup_method(ideal_rcvr_ty, segment, DUMMY_SP, parent_expr, rcvr, args)
+                    .ok()
+                    .and_then(|method| {
+                        let _ = self.at(&ObligationCause::dummy(), self.param_env)
+                            .eq(DefineOpaqueTypes::No, ideal_rcvr_ty, expected_ty)
+                            .ok()?;
+                        Some(method)
+                    });
+
+                // Find what argument caused our rcvr to become incompatible
+                // with the expected ty.
+                for (idx, (expected_arg_ty, arg_expr)) in
+                    std::iter::zip(&method.sig.inputs()[1..], args).enumerate()
+                {
+                    let Some(arg_ty) = self.node_ty_opt(arg_expr.hir_id) else { continue; };
+                    let arg_ty = arg_ty.fold_with(&mut fudger);
+                    let _ = self.try_coerce(
+                        arg_expr,
+                        arg_ty,
+                        *expected_arg_ty,
+                        AllowTwoPhase::No,
+                        None,
+                    );
+                    self.select_obligations_where_possible(|errs| {
+                        // Yeet the errors, we're already reporting errors.
+                        errs.clear();
+                    });
+                    // If our rcvr, after inference due to unifying the signature
+                    // with the expected argument type, is still compatible with
+                    // the rcvr, then it must've not been the source of blame.
+                    if self.can_eq(self.param_env, rcvr_ty, expected_ty) {
+                        continue;
+                    }
+                    err.span_label(arg_expr.span, format!("this argument has type `{arg_ty}`..."));
+                    err.span_label(
+                        binding.span,
+                        format!("... which causes `{ident}` to have type `{next_use_ty}`"),
+                    );
+                    // Using our "ideal" method signature, suggest a fix to this
+                    // blame arg, if possible. Don't do this if we're coming from
+                    // arg mismatch code, because we'll possibly suggest a mutually
+                    // incompatible fix at the original mismatch site.
+                    if matches!(source, TypeMismatchSource::Ty(_))
+                        && let Some(ideal_method) = ideal_method
+                    {
+                        self.emit_type_mismatch_suggestions(
+                            err,
+                            arg_expr,
+                            arg_ty,
+                            self.resolve_vars_if_possible(ideal_method.sig.inputs()[idx + 1]),
+                            None,
+                            None,
+                        );
+                    }
+                    return true;
+                }
+            }
+            err.span_label(
+                binding.span,
+                format!("here the type of `{ident}` is inferred to be `{next_use_ty}`"),
+            );
+            return true;
         }
-        true
+
+        // We must've not found something that constrained the expr.
+        false
     }
 
     fn annotate_expected_due_to_let_ty(
@@ -708,7 +732,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
     }
 
-    pub(crate) fn note_result_coercion(
+    pub(crate) fn suggest_coercing_result_via_try_operator(
         &self,
         err: &mut Diagnostic,
         expr: &hir::Expr<'tcx>,
@@ -2093,4 +2117,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => return,
         }
     }
+}
+
+pub enum TypeMismatchSource<'tcx> {
+    /// Expected the binding to have the given type, but it was found to have
+    /// a different type. Find out when that type first became incompatible.
+    Ty(Ty<'tcx>),
+    /// When we fail during method argument checking, try to find out if a previous
+    /// expression has constrained the method's receiver in a way that makes the
+    /// argument's type incompatible.
+    Arg { call_expr: &'tcx hir::Expr<'tcx>, incompatible_arg: usize },
 }

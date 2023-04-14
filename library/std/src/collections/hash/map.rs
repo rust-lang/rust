@@ -1446,7 +1446,6 @@ impl<'a, K, V> IterMut<'a, K, V> {
 /// (provided by the [`IntoIterator`] trait). See its documentation for more.
 ///
 /// [`into_iter`]: IntoIterator::into_iter
-/// [`IntoIterator`]: crate::iter::IntoIterator
 ///
 /// # Example
 ///

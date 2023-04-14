@@ -56,12 +56,9 @@
 #[cfg(not(no_global_oom_handling))]
 use core::cmp;
 use core::cmp::Ordering;
-use core::convert::TryFrom;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::iter;
-#[cfg(not(no_global_oom_handling))]
-use core::iter::FromIterator;
 use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use core::ops::{self, Index, IndexMut, Range, RangeBounds};
@@ -2990,7 +2987,7 @@ impl<'a, T: Copy + 'a, A: Allocator + 'a> Extend<&'a T> for Vec<T, A> {
     }
 }
 
-/// Implements comparison of vectors, [lexicographically](core::cmp::Ord#lexicographical-comparison).
+/// Implements comparison of vectors, [lexicographically](Ord#lexicographical-comparison).
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialOrd, A: Allocator> PartialOrd for Vec<T, A> {
     #[inline]
@@ -3002,7 +2999,7 @@ impl<T: PartialOrd, A: Allocator> PartialOrd for Vec<T, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Eq, A: Allocator> Eq for Vec<T, A> {}
 
-/// Implements ordering of vectors, [lexicographically](core::cmp::Ord#lexicographical-comparison).
+/// Implements ordering of vectors, [lexicographically](Ord#lexicographical-comparison).
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord, A: Allocator> Ord for Vec<T, A> {
     #[inline]

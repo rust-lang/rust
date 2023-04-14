@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 use std::cell::RefCell;
-use std::default::Default;
 use std::hash::Hash;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -980,7 +979,7 @@ pub(crate) trait NestedAttributesExt {
     /// Returns `true` if the attribute list contains a specific `word`
     fn has_word(self, word: Symbol) -> bool
     where
-        Self: std::marker::Sized,
+        Self: Sized,
     {
         <Self as NestedAttributesExt>::get_word_attr(self, word).is_some()
     }
