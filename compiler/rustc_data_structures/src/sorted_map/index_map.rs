@@ -106,7 +106,7 @@ impl<I: Idx, K: Ord, V> SortedIndexMultiMap<I, K, V> {
         self.get_by_key(key).next().is_some()
     }
 
-    /// Iterate over values, sorted by key
+    /// Iterate over values, in insertion order
     #[inline]
     pub fn values(&self) -> impl Iterator<Item = &V> + ExactSizeIterator + DoubleEndedIterator {
         self.items.iter().map(|(_k, v)| v)

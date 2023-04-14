@@ -281,7 +281,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_mod(&mut self, _mod: &hir::Mod<'_>, attrs: &ItemAttributes<'a>) {
-        self.print_inner_attributes(attrs.values());
+        self.print_inner_attributes(attrs.iter());
         for &item_id in _mod.item_ids {
             self.ann.nested(self, Nested::Item(item_id));
         }
@@ -375,7 +375,7 @@ impl<'a> State<'a> {
     pub fn print_foreign_item(&mut self, item: &hir::ForeignItem<'_>) {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
-        self.print_outer_attributes(self.attrs(item.hir_id()).values());
+        self.print_outer_attributes(self.attrs(item.hir_id()).iter());
         match item.kind {
             hir::ForeignItemKind::Fn(decl, arg_names, generics) => {
                 self.head("");
@@ -482,7 +482,7 @@ impl<'a> State<'a> {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
         let attrs = self.attrs(item.hir_id());
-        self.print_outer_attributes(attrs.values());
+        self.print_outer_attributes(attrs.iter());
         self.ann.pre(self, AnnNode::Item(item));
         match item.kind {
             hir::ItemKind::ExternCrate(orig_name) => {
@@ -576,7 +576,7 @@ impl<'a> State<'a> {
                 self.head("extern");
                 self.word_nbsp(abi.to_string());
                 self.bopen();
-                self.print_inner_attributes(self.attrs(item.hir_id()).values());
+                self.print_inner_attributes(self.attrs(item.hir_id()).iter());
                 for item in items {
                     self.ann.nested(self, Nested::ForeignItem(item.id));
                 }
@@ -659,7 +659,7 @@ impl<'a> State<'a> {
 
                 self.space();
                 self.bopen();
-                self.print_inner_attributes(attrs.values());
+                self.print_inner_attributes(attrs.iter());
                 for impl_item in items {
                     self.ann.nested(self, Nested::ImplItem(impl_item.id));
                 }
@@ -743,7 +743,7 @@ impl<'a> State<'a> {
         for v in variants {
             self.space_if_not_bol();
             self.maybe_print_comment(v.span.lo());
-            self.print_outer_attributes(self.attrs(v.hir_id).values());
+            self.print_outer_attributes(self.attrs(v.hir_id).iter());
             self.ibox(INDENT_UNIT);
             self.print_variant(v);
             self.word(",");
@@ -776,7 +776,7 @@ impl<'a> State<'a> {
                     self.popen();
                     self.commasep(Inconsistent, struct_def.fields(), |s, field| {
                         s.maybe_print_comment(field.span.lo());
-                        s.print_outer_attributes(s.attrs(field.hir_id).values());
+                        s.print_outer_attributes(s.attrs(field.hir_id).iter());
                         s.print_type(field.ty);
                     });
                     self.pclose();
@@ -797,7 +797,7 @@ impl<'a> State<'a> {
                 for field in struct_def.fields() {
                     self.hardbreak_if_not_bol();
                     self.maybe_print_comment(field.span.lo());
-                    self.print_outer_attributes(self.attrs(field.hir_id).values());
+                    self.print_outer_attributes(self.attrs(field.hir_id).iter());
                     self.print_ident(field.ident);
                     self.word_nbsp(":");
                     self.print_type(field.ty);
@@ -834,7 +834,7 @@ impl<'a> State<'a> {
         self.ann.pre(self, AnnNode::SubItem(ti.hir_id()));
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(ti.span.lo());
-        self.print_outer_attributes(self.attrs(ti.hir_id()).values());
+        self.print_outer_attributes(self.attrs(ti.hir_id()).iter());
         match ti.kind {
             hir::TraitItemKind::Const(ty, default) => {
                 self.print_associated_const(ti.ident, ty, default);
@@ -862,7 +862,7 @@ impl<'a> State<'a> {
         self.ann.pre(self, AnnNode::SubItem(ii.hir_id()));
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(ii.span.lo());
-        self.print_outer_attributes(self.attrs(ii.hir_id()).values());
+        self.print_outer_attributes(self.attrs(ii.hir_id()).iter());
 
         match ii.kind {
             hir::ImplItemKind::Const(ty, expr) => {
@@ -1144,7 +1144,7 @@ impl<'a> State<'a> {
             self.space();
         }
         self.cbox(INDENT_UNIT);
-        self.print_outer_attributes(self.attrs(field.hir_id).values());
+        self.print_outer_attributes(self.attrs(field.hir_id).iter());
         if !field.is_shorthand {
             self.print_ident(field.ident);
             self.word_space(":");
@@ -1364,7 +1364,7 @@ impl<'a> State<'a> {
 
     pub fn print_expr(&mut self, expr: &hir::Expr<'_>) {
         self.maybe_print_comment(expr.span.lo());
-        self.print_outer_attributes(self.attrs(expr.hir_id).values());
+        self.print_outer_attributes(self.attrs(expr.hir_id).iter());
         self.ibox(INDENT_UNIT);
         self.ann.pre(self, AnnNode::Expr(expr));
         match expr.kind {
@@ -1884,7 +1884,7 @@ impl<'a> State<'a> {
             self.space();
         }
         self.cbox(INDENT_UNIT);
-        self.print_outer_attributes(self.attrs(field.hir_id).values());
+        self.print_outer_attributes(self.attrs(field.hir_id).iter());
         if !field.is_shorthand {
             self.print_ident(field.ident);
             self.word_nbsp(":");
@@ -1894,7 +1894,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_param(&mut self, arg: &hir::Param<'_>) {
-        self.print_outer_attributes(self.attrs(arg.hir_id).values());
+        self.print_outer_attributes(self.attrs(arg.hir_id).iter());
         self.print_pat(arg.pat);
     }
 
@@ -1907,7 +1907,7 @@ impl<'a> State<'a> {
         self.cbox(INDENT_UNIT);
         self.ann.pre(self, AnnNode::Arm(arm));
         self.ibox(0);
-        self.print_outer_attributes(self.attrs(arm.hir_id).values());
+        self.print_outer_attributes(self.attrs(arm.hir_id).iter());
         self.print_pat(arm.pat);
         self.space();
         if let Some(ref g) = arm.guard {

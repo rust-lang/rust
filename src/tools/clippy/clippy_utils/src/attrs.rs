@@ -59,7 +59,7 @@ pub fn get_attr<'a>(
     attrs: &'a hir::ItemAttributes<'a>,
     name: &'static str,
 ) -> impl Iterator<Item = &'a ast::Attribute> {
-    attrs.values().filter(move |attr| {
+    attrs.iter().filter(move |attr| {
         let attr = if let ast::AttrKind::Normal(ref normal) = attr.kind {
             &normal.item
         } else {
@@ -147,7 +147,7 @@ pub fn get_unique_attr<'a>(
 /// Return true if the attributes contain any of `proc_macro`,
 /// `proc_macro_derive` or `proc_macro_attribute`, false otherwise
 pub fn is_proc_macro(attrs: &hir::ItemAttributes<'_>) -> bool {
-    attrs.values().any(rustc_ast::Attribute::is_proc_macro_attr)
+    attrs.iter().any(rustc_ast::Attribute::is_proc_macro_attr)
 }
 
 /// Return true if the attributes contain `#[doc(hidden)]`

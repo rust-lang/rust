@@ -371,8 +371,8 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                     }
 
                     let attrs = tcx.hir().attrs(start_id);
-                    for (name, attr) in attrs.iter() {
-                        match name {
+                    for attr in attrs.iter() {
+                        match attr.name_or_empty() {
                             sym::track_caller => {
                                 tcx.sess.emit_err(errors::StartTrackCaller {
                                     span: attr.span,

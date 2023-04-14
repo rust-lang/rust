@@ -382,13 +382,12 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     // If there was a private module in the current path then don't bother inlining
                     // anything as it will probably be stripped anyway.
                     if is_pub && self.inside_public_path {
-                        let please_inline =
-                            attrs.values().any(|item| match item.meta_item_list() {
-                                Some(ref list) if item.has_name(sym::doc) => {
-                                    list.iter().any(|i| i.has_name(sym::inline))
-                                }
-                                _ => false,
-                            });
+                        let please_inline = attrs.iter().any(|item| match item.meta_item_list() {
+                            Some(ref list) if item.has_name(sym::doc) => {
+                                list.iter().any(|i| i.has_name(sym::inline))
+                            }
+                            _ => false,
+                        });
                         let is_glob = kind == hir::UseKind::Glob;
                         let ident = if is_glob { None } else { Some(name) };
                         if self.maybe_inline_local(

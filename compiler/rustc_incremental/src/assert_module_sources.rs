@@ -44,7 +44,7 @@ pub fn assert_module_sources(tcx: TyCtxt<'_>) {
 
         let ams = AssertModuleSource { tcx, available_cgus };
 
-        for attr in tcx.hir().attrs(rustc_hir::CRATE_HIR_ID).values() {
+        for attr in tcx.hir().attrs(rustc_hir::CRATE_HIR_ID).iter() {
             ams.check_attr(attr);
         }
     })

@@ -950,7 +950,7 @@ fn clean_fn_or_proc_macro<'tcx>(
     cx: &mut DocContext<'tcx>,
 ) -> ItemKind {
     let attrs = cx.tcx.hir().attrs(item.hir_id());
-    let macro_kind = attrs.iter().find_map(|(name, _)| match name {
+    let macro_kind = attrs.names().find_map(|name| match name {
         sym::proc_macro => Some(MacroKind::Bang),
         sym::proc_macro_derive => Some(MacroKind::Derive),
         sym::proc_macro_attribute => Some(MacroKind::Attr),
@@ -2089,7 +2089,7 @@ fn get_all_import_attributes<'hir>(
         let import_attrs = inline::load_attrs(cx, def_id);
         if first {
             // This is the "original" reexport so we get all its attributes without filtering them.
-            attrs = import_attrs.values().map(|attr| (Cow::Borrowed(attr), Some(def_id))).collect();
+            attrs = import_attrs.iter().map(|attr| (Cow::Borrowed(attr), Some(def_id))).collect();
             first = false;
         } else {
             add_without_unwanted_attributes(&mut attrs, import_attrs, is_inline, Some(def_id));
@@ -2149,12 +2149,12 @@ fn add_without_unwanted_attributes<'hir>(
 ) {
     // If it's not `#[doc(inline)]`, we don't want all attributes, otherwise we keep everything.
     if !is_inline {
-        for attr in new_attrs.values() {
+        for attr in new_attrs.iter() {
             attrs.push((Cow::Borrowed(attr), import_parent));
         }
         return;
     }
-    for attr in new_attrs.values() {
+    for attr in new_attrs.iter() {
         if matches!(attr.kind, ast::AttrKind::DocComment(..)) {
             attrs.push((Cow::Borrowed(attr), import_parent));
             continue;
@@ -2293,7 +2293,7 @@ fn clean_maybe_renamed_item<'tcx>(
             attrs
         } else {
             // We only keep the item's attributes.
-            target_attrs.values().map(|attr| (Cow::Borrowed(attr), None)).collect()
+            target_attrs.iter().map(|attr| (Cow::Borrowed(attr), None)).collect()
         };
 
         let cfg = attrs.cfg(cx.tcx, &cx.cache.hidden_cfg);

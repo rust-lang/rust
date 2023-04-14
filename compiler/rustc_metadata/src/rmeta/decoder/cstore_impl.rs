@@ -284,7 +284,7 @@ provide! { tcx, def_id, other, cdata,
     is_foreign_item => { cdata.is_foreign_item(def_id.index) }
     item_attrs => {
         let attrs = tcx.arena.alloc_from_iter(cdata.get_item_attrs(def_id.index, tcx.sess));
-        hir::ItemAttributes(attrs.iter().map(|attr| (attr.name_or_empty(), attr)).collect())
+        hir::ItemAttributes::from_slice(attrs)
     }
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
     is_ctfe_mir_available => { cdata.is_ctfe_mir_available(def_id.index) }

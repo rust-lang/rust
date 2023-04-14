@@ -124,8 +124,8 @@ impl<'tcx> IfThisChanged<'tcx> {
         let def_path_hash = self.tcx.def_path_hash(def_id.to_def_id());
         let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
         let attrs = self.tcx.hir().attrs(hir_id);
-        for (name, attr) in attrs.iter() {
-            match name {
+        for attr in attrs.iter() {
+            match attr.name_or_empty() {
                 sym::rustc_if_this_changed => {
                     let dep_node_interned = self.argument(attr);
                     let dep_node = match dep_node_interned {

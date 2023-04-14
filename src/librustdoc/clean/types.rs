@@ -372,7 +372,7 @@ impl Item {
     pub(crate) fn inner_docs(&self, tcx: TyCtxt<'_>) -> bool {
         self.item_id
             .as_def_id()
-            .map(|did| inner_docs(tcx.get_attrs_unchecked(did).values()))
+            .map(|did| inner_docs(tcx.get_attrs_unchecked(did).iter()))
             .unwrap_or(false)
     }
 
@@ -948,7 +948,7 @@ impl<'tcx> AttributesExt for hir::ItemAttributes<'tcx> {
     }
 
     fn iter<'a>(&'a self) -> Self::Attributes<'a> {
-        self.values()
+        self.iter()
     }
 }
 
@@ -1087,7 +1087,7 @@ impl Attributes {
     }
 
     pub(crate) fn from_hir(attrs: &hir::ItemAttributes<'_>) -> Attributes {
-        Attributes::from_ast_iter(attrs.values().map(|attr| (attr, None)), false)
+        Attributes::from_ast_iter(attrs.iter().map(|attr| (attr, None)), false)
     }
 
     pub(crate) fn from_ast_with_additional(

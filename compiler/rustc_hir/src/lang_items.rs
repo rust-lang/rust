@@ -135,8 +135,8 @@ impl<CTX> HashStable<CTX> for LangItem {
 /// Extracts the first `lang = "$name"` out of a list of attributes.
 /// The `#[panic_handler]` attribute is also extracted out when found.
 pub fn extract(attrs: &ItemAttributes<'_>) -> Option<(Symbol, Span)> {
-    attrs.iter().find_map(|(name, attr)| {
-        Some(match name {
+    attrs.iter().find_map(|attr| {
+        Some(match attr.name_or_empty() {
             sym::lang => (attr.value_str()?, attr.span),
             sym::panic_handler => (sym::panic_impl, attr.span),
             _ => return None,

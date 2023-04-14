@@ -356,7 +356,7 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
             ItemKind::ExternCrate(..) | ItemKind::Use(..) => {
                 let skip_unused_imports = attrs.contains(sym::macro_use);
 
-                for attr in attrs.values() {
+                for attr in attrs.iter() {
                     if in_external_macro(cx.sess(), attr.span) {
                         return;
                     }
@@ -557,7 +557,7 @@ fn check_attrs(cx: &LateContext<'_>, span: Span, name: Symbol, attrs: &ItemAttri
         return;
     }
 
-    for attr in attrs.values() {
+    for attr in attrs.iter() {
         if let Some(values) = attr.meta_item_list() {
             if values.len() != 1 || !attr.has_name(sym::inline) {
                 continue;

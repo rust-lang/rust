@@ -659,14 +659,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let bodies = SortedMap::from_presorted_elements(bodies);
         let attrs: SortedMap<ItemLocalId, hir::ItemAttributes<'_>> = attrs
             .into_iter()
-            .map(|(id, attrs)| {
-                (
-                    id,
-                    hir::ItemAttributes(
-                        attrs.into_iter().map(|attr| (attr.name_or_empty(), attr)).collect(),
-                    ),
-                )
-            })
+            .map(|(id, attrs)| (id, hir::ItemAttributes::from_slice(attrs)))
             .collect();
 
         // Don't hash unless necessary, because it's expensive.

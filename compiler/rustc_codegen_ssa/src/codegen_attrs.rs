@@ -65,7 +65,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     let mut link_ordinal_span = None;
     let mut no_sanitize_span = None;
 
-    for attr in attrs.values() {
+    for attr in attrs.iter() {
         // In some cases, attribute are only valid on functions, but it's the `check_attr`
         // pass that check that they aren't used anywhere else, rather this module.
         // In these cases, we bail from performing further checks that are only meaningful for

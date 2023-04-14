@@ -105,8 +105,8 @@ impl CheckAttrVisitor<'_> {
         let mut specified_inline = None;
         let mut seen = FxHashMap::default();
         let attrs = self.tcx.hir().attrs(hir_id);
-        for (name, attr) in attrs.iter() {
-            let attr_is_valid = match name {
+        for attr in attrs.iter() {
+            let attr_is_valid = match attr.name_or_empty() {
                 sym::do_not_recommend => self.check_do_not_recommend(attr.span, target),
                 sym::inline => self.check_inline(hir_id, attr, span, target),
                 sym::no_coverage => self.check_no_coverage(hir_id, attr, span, target),
@@ -508,7 +508,7 @@ impl CheckAttrVisitor<'_> {
             // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
-                for attr in attrs.values() {
+                for attr in attrs.iter() {
                     self.inline_attr_str_error_with_macro_def(hir_id, attr, "track_caller");
                 }
                 true
@@ -1897,7 +1897,7 @@ impl CheckAttrVisitor<'_> {
         debug!("Checking target: {:?}", target);
         match target {
             Target::Fn => {
-                for attr in attrs.values() {
+                for attr in attrs.iter() {
                     if attr.is_proc_macro_attr() {
                         debug!("Is proc macro attr");
                         return true;
@@ -2412,11 +2412,11 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &ItemAttributes<'_>) {
         sym::bench,
     ];
 
-    for (name, attr) in attrs.iter() {
+    for attr in attrs.iter() {
         // This function should only be called with crate attributes
         // which are inner attributes always but lets check to make sure
         if attr.style == AttrStyle::Inner {
-            if let Some(attr_to_check) = ATTRS_TO_CHECK.iter().find(|&&a| name == a) {
+            if let Some(attr_to_check) = ATTRS_TO_CHECK.iter().find(|&&a| attr.has_name(a)) {
                 tcx.sess.emit_err(errors::InvalidAttrAtCrateLevel {
                     span: attr.span,
                     snippet: tcx.sess.source_map().span_to_snippet(attr.span).ok(),

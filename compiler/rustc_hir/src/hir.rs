@@ -12,7 +12,7 @@ pub use rustc_ast::{CaptureBy, Movability, Mutability};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sorted_map::{SortedIndexMultiMap, SortedMap};
+use rustc_data_structures::sorted_map::SortedMap;
 use rustc_error_messages::MultiSpan;
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable_Generic;
@@ -846,29 +846,36 @@ impl<'tcx> AttributeMap<'tcx> {
 }
 
 #[derive(Debug)]
-pub struct ItemAttributes<'tcx>(pub SortedIndexMultiMap<u32, Symbol, &'tcx Attribute>);
+pub struct ItemAttributes<'tcx> {
+    items: &'tcx [Attribute],
+    index_sorted_by_key: Vec<(u32, Symbol)>,
+}
 
 impl<'tcx> ItemAttributes<'tcx> {
-    pub const EMPTY: &'static ItemAttributes<'static> = &ItemAttributes(SortedIndexMultiMap::new());
+    pub const EMPTY: &'static ItemAttributes<'static> =
+        &ItemAttributes { items: &[], index_sorted_by_key: Vec::new() };
 
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.items.is_empty()
     }
 
     #[inline]
     pub fn first(&self) -> Option<&Attribute> {
-        self.values().next()
+        self.iter().next()
     }
 
     #[inline]
     pub fn len(&self) -> usize {
-        self.0.len()
+        self.items.len()
     }
 
     #[inline]
     pub fn with_name(&self, name: Symbol) -> impl Iterator<Item = &Attribute> {
-        self.0.get_by_key(name).copied()
+        let lower_bound = self.index_sorted_by_key.partition_point(|&(_, symbol)| symbol < name);
+        self.index_sorted_by_key[lower_bound..]
+            .iter()
+            .map_while(move |&(i, symbol)| (symbol == name).then_some(&self.items[i as usize]))
     }
 
     #[inline]
@@ -878,23 +885,26 @@ impl<'tcx> ItemAttributes<'tcx> {
 
     #[inline]
     pub fn contains(&self, name: Symbol) -> bool {
-        self.0.contains_key(name)
+        self.with_name(name).next().is_some()
     }
 
     #[inline]
-    pub fn values(&self) -> impl Iterator<Item = &Attribute> {
-        self.0.values().copied()
+    pub fn iter(&self) -> impl Iterator<Item = &Attribute> {
+        self.items.iter()
     }
 
     #[inline]
-    pub fn iter(&self) -> impl Iterator<Item = (Symbol, &Attribute)> {
-        self.0.iter().map(|(name, attr)| (*name, *attr))
+    pub fn names(&self) -> impl Iterator<Item = Symbol> + '_ {
+        self.index_sorted_by_key.iter().map(|(_, name)| *name)
     }
-}
 
-impl<'tcx> FromIterator<&'tcx ast::Attribute> for ItemAttributes<'tcx> {
-    fn from_iter<T: IntoIterator<Item = &'tcx ast::Attribute>>(iter: T) -> Self {
-        Self(iter.into_iter().map(|attr| (attr.name_or_empty(), attr)).collect())
+    #[inline]
+    pub fn from_slice(slice: &'tcx [Attribute]) -> Self {
+        let mut index_sorted_by_key = Vec::from_iter(
+            slice.iter().enumerate().map(|(idx, attr)| (idx as u32, attr.name_or_empty())),
+        );
+        index_sorted_by_key.sort_by_key(|&(_idx, name)| name);
+        Self { items: slice, index_sorted_by_key }
     }
 }
 

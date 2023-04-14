@@ -312,7 +312,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
 
 /// Functions marked with these attributes must have the exact signature.
 fn requires_exact_signature(attrs: &ItemAttributes<'_>) -> bool {
-    attrs.iter().any(|(name, _)| {
+    attrs.names().any(|name| {
         matches!(name, sym::proc_macro | sym::proc_macro_attribute | sym::proc_macro_derive)
     })
 }

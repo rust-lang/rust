@@ -281,7 +281,7 @@ impl<'tcx> LintLevelsBuilder<'_, LintLevelQueryMap<'tcx>> {
     fn add_id(&mut self, hir_id: HirId) {
         self.provider.cur = hir_id;
         self.add(
-            self.provider.attrs.get(hir_id.local_id).values(),
+            self.provider.attrs.get(hir_id.local_id).iter(),
             hir_id == hir::CRATE_HIR_ID,
             Some(hir_id),
         );
@@ -357,7 +357,7 @@ impl<'tcx> LintLevelsBuilder<'_, QueryMapExpectationsWrapper<'tcx>> {
     fn add_id(&mut self, hir_id: HirId) {
         self.provider.cur = hir_id;
         self.add(
-            self.provider.tcx.hir().attrs(hir_id).values(),
+            self.provider.tcx.hir().attrs(hir_id).iter(),
             hir_id == hir::CRATE_HIR_ID,
             Some(hir_id),
         );

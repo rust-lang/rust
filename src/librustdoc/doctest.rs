@@ -1241,7 +1241,7 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
         if let Some(doc) = attrs.collapsed_doc_value() {
             // Use the outermost invocation, so that doctest names come from where the docs were written.
             let span = ast_attrs
-                .values()
+                .iter()
                 .find(|attr| attr.doc_str().is_some())
                 .map(|attr| attr.span.ctxt().outer_expn().expansion_cause().unwrap_or(attr.span))
                 .unwrap_or(DUMMY_SP);

@@ -52,7 +52,7 @@ pub(crate) fn try_inline(
     debug!("attrs={:?}", attrs);
 
     let attrs_without_docs = attrs.map(|(attrs, def_id)| {
-        (attrs.values().filter(|a| a.doc_str().is_none()).cloned().collect::<Vec<_>>(), def_id)
+        (attrs.iter().filter(|a| a.doc_str().is_none()).cloned().collect::<Vec<_>>(), def_id)
     });
     let attrs_without_docs =
         attrs_without_docs.as_ref().map(|(attrs, def_id)| (&attrs[..], *def_id));
@@ -124,11 +124,8 @@ pub(crate) fn try_inline(
         _ => return None,
     };
 
-    let (attrs, cfg) = merge_attrs(
-        cx,
-        load_attrs(cx, did).values(),
-        attrs.map(|(attrs, did)| (attrs.values(), did)),
-    );
+    let (attrs, cfg) =
+        merge_attrs(cx, load_attrs(cx, did).iter(), attrs.map(|(attrs, did)| (attrs.iter(), did)));
     cx.inlined.insert(did.into());
     let mut item =
         clean::Item::from_def_id_and_attrs_and_parts(did, Some(name), kind, Box::new(attrs), cfg);
@@ -515,11 +512,8 @@ pub(crate) fn build_impl(
         record_extern_trait(cx, did);
     }
 
-    let (merged_attrs, cfg) = merge_attrs(
-        cx,
-        load_attrs(cx, did).values(),
-        attrs.map(|(attrs, did)| (attrs.iter(), did)),
-    );
+    let (merged_attrs, cfg) =
+        merge_attrs(cx, load_attrs(cx, did).iter(), attrs.map(|(attrs, did)| (attrs.iter(), did)));
     trace!("merged_attrs={:?}", merged_attrs);
 
     trace!(

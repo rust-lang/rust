@@ -32,7 +32,7 @@ impl<'a, 'b> HashStable<StableHashingContext<'a>> for hir::ItemAttributes<'b> {
 
         // Some attributes are always ignored during hashing.
         let filtered: SmallVec<[&ast::Attribute; 8]> = self
-            .values()
+            .iter()
             .filter(|attr| {
                 !attr.is_doc_comment()
                     && !attr.ident().map_or(false, |ident| hcx.is_ignored_attr(ident.name))

@@ -375,7 +375,7 @@ fn late_lint_mod_inner<'tcx, T: LateLintPass<'tcx>>(
 
     // Visit the crate attributes
     if hir_id == hir::CRATE_HIR_ID {
-        for attr in tcx.hir().attrs(hir::CRATE_HIR_ID).values() {
+        for attr in tcx.hir().attrs(hir::CRATE_HIR_ID).iter() {
             cx.visit_attribute(attr)
         }
     }

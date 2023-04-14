@@ -565,7 +565,7 @@ impl<'hir> Map<'hir> {
         for info in krate.owners.iter() {
             if let MaybeOwner::Owner(info) = info {
                 for attrs in info.attrs.map.values() {
-                    for a in attrs.values() {
+                    for a in attrs.iter() {
                         visitor.visit_attribute(a)
                     }
                 }

@@ -125,12 +125,12 @@ macro_rules! extract_msrv_attr {
     (EarlyContext) => {
         fn enter_lint_attrs(&mut self, cx: &rustc_lint::EarlyContext<'_>, attrs: &[rustc_ast::ast::Attribute]) {
             let sess = rustc_lint::LintContext::sess(cx);
-            self.msrv.enter_lint_attrs(sess, &attrs.into_iter().collect());
+            self.msrv.enter_lint_attrs(sess, &rustc_hir::ItemAttributes::from_slice(attrs));
         }
 
         fn exit_lint_attrs(&mut self, cx: &rustc_lint::EarlyContext<'_>, attrs: &[rustc_ast::ast::Attribute]) {
             let sess = rustc_lint::LintContext::sess(cx);
-            self.msrv.exit_lint_attrs(sess, &attrs.into_iter().collect());
+            self.msrv.exit_lint_attrs(sess, &rustc_hir::ItemAttributes::from_slice(attrs));
         }
     };
     (LateContext) => {
@@ -2443,7 +2443,7 @@ pub fn is_in_cfg_test(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
     }
     tcx.hir()
         .parent_iter(id)
-        .flat_map(|(parent_id, _)| tcx.hir().attrs(parent_id).values())
+        .flat_map(|(parent_id, _)| tcx.hir().attrs(parent_id).iter())
         .any(is_cfg_test)
 }
 

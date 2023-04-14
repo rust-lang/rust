@@ -111,7 +111,7 @@ impl MissingDoc {
         }
 
         let has_doc = attrs
-            .values()
+            .iter()
             .any(|a| a.doc_str().is_some() || Self::has_include(a.meta()));
 
         if !has_doc {

@@ -514,7 +514,7 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &I
     let mut doc = String::new();
     let mut spans = vec![];
 
-    for attr in attrs.values() {
+    for attr in attrs.iter() {
         if let AttrKind::DocComment(comment_kind, comment) = attr.kind {
             let (comment, current_spans) = strip_doc_comment_decoration(comment.as_str(), comment_kind, attr.span);
             spans.extend_from_slice(&current_spans);

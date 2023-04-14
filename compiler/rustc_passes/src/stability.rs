@@ -115,7 +115,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         let attrs = self.tcx.hir().attrs(self.tcx.hir().local_def_id_to_hir_id(def_id));
         debug!("annotate(id = {:?}, attrs = {:?})", def_id, attrs);
 
-        let depr = attr::find_deprecation(&self.tcx.sess, attrs.values());
+        let depr = attr::find_deprecation(&self.tcx.sess, attrs.iter());
         let mut is_deprecated = false;
         if let Some((depr, span)) = &depr {
             is_deprecated = true;
@@ -159,9 +159,9 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             return;
         }
 
-        let stab = attr::find_stability(&self.tcx.sess, attrs.values(), item_sp);
-        let const_stab = attr::find_const_stability(&self.tcx.sess, attrs.values(), item_sp);
-        let body_stab = attr::find_body_stability(&self.tcx.sess, attrs.values());
+        let stab = attr::find_stability(&self.tcx.sess, attrs.iter(), item_sp);
+        let const_stab = attr::find_const_stability(&self.tcx.sess, attrs.iter(), item_sp);
+        let body_stab = attr::find_body_stability(&self.tcx.sess, attrs.iter());
         let mut const_span = None;
 
         let const_stab = const_stab.map(|(const_stab, const_span_node)| {
@@ -744,9 +744,9 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 let features = self.tcx.features();
                 if features.staged_api {
                     let attrs = self.tcx.hir().attrs(item.hir_id());
-                    let stab = attr::find_stability(&self.tcx.sess, attrs.values(), item.span);
+                    let stab = attr::find_stability(&self.tcx.sess, attrs.iter(), item.span);
                     let const_stab =
-                        attr::find_const_stability(&self.tcx.sess, attrs.values(), item.span);
+                        attr::find_const_stability(&self.tcx.sess, attrs.iter(), item.span);
 
                     // If this impl block has an #[unstable] attribute, give an
                     // error if all involved types and traits are stable, because

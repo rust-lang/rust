@@ -1248,7 +1248,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let attr_iter = tcx
             .opt_local_def_id_to_hir_id(def_id)
             .map_or(hir::ItemAttributes::EMPTY, |hir_id| tcx.hir().attrs(hir_id))
-            .values()
+            .iter()
             .filter(|attr| analyze_attr(attr, &mut state));
 
         record_array!(self.tables.attributes[def_id.to_def_id()] <- attr_iter);
