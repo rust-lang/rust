@@ -1,4 +1,5 @@
 // run-pass
+// ignore-cross-compile (needs dylibs and compiletest doesn't have a more specific header)
 // aux-build:issue-13560-1.rs
 // aux-build:issue-13560-2.rs
 // aux-build:issue-13560-3.rs
