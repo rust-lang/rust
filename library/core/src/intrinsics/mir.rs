@@ -247,7 +247,7 @@
 //!     - The exception is the last arm, which must be `_ => basic_block` and corresponds to the
 //!       otherwise branch.
 //!  - [`Call`] has an associated function as well. The third argument of this function is a normal
-//!    function call expresion, for example `my_other_function(a, 5)`.
+//!    function call expression, for example `my_other_function(a, 5)`.
 //!
 
 #![unstable(
