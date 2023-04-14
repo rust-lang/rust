@@ -948,15 +948,14 @@ impl ExprCollector<'_> {
             None
         };
 
-        let (module, def_map) = match block_id
-            .and_then(|block_id| self.db.block_def_map(block_id).zip(Some(block_id)))
-        {
-            Some((def_map, block_id)) => {
-                self.body.block_scopes.push(block_id);
-                (def_map.root(), def_map)
-            }
-            None => (self.expander.module, self.expander.def_map.clone()),
-        };
+        let (module, def_map) =
+            match block_id.map(|block_id| (self.db.block_def_map(block_id), block_id)) {
+                Some((def_map, block_id)) => {
+                    self.body.block_scopes.push(block_id);
+                    (def_map.root(), def_map)
+                }
+                None => (self.expander.module, self.expander.def_map.clone()),
+            };
         let prev_def_map = mem::replace(&mut self.expander.def_map, def_map);
         let prev_local_module = mem::replace(&mut self.expander.module, module);
 

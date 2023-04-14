@@ -461,9 +461,7 @@ impl Body {
         &'a self,
         db: &'a dyn DefDatabase,
     ) -> impl Iterator<Item = (BlockId, Arc<DefMap>)> + '_ {
-        self.block_scopes
-            .iter()
-            .map(move |&block| (block, db.block_def_map(block).expect("block ID without DefMap")))
+        self.block_scopes.iter().map(move |&block| (block, db.block_def_map(block)))
     }
 
     pub fn pretty_print(&self, db: &dyn DefDatabase, owner: DefWithBodyId) -> String {

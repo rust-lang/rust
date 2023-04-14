@@ -210,13 +210,11 @@ impl TestDB {
             });
 
         for scope in scope_iter {
-            let containing_blocks =
+            let mut containing_blocks =
                 scopes.scope_chain(Some(scope)).filter_map(|scope| scopes.block(scope));
 
-            for block in containing_blocks {
-                if let Some(def_map) = self.block_def_map(block) {
-                    return Some(def_map);
-                }
+            if let Some(block) = containing_blocks.next().map(|block| self.block_def_map(block)) {
+                return Some(block);
             }
         }
 

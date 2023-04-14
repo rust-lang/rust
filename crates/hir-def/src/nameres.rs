@@ -243,17 +243,10 @@ impl DefMap {
         Arc::new(def_map)
     }
 
-    pub(crate) fn block_def_map_query(
-        db: &dyn DefDatabase,
-        block_id: BlockId,
-    ) -> Option<Arc<DefMap>> {
+    pub(crate) fn block_def_map_query(db: &dyn DefDatabase, block_id: BlockId) -> Arc<DefMap> {
         let block: BlockLoc = db.lookup_intern_block(block_id);
 
         let tree_id = TreeId::new(block.ast_id.file_id, Some(block_id));
-        let item_tree = tree_id.item_tree(db);
-        if item_tree.top_level_items().is_empty() {
-            return None;
-        }
 
         let parent_map = block.module.def_map(db);
         let krate = block.module.krate;
@@ -269,7 +262,7 @@ impl DefMap {
         def_map.block = Some(BlockInfo { block: block_id, parent: block.module });
 
         let def_map = collector::collect_defs(db, def_map, tree_id);
-        Some(Arc::new(def_map))
+        Arc::new(def_map)
     }
 
     fn empty(krate: CrateId, edition: Edition, module_data: ModuleData) -> DefMap {

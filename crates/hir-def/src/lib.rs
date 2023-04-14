@@ -101,13 +101,7 @@ pub struct ModuleId {
 impl ModuleId {
     pub fn def_map(&self, db: &dyn db::DefDatabase) -> Arc<DefMap> {
         match self.block {
-            Some(block) => {
-                db.block_def_map(block).unwrap_or_else(|| {
-                    // NOTE: This should be unreachable - all `ModuleId`s come from their `DefMap`s,
-                    // so the `DefMap` here must exist.
-                    unreachable!("no `block_def_map` for `ModuleId` {:?}", self);
-                })
-            }
+            Some(block) => db.block_def_map(block),
             None => db.crate_def_map(self.krate),
         }
     }

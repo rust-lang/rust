@@ -96,7 +96,7 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
     // FIXME: This actually can't return None anymore as we no longer allocate block scopes for
     // non item declaring blocks
     #[salsa::invoke(DefMap::block_def_map_query)]
-    fn block_def_map(&self, block: BlockId) -> Option<Arc<DefMap>>;
+    fn block_def_map(&self, block: BlockId) -> Arc<DefMap>;
 
     #[salsa::invoke(StructData::struct_data_query)]
     fn struct_data(&self, id: StructId) -> Arc<StructData>;
