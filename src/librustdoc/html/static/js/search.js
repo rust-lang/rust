@@ -873,7 +873,7 @@ function initSearch(rawSearchIndex) {
      *
      * @param {Array<Result>} results_in_args
      * @param {Array<Result>} results_returned
-     * @param {Array<Result>} results_in_args
+     * @param {Array<Result>} results_others
      * @param {ParsedQuery} parsedQuery
      *
      * @return {ResultsTable}
