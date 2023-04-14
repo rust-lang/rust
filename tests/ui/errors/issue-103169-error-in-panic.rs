@@ -1,4 +1,5 @@
 // run-fail
+// needs-run-enabled
 // check-run-results
 
 #![allow(unused_imports)]

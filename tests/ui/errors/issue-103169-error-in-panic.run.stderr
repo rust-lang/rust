@@ -1,4 +1,4 @@
-thread 'main' panicked at 'here's my panic error message', $DIR/error-in-panic.rs:50:5
+thread 'main' panicked at 'here's my panic error message', $DIR/issue-103169-error-in-panic.rs:49:5
 
 Source: my source error message
 
