@@ -1,7 +1,7 @@
 use hir::def::CtorKind;
 use hir::intravisit::{walk_expr, walk_stmt, Visitor};
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::Diagnostic;
+use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_middle::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
