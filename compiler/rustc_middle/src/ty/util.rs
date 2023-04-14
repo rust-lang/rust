@@ -708,10 +708,6 @@ impl<'tcx> TyCtxt<'tcx> {
         ty::EarlyBinder(self.explicit_item_bounds(def_id))
     }
 
-    pub fn bound_impl_subject(self, def_id: DefId) -> ty::EarlyBinder<ty::ImplSubject<'tcx>> {
-        ty::EarlyBinder(self.impl_subject(def_id))
-    }
-
     /// Returns names of captured upvars for closures and generators.
     ///
     /// Here are some examples:

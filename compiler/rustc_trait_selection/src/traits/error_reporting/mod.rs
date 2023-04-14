@@ -673,6 +673,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             return;
                         }
                         let trait_ref = trait_predicate.to_poly_trait_ref();
+
                         let (post_message, pre_message, type_def) = self
                             .get_parent_trait_ref(obligation.cause.code())
                             .map(|(t, s)| {
@@ -712,33 +713,45 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             (message, note, append_const_msg)
                         };
 
-                        let mut err = struct_span_err!(
-                            self.tcx.sess,
-                            span,
-                            E0277,
-                            "{}",
-                            message
-                                .and_then(|cannot_do_this| {
-                                    match (predicate_is_const, append_const_msg) {
-                                        // do nothing if predicate is not const
-                                        (false, _) => Some(cannot_do_this),
-                                        // suggested using default post message
-                                        (true, Some(None)) => {
-                                            Some(format!("{cannot_do_this} in const contexts"))
-                                        }
-                                        // overridden post message
-                                        (true, Some(Some(post_message))) => {
-                                            Some(format!("{cannot_do_this}{post_message}"))
-                                        }
-                                        // fallback to generic message
-                                        (true, None) => None,
+                        let err_msg = message
+                            .and_then(|cannot_do_this| {
+                                match (predicate_is_const, append_const_msg) {
+                                    // do nothing if predicate is not const
+                                    (false, _) => Some(cannot_do_this),
+                                    // suggested using default post message
+                                    (true, Some(None)) => {
+                                        Some(format!("{cannot_do_this} in const contexts"))
                                     }
-                                })
-                                .unwrap_or_else(|| format!(
+                                    // overridden post message
+                                    (true, Some(Some(post_message))) => {
+                                        Some(format!("{cannot_do_this}{post_message}"))
+                                    }
+                                    // fallback to generic message
+                                    (true, None) => None,
+                                }
+                            })
+                            .unwrap_or_else(|| {
+                                format!(
                                     "the trait bound `{}` is not satisfied{}",
                                     trait_predicate, post_message,
-                                ))
-                        );
+                                )
+                            });
+
+                        let (err_msg, safe_transmute_explanation) = if Some(trait_ref.def_id())
+                            == self.tcx.lang_items().transmute_trait()
+                        {
+                            // Recompute the safe transmute reason and use that for the error reporting
+                            self.get_safe_transmute_error_and_reason(
+                                trait_predicate,
+                                obligation.clone(),
+                                trait_ref,
+                                span,
+                            )
+                        } else {
+                            (err_msg, None)
+                        };
+
+                        let mut err = struct_span_err!(self.tcx.sess, span, E0277, "{}", err_msg);
 
                         if is_try_conversion && let Some(ret_span) = self.return_type_span(&obligation) {
                             err.span_label(
@@ -828,6 +841,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 // at the type param with a label to suggest constraining it.
                                 err.help(&explanation);
                             }
+                        } else if let Some(custom_explanation) = safe_transmute_explanation {
+                            err.span_label(span, custom_explanation);
                         } else {
                             err.span_label(span, explanation);
                         }
@@ -1611,6 +1626,14 @@ trait InferCtxtPrivExt<'tcx> {
         obligated_types: &mut Vec<Ty<'tcx>>,
         cause_code: &ObligationCauseCode<'tcx>,
     ) -> bool;
+
+    fn get_safe_transmute_error_and_reason(
+        &self,
+        trait_predicate: ty::Binder<'tcx, ty::TraitPredicate<'tcx>>,
+        obligation: Obligation<'tcx, ty::Predicate<'tcx>>,
+        trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
+        span: Span,
+    ) -> (String, Option<String>);
 }
 
 impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
@@ -2894,6 +2917,63 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
         }
         false
+    }
+
+    fn get_safe_transmute_error_and_reason(
+        &self,
+        trait_predicate: ty::Binder<'tcx, ty::TraitPredicate<'tcx>>,
+        obligation: Obligation<'tcx, ty::Predicate<'tcx>>,
+        trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
+        span: Span,
+    ) -> (String, Option<String>) {
+        let src_and_dst = trait_predicate.map_bound(|p| rustc_transmute::Types {
+            dst: p.trait_ref.substs.type_at(0),
+            src: p.trait_ref.substs.type_at(1),
+        });
+        let scope = trait_ref.skip_binder().substs.type_at(2);
+        let Some(assume) =
+            rustc_transmute::Assume::from_const(self.infcx.tcx, obligation.param_env, trait_ref.skip_binder().substs.const_at(3)) else {
+                span_bug!(span, "Unable to construct rustc_transmute::Assume where it was previously possible");
+            };
+        match rustc_transmute::TransmuteTypeEnv::new(self.infcx).is_transmutable(
+            obligation.cause,
+            src_and_dst,
+            scope,
+            assume,
+        ) {
+            rustc_transmute::Answer::No(reason) => {
+                let dst = trait_ref.skip_binder().substs.type_at(0);
+                let src = trait_ref.skip_binder().substs.type_at(1);
+                let custom_err_msg = format!("`{src}` cannot be safely transmuted into `{dst}` in the defining scope of `{scope}`").to_string();
+                let reason_msg = match reason {
+                    rustc_transmute::Reason::SrcIsUnspecified => {
+                        format!("`{src}` does not have a well-specified layout").to_string()
+                    }
+                    rustc_transmute::Reason::DstIsUnspecified => {
+                        format!("`{dst}` does not have a well-specified layout").to_string()
+                    }
+                    rustc_transmute::Reason::DstIsBitIncompatible => {
+                        format!("At least one value of `{src}` isn't a bit-valid value of `{dst}`")
+                            .to_string()
+                    }
+                    rustc_transmute::Reason::DstIsPrivate => format!(
+                        "`{dst}` is or contains a type or field that is not visible in that scope"
+                    )
+                    .to_string(),
+                    // FIXME(bryangarza): Include the number of bytes of src and dst
+                    rustc_transmute::Reason::DstIsTooBig => {
+                        format!("The size of `{src}` is smaller than the size of `{dst}`")
+                    }
+                };
+                (custom_err_msg, Some(reason_msg))
+            }
+            // Should never get a Yes at this point! We already ran it before, and did not get a Yes.
+            rustc_transmute::Answer::Yes => span_bug!(
+                span,
+                "Inconsistent rustc_transmute::is_transmutable(...) result, got Yes",
+            ),
+            _ => span_bug!(span, "Unsupported rustc_transmute::Reason variant"),
+        }
     }
 }
 
