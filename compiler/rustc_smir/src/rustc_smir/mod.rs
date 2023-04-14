@@ -40,6 +40,10 @@ pub fn all_local_items() -> stable_mir::CrateItems {
     with(|tcx| tcx.mir_keys(()).iter().map(|item| crate_item(item.to_def_id())).collect())
 }
 
+pub fn entry_fn() -> Option<stable_mir::CrateItem> {
+    with(|tcx| Some(crate_item(tcx.entry_fn(())?.0)))
+}
+
 /// Build a stable mir crate from a given crate number.
 fn smir_crate(tcx: TyCtxt<'_>, crate_num: CrateNum) -> stable_mir::Crate {
     let crate_name = tcx.crate_name(crate_num).to_string();

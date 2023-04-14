@@ -29,6 +29,8 @@ fn test_stable_mir(tcx: TyCtxt<'_>) {
     let local = stable_mir::local_crate();
     assert_eq!(&local.name, CRATE_NAME);
 
+    assert_eq!(stable_mir::entry_fn(), None);
+
     // Find items in the local crate.
     let items = stable_mir::all_local_items();
     assert!(get_item(tcx, &items, (DefKind::Fn, "foo_bar")).is_some());

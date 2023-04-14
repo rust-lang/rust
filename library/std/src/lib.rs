@@ -235,6 +235,7 @@
 #![cfg_attr(windows, feature(round_char_boundary))]
 //
 // Language features:
+// tidy-alphabetical-start
 #![feature(alloc_error_handler)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
@@ -256,8 +257,8 @@
 #![feature(intra_doc_pointers)]
 #![feature(lang_items)]
 #![feature(let_chains)]
-#![feature(linkage)]
 #![feature(link_cfg)]
+#![feature(linkage)]
 #![feature(min_specialization)]
 #![feature(must_not_suspend)]
 #![feature(needs_panic_runtime)]
@@ -271,8 +272,10 @@
 #![feature(thread_local)]
 #![feature(try_blocks)]
 #![feature(utf8_chunks)]
+// tidy-alphabetical-end
 //
 // Library features (core):
+// tidy-alphabetical-start
 #![feature(char_internals)]
 #![feature(core_intrinsics)]
 #![feature(duration_constants)]
@@ -289,6 +292,7 @@
 #![feature(ip)]
 #![feature(ip_in_core)]
 #![feature(maybe_uninit_slice)]
+#![feature(maybe_uninit_uninit_array)]
 #![feature(maybe_uninit_write_slice)]
 #![feature(panic_can_unwind)]
 #![feature(panic_info_message)]
@@ -306,25 +310,28 @@
 #![feature(std_internals)]
 #![feature(str_internals)]
 #![feature(strict_provenance)]
-#![feature(maybe_uninit_uninit_array)]
-#![feature(const_maybe_uninit_uninit_array)]
-#![feature(const_waker)]
+// tidy-alphabetical-end
 //
 // Library features (alloc):
+// tidy-alphabetical-start
 #![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
 #![feature(get_mut_unchecked)]
 #![feature(map_try_insert)]
 #![feature(new_uninit)]
+#![feature(slice_concat_trait)]
 #![feature(thin_box)]
 #![feature(try_reserve_kind)]
 #![feature(vec_into_raw_parts)]
-#![feature(slice_concat_trait)]
+// tidy-alphabetical-end
 //
 // Library features (unwind):
+// tidy-alphabetical-start
 #![feature(panic_unwind)]
+// tidy-alphabetical-end
 //
 // Only for re-exporting:
+// tidy-alphabetical-start
 #![feature(assert_matches)]
 #![feature(async_iterator)]
 #![feature(c_variadic)]
@@ -336,24 +343,29 @@
 #![feature(custom_test_frameworks)]
 #![feature(edition_panic)]
 #![feature(format_args_nl)]
-#![feature(log_syntax)]
+#![feature(get_many_mut)]
 #![feature(lazy_cell)]
+#![feature(log_syntax)]
 #![feature(saturating_int_impl)]
 #![feature(stdsimd)]
 #![feature(test)]
 #![feature(trace_macros)]
-#![feature(get_many_mut)]
+// tidy-alphabetical-end
 //
 // Only used in tests/benchmarks:
 //
 // Only for const-ness:
+// tidy-alphabetical-start
 #![feature(const_collections_with_hasher)]
 #![feature(const_hash)]
 #![feature(const_io_structs)]
 #![feature(const_ip)]
 #![feature(const_ipv4)]
 #![feature(const_ipv6)]
+#![feature(const_maybe_uninit_uninit_array)]
+#![feature(const_waker)]
 #![feature(thread_local_internals)]
+// tidy-alphabetical-end
 //
 #![default_lib_allocator]
 
