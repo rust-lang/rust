@@ -3,7 +3,7 @@
 use super::assembly::{self, structural_traits};
 use super::{EvalCtxt, SolverMode};
 use rustc_hir::def_id::DefId;
-use rustc_hir::LangItem;
+use rustc_hir::{LangItem, Movability};
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::util::supertraits;
 use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, QueryResult};
@@ -147,66 +147,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
-        let self_ty = goal.predicate.self_ty();
-        match *self_ty.kind() {
-            // Stall int and float vars until they are resolved to a concrete
-            // numerical type. That's because the check for impls below treats
-            // int vars as matching any impl. Even if we filtered such impls,
-            // we probably don't want to treat an `impl !AutoTrait for i32` as
-            // disqualifying the built-in auto impl for `i64: AutoTrait` either.
-            ty::Infer(ty::IntVar(_) | ty::FloatVar(_)) => {
-                return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
-            }
-
-            // These types cannot be structurally decomposed into constitutent
-            // types, and therefore have no builtin impl.
-            ty::Dynamic(..)
-            | ty::Param(..)
-            | ty::Foreign(..)
-            | ty::Alias(ty::Projection, ..)
-            | ty::Placeholder(..) => return Err(NoSolution),
-
-            ty::Infer(_) | ty::Bound(_, _) => bug!("unexpected type `{self_ty}`"),
-
-            // For rigid types, we only register a builtin auto implementation
-            // if there is no implementation that could ever apply to the self
-            // type.
-            //
-            // This differs from the current stable behavior and fixes #84857.
-            // Due to breakage found via crater, we currently instead lint
-            // patterns which can be used to exploit this unsoundness on stable,
-            // see #93367 for more details.
-            ty::Bool
-            | ty::Char
-            | ty::Int(_)
-            | ty::Uint(_)
-            | ty::Float(_)
-            | ty::Str
-            | ty::Array(_, _)
-            | ty::Slice(_)
-            | ty::RawPtr(_)
-            | ty::Ref(_, _, _)
-            | ty::FnDef(_, _)
-            | ty::FnPtr(_)
-            | ty::Closure(_, _)
-            | ty::Generator(_, _, _)
-            | ty::GeneratorWitness(_)
-            | ty::GeneratorWitnessMIR(_, _)
-            | ty::Never
-            | ty::Tuple(_)
-            | ty::Error(_)
-            | ty::Adt(_, _)
-            | ty::Alias(ty::Opaque, _) => {
-                if let Some(def_id) = ecx.tcx().find_map_relevant_impl(
-                    goal.predicate.def_id(),
-                    goal.predicate.self_ty(),
-                    TreatProjections::NextSolverLookup,
-                    Some,
-                ) {
-                    debug!(?def_id, ?goal, "disqualified auto-trait implementation");
-                    return Err(NoSolution);
-                }
-            }
+        if let Some(result) = ecx.disqualify_auto_trait_candidate_due_to_possible_impl(goal) {
+            return result;
         }
 
         ecx.probe_and_evaluate_goal_for_constituent_tys(
@@ -630,6 +572,97 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
+    // Return `Some` if there is an impl (built-in or user provided) that may
+    // hold for the self type of the goal, which for coherence and soundness
+    // purposes must disqualify the built-in auto impl assembled by considering
+    // the type's constituent types.
+    fn disqualify_auto_trait_candidate_due_to_possible_impl(
+        &mut self,
+        goal: Goal<'tcx, TraitPredicate<'tcx>>,
+    ) -> Option<QueryResult<'tcx>> {
+        let self_ty = goal.predicate.self_ty();
+        match *self_ty.kind() {
+            // Stall int and float vars until they are resolved to a concrete
+            // numerical type. That's because the check for impls below treats
+            // int vars as matching any impl. Even if we filtered such impls,
+            // we probably don't want to treat an `impl !AutoTrait for i32` as
+            // disqualifying the built-in auto impl for `i64: AutoTrait` either.
+            ty::Infer(ty::IntVar(_) | ty::FloatVar(_)) => {
+                Some(self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS))
+            }
+
+            // These types cannot be structurally decomposed into constitutent
+            // types, and therefore have no built-in auto impl.
+            ty::Dynamic(..)
+            | ty::Param(..)
+            | ty::Foreign(..)
+            | ty::Alias(ty::Projection, ..)
+            | ty::Placeholder(..) => Some(Err(NoSolution)),
+
+            ty::Infer(_) | ty::Bound(_, _) => bug!("unexpected type `{self_ty}`"),
+
+            // Generators have one special built-in candidate, `Unpin`, which
+            // takes precedence over the structural auto trait candidate being
+            // assembled.
+            ty::Generator(_, _, movability)
+                if Some(goal.predicate.def_id()) == self.tcx().lang_items().unpin_trait() =>
+            {
+                match movability {
+                    Movability::Static => Some(Err(NoSolution)),
+                    Movability::Movable => {
+                        Some(self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
+                    }
+                }
+            }
+
+            // For rigid types, any possible implementation that could apply to
+            // the type (even if after unification and processing nested goals
+            // it does not hold) will disqualify the built-in auto impl.
+            //
+            // This differs from the current stable behavior and fixes #84857.
+            // Due to breakage found via crater, we currently instead lint
+            // patterns which can be used to exploit this unsoundness on stable,
+            // see #93367 for more details.
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Str
+            | ty::Array(_, _)
+            | ty::Slice(_)
+            | ty::RawPtr(_)
+            | ty::Ref(_, _, _)
+            | ty::FnDef(_, _)
+            | ty::FnPtr(_)
+            | ty::Closure(_, _)
+            | ty::Generator(_, _, _)
+            | ty::GeneratorWitness(_)
+            | ty::GeneratorWitnessMIR(_, _)
+            | ty::Never
+            | ty::Tuple(_)
+            | ty::Adt(_, _)
+            // FIXME: Handling opaques here is kinda sus. Especially because we
+            // simplify them to PlaceholderSimplifiedType.
+            | ty::Alias(ty::Opaque, _) => {
+                if let Some(def_id) = self.tcx().find_map_relevant_impl(
+                    goal.predicate.def_id(),
+                    goal.predicate.self_ty(),
+                    TreatProjections::NextSolverLookup,
+                    Some,
+                ) {
+                    debug!(?def_id, ?goal, "disqualified auto-trait implementation");
+                    // No need to actually consider the candidate here,
+                    // since we do that in `consider_impl_candidate`.
+                    return Some(Err(NoSolution));
+                } else {
+                    None
+                }
+            }
+            ty::Error(_) => None,
+        }
+    }
+
     /// Convenience function for traits that are structural, i.e. that only
     /// have nested subgoals that only change the self type. Unlike other
     /// evaluate-like helpers, this does a probe, so it doesn't need to be
