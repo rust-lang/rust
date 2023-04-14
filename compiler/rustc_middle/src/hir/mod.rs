@@ -7,7 +7,7 @@ pub mod nested_filter;
 pub mod place;
 
 use crate::ty::query::Providers;
-use crate::ty::{ImplSubject, TyCtxt};
+use crate::ty::{EarlyBinder, ImplSubject, TyCtxt};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -104,11 +104,11 @@ impl<'tcx> TyCtxt<'tcx> {
         self.parent_module_from_def_id(id.owner.def_id)
     }
 
-    pub fn impl_subject(self, def_id: DefId) -> ImplSubject<'tcx> {
-        self.impl_trait_ref(def_id)
-            .map(|t| t.subst_identity())
-            .map(ImplSubject::Trait)
-            .unwrap_or_else(|| ImplSubject::Inherent(self.type_of(def_id).subst_identity()))
+    pub fn impl_subject(self, def_id: DefId) -> EarlyBinder<ImplSubject<'tcx>> {
+        match self.impl_trait_ref(def_id) {
+            Some(t) => t.map_bound(ImplSubject::Trait),
+            None => self.type_of(def_id).map_bound(ImplSubject::Inherent),
+        }
     }
 }
 

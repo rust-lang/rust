@@ -198,7 +198,7 @@ pub fn impl_subject_and_oblig<'a, 'tcx>(
     impl_def_id: DefId,
     impl_substs: SubstsRef<'tcx>,
 ) -> (ImplSubject<'tcx>, impl Iterator<Item = PredicateObligation<'tcx>>) {
-    let subject = selcx.tcx().bound_impl_subject(impl_def_id);
+    let subject = selcx.tcx().impl_subject(impl_def_id);
     let subject = subject.subst(selcx.tcx(), impl_substs);
 
     let InferOk { value: subject, obligations: normalization_obligations1 } =
