@@ -74,7 +74,7 @@ pub use check::check_abi;
 
 use check::check_mod_item_types;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder};
+use rustc_errors::{pluralize, struct_span_err, Diagnostic, DiagnosticBuilder};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_index::bit_set::BitSet;
@@ -90,6 +90,7 @@ use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::suggestions::ReturnsVisitor;
 use std::num::NonZeroU32;
 
+use crate::errors;
 use crate::require_c_abi_if_c_variadic;
 use crate::util::common::indenter;
 
@@ -171,29 +172,13 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
 fn report_forbidden_specialization(tcx: TyCtxt<'_>, impl_item: DefId, parent_impl: DefId) {
     let span = tcx.def_span(impl_item);
     let ident = tcx.item_name(impl_item);
-    let mut err = struct_span_err!(
-        tcx.sess,
-        span,
-        E0520,
-        "`{}` specializes an item from a parent `impl`, but that item is not marked `default`",
-        ident,
-    );
-    err.span_label(span, format!("cannot specialize default item `{}`", ident));
 
-    match tcx.span_of_impl(parent_impl) {
-        Ok(span) => {
-            err.span_label(span, "parent `impl` is here");
-            err.note(&format!(
-                "to specialize, `{}` in the parent `impl` must be marked `default`",
-                ident
-            ));
-        }
-        Err(cname) => {
-            err.note(&format!("parent implementation is in crate `{cname}`"));
-        }
-    }
+    let err = match tcx.span_of_impl(parent_impl) {
+        Ok(sp) => errors::ImplNotMarkedDefault::Ok { span, ident, ok_label: sp },
+        Err(cname) => errors::ImplNotMarkedDefault::Err { span, ident, cname },
+    };
 
-    err.emit();
+    tcx.sess.emit_err(err);
 }
 
 fn missing_items_err(
@@ -211,15 +196,6 @@ fn missing_items_err(
         .collect::<Vec<_>>()
         .join("`, `");
 
-    let impl_span = tcx.def_span(impl_def_id);
-    let mut err = struct_span_err!(
-        tcx.sess,
-        impl_span,
-        E0046,
-        "not all trait items implemented, missing: `{missing_items_msg}`",
-    );
-    err.span_label(impl_span, format!("missing `{missing_items_msg}` in implementation"));
-
     // `Span` before impl block closing brace.
     let hi = full_impl_span.hi() - BytePos(1);
     // Point at the place right before the closing brace of the relevant `impl` to suggest
@@ -228,6 +204,8 @@ fn missing_items_err(
     // Obtain the level of indentation ending in `sugg_sp`.
     let padding =
         tcx.sess.source_map().indentation_before(sugg_sp).unwrap_or_else(|| String::new());
+    let (mut missing_trait_item, mut missing_trait_item_none, mut missing_trait_item_label) =
+        (Vec::new(), Vec::new(), Vec::new());
 
     for &trait_item in missing_items {
         let snippet = suggestion_signature(
@@ -236,16 +214,30 @@ fn missing_items_err(
             tcx.impl_trait_ref(impl_def_id).unwrap().subst_identity(),
         );
         let code = format!("{}{}\n{}", padding, snippet, padding);
-        let msg = format!("implement the missing item: `{snippet}`");
-        let appl = Applicability::HasPlaceholders;
         if let Some(span) = tcx.hir().span_if_local(trait_item.def_id) {
-            err.span_label(span, format!("`{}` from trait", trait_item.name));
-            err.tool_only_span_suggestion(sugg_sp, &msg, code, appl);
+            missing_trait_item_label
+                .push(errors::MissingTraitItemLabel { span, item: trait_item.name });
+            missing_trait_item.push(errors::MissingTraitItemSuggestion {
+                span: sugg_sp,
+                code,
+                snippet,
+            });
         } else {
-            err.span_suggestion_hidden(sugg_sp, &msg, code, appl);
+            missing_trait_item_none.push(errors::MissingTraitItemSuggestionNone {
+                span: sugg_sp,
+                code,
+                snippet,
+            })
         }
     }
-    err.emit();
+
+    tcx.sess.emit_err(errors::MissingTraitItem {
+        span: tcx.span_of_impl(impl_def_id.to_def_id()).unwrap(),
+        missing_items_msg,
+        missing_trait_item_label,
+        missing_trait_item,
+        missing_trait_item_none,
+    });
 }
 
 fn missing_items_must_implement_one_of_err(
@@ -257,19 +249,11 @@ fn missing_items_must_implement_one_of_err(
     let missing_items_msg =
         missing_items.iter().map(Ident::to_string).collect::<Vec<_>>().join("`, `");
 
-    let mut err = struct_span_err!(
-        tcx.sess,
-        impl_span,
-        E0046,
-        "not all trait items implemented, missing one of: `{missing_items_msg}`",
-    );
-    err.span_label(impl_span, format!("missing one of `{missing_items_msg}` in implementation"));
-
-    if let Some(annotation_span) = annotation_span {
-        err.span_note(annotation_span, "required because of this annotation");
-    }
-
-    err.emit();
+    tcx.sess.emit_err(errors::MissingOneOfTraitItem {
+        span: impl_span,
+        note: annotation_span,
+        missing_items_msg,
+    });
 }
 
 fn default_body_is_unstable(
@@ -281,25 +265,31 @@ fn default_body_is_unstable(
     issue: Option<NonZeroU32>,
 ) {
     let missing_item_name = tcx.associated_item(item_did).name;
-    let use_of_unstable_library_feature_note = match reason {
-        Some(r) => format!("use of unstable library feature '{feature}': {r}"),
-        None => format!("use of unstable library feature '{feature}'"),
+    let (mut some_note, mut none_note, mut reason_str) = (false, false, String::new());
+    match reason {
+        Some(r) => {
+            some_note = true;
+            reason_str = r.to_string();
+        }
+        None => none_note = true,
     };
 
-    let mut err = struct_span_err!(
-        tcx.sess,
-        impl_span,
-        E0046,
-        "not all trait items implemented, missing: `{missing_item_name}`",
-    );
-    err.note(format!("default implementation of `{missing_item_name}` is unstable"));
-    err.note(use_of_unstable_library_feature_note);
+    let mut err = tcx.sess.create_err(errors::MissingTraitItemUnstable {
+        span: impl_span,
+        some_note,
+        none_note,
+        missing_item_name,
+        feature,
+        reason: reason_str,
+    });
+
     rustc_session::parse::add_feature_diagnostics_for_issue(
         &mut err,
         &tcx.sess.parse_sess,
         feature,
         rustc_feature::GateIssue::Library(issue),
     );
+
     err.emit();
 }
 
@@ -488,16 +478,18 @@ fn bad_variant_count<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>, sp: Span, d
         .iter()
         .map(|variant| tcx.hir().span_if_local(variant.def_id).unwrap())
         .collect();
-    let msg = format!("needs exactly one variant, but has {}", adt.variants().len(),);
-    let mut err = struct_span_err!(tcx.sess, sp, E0731, "transparent enum {msg}");
-    err.span_label(sp, &msg);
+    let (mut spans, mut many) = (Vec::new(), None);
     if let [start @ .., end] = &*variant_spans {
-        for variant_span in start {
-            err.span_label(*variant_span, "");
-        }
-        err.span_label(*end, &format!("too many variants in `{}`", tcx.def_path_str(did)));
+        spans = start.to_vec();
+        many = Some(*end);
     }
-    err.emit();
+    tcx.sess.emit_err(errors::TransparentEnumVariant {
+        span: sp,
+        spans,
+        many,
+        number: adt.variants().len(),
+        path: tcx.def_path_str(did),
+    });
 }
 
 /// Emit an error when encountering two or more non-zero-sized fields in a transparent
@@ -509,21 +501,21 @@ fn bad_non_zero_sized_fields<'tcx>(
     field_spans: impl Iterator<Item = Span>,
     sp: Span,
 ) {
-    let msg = format!("needs at most one non-zero-sized field, but has {field_count}");
-    let mut err = struct_span_err!(
-        tcx.sess,
-        sp,
-        E0690,
-        "{}transparent {} {}",
-        if adt.is_enum() { "the variant of a " } else { "" },
-        adt.descr(),
-        msg,
-    );
-    err.span_label(sp, &msg);
-    for sp in field_spans {
-        err.span_label(sp, "this field is non-zero-sized");
+    if adt.is_enum() {
+        tcx.sess.emit_err(errors::TransparentNonZeroSizedEnum {
+            span: sp,
+            spans: field_spans.collect(),
+            field_count,
+            desc: adt.descr(),
+        });
+    } else {
+        tcx.sess.emit_err(errors::TransparentNonZeroSized {
+            span: sp,
+            spans: field_spans.collect(),
+            field_count,
+            desc: adt.descr(),
+        });
     }
-    err.emit();
 }
 
 // FIXME: Consider moving this method to a more fitting place.

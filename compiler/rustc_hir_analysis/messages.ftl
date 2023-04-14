@@ -225,3 +225,40 @@ hir_analysis_functions_names_duplicated = functions names are duplicated
 
 hir_analysis_simd_ffi_highly_experimental = use of SIMD type{$snip} in FFI is highly experimental and may result in invalid code
     .help = add `#![feature(simd_ffi)]` to the crate attributes to enable
+
+hir_analysis_impl_not_marked_default = `{$ident}` specializes an item from a parent `impl`, but that item is not marked `default`
+    .label = cannot specialize default item `{$ident}`
+    .ok_label = parent `impl` is here
+    .note = to specialize, `{$ident}` in the parent `impl` must be marked `default`
+
+hir_analysis_impl_not_marked_default_err = `{$ident}` specializes an item from a parent `impl`, but that item is not marked `default`
+    .note = parent implementation is in crate `{$cname}`
+
+hir_analysis_missing_trait_item = not all trait items implemented, missing: `{$missing_items_msg}`
+    .label = missing `{$missing_items_msg}` in implementation
+
+hir_analysis_missing_trait_item_suggestion = implement the missing item: `{$snippet}`
+
+hir_analysis_missing_trait_item_label = `{$item}` from trait
+
+hir_analysis_missing_one_of_trait_item = not all trait items implemented, missing one of: `{$missing_items_msg}`
+    .label = missing one of `{$missing_items_msg}` in implementation
+    .note = required because of this annotation
+
+hir_analysis_missing_trait_item_unstable = not all trait items implemented, missing: `{$missing_item_name}`
+    .note = default implementation of `{$missing_item_name}` is unstable
+    .some_note = use of unstable library feature '{$feature}': {$r}
+    .none_note = use of unstable library feature '{$feature}'
+
+hir_analysis_transparent_enum_variant = transparent enum needs exactly one variant, but has {$number}
+    .label = needs exactly one variant, but has {$number}
+    .many_label = too many variants in `{$path}`
+    .multi_label = variant here
+
+hir_analysis_transparent_non_zero_sized_enum = the variant of a transparent {$desc} needs at most one non-zero-sized field, but has {$field_count}
+    .label = needs at most one non-zero-sized field, but has {$field_count}
+    .labels = this field is non-zero-sized
+
+hir_analysis_transparent_non_zero_sized = transparent {$desc} needs at most one non-zero-sized field, but has {$field_count}
+    .label = needs at most one non-zero-sized field, but has {$field_count}
+    .labels = this field is non-zero-sized
