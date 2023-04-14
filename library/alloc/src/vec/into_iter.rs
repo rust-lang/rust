@@ -108,7 +108,7 @@ impl<T, A: Allocator> IntoIter<T, A> {
     /// ```
     /// # let mut into_iter = Vec::<u8>::with_capacity(10).into_iter();
     /// let mut into_iter = std::mem::replace(&mut into_iter, Vec::new().into_iter());
-    /// (&mut into_iter).for_each(core::mem::drop);
+    /// (&mut into_iter).for_each(drop);
     /// std::mem::forget(into_iter);
     /// ```
     ///

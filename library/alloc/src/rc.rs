@@ -15,7 +15,7 @@
 //!
 //! [`Rc`] uses non-atomic reference counting. This means that overhead is very
 //! low, but an [`Rc`] cannot be sent between threads, and consequently [`Rc`]
-//! does not implement [`Send`][send]. As a result, the Rust compiler
+//! does not implement [`Send`]. As a result, the Rust compiler
 //! will check *at compile time* that you are not sending [`Rc`]s between
 //! threads. If you need multi-threaded, atomic reference counting, use
 //! [`sync::Arc`][arc].
@@ -232,7 +232,6 @@
 //! [clone]: Clone::clone
 //! [`Cell`]: core::cell::Cell
 //! [`RefCell`]: core::cell::RefCell
-//! [send]: core::marker::Send
 //! [arc]: crate::sync::Arc
 //! [`Deref`]: core::ops::Deref
 //! [downgrade]: Rc::downgrade
@@ -251,13 +250,12 @@ use core::any::Any;
 use core::borrow;
 use core::cell::Cell;
 use core::cmp::Ordering;
-use core::convert::{From, TryFrom};
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
 #[cfg(not(no_global_oom_handling))]
 use core::iter;
-use core::marker::{self, PhantomData, Unpin, Unsize};
+use core::marker::{PhantomData, Unsize};
 #[cfg(not(no_global_oom_handling))]
 use core::mem::size_of_val;
 use core::mem::{self, align_of_val_raw, forget};
@@ -321,7 +319,7 @@ pub struct Rc<T: ?Sized> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> !marker::Send for Rc<T> {}
+impl<T: ?Sized> !Send for Rc<T> {}
 
 // Note that this negative impl isn't strictly necessary for correctness,
 // as `Rc` transitively contains a `Cell`, which is itself `!Sync`.
@@ -329,7 +327,7 @@ impl<T: ?Sized> !marker::Send for Rc<T> {}
 // having an explicit negative impl is nice for documentation purposes
 // and results in nicer error messages.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> !marker::Sync for Rc<T> {}
+impl<T: ?Sized> !Sync for Rc<T> {}
 
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T: RefUnwindSafe + ?Sized> UnwindSafe for Rc<T> {}
@@ -1060,7 +1058,7 @@ impl<T: ?Sized> Rc<T> {
     #[inline]
     #[stable(feature = "rc_mutate_strong_count", since = "1.53.0")]
     pub unsafe fn decrement_strong_count(ptr: *const T) {
-        unsafe { mem::drop(Rc::from_raw(ptr)) };
+        unsafe { drop(Rc::from_raw(ptr)) };
     }
 
     /// Returns `true` if there are no other `Rc` or [`Weak`] pointers to
@@ -1496,7 +1494,7 @@ impl<T> Rc<[T]> {
     ///
     /// Behavior is undefined should the size be wrong.
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn from_iter_exact(iter: impl iter::Iterator<Item = T>, len: usize) -> Rc<[T]> {
+    unsafe fn from_iter_exact(iter: impl Iterator<Item = T>, len: usize) -> Rc<[T]> {
         // Panic guard while cloning T elements.
         // In the event of a panic, elements that have been written
         // into the new RcBox will be dropped, then the memory freed.
@@ -2088,7 +2086,7 @@ impl<T, const N: usize> TryFrom<Rc<[T]>> for Rc<[T; N]> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_iter", since = "1.37.0")]
-impl<T> iter::FromIterator<T> for Rc<[T]> {
+impl<T> FromIterator<T> for Rc<[T]> {
     /// Takes each element in the `Iterator` and collects it into an `Rc<[T]>`.
     ///
     /// # Performance characteristics
@@ -2127,7 +2125,7 @@ impl<T> iter::FromIterator<T> for Rc<[T]> {
     /// let evens: Rc<[u8]> = (0..10).collect(); // Just a single allocation happens here.
     /// # assert_eq!(&*evens, &*(0..10).collect::<Vec<_>>());
     /// ```
-    fn from_iter<I: iter::IntoIterator<Item = T>>(iter: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         ToRcSlice::to_rc_slice(iter.into_iter())
     }
 }
@@ -2204,9 +2202,9 @@ pub struct Weak<T: ?Sized> {
 }
 
 #[stable(feature = "rc_weak", since = "1.4.0")]
-impl<T: ?Sized> !marker::Send for Weak<T> {}
+impl<T: ?Sized> !Send for Weak<T> {}
 #[stable(feature = "rc_weak", since = "1.4.0")]
-impl<T: ?Sized> !marker::Sync for Weak<T> {}
+impl<T: ?Sized> !Sync for Weak<T> {}
 
 #[unstable(feature = "coerce_unsized", issue = "18598")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Weak<U>> for Weak<T> {}

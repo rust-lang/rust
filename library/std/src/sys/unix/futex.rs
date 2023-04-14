@@ -273,8 +273,6 @@ pub mod zircon {
 
 #[cfg(target_os = "fuchsia")]
 pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -> bool {
-    use crate::convert::TryFrom;
-
     // Sleep forever if the timeout is longer than fits in a i64.
     let deadline = timeout
         .and_then(|d| {

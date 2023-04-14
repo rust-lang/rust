@@ -36,7 +36,6 @@ use rustc_span::{Span, Symbol};
 use once_cell::sync::Lazy;
 use std::borrow::Cow;
 use std::collections::VecDeque;
-use std::default::Default;
 use std::fmt::Write;
 use std::ops::{ControlFlow, Range};
 use std::str;
