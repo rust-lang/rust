@@ -84,8 +84,7 @@ pub struct Flags {
     pub free_args: Option<Vec<String>>,
 }
 
-#[derive(Debug)]
-#[cfg_attr(test, derive(Clone))]
+#[derive(Debug, Clone)]
 pub enum Subcommand {
     Build {
         paths: Vec<PathBuf>,
@@ -149,6 +148,9 @@ pub enum Subcommand {
     Setup {
         profile: Option<PathBuf>,
     },
+    Suggest {
+        run: bool,
+    },
 }
 
 impl Default for Subcommand {
@@ -183,6 +185,7 @@ Subcommands:
     install     Install distribution artifacts
     run, r      Run tools contained in this repository
     setup       Create a config.toml (making it easier to use `x.py` itself)
+    suggest     Suggest a subset of tests to run, based on modified files
 
 To learn more about a subcommand, run `./x.py <subcommand> -h`",
         );
@@ -348,6 +351,9 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
             }
             Kind::Run => {
                 opts.optmulti("", "args", "arguments for the tool", "ARGS");
+            }
+            Kind::Suggest => {
+                opts.optflag("", "run", "run suggested tests");
             }
             _ => {}
         };
@@ -565,7 +571,7 @@ Arguments:
                     Profile::all_for_help("        ").trim_end()
                 ));
             }
-            Kind::Bench | Kind::Clean | Kind::Dist | Kind::Install => {}
+            Kind::Bench | Kind::Clean | Kind::Dist | Kind::Install | Kind::Suggest => {}
         };
         // Get any optional paths which occur after the subcommand
         let mut paths = matches.free[1..].iter().map(|p| p.into()).collect::<Vec<PathBuf>>();
@@ -626,6 +632,7 @@ Arguments:
             Kind::Format => Subcommand::Format { check: matches.opt_present("check"), paths },
             Kind::Dist => Subcommand::Dist { paths },
             Kind::Install => Subcommand::Install { paths },
+            Kind::Suggest => Subcommand::Suggest { run: matches.opt_present("run") },
             Kind::Run => {
                 if paths.is_empty() {
                     println!("\nrun requires at least a path!\n");
@@ -734,6 +741,7 @@ impl Subcommand {
             Subcommand::Install { .. } => Kind::Install,
             Subcommand::Run { .. } => Kind::Run,
             Subcommand::Setup { .. } => Kind::Setup,
+            Subcommand::Suggest { .. } => Kind::Suggest,
         }
     }
 

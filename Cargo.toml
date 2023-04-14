@@ -44,6 +44,7 @@ members = [
   "src/tools/lld-wrapper",
   "src/tools/collect-license-metadata",
   "src/tools/generate-copyright",
+  "src/tools/suggest-tests",
 ]
 
 exclude = [
