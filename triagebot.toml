@@ -11,6 +11,7 @@ allow-unauthenticated = [
     "S-*",
     "T-*",
     "WG-*",
+    "beta-nominated",
     "const-hack",
     "llvm-main",
     "needs-fcp",
@@ -470,8 +471,8 @@ cc = ["@rust-lang/style"]
 
 [mentions."Cargo.lock"]
 message = """
-These commits modify the `Cargo.lock` file. Random changes to `Cargo.lock` can be introduced when switching branches and rebasing PRs. 
-This was probably unintentional and should be reverted before this PR is merged. 
+These commits modify the `Cargo.lock` file. Random changes to `Cargo.lock` can be introduced when switching branches and rebasing PRs.
+This was probably unintentional and should be reverted before this PR is merged.
 
 If this was intentional then you can ignore this comment.
 """
