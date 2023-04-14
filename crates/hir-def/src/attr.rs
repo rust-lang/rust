@@ -377,7 +377,11 @@ fn parse_comma_sep<S>(subtree: &tt::Subtree<S>) -> Vec<SmolStr> {
 }
 
 impl AttrsWithOwner {
-    pub(crate) fn attrs_query(db: &dyn DefDatabase, def: AttrDefId) -> Self {
+    pub(crate) fn attrs_with_owner(db: &dyn DefDatabase, owner: AttrDefId) -> Self {
+        Self { attrs: db.attrs(owner), owner }
+    }
+
+    pub(crate) fn attrs_query(db: &dyn DefDatabase, def: AttrDefId) -> Attrs {
         let _p = profile::span("attrs_query");
         // FIXME: this should use `Trace` to avoid duplication in `source_map` below
         let raw_attrs = match def {
@@ -412,13 +416,10 @@ impl AttrsWithOwner {
                 }
             }
             AttrDefId::FieldId(it) => {
-                return Self { attrs: db.fields_attrs(it.parent)[it.local_id].clone(), owner: def };
+                return db.fields_attrs(it.parent)[it.local_id].clone();
             }
             AttrDefId::EnumVariantId(it) => {
-                return Self {
-                    attrs: db.variants_attrs(it.parent)[it.local_id].clone(),
-                    owner: def,
-                };
+                return db.variants_attrs(it.parent)[it.local_id].clone();
             }
             AttrDefId::AdtId(it) => match it {
                 AdtId::StructId(it) => attrs_from_item_tree(it.lookup(db).id, db),
@@ -461,7 +462,7 @@ impl AttrsWithOwner {
         };
 
         let attrs = raw_attrs.filter(db.upcast(), def.krate(db));
-        Self { attrs: Attrs(attrs), owner: def }
+        Attrs(attrs)
     }
 
     pub fn source_map(&self, db: &dyn DefDatabase) -> AttrSourceMap {
