@@ -1,36 +1,6 @@
 use std::{ptr, sync::Arc};
 
-use crate::tagged_ptr::{Pointer, Tag, TaggedPtr};
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum Tag2 {
-    B00 = 0b00,
-    B01 = 0b01,
-    B10 = 0b10,
-    B11 = 0b11,
-}
-
-unsafe impl Tag for Tag2 {
-    const BITS: usize = 2;
-
-    fn into_usize(self) -> usize {
-        self as _
-    }
-
-    unsafe fn from_usize(tag: usize) -> Self {
-        const B00: usize = Tag2::B00 as _;
-        const B01: usize = Tag2::B01 as _;
-        const B10: usize = Tag2::B10 as _;
-        const B11: usize = Tag2::B11 as _;
-        match tag {
-            B00 => Tag2::B00,
-            B01 => Tag2::B01,
-            B10 => Tag2::B10,
-            B11 => Tag2::B11,
-            _ => unreachable!(),
-        }
-    }
-}
+use crate::tagged_ptr::{Pointer, Tag, Tag2, TaggedPtr};
 
 #[test]
 fn smoke() {

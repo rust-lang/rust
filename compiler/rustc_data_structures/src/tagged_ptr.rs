@@ -232,3 +232,32 @@ pub const fn bits_for<T: ?Sized + Aligned>() -> usize {
 
     bits as usize
 }
+
+/// A tag type used in [`CopyTaggedPtr`] and [`TaggedPtr`] tests.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[cfg(test)]
+enum Tag2 {
+    B00 = 0b00,
+    B01 = 0b01,
+    B10 = 0b10,
+    B11 = 0b11,
+}
+
+#[cfg(test)]
+unsafe impl Tag for Tag2 {
+    const BITS: usize = 2;
+
+    fn into_usize(self) -> usize {
+        self as _
+    }
+
+    unsafe fn from_usize(tag: usize) -> Self {
+        match tag {
+            0b00 => Tag2::B00,
+            0b01 => Tag2::B01,
+            0b10 => Tag2::B10,
+            0b11 => Tag2::B11,
+            _ => unreachable!(),
+        }
+    }
+}
