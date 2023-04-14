@@ -1,5 +1,6 @@
 use std::ptr;
 
+use crate::stable_hasher::{HashStable, StableHasher};
 use crate::tagged_ptr::{CopyTaggedPtr, Pointer, Tag, Tag2};
 
 #[test]
@@ -23,6 +24,24 @@ fn smoke() {
     assert_eq!(copy.tag(), tag);
     assert_eq!(*copy, 12);
     assert!(ptr::eq(copy.pointer(), reference));
+}
+
+#[test]
+fn stable_hash_hashes_as_tuple() {
+    let hash_packed = {
+        let mut hasher = StableHasher::new();
+        tag_ptr(&12, Tag2::B11).hash_stable(&mut (), &mut hasher);
+
+        hasher.finalize()
+    };
+
+    let hash_tupled = {
+        let mut hasher = StableHasher::new();
+        (&12, Tag2::B11).hash_stable(&mut (), &mut hasher);
+        hasher.finalize()
+    };
+
+    assert_eq!(hash_packed, hash_tupled);
 }
 
 /// Helper to create tagged pointers without specifying `COMPARE_PACKED` if it does not matter.
