@@ -149,10 +149,7 @@ impl TraitImpls {
         Arc::new(impls)
     }
 
-    pub(crate) fn trait_impls_in_block_query(
-        db: &dyn HirDatabase,
-        block: BlockId,
-    ) -> Option<Arc<Self>> {
+    pub(crate) fn trait_impls_in_block_query(db: &dyn HirDatabase, block: BlockId) -> Arc<Self> {
         let _p = profile::span("trait_impls_in_block_query");
         let mut impls = Self { map: FxHashMap::default() };
 
@@ -160,7 +157,7 @@ impl TraitImpls {
         impls.collect_def_map(db, &block_def_map);
         impls.shrink_to_fit();
 
-        Some(Arc::new(impls))
+        Arc::new(impls)
     }
 
     pub(crate) fn trait_impls_in_deps_query(db: &dyn HirDatabase, krate: CrateId) -> Arc<Self> {
@@ -283,10 +280,7 @@ impl InherentImpls {
         Arc::new(impls)
     }
 
-    pub(crate) fn inherent_impls_in_block_query(
-        db: &dyn HirDatabase,
-        block: BlockId,
-    ) -> Option<Arc<Self>> {
+    pub(crate) fn inherent_impls_in_block_query(db: &dyn HirDatabase, block: BlockId) -> Arc<Self> {
         let _p = profile::span("inherent_impls_in_block_query");
         let mut impls = Self { map: FxHashMap::default(), invalid_impls: Vec::default() };
 
@@ -294,7 +288,7 @@ impl InherentImpls {
         impls.collect_def_map(db, &block_def_map);
         impls.shrink_to_fit();
 
-        Some(Arc::new(impls))
+        Arc::new(impls)
     }
 
     fn shrink_to_fit(&mut self) {
@@ -1178,18 +1172,17 @@ fn iterate_inherent_methods(
     };
 
     while let Some(block_id) = block {
-        if let Some(impls) = db.inherent_impls_in_block(block_id) {
-            impls_for_self_ty(
-                &impls,
-                self_ty,
-                table,
-                name,
-                receiver_ty,
-                receiver_adjustments.clone(),
-                module,
-                callback,
-            )?;
-        }
+        let impls = db.inherent_impls_in_block(block_id);
+        impls_for_self_ty(
+            &impls,
+            self_ty,
+            table,
+            name,
+            receiver_ty,
+            receiver_adjustments.clone(),
+            module,
+            callback,
+        )?;
 
         block = db.block_def_map(block_id).parent().and_then(|module| module.containing_block());
     }

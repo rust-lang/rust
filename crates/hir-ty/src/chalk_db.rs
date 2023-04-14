@@ -139,7 +139,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                 }
             });
         })
-        .filter_map(|block_id| self.db.trait_impls_in_block(block_id));
+        .map(|block_id| self.db.trait_impls_in_block(block_id));
 
         let id_to_chalk = |id: hir_def::ImplId| id.to_chalk(self.db);
         let mut result = vec![];
@@ -152,7 +152,8 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                 impl_maps.into_iter().chain(block_impls).for_each(&mut f);
                 def_blocks
                     .into_iter()
-                    .filter_map(|it| self.db.trait_impls_in_block(it?))
+                    .flatten()
+                    .map(|it| self.db.trait_impls_in_block(it))
                     .for_each(f);
             }
             fps => {
@@ -165,7 +166,8 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                 impl_maps.into_iter().chain(block_impls).for_each(&mut f);
                 def_blocks
                     .into_iter()
-                    .filter_map(|it| self.db.trait_impls_in_block(it?))
+                    .flatten()
+                    .map(|it| self.db.trait_impls_in_block(it))
                     .for_each(f);
             }
         }

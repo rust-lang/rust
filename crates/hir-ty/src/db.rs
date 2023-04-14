@@ -115,7 +115,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn inherent_impls_in_crate(&self, krate: CrateId) -> Arc<InherentImpls>;
 
     #[salsa::invoke(InherentImpls::inherent_impls_in_block_query)]
-    fn inherent_impls_in_block(&self, block: BlockId) -> Option<Arc<InherentImpls>>;
+    fn inherent_impls_in_block(&self, block: BlockId) -> Arc<InherentImpls>;
 
     /// Collects all crates in the dependency graph that have impls for the
     /// given fingerprint. This is only used for primitive types and types
@@ -132,7 +132,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn trait_impls_in_crate(&self, krate: CrateId) -> Arc<TraitImpls>;
 
     #[salsa::invoke(TraitImpls::trait_impls_in_block_query)]
-    fn trait_impls_in_block(&self, block: BlockId) -> Option<Arc<TraitImpls>>;
+    fn trait_impls_in_block(&self, block: BlockId) -> Arc<TraitImpls>;
 
     #[salsa::invoke(TraitImpls::trait_impls_in_deps_query)]
     fn trait_impls_in_deps(&self, krate: CrateId) -> Arc<TraitImpls>;
