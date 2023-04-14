@@ -11,10 +11,10 @@ use tracing::*;
 use crate::common::{Config, Debugger, FailMode, Mode, PassMode};
 use crate::header::cfg::parse_cfg_name_directive;
 use crate::header::cfg::MatchOutcome;
-use crate::util;
 use crate::{extract_cdb_version, extract_gdb_version};
 
 mod cfg;
+mod needs;
 #[cfg(test)]
 mod tests;
 
@@ -660,14 +660,6 @@ impl Config {
         }
     }
 
-    fn parse_needs_matching_clang(&self, line: &str) -> bool {
-        self.parse_name_directive(line, "needs-matching-clang")
-    }
-
-    fn parse_needs_profiler_support(&self, line: &str) -> bool {
-        self.parse_name_directive(line, "needs-profiler-support")
-    }
-
     fn has_cfg_prefix(&self, line: &str, prefix: &str) -> bool {
         // returns whether this line contains this prefix or not. For prefix
         // "ignore", returns true if line says "ignore-x86_64", "ignore-arch",
@@ -871,69 +863,13 @@ pub fn make_test_description<R: Read>(
     let mut ignore_message = None;
     let mut should_fail = false;
 
-    let rustc_has_profiler_support = env::var_os("RUSTC_PROFILER_SUPPORT").is_some();
-    let rustc_has_sanitizer_support = env::var_os("RUSTC_SANITIZER_SUPPORT").is_some();
-    let has_asm_support = config.has_asm_support();
-    let has_asan = util::ASAN_SUPPORTED_TARGETS.contains(&&*config.target);
-    let has_cfi = util::CFI_SUPPORTED_TARGETS.contains(&&*config.target);
-    let has_kcfi = util::KCFI_SUPPORTED_TARGETS.contains(&&*config.target);
-    let has_kasan = util::KASAN_SUPPORTED_TARGETS.contains(&&*config.target);
-    let has_lsan = util::LSAN_SUPPORTED_TARGETS.contains(&&*config.target);
-    let has_msan = util::MSAN_SUPPORTED_TARGETS.contains(&&*config.target);
-    let has_tsan = util::TSAN_SUPPORTED_TARGETS.contains(&&*config.target);
-    let has_hwasan = util::HWASAN_SUPPORTED_TARGETS.contains(&&*config.target);
-    let has_memtag = util::MEMTAG_SUPPORTED_TARGETS.contains(&&*config.target);
-    let has_shadow_call_stack = util::SHADOWCALLSTACK_SUPPORTED_TARGETS.contains(&&*config.target);
-    let has_xray = util::XRAY_SUPPORTED_TARGETS.contains(&&*config.target);
-
-    // For tests using the `needs-rust-lld` directive (e.g. for `-Zgcc-ld=lld`), we need to find
-    // whether `rust-lld` is present in the compiler under test.
-    //
-    // The --compile-lib-path is the path to host shared libraries, but depends on the OS. For
-    // example:
-    // - on linux, it can be <sysroot>/lib
-    // - on windows, it can be <sysroot>/bin
-    //
-    // However, `rust-lld` is only located under the lib path, so we look for it there.
-    let has_rust_lld = config
-        .compile_lib_path
-        .parent()
-        .expect("couldn't traverse to the parent of the specified --compile-lib-path")
-        .join("lib")
-        .join("rustlib")
-        .join(&config.target)
-        .join("bin")
-        .join(if config.host.contains("windows") { "rust-lld.exe" } else { "rust-lld" })
-        .exists();
-
-    fn is_on_path(file: &'static str) -> impl Fn() -> bool {
-        move || env::split_paths(&env::var_os("PATH").unwrap()).any(|dir| dir.join(file).is_file())
-    }
-
-    // On Windows, dlltool.exe is used for all architectures.
-    #[cfg(windows)]
-    let (has_i686_dlltool, has_x86_64_dlltool) =
-        (is_on_path("dlltool.exe"), is_on_path("dlltool.exe"));
-    // For non-Windows, there are architecture specific dlltool binaries.
-    #[cfg(not(windows))]
-    let (has_i686_dlltool, has_x86_64_dlltool) =
-        (is_on_path("i686-w64-mingw32-dlltool"), is_on_path("x86_64-w64-mingw32-dlltool"));
+    let needs_cache = needs::CachedNeedsConditions::load(config);
 
     iter_header(path, src, &mut |revision, ln| {
         if revision.is_some() && revision != cfg {
             return;
         }
-        macro_rules! reason {
-            ($e:expr) => {
-                ignore |= match $e {
-                    true => {
-                        ignore_message = Some(stringify!($e));
-                        true
-                    }
-                    false => ignore,
-                }
-            };
-        }
+
         macro_rules! decision {
             ($e:expr) => {
                 match $e {
@@ -943,6 +879,10 @@ pub fn make_test_description<R: Read>(
                         // create it. This is fine, as the header is parsed only at the start of
                         // compiletest so it won't grow indefinitely.
                         ignore_message = Some(Box::leak(Box::<str>::from(reason)));
+                    }
+                    IgnoreDecision::Error { message } => {
+                        eprintln!("error: {}: {message}", path.display());
+                        panic!();
                     }
                     IgnoreDecision::Continue => {}
                 }
@@ -989,48 +929,27 @@ pub fn make_test_description<R: Read>(
             };
         }
 
+        decision!(needs::handle_needs(&needs_cache, config, ln));
         decision!(ignore_llvm(config, ln));
         decision!(ignore_cdb(config, ln));
         decision!(ignore_gdb(config, ln));
         decision!(ignore_lldb(config, ln));
 
-        reason!(
-            config.run_clang_based_tests_with.is_none() && config.parse_needs_matching_clang(ln)
-        );
-        reason!(!has_asm_support && config.parse_name_directive(ln, "needs-asm-support"));
-        reason!(!rustc_has_profiler_support && config.parse_needs_profiler_support(ln));
-        reason!(!config.run_enabled() && config.parse_name_directive(ln, "needs-run-enabled"));
-        reason!(
-            !rustc_has_sanitizer_support
-                && config.parse_name_directive(ln, "needs-sanitizer-support")
-        );
-        reason!(!has_asan && config.parse_name_directive(ln, "needs-sanitizer-address"));
-        reason!(!has_cfi && config.parse_name_directive(ln, "needs-sanitizer-cfi"));
-        reason!(!has_kcfi && config.parse_name_directive(ln, "needs-sanitizer-kcfi"));
-        reason!(!has_kasan && config.parse_name_directive(ln, "needs-sanitizer-kasan"));
-        reason!(!has_lsan && config.parse_name_directive(ln, "needs-sanitizer-leak"));
-        reason!(!has_msan && config.parse_name_directive(ln, "needs-sanitizer-memory"));
-        reason!(!has_tsan && config.parse_name_directive(ln, "needs-sanitizer-thread"));
-        reason!(!has_hwasan && config.parse_name_directive(ln, "needs-sanitizer-hwaddress"));
-        reason!(!has_memtag && config.parse_name_directive(ln, "needs-sanitizer-memtag"));
-        reason!(
-            !has_shadow_call_stack
-                && config.parse_name_directive(ln, "needs-sanitizer-shadow-call-stack")
-        );
-        reason!(!config.can_unwind() && config.parse_name_directive(ln, "needs-unwind"));
-        reason!(!has_xray && config.parse_name_directive(ln, "needs-xray"));
-        reason!(
-            config.target == "wasm32-unknown-unknown"
-                && config.parse_name_directive(ln, directives::CHECK_RUN_RESULTS)
-        );
-        reason!(!has_rust_lld && config.parse_name_directive(ln, "needs-rust-lld"));
-        reason!(config.parse_name_directive(ln, "needs-i686-dlltool") && !has_i686_dlltool());
-        reason!(config.parse_name_directive(ln, "needs-x86_64-dlltool") && !has_x86_64_dlltool());
-        reason!(
-            config.parse_name_directive(ln, "rust-lldb")
-                && config.debugger == Some(Debugger::Lldb)
-                && !config.lldb_native_rust
-        );
+        if config.target == "wasm32-unknown-unknown" {
+            if config.parse_name_directive(ln, directives::CHECK_RUN_RESULTS) {
+                decision!(IgnoreDecision::Ignore {
+                    reason: "ignored when checking the run results on WASM".into(),
+                });
+            }
+        }
+
+        if config.debugger == Some(Debugger::Lldb) && !config.lldb_native_rust {
+            if config.parse_name_directive(ln, "rust-lldb") {
+                decision!(IgnoreDecision::Ignore {
+                    reason: "ignored on targets wihtout Rust's LLDB".into()
+                });
+            }
+        }
 
         should_fail |= config.parse_name_directive(ln, "should-fail");
     });
@@ -1226,4 +1145,5 @@ fn ignore_llvm(config: &Config, line: &str) -> IgnoreDecision {
 enum IgnoreDecision {
     Ignore { reason: String },
     Continue,
+    Error { message: String },
 }
