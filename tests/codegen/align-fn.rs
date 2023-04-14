@@ -7,3 +7,12 @@
 #[no_mangle]
 #[repr(align(16))]
 pub fn fn_align() {}
+
+pub struct A;
+
+impl A {
+    // CHECK: align 16
+    #[no_mangle]
+    #[repr(align(16))]
+    pub fn method_align(self) {}
+}
