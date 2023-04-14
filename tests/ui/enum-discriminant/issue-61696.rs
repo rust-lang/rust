@@ -55,12 +55,23 @@ pub enum E2<X> {
     V4,
 }
 
-fn main() {
-    if let E1::V2 { .. } = (E1::V1 { f: true }) {
-        unreachable!()
+#[inline(never)]
+fn match_e1(y: E1) -> u8 {
+    match y {
+        E1::V2 { .. } => 1,
+        _ => 0,
     }
+}
 
-    if let E2::V1 { .. } = E2::V3::<Infallible> {
-        unreachable!()
+#[inline(never)]
+fn match_e2(y: E2<Infallible>) -> u8 {
+    match y {
+        E2::V1 { .. } => 1,
+        _ => 0,
     }
+}
+
+fn main() {
+    assert_eq!(match_e1(E1::V1 { f: true }), 0);
+    assert_eq!(match_e2(E2::V3), 0);
 }
