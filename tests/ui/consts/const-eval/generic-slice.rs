@@ -8,15 +8,14 @@ impl<'a, T: 'static> Generic<'a, T> {
     const EMPTY_SLICE: &'a [T] = {
         let x: &'a [T] = &[];
         //~^ ERROR destructor of `[T; 0]` cannot be evaluated at compile-time
-        x 
+        x
     };
 
     const EMPTY_SLICE_REF: &'a &'static [T] = {
-        let x: &'static [T] = &[]; 
+        let x: &'static [T] = &[];
         //~^ ERROR destructor of `[T; 0]` cannot be evaluated at compile-time
         &x
         //~^ ERROR `x` does not live long enough
-        
     };
 }
 

@@ -10,7 +10,7 @@ LL |     };
 error[E0493]: destructor of `[T; 0]` cannot be evaluated at compile-time
   --> $DIR/generic-slice.rs:15:32
    |
-LL |         let x: &'static [T] = &[]; 
+LL |         let x: &'static [T] = &[];
    |                                ^^ the destructor for this type cannot be evaluated in constants
 ...
 LL |     };
@@ -27,12 +27,12 @@ LL |         &x
    |         |
    |         borrowed value does not live long enough
    |         using this value as a constant requires that `x` is borrowed for `'a`
-...
+LL |
 LL |     };
    |     - `x` dropped here while still borrowed
 
 error[E0493]: destructor of `[RefCell<Vec<i32>>; 0]` cannot be evaluated at compile-time
-  --> $DIR/generic-slice.rs:24:20
+  --> $DIR/generic-slice.rs:23:20
    |
 LL |     let x: &[_] = &[];
    |                    ^^ the destructor for this type cannot be evaluated in statics
@@ -41,7 +41,7 @@ LL | };
    | - value is dropped here
 
 error[E0493]: destructor of `[RefCell<Vec<i32>>; 0]` cannot be evaluated at compile-time
-  --> $DIR/generic-slice.rs:30:20
+  --> $DIR/generic-slice.rs:29:20
    |
 LL |     let x: &[_] = &[];
    |                    ^^ the destructor for this type cannot be evaluated in statics
@@ -50,7 +50,7 @@ LL | };
    | - value is dropped here
 
 error[E0597]: `x` does not live long enough
-  --> $DIR/generic-slice.rs:32:5
+  --> $DIR/generic-slice.rs:31:5
    |
 LL |     &x
    |     ^^
