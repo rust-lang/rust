@@ -851,6 +851,7 @@ pub fn make_test_description<R: Read>(
     path: &Path,
     src: R,
     cfg: Option<&str>,
+    poisoned: &mut bool,
 ) -> test::TestDesc {
     let mut ignore = false;
     let mut ignore_message = None;
@@ -875,7 +876,8 @@ pub fn make_test_description<R: Read>(
                     }
                     IgnoreDecision::Error { message } => {
                         eprintln!("error: {}: {message}", path.display());
-                        panic!();
+                        *poisoned = true;
+                        return;
                     }
                     IgnoreDecision::Continue => {}
                 }
