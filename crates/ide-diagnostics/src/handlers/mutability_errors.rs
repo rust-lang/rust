@@ -851,6 +851,43 @@ fn f() {
 }
             "#,
         );
+        check_diagnostics(
+            r#"
+        //- minicore: copy, fn, deref_mut
+        struct X(i32, i64);
+
+        fn f() {
+            let mut x = &mut 5;
+              //^^^^^ 💡 weak: variable does not need to be mutable
+            let closure1 = || { *x = 2; };
+            let _ = closure1();
+                  //^^^^^^^^ 💡 error: cannot mutate immutable variable `closure1`
+            let mut x = &mut 5;
+              //^^^^^ 💡 weak: variable does not need to be mutable
+            let closure1 = move || { *x = 2; };
+            let _ = closure1();
+                  //^^^^^^^^ 💡 error: cannot mutate immutable variable `closure1`
+            let mut x = &mut X(1, 2);
+              //^^^^^ 💡 weak: variable does not need to be mutable
+            let closure1 = || { x.0 = 2; };
+            let _ = closure1();
+                  //^^^^^^^^ 💡 error: cannot mutate immutable variable `closure1`
+        }
+                    "#,
+        );
+    }
+
+    #[test]
+    fn allow_unused_mut_for_identifiers_starting_with_underline() {
+        check_diagnostics(
+            r#"
+fn f(_: i32) {}
+fn main() {
+    let mut _x = 2;
+    f(_x);
+}
+"#,
+        );
     }
 
     #[test]
