@@ -129,10 +129,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         let impl_maps = [in_deps, in_self];
         let block_impls = iter::successors(self.block, |&block_id| {
             cov_mark::hit!(block_local_impls);
-            self.db
-                .block_def_map(block_id)
-                .and_then(|map| map.parent())
-                .and_then(|module| module.containing_block())
+            self.db.block_def_map(block_id).parent().and_then(|module| module.containing_block())
         })
         .inspect(|&block_id| {
             // make sure we don't search the same block twice

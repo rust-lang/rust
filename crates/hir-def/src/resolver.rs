@@ -572,15 +572,12 @@ impl Resolver {
                 scope_id,
             }));
             if let Some(block) = expr_scopes.block(scope_id) {
-                if let Some(def_map) = db.block_def_map(block) {
-                    let root = def_map.root();
-                    resolver
-                        .scopes
-                        .push(Scope::BlockScope(ModuleItemMap { def_map, module_id: root }));
-                    // FIXME: This adds as many module scopes as there are blocks, but resolving in each
-                    // already traverses all parents, so this is O(n²). I think we could only store the
-                    // innermost module scope instead?
-                }
+                let def_map = db.block_def_map(block);
+                let root = def_map.root();
+                resolver.scopes.push(Scope::BlockScope(ModuleItemMap { def_map, module_id: root }));
+                // FIXME: This adds as many module scopes as there are blocks, but resolving in each
+                // already traverses all parents, so this is O(n²). I think we could only store the
+                // innermost module scope instead?
             }
         }
 
@@ -741,13 +738,12 @@ fn resolver_for_scope_(
 
     for scope in scope_chain.into_iter().rev() {
         if let Some(block) = scopes.block(scope) {
-            if let Some(def_map) = db.block_def_map(block) {
-                let root = def_map.root();
-                r = r.push_block_scope(def_map, root);
-                // FIXME: This adds as many module scopes as there are blocks, but resolving in each
-                // already traverses all parents, so this is O(n²). I think we could only store the
-                // innermost module scope instead?
-            }
+            let def_map = db.block_def_map(block);
+            let root = def_map.root();
+            r = r.push_block_scope(def_map, root);
+            // FIXME: This adds as many module scopes as there are blocks, but resolving in each
+            // already traverses all parents, so this is O(n²). I think we could only store the
+            // innermost module scope instead?
         }
 
         r = r.push_expr_scope(owner, Arc::clone(&scopes), scope);

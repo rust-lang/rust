@@ -156,7 +156,7 @@ impl TraitImpls {
         let _p = profile::span("trait_impls_in_block_query");
         let mut impls = Self { map: FxHashMap::default() };
 
-        let block_def_map = db.block_def_map(block)?;
+        let block_def_map = db.block_def_map(block);
         impls.collect_def_map(db, &block_def_map);
         impls.shrink_to_fit();
 
@@ -290,7 +290,7 @@ impl InherentImpls {
         let _p = profile::span("inherent_impls_in_block_query");
         let mut impls = Self { map: FxHashMap::default(), invalid_impls: Vec::default() };
 
-        let block_def_map = db.block_def_map(block)?;
+        let block_def_map = db.block_def_map(block);
         impls.collect_def_map(db, &block_def_map);
         impls.shrink_to_fit();
 
@@ -1191,10 +1191,7 @@ fn iterate_inherent_methods(
             )?;
         }
 
-        block = db
-            .block_def_map(block_id)
-            .and_then(|map| map.parent())
-            .and_then(|module| module.containing_block());
+        block = db.block_def_map(block_id).parent().and_then(|module| module.containing_block());
     }
 
     for krate in def_crates {
