@@ -37,6 +37,7 @@ filetime = "0.2"
 getopts = "0.2.19"
 cc = "1.0.69"
 libc = "0.2"
+gix = "0.43.1"
 hex = "0.4"
 object = { version = "0.29.0", default-features = false, features = ["archive", "coff", "read_core", "unaligned"] }
 serde = "1.0.137"

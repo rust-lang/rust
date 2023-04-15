@@ -907,21 +907,14 @@ impl Config {
 
         // Infer the source directory. This is non-trivial because we want to support a downloaded bootstrap binary,
         // running on a completely machine from where it was compiled.
-        let mut cmd = Command::new("git");
         // NOTE: we cannot support running from outside the repository because the only path we have available
         // is set at compile time, which can be wrong if bootstrap was downloaded from source.
         // We still support running outside the repository if we find we aren't in a git directory.
-        cmd.arg("rev-parse").arg("--show-toplevel");
-        // Discard stderr because we expect this to fail when building from a tarball.
-        let output = cmd
-            .stderr(std::process::Stdio::null())
-            .output()
-            .ok()
-            .and_then(|output| if output.status.success() { Some(output) } else { None });
-        if let Some(output) = output {
-            let git_root = String::from_utf8(output.stdout).unwrap();
+        let repo = gix::open(".").and_then(|repo| repo.main_repo());
+        // Discard errors because we expect this to fail when building from a tarball.
+        if let Ok(repo) = repo {
             // We need to canonicalize this path to make sure it uses backslashes instead of forward slashes.
-            let git_root = PathBuf::from(git_root.trim()).canonicalize().unwrap();
+            let git_root = repo.path().canonicalize().unwrap();
             let s = git_root.to_str().unwrap();
 
             // Bootstrap is quite bad at handling /? in front of paths
