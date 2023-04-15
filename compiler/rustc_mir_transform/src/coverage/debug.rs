@@ -292,10 +292,8 @@ impl DebugCounters {
     }
 
     pub fn some_block_label(&self, operand: ExpressionOperandId) -> Option<&String> {
-        self.some_counters.as_ref().map_or(None, |counters| {
-            counters
-                .get(&operand)
-                .map_or(None, |debug_counter| debug_counter.some_block_label.as_ref())
+        self.some_counters.as_ref().and_then(|counters| {
+            counters.get(&operand).and_then(|debug_counter| debug_counter.some_block_label.as_ref())
         })
     }
 
