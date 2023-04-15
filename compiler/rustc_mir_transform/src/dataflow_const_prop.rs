@@ -110,46 +110,44 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                 // we must make sure that all `target as Variant#i` are `Top`.
                 state.flood(target.as_ref(), self.map());
 
-                if let Some(target_idx) = self.map().find(target.as_ref()) {
-                    let (variant_target, variant_index) = match **kind {
-                        AggregateKind::Tuple | AggregateKind::Closure(..) => {
-                            (Some(target_idx), None)
-                        }
-                        AggregateKind::Adt(def_id, variant_index, ..) => {
-                            match self.tcx.def_kind(def_id) {
-                                DefKind::Struct => (Some(target_idx), None),
-                                DefKind::Enum => (
-                                    self.map.apply(target_idx, TrackElem::Variant(variant_index)),
-                                    Some(variant_index),
-                                ),
-                                _ => (None, None),
-                            }
-                        }
-                        _ => (None, None),
-                    };
-                    if let Some(variant_target_idx) = variant_target {
-                        for (field_index, operand) in operands.iter().enumerate() {
-                            if let Some(field) = self.map().apply(
-                                variant_target_idx,
-                                TrackElem::Field(FieldIdx::from_usize(field_index)),
-                            ) {
-                                let result = self.handle_operand(operand, state);
-                                state.insert_idx(field, result, self.map());
-                            }
+                let Some(target_idx) = self.map().find(target.as_ref()) else { return };
+
+                let (variant_target, variant_index) = match **kind {
+                    AggregateKind::Tuple | AggregateKind::Closure(..) => (Some(target_idx), None),
+                    AggregateKind::Adt(def_id, variant_index, ..) => {
+                        match self.tcx.def_kind(def_id) {
+                            DefKind::Struct => (Some(target_idx), None),
+                            DefKind::Enum => (
+                                self.map.apply(target_idx, TrackElem::Variant(variant_index)),
+                                Some(variant_index),
+                            ),
+                            _ => return,
                         }
                     }
-                    if let Some(variant_index) = variant_index
-                        && let Some(discr_idx) = self.map().apply(target_idx, TrackElem::Discriminant)
-                    {
-                        // We are assigning the discriminant as part of an aggregate.
-                        // This discriminant can only alias a variant field's value if the operand
-                        // had an invalid value for that type.
-                        // Using invalid values is UB, so we are allowed to perform the assignment
-                        // without extra flooding.
-                        let enum_ty = target.ty(self.local_decls, self.tcx).ty;
-                        if let Some(discr_val) = self.eval_discriminant(enum_ty, variant_index) {
-                            state.insert_value_idx(discr_idx, FlatSet::Elem(discr_val), &self.map);
+                    _ => return,
+                };
+                if let Some(variant_target_idx) = variant_target {
+                    for (field_index, operand) in operands.iter().enumerate() {
+                        if let Some(field) = self.map().apply(
+                            variant_target_idx,
+                            TrackElem::Field(FieldIdx::from_usize(field_index)),
+                        ) {
+                            let result = self.handle_operand(operand, state);
+                            state.insert_idx(field, result, self.map());
                         }
+                    }
+                }
+                if let Some(variant_index) = variant_index
+                    && let Some(discr_idx) = self.map().apply(target_idx, TrackElem::Discriminant)
+                {
+                    // We are assigning the discriminant as part of an aggregate.
+                    // This discriminant can only alias a variant field's value if the operand
+                    // had an invalid value for that type.
+                    // Using invalid values is UB, so we are allowed to perform the assignment
+                    // without extra flooding.
+                    let enum_ty = target.ty(self.local_decls, self.tcx).ty;
+                    if let Some(discr_val) = self.eval_discriminant(enum_ty, variant_index) {
+                        state.insert_value_idx(discr_idx, FlatSet::Elem(discr_val), &self.map);
                     }
                 }
             }
