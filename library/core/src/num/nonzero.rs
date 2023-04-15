@@ -1,6 +1,7 @@
 //! Definitions of integer that is known not to equal zero.
 
 use crate::fmt;
+use crate::hash::{Hash, Hasher};
 use crate::ops::{BitOr, BitOrAssign, Div, Rem};
 use crate::str::FromStr;
 
@@ -42,7 +43,8 @@ macro_rules! nonzero_integers {
             #[doc = concat!("`Option<", stringify!($Ty), ">` is guaranteed to be compatible with `", stringify!($Int), "`,")]
             /// including in FFI.
             #[$stability]
-            #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+            #[derive_const(PartialEq, PartialOrd)]
+            #[derive(Copy, Clone, Eq, Ord)]
             #[repr(transparent)]
             #[rustc_layout_scalar_valid_range_start(1)]
             #[rustc_nonnull_optimization_guaranteed]
@@ -102,6 +104,15 @@ macro_rules! nonzero_integers {
                 #[inline]
                 fn from(nonzero: $Ty) -> Self {
                     nonzero.0
+                }
+            }
+
+            #[$stability]
+            #[rustc_const_unstable(feature = "const_hash", issue = "104061")]
+            impl const Hash for $Ty {
+                #[inline]
+                fn hash<H: ~const Hasher>(&self, state: &mut H) {
+                    self.0.hash(state)
                 }
             }
 

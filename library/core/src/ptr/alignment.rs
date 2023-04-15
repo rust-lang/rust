@@ -18,7 +18,7 @@ pub struct Alignment(AlignmentEnum);
 const _: () = assert!(mem::size_of::<Alignment>() == mem::size_of::<usize>());
 const _: () = assert!(mem::align_of::<Alignment>() == mem::align_of::<usize>());
 
-fn _alignment_can_be_structurally_matched(a: Alignment) -> bool {
+const fn _alignment_can_be_structurally_matched(a: Alignment) -> bool {
     matches!(a, Alignment::MIN)
 }
 
@@ -118,9 +118,10 @@ impl Alignment {
     /// assert_eq!(Alignment::of::<u8>().log2(), 0);
     /// assert_eq!(Alignment::new(1024).unwrap().log2(), 10);
     /// ```
+    #[rustc_const_unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
-    pub fn log2(self) -> u32 {
+    pub const fn log2(self) -> u32 {
         self.as_nonzero().trailing_zeros()
     }
 }
@@ -132,8 +133,9 @@ impl fmt::Debug for Alignment {
     }
 }
 
+#[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-impl TryFrom<NonZeroUsize> for Alignment {
+impl const TryFrom<NonZeroUsize> for Alignment {
     type Error = num::TryFromIntError;
 
     #[inline]
@@ -142,8 +144,9 @@ impl TryFrom<NonZeroUsize> for Alignment {
     }
 }
 
+#[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-impl TryFrom<usize> for Alignment {
+impl const TryFrom<usize> for Alignment {
     type Error = num::TryFromIntError;
 
     #[inline]
@@ -152,16 +155,18 @@ impl TryFrom<usize> for Alignment {
     }
 }
 
+#[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-impl From<Alignment> for NonZeroUsize {
+impl const From<Alignment> for NonZeroUsize {
     #[inline]
     fn from(align: Alignment) -> NonZeroUsize {
         align.as_nonzero()
     }
 }
 
+#[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-impl From<Alignment> for usize {
+impl const From<Alignment> for usize {
     #[inline]
     fn from(align: Alignment) -> usize {
         align.as_usize()
@@ -186,10 +191,11 @@ impl const cmp::PartialOrd for Alignment {
     }
 }
 
+#[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-impl hash::Hash for Alignment {
+impl const hash::Hash for Alignment {
     #[inline]
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+    fn hash<H: ~const hash::Hasher>(&self, state: &mut H) {
         self.as_nonzero().hash(state)
     }
 }
