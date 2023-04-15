@@ -492,7 +492,7 @@ generate int64x1_t:uint64x1_t, int64x2_t:uint64x2_t
 arm = vcgt.s
 generate int8x8_t:uint8x8_t, int8x16_t:uint8x16_t, int16x4_t:uint16x4_t, int16x8_t:uint16x8_t, int32x2_t:uint32x2_t, int32x4_t:uint32x4_t
 
-/// Compare unsigned highe
+/// Compare unsigned greater than
 name = vcgt
 fn = simd_gt
 a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
