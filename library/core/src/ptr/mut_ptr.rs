@@ -1593,9 +1593,7 @@ impl<T: ?Sized> *mut T {
     where
         T: Sized,
     {
-        if !align.is_power_of_two() {
-            panic!("align_offset: align is not a power-of-two");
-        }
+        assert!(align.is_power_of_two(), "align_offset: align is not a power-of-two");
 
         {
             // SAFETY: `align` has been checked to be a power of 2 above
@@ -1832,9 +1830,7 @@ impl<T: ?Sized> *mut T {
     #[unstable(feature = "pointer_is_aligned", issue = "96284")]
     #[rustc_const_unstable(feature = "const_pointer_is_aligned", issue = "104203")]
     pub const fn is_aligned_to(self, align: usize) -> bool {
-        if !align.is_power_of_two() {
-            panic!("is_aligned_to: align is not a power-of-two");
-        }
+        assert!(align.is_power_of_two(), "is_aligned_to: align is not a power-of-two");
 
         #[inline]
         fn runtime_impl(ptr: *mut (), align: usize) -> bool {
