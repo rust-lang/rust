@@ -645,9 +645,8 @@ pub(super) fn implied_predicates_with_filter(
     };
 
     // Combine the two lists to form the complete set of superbounds:
-    let implied_bounds = &*tcx
-        .arena
-        .alloc_from_iter(superbounds.predicates().into_iter().chain(where_bounds_that_match));
+    let implied_bounds =
+        &*tcx.arena.alloc_from_iter(superbounds.predicates().chain(where_bounds_that_match));
     debug!(?implied_bounds);
 
     // Now require that immediate supertraits are converted,
