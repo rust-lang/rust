@@ -227,6 +227,11 @@ impl ScalarInt {
     }
 
     #[inline]
+    pub fn try_from_target_usize(i: impl Into<u128>, tcx: TyCtxt<'_>) -> Option<Self> {
+        Self::try_from_uint(i, tcx.data_layout.pointer_size)
+    }
+
+    #[inline]
     pub fn assert_bits(self, target_size: Size) -> u128 {
         self.to_bits(target_size).unwrap_or_else(|size| {
             bug!("expected int of size {}, but got size {}", target_size.bytes(), size.bytes())

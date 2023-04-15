@@ -193,47 +193,64 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
         rvalue: &Rvalue<'tcx>,
         state: &mut State<Self::Value>,
     ) -> ValueOrPlace<Self::Value> {
-        match rvalue {
-            Rvalue::Cast(
-                kind @ (CastKind::IntToInt
-                | CastKind::FloatToInt
-                | CastKind::FloatToFloat
-                | CastKind::IntToFloat),
-                operand,
-                ty,
-            ) => match self.eval_operand(operand, state) {
-                FlatSet::Elem(op) => match kind {
-                    CastKind::IntToInt | CastKind::IntToFloat => {
-                        self.ecx.int_to_int_or_float(&op, *ty)
-                    }
-                    CastKind::FloatToInt | CastKind::FloatToFloat => {
-                        self.ecx.float_to_float_or_int(&op, *ty)
-                    }
-                    _ => unreachable!(),
+        let val = match rvalue {
+            Rvalue::Cast(CastKind::IntToInt | CastKind::IntToFloat, operand, ty) => {
+                match self.eval_operand(operand, state) {
+                    FlatSet::Elem(op) => self
+                        .ecx
+                        .int_to_int_or_float(&op, *ty)
+                        .map_or(FlatSet::Top, |result| self.wrap_immediate(result)),
+                    FlatSet::Bottom => FlatSet::Bottom,
+                    FlatSet::Top => FlatSet::Top,
                 }
-                .map(|result| ValueOrPlace::Value(self.wrap_immediate(result)))
-                .unwrap_or(ValueOrPlace::TOP),
-                _ => ValueOrPlace::TOP,
-            },
+            }
+            Rvalue::Cast(CastKind::FloatToInt | CastKind::FloatToFloat, operand, ty) => {
+                match self.eval_operand(operand, state) {
+                    FlatSet::Elem(op) => self
+                        .ecx
+                        .float_to_float_or_int(&op, *ty)
+                        .map_or(FlatSet::Top, |result| self.wrap_immediate(result)),
+                    FlatSet::Bottom => FlatSet::Bottom,
+                    FlatSet::Top => FlatSet::Top,
+                }
+            }
+            Rvalue::Cast(CastKind::Transmute, operand, _) => {
+                match self.eval_operand(operand, state) {
+                    FlatSet::Elem(op) => self.wrap_immediate(*op),
+                    FlatSet::Bottom => FlatSet::Bottom,
+                    FlatSet::Top => FlatSet::Top,
+                }
+            }
             Rvalue::BinaryOp(op, box (left, right)) => {
                 // Overflows must be ignored here.
                 let (val, _overflow) = self.binary_op(state, *op, left, right);
-                ValueOrPlace::Value(val)
+                val
             }
             Rvalue::UnaryOp(op, operand) => match self.eval_operand(operand, state) {
-                FlatSet::Elem(value) => self
-                    .ecx
-                    .unary_op(*op, &value)
-                    .map(|val| ValueOrPlace::Value(self.wrap_immty(val)))
-                    .unwrap_or(ValueOrPlace::Value(FlatSet::Top)),
-                FlatSet::Bottom => ValueOrPlace::Value(FlatSet::Bottom),
-                FlatSet::Top => ValueOrPlace::Value(FlatSet::Top),
+                FlatSet::Elem(value) => {
+                    self.ecx.unary_op(*op, &value).map_or(FlatSet::Top, |val| self.wrap_immty(val))
+                }
+                FlatSet::Bottom => FlatSet::Bottom,
+                FlatSet::Top => FlatSet::Top,
             },
-            Rvalue::Discriminant(place) => {
-                ValueOrPlace::Value(state.get_discr(place.as_ref(), self.map()))
+            Rvalue::NullaryOp(null_op, ty) => {
+                let Ok(layout) = self.tcx.layout_of(self.param_env.and(*ty)) else {
+                    return ValueOrPlace::Value(FlatSet::Top);
+                };
+                let val = match null_op {
+                    NullOp::SizeOf if layout.is_sized() => layout.size.bytes(),
+                    NullOp::AlignOf if layout.is_sized() => layout.align.abi.bytes(),
+                    NullOp::OffsetOf(fields) => layout
+                        .offset_of_subfield(&self.ecx, fields.iter().map(|f| f.index()))
+                        .bytes(),
+                    _ => return ValueOrPlace::Value(FlatSet::Top),
+                };
+                ScalarInt::try_from_target_usize(val, self.tcx).map_or(FlatSet::Top, FlatSet::Elem)
             }
-            _ => self.super_rvalue(rvalue, state),
-        }
+            Rvalue::Discriminant(place) => state.get_discr(place.as_ref(), self.map()),
+            _ => return self.super_rvalue(rvalue, state),
+        };
+        ValueOrPlace::Value(val)
     }
 
     fn handle_constant(
