@@ -89,10 +89,10 @@ impl<'tcx> PredicateObligation<'tcx> {
 impl<'tcx> TraitObligation<'tcx> {
     /// Returns `true` if the trait predicate is considered `const` in its ParamEnv.
     pub fn is_const(&self) -> bool {
-        match (self.predicate.skip_binder().constness, self.param_env.constness()) {
-            (ty::BoundConstness::ConstIfConst, hir::Constness::Const) => true,
-            _ => false,
-        }
+        matches!(
+            (self.predicate.skip_binder().constness, self.param_env.constness()),
+            (ty::BoundConstness::ConstIfConst, hir::Constness::Const)
+        )
     }
 
     pub fn derived_cause(
