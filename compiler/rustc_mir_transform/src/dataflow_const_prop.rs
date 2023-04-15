@@ -157,12 +157,10 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                 // Flood everything now, so we can use `insert_value_idx` directly later.
                 state.flood(target.as_ref(), self.map());
 
-                let target = self.map().find(target.as_ref());
+                let Some(target) = self.map().find(target.as_ref()) else { return };
 
-                let value_target = target
-                    .and_then(|target| self.map().apply(target, TrackElem::Field(0_u32.into())));
-                let overflow_target = target
-                    .and_then(|target| self.map().apply(target, TrackElem::Field(1_u32.into())));
+                let value_target = self.map().apply(target, TrackElem::Field(0_u32.into()));
+                let overflow_target = self.map().apply(target, TrackElem::Field(1_u32.into()));
 
                 if value_target.is_some() || overflow_target.is_some() {
                     let (val, overflow) = self.binary_op(state, *op, left, right);
