@@ -4,8 +4,7 @@
 // compile-flags: -Zmir-opt-level=3
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 
-// This pass is broken since deaggregation changed
-// ignore-test
+// ignore-test This pass is broken since deaggregation changed
 
 enum Src {
     Foo(u8),
