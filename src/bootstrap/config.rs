@@ -1009,7 +1009,9 @@ impl Config {
         });
         config.initial_cargo = build
             .cargo
-            .map(PathBuf::from)
+            .map(|cargo| {
+                t!(PathBuf::from(cargo).canonicalize(), "`initial_cargo` not found on disk")
+            })
             .unwrap_or_else(|| config.out.join(config.build.triple).join("stage0/bin/cargo"));
 
         // NOTE: it's important this comes *after* we set `initial_rustc` just above.
