@@ -94,6 +94,17 @@ can be matched with the following queries:
 * `trait:Iterator<primitive:u32> -> primitive:usize`
 * `Iterator -> usize`
 
+Generics and function parameters are order-agnostic, but sensitive to nesting
+and number of matches. For example, a function with the signature
+`fn read_all(&mut self: impl Read) -> Result<Vec<u8>, Error>`
+will match these queries:
+
+* `Read -> Result<Vec<u8>, Error>`
+* `Read -> Result<Error, Vec>`
+* `Read -> Result<Vec<u8>>`
+
+But it *does not* match `Result<Vec, u8>` or `Result<u8<Vec>>`.
+
 ### Changing displayed theme
 
 You can change the displayed theme by opening the settings menu (the gear
