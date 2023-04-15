@@ -170,7 +170,7 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 ///
 /// The following table gives the size for primitives.
 ///
-/// Type | size_of::\<Type>()
+/// Type | `size_of::<Type>()`
 /// ---- | ---------------
 /// () | 0
 /// bool | 1
@@ -190,8 +190,8 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 ///
 /// Furthermore, `usize` and `isize` have the same size.
 ///
-/// The types `*const T`, `&T`, `Box<T>`, `Option<&T>`, and `Option<Box<T>>` all have
-/// the same size. If `T` is Sized, all of those types have the same size as `usize`.
+/// The types [`*const T`], `&T`, [`Box<T>`], [`Option<&T>`], and `Option<Box<T>>` all have
+/// the same size. If `T` is `Sized`, all of those types have the same size as `usize`.
 ///
 /// The mutability of a pointer does not change its size. As such, `&T` and `&mut T`
 /// have the same size. Likewise for `*const T` and `*mut T`.
@@ -203,7 +203,7 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 ///
 /// ## Size of Structs
 ///
-/// For `structs`, the size is determined by the following algorithm.
+/// For `struct`s, the size is determined by the following algorithm.
 ///
 /// For each field in the struct ordered by declaration order:
 ///
@@ -299,6 +299,10 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 /// ```
 ///
 /// [alignment]: align_of
+/// [`*const T`]: primitive@pointer
+/// [`Box<T>`]: ../../std/boxed/struct.Box.html
+/// [`Option<&T>`]: crate::option::Option
+///
 #[inline(always)]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -311,7 +315,7 @@ pub const fn size_of<T>() -> usize {
 
 /// Returns the size of the pointed-to value in bytes.
 ///
-/// This is usually the same as `size_of::<T>()`. However, when `T` *has* no
+/// This is usually the same as [`size_of::<T>()`]. However, when `T` *has* no
 /// statically-known size, e.g., a slice [`[T]`][slice] or a [trait object],
 /// then `size_of_val` can be used to get the dynamically-known size.
 ///
@@ -328,6 +332,8 @@ pub const fn size_of<T>() -> usize {
 /// let y: &[u8] = &x;
 /// assert_eq!(13, mem::size_of_val(y));
 /// ```
+///
+/// [`size_of::<T>()`]: size_of
 #[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -340,7 +346,7 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 
 /// Returns the size of the pointed-to value in bytes.
 ///
-/// This is usually the same as `size_of::<T>()`. However, when `T` *has* no
+/// This is usually the same as [`size_of::<T>()`]. However, when `T` *has* no
 /// statically-known size, e.g., a slice [`[T]`][slice] or a [trait object],
 /// then `size_of_val_raw` can be used to get the dynamically-known size.
 ///
@@ -363,6 +369,7 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 ///       [`size_of_val`] on a reference to a type with an extern type tail.
 ///     - otherwise, it is conservatively not allowed to call this function.
 ///
+/// [`size_of::<T>()`]: size_of
 /// [trait object]: ../../book/ch17-02-trait-objects.html
 /// [extern type]: ../../unstable-book/language-features/extern-types.html
 ///
