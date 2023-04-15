@@ -323,7 +323,7 @@ impl<'tcx> std::fmt::Debug for ScalarTy<'tcx> {
 
 impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, map: Map) -> Self {
-        let param_env = tcx.param_env(body.source.def_id());
+        let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
         Self {
             map,
             tcx,
