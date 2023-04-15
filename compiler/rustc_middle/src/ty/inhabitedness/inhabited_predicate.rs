@@ -140,10 +140,8 @@ impl<'tcx> InhabitedPredicate<'tcx> {
             (Self::Or(&[a, b]), c) | (c, Self::Or(&[a, b])) => {
                 if let Some(ac) = a.reduce_or(tcx, c) {
                     Some(ac.or(tcx, b))
-                } else if let Some(bc) = b.reduce_or(tcx, c) {
-                    Some(Self::Or(tcx.arena.alloc([a, bc])))
                 } else {
-                    None
+                    b.reduce_and(tcx, c).map(|bc| Self::And(tcx.arena.alloc([a, bc])))
                 }
             }
             _ => None,
