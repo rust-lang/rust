@@ -309,7 +309,10 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
     ) -> (FlatSet<ScalarInt>, FlatSet<bool>) {
         let left = self.eval_operand(left, state);
         let right = self.eval_operand(right, state);
+
         match (left, right) {
+            (FlatSet::Bottom, _) | (_, FlatSet::Bottom) => (FlatSet::Bottom, FlatSet::Bottom),
+            // Both sides are known, do the actual computation.
             (FlatSet::Elem(left), FlatSet::Elem(right)) => {
                 match self.ecx.overflowing_binary_op(op, &left, &right) {
                     Ok((Scalar::Int(val), overflow, _)) => {
@@ -318,11 +321,36 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                     _ => (FlatSet::Top, FlatSet::Top),
                 }
             }
-            (FlatSet::Bottom, _) | (_, FlatSet::Bottom) => (FlatSet::Bottom, FlatSet::Bottom),
-            (_, _) => {
-                // Could attempt some algebraic simplifications here.
-                (FlatSet::Top, FlatSet::Top)
+            // Exactly one side is known, attempt some algebraic simplifications.
+            (FlatSet::Elem(const_arg), _) | (_, FlatSet::Elem(const_arg)) => {
+                let layout = const_arg.layout;
+                if !matches!(layout.abi, rustc_target::abi::Abi::Scalar(..)) {
+                    return (FlatSet::Top, FlatSet::Top);
+                }
+
+                let arg_scalar = const_arg.to_scalar();
+                let Ok(arg_scalar) = arg_scalar.try_to_int() else {
+                    return (FlatSet::Top, FlatSet::Top);
+                };
+                let Ok(arg_value) = arg_scalar.to_bits(layout.size) else {
+                    return (FlatSet::Top, FlatSet::Top);
+                };
+
+                match op {
+                    BinOp::BitAnd if arg_value == 0 => (FlatSet::Elem(arg_scalar), FlatSet::Bottom),
+                    BinOp::BitOr
+                        if arg_value == layout.size.truncate(u128::MAX)
+                            || (layout.ty.is_bool() && arg_value == 1) =>
+                    {
+                        (FlatSet::Elem(arg_scalar), FlatSet::Bottom)
+                    }
+                    BinOp::Mul if layout.ty.is_integral() && arg_value == 0 => {
+                        (FlatSet::Elem(arg_scalar), FlatSet::Elem(false))
+                    }
+                    _ => (FlatSet::Top, FlatSet::Top),
+                }
             }
+            (FlatSet::Top, FlatSet::Top) => (FlatSet::Top, FlatSet::Top),
         }
     }
 
