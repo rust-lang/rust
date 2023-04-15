@@ -12,12 +12,23 @@ use tracing::*;
 use crate::common::{Config, Debugger, FailMode, Mode, PassMode};
 use crate::header::cfg::parse_cfg_name_directive;
 use crate::header::cfg::MatchOutcome;
-use crate::util;
+use crate::header::needs::CachedNeedsConditions;
 use crate::{extract_cdb_version, extract_gdb_version};
 
 mod cfg;
+mod needs;
 #[cfg(test)]
 mod tests;
+
+pub struct HeadersCache {
+    needs: CachedNeedsConditions,
+}
+
+impl HeadersCache {
+    pub fn load(config: &Config) -> Self {
+        Self { needs: CachedNeedsConditions::load(config) }
+    }
+}
 
 /// Properties which must be known very early, before actually running
 /// the test.
@@ -36,7 +47,7 @@ impl EarlyProps {
 
     pub fn from_reader<R: Read>(config: &Config, testfile: &Path, rdr: R) -> Self {
         let mut props = EarlyProps::default();
-        iter_header(testfile, rdr, &mut |_, ln| {
+        iter_header(testfile, rdr, &mut |_, ln, _| {
             config.push_name_value_directive(ln, directives::AUX_BUILD, &mut props.aux, |r| {
                 r.trim().to_string()
             });
@@ -288,7 +299,7 @@ impl TestProps {
         if !testfile.is_dir() {
             let file = File::open(testfile).unwrap();
 
-            iter_header(testfile, file, &mut |revision, ln| {
+            iter_header(testfile, file, &mut |revision, ln, _| {
                 if revision.is_some() && revision != cfg {
                     return;
                 }
@@ -582,7 +593,7 @@ pub fn line_directive<'line>(
     }
 }
 
-fn iter_header<R: Read>(testfile: &Path, rdr: R, it: &mut dyn FnMut(Option<&str>, &str)) {
+fn iter_header<R: Read>(testfile: &Path, rdr: R, it: &mut dyn FnMut(Option<&str>, &str, usize)) {
     if testfile.is_dir() {
         return;
     }
@@ -591,8 +602,10 @@ fn iter_header<R: Read>(testfile: &Path, rdr: R, it: &mut dyn FnMut(Option<&str>
 
     let mut rdr = BufReader::new(rdr);
     let mut ln = String::new();
+    let mut line_number = 0;
 
     loop {
+        line_number += 1;
         ln.clear();
         if rdr.read_line(&mut ln).unwrap() == 0 {
             break;
@@ -605,7 +618,7 @@ fn iter_header<R: Read>(testfile: &Path, rdr: R, it: &mut dyn FnMut(Option<&str>
         if ln.starts_with("fn") || ln.starts_with("mod") {
             return;
         } else if let Some((lncfg, ln)) = line_directive(comment, ln) {
-            it(lncfg, ln);
+            it(lncfg, ln, line_number);
         }
     }
 }
@@ -663,21 +676,6 @@ impl Config {
         } else {
             None
         }
-    }
-
-    fn parse_needs_matching_clang(&self, line: &str) -> bool {
-        self.parse_name_directive(line, "needs-matching-clang")
-    }
-
-    fn parse_needs_profiler_support(&self, line: &str) -> bool {
-        self.parse_name_directive(line, "needs-profiler-support")
-    }
-
-    fn has_cfg_prefix(&self, line: &str, prefix: &str) -> bool {
-        // returns whether this line contains this prefix or not. For prefix
-        // "ignore", returns true if line says "ignore-x86_64", "ignore-arch",
-        // "ignore-android" etc.
-        line.starts_with(prefix) && line.as_bytes().get(prefix.len()) == Some(&b'-')
     }
 
     fn parse_name_directive(&self, line: &str, directive: &str) -> bool {
@@ -867,155 +865,58 @@ where
 
 pub fn make_test_description<R: Read>(
     config: &Config,
+    cache: &HeadersCache,
     name: test::TestName,
     path: &Path,
     src: R,
     cfg: Option<&str>,
+    poisoned: &mut bool,
 ) -> test::TestDesc {
     let mut ignore = false;
     let mut ignore_message = None;
     let mut should_fail = false;
 
-    let rustc_has_profiler_support = env::var_os("RUSTC_PROFILER_SUPPORT").is_some();
-    let rustc_has_sanitizer_support = env::var_os("RUSTC_SANITIZER_SUPPORT").is_some();
-    let has_asm_support = config.has_asm_support();
-    let has_asan = util::ASAN_SUPPORTED_TARGETS.contains(&&*config.target);
-    let has_cfi = util::CFI_SUPPORTED_TARGETS.contains(&&*config.target);
-    let has_kcfi = util::KCFI_SUPPORTED_TARGETS.contains(&&*config.target);
-    let has_kasan = util::KASAN_SUPPORTED_TARGETS.contains(&&*config.target);
-    let has_lsan = util::LSAN_SUPPORTED_TARGETS.contains(&&*config.target);
-    let has_msan = util::MSAN_SUPPORTED_TARGETS.contains(&&*config.target);
-    let has_tsan = util::TSAN_SUPPORTED_TARGETS.contains(&&*config.target);
-    let has_hwasan = util::HWASAN_SUPPORTED_TARGETS.contains(&&*config.target);
-    let has_memtag = util::MEMTAG_SUPPORTED_TARGETS.contains(&&*config.target);
-    let has_shadow_call_stack = util::SHADOWCALLSTACK_SUPPORTED_TARGETS.contains(&&*config.target);
-    let has_xray = util::XRAY_SUPPORTED_TARGETS.contains(&&*config.target);
-
-    // For tests using the `needs-rust-lld` directive (e.g. for `-Zgcc-ld=lld`), we need to find
-    // whether `rust-lld` is present in the compiler under test.
-    //
-    // The --compile-lib-path is the path to host shared libraries, but depends on the OS. For
-    // example:
-    // - on linux, it can be <sysroot>/lib
-    // - on windows, it can be <sysroot>/bin
-    //
-    // However, `rust-lld` is only located under the lib path, so we look for it there.
-    let has_rust_lld = config
-        .compile_lib_path
-        .parent()
-        .expect("couldn't traverse to the parent of the specified --compile-lib-path")
-        .join("lib")
-        .join("rustlib")
-        .join(&config.target)
-        .join("bin")
-        .join(if config.host.contains("windows") { "rust-lld.exe" } else { "rust-lld" })
-        .exists();
-
-    fn is_on_path(file: &'static str) -> impl Fn() -> bool {
-        move || env::split_paths(&env::var_os("PATH").unwrap()).any(|dir| dir.join(file).is_file())
-    }
-
-    // On Windows, dlltool.exe is used for all architectures.
-    #[cfg(windows)]
-    let (has_i686_dlltool, has_x86_64_dlltool) =
-        (is_on_path("dlltool.exe"), is_on_path("dlltool.exe"));
-    // For non-Windows, there are architecture specific dlltool binaries.
-    #[cfg(not(windows))]
-    let (has_i686_dlltool, has_x86_64_dlltool) =
-        (is_on_path("i686-w64-mingw32-dlltool"), is_on_path("x86_64-w64-mingw32-dlltool"));
-
-    iter_header(path, src, &mut |revision, ln| {
+    iter_header(path, src, &mut |revision, ln, line_number| {
         if revision.is_some() && revision != cfg {
             return;
         }
-        macro_rules! reason {
+
+        macro_rules! decision {
             ($e:expr) => {
-                ignore |= match $e {
-                    true => {
-                        ignore_message = Some(stringify!($e));
-                        true
+                match $e {
+                    IgnoreDecision::Ignore { reason } => {
+                        ignore = true;
+                        // The ignore reason must be a &'static str, so we have to leak memory to
+                        // create it. This is fine, as the header is parsed only at the start of
+                        // compiletest so it won't grow indefinitely.
+                        ignore_message = Some(&*Box::leak(Box::<str>::from(reason)));
                     }
-                    false => ignore,
+                    IgnoreDecision::Error { message } => {
+                        eprintln!("error: {}:{line_number}: {message}", path.display());
+                        *poisoned = true;
+                        return;
+                    }
+                    IgnoreDecision::Continue => {}
                 }
             };
         }
 
-        {
-            let parsed = parse_cfg_name_directive(config, ln, "ignore");
-            ignore = match parsed.outcome {
-                MatchOutcome::Match => {
-                    let reason = parsed.pretty_reason.unwrap();
-                    // The ignore reason must be a &'static str, so we have to leak memory to
-                    // create it. This is fine, as the header is parsed only at the start of
-                    // compiletest so it won't grow indefinitely.
-                    ignore_message = Some(Box::leak(Box::<str>::from(match parsed.comment {
-                        Some(comment) => format!("ignored {reason} ({comment})"),
-                        None => format!("ignored {reason}"),
-                    })) as &str);
-                    true
-                }
-                MatchOutcome::NoMatch => ignore,
-                MatchOutcome::External => ignore,
-                MatchOutcome::Invalid => panic!("invalid line in {}: {ln}", path.display()),
-            };
+        decision!(cfg::handle_ignore(config, ln));
+        decision!(cfg::handle_only(config, ln));
+        decision!(needs::handle_needs(&cache.needs, config, ln));
+        decision!(ignore_llvm(config, ln));
+        decision!(ignore_cdb(config, ln));
+        decision!(ignore_gdb(config, ln));
+        decision!(ignore_lldb(config, ln));
+
+        if config.target == "wasm32-unknown-unknown" {
+            if config.parse_name_directive(ln, directives::CHECK_RUN_RESULTS) {
+                decision!(IgnoreDecision::Ignore {
+                    reason: "ignored when checking the run results on WASM".into(),
+                });
+            }
         }
 
-        if config.has_cfg_prefix(ln, "only") {
-            let parsed = parse_cfg_name_directive(config, ln, "only");
-            ignore = match parsed.outcome {
-                MatchOutcome::Match => ignore,
-                MatchOutcome::NoMatch => {
-                    let reason = parsed.pretty_reason.unwrap();
-                    // The ignore reason must be a &'static str, so we have to leak memory to
-                    // create it. This is fine, as the header is parsed only at the start of
-                    // compiletest so it won't grow indefinitely.
-                    ignore_message = Some(Box::leak(Box::<str>::from(match parsed.comment {
-                        Some(comment) => format!("only executed {reason} ({comment})"),
-                        None => format!("only executed {reason}"),
-                    })) as &str);
-                    true
-                }
-                MatchOutcome::External => ignore,
-                MatchOutcome::Invalid => panic!("invalid line in {}: {ln}", path.display()),
-            };
-        }
-
-        reason!(ignore_llvm(config, ln));
-        reason!(
-            config.run_clang_based_tests_with.is_none() && config.parse_needs_matching_clang(ln)
-        );
-        reason!(!has_asm_support && config.parse_name_directive(ln, "needs-asm-support"));
-        reason!(!rustc_has_profiler_support && config.parse_needs_profiler_support(ln));
-        reason!(!config.run_enabled() && config.parse_name_directive(ln, "needs-run-enabled"));
-        reason!(
-            !rustc_has_sanitizer_support
-                && config.parse_name_directive(ln, "needs-sanitizer-support")
-        );
-        reason!(!has_asan && config.parse_name_directive(ln, "needs-sanitizer-address"));
-        reason!(!has_cfi && config.parse_name_directive(ln, "needs-sanitizer-cfi"));
-        reason!(!has_kcfi && config.parse_name_directive(ln, "needs-sanitizer-kcfi"));
-        reason!(!has_kasan && config.parse_name_directive(ln, "needs-sanitizer-kasan"));
-        reason!(!has_lsan && config.parse_name_directive(ln, "needs-sanitizer-leak"));
-        reason!(!has_msan && config.parse_name_directive(ln, "needs-sanitizer-memory"));
-        reason!(!has_tsan && config.parse_name_directive(ln, "needs-sanitizer-thread"));
-        reason!(!has_hwasan && config.parse_name_directive(ln, "needs-sanitizer-hwaddress"));
-        reason!(!has_memtag && config.parse_name_directive(ln, "needs-sanitizer-memtag"));
-        reason!(
-            !has_shadow_call_stack
-                && config.parse_name_directive(ln, "needs-sanitizer-shadow-call-stack")
-        );
-        reason!(!config.can_unwind() && config.parse_name_directive(ln, "needs-unwind"));
-        reason!(!has_xray && config.parse_name_directive(ln, "needs-xray"));
-        reason!(
-            config.target == "wasm32-unknown-unknown"
-                && config.parse_name_directive(ln, directives::CHECK_RUN_RESULTS)
-        );
-        reason!(config.debugger == Some(Debugger::Cdb) && ignore_cdb(config, ln));
-        reason!(config.debugger == Some(Debugger::Gdb) && ignore_gdb(config, ln));
-        reason!(config.debugger == Some(Debugger::Lldb) && ignore_lldb(config, ln));
-        reason!(!has_rust_lld && config.parse_name_directive(ln, "needs-rust-lld"));
-        reason!(config.parse_name_directive(ln, "needs-i686-dlltool") && !has_i686_dlltool());
-        reason!(config.parse_name_directive(ln, "needs-x86_64-dlltool") && !has_x86_64_dlltool());
         should_fail |= config.parse_name_directive(ln, "should-fail");
     });
 
@@ -1049,22 +950,34 @@ pub fn make_test_description<R: Read>(
     }
 }
 
-fn ignore_cdb(config: &Config, line: &str) -> bool {
+fn ignore_cdb(config: &Config, line: &str) -> IgnoreDecision {
+    if config.debugger != Some(Debugger::Cdb) {
+        return IgnoreDecision::Continue;
+    }
+
     if let Some(actual_version) = config.cdb_version {
-        if let Some(min_version) = line.strip_prefix("min-cdb-version:").map(str::trim) {
-            let min_version = extract_cdb_version(min_version).unwrap_or_else(|| {
-                panic!("couldn't parse version range: {:?}", min_version);
+        if let Some(rest) = line.strip_prefix("min-cdb-version:").map(str::trim) {
+            let min_version = extract_cdb_version(rest).unwrap_or_else(|| {
+                panic!("couldn't parse version range: {:?}", rest);
             });
 
             // Ignore if actual version is smaller than the minimum
             // required version
-            return actual_version < min_version;
+            if actual_version < min_version {
+                return IgnoreDecision::Ignore {
+                    reason: format!("ignored when the CDB version is lower than {rest}"),
+                };
+            }
         }
     }
-    false
+    IgnoreDecision::Continue
 }
 
-fn ignore_gdb(config: &Config, line: &str) -> bool {
+fn ignore_gdb(config: &Config, line: &str) -> IgnoreDecision {
+    if config.debugger != Some(Debugger::Gdb) {
+        return IgnoreDecision::Continue;
+    }
+
     if let Some(actual_version) = config.gdb_version {
         if let Some(rest) = line.strip_prefix("min-gdb-version:").map(str::trim) {
             let (start_ver, end_ver) = extract_version_range(rest, extract_gdb_version)
@@ -1077,7 +990,11 @@ fn ignore_gdb(config: &Config, line: &str) -> bool {
             }
             // Ignore if actual version is smaller than the minimum
             // required version
-            return actual_version < start_ver;
+            if actual_version < start_ver {
+                return IgnoreDecision::Ignore {
+                    reason: format!("ignored when the GDB version is lower than {rest}"),
+                };
+            }
         } else if let Some(rest) = line.strip_prefix("ignore-gdb-version:").map(str::trim) {
             let (min_version, max_version) = extract_version_range(rest, extract_gdb_version)
                 .unwrap_or_else(|| {
@@ -1088,32 +1005,47 @@ fn ignore_gdb(config: &Config, line: &str) -> bool {
                 panic!("Malformed GDB version range: max < min")
             }
 
-            return actual_version >= min_version && actual_version <= max_version;
+            if actual_version >= min_version && actual_version <= max_version {
+                if min_version == max_version {
+                    return IgnoreDecision::Ignore {
+                        reason: format!("ignored when the GDB version is {rest}"),
+                    };
+                } else {
+                    return IgnoreDecision::Ignore {
+                        reason: format!("ignored when the GDB version is between {rest}"),
+                    };
+                }
+            }
         }
     }
-    false
+    IgnoreDecision::Continue
 }
 
-fn ignore_lldb(config: &Config, line: &str) -> bool {
+fn ignore_lldb(config: &Config, line: &str) -> IgnoreDecision {
+    if config.debugger != Some(Debugger::Lldb) {
+        return IgnoreDecision::Continue;
+    }
+
     if let Some(actual_version) = config.lldb_version {
-        if let Some(min_version) = line.strip_prefix("min-lldb-version:").map(str::trim) {
-            let min_version = min_version.parse().unwrap_or_else(|e| {
-                panic!("Unexpected format of LLDB version string: {}\n{:?}", min_version, e);
+        if let Some(rest) = line.strip_prefix("min-lldb-version:").map(str::trim) {
+            let min_version = rest.parse().unwrap_or_else(|e| {
+                panic!("Unexpected format of LLDB version string: {}\n{:?}", rest, e);
             });
             // Ignore if actual version is smaller the minimum required
             // version
-            actual_version < min_version
-        } else {
-            line.starts_with("rust-lldb") && !config.lldb_native_rust
+            if actual_version < min_version {
+                return IgnoreDecision::Ignore {
+                    reason: format!("ignored when the LLDB version is {rest}"),
+                };
+            }
         }
-    } else {
-        false
     }
+    IgnoreDecision::Continue
 }
 
-fn ignore_llvm(config: &Config, line: &str) -> bool {
+fn ignore_llvm(config: &Config, line: &str) -> IgnoreDecision {
     if config.system_llvm && line.starts_with("no-system-llvm") {
-        return true;
+        return IgnoreDecision::Ignore { reason: "ignored when the system LLVM is used".into() };
     }
     if let Some(needed_components) =
         config.parse_name_value_directive(line, "needs-llvm-components")
@@ -1126,7 +1058,9 @@ fn ignore_llvm(config: &Config, line: &str) -> bool {
             if env::var_os("COMPILETEST_NEEDS_ALL_LLVM_COMPONENTS").is_some() {
                 panic!("missing LLVM component: {}", missing_component);
             }
-            return true;
+            return IgnoreDecision::Ignore {
+                reason: format!("ignored when the {missing_component} LLVM component is missing"),
+            };
         }
     }
     if let Some(actual_version) = config.llvm_version {
@@ -1134,12 +1068,20 @@ fn ignore_llvm(config: &Config, line: &str) -> bool {
             let min_version = extract_llvm_version(rest).unwrap();
             // Ignore if actual version is smaller the minimum required
             // version
-            actual_version < min_version
+            if actual_version < min_version {
+                return IgnoreDecision::Ignore {
+                    reason: format!("ignored when the LLVM version is older than {rest}"),
+                };
+            }
         } else if let Some(rest) = line.strip_prefix("min-system-llvm-version:").map(str::trim) {
             let min_version = extract_llvm_version(rest).unwrap();
             // Ignore if using system LLVM and actual version
             // is smaller the minimum required version
-            config.system_llvm && actual_version < min_version
+            if config.system_llvm && actual_version < min_version {
+                return IgnoreDecision::Ignore {
+                    reason: format!("ignored when the system LLVM version is older than {rest}"),
+                };
+            }
         } else if let Some(rest) = line.strip_prefix("ignore-llvm-version:").map(str::trim) {
             // Syntax is: "ignore-llvm-version: <version1> [- <version2>]"
             let (v_min, v_max) =
@@ -1150,11 +1092,24 @@ fn ignore_llvm(config: &Config, line: &str) -> bool {
                 panic!("Malformed LLVM version range: max < min")
             }
             // Ignore if version lies inside of range.
-            actual_version >= v_min && actual_version <= v_max
-        } else {
-            false
+            if actual_version >= v_min && actual_version <= v_max {
+                if v_min == v_max {
+                    return IgnoreDecision::Ignore {
+                        reason: format!("ignored when the LLVM version is {rest}"),
+                    };
+                } else {
+                    return IgnoreDecision::Ignore {
+                        reason: format!("ignored when the LLVM version is between {rest}"),
+                    };
+                }
+            }
         }
-    } else {
-        false
     }
+    IgnoreDecision::Continue
+}
+
+enum IgnoreDecision {
+    Ignore { reason: String },
+    Continue,
+    Error { message: String },
 }

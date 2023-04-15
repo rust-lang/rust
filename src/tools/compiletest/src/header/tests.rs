@@ -1,7 +1,25 @@
+use std::io::Read;
 use std::path::Path;
 
 use crate::common::{Config, Debugger};
-use crate::header::{make_test_description, parse_normalization_string, EarlyProps};
+use crate::header::{parse_normalization_string, EarlyProps, HeadersCache};
+
+fn make_test_description<R: Read>(
+    config: &Config,
+    name: test::TestName,
+    path: &Path,
+    src: R,
+    cfg: Option<&str>,
+) -> test::TestDesc {
+    let cache = HeadersCache::load(config);
+    let mut poisoned = false;
+    let test =
+        crate::header::make_test_description(config, &cache, name, path, src, cfg, &mut poisoned);
+    if poisoned {
+        panic!("poisoned!");
+    }
+    test
+}
 
 #[test]
 fn test_parse_normalization_string() {

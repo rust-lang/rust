@@ -25,6 +25,7 @@ use tracing::*;
 use walkdir::WalkDir;
 
 use self::header::{make_test_description, EarlyProps};
+use crate::header::HeadersCache;
 use std::sync::Arc;
 
 #[cfg(test)]
@@ -558,16 +559,26 @@ pub fn make_tests(
     let modified_tests = modified_tests(&config, &config.src_base).unwrap_or_else(|err| {
         panic!("modified_tests got error from dir: {}, error: {}", config.src_base.display(), err)
     });
+
+    let cache = HeadersCache::load(&config);
+    let mut poisoned = false;
     collect_tests_from_dir(
         config.clone(),
+        &cache,
         &config.src_base,
         &PathBuf::new(),
         &inputs,
         tests,
         found_paths,
         &modified_tests,
+        &mut poisoned,
     )
     .unwrap_or_else(|_| panic!("Could not read tests from {}", config.src_base.display()));
+
+    if poisoned {
+        eprintln!();
+        panic!("there are errors in tests");
+    }
 }
 
 /// Returns a stamp constructed from input files common to all test cases.
@@ -631,12 +642,14 @@ fn modified_tests(config: &Config, dir: &Path) -> Result<Vec<PathBuf>, String> {
 
 fn collect_tests_from_dir(
     config: Arc<Config>,
+    cache: &HeadersCache,
     dir: &Path,
     relative_dir_path: &Path,
     inputs: &Stamp,
     tests: &mut Vec<test::TestDescAndFn>,
     found_paths: &mut BTreeSet<PathBuf>,
     modified_tests: &Vec<PathBuf>,
+    poisoned: &mut bool,
 ) -> io::Result<()> {
     // Ignore directories that contain a file named `compiletest-ignore-dir`.
     if dir.join("compiletest-ignore-dir").exists() {
@@ -648,7 +661,7 @@ fn collect_tests_from_dir(
             file: dir.to_path_buf(),
             relative_dir: relative_dir_path.parent().unwrap().to_path_buf(),
         };
-        tests.extend(make_test(config, &paths, inputs));
+        tests.extend(make_test(config, cache, &paths, inputs, poisoned));
         return Ok(());
     }
 
@@ -674,19 +687,21 @@ fn collect_tests_from_dir(
             let paths =
                 TestPaths { file: file_path, relative_dir: relative_dir_path.to_path_buf() };
 
-            tests.extend(make_test(config.clone(), &paths, inputs))
+            tests.extend(make_test(config.clone(), cache, &paths, inputs, poisoned))
         } else if file_path.is_dir() {
             let relative_file_path = relative_dir_path.join(file.file_name());
             if &file_name != "auxiliary" {
                 debug!("found directory: {:?}", file_path.display());
                 collect_tests_from_dir(
                     config.clone(),
+                    cache,
                     &file_path,
                     &relative_file_path,
                     inputs,
                     tests,
                     found_paths,
                     modified_tests,
+                    poisoned,
                 )?;
             }
         } else {
@@ -711,8 +726,10 @@ pub fn is_test(file_name: &OsString) -> bool {
 
 fn make_test(
     config: Arc<Config>,
+    cache: &HeadersCache,
     testpaths: &TestPaths,
     inputs: &Stamp,
+    poisoned: &mut bool,
 ) -> Vec<test::TestDescAndFn> {
     let test_path = if config.mode == Mode::RunMake {
         // Parse directives in the Makefile
@@ -729,6 +746,7 @@ fn make_test(
     } else {
         early_props.revisions.iter().map(Some).collect()
     };
+
     revisions
         .into_iter()
         .map(|revision| {
@@ -736,7 +754,9 @@ fn make_test(
                 std::fs::File::open(&test_path).expect("open test file to parse ignores");
             let cfg = revision.map(|v| &**v);
             let test_name = crate::make_test_name(&config, testpaths, revision);
-            let mut desc = make_test_description(&config, test_name, &test_path, src_file, cfg);
+            let mut desc = make_test_description(
+                &config, cache, test_name, &test_path, src_file, cfg, poisoned,
+            );
             // Ignore tests that already run and are up to date with respect to inputs.
             if !config.force_rerun {
                 desc.ignore |= is_up_to_date(
