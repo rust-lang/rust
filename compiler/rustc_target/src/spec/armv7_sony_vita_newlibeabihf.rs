@@ -33,7 +33,7 @@ pub fn target() -> Target {
             pre_link_args,
             exe_suffix: ".elf".into(),
             panic_strategy: PanicStrategy::Abort,
-            max_atomic_width: Some(32),
+            max_atomic_width: Some(64),
             ..Default::default()
         },
     }
