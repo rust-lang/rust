@@ -520,21 +520,6 @@ impl<'tcx, 'map, 'a> Visitor<'tcx> for OperandCollector<'tcx, 'map, 'a> {
             _ => (),
         }
     }
-
-    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
-        match rvalue {
-            Rvalue::Discriminant(place) => {
-                match self.state.get_discr(place.as_ref(), self.visitor.map) {
-                    FlatSet::Top => (),
-                    FlatSet::Elem(value) => {
-                        self.visitor.before_effect.insert((location, *place), value);
-                    }
-                    FlatSet::Bottom => (),
-                }
-            }
-            _ => self.super_rvalue(rvalue, location),
-        }
-    }
 }
 
 struct DummyMachine;
