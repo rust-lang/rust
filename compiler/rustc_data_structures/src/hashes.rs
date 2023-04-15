@@ -1,7 +1,20 @@
+//! rustc encodes a lot of hashes. If hashes are stored as `u64` or `u128`, a `derive(Encodable)`
+//! will apply varint encoding to the hashes, which is less efficient than directly encoding the 8
+//! or 16 bytes of the hash.
+//!
+//! The types in this module represent 64-bit or 128-bit hashes produced by a `StableHasher`.
+//! `Hash64` and `Hash128` expose some utilty functions to encourage users to not extract the inner
+//! hash value as an integer type and accidentally apply varint encoding to it.
+//!
+//! In contrast with `Fingerprint`, users of these types cannot and should not attempt to construct
+//! and decompose these types into constitutent pieces. The point of these types is only to
+//! connect the fact that they can only be produced by a `StableHasher` to their
+//! `Encode`/`Decode` impls.
+
+use crate::stable_hasher::{StableHasher, StableHasherResult};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::fmt;
 use std::ops::BitXorAssign;
-use crate::stable_hasher::{StableHasher, StableHasherResult};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct Hash64 {
@@ -74,9 +87,7 @@ impl Hash128 {
 
     #[inline]
     pub fn wrapping_add(self, other: Self) -> Self {
-        Self {
-            inner: self.inner.wrapping_add(other.inner),
-        }
+        Self { inner: self.inner.wrapping_add(other.inner) }
     }
 
     #[inline]
