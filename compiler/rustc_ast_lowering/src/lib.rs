@@ -332,10 +332,7 @@ enum FnDeclKind {
 
 impl FnDeclKind {
     fn param_impl_trait_allowed(&self) -> bool {
-        match self {
-            FnDeclKind::Fn | FnDeclKind::Inherent | FnDeclKind::Impl | FnDeclKind::Trait => true,
-            _ => false,
-        }
+        matches!(self, FnDeclKind::Fn | FnDeclKind::Inherent | FnDeclKind::Impl | FnDeclKind::Trait)
     }
 
     fn return_impl_trait_allowed(&self, tcx: TyCtxt<'_>) -> bool {
