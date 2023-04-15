@@ -97,9 +97,13 @@ pub enum InstanceDef<'tcx> {
     /// glue.
     DropGlue(DefId, Option<Ty<'tcx>>),
 
+    /// Compiler-generated `<T as Clone>::clone` implementation where T is `Copy`.
+    ///
+    /// The `DefId` is for `Clone::clone`.
+    CloneCopyShim(DefId),
+
     /// Compiler-generated `<T as Clone>::clone` implementation.
     ///
-    /// For all types that automatically implement `Copy`, a trivial `Clone` impl is provided too.
     /// Additionally, arrays, tuples, and closures get a `Clone` shim even if they aren't `Copy`.
     ///
     /// The `DefId` is for `Clone::clone`, the `Ty` is the type `T` with the builtin `Clone` impl.
@@ -168,6 +172,7 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::ClosureOnceShim { call_once: def_id, track_caller: _ }
             | InstanceDef::DropGlue(def_id, _)
             | InstanceDef::CloneShim(def_id, _)
+            | InstanceDef::CloneCopyShim(def_id)
             | InstanceDef::FnPtrAddrShim(def_id, _) => def_id,
         }
     }
@@ -187,6 +192,7 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::ClosureOnceShim { .. }
             | InstanceDef::DropGlue(..)
             | InstanceDef::CloneShim(..)
+            | InstanceDef::CloneCopyShim(..)
             | InstanceDef::FnPtrAddrShim(..) => None,
         }
     }
@@ -280,6 +286,7 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::FnPtrShim(..)
             | InstanceDef::DropGlue(_, Some(_)) => false,
             InstanceDef::ClosureOnceShim { .. }
+            | InstanceDef::CloneCopyShim(..)
             | InstanceDef::DropGlue(..)
             | InstanceDef::Item(_)
             | InstanceDef::Intrinsic(..)
@@ -316,6 +323,7 @@ fn fmt_instance(
         InstanceDef::DropGlue(_, None) => write!(f, " - shim(None)"),
         InstanceDef::DropGlue(_, Some(ty)) => write!(f, " - shim(Some({ty}))"),
         InstanceDef::CloneShim(_, ty) => write!(f, " - shim({ty})"),
+        InstanceDef::CloneCopyShim(_) => write!(f, " - shim(<Copy>)"),
         InstanceDef::FnPtrAddrShim(_, ty) => write!(f, " - shim({ty})"),
     }
 }

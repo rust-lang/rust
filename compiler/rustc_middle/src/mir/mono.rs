@@ -404,6 +404,7 @@ impl<'tcx> CodegenUnit<'tcx> {
                             | InstanceDef::ClosureOnceShim { .. }
                             | InstanceDef::DropGlue(..)
                             | InstanceDef::CloneShim(..)
+                            | InstanceDef::CloneCopyShim(..)
                             | InstanceDef::ThreadLocalShim(..)
                             | InstanceDef::FnPtrAddrShim(..) => None,
                         }

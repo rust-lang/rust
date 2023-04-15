@@ -210,19 +210,16 @@ fn resolve_associated_item<'tcx>(
                     let self_ty = trait_ref.self_ty();
 
                     let is_copy = self_ty.is_copy_modulo_regions(tcx, param_env);
-                    match self_ty.kind() {
-                        _ if is_copy => (),
+                    let def = match self_ty.kind() {
+                        _ if is_copy => ty::InstanceDef::CloneCopyShim(trait_item_id),
                         ty::Coroutine(..)
                         | ty::CoroutineWitness(..)
                         | ty::Closure(..)
-                        | ty::Tuple(..) => {}
+                        | ty::Tuple(..) => ty::InstanceDef::CloneShim(trait_item_id, self_ty),
                         _ => return Ok(None),
                     };
 
-                    Some(Instance {
-                        def: ty::InstanceDef::CloneShim(trait_item_id, self_ty),
-                        args: rcvr_args,
-                    })
+                    Some(Instance { def, args: rcvr_args })
                 } else {
                     assert_eq!(name, sym::clone_from);
 

@@ -624,6 +624,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
                 | ty::InstanceDef::DropGlue(..)
                 | ty::InstanceDef::Virtual(..)
                 | ty::InstanceDef::CloneShim(..)
+                | ty::InstanceDef::CloneCopyShim(..)
                 | ty::InstanceDef::ThreadLocalShim(..)
                 | ty::InstanceDef::FnPtrAddrShim(..) => return None,
             };
@@ -785,6 +786,7 @@ fn mono_item_visibility<'tcx>(
         | InstanceDef::ClosureOnceShim { .. }
         | InstanceDef::DropGlue(..)
         | InstanceDef::CloneShim(..)
+        | InstanceDef::CloneCopyShim(..)
         | InstanceDef::FnPtrAddrShim(..) => return Visibility::Hidden,
     };
 

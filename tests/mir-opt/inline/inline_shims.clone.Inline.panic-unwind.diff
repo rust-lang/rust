@@ -5,7 +5,7 @@
       debug f => _1;
       let mut _0: fn(A, B);
       let mut _2: &fn(A, B);
-+     scope 1 (inlined <fn(A, B) as Clone>::clone - shim(fn(A, B))) {
++     scope 1 (inlined <fn(A, B) as Clone>::clone - shim(<Copy>)) {
 +     }
   
       bb0: {

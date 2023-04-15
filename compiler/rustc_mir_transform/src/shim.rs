@@ -1,15 +1,14 @@
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
+use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{self, CoroutineArgs, EarlyBinder, Ty, TyCtxt};
-use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
-
-use rustc_index::{Idx, IndexVec};
-
+use rustc_span::symbol::kw;
 use rustc_span::Span;
+use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use rustc_target::spec::abi::Abi;
 
 use std::fmt;
@@ -90,7 +89,18 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
             build_drop_shim(tcx, def_id, ty)
         }
         ty::InstanceDef::ThreadLocalShim(..) => build_thread_local_shim(tcx, instance),
-        ty::InstanceDef::CloneShim(def_id, ty) => build_clone_shim(tcx, def_id, ty),
+        ty::InstanceDef::CloneCopyShim(def_id) => {
+            let self_ty = Ty::new_param(tcx, 0, kw::SelfUpper);
+            let mut builder = CloneShimBuilder::new(tcx, def_id, self_ty);
+            builder.copy_shim();
+            let mut result = builder.into_mir(instance);
+            // Mark as runtime MIR to bypass MIR validation checking `Operand::Copy`.
+            result.phase = MirPhase::Runtime(RuntimePhase::Initial);
+            result
+        }
+        ty::InstanceDef::CloneShim(def_id, ty) => {
+            build_clone_shim(tcx, def_id, ty).into_mir(instance)
+        }
         ty::InstanceDef::FnPtrAddrShim(def_id, ty) => build_fn_ptr_addr_shim(tcx, def_id, ty),
         ty::InstanceDef::Virtual(..) => {
             bug!("InstanceDef::Virtual ({:?}) is for direct calls only", instance)
@@ -379,19 +389,18 @@ fn build_thread_local_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'t
 }
 
 /// Builds a `Clone::clone` shim for `self_ty`. Here, `def_id` is `Clone::clone`.
-fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -> Body<'tcx> {
-    debug!("build_clone_shim(def_id={:?})", def_id);
-
-    let param_env = tcx.param_env_reveal_all_normalized(def_id);
-
+#[instrument(level = "trace", skip(tcx))]
+fn build_clone_shim<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    self_ty: Ty<'tcx>,
+) -> CloneShimBuilder<'tcx> {
     let mut builder = CloneShimBuilder::new(tcx, def_id, self_ty);
-    let is_copy = self_ty.is_copy_modulo_regions(tcx, param_env);
 
     let dest = Place::return_place();
     let src = tcx.mk_place_deref(Place::from(Local::new(1 + 0)));
 
     match self_ty.kind() {
-        _ if is_copy => builder.copy_shim(),
         ty::Closure(_, args) => builder.tuple_like_shim(dest, src, args.as_closure().upvar_tys()),
         ty::Tuple(..) => builder.tuple_like_shim(dest, src, self_ty.tuple_fields()),
         ty::Coroutine(coroutine_def_id, args) => {
@@ -401,7 +410,7 @@ fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -
         _ => bug!("clone shim for `{:?}` which is not `Copy` and is not an aggregate", self_ty),
     };
 
-    builder.into_mir()
+    builder
 }
 
 struct CloneShimBuilder<'tcx> {
@@ -432,11 +441,8 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         }
     }
 
-    fn into_mir(self) -> Body<'tcx> {
-        let source = MirSource::from_instance(ty::InstanceDef::CloneShim(
-            self.def_id,
-            self.sig.inputs_and_output[0],
-        ));
+    fn into_mir(self, def: ty::InstanceDef<'tcx>) -> Body<'tcx> {
+        let source = MirSource::from_instance(def);
         new_body(source, self.blocks, self.local_decls, self.sig.inputs().len(), self.span)
     }
 

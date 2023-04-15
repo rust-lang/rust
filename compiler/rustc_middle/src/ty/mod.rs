@@ -2331,6 +2331,7 @@ impl<'tcx> TyCtxt<'tcx> {
             | ty::InstanceDef::ClosureOnceShim { .. }
             | ty::InstanceDef::DropGlue(..)
             | ty::InstanceDef::CloneShim(..)
+            | ty::InstanceDef::CloneCopyShim(..)
             | ty::InstanceDef::ThreadLocalShim(..)
             | ty::InstanceDef::FnPtrAddrShim(..) => self.mir_shims(instance),
         }

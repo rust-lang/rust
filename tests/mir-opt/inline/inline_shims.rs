@@ -4,7 +4,7 @@
 // EMIT_MIR inline_shims.clone.Inline.diff
 pub fn clone<A, B>(f: fn(A, B)) -> fn(A, B) {
     // CHECK-LABEL: fn clone(
-    // CHECK: (inlined <fn(A, B) as Clone>::clone - shim(fn(A, B)))
+    // CHECK: (inlined <fn(A, B) as Clone>::clone - shim(<Copy>))
     f.clone()
 }
 
