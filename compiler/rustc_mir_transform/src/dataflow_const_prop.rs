@@ -70,22 +70,6 @@ struct ConstAnalysis<'a, 'tcx> {
     param_env: ty::ParamEnv<'tcx>,
 }
 
-impl<'tcx> ConstAnalysis<'_, 'tcx> {
-    fn eval_discriminant(
-        &self,
-        enum_ty: Ty<'tcx>,
-        variant_index: VariantIdx,
-    ) -> Option<ScalarTy<'tcx>> {
-        if !enum_ty.is_enum() {
-            return None;
-        }
-        let discr = enum_ty.discriminant_for_variant(self.tcx, variant_index)?;
-        let discr_layout = self.tcx.layout_of(self.param_env.and(discr.ty)).ok()?;
-        let discr_value = Scalar::try_from_uint(discr.val, discr_layout.size)?;
-        Some(ScalarTy(discr_value, discr.ty))
-    }
-}
-
 impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
     type Value = FlatSet<ScalarTy<'tcx>>;
 
@@ -375,6 +359,20 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 .unwrap_or(FlatSet::Top),
             FlatSet::Bottom => FlatSet::Bottom,
         }
+    }
+
+    fn eval_discriminant(
+        &self,
+        enum_ty: Ty<'tcx>,
+        variant_index: VariantIdx,
+    ) -> Option<ScalarTy<'tcx>> {
+        if !enum_ty.is_enum() {
+            return None;
+        }
+        let discr = enum_ty.discriminant_for_variant(self.tcx, variant_index)?;
+        let discr_layout = self.tcx.layout_of(self.param_env.and(discr.ty)).ok()?;
+        let discr_value = Scalar::try_from_uint(discr.val, discr_layout.size)?;
+        Some(ScalarTy(discr_value, discr.ty))
     }
 
     fn wrap_scalar(&self, scalar: Scalar, ty: Ty<'tcx>) -> FlatSet<ScalarTy<'tcx>> {
