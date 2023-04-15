@@ -1199,7 +1199,7 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
         stable_hasher.finish()
     });
 
-    Svh::new(crate_hash.to_smaller_hash())
+    Svh::new(crate_hash)
 }
 
 fn upstream_crates(tcx: TyCtxt<'_>) -> Vec<(StableCrateId, Svh)> {
