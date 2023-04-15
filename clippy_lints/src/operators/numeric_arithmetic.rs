@@ -19,10 +19,6 @@ impl Context {
         self.expr_id.is_some() || self.const_span.map_or(false, |span| span.contains(e.span))
     }
 
-    fn skip_expr_involving_integers<'tcx>(cx: &LateContext<'tcx>, e: &hir::Expr<'tcx>) -> bool {
-        is_from_proc_macro(cx, e)
-    }
-
     pub fn check_binary<'tcx>(
         &mut self,
         cx: &LateContext<'tcx>,
@@ -51,7 +47,7 @@ impl Context {
 
         let (l_ty, r_ty) = (cx.typeck_results().expr_ty(l), cx.typeck_results().expr_ty(r));
         if l_ty.peel_refs().is_integral() && r_ty.peel_refs().is_integral() {
-            if Self::skip_expr_involving_integers(cx, expr) {
+            if is_from_proc_macro(cx, expr) {
                 return;
             }
             match op {
@@ -86,7 +82,7 @@ impl Context {
         let ty = cx.typeck_results().expr_ty(arg);
         if constant_simple(cx, cx.typeck_results(), expr).is_none() {
             if ty.is_integral() {
-                if Self::skip_expr_involving_integers(cx, expr) {
+                if is_from_proc_macro(cx, expr) {
                     return;
                 }
                 span_lint(cx, INTEGER_ARITHMETIC, expr.span, "integer arithmetic detected");
