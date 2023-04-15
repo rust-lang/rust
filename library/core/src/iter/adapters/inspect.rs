@@ -1,5 +1,6 @@
 use crate::fmt;
-use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable};
+use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable, TrustedFused};
+use crate::num::NonZeroUsize;
 use crate::ops::Try;
 
 /// An iterator that calls a function with a reference to each element before
@@ -148,6 +149,9 @@ where
 #[stable(feature = "fused", since = "1.26.0")]
 impl<I: FusedIterator, F> FusedIterator for Inspect<I, F> where F: FnMut(&I::Item) {}
 
+#[unstable(issue = "none", feature = "trusted_fused")]
+unsafe impl<I: TrustedFused, F> TrustedFused for Inspect<I, F> {}
+
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<I, F> SourceIter for Inspect<I, F>
 where
@@ -163,4 +167,7 @@ where
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<I: InPlaceIterable, F> InPlaceIterable for Inspect<I, F> where F: FnMut(&I::Item) {}
+unsafe impl<I: InPlaceIterable, F> InPlaceIterable for Inspect<I, F> {
+    const EXPAND_BY: Option<NonZeroUsize> = I::EXPAND_BY;
+    const MERGE_BY: Option<NonZeroUsize> = I::MERGE_BY;
+}

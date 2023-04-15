@@ -1,5 +1,6 @@
 #![feature(allocator_api)]
 #![feature(alloc_layout_extra)]
+#![feature(iter_array_chunks)]
 #![feature(assert_matches)]
 #![feature(btree_extract_if)]
 #![feature(cow_is_borrowed)]

@@ -1,8 +1,9 @@
 use crate::intrinsics;
 use crate::iter::adapters::zip::try_get_unchecked;
+use crate::iter::adapters::SourceIter;
 use crate::iter::{
-    DoubleEndedIterator, ExactSizeIterator, FusedIterator, TrustedLen, TrustedRandomAccess,
-    TrustedRandomAccessNoCoerce,
+    DoubleEndedIterator, ExactSizeIterator, FusedIterator, TrustedFused, TrustedLen,
+    TrustedRandomAccess, TrustedRandomAccessNoCoerce,
 };
 use crate::ops::Try;
 
@@ -28,6 +29,9 @@ impl<I> Fuse<I> {
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<I> FusedIterator for Fuse<I> where I: Iterator {}
+
+#[unstable(issue = "none", feature = "trusted_fused")]
+unsafe impl<I> TrustedFused for Fuse<I> where I: TrustedFused {}
 
 // Any specialized implementation here is made internal
 // to avoid exposing default fns outside this trait.
@@ -415,6 +419,23 @@ where
         I: DoubleEndedIterator,
     {
         self.iter.as_mut()?.rfind(predicate)
+    }
+}
+
+// This is used by Flatten's SourceIter impl
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<I> SourceIter for Fuse<I>
+where
+    I: SourceIter + TrustedFused,
+{
+    type Source = I::Source;
+
+    #[inline]
+    unsafe fn as_inner(&mut self) -> &mut I::Source {
+        // SAFETY: unsafe function forwarding to unsafe function with the same requirements.
+        // TrustedFused guarantees that we'll never encounter a case where `self.iter` would
+        // be set to None.
+        unsafe { SourceIter::as_inner(self.iter.as_mut().unwrap_unchecked()) }
     }
 }
 

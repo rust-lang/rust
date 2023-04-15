@@ -1,5 +1,6 @@
 use crate::fmt;
 use crate::iter::{adapters::SourceIter, InPlaceIterable};
+use crate::num::NonZeroUsize;
 use crate::ops::{ControlFlow, Try};
 
 /// An iterator that only accepts elements while `predicate` returns `Some(_)`.
@@ -82,7 +83,7 @@ where
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<B, I: InPlaceIterable, P> InPlaceIterable for MapWhile<I, P> where
-    P: FnMut(I::Item) -> Option<B>
-{
+unsafe impl<I: InPlaceIterable, P> InPlaceIterable for MapWhile<I, P> {
+    const EXPAND_BY: Option<NonZeroUsize> = I::EXPAND_BY;
+    const MERGE_BY: Option<NonZeroUsize> = I::MERGE_BY;
 }

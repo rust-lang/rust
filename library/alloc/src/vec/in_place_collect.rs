@@ -137,44 +137,73 @@
 //! }
 //! vec.truncate(write_idx);
 //! ```
+use crate::alloc::{handle_alloc_error, Global};
+use core::alloc::Allocator;
+use core::alloc::Layout;
 use core::iter::{InPlaceIterable, SourceIter, TrustedRandomAccessNoCoerce};
 use core::mem::{self, ManuallyDrop, SizedTypeProperties};
-use core::ptr::{self};
+use core::num::NonZeroUsize;
+use core::ptr::{self, NonNull};
 
 use super::{InPlaceDrop, InPlaceDstBufDrop, SpecFromIter, SpecFromIterNested, Vec};
 
-/// Specialization marker for collecting an iterator pipeline into a Vec while reusing the
-/// source allocation, i.e. executing the pipeline in place.
-#[rustc_unsafe_specialization_marker]
-pub(super) trait InPlaceIterableMarker {}
+const fn in_place_collectible<DEST, SRC>(
+    step_merge: Option<NonZeroUsize>,
+    step_expand: Option<NonZeroUsize>,
+) -> bool {
+    if DEST::IS_ZST || mem::align_of::<SRC>() != mem::align_of::<DEST>() {
+        return false;
+    }
 
-impl<T> InPlaceIterableMarker for T where T: InPlaceIterable {}
+    match (step_merge, step_expand) {
+        (Some(step_merge), Some(step_expand)) => {
+            // At least N merged source items -> at most M expanded destination items
+            // e.g.
+            // - 1 x [u8; 4] -> 4x u8, via flatten
+            // - 4 x u8 -> 1x [u8; 4], via array_chunks
+            mem::size_of::<SRC>() * step_merge.get() == mem::size_of::<DEST>() * step_expand.get()
+        }
+        // Fall back to other from_iter impls if an overflow occured in the step merge/expansion
+        // tracking.
+        _ => false,
+    }
+}
+
+/// This provides a shorthand for the source type since local type aliases aren't a thing.
+#[rustc_specialization_trait]
+trait InPlaceCollect: SourceIter<Source: AsVecIntoIter> + InPlaceIterable {
+    type Src;
+}
+
+impl<T> InPlaceCollect for T
+where
+    T: SourceIter<Source: AsVecIntoIter> + InPlaceIterable,
+{
+    type Src = <<T as SourceIter>::Source as AsVecIntoIter>::Item;
+}
 
 impl<T, I> SpecFromIter<T, I> for Vec<T>
 where
-    I: Iterator<Item = T> + SourceIter<Source: AsVecIntoIter> + InPlaceIterableMarker,
+    I: Iterator<Item = T> + InPlaceCollect,
+    <I as SourceIter>::Source: AsVecIntoIter,
 {
     default fn from_iter(mut iterator: I) -> Self {
         // See "Layout constraints" section in the module documentation. We rely on const
         // optimization here since these conditions currently cannot be expressed as trait bounds
-        if T::IS_ZST
-            || mem::size_of::<T>()
-                != mem::size_of::<<<I as SourceIter>::Source as AsVecIntoIter>::Item>()
-            || mem::align_of::<T>()
-                != mem::align_of::<<<I as SourceIter>::Source as AsVecIntoIter>::Item>()
-        {
+        if const { !in_place_collectible::<T, I::Src>(I::MERGE_BY, I::EXPAND_BY) } {
             // fallback to more generic implementations
             return SpecFromIterNested::from_iter(iterator);
         }
 
-        let (src_buf, src_ptr, dst_buf, dst_end, cap) = unsafe {
+        let (src_buf, src_ptr, src_cap, mut dst_buf, dst_end, dst_cap) = unsafe {
             let inner = iterator.as_inner().as_into_iter();
             (
                 inner.buf.as_ptr(),
                 inner.ptr,
+                inner.cap,
                 inner.buf.as_ptr() as *mut T,
                 inner.end as *const T,
-                inner.cap,
+                inner.cap * mem::size_of::<I::Src>() / mem::size_of::<T>(),
             )
         };
 
@@ -203,11 +232,31 @@ where
         // Note: This access to the source wouldn't be allowed by the TrustedRandomIteratorNoCoerce
         // contract (used by SpecInPlaceCollect below). But see the "O(1) collect" section in the
         // module documentation why this is ok anyway.
-        let dst_guard = InPlaceDstBufDrop { ptr: dst_buf, len, cap };
+        let dst_guard = InPlaceDstBufDrop { ptr: dst_buf, len, cap: dst_cap };
         src.forget_allocation_drop_remaining();
         mem::forget(dst_guard);
 
-        let vec = unsafe { Vec::from_raw_parts(dst_buf, len, cap) };
+        // Adjust the allocation size if the source had a capacity in bytes that wasn't a multiple
+        // of the destination type size.
+        // Since the discrepancy should generally be small this should only result in some
+        // bookkeeping updates and no memmove.
+        if const { mem::size_of::<T>() > mem::size_of::<I::Src>() }
+            && src_cap * mem::size_of::<I::Src>() != dst_cap * mem::size_of::<T>()
+        {
+            let alloc = Global;
+            unsafe {
+                let new_layout = Layout::array::<T>(dst_cap).unwrap();
+                let result = alloc.shrink(
+                    NonNull::new_unchecked(dst_buf as *mut u8),
+                    Layout::array::<I::Src>(src_cap).unwrap(),
+                    new_layout,
+                );
+                let Ok(reallocated) = result else { handle_alloc_error(new_layout) };
+                dst_buf = reallocated.as_ptr() as *mut T;
+            }
+        }
+
+        let vec = unsafe { Vec::from_raw_parts(dst_buf, len, dst_cap) };
 
         vec
     }

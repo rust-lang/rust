@@ -1,7 +1,12 @@
-use crate::fmt;
-use crate::iter::{DoubleEndedIterator, Fuse, FusedIterator, Iterator, Map, TrustedLen};
+use crate::iter::adapters::SourceIter;
+use crate::iter::{
+    DoubleEndedIterator, Fuse, FusedIterator, InPlaceIterable, Iterator, Map, TrustedFused,
+    TrustedLen,
+};
 use crate::num::NonZeroUsize;
 use crate::ops::{ControlFlow, Try};
+use crate::{fmt, option};
+use core::iter::Once;
 
 /// An iterator that maps each element to an iterator, and yields the elements
 /// of the produced iterators.
@@ -143,6 +148,48 @@ where
     F: FnMut(I::Item) -> U,
     FlattenCompat<Map<I, F>, <U as IntoIterator>::IntoIter>: TrustedLen,
 {
+}
+
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<I, U, F> InPlaceIterable for FlatMap<I, U, F>
+where
+    I: InPlaceIterable,
+    U: KnownExpansionFactor + IntoIterator,
+{
+    const EXPAND_BY: Option<NonZeroUsize> = const {
+        match (I::EXPAND_BY, U::FACTOR) {
+            (Some(m), Some(n)) => m.checked_mul(n),
+            _ => None,
+        }
+    };
+    const MERGE_BY: Option<NonZeroUsize> = I::MERGE_BY;
+}
+
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<I, U, F> SourceIter for FlatMap<I, U, F>
+where
+    I: SourceIter + TrustedFused,
+    U: IntoIterator,
+{
+    type Source = I::Source;
+
+    #[inline]
+    unsafe fn as_inner(&mut self) -> &mut I::Source {
+        // SAFETY: unsafe function forwarding to unsafe function with the same requirements
+        unsafe { SourceIter::as_inner(&mut self.inner.iter) }
+    }
+}
+
+#[rustc_specialization_trait]
+trait KnownExpansionFactor {
+    const FACTOR: Option<NonZeroUsize> = NonZeroUsize::new(1);
+}
+
+impl<T> KnownExpansionFactor for Option<T> {}
+impl<T> KnownExpansionFactor for option::IntoIter<T> {}
+impl<T> KnownExpansionFactor for Once<T> {}
+impl<T, const N: usize> KnownExpansionFactor for [T; N] {
+    const FACTOR: Option<NonZeroUsize> = NonZeroUsize::new(N);
 }
 
 /// An iterator that flattens one level of nesting in an iterator of things
@@ -287,6 +334,36 @@ where
     I: Iterator<Item: IntoIterator>,
     FlattenCompat<I, <I::Item as IntoIterator>::IntoIter>: TrustedLen,
 {
+}
+
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<I> InPlaceIterable for Flatten<I>
+where
+    I: InPlaceIterable + Iterator,
+    <I as Iterator>::Item: IntoIterator + KnownExpansionFactor,
+{
+    const EXPAND_BY: Option<NonZeroUsize> = const {
+        match (I::EXPAND_BY, I::Item::FACTOR) {
+            (Some(m), Some(n)) => m.checked_mul(n),
+            _ => None,
+        }
+    };
+    const MERGE_BY: Option<NonZeroUsize> = I::MERGE_BY;
+}
+
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<I> SourceIter for Flatten<I>
+where
+    I: SourceIter + TrustedFused + Iterator,
+    <I as Iterator>::Item: IntoIterator,
+{
+    type Source = I::Source;
+
+    #[inline]
+    unsafe fn as_inner(&mut self) -> &mut I::Source {
+        // SAFETY: unsafe function forwarding to unsafe function with the same requirements
+        unsafe { SourceIter::as_inner(&mut self.inner.iter) }
+    }
 }
 
 #[stable(feature = "default_iters", since = "1.70.0")]

@@ -1,5 +1,9 @@
 use crate::array;
-use crate::iter::{ByRefSized, FusedIterator, Iterator, TrustedRandomAccessNoCoerce};
+use crate::iter::adapters::SourceIter;
+use crate::iter::{
+    ByRefSized, FusedIterator, InPlaceIterable, Iterator, TrustedFused, TrustedRandomAccessNoCoerce,
+};
+use crate::num::NonZeroUsize;
 use crate::ops::{ControlFlow, NeverShortCircuit, Try};
 
 /// An iterator over `N` elements of the iterator at a time.
@@ -159,6 +163,9 @@ where
 #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
 impl<I, const N: usize> FusedIterator for ArrayChunks<I, N> where I: FusedIterator {}
 
+#[unstable(issue = "none", feature = "trusted_fused")]
+unsafe impl<I, const N: usize> TrustedFused for ArrayChunks<I, N> where I: TrustedFused + Iterator {}
+
 #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
 impl<I, const N: usize> ExactSizeIterator for ArrayChunks<I, N>
 where
@@ -228,4 +235,29 @@ where
 
         accum
     }
+}
+
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<I, const N: usize> SourceIter for ArrayChunks<I, N>
+where
+    I: SourceIter + Iterator,
+{
+    type Source = I::Source;
+
+    #[inline]
+    unsafe fn as_inner(&mut self) -> &mut I::Source {
+        // SAFETY: unsafe function forwarding to unsafe function with the same requirements
+        unsafe { SourceIter::as_inner(&mut self.iter) }
+    }
+}
+
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<I: InPlaceIterable + Iterator, const N: usize> InPlaceIterable for ArrayChunks<I, N> {
+    const EXPAND_BY: Option<NonZeroUsize> = I::EXPAND_BY;
+    const MERGE_BY: Option<NonZeroUsize> = const {
+        match (I::MERGE_BY, NonZeroUsize::new(N)) {
+            (Some(m), Some(n)) => m.checked_mul(n),
+            _ => None,
+        }
+    };
 }

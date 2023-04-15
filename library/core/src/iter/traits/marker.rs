@@ -1,4 +1,16 @@
 use crate::iter::Step;
+use crate::num::NonZeroUsize;
+
+/// Same as FusedIterator
+///
+/// # Safety
+///
+/// This is used for specialization. Therefore implementations must not
+/// be lifetime-dependent.
+#[unstable(issue = "none", feature = "trusted_fused")]
+#[doc(hidden)]
+#[rustc_specialization_trait]
+pub unsafe trait TrustedFused {}
 
 /// An iterator that always continues to yield `None` when exhausted.
 ///
@@ -14,6 +26,8 @@ use crate::iter::Step;
 /// [`Fuse`]: crate::iter::Fuse
 #[stable(feature = "fused", since = "1.26.0")]
 #[rustc_unsafe_specialization_marker]
+// FIXME: this should be a #[marker] and have another blanket impl for T: TrustedFused
+// but that ICEs iter::Fuse specializations.
 pub trait FusedIterator: Iterator {}
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -71,7 +85,19 @@ unsafe impl<I: TrustedLen + ?Sized> TrustedLen for &mut I {}
 /// [`try_fold()`]: Iterator::try_fold
 #[unstable(issue = "none", feature = "inplace_iteration")]
 #[doc(hidden)]
-pub unsafe trait InPlaceIterable: Iterator {}
+#[rustc_specialization_trait]
+pub unsafe trait InPlaceIterable {
+    /// The product of one-to-many item expansions that happen throughout the iterator pipeline.
+    /// E.g. [[u8; 4]; 4].iter().flatten().flatten() would have a `EXPAND_BY` of 16.
+    /// This is an upper bound, i.e. the transformations will produce at most this many items per
+    /// input. It's meant for layout calculations.
+    const EXPAND_BY: Option<NonZeroUsize>;
+    /// The product of many-to-one item reductions that happen throughout the iterator pipeline.
+    /// E.g. [u8].iter().array_chunks::<4>().array_chunks::<4>() would have a `MERGE_BY` of 16.
+    /// This is a lower bound, i.e. the transformations will consume at least this many items per
+    /// output.
+    const MERGE_BY: Option<NonZeroUsize>;
+}
 
 /// A type that upholds all invariants of [`Step`].
 ///
