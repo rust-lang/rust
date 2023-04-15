@@ -15,6 +15,10 @@ pub(super) const PATTERN_FIRST: TokenSet =
 
 const PAT_TOP_FIRST: TokenSet = PATTERN_FIRST.union(TokenSet::new(&[T![|]]));
 
+/// Set of possible tokens at the start of a range pattern's end bound.
+const RANGE_PAT_END_FIRST: TokenSet =
+    expressions::LITERAL_FIRST.union(paths::PATH_FIRST).union(TokenSet::new(&[T![-]]));
+
 pub(crate) fn pattern(p: &mut Parser<'_>) {
     pattern_r(p, PAT_RECOVERY_SET);
 }
@@ -105,6 +109,52 @@ fn pattern_single_r(p: &mut Parser<'_>, recovery_set: TokenSet) {
         return;
     }
 
+    // test exclusive_range_pat
+    // fn main() {
+    //     match 42 {
+    //         ..0 => {}
+    //         1..2 => {}
+    //     }
+    // }
+
+    // test dot_dot_pat
+    // fn main() {
+    //     let .. = ();
+    //     //
+    //     // Tuples
+    //     //
+    //     let (a, ..) = ();
+    //     let (a, ..,) = ();
+    //     let Tuple(a, ..) = ();
+    //     let Tuple(a, ..,) = ();
+    //     let (.., ..) = ();
+    //     let Tuple(.., ..) = ();
+    //     let (.., a, ..) = ();
+    //     let Tuple(.., a, ..) = ();
+    //     //
+    //     // Slices
+    //     //
+    //     let [..] = ();
+    //     let [head, ..] = ();
+    //     let [head, tail @ ..] = ();
+    //     let [head, .., cons] = ();
+    //     let [head, mid @ .., cons] = ();
+    //     let [head, .., .., cons] = ();
+    //     let [head, .., mid, tail @ ..] = ();
+    //     let [head, .., mid, .., cons] = ();
+    // }
+    if p.at(T![..]) {
+        let m = p.start();
+        p.bump(T![..]);
+        if p.at_ts(RANGE_PAT_END_FIRST) {
+            atom_pat(p, recovery_set);
+            m.complete(p, RANGE_PAT);
+        } else {
+            m.complete(p, REST_PAT);
+        }
+        return;
+    }
+
     if let Some(lhs) = atom_pat(p, recovery_set) {
         for range_op in [T![...], T![..=], T![..]] {
             if p.at(range_op) {
@@ -173,7 +223,6 @@ fn atom_pat(p: &mut Parser<'_>, recovery_set: TokenSet) -> Option<CompletedMarke
         _ if paths::is_path_start(p) => path_or_macro_pat(p),
         _ if is_literal_pat_start(p) => literal_pat(p),
 
-        T![.] if p.at(T![..]) => rest_pat(p),
         T![_] => wildcard_pat(p),
         T![&] => ref_pat(p),
         T!['('] => tuple_pat(p),
@@ -332,39 +381,6 @@ fn wildcard_pat(p: &mut Parser<'_>) -> CompletedMarker {
     let m = p.start();
     p.bump(T![_]);
     m.complete(p, WILDCARD_PAT)
-}
-
-// test dot_dot_pat
-// fn main() {
-//     let .. = ();
-//     //
-//     // Tuples
-//     //
-//     let (a, ..) = ();
-//     let (a, ..,) = ();
-//     let Tuple(a, ..) = ();
-//     let Tuple(a, ..,) = ();
-//     let (.., ..) = ();
-//     let Tuple(.., ..) = ();
-//     let (.., a, ..) = ();
-//     let Tuple(.., a, ..) = ();
-//     //
-//     // Slices
-//     //
-//     let [..] = ();
-//     let [head, ..] = ();
-//     let [head, tail @ ..] = ();
-//     let [head, .., cons] = ();
-//     let [head, mid @ .., cons] = ();
-//     let [head, .., .., cons] = ();
-//     let [head, .., mid, tail @ ..] = ();
-//     let [head, .., mid, .., cons] = ();
-// }
-fn rest_pat(p: &mut Parser<'_>) -> CompletedMarker {
-    assert!(p.at(T![..]));
-    let m = p.start();
-    p.bump(T![..]);
-    m.complete(p, REST_PAT)
 }
 
 // test ref_pat
