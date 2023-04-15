@@ -1349,7 +1349,7 @@ impl LinkCollector<'_, '_> {
                         if has_derive_trait_collision {
                             candidates.macro_ns = None;
                         }
-                        candidates.into_iter().filter_map(|res| res).flatten().collect::<Vec<_>>()
+                        candidates.into_iter().flatten().flatten().collect::<Vec<_>>()
                     }
                 }
             }
