@@ -228,14 +228,11 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         let index = (*self.index).clone().into_inner();
 
         debug!("Constructing Output");
-        // This needs to be the default HashMap for compatibility with the public interface for
-        // rustdoc-json-types
-        #[allow(rustc::default_hash_types)]
         let output = types::Crate {
             root: types::Id(format!("0:0:{}", e.name(self.tcx).as_u32())),
             crate_version: self.cache.crate_version.clone(),
             includes_private: self.cache.document_private,
-            index: index.into_iter().collect(),
+            index,
             paths: self
                 .cache
                 .paths
