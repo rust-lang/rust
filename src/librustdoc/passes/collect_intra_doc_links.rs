@@ -1419,6 +1419,7 @@ impl Disambiguator {
         if let Some(idx) = link.find('@') {
             let (prefix, rest) = link.split_at(idx);
             let d = match prefix {
+                // If you update this list, please also update the relevant rustdoc book section!
                 "struct" => Kind(DefKind::Struct),
                 "enum" => Kind(DefKind::Enum),
                 "trait" => Kind(DefKind::Trait),
@@ -1437,6 +1438,7 @@ impl Disambiguator {
             Ok(Some((d, &rest[1..], &rest[1..])))
         } else {
             let suffixes = [
+                // If you update this list, please also update the relevant rustdoc book section!
                 ("!()", DefKind::Macro(MacroKind::Bang)),
                 ("!{}", DefKind::Macro(MacroKind::Bang)),
                 ("![]", DefKind::Macro(MacroKind::Bang)),
