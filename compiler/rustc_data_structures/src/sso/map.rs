@@ -256,12 +256,9 @@ impl<K: Eq + Hash, V> SsoHashMap<K, V> {
     pub fn remove(&mut self, key: &K) -> Option<V> {
         match self {
             SsoHashMap::Array(array) => {
-                if let Some(index) = array.iter().position(|(k, _v)| k == key) {
-                    Some(array.swap_remove(index).1)
-                } else {
-                    None
-                }
+                array.iter().position(|(k, _v)| k == key).map(|index| array.swap_remove(index).1)
             }
+
             SsoHashMap::Map(map) => map.remove(key),
         }
     }
