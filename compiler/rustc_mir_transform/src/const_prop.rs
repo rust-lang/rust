@@ -54,7 +54,7 @@ pub struct ConstProp;
 
 impl<'tcx> MirPass<'tcx> for ConstProp {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 1
+        sess.mir_opt_level() >= 2
     }
 
     #[instrument(skip(self, tcx), level = "debug")]
@@ -852,12 +852,6 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
         if self.tcx.sess.mir_opt_level() >= 3 {
             self.propagate_operand(operand)
         }
-    }
-
-    fn visit_constant(&mut self, constant: &mut Constant<'tcx>, location: Location) {
-        trace!("visit_constant: {:?}", constant);
-        self.super_constant(constant, location);
-        self.eval_constant(constant);
     }
 
     fn visit_assign(
