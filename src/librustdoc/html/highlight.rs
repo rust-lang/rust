@@ -977,7 +977,7 @@ fn string_without_closing_tag<T: Display>(
                     LinkFromSrc::External(def_id) => {
                         format::href_with_root_path(*def_id, context, Some(href_context.root_path))
                             .ok()
-                            .map(|(url, _, _)| url)
+                            .map(|(url, _)| url.render_string())
                     }
                     LinkFromSrc::Primitive(prim) => format::href_with_root_path(
                         PrimitiveType::primitive_locations(context.tcx())[prim],
@@ -985,7 +985,7 @@ fn string_without_closing_tag<T: Display>(
                         Some(href_context.root_path),
                     )
                     .ok()
-                    .map(|(url, _, _)| url),
+                    .map(|(url, _)| url.render_string()),
                 }
             })
         {

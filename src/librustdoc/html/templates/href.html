@@ -1,0 +1,11 @@
+{%- if !root.is_empty() -%}
+{{root|safe}}/
+{%- endif -%}
+{{parent_directories|safe}}
+{{path_components|safe}}
+{%- if !filename_prefix.is_empty() -%}
+    {{filename_prefix|safe}}.
+{%- endif -%}
+{{filename_base|safe}}
+.html
+{{fragment|safe}}

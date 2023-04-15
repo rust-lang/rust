@@ -24,29 +24,6 @@ impl UrlPartsBuilder {
         Self { buf: String::with_capacity(count) }
     }
 
-    /// Create a buffer with one URL component.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```ignore (private-type)
-    /// let builder = UrlPartsBuilder::singleton("core");
-    /// assert_eq!(builder.finish(), "core");
-    /// ```
-    ///
-    /// Adding more components afterward.
-    ///
-    /// ```ignore (private-type)
-    /// let mut builder = UrlPartsBuilder::singleton("core");
-    /// builder.push("str");
-    /// builder.push_front("nightly");
-    /// assert_eq!(builder.finish(), "nightly/core/str");
-    /// ```
-    pub(crate) fn singleton(part: &str) -> Self {
-        Self { buf: part.to_owned() }
-    }
-
     /// Push a component onto the buffer.
     ///
     /// # Examples
@@ -85,29 +62,6 @@ impl UrlPartsBuilder {
             self.buf.push('/');
         }
         self.buf.write_fmt(args).unwrap()
-    }
-
-    /// Push a component onto the front of the buffer.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```ignore (private-type)
-    /// let mut builder = UrlPartsBuilder::new();
-    /// builder.push("core");
-    /// builder.push("str");
-    /// builder.push_front("nightly");
-    /// builder.push("struct.Bytes.html");
-    /// assert_eq!(builder.finish(), "nightly/core/str/struct.Bytes.html");
-    /// ```
-    pub(crate) fn push_front(&mut self, part: &str) {
-        let is_empty = self.buf.is_empty();
-        self.buf.reserve(part.len() + if !is_empty { 1 } else { 0 });
-        self.buf.insert_str(0, part);
-        if !is_empty {
-            self.buf.insert(part.len(), '/');
-        }
     }
 
     /// Get the final `String` buffer.
