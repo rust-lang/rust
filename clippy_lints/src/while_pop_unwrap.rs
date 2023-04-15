@@ -1,6 +1,6 @@
 use clippy_utils::{diagnostics::span_lint_and_then, match_def_path, paths, source::snippet};
 use rustc_errors::Applicability;
-use rustc_hir::*;
+use rustc_hir::{Expr, ExprKind, PatKind, Stmt, StmtKind, UnOp};
 use rustc_lint::LateContext;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{symbol::Ident, Span};
@@ -36,13 +36,7 @@ declare_clippy_lint! {
 }
 declare_lint_pass!(WhilePopUnwrap => [WHILE_POP_UNWRAP]);
 
-fn report_lint<'tcx>(
-    cx: &LateContext<'tcx>,
-    pop_span: Span,
-    ident: Option<Ident>,
-    loop_span: Span,
-    receiver_span: Span,
-) {
+fn report_lint(cx: &LateContext<'_>, pop_span: Span, ident: Option<Ident>, loop_span: Span, receiver_span: Span) {
     span_lint_and_then(
         cx,
         WHILE_POP_UNWRAP,
@@ -54,7 +48,7 @@ fn report_lint<'tcx>(
                 "try",
                 format!(
                     "while let Some({}) = {}.pop()",
-                    ident.as_ref().map(Ident::as_str).unwrap_or("element"),
+                    ident.as_ref().map_or("element", Ident::as_str),
                     snippet(cx, receiver_span, "..")
                 ),
                 Applicability::MaybeIncorrect,
@@ -75,11 +69,11 @@ fn match_method_call(cx: &LateContext<'_>, expr: &Expr<'_>, method: &[&str]) -> 
     }
 }
 
-fn is_vec_pop<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> bool {
+fn is_vec_pop(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     match_method_call(cx, expr, &paths::VEC_POP)
 }
 
-fn is_vec_pop_unwrap<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> bool {
+fn is_vec_pop_unwrap(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if let ExprKind::MethodCall(_, inner, ..) = expr.kind
         && (match_method_call(cx, expr, &paths::OPTION_UNWRAP) || match_method_call(cx, expr, &paths::OPTION_EXPECT))
         && is_vec_pop(cx, inner)
@@ -90,7 +84,7 @@ fn is_vec_pop_unwrap<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> bool {
     }
 }
 
-fn check_local<'tcx>(cx: &LateContext<'tcx>, stmt: &Stmt<'_>, loop_span: Span, recv_span: Span) {
+fn check_local(cx: &LateContext<'_>, stmt: &Stmt<'_>, loop_span: Span, recv_span: Span) {
     if let StmtKind::Local(local) = stmt.kind
         && let PatKind::Binding(.., ident, _) = local.pat.kind
         && let Some(init) = local.init
@@ -101,10 +95,12 @@ fn check_local<'tcx>(cx: &LateContext<'tcx>, stmt: &Stmt<'_>, loop_span: Span, r
     }
 }
 
-fn check_call_arguments<'tcx>(cx: &LateContext<'tcx>, stmt: &Stmt<'_>, loop_span: Span, recv_span: Span) {
+fn check_call_arguments(cx: &LateContext<'_>, stmt: &Stmt<'_>, loop_span: Span, recv_span: Span) {
     if let StmtKind::Semi(expr) | StmtKind::Expr(expr) = stmt.kind {
         if let ExprKind::MethodCall(_, _, args, _) | ExprKind::Call(_, args) = expr.kind {
-            let offending_arg = args.iter().find_map(|arg| is_vec_pop_unwrap(cx, arg).then(|| arg.span));
+            let offending_arg = args
+                .iter()
+                .find_map(|arg| is_vec_pop_unwrap(cx, arg).then_some(arg.span));
 
             if let Some(offending_arg) = offending_arg {
                 report_lint(cx, offending_arg, None, loop_span, recv_span);
