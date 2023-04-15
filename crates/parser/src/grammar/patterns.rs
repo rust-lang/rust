@@ -5,6 +5,7 @@ pub(super) const PATTERN_FIRST: TokenSet =
         T![box],
         T![ref],
         T![mut],
+        T![const],
         T!['('],
         T!['['],
         T![&],
@@ -17,7 +18,7 @@ const PAT_TOP_FIRST: TokenSet = PATTERN_FIRST.union(TokenSet::new(&[T![|]]));
 
 /// Set of possible tokens at the start of a range pattern's end bound.
 const RANGE_PAT_END_FIRST: TokenSet =
-    expressions::LITERAL_FIRST.union(paths::PATH_FIRST).union(TokenSet::new(&[T![-]]));
+    expressions::LITERAL_FIRST.union(paths::PATH_FIRST).union(TokenSet::new(&[T![-], T![const]]));
 
 pub(crate) fn pattern(p: &mut Parser<'_>) {
     pattern_r(p, PAT_RECOVERY_SET);
@@ -499,6 +500,14 @@ fn box_pat(p: &mut Parser<'_>) -> CompletedMarker {
 // fn main() {
 //     let const { 15 } = ();
 //     let const { foo(); bar() } = ();
+//
+//     match 42 {
+//         const { 0 } .. const { 1 } => (),
+//         .. const { 0 } => (),
+//         const { 2 } .. => (),
+//     }
+//
+//     let (const { () },) = ();
 // }
 fn const_block_pat(p: &mut Parser<'_>) -> CompletedMarker {
     assert!(p.at(T![const]));
