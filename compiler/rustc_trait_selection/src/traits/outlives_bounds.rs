@@ -55,7 +55,18 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
     ) -> Vec<OutlivesBound<'tcx>> {
         let ty = self.resolve_vars_if_possible(ty);
         let ty = OpportunisticRegionResolver::new(self).fold_ty(ty);
-        assert!(!ty.needs_infer());
+
+        // We do not expect existential variables in implied bounds.
+        // We may however encounter unconstrained lifetime variables in invalid
+        // code. See #110161 for context.
+        assert!(!ty.has_non_region_infer());
+        if ty.needs_infer() {
+            self.tcx.sess.delay_span_bug(
+                self.tcx.def_span(body_id),
+                "skipped implied_outlives_bounds due to unconstrained lifetimes",
+            );
+            return vec![];
+        }
 
         let span = self.tcx.def_span(body_id);
         let result = param_env
