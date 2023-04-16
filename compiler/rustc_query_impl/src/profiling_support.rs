@@ -231,7 +231,7 @@ pub(crate) fn alloc_self_profile_query_strings_for_query_cache<'tcx, C>(
             // locked while doing so. Instead we copy out the
             // `(query_key, dep_node_index)` pairs and release the lock again.
             let mut query_keys_and_indices = Vec::new();
-            query_cache.iter(&mut |k, _, i| query_keys_and_indices.push((k.clone(), i)));
+            query_cache.iter(&mut |k, _, i| query_keys_and_indices.push((*k, i)));
 
             // Now actually allocate the strings. If allocating the strings
             // generates new entries in the query cache, we'll miss them but

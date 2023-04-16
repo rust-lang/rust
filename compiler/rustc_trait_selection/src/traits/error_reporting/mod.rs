@@ -2944,22 +2944,25 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             rustc_transmute::Answer::No(reason) => {
                 let dst = trait_ref.skip_binder().substs.type_at(0);
                 let src = trait_ref.skip_binder().substs.type_at(1);
-                let custom_err_msg = format!("`{src}` cannot be safely transmuted into `{dst}` in the defining scope of `{scope}`").to_string();
+                let custom_err_msg = format!(
+                    "`{src}` cannot be safely transmuted into `{dst}` in the defining scope of `{scope}`"
+                );
                 let reason_msg = match reason {
                     rustc_transmute::Reason::SrcIsUnspecified => {
-                        format!("`{src}` does not have a well-specified layout").to_string()
+                        format!("`{src}` does not have a well-specified layout")
                     }
+
                     rustc_transmute::Reason::DstIsUnspecified => {
-                        format!("`{dst}` does not have a well-specified layout").to_string()
+                        format!("`{dst}` does not have a well-specified layout")
                     }
+
                     rustc_transmute::Reason::DstIsBitIncompatible => {
                         format!("At least one value of `{src}` isn't a bit-valid value of `{dst}`")
-                            .to_string()
                     }
+
                     rustc_transmute::Reason::DstIsPrivate => format!(
                         "`{dst}` is or contains a type or field that is not visible in that scope"
-                    )
-                    .to_string(),
+                    ),
                     // FIXME(bryangarza): Include the number of bytes of src and dst
                     rustc_transmute::Reason::DstIsTooBig => {
                         format!("The size of `{src}` is smaller than the size of `{dst}`")

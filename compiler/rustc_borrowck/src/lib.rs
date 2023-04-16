@@ -528,7 +528,7 @@ impl<'cx, 'tcx> BorrowckInferCtxt<'cx, 'tcx> {
     where
         F: Fn() -> RegionCtxt,
     {
-        let next_region = self.infcx.next_nll_region_var(origin.clone());
+        let next_region = self.infcx.next_nll_region_var(origin);
         let vid = next_region.as_var();
 
         if cfg!(debug_assertions) && !self.inside_canonicalization_ctxt() {
