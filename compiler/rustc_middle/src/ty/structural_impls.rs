@@ -276,9 +276,7 @@ TrivialTypeTraversalAndLiftImpls! {
 }
 
 TrivialTypeTraversalAndLiftImpls! {
-    for<'tcx> {
-        ty::ValTree<'tcx>,
-    }
+    ty::ValTree<'tcx>,
 }
 
 ///////////////////////////////////////////////////////////////////////////

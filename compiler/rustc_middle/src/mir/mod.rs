@@ -714,9 +714,7 @@ pub enum BindingForm<'tcx> {
 }
 
 TrivialTypeTraversalAndLiftImpls! {
-    for<'tcx> {
-        BindingForm<'tcx>,
-    }
+    BindingForm<'tcx>,
 }
 
 mod binding_form_impl {

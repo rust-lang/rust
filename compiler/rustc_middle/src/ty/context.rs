@@ -1329,9 +1329,12 @@ nop_list_lift! {bound_variable_kinds; ty::BoundVariableKind => ty::BoundVariable
 // This is the impl for `&'a InternalSubsts<'a>`.
 nop_list_lift! {substs; GenericArg<'a> => GenericArg<'tcx>}
 
-CloneLiftImpls! { for<'tcx> {
-    Constness, traits::WellFormedLoc, ImplPolarity, crate::mir::ReturnConstraint,
-} }
+CloneLiftImpls! {
+    Constness,
+    traits::WellFormedLoc,
+    ImplPolarity,
+    crate::mir::ReturnConstraint,
+}
 
 macro_rules! sty_debug_print {
     ($fmt: expr, $ctxt: expr, $($variant: ident),*) => {{
