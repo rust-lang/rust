@@ -33,7 +33,7 @@ m!(&k");
 "#,
         expect![[r#"
 macro_rules! m { ($i:literal) => {}; }
-/* error: Failed to lower macro args to token tree */"#]],
+/* error: invalid token tree */"#]],
     );
 }
 

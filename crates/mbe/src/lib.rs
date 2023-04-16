@@ -324,12 +324,12 @@ pub struct ValueResult<T, E> {
 }
 
 impl<T, E> ValueResult<T, E> {
-    pub fn ok(value: T) -> Self {
-        Self { value, err: None }
+    pub fn new(value: T, err: E) -> Self {
+        Self { value, err: Some(err) }
     }
 
-    pub fn with_err(value: T, err: E) -> Self {
-        Self { value, err: Some(err) }
+    pub fn ok(value: T) -> Self {
+        Self { value, err: None }
     }
 
     pub fn only_err(err: E) -> Self

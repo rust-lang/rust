@@ -141,7 +141,7 @@ impl SourceAnalyzer {
         expr: InFile<ast::MacroCall>,
     ) -> Option<InFile<ast::Expr>> {
         let macro_file = self.body_source_map()?.node_macro_file(expr.as_ref())?;
-        let expanded = db.parse_or_expand(macro_file)?;
+        let expanded = db.parse_or_expand(macro_file);
         let res = if let Some(stmts) = ast::MacroStmts::cast(expanded.clone()) {
             match stmts.expr()? {
                 ast::Expr::MacroExpr(mac) => {

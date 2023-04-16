@@ -180,9 +180,8 @@ impl flags::AnalysisStats {
 
             let mut total_macro_file_size = Bytes::default();
             for e in hir::db::ParseMacroExpansionQuery.in_db(db).entries::<Vec<_>>() {
-                if let Some((val, _)) = db.parse_macro_expansion(e.key).value {
-                    total_macro_file_size += syntax_len(val.syntax_node())
-                }
+                let val = db.parse_macro_expansion(e.key).value.0;
+                total_macro_file_size += syntax_len(val.syntax_node())
             }
             eprintln!("source files: {total_file_size}, macro files: {total_macro_file_size}");
         }
@@ -533,7 +532,7 @@ fn location_csv_expr(
         Ok(s) => s,
         Err(SyntheticSyntax) => return "synthetic,,".to_string(),
     };
-    let root = db.parse_or_expand(src.file_id).unwrap();
+    let root = db.parse_or_expand(src.file_id);
     let node = src.map(|e| e.to_node(&root).syntax().clone());
     let original_range = node.as_ref().original_file_range(db);
     let path = vfs.file_path(original_range.file_id);
@@ -555,7 +554,7 @@ fn location_csv_pat(
         Ok(s) => s,
         Err(SyntheticSyntax) => return "synthetic,,".to_string(),
     };
-    let root = db.parse_or_expand(src.file_id).unwrap();
+    let root = db.parse_or_expand(src.file_id);
     let node = src.map(|e| {
         e.either(|it| it.to_node(&root).syntax().clone(), |it| it.to_node(&root).syntax().clone())
     });
@@ -577,7 +576,7 @@ fn expr_syntax_range(
 ) -> Option<(VfsPath, LineCol, LineCol)> {
     let src = sm.expr_syntax(expr_id);
     if let Ok(src) = src {
-        let root = db.parse_or_expand(src.file_id).unwrap();
+        let root = db.parse_or_expand(src.file_id);
         let node = src.map(|e| e.to_node(&root).syntax().clone());
         let original_range = node.as_ref().original_file_range(db);
         let path = vfs.file_path(original_range.file_id);
@@ -599,7 +598,7 @@ fn pat_syntax_range(
 ) -> Option<(VfsPath, LineCol, LineCol)> {
     let src = sm.pat_syntax(pat_id);
     if let Ok(src) = src {
-        let root = db.parse_or_expand(src.file_id).unwrap();
+        let root = db.parse_or_expand(src.file_id);
         let node = src.map(|e| {
             e.either(
                 |it| it.to_node(&root).syntax().clone(),

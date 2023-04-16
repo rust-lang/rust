@@ -151,34 +151,33 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         if let Some(err) = exp.err {
             format_to!(expn_text, "/* error: {} */", err);
         }
-        if let Some((parse, token_map)) = exp.value {
-            if expect_errors {
-                assert!(!parse.errors().is_empty(), "no parse errors in expansion");
-                for e in parse.errors() {
-                    format_to!(expn_text, "/* parse error: {} */\n", e);
-                }
-            } else {
-                assert!(
-                    parse.errors().is_empty(),
-                    "parse errors in expansion: \n{:#?}",
-                    parse.errors()
-                );
+        let (parse, token_map) = exp.value;
+        if expect_errors {
+            assert!(!parse.errors().is_empty(), "no parse errors in expansion");
+            for e in parse.errors() {
+                format_to!(expn_text, "/* parse error: {} */\n", e);
             }
-            let pp = pretty_print_macro_expansion(
-                parse.syntax_node(),
-                show_token_ids.then_some(&*token_map),
+        } else {
+            assert!(
+                parse.errors().is_empty(),
+                "parse errors in expansion: \n{:#?}",
+                parse.errors()
             );
-            let indent = IndentLevel::from_node(call.syntax());
-            let pp = reindent(indent, pp);
-            format_to!(expn_text, "{}", pp);
+        }
+        let pp = pretty_print_macro_expansion(
+            parse.syntax_node(),
+            show_token_ids.then_some(&*token_map),
+        );
+        let indent = IndentLevel::from_node(call.syntax());
+        let pp = reindent(indent, pp);
+        format_to!(expn_text, "{}", pp);
 
-            if tree {
-                let tree = format!("{:#?}", parse.syntax_node())
-                    .split_inclusive('\n')
-                    .map(|line| format!("// {line}"))
-                    .collect::<String>();
-                format_to!(expn_text, "\n{}", tree)
-            }
+        if tree {
+            let tree = format!("{:#?}", parse.syntax_node())
+                .split_inclusive('\n')
+                .map(|line| format!("// {line}"))
+                .collect::<String>();
+            format_to!(expn_text, "\n{}", tree)
         }
         let range = call.syntax().text_range();
         let range: Range<usize> = range.into();

@@ -45,7 +45,7 @@ pub(crate) fn expand_rules(
             transcriber::transcribe(&rule.rhs, &match_.bindings);
         ExpandResult { value, err: match_.err.or(transcribe_err) }
     } else {
-        ExpandResult::with_err(
+        ExpandResult::new(
             tt::Subtree { delimiter: tt::Delimiter::unspecified(), token_trees: vec![] },
             ExpandError::NoMatchingRule,
         )

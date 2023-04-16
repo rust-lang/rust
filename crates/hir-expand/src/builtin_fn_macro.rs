@@ -249,10 +249,7 @@ fn format_args_expand(
     let mut args = parse_exprs_with_sep(tt, ',');
 
     if args.is_empty() {
-        return ExpandResult::with_err(
-            tt::Subtree::empty(),
-            mbe::ExpandError::NoMatchingRule.into(),
-        );
+        return ExpandResult::new(tt::Subtree::empty(), mbe::ExpandError::NoMatchingRule.into());
     }
     for arg in &mut args {
         // Remove `key =`.
@@ -575,7 +572,7 @@ fn include_expand(
         Ok((subtree, map, file_id)) => {
             ExpandResult::ok(ExpandedEager { subtree, included_file: Some((file_id, map)) })
         }
-        Err(e) => ExpandResult::with_err(
+        Err(e) => ExpandResult::new(
             ExpandedEager { subtree: tt::Subtree::empty(), included_file: None },
             e,
         ),
@@ -588,7 +585,7 @@ fn include_bytes_expand(
     tt: &tt::Subtree,
 ) -> ExpandResult<ExpandedEager> {
     if let Err(e) = parse_string(tt) {
-        return ExpandResult::with_err(
+        return ExpandResult::new(
             ExpandedEager { subtree: tt::Subtree::empty(), included_file: None },
             e,
         );
@@ -613,7 +610,7 @@ fn include_str_expand(
     let path = match parse_string(tt) {
         Ok(it) => it,
         Err(e) => {
-            return ExpandResult::with_err(
+            return ExpandResult::new(
                 ExpandedEager { subtree: tt::Subtree::empty(), included_file: None },
                 e,
             )
@@ -650,7 +647,7 @@ fn env_expand(
     let key = match parse_string(tt) {
         Ok(it) => it,
         Err(e) => {
-            return ExpandResult::with_err(
+            return ExpandResult::new(
                 ExpandedEager { subtree: tt::Subtree::empty(), included_file: None },
                 e,
             )
@@ -686,7 +683,7 @@ fn option_env_expand(
     let key = match parse_string(tt) {
         Ok(it) => it,
         Err(e) => {
-            return ExpandResult::with_err(
+            return ExpandResult::new(
                 ExpandedEager { subtree: tt::Subtree::empty(), included_file: None },
                 e,
             )

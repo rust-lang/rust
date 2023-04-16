@@ -136,7 +136,7 @@ fn get_name_definition(
 ) -> Option<Definition> {
     let _p = profile::span("get_name_definition");
 
-    let candidate_node = import_candidate.loc.syntax(sema)?;
+    let candidate_node = import_candidate.loc.syntax(sema);
     let candidate_name_node = if candidate_node.kind() != NAME {
         candidate_node.children().find(|it| it.kind() == NAME)?
     } else {

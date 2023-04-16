@@ -32,18 +32,18 @@ pub struct DeclarationLocation {
 }
 
 impl DeclarationLocation {
-    pub fn syntax<DB: HirDatabase>(&self, sema: &Semantics<'_, DB>) -> Option<SyntaxNode> {
-        let root = sema.parse_or_expand(self.hir_file_id)?;
-        Some(self.ptr.to_node(&root))
+    pub fn syntax<DB: HirDatabase>(&self, sema: &Semantics<'_, DB>) -> SyntaxNode {
+        let root = sema.parse_or_expand(self.hir_file_id);
+        self.ptr.to_node(&root)
     }
 
-    pub fn original_range(&self, db: &dyn HirDatabase) -> Option<FileRange> {
-        let node = resolve_node(db, self.hir_file_id, &self.ptr)?;
-        Some(node.as_ref().original_file_range(db.upcast()))
+    pub fn original_range(&self, db: &dyn HirDatabase) -> FileRange {
+        let node = resolve_node(db, self.hir_file_id, &self.ptr);
+        node.as_ref().original_file_range(db.upcast())
     }
 
     pub fn original_name_range(&self, db: &dyn HirDatabase) -> Option<FileRange> {
-        let node = resolve_node(db, self.hir_file_id, &self.name_ptr)?;
+        let node = resolve_node(db, self.hir_file_id, &self.name_ptr);
         node.as_ref().original_file_range_opt(db.upcast())
     }
 }
@@ -52,10 +52,10 @@ fn resolve_node(
     db: &dyn HirDatabase,
     file_id: HirFileId,
     ptr: &SyntaxNodePtr,
-) -> Option<InFile<SyntaxNode>> {
-    let root = db.parse_or_expand(file_id)?;
+) -> InFile<SyntaxNode> {
+    let root = db.parse_or_expand(file_id);
     let node = ptr.to_node(&root);
-    Some(InFile::new(file_id, node))
+    InFile::new(file_id, node)
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]

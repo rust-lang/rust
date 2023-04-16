@@ -59,7 +59,7 @@ pub(crate) fn replace_derive_with_manual_impl(
     // collect the derive paths from the #[derive] expansion
     let current_derives = ctx
         .sema
-        .parse_or_expand(hir_file)?
+        .parse_or_expand(hir_file)
         .descendants()
         .filter_map(ast::Attr::cast)
         .filter_map(|attr| attr.path())

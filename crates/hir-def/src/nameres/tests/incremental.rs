@@ -109,7 +109,7 @@ fn typing_inside_a_macro_should_not_invalidate_def_map() {
 }
 
 #[test]
-fn typing_inside_a_function_should_not_invalidate_expansions() {
+fn typing_inside_a_function_should_not_invalidate_item_expansions() {
     let (mut db, pos) = TestDB::with_position(
         r#"
 //- /lib.rs
@@ -161,7 +161,7 @@ m!(Z);
         let n_recalculated_item_trees = events.iter().filter(|it| it.contains("item_tree")).count();
         assert_eq!(n_recalculated_item_trees, 1);
         let n_reparsed_macros =
-            events.iter().filter(|it| it.contains("parse_macro_expansion")).count();
+            events.iter().filter(|it| it.contains("parse_macro_expansion(")).count();
         assert_eq!(n_reparsed_macros, 0);
     }
 }

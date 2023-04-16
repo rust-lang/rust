@@ -53,7 +53,7 @@ fn field_fix(
         return None;
     }
     let expr_ptr = &d.expr;
-    let root = ctx.sema.db.parse_or_expand(expr_ptr.file_id)?;
+    let root = ctx.sema.db.parse_or_expand(expr_ptr.file_id);
     let expr = expr_ptr.value.to_node(&root);
     let (file_id, range) = match expr {
         ast::Expr::MethodCallExpr(mcall) => {

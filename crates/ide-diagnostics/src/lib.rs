@@ -201,7 +201,7 @@ impl<'a> DiagnosticsContext<'a> {
         let sema = &self.sema;
         (|| {
             let precise_location = precise_location?;
-            let root = sema.parse_or_expand(node.file_id)?;
+            let root = sema.parse_or_expand(node.file_id);
             match root.covering_element(precise_location) {
                 syntax::NodeOrToken::Node(it) => Some(sema.original_range(&it)),
                 syntax::NodeOrToken::Token(it) => {

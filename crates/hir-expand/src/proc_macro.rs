@@ -38,7 +38,7 @@ impl ProcMacroExpander {
                     Some(Ok(proc_macros)) => proc_macros,
                     Some(Err(_)) | None => {
                         never!("Non-dummy expander even though there are no proc macros");
-                        return ExpandResult::with_err(
+                        return ExpandResult::new(
                             tt::Subtree::empty(),
                             ExpandError::Other("Internal error".into()),
                         );
@@ -52,7 +52,7 @@ impl ProcMacroExpander {
                             proc_macros.len(),
                             id.0
                         );
-                        return ExpandResult::with_err(
+                        return ExpandResult::new(
                             tt::Subtree::empty(),
                             ExpandError::Other("Internal error".into()),
                         );
@@ -75,17 +75,15 @@ impl ProcMacroExpander {
                             }
                         }
                         ProcMacroExpansionError::System(text)
-                        | ProcMacroExpansionError::Panic(text) => ExpandResult::with_err(
-                            tt::Subtree::empty(),
-                            ExpandError::Other(text.into()),
-                        ),
+                        | ProcMacroExpansionError::Panic(text) => {
+                            ExpandResult::new(tt::Subtree::empty(), ExpandError::Other(text.into()))
+                        }
                     },
                 }
             }
-            None => ExpandResult::with_err(
-                tt::Subtree::empty(),
-                ExpandError::UnresolvedProcMacro(def_crate),
-            ),
+            None => {
+                ExpandResult::new(tt::Subtree::empty(), ExpandError::UnresolvedProcMacro(def_crate))
+            }
         }
     }
 }

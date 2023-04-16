@@ -257,8 +257,14 @@ impl HirFileId {
         let arg_tt = loc.kind.arg(db)?;
 
         let macro_def = db.macro_def(loc.def).ok()?;
-        let (parse, exp_map) = db.parse_macro_expansion(macro_file).value?;
-        let macro_arg = db.macro_arg(macro_file.macro_call_id)?;
+        let (parse, exp_map) = db.parse_macro_expansion(macro_file).value;
+        let macro_arg = db.macro_arg(macro_file.macro_call_id).unwrap_or_else(|| {
+            Arc::new((
+                tt::Subtree { delimiter: tt::Delimiter::UNSPECIFIED, token_trees: Vec::new() },
+                Default::default(),
+                Default::default(),
+            ))
+        });
 
         let def = loc.def.ast_id().left().and_then(|id| {
             let def_tt = match id.to_node(db) {
@@ -730,7 +736,7 @@ pub type AstId<N> = InFile<FileAstId<N>>;
 
 impl<N: AstNode> AstId<N> {
     pub fn to_node(&self, db: &dyn db::ExpandDatabase) -> N {
-        let root = db.parse_or_expand(self.file_id).unwrap();
+        let root = db.parse_or_expand(self.file_id);
         db.ast_id_map(self.file_id).get(self.value).to_node(&root)
     }
 }
@@ -766,7 +772,7 @@ impl<T> InFile<T> {
     }
 
     pub fn file_syntax(&self, db: &dyn db::ExpandDatabase) -> SyntaxNode {
-        db.parse_or_expand(self.file_id).expect("source created from invalid file")
+        db.parse_or_expand(self.file_id)
     }
 }
 

@@ -498,7 +498,7 @@ impl AttrsWithOwner {
             AttrDefId::FieldId(id) => {
                 let map = db.fields_attrs_source_map(id.parent);
                 let file_id = id.parent.file_id(db);
-                let root = db.parse_or_expand(file_id).unwrap();
+                let root = db.parse_or_expand(file_id);
                 let owner = match &map[id.local_id] {
                     Either::Left(it) => ast::AnyHasAttrs::new(it.to_node(&root)),
                     Either::Right(it) => ast::AnyHasAttrs::new(it.to_node(&root)),
@@ -514,7 +514,7 @@ impl AttrsWithOwner {
             AttrDefId::EnumVariantId(id) => {
                 let map = db.variants_attrs_source_map(id.parent);
                 let file_id = id.parent.lookup(db).id.file_id();
-                let root = db.parse_or_expand(file_id).unwrap();
+                let root = db.parse_or_expand(file_id);
                 InFile::new(file_id, ast::AnyHasAttrs::new(map[id.local_id].to_node(&root)))
             }
             AttrDefId::StaticId(id) => id.lookup(db).source(db).map(ast::AnyHasAttrs::new),
