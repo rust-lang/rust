@@ -14,6 +14,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{suggest_constraining_type_param, Adt, Closure, FnDef, FnPtr, Param, Ty};
 use rustc_middle::ty::{Binder, TraitRef};
+use rustc_middle::util::{call_kind, CallDesugaringKind, CallKind};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, Pos, Span, Symbol};
@@ -21,7 +22,6 @@ use rustc_trait_selection::traits::SelectionContext;
 
 use super::ConstCx;
 use crate::errors;
-use crate::util::{call_kind, CallDesugaringKind, CallKind};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Status {

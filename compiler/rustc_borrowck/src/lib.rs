@@ -88,6 +88,7 @@ mod session_diagnostics;
 mod type_check;
 mod universal_regions;
 mod used_muts;
+mod util;
 
 /// A public API provided for the Rust compiler consumers.
 pub mod consumers;

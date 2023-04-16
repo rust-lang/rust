@@ -2,10 +2,10 @@
 //! as well as errors when attempting to call a non-const function in a const
 //! context.
 
+use crate::ty::subst::SubstsRef;
+use crate::ty::{AssocItemContainer, Instance, ParamEnv, Ty, TyCtxt};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{lang_items, LangItem};
-use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{AssocItemContainer, Instance, ParamEnv, Ty, TyCtxt};
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, DesugaringKind, Span};
 

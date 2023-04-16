@@ -1,6 +1,6 @@
-use rustc_middle::mir::*;
-use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, TyCtxt};
+use crate::mir::*;
+use crate::ty::subst::SubstsRef;
+use crate::ty::{self, TyCtxt};
 use rustc_span::def_id::DefId;
 
 /// Checks if the specified `local` is used as the `self` parameter of a method call
