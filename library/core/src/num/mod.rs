@@ -3,7 +3,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::ascii;
-use crate::convert::TryInto;
 use crate::intrinsics;
 use crate::mem;
 use crate::ops::{Add, Mul, Sub};

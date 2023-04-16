@@ -1764,7 +1764,12 @@ pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usiz
     // miracles, given the situations this case has to deal with.
 
     // SAFETY: a is power-of-two hence non-zero. stride == 0 case is handled above.
-    let gcdpow = unsafe { cttz_nonzero(stride).min(cttz_nonzero(a)) };
+    // FIXME(const-hack) replace with min
+    let gcdpow = unsafe {
+        let x = cttz_nonzero(stride);
+        let y = cttz_nonzero(a);
+        if x < y { x } else { y }
+    };
     // SAFETY: gcdpow has an upper-bound that’s at most the number of bits in a usize.
     let gcd = unsafe { unchecked_shl(1usize, gcdpow) };
     // SAFETY: gcd is always greater or equal to 1.
