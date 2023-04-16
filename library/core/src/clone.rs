@@ -126,8 +126,7 @@ pub trait Clone: Sized {
     /// allocations.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn clone_from(&mut self, source: &Self)
-    {
+    fn clone_from(&mut self, source: &Self) {
         *self = source.clone()
     }
 }

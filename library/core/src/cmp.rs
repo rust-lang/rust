@@ -25,8 +25,6 @@
 mod bytewise;
 pub(crate) use bytewise::BytewiseEq;
 
-use crate::marker::Destruct;
-
 use self::Ordering::*;
 
 /// Trait for equality comparisons.
@@ -1158,9 +1156,8 @@ pub macro PartialOrd($item:item) {
 #[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "cmp_min")]
-pub const fn min<T: Ord>(v1: T, v2: T) -> T {
+pub fn min<T: Ord>(v1: T, v2: T) -> T {
     v1.min(v2)
 }
 
@@ -1179,8 +1176,7 @@ pub const fn min<T: Ord>(v1: T, v2: T) -> T {
 #[inline]
 #[must_use]
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
-pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T
-{
+pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
     match compare(&v1, &v2) {
         Ordering::Less | Ordering::Equal => v1,
         Ordering::Greater => v2,
@@ -1202,8 +1198,7 @@ pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T
 #[inline]
 #[must_use]
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
-pub fn min_by_key<T, F:FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T
-{
+pub fn min_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
     min_by(v1, v2, |v1, v2| f(v1).cmp(&f(v2)))
 }
 
@@ -1244,8 +1239,7 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
 #[inline]
 #[must_use]
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
-pub fn max_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T
-{
+pub fn max_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
     match compare(&v1, &v2) {
         Ordering::Less | Ordering::Equal => v2,
         Ordering::Greater => v1,
@@ -1267,14 +1261,8 @@ pub fn max_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T
 #[inline]
 #[must_use]
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
-pub const fn max_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T
-where
-    T: Destruct,
-    F: Destruct,
-    K: Destruct,
-{
-    max_by(v1, v2, const |v1, v2| f(v1).cmp(&f(v2)))
+pub fn max_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
+    max_by(v1, v2, |v1, v2| f(v1).cmp(&f(v2)))
 }
 
 // Implementation of PartialEq, Eq, PartialOrd and Ord for primitive types

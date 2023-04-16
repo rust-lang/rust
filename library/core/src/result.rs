@@ -489,7 +489,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::iter::{self, FromIterator, FusedIterator, TrustedLen};
-use crate::marker::Destruct;
 use crate::ops::{self, ControlFlow, Deref, DerefMut};
 use crate::{convert, fmt, hint};
 
@@ -629,11 +628,7 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_result_drop", issue = "92384")]
-    pub const fn ok(self) -> Option<T>
-    where
-        E: Destruct,
-    {
+    pub fn ok(self) -> Option<T> {
         match self {
             Ok(x) => Some(x),
             Err(_) => None,
@@ -656,11 +651,7 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_result_drop", issue = "92384")]
-    pub const fn err(self) -> Option<E>
-    where
-        T: Destruct,
-    {
+    pub fn err(self) -> Option<E> {
         match self {
             Ok(_) => None,
             Err(x) => Some(x),
@@ -1283,14 +1274,8 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.and(y), Ok("different result type"));
     /// ```
     #[inline]
-    #[rustc_const_unstable(feature = "const_result_drop", issue = "92384")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn and<U>(self, res: Result<U, E>) -> Result<U, E>
-    where
-        T: Destruct,
-        U: Destruct,
-        E: Destruct,
-    {
+    pub fn and<U>(self, res: Result<U, E>) -> Result<U, E> {
         match self {
             Ok(_) => res,
             Err(e) => Err(e),
@@ -1364,14 +1349,8 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.or(y), Ok(2));
     /// ```
     #[inline]
-    #[rustc_const_unstable(feature = "const_result_drop", issue = "92384")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn or<F>(self, res: Result<T, F>) -> Result<T, F>
-    where
-        T: Destruct,
-        E: Destruct,
-        F: Destruct,
-    {
+    pub fn or<F>(self, res: Result<T, F>) -> Result<T, F> {
         match self {
             Ok(v) => Ok(v),
             Err(_) => res,
@@ -1422,13 +1401,8 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.unwrap_or(default), default);
     /// ```
     #[inline]
-    #[rustc_const_unstable(feature = "const_result_drop", issue = "92384")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn unwrap_or(self, default: T) -> T
-    where
-        T: Destruct,
-        E: Destruct,
-    {
+    pub fn unwrap_or(self, default: T) -> T {
         match self {
             Ok(t) => t,
             Err(_) => default,
@@ -1979,9 +1953,7 @@ impl<T, E> ops::Try for Result<T, E> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
-impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>>
-    for Result<T, F>
-{
+impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>> for Result<T, F> {
     #[inline]
     #[track_caller]
     fn from_residual(residual: Result<convert::Infallible, E>) -> Self {

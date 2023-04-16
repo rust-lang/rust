@@ -386,9 +386,7 @@ impl<T> NeverShortCircuit<T> {
     }
 
     #[inline]
-    pub fn wrap_mut_2<A, B>(
-        mut f: impl FnMut(A, B) -> T,
-    ) -> impl FnMut(A, B) -> Self {
+    pub fn wrap_mut_2<A, B>(mut f: impl FnMut(A, B) -> T) -> impl FnMut(A, B) -> Self {
         move |a, b| NeverShortCircuit(f(a, b))
     }
 }

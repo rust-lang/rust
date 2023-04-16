@@ -1650,9 +1650,8 @@ impl<T> *const [T] {
     /// }
     /// ```
     #[unstable(feature = "slice_ptr_get", issue = "74265")]
-    #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
     #[inline]
-    pub const unsafe fn get_unchecked<I>(self, index: I) -> *const I::Output
+    pub unsafe fn get_unchecked<I>(self, index: I) -> *const I::Output
     where
         I: SliceIndex<[T]>,
     {

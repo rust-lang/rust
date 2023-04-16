@@ -1,7 +1,6 @@
 // Original implementation taken from rust-memchr.
 // Copyright 2015 Andrew Gallant, bluss and Nicolas Koch
 
-use crate::cmp;
 use crate::mem;
 
 const LO_USIZE: usize = usize::repeat_u8(0x01);

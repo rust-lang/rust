@@ -324,14 +324,14 @@ impl CStr {
     /// assert_eq!(c_str.to_str().unwrap(), "AAAAAAAA");
     /// ```
     ///
-    #[rustc_allow_const_fn_unstable(const_slice_index)]
     #[stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]
     #[rustc_const_stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]
     pub const fn from_bytes_until_nul(bytes: &[u8]) -> Result<&CStr, FromBytesUntilNulError> {
         let nul_pos = memchr::memchr(0, bytes);
         match nul_pos {
             Some(nul_pos) => {
-                let subslice = &bytes[..nul_pos + 1];
+                // FIXME(const-hack) replace with range index
+                let subslice = unsafe { crate::slice::from_raw_parts(bytes.as_ptr(), nul_pos + 1) };
                 // SAFETY: We know there is a nul byte at nul_pos, so this slice
                 // (ending at the nul byte) is a well-formed C string.
                 Ok(unsafe { CStr::from_bytes_with_nul_unchecked(subslice) })
@@ -561,8 +561,7 @@ impl CStr {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_cstr_methods", issue = "101719")]
-    pub const fn to_bytes(&self) -> &[u8] {
+    pub fn to_bytes(&self) -> &[u8] {
         let bytes = self.to_bytes_with_nul();
         // SAFETY: to_bytes_with_nul returns slice with length at least 1
         unsafe { bytes.get_unchecked(..bytes.len() - 1) }
@@ -613,8 +612,7 @@ impl CStr {
     /// assert_eq!(cstr.to_str(), Ok("foo"));
     /// ```
     #[stable(feature = "cstr_to_str", since = "1.4.0")]
-    #[rustc_const_unstable(feature = "const_cstr_methods", issue = "101719")]
-    pub const fn to_str(&self) -> Result<&str, str::Utf8Error> {
+    pub fn to_str(&self) -> Result<&str, str::Utf8Error> {
         // N.B., when `CStr` is changed to perform the length check in `.to_bytes()`
         // instead of in `from_ptr()`, it may be worth considering if this should
         // be rewritten to do the UTF-8 check inline with the length calculation

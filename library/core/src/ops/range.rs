@@ -116,8 +116,7 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// assert!(!(f32::NAN..1.0).contains(&0.5));
     /// ```
     #[stable(feature = "range_contains", since = "1.35.0")]
-    #[rustc_const_unstable(feature = "const_range_bounds", issue = "108082")]
-    pub const fn contains<U>(&self, item: &U) -> bool
+    pub fn contains<U>(&self, item: &U) -> bool
     where
         Idx: PartialOrd<U>,
         U: ?Sized + PartialOrd<Idx>,
@@ -143,8 +142,7 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// assert!( (f32::NAN..5.0).is_empty());
     /// ```
     #[stable(feature = "range_is_empty", since = "1.47.0")]
-    #[rustc_const_unstable(feature = "const_range_bounds", issue = "108082")]
-    pub const fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         !(self.start < self.end)
     }
 }
@@ -538,9 +536,8 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// assert!(r.is_empty());
     /// ```
     #[stable(feature = "range_is_empty", since = "1.47.0")]
-    #[rustc_const_unstable(feature = "const_range_bounds", issue = "108082")]
     #[inline]
-    pub const fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.exhausted || !(self.start <= self.end)
     }
 }

@@ -735,8 +735,7 @@ impl Duration {
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[must_use]
     #[inline]
-    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
-    pub const fn from_secs_f64(secs: f64) -> Duration {
+    pub fn from_secs_f64(secs: f64) -> Duration {
         match Duration::try_from_secs_f64(secs) {
             Ok(v) => v,
             Err(e) => panic!("{}", e.description()),
@@ -773,8 +772,7 @@ impl Duration {
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[must_use]
     #[inline]
-    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
-    pub const fn from_secs_f32(secs: f32) -> Duration {
+    pub fn from_secs_f32(secs: f32) -> Duration {
         match Duration::try_from_secs_f32(secs) {
             Ok(v) => v,
             Err(e) => panic!("{}", e.description()),
@@ -798,8 +796,7 @@ impl Duration {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
-    pub const fn mul_f64(self, rhs: f64) -> Duration {
+    pub fn mul_f64(self, rhs: f64) -> Duration {
         Duration::from_secs_f64(rhs * self.as_secs_f64())
     }
 
@@ -820,8 +817,7 @@ impl Duration {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
-    pub const fn mul_f32(self, rhs: f32) -> Duration {
+    pub fn mul_f32(self, rhs: f32) -> Duration {
         Duration::from_secs_f32(rhs * self.as_secs_f32())
     }
 
@@ -842,8 +838,7 @@ impl Duration {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
-    pub const fn div_f64(self, rhs: f64) -> Duration {
+    pub fn div_f64(self, rhs: f64) -> Duration {
         Duration::from_secs_f64(self.as_secs_f64() / rhs)
     }
 
@@ -866,8 +861,7 @@ impl Duration {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
-    pub const fn div_f32(self, rhs: f32) -> Duration {
+    pub fn div_f32(self, rhs: f32) -> Duration {
         Duration::from_secs_f32(self.as_secs_f32() / rhs)
     }
 
@@ -1402,9 +1396,8 @@ impl Duration {
     /// assert_eq!(res, Ok(Duration::new(1, 2_929_688)));
     /// ```
     #[stable(feature = "duration_checked_float", since = "1.66.0")]
-    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
     #[inline]
-    pub const fn try_from_secs_f32(secs: f32) -> Result<Duration, TryFromFloatSecsError> {
+    pub fn try_from_secs_f32(secs: f32) -> Result<Duration, TryFromFloatSecsError> {
         try_from_secs!(
             secs = secs,
             mantissa_bits = 23,
@@ -1479,9 +1472,8 @@ impl Duration {
     /// assert_eq!(res, Ok(Duration::new(1, 2_929_688)));
     /// ```
     #[stable(feature = "duration_checked_float", since = "1.66.0")]
-    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
     #[inline]
-    pub const fn try_from_secs_f64(secs: f64) -> Result<Duration, TryFromFloatSecsError> {
+    pub fn try_from_secs_f64(secs: f64) -> Result<Duration, TryFromFloatSecsError> {
         try_from_secs!(
             secs = secs,
             mantissa_bits = 52,

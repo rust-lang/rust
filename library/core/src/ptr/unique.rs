@@ -70,7 +70,8 @@ impl<T: Sized> Unique<T> {
     #[must_use]
     #[inline]
     pub const fn dangling() -> Self {
-        Self::from(NonNull::dangling())
+        // FIXME(const-hack) replace with `From`
+        Unique { pointer: NonNull::dangling(), _marker: PhantomData }
     }
 }
 
@@ -134,7 +135,9 @@ impl<T: ?Sized> Unique<T> {
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
     pub const fn cast<U>(self) -> Unique<U> {
-        Unique::from(self.pointer.cast())
+        // FIXME(const-hack): replace with `From`
+        // SAFETY: is `NonNull`
+        unsafe { Unique::new_unchecked(self.pointer.cast().as_ptr()) }
     }
 }
 

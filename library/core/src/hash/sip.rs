@@ -118,7 +118,7 @@ macro_rules! load_int_le {
 /// Safety: this performs unchecked indexing of `buf` at `start..start+len`, so
 /// that must be in-bounds.
 #[inline]
-const unsafe fn u8to64_le(buf: &[u8], start: usize, len: usize) -> u64 {
+unsafe fn u8to64_le(buf: &[u8], start: usize, len: usize) -> u64 {
     debug_assert!(len < 8);
     let mut i = 0; // current byte index (from LSB) in the output u64
     let mut out = 0;
