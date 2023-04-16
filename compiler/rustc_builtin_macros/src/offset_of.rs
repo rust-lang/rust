@@ -41,7 +41,7 @@ fn parse_args<'a>(
     cx: &mut ExtCtxt<'a>,
     sp: Span,
     tts: TokenStream,
-) -> PResult<'a, (P<ast::Ty>, Vec<Ident>)> {
+) -> PResult<'a, (P<ast::Ty>, P<[Ident]>)> {
     let mut p = cx.new_parser_from_tts(tts);
 
     let container = p.parse_ty()?;
@@ -71,7 +71,7 @@ fn parse_args<'a>(
         break;
     }
 
-    Ok((container, fields))
+    Ok((container, fields.into()))
 }
 
 pub fn expand_offset_of<'cx>(

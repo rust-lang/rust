@@ -1471,7 +1471,7 @@ pub enum ExprKind {
     InlineAsm(P<InlineAsm>),
 
     /// Output of the `offset_of!()` macro.
-    OffsetOf(P<Ty>, Vec<Ident>),
+    OffsetOf(P<Ty>, P<[Ident]>),
 
     /// A macro invocation; pre-expansion.
     MacCall(P<MacCall>),

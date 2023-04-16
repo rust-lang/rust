@@ -1458,7 +1458,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
         ExprKind::FormatArgs(fmt) => vis.visit_format_args(fmt),
         ExprKind::OffsetOf(container, fields) => {
             vis.visit_ty(container);
-            for field in fields {
+            for field in fields.iter_mut() {
                 vis.visit_ident(field);
             }
         }
