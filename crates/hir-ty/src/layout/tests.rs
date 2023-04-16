@@ -2,12 +2,14 @@ use std::collections::HashMap;
 
 use base_db::fixture::WithFixture;
 use chalk_ir::{AdtId, TyKind};
-use hir_def::{
-    db::DefDatabase,
-    layout::{Layout, LayoutError},
-};
+use hir_def::db::DefDatabase;
 
-use crate::{db::HirDatabase, test_db::TestDB, Interner, Substitution};
+use crate::{
+    db::HirDatabase,
+    layout::{Layout, LayoutError},
+    test_db::TestDB,
+    Interner, Substitution,
+};
 
 use super::layout_of_ty;
 

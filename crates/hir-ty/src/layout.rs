@@ -4,16 +4,19 @@ use base_db::CrateId;
 use chalk_ir::{AdtId, TyKind};
 use hir_def::{
     layout::{
-        Abi, FieldsShape, Integer, Layout, LayoutCalculator, LayoutError, Primitive, ReprOptions,
-        RustcEnumVariantIdx, Scalar, Size, StructKind, TargetDataLayout, Variants, WrappingRange,
+        Abi, FieldsShape, Integer, LayoutCalculator, LayoutS, Primitive, ReprOptions, Scalar, Size,
+        StructKind, TargetDataLayout, WrappingRange,
     },
-    LocalFieldId,
+    LocalEnumVariantId, LocalFieldId,
 };
+use la_arena::{Idx, RawIdx};
 use stdx::never;
 
-use crate::{consteval::try_const_usize, db::HirDatabase, Interner, Substitution, Ty};
+use crate::{
+    consteval::try_const_usize, db::HirDatabase, layout::adt::struct_variant_idx, Interner,
+    Substitution, Ty,
+};
 
-use self::adt::struct_variant_idx;
 pub use self::{
     adt::{layout_of_adt_query, layout_of_adt_recover},
     target::target_data_layout_query,
@@ -27,6 +30,34 @@ macro_rules! user_error {
 
 mod adt;
 mod target;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct RustcEnumVariantIdx(pub LocalEnumVariantId);
+
+impl rustc_index::vec::Idx for RustcEnumVariantIdx {
+    fn new(idx: usize) -> Self {
+        RustcEnumVariantIdx(Idx::from_raw(RawIdx::from(idx as u32)))
+    }
+
+    fn index(self) -> usize {
+        u32::from(self.0.into_raw()) as usize
+    }
+}
+
+pub type Layout = LayoutS<RustcEnumVariantIdx>;
+pub type TagEncoding = hir_def::layout::TagEncoding<RustcEnumVariantIdx>;
+pub type Variants = hir_def::layout::Variants<RustcEnumVariantIdx>;
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum LayoutError {
+    UserError(String),
+    SizeOverflow,
+    TargetLayoutNotAvailable,
+    HasPlaceholder,
+    HasErrorType,
+    NotImplemented,
+    Unknown,
+}
 
 struct LayoutCx<'a> {
     krate: CrateId,
@@ -43,14 +74,6 @@ impl<'a> LayoutCalculator for LayoutCx<'a> {
     fn current_data_layout(&self) -> &'a TargetDataLayout {
         self.target
     }
-}
-
-fn scalar_unit(dl: &TargetDataLayout, value: Primitive) -> Scalar {
-    Scalar::Initialized { value, valid_range: WrappingRange::full(value.size(dl)) }
-}
-
-fn scalar(dl: &TargetDataLayout, value: Primitive) -> Layout {
-    Layout::scalar(dl, scalar_unit(dl, value))
 }
 
 pub fn layout_of_ty(db: &dyn HirDatabase, ty: &Ty, krate: CrateId) -> Result<Layout, LayoutError> {
@@ -285,6 +308,14 @@ fn field_ty(
     subst: &Substitution,
 ) -> Ty {
     db.field_types(def)[fd].clone().substitute(Interner, subst)
+}
+
+fn scalar_unit(dl: &TargetDataLayout, value: Primitive) -> Scalar {
+    Scalar::Initialized { value, valid_range: WrappingRange::full(value.size(dl)) }
+}
+
+fn scalar(dl: &TargetDataLayout, value: Primitive) -> Layout {
+    Layout::scalar(dl, scalar_unit(dl, value))
 }
 
 #[cfg(test)]

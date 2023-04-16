@@ -18,11 +18,11 @@ use std::{convert::identity, ops::Index};
 
 use chalk_ir::{cast::Cast, DebruijnIndex, Mutability, Safety, Scalar, TypeFlags};
 use either::Either;
-use hir_def::hir::LabelId;
 use hir_def::{
     body::Body,
     builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
     data::{ConstData, StaticData},
+    hir::LabelId,
     hir::{BindingAnnotation, BindingId, ExprId, ExprOrPatId, PatId},
     lang_item::{LangItem, LangItemTarget},
     layout::Integer,
