@@ -1,0 +1,21 @@
+error[E0107]: function takes 2 generic arguments but 1 generic argument was supplied
+  --> $DIR/foreign-generic-mismatch-with-const-arg.rs:6:46
+   |
+LL |     foreign_generic_mismatch_with_const_arg::test::<1>();
+   |                                              ^^^^   - supplied 1 generic argument
+   |                                              |
+   |                                              expected 2 generic arguments
+   |
+note: function defined here, with 2 generic parameters: `N`, `T`
+  --> $DIR/auxiliary/foreign-generic-mismatch-with-const-arg.rs:1:8
+   |
+LL | pub fn test<const N: usize, T>() {}
+   |        ^^^^ --------------  -
+help: add missing generic argument
+   |
+LL |     foreign_generic_mismatch_with_const_arg::test::<1, T>();
+   |                                                      +++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0107`.
