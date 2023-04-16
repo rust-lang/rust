@@ -138,6 +138,7 @@ impl Expander {
         db: &dyn DefDatabase,
         macro_call: ast::MacroCall,
     ) -> Result<ExpandResult<Option<(Mark, T)>>, UnresolvedMacro> {
+        // FIXME: within_limit should support this, instead of us having to extract the error
         let mut unresolved_macro_err = None;
 
         let result = self.within_limit(db, |this| {
@@ -146,22 +147,13 @@ impl Expander {
             let resolver =
                 |path| this.resolve_path_as_macro(db, &path).map(|it| macro_id_to_def_id(db, it));
 
-            let mut err = None;
-            let call_id = match macro_call.as_call_id_with_errors(
-                db,
-                this.def_map.krate(),
-                resolver,
-                &mut |e| {
-                    err.get_or_insert(e);
-                },
-            ) {
+            match macro_call.as_call_id_with_errors(db, this.def_map.krate(), resolver) {
                 Ok(call_id) => call_id,
                 Err(resolve_err) => {
                     unresolved_macro_err = Some(resolve_err);
-                    return ExpandResult { value: None, err: None };
+                    ExpandResult { value: None, err: None }
                 }
-            };
-            ExpandResult { value: call_id.ok(), err }
+            }
         });
 
         if let Some(err) = unresolved_macro_err {

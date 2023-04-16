@@ -16,8 +16,8 @@ use hir_expand::{
     builtin_fn_macro::find_builtin_macro,
     name::{name, AsName, Name},
     proc_macro::ProcMacroExpander,
-    ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId,
-    MacroDefKind,
+    ExpandResult, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroCallLoc,
+    MacroDefId, MacroDefKind,
 };
 use itertools::{izip, Itertools};
 use la_arena::Idx;
@@ -1116,9 +1116,8 @@ impl DefCollector<'_> {
                         *expand_to,
                         self.def_map.krate,
                         resolver_def_id,
-                        &mut |_err| (),
                     );
-                    if let Ok(Ok(call_id)) = call_id {
+                    if let Ok(ExpandResult { value: Some(call_id), .. }) = call_id {
                         push_resolved(directive, call_id);
                         res = ReachedFixedPoint::No;
                         return false;
@@ -1414,7 +1413,6 @@ impl DefCollector<'_> {
                                 .take_macros()
                                 .map(|it| macro_id_to_def_id(self.db, it))
                         },
-                        &mut |_| (),
                     );
                     if let Err(UnresolvedMacro { path }) = macro_call_as_call_id {
                         self.def_map.diagnostics.push(DefDiagnostic::unresolved_macro_call(
@@ -2112,7 +2110,6 @@ impl ModCollector<'_, '_> {
         let ast_id = AstIdWithPath::new(self.file_id(), mac.ast_id, ModPath::clone(&mac.path));
 
         // Case 1: try to resolve in legacy scope and expand macro_rules
-        let mut error = None;
         match macro_call_as_call_id(
             self.def_collector.db,
             &ast_id,
@@ -2133,21 +2130,20 @@ impl ModCollector<'_, '_> {
                     )
                 })
             },
-            &mut |err| {
-                error.get_or_insert(err);
-            },
         ) {
-            Ok(Ok(macro_call_id)) => {
+            Ok(res) => {
                 // Legacy macros need to be expanded immediately, so that any macros they produce
                 // are in scope.
-                self.def_collector.collect_macro_expansion(
-                    self.module_id,
-                    macro_call_id,
-                    self.macro_depth + 1,
-                    container,
-                );
+                if let Some(val) = res.value {
+                    self.def_collector.collect_macro_expansion(
+                        self.module_id,
+                        val,
+                        self.macro_depth + 1,
+                        container,
+                    );
+                }
 
-                if let Some(err) = error {
+                if let Some(err) = res.err {
                     self.def_collector.def_map.diagnostics.push(DefDiagnostic::macro_error(
                         self.module_id,
                         MacroCallKind::FnLike { ast_id: ast_id.ast_id, expand_to: mac.expand_to },
@@ -2155,16 +2151,6 @@ impl ModCollector<'_, '_> {
                     ));
                 }
 
-                return;
-            }
-            Ok(Err(_)) => {
-                // Built-in macro failed eager expansion.
-
-                self.def_collector.def_map.diagnostics.push(DefDiagnostic::macro_error(
-                    self.module_id,
-                    MacroCallKind::FnLike { ast_id: ast_id.ast_id, expand_to: mac.expand_to },
-                    error.unwrap().to_string(),
-                ));
                 return;
             }
             Err(UnresolvedMacro { .. }) => (),

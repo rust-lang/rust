@@ -32,77 +32,16 @@ use crate::{
     MacroCallLoc, MacroDefId, MacroDefKind, UnresolvedMacro,
 };
 
-#[derive(Debug)]
-pub struct ErrorEmitted {
-    _private: (),
-}
-
-pub trait ErrorSink {
-    fn emit(&mut self, err: ExpandError);
-
-    fn option<T>(
-        &mut self,
-        opt: Option<T>,
-        error: impl FnOnce() -> ExpandError,
-    ) -> Result<T, ErrorEmitted> {
-        match opt {
-            Some(it) => Ok(it),
-            None => {
-                self.emit(error());
-                Err(ErrorEmitted { _private: () })
-            }
-        }
-    }
-
-    fn option_with<T>(
-        &mut self,
-        opt: impl FnOnce() -> Option<T>,
-        error: impl FnOnce() -> ExpandError,
-    ) -> Result<T, ErrorEmitted> {
-        self.option(opt(), error)
-    }
-
-    fn result<T>(&mut self, res: Result<T, ExpandError>) -> Result<T, ErrorEmitted> {
-        match res {
-            Ok(it) => Ok(it),
-            Err(e) => {
-                self.emit(e);
-                Err(ErrorEmitted { _private: () })
-            }
-        }
-    }
-
-    fn expand_result_option<T>(&mut self, res: ExpandResult<Option<T>>) -> Result<T, ErrorEmitted> {
-        match (res.value, res.err) {
-            (None, Some(err)) => {
-                self.emit(err);
-                Err(ErrorEmitted { _private: () })
-            }
-            (Some(value), opt_err) => {
-                if let Some(err) = opt_err {
-                    self.emit(err);
-                }
-                Ok(value)
-            }
-            (None, None) => unreachable!("`ExpandResult` without value or error"),
-        }
-    }
-}
-
-impl ErrorSink for &'_ mut dyn FnMut(ExpandError) {
-    fn emit(&mut self, err: ExpandError) {
-        self(err);
-    }
-}
-
 pub fn expand_eager_macro(
     db: &dyn ExpandDatabase,
     krate: CrateId,
     macro_call: InFile<ast::MacroCall>,
     def: MacroDefId,
     resolver: &dyn Fn(ModPath) -> Option<MacroDefId>,
-    diagnostic_sink: &mut dyn FnMut(ExpandError),
-) -> Result<Result<MacroCallId, ErrorEmitted>, UnresolvedMacro> {
+) -> Result<ExpandResult<Option<MacroCallId>>, UnresolvedMacro> {
+    let MacroDefKind::BuiltInEager(eager, _) = def.kind else {
+        panic!("called `expand_eager_macro` on non-eager macro def {def:?}")
+    };
     let hygiene = Hygiene::new(db, macro_call.file_id);
     let parsed_args = macro_call
         .value
@@ -129,40 +68,34 @@ pub fn expand_eager_macro(
     });
 
     let parsed_args = mbe::token_tree_to_syntax_node(&parsed_args, mbe::TopEntryPoint::Expr).0;
-    let result = match eager_macro_recur(
+    let ExpandResult { value, mut err } = eager_macro_recur(
         db,
         &hygiene,
         InFile::new(arg_id.as_file(), parsed_args.syntax_node()),
         krate,
         resolver,
-        diagnostic_sink,
-    ) {
-        Ok(Ok(it)) => it,
-        Ok(Err(err)) => return Ok(Err(err)),
-        Err(err) => return Err(err),
+    )?;
+    let Some(value ) = value else {
+        return Ok(ExpandResult { value: None, err })
     };
-    let subtree = to_subtree(&result);
+    let subtree = to_subtree(&value);
 
-    if let MacroDefKind::BuiltInEager(eager, _) = def.kind {
-        let res = eager.expand(db, arg_id, &subtree);
-        if let Some(err) = res.err {
-            diagnostic_sink(err);
-        }
-
-        let loc = MacroCallLoc {
-            def,
-            krate,
-            eager: Some(EagerCallInfo {
-                arg_or_expansion: Arc::new(res.value.subtree),
-                included_file: res.value.included_file,
-            }),
-            kind: MacroCallKind::FnLike { ast_id: call_id, expand_to },
-        };
-
-        Ok(Ok(db.intern_macro_call(loc)))
-    } else {
-        panic!("called `expand_eager_macro` on non-eager macro def {def:?}");
+    let res = eager.expand(db, arg_id, &subtree);
+    if err.is_none() {
+        err = res.err;
     }
+
+    let loc = MacroCallLoc {
+        def,
+        krate,
+        eager: Some(EagerCallInfo {
+            arg_or_expansion: Arc::new(res.value.subtree),
+            included_file: res.value.included_file,
+        }),
+        kind: MacroCallKind::FnLike { ast_id: call_id, expand_to },
+    };
+
+    Ok(ExpandResult { value: Some(db.intern_macro_call(loc)), err })
 }
 
 fn to_subtree(node: &SyntaxNode) -> crate::tt::Subtree {
@@ -201,23 +134,25 @@ fn eager_macro_recur(
     curr: InFile<SyntaxNode>,
     krate: CrateId,
     macro_resolver: &dyn Fn(ModPath) -> Option<MacroDefId>,
-    mut diagnostic_sink: &mut dyn FnMut(ExpandError),
-) -> Result<Result<SyntaxNode, ErrorEmitted>, UnresolvedMacro> {
+) -> Result<ExpandResult<Option<SyntaxNode>>, UnresolvedMacro> {
     let original = curr.value.clone_for_update();
 
     let children = original.descendants().filter_map(ast::MacroCall::cast);
     let mut replacements = Vec::new();
+
+    // Note: We only report a single error inside of eager expansions
+    let mut error = None;
 
     // Collect replacement
     for child in children {
         let def = match child.path().and_then(|path| ModPath::from_src(db, path, hygiene)) {
             Some(path) => macro_resolver(path.clone()).ok_or(UnresolvedMacro { path })?,
             None => {
-                diagnostic_sink(ExpandError::Other("malformed macro invocation".into()));
+                error = Some(ExpandError::Other("malformed macro invocation".into()));
                 continue;
             }
         };
-        let insert = match def.kind {
+        let ExpandResult { value, err } = match def.kind {
             MacroDefKind::BuiltInEager(..) => {
                 let id = match expand_eager_macro(
                     db,
@@ -225,45 +160,49 @@ fn eager_macro_recur(
                     curr.with_value(child.clone()),
                     def,
                     macro_resolver,
-                    diagnostic_sink,
                 ) {
-                    Ok(Ok(it)) => it,
-                    Ok(Err(err)) => return Ok(Err(err)),
+                    Ok(it) => it,
                     Err(err) => return Err(err),
                 };
-                db.parse_or_expand(id.as_file())
-                    .expect("successful macro expansion should be parseable")
-                    .clone_for_update()
+                id.map(|call| {
+                    call.and_then(|call| db.parse_or_expand(call.as_file()))
+                        .map(|it| it.clone_for_update())
+                })
             }
             MacroDefKind::Declarative(_)
             | MacroDefKind::BuiltIn(..)
             | MacroDefKind::BuiltInAttr(..)
             | MacroDefKind::BuiltInDerive(..)
             | MacroDefKind::ProcMacro(..) => {
-                let res = lazy_expand(db, &def, curr.with_value(child.clone()), krate);
-                let val = match diagnostic_sink.expand_result_option(res) {
-                    Ok(it) => it,
-                    Err(err) => return Ok(Err(err)),
-                };
+                let ExpandResult { value, err } =
+                    lazy_expand(db, &def, curr.with_value(child.clone()), krate);
 
-                // replace macro inside
-                let hygiene = Hygiene::new(db, val.file_id);
-                match eager_macro_recur(db, &hygiene, val, krate, macro_resolver, diagnostic_sink) {
-                    Ok(Ok(it)) => it,
-                    Ok(Err(err)) => return Ok(Err(err)),
-                    Err(err) => return Err(err),
+                match value {
+                    Some(val) => {
+                        // replace macro inside
+                        let hygiene = Hygiene::new(db, val.file_id);
+                        let ExpandResult { value, err: error } =
+                            eager_macro_recur(db, &hygiene, val, krate, macro_resolver)?;
+                        let err = if err.is_none() { error } else { err };
+                        ExpandResult { value, err }
+                    }
+                    None => ExpandResult { value: None, err },
                 }
             }
         };
-
+        if err.is_some() {
+            error = err;
+        }
         // check if the whole original syntax is replaced
         if child.syntax() == &original {
-            return Ok(Ok(insert));
+            return Ok(ExpandResult { value, err: error });
         }
 
-        replacements.push((child, insert));
+        if let Some(insert) = value {
+            replacements.push((child, insert));
+        }
     }
 
     replacements.into_iter().rev().for_each(|(old, new)| ted::replace(old.syntax(), new));
-    Ok(Ok(original))
+    Ok(ExpandResult { value: Some(original), err: error })
 }

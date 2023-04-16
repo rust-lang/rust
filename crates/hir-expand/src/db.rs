@@ -279,25 +279,28 @@ fn parse_macro_expansion(
     let mbe::ValueResult { value, err } = db.macro_expand(macro_file.macro_call_id);
 
     if let Some(err) = &err {
-        // Note:
-        // The final goal we would like to make all parse_macro success,
-        // such that the following log will not call anyway.
-        let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
-        let node = loc.kind.to_node(db);
+        if tracing::enabled!(tracing::Level::DEBUG) {
+            // Note:
+            // The final goal we would like to make all parse_macro success,
+            // such that the following log will not call anyway.
+            let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
+            let node = loc.kind.to_node(db);
 
-        // collect parent information for warning log
-        let parents =
-            std::iter::successors(loc.kind.file_id().call_node(db), |it| it.file_id.call_node(db))
-                .map(|n| format!("{:#}", n.value))
-                .collect::<Vec<_>>()
-                .join("\n");
+            // collect parent information for warning log
+            let parents = std::iter::successors(loc.kind.file_id().call_node(db), |it| {
+                it.file_id.call_node(db)
+            })
+            .map(|n| format!("{:#}", n.value))
+            .collect::<Vec<_>>()
+            .join("\n");
 
-        tracing::debug!(
-            "fail on macro_parse: (reason: {:?} macro_call: {:#}) parents: {}",
-            err,
-            node.value,
-            parents
-        );
+            tracing::debug!(
+                "fail on macro_parse: (reason: {:?} macro_call: {:#}) parents: {}",
+                err,
+                node.value,
+                parents
+            );
+        }
     }
     let tt = match value {
         Some(tt) => tt,
@@ -466,7 +469,8 @@ fn macro_expand(
         Ok(it) => it,
         // FIXME: This is weird -- we effectively report macro *definition*
         // errors lazily, when we try to expand the macro. Instead, they should
-        // be reported at the definition site (when we construct a def map).
+        // be reported at the definition site when we construct a def map.
+        // (Note we do report them also at the definition site in the late diagnostic pass)
         Err(err) => {
             return ExpandResult::only_err(ExpandError::Other(
                 format!("invalid macro definition: {err}").into(),
