@@ -1,14 +1,14 @@
 use hir::def::CtorKind;
 use hir::intravisit::{walk_expr, walk_stmt, Visitor};
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::Diagnostic;
+use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_middle::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
     StatementAsExpression,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self as ty, IsSuggestable, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self as ty, GenericArgKind, IsSuggestable, Ty, TypeVisitableExt};
 use rustc_span::{sym, BytePos, Span};
 use rustc_target::abi::FieldIdx;
 
@@ -535,6 +535,82 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }
         None
+    }
+
+    /// For "one type is more general than the other" errors on closures, suggest changing the lifetime
+    /// of the parameters to accept all lifetimes.
+    pub(super) fn suggest_for_all_lifetime_closure(
+        &self,
+        span: Span,
+        hir: hir::Node<'_>,
+        exp_found: &ty::error::ExpectedFound<ty::PolyTraitRef<'tcx>>,
+        diag: &mut Diagnostic,
+    ) {
+        // 0. Extract fn_decl from hir
+        let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(hir::Closure { body, fn_decl, .. }), .. }) = hir else { return; };
+        let hir::Body { params, .. } = self.tcx.hir().body(*body);
+
+        // 1. Get the substs of the closure.
+        // 2. Assume exp_found is FnOnce / FnMut / Fn, we can extract function parameters from [1].
+        let Some(expected) = exp_found.expected.skip_binder().substs.get(1) else { return; };
+        let Some(found) = exp_found.found.skip_binder().substs.get(1) else { return; };
+        let expected = expected.unpack();
+        let found = found.unpack();
+        // 3. Extract the tuple type from Fn trait and suggest the change.
+        if let GenericArgKind::Type(expected) = expected &&
+            let GenericArgKind::Type(found) = found &&
+            let ty::Tuple(expected) = expected.kind() &&
+            let ty::Tuple(found)= found.kind() &&
+            expected.len() == found.len() {
+            let mut suggestion = "|".to_string();
+            let mut is_first = true;
+            let mut has_suggestion = false;
+
+            for (((expected, found), param_hir), arg_hir) in expected.iter()
+                .zip(found.iter())
+                .zip(params.iter())
+                .zip(fn_decl.inputs.iter()) {
+                if is_first {
+                    is_first = false;
+                } else {
+                    suggestion += ", ";
+                }
+
+                if let ty::Ref(expected_region, _, _) = expected.kind() &&
+                    let ty::Ref(found_region, _, _) = found.kind() &&
+                    expected_region.is_late_bound() &&
+                    !found_region.is_late_bound() &&
+                    let hir::TyKind::Infer = arg_hir.kind {
+                    // If the expected region is late bound, the found region is not, and users are asking compiler
+                    // to infer the type, we can suggest adding `: &_`.
+                    if param_hir.pat.span == param_hir.ty_span {
+                        // for `|x|`, `|_|`, `|x: impl Foo|`
+                        let Ok(pat) = self.tcx.sess.source_map().span_to_snippet(param_hir.pat.span) else { return; };
+                        suggestion += &format!("{}: &_", pat);
+                    } else {
+                        // for `|x: ty|`, `|_: ty|`
+                        let Ok(pat) = self.tcx.sess.source_map().span_to_snippet(param_hir.pat.span) else { return; };
+                        let Ok(ty) = self.tcx.sess.source_map().span_to_snippet(param_hir.ty_span) else { return; };
+                        suggestion += &format!("{}: &{}", pat, ty);
+                    }
+                    has_suggestion = true;
+                } else {
+                    let Ok(arg) = self.tcx.sess.source_map().span_to_snippet(param_hir.span) else { return; };
+                    // Otherwise, keep it as-is.
+                    suggestion += &arg;
+                }
+            }
+            suggestion += "|";
+
+            if has_suggestion {
+                diag.span_suggestion_verbose(
+                    span,
+                    "consider specifying the type of the closure parameters",
+                    suggestion,
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        }
     }
 }
 
