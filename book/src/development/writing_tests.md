@@ -5,7 +5,7 @@ our first task before implementing any logic for a new lint is to write some tes
 
 ## Develop Lints with Tests
 
-When we develop Clippy, we enter a complex and chaotic realm full of 
+When we develop Clippy, we enter a complex and chaotic realm full of
 programmatic issues, stylistic errors, illogical code and non-adherence to convention.
 Tests are the first layer of order we can leverage to define when and where
 we want a new lint to trigger or not.
@@ -18,23 +18,25 @@ This approach empowers us to iteratively enhance each lint.
 
 ## Clippy UI Tests
 
-We use **UI tests** for testing in Clippy.
-These UI tests check that the output of Clippy is exactly as we expect it to be.
-Each test is just a plain Rust file that contains the code we want to check.
+We use **UI tests** for testing in Clippy. These UI tests check that the output
+of Clippy is exactly as we expect it to be. Each test is just a plain Rust file
+that contains the code we want to check.
 
-The output of Clippy is compared against a `.stderr` file.
-Note that you don't have to create this file yourself.
-We'll get to generating the `.stderr` files with the command [`cargo dev bless`](#cargo-dev-bless) (seen later on).
+The output of Clippy is compared against a `.stderr` file. Note that you don't
+have to create this file yourself. We'll get to generating the `.stderr` files
+with the command [`cargo dev bless`](#cargo-dev-bless) (seen later on).
 
 ### Write Test Cases
 
-Let us now think about some tests for our imaginary `foo_functions` lint,
-We start by opening the test file `tests/ui/foo_functions.rs` that was created by `cargo dev new_lint`.
+Let us now think about some tests for our imaginary `foo_functions` lint. We
+start by opening the test file `tests/ui/foo_functions.rs` that was created by
+`cargo dev new_lint`.
 
 Update the file with some examples to get started:
 
 ```rust
-#![warn(clippy::foo_functions)]
+#![warn(clippy::foo_functions)] // < Add this, so the lint is guaranteed to be enabled in this file
+
 // Impl methods
 struct A;
 impl A {
@@ -64,8 +66,8 @@ fn main() {
 ```
 
 Without actual lint logic to emit the lint when we see a `foo` function name,
-these tests are still quite meaningless.
-However, we can now run the test with the following command:
+this test will just pass, because no lint will be emitted. However, we can now
+run the test with the following command:
 
 ```sh
 $ TESTNAME=foo_functions cargo uitest
@@ -118,10 +120,12 @@ LL | fn foo() {}
 error: aborting due to 3 previous errors
 ```
 
-Note the *failures* label at the top of the fragment, we'll get rid of it (saving this output) in the next section.
+Note the *failures* label at the top of the fragment, we'll get rid of it
+(saving this output) in the next section.
 
 > _Note:_ You can run multiple test files by specifying a comma separated list:
 > `TESTNAME=foo_functions,bar_methods,baz_structs`.
+
 ### `cargo dev bless`
 
 Once we are satisfied with the output, we need to run this command to
@@ -136,11 +140,11 @@ $ cargo dev bless
 This write the emitted lint suggestions and fixes to the `.stderr` file,
 with the reason for the lint, suggested fixes, and line numbers, etc.
 
-> _Note:_ we need to run `TESTNAME=foo_functions cargo uitest` every time before we run
-> `cargo dev bless`.
+> _Note:_ we need to run `TESTNAME=foo_functions cargo uitest` every time before
+> we run `cargo dev bless`.
 
-Running `TESTNAME=foo_functions cargo uitest` should pass then. When we
-commit our lint, we need to commit the generated `.stderr` files, too.
+Running `TESTNAME=foo_functions cargo uitest` should pass then. When we commit
+our lint, we need to commit the generated `.stderr` files, too.
 
 In general, you should only commit files changed by `cargo dev bless` for the
 specific lint you are creating/editing.
@@ -148,11 +152,27 @@ specific lint you are creating/editing.
 > _Note:_ If the generated `.stderr`, and `.fixed` files are empty,
 > they should be removed.
 
+## `toml` Tests
+
+Some lints can be configured through a `clippy.toml` file. Those configuration
+values are tested in `tests/ui-toml`.
+
+To add a new test there, create a new directory and add the files:
+
+- `clippy.toml`: Put here the configuration value you want to test.
+- `lint_name.rs`: A test file where you put the testing code, that should see a
+  different lint behavior according to the configuration set in the
+  `clippy.toml` file.
+
+The potential `.stderr` and `.fixed` files can again be generated with `cargo
+dev bless`.
+
 ## Cargo Lints
 
 The process of testing is different for Cargo lints in that now we are
-interested in the `Cargo.toml` manifest file.
-In this case, we also need a minimal crate associated with that manifest.
+interested in the `Cargo.toml` manifest file. In this case, we also need a
+minimal crate associated with that manifest. Those tests are generated in
+`tests/ui-cargo`.
 
 Imagine we have a new example lint that is named `foo_categories`, we can run:
 
@@ -168,46 +188,33 @@ each with its manifest file:
 * `tests/ui-cargo/foo_categories/pass/Cargo.toml`: this file should not trigger
   the lint.
 
-If you need more cases, you can copy one of those crates (under `foo_categories`) and rename it.
+If you need more cases, you can copy one of those crates (under
+`foo_categories`) and rename it.
 
-The process of generating the `.stderr` file is the same as for other lints 
+The process of generating the `.stderr` file is the same as for other lints
 and prepending the `TESTNAME` variable to `cargo uitest` works for Cargo lints too.
-
-Overall, you should see the following changes when you generate a new Cargo lint:
-
-```sh
-$ git status
-On branch foo_categories
-Changes not staged for commit:
-  (use "git add <file>..." to update what will be committed)
-  (use "git restore <file>..." to discard changes in working directory)
-	modified:   CHANGELOG.md
-	modified:   clippy_lints/src/cargo/mod.rs
-	modified:   clippy_lints/src/lib.rs
-Untracked files:
-  (use "git add <file>..." to include in what will be committed)
-	clippy_lints/src/cargo/foo_categories.rs
-	tests/ui-cargo/foo_categories/
-```
 
 ## Rustfix Tests
 
 If the lint you are working on is making use of structured suggestions, the test
 file should include a `// run-rustfix` comment at the top.
 
-Structured suggestions tell a user how to fix or re-write certain code that has been linted, they are usually linted
-with [`span_lint_and_sugg`](https://doc.rust-lang.org/beta/nightly-rustc/clippy_utils/diagnostics/fn.span_lint_and_sugg.html).
+Structured suggestions tell a user how to fix or re-write certain code that has
+been linted with [`span_lint_and_sugg`].
 
 The `// run-rustfix` comment will additionally run [rustfix] for our test.
 Rustfix will apply the suggestions from the lint to the test file code and
 compare that to the contents of a `.fixed` file.
 
 We'll talk about suggestions more in depth in a later chapter.
-<!-- FIXME: (blyyas) Link to "Emitting lints" when that gets merged -->
+<!-- FIXME: (blyxyas) Link to "Emitting lints" when that gets merged -->
 
-Use `cargo dev bless` to automatically generate the `.fixed` file after running the tests.
+Use `cargo dev bless` to automatically generate the `.fixed` file after running
+the tests.
 
 [rustfix]: https://github.com/rust-lang/rustfix
+[`span_lint_and_sugg`]: https://doc.rust-lang.org/beta/nightly-rustc/clippy_utils/diagnostics/fn.span_lint_and_sugg.html
+
 ## Testing Manually
 
 Manually testing against an example file can be useful if you have added some
