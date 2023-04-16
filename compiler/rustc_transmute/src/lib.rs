@@ -62,7 +62,7 @@ mod rustc {
 
     use rustc_hir::lang_items::LangItem;
     use rustc_infer::infer::InferCtxt;
-    use rustc_macros::{TypeFoldable, TypeVisitable};
+    use rustc_macros::TypeVisitable;
     use rustc_middle::traits::ObligationCause;
     use rustc_middle::ty::Const;
     use rustc_middle::ty::ParamEnv;
@@ -70,7 +70,7 @@ mod rustc {
     use rustc_middle::ty::TyCtxt;
 
     /// The source and destination types of a transmutation.
-    #[derive(TypeFoldable, TypeVisitable, Debug, Clone, Copy)]
+    #[derive(TypeVisitable, Debug, Clone, Copy)]
     pub struct Types<'tcx> {
         /// The source type.
         pub src: Ty<'tcx>,

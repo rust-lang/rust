@@ -28,7 +28,7 @@ impl<T> ExpectedFound<T> {
 }
 
 // Data structures used in type unification
-#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, Lift, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, TypeVisitable, Lift, PartialEq, Eq)]
 #[rustc_pass_by_value]
 pub enum TypeError<'tcx> {
     Mismatch,
