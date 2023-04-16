@@ -13,6 +13,7 @@ import tarfile
 import tempfile
 
 from time import time
+from multiprocessing import Pool, cpu_count
 
 try:
     import lzma
@@ -392,6 +393,48 @@ class Stage0Toolchain:
         return self.version + "-" + self.date
 
 
+class DownloadInfo:
+    """A helper class that can be pickled into a parallel subprocess"""
+
+    def __init__(
+        self,
+        base_download_url,
+        download_path,
+        bin_root,
+        tarball_path,
+        tarball_suffix,
+        checksums_sha256,
+        pattern,
+        verbose,
+    ):
+        self.base_download_url = base_download_url
+        self.download_path = download_path
+        self.bin_root = bin_root
+        self.tarball_path = tarball_path
+        self.tarball_suffix = tarball_suffix
+        self.checksums_sha256 = checksums_sha256
+        self.pattern = pattern
+        self.verbose = verbose
+
+def download_component(download_info):
+    if not os.path.exists(download_info.tarball_path):
+        get(
+            download_info.base_download_url,
+            download_info.download_path,
+            download_info.tarball_path,
+            download_info.checksums_sha256,
+            verbose=download_info.verbose,
+        )
+
+def unpack_component(download_info):
+    unpack(
+        download_info.tarball_path,
+        download_info.tarball_suffix,
+        download_info.bin_root,
+        match=download_info.pattern,
+        verbose=download_info.verbose,
+    )
+
 class RustBuild(object):
     """Provide all the methods required to build Rust"""
     def __init__(self):
@@ -446,8 +489,31 @@ class RustBuild(object):
                 ("cargo-{}".format(toolchain_suffix), "cargo"),
             ]
 
-            for filename, pattern in tarballs_to_download:
-                self._download_component_helper(filename, pattern, tarball_suffix, rustc_cache)
+            tarballs_download_info = [
+                DownloadInfo(
+                    base_download_url=self.download_url,
+                    download_path="dist/{}/{}".format(self.stage0_compiler.date, filename),
+                    bin_root=self.bin_root(),
+                    tarball_path=os.path.join(rustc_cache, filename),
+                    tarball_suffix=tarball_suffix,
+                    checksums_sha256=self.checksums_sha256,
+                    pattern=pattern,
+                    verbose=self.verbose,
+                )
+                for filename, pattern in tarballs_to_download
+            ]
+
+            # Download the components serially to show the progress bars properly.
+            for download_info in tarballs_download_info:
+                download_component(download_info)
+
+            # Unpack the tarballs in parallle.
+            # In Python 2.7, Pool cannot be used as a context manager.
+            p = Pool(min(len(tarballs_download_info), cpu_count()))
+            try:
+                p.map(unpack_component, tarballs_download_info)
+            finally:
+                p.close()
 
             if self.should_fix_bins_and_dylibs():
                 self.fix_bin_or_dylib("{}/bin/cargo".format(bin_root))
