@@ -246,7 +246,7 @@ fn expr_node(
 ) -> Option<InFile<SyntaxNode>> {
     Some(match body_source_map.expr_syntax(expr) {
         Ok(sp) => {
-            let root = db.parse_or_expand(sp.file_id).unwrap();
+            let root = db.parse_or_expand(sp.file_id);
             sp.map(|ptr| ptr.to_node(&root).syntax().clone())
         }
         Err(SyntheticSyntax) => return None,
@@ -260,7 +260,7 @@ fn pat_node(
 ) -> Option<InFile<SyntaxNode>> {
     Some(match body_source_map.pat_syntax(pat) {
         Ok(sp) => {
-            let root = db.parse_or_expand(sp.file_id).unwrap();
+            let root = db.parse_or_expand(sp.file_id);
             sp.map(|ptr| {
                 ptr.either(
                     |it| it.to_node(&root).syntax().clone(),
@@ -290,7 +290,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
         for (pat, ty) in inference_result.type_of_pat.iter() {
             let syntax_ptr = match body_source_map.pat_syntax(pat) {
                 Ok(sp) => {
-                    let root = db.parse_or_expand(sp.file_id).unwrap();
+                    let root = db.parse_or_expand(sp.file_id);
                     sp.map(|ptr| {
                         ptr.either(
                             |it| it.to_node(&root).syntax().clone(),
@@ -309,7 +309,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
         for (expr, ty) in inference_result.type_of_expr.iter() {
             let node = match body_source_map.expr_syntax(expr) {
                 Ok(sp) => {
-                    let root = db.parse_or_expand(sp.file_id).unwrap();
+                    let root = db.parse_or_expand(sp.file_id);
                     sp.map(|ptr| ptr.to_node(&root).syntax().clone())
                 }
                 Err(SyntheticSyntax) => continue,

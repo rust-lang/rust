@@ -730,7 +730,7 @@ pub type AstId<N> = InFile<FileAstId<N>>;
 
 impl<N: AstNode> AstId<N> {
     pub fn to_node(&self, db: &dyn db::ExpandDatabase) -> N {
-        let root = db.parse_or_expand(self.file_id).unwrap();
+        let root = db.parse_or_expand(self.file_id);
         db.ast_id_map(self.file_id).get(self.value).to_node(&root)
     }
 }
@@ -766,7 +766,7 @@ impl<T> InFile<T> {
     }
 
     pub fn file_syntax(&self, db: &dyn db::ExpandDatabase) -> SyntaxNode {
-        db.parse_or_expand(self.file_id).expect("source created from invalid file")
+        db.parse_or_expand(self.file_id)
     }
 }
 

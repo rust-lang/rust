@@ -140,7 +140,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.parse(file_id)
     }
 
-    pub fn parse_or_expand(&self, file_id: HirFileId) -> Option<SyntaxNode> {
+    pub fn parse_or_expand(&self, file_id: HirFileId) -> SyntaxNode {
         self.imp.parse_or_expand(file_id)
     }
 
@@ -518,23 +518,23 @@ impl<'db> SemanticsImpl<'db> {
         tree
     }
 
-    fn parse_or_expand(&self, file_id: HirFileId) -> Option<SyntaxNode> {
-        let node = self.db.parse_or_expand(file_id)?;
+    fn parse_or_expand(&self, file_id: HirFileId) -> SyntaxNode {
+        let node = self.db.parse_or_expand(file_id);
         self.cache(node.clone(), file_id);
-        Some(node)
+        node
     }
 
     fn expand(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
         let sa = self.analyze_no_infer(macro_call.syntax())?;
         let file_id = sa.expand(self.db, InFile::new(sa.file_id, macro_call))?;
-        let node = self.parse_or_expand(file_id)?;
+        let node = self.parse_or_expand(file_id);
         Some(node)
     }
 
     fn expand_attr_macro(&self, item: &ast::Item) -> Option<SyntaxNode> {
         let src = self.wrap_node_infile(item.clone());
         let macro_call_id = self.with_ctx(|ctx| ctx.item_to_macro_call(src))?;
-        self.parse_or_expand(macro_call_id.as_file())
+        Some(self.parse_or_expand(macro_call_id.as_file()))
     }
 
     fn expand_derive_as_pseudo_attr_macro(&self, attr: &ast::Attr) -> Option<SyntaxNode> {
@@ -543,7 +543,7 @@ impl<'db> SemanticsImpl<'db> {
         let call_id = self.with_ctx(|ctx| {
             ctx.attr_to_derive_macro_call(src.with_value(&adt), src).map(|(_, it, _)| it)
         })?;
-        self.parse_or_expand(call_id.as_file())
+        Some(self.parse_or_expand(call_id.as_file()))
     }
 
     fn resolve_derive_macro(&self, attr: &ast::Attr) -> Option<Vec<Option<Macro>>> {
@@ -566,7 +566,7 @@ impl<'db> SemanticsImpl<'db> {
             .into_iter()
             .flat_map(|call| {
                 let file_id = call?.as_file();
-                let node = self.db.parse_or_expand(file_id)?;
+                let node = self.db.parse_or_expand(file_id);
                 self.cache(node.clone(), file_id);
                 Some(node)
             })
@@ -990,7 +990,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn diagnostics_display_range(&self, src: InFile<SyntaxNodePtr>) -> FileRange {
-        let root = self.parse_or_expand(src.file_id).unwrap();
+        let root = self.parse_or_expand(src.file_id);
         let node = src.map(|it| it.to_node(&root));
         node.as_ref().original_file_range(self.db.upcast())
     }

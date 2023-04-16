@@ -24,7 +24,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingUnsafe) -> Option<Vec<Ass
         return None;
     }
 
-    let root = ctx.sema.db.parse_or_expand(d.expr.file_id)?;
+    let root = ctx.sema.db.parse_or_expand(d.expr.file_id);
     let expr = d.expr.value.to_node(&root);
 
     let node_to_add_unsafe_block = pick_best_node_to_add_unsafe_block(&expr)?;

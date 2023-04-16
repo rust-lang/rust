@@ -174,30 +174,12 @@ impl Expander {
     fn enter_expand_inner(
         db: &dyn DefDatabase,
         call_id: MacroCallId,
-        mut error: Option<ExpandError>,
+        error: Option<ExpandError>,
     ) -> ExpandResult<Option<InFile<Parse<SyntaxNode>>>> {
         let file_id = call_id.as_file();
         let ExpandResult { value, err } = db.parse_or_expand_with_err(file_id);
 
-        if error.is_none() {
-            error = err;
-        }
-
-        let parse = match value {
-            Some(it) => it,
-            None => {
-                // Only `None` if the macro expansion produced no usable AST.
-                if error.is_none() {
-                    tracing::warn!("no error despite `parse_or_expand` failing");
-                }
-
-                return ExpandResult::only_err(error.unwrap_or_else(|| {
-                    ExpandError::Other("failed to parse macro invocation".into())
-                }));
-            }
-        };
-
-        ExpandResult { value: Some(InFile::new(file_id, parse)), err: error }
+        ExpandResult { value: Some(InFile::new(file_id, value)), err: error.or(err) }
     }
 
     pub fn exit(&mut self, db: &dyn DefDatabase, mut mark: Mark) {

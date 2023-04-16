@@ -198,7 +198,7 @@ fn parse_adt(tt: &tt::Subtree) -> Result<BasicAdtInfo, ExpandError> {
 fn expand_simple_derive(tt: &tt::Subtree, trait_path: tt::Subtree) -> ExpandResult<tt::Subtree> {
     let info = match parse_adt(tt) {
         Ok(info) => info,
-        Err(e) => return ExpandResult::with_err(tt::Subtree::empty(), e),
+        Err(e) => return ExpandResult::new(tt::Subtree::empty(), e),
     };
     let mut where_block = vec![];
     let (params, args): (Vec<_>, Vec<_>) = info

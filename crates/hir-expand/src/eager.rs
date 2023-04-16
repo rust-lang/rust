@@ -111,7 +111,7 @@ fn lazy_expand(
     def: &MacroDefId,
     macro_call: InFile<ast::MacroCall>,
     krate: CrateId,
-) -> ExpandResult<Option<InFile<Parse<SyntaxNode>>>> {
+) -> ExpandResult<InFile<Parse<SyntaxNode>>> {
     let ast_id = db.ast_id_map(macro_call.file_id).ast_id(&macro_call.value);
 
     let expand_to = ExpandTo::from_call_site(&macro_call.value);
@@ -121,8 +121,7 @@ fn lazy_expand(
         MacroCallKind::FnLike { ast_id: macro_call.with_value(ast_id), expand_to },
     );
 
-    db.parse_or_expand_with_err(id.as_file())
-        .map(|parse| parse.map(|parse| InFile::new(id.as_file(), parse)))
+    db.parse_or_expand_with_err(id.as_file()).map(|parse| InFile::new(id.as_file(), parse))
 }
 
 fn eager_macro_recur(
@@ -162,8 +161,7 @@ fn eager_macro_recur(
                     Err(err) => return Err(err),
                 };
                 id.map(|call| {
-                    call.and_then(|call| db.parse_or_expand(call.as_file()))
-                        .map(|it| it.clone_for_update())
+                    call.map(|call| db.parse_or_expand(call.as_file()).clone_for_update())
                 })
             }
             MacroDefKind::Declarative(_)
@@ -174,23 +172,18 @@ fn eager_macro_recur(
                 let ExpandResult { value, err } =
                     lazy_expand(db, &def, curr.with_value(child.clone()), krate);
 
-                match value {
-                    Some(val) => {
-                        // replace macro inside
-                        let hygiene = Hygiene::new(db, val.file_id);
-                        let ExpandResult { value, err: error } = eager_macro_recur(
-                            db,
-                            &hygiene,
-                            // FIXME: We discard parse errors here
-                            val.map(|it| it.syntax_node()),
-                            krate,
-                            macro_resolver,
-                        )?;
-                        let err = if err.is_none() { error } else { err };
-                        ExpandResult { value, err }
-                    }
-                    None => ExpandResult { value: None, err },
-                }
+                // replace macro inside
+                let hygiene = Hygiene::new(db, value.file_id);
+                let ExpandResult { value, err: error } = eager_macro_recur(
+                    db,
+                    &hygiene,
+                    // FIXME: We discard parse errors here
+                    value.map(|it| it.syntax_node()),
+                    krate,
+                    macro_resolver,
+                )?;
+                let err = if err.is_none() { error } else { err };
+                ExpandResult { value, err }
             }
         };
         if err.is_some() {

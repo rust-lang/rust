@@ -160,7 +160,7 @@ impl NavigationTarget {
 
 impl TryToNav for FileSymbol {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
-        let full_range = self.loc.original_range(db)?;
+        let full_range = self.loc.original_range(db);
         let name_range = self.loc.original_name_range(db)?;
 
         Some(NavigationTarget {
@@ -549,7 +549,7 @@ impl TryToNav for hir::ConstParam {
 /// e.g. `struct Name`, `enum Name`, `fn Name`
 pub(crate) fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option<String> {
     let sema = Semantics::new(db);
-    let node = symbol.loc.syntax(&sema)?;
+    let node = symbol.loc.syntax(&sema);
 
     match_ast! {
         match node {

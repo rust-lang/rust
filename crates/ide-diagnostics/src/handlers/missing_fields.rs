@@ -56,7 +56,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
         return None;
     }
 
-    let root = ctx.sema.db.parse_or_expand(d.file)?;
+    let root = ctx.sema.db.parse_or_expand(d.file);
 
     let current_module = match &d.field_list_parent {
         Either::Left(ptr) => ctx.sema.scope(ptr.to_node(&root).syntax()).map(|it| it.module()),

@@ -98,12 +98,9 @@ pub trait ExpandDatabase: SourceDatabase {
     /// Main public API -- parses a hir file, not caring whether it's a real
     /// file or a macro expansion.
     #[salsa::transparent]
-    fn parse_or_expand(&self, file_id: HirFileId) -> Option<SyntaxNode>;
+    fn parse_or_expand(&self, file_id: HirFileId) -> SyntaxNode;
     #[salsa::transparent]
-    fn parse_or_expand_with_err(
-        &self,
-        file_id: HirFileId,
-    ) -> ExpandResult<Option<Parse<SyntaxNode>>>;
+    fn parse_or_expand_with_err(&self, file_id: HirFileId) -> ExpandResult<Parse<SyntaxNode>>;
     /// Implementation for the macro case.
     fn parse_macro_expansion(
         &self,
@@ -252,27 +249,26 @@ pub fn expand_speculative(
 }
 
 fn ast_id_map(db: &dyn ExpandDatabase, file_id: HirFileId) -> Arc<AstIdMap> {
-    let map = db.parse_or_expand(file_id).map(|it| AstIdMap::from_source(&it)).unwrap_or_default();
-    Arc::new(map)
+    Arc::new(AstIdMap::from_source(&db.parse_or_expand(file_id)))
 }
 
-fn parse_or_expand(db: &dyn ExpandDatabase, file_id: HirFileId) -> Option<SyntaxNode> {
-    Some(match file_id.repr() {
+fn parse_or_expand(db: &dyn ExpandDatabase, file_id: HirFileId) -> SyntaxNode {
+    match file_id.repr() {
         HirFileIdRepr::FileId(file_id) => db.parse(file_id).tree().syntax().clone(),
         HirFileIdRepr::MacroFile(macro_file) => {
             db.parse_macro_expansion(macro_file).value.0.syntax_node()
         }
-    })
+    }
 }
 
 fn parse_or_expand_with_err(
     db: &dyn ExpandDatabase,
     file_id: HirFileId,
-) -> ExpandResult<Option<Parse<SyntaxNode>>> {
+) -> ExpandResult<Parse<SyntaxNode>> {
     match file_id.repr() {
-        HirFileIdRepr::FileId(file_id) => ExpandResult::ok(Some(db.parse(file_id).to_syntax())),
+        HirFileIdRepr::FileId(file_id) => ExpandResult::ok(db.parse(file_id).to_syntax()),
         HirFileIdRepr::MacroFile(macro_file) => {
-            db.parse_macro_expansion(macro_file).map(|it| Some(it.0))
+            db.parse_macro_expansion(macro_file).map(|(it, _)| it)
         }
     }
 }
