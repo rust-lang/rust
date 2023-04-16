@@ -16,8 +16,8 @@ use hir_expand::{
     builtin_fn_macro::find_builtin_macro,
     name::{name, AsName, Name},
     proc_macro::ProcMacroExpander,
-    ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId,
-    MacroDefKind,
+    ExpandResult, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroCallLoc,
+    MacroDefId, MacroDefKind,
 };
 use itertools::{izip, Itertools};
 use la_arena::Idx;
@@ -1116,10 +1116,10 @@ impl DefCollector<'_> {
                         *expand_to,
                         self.def_map.krate,
                         resolver_def_id,
-                        &mut |_err| (),
                     );
-                    if let Ok(Ok(call_id)) = call_id {
+                    if let Ok(Some(call_id)) = call_id {
                         push_resolved(directive, call_id);
+
                         res = ReachedFixedPoint::No;
                         return false;
                     }
@@ -1355,26 +1355,30 @@ impl DefCollector<'_> {
         let file_id = macro_call_id.as_file();
 
         // First, fetch the raw expansion result for purposes of error reporting. This goes through
-        // `macro_expand_error` to avoid depending on the full expansion result (to improve
+        // `parse_macro_expansion_error` to avoid depending on the full expansion result (to improve
         // incrementality).
-        let loc: MacroCallLoc = self.db.lookup_intern_macro_call(macro_call_id);
-        let err = self.db.macro_expand_error(macro_call_id);
+        let ExpandResult { value, err } = self.db.parse_macro_expansion_error(macro_call_id);
         if let Some(err) = err {
+            let loc: MacroCallLoc = self.db.lookup_intern_macro_call(macro_call_id);
             let diag = match err {
+                // why is this reported here?
                 hir_expand::ExpandError::UnresolvedProcMacro(krate) => {
                     always!(krate == loc.def.krate);
-                    // Missing proc macros are non-fatal, so they are handled specially.
                     DefDiagnostic::unresolved_proc_macro(module_id, loc.kind.clone(), loc.def.krate)
                 }
-                _ => DefDiagnostic::macro_error(module_id, loc.kind, err.to_string()),
+                _ => DefDiagnostic::macro_error(module_id, loc.kind.clone(), err.to_string()),
             };
 
+            self.def_map.diagnostics.push(diag);
+        }
+        if let Some(errors) = value {
+            let loc: MacroCallLoc = self.db.lookup_intern_macro_call(macro_call_id);
+            let diag = DefDiagnostic::macro_expansion_parse_error(module_id, loc.kind, &errors);
             self.def_map.diagnostics.push(diag);
         }
 
         // Then, fetch and process the item tree. This will reuse the expansion result from above.
         let item_tree = self.db.file_item_tree(file_id);
-        // FIXME: report parse errors for the macro expansion here
 
         let mod_dir = self.mod_dirs[&module_id].clone();
         ModCollector {
@@ -1396,6 +1400,7 @@ impl DefCollector<'_> {
         for directive in &self.unresolved_macros {
             match &directive.kind {
                 MacroDirectiveKind::FnLike { ast_id, expand_to } => {
+                    // FIXME: we shouldn't need to re-resolve the macro here just to get the unresolved error!
                     let macro_call_as_call_id = macro_call_as_call_id(
                         self.db,
                         ast_id,
@@ -1414,7 +1419,6 @@ impl DefCollector<'_> {
                                 .take_macros()
                                 .map(|it| macro_id_to_def_id(self.db, it))
                         },
-                        &mut |_| (),
                     );
                     if let Err(UnresolvedMacro { path }) = macro_call_as_call_id {
                         self.def_map.diagnostics.push(DefDiagnostic::unresolved_macro_call(
@@ -2112,8 +2116,7 @@ impl ModCollector<'_, '_> {
         let ast_id = AstIdWithPath::new(self.file_id(), mac.ast_id, ModPath::clone(&mac.path));
 
         // Case 1: try to resolve in legacy scope and expand macro_rules
-        let mut error = None;
-        match macro_call_as_call_id(
+        if let Ok(res) = macro_call_as_call_id(
             self.def_collector.db,
             &ast_id,
             mac.expand_to,
@@ -2133,41 +2136,19 @@ impl ModCollector<'_, '_> {
                     )
                 })
             },
-            &mut |err| {
-                error.get_or_insert(err);
-            },
         ) {
-            Ok(Ok(macro_call_id)) => {
-                // Legacy macros need to be expanded immediately, so that any macros they produce
-                // are in scope.
+            // Legacy macros need to be expanded immediately, so that any macros they produce
+            // are in scope.
+            if let Some(val) = res {
                 self.def_collector.collect_macro_expansion(
                     self.module_id,
-                    macro_call_id,
+                    val,
                     self.macro_depth + 1,
                     container,
                 );
-
-                if let Some(err) = error {
-                    self.def_collector.def_map.diagnostics.push(DefDiagnostic::macro_error(
-                        self.module_id,
-                        MacroCallKind::FnLike { ast_id: ast_id.ast_id, expand_to: mac.expand_to },
-                        err.to_string(),
-                    ));
-                }
-
-                return;
             }
-            Ok(Err(_)) => {
-                // Built-in macro failed eager expansion.
 
-                self.def_collector.def_map.diagnostics.push(DefDiagnostic::macro_error(
-                    self.module_id,
-                    MacroCallKind::FnLike { ast_id: ast_id.ast_id, expand_to: mac.expand_to },
-                    error.unwrap().to_string(),
-                ));
-                return;
-            }
-            Err(UnresolvedMacro { .. }) => (),
+            return;
         }
 
         // Case 2: resolve in module scope, expand during name resolution.

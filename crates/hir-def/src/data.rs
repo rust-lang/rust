@@ -7,7 +7,7 @@ use std::sync::Arc;
 use hir_expand::{name::Name, AstId, ExpandResult, HirFileId, InFile, MacroCallId, MacroDefKind};
 use intern::Interned;
 use smallvec::SmallVec;
-use syntax::ast;
+use syntax::{ast, Parse};
 
 use crate::{
     attr::Attrs,
@@ -604,13 +604,10 @@ impl<'a> AssocItemCollector<'a> {
                             continue 'attrs;
                         }
                     }
-                    match self.expander.enter_expand_id::<ast::MacroItems>(self.db, call_id) {
-                        ExpandResult { value: Some((mark, _)), .. } => {
-                            self.collect_macro_items(mark);
-                            continue 'items;
-                        }
-                        ExpandResult { .. } => {}
-                    }
+
+                    let res = self.expander.enter_expand_id::<ast::MacroItems>(self.db, call_id);
+                    self.collect_macro_items(res, &|| loc.kind.clone());
+                    continue 'items;
                 }
             }
 
@@ -641,22 +638,23 @@ impl<'a> AssocItemCollector<'a> {
                     self.items.push((item.name.clone(), def.into()));
                 }
                 AssocItem::MacroCall(call) => {
-                    if let Some(root) =
-                        self.db.parse_or_expand_with_err(self.expander.current_file_id())
-                    {
-                        // FIXME: report parse errors
-                        let root = root.syntax_node();
-
+                    let file_id = self.expander.current_file_id();
+                    let root = self.db.parse_or_expand(file_id);
+                    if let Some(root) = root {
                         let call = &item_tree[call];
 
-                        let ast_id_map = self.db.ast_id_map(self.expander.current_file_id());
-                        let call = ast_id_map.get(call.ast_id).to_node(&root);
-                        let _cx =
-                            stdx::panic_context::enter(format!("collect_items MacroCall: {call}"));
-                        let res = self.expander.enter_expand::<ast::MacroItems>(self.db, call);
-
-                        if let Ok(ExpandResult { value: Some((mark, _)), .. }) = res {
-                            self.collect_macro_items(mark);
+                        let ast_id_map = self.db.ast_id_map(file_id);
+                        let macro_call = ast_id_map.get(call.ast_id).to_node(&root);
+                        let _cx = stdx::panic_context::enter(format!(
+                            "collect_items MacroCall: {macro_call}"
+                        ));
+                        if let Ok(res) =
+                            self.expander.enter_expand::<ast::MacroItems>(self.db, macro_call)
+                        {
+                            self.collect_macro_items(res, &|| hir_expand::MacroCallKind::FnLike {
+                                ast_id: InFile::new(file_id, call.ast_id),
+                                expand_to: hir_expand::ExpandTo::Items,
+                            });
                         }
                     }
                 }
@@ -664,7 +662,28 @@ impl<'a> AssocItemCollector<'a> {
         }
     }
 
-    fn collect_macro_items(&mut self, mark: Mark) {
+    fn collect_macro_items(
+        &mut self,
+        ExpandResult { value, err }: ExpandResult<Option<(Mark, Parse<ast::MacroItems>)>>,
+        error_call_kind: &dyn Fn() -> hir_expand::MacroCallKind,
+    ) {
+        let Some((mark, parse)) = value else { return };
+
+        if let Some(err) = err {
+            self.inactive_diagnostics.push(DefDiagnostic::macro_error(
+                self.module_id.local_id,
+                error_call_kind(),
+                err.to_string(),
+            ));
+        }
+        if let errors @ [_, ..] = parse.errors() {
+            self.inactive_diagnostics.push(DefDiagnostic::macro_expansion_parse_error(
+                self.module_id.local_id,
+                error_call_kind(),
+                errors.into(),
+            ));
+        }
+
         let tree_id = item_tree::TreeId::new(self.expander.current_file_id(), None);
         let item_tree = tree_id.item_tree(self.db);
         let iter: SmallVec<[_; 2]> =

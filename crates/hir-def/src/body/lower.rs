@@ -824,7 +824,11 @@ impl ExprCollector<'_> {
                     self.db.ast_id_map(self.expander.current_file_id),
                 );
 
-                let id = collector(self, Some(expansion));
+                if record_diagnostics {
+                    // FIXME: Report parse errors here
+                }
+
+                let id = collector(self, Some(expansion.tree()));
                 self.ast_id_map = prev_ast_id_map;
                 self.expander.exit(self.db, mark);
                 id

@@ -4,7 +4,10 @@ use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
 use hir_expand::{attrs::AttrId, MacroCallKind};
 use la_arena::Idx;
-use syntax::ast::{self, AnyHasAttrs};
+use syntax::{
+    ast::{self, AnyHasAttrs},
+    SyntaxError,
+};
 
 use crate::{
     item_tree::{self, ItemTreeId},
@@ -28,6 +31,8 @@ pub enum DefDiagnosticKind {
     UnresolvedMacroCall { ast: MacroCallKind, path: ModPath },
 
     MacroError { ast: MacroCallKind, message: String },
+
+    MacroExpansionParseError { ast: MacroCallKind, errors: Box<[SyntaxError]> },
 
     UnimplementedBuiltinMacro { ast: AstId<ast::Macro> },
 
@@ -91,12 +96,26 @@ impl DefDiagnostic {
         Self { in_module: container, kind: DefDiagnosticKind::UnresolvedProcMacro { ast, krate } }
     }
 
-    pub(super) fn macro_error(
+    pub(crate) fn macro_error(
         container: LocalModuleId,
         ast: MacroCallKind,
         message: String,
     ) -> Self {
         Self { in_module: container, kind: DefDiagnosticKind::MacroError { ast, message } }
+    }
+
+    pub(crate) fn macro_expansion_parse_error(
+        container: LocalModuleId,
+        ast: MacroCallKind,
+        errors: &[SyntaxError],
+    ) -> Self {
+        Self {
+            in_module: container,
+            kind: DefDiagnosticKind::MacroExpansionParseError {
+                ast,
+                errors: errors.to_vec().into_boxed_slice(),
+            },
+        }
     }
 
     pub(super) fn unresolved_macro_call(

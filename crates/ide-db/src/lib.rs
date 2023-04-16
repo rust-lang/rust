@@ -152,7 +152,6 @@ impl RootDatabase {
         let lru_capacity = lru_capacity.unwrap_or(base_db::DEFAULT_LRU_CAP);
         base_db::ParseQuery.in_db_mut(self).set_lru_capacity(lru_capacity);
         hir::db::ParseMacroExpansionQuery.in_db_mut(self).set_lru_capacity(lru_capacity);
-        hir::db::MacroExpandQuery.in_db_mut(self).set_lru_capacity(lru_capacity);
     }
 
     pub fn update_lru_capacities(&mut self, lru_capacities: &FxHashMap<Box<str>, usize>) {
@@ -164,12 +163,6 @@ impl RootDatabase {
         hir_db::ParseMacroExpansionQuery.in_db_mut(self).set_lru_capacity(
             lru_capacities
                 .get(stringify!(ParseMacroExpansionQuery))
-                .copied()
-                .unwrap_or(base_db::DEFAULT_LRU_CAP),
-        );
-        hir_db::MacroExpandQuery.in_db_mut(self).set_lru_capacity(
-            lru_capacities
-                .get(stringify!(MacroExpandQuery))
                 .copied()
                 .unwrap_or(base_db::DEFAULT_LRU_CAP),
         );
@@ -201,7 +194,6 @@ impl RootDatabase {
             hir_db::MacroDefQuery
             // hir_db::MacroExpandQuery
             hir_db::ExpandProcMacroQuery
-            hir_db::MacroExpandErrorQuery
             hir_db::HygieneFrameQuery
 
             // DefDatabase

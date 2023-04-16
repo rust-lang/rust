@@ -52,7 +52,7 @@ use crate::{
 
 pub type ExpandResult<T> = ValueResult<T, ExpandError>;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum ExpandError {
     UnresolvedProcMacro(CrateId),
     Mbe(mbe::ExpandError),
@@ -114,7 +114,7 @@ impl_intern_key!(MacroCallId);
 pub struct MacroCallLoc {
     pub def: MacroDefId,
     pub(crate) krate: CrateId,
-    eager: Option<EagerCallInfo>,
+    eager: Option<Box<EagerCallInfo>>,
     pub kind: MacroCallKind,
 }
 
@@ -141,6 +141,7 @@ struct EagerCallInfo {
     /// NOTE: This can be *either* the expansion result, *or* the argument to the eager macro!
     arg_or_expansion: Arc<tt::Subtree>,
     included_file: Option<(FileId, TokenMap)>,
+    error: Option<ExpandError>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -206,8 +207,8 @@ impl HirFileId {
                 HirFileIdRepr::FileId(id) => break id,
                 HirFileIdRepr::MacroFile(MacroFile { macro_call_id }) => {
                     let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_call_id);
-                    file_id = match loc.eager {
-                        Some(EagerCallInfo { included_file: Some((file, _)), .. }) => file.into(),
+                    file_id = match loc.eager.as_deref() {
+                        Some(&EagerCallInfo { included_file: Some((file, _)), .. }) => file.into(),
                         _ => loc.kind.file_id(),
                     };
                 }
@@ -320,7 +321,7 @@ impl HirFileId {
         match self.macro_file() {
             Some(macro_file) => {
                 let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
-                matches!(loc.eager, Some(EagerCallInfo { included_file: Some(..), .. }))
+                matches!(loc.eager.as_deref(), Some(EagerCallInfo { included_file: Some(..), .. }))
             }
             _ => false,
         }

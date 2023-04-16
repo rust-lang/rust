@@ -10,7 +10,7 @@ use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_def::path::ModPath;
 use hir_expand::{name::Name, HirFileId, InFile};
-use syntax::{ast, AstPtr, SyntaxNodePtr, TextRange};
+use syntax::{ast, AstPtr, SyntaxError, SyntaxNodePtr, TextRange};
 
 use crate::{AssocItem, Field, Local, MacroKind, Type};
 
@@ -38,8 +38,9 @@ diagnostics![
     IncorrectCase,
     InvalidDeriveTarget,
     IncoherentImpl,
-    MacroError,
     MacroDefError,
+    MacroError,
+    MacroExpansionParseError,
     MalformedDerive,
     MismatchedArgCount,
     MissingFields,
@@ -130,6 +131,13 @@ pub struct MacroError {
     pub node: InFile<SyntaxNodePtr>,
     pub precise_location: Option<TextRange>,
     pub message: String,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct MacroExpansionParseError {
+    pub node: InFile<SyntaxNodePtr>,
+    pub precise_location: Option<TextRange>,
+    pub errors: Box<[SyntaxError]>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

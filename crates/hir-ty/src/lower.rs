@@ -381,7 +381,8 @@ impl<'a> TyLoweringContext<'a> {
                     match expander.enter_expand::<ast::Type>(self.db.upcast(), macro_call) {
                         Ok(ExpandResult { value: Some((mark, expanded)), .. }) => {
                             let ctx = expander.ctx(self.db.upcast());
-                            let type_ref = TypeRef::from_ast(&ctx, expanded);
+                            // FIXME: Report syntax errors in expansion here
+                            let type_ref = TypeRef::from_ast(&ctx, expanded.tree());
 
                             drop(expander);
                             let ty = self.lower_ty(&type_ref);

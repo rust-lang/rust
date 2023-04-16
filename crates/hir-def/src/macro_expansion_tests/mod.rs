@@ -125,21 +125,15 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
 
     for macro_call in source_file.syntax().descendants().filter_map(ast::MacroCall::cast) {
         let macro_call = InFile::new(source.file_id, &macro_call);
-        let mut error = None;
-        let macro_call_id = macro_call
-            .as_call_id_with_errors(
-                &db,
-                krate,
-                |path| {
-                    resolver.resolve_path_as_macro(&db, &path).map(|it| macro_id_to_def_id(&db, it))
-                },
-                &mut |err| error = Some(err),
-            )
-            .unwrap()
+        let res = macro_call
+            .as_call_id_with_errors(&db, krate, |path| {
+                resolver.resolve_path_as_macro(&db, &path).map(|it| macro_id_to_def_id(&db, it))
+            })
             .unwrap();
+        let macro_call_id = res.value.unwrap();
         let macro_file = MacroFile { macro_call_id };
         let mut expansion_result = db.parse_macro_expansion(macro_file);
-        expansion_result.err = expansion_result.err.or(error);
+        expansion_result.err = expansion_result.err.or(res.err);
         expansions.push((macro_call.value.clone(), expansion_result, db.macro_arg(macro_call_id)));
     }
 

@@ -241,4 +241,20 @@ fn f() {
 "#,
         )
     }
+
+    #[test]
+    fn expansion_syntax_diagnostic() {
+        check_diagnostics(
+            r#"
+macro_rules! foo {
+    () => { struct; };
+}
+
+fn f() {
+    foo!();
+  //^^^ error: Syntax Error in Expansion: expected a name
+}
+"#,
+        )
+    }
 }

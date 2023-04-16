@@ -21,7 +21,7 @@ use limit::Limit;
 use once_cell::unsync::OnceCell;
 use profile::Count;
 use rustc_hash::FxHashMap;
-use syntax::{ast, AstPtr, SyntaxNode, SyntaxNodePtr};
+use syntax::{ast, AstPtr, Parse, SyntaxNode, SyntaxNodePtr};
 
 use crate::{
     attr::Attrs,
@@ -137,7 +137,8 @@ impl Expander {
         &mut self,
         db: &dyn DefDatabase,
         macro_call: ast::MacroCall,
-    ) -> Result<ExpandResult<Option<(Mark, T)>>, UnresolvedMacro> {
+    ) -> Result<ExpandResult<Option<(Mark, Parse<T>)>>, UnresolvedMacro> {
+        // FIXME: within_limit should support this, instead of us having to extract the error
         let mut unresolved_macro_err = None;
 
         let result = self.within_limit(db, |this| {
@@ -146,22 +147,13 @@ impl Expander {
             let resolver =
                 |path| this.resolve_path_as_macro(db, &path).map(|it| macro_id_to_def_id(db, it));
 
-            let mut err = None;
-            let call_id = match macro_call.as_call_id_with_errors(
-                db,
-                this.def_map.krate(),
-                resolver,
-                &mut |e| {
-                    err.get_or_insert(e);
-                },
-            ) {
+            match macro_call.as_call_id_with_errors(db, this.def_map.krate(), resolver) {
                 Ok(call_id) => call_id,
                 Err(resolve_err) => {
                     unresolved_macro_err = Some(resolve_err);
-                    return ExpandResult { value: None, err: None };
+                    ExpandResult { value: None, err: None }
                 }
-            };
-            ExpandResult { value: call_id.ok(), err }
+            }
         });
 
         if let Some(err) = unresolved_macro_err {
@@ -175,37 +167,37 @@ impl Expander {
         &mut self,
         db: &dyn DefDatabase,
         call_id: MacroCallId,
-    ) -> ExpandResult<Option<(Mark, T)>> {
+    ) -> ExpandResult<Option<(Mark, Parse<T>)>> {
         self.within_limit(db, |_this| ExpandResult::ok(Some(call_id)))
     }
 
     fn enter_expand_inner(
         db: &dyn DefDatabase,
         call_id: MacroCallId,
-        mut err: Option<ExpandError>,
-    ) -> ExpandResult<Option<(HirFileId, SyntaxNode)>> {
-        if err.is_none() {
-            err = db.macro_expand_error(call_id);
+        mut error: Option<ExpandError>,
+    ) -> ExpandResult<Option<InFile<Parse<SyntaxNode>>>> {
+        let file_id = call_id.as_file();
+        let ExpandResult { value, err } = db.parse_or_expand_with_err(file_id);
+
+        if error.is_none() {
+            error = err;
         }
 
-        let file_id = call_id.as_file();
-
-        let raw_node = match db.parse_or_expand_with_err(file_id) {
-            // FIXME: report parse errors
-            Some(it) => it.syntax_node(),
+        let parse = match value {
+            Some(it) => it,
             None => {
                 // Only `None` if the macro expansion produced no usable AST.
-                if err.is_none() {
+                if error.is_none() {
                     tracing::warn!("no error despite `parse_or_expand` failing");
                 }
 
-                return ExpandResult::only_err(err.unwrap_or_else(|| {
+                return ExpandResult::only_err(error.unwrap_or_else(|| {
                     ExpandError::Other("failed to parse macro invocation".into())
                 }));
             }
         };
 
-        ExpandResult { value: Some((file_id, raw_node)), err }
+        ExpandResult { value: Some(InFile::new(file_id, parse)), err: error }
     }
 
     pub fn exit(&mut self, db: &dyn DefDatabase, mut mark: Mark) {
@@ -267,7 +259,7 @@ impl Expander {
         &mut self,
         db: &dyn DefDatabase,
         op: F,
-    ) -> ExpandResult<Option<(Mark, T)>>
+    ) -> ExpandResult<Option<(Mark, Parse<T>)>>
     where
         F: FnOnce(&mut Self) -> ExpandResult<Option<MacroCallId>>,
     {
@@ -294,15 +286,15 @@ impl Expander {
         };
 
         Self::enter_expand_inner(db, call_id, err).map(|value| {
-            value.and_then(|(new_file_id, node)| {
-                let node = T::cast(node)?;
+            value.and_then(|InFile { file_id, value }| {
+                let parse = value.cast::<T>()?;
 
                 self.recursion_depth += 1;
-                self.cfg_expander.hygiene = Hygiene::new(db.upcast(), new_file_id);
-                let old_file_id = std::mem::replace(&mut self.current_file_id, new_file_id);
+                self.cfg_expander.hygiene = Hygiene::new(db.upcast(), file_id);
+                let old_file_id = std::mem::replace(&mut self.current_file_id, file_id);
                 let mark =
                     Mark { file_id: old_file_id, bomb: DropBomb::new("expansion mark dropped") };
-                Some((mark, node))
+                Some((mark, parse))
             })
         })
     }
