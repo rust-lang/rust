@@ -14,6 +14,8 @@ use stdx::{format_to, never};
 
 use crate::{ast, utils::is_raw_identifier, AstNode, SourceFile, SyntaxKind, SyntaxToken};
 
+use super::WhereClause;
+
 /// While the parent module defines basic atomic "constructors", the `ext`
 /// module defines shortcuts for common things.
 ///
@@ -156,6 +158,52 @@ pub fn ty_path(path: ast::Path) -> ast::Type {
 }
 fn ty_from_text(text: &str) -> ast::Type {
     ast_from_text(&format!("type _T = {text};"))
+}
+
+/** Related goto [link](https://doc.rust-lang.org/reference/items/type-aliases.html)
+    Type Alias syntax is
+
+    ```
+    TypeAlias :
+       type IDENTIFIER GenericParams? ( : TypeParamBounds )? WhereClause? ( = Type WhereClause?)? ;
+    ```
+
+    FIXME : ident should be of type ast::Ident
+*/
+pub fn ty_alias(
+    ident: String,
+    generic_param_list: Option<ast::GenericParamList>,
+    type_param_bounds: Option<ast::TypeParam>,
+    where_clause: Option<WhereClause>,
+    assignment: Option<(ast::Type, Option<ast::WhereClause>)>,
+) -> ast::TypeAlias {
+    let mut s = String::new();
+    s.push_str(format!("type {}", ident.as_str()).as_str());
+
+    if let Some(list) = generic_param_list {
+        s.push_str(list.to_string().as_str());
+    }
+
+    if let Some(list) = type_param_bounds {
+        s.push_str(format!(" : {}", list.to_string().as_str()).as_str());
+    }
+
+    if let Some(cl) = where_clause {
+        s.push_str(format!(" {}", cl.to_string().as_str()).as_str());
+    }
+
+    if let Some(exp) = assignment {
+        if let Some(cl) = exp.1 {
+            s.push_str(
+                format!("= {} {}", exp.0.to_string().as_str(), cl.to_string().as_str()).as_str(),
+            );
+        } else {
+            s.push_str(format!("= {}", exp.0.to_string().as_str()).as_str());
+        }
+    }
+
+    s.push_str(";");
+    ast_from_text(s.as_str())
 }
 
 pub fn assoc_item_list() -> ast::AssocItemList {
