@@ -11,7 +11,7 @@ use bitflags::bitflags;
 use rustc_data_structures::intern::Interned;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::StableOrd;
-use rustc_index::vec::{Idx, IndexSlice, IndexVec};
+use rustc_index::vec::{IndexSlice, IndexVec};
 #[cfg(feature = "nightly")]
 use rustc_macros::HashStable_Generic;
 #[cfg(feature = "nightly")]

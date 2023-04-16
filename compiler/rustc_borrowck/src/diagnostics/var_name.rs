@@ -3,7 +3,7 @@
 
 use crate::region_infer::RegionInferenceContext;
 use crate::Upvar;
-use rustc_index::vec::{Idx, IndexSlice};
+use rustc_index::vec::IndexSlice;
 use rustc_middle::mir::{Body, Local};
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_span::source_map::Span;
@@ -117,7 +117,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         argument_index: usize,
     ) -> (Option<Symbol>, Span) {
         let implicit_inputs = self.universal_regions().defining_ty.implicit_inputs();
-        let argument_local = Local::new(implicit_inputs + argument_index + 1);
+        let argument_local = Local::from_usize(implicit_inputs + argument_index + 1);
         debug!("get_argument_name_and_span_for_region: argument_local={argument_local:?}");
 
         let argument_name = local_names[argument_local];
