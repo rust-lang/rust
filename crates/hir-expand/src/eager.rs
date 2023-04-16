@@ -187,7 +187,10 @@ fn lazy_expand(
     );
 
     let err = db.macro_expand_error(id);
-    let value = db.parse_or_expand(id.as_file()).map(|node| InFile::new(id.as_file(), node));
+    let value =
+        db.parse_or_expand_with_err(id.as_file()).map(|node| InFile::new(id.as_file(), node));
+    // FIXME: report parse errors
+    let value = value.map(|it| it.map(|it| it.syntax_node()));
 
     ExpandResult { value, err }
 }

@@ -39,6 +39,7 @@ diagnostics![
     InvalidDeriveTarget,
     IncoherentImpl,
     MacroError,
+    MacroDefError,
     MalformedDerive,
     MismatchedArgCount,
     MissingFields,
@@ -129,6 +130,13 @@ pub struct MacroError {
     pub node: InFile<SyntaxNodePtr>,
     pub precise_location: Option<TextRange>,
     pub message: String,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct MacroDefError {
+    pub node: InFile<AstPtr<ast::Macro>>,
+    pub message: String,
+    pub name: Option<TextRange>,
 }
 
 #[derive(Debug)]

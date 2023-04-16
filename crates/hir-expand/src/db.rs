@@ -99,6 +99,8 @@ pub trait ExpandDatabase: SourceDatabase {
     /// file or a macro expansion.
     #[salsa::transparent]
     fn parse_or_expand(&self, file_id: HirFileId) -> Option<SyntaxNode>;
+    #[salsa::transparent]
+    fn parse_or_expand_with_err(&self, file_id: HirFileId) -> Option<Parse<SyntaxNode>>;
     /// Implementation for the macro case.
     fn parse_macro_expansion(
         &self,
@@ -252,9 +254,19 @@ fn parse_or_expand(db: &dyn ExpandDatabase, file_id: HirFileId) -> Option<Syntax
     match file_id.repr() {
         HirFileIdRepr::FileId(file_id) => Some(db.parse(file_id).tree().syntax().clone()),
         HirFileIdRepr::MacroFile(macro_file) => {
-            // FIXME: Note how we convert from `Parse` to `SyntaxNode` here,
-            // forgetting about parse errors.
             db.parse_macro_expansion(macro_file).value.map(|(it, _)| it.syntax_node())
+        }
+    }
+}
+
+fn parse_or_expand_with_err(
+    db: &dyn ExpandDatabase,
+    file_id: HirFileId,
+) -> Option<Parse<SyntaxNode>> {
+    match file_id.repr() {
+        HirFileIdRepr::FileId(file_id) => Some(db.parse(file_id).to_syntax()),
+        HirFileIdRepr::MacroFile(macro_file) => {
+            db.parse_macro_expansion(macro_file).value.map(|(parse, _)| parse)
         }
     }
 }

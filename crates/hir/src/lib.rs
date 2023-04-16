@@ -46,6 +46,7 @@ use hir_def::{
     item_tree::ItemTreeNode,
     lang_item::{LangItem, LangItemTarget},
     layout::ReprOptions,
+    macro_id_to_def_id,
     nameres::{self, diagnostics::DefDiagnostic, ModuleOrigin},
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
@@ -86,12 +87,12 @@ pub use crate::{
     attrs::{HasAttrs, Namespace},
     diagnostics::{
         AnyDiagnostic, BreakOutsideOfLoop, ExpectedFunction, InactiveCode, IncoherentImpl,
-        IncorrectCase, InvalidDeriveTarget, MacroError, MalformedDerive, MismatchedArgCount,
-        MissingFields, MissingMatchArms, MissingUnsafe, NeedMut, NoSuchField, PrivateAssocItem,
-        PrivateField, ReplaceFilterMapNextWithFindMap, TypeMismatch, UndeclaredLabel,
-        UnimplementedBuiltinMacro, UnreachableLabel, UnresolvedExternCrate, UnresolvedField,
-        UnresolvedImport, UnresolvedMacroCall, UnresolvedMethodCall, UnresolvedModule,
-        UnresolvedProcMacro, UnusedMut,
+        IncorrectCase, InvalidDeriveTarget, MacroDefError, MacroError, MalformedDerive,
+        MismatchedArgCount, MissingFields, MissingMatchArms, MissingUnsafe, NeedMut, NoSuchField,
+        PrivateAssocItem, PrivateField, ReplaceFilterMapNextWithFindMap, TypeMismatch,
+        UndeclaredLabel, UnimplementedBuiltinMacro, UnreachableLabel, UnresolvedExternCrate,
+        UnresolvedField, UnresolvedImport, UnresolvedMacroCall, UnresolvedMethodCall,
+        UnresolvedModule, UnresolvedProcMacro, UnusedMut,
     },
     has_source::HasSource,
     semantics::{PathResolution, Semantics, SemanticsScope, TypeInfo, VisibleTraits},
@@ -563,6 +564,7 @@ impl Module {
             }
             emit_def_diagnostic(db, acc, diag);
         }
+
         for decl in self.declarations(db) {
             match decl {
                 ModuleDef::Module(m) => {
@@ -601,9 +603,11 @@ impl Module {
                     }
                     acc.extend(decl.diagnostics(db))
                 }
+                ModuleDef::Macro(m) => emit_macro_def_diagnostics(db, acc, m),
                 _ => acc.extend(decl.diagnostics(db)),
             }
         }
+        self.legacy_macros(db).into_iter().for_each(|m| emit_macro_def_diagnostics(db, acc, m));
 
         let inherent_impls = db.inherent_impls_in_crate(self.id.krate());
 
@@ -685,8 +689,31 @@ impl Module {
     }
 }
 
+fn emit_macro_def_diagnostics(db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>, m: Macro) {
+    let id = macro_id_to_def_id(db.upcast(), m.id);
+    if let Err(e) = db.macro_def(id) {
+        let Some(ast) = id.ast_id().left() else {
+                never!("MacroDefError for proc-macro: {:?}", e);
+                return;
+            };
+        emit_def_diagnostic_(
+            db,
+            acc,
+            &DefDiagnosticKind::MacroDefError { ast, message: e.to_string() },
+        );
+    }
+}
+
 fn emit_def_diagnostic(db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>, diag: &DefDiagnostic) {
-    match &diag.kind {
+    emit_def_diagnostic_(db, acc, &diag.kind)
+}
+
+fn emit_def_diagnostic_(
+    db: &dyn HirDatabase,
+    acc: &mut Vec<AnyDiagnostic>,
+    diag: &DefDiagnosticKind,
+) {
+    match diag {
         DefDiagnosticKind::UnresolvedModule { ast: declaration, candidates } => {
             let decl = declaration.to_node(db.upcast());
             acc.push(
@@ -793,6 +820,17 @@ fn emit_def_diagnostic(db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>, diag:
                 }
                 None => stdx::never!("derive diagnostic on item without derive attribute"),
             }
+        }
+        DefDiagnosticKind::MacroDefError { ast, message } => {
+            let node = ast.to_node(db.upcast());
+            acc.push(
+                MacroDefError {
+                    node: InFile::new(ast.file_id, AstPtr::new(&node)),
+                    name: node.name().map(|it| it.syntax().text_range()),
+                    message: message.clone(),
+                }
+                .into(),
+            );
         }
     }
 }

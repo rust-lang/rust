@@ -641,7 +641,12 @@ impl<'a> AssocItemCollector<'a> {
                     self.items.push((item.name.clone(), def.into()));
                 }
                 AssocItem::MacroCall(call) => {
-                    if let Some(root) = self.db.parse_or_expand(self.expander.current_file_id()) {
+                    if let Some(root) =
+                        self.db.parse_or_expand_with_err(self.expander.current_file_id())
+                    {
+                        // FIXME: report parse errors
+                        let root = root.syntax_node();
+
                         let call = &item_tree[call];
 
                         let ast_id_map = self.db.ast_id_map(self.expander.current_file_id());
