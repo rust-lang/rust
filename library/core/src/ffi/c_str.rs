@@ -536,7 +536,8 @@ impl CStr {
     pub const fn is_empty(&self) -> bool {
         // SAFETY: We know there is at least one byte; for empty strings it
         // is the NUL terminator.
-        (unsafe { self.inner.get_unchecked(0) }) == &0
+        // FIXME(const-hack): use get_unchecked
+        unsafe { *self.inner.as_ptr() == 0 }
     }
 
     /// Converts this C string to a byte slice.
