@@ -437,16 +437,17 @@ class RustBuild(object):
                 os.makedirs(rustc_cache)
 
             tarball_suffix = '.tar.gz' if lzma is None else '.tar.xz'
-            filename = "rust-std-{}-{}{}".format(
-                rustc_channel, self.build, tarball_suffix)
-            pattern = "rust-std-{}".format(self.build)
-            self._download_component_helper(filename, pattern, tarball_suffix, rustc_cache)
-            filename = "rustc-{}-{}{}".format(rustc_channel, self.build,
-                                              tarball_suffix)
-            self._download_component_helper(filename, "rustc", tarball_suffix, rustc_cache)
-            filename = "cargo-{}-{}{}".format(rustc_channel, self.build,
-                                            tarball_suffix)
-            self._download_component_helper(filename, "cargo", tarball_suffix, rustc_cache)
+
+            tarballs_to_download = [
+                ("rust-std-{}-{}{}".format(rustc_channel, self.build, tarball_suffix),
+                    "rust-std-{}".format(self.build)),
+                ("rustc-{}-{}{}".format(rustc_channel, self.build, tarball_suffix), "rustc"),
+                ("cargo-{}-{}{}".format(rustc_channel, self.build, tarball_suffix), "cargo"),
+            ]
+
+            for filename, pattern in tarballs_to_download:
+                self._download_component_helper(filename, pattern, tarball_suffix, rustc_cache)
+
             if self.should_fix_bins_and_dylibs():
                 self.fix_bin_or_dylib("{}/bin/cargo".format(bin_root))
 
