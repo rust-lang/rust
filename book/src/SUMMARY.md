@@ -14,6 +14,7 @@
     - [Basics](development/basics.md)
     - [Adding Lints](development/adding_lints.md)
     - [Type Checking](development/type_checking.md)
+    - [Macro Expansions](development/macro_expansions.md)
     - [Common Tools](development/common_tools_writing_lints.md)
     - [Infrastructure](development/infrastructure/README.md)
         - [Syncing changes between Clippy and rust-lang/rust](development/infrastructure/sync.md)
