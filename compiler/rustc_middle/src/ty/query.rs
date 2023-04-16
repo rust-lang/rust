@@ -202,16 +202,6 @@ macro_rules! separate_provide_extern_default {
     };
 }
 
-macro_rules! opt_remap_env_constness {
-    ([][$name:ident]) => {};
-    ([(remap_env_constness) $($rest:tt)*][$name:ident]) => {
-        let $name = $name.without_const();
-    };
-    ([$other:tt $($modifiers:tt)*][$name:ident]) => {
-        opt_remap_env_constness!([$($modifiers)*][$name])
-    };
-}
-
 macro_rules! define_callbacks {
     (
      $($(#[$attr:meta])*
@@ -353,7 +343,6 @@ macro_rules! define_callbacks {
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
                 let key = key.into_query_param();
-                opt_remap_env_constness!([$($modifiers)*][key]);
 
                 match try_get_cached(self.tcx, &self.tcx.query_system.caches.$name, &key) {
                     Some(_) => return,
@@ -372,7 +361,6 @@ macro_rules! define_callbacks {
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
                 let key = key.into_query_param();
-                opt_remap_env_constness!([$($modifiers)*][key]);
 
                 match try_get_cached(self.tcx, &self.tcx.query_system.caches.$name, &key) {
                     Some(_) => return,
@@ -402,7 +390,6 @@ macro_rules! define_callbacks {
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V
             {
                 let key = key.into_query_param();
-                opt_remap_env_constness!([$($modifiers)*][key]);
 
                 restore::<$V>(match try_get_cached(self.tcx, &self.tcx.query_system.caches.$name, &key) {
                     Some(value) => value,
@@ -492,7 +479,6 @@ macro_rules! define_feedable {
             #[inline(always)]
             pub fn $name(self, value: query_provided::$name<'tcx>) -> $V {
                 let key = self.key().into_query_param();
-                opt_remap_env_constness!([$($modifiers)*][key]);
 
                 let tcx = self.tcx;
                 let erased = query_provided_to_value::$name(tcx, value);

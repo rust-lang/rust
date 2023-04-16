@@ -89,6 +89,7 @@ fn relate_mir_and_user_substs<'tcx>(
     def_id: hir::def_id::DefId,
     user_substs: UserSubsts<'tcx>,
 ) -> Result<(), NoSolution> {
+    let param_env = param_env.without_const();
     let UserSubsts { user_self_ty, substs } = user_substs;
     let tcx = ocx.infcx.tcx;
     let cause = ObligationCause::dummy_with_span(span);
