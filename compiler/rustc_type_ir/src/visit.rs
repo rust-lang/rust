@@ -13,8 +13,11 @@
 //!   - Types of interest, for which the methods delegate to the visitor.
 //!   - All other types, including generic containers like `Vec` and `Option`.
 //!     It defines a "skeleton" of how they should be visited.
-//! - `TypeSuperVisitable`. This is implemented only for each type of interest,
-//!   and defines the visiting "skeleton" for these types.
+//! - `TypeSuperVisitable`. This is implemented only for recursive types of
+//!   interest, and defines the visiting "skeleton" for these types. (This
+//!   excludes `Region` because it is non-recursive, i.e. it never contains
+//!   other types of interest.)
+//!
 //! - `TypeVisitor`. This is implemented for each visitor. This defines how
 //!   types of interest are visited.
 //!
@@ -62,12 +65,13 @@ pub trait TypeVisitable<I: Interner>: fmt::Debug + Clone {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy>;
 }
 
+// This trait is implemented for types of interest.
 pub trait TypeSuperVisitable<I: Interner>: TypeVisitable<I> {
-    /// Provides a default visit for a type of interest. This should only be
-    /// called within `TypeVisitor` methods, when a non-custom traversal is
-    /// desired for the value of the type of interest passed to that method.
-    /// For example, in `MyVisitor::visit_ty(ty)`, it is valid to call
-    /// `ty.super_visit_with(self)`, but any other visiting should be done
+    /// Provides a default visit for a recursive type of interest. This should
+    /// only be called within `TypeVisitor` methods, when a non-custom
+    /// traversal is desired for the value of the type of interest passed to
+    /// that method. For example, in `MyVisitor::visit_ty(ty)`, it is valid to
+    /// call `ty.super_visit_with(self)`, but any other visiting should be done
     /// with `xyz.visit_with(self)`.
     fn super_visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy>;
 }
@@ -92,11 +96,11 @@ pub trait TypeVisitor<I: Interner>: Sized {
         t.super_visit_with(self)
     }
 
-    fn visit_region(&mut self, r: I::Region) -> ControlFlow<Self::BreakTy>
-    where
-        I::Region: TypeSuperVisitable<I>,
-    {
-        r.super_visit_with(self)
+    // The default region visitor is a no-op because `Region` is non-recursive
+    // and has no `super_visit_with` method to call. That also explains the
+    // lack of `I::Region: TypeSuperVisitable<I>` bound.
+    fn visit_region(&mut self, _r: I::Region) -> ControlFlow<Self::BreakTy> {
+        ControlFlow::Continue(())
     }
 
     fn visit_const(&mut self, c: I::Const) -> ControlFlow<Self::BreakTy>

@@ -2518,7 +2518,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                     self.used_region_names.insert(name);
                 }
 
-                r.super_visit_with(self)
+                ControlFlow::Continue(())
             }
 
             // We collect types in order to prevent really large types from compiling for
