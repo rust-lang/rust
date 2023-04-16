@@ -242,7 +242,9 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         let &(container, ref indices) =
             data.get(expr.hir_id).expect("no offset_of_data for offset_of");
 
-        let mut last_did = expr.hir_id.owner.to_def_id();
+        let body_did = self.typeck_results().hir_owner.to_def_id();
+        let param_env = self.tcx.param_env(body_did);
+
         let mut current_ty = container;
 
         for &index in indices {
@@ -253,15 +255,14 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     self.insert_def_id(field.did);
                     let field_ty = field.ty(self.tcx, subst);
 
-                    last_did = field.did;
                     current_ty =
-                        self.tcx.normalize_erasing_regions(self.tcx.param_env(field.did), field_ty);
+                        self.tcx.normalize_erasing_regions(param_env, field_ty);
                 }
                 // we don't need to mark tuple fields as live,
                 // but we may need to mark subfields
                 ty::Tuple(tys) => {
                     current_ty = self.tcx.normalize_erasing_regions(
-                        self.tcx.param_env(last_did),
+                        param_env,
                         tys[index.as_usize()],
                     );
                 }
