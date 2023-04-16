@@ -1745,10 +1745,10 @@ impl CheckAttrVisitor<'_> {
                         | Target::Union
                         | Target::Enum
                         | Target::Fn
-                        | Target::Method(MethodKind::Inherent) => continue,
+                        | Target::Method(_) => continue,
                         _ => {
                             self.tcx.sess.emit_err(
-                                errors::AttrApplication::StructEnumFunctionInherentMethodUnion {
+                                errors::AttrApplication::StructEnumFunctionMethodUnion {
                                     hint_span: hint.span(),
                                     span,
                                 },
