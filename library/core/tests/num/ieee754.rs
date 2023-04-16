@@ -39,7 +39,6 @@ macro_rules! assert_biteq {
 
 // ToString uses the default fmt::Display impl without special concerns, and bypasses other parts
 // of the formatting infrastructure, which makes it ideal for testing here.
-#[allow(unused_macros)]
 macro_rules! roundtrip {
     ($f:expr => $t:ty) => {
         ($f).to_string().parse::<$t>().unwrap()
