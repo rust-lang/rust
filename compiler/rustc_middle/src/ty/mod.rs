@@ -1850,12 +1850,6 @@ impl<'tcx, T> ParamEnvAnd<'tcx, T> {
     pub fn into_parts(self) -> (ParamEnv<'tcx>, T) {
         (self.param_env, self.value)
     }
-
-    #[inline]
-    pub fn without_const(mut self) -> Self {
-        self.param_env = self.param_env.without_const();
-        self
-    }
 }
 
 #[derive(Copy, Clone, Debug, HashStable, Encodable, Decodable)]

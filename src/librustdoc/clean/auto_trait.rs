@@ -1,7 +1,7 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
-use rustc_middle::ty::{self, Region, RegionVid, TypeFoldable, TypeSuperFoldable};
+use rustc_middle::ty::{self, Region, RegionVid, TypeFoldable};
 use rustc_trait_selection::traits::auto_trait::{self, AutoTraitResult};
 use thin_vec::ThinVec;
 
@@ -740,10 +740,9 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for RegionReplacer<'a, 'tcx> {
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        (match *r {
-            ty::ReVar(vid) => self.vid_to_region.get(&vid).cloned(),
-            _ => None,
-        })
-        .unwrap_or_else(|| r.super_fold_with(self))
+        match *r {
+            ty::ReVar(vid) => self.vid_to_region.get(&vid).cloned().unwrap_or(r),
+            _ => r,
+        }
     }
 }

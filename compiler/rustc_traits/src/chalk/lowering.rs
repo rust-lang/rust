@@ -998,7 +998,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for BoundVarsCollector<'tcx> {
             _ => (),
         };
 
-        r.super_visit_with(self)
+        ControlFlow::Continue(())
     }
 }
 
@@ -1048,7 +1048,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for NamedBoundVarSubstitutor<'a, 'tcx> {
             _ => (),
         };
 
-        r.super_fold_with(self)
+        r
     }
 }
 
@@ -1142,7 +1142,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ParamsSubstitutor<'tcx> {
                 }
             },
 
-            _ => r.super_fold_with(self),
+            _ => r,
         }
     }
 }
@@ -1223,6 +1223,6 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for PlaceholdersCollector {
             _ => (),
         };
 
-        r.super_visit_with(self)
+        ControlFlow::Continue(())
     }
 }

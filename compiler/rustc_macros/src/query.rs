@@ -112,9 +112,6 @@ struct QueryModifiers {
     /// Use a separate query provider for local and extern crates
     separate_provide_extern: Option<Ident>,
 
-    /// Always remap the ParamEnv's constness before hashing.
-    remap_env_constness: Option<Ident>,
-
     /// Generate a `feed` method to set the query's value from another query.
     feedable: Option<Ident>,
 }
@@ -130,7 +127,6 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
     let mut eval_always = None;
     let mut depth_limit = None;
     let mut separate_provide_extern = None;
-    let mut remap_env_constness = None;
     let mut feedable = None;
 
     while !input.is_empty() {
@@ -189,8 +185,6 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
             try_insert!(depth_limit = modifier);
         } else if modifier == "separate_provide_extern" {
             try_insert!(separate_provide_extern = modifier);
-        } else if modifier == "remap_env_constness" {
-            try_insert!(remap_env_constness = modifier);
         } else if modifier == "feedable" {
             try_insert!(feedable = modifier);
         } else {
@@ -211,7 +205,6 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
         eval_always,
         depth_limit,
         separate_provide_extern,
-        remap_env_constness,
         feedable,
     })
 }
@@ -332,7 +325,6 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             eval_always,
             depth_limit,
             separate_provide_extern,
-            remap_env_constness,
         );
 
         if modifiers.cache.is_some() {
