@@ -16,8 +16,10 @@
 //!   - Types of interest, for which the methods delegate to the folder.
 //!   - All other types, including generic containers like `Vec` and `Option`.
 //!     It defines a "skeleton" of how they should be folded.
-//! - `TypeSuperFoldable`. This is implemented only for each type of interest,
-//!   and defines the folding "skeleton" for these types.
+//! - `TypeSuperFoldable`. This is implemented only for recursive types of
+//!   interest, and defines the folding "skeleton" for these types. (This
+//!   excludes `Region` because it is non-recursive, i.e. it never contains
+//!   other types of interest.)
 //! - `TypeFolder`/`FallibleTypeFolder`. One of these is implemented for each
 //!   folder. This defines how types of interest are folded.
 //!
@@ -72,9 +74,9 @@ pub trait TypeFoldable<I: Interner>: TypeVisitable<I> {
 
 // This trait is implemented for types of interest.
 pub trait TypeSuperFoldable<I: Interner>: TypeFoldable<I> {
-    /// Provides a default fold for a type of interest. This should only be
-    /// called within `TypeFolder` methods, when a non-custom traversal is
-    /// desired for the value of the type of interest passed to that method.
+    /// Provides a default fold for a recursive type of interest. This should
+    /// only be called within `TypeFolder` methods, when a non-custom traversal
+    /// is desired for the value of the type of interest passed to that method.
     /// For example, in `MyFolder::try_fold_ty(ty)`, it is valid to call
     /// `ty.try_super_fold_with(self)`, but any other folding should be done
     /// with `xyz.try_fold_with(self)`.
@@ -118,11 +120,11 @@ pub trait TypeFolder<I: Interner>: FallibleTypeFolder<I, Error = !> {
         t.super_fold_with(self)
     }
 
-    fn fold_region(&mut self, r: I::Region) -> I::Region
-    where
-        I::Region: TypeSuperFoldable<I>,
-    {
-        r.super_fold_with(self)
+    // The default region folder is a no-op because `Region` is non-recursive
+    // and has no `super_visit_with` method to call. That also explains the
+    // lack of `I::Region: TypeSuperFoldable<I>` bound on this method.
+    fn fold_region(&mut self, r: I::Region) -> I::Region {
+        r
     }
 
     fn fold_const(&mut self, c: I::Const) -> I::Const
@@ -167,11 +169,11 @@ pub trait FallibleTypeFolder<I: Interner>: Sized {
         t.try_super_fold_with(self)
     }
 
-    fn try_fold_region(&mut self, r: I::Region) -> Result<I::Region, Self::Error>
-    where
-        I::Region: TypeSuperFoldable<I>,
-    {
-        r.try_super_fold_with(self)
+    // The default region folder is a no-op because `Region` is non-recursive
+    // and has no `super_visit_with` method to call. That also explains the
+    // lack of `I::Region: TypeSuperFoldable<I>` bound on this method.
+    fn try_fold_region(&mut self, r: I::Region) -> Result<I::Region, Self::Error> {
+        Ok(r)
     }
 
     fn try_fold_const(&mut self, c: I::Const) -> Result<I::Const, Self::Error>
@@ -216,10 +218,7 @@ where
         Ok(self.fold_ty(t))
     }
 
-    fn try_fold_region(&mut self, r: I::Region) -> Result<I::Region, !>
-    where
-        I::Region: TypeSuperFoldable<I>,
-    {
+    fn try_fold_region(&mut self, r: I::Region) -> Result<I::Region, !> {
         Ok(self.fold_region(r))
     }
 

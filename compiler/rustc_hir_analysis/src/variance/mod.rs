@@ -105,7 +105,7 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
             if let ty::RegionKind::ReEarlyBound(ebr) = r.kind() {
                 self.variances[ebr.index as usize] = ty::Invariant;
             }
-            r.super_visit_with(self)
+            ControlFlow::Continue(())
         }
 
         #[instrument(level = "trace", skip(self), ret)]
