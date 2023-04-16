@@ -1986,8 +1986,9 @@ impl Interner {
         name
     }
 
-    // Get the symbol as a string. `Symbol::as_str()` should be used in
-    // preference to this function.
+    /// Get the symbol as a string.
+    ///
+    /// [`Symbol::as_str()`] should be used in preference to this function.
     fn get(&self, symbol: Symbol) -> &str {
         self.0.lock().strings[symbol.0.as_usize()]
     }
