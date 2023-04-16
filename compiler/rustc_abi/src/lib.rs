@@ -665,15 +665,12 @@ impl Align {
             format!("`{}` is too large", align)
         }
 
-        let mut bytes = align;
-        let mut pow2: u8 = 0;
-        while (bytes & 1) == 0 {
-            pow2 += 1;
-            bytes >>= 1;
-        }
-        if bytes != 1 {
+        let tz = align.trailing_zeros();
+        if align != (1 << tz) {
             return Err(not_power_of_2(align));
         }
+
+        let pow2 = tz as u8;
         if pow2 > Self::MAX.pow2 {
             return Err(too_large(align));
         }
