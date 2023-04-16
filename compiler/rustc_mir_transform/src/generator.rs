@@ -717,6 +717,7 @@ impl GeneratorSavedLocals {
                 out.insert(saved_local);
             }
         }
+
         out
     }
 
