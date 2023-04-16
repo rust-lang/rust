@@ -15,8 +15,8 @@ use rustc_span::{sym, BytePos, Span};
 use rustc_target::abi::FieldIdx;
 
 use crate::diagnostics::BorrowedContentSource;
+use crate::util::FindAssignments;
 use crate::MirBorrowckCtxt;
-use rustc_const_eval::util::collect_writes::FindAssignments;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(crate) enum AccessKind {

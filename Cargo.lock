@@ -4421,7 +4421,6 @@ dependencies = [
  "either",
  "itertools",
  "polonius-engine",
- "rustc_const_eval",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_graphviz",
