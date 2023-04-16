@@ -5,11 +5,9 @@ use std::sync::Arc;
 
 use base_db::{impl_intern_key, salsa, CrateId, Upcast};
 use hir_def::{
-    db::DefDatabase,
-    hir::ExprId,
-    layout::{Layout, LayoutError, TargetDataLayout},
-    AdtId, BlockId, ConstId, ConstParamId, DefWithBodyId, EnumVariantId, FunctionId, GenericDefId,
-    ImplId, LifetimeParamId, LocalFieldId, TypeOrConstParamId, VariantId,
+    db::DefDatabase, hir::ExprId, layout::TargetDataLayout, AdtId, BlockId, ConstId, ConstParamId,
+    DefWithBodyId, EnumVariantId, FunctionId, GenericDefId, ImplId, LifetimeParamId, LocalFieldId,
+    TypeOrConstParamId, VariantId,
 };
 use la_arena::ArenaMap;
 use smallvec::SmallVec;
@@ -17,6 +15,7 @@ use smallvec::SmallVec;
 use crate::{
     chalk_db,
     consteval::ConstEvalError,
+    layout::{Layout, LayoutError},
     method_resolution::{InherentImpls, TraitImpls, TyFingerprint},
     mir::{BorrowckResult, MirBody, MirLowerError},
     Binders, CallableDefId, ClosureId, Const, FnDefId, GenericArg, ImplTraitId, InferenceResult,

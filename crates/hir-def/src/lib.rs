@@ -29,7 +29,6 @@ pub mod item_tree;
 pub mod data;
 pub mod generics;
 pub mod lang_item;
-pub mod layout;
 
 pub mod hir;
 pub use self::hir::type_ref;
@@ -45,6 +44,8 @@ pub mod child_by_source;
 pub mod visibility;
 pub mod find_path;
 pub mod import_map;
+
+pub use rustc_abi as layout;
 
 #[cfg(test)]
 mod test_db;

@@ -13,7 +13,7 @@ use hir_expand::{
 };
 use intern::Interned;
 use la_arena::{Arena, ArenaMap};
-use rustc_abi::{Integer, IntegerType};
+use rustc_abi::{Align, Integer, IntegerType, ReprFlags, ReprOptions};
 use syntax::ast::{self, HasName, HasVisibility};
 
 use crate::{
@@ -22,7 +22,6 @@ use crate::{
     db::DefDatabase,
     item_tree::{AttrOwner, Field, FieldAstId, Fields, ItemTree, ModItem, RawVisibilityId},
     lang_item::LangItem,
-    layout::{Align, ReprFlags, ReprOptions},
     nameres::diagnostics::DefDiagnostic,
     src::HasChildSource,
     src::HasSource,

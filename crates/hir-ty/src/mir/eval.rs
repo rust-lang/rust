@@ -10,7 +10,7 @@ use chalk_ir::{
 use hir_def::{
     builtin_type::BuiltinType,
     lang_item::{lang_attr, LangItem},
-    layout::{Layout, LayoutError, RustcEnumVariantIdx, TagEncoding, Variants},
+    layout::{TagEncoding, Variants},
     AdtId, DefWithBodyId, EnumVariantId, FunctionId, HasModule, ItemContainerId, Lookup, VariantId,
 };
 use intern::Interned;
@@ -21,7 +21,7 @@ use crate::{
     db::HirDatabase,
     from_placeholder_idx,
     infer::{normalize, PointerCast},
-    layout::layout_of_ty,
+    layout::{layout_of_ty, Layout, LayoutError, RustcEnumVariantIdx},
     mapping::from_chalk,
     method_resolution::{is_dyn_method, lookup_impl_method},
     traits::FnTrait,

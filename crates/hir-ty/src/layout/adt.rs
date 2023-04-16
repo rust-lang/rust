@@ -1,16 +1,21 @@
 //! Compute the binary representation of structs, unions and enums
 
-use std::ops::Bound;
+use std::{cmp, ops::Bound};
 
 use hir_def::{
     data::adt::VariantData,
-    layout::{Integer, IntegerExt, Layout, LayoutCalculator, LayoutError, RustcEnumVariantIdx},
+    layout::{Integer, LayoutCalculator, ReprOptions, TargetDataLayout},
     AdtId, EnumVariantId, HasModule, LocalEnumVariantId, VariantId,
 };
 use la_arena::RawIdx;
 use smallvec::SmallVec;
 
-use crate::{db::HirDatabase, lang_items::is_unsafe_cell, layout::field_ty, Substitution};
+use crate::{
+    db::HirDatabase,
+    lang_items::is_unsafe_cell,
+    layout::{field_ty, Layout, LayoutError, RustcEnumVariantIdx},
+    Substitution,
+};
 
 use super::{layout_of_ty, LayoutCx};
 
@@ -73,7 +78,7 @@ pub fn layout_of_adt_query(
             is_enum,
             is_unsafe_cell(db, def),
             layout_scalar_valid_range(db, def),
-            |min, max| Integer::repr_discr(&dl, &repr, min, max).unwrap_or((Integer::I8, false)),
+            |min, max| repr_discr(&dl, &repr, min, max).unwrap_or((Integer::I8, false)),
             variants.iter_enumerated().filter_map(|(id, _)| {
                 let AdtId::EnumId(e) = def else { return None };
                 let d =
@@ -124,4 +129,51 @@ pub fn layout_of_adt_recover(
     _: &Substitution,
 ) -> Result<Layout, LayoutError> {
     user_error!("infinite sized recursive type");
+}
+
+/// Finds the appropriate Integer type and signedness for the given
+/// signed discriminant range and `#[repr]` attribute.
+/// N.B.: `u128` values above `i128::MAX` will be treated as signed, but
+/// that shouldn't affect anything, other than maybe debuginfo.
+fn repr_discr(
+    dl: &TargetDataLayout,
+    repr: &ReprOptions,
+    min: i128,
+    max: i128,
+) -> Result<(Integer, bool), LayoutError> {
+    // Theoretically, negative values could be larger in unsigned representation
+    // than the unsigned representation of the signed minimum. However, if there
+    // are any negative values, the only valid unsigned representation is u128
+    // which can fit all i128 values, so the result remains unaffected.
+    let unsigned_fit = Integer::fit_unsigned(cmp::max(min as u128, max as u128));
+    let signed_fit = cmp::max(Integer::fit_signed(min), Integer::fit_signed(max));
+
+    if let Some(ity) = repr.int {
+        let discr = Integer::from_attr(dl, ity);
+        let fit = if ity.is_signed() { signed_fit } else { unsigned_fit };
+        if discr < fit {
+            return Err(LayoutError::UserError(
+                "Integer::repr_discr: `#[repr]` hint too small for \
+                      discriminant range of enum "
+                    .to_string(),
+            ));
+        }
+        return Ok((discr, ity.is_signed()));
+    }
+
+    let at_least = if repr.c() {
+        // This is usually I32, however it can be different on some platforms,
+        // notably hexagon and arm-none/thumb-none
+        dl.c_enum_min_size
+    } else {
+        // repr(Rust) enums try to be as small as possible
+        Integer::I8
+    };
+
+    // If there are no negative values, we can use the unsigned fit.
+    Ok(if min >= 0 {
+        (cmp::max(unsigned_fit, at_least), false)
+    } else {
+        (cmp::max(signed_fit, at_least), true)
+    })
 }
