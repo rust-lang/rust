@@ -1371,7 +1371,7 @@ impl DefCollector<'_> {
 
             self.def_map.diagnostics.push(diag);
         }
-        if let Some(errors) = value {
+        if let errors @ [_, ..] = &*value {
             let loc: MacroCallLoc = self.db.lookup_intern_macro_call(macro_call_id);
             let diag = DefDiagnostic::macro_expansion_parse_error(module_id, loc.kind, &errors);
             self.def_map.diagnostics.push(diag);

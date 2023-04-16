@@ -257,8 +257,8 @@ impl HirFileId {
         let arg_tt = loc.kind.arg(db)?;
 
         let macro_def = db.macro_def(loc.def).ok()?;
-        let (parse, exp_map) = db.parse_macro_expansion(macro_file).value?;
-        let macro_arg = db.macro_arg(macro_file.macro_call_id)?;
+        let (parse, exp_map) = db.parse_macro_expansion(macro_file).value;
+        let macro_arg = db.macro_arg(macro_file.macro_call_id);
 
         let def = loc.def.ast_id().left().and_then(|id| {
             let def_tt = match id.to_node(db) {

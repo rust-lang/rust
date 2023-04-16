@@ -180,9 +180,8 @@ impl flags::AnalysisStats {
 
             let mut total_macro_file_size = Bytes::default();
             for e in hir::db::ParseMacroExpansionQuery.in_db(db).entries::<Vec<_>>() {
-                if let Some((val, _)) = db.parse_macro_expansion(e.key).value {
-                    total_macro_file_size += syntax_len(val.syntax_node())
-                }
+                let val = db.parse_macro_expansion(e.key).value.0;
+                total_macro_file_size += syntax_len(val.syntax_node())
             }
             eprintln!("source files: {total_file_size}, macro files: {total_macro_file_size}");
         }
