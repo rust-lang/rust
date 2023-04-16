@@ -906,10 +906,8 @@ impl SourceMap {
 
             let snippet = if let Some(ref src) = local_begin.sf.src {
                 Some(&src[start_index..])
-            } else if let Some(src) = src.get_source() {
-                Some(&src[start_index..])
             } else {
-                None
+                src.get_source().map(|src| &src[start_index..])
             };
 
             match snippet {

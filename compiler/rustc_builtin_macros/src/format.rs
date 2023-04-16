@@ -141,13 +141,7 @@ fn parse_args<'a>(ecx: &mut ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<
                         args: args
                             .named_args()
                             .iter()
-                            .filter_map(|a| {
-                                if let Some(ident) = a.kind.ident() {
-                                    Some((a, ident))
-                                } else {
-                                    None
-                                }
-                            })
+                            .filter_map(|a| a.kind.ident().map(|ident| (a, ident)))
                             .map(|(arg, n)| n.span.to(arg.expr.span))
                             .collect(),
                     });

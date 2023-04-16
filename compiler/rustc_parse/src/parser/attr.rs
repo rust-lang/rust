@@ -45,10 +45,10 @@ impl<'a> Parser<'a> {
                     Some(InnerAttrForbiddenReason::AfterOuterDocComment {
                         prev_doc_comment_span: prev_outer_attr_sp.unwrap(),
                     })
-                } else if let Some(prev_outer_attr_sp) = prev_outer_attr_sp {
-                    Some(InnerAttrForbiddenReason::AfterOuterAttribute { prev_outer_attr_sp })
                 } else {
-                    None
+                    prev_outer_attr_sp.map(|prev_outer_attr_sp| {
+                        InnerAttrForbiddenReason::AfterOuterAttribute { prev_outer_attr_sp }
+                    })
                 };
                 let inner_parse_policy = InnerAttrPolicy::Forbidden(inner_error_reason);
                 just_parsed_doc_comment = false;
