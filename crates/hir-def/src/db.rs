@@ -93,8 +93,6 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
     ///
     /// The `block_def_map` for block 0 would return `None`, while `block_def_map` of block 1 would
     /// return a `DefMap` containing `inner`.
-    // FIXME: This actually can't return None anymore as we no longer allocate block scopes for
-    // non item declaring blocks
     #[salsa::invoke(DefMap::block_def_map_query)]
     fn block_def_map(&self, block: BlockId) -> Arc<DefMap>;
 

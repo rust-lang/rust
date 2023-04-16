@@ -166,6 +166,12 @@ impl RootDatabase {
                 .copied()
                 .unwrap_or(base_db::DEFAULT_LRU_CAP),
         );
+        hir_db::MacroExpandQuery.in_db_mut(self).set_lru_capacity(
+            lru_capacities
+                .get(stringify!(MacroExpandQuery))
+                .copied()
+                .unwrap_or(base_db::DEFAULT_LRU_CAP),
+        );
 
         macro_rules! update_lru_capacity_per_query {
             ($( $module:ident :: $query:ident )*) => {$(
