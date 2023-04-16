@@ -30,7 +30,7 @@ use crate::sync::Once;
 /// assert!(value.is_some());
 /// assert_eq!(value.unwrap().as_str(), "Hello, World!");
 /// ```
-#[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "once_cell", since = "1.70.0")]
 pub struct OnceLock<T> {
     once: Once,
     // Whether or not the value is initialized is tracked by `once.is_completed()`.
@@ -59,8 +59,8 @@ impl<T> OnceLock<T> {
     /// Creates a new empty cell.
     #[inline]
     #[must_use]
-    #[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "once_cell", since = "1.70.0")]
+    #[rustc_const_stable(feature = "once_cell", since = "1.70.0")]
     pub const fn new() -> OnceLock<T> {
         OnceLock {
             once: Once::new(),
@@ -74,7 +74,7 @@ impl<T> OnceLock<T> {
     /// Returns `None` if the cell is empty, or being initialized. This
     /// method never blocks.
     #[inline]
-    #[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "once_cell", since = "1.70.0")]
     pub fn get(&self) -> Option<&T> {
         if self.is_initialized() {
             // Safe b/c checked is_initialized
@@ -88,7 +88,7 @@ impl<T> OnceLock<T> {
     ///
     /// Returns `None` if the cell is empty. This method never blocks.
     #[inline]
-    #[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "once_cell", since = "1.70.0")]
     pub fn get_mut(&mut self) -> Option<&mut T> {
         if self.is_initialized() {
             // Safe b/c checked is_initialized and we have a unique access
@@ -124,7 +124,7 @@ impl<T> OnceLock<T> {
     /// }
     /// ```
     #[inline]
-    #[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "once_cell", since = "1.70.0")]
     pub fn set(&self, value: T) -> Result<(), T> {
         let mut value = Some(value);
         self.get_or_init(|| value.take().unwrap());
@@ -162,7 +162,7 @@ impl<T> OnceLock<T> {
     /// assert_eq!(value, &92);
     /// ```
     #[inline]
-    #[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "once_cell", since = "1.70.0")]
     pub fn get_or_init<F>(&self, f: F) -> &T
     where
         F: FnOnce() -> T,
@@ -239,7 +239,7 @@ impl<T> OnceLock<T> {
     /// assert_eq!(cell.into_inner(), Some("hello".to_string()));
     /// ```
     #[inline]
-    #[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "once_cell", since = "1.70.0")]
     pub fn into_inner(mut self) -> Option<T> {
         self.take()
     }
@@ -264,7 +264,7 @@ impl<T> OnceLock<T> {
     /// assert_eq!(cell.get(), None);
     /// ```
     #[inline]
-    #[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "once_cell", since = "1.70.0")]
     pub fn take(&mut self) -> Option<T> {
         if self.is_initialized() {
             self.once = Once::new();
@@ -333,17 +333,17 @@ impl<T> OnceLock<T> {
 // scoped thread B, which fills the cell, which is
 // then destroyed by A. That is, destructor observes
 // a sent value.
-#[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "once_cell", since = "1.70.0")]
 unsafe impl<T: Sync + Send> Sync for OnceLock<T> {}
-#[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "once_cell", since = "1.70.0")]
 unsafe impl<T: Send> Send for OnceLock<T> {}
 
-#[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "once_cell", since = "1.70.0")]
 impl<T: RefUnwindSafe + UnwindSafe> RefUnwindSafe for OnceLock<T> {}
-#[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "once_cell", since = "1.70.0")]
 impl<T: UnwindSafe> UnwindSafe for OnceLock<T> {}
 
-#[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "once_cell", since = "1.70.0")]
 impl<T> Default for OnceLock<T> {
     /// Creates a new empty cell.
     ///
@@ -362,7 +362,7 @@ impl<T> Default for OnceLock<T> {
     }
 }
 
-#[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "once_cell", since = "1.70.0")]
 impl<T: fmt::Debug> fmt::Debug for OnceLock<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.get() {
@@ -372,7 +372,7 @@ impl<T: fmt::Debug> fmt::Debug for OnceLock<T> {
     }
 }
 
-#[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "once_cell", since = "1.70.0")]
 impl<T: Clone> Clone for OnceLock<T> {
     #[inline]
     fn clone(&self) -> OnceLock<T> {
@@ -387,7 +387,7 @@ impl<T: Clone> Clone for OnceLock<T> {
     }
 }
 
-#[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "once_cell", since = "1.70.0")]
 impl<T> From<T> for OnceLock<T> {
     /// Create a new cell with its contents set to `value`.
     ///
@@ -414,7 +414,7 @@ impl<T> From<T> for OnceLock<T> {
     }
 }
 
-#[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "once_cell", since = "1.70.0")]
 impl<T: PartialEq> PartialEq for OnceLock<T> {
     #[inline]
     fn eq(&self, other: &OnceLock<T>) -> bool {
@@ -422,10 +422,10 @@ impl<T: PartialEq> PartialEq for OnceLock<T> {
     }
 }
 
-#[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "once_cell", since = "1.70.0")]
 impl<T: Eq> Eq for OnceLock<T> {}
 
-#[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "once_cell", since = "1.70.0")]
 unsafe impl<#[may_dangle] T> Drop for OnceLock<T> {
     #[inline]
     fn drop(&mut self) {

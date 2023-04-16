@@ -53,7 +53,7 @@ declare_features! (
     (removed, await_macro, "1.38.0", Some(50547), None,
      Some("subsumed by `.await` syntax")),
     /// Allows using the `box $expr` syntax.
-    (removed, box_syntax, "CURRENT_RUSTC_VERSION", Some(49733), None, Some("replaced with `#[rustc_box]`")),
+    (removed, box_syntax, "1.70.0", Some(49733), None, Some("replaced with `#[rustc_box]`")),
     /// Allows capturing disjoint fields in a closure/generator (RFC 2229).
     (removed, capture_disjoint_fields, "1.49.0", Some(53488), None, Some("stabilized in Rust 2021")),
     /// Allows comparing raw pointers during const eval.

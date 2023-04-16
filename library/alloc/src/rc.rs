@@ -693,7 +693,7 @@ impl<T> Rc<T> {
     /// This is equivalent to `Rc::try_unwrap(this).ok()`. (Note that these are not equivalent for
     /// [`Arc`](crate::sync::Arc), due to race conditions that do not apply to `Rc`.)
     #[inline]
-    #[stable(feature = "rc_into_inner", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "rc_into_inner", since = "1.70.0")]
     pub fn into_inner(this: Self) -> Option<T> {
         Rc::try_unwrap(this).ok()
     }

@@ -555,7 +555,7 @@ impl<T, E> Result<T, E> {
     /// ```
     #[must_use]
     #[inline]
-    #[stable(feature = "is_some_and", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "is_some_and", since = "1.70.0")]
     pub fn is_ok_and(self, f: impl FnOnce(T) -> bool) -> bool {
         match self {
             Err(_) => false,
@@ -600,7 +600,7 @@ impl<T, E> Result<T, E> {
     /// ```
     #[must_use]
     #[inline]
-    #[stable(feature = "is_some_and", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "is_some_and", since = "1.70.0")]
     pub fn is_err_and(self, f: impl FnOnce(E) -> bool) -> bool {
         match self {
             Ok(_) => false,

@@ -793,7 +793,7 @@ impl<T> Arc<T> {
     /// y_thread.join().unwrap();
     /// ```
     #[inline]
-    #[stable(feature = "arc_into_inner", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "arc_into_inner", since = "1.70.0")]
     pub fn into_inner(this: Self) -> Option<T> {
         // Make sure that the ordinary `Drop` implementation isn’t called as well
         let mut this = mem::ManuallyDrop::new(this);

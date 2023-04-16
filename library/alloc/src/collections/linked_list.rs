@@ -1137,7 +1137,7 @@ impl<T> ExactSizeIterator for Iter<'_, T> {}
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for Iter<'_, T> {}
 
-#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters", since = "1.70.0")]
 impl<T> Default for Iter<'_, T> {
     /// Creates an empty `linked_list::Iter`.
     ///
@@ -1205,7 +1205,7 @@ impl<T> ExactSizeIterator for IterMut<'_, T> {}
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for IterMut<'_, T> {}
 
-#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters", since = "1.70.0")]
 impl<T> Default for IterMut<'_, T> {
     fn default() -> Self {
         IterMut { head: None, tail: None, len: 0, marker: Default::default() }
@@ -1915,7 +1915,7 @@ impl<T, A: Allocator> ExactSizeIterator for IntoIter<T, A> {}
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T, A: Allocator> FusedIterator for IntoIter<T, A> {}
 
-#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters", since = "1.70.0")]
 impl<T> Default for IntoIter<T> {
     /// Creates an empty `linked_list::IntoIter`.
     ///
