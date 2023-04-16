@@ -99,12 +99,8 @@ pub mod mir;
 pub mod thir;
 pub mod traits;
 pub mod ty;
+pub mod util;
 mod values;
-
-pub mod util {
-    pub mod bug;
-    pub mod common;
-}
 
 // Allows macros to refer to this crate as `::rustc_middle`
 extern crate self as rustc_middle;

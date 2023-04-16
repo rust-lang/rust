@@ -20,7 +20,6 @@ rustc_infer = { path = "../rustc_infer" }
 rustc_lexer = { path = "../rustc_lexer" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_middle = { path = "../rustc_middle" }
-rustc_const_eval = { path = "../rustc_const_eval" }
 rustc_mir_dataflow = { path = "../rustc_mir_dataflow" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
