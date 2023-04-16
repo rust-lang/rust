@@ -378,6 +378,8 @@ impl FunctionBuilder {
             fn_body,
             self.ret_type,
             self.is_async,
+            false, // FIXME : const and unsafe are not handled yet.
+            false,
         );
         let leading_ws;
         let trailing_ws;
