@@ -7,7 +7,7 @@ pub use hir_def::db::*;
 pub use hir_expand::db::{
     AstIdMapQuery, ExpandDatabase, ExpandDatabaseStorage, ExpandProcMacroQuery, HygieneFrameQuery,
     InternMacroCallQuery, MacroArgTextQuery, MacroDefQuery, MacroExpandQuery,
-    ParseMacroExpansionQuery,
+    ParseMacroExpansionErrorQuery, ParseMacroExpansionQuery,
 };
 pub use hir_ty::db::*;
 
