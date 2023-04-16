@@ -732,8 +732,7 @@ impl<T: ?Sized> Clone for PhantomData<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
-impl<T: ?Sized> const Default for PhantomData<T> {
+impl<T: ?Sized> Default for PhantomData<T> {
     fn default() -> Self {
         Self
     }
@@ -858,7 +857,6 @@ impl<T: ?Sized> Unpin for *mut T {}
 #[unstable(feature = "const_trait_impl", issue = "67792")]
 #[lang = "destruct"]
 #[rustc_on_unimplemented(message = "can't drop `{Self}`", append_const_msg)]
-#[const_trait]
 #[rustc_deny_explicit_impl]
 pub trait Destruct {}
 

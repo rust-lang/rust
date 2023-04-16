@@ -3168,8 +3168,7 @@ impl DefaultHasher {
 }
 
 #[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
-#[rustc_const_unstable(feature = "const_hash", issue = "104061")]
-impl const Default for DefaultHasher {
+impl Default for DefaultHasher {
     /// Creates a new `DefaultHasher` using [`new`].
     /// See its documentation for more.
     ///
@@ -3181,8 +3180,7 @@ impl const Default for DefaultHasher {
 }
 
 #[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
-#[rustc_const_unstable(feature = "const_hash", issue = "104061")]
-impl const Hasher for DefaultHasher {
+impl Hasher for DefaultHasher {
     // The underlying `SipHasher13` doesn't override the other
     // `write_*` methods, so it's ok not to forward them here.
 

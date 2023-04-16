@@ -1654,7 +1654,7 @@ impl<T> *const [T] {
     #[inline]
     pub const unsafe fn get_unchecked<I>(self, index: I) -> *const I::Output
     where
-        I: ~const SliceIndex<[T]>,
+        I: SliceIndex<[T]>,
     {
         // SAFETY: the caller ensures that `self` is dereferenceable and `index` in-bounds.
         unsafe { index.get_unchecked(self) }

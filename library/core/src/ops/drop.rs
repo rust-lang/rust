@@ -134,7 +134,6 @@
 /// these types cannot have destructors.
 #[lang = "drop"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[const_trait]
 pub trait Drop {
     /// Executes the destructor for this type.
     ///

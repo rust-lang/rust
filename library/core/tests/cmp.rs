@@ -222,13 +222,13 @@ mod const_cmp {
 
     struct S(i32);
 
-    impl const PartialEq for S {
+    impl PartialEq for S {
         fn eq(&self, other: &Self) -> bool {
             self.0 == other.0
         }
     }
 
-    impl const PartialOrd for S {
+    impl PartialOrd for S {
         fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
             let ret = match (self.0, other.0) {
                 (a, b) if a > b => Ordering::Greater,

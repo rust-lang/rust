@@ -139,8 +139,7 @@ impl<T: ?Sized> Unique<T> {
 }
 
 #[unstable(feature = "ptr_internals", issue = "none")]
-#[rustc_const_unstable(feature = "const_clone", issue = "91805")]
-impl<T: ?Sized> const Clone for Unique<T> {
+impl<T: ?Sized> Clone for Unique<T> {
     #[inline]
     fn clone(&self) -> Self {
         *self
@@ -171,7 +170,7 @@ impl<T: ?Sized> fmt::Pointer for Unique<T> {
 }
 
 #[unstable(feature = "ptr_internals", issue = "none")]
-impl<T: ?Sized> const From<&mut T> for Unique<T> {
+impl<T: ?Sized> From<&mut T> for Unique<T> {
     /// Converts a `&mut T` to a `Unique<T>`.
     ///
     /// This conversion is infallible since references cannot be null.
@@ -182,7 +181,7 @@ impl<T: ?Sized> const From<&mut T> for Unique<T> {
 }
 
 #[unstable(feature = "ptr_internals", issue = "none")]
-impl<T: ?Sized> const From<NonNull<T>> for Unique<T> {
+impl<T: ?Sized> From<NonNull<T>> for Unique<T> {
     /// Converts a `NonNull<T>` to a `Unique<T>`.
     ///
     /// This conversion is infallible since `NonNull` cannot be null.

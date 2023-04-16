@@ -632,13 +632,11 @@ impl<T, E> Result<T, E> {
     #[rustc_const_unstable(feature = "const_result_drop", issue = "92384")]
     pub const fn ok(self) -> Option<T>
     where
-        E: ~const Destruct,
+        E: Destruct,
     {
         match self {
             Ok(x) => Some(x),
-            // FIXME: ~const Drop doesn't quite work right yet
-            #[allow(unused_variables)]
-            Err(x) => None,
+            Err(_) => None,
         }
     }
 
@@ -661,12 +659,10 @@ impl<T, E> Result<T, E> {
     #[rustc_const_unstable(feature = "const_result_drop", issue = "92384")]
     pub const fn err(self) -> Option<E>
     where
-        T: ~const Destruct,
+        T: Destruct,
     {
         match self {
-            // FIXME: ~const Drop doesn't quite work right yet
-            #[allow(unused_variables)]
-            Ok(x) => None,
+            Ok(_) => None,
             Err(x) => Some(x),
         }
     }
@@ -1291,14 +1287,12 @@ impl<T, E> Result<T, E> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn and<U>(self, res: Result<U, E>) -> Result<U, E>
     where
-        T: ~const Destruct,
-        U: ~const Destruct,
-        E: ~const Destruct,
+        T: Destruct,
+        U: Destruct,
+        E: Destruct,
     {
         match self {
-            // FIXME: ~const Drop doesn't quite work right yet
-            #[allow(unused_variables)]
-            Ok(x) => res,
+            Ok(_) => res,
             Err(e) => Err(e),
         }
     }
@@ -1374,15 +1368,13 @@ impl<T, E> Result<T, E> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn or<F>(self, res: Result<T, F>) -> Result<T, F>
     where
-        T: ~const Destruct,
-        E: ~const Destruct,
-        F: ~const Destruct,
+        T: Destruct,
+        E: Destruct,
+        F: Destruct,
     {
         match self {
             Ok(v) => Ok(v),
-            // FIXME: ~const Drop doesn't quite work right yet
-            #[allow(unused_variables)]
-            Err(e) => res,
+            Err(_) => res,
         }
     }
 
@@ -1434,14 +1426,12 @@ impl<T, E> Result<T, E> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn unwrap_or(self, default: T) -> T
     where
-        T: ~const Destruct,
-        E: ~const Destruct,
+        T: Destruct,
+        E: Destruct,
     {
         match self {
             Ok(t) => t,
-            // FIXME: ~const Drop doesn't quite work right yet
-            #[allow(unused_variables)]
-            Err(e) => default,
+            Err(_) => default,
         }
     }
 
@@ -1704,11 +1694,10 @@ fn unwrap_failed<T>(_msg: &str, _error: &T) -> ! {
 /////////////////////////////////////////////////////////////////////////////
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_clone", issue = "91805")]
-impl<T, E> const Clone for Result<T, E>
+impl<T, E> Clone for Result<T, E>
 where
-    T: ~const Clone + ~const Destruct,
-    E: ~const Clone + ~const Destruct,
+    T: Clone,
+    E: Clone,
 {
     #[inline]
     fn clone(&self) -> Self {
@@ -1971,8 +1960,7 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl<T, E> const ops::Try for Result<T, E> {
+impl<T, E> ops::Try for Result<T, E> {
     type Output = T;
     type Residual = Result<convert::Infallible, E>;
 
@@ -1991,8 +1979,7 @@ impl<T, E> const ops::Try for Result<T, E> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl<T, E, F: ~const From<E>> const ops::FromResidual<Result<convert::Infallible, E>>
+impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>>
     for Result<T, F>
 {
     #[inline]
@@ -2013,7 +2000,6 @@ impl<T, E, F: From<E>> ops::FromResidual<ops::Yeet<E>> for Result<T, F> {
 }
 
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
-impl<T, E> const ops::Residual<T> for Result<convert::Infallible, E> {
+impl<T, E> ops::Residual<T> for Result<convert::Infallible, E> {
     type TryType = Result<T, E>;
 }

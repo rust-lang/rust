@@ -28,7 +28,7 @@ const fn test_const_sip() {
     let val1 = 0x45;
     let val2 = 0xfeed;
 
-    const fn const_hash<T: ~const Hash>(x: &T) -> u64 {
+    const fn const_hash<T: Hash>(x: &T) -> u64 {
         let mut st = SipHasher::new();
         x.hash(&mut st);
         st.finish()

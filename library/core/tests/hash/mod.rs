@@ -9,13 +9,13 @@ struct MyHasher {
     hash: u64,
 }
 
-impl const Default for MyHasher {
+impl Default for MyHasher {
     fn default() -> MyHasher {
         MyHasher { hash: 0 }
     }
 }
 
-impl const Hasher for MyHasher {
+impl Hasher for MyHasher {
     fn write(&mut self, buf: &[u8]) {
         // FIXME(const_trait_impl): change to for loop
         let mut i = 0;
@@ -35,7 +35,7 @@ impl const Hasher for MyHasher {
 
 #[test]
 fn test_writer_hasher() {
-    const fn hash<T: ~const Hash>(t: &T) -> u64 {
+    const fn hash<T: Hash>(t: &T) -> u64 {
         let mut s = MyHasher { hash: 0 };
         t.hash(&mut s);
         s.finish()
@@ -113,7 +113,7 @@ struct CustomHasher {
     output: u64,
 }
 
-impl const Hasher for CustomHasher {
+impl Hasher for CustomHasher {
     fn finish(&self) -> u64 {
         self.output
     }
@@ -125,21 +125,21 @@ impl const Hasher for CustomHasher {
     }
 }
 
-impl const Default for CustomHasher {
+impl Default for CustomHasher {
     fn default() -> CustomHasher {
         CustomHasher { output: 0 }
     }
 }
 
-impl const Hash for Custom {
-    fn hash<H: ~const Hasher>(&self, state: &mut H) {
+impl Hash for Custom {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         state.write_u64(self.hash);
     }
 }
 
 #[test]
 fn test_custom_state() {
-    const fn hash<T: ~const Hash>(t: &T) -> u64 {
+    const fn hash<T: Hash>(t: &T) -> u64 {
         let mut c = CustomHasher { output: 0 };
         t.hash(&mut c);
         c.finish()
