@@ -298,7 +298,15 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return None;
         }
 
-        self.use_ecx(source_info, |this| this.ecx.eval_mir_constant(&c.literal, Some(c.span), None))
+        // Normalization needed b/c const prop lint runs in
+        // `mir_drops_elaborated_and_const_checked`, which happens before
+        // optimized MIR. Only after optimizing the MIR can we guarantee
+        // that the `RevealAll` pass has happened and that the body's consts
+        // are normalized, so any call to resolve before that needs to be
+        // manually normalized.
+        let val = self.tcx.try_normalize_erasing_regions(self.param_env, c.literal).ok()?;
+
+        self.use_ecx(source_info, |this| this.ecx.eval_mir_constant(&val, Some(c.span), None))
     }
 
     /// Returns the value, if any, of evaluating `place`.
