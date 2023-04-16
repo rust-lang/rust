@@ -312,13 +312,10 @@ pub fn suggest_new_region_bound(
                             Applicability::MaybeIncorrect,
                         );
                     }
-                } else if opaque.bounds.iter().any(|arg| match arg {
-                    GenericBound::Outlives(Lifetime { ident, .. })
-                        if ident.name.to_string() == lifetime_name =>
-                    {
-                        true
-                    }
-                    _ => false,
+                } else if opaque.bounds.iter().any(|arg| {
+                    matches!(arg,
+                        GenericBound::Outlives(Lifetime { ident, .. })
+                        if ident.name.to_string() == lifetime_name )
                 }) {
                 } else {
                     // get a lifetime name of existing named lifetimes if any
