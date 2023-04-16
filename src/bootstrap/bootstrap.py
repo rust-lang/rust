@@ -429,17 +429,24 @@ class RustBuild(object):
                  self.program_out_of_date(self.rustc_stamp(), key)):
             if os.path.exists(bin_root):
                 shutil.rmtree(bin_root)
+
+            key = self.stage0_compiler.date
+            cache_dst = os.path.join(self.build_dir, "cache")
+            rustc_cache = os.path.join(cache_dst, key)
+            if not os.path.exists(rustc_cache):
+                os.makedirs(rustc_cache)
+
             tarball_suffix = '.tar.gz' if lzma is None else '.tar.xz'
             filename = "rust-std-{}-{}{}".format(
                 rustc_channel, self.build, tarball_suffix)
             pattern = "rust-std-{}".format(self.build)
-            self._download_component_helper(filename, pattern, tarball_suffix)
+            self._download_component_helper(filename, pattern, tarball_suffix, rustc_cache)
             filename = "rustc-{}-{}{}".format(rustc_channel, self.build,
                                               tarball_suffix)
-            self._download_component_helper(filename, "rustc", tarball_suffix)
+            self._download_component_helper(filename, "rustc", tarball_suffix, rustc_cache)
             filename = "cargo-{}-{}{}".format(rustc_channel, self.build,
                                             tarball_suffix)
-            self._download_component_helper(filename, "cargo", tarball_suffix)
+            self._download_component_helper(filename, "cargo", tarball_suffix, rustc_cache)
             if self.should_fix_bins_and_dylibs():
                 self.fix_bin_or_dylib("{}/bin/cargo".format(bin_root))
 
@@ -455,13 +462,9 @@ class RustBuild(object):
                 rust_stamp.write(key)
 
     def _download_component_helper(
-        self, filename, pattern, tarball_suffix,
+        self, filename, pattern, tarball_suffix, rustc_cache,
     ):
         key = self.stage0_compiler.date
-        cache_dst = os.path.join(self.build_dir, "cache")
-        rustc_cache = os.path.join(cache_dst, key)
-        if not os.path.exists(rustc_cache):
-            os.makedirs(rustc_cache)
 
         tarball = os.path.join(rustc_cache, filename)
         if not os.path.exists(tarball):
