@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::{diagnostics::span_lint_and_then, ty::approx_ty_size};
 use rustc_errors::Applicability;
 use rustc_hir::{def_id::LocalDefId, FnDecl, FnRetTy, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -9,6 +9,9 @@ declare_clippy_lint! {
     /// ### What it does
     ///
     /// Checks for a return type containing a `Box<T>` where `T` implements `Sized`
+    ///
+    /// The lint ignores `Box<T>` where `T` is larger than `unnecessary_box_size`,
+    /// as returning a large `T` directly may be detrimental to performance.
     ///
     /// ### Why is this bad?
     ///
@@ -36,14 +39,16 @@ declare_clippy_lint! {
 
 pub struct UnnecessaryBoxReturns {
     avoid_breaking_exported_api: bool,
+    maximum_size: u64,
 }
 
 impl_lint_pass!(UnnecessaryBoxReturns => [UNNECESSARY_BOX_RETURNS]);
 
 impl UnnecessaryBoxReturns {
-    pub fn new(avoid_breaking_exported_api: bool) -> Self {
+    pub fn new(avoid_breaking_exported_api: bool, maximum_size: u64) -> Self {
         Self {
             avoid_breaking_exported_api,
+            maximum_size,
         }
     }
 
@@ -71,8 +76,10 @@ impl UnnecessaryBoxReturns {
 
         let boxed_ty = return_ty.boxed_ty();
 
-        // it's sometimes useful to return Box<T> if T is unsized, so don't lint those
-        if boxed_ty.is_sized(cx.tcx, cx.param_env) {
+        // It's sometimes useful to return Box<T> if T is unsized, so don't lint those.
+        // Also, don't lint if we know that T is very large, in which case returning
+        // a Box<T> may be beneficial.
+        if boxed_ty.is_sized(cx.tcx, cx.param_env) && approx_ty_size(cx, boxed_ty) <= self.maximum_size {
             span_lint_and_then(
                 cx,
                 UNNECESSARY_BOX_RETURNS,
