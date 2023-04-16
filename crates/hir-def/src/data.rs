@@ -638,7 +638,6 @@ impl<'a> AssocItemCollector<'a> {
                     self.items.push((item.name.clone(), def.into()));
                 }
                 AssocItem::MacroCall(call) => {
-                    // TODO: These are the wrong errors to report, report in collect_macro_items instead
                     let file_id = self.expander.current_file_id();
                     let root = self.db.parse_or_expand(file_id);
                     if let Some(root) = root {

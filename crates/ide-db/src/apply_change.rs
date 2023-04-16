@@ -80,7 +80,6 @@ impl RootDatabase {
             hir::db::MacroDefQuery
             hir::db::MacroExpandQuery
             hir::db::ExpandProcMacroQuery
-            hir::db::MacroExpandErrorQuery
             hir::db::HygieneFrameQuery
 
             // DefDatabase

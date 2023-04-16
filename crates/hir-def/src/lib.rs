@@ -823,7 +823,7 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
             return Ok(ExpandResult::only_err(ExpandError::Other("malformed macro invocation".into())));
         };
 
-        macro_call_as_call_id(
+        macro_call_as_call_id_(
             db,
             &AstIdWithPath::new(ast_id.file_id, ast_id.value, path),
             expands_to,
@@ -847,6 +847,16 @@ impl<T: ast::AstNode> AstIdWithPath<T> {
 }
 
 fn macro_call_as_call_id(
+    db: &dyn db::DefDatabase,
+    call: &AstIdWithPath<ast::MacroCall>,
+    expand_to: ExpandTo,
+    krate: CrateId,
+    resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
+) -> Result<Option<MacroCallId>, UnresolvedMacro> {
+    macro_call_as_call_id_(db, call, expand_to, krate, resolver).map(|res| res.value)
+}
+
+fn macro_call_as_call_id_(
     db: &dyn db::DefDatabase,
     call: &AstIdWithPath<ast::MacroCall>,
     expand_to: ExpandTo,

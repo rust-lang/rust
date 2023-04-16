@@ -9,7 +9,7 @@ use mbe::syntax_node_to_token_tree;
 use rustc_hash::FxHashSet;
 use syntax::{
     ast::{self, HasAttrs, HasDocComments},
-    AstNode, GreenNode, Parse, SyntaxNode, SyntaxToken, T,
+    AstNode, GreenNode, Parse, SyntaxError, SyntaxNode, SyntaxToken, T,
 };
 
 use crate::{
@@ -132,15 +132,18 @@ pub trait ExpandDatabase: SourceDatabase {
     /// just fetches procedural ones.
     fn macro_def(&self, id: MacroDefId) -> Result<Arc<TokenExpander>, mbe::ParseError>;
 
-    /// Expand macro call to a token tree. This query is LRUed (we keep 128 or so results in memory)
+    /// Expand macro call to a token tree.
     fn macro_expand(&self, macro_call: MacroCallId) -> ExpandResult<Option<Arc<tt::Subtree>>>;
     /// Special case of the previous query for procedural macros. We can't LRU
     /// proc macros, since they are not deterministic in general, and
     /// non-determinism breaks salsa in a very, very, very bad way. @edwin0cheng
     /// heroically debugged this once!
     fn expand_proc_macro(&self, call: MacroCallId) -> ExpandResult<tt::Subtree>;
-    /// Firewall query that returns the error from the `macro_expand` query.
-    fn macro_expand_error(&self, macro_call: MacroCallId) -> Option<ExpandError>;
+    /// Firewall query that returns the errors from the `parse_macro_expansion` query.
+    fn parse_macro_expansion_error(
+        &self,
+        macro_call: MacroCallId,
+    ) -> ExpandResult<Option<Box<[SyntaxError]>>>;
 
     fn hygiene_frame(&self, file_id: HirFileId) -> Arc<HygieneFrame>;
 }
@@ -448,6 +451,7 @@ fn macro_def(
 fn macro_expand(
     db: &dyn ExpandDatabase,
     id: MacroCallId,
+    // FIXME: Remove the OPtion if possible
 ) -> ExpandResult<Option<Arc<tt::Subtree>>> {
     let _p = profile::span("macro_expand");
     let loc: MacroCallLoc = db.lookup_intern_macro_call(id);
@@ -498,8 +502,12 @@ fn macro_expand(
     ExpandResult { value: Some(Arc::new(tt)), err }
 }
 
-fn macro_expand_error(db: &dyn ExpandDatabase, macro_call: MacroCallId) -> Option<ExpandError> {
-    db.macro_expand(macro_call).err
+fn parse_macro_expansion_error(
+    db: &dyn ExpandDatabase,
+    macro_call_id: MacroCallId,
+) -> ExpandResult<Option<Box<[SyntaxError]>>> {
+    db.parse_macro_expansion(MacroFile { macro_call_id })
+        .map(|it| it.map(|(it, _)| it.errors().to_vec().into_boxed_slice()))
 }
 
 fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<tt::Subtree> {
