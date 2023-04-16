@@ -27,11 +27,13 @@ fn test<T>() -> usize
 where
     GenericIsEqual<T>: Project<EquateParamTo = MyFieldIsNotDead>,
 {
-	// The first field of the A that we construct here is `<GenericIsEqual<T>> as Project>::EquateParamTo`.
-	// Typeck normalizes this and figures that the not_dead field is totally fine and accessible.
-	// But importantly, the normalization ends up with T, which, as we've declared in our param env is MyFieldDead.
-	// When we're in the param env of the `a` field, the where bound above is not in scope, so we don't know what T is - it's generic.
-	// We cannot access a field on T. Boom!
+    // The first field of the A that we construct here is
+    // `<GenericIsEqual<T>> as Project>::EquateParamTo`.
+    // Typeck normalizes this and figures that the not_dead field is totally fine and accessible.
+    // But importantly, the normalization ends up with T, which, as we've declared in our param
+    // env is MyFieldDead. When we're in the param env of the `a` field, the where bound above
+    // is not in scope, so we don't know what T is - it's generic.
+    // We cannot access a field on T. Boom!
     std::mem::offset_of!(A<GenericIsEqual<T>>, a.not_dead)
 }
 

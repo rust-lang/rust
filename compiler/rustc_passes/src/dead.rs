@@ -255,16 +255,13 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     self.insert_def_id(field.did);
                     let field_ty = field.ty(self.tcx, subst);
 
-                    current_ty =
-                        self.tcx.normalize_erasing_regions(param_env, field_ty);
+                    current_ty = self.tcx.normalize_erasing_regions(param_env, field_ty);
                 }
                 // we don't need to mark tuple fields as live,
                 // but we may need to mark subfields
                 ty::Tuple(tys) => {
-                    current_ty = self.tcx.normalize_erasing_regions(
-                        param_env,
-                        tys[index.as_usize()],
-                    );
+                    current_ty =
+                        self.tcx.normalize_erasing_regions(param_env, tys[index.as_usize()]);
                 }
                 _ => span_bug!(expr.span, "named field access on non-ADT"),
             }
