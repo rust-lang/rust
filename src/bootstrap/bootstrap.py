@@ -438,11 +438,12 @@ class RustBuild(object):
 
             tarball_suffix = '.tar.gz' if lzma is None else '.tar.xz'
 
+            toolchain_suffix = "{}-{}{}".format(rustc_channel, self.build, tarball_suffix)
+
             tarballs_to_download = [
-                ("rust-std-{}-{}{}".format(rustc_channel, self.build, tarball_suffix),
-                    "rust-std-{}".format(self.build)),
-                ("rustc-{}-{}{}".format(rustc_channel, self.build, tarball_suffix), "rustc"),
-                ("cargo-{}-{}{}".format(rustc_channel, self.build, tarball_suffix), "cargo"),
+                ("rust-std-{}".format(toolchain_suffix), "rust-std-{}".format(self.build)),
+                ("rustc-{}".format(toolchain_suffix), "rustc"),
+                ("cargo-{}".format(toolchain_suffix), "cargo"),
             ]
 
             for filename, pattern in tarballs_to_download:
