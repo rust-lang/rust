@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::env;
 use std::fs;
 use std::path::PathBuf;
@@ -120,135 +119,9 @@ impl Step for ToolBuild {
             &self.target,
         );
         builder.info(&msg);
-        let mut duplicates = Vec::new();
-        let is_expected = compile::stream_cargo(builder, cargo, vec![], &mut |msg| {
-            // Only care about big things like the RLS/Cargo for now
-            match tool {
-                "rls" | "cargo" | "clippy-driver" | "miri" | "rustfmt" => {}
 
-                _ => return,
-            }
-            let (id, features, filenames) = match msg {
-                compile::CargoMessage::CompilerArtifact {
-                    package_id,
-                    features,
-                    filenames,
-                    target: _,
-                } => (package_id, features, filenames),
-                _ => return,
-            };
-            let features = features.iter().map(|s| s.to_string()).collect::<Vec<_>>();
-
-            for path in filenames {
-                let val = (tool, PathBuf::from(&*path), features.clone());
-                // we're only interested in deduplicating rlibs for now
-                if val.1.extension().and_then(|s| s.to_str()) != Some("rlib") {
-                    continue;
-                }
-
-                // Don't worry about compiles that turn out to be host
-                // dependencies or build scripts. To skip these we look for
-                // anything that goes in `.../release/deps` but *doesn't* go in
-                // `$target/release/deps`. This ensure that outputs in
-                // `$target/release` are still considered candidates for
-                // deduplication.
-                if let Some(parent) = val.1.parent() {
-                    if parent.ends_with("release/deps") {
-                        let maybe_target = parent
-                            .parent()
-                            .and_then(|p| p.parent())
-                            .and_then(|p| p.file_name())
-                            .and_then(|p| p.to_str())
-                            .unwrap();
-                        if maybe_target != &*target.triple {
-                            continue;
-                        }
-                    }
-                }
-
-                // Record that we've built an artifact for `id`, and if one was
-                // already listed then we need to see if we reused the same
-                // artifact or produced a duplicate.
-                let mut artifacts = builder.tool_artifacts.borrow_mut();
-                let prev_artifacts = artifacts.entry(target).or_default();
-                let prev = match prev_artifacts.get(&*id) {
-                    Some(prev) => prev,
-                    None => {
-                        prev_artifacts.insert(id.to_string(), val);
-                        continue;
-                    }
-                };
-                if prev.1 == val.1 {
-                    return; // same path, same artifact
-                }
-
-                // If the paths are different and one of them *isn't* inside of
-                // `release/deps`, then it means it's probably in
-                // `$target/release`, or it's some final artifact like
-                // `libcargo.rlib`. In these situations Cargo probably just
-                // copied it up from `$target/release/deps/libcargo-xxxx.rlib`,
-                // so if the features are equal we can just skip it.
-                let prev_no_hash = prev.1.parent().unwrap().ends_with("release/deps");
-                let val_no_hash = val.1.parent().unwrap().ends_with("release/deps");
-                if prev.2 == val.2 || !prev_no_hash || !val_no_hash {
-                    return;
-                }
-
-                // ... and otherwise this looks like we duplicated some sort of
-                // compilation, so record it to generate an error later.
-                duplicates.push((id.to_string(), val, prev.clone()));
-            }
-        });
-
-        if is_expected && !duplicates.is_empty() {
-            eprintln!(
-                "duplicate artifacts found when compiling a tool, this \
-                      typically means that something was recompiled because \
-                      a transitive dependency has different features activated \
-                      than in a previous build:\n"
-            );
-            let (same, different): (Vec<_>, Vec<_>) =
-                duplicates.into_iter().partition(|(_, cur, prev)| cur.2 == prev.2);
-            if !same.is_empty() {
-                eprintln!(
-                    "the following dependencies are duplicated although they \
-                      have the same features enabled:"
-                );
-                for (id, cur, prev) in same {
-                    eprintln!("  {}", id);
-                    // same features
-                    eprintln!("    `{}` ({:?})\n    `{}` ({:?})", cur.0, cur.1, prev.0, prev.1);
-                }
-            }
-            if !different.is_empty() {
-                eprintln!("the following dependencies have different features:");
-                for (id, cur, prev) in different {
-                    eprintln!("  {}", id);
-                    let cur_features: HashSet<_> = cur.2.into_iter().collect();
-                    let prev_features: HashSet<_> = prev.2.into_iter().collect();
-                    eprintln!(
-                        "    `{}` additionally enabled features {:?} at {:?}",
-                        cur.0,
-                        &cur_features - &prev_features,
-                        cur.1
-                    );
-                    eprintln!(
-                        "    `{}` additionally enabled features {:?} at {:?}",
-                        prev.0,
-                        &prev_features - &cur_features,
-                        prev.1
-                    );
-                }
-            }
-            eprintln!();
-            eprintln!(
-                "to fix this you will probably want to edit the local \
-                      src/tools/rustc-workspace-hack/Cargo.toml crate, as \
-                      that will update the dependency graph to ensure that \
-                      these crates all share the same feature set"
-            );
-            panic!("tools should not compile multiple copies of the same crate");
-        }
+        let mut cargo = Command::from(cargo);
+        let is_expected = builder.try_run_quiet(&mut cargo);
 
         builder.save_toolstate(
             tool,
@@ -299,7 +172,9 @@ pub fn prepare_tool_cargo(
             || path.ends_with("rustfmt")
         {
             cargo.env("LIBZ_SYS_STATIC", "1");
-            features.push("rustc-workspace-hack/all-static".to_string());
+        }
+        if path.ends_with("cargo") {
+            features.push("all-static".to_string());
         }
     }
 
