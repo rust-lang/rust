@@ -1684,7 +1684,7 @@ pub struct TargetOptions {
     /// LLVM ABI name, corresponds to the '-mabi' parameter available in multilib C compilers
     pub llvm_abiname: StaticCow<str>,
 
-    /// Whether or not RelaxElfRelocation flag will be passed to the linker
+    /// Whether to allow LLVM to generate relaxable X86 relocations.
     pub relax_elf_relocations: bool,
 
     /// Additional arguments to pass to LLVM, similar to the `-C llvm-args` codegen option.
@@ -1948,7 +1948,7 @@ impl Default for TargetOptions {
             merge_functions: MergeFunctions::Aliases,
             mcount: "mcount".into(),
             llvm_abiname: "".into(),
-            relax_elf_relocations: false,
+            relax_elf_relocations: true,
             llvm_args: cvs![],
             use_ctors_section: false,
             eh_frame_header: true,

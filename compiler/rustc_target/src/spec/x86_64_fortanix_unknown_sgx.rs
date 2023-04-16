@@ -68,7 +68,6 @@ pub fn target() -> Target {
         position_independent_executables: true,
         pre_link_args,
         override_export_symbols: Some(EXPORT_SYMBOLS.iter().cloned().map(Cow::from).collect()),
-        relax_elf_relocations: true,
         ..Default::default()
     };
     Target {
