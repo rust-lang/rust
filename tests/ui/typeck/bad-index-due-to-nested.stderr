@@ -1,0 +1,29 @@
+error[E0277]: the trait bound `V: Eq` is not satisfied
+  --> $DIR/bad-index-due-to-nested.rs:9:9
+   |
+LL |         self.node_index_map[&node]
+   |         ^^^^^^^^^^^^^^^^^^^ the trait `Eq` is not implemented for `V`
+   |
+note: required by a bound in `<HashMap<K, V, S> as Index<&Q>>`
+  --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
+help: consider restricting type parameter `V`
+   |
+LL | impl<V: std::cmp::Eq> Graph<V> {
+   |       ++++++++++++++
+
+error[E0277]: the trait bound `V: Hash` is not satisfied
+  --> $DIR/bad-index-due-to-nested.rs:9:9
+   |
+LL |         self.node_index_map[&node]
+   |         ^^^^^^^^^^^^^^^^^^^ the trait `Hash` is not implemented for `V`
+   |
+note: required by a bound in `<HashMap<K, V, S> as Index<&Q>>`
+  --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
+help: consider restricting type parameter `V`
+   |
+LL | impl<V: std::hash::Hash> Graph<V> {
+   |       +++++++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
