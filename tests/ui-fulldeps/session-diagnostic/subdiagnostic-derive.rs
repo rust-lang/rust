@@ -12,12 +12,14 @@
 #![crate_type = "lib"]
 
 extern crate rustc_errors;
+extern crate rustc_fluent_macro;
 extern crate rustc_macros;
 extern crate rustc_session;
 extern crate rustc_span;
 
 use rustc_errors::{Applicability, DiagnosticMessage, SubdiagnosticMessage};
-use rustc_macros::{fluent_messages, Subdiagnostic};
+use rustc_fluent_macro::fluent_messages;
+use rustc_macros::Subdiagnostic;
 use rustc_span::Span;
 
 fluent_messages! { "./example.ftl" }

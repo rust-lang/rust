@@ -17,8 +17,10 @@ extern crate rustc_span;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
+extern crate rustc_fluent_macro;
 extern crate rustc_macros;
-use rustc_macros::{fluent_messages, Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_fluent_macro::fluent_messages;
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 
 extern crate rustc_middle;
 use rustc_middle::ty::Ty;
