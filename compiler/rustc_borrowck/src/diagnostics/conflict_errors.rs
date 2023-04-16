@@ -1,5 +1,4 @@
 use either::Either;
-use rustc_const_eval::util::CallKind;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{
@@ -18,6 +17,7 @@ use rustc_middle::mir::{
     ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind, VarBindingForm,
 };
 use rustc_middle::ty::{self, suggest_constraining_type_params, PredicateKind, Ty};
+use rustc_middle::util::CallKind;
 use rustc_mir_dataflow::move_paths::{InitKind, MoveOutIndex, MovePathIndex};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
@@ -2424,7 +2424,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             Some((method_did, method_substs)),
         ) = (
             &self.body[loan.reserve_location.block].terminator,
-            rustc_const_eval::util::find_self_call(
+            rustc_middle::util::find_self_call(
                 tcx,
                 self.body,
                 loan.assigned_place.local,

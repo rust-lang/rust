@@ -1,7 +1,6 @@
 //! Borrow checker diagnostics.
 
 use itertools::Itertools;
-use rustc_const_eval::util::{call_kind, CallDesugaringKind};
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Namespace};
@@ -15,6 +14,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::util::{call_kind, CallDesugaringKind};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{symbol::sym, Span, Symbol, DUMMY_SP};
@@ -45,7 +45,7 @@ pub(crate) use mutability_errors::AccessKind;
 pub(crate) use outlives_suggestion::OutlivesSuggestionBuilder;
 pub(crate) use region_errors::{ErrorConstraintInfo, RegionErrorKind, RegionErrors};
 pub(crate) use region_name::{RegionName, RegionNameSource};
-pub(crate) use rustc_const_eval::util::CallKind;
+pub(crate) use rustc_middle::util::CallKind;
 
 pub(super) struct DescribePlaceOpt {
     pub including_downcast: bool,
@@ -874,7 +874,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }) = &self.body[location.block].terminator
         {
             let Some((method_did, method_substs)) =
-                rustc_const_eval::util::find_self_call(
+            rustc_middle::util::find_self_call(
                     self.infcx.tcx,
                     &self.body,
                     target_temp,

@@ -671,10 +671,8 @@ fn non_exhaustive_match<'p, 'tcx>(
         };
     };
 
-    let is_variant_list_non_exhaustive = match scrut_ty.kind() {
-        ty::Adt(def, _) if def.is_variant_list_non_exhaustive() && !def.did().is_local() => true,
-        _ => false,
-    };
+    let is_variant_list_non_exhaustive = matches!(scrut_ty.kind(),
+        ty::Adt(def, _) if def.is_variant_list_non_exhaustive() && !def.did().is_local());
 
     adt_defined_here(cx, &mut err, scrut_ty, &witnesses);
     err.note(&format!(

@@ -1577,10 +1577,10 @@ impl<'tcx> InferCtxt<'tcx> {
             (TyOrConstInferVar::Ty(ty_var), Ok(inner)) => {
                 use self::type_variable::TypeVariableValue;
 
-                match inner.try_type_variables_probe_ref(ty_var) {
-                    Some(TypeVariableValue::Unknown { .. }) => true,
-                    _ => false,
-                }
+                matches!(
+                    inner.try_type_variables_probe_ref(ty_var),
+                    Some(TypeVariableValue::Unknown { .. })
+                )
             }
             _ => false,
         };

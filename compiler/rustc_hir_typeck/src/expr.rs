@@ -1735,10 +1735,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 self.check_expr_has_type_or_error(base_expr, adt_ty, |_| {
                     let base_ty = self.typeck_results.borrow().expr_ty(*base_expr);
-                    let same_adt = match (adt_ty.kind(), base_ty.kind()) {
-                        (ty::Adt(adt, _), ty::Adt(base_adt, _)) if adt == base_adt => true,
-                        _ => false,
-                    };
+                    let same_adt = matches!((adt_ty.kind(), base_ty.kind()),
+                        (ty::Adt(adt, _), ty::Adt(base_adt, _)) if adt == base_adt);
                     if self.tcx.sess.is_nightly_build() && same_adt {
                         feature_err(
                             &self.tcx.sess.parse_sess,

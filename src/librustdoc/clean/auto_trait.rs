@@ -141,7 +141,7 @@ where
         let f = auto_trait::AutoTraitFinder::new(tcx);
 
         debug!("get_auto_trait_impls({:?})", ty);
-        let auto_traits: Vec<_> = self.cx.auto_traits.iter().copied().collect();
+        let auto_traits: Vec<_> = self.cx.auto_traits.to_vec();
         let mut auto_traits: Vec<Item> = auto_traits
             .into_iter()
             .filter_map(|trait_def_id| {
