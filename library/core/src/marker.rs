@@ -858,6 +858,7 @@ impl<T: ?Sized> Unpin for *mut T {}
 #[lang = "destruct"]
 #[rustc_on_unimplemented(message = "can't drop `{Self}`", append_const_msg)]
 #[rustc_deny_explicit_impl]
+#[const_trait]
 pub trait Destruct {}
 
 /// A marker for tuple types.
