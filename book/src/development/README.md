@@ -13,6 +13,24 @@ If this is your first time contributing to Clippy, you should first read the
 [Basics docs](basics.md). This will explain the basics on how to get the source
 code and how to compile and test the code.
 
+## Additional Readings for Beginners
+
+If a dear reader of this documentation has never taken a class on compilers
+and interpreters, it might be confusing as to why AST level deals with only
+the language's syntax. And some readers might not even understand what lexing,
+parsing, and AST mean.
+
+This documentation serves by no means as a crash course on compilers or language design.
+And for details specifically related to Rust, the [Rustc Development Guide][rustc_dev_guide]
+is a far better choice to peruse.
+
+The [Syntax and AST][ast] chapter and the [High-Level IR][hir] chapter are
+great introduction to the concepts mentioned in this chapter.
+
+Some readers might also find the [introductory chapter][map_of_territory] of
+Robert Nystrom's _Crafting Interpreters_ a helpful overview of compiled and
+interpreted languages before jumping back to the Rustc guide.
+
 ## Writing code
 
 If you have done the basic setup, it's time to start hacking.
@@ -37,6 +55,10 @@ book](../lints.md).
 > - Triage procedure
 > - Bors and Homu
 
+[ast]: https://rustc-dev-guide.rust-lang.org/syntax-intro.html
+[hir]: https://rustc-dev-guide.rust-lang.org/hir.html
+[rustc_dev_guide]: https://rustc-dev-guide.rust-lang.org/
+[map_of_territory]: https://craftinginterpreters.com/a-map-of-the-territory.html
 [clippy_rfc]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md
 [rfc_stability]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md#stability-guarantees
 [rfc_lint_cats]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md#lint-audit-and-categories

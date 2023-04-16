@@ -1,7 +1,7 @@
 # Lint passes
 
 Before working on the logic of a new lint, there is an important decision
-that every Clippy developers must make: to use
+that every Clippy developer must make: to use
 [`EarlyLintPass`][early_lint_pass] or [`LateLintPass`][late_lint_pass].
 
 In short, the `LateLintPass` has access to type and symbol information while the
@@ -107,30 +107,8 @@ that use `LateLintPass`:
 $ cargo dev new_lint --name=<your_new_lint> --pass=late --category=<your_category_choice>
 ```
 
-## Additional Readings for Beginners
-
-If a dear reader of this documentation has never taken a class on compilers
-and interpreters, it might be confusing as to why AST level deals with only
-the language's syntax. And some readers might not even understand what lexing,
-parsing, and AST mean.
-
-This documentation serves by no means as a crash course on compilers or language design.
-And for details specifically related to Rust, the [Rustc Development Guide][rustc_dev_guide]
-is a far better choice to peruse.
-
-The [Syntax and AST][ast] chapter and the [High-Level IR][hir] chapter are
-great introduction to the concepts mentioned in this chapter.
-
-Some readers might also find the [introductory chapter][map_of_territory] of
-Robert Nystrom's _Crafting Interpreters_ a helpful overview of compiled and
-interpreted languages before jumping back to the Rustc guide.
-
-[ast]: https://rustc-dev-guide.rust-lang.org/syntax-intro.html
 [early_context]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/context/struct.EarlyContext.html
 [early_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.EarlyLintPass.html
-[hir]: https://rustc-dev-guide.rust-lang.org/hir.html
 [late_context]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/context/struct.LateContext.html
 [late_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.LateLintPass.html
 [lexing_and_parsing]: https://rustc-dev-guide.rust-lang.org/overview.html#lexing-and-parsing
-[rustc_dev_guide]: https://rustc-dev-guide.rust-lang.org/
-[map_of_territory]: https://craftinginterpreters.com/a-map-of-the-territory.html
