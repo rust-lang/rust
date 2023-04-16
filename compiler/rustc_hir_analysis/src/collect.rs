@@ -1457,10 +1457,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
 }
 
 fn is_foreign_item(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-    match tcx.hir().get_by_def_id(def_id) {
-        Node::ForeignItem(..) => true,
-        _ => false,
-    }
+    matches!(tcx.hir().get_by_def_id(def_id), Node::ForeignItem(..))
 }
 
 fn generator_kind(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<hir::GeneratorKind> {
