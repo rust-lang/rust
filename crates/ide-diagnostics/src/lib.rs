@@ -265,6 +265,19 @@ pub fn diagnostics(
             AnyDiagnostic::InvalidDeriveTarget(d) => handlers::invalid_derive_target::invalid_derive_target(&ctx, &d),
             AnyDiagnostic::MacroDefError(d) => handlers::macro_error::macro_def_error(&ctx, &d),
             AnyDiagnostic::MacroError(d) => handlers::macro_error::macro_error(&ctx, &d),
+            AnyDiagnostic::MacroExpansionParseError(d) => {
+                res.extend(d.errors.iter().take(32).map(|err| {
+                    {
+                        Diagnostic::new(
+                            "syntax-error",
+                            format!("Syntax Error in Expansion: {err}"),
+                            ctx.resolve_precise_location(&d.node.clone(), d.precise_location),
+                        )
+                    }
+                    .experimental()
+                }));
+                continue;
+            },
             AnyDiagnostic::MalformedDerive(d) => handlers::malformed_derive::malformed_derive(&ctx, &d),
             AnyDiagnostic::MismatchedArgCount(d) => handlers::mismatched_arg_count::mismatched_arg_count(&ctx, &d),
             AnyDiagnostic::MissingFields(d) => handlers::missing_fields::missing_fields(&ctx, &d),

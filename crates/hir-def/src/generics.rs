@@ -350,7 +350,7 @@ impl GenericParams {
                 match expander.enter_expand::<ast::Type>(db, macro_call) {
                     Ok(ExpandResult { value: Some((mark, expanded)), .. }) => {
                         let ctx = expander.ctx(db);
-                        let type_ref = TypeRef::from_ast(&ctx, expanded);
+                        let type_ref = TypeRef::from_ast(&ctx, expanded.tree());
                         self.fill_implicit_impl_trait_args(db, expander, &type_ref);
                         expander.exit(db, mark);
                     }

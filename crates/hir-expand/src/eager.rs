@@ -21,7 +21,7 @@
 use std::sync::Arc;
 
 use base_db::CrateId;
-use syntax::{ted, SyntaxNode};
+use syntax::{ted, Parse, SyntaxNode};
 
 use crate::{
     ast::{self, AstNode},
@@ -111,7 +111,7 @@ fn lazy_expand(
     def: &MacroDefId,
     macro_call: InFile<ast::MacroCall>,
     krate: CrateId,
-) -> ExpandResult<Option<InFile<SyntaxNode>>> {
+) -> ExpandResult<Option<InFile<Parse<SyntaxNode>>>> {
     let ast_id = db.ast_id_map(macro_call.file_id).ast_id(&macro_call.value);
 
     let expand_to = ExpandTo::from_call_site(&macro_call.value);
@@ -121,13 +121,8 @@ fn lazy_expand(
         MacroCallKind::FnLike { ast_id: macro_call.with_value(ast_id), expand_to },
     );
 
-    let err = db.macro_expand_error(id);
-    let value =
-        db.parse_or_expand_with_err(id.as_file()).map(|node| InFile::new(id.as_file(), node));
-    // FIXME: report parse errors
-    let value = value.map(|it| it.map(|it| it.syntax_node()));
-
-    ExpandResult { value, err }
+    db.parse_or_expand_with_err(id.as_file())
+        .map(|parse| parse.map(|parse| InFile::new(id.as_file(), parse)))
 }
 
 fn eager_macro_recur(
@@ -183,8 +178,14 @@ fn eager_macro_recur(
                     Some(val) => {
                         // replace macro inside
                         let hygiene = Hygiene::new(db, val.file_id);
-                        let ExpandResult { value, err: error } =
-                            eager_macro_recur(db, &hygiene, val, krate, macro_resolver)?;
+                        let ExpandResult { value, err: error } = eager_macro_recur(
+                            db,
+                            &hygiene,
+                            // FIXME: We discard parse errors here
+                            val.map(|it| it.syntax_node()),
+                            krate,
+                            macro_resolver,
+                        )?;
                         let err = if err.is_none() { error } else { err };
                         ExpandResult { value, err }
                     }

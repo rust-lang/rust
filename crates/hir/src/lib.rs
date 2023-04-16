@@ -87,12 +87,12 @@ pub use crate::{
     attrs::{HasAttrs, Namespace},
     diagnostics::{
         AnyDiagnostic, BreakOutsideOfLoop, ExpectedFunction, InactiveCode, IncoherentImpl,
-        IncorrectCase, InvalidDeriveTarget, MacroDefError, MacroError, MalformedDerive,
-        MismatchedArgCount, MissingFields, MissingMatchArms, MissingUnsafe, NeedMut, NoSuchField,
-        PrivateAssocItem, PrivateField, ReplaceFilterMapNextWithFindMap, TypeMismatch,
-        UndeclaredLabel, UnimplementedBuiltinMacro, UnreachableLabel, UnresolvedExternCrate,
-        UnresolvedField, UnresolvedImport, UnresolvedMacroCall, UnresolvedMethodCall,
-        UnresolvedModule, UnresolvedProcMacro, UnusedMut,
+        IncorrectCase, InvalidDeriveTarget, MacroDefError, MacroError, MacroExpansionParseError,
+        MalformedDerive, MismatchedArgCount, MissingFields, MissingMatchArms, MissingUnsafe,
+        NeedMut, NoSuchField, PrivateAssocItem, PrivateField, ReplaceFilterMapNextWithFindMap,
+        TypeMismatch, UndeclaredLabel, UnimplementedBuiltinMacro, UnreachableLabel,
+        UnresolvedExternCrate, UnresolvedField, UnresolvedImport, UnresolvedMacroCall,
+        UnresolvedMethodCall, UnresolvedModule, UnresolvedProcMacro, UnusedMut,
     },
     has_source::HasSource,
     semantics::{PathResolution, Semantics, SemanticsScope, TypeInfo, VisibleTraits},
@@ -753,7 +753,6 @@ fn emit_def_diagnostic_(
                 .into(),
             );
         }
-
         DefDiagnosticKind::UnresolvedProcMacro { ast, krate } => {
             let (node, precise_location, macro_name, kind) = precise_macro_call_location(ast, db);
             acc.push(
@@ -761,7 +760,6 @@ fn emit_def_diagnostic_(
                     .into(),
             );
         }
-
         DefDiagnosticKind::UnresolvedMacroCall { ast, path } => {
             let (node, precise_location, _, _) = precise_macro_call_location(ast, db);
             acc.push(
@@ -774,12 +772,16 @@ fn emit_def_diagnostic_(
                 .into(),
             );
         }
-
         DefDiagnosticKind::MacroError { ast, message } => {
             let (node, precise_location, _, _) = precise_macro_call_location(ast, db);
             acc.push(MacroError { node, precise_location, message: message.clone() }.into());
         }
-
+        DefDiagnosticKind::MacroExpansionParseError { ast, errors } => {
+            let (node, precise_location, _, _) = precise_macro_call_location(ast, db);
+            acc.push(
+                MacroExpansionParseError { node, precise_location, errors: errors.clone() }.into(),
+            );
+        }
         DefDiagnosticKind::UnimplementedBuiltinMacro { ast } => {
             let node = ast.to_node(db.upcast());
             // Must have a name, otherwise we wouldn't emit it.
