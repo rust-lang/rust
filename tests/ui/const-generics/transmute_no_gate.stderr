@@ -79,6 +79,15 @@ LL |     std::mem::transmute(v)
    = note: source type: `[[u32; 2 * H]; W + W]` (this type does not have a fixed size)
    = note: target type: `[[u32; W + W]; 2 * H]` (this type does not have a fixed size)
 
-error: aborting due to 9 previous errors
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute_no_gate.rs:84:5
+   |
+LL |     std::mem::transmute(v)
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `([u8; W], [u8; H])` (size can vary because of [u8; W])
+   = note: target type: `[u8; W + H]` (this type does not have a fixed size)
+
+error: aborting due to 10 previous errors
 
 For more information about this error, try `rustc --explain E0512`.

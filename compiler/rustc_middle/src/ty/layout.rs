@@ -332,6 +332,24 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     ),
                 }
             }
+            ty::Tuple(tys) if tcx.features().transmute_generic_consts => {
+                let mut inners = vec![];
+                for t in tys.iter() {
+                    let c = match SizeSkeleton::compute(t, tcx, param_env)? {
+                        SizeSkeleton::Known(s) => ty::Const::from_target_usize(tcx, s.bytes()),
+                        SizeSkeleton::Pointer { .. } => return Err(err),
+                        SizeSkeleton::Generic(g) => g,
+                    };
+                    inners.push(c);
+                }
+                let Some(sum) = sort_adds(tcx, param_env, inners.into_iter()) else {
+                    return Err(LayoutError::SizeOverflow(ty));
+                };
+                if let Some(c) = sum.try_eval_target_usize(tcx, param_env) {
+                    return Ok(SizeSkeleton::Known(Size::from_bytes(c)));
+                }
+                return Ok(SizeSkeleton::Generic(sum));
+            }
             ty::Array(inner, len)
                 if len.ty() == tcx.types.usize && tcx.features().transmute_generic_consts =>
             {
@@ -457,6 +475,50 @@ impl<'tcx> SizeSkeleton<'tcx> {
         }
     }
 }
+pub fn sort_adds<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    cs: impl Iterator<Item = ty::Const<'tcx>>,
+) -> Option<ty::Const<'tcx>> {
+    use crate::mir::BinOp::Add;
+    use ty::ConstKind::Expr;
+    use ty::Expr::Binop;
+    let mut work = cs.collect::<Vec<_>>();
+    let mut done = vec![];
+
+    while let Some(n) = work.pop() {
+        if let Expr(Binop(Add, l, r)) = n.kind() {
+            work.push(l);
+            work.push(r)
+        } else {
+            done.push(n);
+        }
+    }
+    let mut k = 0;
+    let mut overflow = false;
+    done.retain(|c| {
+        let Some(c) = c.try_eval_target_usize(tcx, param_env) else {
+            return true;
+        };
+        let Some(next) = c.checked_add(k) else {
+            overflow = true;
+            return false;
+        };
+        k = next;
+        false
+    });
+    if overflow {
+        return None;
+    }
+    let ck = ty::Const::from_target_usize(tcx, k);
+    if done.is_empty() {
+        return Some(ck);
+    } else if k != 0 {
+        done.push(ck);
+    }
+    done.sort_unstable();
+    done.into_iter().reduce(|acc, n| tcx.mk_const(Expr(Binop(Add, n, acc)), n.ty()))
+}
 
 /// When creating the layout for types with abstract conts in their size (i.e. [usize; 4 * N]),
 /// to ensure that they have a canonical order and can be compared directly we combine all
@@ -499,15 +561,19 @@ fn mul_sorted_consts<'tcx>(
     if overflow {
         return None;
     }
-    if k != 1 {
+    if k > 1 {
         done.push(ty::Const::from_target_usize(tcx, k));
     } else if k == 0 {
         return Some(ty::Const::from_target_usize(tcx, 0));
     }
     done.sort_unstable();
 
-    // create a single tree from the buffer
-    done.into_iter().reduce(|acc, n| tcx.mk_const(Expr(Binop(Mul, n, acc)), n.ty()))
+    // create a single tree from the buffer.
+    // Note that it's necessary to sort additions at the top level, but these should never
+    // overflow.
+    done.into_iter()
+        .map(|c| sort_adds(tcx, param_env, std::iter::once(c)).unwrap())
+        .reduce(|acc, n| tcx.mk_const(Expr(Binop(Mul, n, acc)), n.ty()))
 }
 
 pub trait HasTyCtxt<'tcx>: HasDataLayout {

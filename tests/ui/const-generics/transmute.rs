@@ -67,10 +67,20 @@ fn transpose_with_const<const W: usize, const H: usize>(
   unsafe {
     std::mem::transmute(v)
   }
+
+}
+
+fn concat_tuple<const W: usize, const H: usize>(
+  v: ([u8; W], [u8; H]),
+) -> [u8; W + H] {
+  unsafe {
+    std::mem::transmute(v)
+  }
 }
 
 fn main() {
   let _ = transpose([[0; 8]; 16]);
+  let _ = concat_tuple(([0; 10], [0; 16]));
   let _ = transpose_with_const::<8,4>([[0; 8]; 16]);
   let _ = ident([[0; 8]; 16]);
   let _ = flatten([[0; 13]; 5]);
