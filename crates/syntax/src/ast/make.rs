@@ -184,8 +184,11 @@ pub fn impl_trait(
     ty: ast::Path,
     ty_params: Option<ast::GenericParamList>,
 ) -> ast::Impl {
-    let ty_params = ty_params.map_or_else(String::new, |params| params.to_string());
-    ast_from_text(&format!("impl{ty_params} {trait_} for {ty}{ty_params} {{}}"))
+    // TODO : If this function is now correct we can also change `impl_` accordingly`
+    let ty_params_str = ty_params.as_ref().map_or_else(String::new, |params| params.to_string());
+    let ty_genargs_str =
+        ty_params.map_or_else(String::new, |params| params.to_generic_args().to_string());
+    ast_from_text(&format!("impl{ty_params_str} {trait_} for {ty}{ty_genargs_str} {{}}"))
 }
 
 pub fn path_segment(name_ref: ast::NameRef) -> ast::PathSegment {
