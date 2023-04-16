@@ -60,10 +60,11 @@ pub fn expand_eager_macro(
     let arg_id = db.intern_macro_call(MacroCallLoc {
         def,
         krate,
-        eager: Some(EagerCallInfo {
+        eager: Some(Box::new(EagerCallInfo {
             arg_or_expansion: Arc::new(parsed_args.clone()),
             included_file: None,
-        }),
+            error: None,
+        })),
         kind: MacroCallKind::FnLike { ast_id: call_id, expand_to: ExpandTo::Expr },
     });
 
@@ -88,10 +89,11 @@ pub fn expand_eager_macro(
     let loc = MacroCallLoc {
         def,
         krate,
-        eager: Some(EagerCallInfo {
+        eager: Some(Box::new(EagerCallInfo {
             arg_or_expansion: Arc::new(res.value.subtree),
             included_file: res.value.included_file,
-        }),
+            error: err.clone(),
+        })),
         kind: MacroCallKind::FnLike { ast_id: call_id, expand_to },
     };
 

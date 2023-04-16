@@ -69,7 +69,7 @@ impl fmt::Display for ParseError {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum ExpandError {
     BindingError(Box<Box<str>>),
     LeftoverTokens,

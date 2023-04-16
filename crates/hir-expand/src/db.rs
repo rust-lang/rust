@@ -451,8 +451,7 @@ fn macro_expand(
     if let Some(eager) = &loc.eager {
         return ExpandResult {
             value: Some(eager.arg_or_expansion.clone()),
-            // FIXME: There could be errors here!
-            err: None,
+            err: eager.error.clone(),
         };
     }
 
