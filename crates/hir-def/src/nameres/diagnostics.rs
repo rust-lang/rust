@@ -34,6 +34,8 @@ pub enum DefDiagnosticKind {
     InvalidDeriveTarget { ast: AstId<ast::Item>, id: usize },
 
     MalformedDerive { ast: AstId<ast::Adt>, id: usize },
+
+    MacroDefError { ast: AstId<ast::Macro>, message: String },
 }
 
 #[derive(Debug, PartialEq, Eq)]

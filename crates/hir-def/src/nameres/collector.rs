@@ -1374,6 +1374,8 @@ impl DefCollector<'_> {
 
         // Then, fetch and process the item tree. This will reuse the expansion result from above.
         let item_tree = self.db.file_item_tree(file_id);
+        // FIXME: report parse errors for the macro expansion here
+
         let mod_dir = self.mod_dirs[&module_id].clone();
         ModCollector {
             def_collector: &mut *self,

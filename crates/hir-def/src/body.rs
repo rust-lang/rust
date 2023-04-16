@@ -190,8 +190,9 @@ impl Expander {
 
         let file_id = call_id.as_file();
 
-        let raw_node = match db.parse_or_expand(file_id) {
-            Some(it) => it,
+        let raw_node = match db.parse_or_expand_with_err(file_id) {
+            // FIXME: report parse errors
+            Some(it) => it.syntax_node(),
             None => {
                 // Only `None` if the macro expansion produced no usable AST.
                 if err.is_none() {
