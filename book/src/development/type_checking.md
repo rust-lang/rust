@@ -51,7 +51,7 @@ impl LateLintPass<'_> for MyStructLint {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         // Get type of `expr`
         let ty = cx.typeck_results().expr_ty(expr);
-        
+
         // Check if the `Ty` of this expression is of character type
         if ty.is_char() {
             println!("Our expression is a char!");
@@ -70,18 +70,18 @@ pub fn is_char(self) -> bool {
 }
 ```
 
-Indeed, we just discovered `Ty`'s [`kind` method][kind], which provides us
+Indeed, we just discovered `Ty`'s [`kind()` method][kind], which provides us
 with [`TyKind`][TyKind] of a `Ty`.
 
 ## `TyKind`
 
 `TyKind` defines the kinds of types in Rust's type system.
 Peeking into [`TyKind` documentation][TyKind], we will see that it is an
-enum of 27 variants, including items such as `Bool`, `Int`, `Ref`, etc.
+enum of over 25 variants, including items such as `Bool`, `Int`, `Ref`, etc.
 
 ### `kind` Usage
 
-The `TyKind` of `Ty` can be returned by calling [`Ty.kind` method][kind].
+The `TyKind` of `Ty` can be returned by calling [`Ty.kind()` method][kind].
 We often use this method to perform pattern matching in Clippy.
 
 For instance, if we want to check for a `struct`, we could examine if the
@@ -107,15 +107,21 @@ impl LateLintPass<'_> for MyStructLint {
 We've been talking about [`ty::Ty`][middle_ty] this whole time without addressing [`hir::Ty`][hir_ty], but the latter
 is also important to understand.
 
-`hir::Ty` would represent *what* an user wrote, while `ty::Ty` would understand the meaning of it (because it has more
-information).
+`hir::Ty` would represent *what* the user wrote, while `ty::Ty` is how the compiler sees the type and has more
+information. Example:
 
-**Example: `fn foo(x: u32) -> u32 { x }`**
+```rust
+fn foo(x: u32) -> u32 { x }
+```
 
 Here the HIR sees the types without "thinking" about them, it knows that the function takes an `u32` and returns
-an `u32`. But at the `ty::Ty` level the compiler understands that they're the same type, in-depth lifetimes, etc...
+an `u32`. As far as `hir::Ty` is concerned those might be different types. But at the `ty::Ty` level the compiler
+understands that they're the same type, in-depth lifetimes, etc...
 
-you can use the [`hir_ty_to_ty`][hir_ty_to_ty] function to convert from a `hir::Ty` to a `ty::Ty`
+To get from a `hir::Ty` to a `ty::Ty`, you can use the [`hir_ty_to_ty`][hir_ty_to_ty] function outside of bodies or
+outside of bodies the [`TypeckResults::node_type()`][node_type] method.
+
+> **Warning**: Don't use `hir_ty_to_ty` inside of bodies, because this can cause ICEs.
 
 ## Useful Links
 
@@ -130,6 +136,7 @@ in this chapter:
 [Adt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html#variant.Adt
 [AdtDef]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/adt/struct.AdtDef.html
 [expr_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TypeckResults.html#method.expr_ty
+[node_type]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TypeckResults.html#method.node_type
 [is_char]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html#method.is_char
 [is_char_source]: https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_middle/ty/sty.rs.html#1831-1834
 [kind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html#method.kind
