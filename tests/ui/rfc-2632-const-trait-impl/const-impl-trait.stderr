@@ -1,0 +1,39 @@
+error[E0635]: unknown feature `const_cmp`
+  --> $DIR/const-impl-trait.rs:6:5
+   |
+LL |     const_cmp,
+   |     ^^^^^^^^^
+
+error: ~const can only be applied to `#[const_trait]` traits
+  --> $DIR/const-impl-trait.rs:12:30
+   |
+LL | const fn cmp(a: &impl ~const PartialEq) -> bool {
+   |                              ^^^^^^^^^
+
+error: ~const can only be applied to `#[const_trait]` traits
+  --> $DIR/const-impl-trait.rs:16:30
+   |
+LL | const fn wrap(x: impl ~const PartialEq + ~const Destruct)
+   |                              ^^^^^^^^^
+
+error: ~const can only be applied to `#[const_trait]` traits
+  --> $DIR/const-impl-trait.rs:17:20
+   |
+LL |     -> impl ~const PartialEq + ~const Destruct
+   |                    ^^^^^^^^^
+
+error: ~const can only be applied to `#[const_trait]` traits
+  --> $DIR/const-impl-trait.rs:24:29
+   |
+LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
+   |                             ^^^^^^^^^
+
+error: ~const can only be applied to `#[const_trait]` traits
+  --> $DIR/const-impl-trait.rs:28:29
+   |
+LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy {
+   |                             ^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0635`.

@@ -1,5 +1,5 @@
 error[E0277]: can't drop `NonTrivialDrop` in const contexts
-  --> $DIR/const-drop-fail.rs:26:23
+  --> $DIR/const-drop-fail.rs:28:23
    |
 LL |           const _: () = check($exp);
    |                         ^^^^^^^^^^^ the trait `~const Destruct` is not implemented for `NonTrivialDrop`
@@ -11,7 +11,7 @@ LL | | }
    | |_- in this macro invocation
    |
 note: the trait `Destruct` is implemented for `NonTrivialDrop`, but that implementation is not `const`
-  --> $DIR/const-drop-fail.rs:26:23
+  --> $DIR/const-drop-fail.rs:28:23
    |
 LL |           const _: () = check($exp);
    |                         ^^^^^^^^^^^
@@ -24,7 +24,7 @@ LL | | }
    = note: this error originates in the macro `check_all` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't drop `NonTrivialDrop` in const contexts
-  --> $DIR/const-drop-fail.rs:26:23
+  --> $DIR/const-drop-fail.rs:28:23
    |
 LL |           const _: () = check($exp);
    |                         ^^^^^^^^^^^ within `ConstImplWithDropGlue`, the trait `~const Destruct` is not implemented for `NonTrivialDrop`
@@ -36,7 +36,7 @@ LL | | }
    | |_- in this macro invocation
    |
 note: the trait `Destruct` is implemented for `NonTrivialDrop`, but that implementation is not `const`
-  --> $DIR/const-drop-fail.rs:26:23
+  --> $DIR/const-drop-fail.rs:28:23
    |
 LL |           const _: () = check($exp);
    |                         ^^^^^^^^^^^
@@ -47,7 +47,7 @@ LL | |     ConstImplWithDropGlue(NonTrivialDrop),
 LL | | }
    | |_- in this macro invocation
 note: required because it appears within the type `ConstImplWithDropGlue`
-  --> $DIR/const-drop-fail.rs:16:8
+  --> $DIR/const-drop-fail.rs:18:8
    |
 LL | struct ConstImplWithDropGlue(NonTrivialDrop);
    |        ^^^^^^^^^^^^^^^^^^^^^

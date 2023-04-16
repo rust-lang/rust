@@ -23,6 +23,7 @@ fn hash<T: Hash>(x: &T) -> u64 {
     hash_with(SipHasher::new(), x)
 }
 
+/* FIXME(#110395)
 #[test]
 const fn test_const_sip() {
     let val1 = 0x45;
@@ -36,6 +37,7 @@ const fn test_const_sip() {
 
     assert!(const_hash(&(val1)) != const_hash(&(val2)));
 }
+*/
 
 #[test]
 #[allow(unused_must_use)]

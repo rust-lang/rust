@@ -35,13 +35,14 @@ impl Hasher for MyHasher {
 
 #[test]
 fn test_writer_hasher() {
-    const fn hash<T: Hash>(t: &T) -> u64 {
+    // FIXME(#110395)
+    /* const */ fn hash<T: Hash>(t: &T) -> u64 {
         let mut s = MyHasher { hash: 0 };
         t.hash(&mut s);
         s.finish()
     }
 
-    const {
+    /* const {
         // FIXME(fee1-dead): assert_eq
         assert!(hash(&()) == 0);
         assert!(hash(&5_u8) == 5);
@@ -52,7 +53,7 @@ fn test_writer_hasher() {
 
         let s: &str = "a";
         assert!(hash(&s) == 97 + 0xFF);
-    };
+    }; */
 
     assert_eq!(hash(&()), 0);
 
@@ -139,7 +140,8 @@ impl Hash for Custom {
 
 #[test]
 fn test_custom_state() {
-    const fn hash<T: Hash>(t: &T) -> u64 {
+    // FIXME(#110395)
+    /* const */ fn hash<T: Hash>(t: &T) -> u64 {
         let mut c = CustomHasher { output: 0 };
         t.hash(&mut c);
         c.finish()
@@ -147,7 +149,7 @@ fn test_custom_state() {
 
     assert_eq!(hash(&Custom { hash: 5 }), 5);
 
-    const { assert!(hash(&Custom { hash: 6 }) == 6) };
+    // const { assert!(hash(&Custom { hash: 6 }) == 6) };
 }
 
 // FIXME: Instantiated functions with i128 in the signature is not supported in Emscripten.

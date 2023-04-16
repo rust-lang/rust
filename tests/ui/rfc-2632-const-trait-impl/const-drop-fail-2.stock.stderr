@@ -1,50 +1,26 @@
-error[E0277]: the trait bound `NonTrivialDrop: ~const A` is not satisfied
-  --> $DIR/const-drop-fail-2.rs:31:23
+error: const `impl` for trait `Drop` which is not marked with `#[const_trait]`
+  --> $DIR/const-drop-fail-2.rs:23:25
    |
-LL | const _: () = check::<ConstDropImplWithBounds<NonTrivialDrop>>(
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `~const A` is not implemented for `NonTrivialDrop`
+LL | impl<T: ~const A> const Drop for ConstDropImplWithBounds<T> {
+   |                         ^^^^
    |
-note: the trait `A` is implemented for `NonTrivialDrop`, but that implementation is not `const`
-  --> $DIR/const-drop-fail-2.rs:31:23
-   |
-LL | const _: () = check::<ConstDropImplWithBounds<NonTrivialDrop>>(
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: required by a bound in `ConstDropImplWithBounds`
-  --> $DIR/const-drop-fail-2.rs:21:35
-   |
-LL | struct ConstDropImplWithBounds<T: ~const A>(PhantomData<T>);
-   |                                   ^^^^^^^^ required by this bound in `ConstDropImplWithBounds`
+   = note: marking a trait with `#[const_trait]` ensures all default method bodies are `const`
+   = note: adding a non-const method body in the future would be a breaking change
 
-error[E0277]: the trait bound `NonTrivialDrop: ~const A` is not satisfied
-  --> $DIR/const-drop-fail-2.rs:33:5
+error: ~const can only be applied to `#[const_trait]` traits
+  --> $DIR/const-drop-fail-2.rs:29:26
    |
-LL |     ConstDropImplWithBounds(PhantomData)
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `~const A` is not implemented for `NonTrivialDrop`
-   |
-note: the trait `A` is implemented for `NonTrivialDrop`, but that implementation is not `const`
-  --> $DIR/const-drop-fail-2.rs:33:5
-   |
-LL |     ConstDropImplWithBounds(PhantomData)
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: required by a bound in `ConstDropImplWithBounds`
-  --> $DIR/const-drop-fail-2.rs:21:35
-   |
-LL | struct ConstDropImplWithBounds<T: ~const A>(PhantomData<T>);
-   |                                   ^^^^^^^^ required by this bound in `ConstDropImplWithBounds`
+LL | const fn check<T: ~const Destruct>(_: T) {}
+   |                          ^^^^^^^^
 
-error[E0367]: `Drop` impl requires `T: ~const A` but the struct it is implemented for does not
-  --> $DIR/const-drop-fail-2.rs:39:9
+error: const `impl` for trait `Drop` which is not marked with `#[const_trait]`
+  --> $DIR/const-drop-fail-2.rs:39:25
    |
 LL | impl<T: ~const A> const Drop for ConstDropImplWithNonConstBounds<T> {
-   |         ^^^^^^^^
+   |                         ^^^^
    |
-note: the implementor must specify the same requirement
-  --> $DIR/const-drop-fail-2.rs:37:1
-   |
-LL | struct ConstDropImplWithNonConstBounds<T: A>(PhantomData<T>);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: marking a trait with `#[const_trait]` ensures all default method bodies are `const`
+   = note: adding a non-const method body in the future would be a breaking change
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0277, E0367.
-For more information about an error, try `rustc --explain E0277`.

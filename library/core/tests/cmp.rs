@@ -217,6 +217,7 @@ fn cmp_default() {
     assert_eq!(Fool(false), Fool(true));
 }
 
+/* FIXME(#110395)
 mod const_cmp {
     use super::*;
 
@@ -248,3 +249,4 @@ mod const_cmp {
     const _: () = assert!(S(0) < S(1));
     const _: () = assert!(S(1) > S(0));
 }
+*/
