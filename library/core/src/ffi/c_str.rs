@@ -331,6 +331,7 @@ impl CStr {
         match nul_pos {
             Some(nul_pos) => {
                 // FIXME(const-hack) replace with range index
+                // SAFETY: nul_pos + 1 <= bytes.len()
                 let subslice = unsafe { crate::slice::from_raw_parts(bytes.as_ptr(), nul_pos + 1) };
                 // SAFETY: We know there is a nul byte at nul_pos, so this slice
                 // (ending at the nul byte) is a well-formed C string.
