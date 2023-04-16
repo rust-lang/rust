@@ -1,0 +1,21 @@
+error[E0428]: the name `test` is defined multiple times
+  --> $DIR/issue-108592.rs:17:1
+   |
+LL | fn test() {
+   | --------- previous definition of the value `test` here
+...
+LL | fn test(_: &Opaque<'_>) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^ `test` redefined here
+   |
+   = note: `test` must be defined only once in the value namespace of this module
+
+error[E0601]: `main` function not found in crate `issue_108592`
+  --> $DIR/issue-108592.rs:20:2
+   |
+LL | }
+   |  ^ consider adding a `main` function to `$DIR/issue-108592.rs`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0428, E0601.
+For more information about an error, try `rustc --explain E0428`.
