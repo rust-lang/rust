@@ -183,13 +183,14 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         let range: Range<usize> = range.into();
 
         if show_token_ids {
-            let (tree, map, _) = &*arg;
-            let tt_range = call.token_tree().unwrap().syntax().text_range();
-            let mut ranges = Vec::new();
-            extract_id_ranges(&mut ranges, map, tree);
-            for (range, id) in ranges {
-                let idx = (tt_range.start() + range.end()).into();
-                text_edits.push((idx..idx, format!("#{}", id.0)));
+            if let Some((tree, map, _)) = arg.as_deref() {
+                let tt_range = call.token_tree().unwrap().syntax().text_range();
+                let mut ranges = Vec::new();
+                extract_id_ranges(&mut ranges, map, tree);
+                for (range, id) in ranges {
+                    let idx = (tt_range.start() + range.end()).into();
+                    text_edits.push((idx..idx, format!("#{}", id.0)));
+                }
             }
             text_edits.push((range.start..range.start, "// ".into()));
             call.to_string().match_indices('\n').for_each(|(offset, _)| {

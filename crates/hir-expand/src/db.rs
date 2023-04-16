@@ -120,7 +120,7 @@ pub trait ExpandDatabase: SourceDatabase {
     fn macro_arg(
         &self,
         id: MacroCallId,
-    ) -> Arc<(tt::Subtree, mbe::TokenMap, fixup::SyntaxFixupUndoInfo)>;
+    ) -> Option<Arc<(tt::Subtree, mbe::TokenMap, fixup::SyntaxFixupUndoInfo)>>;
     /// Extracts syntax node, corresponding to a macro call. That's a firewall
     /// query, only typing in the macro call itself changes the returned
     /// subtree.
@@ -318,17 +318,8 @@ fn parse_macro_expansion(
 fn macro_arg(
     db: &dyn ExpandDatabase,
     id: MacroCallId,
-) -> Arc<(tt::Subtree, mbe::TokenMap, fixup::SyntaxFixupUndoInfo)> {
-    let Some(arg) = db.macro_arg_text(id) else {
-        return Arc::new((
-            tt::Subtree {
-                delimiter: tt::Delimiter::UNSPECIFIED,
-                token_trees: Vec::new(),
-            },
-            Default::default(),
-            Default::default())
-        );
-    };
+) -> Option<Arc<(tt::Subtree, mbe::TokenMap, fixup::SyntaxFixupUndoInfo)>> {
+    let arg = db.macro_arg_text(id)?;
     let loc = db.lookup_intern_macro_call(id);
 
     let node = SyntaxNode::new_root(arg);
@@ -347,7 +338,7 @@ fn macro_arg(
         // proc macros expect their inputs without parentheses, MBEs expect it with them included
         tt.delimiter = tt::Delimiter::unspecified();
     }
-    Arc::new((tt, tmap, fixups.undo_info))
+    Some(Arc::new((tt, tmap, fixups.undo_info)))
 }
 
 fn censor_for_macro_input(loc: &MacroCallLoc, node: &SyntaxNode) -> FxHashSet<SyntaxNode> {
@@ -472,7 +463,20 @@ fn macro_expand(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<Arc<tt
             }
         }
     };
-    let macro_arg = db.macro_arg(id);
+    let Some(macro_arg) = db.macro_arg(id) else {
+        return ExpandResult {
+            value: Arc::new(
+                tt::Subtree {
+                    delimiter: tt::Delimiter::UNSPECIFIED,
+                    token_trees: Vec::new(),
+                },
+            ),
+            err: Some(ExpandError::Other(
+                "invalid token tree"
+                .into(),
+            )),
+        };
+    };
     let ExpandResult { value: mut tt, err } = expander.expand(db, id, &macro_arg.0);
     // Set a hard limit for the expanded tt
     let count = tt.count();
@@ -508,7 +512,18 @@ fn parse_macro_expansion_error(
 
 fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<tt::Subtree> {
     let loc: MacroCallLoc = db.lookup_intern_macro_call(id);
-    let macro_arg = db.macro_arg(id);
+    let Some(macro_arg) = db.macro_arg(id) else {
+        return ExpandResult {
+            value: tt::Subtree {
+                delimiter: tt::Delimiter::UNSPECIFIED,
+                token_trees: Vec::new(),
+            },
+            err: Some(ExpandError::Other(
+                "invalid token tree"
+                .into(),
+            )),
+        };
+    };
 
     let expander = match loc.def.kind {
         MacroDefKind::ProcMacro(expander, ..) => expander,
