@@ -247,7 +247,7 @@ mod once;
 
 #[unstable(feature = "lazy_cell", issue = "109736")]
 pub use lazy::LazyCell;
-#[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "once_cell", since = "1.70.0")]
 pub use once::OnceCell;
 
 /// A mutable memory location.

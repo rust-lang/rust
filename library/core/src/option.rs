@@ -616,7 +616,7 @@ impl<T> Option<T> {
     /// ```
     #[must_use]
     #[inline]
-    #[stable(feature = "is_some_and", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "is_some_and", since = "1.70.0")]
     pub fn is_some_and(self, f: impl FnOnce(T) -> bool) -> bool {
         match self {
             None => false,

@@ -342,7 +342,7 @@ impl<T, A: Allocator> FusedIterator for IntoIter<T, A> {}
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<T, A: Allocator> TrustedLen for IntoIter<T, A> {}
 
-#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters", since = "1.70.0")]
 impl<T, A> Default for IntoIter<T, A>
 where
     A: Allocator + Default,

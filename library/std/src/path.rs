@@ -1509,7 +1509,7 @@ impl PathBuf {
     /// path.as_mut_os_string().push("baz");
     /// assert_eq!(path, Path::new("/foo/barbaz"));
     /// ```
-    #[stable(feature = "path_as_mut_os_str", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "path_as_mut_os_str", since = "1.70.0")]
     #[must_use]
     #[inline]
     pub fn as_mut_os_string(&mut self) -> &mut OsString {
@@ -2074,7 +2074,7 @@ impl Path {
     /// path.as_mut_os_str().make_ascii_lowercase();
     /// assert_eq!(path, Path::new("foo.txt"));
     /// ```
-    #[stable(feature = "path_as_mut_os_str", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "path_as_mut_os_str", since = "1.70.0")]
     #[must_use]
     #[inline]
     pub fn as_mut_os_str(&mut self) -> &mut OsStr {

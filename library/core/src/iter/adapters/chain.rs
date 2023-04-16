@@ -273,7 +273,7 @@ where
 {
 }
 
-#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters", since = "1.70.0")]
 impl<A: Default, B: Default> Default for Chain<A, B> {
     /// Creates a `Chain` from the default values for `A` and `B`.
     ///

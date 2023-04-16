@@ -1047,7 +1047,7 @@ pub(crate) fn attempt_print_to_stderr(args: fmt::Arguments<'_>) {
 }
 
 /// Trait to determine if a descriptor/handle refers to a terminal/tty.
-#[stable(feature = "is_terminal", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "is_terminal", since = "1.70.0")]
 pub trait IsTerminal: crate::sealed::Sealed {
     /// Returns `true` if the descriptor/handle refers to a terminal/tty.
     ///
@@ -1063,7 +1063,7 @@ pub trait IsTerminal: crate::sealed::Sealed {
     /// Note that this [may change in the future][changes].
     ///
     /// [changes]: io#platform-specific-behavior
-    #[stable(feature = "is_terminal", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "is_terminal", since = "1.70.0")]
     fn is_terminal(&self) -> bool;
 }
 
@@ -1072,7 +1072,7 @@ macro_rules! impl_is_terminal {
         #[unstable(feature = "sealed", issue = "none")]
         impl crate::sealed::Sealed for $t {}
 
-        #[stable(feature = "is_terminal", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "is_terminal", since = "1.70.0")]
         impl IsTerminal for $t {
             #[inline]
             fn is_terminal(&self) -> bool {
