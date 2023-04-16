@@ -15,6 +15,7 @@ rustc_attr = { path = "../rustc_attr" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_hir = { path = "../rustc_hir" }
+rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_target = { path = "../rustc_target" }
 rustc_session = { path = "../rustc_session" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }

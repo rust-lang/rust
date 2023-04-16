@@ -20,6 +20,7 @@ extern crate tracing;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticMessage, SubdiagnosticMessage};
+use rustc_fluent_macro::fluent_messages;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::ChunkedBitSet;
@@ -27,7 +28,6 @@ use rustc_index::vec::{IndexSlice, IndexVec};
 use rustc_infer::infer::{
     DefiningAnchor, InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin, TyCtxtInferExt,
 };
-use rustc_macros::fluent_messages;
 use rustc_middle::mir::{
     traversal, Body, ClearCrossCrate, Local, Location, Mutability, NonDivergingIntrinsic, Operand,
     Place, PlaceElem, PlaceRef, VarDebugInfoContents,

@@ -38,8 +38,8 @@ pub use rustc_error_messages::{
     fallback_fluent_bundle, fluent_bundle, DelayDm, DiagnosticMessage, FluentBundle,
     LanguageIdentifier, LazyFallbackBundle, MultiSpan, SpanLabel, SubdiagnosticMessage,
 };
+use rustc_fluent_macro::fluent_messages;
 pub use rustc_lint_defs::{pluralize, Applicability};
-use rustc_macros::fluent_messages;
 use rustc_span::source_map::SourceMap;
 pub use rustc_span::ErrorGuaranteed;
 use rustc_span::{Loc, Span};

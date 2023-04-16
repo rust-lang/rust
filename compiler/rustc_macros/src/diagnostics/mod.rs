@@ -1,12 +1,10 @@
 mod diagnostic;
 mod diagnostic_builder;
 mod error;
-mod fluent;
 mod subdiagnostic;
 mod utils;
 
 use diagnostic::{DiagnosticDerive, LintDiagnosticDerive};
-pub(crate) use fluent::fluent_messages;
 use proc_macro2::TokenStream;
 use quote::format_ident;
 use subdiagnostic::SubdiagnosticDeriveBuilder;

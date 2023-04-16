@@ -37,7 +37,7 @@ extern crate rustc_middle;
 extern crate smallvec;
 
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
-use rustc_macros::fluent_messages;
+use rustc_fluent_macro::fluent_messages;
 
 pub mod errors;
 pub mod infer;
