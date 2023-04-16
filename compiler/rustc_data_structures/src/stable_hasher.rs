@@ -107,7 +107,8 @@ impl Hasher for StableHasher {
 
     #[inline]
     fn write_u128(&mut self, i: u128) {
-        self.state.write(&i.to_le_bytes());
+        self.write_u64(i as u64);
+        self.write_u64((i >> 64) as u64);
     }
 
     #[inline]
