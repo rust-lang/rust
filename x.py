@@ -19,7 +19,9 @@ if sys.version_info.major < 3:
             os.execvp("python3", ["python3"] + sys.argv)
         except OSError:
             # Python 3 isn't available, fall back to python 2
-            pass
+            sys.stderr.write("Could not find Python 3. If you have Python 3 available, use it to invoke x.py.")
+            sys.stderr.write("If no Python 3 is available, consider installing it: https://www.python.org/downloads/")
+            exit(1)
 
 rust_dir = os.path.dirname(os.path.abspath(__file__))
 # For the import below, have Python search in src/bootstrap first.
