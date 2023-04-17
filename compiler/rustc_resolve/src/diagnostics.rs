@@ -1869,15 +1869,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 Some(LexicalScopeBinding::Item(name_binding)) => Some(name_binding.span),
                 _ => None,
             };
-            let suggestion = if let Some(span) = match_span {
-                Some((
+            let suggestion = match_span.map(|span| {
+                (
                     vec![(span, String::from(""))],
                     format!("`{}` is defined here, but is not a type", ident),
                     Applicability::MaybeIncorrect,
-                ))
-            } else {
-                None
-            };
+                )
+            });
 
             (format!("use of undeclared type `{}`", ident), suggestion)
         } else {

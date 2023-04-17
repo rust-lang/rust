@@ -1663,10 +1663,11 @@ impl SourceFile {
 
         if let Some(ref src) = self.src {
             Some(Cow::from(get_until_newline(src, begin)))
-        } else if let Some(src) = self.external_src.borrow().get_source() {
-            Some(Cow::Owned(String::from(get_until_newline(src, begin))))
         } else {
-            None
+            self.external_src
+                .borrow()
+                .get_source()
+                .map(|src| Cow::Owned(String::from(get_until_newline(src, begin))))
         }
     }
 

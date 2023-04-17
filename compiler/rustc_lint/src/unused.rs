@@ -636,20 +636,14 @@ trait UnusedDelimLint {
             return;
         }
         let spans = match value.kind {
-            ast::ExprKind::Block(ref block, None) if block.stmts.len() == 1 => {
-                if let Some(span) = block.stmts[0].span.find_ancestor_inside(value.span) {
-                    Some((value.span.with_hi(span.lo()), value.span.with_lo(span.hi())))
-                } else {
-                    None
-                }
-            }
+            ast::ExprKind::Block(ref block, None) if block.stmts.len() == 1 => block.stmts[0]
+                .span
+                .find_ancestor_inside(value.span)
+                .map(|span| (value.span.with_hi(span.lo()), value.span.with_lo(span.hi()))),
             ast::ExprKind::Paren(ref expr) => {
-                let expr_span = expr.span.find_ancestor_inside(value.span);
-                if let Some(expr_span) = expr_span {
-                    Some((value.span.with_hi(expr_span.lo()), value.span.with_lo(expr_span.hi())))
-                } else {
-                    None
-                }
+                expr.span.find_ancestor_inside(value.span).map(|expr_span| {
+                    (value.span.with_hi(expr_span.lo()), value.span.with_lo(expr_span.hi()))
+                })
             }
             _ => return,
         };
@@ -928,11 +922,10 @@ impl UnusedParens {
                 // Otherwise proceed with linting.
                 _ => {}
             }
-            let spans = if let Some(inner) = inner.span.find_ancestor_inside(value.span) {
-                Some((value.span.with_hi(inner.lo()), value.span.with_lo(inner.hi())))
-            } else {
-                None
-            };
+            let spans = inner
+                .span
+                .find_ancestor_inside(value.span)
+                .map(|inner| (value.span.with_hi(inner.lo()), value.span.with_lo(inner.hi())));
             self.emit_unused_delims(cx, value.span, spans, "pattern", keep_space);
         }
     }
@@ -1043,11 +1036,11 @@ impl EarlyLintPass for UnusedParens {
                         if self.with_self_ty_parens && b.generic_params.len() > 0 => {}
                     ast::TyKind::ImplTrait(_, bounds) if bounds.len() > 1 => {}
                     _ => {
-                        let spans = if let Some(r) = r.span.find_ancestor_inside(ty.span) {
-                            Some((ty.span.with_hi(r.lo()), ty.span.with_lo(r.hi())))
-                        } else {
-                            None
-                        };
+                        let spans = r
+                            .span
+                            .find_ancestor_inside(ty.span)
+                            .map(|r| (ty.span.with_hi(r.lo()), ty.span.with_lo(r.hi())));
+
                         self.emit_unused_delims(cx, ty.span, spans, "type", (false, false));
                     }
                 }
