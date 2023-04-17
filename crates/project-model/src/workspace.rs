@@ -779,7 +779,7 @@ fn project_json_to_crate_graph(
                         CrateOrigin::Local { repo: None, name: None }
                     },
                     target_layout.clone(),
-                    None,
+                    channel,
                 );
                 if *is_proc_macro {
                     if let Some(path) = proc_macro_dylib_path.clone() {

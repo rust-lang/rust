@@ -284,9 +284,9 @@ impl ReleaseChannel {
 
     pub fn from_str(str: &str) -> Option<Self> {
         Some(match str {
-            "stable" => ReleaseChannel::Stable,
-            "beta" => ReleaseChannel::Beta,
+            "" => ReleaseChannel::Stable,
             "nightly" => ReleaseChannel::Nightly,
+            _ if str.starts_with("beta") => ReleaseChannel::Beta,
             _ => return None,
         })
     }
