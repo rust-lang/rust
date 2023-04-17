@@ -121,12 +121,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             LitKind::Err
                         }
                     };
-                    hir::ExprKind::Lit(respan(self.lower_span(e.span), lit_kind))
+                    let lit = self.arena.alloc(respan(self.lower_span(e.span), lit_kind));
+                    hir::ExprKind::Lit(lit)
                 }
-                ExprKind::IncludedBytes(bytes) => hir::ExprKind::Lit(respan(
-                    self.lower_span(e.span),
-                    LitKind::ByteStr(bytes.clone(), StrStyle::Cooked),
-                )),
+                ExprKind::IncludedBytes(bytes) => {
+                    let lit = self.arena.alloc(respan(
+                        self.lower_span(e.span),
+                        LitKind::ByteStr(bytes.clone(), StrStyle::Cooked),
+                    ));
+                    hir::ExprKind::Lit(lit)
+                }
                 ExprKind::Cast(expr, ty) => {
                     let expr = self.lower_expr(expr);
                     let ty =
@@ -1746,40 +1750,31 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     pub(super) fn expr_usize(&mut self, sp: Span, value: usize) -> hir::Expr<'hir> {
-        self.expr(
-            sp,
-            hir::ExprKind::Lit(hir::Lit {
-                span: sp,
-                node: ast::LitKind::Int(
-                    value as u128,
-                    ast::LitIntType::Unsigned(ast::UintTy::Usize),
-                ),
-            }),
-        )
+        let lit = self.arena.alloc(hir::Lit {
+            span: sp,
+            node: ast::LitKind::Int(value as u128, ast::LitIntType::Unsigned(ast::UintTy::Usize)),
+        });
+        self.expr(sp, hir::ExprKind::Lit(lit))
     }
 
     pub(super) fn expr_u32(&mut self, sp: Span, value: u32) -> hir::Expr<'hir> {
-        self.expr(
-            sp,
-            hir::ExprKind::Lit(hir::Lit {
-                span: sp,
-                node: ast::LitKind::Int(value.into(), ast::LitIntType::Unsigned(ast::UintTy::U32)),
-            }),
-        )
+        let lit = self.arena.alloc(hir::Lit {
+            span: sp,
+            node: ast::LitKind::Int(value.into(), ast::LitIntType::Unsigned(ast::UintTy::U32)),
+        });
+        self.expr(sp, hir::ExprKind::Lit(lit))
     }
 
     pub(super) fn expr_char(&mut self, sp: Span, value: char) -> hir::Expr<'hir> {
-        self.expr(sp, hir::ExprKind::Lit(hir::Lit { span: sp, node: ast::LitKind::Char(value) }))
+        let lit = self.arena.alloc(hir::Lit { span: sp, node: ast::LitKind::Char(value) });
+        self.expr(sp, hir::ExprKind::Lit(lit))
     }
 
     pub(super) fn expr_str(&mut self, sp: Span, value: Symbol) -> hir::Expr<'hir> {
-        self.expr(
-            sp,
-            hir::ExprKind::Lit(hir::Lit {
-                span: sp,
-                node: ast::LitKind::Str(value, ast::StrStyle::Cooked),
-            }),
-        )
+        let lit = self
+            .arena
+            .alloc(hir::Lit { span: sp, node: ast::LitKind::Str(value, ast::StrStyle::Cooked) });
+        self.expr(sp, hir::ExprKind::Lit(lit))
     }
 
     pub(super) fn expr_call_mut(
