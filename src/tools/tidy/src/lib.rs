@@ -64,6 +64,7 @@ pub mod pal;
 pub mod primitive_docs;
 pub mod rustdoc_gui_tests;
 pub mod style;
+pub mod symbols;
 pub mod target_specific_tests;
 pub mod tests_placement;
 pub mod ui_tests;

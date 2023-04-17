@@ -11,7 +11,6 @@ use std::env;
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::process;
-use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::{self, scope, ScopedJoinHandle};
 
@@ -20,15 +19,18 @@ fn main() {
     let cargo: PathBuf = env::args_os().nth(2).expect("need path to cargo").into();
     let output_directory: PathBuf =
         env::args_os().nth(3).expect("need path to output directory").into();
-    let concurrency: NonZeroUsize =
-        FromStr::from_str(&env::args().nth(4).expect("need concurrency"))
-            .expect("concurrency must be a number");
+    let concurrency: NonZeroUsize = env::args()
+        .nth(4)
+        .expect("need concurrency")
+        .parse()
+        .expect("concurrency must be a non-zero number");
 
     let src_path = root_path.join("src");
     let tests_path = root_path.join("tests");
     let library_path = root_path.join("library");
     let compiler_path = root_path.join("compiler");
     let librustdoc_path = src_path.join("librustdoc");
+    let tools_path = src_path.join("tools");
 
     let args: Vec<String> = env::args().skip(1).collect();
 
@@ -96,6 +98,7 @@ fn main() {
 
         // Checks that only make sense for the compiler.
         check!(error_codes, &root_path, &[&compiler_path, &librustdoc_path], verbose);
+        check!(symbols, &compiler_path, &librustdoc_path, &tools_path);
 
         // Checks that only make sense for the std libs.
         check!(pal, &library_path);

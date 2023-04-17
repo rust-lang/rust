@@ -2006,7 +2006,7 @@ pub mod kw {
 // This module has a very short name because it's used a lot.
 /// This module contains all the defined non-keyword `Symbol`s.
 ///
-/// Given that `sym` is imported, use them like `sym::symbol_name`.
+/// Given that `sym` is imported, use them like `sym::<symbol_name>`.
 /// For example `sym::rustfmt` or `sym::u8`.
 pub mod sym {
     use super::Symbol;
