@@ -252,6 +252,16 @@ fn debugger() {
 }
 
 #[test]
+fn git_hash() {
+    let mut config = config();
+    config.git_hash = false;
+    assert!(check_ignore(&config, "// needs-git-hash"));
+
+    config.git_hash = true;
+    assert!(!check_ignore(&config, "// needs-git-hash"));
+}
+
+#[test]
 fn sanitizers() {
     let mut config = config();
 
