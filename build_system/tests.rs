@@ -245,7 +245,7 @@ pub(crate) fn run_tests(
     let run_extended_sysroot = config::get_bool("testsuite.extended_sysroot");
 
     if run_base_sysroot || run_extended_sysroot {
-        let target_compiler = build_sysroot::build_sysroot(
+        let mut target_compiler = build_sysroot::build_sysroot(
             dirs,
             channel,
             sysroot_kind,
@@ -253,6 +253,9 @@ pub(crate) fn run_tests(
             bootstrap_host_compiler,
             target_triple.clone(),
         );
+        // Rust's build system denies a couple of lints that trigger on several of the test
+        // projects. Changing the code to fix them is not worth it, so just silence all lints.
+        target_compiler.rustflags += " --cap-lints=allow";
 
         let runner = TestRunner::new(
             dirs.clone(),
