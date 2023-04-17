@@ -3,6 +3,8 @@
 // build-pass
 // ignore-pass
 
+#![allow(drop_copy)]
+
 async fn wait() {}
 
 pub async fn test(arg: [u8; 8192]) {

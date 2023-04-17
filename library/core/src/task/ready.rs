@@ -22,7 +22,7 @@ use core::task::Poll;
 ///     let fut = Pin::new(&mut fut);
 ///
 ///     let num = ready!(fut.poll(cx));
-///     # drop(num);
+///     # let _ = num;
 ///     // ... use num
 ///
 ///     Poll::Ready(())
@@ -44,7 +44,7 @@ use core::task::Poll;
 ///     Poll::Ready(t) => t,
 ///     Poll::Pending => return Poll::Pending,
 /// };
-///     # drop(num);
+///     # let _ = num; // to silence unused warning
 ///     # // ... use num
 ///     #
 ///     # Poll::Ready(())

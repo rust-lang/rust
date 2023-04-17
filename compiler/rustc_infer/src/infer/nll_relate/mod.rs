@@ -885,7 +885,7 @@ where
                 } else {
                     match variables.probe(vid) {
                         TypeVariableValue::Known { value: u } => {
-                            drop(variables);
+                            drop(inner);
                             self.relate(u, u)
                         }
                         TypeVariableValue::Unknown { universe: _universe } => {

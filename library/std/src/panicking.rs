@@ -548,7 +548,7 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
             // Lazily, the first time this gets called, run the actual string formatting.
             self.string.get_or_insert_with(|| {
                 let mut s = String::new();
-                drop(s.write_fmt(*inner));
+                let _err = s.write_fmt(*inner);
                 s
             })
         }

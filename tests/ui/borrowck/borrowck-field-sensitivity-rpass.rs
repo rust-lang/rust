@@ -1,6 +1,7 @@
 // run-pass
 #![allow(unused_mut)]
 #![allow(unused_variables)]
+#![allow(drop_copy)]
 // pretty-expanded FIXME #23616
 
 struct A { a: isize, b: Box<isize> }

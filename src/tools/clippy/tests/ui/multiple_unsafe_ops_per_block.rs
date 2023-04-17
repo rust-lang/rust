@@ -2,7 +2,7 @@
 #![allow(unused)]
 #![allow(deref_nullptr)]
 #![allow(clippy::unnecessary_operation)]
-#![allow(clippy::drop_copy)]
+#![allow(drop_copy)]
 #![warn(clippy::multiple_unsafe_ops_per_block)]
 
 extern crate proc_macros;

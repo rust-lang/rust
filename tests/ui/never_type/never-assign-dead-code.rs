@@ -3,6 +3,7 @@
 // check-pass
 
 #![feature(never_type)]
+#![allow(drop_copy)]
 #![warn(unused)]
 
 fn main() {

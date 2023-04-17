@@ -34,7 +34,7 @@ error: unknown lint: `clippy::dead_cod`
   --> $DIR/unknown_clippy_lints.rs:13:8
    |
 LL | #[warn(clippy::dead_cod)]
-   |        ^^^^^^^^^^^^^^^^ help: did you mean: `clippy::drop_copy`
+   |        ^^^^^^^^^^^^^^^^ help: did you mean: `clippy::eq_op`
 
 error: unknown lint: `clippy::unused_colle`
   --> $DIR/unknown_clippy_lints.rs:15:8
