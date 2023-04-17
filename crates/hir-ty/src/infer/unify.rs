@@ -131,7 +131,7 @@ pub(crate) fn unify(
 }
 
 bitflags::bitflags! {
-    #[derive(Default)]
+    #[derive(Default, Clone, Copy)]
     pub(crate) struct TypeVariableFlags: u8 {
         const DIVERGING = 1 << 0;
         const INTEGER = 1 << 1;

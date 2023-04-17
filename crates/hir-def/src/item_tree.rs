@@ -609,7 +609,7 @@ pub enum Param {
 }
 
 bitflags::bitflags! {
-    #[derive(Default)]
+    #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
     pub(crate) struct FnFlags: u8 {
         const HAS_SELF_PARAM = 1 << 0;
         const HAS_BODY = 1 << 1;

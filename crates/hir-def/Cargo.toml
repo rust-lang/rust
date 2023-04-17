@@ -14,7 +14,7 @@ doctest = false
 [dependencies]
 anymap = "1.0.0-beta.2"
 arrayvec = "0.7.2"
-bitflags = "1.3.2"
+bitflags = "2.1.0"
 cov-mark = "2.0.0-pre.1"
 # We need to freeze the version of the crate, as the raw-api feature is considered unstable
 dashmap = { version = "=5.4.0", features = ["raw-api"] }

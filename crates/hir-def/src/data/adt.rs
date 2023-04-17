@@ -44,6 +44,7 @@ pub struct StructData {
 }
 
 bitflags! {
+#[derive(Debug, Clone, PartialEq, Eq)]
     pub struct StructFlags: u8 {
         const NO_FLAGS         = 0;
         /// Indicates whether the struct is `PhantomData`.
