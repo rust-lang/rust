@@ -1392,7 +1392,7 @@ static DEFAULT_ID_MAP: Lazy<FxHashMap<Cow<'static, str>, usize>> = Lazy::new(|| 
 
 fn init_id_map() -> FxHashMap<Cow<'static, str>, usize> {
     let mut map = FxHashMap::default();
-    // This is the list of IDs used in Javascript.
+    // This is the list of IDs used in JavaScript.
     map.insert("help".into(), 1);
     map.insert("settings".into(), 1);
     map.insert("not-displayed".into(), 1);
