@@ -463,24 +463,38 @@ impl<'tcx> Ty<'tcx> {
 /// A subset of [`TypeFlags`] which are stored directly in the [`Ty`] pointer,
 /// as such they are faster to access.
 #[derive(Debug, Copy, Clone)]
-struct HotTypeFlags {}
+pub struct HotTypeFlags {
+    pub has_non_region_infer: bool,
+}
 
 impl HotTypeFlags {
-    fn from_flags(_flags: TypeFlags) -> Self {
-        Self {}
+    fn from_flags(flags: TypeFlags) -> Self {
+        Self {
+            has_non_region_infer: flags.contains(TypeFlags::HAS_INFER - TypeFlags::HAS_RE_INFER),
+        }
+    }
+
+    fn intersects(self, other: Self) -> bool {
+        let Self { has_non_region_infer: self0 } = self;
+        let Self { has_non_region_infer: other0 } = other;
+
+        self0 && other0
     }
 }
 
 unsafe impl Tag for HotTypeFlags {
-    const BITS: u32 = 0;
+    const BITS: u32 = 1;
 
     fn into_usize(self) -> usize {
-        0
+        let Self { has_non_region_infer } = self;
+        has_non_region_infer as usize
     }
 
     unsafe fn from_usize(tag: usize) -> Self {
-        debug_assert!(tag <= 0b0);
-        Self {}
+        debug_assert!(tag <= 0b1);
+
+        let has_non_region_infer = tag & 0b1 == 1;
+        Self { has_non_region_infer }
     }
 }
 
