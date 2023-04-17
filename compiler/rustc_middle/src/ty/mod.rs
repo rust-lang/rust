@@ -470,7 +470,7 @@ pub struct HotTypeFlags {
 impl HotTypeFlags {
     fn from_flags(flags: TypeFlags) -> Self {
         Self {
-            has_non_region_infer: flags.contains(TypeFlags::HAS_INFER - TypeFlags::HAS_RE_INFER),
+            has_non_region_infer: flags.intersects(TypeFlags::HAS_INFER - TypeFlags::HAS_RE_INFER),
         }
     }
 
@@ -1102,9 +1102,13 @@ impl<'tcx> TermKind<'tcx> {
     fn pack(self) -> Term<'tcx> {
         let (tag, ptr) = match self {
             TermKind::Ty(ty) => {
+                let r: &WithCachedTypeInfo<ty::TyKind<'tcx>> = ty.0.pointer().0;
                 // Ensure we can use the tag bits.
-                assert_eq!(mem::align_of_val(&*ty.0.pointer().0) & TAG_MASK, 0);
-                (TYPE_TAG, ty.0.pointer().0 as *const WithCachedTypeInfo<ty::TyKind<'tcx>> as usize)
+                assert_eq!(
+                    mem::align_of_val::<WithCachedTypeInfo<ty::TyKind<'tcx>>>(r) & TAG_MASK,
+                    0
+                );
+                (TYPE_TAG, r as *const WithCachedTypeInfo<ty::TyKind<'tcx>> as usize)
             }
             TermKind::Const(ct) => {
                 // Ensure we can use the tag bits.

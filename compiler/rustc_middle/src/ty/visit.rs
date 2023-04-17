@@ -84,8 +84,15 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
     fn has_infer_types(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_INFER)
     }
+    fn has_infer_consts(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_CT_INFER)
+    }
     fn has_non_region_infer(&self) -> bool {
-        self.has_hot_type_flags(ty::HotTypeFlags { has_non_region_infer: true })
+        let hot_result = self.has_hot_type_flags(ty::HotTypeFlags { has_non_region_infer: true });
+        let cold_result = self.has_type_flags(TypeFlags::NEEDS_INFER - TypeFlags::HAS_RE_INFER);
+        assert_eq!(hot_result, cold_result, "Hot and cold results disagree; cold: ty({}), const({}); hot: any({hot_result})", self.has_infer_types(), self.has_infer_consts());
+
+        hot_result
     }
     fn has_infer(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_INFER)
