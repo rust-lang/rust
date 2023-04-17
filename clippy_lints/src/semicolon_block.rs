@@ -72,10 +72,11 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     ///
-    /// Some may prefer if the semicolon is outside if a block is only one
-    /// expression, as this allows rustfmt to make it singleline. In the case that
-    /// it isn't, it should be inside.
-    /// Take a look at both `semicolon_inside_block` and `semicolon_outside_block` for alternatives.
+    /// Some may prefer if the semicolon is outside of a block if it is only one
+    /// expression, as this allows rustfmt to make it singleline (and may just be
+    /// more readable). In the case that it isn't, it should be inside.
+    /// Take a look at both `semicolon_inside_block` and `semicolon_outside_block`
+    /// for alternatives.
     ///
     /// ### Example
     ///
