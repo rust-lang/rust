@@ -16,6 +16,7 @@ use super::WHILE_POP_UNWRAP;
 ///
 /// Depending on whether the value was assigned to a variable or not changes what pattern
 /// we use for the suggestion.
+#[derive(Copy, Clone)]
 enum PopStmt<'hir> {
     /// `x.pop().unwrap()` was and assigned to a variable.
     /// The pattern of this local variable will be used and the local statement
