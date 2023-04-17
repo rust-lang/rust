@@ -1,3 +1,4 @@
+// run-rustfix
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::{expr_or_init, in_constant};
