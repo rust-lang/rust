@@ -21,7 +21,7 @@ pub fn short_integer_map(x: [u32; 8]) -> [u32; 8] {
 pub fn short_integer_zip_map(x: [u32; 8], y: [u32; 8]) -> [u32; 8] {
     // CHECK: %[[A:.+]] = load <8 x i32>
     // CHECK: %[[B:.+]] = load <8 x i32>
-    // CHECK: sub <8 x i32> %[[A]], %[[B]]
+    // CHECK: sub <8 x i32> %[[B]], %[[A]]
     // CHECK: store <8 x i32>
     x.zip(y).map(|(x, y)| x - y)
 }
