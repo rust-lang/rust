@@ -87,6 +87,7 @@ use crate::fx::FxHashMap;
 use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
 use std::error::Error;
+use std::fmt::Display;
 use std::fs;
 use std::intrinsics::unlikely;
 use std::path::Path;
@@ -97,7 +98,6 @@ use std::time::{Duration, Instant};
 pub use measureme::EventId;
 use measureme::{EventIdBuilder, Profiler, SerializableString, StringId};
 use parking_lot::RwLock;
-use serde_json::json;
 use smallvec::SmallVec;
 
 bitflags::bitflags! {
@@ -763,6 +763,31 @@ impl Drop for VerboseTimingGuard<'_> {
     }
 }
 
+struct JsonTimePassesEntry<'a> {
+    pass: &'a str,
+    time: f64,
+    start_rss: Option<usize>,
+    end_rss: Option<usize>,
+}
+
+impl Display for JsonTimePassesEntry<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self { pass: what, time, start_rss, end_rss } = self;
+        write!(f, r#"{{"pass":"{what}","time":{time},"rss_start":"#).unwrap();
+        match start_rss {
+            Some(rss) => write!(f, "{rss}")?,
+            None => write!(f, "null")?,
+        }
+        write!(f, r#","rss_end":"#)?;
+        match end_rss {
+            Some(rss) => write!(f, "{rss}")?,
+            None => write!(f, "null")?,
+        }
+        write!(f, "}}")?;
+        Ok(())
+    }
+}
+
 pub fn print_time_passes_entry(
     what: &str,
     dur: Duration,
@@ -772,13 +797,10 @@ pub fn print_time_passes_entry(
 ) {
     match format {
         TimePassesFormat::Json => {
-            let json = json!({
-                "pass": what,
-                "time": dur.as_secs_f64(),
-                "rss_start": start_rss,
-                "rss_end": end_rss,
-            });
-            eprintln!("time: {json}");
+            let entry =
+                JsonTimePassesEntry { pass: what, time: dur.as_secs_f64(), start_rss, end_rss };
+
+            eprintln!(r#"time: {entry}"#);
             return;
         }
         TimePassesFormat::Text => (),
@@ -894,3 +916,6 @@ cfg_if! {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;
