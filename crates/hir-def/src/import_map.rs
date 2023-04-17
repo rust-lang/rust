@@ -476,7 +476,7 @@ mod tests {
     use base_db::{fixture::WithFixture, SourceDatabase, Upcast};
     use expect_test::{expect, Expect};
 
-    use crate::{test_db::TestDB, ItemContainerId, Lookup};
+    use crate::{db::DefDatabase, test_db::TestDB, ItemContainerId, Lookup};
 
     use super::*;
 

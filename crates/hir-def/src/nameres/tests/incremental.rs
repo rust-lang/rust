@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use base_db::SourceDatabaseExt;
 
-use crate::{AdtId, ModuleDefId};
+use crate::{db::DefDatabase, AdtId, ModuleDefId};
 
 use super::*;
 

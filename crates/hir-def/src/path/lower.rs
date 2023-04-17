@@ -2,17 +2,15 @@
 
 use std::iter;
 
-use crate::type_ref::ConstRefOrPath;
+use crate::{lower::LowerCtx, type_ref::ConstRefOrPath};
 
 use either::Either;
 use hir_expand::name::{name, AsName};
 use intern::Interned;
 use syntax::ast::{self, AstNode, HasTypeBounds};
 
-use super::AssociatedTypeBinding;
 use crate::{
-    body::LowerCtx,
-    path::{GenericArg, GenericArgs, ModPath, Path, PathKind},
+    path::{AssociatedTypeBinding, GenericArg, GenericArgs, ModPath, Path, PathKind},
     type_ref::{LifetimeRef, TypeBound, TypeRef},
 };
 

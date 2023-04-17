@@ -7,7 +7,6 @@ use std::fmt::{self, Debug};
 use base_db::CrateId;
 use chalk_ir::{BoundVar, TyKind};
 use hir_def::{
-    body,
     data::adt::VariantData,
     db::DefDatabase,
     find_path,
@@ -1552,7 +1551,10 @@ impl HirDisplay for TypeRef {
             }
             TypeRef::Macro(macro_call) => {
                 let macro_call = macro_call.to_node(f.db.upcast());
-                let ctx = body::LowerCtx::with_hygiene(f.db.upcast(), &Hygiene::new_unhygienic());
+                let ctx = hir_def::lower::LowerCtx::with_hygiene(
+                    f.db.upcast(),
+                    &Hygiene::new_unhygienic(),
+                );
                 match macro_call.path() {
                     Some(path) => match Path::from_src(path, &ctx) {
                         Some(path) => path.hir_fmt(f)?,

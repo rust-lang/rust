@@ -7,8 +7,8 @@ use std::{
 };
 
 use crate::{
-    body::LowerCtx,
     lang_item::LangItemTarget,
+    lower::LowerCtx,
     type_ref::{ConstRefOrPath, LifetimeRef, TypeBound, TypeRef},
 };
 use hir_expand::name::Name;

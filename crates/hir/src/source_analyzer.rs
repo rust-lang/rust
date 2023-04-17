@@ -13,12 +13,12 @@ use std::{
 use either::Either;
 use hir_def::{
     body::{
-        self,
         scope::{ExprScopes, ScopeId},
         Body, BodySourceMap,
     },
     hir::{ExprId, Pat, PatId},
     lang_item::LangItem,
+    lower::LowerCtx,
     macro_id_to_def_id,
     path::{ModPath, Path, PathKind},
     resolver::{resolver_for_scope, Resolver, TypeNs, ValueNs},
@@ -463,7 +463,7 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         macro_call: InFile<&ast::MacroCall>,
     ) -> Option<Macro> {
-        let ctx = body::LowerCtx::with_file_id(db.upcast(), macro_call.file_id);
+        let ctx = LowerCtx::with_file_id(db.upcast(), macro_call.file_id);
         let path = macro_call.value.path().and_then(|ast| Path::from_src(ast, &ctx))?;
         self.resolver.resolve_path_as_macro(db.upcast(), path.mod_path()?).map(|it| it.into())
     }
@@ -575,7 +575,7 @@ impl SourceAnalyzer {
 
         // This must be a normal source file rather than macro file.
         let hygiene = Hygiene::new(db.upcast(), self.file_id);
-        let ctx = body::LowerCtx::with_hygiene(db.upcast(), &hygiene);
+        let ctx = LowerCtx::with_hygiene(db.upcast(), &hygiene);
         let hir_path = Path::from_src(path.clone(), &ctx)?;
 
         // Case where path is a qualifier of a use tree, e.g. foo::bar::{Baz, Qux} where we are

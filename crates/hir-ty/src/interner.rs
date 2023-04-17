@@ -43,7 +43,7 @@ impl_internable!(
 );
 
 impl chalk_ir::interner::Interner for Interner {
-    type InternedType = Interned<InternedWrapper<chalk_ir::TyData<Interner>>>;
+    type InternedType = Interned<InternedWrapper<chalk_ir::TyData<Self>>>;
     type InternedLifetime = Interned<InternedWrapper<chalk_ir::LifetimeData<Self>>>;
     type InternedConst = Interned<InternedWrapper<chalk_ir::ConstData<Self>>>;
     type InternedConcreteConst = ConstScalar;

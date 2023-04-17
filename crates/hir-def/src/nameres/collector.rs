@@ -1111,7 +1111,7 @@ impl DefCollector<'_> {
             match &directive.kind {
                 MacroDirectiveKind::FnLike { ast_id, expand_to } => {
                     let call_id = macro_call_as_call_id(
-                        self.db,
+                        self.db.upcast(),
                         ast_id,
                         *expand_to,
                         self.def_map.krate,
@@ -1402,7 +1402,7 @@ impl DefCollector<'_> {
                 MacroDirectiveKind::FnLike { ast_id, expand_to } => {
                     // FIXME: we shouldn't need to re-resolve the macro here just to get the unresolved error!
                     let macro_call_as_call_id = macro_call_as_call_id(
-                        self.db,
+                        self.db.upcast(),
                         ast_id,
                         *expand_to,
                         self.def_map.krate,
@@ -2117,7 +2117,7 @@ impl ModCollector<'_, '_> {
 
         // Case 1: try to resolve in legacy scope and expand macro_rules
         if let Ok(res) = macro_call_as_call_id(
-            self.def_collector.db,
+            self.def_collector.db.upcast(),
             &ast_id,
             mac.expand_to,
             self.def_collector.def_map.krate,

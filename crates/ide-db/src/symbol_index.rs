@@ -93,6 +93,7 @@ impl Query {
 pub trait SymbolsDatabase: HirDatabase + SourceDatabaseExt + Upcast<dyn HirDatabase> {
     /// The symbol index for a given module. These modules should only be in source roots that
     /// are inside local_roots.
+    // FIXME: We should probably LRU  this
     fn module_symbols(&self, module: Module) -> Arc<SymbolIndex>;
 
     /// The symbol index for a given source root within library_roots.

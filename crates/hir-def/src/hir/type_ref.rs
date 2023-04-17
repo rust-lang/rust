@@ -11,9 +11,9 @@ use intern::Interned;
 use syntax::ast::{self, HasName};
 
 use crate::{
-    body::LowerCtx,
     builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
     hir::Literal,
+    lower::LowerCtx,
     path::Path,
 };
 
