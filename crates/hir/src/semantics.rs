@@ -7,8 +7,8 @@ use std::{cell::RefCell, fmt, iter, mem, ops};
 use base_db::{FileId, FileRange};
 use either::Either;
 use hir_def::{
-    body,
     hir::Expr,
+    lower::LowerCtx,
     macro_id_to_def_id,
     resolver::{self, HasResolver, Resolver, TypeNs},
     type_ref::Mutability,
@@ -1065,7 +1065,7 @@ impl<'db> SemanticsImpl<'db> {
 
     fn resolve_type(&self, ty: &ast::Type) -> Option<Type> {
         let analyze = self.analyze(ty.syntax())?;
-        let ctx = body::LowerCtx::with_file_id(self.db.upcast(), analyze.file_id);
+        let ctx = LowerCtx::with_file_id(self.db.upcast(), analyze.file_id);
         let ty = hir_ty::TyLoweringContext::new(self.db, &analyze.resolver)
             .lower_ty(&crate::TypeRef::from_ast(&ctx, ty.clone()));
         Some(Type::new_with_resolver(self.db, &analyze.resolver, ty))
@@ -1074,7 +1074,7 @@ impl<'db> SemanticsImpl<'db> {
     fn resolve_trait(&self, path: &ast::Path) -> Option<Trait> {
         let analyze = self.analyze(path.syntax())?;
         let hygiene = hir_expand::hygiene::Hygiene::new(self.db.upcast(), analyze.file_id);
-        let ctx = body::LowerCtx::with_hygiene(self.db.upcast(), &hygiene);
+        let ctx = LowerCtx::with_hygiene(self.db.upcast(), &hygiene);
         let hir_path = Path::from_src(path.clone(), &ctx)?;
         match analyze.resolver.resolve_path_in_type_ns_fully(self.db.upcast(), &hir_path)? {
             TypeNs::TraitId(id) => Some(Trait { id }),
@@ -1672,7 +1672,7 @@ impl<'a> SemanticsScope<'a> {
     /// Resolve a path as-if it was written at the given scope. This is
     /// necessary a heuristic, as it doesn't take hygiene into account.
     pub fn speculative_resolve(&self, path: &ast::Path) -> Option<PathResolution> {
-        let ctx = body::LowerCtx::with_file_id(self.db.upcast(), self.file_id);
+        let ctx = LowerCtx::with_file_id(self.db.upcast(), self.file_id);
         let path = Path::from_src(path.clone(), &ctx)?;
         resolve_hir_path(self.db, &self.resolver, &path)
     }

@@ -109,6 +109,9 @@ impl LineIndex {
             line_wide_chars.insert(line, wide_chars);
         }
 
+        newlines.shrink_to_fit();
+        line_wide_chars.shrink_to_fit();
+
         LineIndex { newlines, line_wide_chars }
     }
 

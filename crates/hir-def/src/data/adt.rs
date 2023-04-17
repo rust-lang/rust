@@ -17,11 +17,12 @@ use rustc_abi::{Align, Integer, IntegerType, ReprFlags, ReprOptions};
 use syntax::ast::{self, HasName, HasVisibility};
 
 use crate::{
-    body::{CfgExpander, LowerCtx},
     builtin_type::{BuiltinInt, BuiltinUint},
     db::DefDatabase,
+    expander::CfgExpander,
     item_tree::{AttrOwner, Field, FieldAstId, Fields, ItemTree, ModItem, RawVisibilityId},
     lang_item::LangItem,
+    lower::LowerCtx,
     nameres::diagnostics::DefDiagnostic,
     src::HasChildSource,
     src::HasSource,

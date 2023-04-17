@@ -11,8 +11,8 @@ use syntax::{ast, Parse};
 
 use crate::{
     attr::Attrs,
-    body::{Expander, Mark},
     db::DefDatabase,
+    expander::{Expander, Mark},
     item_tree::{self, AssocItem, FnFlags, ItemTree, ItemTreeId, ModItem, Param, TreeId},
     nameres::{
         attr_resolution::ResolvedAttr,
@@ -44,16 +44,16 @@ impl FunctionData {
     pub(crate) fn fn_data_query(db: &dyn DefDatabase, func: FunctionId) -> Arc<FunctionData> {
         let loc = func.lookup(db);
         let krate = loc.container.module(db).krate;
-        let crate_graph = db.crate_graph();
-        let cfg_options = &crate_graph[krate].cfg_options;
         let item_tree = loc.id.item_tree(db);
         let func = &item_tree[loc.id.value];
         let visibility = if let ItemContainerId::TraitId(trait_id) = loc.container {
-            db.trait_data(trait_id).visibility.clone()
+            trait_vis(db, trait_id)
         } else {
             item_tree[func.visibility].clone()
         };
 
+        let crate_graph = db.crate_graph();
+        let cfg_options = &crate_graph[krate].cfg_options;
         let enabled_params = func
             .params
             .clone()
@@ -188,7 +188,7 @@ impl TypeAliasData {
         let item_tree = loc.id.item_tree(db);
         let typ = &item_tree[loc.id.value];
         let visibility = if let ItemContainerId::TraitId(trait_id) = loc.container {
-            db.trait_data(trait_id).visibility.clone()
+            trait_vis(db, trait_id)
         } else {
             item_tree[typ.visibility].clone()
         };
@@ -471,7 +471,7 @@ impl ConstData {
         let item_tree = loc.id.item_tree(db);
         let konst = &item_tree[loc.id.value];
         let visibility = if let ItemContainerId::TraitId(trait_id) = loc.container {
-            db.trait_data(trait_id).visibility.clone()
+            trait_vis(db, trait_id)
         } else {
             item_tree[konst.visibility].clone()
         };
@@ -647,8 +647,20 @@ impl<'a> AssocItemCollector<'a> {
                     let _cx = stdx::panic_context::enter(format!(
                         "collect_items MacroCall: {macro_call}"
                     ));
+                    let module = self.expander.module.local_id;
+
                     if let Ok(res) =
-                        self.expander.enter_expand::<ast::MacroItems>(self.db, macro_call)
+                        self.expander.enter_expand::<ast::MacroItems>(self.db, macro_call, |path| {
+                            self.def_map
+                                .resolve_path(
+                                    self.db,
+                                    module,
+                                    &path,
+                                    crate::item_scope::BuiltinShadowMode::Other,
+                                )
+                                .0
+                                .take_macros()
+                        })
                     {
                         self.collect_macro_items(res, &|| hir_expand::MacroCallKind::FnLike {
                             ast_id: InFile::new(file_id, call.ast_id),
@@ -691,4 +703,11 @@ impl<'a> AssocItemCollector<'a> {
 
         self.expander.exit(self.db, mark);
     }
+}
+
+fn trait_vis(db: &dyn DefDatabase, trait_id: TraitId) -> RawVisibility {
+    let ItemLoc { id: tree_id, .. } = trait_id.lookup(db);
+    let item_tree = tree_id.item_tree(db);
+    let tr_def = &item_tree[tree_id.value];
+    item_tree[tr_def.visibility].clone()
 }

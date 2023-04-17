@@ -217,6 +217,8 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
 
     #[salsa::transparent]
     fn crate_limits(&self, crate_id: CrateId) -> CrateLimits;
+    #[salsa::transparent]
+    fn recursion_limit(&self, crate_id: CrateId) -> u32;
 
     fn crate_supports_no_std(&self, crate_id: CrateId) -> bool;
 }
@@ -238,6 +240,10 @@ fn crate_limits(db: &dyn DefDatabase, crate_id: CrateId) -> CrateLimits {
         // 128 is the default in rustc.
         recursion_limit: def_map.recursion_limit().unwrap_or(128),
     }
+}
+
+fn recursion_limit(db: &dyn DefDatabase, crate_id: CrateId) -> u32 {
+    db.crate_limits(crate_id).recursion_limit
 }
 
 fn crate_supports_no_std(db: &dyn DefDatabase, crate_id: CrateId) -> bool {

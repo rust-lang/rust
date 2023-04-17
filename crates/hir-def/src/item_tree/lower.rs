@@ -20,7 +20,7 @@ pub(super) struct Ctx<'a> {
     db: &'a dyn DefDatabase,
     tree: ItemTree,
     source_ast_id_map: Arc<AstIdMap>,
-    body_ctx: crate::body::LowerCtx<'a>,
+    body_ctx: crate::lower::LowerCtx<'a>,
 }
 
 impl<'a> Ctx<'a> {
@@ -29,7 +29,7 @@ impl<'a> Ctx<'a> {
             db,
             tree: ItemTree::default(),
             source_ast_id_map: db.ast_id_map(file),
-            body_ctx: crate::body::LowerCtx::with_file_id(db, file),
+            body_ctx: crate::lower::LowerCtx::with_file_id(db, file),
         }
     }
 

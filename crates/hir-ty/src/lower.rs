@@ -18,9 +18,9 @@ use chalk_ir::{
 
 use either::Either;
 use hir_def::{
-    body::Expander,
     builtin_type::BuiltinType,
     data::adt::StructKind,
+    expander::Expander,
     generics::{
         TypeOrConstParamData, TypeParamProvenance, WherePredicate, WherePredicateTypeTarget,
     },
@@ -378,7 +378,9 @@ impl<'a> TyLoweringContext<'a> {
                 };
                 let ty = {
                     let macro_call = macro_call.to_node(self.db.upcast());
-                    match expander.enter_expand::<ast::Type>(self.db.upcast(), macro_call) {
+                    match expander.enter_expand::<ast::Type>(self.db.upcast(), macro_call, |path| {
+                        self.resolver.resolve_path_as_macro(self.db.upcast(), &path)
+                    }) {
                         Ok(ExpandResult { value: Some((mark, expanded)), .. }) => {
                             let ctx = expander.ctx(self.db.upcast());
                             // FIXME: Report syntax errors in expansion here
