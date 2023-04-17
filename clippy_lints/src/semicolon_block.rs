@@ -72,7 +72,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     ///
-    /// Some may prefer if the  semicolon is outside if a block is only one
+    /// Some may prefer if the semicolon is outside if a block is only one
     /// expression, as this allows rustfmt to make it singleline. In the case that
     /// it isn't, it should be inside.
     /// Take a look at both `semicolon_inside_block` and `semicolon_outside_block` for alternatives.
@@ -125,14 +125,14 @@ impl LateLintPass<'_> for SemicolonBlock {
                     ..
                 } = stmt else { return };
                 semicolon_outside_block(cx, block, expr, span);
-                semicolon_outside_block_if_singleline_check_outside(cx, block, expr, stmt.span)
+                semicolon_outside_block_if_singleline_check_outside(cx, block, expr, stmt.span);
             },
             StmtKind::Semi(Expr {
                 kind: ExprKind::Block(block @ Block { expr: Some(tail), .. }, _),
                 ..
             }) if !block.span.from_expansion() => {
                 semicolon_inside_block(cx, block, tail, stmt.span);
-                semicolon_outside_block_if_singleline_check_inside(cx, block, tail, stmt.span)
+                semicolon_outside_block_if_singleline_check_inside(cx, block, tail, stmt.span);
             },
             _ => (),
         }
@@ -197,7 +197,7 @@ fn semicolon_outside_block_if_singleline_check_inside(
             cx,
             SEMICOLON_OUTSIDE_BLOCK_IF_SINGLELINE,
             block.span,
-            &format!("consider moving the `;` inside the block for consistent formatting"),
+            "consider moving the `;` inside the block for consistent formatting",
             |diag| {
                 multispan_sugg_with_applicability(
                     diag,
@@ -228,7 +228,7 @@ fn semicolon_outside_block_if_singleline_check_outside(
             cx,
             SEMICOLON_OUTSIDE_BLOCK_IF_SINGLELINE,
             block.span,
-            &format!("consider moving the `;` outside the block for consistent formatting"),
+            "consider moving the `;` outside the block for consistent formatting",
             |diag| {
                 multispan_sugg_with_applicability(
                     diag,
