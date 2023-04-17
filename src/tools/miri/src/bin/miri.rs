@@ -359,6 +359,8 @@ fn main() {
                 isolation_enabled = Some(false);
             }
             miri_config.isolated_op = miri::IsolatedOp::Allow;
+        } else if arg == "-Zmiri-disable-leak-backtraces" {
+            miri_config.collect_leak_backtraces = false;
         } else if arg == "-Zmiri-disable-weak-memory-emulation" {
             miri_config.weak_memory_emulation = false;
         } else if arg == "-Zmiri-track-weak-memory-loads" {
@@ -385,6 +387,7 @@ fn main() {
             };
         } else if arg == "-Zmiri-ignore-leaks" {
             miri_config.ignore_leaks = true;
+            miri_config.collect_leak_backtraces = false;
         } else if arg == "-Zmiri-panic-on-unsupported" {
             miri_config.panic_on_unsupported = true;
         } else if arg == "-Zmiri-tag-raw-pointers" {
