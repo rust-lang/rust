@@ -10,6 +10,7 @@ use std::thread;
 use log::info;
 
 use crate::borrow_tracker::RetagFields;
+use crate::diagnostics::report_leaks;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
@@ -145,6 +146,8 @@ pub struct MiriConfig {
     pub num_cpus: u32,
     /// Requires Miri to emulate pages of a certain size
     pub page_size: Option<u64>,
+    /// Whether to collect a backtrace when each allocation is created, just in case it leaks.
+    pub collect_leak_backtraces: bool,
 }
 
 impl Default for MiriConfig {
@@ -179,6 +182,7 @@ impl Default for MiriConfig {
             gc_interval: 10_000,
             num_cpus: 1,
             page_size: None,
+            collect_leak_backtraces: true,
         }
     }
 }
@@ -457,10 +461,17 @@ pub fn eval_entry<'tcx>(
         }
         // Check for memory leaks.
         info!("Additonal static roots: {:?}", ecx.machine.static_roots);
-        let leaks = ecx.leak_report(&ecx.machine.static_roots);
-        if leaks != 0 {
-            tcx.sess.err("the evaluated program leaked memory");
-            tcx.sess.note_without_error("pass `-Zmiri-ignore-leaks` to disable this check");
+        let leaks = ecx.find_leaked_allocations(&ecx.machine.static_roots);
+        if !leaks.is_empty() {
+            report_leaks(&ecx, leaks);
+            let leak_message = "the evaluated program leaked memory, pass `-Zmiri-ignore-leaks` to disable this check";
+            if ecx.machine.collect_leak_backtraces {
+                // If we are collecting leak backtraces, each leak is a distinct error diagnostic.
+                tcx.sess.note_without_error(leak_message);
+            } else {
+                // If we do not have backtraces, we just report an error without any span.
+                tcx.sess.err(leak_message);
+            };
             // Ignore the provided return code - let the reported error
             // determine the return code.
             return None;

@@ -132,11 +132,10 @@ pub struct Frame<'mir, 'tcx, Prov: Provenance = AllocId, Extra = ()> {
 }
 
 /// What we store about a frame in an interpreter backtrace.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct FrameInfo<'tcx> {
     pub instance: ty::Instance<'tcx>,
     pub span: Span,
-    pub lint_root: Option<hir::HirId>,
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, Debug)] // Miri debug-prints these
@@ -947,10 +946,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // This deliberately does *not* honor `requires_caller_location` since it is used for much
         // more than just panics.
         for frame in stack.iter().rev() {
-            let lint_root = frame.lint_root();
             let span = frame.current_span();
-
-            frames.push(FrameInfo { span, instance: frame.instance, lint_root });
+            frames.push(FrameInfo { span, instance: frame.instance });
         }
         trace!("generate stacktrace: {:#?}", frames);
         frames

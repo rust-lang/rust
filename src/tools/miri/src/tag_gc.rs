@@ -125,7 +125,7 @@ impl VisitTags for Operand<Provenance> {
     }
 }
 
-impl VisitTags for Allocation<Provenance, AllocExtra> {
+impl VisitTags for Allocation<Provenance, AllocExtra<'_>> {
     fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         for prov in self.provenance().provenances() {
             prov.visit_tags(visit);
