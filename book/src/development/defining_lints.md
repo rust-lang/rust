@@ -5,8 +5,33 @@ and registration of the lint in Clippy's codebase.
 We can use the Clippy dev tools to handle this step since setting up the 
 lint involves some boilerplate code.
 
-In our example, we're going to create a lint to detect functions named `foo` because it is a highly non-descriptive
-name for a function, so we want to trigger this and fix it early in the development process.
+#### Lint types
+
+A lint type is the category of items and expressions in which your lint focuses on.
+
+As of the writing of this documentation update, there are 12 groups (a.k.a. _types_)
+of lints besides the numerous standalone lints living under `clippy_lints/src/`:
+
+- `cargo`
+- `casts`
+- `functions`
+- `loops`
+- `matches`
+- `methods`
+- `misc_early`
+- `operators`
+- `transmute`
+- `types`
+- `unit_types`
+- `utils / internal` (Clippy internal lints)
+
+These types group together lints that share some common behaviors.
+For instance, `functions` groups together lints
+that deal with some aspects of function calls in Rust.
+
+For more information, feel free to compare the lint files under any category
+with [All Clippy lints][all_lints] or
+ask one of the maintainers.
 
 ## Lint name
 
@@ -110,31 +135,6 @@ Untracked files:
 	tests/ui/foo_functions.rs
 ```
 
-#### Lint types
-
-As of the writing of this documentation update, there are 12 groups (a.k.a. _types_)
-of lints besides the numerous standalone lints living under `clippy_lints/src/`:
-
-- `cargo`
-- `casts`
-- `functions`
-- `loops`
-- `matches`
-- `methods`
-- `misc_early`
-- `operators`
-- `transmute`
-- `types`
-- `unit_types`
-- `utils / internal` (Clippy internal lints)
-
-These categories group together lints that share some common behaviors.
-For instance, as we have mentioned earlier, `functions` groups together lints
-that deal with some aspects of function calls in Rust.
-
-For more information, feel free to compare the lint files under any category
-with [All Clippy lints][all_lints] or
-ask one of the maintainers.
 
 ## The `define_clippy_lints` macro
 
