@@ -1709,12 +1709,12 @@ impl<'tcx> Region<'tcx> {
 impl<'tcx> Ty<'tcx> {
     #[inline(always)]
     pub fn kind(self) -> &'tcx TyKind<'tcx> {
-        &self.0.0
+        &self.0.pointer().0
     }
 
     #[inline(always)]
     pub fn flags(self) -> TypeFlags {
-        self.0.0.flags
+        self.0.flags
     }
 
     #[inline]

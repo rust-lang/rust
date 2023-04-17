@@ -35,7 +35,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
+use rustc_data_structures::tagged_ptr::{CopyTaggedPtr, Tag};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
@@ -445,10 +445,56 @@ pub struct CReaderCacheKey {
 }
 
 /// Use this rather than `TyKind`, whenever possible.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
 #[rustc_diagnostic_item = "Ty"]
 #[rustc_pass_by_value]
-pub struct Ty<'tcx>(Interned<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>);
+pub struct Ty<'tcx>(
+    CopyTaggedPtr<Interned<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>, HotTypeFlags, true>,
+);
+
+impl<'tcx> Ty<'tcx> {
+    fn from_interned(i: Interned<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>) -> Self {
+        let hot_flags = HotTypeFlags::from_flags(i.flags);
+        let tagged = CopyTaggedPtr::new(i, hot_flags);
+        Self(tagged)
+    }
+}
+
+/// A subset of [`TypeFlags`] which are stored directly in the [`Ty`] pointer,
+/// as such they are faster to access.
+#[derive(Debug, Copy, Clone)]
+struct HotTypeFlags {}
+
+impl HotTypeFlags {
+    fn from_flags(_flags: TypeFlags) -> Self {
+        Self {}
+    }
+}
+
+unsafe impl Tag for HotTypeFlags {
+    const BITS: u32 = 0;
+
+    fn into_usize(self) -> usize {
+        0
+    }
+
+    unsafe fn from_usize(tag: usize) -> Self {
+        debug_assert!(tag <= 0b0);
+        Self {}
+    }
+}
+
+impl PartialOrd for Ty<'_> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Ty<'_> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.0.pointer().cmp(&other.0.pointer())
+    }
+}
 
 impl ty::EarlyBoundRegion {
     /// Does this early bound region have a name? Early bound regions normally
@@ -972,7 +1018,7 @@ impl<'tcx> Term<'tcx> {
         // and this is just going in the other direction.
         unsafe {
             match ptr & TAG_MASK {
-                TYPE_TAG => TermKind::Ty(Ty(Interned::new_unchecked(
+                TYPE_TAG => TermKind::Ty(Ty::from_interned(Interned::new_unchecked(
                     &*((ptr & !TAG_MASK) as *const WithCachedTypeInfo<ty::TyKind<'tcx>>),
                 ))),
                 CONST_TAG => TermKind::Const(ty::Const(Interned::new_unchecked(
@@ -1043,8 +1089,8 @@ impl<'tcx> TermKind<'tcx> {
         let (tag, ptr) = match self {
             TermKind::Ty(ty) => {
                 // Ensure we can use the tag bits.
-                assert_eq!(mem::align_of_val(&*ty.0.0) & TAG_MASK, 0);
-                (TYPE_TAG, ty.0.0 as *const WithCachedTypeInfo<ty::TyKind<'tcx>> as usize)
+                assert_eq!(mem::align_of_val(&*ty.0.pointer().0) & TAG_MASK, 0);
+                (TYPE_TAG, ty.0.pointer().0 as *const WithCachedTypeInfo<ty::TyKind<'tcx>> as usize)
             }
             TermKind::Const(ct) => {
                 // Ensure we can use the tag bits.
