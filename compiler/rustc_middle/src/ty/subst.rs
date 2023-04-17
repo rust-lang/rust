@@ -65,8 +65,10 @@ impl<'tcx> GenericArgKind<'tcx> {
             }
             GenericArgKind::Type(ty) => {
                 // Ensure we can use the tag bits.
-                assert_eq!(mem::align_of_val(&*ty.0.pointer().0) & TAG_MASK, 0);
-                (TYPE_TAG, ty.0.pointer().0 as *const WithCachedTypeInfo<ty::TyKind<'tcx>> as usize)
+
+                let r: &WithCachedTypeInfo<ty::TyKind<'tcx>> = ty.0.pointer().0;
+                assert_eq!(mem::align_of_val::<WithCachedTypeInfo<ty::TyKind<'tcx>>>(r) & TAG_MASK, 0);
+                (TYPE_TAG, r as *const WithCachedTypeInfo<ty::TyKind<'tcx>> as usize)
             }
             GenericArgKind::Const(ct) => {
                 // Ensure we can use the tag bits.
