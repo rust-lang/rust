@@ -16,6 +16,7 @@ rustc_attr = { path = "../rustc_attr" }
 rustc_borrowck = { path = "../rustc_borrowck" }
 rustc_builtin_macros = { path = "../rustc_builtin_macros" }
 rustc_expand = { path = "../rustc_expand" }
+rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_fs_util = { path = "../rustc_fs_util" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_parse = { path = "../rustc_parse" }

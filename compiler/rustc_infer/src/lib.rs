@@ -35,7 +35,7 @@ extern crate tracing;
 extern crate rustc_middle;
 
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
-use rustc_macros::fluent_messages;
+use rustc_fluent_macro::fluent_messages;
 
 mod errors;
 pub mod infer;
