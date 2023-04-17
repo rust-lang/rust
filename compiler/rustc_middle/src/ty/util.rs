@@ -694,13 +694,6 @@ impl<'tcx> TyCtxt<'tcx> {
         if visitor.found_recursion { Err(expanded_type) } else { Ok(expanded_type) }
     }
 
-    pub fn bound_return_position_impl_trait_in_trait_tys(
-        self,
-        def_id: DefId,
-    ) -> ty::EarlyBinder<Result<&'tcx FxHashMap<DefId, Ty<'tcx>>, ErrorGuaranteed>> {
-        ty::EarlyBinder(self.collect_return_position_impl_trait_in_trait_tys(def_id))
-    }
-
     pub fn bound_explicit_item_bounds(
         self,
         def_id: DefId,
