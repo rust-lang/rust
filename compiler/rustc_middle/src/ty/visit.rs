@@ -46,6 +46,12 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
         trace!(?self, ?flags, ?res, "has_type_flags");
         res
     }
+    fn has_hot_type_flags(&self, flags: ty::HotTypeFlags) -> bool {
+        let res = self.visit_with(&mut HasHotTypeFlagsVisitor { flags }).break_value()
+            == Some(FoundFlags);
+        trace!(?self, ?flags, ?res, "has_hot_type_flags");
+        res
+    }
     fn has_projections(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_PROJECTION)
     }
@@ -79,7 +85,7 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
         self.has_type_flags(TypeFlags::HAS_TY_INFER)
     }
     fn has_non_region_infer(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_INFER - TypeFlags::HAS_RE_INFER)
+        self.has_hot_type_flags(ty::HotTypeFlags { has_non_region_infer: true })
     }
     fn has_infer(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_INFER)
@@ -523,6 +529,61 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for HasTypeFlagsVisitor {
     #[inline]
     fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
         if predicate.flags().intersects(self.flags) {
+            ControlFlow::Break(FoundFlags)
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+}
+
+struct HasHotTypeFlagsVisitor {
+    flags: ty::HotTypeFlags,
+}
+
+impl std::fmt::Debug for HasHotTypeFlagsVisitor {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.flags.fmt(fmt)
+    }
+}
+
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for HasHotTypeFlagsVisitor {
+    type BreakTy = FoundFlags;
+
+    #[inline]
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+        let flags = t.hot_flags();
+        if flags.intersects(self.flags) {
+            ControlFlow::Break(FoundFlags)
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    #[inline]
+    fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+        let flags = ty::HotTypeFlags::from_flags(r.type_flags());
+        if flags.intersects(self.flags) {
+            ControlFlow::Break(FoundFlags)
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    #[inline]
+    fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+        let flags = ty::HotTypeFlags::from_flags(FlagComputation::for_const(c));
+        trace!(r.flags=?flags);
+        if flags.intersects(self.flags) {
+            ControlFlow::Break(FoundFlags)
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    #[inline]
+    fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
+        let flags = ty::HotTypeFlags::from_flags(predicate.flags());
+        if flags.intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
         } else {
             ControlFlow::Continue(())
