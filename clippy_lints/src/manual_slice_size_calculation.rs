@@ -1,7 +1,7 @@
 // run-rustfix
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::{expr_or_init, in_constant};
+use clippy_utils::{expr_or_init, in_constant, std_or_core};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -50,6 +50,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualSliceSizeCalculation {
             let ctxt = expr.span.ctxt();
             let mut app = Applicability::MachineApplicable;
             let val_name = snippet_with_context(cx, receiver.span, ctxt, "slice", &mut app).0;
+            let Some(sugg) = std_or_core(cx) else { return };
 
             span_lint_and_sugg(
                 cx,
@@ -57,7 +58,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualSliceSizeCalculation {
                     expr.span,
                     "manual slice size calculation",
                     "try",
-                    format!("std::mem::size_of_val({val_name})"),
+                    format!("{sugg}::mem::size_of_val({val_name})"),
                     Applicability::MachineApplicable,
                 );
         }
