@@ -493,7 +493,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         cond: &Operand<'tcx>,
         location: Location,
     ) -> Option<!> {
-        let ref value = self.eval_operand(&cond, location)?;
+        let value = &self.eval_operand(&cond, location)?;
         trace!("assertion on {:?} should be {:?}", value, expected);
 
         let expected = Scalar::from_bool(expected);

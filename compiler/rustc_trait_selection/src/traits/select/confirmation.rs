@@ -275,33 +275,35 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Result<ImplSourceBuiltinData<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         debug!(?obligation, "confirm_transmutability_candidate");
 
-        let predicate = obligation.predicate;
+        // We erase regions here because transmutability calls layout queries,
+        // which does not handle inference regions and doesn't particularly
+        // care about other regions. Erasing late-bound regions is equivalent
+        // to instantiating the binder with placeholders then erasing those
+        // placeholder regions.
+        let predicate =
+            self.tcx().erase_regions(self.tcx().erase_late_bound_regions(obligation.predicate));
 
-        let type_at = |i| predicate.map_bound(|p| p.trait_ref.substs.type_at(i));
-        let const_at = |i| predicate.skip_binder().trait_ref.substs.const_at(i);
-
-        let src_and_dst = predicate.map_bound(|p| rustc_transmute::Types {
-            dst: p.trait_ref.substs.type_at(0),
-            src: p.trait_ref.substs.type_at(1),
-        });
-
-        let scope = type_at(2).skip_binder();
-
-        let Some(assume) =
-            rustc_transmute::Assume::from_const(self.infcx.tcx, obligation.param_env, const_at(3)) else {
-                return Err(Unimplemented);
-            };
-
-        let cause = obligation.cause.clone();
+        let Some(assume) = rustc_transmute::Assume::from_const(
+            self.infcx.tcx,
+            obligation.param_env,
+            predicate.trait_ref.substs.const_at(3)
+        ) else {
+            return Err(Unimplemented);
+        };
 
         let mut transmute_env = rustc_transmute::TransmuteTypeEnv::new(self.infcx);
-
-        let maybe_transmutable = transmute_env.is_transmutable(cause, src_and_dst, scope, assume);
-
-        use rustc_transmute::Answer;
+        let maybe_transmutable = transmute_env.is_transmutable(
+            obligation.cause.clone(),
+            rustc_transmute::Types {
+                dst: predicate.trait_ref.substs.type_at(0),
+                src: predicate.trait_ref.substs.type_at(1),
+            },
+            predicate.trait_ref.substs.type_at(2),
+            assume,
+        );
 
         match maybe_transmutable {
-            Answer::Yes => Ok(ImplSourceBuiltinData { nested: vec![] }),
+            rustc_transmute::Answer::Yes => Ok(ImplSourceBuiltinData { nested: vec![] }),
             _ => Err(Unimplemented),
         }
     }

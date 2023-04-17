@@ -2519,7 +2519,9 @@ pub(crate) fn is_valid_allocation_size<T>(len: usize) -> bool {
 pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -> bool {
     let src_usize = src.addr();
     let dst_usize = dst.addr();
-    let size = mem::size_of::<T>().checked_mul(count).unwrap();
+    let size = mem::size_of::<T>()
+        .checked_mul(count)
+        .expect("is_nonoverlapping: `size_of::<T>() * count` overflows a usize");
     let diff = if src_usize > dst_usize { src_usize - dst_usize } else { dst_usize - src_usize };
     // If the absolute distance between the ptrs is at least as big as the size of the buffer,
     // they do not overlap.

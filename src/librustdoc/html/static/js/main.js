@@ -275,8 +275,7 @@ function preLoadCss(cssUrl) {
             document.title = searchState.titleBeforeSearch;
             // We also remove the query parameter from the URL.
             if (browserSupportsHistoryApi()) {
-                history.replaceState(null, window.currentCrate + " - Rust",
-                    getNakedUrl() + window.location.hash);
+                history.replaceState(null, "", getNakedUrl() + window.location.hash);
             }
         },
         getQueryStringParams: () => {
@@ -378,8 +377,7 @@ function preLoadCss(cssUrl) {
         searchState.clearInputTimeout();
         switchDisplayedElement(null);
         if (browserSupportsHistoryApi()) {
-            history.replaceState(null, window.currentCrate + " - Rust",
-                getNakedUrl() + window.location.hash);
+            history.replaceState(null, "", getNakedUrl() + window.location.hash);
         }
         ev.preventDefault();
         searchState.defocus();
