@@ -649,7 +649,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         // FIXME(transmutability): This really should be returning nested goals for `Answer::If*`
         match rustc_transmute::TransmuteTypeEnv::new(self.infcx).is_transmutable(
             ObligationCause::dummy(),
-            ty::Binder::dummy(src_and_dst),
+            src_and_dst,
             scope,
             assume,
         ) {

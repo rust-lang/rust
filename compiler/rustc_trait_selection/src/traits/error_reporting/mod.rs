@@ -742,7 +742,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         {
                             // Recompute the safe transmute reason and use that for the error reporting
                             self.get_safe_transmute_error_and_reason(
-                                trait_predicate,
                                 obligation.clone(),
                                 trait_ref,
                                 span,
@@ -1629,7 +1628,6 @@ trait InferCtxtPrivExt<'tcx> {
 
     fn get_safe_transmute_error_and_reason(
         &self,
-        trait_predicate: ty::Binder<'tcx, ty::TraitPredicate<'tcx>>,
         obligation: Obligation<'tcx, ty::Predicate<'tcx>>,
         trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
         span: Span,
@@ -2921,18 +2919,20 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
     fn get_safe_transmute_error_and_reason(
         &self,
-        trait_predicate: ty::Binder<'tcx, ty::TraitPredicate<'tcx>>,
         obligation: Obligation<'tcx, ty::Predicate<'tcx>>,
         trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
         span: Span,
     ) -> (String, Option<String>) {
-        let src_and_dst = trait_predicate.map_bound(|p| rustc_transmute::Types {
-            dst: p.trait_ref.substs.type_at(0),
-            src: p.trait_ref.substs.type_at(1),
-        });
-        let scope = trait_ref.skip_binder().substs.type_at(2);
+        // Erase regions because layout code doesn't particularly care about regions.
+        let trait_ref = self.tcx.erase_regions(self.tcx.erase_late_bound_regions(trait_ref));
+
+        let src_and_dst = rustc_transmute::Types {
+            dst: trait_ref.substs.type_at(0),
+            src: trait_ref.substs.type_at(1),
+        };
+        let scope = trait_ref.substs.type_at(2);
         let Some(assume) =
-            rustc_transmute::Assume::from_const(self.infcx.tcx, obligation.param_env, trait_ref.skip_binder().substs.const_at(3)) else {
+            rustc_transmute::Assume::from_const(self.infcx.tcx, obligation.param_env, trait_ref.substs.const_at(3)) else {
                 span_bug!(span, "Unable to construct rustc_transmute::Assume where it was previously possible");
             };
         match rustc_transmute::TransmuteTypeEnv::new(self.infcx).is_transmutable(
@@ -2942,8 +2942,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             assume,
         ) {
             rustc_transmute::Answer::No(reason) => {
-                let dst = trait_ref.skip_binder().substs.type_at(0);
-                let src = trait_ref.skip_binder().substs.type_at(1);
+                let dst = trait_ref.substs.type_at(0);
+                let src = trait_ref.substs.type_at(1);
                 let custom_err_msg = format!(
                     "`{src}` cannot be safely transmuted into `{dst}` in the defining scope of `{scope}`"
                 );
