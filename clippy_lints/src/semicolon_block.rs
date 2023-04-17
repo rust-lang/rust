@@ -83,7 +83,7 @@ declare_clippy_lint! {
     /// # fn f(_: u32) {}
     /// # let x = 0;
     /// unsafe { f(x); }
-    /// 
+    ///
     /// unsafe {
     ///     let x = 1;
     ///     f(x)
@@ -94,7 +94,7 @@ declare_clippy_lint! {
     /// # fn f(_: u32) {}
     /// # let x = 0;
     /// unsafe { f(x) };
-    /// 
+    ///
     /// unsafe {
     ///     let x = 1;
     ///     f(x);
