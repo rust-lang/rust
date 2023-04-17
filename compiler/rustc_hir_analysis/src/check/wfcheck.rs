@@ -360,7 +360,10 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
                             tcx,
                             param_env,
                             item_def_id,
-                            tcx.explicit_item_bounds(item_def_id).to_vec(),
+                            tcx.bound_explicit_item_bounds(item_def_id.to_def_id())
+                                .transpose_iter()
+                                .map(|bound| bound.map_bound(|b| *b).subst_identity())
+                                .collect::<Vec<_>>(),
                             &FxIndexSet::default(),
                             gat_def_id.def_id,
                             gat_generics,
@@ -1122,10 +1125,11 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
 /// Assuming the defaults are used, check that all predicates (bounds on the
 /// assoc type and where clauses on the trait) hold.
 fn check_associated_type_bounds(wfcx: &WfCheckingCtxt<'_, '_>, item: ty::AssocItem, span: Span) {
-    let bounds = wfcx.tcx().explicit_item_bounds(item.def_id);
+    let bounds = wfcx.tcx().bound_explicit_item_bounds(item.def_id);
 
     debug!("check_associated_type_bounds: bounds={:?}", bounds);
-    let wf_obligations = bounds.iter().flat_map(|&(bound, bound_span)| {
+    let wf_obligations = bounds.transpose_iter().flat_map(|b| {
+        let (bound, bound_span) = b.map_bound(|b| *b).subst_identity();
         let normalized_bound = wfcx.normalize(span, None, bound);
         traits::wf::predicate_obligations(
             wfcx.infcx,
