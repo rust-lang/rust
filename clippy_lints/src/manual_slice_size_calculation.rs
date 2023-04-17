@@ -1,5 +1,7 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::{expr_or_init, in_constant};
+use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
@@ -42,15 +44,21 @@ impl<'tcx> LateLintPass<'tcx> for ManualSliceSizeCalculation {
         if !in_constant(cx, expr.hir_id)
             && let ExprKind::Binary(ref op, left, right) = expr.kind
             && BinOpKind::Mul == op.node
-            && let Some(_receiver) = simplify(cx, left, right)
+            && let Some(receiver) = simplify(cx, left, right)
         {
-            span_lint_and_help(
+            let ctxt = expr.span.ctxt();
+            let mut app = Applicability::MachineApplicable;
+            let val_name = snippet_with_context(cx, receiver.span, ctxt, "slice", &mut app).0;
+
+            span_lint_and_sugg(
                 cx,
                 MANUAL_SLICE_SIZE_CALCULATION,
-                expr.span,
-                "manual slice size calculation",
-                None,
-                "consider using std::mem::size_of_val instead");
+                    expr.span,
+                    "manual slice size calculation",
+                    "try",
+                    format!("std::mem::size_of_val({val_name})"),
+                    Applicability::MachineApplicable,
+                );
         }
     }
 }
