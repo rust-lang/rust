@@ -29,6 +29,8 @@
 #![feature(get_mut_unchecked)]
 #![feature(lint_reasons)]
 #![feature(unwrap_infallible)]
+#![feature(strict_provenance)]
+#![feature(ptr_alignment_type)]
 #![allow(rustc::default_hash_types)]
 #![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]
@@ -82,6 +84,7 @@ pub mod transitive_relation;
 pub mod vec_linked_list;
 pub mod work_queue;
 pub use atomic_ref::AtomicRef;
+pub mod aligned;
 pub mod frozen;
 pub mod owned_slice;
 pub mod sso;
