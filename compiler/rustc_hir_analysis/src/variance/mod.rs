@@ -153,7 +153,7 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
     let mut collector =
         OpaqueTypeLifetimeCollector { tcx, root_def_id: item_def_id.to_def_id(), variances };
     let id_substs = ty::InternalSubsts::identity_for_item(tcx, item_def_id);
-    for pred in tcx.bound_explicit_item_bounds(item_def_id.to_def_id()).transpose_iter() {
+    for pred in tcx.explicit_item_bounds(item_def_id).transpose_iter() {
         let pred = pred.map_bound(|(pred, _)| *pred).subst(tcx, id_substs);
         debug!(?pred);
 

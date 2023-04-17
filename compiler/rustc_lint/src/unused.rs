@@ -257,7 +257,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     elaborate(
                         cx.tcx,
                         cx.tcx
-                            .bound_explicit_item_bounds(def)
+                            .explicit_item_bounds(def)
                             .transpose_iter()
                             .map(|bound| bound.map_bound(|b| *b).subst_identity()),
                     )

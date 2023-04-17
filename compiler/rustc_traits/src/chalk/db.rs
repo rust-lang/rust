@@ -50,7 +50,7 @@ impl<'tcx> RustIrDatabase<'tcx> {
     where
         ty::Predicate<'tcx>: LowerInto<'tcx, std::option::Option<T>>,
     {
-        let bounds = self.interner.tcx.bound_explicit_item_bounds(def_id);
+        let bounds = self.interner.tcx.explicit_item_bounds(def_id);
         bounds
             .0
             .iter()
@@ -506,7 +506,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
 
         let identity_substs = InternalSubsts::identity_for_item(self.interner.tcx, opaque_ty_id.0);
 
-        let explicit_item_bounds = self.interner.tcx.bound_explicit_item_bounds(opaque_ty_id.0);
+        let explicit_item_bounds = self.interner.tcx.explicit_item_bounds(opaque_ty_id.0);
         let bounds =
             explicit_item_bounds
                 .0

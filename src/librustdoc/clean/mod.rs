@@ -421,7 +421,7 @@ fn clean_projection<'tcx>(
     if cx.tcx.is_impl_trait_in_trait(ty.skip_binder().def_id) {
         let bounds = cx
             .tcx
-            .bound_explicit_item_bounds(ty.skip_binder().def_id)
+            .explicit_item_bounds(ty.skip_binder().def_id)
             .subst_iter_copied(cx.tcx, ty.skip_binder().substs)
             .map(|(pred, _)| pred)
             .collect::<Vec<_>>();
@@ -1316,7 +1316,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
 
             if let ty::TraitContainer = assoc_item.container {
                 let bounds = tcx
-                    .bound_explicit_item_bounds(assoc_item.def_id)
+                    .explicit_item_bounds(assoc_item.def_id)
                     .transpose_iter()
                     .map(|bound| bound.map_bound(|b| *b).subst_identity());
                 let predicates = tcx.explicit_predicates_of(assoc_item.def_id).predicates;
@@ -1847,7 +1847,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             // by looking up the bounds associated with the def_id.
             let bounds = cx
                 .tcx
-                .bound_explicit_item_bounds(def_id)
+                .explicit_item_bounds(def_id)
                 .subst_iter_copied(cx.tcx, substs)
                 .map(|(bound, _)| bound)
                 .collect::<Vec<_>>();

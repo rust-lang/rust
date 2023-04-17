@@ -318,10 +318,8 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
             tcx,
             selftys: vec![],
         };
-        let prohibit_opaque = tcx
-            .bound_explicit_item_bounds(def_id.to_def_id())
-            .transpose_iter()
-            .try_for_each(|bound| {
+        let prohibit_opaque =
+            tcx.explicit_item_bounds(def_id).transpose_iter().try_for_each(|bound| {
                 let predicate = bound.map_bound(|&(predicate, _)| predicate).subst_identity();
                 predicate.visit_with(&mut visitor)
             });
