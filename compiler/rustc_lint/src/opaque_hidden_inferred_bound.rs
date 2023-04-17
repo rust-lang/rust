@@ -74,9 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
         // For every projection predicate in the opaque type's explicit bounds,
         // check that the type that we're assigning actually satisfies the bounds
         // of the associated type.
-        for bound in cx.tcx.explicit_item_bounds(def_id).transpose_iter() {
-            let (pred, pred_span) = bound.map_bound(|b| *b).subst_identity();
-
+        for (pred, pred_span) in cx.tcx.explicit_item_bounds(def_id).subst_identity_iter_copied() {
             // Liberate bound regions in the predicate since we
             // don't actually care about lifetimes in this check.
             let predicate = cx.tcx.liberate_late_bound_regions(def_id, pred.kind());

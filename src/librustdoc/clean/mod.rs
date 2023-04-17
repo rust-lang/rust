@@ -1315,10 +1315,8 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
             }
 
             if let ty::TraitContainer = assoc_item.container {
-                let bounds = tcx
-                    .explicit_item_bounds(assoc_item.def_id)
-                    .transpose_iter()
-                    .map(|bound| bound.map_bound(|b| *b).subst_identity());
+                let bounds =
+                    tcx.explicit_item_bounds(assoc_item.def_id).subst_identity_iter_copied();
                 let predicates = tcx.explicit_predicates_of(assoc_item.def_id).predicates;
                 let predicates =
                     tcx.arena.alloc_from_iter(bounds.chain(predicates.iter().copied()));

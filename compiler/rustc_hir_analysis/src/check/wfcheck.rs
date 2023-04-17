@@ -361,8 +361,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
                             param_env,
                             item_def_id,
                             tcx.explicit_item_bounds(item_def_id)
-                                .transpose_iter()
-                                .map(|bound| bound.map_bound(|b| *b).subst_identity())
+                                .subst_identity_iter_copied()
                                 .collect::<Vec<_>>(),
                             &FxIndexSet::default(),
                             gat_def_id.def_id,
@@ -1128,8 +1127,7 @@ fn check_associated_type_bounds(wfcx: &WfCheckingCtxt<'_, '_>, item: ty::AssocIt
     let bounds = wfcx.tcx().explicit_item_bounds(item.def_id);
 
     debug!("check_associated_type_bounds: bounds={:?}", bounds);
-    let wf_obligations = bounds.transpose_iter().flat_map(|b| {
-        let (bound, bound_span) = b.map_bound(|b| *b).subst_identity();
+    let wf_obligations = bounds.subst_identity_iter_copied().flat_map(|(bound, bound_span)| {
         let normalized_bound = wfcx.normalize(span, None, bound);
         traits::wf::predicate_obligations(
             wfcx.infcx,
