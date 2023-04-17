@@ -90,7 +90,8 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                         return false;
                     }
 
-                    for &(predicate, _span) in cx.tcx.explicit_item_bounds(def_id) {
+                    for bound in cx.tcx.bound_explicit_item_bounds(def_id).transpose_iter() {
+                        let (predicate, _span) = bound.map_bound(|b| *b).subst_identity();
                         match predicate.kind().skip_binder() {
                             // For `impl Trait<U>`, it will register a predicate of `T: Trait<U>`, so we go through
                             // and check substituions to find `U`.
@@ -267,7 +268,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         },
         ty::Tuple(substs) => substs.iter().any(|ty| is_must_use_ty(cx, ty)),
         ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) => {
-            for (predicate, _) in cx.tcx.explicit_item_bounds(*def_id) {
+            for (predicate, _) in cx.tcx.bound_explicit_item_bounds(*def_id).skip_binder() {
                 if let ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) = predicate.kind().skip_binder() {
                     if cx.tcx.has_attr(trait_predicate.trait_ref.def_id, sym::must_use) {
                         return true;
