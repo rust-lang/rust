@@ -38,7 +38,7 @@ declare_lint_pass!(ManualSliceSizeCalculation => [MANUAL_SLICE_SIZE_CALCULATION]
 
 impl<'tcx> LateLintPass<'tcx> for ManualSliceSizeCalculation {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        // Does not apply inside const because size_of_value is not cost in stable.
+        // Does not apply inside const because size_of_val is not cost in stable.
         if !in_constant(cx, expr.hir_id)
             && let ExprKind::Binary(ref op, left, right) = expr.kind
             && BinOpKind::Mul == op.node
@@ -50,7 +50,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualSliceSizeCalculation {
                 expr.span,
                 "manual slice size calculation",
                 None,
-                "consider using std::mem::size_of_value instead");
+                "consider using std::mem::size_of_val instead");
         }
     }
 }

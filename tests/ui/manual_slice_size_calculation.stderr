@@ -4,7 +4,7 @@ error: manual slice size calculation
 LL |     let _ = s_i32.len() * size_of::<i32>(); // WARNING
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: consider using std::mem::size_of_value instead
+   = help: consider using std::mem::size_of_val instead
    = note: `-D clippy::manual-slice-size-calculation` implied by `-D warnings`
 
 error: manual slice size calculation
@@ -13,7 +13,7 @@ error: manual slice size calculation
 LL |     let _ = size_of::<i32>() * s_i32.len(); // WARNING
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: consider using std::mem::size_of_value instead
+   = help: consider using std::mem::size_of_val instead
 
 error: manual slice size calculation
   --> $DIR/manual_slice_size_calculation.rs:13:13
@@ -21,7 +21,7 @@ error: manual slice size calculation
 LL |     let _ = size_of::<i32>() * s_i32.len() * 5; // WARNING
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: consider using std::mem::size_of_value instead
+   = help: consider using std::mem::size_of_val instead
 
 error: manual slice size calculation
   --> $DIR/manual_slice_size_calculation.rs:17:13
@@ -29,7 +29,7 @@ error: manual slice size calculation
 LL |     let _ = len * size_of::<i32>(); // WARNING
    |             ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: consider using std::mem::size_of_value instead
+   = help: consider using std::mem::size_of_val instead
 
 error: manual slice size calculation
   --> $DIR/manual_slice_size_calculation.rs:18:13
@@ -37,7 +37,7 @@ error: manual slice size calculation
 LL |     let _ = s_i32.len() * size; // WARNING
    |             ^^^^^^^^^^^^^^^^^^
    |
-   = help: consider using std::mem::size_of_value instead
+   = help: consider using std::mem::size_of_val instead
 
 error: manual slice size calculation
   --> $DIR/manual_slice_size_calculation.rs:19:13
@@ -45,7 +45,7 @@ error: manual slice size calculation
 LL |     let _ = len * size; // WARNING
    |             ^^^^^^^^^^
    |
-   = help: consider using std::mem::size_of_value instead
+   = help: consider using std::mem::size_of_val instead
 
 error: aborting due to 6 previous errors
 
