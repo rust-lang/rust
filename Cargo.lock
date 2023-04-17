@@ -3181,7 +3181,6 @@ dependencies = [
  "rustc_index",
  "rustc_macros",
  "rustc_serialize",
- "serde_json",
  "smallvec",
  "stable_deref_trait",
  "stacker",
