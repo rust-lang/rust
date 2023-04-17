@@ -3146,7 +3146,6 @@ impl<'hir> Item<'hir> {
         (ty, gen)
     }
 
-    /// An opaque `impl Trait` type alias, e.g., `type Foo = impl Bar;`.
     /// Expect an [`ItemKind::OpaqueTy`] or panic.
     #[track_caller]
     pub fn expect_opaque_ty(&self) -> &OpaqueTy<'hir> {
@@ -3168,7 +3167,6 @@ impl<'hir> Item<'hir> {
         (data, gen)
     }
 
-    /// A union definition, e.g., `union Foo<A, B> {x: A, y: B}`.
     /// Expect an [`ItemKind::Union`] or panic.
     #[track_caller]
     pub fn expect_union(&self) -> (&VariantData<'hir>, &'hir Generics<'hir>) {
