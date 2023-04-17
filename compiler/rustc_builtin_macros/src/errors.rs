@@ -20,13 +20,6 @@ pub(crate) struct OneCfgPattern {
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_alloc_error_must_be_fn)]
-pub(crate) struct AllocErrorMustBeFn {
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(builtin_macros_assert_requires_boolean)]
 pub(crate) struct AssertRequiresBoolean {
     #[primary_span]

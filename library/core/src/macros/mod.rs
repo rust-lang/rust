@@ -1531,16 +1531,6 @@ pub(crate) mod builtin {
         /* compiler built-in */
     }
 
-    /// Attribute macro applied to a function to register it as a handler for allocation failure.
-    ///
-    /// See also [`std::alloc::handle_alloc_error`](../../../std/alloc/fn.handle_alloc_error.html).
-    #[unstable(feature = "alloc_error_handler", issue = "51540")]
-    #[allow_internal_unstable(rustc_attrs)]
-    #[rustc_builtin_macro]
-    pub macro alloc_error_handler($item:item) {
-        /* compiler built-in */
-    }
-
     /// Keeps the item it's applied to if the passed path is accessible, and removes it otherwise.
     #[unstable(
         feature = "cfg_accessible",
