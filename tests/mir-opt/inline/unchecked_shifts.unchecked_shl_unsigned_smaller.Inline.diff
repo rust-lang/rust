@@ -10,7 +10,8 @@
 +     scope 1 (inlined core::num::<impl u16>::unchecked_shl) { // at $DIR/unchecked_shifts.rs:11:7: 11:23
 +         debug self => _3;                // in scope 1 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
 +         debug rhs => _4;                 // in scope 1 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
-+         let mut _5: u16;                 // in scope 1 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
++         let mut _5: u16;                 // in scope 1 at $SRC_DIR/core/src/num/mod.rs:LL:COL
++         let mut _6: (u32,);              // in scope 1 at $SRC_DIR/core/src/num/mod.rs:LL:COL
 +         scope 2 {
 +         }
 +     }
@@ -21,18 +22,27 @@
           StorageLive(_4);                 // scope 0 at $DIR/unchecked_shifts.rs:+1:21: +1:22
           _4 = _2;                         // scope 0 at $DIR/unchecked_shifts.rs:+1:21: +1:22
 -         _0 = core::num::<impl u16>::unchecked_shl(move _3, move _4) -> bb1; // scope 0 at $DIR/unchecked_shifts.rs:+1:5: +1:23
-+         StorageLive(_5);                 // scope 0 at $DIR/unchecked_shifts.rs:+1:7: +1:23
-+         _5 = _4 as u16 (IntToInt);       // scope 2 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
-+         _0 = unchecked_shl::<u16>(_3, _5) -> [return: bb1, unwind unreachable]; // scope 2 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
++         StorageLive(_5);                 // scope 2 at $SRC_DIR/core/src/num/mod.rs:LL:COL
++         StorageLive(_6);                 // scope 2 at $SRC_DIR/core/src/num/mod.rs:LL:COL
++         _6 = (_4,);                      // scope 2 at $SRC_DIR/core/src/num/mod.rs:LL:COL
++         _5 = core::num::<impl u16>::unchecked_shl::conv(move (_6.0: u32)) -> bb1; // scope 2 at $SRC_DIR/core/src/num/mod.rs:LL:COL
                                            // mir::Constant
 -                                          // + span: $DIR/unchecked_shifts.rs:11:7: 11:20
 -                                          // + literal: Const { ty: unsafe fn(u16, u32) -> u16 {core::num::<impl u16>::unchecked_shl}, val: Value(<ZST>) }
-+                                          // + span: $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
-+                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(u16, u16) -> u16 {unchecked_shl::<u16>}, val: Value(<ZST>) }
++                                          // + span: $SRC_DIR/core/src/num/mod.rs:LL:COL
++                                          // + literal: Const { ty: fn(u32) -> u16 {core::num::<impl u16>::unchecked_shl::conv}, val: Value(<ZST>) }
       }
   
       bb1: {
-+         StorageDead(_5);                 // scope 0 at $DIR/unchecked_shifts.rs:+1:7: +1:23
++         StorageDead(_6);                 // scope 2 at $SRC_DIR/core/src/num/mod.rs:LL:COL
++         _0 = unchecked_shl::<u16>(_3, move _5) -> [return: bb2, unwind unreachable]; // scope 2 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
++                                          // mir::Constant
++                                          // + span: $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
++                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(u16, u16) -> u16 {unchecked_shl::<u16>}, val: Value(<ZST>) }
++     }
++ 
++     bb2: {
++         StorageDead(_5);                 // scope 2 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
           StorageDead(_4);                 // scope 0 at $DIR/unchecked_shifts.rs:+1:22: +1:23
           StorageDead(_3);                 // scope 0 at $DIR/unchecked_shifts.rs:+1:22: +1:23
           return;                          // scope 0 at $DIR/unchecked_shifts.rs:+2:2: +2:2

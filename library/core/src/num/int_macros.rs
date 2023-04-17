@@ -785,8 +785,7 @@ macro_rules! int_impl {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_shl`.
             // Any legal shift amount is losslessly representable in the self type.
-            // FIXME(const-hack) replace with `.try_into().ok().unwrap_unchecked()`.
-            unsafe { intrinsics::unchecked_shl(self, rhs as _) }
+            unsafe { intrinsics::unchecked_shl(self, conv_rhs_for_unchecked_shift!($SelfT, rhs)) }
         }
 
         /// Checked shift right. Computes `self >> rhs`, returning `None` if `rhs` is
@@ -834,8 +833,7 @@ macro_rules! int_impl {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_shr`.
             // Any legal shift amount is losslessly representable in the self type.
-            // FIXME(const-hack) replace with `.try_into().ok().unwrap_unchecked()`.
-            unsafe { intrinsics::unchecked_shr(self, rhs as _) }
+            unsafe { intrinsics::unchecked_shr(self, conv_rhs_for_unchecked_shift!($SelfT, rhs)) }
         }
 
         /// Checked absolute value. Computes `self.abs()`, returning `None` if
