@@ -1,43 +1,87 @@
 error: you seem to be trying to pop elements from a `Vec` in a loop
-  --> $DIR/while_pop_unwrap.rs:14:22
+  --> $DIR/while_pop_unwrap.rs:23:9
    |
-LL |     while !numbers.is_empty() {
-   |            ------------------ help: try: `while let Some(number) = numbers.pop()`
 LL |         let number = numbers.pop().unwrap();
-   |                      ^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this while loop can be written in a more idiomatic way
    = note: `-D clippy::while-pop-unwrap` implied by `-D warnings`
+help: consider using a `while..let` loop
+   |
+LL ~     while let Some(number) = numbers.pop() {
+LL ~         
+   |
 
 error: you seem to be trying to pop elements from a `Vec` in a loop
-  --> $DIR/while_pop_unwrap.rs:22:22
+  --> $DIR/while_pop_unwrap.rs:31:9
    |
-LL |     while !val.numbers.is_empty() {
-   |            ---------------------- help: try: `while let Some(number) = val.numbers.pop()`
 LL |         let number = val.numbers.pop().unwrap();
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this while loop can be written in a more idiomatic way
+help: consider using a `while..let` loop
+   |
+LL ~     while let Some(number) = val.numbers.pop() {
+LL ~         
+   |
 
 error: you seem to be trying to pop elements from a `Vec` in a loop
-  --> $DIR/while_pop_unwrap.rs:26:20
+  --> $DIR/while_pop_unwrap.rs:35:20
    |
-LL |     while !numbers.is_empty() {
-   |            ------------------ help: try: `while let Some(element) = numbers.pop()`
 LL |         accept_i32(numbers.pop().unwrap());
    |                    ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this while loop can be written in a more idiomatic way
+help: consider using a `while..let` loop
+   |
+LL ~     while let Some(element) = numbers.pop() {
+LL ~         accept_i32(element);
+   |
 
 error: you seem to be trying to pop elements from a `Vec` in a loop
-  --> $DIR/while_pop_unwrap.rs:30:20
+  --> $DIR/while_pop_unwrap.rs:39:20
    |
-LL |     while !numbers.is_empty() {
-   |            ------------------ help: try: `while let Some(element) = numbers.pop()`
 LL |         accept_i32(numbers.pop().expect(""));
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this while loop can be written in a more idiomatic way
+help: consider using a `while..let` loop
+   |
+LL ~     while let Some(element) = numbers.pop() {
+LL ~         accept_i32(element);
+   |
 
-error: aborting due to 4 previous errors
+error: you seem to be trying to pop elements from a `Vec` in a loop
+  --> $DIR/while_pop_unwrap.rs:82:9
+   |
+LL |         let (a, b) = numbers.pop().unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using a `while..let` loop
+   |
+LL ~     while let Some((a, b)) = numbers.pop() {
+LL ~         
+   |
+
+error: you seem to be trying to pop elements from a `Vec` in a loop
+  --> $DIR/while_pop_unwrap.rs:86:26
+   |
+LL |         accept_i32_tuple(numbers.pop().unwrap());
+   |                          ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using a `while..let` loop
+   |
+LL ~     while let Some(element) = numbers.pop() {
+LL ~         accept_i32_tuple(element);
+   |
+
+error: you seem to be trying to pop elements from a `Vec` in a loop
+  --> $DIR/while_pop_unwrap.rs:91:9
+   |
+LL |         let Foo { a, b } = results.pop().unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using a `while..let` loop
+   |
+LL ~     while let Some(Foo { a, b }) = results.pop() {
+LL ~         
+   |
+
+error: aborting due to 7 previous errors
 

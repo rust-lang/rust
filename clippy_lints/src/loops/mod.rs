@@ -17,6 +17,7 @@ mod utils;
 mod while_immutable_condition;
 mod while_let_loop;
 mod while_let_on_iterator;
+mod while_pop_unwrap;
 
 use clippy_utils::higher;
 use rustc_hir::{Expr, ExprKind, LoopSource, Pat};
@@ -24,8 +25,6 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use utils::{make_iterator_snippet, IncrementVisitor, InitializeVisitor};
-
-use crate::while_pop_unwrap;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -577,6 +576,36 @@ declare_clippy_lint! {
     "manual implementation of `Iterator::find`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Looks for loops that check for emptiness of a `Vec` in the condition and pop an element
+    /// in the body as a separate operation.
+    ///
+    /// ### Why is this bad?
+    /// Such loops can be written in a more idiomatic way by using a while..let loop and directly
+    /// pattern matching on the return value of `Vec::pop()`.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let mut numbers = vec![1, 2, 3, 4, 5];
+    /// while !numbers.is_empty() {
+    ///     let number = numbers.pop().unwrap();
+    ///     // use `number`
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let mut numbers = vec![1, 2, 3, 4, 5];
+    /// while let Some(number) = numbers.pop() {
+    ///     // use `number`
+    /// }
+    /// ```
+    #[clippy::version = "1.70.0"]
+    pub WHILE_POP_UNWRAP,
+    style,
+    "checking for emptiness of a `Vec` in the loop condition and popping an element in the body"
+}
+
 declare_lint_pass!(Loops => [
     MANUAL_MEMCPY,
     MANUAL_FLATTEN,
@@ -596,6 +625,7 @@ declare_lint_pass!(Loops => [
     SINGLE_ELEMENT_LOOP,
     MISSING_SPIN_LOOP,
     MANUAL_FIND,
+    WHILE_POP_UNWRAP
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Loops {
@@ -642,10 +672,10 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
 
         while_let_on_iterator::check(cx, expr);
 
-        if let Some(higher::While { condition, body }) = higher::While::hir(expr) {
+        if let Some(higher::While { condition, body, span }) = higher::While::hir(expr) {
             while_immutable_condition::check(cx, condition, body);
             missing_spin_loop::check(cx, condition, body);
-            while_pop_unwrap::check(cx, condition, body);
+            while_pop_unwrap::check(cx, condition, body, span);
         }
     }
 }

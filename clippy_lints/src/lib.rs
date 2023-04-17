@@ -324,7 +324,6 @@ mod use_self;
 mod useless_conversion;
 mod vec;
 mod vec_init_then_push;
-mod while_pop_unwrap;
 mod wildcard_imports;
 mod write;
 mod zero_div_zero;
