@@ -569,36 +569,50 @@ trait UnusedDelimLint {
             }
         }
 
-        // Prevent false-positives in cases like `fn x() -> u8 { ({ 0 } + 1) }`
-        let lhs_needs_parens = {
+        // Check if LHS needs parens to prevent false-positives in cases like `fn x() -> u8 { ({ 0 } + 1) }`.
+        {
             let mut innermost = inner;
             loop {
                 innermost = match &innermost.kind {
-                    ExprKind::Binary(_, lhs, _rhs) => lhs,
+                    ExprKind::Binary(_op, lhs, _rhs) => lhs,
                     ExprKind::Call(fn_, _params) => fn_,
                     ExprKind::Cast(expr, _ty) => expr,
                     ExprKind::Type(expr, _ty) => expr,
                     ExprKind::Index(base, _subscript) => base,
-                    _ => break false,
+                    _ => break,
                 };
                 if !classify::expr_requires_semi_to_be_stmt(innermost) {
-                    break true;
+                    return true;
                 }
             }
-        };
+        }
 
-        lhs_needs_parens
-            || (followed_by_block
-                && match &inner.kind {
-                    ExprKind::Ret(_)
-                    | ExprKind::Break(..)
-                    | ExprKind::Yield(..)
-                    | ExprKind::Yeet(..) => true,
-                    ExprKind::Range(_lhs, Some(rhs), _limits) => {
-                        matches!(rhs.kind, ExprKind::Block(..))
-                    }
-                    _ => parser::contains_exterior_struct_lit(&inner),
-                })
+        // Check if RHS needs parens to prevent false-positives in cases like `if (() == return) {}`.
+        if !followed_by_block {
+            return false;
+        }
+        let mut innermost = inner;
+        loop {
+            innermost = match &innermost.kind {
+                ExprKind::Unary(_op, expr) => expr,
+                ExprKind::Binary(_op, _lhs, rhs) => rhs,
+                ExprKind::AssignOp(_op, _lhs, rhs) => rhs,
+                ExprKind::Assign(_lhs, rhs, _span) => rhs,
+
+                ExprKind::Ret(_) | ExprKind::Yield(..) | ExprKind::Yeet(..) => return true,
+
+                ExprKind::Break(_label, None) => return false,
+                ExprKind::Break(_label, Some(break_expr)) => {
+                    return matches!(break_expr.kind, ExprKind::Block(..));
+                }
+
+                ExprKind::Range(_lhs, Some(rhs), _limits) => {
+                    return matches!(rhs.kind, ExprKind::Block(..));
+                }
+
+                _ => return parser::contains_exterior_struct_lit(&inner),
+            }
+        }
     }
 
     fn emit_unused_delims_expr(
