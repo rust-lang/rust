@@ -28,10 +28,10 @@ use rustc_errors::{
     DiagnosticMessage, ErrorGuaranteed, PResult, SubdiagnosticMessage, TerminalUrl,
 };
 use rustc_feature::find_gated_cfg;
+use rustc_fluent_macro::fluent_messages;
 use rustc_interface::util::{self, collect_crate_types, get_codegen_backend};
 use rustc_interface::{interface, Queries};
 use rustc_lint::LintStore;
-use rustc_macros::fluent_messages;
 use rustc_metadata::locator;
 use rustc_session::config::{nightly_options, CG_OPTIONS, Z_OPTIONS};
 use rustc_session::config::{ErrorOutputType, Input, OutputType, PrintRequest, TrimmedDefPaths};
