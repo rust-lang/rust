@@ -4884,6 +4884,7 @@ Released 2018-09-13
 [`semicolon_if_nothing_returned`]: https://rust-lang.github.io/rust-clippy/master/index.html#semicolon_if_nothing_returned
 [`semicolon_inside_block`]: https://rust-lang.github.io/rust-clippy/master/index.html#semicolon_inside_block
 [`semicolon_outside_block`]: https://rust-lang.github.io/rust-clippy/master/index.html#semicolon_outside_block
+[`semicolon_outside_block_if_singleline`]: https://rust-lang.github.io/rust-clippy/master/index.html#semicolon_outside_block_if_singleline
 [`separated_literal_suffix`]: https://rust-lang.github.io/rust-clippy/master/index.html#separated_literal_suffix
 [`serde_api_misuse`]: https://rust-lang.github.io/rust-clippy/master/index.html#serde_api_misuse
 [`shadow_reuse`]: https://rust-lang.github.io/rust-clippy/master/index.html#shadow_reuse
