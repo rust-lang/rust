@@ -331,7 +331,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         item: &'tcx hir::Item<'_>,
         renamed: Option<Symbol>,
         import_id: Option<LocalDefId>,
-    ) -> bool {
+    ) {
         debug!("visiting item {:?}", item);
         let name = renamed.unwrap_or(item.ident.name);
         let tcx = self.cx.tcx;
@@ -448,7 +448,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 }
             }
         }
-        true
     }
 
     fn visit_foreign_item_inner(
@@ -485,9 +484,8 @@ impl<'a, 'tcx> Visitor<'tcx> for RustdocVisitor<'a, 'tcx> {
     }
 
     fn visit_item(&mut self, i: &'tcx hir::Item<'tcx>) {
-        if self.visit_item_inner(i, None, None) {
-            walk_item(self, i);
-        }
+        self.visit_item_inner(i, None, None);
+        walk_item(self, i);
     }
 
     fn visit_mod(&mut self, _: &hir::Mod<'tcx>, _: Span, _: hir::HirId) {
