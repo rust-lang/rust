@@ -10,11 +10,8 @@ name for a function, so we want to trigger this and fix it early in the developm
 
 ## Lint name
 
-A good lint name is important, it is usually given by the issue you're fixing (in the **Lint name** field). If you're
-unsure if the name you chose fits the lint, you can check the [lint naming guidelines][lint_naming]. Don't worry, if
+A good lint name is important, make sure to check the [lint naming guidelines][lint_naming]. Don't worry, if
 the lint name doesn't fit, a Clippy team member will alert you in the PR process.
-
-If you're still unsure, you can ask on the [Zulip] or on the Github issue / PR.
 
 ---
 
@@ -32,7 +29,7 @@ If you believe that this new lint is a standalone lint (that doesn't belong to a
 command in your Clippy project:
 
 ```sh
-$ cargo dev new_lint --name=foo_functions --pass=late --category=pedantic
+$ cargo dev new_lint --name=lint_name --pass=late --category=pedantic
 ```
 
 There are two things to note here:
@@ -63,6 +60,7 @@ Untracked files:
 	clippy_lints/src/foo_functions.rs
 	tests/ui/foo_functions.rs
 ```
+
 
 ### Specific Type
 
@@ -112,29 +110,7 @@ Untracked files:
 	tests/ui/foo_functions.rs
 ```
 
-## Lint registration
-
-If we run the `cargo dev new_lint` command for a new lint,
-the lint will be automatically registered and there is nothing more to do.
-
-However, sometimes we might want to declare a new lint by hand.
-In this case, we'd use `cargo dev update_lints` command afterwards.
-
-When a lint is manually declared, we might need to register the lint pass
-manually in the `register_plugins` function in `clippy_lints/src/lib.rs`:
-
-```rust
-store.register_late_pass(|| Box::new(foo_functions::FooFunctions));
-```
-
-As you might have guessed, where there's something late, there is something early:
-in Clippy there is a `register_early_pass` method as well.
-More on early vs. late passes in a later chapter.
-
-Without a call to one of `register_early_pass` or `register_late_pass`,
-the lint pass in question will not be run.
-
-## Lint types
+#### Lint types
 
 As of the writing of this documentation update, there are 12 groups (a.k.a. _types_)
 of lints besides the numerous standalone lints living under `clippy_lints/src/`:
@@ -159,6 +135,64 @@ that deal with some aspects of function calls in Rust.
 For more information, feel free to compare the lint files under any category
 with [All Clippy lints][all_lints] or
 ask one of the maintainers.
+
+## The `define_clippy_lints` macro
+
+After `cargo dev new_lint`, you should see a macro with the name `define_clippy_lints`. It will be in the same file if you defined a standalone lint, and it will be in `mod.rs` if you defined a type-specific lint.
+
+The macro looks something like this:
+
+```rust
+declare_clippy_lint! {
+	/// ### What it does
+    ///
+	/// // Describe here what does the lint do.
+	/// 
+	/// Triggers when detects...
+	/// 
+    /// ### Why is this bad?
+	/// 
+	/// // Describe why this pattern would be bad
+	/// 
+	/// It can lead to...
+    ///
+    /// ### Example
+    /// ```rust
+    /// // example code where clippy issues a warning
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// // example code which does not raise clippy warning
+    /// ```
+    #[clippy::version = "1.70.0"] // <- In which version was this implemented, keep it up to date!
+    pub LINT_NAME, // <- The lint name IN_ALL_CAPS
+    pedantic, // <- The lint group
+    "default lint description" // <- A lint description, e.g. "A function has an unit return type."
+}
+```
+
+## Lint registration
+
+If we run the `cargo dev new_lint` command for a new lint,
+the lint will be automatically registered and there is nothing more to do.
+
+However, sometimes we might want to declare a new lint by hand.
+In this case, we'd use `cargo dev update_lints` command afterwards.
+
+When a lint is manually declared, we might need to register the lint pass
+manually in the `register_plugins` function in `clippy_lints/src/lib.rs`:
+
+```rust
+store.register_late_pass(|| Box::new(foo_functions::FooFunctions));
+```
+
+As you might have guessed, where there's something late, there is something early:
+in Clippy there is a `register_early_pass` method as well.
+More on early vs. late passes in a later chapter.
+
+Without a call to one of `register_early_pass` or `register_late_pass`,
+the lint pass in question will not be run.
+
 
 [all_lints]: https://rust-lang.github.io/rust-clippy/master/
 [lint_naming]: https://rust-lang.github.io/rfcs/0344-conventions-galore.html#lints
