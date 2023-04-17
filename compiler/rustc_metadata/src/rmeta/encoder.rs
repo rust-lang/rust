@@ -824,6 +824,7 @@ fn should_encode_span(def_kind: DefKind) -> bool {
         | DefKind::AssocTy
         | DefKind::TyParam
         | DefKind::ConstParam
+        | DefKind::LifetimeParam
         | DefKind::Fn
         | DefKind::Const
         | DefKind::Static(_)
@@ -840,10 +841,7 @@ fn should_encode_span(def_kind: DefKind) -> bool {
         | DefKind::Impl { .. }
         | DefKind::Closure
         | DefKind::Generator => true,
-        DefKind::ForeignMod
-        | DefKind::ImplTraitPlaceholder
-        | DefKind::LifetimeParam
-        | DefKind::GlobalAsm => false,
+        DefKind::ForeignMod | DefKind::ImplTraitPlaceholder | DefKind::GlobalAsm => false,
     }
 }
 
