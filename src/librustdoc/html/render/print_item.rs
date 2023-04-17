@@ -9,7 +9,6 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_target::abi::{LayoutS, Primitive, TagEncoding, Variants};
 use std::borrow::Borrow;
 use std::cell::{RefCell, RefMut};
 use std::cmp::Ordering;
@@ -1147,32 +1146,40 @@ fn item_template_render_attributes_in_pre<'a: 'b, 'cx: 'a, 'b>(
 }
 
 fn item_typedef(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::Typedef) {
-    fn write_content(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Typedef) {
-        wrap_item(w, |w| {
-            write!(
-                w,
-                "{attrs}{}type {}{}{where_clause} = {type_};",
-                visibility_print_with_space(it.visibility(cx.tcx()), it.item_id, cx),
-                it.name.unwrap(),
-                t.generics.print(cx),
-                where_clause = print_where_clause(&t.generics, cx, 0, Ending::Newline),
-                type_ = t.type_.print(cx),
-                attrs = render_attributes_in_pre(it, "", cx.tcx()),
-            );
-        });
+    #[derive(Template)]
+    #[template(path = "item_typedef.html")]
+    struct ItemTypedef<'a, 'cx> {
+        cx: RefCell<&'a mut Context<'cx>>,
+        it: &'a clean::Item,
+        t: &'a clean::Typedef,
     }
 
-    write_content(w, cx, it, t);
+    impl<'a, 'cx: 'a> ItemTemplate<'a, 'cx> for ItemTypedef<'a, 'cx> {
+        fn borrow_mut(&self) -> (&'a clean::Item, RefMut<'_, &'a mut Context<'cx>>) {
+            (&self.it, self.cx.borrow_mut())
+        }
+    }
 
-    write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
+    impl<'a, 'cx: 'a> ItemTypedef<'a, 'cx> {
+        fn render_typedef<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+            display_fn(move |f| {
+                let cx = self.cx.borrow_mut();
+                let vis = self.it.visibility(cx.tcx());
+                write!(
+                    f,
+                    "{}type {}{}{where_clause} = {type_};",
+                    visibility_print_with_space(vis, self.it.item_id, *cx),
+                    self.it.name.unwrap(),
+                    self.t.generics.print(*cx),
+                    where_clause = print_where_clause(&self.t.generics, *cx, 0, Ending::Newline),
+                    type_ = self.t.type_.print(*cx),
+                )?;
+                Ok(())
+            })
+        }
+    }
 
-    let def_id = it.item_id.expect_def_id();
-    // Render any items associated directly to this alias, as otherwise they
-    // won't be visible anywhere in the docs. It would be nice to also show
-    // associated items from the aliased type (see discussion in #32077), but
-    // we need #14072 to make sense of the generics.
-    write!(w, "{}", render_assoc_items(cx, it, def_id, AssocItemRender::All));
-    write!(w, "{}", document_type_layout(cx, def_id));
+    ItemTypedef { cx: std::cell::RefCell::new(cx), it, t }.render_into(w).unwrap();
 }
 
 fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Union) {
