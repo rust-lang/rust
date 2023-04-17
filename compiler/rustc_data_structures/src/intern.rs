@@ -1,4 +1,5 @@
 use crate::stable_hasher::{HashStable, StableHasher};
+use crate::tagged_ptr::Pointer;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
@@ -105,6 +106,18 @@ where
 {
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         self.0.hash_stable(hcx, hasher);
+    }
+}
+
+unsafe impl<'a, T: 'a> Pointer for Interned<'a, T> {
+    const BITS: u32 = <&'a T>::BITS;
+
+    fn into_ptr(self) -> ptr::NonNull<Self::Target> {
+        <&'a T>::into_ptr(self.0)
+    }
+
+    unsafe fn from_ptr(ptr: ptr::NonNull<Self::Target>) -> Self {
+        Self::new_unchecked(<&'a T>::from_ptr(ptr))
     }
 }
 
