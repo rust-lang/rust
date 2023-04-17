@@ -1469,8 +1469,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         match impl_item.kind {
             ty::AssocKind::Fn => {
-                let ast_item = self.tcx.hir().expect_impl_item(def_id.expect_local());
-                let hir::ImplItemKind::Fn(ref sig, body) = ast_item.kind else { bug!() };
+                let (sig, body) =
+                    self.tcx.hir().expect_impl_item(def_id.expect_local()).expect_fn();
                 self.tables.asyncness.set_some(def_id.index, sig.header.asyncness);
                 record_array!(self.tables.fn_arg_names[def_id] <- self.tcx.hir().body_param_names(body));
                 // Can be inside `impl const Trait`, so using sig.header.constness is not reliable

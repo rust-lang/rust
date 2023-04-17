@@ -392,12 +392,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// defining scope.
     #[instrument(skip(self), level = "trace", ret)]
     fn opaque_type_origin_unchecked(&self, def_id: LocalDefId) -> OpaqueTyOrigin {
-        match self.tcx.hir().expect_item(def_id).kind {
-            hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => origin,
-            ref itemkind => {
-                bug!("weird opaque type: {:?}, {:#?}", def_id, itemkind)
-            }
-        }
+        self.tcx.hir().expect_item(def_id).expect_opaque_ty().origin
     }
 }
 

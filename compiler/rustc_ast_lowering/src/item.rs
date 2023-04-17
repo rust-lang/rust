@@ -138,12 +138,10 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
             // Evaluate with the lifetimes in `params` in-scope.
             // This is used to track which lifetimes have already been defined,
             // and which need to be replicated when lowering an async fn.
-            match parent_hir.node().expect_item().kind {
-                hir::ItemKind::Impl(hir::Impl { of_trait, .. }) => {
-                    lctx.is_in_trait_impl = of_trait.is_some();
-                }
-                _ => {}
-            };
+
+            if let hir::ItemKind::Impl(impl_) = parent_hir.node().expect_item().kind {
+                lctx.is_in_trait_impl = impl_.of_trait.is_some();
+            }
 
             match ctxt {
                 AssocCtxt::Trait => hir::OwnerNode::TraitItem(lctx.lower_trait_item(item)),
