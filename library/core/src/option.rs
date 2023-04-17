@@ -641,7 +641,7 @@ impl<T> Option<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_option_basics", since = "1.48.0")]
     pub const fn is_none(&self) -> bool {
-        !self.is_some()
+        matches!(*self, None)
     }
 
     /////////////////////////////////////////////////////////////////////////
