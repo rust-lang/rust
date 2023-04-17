@@ -387,7 +387,6 @@ use self::foo::impl$0
 fn use_tree_no_unstable_items_on_stable() {
     check(
         r#"
-//- toolchain:stable
 //- /lib.rs crate:main deps:std
 use std::$0
 //- /std.rs crate:std
