@@ -11,12 +11,13 @@
 use super::{CanonicalGoal, Certainty, EvalCtxt, Goal};
 use crate::solve::canonicalize::{CanonicalizeMode, Canonicalizer};
 use crate::solve::{CanonicalResponse, QueryResult, Response};
+use rustc_index::vec::IndexVec;
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::CanonicalVarValues;
 use rustc_infer::infer::canonical::{CanonicalExt, QueryRegionConstraints};
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{ExternalConstraints, ExternalConstraintsData};
-use rustc_middle::ty::{self, GenericArgKind};
+use rustc_middle::ty::{self, BoundVar, GenericArgKind};
 use rustc_span::DUMMY_SP;
 use std::iter;
 use std::ops::Deref;
@@ -139,25 +140,25 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         //
         // We therefore instantiate the existential variable in the canonical response with the
         // inference variable of the input right away, which is more performant.
-        let mut opt_values = vec![None; response.variables.len()];
+        let mut opt_values = IndexVec::from_elem_n(None, response.variables.len());
         for (original_value, result_value) in iter::zip(original_values, var_values.var_values) {
             match result_value.unpack() {
                 GenericArgKind::Type(t) => {
                     if let &ty::Bound(debruijn, b) = t.kind() {
                         assert_eq!(debruijn, ty::INNERMOST);
-                        opt_values[b.var.index()] = Some(*original_value);
+                        opt_values[b.var] = Some(*original_value);
                     }
                 }
                 GenericArgKind::Lifetime(r) => {
                     if let ty::ReLateBound(debruijn, br) = *r {
                         assert_eq!(debruijn, ty::INNERMOST);
-                        opt_values[br.var.index()] = Some(*original_value);
+                        opt_values[br.var] = Some(*original_value);
                     }
                 }
                 GenericArgKind::Const(c) => {
                     if let ty::ConstKind::Bound(debrujin, b) = c.kind() {
                         assert_eq!(debrujin, ty::INNERMOST);
-                        opt_values[b.index()] = Some(*original_value);
+                        opt_values[b] = Some(*original_value);
                     }
                 }
             }
@@ -180,7 +181,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     // more placeholders then they should be able to. However the inference variables have
                     // to "come from somewhere", so by equating them with the original values of the caller
                     // later on, we pull them down into their correct universe again.
-                    if let Some(v) = opt_values[index] {
+                    if let Some(v) = opt_values[BoundVar::from_usize(index)] {
                         v
                     } else {
                         self.infcx.instantiate_canonical_var(DUMMY_SP, info, |_| prev_universe)

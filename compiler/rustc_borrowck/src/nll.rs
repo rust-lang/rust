@@ -7,8 +7,8 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_index::vec::IndexSlice;
 use rustc_middle::mir::{create_dump_file, dump_enabled, dump_mir, PassWhere};
 use rustc_middle::mir::{
-    BasicBlock, Body, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind, Location,
-    Promoted,
+    Body, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind, Location, Promoted,
+    START_BLOCK,
 };
 use rustc_middle::ty::{self, OpaqueHiddenType, TyCtxt};
 use rustc_span::symbol::sym;
@@ -94,8 +94,8 @@ fn populate_polonius_move_facts(
         }
     }
 
-    let fn_entry_start = location_table
-        .start_index(Location { block: BasicBlock::from_u32(0u32), statement_index: 0 });
+    let fn_entry_start =
+        location_table.start_index(Location { block: START_BLOCK, statement_index: 0 });
 
     // initialized_at
     for init in move_data.inits.iter() {

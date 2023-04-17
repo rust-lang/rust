@@ -19,7 +19,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::BodyOwnerKind;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::vec::IndexVec;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, InlineConstSubsts, InlineConstSubstsParts, RegionVid, Ty, TyCtxt};
@@ -289,7 +289,7 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// Returns an iterator over all the RegionVids corresponding to
     /// universally quantified free regions.
     pub fn universal_regions(&self) -> impl Iterator<Item = RegionVid> {
-        (FIRST_GLOBAL_INDEX..self.num_universals).map(RegionVid::new)
+        (FIRST_GLOBAL_INDEX..self.num_universals).map(RegionVid::from_usize)
     }
 
     /// Returns `true` if `r` is classified as an local region.
