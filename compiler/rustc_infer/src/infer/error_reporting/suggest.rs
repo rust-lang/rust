@@ -10,7 +10,6 @@ use rustc_middle::traits::{
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self as ty, GenericArgKind, IsSuggestable, Ty, TypeVisitableExt};
 use rustc_span::{sym, BytePos, Span};
-use rustc_target::abi::FieldIdx;
 
 use crate::errors::{
     ConsiderAddingAwait, FnConsiderCasting, FnItemsAreDistinct, FnUniqTypes,
@@ -114,7 +113,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         variant.fields.len() == 1 && variant.ctor_kind() == Some(CtorKind::Fn)
                     })
                     .filter_map(|variant| {
-                        let sole_field = &variant.fields[FieldIdx::from_u32(0)];
+                        let sole_field = &variant.single_field();
                         let sole_field_ty = sole_field.ty(self.tcx, substs);
                         if self.same_type_modulo_infer(sole_field_ty, exp_found.found) {
                             let variant_path =

@@ -392,10 +392,8 @@ pub type QueryOutlivesConstraint<'tcx> =
     (ty::OutlivesPredicate<GenericArg<'tcx>, Region<'tcx>>, ConstraintCategory<'tcx>);
 
 TrivialTypeTraversalAndLiftImpls! {
-    for <'tcx> {
-        crate::infer::canonical::Certainty,
-        crate::infer::canonical::CanonicalTyVarKind,
-    }
+    crate::infer::canonical::Certainty,
+    crate::infer::canonical::CanonicalTyVarKind,
 }
 
 impl<'tcx> CanonicalVarValues<'tcx> {

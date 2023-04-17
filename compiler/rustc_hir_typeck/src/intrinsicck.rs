@@ -4,7 +4,7 @@ use rustc_hir as hir;
 use rustc_index::vec::Idx;
 use rustc_middle::ty::layout::{LayoutError, SizeSkeleton};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
-use rustc_target::abi::{FieldIdx, Pointer, VariantIdx};
+use rustc_target::abi::{Pointer, VariantIdx};
 
 use super::FnCtxt;
 
@@ -28,7 +28,7 @@ fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         }
 
         if def.variant(data_idx).fields.len() == 1 {
-            return def.variant(data_idx).fields[FieldIdx::from_u32(0)].ty(tcx, substs);
+            return def.variant(data_idx).single_field().ty(tcx, substs);
         }
     }
 

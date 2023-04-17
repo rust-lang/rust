@@ -627,9 +627,9 @@ passes_attr_application_struct_enum_union =
     attribute should be applied to a struct, enum, or union
     .label = not a struct, enum, or union
 
-passes_attr_application_struct_enum_function_union =
-    attribute should be applied to a struct, enum, function, or union
-    .label = not a struct, enum, function, or union
+passes_attr_application_struct_enum_function_method_union =
+    attribute should be applied to a struct, enum, function, associated function, or union
+    .label = not a struct, enum, function, associated function, or union
 
 passes_transparent_incompatible =
     transparent {$target} cannot have other repr hints

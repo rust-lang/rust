@@ -461,8 +461,8 @@ pub trait LayoutCalculator {
             let all_indices = variants.indices();
             let needs_disc =
                 |index: VariantIdx| index != largest_variant_index && !absent(&variants[index]);
-            let niche_variants = all_indices.clone().find(|v| needs_disc(*v)).unwrap().index()
-                ..=all_indices.rev().find(|v| needs_disc(*v)).unwrap().index();
+            let niche_variants = all_indices.clone().find(|v| needs_disc(*v)).unwrap()
+                ..=all_indices.rev().find(|v| needs_disc(*v)).unwrap();
 
             let count = niche_variants.size_hint().1.unwrap() as u128;
 
@@ -560,8 +560,7 @@ pub trait LayoutCalculator {
                     tag: niche_scalar,
                     tag_encoding: TagEncoding::Niche {
                         untagged_variant: largest_variant_index,
-                        niche_variants: (VariantIdx::new(*niche_variants.start())
-                            ..=VariantIdx::new(*niche_variants.end())),
+                        niche_variants,
                         niche_start,
                     },
                     tag_field: 0,
