@@ -1728,7 +1728,9 @@ impl CheckAttrVisitor<'_> {
                     }
                 }
                 sym::align => {
-                    if let (Target::Fn, false) = (target, self.tcx.features().fn_align) {
+                    if let (Target::Fn | Target::Method(MethodKind::Inherent), false) =
+                        (target, self.tcx.features().fn_align)
+                    {
                         feature_err(
                             &self.tcx.sess.parse_sess,
                             sym::fn_align,
@@ -1739,10 +1741,14 @@ impl CheckAttrVisitor<'_> {
                     }
 
                     match target {
-                        Target::Struct | Target::Union | Target::Enum | Target::Fn => continue,
+                        Target::Struct
+                        | Target::Union
+                        | Target::Enum
+                        | Target::Fn
+                        | Target::Method(_) => continue,
                         _ => {
                             self.tcx.sess.emit_err(
-                                errors::AttrApplication::StructEnumFunctionUnion {
+                                errors::AttrApplication::StructEnumFunctionMethodUnion {
                                     hint_span: hint.span(),
                                     span,
                                 },

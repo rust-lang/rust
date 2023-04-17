@@ -1355,8 +1355,8 @@ pub enum AttrApplication {
         #[label]
         span: Span,
     },
-    #[diag(passes_attr_application_struct_enum_function_union, code = "E0517")]
-    StructEnumFunctionUnion {
+    #[diag(passes_attr_application_struct_enum_function_method_union, code = "E0517")]
+    StructEnumFunctionMethodUnion {
         #[primary_span]
         hint_span: Span,
         #[label]
