@@ -65,8 +65,8 @@ impl<'tcx> GenericArgKind<'tcx> {
             }
             GenericArgKind::Type(ty) => {
                 // Ensure we can use the tag bits.
-                assert_eq!(mem::align_of_val(&*ty.0.0) & TAG_MASK, 0);
-                (TYPE_TAG, ty.0.0 as *const WithCachedTypeInfo<ty::TyKind<'tcx>> as usize)
+                assert_eq!(mem::align_of_val(&*ty.0.pointer().0) & TAG_MASK, 0);
+                (TYPE_TAG, ty.0.pointer().0 as *const WithCachedTypeInfo<ty::TyKind<'tcx>> as usize)
             }
             GenericArgKind::Const(ct) => {
                 // Ensure we can use the tag bits.
@@ -143,7 +143,7 @@ impl<'tcx> GenericArg<'tcx> {
                 REGION_TAG => GenericArgKind::Lifetime(ty::Region(Interned::new_unchecked(
                     &*((ptr & !TAG_MASK) as *const ty::RegionKind<'tcx>),
                 ))),
-                TYPE_TAG => GenericArgKind::Type(Ty(Interned::new_unchecked(
+                TYPE_TAG => GenericArgKind::Type(Ty::from_interned(Interned::new_unchecked(
                     &*((ptr & !TAG_MASK) as *const WithCachedTypeInfo<ty::TyKind<'tcx>>),
                 ))),
                 CONST_TAG => GenericArgKind::Const(ty::Const(Interned::new_unchecked(

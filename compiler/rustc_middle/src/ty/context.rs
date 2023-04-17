@@ -189,7 +189,7 @@ impl<'tcx> CtxtInterners<'tcx> {
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline(never)]
     fn intern_ty(&self, kind: TyKind<'tcx>, sess: &Session, untracked: &Untracked) -> Ty<'tcx> {
-        Ty(Interned::new_unchecked(
+        Ty::from_interned(Interned::new_unchecked(
             self.type_
                 .intern(kind, |kind| {
                     let flags = super::flags::FlagComputation::for_kind(&kind);
@@ -1288,7 +1288,18 @@ macro_rules! nop_list_lift {
     };
 }
 
-nop_lift! {type_; Ty<'a> => Ty<'tcx>}
+impl<'a, 'tcx> Lift<'tcx> for Ty<'a> {
+    type Lifted = Ty<'tcx>;
+    fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
+        tcx.interners
+            .type_
+            .contains_pointer_to(&InternedInSet(&*self.0.pointer().0))
+            // SAFETY: `self` is interned and therefore valid
+            // for the entire lifetime of the `TyCtxt`.
+            .then(|| unsafe { mem::transmute(self) })
+    }
+}
+
 nop_lift! {region; Region<'a> => Region<'tcx>}
 nop_lift! {const_; Const<'a> => Const<'tcx>}
 nop_lift! {const_allocation; ConstAllocation<'a> => ConstAllocation<'tcx>}
