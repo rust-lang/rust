@@ -460,7 +460,7 @@ impl<I: Idx, T> IndexVec<I, Option<T>> {
 
     #[inline]
     pub fn remove(&mut self, index: I) -> Option<T> {
-        self.ensure_contains_elem(index, || None).take()
+        self.get_mut(index)?.take()
     }
 }
 
