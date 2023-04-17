@@ -455,7 +455,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             | hir::ItemKind::Union(..)
             | hir::ItemKind::TyAlias(..)
             | hir::ItemKind::OpaqueTy(hir::OpaqueTy {
-                origin: hir::OpaqueTyOrigin::TyAlias, ..
+                origin: hir::OpaqueTyOrigin::TyAlias { .. },
+                ..
             })
             | hir::ItemKind::Static(..)
             | hir::ItemKind::Trait(..)

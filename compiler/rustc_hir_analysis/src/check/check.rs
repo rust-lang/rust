@@ -397,7 +397,14 @@ fn check_opaque_meets_bounds<'tcx>(
 ) {
     let defining_use_anchor = match *origin {
         hir::OpaqueTyOrigin::FnReturn(did) | hir::OpaqueTyOrigin::AsyncFn(did) => did,
-        hir::OpaqueTyOrigin::TyAlias => def_id,
+        hir::OpaqueTyOrigin::TyAlias { .. } => {
+            let mut def_id = def_id;
+            // Find the surrounding item (type alias or assoc type)
+            while let DefKind::OpaqueTy = tcx.def_kind(def_id) {
+                def_id = tcx.local_parent(def_id);
+            }
+            def_id
+        }
     };
     let param_env = tcx.param_env(defining_use_anchor);
 
@@ -455,10 +462,10 @@ fn check_opaque_meets_bounds<'tcx>(
         // They can only be referenced as `<Opaque<T> as Trait<&'static T>>::AssocTy`.
         // We don't have to check them here because their well-formedness follows from the WF of
         // the projection input types in the defining- and use-sites.
-        hir::OpaqueTyOrigin::TyAlias
+        hir::OpaqueTyOrigin::TyAlias { .. }
             if tcx.def_kind(tcx.parent(def_id.to_def_id())) == DefKind::OpaqueTy => {}
         // Can have different predicates to their defining use
-        hir::OpaqueTyOrigin::TyAlias => {
+        hir::OpaqueTyOrigin::TyAlias { .. } => {
             let wf_tys = ocx.assumed_wf_types(param_env, span, def_id);
             let implied_bounds = infcx.implied_bounds_tys(param_env, def_id, wf_tys);
             let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
