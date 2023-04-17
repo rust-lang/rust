@@ -34,7 +34,7 @@ fn report_lint(cx: &LateContext<'_>, pop_span: Span, pop_stmt_kind: PopStmt<'_>,
         pop_span,
         "you seem to be trying to pop elements from a `Vec` in a loop",
         |diag| {
-            let (pat, pop_replacement) = match &pop_stmt_kind {
+            let (pat, pop_replacement) = match pop_stmt_kind {
                 PopStmt::Local(pat) => (snippet(cx, pat.span, ".."), String::new()),
                 PopStmt::Anonymous => (Cow::Borrowed("element"), "element".into()),
             };
@@ -78,7 +78,7 @@ fn check_local(cx: &LateContext<'_>, stmt: &Stmt<'_>, is_empty_recv: &Expr<'_>, 
         && let Some(init) = local.init
         && is_vec_pop_unwrap(cx, init, is_empty_recv)
     {
-        report_lint(cx, stmt.span, PopStmt::Local(&local.pat), loop_span, is_empty_recv.span);
+        report_lint(cx, stmt.span, PopStmt::Local(local.pat), loop_span, is_empty_recv.span);
     }
 }
 
