@@ -90,8 +90,7 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                         return false;
                     }
 
-                    for bound in cx.tcx.explicit_item_bounds(def_id).transpose_iter() {
-                        let (predicate, _span) = bound.map_bound(|b| *b).subst_identity();
+                    for (predicate, _span) in cx.tcx.explicit_item_bounds(def_id).subst_identity_iter_copied() {
                         match predicate.kind().skip_binder() {
                             // For `impl Trait<U>`, it will register a predicate of `T: Trait<U>`, so we go through
                             // and check substituions to find `U`.
