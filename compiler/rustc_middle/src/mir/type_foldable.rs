@@ -25,9 +25,7 @@ TrivialTypeTraversalAndLiftImpls! {
 }
 
 TrivialTypeTraversalImpls! {
-    for <'tcx> {
-        ConstValue<'tcx>,
-    }
+    ConstValue<'tcx>,
 }
 
 impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx [InlineAsmTemplatePiece] {

@@ -70,30 +70,40 @@ impl<I: Interner, A: TypeVisitable<I>, B: TypeVisitable<I>, C: TypeVisitable<I>>
     }
 }
 
-EnumTypeTraversalImpl! {
-    impl<I, T> TypeFoldable<I> for Option<T> {
-        (Some)(a),
-        (None),
-    } where I: Interner, T: TypeFoldable<I>
-}
-EnumTypeTraversalImpl! {
-    impl<I, T> TypeVisitable<I> for Option<T> {
-        (Some)(a),
-        (None),
-    } where I: Interner, T: TypeVisitable<I>
+impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Option<T> {
+    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        Ok(match self {
+            Some(v) => Some(v.try_fold_with(folder)?),
+            None => None,
+        })
+    }
 }
 
-EnumTypeTraversalImpl! {
-    impl<I, T, E> TypeFoldable<I> for Result<T, E> {
-        (Ok)(a),
-        (Err)(a),
-    } where I: Interner, T: TypeFoldable<I>, E: TypeFoldable<I>,
+impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Option<T> {
+    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        match self {
+            Some(v) => v.visit_with(visitor),
+            None => ControlFlow::Continue(()),
+        }
+    }
 }
-EnumTypeTraversalImpl! {
-    impl<I, T, E> TypeVisitable<I> for Result<T, E> {
-        (Ok)(a),
-        (Err)(a),
-    } where I: Interner, T: TypeVisitable<I>, E: TypeVisitable<I>,
+
+impl<I: Interner, T: TypeFoldable<I>, E: TypeFoldable<I>> TypeFoldable<I> for Result<T, E> {
+    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        Ok(match self {
+            Ok(v) => Ok(v.try_fold_with(folder)?),
+            Err(e) => Err(e.try_fold_with(folder)?),
+        })
+    }
+}
+
+impl<I: Interner, T: TypeVisitable<I>, E: TypeVisitable<I>> TypeVisitable<I> for Result<T, E> {
+    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        match self {
+            Ok(v) => v.visit_with(visitor),
+            Err(e) => e.visit_with(visitor),
+        }
+    }
 }
 
 impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Rc<T> {
