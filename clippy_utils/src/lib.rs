@@ -2233,8 +2233,12 @@ pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<S
     None
 }
 
-/// returns list of all pairs (a, b) from `exprs` such that `eq(a, b)`
-/// `hash` must be comformed with `eq`
+/// Returns list of all pairs `(a, b)` where `eq(a, b) == true`
+/// and `a` is before `b` in `exprs` for all `a` and `b` in
+/// `exprs`
+///
+/// Given functions `eq` and `hash` such that `eq(a, b) == true`
+/// implies `hash(a) == hash(b)`
 pub fn search_same<T, Hash, Eq>(exprs: &[T], hash: Hash, eq: Eq) -> Vec<(&T, &T)>
 where
     Hash: Fn(&T) -> u64,
