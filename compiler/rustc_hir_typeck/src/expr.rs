@@ -2871,6 +2871,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base_ty: Ty<'tcx>,
     ) -> Option<(ErrorGuaranteed, Ty<'tcx>, Ty<'tcx>)> {
         let index_trait_def_id = self.tcx.lang_items().index_trait()?;
+        let index_trait_output_def_id = self.tcx.get_diagnostic_item(sym::IndexOutput)?;
 
         let mut relevant_impls = vec![];
         self.tcx.for_each_relevant_impl(index_trait_def_id, base_ty, |impl_def_id| {
@@ -2917,15 +2918,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let element_ty = ocx.normalize(
                 &cause,
                 self.param_env,
-                self.tcx.mk_projection(
-                    self.tcx
-                        .associated_items(index_trait_def_id)
-                        .filter_by_name_unhygienic(sym::Output)
-                        .next()
-                        .unwrap()
-                        .def_id,
-                    impl_trait_ref.substs,
-                ),
+                self.tcx.mk_projection(index_trait_output_def_id, impl_trait_ref.substs),
             );
 
             let errors = ocx.select_where_possible();
