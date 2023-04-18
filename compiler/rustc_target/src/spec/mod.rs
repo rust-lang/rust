@@ -2285,13 +2285,13 @@ impl Target {
                     }
                 }
             } );
-            ($key_name:ident, falliable_list) => ( {
+            ($key_name:ident, fallible_list) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.remove(&name).and_then(|j| {
                     if let Some(v) = j.as_array() {
                         match v.iter().map(|a| FromStr::from_str(a.as_str().unwrap())).collect() {
                             Ok(l) => { base.$key_name = l },
-                            // FIXME: `falliable_list` can't re-use the `key!` macro for list
+                            // FIXME: `fallible_list` can't re-use the `key!` macro for list
                             // elements and the error messages from that macro, so it has a bad
                             // generic message instead
                             Err(_) => return Some(Err(
@@ -2610,7 +2610,7 @@ impl Target {
         key!(has_thumb_interworking, bool);
         key!(debuginfo_kind, DebuginfoKind)?;
         key!(split_debuginfo, SplitDebuginfo)?;
-        key!(supported_split_debuginfo, falliable_list)?;
+        key!(supported_split_debuginfo, fallible_list)?;
         key!(supported_sanitizers, SanitizerSet)?;
         key!(default_adjusted_cabi, Option<Abi>)?;
         key!(generate_arange_section, bool);

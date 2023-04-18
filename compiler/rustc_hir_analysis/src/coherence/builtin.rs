@@ -82,7 +82,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
     let cause = traits::ObligationCause::misc(span, impl_did);
     match type_allowed_to_implement_copy(tcx, param_env, self_type, cause) {
         Ok(()) => {}
-        Err(CopyImplementationError::InfrigingFields(fields)) => {
+        Err(CopyImplementationError::InfringingFields(fields)) => {
             let mut err = struct_span_err!(
                 tcx.sess,
                 span,

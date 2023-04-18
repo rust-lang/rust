@@ -115,7 +115,7 @@ LL |         Self::SVariant::<()> { v: () };
    |               not allowed on this type
    |
    = note: enum variants can't have type parameters
-help: you might have meant to specity type parameters on enum `Enum`
+help: you might have meant to specify type parameters on enum `Enum`
    |
 LL -         Self::SVariant::<()> { v: () };
 LL +         Enum::<()>::SVariant { v: () };
@@ -196,7 +196,7 @@ LL |         Self::<()>::SVariant::<()> { v: () };
    |                     not allowed on this type
    |
    = note: enum variants can't have type parameters
-help: you might have meant to specity type parameters on enum `Enum`
+help: you might have meant to specify type parameters on enum `Enum`
    |
 LL -         Self::<()>::SVariant::<()> { v: () };
 LL +         Enum::<()>::SVariant { v: () };
@@ -359,7 +359,7 @@ LL |     Alias::SVariant::<()> { v: () };
    |            not allowed on this type
    |
    = note: enum variants can't have type parameters
-help: you might have meant to specity type parameters on enum `Enum`
+help: you might have meant to specify type parameters on enum `Enum`
    |
 LL -     Alias::SVariant::<()> { v: () };
 LL +     Alias::<()>::SVariant { v: () };
@@ -374,7 +374,7 @@ LL |     Alias::<()>::SVariant::<()> { v: () };
    |                  not allowed on this type
    |
    = note: enum variants can't have type parameters
-help: you might have meant to specity type parameters on enum `Enum`
+help: you might have meant to specify type parameters on enum `Enum`
    |
 LL -     Alias::<()>::SVariant::<()> { v: () };
 LL +     Alias::<()>::SVariant { v: () };
@@ -389,7 +389,7 @@ LL |     AliasFixed::SVariant::<()> { v: () };
    |                 not allowed on this type
    |
    = note: enum variants can't have type parameters
-help: you might have meant to specity type parameters on enum `Enum`
+help: you might have meant to specify type parameters on enum `Enum`
    |
 LL -     AliasFixed::SVariant::<()> { v: () };
 LL +     AliasFixed::<()>::SVariant { v: () };
@@ -432,7 +432,7 @@ LL |     AliasFixed::<()>::SVariant::<()> { v: () };
    |                       not allowed on this type
    |
    = note: enum variants can't have type parameters
-help: you might have meant to specity type parameters on enum `Enum`
+help: you might have meant to specify type parameters on enum `Enum`
    |
 LL -     AliasFixed::<()>::SVariant::<()> { v: () };
 LL +     AliasFixed::<()>::SVariant { v: () };

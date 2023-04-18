@@ -2061,7 +2061,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             err.note("enum variants can't have type parameters");
                             let type_name = tcx.item_name(adt_def.did());
                             let msg = format!(
-                                "you might have meant to specity type parameters on enum \
+                                "you might have meant to specify type parameters on enum \
                                  `{type_name}`"
                             );
                             let Some(args) = assoc_segment.args else { return; };

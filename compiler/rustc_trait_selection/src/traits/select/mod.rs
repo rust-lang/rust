@@ -888,7 +888,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         let c1 = tcx.expand_abstract_consts(c1);
                         let c2 = tcx.expand_abstract_consts(c2);
                         debug!(
-                            "evalaute_predicate_recursively: equating consts:\nc1= {:?}\nc2= {:?}",
+                            "evaluate_predicate_recursively: equating consts:\nc1= {:?}\nc2= {:?}",
                             c1, c2
                         );
 

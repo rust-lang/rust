@@ -156,7 +156,7 @@ impl<'tcx> ConstToPat<'tcx> {
 
             if let Some(non_sm_ty) = structural {
                 if !self.type_may_have_partial_eq_impl(cv.ty()) {
-                    // fatal avoids ICE from resolution of non-existent method (rare case).
+                    // fatal avoids ICE from resolution of nonexistent method (rare case).
                     self.tcx()
                         .sess
                         .emit_fatal(TypeNotStructural { span: self.span, non_sm_ty: non_sm_ty });

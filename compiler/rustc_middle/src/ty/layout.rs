@@ -235,7 +235,7 @@ impl IntoDiagnostic<'_, !> for LayoutError<'_> {
     }
 }
 
-// FIXME: Once the other errors that embed this error have been converted to translateable
+// FIXME: Once the other errors that embed this error have been converted to translatable
 // diagnostics, this Display impl should be removed.
 impl<'tcx> fmt::Display for LayoutError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -458,10 +458,10 @@ impl<'tcx> SizeSkeleton<'tcx> {
     }
 }
 
-/// When creating the layout for types with abstract conts in their size (i.e. [usize; 4 * N]),
+/// When creating the layout for types with abstract consts in their size (i.e. [usize; 4 * N]),
 /// to ensure that they have a canonical order and can be compared directly we combine all
 /// constants, and sort the other terms. This allows comparison of expressions of sizes,
-/// allowing for things like transmutating between types that depend on generic consts.
+/// allowing for things like transmuting between types that depend on generic consts.
 /// This returns `None` if multiplication of constants overflows.
 fn mul_sorted_consts<'tcx>(
     tcx: TyCtxt<'tcx>,

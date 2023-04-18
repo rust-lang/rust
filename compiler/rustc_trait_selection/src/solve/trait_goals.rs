@@ -591,7 +591,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 Some(self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS))
             }
 
-            // These types cannot be structurally decomposed into constitutent
+            // These types cannot be structurally decomposed into constituent
             // types, and therefore have no built-in auto impl.
             ty::Dynamic(..)
             | ty::Param(..)
