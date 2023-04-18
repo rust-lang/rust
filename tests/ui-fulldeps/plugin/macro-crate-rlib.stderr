@@ -1,5 +1,5 @@
 error[E0457]: plugin `rlib_crate_test` only found in rlib format, but must be available in dylib format
-  --> $DIR/macro-crate-rlib.rs:5:11
+  --> $DIR/macro-crate-rlib.rs:6:11
    |
 LL | #![plugin(rlib_crate_test)]
    |           ^^^^^^^^^^^^^^^

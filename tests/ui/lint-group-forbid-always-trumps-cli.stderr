@@ -1,5 +1,5 @@
 error: unused variable: `x`
-  --> $DIR/lint-group-forbid-always-trumps-cli.rs:5:9
+  --> $DIR/lint-group-forbid-always-trumps-cli.rs:4:9
    |
 LL |     let x = 1;
    |         ^ help: if this is intentional, prefix it with an underscore: `_x`
