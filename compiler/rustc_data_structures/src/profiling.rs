@@ -557,7 +557,7 @@ impl SelfProfiler {
         let crate_name = crate_name.unwrap_or("unknown-crate");
         // HACK(eddyb) we need to pad the PID, strange as it may seem, as its
         // length can behave as a source of entropy for heap addresses, when
-        // ASLR is disabled and the heap is otherwise determinic.
+        // ASLR is disabled and the heap is otherwise deterministic.
         let pid: u32 = process::id();
         let filename = format!("{crate_name}-{pid:07}.rustc_profile");
         let path = output_directory.join(&filename);

@@ -148,7 +148,7 @@ codegen_ssa_processing_dymutil_failed = processing debug info with `dsymutil` fa
 
 codegen_ssa_unable_to_run_dsymutil = unable to run `dsymutil`: {$error}
 
-codegen_ssa_stripping_debu_info_failed = stripping debug info with `{$util}` failed: {$status}
+codegen_ssa_stripping_debug_info_failed = stripping debug info with `{$util}` failed: {$status}
     .note = {$output}
 
 codegen_ssa_unable_to_run = unable to run `{$util}`: {$error}

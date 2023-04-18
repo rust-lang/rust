@@ -71,7 +71,7 @@ pub struct AmbiguousImpl<'a> {
 // Copy of `AnnotationRequired` for E0284
 #[derive(Diagnostic)]
 #[diag(infer_type_annotations_needed, code = "E0284")]
-pub struct AmbigousReturn<'a> {
+pub struct AmbiguousReturn<'a> {
     #[primary_span]
     pub span: Span,
     pub source_kind: &'static str,
@@ -1085,7 +1085,7 @@ pub enum PlaceholderRelationLfNotSatisfied {
         span: Span,
         #[note(infer_prlf_defined_with_sub)]
         sub_span: Span,
-        #[note(infer_prlf_must_oultive_with_sup)]
+        #[note(infer_prlf_must_outlive_with_sup)]
         sup_span: Span,
         sub_symbol: Symbol,
         sup_symbol: Symbol,
@@ -1098,7 +1098,7 @@ pub enum PlaceholderRelationLfNotSatisfied {
         span: Span,
         #[note(infer_prlf_defined_with_sub)]
         sub_span: Span,
-        #[note(infer_prlf_must_oultive_without_sup)]
+        #[note(infer_prlf_must_outlive_without_sup)]
         sup_span: Span,
         sub_symbol: Symbol,
         #[note(infer_prlf_known_limitation)]
@@ -1110,7 +1110,7 @@ pub enum PlaceholderRelationLfNotSatisfied {
         span: Span,
         #[note(infer_prlf_defined_without_sub)]
         sub_span: Span,
-        #[note(infer_prlf_must_oultive_with_sup)]
+        #[note(infer_prlf_must_outlive_with_sup)]
         sup_span: Span,
         sup_symbol: Symbol,
         #[note(infer_prlf_known_limitation)]
@@ -1122,7 +1122,7 @@ pub enum PlaceholderRelationLfNotSatisfied {
         span: Span,
         #[note(infer_prlf_defined_without_sub)]
         sub_span: Span,
-        #[note(infer_prlf_must_oultive_without_sup)]
+        #[note(infer_prlf_must_outlive_without_sup)]
         sup_span: Span,
         #[note(infer_prlf_known_limitation)]
         note: (),
@@ -1488,8 +1488,8 @@ pub enum ObligationCauseFailureCode {
         #[subdiagnostic]
         subdiags: Vec<TypeErrorAdditionalDiags>,
     },
-    #[diag(infer_oc_intristic_correct_type, code = "E0308")]
-    IntristicCorrectType {
+    #[diag(infer_oc_intrinsic_correct_type, code = "E0308")]
+    IntrinsicCorrectType {
         #[primary_span]
         span: Span,
         #[subdiagnostic]

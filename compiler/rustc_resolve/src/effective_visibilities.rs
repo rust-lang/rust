@@ -175,7 +175,7 @@ impl<'r, 'a, 'tcx> EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
     /// to not update anything and we can skip it.
     ///
     /// We are checking this condition only if the correct value of private visibility is
-    /// cheaply available, otherwise it does't make sense performance-wise.
+    /// cheaply available, otherwise it doesn't make sense performance-wise.
     ///
     /// `None` is returned if the update can be skipped,
     /// and cheap private visibility is returned otherwise.

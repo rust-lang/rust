@@ -330,7 +330,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// expression mentioned.
     ///
     /// `blame_specific_arg_if_possible` will find the most-specific expression anywhere inside
-    /// the provided function call expression, and mark it as responsible for the fullfillment
+    /// the provided function call expression, and mark it as responsible for the fulfillment
     /// error.
     fn blame_specific_arg_if_possible(
         &self,

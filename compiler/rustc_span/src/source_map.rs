@@ -483,7 +483,7 @@ impl SourceMap {
         self.span_to_string(sp, FileNameDisplayPreference::Remapped)
     }
 
-    /// Format the span location suitable for pretty printing anotations with relative line numbers
+    /// Format the span location suitable for pretty printing annotations with relative line numbers
     pub fn span_to_relative_line_string(&self, sp: Span, relative_to: Span) -> String {
         if self.files.borrow().source_files.is_empty() || sp.is_dummy() || relative_to.is_dummy() {
             return "no-location".to_string();
@@ -777,7 +777,7 @@ impl SourceMap {
 
     /// Given a 'Span', tries to tell if it's wrapped by "<>" or "()"
     /// the algorithm searches if the next character is '>' or ')' after skipping white space
-    /// then searches the previous charactoer to match '<' or '(' after skipping white space
+    /// then searches the previous character to match '<' or '(' after skipping white space
     /// return true if wrapped by '<>' or '()'
     pub fn span_wrapped_by_angle_or_parentheses(&self, span: Span) -> bool {
         self.span_to_source(span, |src, start_index, end_index| {

@@ -744,7 +744,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Symbol {
                 let pos = d.read_usize();
                 let old_pos = d.opaque.position();
 
-                // move to str ofset and read
+                // move to str offset and read
                 d.opaque.set_position(pos);
                 let s = d.read_str();
                 let sym = Symbol::intern(s);

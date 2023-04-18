@@ -1980,7 +1980,7 @@ impl EmitterWriter {
             }
             if let DisplaySuggestion::Add = show_code_change && is_item_attribute {
                 // The suggestion adds an entire line of code, ending on a newline, so we'll also
-                // print the *following* line, to provide context of what we're advicing people to
+                // print the *following* line, to provide context of what we're advising people to
                 // do. Otherwise you would only see contextless code that can be confused for
                 // already existing code, despite the colors and UI elements.
                 // We special case `#[derive(_)]\n` and other attribute suggestions, because those

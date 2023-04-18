@@ -794,7 +794,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         };
 
-        // get all where BoundPredicates here, because they are used in to cases below
+        // get all where BoundPredicates here, because they are used in two cases below
         let where_predicates = predicates
             .iter()
             .filter_map(|p| match p {

@@ -63,7 +63,7 @@ pub trait QueryConfig<Qcx: QueryContext>: Copy {
     fn handle_cycle_error(self) -> HandleCycleError;
     fn hash_result(self) -> HashResult<Self::Value>;
 
-    // Just here for convernience and checking that the key matches the kind, don't override this.
+    // Just here for convenience and checking that the key matches the kind, don't override this.
     fn construct_dep_node(self, tcx: Qcx::DepContext, key: &Self::Key) -> DepNode<Qcx::DepKind> {
         DepNode::construct(tcx, self.dep_kind(), key)
     }

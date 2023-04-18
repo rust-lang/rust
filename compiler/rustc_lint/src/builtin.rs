@@ -22,7 +22,7 @@
 
 use crate::fluent_generated as fluent;
 use crate::{
-    errors::BuiltinEllpisisInclusiveRangePatterns,
+    errors::BuiltinEllipsisInclusiveRangePatterns,
     lints::{
         BuiltinAnonymousParams, BuiltinBoxPointers, BuiltinClashingExtern,
         BuiltinClashingExternSub, BuiltinConstNoMangle, BuiltinDeprecatedAttrLink,
@@ -1711,13 +1711,13 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
             }
         }
 
-        let (parenthesise, endpoints) = match &pat.kind {
+        let (parentheses, endpoints) = match &pat.kind {
             PatKind::Ref(subpat, _) => (true, matches_ellipsis_pat(&subpat)),
             _ => (false, matches_ellipsis_pat(pat)),
         };
 
         if let Some((start, end, join)) = endpoints {
-            if parenthesise {
+            if parentheses {
                 self.node_id = Some(pat.id);
                 let end = expr_to_string(&end);
                 let replace = match start {
@@ -1725,7 +1725,7 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
                     None => format!("&(..={})", end),
                 };
                 if join.edition() >= Edition::Edition2021 {
-                    cx.sess().emit_err(BuiltinEllpisisInclusiveRangePatterns {
+                    cx.sess().emit_err(BuiltinEllipsisInclusiveRangePatterns {
                         span: pat.span,
                         suggestion: pat.span,
                         replace,
@@ -1743,7 +1743,7 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
             } else {
                 let replace = "..=";
                 if join.edition() >= Edition::Edition2021 {
-                    cx.sess().emit_err(BuiltinEllpisisInclusiveRangePatterns {
+                    cx.sess().emit_err(BuiltinEllipsisInclusiveRangePatterns {
                         span: pat.span,
                         suggestion: join,
                         replace: replace.to_string(),
@@ -2560,7 +2560,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                             .subst(cx.tcx, substs)
                             .apply_any_module(cx.tcx, cx.param_env)
                         {
-                            // Entirely skip uninhbaited variants.
+                            // Entirely skip uninhabited variants.
                             Some(false) => return None,
                             // Forward the others, but remember which ones are definitely inhabited.
                             Some(true) => true,
@@ -2628,7 +2628,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             if let Some(err) = with_no_trimmed_paths!(ty_find_init_error(cx, conjured_ty, init)) {
                 let msg = match init {
                     InitKind::Zeroed => fluent::lint_builtin_unpermitted_type_init_zeroed,
-                    InitKind::Uninit => fluent::lint_builtin_unpermitted_type_init_unint,
+                    InitKind::Uninit => fluent::lint_builtin_unpermitted_type_init_uninit,
                 };
                 let sub = BuiltinUnpermittedTypeInitSub { err };
                 cx.emit_spanned_lint(

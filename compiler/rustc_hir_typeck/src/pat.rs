@@ -1659,7 +1659,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if tcx.sess.teach(&err.get_code().unwrap()) {
             err.note(
                 "This error indicates that a struct pattern attempted to \
-                 extract a non-existent field from a struct. Struct fields \
+                 extract a nonexistent field from a struct. Struct fields \
                  are identified by the name used before the colon : so struct \
                  patterns should resemble the declaration of the struct type \
                  being matched.\n\n\

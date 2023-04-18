@@ -21,7 +21,7 @@ pub struct SsaLocals {
 
 /// We often encounter MIR bodies with 1 or 2 basic blocks. In those cases, it's unnecessary to
 /// actually compute dominators, we can just compare block indices because bb0 is always the first
-/// block, and in any body all other blocks are always always dominated by bb0.
+/// block, and in any body all other blocks are always dominated by bb0.
 struct SmallDominators {
     inner: Option<Dominators<BasicBlock>>,
 }

@@ -16,9 +16,11 @@ fn main() {
     let config = Config::parse(&args);
 
     #[cfg(all(any(unix, windows), not(target_os = "solaris")))]
+    let mut build_lock;
+    #[cfg(all(any(unix, windows), not(target_os = "solaris")))]
+    let _build_lock_guard;
+    #[cfg(all(any(unix, windows), not(target_os = "solaris")))]
     {
-        let mut build_lock;
-        let _build_lock_guard;
         let path = config.out.join("lock");
         build_lock = fd_lock::RwLock::new(t!(std::fs::File::create(&path)));
         _build_lock_guard = match build_lock.try_write() {

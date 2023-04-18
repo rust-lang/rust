@@ -69,7 +69,7 @@ mod declare;
 mod errors;
 mod intrinsic;
 
-// The following is a work around that replaces `pub mod llvm;` and that fixes issue 53912.
+// The following is a workaround that replaces `pub mod llvm;` and that fixes issue 53912.
 #[path = "llvm/mod.rs"]
 mod llvm_;
 pub mod llvm {

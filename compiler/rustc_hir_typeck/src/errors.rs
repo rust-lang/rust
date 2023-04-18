@@ -108,7 +108,7 @@ pub enum ExpectedReturnTypeLabel<'tcx> {
 
 #[derive(Diagnostic)]
 #[diag(hir_typeck_missing_parentheses_in_range, code = "E0689")]
-pub struct MissingParentheseInRange {
+pub struct MissingParenthesesInRange {
     #[primary_span]
     #[label(hir_typeck_missing_parentheses_in_range)]
     pub span: Span,

@@ -132,8 +132,8 @@ impl<T: ?Sized> *const T {
     /// ```
     #[unstable(feature = "ptr_to_from_bits", issue = "91126")]
     #[deprecated(
-        since = "1.67",
-        note = "replaced by the `exposed_addr` method, or update your code \
+        since = "1.67.0",
+        note = "replaced by the `expose_addr` method, or update your code \
             to follow the strict provenance rules using its APIs"
     )]
     #[inline(always)]
@@ -161,7 +161,7 @@ impl<T: ?Sized> *const T {
     /// ```
     #[unstable(feature = "ptr_to_from_bits", issue = "91126")]
     #[deprecated(
-        since = "1.67",
+        since = "1.67.0",
         note = "replaced by the `ptr::from_exposed_addr` function, or update \
             your code to follow the strict provenance rules using its APIs"
     )]

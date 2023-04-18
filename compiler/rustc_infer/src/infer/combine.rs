@@ -832,7 +832,7 @@ pub trait ObligationEmittingRelation<'tcx>: TypeRelation<'tcx> {
 
     /// Register predicates that must hold in order for this relation to hold. Uses
     /// a default obligation cause, [`ObligationEmittingRelation::register_obligations`] should
-    /// be used if control over the obligaton causes is required.
+    /// be used if control over the obligation causes is required.
     fn register_predicates(&mut self, obligations: impl IntoIterator<Item: ToPredicate<'tcx>>);
 
     /// Register an obligation that both constants must be equal to each other.
