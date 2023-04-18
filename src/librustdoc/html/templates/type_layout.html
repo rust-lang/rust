@@ -16,7 +16,9 @@
             </div> {# #}
             <p><strong>Size:</strong> {{ type_layout_size|safe }}</p> {# #}
             {% if !variants.is_empty() %}
-                <p><strong>Size for each variant:</strong></p> {# #}
+                <p> {# #}
+                    <strong>Size for each variant:</strong> {# #}
+                </p> {# #}
                 <ul> {# #}
                     {% for (name, layout_size) in variants %}
                         <li> {# #}
@@ -29,17 +31,23 @@
         {# This kind of layout error can occur with valid code, e.g. if you try to
            get the layout of a generic type such as `Vec<T>`. #}
         {% when Err(LayoutError::Unknown(_)) %}
-            <p><strong>Note:</strong> Unable to compute type layout, {#+ #}
-            possibly due to this type having generic parameters. {#+ #}
-            Layout can only be computed for concrete, fully-instantiated types.</p> {# #}
+            <p> {# #}
+                <strong>Note:</strong> Unable to compute type layout, {#+ #}
+                possibly due to this type having generic parameters. {#+ #}
+                Layout can only be computed for concrete, fully-instantiated types. {# #}
+            </p> {# #}
         {# This kind of error probably can't happen with valid code, but we don't
            want to panic and prevent the docs from building, so we just let the
            user know that we couldn't compute the layout. #}
         {% when Err(LayoutError::SizeOverflow(_)) %}
-            <p><strong>Note:</strong> Encountered an error during type layout; {#+ #}
-            the type was too big.</p> {# #}
+            <p> {# #}
+                <strong>Note:</strong> Encountered an error during type layout; {#+ #}
+                the type was too big. {# #}
+            </p> {# #}
         {% when Err(LayoutError::NormalizationFailure(_, _)) %}
-            <p><strong>Note:</strong> Encountered an error during type layout; {#+ #}
-            the type failed to be normalized.</p> {# #}
+            <p> {# #}
+                <strong>Note:</strong> Encountered an error during type layout; {#+ #}
+                the type failed to be normalized. {# #}
+            </p> {# #}
     {% endmatch %}
 </div> {# #}
