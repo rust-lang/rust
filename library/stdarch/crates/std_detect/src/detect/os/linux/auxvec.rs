@@ -109,7 +109,9 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
                     }
                 }
             }
-            drop(hwcap);
+
+            // Intentionnaly not used
+            let _ = hwcap;
         }
     }
 
@@ -251,7 +253,8 @@ fn auxv_from_buf(buf: &[usize]) -> Result<AuxVec, ()> {
             return Ok(AuxVec { hwcap, hwcap2 });
         }
     }
-    drop(buf);
+    // Suppress unused variable
+    let _ = buf;
     Err(())
 }
 

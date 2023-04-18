@@ -4719,7 +4719,7 @@ pub mod tests {
                         let v2_v128: v128 = mem::transmute(v2);
                         let v3_v128 = super::$f(v1_v128, v2_v128);
                         let mut v3 = [$($vec1)*];
-                        drop(v3);
+                        let _ignore = v3;
                         v3 = mem::transmute(v3_v128);
 
                         for (i, actual) in v3.iter().enumerate() {
@@ -4746,7 +4746,7 @@ pub mod tests {
                         let v1_v128: v128 = mem::transmute(v1);
                         let v2_v128 = super::$f(v1_v128);
                         let mut v2 = [$($vec1)*];
-                        drop(v2);
+                        let _ignore = v2;
                         v2 = mem::transmute(v2_v128);
 
                         for (i, actual) in v2.iter().enumerate() {
