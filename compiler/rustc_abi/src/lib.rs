@@ -9,6 +9,7 @@ use std::str::FromStr;
 
 use bitflags::bitflags;
 use rustc_data_structures::intern::Interned;
+use rustc_data_structures::stable_hasher::Hash64;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::StableOrd;
 use rustc_index::vec::{IndexSlice, IndexVec};
@@ -77,12 +78,12 @@ pub struct ReprOptions {
     pub flags: ReprFlags,
     /// The seed to be used for randomizing a type's layout
     ///
-    /// Note: This could technically be a `[u8; 16]` (a `u128`) which would
+    /// Note: This could technically be a `Hash128` which would
     /// be the "most accurate" hash as it'd encompass the item and crate
     /// hash without loss, but it does pay the price of being larger.
-    /// Everything's a tradeoff, a `u64` seed should be sufficient for our
+    /// Everything's a tradeoff, a 64-bit seed should be sufficient for our
     /// purposes (primarily `-Z randomize-layout`)
-    pub field_shuffle_seed: u64,
+    pub field_shuffle_seed: Hash64,
 }
 
 impl ReprOptions {

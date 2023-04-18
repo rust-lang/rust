@@ -601,7 +601,7 @@ fn string_to_timestamp(s: &str) -> Result<SystemTime, ()> {
 fn crate_path(sess: &Session, crate_name: Symbol, stable_crate_id: StableCrateId) -> PathBuf {
     let incr_dir = sess.opts.incremental.as_ref().unwrap().clone();
 
-    let stable_crate_id = base_n::encode(stable_crate_id.to_u64() as u128, INT_ENCODE_BASE);
+    let stable_crate_id = base_n::encode(stable_crate_id.as_u64() as u128, INT_ENCODE_BASE);
 
     let crate_name = format!("{}-{}", crate_name, stable_crate_id);
     incr_dir.join(crate_name)

@@ -33,7 +33,7 @@ use crate::def_id::{CrateNum, DefId, StableCrateId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::HashingControls;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_index::vec::IndexVec;
@@ -123,15 +123,15 @@ impl ExpnHash {
     /// originates from.
     #[inline]
     pub fn stable_crate_id(self) -> StableCrateId {
-        StableCrateId(self.0.as_value().0)
+        StableCrateId(self.0.split().0)
     }
 
     /// Returns the crate-local part of the [ExpnHash].
     ///
     /// Used for tests.
     #[inline]
-    pub fn local_hash(self) -> u64 {
-        self.0.as_value().1
+    pub fn local_hash(self) -> Hash64 {
+        self.0.split().1
     }
 
     #[inline]
@@ -141,7 +141,7 @@ impl ExpnHash {
 
     /// Builds a new [ExpnHash] with the given [StableCrateId] and
     /// `local_hash`, where `local_hash` must be unique within its crate.
-    fn new(stable_crate_id: StableCrateId, local_hash: u64) -> ExpnHash {
+    fn new(stable_crate_id: StableCrateId, local_hash: Hash64) -> ExpnHash {
         ExpnHash(Fingerprint::new(stable_crate_id.0, local_hash))
     }
 }
@@ -350,7 +350,7 @@ pub struct HygieneData {
     /// would have collisions without a disambiguator.
     /// The keys of this map are always computed with `ExpnData.disambiguator`
     /// set to 0.
-    expn_data_disambiguators: FxHashMap<u64, u32>,
+    expn_data_disambiguators: FxHashMap<Hash64, u32>,
 }
 
 impl HygieneData {
@@ -1040,7 +1040,7 @@ impl ExpnData {
     }
 
     #[inline]
-    fn hash_expn(&self, ctx: &mut impl HashStableContext) -> u64 {
+    fn hash_expn(&self, ctx: &mut impl HashStableContext) -> Hash64 {
         let mut hasher = StableHasher::new();
         self.hash_stable(ctx, &mut hasher);
         hasher.finish()

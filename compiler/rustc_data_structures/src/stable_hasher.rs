@@ -2,12 +2,15 @@ use crate::sip128::SipHasher128;
 use rustc_index::bit_set;
 use rustc_index::vec;
 use smallvec::SmallVec;
+use std::fmt;
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::marker::PhantomData;
 use std::mem;
 
 #[cfg(test)]
 mod tests;
+
+pub use crate::hashes::{Hash128, Hash64};
 
 /// When hashing something that ends up affecting properties like symbol names,
 /// we want these symbol names to be calculated independently of other factors
@@ -20,8 +23,8 @@ pub struct StableHasher {
     state: SipHasher128,
 }
 
-impl ::std::fmt::Debug for StableHasher {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Debug for StableHasher {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.state)
     }
 }
@@ -39,21 +42,6 @@ impl StableHasher {
     #[inline]
     pub fn finish<W: StableHasherResult>(self) -> W {
         W::finish(self)
-    }
-}
-
-impl StableHasherResult for u128 {
-    #[inline]
-    fn finish(hasher: StableHasher) -> Self {
-        let (_0, _1) = hasher.finalize();
-        u128::from(_0) | (u128::from(_1) << 64)
-    }
-}
-
-impl StableHasherResult for u64 {
-    #[inline]
-    fn finish(hasher: StableHasher) -> Self {
-        hasher.finalize().0
     }
 }
 
@@ -286,6 +274,9 @@ impl_stable_traits_for_trivial_type!(i128);
 
 impl_stable_traits_for_trivial_type!(char);
 impl_stable_traits_for_trivial_type!(());
+
+impl_stable_traits_for_trivial_type!(Hash64);
+impl_stable_traits_for_trivial_type!(Hash128);
 
 impl<CTX> HashStable<CTX> for ! {
     fn hash_stable(&self, _ctx: &mut CTX, _hasher: &mut StableHasher) {
@@ -669,7 +660,7 @@ fn stable_hash_reduce<HCX, I, C, F>(
                 .map(|value| {
                     let mut hasher = StableHasher::new();
                     hash_function(&mut hasher, hcx, value);
-                    hasher.finish::<u128>()
+                    hasher.finish::<Hash128>()
                 })
                 .reduce(|accum, value| accum.wrapping_add(value));
             hash.hash_stable(hcx, hasher);

@@ -24,7 +24,7 @@ impl Svh {
     }
 
     pub fn as_u64(&self) -> u64 {
-        self.hash.to_smaller_hash()
+        self.hash.to_smaller_hash().as_u64()
     }
 
     pub fn to_string(&self) -> String {

@@ -141,14 +141,18 @@ impl<CTX> crate::ty::HashStable<CTX> for ScalarInt {
 
 impl<S: Encoder> Encodable<S> for ScalarInt {
     fn encode(&self, s: &mut S) {
-        s.emit_u128(self.data);
-        s.emit_u8(self.size.get());
+        let size = self.size.get();
+        s.emit_u8(size);
+        s.emit_raw_bytes(&self.data.to_le_bytes()[..size as usize]);
     }
 }
 
 impl<D: Decoder> Decodable<D> for ScalarInt {
     fn decode(d: &mut D) -> ScalarInt {
-        ScalarInt { data: d.read_u128(), size: NonZeroU8::new(d.read_u8()).unwrap() }
+        let mut data = [0u8; 16];
+        let size = d.read_u8();
+        data[..size as usize].copy_from_slice(d.read_raw_bytes(size as usize));
+        ScalarInt { data: u128::from_le_bytes(data), size: NonZeroU8::new(size).unwrap() }
     }
 }
 

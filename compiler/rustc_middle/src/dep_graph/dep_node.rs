@@ -357,7 +357,7 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for HirId {
         Fingerprint::new(
             // `owner` is local, so is completely defined by the local hash
             def_path_hash.local_hash(),
-            local_id.as_u32().into(),
+            local_id.as_u32() as u64,
         )
     }
 
@@ -370,7 +370,7 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for HirId {
     #[inline(always)]
     fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self> {
         if tcx.fingerprint_style(dep_node.kind) == FingerprintStyle::HirId {
-            let (local_hash, local_id) = Fingerprint::from(dep_node.hash).as_value();
+            let (local_hash, local_id) = Fingerprint::from(dep_node.hash).split();
             let def_path_hash = DefPathHash::new(tcx.sess.local_stable_crate_id(), local_hash);
             let def_id = tcx
                 .def_path_hash_to_def_id(def_path_hash, &mut || {
@@ -378,6 +378,7 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for HirId {
                 })
                 .expect_local();
             let local_id = local_id
+                .as_u64()
                 .try_into()
                 .unwrap_or_else(|_| panic!("local id should be u32, found {:?}", local_id));
             Some(HirId { owner: OwnerId { def_id }, local_id: ItemLocalId::from_u32(local_id) })

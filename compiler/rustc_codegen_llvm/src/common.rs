@@ -10,7 +10,7 @@ use crate::value::Value;
 use rustc_ast::Mutability;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
 use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
@@ -261,7 +261,7 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                             let hash = self.tcx.with_stable_hashing_context(|mut hcx| {
                                 let mut hasher = StableHasher::new();
                                 alloc.hash_stable(&mut hcx, &mut hasher);
-                                hasher.finish::<u128>()
+                                hasher.finish::<Hash128>()
                             });
                             llvm::set_value_name(value, format!("alloc_{hash:032x}").as_bytes());
                         }

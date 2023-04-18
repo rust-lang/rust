@@ -1,6 +1,7 @@
 use crate::QueryCtxt;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
+use rustc_data_structures::stable_hasher::Hash64;
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, RwLock};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_data_structures::unord::UnordSet;
@@ -138,7 +139,7 @@ impl AbsoluteBytePos {
 /// is the only thing available when decoding the cache's [Footer].
 #[derive(Encodable, Decodable, Clone, Debug)]
 struct EncodedSourceFileId {
-    file_name_hash: u64,
+    file_name_hash: Hash64,
     stable_crate_id: StableCrateId,
 }
 
@@ -667,7 +668,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for ExpnId {
             #[cfg(debug_assertions)]
             {
                 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-                let local_hash: u64 = decoder.tcx.with_stable_hashing_context(|mut hcx| {
+                let local_hash = decoder.tcx.with_stable_hashing_context(|mut hcx| {
                     let mut hasher = StableHasher::new();
                     expn_id.expn_data().hash_stable(&mut hcx, &mut hasher);
                     hasher.finish()

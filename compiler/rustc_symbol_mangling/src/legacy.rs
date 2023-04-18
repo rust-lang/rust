@@ -1,4 +1,4 @@
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_hir::def_id::CrateNum;
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_middle::ty::print::{PrettyPrinter, Print, Printer};
@@ -93,7 +93,7 @@ fn get_symbol_hash<'tcx>(
     item_type: Ty<'tcx>,
 
     instantiating_crate: Option<CrateNum>,
-) -> u64 {
+) -> Hash64 {
     let def_id = instance.def_id();
     let substs = instance.substs;
     debug!("get_symbol_hash(def_id={:?}, parameters={:?})", def_id, substs);
@@ -138,7 +138,7 @@ fn get_symbol_hash<'tcx>(
         });
 
         // 64 bits should be enough to avoid collisions.
-        hasher.finish::<u64>()
+        hasher.finish::<Hash64>()
     })
 }
 
@@ -176,7 +176,7 @@ impl SymbolPath {
         }
     }
 
-    fn finish(mut self, hash: u64) -> String {
+    fn finish(mut self, hash: Hash64) -> String {
         self.finalize_pending_component();
         // E = end name-sequence
         let _ = write!(self.result, "17h{hash:016x}E");

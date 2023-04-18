@@ -573,7 +573,7 @@ where
             // from disk. Re-hashing results is fairly expensive, so we can't
             // currently afford to verify every hash. This subset should still
             // give us some coverage of potential bugs though.
-            let try_verify = prev_fingerprint.as_value().1 % 32 == 0;
+            let try_verify = prev_fingerprint.split().1.as_u64() % 32 == 0;
             if std::intrinsics::unlikely(
                 try_verify || qcx.dep_context().sess().opts.unstable_opts.incremental_verify_ich,
             ) {
