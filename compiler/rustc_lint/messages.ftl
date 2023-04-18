@@ -445,7 +445,7 @@ lint_builtin_incomplete_features = the feature `{$name}` is incomplete and may n
     .help = consider using `min_{$name}` instead, which is more stable and complete
 
 lint_builtin_unpermitted_type_init_zeroed = the type `{$ty}` does not permit zero-initialization
-lint_builtin_unpermitted_type_init_unint = the type `{$ty}` does not permit being left uninitialized
+lint_builtin_unpermitted_type_init_uninit = the type `{$ty}` does not permit being left uninitialized
 
 lint_builtin_unpermitted_type_init_label = this code causes undefined behavior when executed
 lint_builtin_unpermitted_type_init_label_suggestion = help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done

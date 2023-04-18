@@ -1,5 +1,5 @@
 error[E0381]: used binding `x` isn't initialized
-  --> $DIR/borrowck-block-unint.rs:4:11
+  --> $DIR/borrowck-block-uninit.rs:4:11
    |
 LL |     let x: isize;
    |         - binding declared here but left uninitialized

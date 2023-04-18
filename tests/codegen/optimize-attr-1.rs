@@ -9,7 +9,7 @@
 // CHECK-LABEL: define{{.*}}i32 @nothing
 // CHECK-SAME: [[NOTHING_ATTRS:#[0-9]+]]
 // SIZE-OPT: ret i32 4
-// SPEEC-OPT: ret i32 4
+// SPEED-OPT: ret i32 4
 #[no_mangle]
 pub fn nothing() -> i32 {
     2 + 2
