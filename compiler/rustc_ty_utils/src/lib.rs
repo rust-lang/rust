@@ -33,6 +33,7 @@ pub mod instance;
 mod layout;
 mod layout_sanity_check;
 mod needs_drop;
+mod opaque_types;
 pub mod representability;
 mod structural_match;
 mod ty;
@@ -47,6 +48,7 @@ pub fn provide(providers: &mut Providers) {
     implied_bounds::provide(providers);
     layout::provide(providers);
     needs_drop::provide(providers);
+    opaque_types::provide(providers);
     representability::provide(providers);
     ty::provide(providers);
     instance::provide(providers);
