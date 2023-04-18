@@ -1,4 +1,4 @@
-FROM ubuntu:22.10
+FROM ubuntu:23.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -15,8 +15,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   cmake \
   sudo \
   gdb \
-  llvm-15-tools \
-  llvm-15-dev \
+  llvm-16-tools \
+  llvm-16-dev \
   libedit-dev \
   libssl-dev \
   pkg-config \
@@ -41,7 +41,7 @@ ENV NO_DOWNLOAD_CI_LLVM 1
 # Using llvm-link-shared due to libffi issues -- see #34486
 ENV RUST_CONFIGURE_ARGS \
       --build=x86_64-unknown-linux-gnu \
-      --llvm-root=/usr/lib/llvm-15 \
+      --llvm-root=/usr/lib/llvm-16 \
       --enable-llvm-link-shared \
       --set rust.thin-lto-import-instr-limit=10
 
