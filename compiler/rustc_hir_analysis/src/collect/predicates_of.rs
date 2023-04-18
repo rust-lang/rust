@@ -1,4 +1,4 @@
-use crate::astconv::AstConv;
+use crate::astconv::{AstConv, OnlySelfBounds};
 use crate::bounds::Bounds;
 use crate::collect::ItemCtxt;
 use crate::constrained_generic_params as cgp;
@@ -13,9 +13,6 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{GenericPredicates, ToPredicate};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
-
-#[derive(Debug)]
-struct OnlySelfBounds(bool);
 
 /// Returns a list of all type predicates (explicit and implicit) for the definition with
 /// ID `def_id`. This includes all predicates returned by `predicates_defined_on`, plus
@@ -225,7 +222,13 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                 }
 
                 let mut bounds = Bounds::default();
-                icx.astconv().add_bounds(ty, bound_pred.bounds.iter(), &mut bounds, bound_vars);
+                icx.astconv().add_bounds(
+                    ty,
+                    bound_pred.bounds.iter(),
+                    &mut bounds,
+                    bound_vars,
+                    OnlySelfBounds(false),
+                );
                 predicates.extend(bounds.predicates());
             }
 
@@ -608,7 +611,7 @@ pub(super) fn implied_predicates_with_filter(
     let (superbounds, where_bounds_that_match) = match filter {
         PredicateFilter::All => (
             // Convert the bounds that follow the colon (or equal in trait aliases)
-            icx.astconv().compute_bounds(self_param_ty, bounds),
+            icx.astconv().compute_bounds(self_param_ty, bounds, OnlySelfBounds(false)),
             // Also include all where clause bounds
             icx.type_parameter_bounds_in_generics(
                 generics,
@@ -620,7 +623,7 @@ pub(super) fn implied_predicates_with_filter(
         ),
         PredicateFilter::SelfOnly => (
             // Convert the bounds that follow the colon (or equal in trait aliases)
-            icx.astconv().compute_bounds(self_param_ty, bounds),
+            icx.astconv().compute_bounds(self_param_ty, bounds, OnlySelfBounds(true)),
             // Include where clause bounds for `Self`
             icx.type_parameter_bounds_in_generics(
                 generics,
@@ -798,6 +801,7 @@ impl<'tcx> ItemCtxt<'tcx> {
                 }),
                 &mut bounds,
                 bound_vars,
+                only_self_bounds,
             );
         }
 
