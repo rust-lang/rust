@@ -141,6 +141,7 @@ pub struct CtxtInterners<'tcx> {
     type_: InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>,
     const_lists: InternedSet<'tcx, List<ty::Const<'tcx>>>,
     substs: InternedSet<'tcx, InternalSubsts<'tcx>>,
+    type_lists: InternedSet<'tcx, List<Ty<'tcx>>>,
     canonical_var_infos: InternedSet<'tcx, List<CanonicalVarInfo<'tcx>>>,
     region: InternedSet<'tcx, RegionKind<'tcx>>,
     poly_existential_predicates: InternedSet<'tcx, List<PolyExistentialPredicate<'tcx>>>,
@@ -163,6 +164,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             type_: Default::default(),
             const_lists: Default::default(),
             substs: Default::default(),
+            type_lists: Default::default(),
             region: Default::default(),
             poly_existential_predicates: Default::default(),
             canonical_var_infos: Default::default(),
@@ -1278,25 +1280,6 @@ macro_rules! nop_lift {
     };
 }
 
-// Can't use the macros as we have reuse the `substs` here.
-//
-// See `mk_type_list` for more info.
-impl<'a, 'tcx> Lift<'tcx> for &'a List<Ty<'a>> {
-    type Lifted = &'tcx List<Ty<'tcx>>;
-    fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        if self.is_empty() {
-            return Some(List::empty());
-        }
-
-        tcx.interners
-            .substs
-            .contains_pointer_to(&InternedInSet(self.as_substs()))
-            // SAFETY: `self` is interned and therefore valid
-            // for the entire lifetime of the `TyCtxt`.
-            .then(|| unsafe { mem::transmute::<&'a List<Ty<'a>>, &'tcx List<Ty<'tcx>>>(self) })
-    }
-}
-
 macro_rules! nop_list_lift {
     ($set:ident; $ty:ty => $lifted:ty) => {
         impl<'a, 'tcx> Lift<'tcx> for &'a List<$ty> {
@@ -1320,6 +1303,7 @@ nop_lift! {const_; Const<'a> => Const<'tcx>}
 nop_lift! {const_allocation; ConstAllocation<'a> => ConstAllocation<'tcx>}
 nop_lift! {predicate; Predicate<'a> => Predicate<'tcx>}
 
+nop_list_lift! {type_lists; Ty<'a> => Ty<'tcx>}
 nop_list_lift! {poly_existential_predicates; PolyExistentialPredicate<'a> => PolyExistentialPredicate<'tcx>}
 nop_list_lift! {predicates; Predicate<'a> => Predicate<'tcx>}
 nop_list_lift! {canonical_var_infos; CanonicalVarInfo<'a> => CanonicalVarInfo<'tcx>}
@@ -1594,6 +1578,7 @@ macro_rules! slice_interners {
 slice_interners!(
     const_lists: pub mk_const_list(Const<'tcx>),
     substs: pub mk_substs(GenericArg<'tcx>),
+    type_lists: pub mk_type_list(Ty<'tcx>),
     canonical_var_infos: pub mk_canonical_var_infos(CanonicalVarInfo<'tcx>),
     poly_existential_predicates: intern_poly_existential_predicates(PolyExistentialPredicate<'tcx>),
     predicates: intern_predicates(Predicate<'tcx>),
@@ -2191,18 +2176,6 @@ impl<'tcx> TyCtxt<'tcx> {
         T: CollectAndApply<ty::Const<'tcx>, &'tcx List<ty::Const<'tcx>>>,
     {
         T::collect_and_apply(iter, |xs| self.mk_const_list(xs))
-    }
-
-    pub fn mk_type_list(self, ts: &[Ty<'tcx>]) -> &'tcx List<Ty<'tcx>> {
-        // Actually intern type lists as lists of `GenericArg`s.
-        //
-        // Transmuting from `Ty<'tcx>` to `GenericArg<'tcx>` is sound
-        // as explained in `ty_slice_as_generic_arg`. With this,
-        // we guarantee that even when transmuting between `List<Ty<'tcx>>`
-        // and `List<GenericArg<'tcx>>`, the uniqueness requirement for
-        // lists is upheld.
-        let substs = self.mk_substs(ty::subst::ty_slice_as_generic_args(ts));
-        substs.try_as_type_list().unwrap()
     }
 
     // Unlike various other `mk_*_from_iter` functions, this one uses `I:
