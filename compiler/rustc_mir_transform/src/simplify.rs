@@ -36,13 +36,31 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use smallvec::SmallVec;
 
-pub struct SimplifyCfg {
-    label: String,
+pub enum SimplifyCfg {
+    Initial,
+    PromoteConsts,
+    RemoveFalseEdges,
+    EarlyOpt,
+    ElaborateDrops,
+    Final,
+    MakeShim,
+    AfterUninhabitedEnumBranching,
 }
 
 impl SimplifyCfg {
-    pub fn new(label: &str) -> Self {
-        SimplifyCfg { label: format!("SimplifyCfg-{}", label) }
+    pub fn name(&self) -> &'static str {
+        match self {
+            SimplifyCfg::Initial => "SimplifyCfg-initial",
+            SimplifyCfg::PromoteConsts => "SimplifyCfg-promote-consts",
+            SimplifyCfg::RemoveFalseEdges => "SimplifyCfg-remove-false-edges",
+            SimplifyCfg::EarlyOpt => "SimplifyCfg-early-opt",
+            SimplifyCfg::ElaborateDrops => "SimplifyCfg-elaborate-drops",
+            SimplifyCfg::Final => "SimplifyCfg-final",
+            SimplifyCfg::MakeShim => "SimplifyCfg-make_shim",
+            SimplifyCfg::AfterUninhabitedEnumBranching => {
+                "SimplifyCfg-after-uninhabited-enum-branching"
+            }
+        }
     }
 }
 
@@ -57,11 +75,11 @@ pub fn simplify_cfg<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
 impl<'tcx> MirPass<'tcx> for SimplifyCfg {
     fn name(&self) -> &str {
-        &self.label
+        &self.name()
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        debug!("SimplifyCfg({:?}) - simplifying {:?}", self.label, body.source);
+        debug!("SimplifyCfg({:?}) - simplifying {:?}", self.name(), body.source);
         simplify_cfg(tcx, body);
     }
 }
@@ -423,19 +441,17 @@ fn save_unreachable_coverage(
     ));
 }
 
-pub struct SimplifyLocals {
-    label: String,
-}
-
-impl SimplifyLocals {
-    pub fn new(label: &str) -> SimplifyLocals {
-        SimplifyLocals { label: format!("SimplifyLocals-{}", label) }
-    }
+pub enum SimplifyLocals {
+    BeforeConstProp,
+    Final,
 }
 
 impl<'tcx> MirPass<'tcx> for SimplifyLocals {
-    fn name(&self) -> &str {
-        &self.label
+    fn name(&self) -> &'static str {
+        match &self {
+            SimplifyLocals::BeforeConstProp => "SimplifyLocals-before-const-prop",
+            SimplifyLocals::Final => "SimplifyLocals-final",
+        }
     }
 
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
