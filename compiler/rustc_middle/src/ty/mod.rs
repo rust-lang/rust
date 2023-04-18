@@ -550,6 +550,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Coerce(_)
             | PredicateKind::ConstEvaluatable(_)
             | PredicateKind::ConstEquate(_, _)
+            | PredicateKind::DefineOpaque(..)
             | PredicateKind::Ambiguous
             | PredicateKind::TypeWellFormedFromEnv(_) => true,
         }
@@ -631,6 +632,15 @@ pub enum PredicateKind<'tcx> {
     ///
     /// Only used for Chalk.
     TypeWellFormedFromEnv(Ty<'tcx>),
+
+    /// We're currently in a context which defines the opaque type as the given type.
+    ///
+    /// This is only ever found as a clause in the environment. Unlike `Projection` clauses
+    /// the resulting type may get set to be equal to the opaque type if we end up not
+    /// defining the opaque type.
+    ///
+    /// FIXME(type_alias_impl_trait): This is currently only used for RPIT.
+    DefineOpaque(AliasTy<'tcx>, Ty<'tcx>),
 
     /// A marker predicate that is always ambiguous.
     /// Used for coherence to mark opaque types as possibly equal to each other but ambiguous.
@@ -1252,6 +1262,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Clause(Clause::TypeOutlives(..))
             | PredicateKind::ConstEvaluatable(..)
             | PredicateKind::ConstEquate(..)
+            | PredicateKind::DefineOpaque(..)
             | PredicateKind::Ambiguous
             | PredicateKind::TypeWellFormedFromEnv(..) => None,
         }
@@ -1273,6 +1284,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Clause(Clause::TypeOutlives(..))
             | PredicateKind::ConstEvaluatable(..)
             | PredicateKind::ConstEquate(..)
+            | PredicateKind::DefineOpaque(..)
             | PredicateKind::Ambiguous
             | PredicateKind::TypeWellFormedFromEnv(..) => None,
         }
@@ -1294,6 +1306,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::ClosureKind(..)
             | PredicateKind::ConstEvaluatable(..)
             | PredicateKind::ConstEquate(..)
+            | PredicateKind::DefineOpaque(..)
             | PredicateKind::Ambiguous
             | PredicateKind::TypeWellFormedFromEnv(..) => None,
         }

@@ -323,7 +323,7 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
                         .map(|predicate| elaboratable.child(predicate)),
                 );
             }
-            ty::PredicateKind::TypeWellFormedFromEnv(..) => {
+            ty::PredicateKind::TypeWellFormedFromEnv(..) | ty::PredicateKind::DefineOpaque(..) => {
                 // Nothing to elaborate
             }
             ty::PredicateKind::Ambiguous => {}

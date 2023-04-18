@@ -1480,6 +1480,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 | ty::PredicateKind::Coerce(_)
                 | ty::PredicateKind::ConstEvaluatable(_)
                 | ty::PredicateKind::ConstEquate(_, _)
+                | ty::PredicateKind::DefineOpaque(..)
                 | ty::PredicateKind::TypeWellFormedFromEnv(_)
                 | ty::PredicateKind::Ambiguous => bug!(),
             }

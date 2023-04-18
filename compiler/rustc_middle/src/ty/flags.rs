@@ -287,6 +287,10 @@ impl FlagComputation {
             ty::PredicateKind::TypeWellFormedFromEnv(ty) => {
                 self.add_ty(ty);
             }
+            ty::PredicateKind::DefineOpaque(opaque, ty) => {
+                self.add_alias_ty(opaque);
+                self.add_ty(ty);
+            }
             ty::PredicateKind::Ambiguous => {}
             ty::PredicateKind::AliasRelate(t1, t2, _) => {
                 self.add_term(t1);

@@ -109,8 +109,9 @@ fn compute_implied_outlives_bounds<'tcx>(
                 | ty::PredicateKind::ObjectSafe(..)
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::ConstEquate(..)
-                | ty::PredicateKind::Ambiguous
                 | ty::PredicateKind::AliasRelate(..)
+                | ty::PredicateKind::DefineOpaque(..)
+                | ty::PredicateKind::Ambiguous
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => {}
 
                 // We need to search through *all* WellFormed predicates

@@ -1607,6 +1607,7 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     // FIXME(generic_const_exprs): `ConstEvaluatable` can be written
                     ConstEvaluatable(..) |
                     ConstEquate(..) |
+                    DefineOpaque(..) |
                     Ambiguous |
                     TypeWellFormedFromEnv(..) => continue,
                 };

@@ -289,6 +289,9 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 ty::PredicateKind::ConstEvaluatable(_) | ty::PredicateKind::ConstEquate(_, _) => {
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }
+                ty::PredicateKind::DefineOpaque(..) => {
+                    bug!("DefineOpaque should only be used as an assumption: {goal:?}");
+                }
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for Chalk")
                 }

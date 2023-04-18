@@ -133,11 +133,14 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
                                 | ty::PredicateKind::ObjectSafe(_)
                                 | ty::PredicateKind::ClosureKind(_, _, _)
                                 | ty::PredicateKind::ConstEvaluatable(_)
-                                | ty::PredicateKind::TypeWellFormedFromEnv(_)
                                 | ty::PredicateKind::Ambiguous => {
                                     FulfillmentErrorCode::CodeSelectionError(
                                         SelectionError::Unimplemented,
                                     )
+                                }
+                                ty::PredicateKind::DefineOpaque(..)
+                                | ty::PredicateKind::TypeWellFormedFromEnv(_) => {
+                                    bug!("unexpected goal: {goal:?}")
                                 }
                             },
                             root_obligation: obligation,

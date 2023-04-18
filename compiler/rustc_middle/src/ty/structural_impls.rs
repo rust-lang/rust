@@ -175,6 +175,9 @@ impl<'tcx> fmt::Debug for ty::PredicateKind<'tcx> {
             ty::PredicateKind::TypeWellFormedFromEnv(ty) => {
                 write!(f, "TypeWellFormedFromEnv({:?})", ty)
             }
+            ty::PredicateKind::DefineOpaque(opaque, ty) => {
+                write!(f, "DefineOpaque({opaque:?}, {ty:?})")
+            }
             ty::PredicateKind::Ambiguous => write!(f, "Ambiguous"),
             ty::PredicateKind::AliasRelate(t1, t2, dir) => {
                 write!(f, "AliasRelate({t1:?}, {dir:?}, {t2:?})")

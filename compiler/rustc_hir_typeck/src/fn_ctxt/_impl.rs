@@ -679,6 +679,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // code is looking for a self type of an unresolved
                 // inference variable.
                 | ty::PredicateKind::ClosureKind(..)
+                | ty::PredicateKind::DefineOpaque(..)
                 | ty::PredicateKind::Ambiguous
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
             },

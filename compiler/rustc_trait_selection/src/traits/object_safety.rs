@@ -347,6 +347,7 @@ fn predicate_references_self<'tcx>(
         // FIXME(generic_const_exprs): this can mention `Self`
         | ty::PredicateKind::ConstEvaluatable(..)
         | ty::PredicateKind::ConstEquate(..)
+        | ty::PredicateKind::DefineOpaque(..)
         | ty::PredicateKind::Ambiguous
         | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
     }
@@ -395,6 +396,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         | ty::PredicateKind::ConstEvaluatable(..)
         | ty::PredicateKind::ConstEquate(..)
         | ty::PredicateKind::AliasRelate(..)
+        | ty::PredicateKind::DefineOpaque(..)
         | ty::PredicateKind::Ambiguous
         | ty::PredicateKind::TypeWellFormedFromEnv(..) => false,
     })

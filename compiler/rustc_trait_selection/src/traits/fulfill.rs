@@ -365,6 +365,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     ProcessResult::Changed(mk_pending(vec![obligation.with(infcx.tcx, pred)]))
                 }
                 ty::PredicateKind::Ambiguous => ProcessResult::Unchanged,
+                ty::PredicateKind::DefineOpaque(..) => {
+                    bug!("DefineOpaque should only be used as an assumption")
+                }
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for Chalk")
                 }
@@ -633,6 +636,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     }
                 }
                 ty::PredicateKind::Ambiguous => ProcessResult::Unchanged,
+                ty::PredicateKind::DefineOpaque(..) => {
+                    bug!("DefineOpaque should only be used as an assumption")
+                }
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for Chalk")
                 }

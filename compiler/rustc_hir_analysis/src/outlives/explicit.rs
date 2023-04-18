@@ -63,6 +63,7 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
                     | ty::PredicateKind::Coerce(..)
                     | ty::PredicateKind::ConstEvaluatable(..)
                     | ty::PredicateKind::ConstEquate(..)
+                    | ty::PredicateKind::DefineOpaque(..)
                     | ty::PredicateKind::Ambiguous
                     | ty::PredicateKind::TypeWellFormedFromEnv(..) => (),
                 }

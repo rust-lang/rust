@@ -968,6 +968,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                     }
                 }
+                ty::PredicateKind::DefineOpaque(..) => {
+                    bug!("DefineOpaque should only be used as an assumption")
+                }
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for chalk")
                 }

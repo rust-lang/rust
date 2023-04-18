@@ -2880,6 +2880,9 @@ define_print_and_forward_display! {
             ty::PredicateKind::TypeWellFormedFromEnv(ty) => {
                 p!("the type `", print(ty), "` is found in the environment")
             }
+            ty::PredicateKind::DefineOpaque(opaque, ty) => {
+                p!("defining `", print(opaque), "` to be `", print(ty), "`")
+            }
             ty::PredicateKind::Ambiguous => p!("ambiguous"),
             ty::PredicateKind::AliasRelate(t1, t2, dir) => p!(print(t1), write(" {} ", dir), print(t2)),
         }

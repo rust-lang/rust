@@ -320,6 +320,7 @@ pub(crate) fn clean_predicate<'tcx>(
         | ty::PredicateKind::ObjectSafe(..)
         | ty::PredicateKind::ClosureKind(..)
         | ty::PredicateKind::ConstEquate(..)
+        | ty::PredicateKind::DefineOpaque(..)
         | ty::PredicateKind::Ambiguous
         | ty::PredicateKind::TypeWellFormedFromEnv(..) => panic!("not user writable"),
     }
