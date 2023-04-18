@@ -254,8 +254,17 @@ impl FixtureWithProjectMeta {
 }
 
 impl MiniCore {
+    const RAW_SOURCE: &str = include_str!("./minicore.rs");
+
     fn has_flag(&self, flag: &str) -> bool {
         self.activated_flags.iter().any(|it| it == flag)
+    }
+
+    pub fn from_flags<'a>(flags: impl IntoIterator<Item = &'a str>) -> Self {
+        MiniCore {
+            activated_flags: flags.into_iter().map(|x| x.to_owned()).collect(),
+            valid_flags: Vec::new(),
+        }
     }
 
     #[track_caller]
@@ -278,13 +287,21 @@ impl MiniCore {
         res
     }
 
+    pub fn available_flags() -> impl Iterator<Item = &'static str> {
+        let lines = MiniCore::RAW_SOURCE.split_inclusive('\n');
+        lines
+            .map_while(|x| x.strip_prefix("//!"))
+            .skip_while(|line| !line.contains("Available flags:"))
+            .skip(1)
+            .map(|x| x.split_once(':').unwrap().0.trim())
+    }
+
     /// Strips parts of minicore.rs which are flagged by inactive flags.
     ///
     /// This is probably over-engineered to support flags dependencies.
     pub fn source_code(mut self) -> String {
         let mut buf = String::new();
-        let raw_mini_core = include_str!("./minicore.rs");
-        let mut lines = raw_mini_core.split_inclusive('\n');
+        let mut lines = MiniCore::RAW_SOURCE.split_inclusive('\n');
 
         let mut implications = Vec::new();
 
