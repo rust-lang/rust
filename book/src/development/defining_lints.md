@@ -138,7 +138,8 @@ Untracked files:
 
 ## The `define_clippy_lints` macro
 
-After `cargo dev new_lint`, you should see a macro with the name `define_clippy_lints`. It will be in the same file if you defined a standalone lint, and it will be in `mod.rs` if you defined a type-specific lint.
+After `cargo dev new_lint`, you should see a macro with the name `define_clippy_lints`. It will be in the same file
+if you defined a standalone lint, and it will be in `mod.rs` if you defined a type-specific lint.
 
 The macro looks something like this:
 
@@ -196,4 +197,3 @@ the lint pass in question will not be run.
 
 [all_lints]: https://rust-lang.github.io/rust-clippy/master/
 [lint_naming]: https://rust-lang.github.io/rfcs/0344-conventions-galore.html#lints
-[Zulip]: https://rust-lang.zulipchat.com/#narrow/stream/257328-clippy
