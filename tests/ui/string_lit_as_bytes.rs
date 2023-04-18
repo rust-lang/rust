@@ -6,7 +6,7 @@
 macro_rules! b {
     ($b:literal) => {
         const C: &[u8] = $b.as_bytes();
-    }
+    };
 }
 
 fn str_lit_as_bytes() {
