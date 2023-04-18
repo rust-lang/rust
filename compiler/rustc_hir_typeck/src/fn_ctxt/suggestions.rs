@@ -274,13 +274,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
     ) -> bool {
         let expr = expr.peel_blocks();
-        if let Some((sp, msg, suggestion, applicability, verbose, annotation)) =
+        if let Some((suggestion, msg, applicability, verbose, annotation)) =
             self.suggest_deref_or_ref(expr, found, expected)
         {
             if verbose {
-                err.span_suggestion_verbose(sp, &msg, suggestion, applicability);
+                err.multipart_suggestion_verbose(&msg, suggestion, applicability);
             } else {
-                err.span_suggestion(sp, &msg, suggestion, applicability);
+                err.multipart_suggestion(&msg, suggestion, applicability);
             }
             if annotation {
                 let suggest_annotation = match expr.peel_drop_temps().kind {
