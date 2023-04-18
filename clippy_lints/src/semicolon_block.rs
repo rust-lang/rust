@@ -126,14 +126,12 @@ impl LateLintPass<'_> for SemicolonBlock {
                     ..
                 } = stmt else { return };
                 semicolon_outside_block(cx, block, expr, span);
-                semicolon_outside_block_if_singleline_check_outside(cx, block, expr, stmt.span);
             },
             StmtKind::Semi(Expr {
                 kind: ExprKind::Block(block @ Block { expr: Some(tail), .. }, _),
                 ..
             }) if !block.span.from_expansion() => {
                 semicolon_inside_block(cx, block, tail, stmt.span);
-                semicolon_outside_block_if_singleline_check_inside(cx, block, tail, stmt.span);
             },
             _ => (),
         }
@@ -143,6 +141,8 @@ impl LateLintPass<'_> for SemicolonBlock {
 fn semicolon_inside_block(cx: &LateContext<'_>, block: &Block<'_>, tail: &Expr<'_>, semi_span: Span) {
     let insert_span = tail.span.source_callsite().shrink_to_hi();
     let remove_span = semi_span.with_lo(block.span.hi());
+
+    semicolon_outside_block_if_singleline(cx, block, remove_span, insert_span, true, "inside");
 
     span_lint_and_then(
         cx,
@@ -166,6 +166,8 @@ fn semicolon_outside_block(cx: &LateContext<'_>, block: &Block<'_>, tail_stmt_ex
     let semi_span = cx.sess().source_map().stmt_span(semi_span, block.span);
     let remove_span = semi_span.with_lo(tail_stmt_expr.span.source_callsite().hi());
 
+    semicolon_outside_block_if_singleline(cx, block, remove_span, insert_span, false, "outside");
+
     span_lint_and_then(
         cx,
         SEMICOLON_OUTSIDE_BLOCK,
@@ -182,23 +184,28 @@ fn semicolon_outside_block(cx: &LateContext<'_>, block: &Block<'_>, tail_stmt_ex
     );
 }
 
-fn semicolon_outside_block_if_singleline_check_inside(
+fn semicolon_outside_block_if_singleline(
     cx: &LateContext<'_>,
     block: &Block<'_>,
-    tail: &Expr<'_>,
-    semi_span: Span,
+    remove_span: Span,
+    insert_span: Span,
+    inequality: bool,
+    ty: &str,
 ) {
-    let insert_span = tail.span.source_callsite().shrink_to_hi();
-    let remove_span = semi_span.with_lo(block.span.hi());
+    let (remove_line, insert_line) = (get_line(cx, remove_span), get_line(cx, insert_span));
 
-    let (remove_line, insert_line) = get_line(cx, remove_span, insert_span);
+    let eq = if inequality {
+        remove_line != insert_line
+    } else {
+        remove_line == insert_line
+    };
 
-    if insert_line != remove_line {
+    if eq {
         span_lint_and_then(
             cx,
             SEMICOLON_OUTSIDE_BLOCK_IF_SINGLELINE,
             block.span,
-            "consider moving the `;` inside the block for consistent formatting",
+            &format!("consider moving the `;` {ty} the block for consistent formatting"),
             |diag| {
                 multispan_sugg_with_applicability(
                     diag,
@@ -211,50 +218,10 @@ fn semicolon_outside_block_if_singleline_check_inside(
     }
 }
 
-fn semicolon_outside_block_if_singleline_check_outside(
-    cx: &LateContext<'_>,
-    block: &Block<'_>,
-    tail_stmt_expr: &Expr<'_>,
-    semi_span: Span,
-) {
-    let insert_span = block.span.with_lo(block.span.hi());
-    // account for macro calls
-    let semi_span = cx.sess().source_map().stmt_span(semi_span, block.span);
-    let remove_span = semi_span.with_lo(tail_stmt_expr.span.source_callsite().hi());
-
-    let (remove_line, insert_line) = get_line(cx, remove_span, insert_span);
-
-    if remove_line == insert_line {
-        span_lint_and_then(
-            cx,
-            SEMICOLON_OUTSIDE_BLOCK_IF_SINGLELINE,
-            block.span,
-            "consider moving the `;` outside the block for consistent formatting",
-            |diag| {
-                multispan_sugg_with_applicability(
-                    diag,
-                    "put the `;` here",
-                    Applicability::MachineApplicable,
-                    [(remove_span, String::new()), (insert_span, ";".to_owned())],
-                );
-            },
-        );
-    }
-}
-
-fn get_line(cx: &LateContext<'_>, remove_span: Span, insert_span: Span) -> (usize, usize) {
-    let remove_line = cx
-        .sess()
+fn get_line(cx: &LateContext<'_>, span: Span) -> usize {
+    cx.sess()
         .source_map()
-        .lookup_line(remove_span.lo())
-        .expect("failed to get `remove_span`'s line")
-        .line;
-    let insert_line = cx
-        .sess()
-        .source_map()
-        .lookup_line(insert_span.lo())
-        .expect("failed to get `insert_span`'s line")
-        .line;
-
-    (remove_line, insert_line)
+        .lookup_line(span.lo())
+        .expect("failed to get span's line")
+        .line
 }
