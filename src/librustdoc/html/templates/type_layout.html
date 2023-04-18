@@ -2,8 +2,8 @@
     Layout<a href="#layout" class="anchor">§</a> {# #}
 </h2> {# #}
 <div class="docblock"> {# #}
-    {% match self.type_layout() %}
-        {% when Ok(ty_layout) %}
+    {% match type_layout_size %}
+        {% when Ok(type_layout_size) %}
             <div class="warning"> {# #}
                 <p> {# #}
                     <strong>Note:</strong> Most layout information is <strong>completely {#+ #}
@@ -14,14 +14,14 @@
                     chapter for details on type layout guarantees. {# #}
                 </p> {# #}
             </div> {# #}
-            <p><strong>Size:</strong> {{ self.write_size(ty_layout.layout.0.borrow(), 0) | safe }}</p> {# #}
-            {% if let Some(variants) = self.variants() %}
+            <p><strong>Size:</strong> {{ type_layout_size|safe }}</p> {# #}
+            {% if !variants.is_empty() %}
                 <p><strong>Size for each variant:</strong></p> {# #}
                 <ul> {# #}
-                    {% for (index, layout) in variants.iter_enumerated() %}
+                    {% for (name, layout_size) in variants %}
                         <li> {# #}
-                            <code>{{ self.variant_name(index.clone()) }}</code>: {#+ #}
-                            {{ self.write_size(layout, self.tag_size()) | safe }}
+                            <code>{{ name }}</code>: {#+ #}
+                            {{ layout_size|safe }}
                         </li> {# #}
                     {% endfor %}
                 </ul> {# #}

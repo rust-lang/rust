@@ -5,15 +5,13 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
-use rustc_index::vec::IndexVec;
 use rustc_middle::middle::stability;
 use rustc_middle::span_bug;
-use rustc_middle::ty::layout::{LayoutError, TyAndLayout};
+use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::{self, Adt, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_target::abi::{LayoutS, Primitive, TagEncoding, VariantIdx, Variants};
-use std::borrow::Borrow;
+use rustc_target::abi::{Primitive, TagEncoding, Variants};
 use std::cmp::Ordering;
 use std::fmt;
 use std::rc::Rc;
@@ -1940,9 +1938,9 @@ fn document_type_layout<'a, 'cx: 'a>(
 ) -> impl fmt::Display + 'a + Captures<'cx> {
     #[derive(Template)]
     #[template(path = "type_layout.html")]
-    struct TypeLayout<'a, 'cx> {
-        cx: &'a Context<'cx>,
-        ty_def_id: DefId,
+    struct TypeLayout<'cx> {
+        variants: Vec<(Symbol, TypeLayoutSize)>,
+        type_layout_size: Result<TypeLayoutSize, LayoutError<'cx>>,
     }
 
     #[derive(Template)]
@@ -1953,62 +1951,61 @@ fn document_type_layout<'a, 'cx: 'a>(
         size: u64,
     }
 
-    impl<'a, 'cx: 'a> TypeLayout<'a, 'cx> {
-        fn variants<'b: 'a>(&'b self) -> Option<&'b IndexVec<VariantIdx, LayoutS>> {
-            if let Variants::Multiple { variants, .. } =
-                    self.type_layout().unwrap().layout.variants() && !variants.is_empty() {
-                Some(&variants)
-            } else {
-                None
-            }
-        }
-        fn type_layout<'b: 'a>(&'b self) -> Result<TyAndLayout<'cx>, LayoutError<'cx>> {
-            let tcx = self.cx.tcx();
-            let param_env = tcx.param_env(self.ty_def_id);
-            let ty = tcx.type_of(self.ty_def_id).subst_identity();
-            tcx.layout_of(param_env.and(ty))
-        }
-        fn variant_name<'b: 'a>(&'b self, index: VariantIdx) -> Symbol {
-            let Adt(adt, _) = self.type_layout().unwrap().ty.kind() else {
-                span_bug!(self.cx.tcx().def_span(self.ty_def_id), "not an adt")
-            };
-            adt.variant(index).name
-        }
-        fn tag_size<'b: 'a>(&'b self) -> u64 {
-            if let Variants::Multiple { variants, tag, tag_encoding, .. } =
-                    self.type_layout().unwrap().layout.variants() && !variants.is_empty() {
-                if let TagEncoding::Niche { .. } = tag_encoding {
-                    0
-                } else if let Primitive::Int(i, _) = tag.primitive() {
-                    i.size().bytes()
-                } else {
-                    span_bug!(self.cx.tcx().def_span(self.ty_def_id), "tag is neither niche nor int")
-                }
-            } else {
-                0
-            }
-        }
-        fn write_size<'b: 'a>(
-            &'b self,
-            layout: &'b LayoutS,
-            tag_size: u64,
-        ) -> impl fmt::Display + Captures<'cx> + Captures<'b> {
-            display_fn(move |f| {
-                let is_unsized = layout.abi.is_unsized();
-                let is_uninhabited = layout.abi.is_uninhabited();
-                let size = layout.size.bytes() - tag_size;
-                TypeLayoutSize { is_unsized, is_uninhabited, size }.render_into(f).unwrap();
-                Ok(())
-            })
-        }
-    }
-
     display_fn(move |f| {
         if !cx.shared.show_type_layout {
             return Ok(());
         }
 
-        Ok(TypeLayout { cx, ty_def_id }.render_into(f).unwrap())
+        let variants = {
+            let tcx = cx.tcx();
+            let param_env = tcx.param_env(ty_def_id);
+            let ty = tcx.type_of(ty_def_id).subst_identity();
+            let type_layout = tcx.layout_of(param_env.and(ty));
+            if let Ok(type_layout) = type_layout &&
+                let Variants::Multiple { variants, tag, tag_encoding, .. } =
+                    type_layout.layout.variants() &&
+                !variants.is_empty()
+            {
+                let tag_size =
+                    if let TagEncoding::Niche { .. } = tag_encoding {
+                        0
+                    } else if let Primitive::Int(i, _) = tag.primitive() {
+                        i.size().bytes()
+                    } else {
+                        span_bug!(cx.tcx().def_span(ty_def_id), "tag is neither niche nor int")
+                    };
+                let variants = variants
+                    .iter_enumerated()
+                    .map(|(variant_idx, variant_layout)| {
+                        let Adt(adt, _) = type_layout.ty.kind() else {
+                            span_bug!(cx.tcx().def_span(ty_def_id), "not an adt")
+                        };
+                        let name = adt.variant(variant_idx).name;
+                        let is_unsized = variant_layout.abi.is_unsized();
+                        let is_uninhabited = variant_layout.abi.is_uninhabited();
+                        let size = variant_layout.size.bytes() - tag_size;
+                        let type_layout_size = TypeLayoutSize { is_unsized, is_uninhabited, size };
+                        (name, type_layout_size)
+                    }).collect();
+                variants
+            } else {
+                Vec::new()
+            }
+        };
+
+        let type_layout_size = {
+            let tcx = cx.tcx();
+            let param_env = tcx.param_env(ty_def_id);
+            let ty = tcx.type_of(ty_def_id).subst_identity();
+            tcx.layout_of(param_env.and(ty)).map(|layout| {
+                let is_unsized = layout.abi.is_unsized();
+                let is_uninhabited = layout.abi.is_uninhabited();
+                let size = layout.size.bytes();
+                TypeLayoutSize { is_unsized, is_uninhabited, size }
+            })
+        };
+
+        Ok(TypeLayout { variants, type_layout_size }.render_into(f).unwrap())
     })
 }
 
