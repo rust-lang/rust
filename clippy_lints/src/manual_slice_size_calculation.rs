@@ -1,4 +1,3 @@
-// run-rustfix
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::{expr_or_init, in_constant, std_or_core};
@@ -45,6 +44,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualSliceSizeCalculation {
         if !in_constant(cx, expr.hir_id)
             && let ExprKind::Binary(ref op, left, right) = expr.kind
             && BinOpKind::Mul == op.node
+            && !expr.span.from_expansion()
             && let Some(receiver) = simplify(cx, left, right)
         {
             let ctxt = expr.span.ctxt();
@@ -55,12 +55,12 @@ impl<'tcx> LateLintPass<'tcx> for ManualSliceSizeCalculation {
             span_lint_and_sugg(
                 cx,
                 MANUAL_SLICE_SIZE_CALCULATION,
-                    expr.span,
-                    "manual slice size calculation",
-                    "try",
-                    format!("{sugg}::mem::size_of_val({val_name})"),
-                    Applicability::MachineApplicable,
-                );
+                expr.span,
+                "manual slice size calculation",
+                "try",
+                format!("{sugg}::mem::size_of_val({val_name})"),
+                app,
+            );
         }
     }
 }
@@ -81,9 +81,9 @@ fn simplify_half<'tcx>(
     expr1: &'tcx Expr<'tcx>,
     expr2: &'tcx Expr<'tcx>,
 ) -> Option<&'tcx Expr<'tcx>> {
-    if
+    if !expr1.span.from_expansion()
         // expr1 is `[T1].len()`?
-        let ExprKind::MethodCall(method_path, receiver, _, _) = expr1.kind
+        && let ExprKind::MethodCall(method_path, receiver, _, _) = expr1.kind
         && method_path.ident.name == sym::len
         && let receiver_ty = cx.typeck_results().expr_ty(receiver)
         && let ty::Slice(ty1) = receiver_ty.peel_refs().kind()
