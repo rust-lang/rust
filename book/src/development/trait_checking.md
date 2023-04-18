@@ -11,10 +11,6 @@ that we want to examine has a [diagnostic item][diagnostic_items],
 As explained in the [Rust Compiler Development Guide][rustc_dev_guide], diagnostic items
 are introduced for identifying types via [Symbols][symbol].
 
-While the Rust Compiler Development Guide has [a section][using_diagnostic_items] on
-how to check for a specific trait on a type `Ty`, Clippy provides
-a helper function `is_trait_method`, which simplifies the process for us.
-
 For instance, if we want to examine whether an expression implements
 the `Iterator` trait, we could simply write the following code,
 providing the `LateContext` (`cx`), our expression at hand, and
@@ -28,9 +24,13 @@ use rustc_span::symbol::sym;
 
 impl LateLintPass<'_> for CheckIteratorTraitLint {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        if is_trait_method(cx, expr, sym::Iterator) {
-            println!("This expression implements `Iterator` trait!");
-        }
+		let implements_iterator = cx.tcx.get_diagnostic_item(sym::Iterator).map_or(false, |id| {
+    		implements_trait(cx, cx.typeck_results().expr_ty(arg), id, &[])
+		});
+		if implements_iterator {
+			// [...]
+		}
+
     }
 }
 ```
@@ -40,9 +40,8 @@ impl LateLintPass<'_> for CheckIteratorTraitLint {
 ## Using Lang Items
 
 Besides diagnostic items, we can also use [`lang_items`][lang_items].
-Take a look at the documentation and we find that `LanguageItems` contains
-all language items both from the current crate or its
-dependencies.
+Take a look at the documentation to find that `LanguageItems` contains
+all language items defined in the compiler.
 
 Using one of its `*_trait` method, we could obtain the [DefId] of any
 specific item, such as `Clone`, `Copy`, `Drop`, `Eq`, which are familiar
@@ -73,11 +72,11 @@ impl LateLintPass<'_> for CheckDropTraitLint {
 
 ## Using Type Path
 
-If neither diagnostic item or lang item is available, we can use
+If neither diagnostic item nor a language item is available, we can use
 [`clippy_utils::paths`][paths] with the `match_trait_method` to determine trait
 implementation.
 
-> **Note**: This approach should be avoided if possible.
+> **Note**: This approach should be avoided if possible, the best thing to do would be to make a PR to [`rust-lang/rust`][rust].
 
 Below, we check if the given `expr` implements `tokio`'s
 [`AsyncReadExt`][AsyncReadExt] trait:
@@ -89,16 +88,12 @@ use rustc_lint::{LateContext, LateLintPass};
 
 impl LateLintPass<'_> for CheckTokioAsyncReadExtTrait {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        if match_trait_method(cx, expr, &paths::TOKIO_IO_ASYNCREADEXT) {
-            println!("`expr` implements `TOKIO_IO_ASYNCREADEXT` trait!");
+        if match_trait_method(cx, expr, &paths::CORE_ITER_CLONED) {
+            println!("`expr` implements `CORE_ITER_CLONED` trait!");
         }
     }
 }
 ```
-
-> **Note**: Even though all the `clippy_utils` methods we have seen in this
-> chapter takes `expr` as a parameter, these methods are actually using
-> each expression's `HirId` under the hood.
 
 [AsyncReadExt]: https://docs.rs/tokio/latest/tokio/io/trait.AsyncReadExt.html
 [DefId]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.DefId.html
@@ -110,3 +105,4 @@ impl LateLintPass<'_> for CheckTokioAsyncReadExtTrait {
 [symbol_index]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_span/symbol/sym/index.html
 [TyCtxt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html
 [using_diagnostic_items]: https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-items.html#using-diagnostic-items
+[rust]: https://github.com/rust-lang/rust
