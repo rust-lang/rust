@@ -2,10 +2,8 @@ error[E0308]: mismatched types
   --> $DIR/issue-11374.rs:26:15
    |
 LL |     c.read_to(v);
-   |       ------- ^
-   |       |       |
-   |       |       expected `&mut [u8]`, found `Vec<_>`
-   |       |       help: consider mutably borrowing here: `&mut v`
+   |       ------- ^ expected `&mut [u8]`, found `Vec<_>`
+   |       |
    |       arguments to this method are incorrect
    |
    = note: expected mutable reference `&mut [u8]`
@@ -15,6 +13,10 @@ note: method defined here
    |
 LL |     pub fn read_to(&mut self, vec: &mut [u8]) {
    |            ^^^^^^^            --------------
+help: consider mutably borrowing here
+   |
+LL |     c.read_to(&mut v);
+   |               ++++
 
 error: aborting due to previous error
 

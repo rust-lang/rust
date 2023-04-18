@@ -24,6 +24,8 @@ error[E0599]: no method named `extend` found for struct `Map` in the current sco
    |
 LL |     v.iter().map(|x| x * x).extend(std::iter::once(100));
    |                             ^^^^^^ method not found in `Map<Iter<'_, i32>, [closure@method-not-found-generic-arg-elision.rs:87:18]>`
+   |
+   = note: the full type name has been written to '$TEST_BUILD_DIR/methods/method-not-found-generic-arg-elision/method-not-found-generic-arg-elision.long-type-5032081584140815090.txt'
 
 error[E0599]: no method named `method` found for struct `Wrapper<bool>` in the current scope
   --> $DIR/method-not-found-generic-arg-elision.rs:90:13

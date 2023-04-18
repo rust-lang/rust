@@ -98,19 +98,23 @@ error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:40:17
    |
 LL |     let s = S { u };
-   |                 ^
-   |                 |
-   |                 expected `&u32`, found integer
-   |                 help: consider borrowing here: `u: &u`
+   |                 ^ expected `&u32`, found integer
+   |
+help: consider borrowing here
+   |
+LL |     let s = S { u: &u };
+   |                 ++++
 
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:42:20
    |
 LL |     let s = S { u: u };
-   |                    ^
-   |                    |
-   |                    expected `&u32`, found integer
-   |                    help: consider borrowing here: `&u`
+   |                    ^ expected `&u32`, found integer
+   |
+help: consider borrowing here
+   |
+LL |     let s = S { u: &u };
+   |                    +
 
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:45:17
