@@ -212,6 +212,20 @@ impl GlobalState {
                     })
                     .collect::<Vec<_>>();
 
+                let mut i = 0;
+                while i < workspaces.len() {
+                    if let Ok(w) = &workspaces[i] {
+                        if let Some(dupe) = workspaces[i + 1..]
+                            .iter()
+                            .filter_map(|it| it.as_ref().ok())
+                            .position(|ws| ws.eq_ignore_build_data(w))
+                        {
+                            _ = workspaces.remove(dupe);
+                        }
+                    }
+                    i += 1;
+                }
+
                 if !detached_files.is_empty() {
                     workspaces.push(project_model::ProjectWorkspace::load_detached_files(
                         detached_files,

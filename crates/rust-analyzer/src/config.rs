@@ -27,7 +27,7 @@ use project_model::{
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{de::DeserializeOwned, Deserialize};
-use vfs::AbsPathBuf;
+use vfs::{AbsPath, AbsPathBuf};
 
 use crate::{
     caps::completion_item_edit_resolve,
@@ -535,8 +535,9 @@ impl Default for ConfigData {
 
 #[derive(Debug, Clone)]
 pub struct Config {
-    pub discovered_projects: Option<Vec<ProjectManifest>>,
-    pub workspace_roots: Vec<AbsPathBuf>,
+    discovered_projects: Vec<ProjectManifest>,
+    /// The workspace roots as registered by the LSP client
+    workspace_roots: Vec<AbsPathBuf>,
     caps: lsp_types::ClientCapabilities,
     root_path: AbsPathBuf,
     data: ConfigData,
@@ -742,7 +743,7 @@ impl Config {
             caps,
             data: ConfigData::default(),
             detached_files: Vec::new(),
-            discovered_projects: None,
+            discovered_projects: Vec::new(),
             root_path,
             snippets: Default::default(),
             workspace_roots,
@@ -755,7 +756,17 @@ impl Config {
         if discovered.is_empty() {
             tracing::error!("failed to find any projects in {:?}", &self.workspace_roots);
         }
-        self.discovered_projects = Some(discovered);
+        self.discovered_projects = discovered;
+    }
+
+    pub fn remove_workspace(&mut self, path: &AbsPath) {
+        if let Some(position) = self.workspace_roots.iter().position(|it| it == path) {
+            self.workspace_roots.remove(position);
+        }
+    }
+
+    pub fn add_workspaces(&mut self, paths: impl Iterator<Item = AbsPathBuf>) {
+        self.workspace_roots.extend(paths);
     }
 
     pub fn update(&mut self, mut json: serde_json::Value) -> Result<(), ConfigUpdateError> {
@@ -860,25 +871,19 @@ impl Config {
     pub fn linked_projects(&self) -> Vec<LinkedProject> {
         match self.data.linkedProjects.as_slice() {
             [] => {
-                match self.discovered_projects.as_ref() {
-                    Some(discovered_projects) => {
-                        let exclude_dirs: Vec<_> = self
-                            .data
-                            .files_excludeDirs
-                            .iter()
-                            .map(|p| self.root_path.join(p))
-                            .collect();
-                        discovered_projects
-                        .iter()
-                        .filter(|(ProjectManifest::ProjectJson(path) | ProjectManifest::CargoToml(path))| {
+                let exclude_dirs: Vec<_> =
+                    self.data.files_excludeDirs.iter().map(|p| self.root_path.join(p)).collect();
+                self.discovered_projects
+                    .iter()
+                    .filter(
+                        |(ProjectManifest::ProjectJson(path)
+                         | ProjectManifest::CargoToml(path))| {
                             !exclude_dirs.iter().any(|p| path.starts_with(p))
-                        })
-                        .cloned()
-                        .map(LinkedProject::from)
-                        .collect()
-                    }
-                    None => Vec::new(),
-                }
+                        },
+                    )
+                    .cloned()
+                    .map(LinkedProject::from)
+                    .collect()
             }
             linked_projects => linked_projects
                 .iter()
