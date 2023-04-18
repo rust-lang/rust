@@ -1045,7 +1045,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         }
 
-        self.check_for_inner_self(&mut err, source, rcvr_ty, item_name);
+        self.suggest_unwrapping_inner_self(&mut err, source, rcvr_ty, item_name);
 
         bound_spans.sort();
         bound_spans.dedup();
@@ -1132,7 +1132,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        self.check_for_deref_method(&mut err, source, rcvr_ty, item_name, expected);
+        self.note_derefed_ty_has_method(&mut err, source, rcvr_ty, item_name, expected);
         return Some(err);
     }
 
@@ -1805,7 +1805,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn check_for_inner_self(
+    fn suggest_unwrapping_inner_self(
         &self,
         err: &mut Diagnostic,
         source: SelfSource<'tcx>,
@@ -2175,7 +2175,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn check_for_deref_method(
+    fn note_derefed_ty_has_method(
         &self,
         err: &mut Diagnostic,
         self_source: SelfSource<'tcx>,
