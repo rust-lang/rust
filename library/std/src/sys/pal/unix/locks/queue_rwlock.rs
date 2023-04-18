@@ -114,7 +114,7 @@ use crate::sync::atomic::{
 use crate::sys_common::thread_info;
 use crate::thread::Thread;
 
-const SPIN_COUNT: usize = 100;
+const SPIN_COUNT: usize = 6;
 
 type State = *mut ();
 type AtomicState = AtomicPtr<()>;
@@ -328,7 +328,9 @@ impl RwLock {
             } else if state.addr() & QUEUED == 0 && count < SPIN_COUNT {
                 // If the lock is not available but no threads are queued, spin
                 // for a while.
-                spin_loop();
+                for _ in 0..(1 << count) {
+                    spin_loop();
+                }
                 state = self.state.load(Relaxed);
                 count += 1;
             } else {
