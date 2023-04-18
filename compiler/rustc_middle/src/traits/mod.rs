@@ -569,7 +569,7 @@ pub struct DerivedObligationCause<'tcx> {
     pub parent_code: InternedObligationCauseCode<'tcx>,
 }
 
-#[derive(Clone, Debug, TypeFoldable, TypeVisitable, Lift)]
+#[derive(PartialEq, Eq, Clone, Debug, TypeFoldable, TypeVisitable, Lift)]
 pub enum SelectionError<'tcx> {
     /// The trait is not implemented.
     Unimplemented,

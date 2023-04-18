@@ -5,6 +5,7 @@ use crate::dep_graph::{DepContext, DepNodeIndex};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
 
+use std::fmt::Debug;
 use std::hash::Hash;
 
 pub struct Cache<Key, Value> {
@@ -30,13 +31,22 @@ impl<Key, Value> Cache<Key, Value> {
     }
 }
 
-impl<Key: Eq + Hash, Value: Clone> Cache<Key, Value> {
+impl<Key: Eq + Hash, Value: Eq + Clone + Debug> Cache<Key, Value> {
     pub fn get<Tcx: DepContext>(&self, key: &Key, tcx: Tcx) -> Option<Value> {
         Some(self.hashmap.borrow().get(key)?.get(tcx))
     }
 
     pub fn insert(&self, key: Key, dep_node: DepNodeIndex, value: Value) {
-        self.hashmap.borrow_mut().insert(key, WithDepNode::new(dep_node, value));
+        // FIXME(#50507): For some reason we're getting different `DepNodeIndex`es
+        // for the same evaluation in the parallel compiler. Once that's fixed
+        // we can just use `HashMap::insert_same` here instead of doing all this.
+        self.hashmap
+            .borrow_mut()
+            .entry(key)
+            .and_modify(|old_value| {
+                assert_eq!(old_value.cached_value, value, "unstable cached value")
+            })
+            .or_insert(WithDepNode::new(dep_node, value));
     }
 }
 

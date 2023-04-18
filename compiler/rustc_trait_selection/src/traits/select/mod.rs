@@ -1333,10 +1333,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if self.can_use_global_caches(param_env) {
             if !trait_pred.needs_infer() {
                 debug!(?trait_pred, ?result, "insert_evaluation_cache global");
-                // This may overwrite the cache with the same value
-                // FIXME: Due to #50507 this overwrites the different values
-                // This should be changed to use HashMapExt::insert_same
-                // when that is fixed
                 self.tcx().evaluation_cache.insert((param_env, trait_pred), dep_node, result);
                 return;
             }
