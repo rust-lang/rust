@@ -74,7 +74,6 @@ use rustc_middle::ty::{
     self, error::TypeError, List, Region, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt,
 };
-use rustc_span::DUMMY_SP;
 use rustc_span::{sym, symbol::kw, BytePos, DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
 use std::ops::{ControlFlow, Deref};
@@ -138,7 +137,7 @@ impl Drop for TypeErrCtxt<'_, '_> {
             self.infcx
                 .tcx
                 .sess
-                .delay_span_bug(DUMMY_SP, "used a `TypeErrCtxt` without failing compilation");
+                .delay_good_path_bug("used a `TypeErrCtxt` without raising an error or lint");
         }
     }
 }
