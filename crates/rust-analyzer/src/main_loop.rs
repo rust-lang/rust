@@ -908,8 +908,10 @@ impl GlobalState {
                     // Re-fetch workspaces if a workspace related file has changed
                     if let Some(abs_path) = vfs_path.as_path() {
                         if reload::should_refresh_for_change(abs_path, ChangeKind::Modify) {
-                            this.fetch_workspaces_queue
-                                .request_op(format!("DidSaveTextDocument {}", abs_path.display()), ());
+                            this.fetch_workspaces_queue.request_op(
+                                format!("DidSaveTextDocument {}", abs_path.display()),
+                                (),
+                            );
                         }
                     }
 
@@ -972,8 +974,7 @@ impl GlobalState {
                 for workspace in params.event.removed {
                     let Ok(path) = workspace.uri.to_file_path() else { continue };
                     let Ok(path) = AbsPathBuf::try_from(path) else { continue };
-                    let Some(position) = config.workspace_roots.iter().position(|it| it == &path) else { continue };
-                    config.workspace_roots.remove(position);
+                    config.remove_workspace(&path);
                 }
 
                 let added = params
@@ -982,11 +983,12 @@ impl GlobalState {
                     .into_iter()
                     .filter_map(|it| it.uri.to_file_path().ok())
                     .filter_map(|it| AbsPathBuf::try_from(it).ok());
-                config.workspace_roots.extend(added);
-                    if !config.has_linked_projects() && config.detached_files().is_empty() {
-                        config.rediscover_workspaces();
-                        this.fetch_workspaces_queue.request_op("client workspaces changed".to_string(), ())
-                    }
+                config.add_workspaces(added);
+                if !config.has_linked_projects() && config.detached_files().is_empty() {
+                    config.rediscover_workspaces();
+                    this.fetch_workspaces_queue
+                        .request_op("client workspaces changed".to_string(), ())
+                }
 
                 Ok(())
             })?

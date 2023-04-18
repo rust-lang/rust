@@ -101,10 +101,6 @@ impl<'a> Project<'a> {
         if roots.is_empty() {
             roots.push(tmp_dir_path.clone());
         }
-        let discovered_projects = roots
-            .into_iter()
-            .map(|it| ProjectManifest::discover_single(&it).unwrap())
-            .collect::<Vec<_>>();
 
         let mut config = Config::new(
             tmp_dir_path,
@@ -144,10 +140,10 @@ impl<'a> Project<'a> {
                 })),
                 ..Default::default()
             },
-            Vec::new(),
+            roots,
         );
-        config.discovered_projects = Some(discovered_projects);
         config.update(self.config).expect("invalid config");
+        config.rediscover_workspaces();
 
         Server::new(tmp_dir, config)
     }
