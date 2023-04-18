@@ -1007,7 +1007,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         param_ty: Ty<'tcx>,
         ast_bounds: &[hir::GenericBound<'_>],
     ) -> Bounds<'tcx> {
-        self.compute_bounds_inner(param_ty, ast_bounds)
+        let mut bounds = Bounds::default();
+        self.add_bounds(param_ty, ast_bounds.iter(), &mut bounds, ty::List::empty());
+        debug!(?bounds);
+
+        bounds
     }
 
     /// Convert the bounds in `ast_bounds` that refer to traits which define an associated type
@@ -1029,17 +1033,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
-        self.compute_bounds_inner(param_ty, &result)
-    }
-
-    fn compute_bounds_inner(
-        &self,
-        param_ty: Ty<'tcx>,
-        ast_bounds: &[hir::GenericBound<'_>],
-    ) -> Bounds<'tcx> {
         let mut bounds = Bounds::default();
-
-        self.add_bounds(param_ty, ast_bounds.iter(), &mut bounds, ty::List::empty());
+        self.add_bounds(param_ty, result.iter(), &mut bounds, ty::List::empty());
         debug!(?bounds);
 
         bounds

@@ -774,32 +774,34 @@ impl<'tcx> ItemCtxt<'tcx> {
         only_self_bounds: OnlySelfBounds,
         assoc_name: Option<Ident>,
     ) -> Vec<(ty::Predicate<'tcx>, Span)> {
-        ast_generics
-            .predicates
-            .iter()
-            .filter_map(|wp| match wp {
-                hir::WherePredicate::BoundPredicate(bp) => Some(bp),
-                _ => None,
-            })
-            .flat_map(|bp| {
-                let bt = if bp.is_param_bound(param_def_id.to_def_id()) {
-                    Some(ty)
-                } else if !only_self_bounds.0 {
-                    Some(self.to_ty(bp.bounded_ty))
-                } else {
-                    None
-                };
-                let bvars = self.tcx.late_bound_vars(bp.hir_id);
+        let mut bounds = Bounds::default();
 
-                bp.bounds.iter().filter_map(move |b| bt.map(|bt| (bt, b, bvars))).filter(
-                    |(_, b, _)| match assoc_name {
-                        Some(assoc_name) => self.bound_defines_assoc_item(b, assoc_name),
-                        None => true,
-                    },
-                )
-            })
-            .flat_map(|(bt, b, bvars)| predicates_from_bound(self, bt, b, bvars))
-            .collect()
+        for predicate in ast_generics.predicates {
+            let hir::WherePredicate::BoundPredicate(predicate) = predicate else {
+                continue;
+            };
+
+            let bound_ty = if predicate.is_param_bound(param_def_id.to_def_id()) {
+                ty
+            } else if !only_self_bounds.0 {
+                self.to_ty(predicate.bounded_ty)
+            } else {
+                continue;
+            };
+
+            let bound_vars = self.tcx.late_bound_vars(predicate.hir_id);
+            self.astconv().add_bounds(
+                bound_ty,
+                predicate.bounds.iter().filter(|bound| {
+                    assoc_name
+                        .map_or(true, |assoc_name| self.bound_defines_assoc_item(bound, assoc_name))
+                }),
+                &mut bounds,
+                bound_vars,
+            );
+        }
+
+        bounds.predicates().collect()
     }
 
     #[instrument(level = "trace", skip(self))]
@@ -816,20 +818,4 @@ impl<'tcx> ItemCtxt<'tcx> {
             _ => false,
         }
     }
-}
-
-/// Converts a specific `GenericBound` from the AST into a set of
-/// predicates that apply to the self type. A vector is returned
-/// because this can be anywhere from zero predicates (`T: ?Sized` adds no
-/// predicates) to one (`T: Foo`) to many (`T: Bar<X = i32>` adds `T: Bar`
-/// and `<T as Bar>::X == i32`).
-fn predicates_from_bound<'tcx>(
-    astconv: &dyn AstConv<'tcx>,
-    param_ty: Ty<'tcx>,
-    bound: &'tcx hir::GenericBound<'tcx>,
-    bound_vars: &'tcx ty::List<ty::BoundVariableKind>,
-) -> Vec<(ty::Predicate<'tcx>, Span)> {
-    let mut bounds = Bounds::default();
-    astconv.add_bounds(param_ty, [bound].into_iter(), &mut bounds, bound_vars);
-    bounds.predicates().collect()
 }
