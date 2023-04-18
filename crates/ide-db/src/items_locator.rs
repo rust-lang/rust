@@ -115,7 +115,8 @@ fn find_items<'a>(
         });
 
     // Query the local crate using the symbol index.
-    let local_results = symbol_index::crate_symbols(db, krate, local_query)
+    let local_results = local_query
+        .search(&symbol_index::crate_symbols(db, krate))
         .into_iter()
         .filter_map(move |local_candidate| get_name_definition(sema, &local_candidate))
         .filter_map(|name_definition_to_import| match name_definition_to_import {
