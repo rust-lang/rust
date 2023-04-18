@@ -11,6 +11,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::builtin::{UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
 use rustc_session::lint::Level;
+use rustc_span::Symbol;
 
 use std::ops::Bound;
 
@@ -287,7 +288,7 @@ impl<'tcx> UnsafetyChecker<'_, 'tcx> {
             .safety;
         match safety {
             // `unsafe` blocks are required in safe code
-            Safety::Safe => violations.into_iter().for_each(|&violation| {
+            Safety::Safe => violations.into_iter().for_each(|violation| {
                 match violation.kind {
                     UnsafetyViolationKind::General => {}
                     UnsafetyViolationKind::UnsafeFn => {
@@ -295,14 +296,15 @@ impl<'tcx> UnsafetyChecker<'_, 'tcx> {
                     }
                 }
                 if !self.violations.contains(&violation) {
-                    self.violations.push(violation)
+                    self.violations.push(violation.clone())
                 }
             }),
             // With the RFC 2585, no longer allow `unsafe` operations in `unsafe fn`s
-            Safety::FnUnsafe => violations.into_iter().for_each(|&(mut violation)| {
-                violation.kind = UnsafetyViolationKind::UnsafeFn;
-                if !self.violations.contains(&violation) {
-                    self.violations.push(violation)
+            Safety::FnUnsafe => violations.into_iter().for_each(|violation| {
+                let mut violation_copy = violation.clone();
+                violation_copy.kind = UnsafetyViolationKind::UnsafeFn;
+                if !self.violations.contains(&violation_copy) {
+                    self.violations.push(violation_copy)
                 }
             }),
             Safety::BuiltinUnsafe => {}
@@ -367,9 +369,22 @@ impl<'tcx> UnsafetyChecker<'_, 'tcx> {
 
         // Is `callee_features` a subset of `calling_features`?
         if !callee_features.iter().all(|feature| self_features.contains(feature)) {
+            let missing_features = callee_features
+                .iter()
+                .filter(|feature| !self_features.contains(feature))
+                .cloned()
+                .collect::<Vec<Symbol>>();
+            let target_features = self
+                .tcx
+                .sess
+                .target_features
+                .iter()
+                .filter(|feature| missing_features.contains(feature))
+                .cloned()
+                .collect::<Vec<Symbol>>();
             self.require_unsafe(
                 UnsafetyViolationKind::General,
-                UnsafetyViolationDetails::CallToFunctionWith,
+                UnsafetyViolationDetails::CallToFunctionWith { missing_features, target_features },
             )
         }
     }
@@ -526,13 +541,14 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
     let UnsafetyCheckResult { violations, unused_unsafes, .. } = tcx.unsafety_check_result(def_id);
 
-    for &UnsafetyViolation { source_info, lint_root, kind, details } in violations.iter() {
-        let details = errors::RequiresUnsafeDetail { violation: details, span: source_info.span };
+    for UnsafetyViolation { source_info, lint_root, kind, details } in violations.iter() {
+        let unsafe_details =
+            errors::RequiresUnsafeDetail { violation: details.clone(), span: source_info.span };
 
         match kind {
             UnsafetyViolationKind::General => {
-                let op_in_unsafe_fn_allowed = unsafe_op_in_unsafe_fn_allowed(tcx, lint_root);
-                let note_non_inherited = tcx.hir().parent_iter(lint_root).find(|(id, node)| {
+                let op_in_unsafe_fn_allowed = unsafe_op_in_unsafe_fn_allowed(tcx, *lint_root);
+                let note_non_inherited = tcx.hir().parent_iter(*lint_root).find(|(id, node)| {
                     if let Node::Expr(block) = node
                         && let ExprKind::Block(block, _) = block.kind
                         && let BlockCheckMode::UnsafeBlock(_) = block.rules
@@ -555,15 +571,21 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 tcx.sess.emit_err(errors::RequiresUnsafe {
                     span: source_info.span,
                     enclosing,
-                    details,
+                    details: unsafe_details,
                     op_in_unsafe_fn_allowed,
+                    help: details.help_missing_features(),
+                    note_missing_features: details.note_missing_features(),
                 });
             }
             UnsafetyViolationKind::UnsafeFn => tcx.emit_spanned_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
-                lint_root,
+                *lint_root,
                 source_info.span,
-                errors::UnsafeOpInUnsafeFn { details },
+                errors::UnsafeOpInUnsafeFn {
+                    details: unsafe_details,
+                    help: details.help_missing_features(),
+                    note_missing_features: details.note_missing_features(),
+                },
             ),
         }
     }

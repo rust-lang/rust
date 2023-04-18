@@ -4,12 +4,12 @@ use crate::mir::ConstantKind;
 use crate::ty::{self, OpaqueHiddenType, Ty, TyCtxt};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::ErrorGuaranteed;
+use rustc_errors::{pluralize, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::BitMatrix;
 use rustc_index::{Idx, IndexVec};
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use smallvec::SmallVec;
 use std::cell::Cell;
@@ -26,7 +26,7 @@ pub enum UnsafetyViolationKind {
     UnsafeFn,
 }
 
-#[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
+#[derive(Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
 pub enum UnsafetyViolationDetails {
     CallToUnsafeFunction,
     UseOfInlineAssembly,
@@ -38,10 +38,81 @@ pub enum UnsafetyViolationDetails {
     AccessToUnionField,
     MutationOfLayoutConstrainedField,
     BorrowOfLayoutConstrainedField,
-    CallToFunctionWith,
+    CallToFunctionWith { missing_features: Vec<Symbol>, target_features: Vec<Symbol> },
 }
 
 impl UnsafetyViolationDetails {
+    fn missing_features(&self) -> Vec<Symbol> {
+        match self {
+            UnsafetyViolationDetails::CallToFunctionWith {
+                missing_features,
+                target_features: _,
+            } => missing_features.to_vec(),
+            _ => Vec::<Symbol>::new(),
+        }
+    }
+
+    fn target_features(&self) -> Vec<Symbol> {
+        match self {
+            UnsafetyViolationDetails::CallToFunctionWith {
+                missing_features: _,
+                target_features,
+            } => target_features.to_vec(),
+            _ => Vec::<Symbol>::new(),
+        }
+    }
+
+    pub fn note_missing_features(&self) -> Option<String> {
+        let target_features_symbol = self.target_features();
+        let target_features =
+            target_features_symbol.iter().map(|f| f.as_str()).collect::<Vec<&str>>();
+
+        if !target_features.is_empty() {
+            let target_features_str = if target_features.len() > 1 {
+                let l_target_features = target_features[..target_features.len() - 1].join(", ");
+                let last_target_feature = target_features.last().unwrap();
+                format!("{} and {}", l_target_features, last_target_feature)
+            } else {
+                target_features.last().unwrap().to_string()
+            };
+
+            Some(format!(
+                "the {} target feature{} being enabled in the build configuration does not remove the requirement to list {} in `#[target_feature]`",
+                target_features_str,
+                pluralize!(target_features.len()),
+                if target_features.len() == 1 { "it" } else { "them" },
+            ))
+        } else {
+            None
+        }
+    }
+
+    pub fn help_missing_features(&self) -> Option<String> {
+        let missing_features = self.missing_features();
+
+        if !missing_features.is_empty() {
+            let missing_features_str = if missing_features.len() > 1 {
+                let l_missing_features = missing_features[..missing_features.len() - 1]
+                    .iter()
+                    .map(|feature| feature.as_str())
+                    .collect::<Vec<&str>>()
+                    .join(", ");
+                let last_missing_feature = missing_features.last().unwrap().as_str();
+                format!("{} and {}", l_missing_features, last_missing_feature)
+            } else {
+                missing_features.last().unwrap().to_string()
+            };
+
+            Some(format!(
+                "in order for the call to be safe, the context requires the following additional target feature{}: {}.",
+                pluralize!(missing_features.len()),
+                missing_features_str,
+            ))
+        } else {
+            None
+        }
+    }
+
     pub fn description_and_note(&self) -> (&'static str, &'static str) {
         use UnsafetyViolationDetails::*;
         match self {
@@ -91,7 +162,7 @@ impl UnsafetyViolationDetails {
                 "references to fields of layout constrained fields lose the constraints. Coupled \
                  with interior mutability, the field can be changed to invalid values",
             ),
-            CallToFunctionWith => (
+            CallToFunctionWith { missing_features: _, target_features: _ } => (
                 "call to function with `#[target_feature]`",
                 "can only be called if the required target features are available",
             ),
@@ -99,7 +170,7 @@ impl UnsafetyViolationDetails {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
+#[derive(Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
 pub struct UnsafetyViolation {
     pub source_info: SourceInfo,
     pub lint_root: hir::HirId,

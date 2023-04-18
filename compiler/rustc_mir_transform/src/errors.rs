@@ -49,6 +49,8 @@ pub(crate) struct RequiresUnsafe {
     pub details: RequiresUnsafeDetail,
     pub enclosing: Option<Span>,
     pub op_in_unsafe_fn_allowed: bool,
+    pub help: Option<String>,
+    pub note_missing_features: Option<String>,
 }
 
 // The primary message for this diagnostic should be '{$label} is unsafe and...',
@@ -62,9 +64,27 @@ impl<'sess, G: EmissionGuarantee> IntoDiagnostic<'sess, G> for RequiresUnsafe {
             handler.struct_diagnostic(crate::fluent_generated::mir_transform_requires_unsafe);
         diag.code(rustc_errors::DiagnosticId::Error("E0133".to_string()));
         diag.set_span(self.span);
-        diag.span_label(self.span, self.details.label());
-        diag.note(self.details.note());
-        let desc = handler.eagerly_translate_to_string(self.details.label(), [].into_iter());
+        diag.span_label(self.span, self.details.clone().label());
+        if let Some(help) = self.help {
+            diag.help(help);
+        }
+
+        match self.details.violation {
+            UnsafetyViolationDetails::CallToFunctionWith {
+                missing_features: _,
+                target_features: _,
+            } => {
+                if let Some(note_missing_features) = self.note_missing_features {
+                    diag.note(note_missing_features);
+                }
+            }
+            _ => {
+                diag.note(self.details.clone().note());
+            }
+        }
+
+        let desc =
+            handler.eagerly_translate_to_string(self.details.clone().label(), [].into_iter());
         diag.set_arg("details", desc);
         diag.set_arg("op_in_unsafe_fn_allowed", self.op_in_unsafe_fn_allowed);
         if let Some(sp) = self.enclosing {
@@ -74,7 +94,7 @@ impl<'sess, G: EmissionGuarantee> IntoDiagnostic<'sess, G> for RequiresUnsafe {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub(crate) struct RequiresUnsafeDetail {
     pub span: Span,
     pub violation: UnsafetyViolationDetails,
@@ -100,7 +120,9 @@ impl RequiresUnsafeDetail {
             BorrowOfLayoutConstrainedField => {
                 crate::fluent_generated::mir_transform_mutation_layout_constrained_borrow_note
             }
-            CallToFunctionWith => crate::fluent_generated::mir_transform_target_feature_call_note,
+            CallToFunctionWith { missing_features: _, target_features: _ } => {
+                crate::fluent_generated::mir_transform_target_feature_call_note
+            }
         }
     }
 
@@ -123,13 +145,17 @@ impl RequiresUnsafeDetail {
             BorrowOfLayoutConstrainedField => {
                 crate::fluent_generated::mir_transform_mutation_layout_constrained_borrow_label
             }
-            CallToFunctionWith => crate::fluent_generated::mir_transform_target_feature_call_label,
+            CallToFunctionWith { missing_features: _, target_features: _ } => {
+                crate::fluent_generated::mir_transform_target_feature_call_label
+            }
         }
     }
 }
 
 pub(crate) struct UnsafeOpInUnsafeFn {
     pub details: RequiresUnsafeDetail,
+    pub help: Option<String>,
+    pub note_missing_features: Option<String>,
 }
 
 impl<'a> DecorateLint<'a, ()> for UnsafeOpInUnsafeFn {
@@ -141,10 +167,25 @@ impl<'a> DecorateLint<'a, ()> for UnsafeOpInUnsafeFn {
         let desc = diag
             .handler()
             .expect("lint should not yet be emitted")
-            .eagerly_translate_to_string(self.details.label(), [].into_iter());
+            .eagerly_translate_to_string(self.details.clone().label(), [].into_iter());
         diag.set_arg("details", desc);
-        diag.span_label(self.details.span, self.details.label());
-        diag.note(self.details.note());
+        diag.span_label(self.details.clone().span, self.details.clone().label());
+        if let Some(help) = self.help {
+            diag.help(help);
+        }
+        match self.details.violation {
+            UnsafetyViolationDetails::CallToFunctionWith {
+                missing_features: _,
+                target_features: _,
+            } => {
+                if let Some(note_missing_features) = self.note_missing_features {
+                    diag.note(note_missing_features);
+                }
+            }
+            _ => {
+                diag.note(self.details.note());
+            }
+        }
         diag
     }
 
