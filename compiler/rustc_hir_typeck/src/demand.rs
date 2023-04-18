@@ -86,9 +86,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.emit_type_mismatch_suggestions(err, expr, expr_ty, expected, expected_ty_expr, error);
         self.note_type_is_not_clone(err, expected, expr_ty, expr);
         self.note_internal_mutation_in_method(err, expr, Some(expected), expr_ty);
-        self.check_for_range_as_method_call(err, expr, expr_ty, expected);
-        self.check_for_binding_assigned_block_without_tail_expression(err, expr, expr_ty, expected);
-        self.check_wrong_return_type_due_to_generic_arg(err, expr, expr_ty);
+        self.suggest_method_call_on_range_literal(err, expr, expr_ty, expected);
+        self.suggest_return_binding_for_missing_tail_expr(err, expr, expr_ty, expected);
+        self.note_wrong_return_ty_due_to_generic_arg(err, expr, expr_ty);
     }
 
     /// Requires that the two types unify, and prints an error message if
@@ -1217,7 +1217,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// In addition of this check, it also checks between references mutability state. If the
     /// expected is mutable but the provided isn't, maybe we could just say "Hey, try with
     /// `&mut`!".
-    pub fn check_ref(
+    pub fn suggest_deref_or_ref(
         &self,
         expr: &hir::Expr<'tcx>,
         checked_ty: Ty<'tcx>,
@@ -1566,7 +1566,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         None
     }
 
-    pub fn check_for_cast(
+    pub fn suggest_cast(
         &self,
         err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
@@ -1936,7 +1936,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Identify when the user has written `foo..bar()` instead of `foo.bar()`.
-    pub fn check_for_range_as_method_call(
+    pub fn suggest_method_call_on_range_literal(
         &self,
         err: &mut Diagnostic,
         expr: &hir::Expr<'tcx>,
@@ -2005,7 +2005,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Identify when the type error is because `()` is found in a binding that was assigned a
     /// block without a tail expression.
-    fn check_for_binding_assigned_block_without_tail_expression(
+    fn suggest_return_binding_for_missing_tail_expr(
         &self,
         err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
@@ -2047,7 +2047,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn check_wrong_return_type_due_to_generic_arg(
+    fn note_wrong_return_ty_due_to_generic_arg(
         &self,
         err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
