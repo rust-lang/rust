@@ -2030,7 +2030,7 @@ impl<'a> Builder<'a> {
         }
 
         #[cfg(feature = "build-metrics")]
-        self.metrics.enter_step(&step);
+        self.metrics.enter_step(&step, self);
 
         let (out, dur) = {
             let start = Instant::now();
@@ -2056,7 +2056,7 @@ impl<'a> Builder<'a> {
         }
 
         #[cfg(feature = "build-metrics")]
-        self.metrics.exit_step();
+        self.metrics.exit_step(self);
 
         {
             let mut stack = self.stack.borrow_mut();

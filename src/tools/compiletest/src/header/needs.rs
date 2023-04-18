@@ -115,6 +115,11 @@ pub(super) fn handle_needs(
             condition: cache.x86_64_dlltool,
             ignore_reason: "ignored when dlltool for x86_64 is not present",
         },
+        Need {
+            name: "needs-git-hash",
+            condition: config.git_hash,
+            ignore_reason: "ignored when git hashes have been omitted for building",
+        },
     ];
 
     let (name, comment) = match ln.split_once([':', ' ']) {

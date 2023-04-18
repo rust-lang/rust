@@ -303,6 +303,9 @@ pub struct Config {
     /// The current Rust channel
     pub channel: String,
 
+    /// Whether adding git commit information such as the commit hash has been enabled for building
+    pub git_hash: bool,
+
     /// The default Rust edition
     pub edition: Option<String>,
 

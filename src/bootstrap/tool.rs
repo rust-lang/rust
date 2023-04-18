@@ -194,6 +194,12 @@ pub fn prepare_tool_cargo(
     cargo.env("CFG_VERSION", builder.rust_version());
     cargo.env("CFG_RELEASE_NUM", &builder.version);
     cargo.env("DOC_RUST_LANG_ORG_CHANNEL", builder.doc_rust_lang_org_channel());
+    if let Some(ref ver_date) = builder.rust_info().commit_date() {
+        cargo.env("CFG_VER_DATE", ver_date);
+    }
+    if let Some(ref ver_hash) = builder.rust_info().sha() {
+        cargo.env("CFG_VER_HASH", ver_hash);
+    }
 
     let info = GitInfo::new(builder.config.omit_git_hash, &dir);
     if let Some(sha) = info.sha() {

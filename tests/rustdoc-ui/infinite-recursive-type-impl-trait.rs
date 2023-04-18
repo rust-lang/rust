@@ -1,6 +1,9 @@
+// check-pass
+
 fn f() -> impl Sized {
-    enum E { //~ ERROR
+    enum E {
         V(E),
     }
+
     unimplemented!()
 }

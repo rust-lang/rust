@@ -33,6 +33,14 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
     }
 
     fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        // N.B. Even though this uses a visitor, the visitor does not actually
+        //      recurse through the whole `TypeVisitable` implementor type.
+        //
+        //      Instead it stops on the first "level", visiting types, regions,
+        //      consts and predicates just fetches their type flags.
+        //
+        //      Thus this is a lot faster than it might seem and should be
+        //      optimized to a simple field access.
         let res =
             self.visit_with(&mut HasTypeFlagsVisitor { flags }).break_value() == Some(FoundFlags);
         trace!(?self, ?flags, ?res, "has_type_flags");
