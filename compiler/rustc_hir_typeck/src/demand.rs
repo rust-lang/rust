@@ -1334,52 +1334,55 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ));
                     }
 
-                    if let Ok(src) = sm.span_to_snippet(sugg_sp) {
-                        let needs_parens = match expr.kind {
-                            // parenthesize if needed (Issue #46756)
-                            hir::ExprKind::Cast(_, _) | hir::ExprKind::Binary(_, _, _) => true,
-                            // parenthesize borrows of range literals (Issue #54505)
-                            _ if is_range_literal(expr) => true,
-                            _ => false,
-                        };
+                    let needs_parens = match expr.kind {
+                        // parenthesize if needed (Issue #46756)
+                        hir::ExprKind::Cast(_, _) | hir::ExprKind::Binary(_, _, _) => true,
+                        // parenthesize borrows of range literals (Issue #54505)
+                        _ if is_range_literal(expr) => true,
+                        _ => false,
+                    };
 
-                        if let Some(sugg) = self.can_use_as_ref(expr) {
-                            return Some((
-                                sugg.0,
-                                sugg.1.to_string(),
-                                sugg.2,
-                                Applicability::MachineApplicable,
-                                false,
-                                false,
-                            ));
-                        }
-
-                        let prefix = match self.maybe_get_struct_pattern_shorthand_field(expr) {
-                            Some(ident) => format!("{ident}: "),
-                            None => String::new(),
-                        };
-
-                        if let Some(hir::Node::Expr(hir::Expr {
-                            kind: hir::ExprKind::Assign(..),
-                            ..
-                        })) = self.tcx.hir().find_parent(expr.hir_id)
-                        {
-                            if mutability.is_mut() {
-                                // Suppressing this diagnostic, we'll properly print it in `check_expr_assign`
-                                return None;
-                            }
-                        }
-
-                        let sugg_expr = if needs_parens { format!("({src})") } else { src };
+                    if let Some(sugg) = self.can_use_as_ref(expr) {
                         return Some((
-                            sp,
-                            format!("consider {}borrowing here", mutability.mutably_str()),
-                            format!("{prefix}{}{sugg_expr}", mutability.ref_prefix_str()),
+                            sugg.0,
+                            sugg.1.to_string(),
+                            sugg.2,
                             Applicability::MachineApplicable,
                             false,
                             false,
                         ));
                     }
+
+                    let prefix = match self.maybe_get_struct_pattern_shorthand_field(expr) {
+                        Some(ident) => format!("{ident}: "),
+                        None => String::new(),
+                    };
+
+                    if let Some(hir::Node::Expr(hir::Expr {
+                        kind: hir::ExprKind::Assign(..),
+                        ..
+                    })) = self.tcx.hir().find_parent(expr.hir_id)
+                    {
+                        if mutability.is_mut() {
+                            // Suppressing this diagnostic, we'll properly print it in `check_expr_assign`
+                            return None;
+                        }
+                    }
+
+                    let (sp, sugg_expr, verbose) = if needs_parens {
+                        let src = sm.span_to_snippet(sugg_sp).ok()?;
+                        (sp, format!("({src})"), false)
+                    } else {
+                        (sp.shrink_to_lo(), "".to_string(), true)
+                    };
+                    return Some((
+                        sp,
+                        format!("consider {}borrowing here", mutability.mutably_str()),
+                        format!("{prefix}{}{sugg_expr}", mutability.ref_prefix_str()),
+                        Applicability::MachineApplicable,
+                        verbose,
+                        false,
+                    ));
                 }
             }
             (
