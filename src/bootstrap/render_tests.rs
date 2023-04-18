@@ -124,6 +124,7 @@ impl<'a> Renderer<'a> {
                     ignore_reason: reason.map(|s| s.to_string()),
                 },
             },
+            self.builder,
         );
 
         if self.builder.config.verbose_tests {
