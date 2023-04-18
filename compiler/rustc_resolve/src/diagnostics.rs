@@ -28,10 +28,10 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Span, SyntaxContext};
 use thin_vec::ThinVec;
 
-use crate::errors as errs;
 use crate::imports::{Import, ImportKind};
 use crate::late::{PatternSource, Rib};
 use crate::path_names_to_string;
+use crate::{errors as errs, BindingKey};
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingError, Finalize};
 use crate::{HasGenericParams, MacroRulesScope, Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{LexicalScopeBinding, NameBinding, NameBindingKind, PrivacyError, VisResolutionError};
@@ -2081,7 +2081,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         let resolutions = self.resolutions(crate_module).borrow();
-        let resolution = resolutions.get(&self.new_key(ident, MacroNS))?;
+        let binding_key = BindingKey::new(ident, MacroNS);
+        let resolution = resolutions.get(&binding_key)?;
         let binding = resolution.borrow().binding()?;
         if let Res::Def(DefKind::Macro(MacroKind::Bang), _) = binding.res() {
             let module_name = crate_module.kind.name().unwrap();

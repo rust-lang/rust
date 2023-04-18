@@ -415,7 +415,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let dummy_binding = self.dummy_binding;
             let dummy_binding = self.import(dummy_binding, import);
             self.per_ns(|this, ns| {
-                let key = this.new_key(target, ns);
+                let key = BindingKey::new(target, ns);
                 let _ = this.try_define(import.parent_scope.module, key, dummy_binding);
             });
             self.record_use(target, dummy_binding, false);
@@ -712,7 +712,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 .span_label(import.span, "cannot be imported directly")
                                 .emit();
                         }
-                        let key = this.new_key(target, ns);
+                        let key = BindingKey::new(target, ns);
                         this.update_resolution(parent, key, |_, resolution| {
                             resolution.single_imports.remove(&Interned::new_unchecked(import));
                         });

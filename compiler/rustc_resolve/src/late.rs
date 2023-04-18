@@ -6,6 +6,7 @@
 //! If you wonder why there's no `early.rs`, that's because it's split into three files -
 //! `build_reduced_graph.rs`, `macros.rs` and `imports.rs`.
 
+use crate::BindingKey;
 use crate::{path_names_to_string, rustdoc, BindingError, Finalize, LexicalScopeBinding};
 use crate::{Module, ModuleOrUniformRoot, NameBinding, ParentScope, PathResult};
 use crate::{ResolutionError, Resolver, Segment, UseError};
@@ -2967,7 +2968,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         // If there is a TraitRef in scope for an impl, then the method must be in the trait.
         let Some((module, _)) = &self.current_trait_ref else { return; };
         ident.span.normalize_to_macros_2_0_and_adjust(module.expansion);
-        let key = self.r.new_key(ident, ns);
+        let key = BindingKey::new(ident, ns);
         let mut binding = self.r.resolution(module, key).try_borrow().ok().and_then(|r| r.binding);
         debug!(?binding);
         if binding.is_none() {
@@ -2978,7 +2979,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 TypeNS => ValueNS,
                 _ => ns,
             };
-            let key = self.r.new_key(ident, ns);
+            let key = BindingKey::new(ident, ns);
             binding = self.r.resolution(module, key).try_borrow().ok().and_then(|r| r.binding);
             debug!(?binding);
         }
