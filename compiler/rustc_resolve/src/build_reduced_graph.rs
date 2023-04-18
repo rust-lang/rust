@@ -931,7 +931,13 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
     /// Builds the reduced graph for a single item in an external crate.
     fn build_reduced_graph_for_external_crate_res(&mut self, child: ModChild) {
         let parent = self.parent_scope.module;
-        let ModChild { ident, res, vis, span, .. } = child;
+        let ModChild { ident, res, vis, reexport_chain } = child;
+        let span = self.r.def_span(
+            reexport_chain
+                .first()
+                .and_then(|reexport| reexport.id())
+                .unwrap_or_else(|| res.def_id()),
+        );
         let res = res.expect_non_local();
         let expansion = self.parent_scope.expansion;
         // Record primary definitions.

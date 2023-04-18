@@ -998,9 +998,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         let ident = self.item_ident(id, sess);
         let res = Res::Def(self.def_kind(id), self.local_def_id(id));
         let vis = self.get_visibility(id);
-        let span = self.get_span(id, sess);
 
-        ModChild { ident, res, vis, span, reexport_chain: Default::default() }
+        ModChild { ident, res, vis, reexport_chain: Default::default() }
     }
 
     /// Iterates over all named children of the given module,
