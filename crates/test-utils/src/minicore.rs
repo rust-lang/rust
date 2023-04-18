@@ -32,8 +32,9 @@
 //!     iterator: option
 //!     iterators: iterator, fn
 //!     non_zero:
-//!     option:
+//!     option: panic
 //!     ord: eq, option
+//!     panic:
 //!     pin:
 //!     range:
 //!     result:
@@ -191,6 +192,12 @@ pub mod convert {
     // endregion:infallible
 }
 
+// region:drop
+pub mod mem {
+    pub fn drop<T>(_x: T) {}
+}
+// endregion:drop
+
 pub mod ops {
     // region:coerce_unsized
     mod unsize {
@@ -314,12 +321,6 @@ pub mod ops {
     }
     pub use self::index::{Index, IndexMut};
     // endregion:index
-
-    // region:drop
-    pub mod mem {
-        pub fn drop<T>(_x: T) {}
-    }
-    // endregion:drop
 
     // region:range
     mod range {
@@ -473,12 +474,24 @@ pub mod ops {
         impl<B, C> Try for ControlFlow<B, C> {
             type Output = C;
             type Residual = ControlFlow<B, Infallible>;
-            fn from_output(output: Self::Output) -> Self {}
-            fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {}
+            fn from_output(output: Self::Output) -> Self {
+                ControlFlow::Continue(output)
+            }
+            fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
+                match self {
+                    ControlFlow::Continue(x) => ControlFlow::Continue(x),
+                    ControlFlow::Break(x) => ControlFlow::Break(ControlFlow::Break(x)),
+                }
+            }
         }
 
         impl<B, C> FromResidual for ControlFlow<B, C> {
-            fn from_residual(residual: ControlFlow<B, Infallible>) -> Self {}
+            fn from_residual(residual: ControlFlow<B, Infallible>) -> Self {
+                match residual {
+                    ControlFlow::Break(b) => ControlFlow::Break(b),
+                    ControlFlow::Continue(_) => loop {},
+                }
+            }
         }
         // region:option
         impl<T> Try for Option<T> {
@@ -499,6 +512,7 @@ pub mod ops {
             fn from_residual(x: Option<Infallible>) -> Self {
                 match x {
                     None => None,
+                    Some(_) => loop {},
                 }
             }
         }
@@ -527,6 +541,7 @@ pub mod ops {
             fn from_residual(residual: Result<Infallible, E>) -> Self {
                 match residual {
                     Err(e) => Err(From::from(e)),
+                    Ok(_) => loop {},
                 }
             }
         }
@@ -840,8 +855,6 @@ pub mod iter {
 
     mod traits {
         mod iterator {
-            use super::super::Take;
-
             pub trait Iterator {
                 type Item;
                 #[lang = "next"]
@@ -903,7 +916,7 @@ pub mod iter {
                 type Item = T;
                 type IntoIter = IntoIter<T, N>;
                 fn into_iter(self) -> I {
-                    IntoIter { data: self, range: IndexRange { start: 0, end: self.len() } }
+                    IntoIter { data: self, range: IndexRange { start: 0, end: loop {} } }
                 }
             }
             impl<T, const N: usize> Iterator for IntoIter<T, N> {
@@ -919,16 +932,38 @@ pub mod iter {
 }
 // endregion:iterator
 
-// region:derive
+// region:panic
+mod panic {
+    pub macro panic_2021 {
+        ($($t:tt)+) => (
+            /* Nothing yet */
+        ),
+    }
+}
+// endregion:panic
+
 mod macros {
+    // region:panic
+    #[macro_export]
+    #[rustc_builtin_macro(std_panic)]
+    macro_rules! panic {
+        ($($arg:tt)*) => {
+            /* compiler built-in */
+        };
+    }
+
+    pub(crate) use panic;
+    // endregion:panic
+
+    // region:derive
     pub(crate) mod builtin {
         #[rustc_builtin_macro]
         pub macro derive($item:item) {
             /* compiler built-in */
         }
     }
+    // endregion:derive
 }
-// endregion:derive
 
 // region:non_zero
 pub mod num {
@@ -983,6 +1018,7 @@ pub mod prelude {
             ops::{Fn, FnMut, FnOnce},           // :fn
             option::Option::{self, None, Some}, // :option
             result::Result::{self, Err, Ok},    // :result
+            panic,                              // :panic
         };
     }
 

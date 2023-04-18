@@ -8,7 +8,7 @@ use ide_db::{
     RootDatabase,
 };
 use stdx::trim_indent;
-use test_utils::{assert_eq_text, extract_annotations};
+use test_utils::{assert_eq_text, extract_annotations, MiniCore};
 
 use crate::{DiagnosticsConfig, ExprFillDefaultMode, Severity};
 
@@ -142,4 +142,24 @@ fn test_disabled_diagnostics() {
         file_id,
     );
     assert!(!diagnostics.is_empty());
+}
+
+#[test]
+fn minicore_smoke_test() {
+    fn check(minicore: MiniCore) {
+        let source = minicore.source_code();
+        let mut config = DiagnosticsConfig::test_sample();
+        // This should be ignored since we conditionaly remove code which creates single item use with braces
+        config.disabled.insert("unnecessary-braces".to_string());
+        check_diagnostics_with_config(config, &source);
+    }
+
+    // Checks that there is no diagnostic in minicore for each flag.
+    for flag in MiniCore::available_flags() {
+        eprintln!("Checking minicore flag {flag}");
+        check(MiniCore::from_flags([flag]));
+    }
+    // And one time for all flags, to check codes which are behind multiple flags + prevent name collisions
+    eprintln!("Checking all minicore flags");
+    check(MiniCore::from_flags(MiniCore::available_flags()))
 }
