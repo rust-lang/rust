@@ -1945,6 +1945,14 @@ fn document_type_layout<'a, 'cx: 'a>(
         ty_def_id: DefId,
     }
 
+    #[derive(Template)]
+    #[template(path = "type_layout_size.html")]
+    struct TypeLayoutSize {
+        is_unsized: bool,
+        is_uninhabited: bool,
+        size: u64,
+    }
+
     impl<'a, 'cx: 'a> TypeLayout<'a, 'cx> {
         fn variants<'b: 'a>(&'b self) -> Option<&'b IndexVec<VariantIdx, LayoutS>> {
             if let Variants::Multiple { variants, .. } =
@@ -1986,18 +1994,10 @@ fn document_type_layout<'a, 'cx: 'a>(
             tag_size: u64,
         ) -> impl fmt::Display + Captures<'cx> + Captures<'b> {
             display_fn(move |f| {
-                if layout.abi.is_unsized() {
-                    write!(f, "(unsized)")?;
-                } else {
-                    let size = layout.size.bytes() - tag_size;
-                    write!(f, "{size} byte{pl}", pl = if size == 1 { "" } else { "s" })?;
-                    if layout.abi.is_uninhabited() {
-                        write!(
-                            f,
-                            " (<a href=\"https://doc.rust-lang.org/stable/reference/glossary.html#uninhabited\">uninhabited</a>)"
-                        )?;
-                    }
-                }
+                let is_unsized = layout.abi.is_unsized();
+                let is_uninhabited = layout.abi.is_uninhabited();
+                let size = layout.size.bytes() - tag_size;
+                TypeLayoutSize { is_unsized, is_uninhabited, size }.render_into(f).unwrap();
                 Ok(())
             })
         }
