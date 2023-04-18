@@ -1448,7 +1448,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             crate::detail_exit(1);
         }
 
-        let compiler = self.compiler;
+        let mut compiler = self.compiler;
         let target = self.target;
         let mode = self.mode;
         let suite = self.suite;
@@ -1461,13 +1461,26 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             return;
         }
 
-        if suite == "debuginfo" {
-            builder
-                .ensure(dist::DebuggerScripts { sysroot: builder.sysroot(compiler), host: target });
-        }
+        // Support stage 1 ui-fulldeps. This is somewhat complicated: ui-fulldeps tests for the most
+        // part test the *API* of the compiler, not how it compiles a given file. As a result, we
+        // can run them against the stage 1 sources as long as we build them with the stage 0
+        // bootstrap compiler.
+        // NOTE: Only stage 1 is special cased because we need the rustc_private artifacts to match the
+        // running compiler in stage 2 when plugins run.
+        let stage_id = if suite == "ui-fulldeps" && compiler.stage == 1 {
+            compiler = builder.compiler(compiler.stage - 1, target);
+            format!("stage{}-{}", compiler.stage + 1, target)
+        } else {
+            format!("stage{}-{}", compiler.stage, target)
+        };
 
         if suite.ends_with("fulldeps") {
             builder.ensure(compile::Rustc::new(compiler, target));
+        }
+
+        if suite == "debuginfo" {
+            builder
+                .ensure(dist::DebuggerScripts { sysroot: builder.sysroot(compiler), host: target });
         }
 
         builder.ensure(compile::Std::new(compiler, target));
@@ -1528,7 +1541,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         cmd.arg("--src-base").arg(builder.src.join("tests").join(suite));
         cmd.arg("--build-base").arg(testdir(builder, compiler.host).join(suite));
         cmd.arg("--sysroot-base").arg(builder.sysroot(compiler));
-        cmd.arg("--stage-id").arg(format!("stage{}-{}", compiler.stage, target));
+        cmd.arg("--stage-id").arg(stage_id);
         cmd.arg("--suite").arg(suite);
         cmd.arg("--mode").arg(mode);
         cmd.arg("--target").arg(target.rustc_target_arg());

@@ -1260,6 +1260,7 @@ impl Step for Sysroot {
         };
         let sysroot = sysroot_dir(compiler.stage);
 
+        builder.verbose(&format!("Removing sysroot {} to avoid caching bugs", sysroot.display()));
         let _ = fs::remove_dir_all(&sysroot);
         t!(fs::create_dir_all(&sysroot));
 

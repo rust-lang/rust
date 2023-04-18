@@ -1,4 +1,3 @@
-// aux-build:lint-group-plugin-test.rs
 // compile-flags: -F unused -A unused
 
 fn main() {

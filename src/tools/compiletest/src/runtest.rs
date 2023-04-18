@@ -1900,6 +1900,9 @@ impl<'test> TestCx<'test> {
         // Use a single thread for efficiency and a deterministic error message order
         rustc.arg("-Zthreads=1");
 
+        // In stage 0, make sure we use `stage0-sysroot` instead of the bootstrap sysroot.
+        rustc.arg("--sysroot").arg(&self.config.sysroot_base);
+
         // Optionally prevent default --target if specified in test compile-flags.
         let custom_target = self.props.compile_flags.iter().any(|x| x.starts_with("--target"));
 
