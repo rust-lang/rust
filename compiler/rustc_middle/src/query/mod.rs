@@ -236,6 +236,15 @@ rustc_queries! {
         cache_on_disk_if { key.is_local() }
     }
 
+    query opaque_types_defined_by(
+        key: LocalDefId
+    ) -> ty::EarlyBinder<&'tcx ty::List<Ty<'tcx>>> {
+        desc {
+            |tcx| "computing the opaque types defined by `{}`",
+            tcx.def_path_str(key.to_def_id())
+        }
+    }
+
     /// Returns the list of bounds that can be used for
     /// `SelectionCandidate::ProjectionCandidate(_)` and
     /// `ProjectionTyCandidate::TraitDef`.
