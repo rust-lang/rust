@@ -159,6 +159,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optflag("", "nocapture", "")
         .optflag("h", "help", "show this message")
         .reqopt("", "channel", "current Rust channel", "CHANNEL")
+        .optflag("", "git-hash", "run tests which rely on commit version being compiled into the binaries")
         .optopt("", "edition", "default Rust edition", "EDITION");
 
     let (argv0, args_) = args.split_first().unwrap();
@@ -302,6 +303,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         rustfix_coverage: matches.opt_present("rustfix-coverage"),
         has_tidy,
         channel: matches.opt_str("channel").unwrap(),
+        git_hash: matches.opt_present("git-hash"),
         edition: matches.opt_str("edition"),
 
         cc: matches.opt_str("cc").unwrap(),
