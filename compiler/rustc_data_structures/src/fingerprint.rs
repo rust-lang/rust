@@ -14,12 +14,14 @@ pub trait FingerprintComponent {
 }
 
 impl FingerprintComponent for Hash64 {
+    #[inline]
     fn as_u64(&self) -> u64 {
         Hash64::as_u64(*self)
     }
 }
 
 impl FingerprintComponent for u64 {
+    #[inline]
     fn as_u64(&self) -> u64 {
         *self
     }

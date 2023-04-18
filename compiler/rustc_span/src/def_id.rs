@@ -186,6 +186,7 @@ impl StableCrateId {
         StableCrateId(hasher.finish())
     }
 
+    #[inline]
     pub fn as_u64(self) -> u64 {
         self.0.as_u64()
     }
