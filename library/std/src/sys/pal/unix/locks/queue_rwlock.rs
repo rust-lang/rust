@@ -325,8 +325,9 @@ impl RwLock {
                     Ok(_) => return,
                     Err(new) => state = new,
                 }
-            } else if count < SPIN_COUNT {
-                // If the lock is not available, spin for a while.
+            } else if state.addr() & QUEUED == 0 && count < SPIN_COUNT {
+                // If the lock is not available but no threads are queued, spin
+                // for a while.
                 spin_loop();
                 state = self.state.load(Relaxed);
                 count += 1;
