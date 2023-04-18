@@ -3,6 +3,12 @@
 #![allow(dead_code, unused_variables)]
 #![warn(clippy::string_lit_as_bytes)]
 
+macro_rules! b {
+    ($b:literal) => {
+        const C: &[u8] = $b.as_bytes();
+    }
+}
+
 fn str_lit_as_bytes() {
     let bs = b"hello there";
 
@@ -10,6 +16,8 @@ fn str_lit_as_bytes() {
 
     let bs = b"lit to string".to_vec();
     let bs = b"lit to owned".to_vec();
+
+    b!("aaa");
 
     // no warning, because these cannot be written as byte string literals:
     let ubs = "☃".as_bytes();
