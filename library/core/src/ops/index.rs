@@ -59,6 +59,7 @@
 pub trait Index<Idx: ?Sized> {
     /// The returned type after indexing.
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_diagnostic_item = "IndexOutput"]
     type Output: ?Sized;
 
     /// Performs the indexing (`container[index]`) operation.
