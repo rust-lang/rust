@@ -403,6 +403,12 @@ impl<'a> LintExtractor<'a> {
         fs::write(&tempfile, source)
             .map_err(|e| format!("failed to write {}: {}", tempfile.display(), e))?;
         let mut cmd = Command::new(self.rustc_path);
+        // NOTE: bootstrap sets `LD_LIBRARY_PATH` for building lint-docs itself.
+        // Unfortunately, lint-docs is a bootstrap tool while rustc is built from source,
+        // and sometimes the paths conflict. In particular, when using `download-rustc`,
+        // the LLVM versions can differ between `ci-llvm` and `ci-rustc-sysroot`.
+        // Unset LD_LIBRARY_PATH here so it doesn't interfere with running the compiler.
+        cmd.env_remove("LD_LIBRARY_PATH");
         if options.contains(&"edition2015") {
             cmd.arg("--edition=2015");
         } else {
@@ -415,6 +421,9 @@ impl<'a> LintExtractor<'a> {
         }
         cmd.arg("lint_example.rs");
         cmd.current_dir(tempdir.path());
+        if self.verbose {
+            eprintln!("running: {cmd:?}");
+        }
         let output = cmd.output().map_err(|e| format!("failed to run command {:?}\n{}", cmd, e))?;
         let stderr = std::str::from_utf8(&output.stderr).unwrap();
         let msgs = stderr
