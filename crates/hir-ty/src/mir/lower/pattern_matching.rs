@@ -23,7 +23,7 @@ impl MirLowerCtx<'_> {
     /// mismatched path block is `None`.
     ///
     /// By default, it will create a new block for mismatched path. If you already have one, you can provide it with
-    /// `current_else` argument to save an unneccessary jump. If `current_else` isn't `None`, the result mismatched path
+    /// `current_else` argument to save an unnecessary jump. If `current_else` isn't `None`, the result mismatched path
     /// wouldn't be `None` as well. Note that this function will add jumps to the beginning of the `current_else` block,
     /// so it should be an empty block.
     pub(super) fn pattern_match(

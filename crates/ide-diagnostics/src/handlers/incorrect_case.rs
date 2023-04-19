@@ -295,7 +295,7 @@ impl someStruct {
     }
 
     #[test]
-    fn no_diagnostic_for_enum_varinats() {
+    fn no_diagnostic_for_enum_variants() {
         check_diagnostics(
             r#"
 enum Option { Some, None }

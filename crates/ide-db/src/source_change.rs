@@ -181,7 +181,7 @@ impl SourceChangeBuilder {
     /// mutability, and different nodes in the same tree see the same mutations.
     ///
     /// The typical pattern for an assist is to find specific nodes in the read
-    /// phase, and then get their mutable couterparts using `make_mut` in the
+    /// phase, and then get their mutable counterparts using `make_mut` in the
     /// mutable state.
     pub fn make_syntax_mut(&mut self, node: SyntaxNode) -> SyntaxNode {
         self.mutated_tree.get_or_insert_with(|| TreeMutator::new(&node)).make_syntax_mut(&node)

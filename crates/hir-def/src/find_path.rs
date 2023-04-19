@@ -42,7 +42,7 @@ const MAX_PATH_LEN: usize = 15;
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum PrefixKind {
     /// Causes paths to always start with either `self`, `super`, `crate` or a crate-name.
-    /// This is the same as plain, just that paths will start with `self` iprepended f the path
+    /// This is the same as plain, just that paths will start with `self` prepended if the path
     /// starts with an identifier that is not a crate.
     BySelf,
     /// Causes paths to ignore imports in the local module.

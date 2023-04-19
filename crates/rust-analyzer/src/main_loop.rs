@@ -36,7 +36,7 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
     // temporary bumped. This optimization backfires in our case: each time the
     // `main_loop` schedules a task to run on a threadpool, the worker threads
     // gets a higher priority, and (on a machine with fewer cores) displaces the
-    // main loop! We work-around this by marking the main loop as a
+    // main loop! We work around this by marking the main loop as a
     // higher-priority thread.
     //
     // https://docs.microsoft.com/en-us/windows/win32/procthread/scheduling-priorities

@@ -110,7 +110,7 @@ fn place_case(lvalue: &Place) -> ProjectionCase {
 
 /// Returns a map from basic blocks to the set of locals that might be ever initialized before
 /// the start of the block. Only `StorageDead` can remove something from this map, and we ignore
-/// `Uninit` and `drop` and similars after initialization.
+/// `Uninit` and `drop` and similar after initialization.
 fn ever_initialized_map(body: &MirBody) -> ArenaMap<BasicBlockId, ArenaMap<LocalId, bool>> {
     let mut result: ArenaMap<BasicBlockId, ArenaMap<LocalId, bool>> =
         body.basic_blocks.iter().map(|x| (x.0, ArenaMap::default())).collect();

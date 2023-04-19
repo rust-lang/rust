@@ -252,7 +252,7 @@ impl Foo for S {
     }
 
     #[test]
-    fn test_copied_overriden_members() {
+    fn test_copied_overridden_members() {
         check_assist(
             add_missing_impl_members,
             r#"

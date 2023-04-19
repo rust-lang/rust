@@ -45,7 +45,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField) -> Option<Vec<A
     }
 }
 
-// FIXME: We should fill out the call here, mvoe the cursor and trigger signature help
+// FIXME: We should fill out the call here, move the cursor and trigger signature help
 fn method_fix(
     ctx: &DiagnosticsContext<'_>,
     expr_ptr: &InFile<AstPtr<ast::Expr>>,

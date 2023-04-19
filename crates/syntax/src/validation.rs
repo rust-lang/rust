@@ -175,14 +175,14 @@ pub(crate) fn validate_block_structure(root: &SyntaxNode) {
                     assert_eq!(
                         node.parent(),
                         pair.parent(),
-                        "\nunpaired curlys:\n{}\n{:#?}\n",
+                        "\nunpaired curlies:\n{}\n{:#?}\n",
                         root.text(),
                         root,
                     );
                     assert!(
                         node.next_sibling_or_token().is_none()
                             && pair.prev_sibling_or_token().is_none(),
-                        "\nfloating curlys at {:?}\nfile:\n{}\nerror:\n{}\n",
+                        "\nfloating curlies at {:?}\nfile:\n{}\nerror:\n{}\n",
                         node,
                         root.text(),
                         node,

@@ -98,9 +98,9 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
             .fields()
             .enumerate()
             .filter_map(|(i, f)| {
-                let contructor = trivial_constructors[i].clone();
-                if contructor.is_some() {
-                    contructor
+                let constructor = trivial_constructors[i].clone();
+                if constructor.is_some() {
+                    constructor
                 } else {
                     Some(f.name()?.to_string())
                 }

@@ -157,7 +157,7 @@ export async function createTask(runnable: ra.Runnable, config: Config): Promise
 
     cargoTask.presentationOptions.clear = true;
     // Sadly, this doesn't prevent focus stealing if the terminal is currently
-    // hidden, and will become revealed due to task exucution.
+    // hidden, and will become revealed due to task execution.
     cargoTask.presentationOptions.focus = false;
 
     return cargoTask;

@@ -324,7 +324,7 @@ fn self_name(ast_func: &ast::Fn) -> Option<String> {
     self_partial_type(ast_func).map(|name| to_lower_snake_case(&name))
 }
 
-/// Heper function to get the name of the type of `self`
+/// Helper function to get the name of the type of `self`
 fn self_type(ast_func: &ast::Fn) -> Option<ast::Type> {
     ast_func.syntax().ancestors().find_map(ast::Impl::cast).and_then(|i| i.self_ty())
 }
@@ -350,7 +350,7 @@ fn self_type_without_lifetimes(ast_func: &ast::Fn) -> Option<String> {
     Some(name)
 }
 
-/// Heper function to get the name of the type of `self` without generic arguments
+/// Helper function to get the name of the type of `self` without generic arguments
 fn self_partial_type(ast_func: &ast::Fn) -> Option<String> {
     let mut self_type = self_type(ast_func)?.to_string();
     if let Some(idx) = self_type.find(|c| ['<', ' '].contains(&c)) {

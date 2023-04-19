@@ -105,7 +105,7 @@ fn completion_list_with_config(
     include_keywords: bool,
     trigger_character: Option<char>,
 ) -> String {
-    // filter out all but one builtintype completion for smaller test outputs
+    // filter out all but one built-in type completion for smaller test outputs
     let items = get_all_items(config, ra_fixture, trigger_character);
     let items = items
         .into_iter()

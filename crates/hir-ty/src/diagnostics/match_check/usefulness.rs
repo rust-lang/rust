@@ -755,7 +755,7 @@ pub(crate) enum Reachability {
     /// The arm is reachable. This additionally carries a set of or-pattern branches that have been
     /// found to be unreachable despite the overall arm being reachable. Used only in the presence
     /// of or-patterns, otherwise it stays empty.
-    // FIXME: store ureachable subpattern IDs
+    // FIXME: store unreachable subpattern IDs
     Reachable,
     /// The arm is unreachable.
     Unreachable,

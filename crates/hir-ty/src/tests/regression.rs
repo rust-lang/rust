@@ -1060,7 +1060,7 @@ fn infix_parse<T, S>(_state: S, _level_code: &Fn(S)) -> T {
     loop {}
 }
 
-fn parse_arule() {
+fn parse_a_rule() {
     infix_parse((), &(|_recurse| ()))
 }
         "#,

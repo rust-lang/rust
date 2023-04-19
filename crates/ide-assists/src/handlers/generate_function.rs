@@ -893,14 +893,14 @@ fn filter_bounds_in_scope(
     let target_impl = target.parent().ancestors().find_map(ast::Impl::cast)?;
     let target_impl = ctx.sema.to_def(&target_impl)?;
     // It's sufficient to test only the first element of `generic_params` because of the order of
-    // insertion (see `relevant_parmas_and_where_clauses()`).
+    // insertion (see `params_and_where_preds_in_scope()`).
     let def = generic_params.first()?.self_ty_param.parent();
     if def != hir::GenericDef::Impl(target_impl) {
         return None;
     }
 
     // Now we know every element that belongs to an impl would be in scope at `target`, we can
-    // filter them out just by lookint at their parent.
+    // filter them out just by looking at their parent.
     generic_params.retain(|it| !matches!(it.self_ty_param.parent(), hir::GenericDef::Impl(_)));
     where_preds.retain(|it| {
         it.node.syntax().parent().and_then(|it| it.parent()).and_then(ast::Impl::cast).is_none()
@@ -1087,7 +1087,7 @@ fn calculate_necessary_visibility(
     }
 }
 
-// This is never intended to be used as a generic graph strucuture. If there's ever another need of
+// This is never intended to be used as a generic graph structure. If there's ever another need of
 // graph algorithm, consider adding a library for that (and replace the following).
 /// Minimally implemented directed graph structure represented by adjacency list.
 struct Graph {
@@ -2380,7 +2380,7 @@ mod s {
     }
 
     #[test]
-    fn create_method_with_cursor_anywhere_on_call_expresion() {
+    fn create_method_with_cursor_anywhere_on_call_expression() {
         check_assist(
             generate_function,
             r"
@@ -2487,7 +2487,7 @@ fn foo() {s::S::bar();}
     }
 
     #[test]
-    fn create_static_method_with_cursor_anywhere_on_call_expresion() {
+    fn create_static_method_with_cursor_anywhere_on_call_expression() {
         check_assist(
             generate_function,
             r"

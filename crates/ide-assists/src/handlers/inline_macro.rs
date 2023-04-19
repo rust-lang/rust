@@ -148,7 +148,7 @@ macro_rules! num {
     #[test]
     fn inline_macro_simple_not_applicable_broken_macro() {
         // FIXME: This is a bug. The macro should not expand, but it's
-        // the same behaviour as the "Expand Macro Recursively" commmand
+        // the same behaviour as the "Expand Macro Recursively" command
         // so it's presumably OK for the time being.
         check_assist(
             inline_macro,

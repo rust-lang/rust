@@ -66,7 +66,7 @@ pub(crate) fn annotations(ra_fixture: &str) -> (Analysis, FilePosition, Vec<(Fil
     (host.analysis(), FilePosition { file_id, offset }, annotations)
 }
 
-/// Creates analysis from a multi-file fixture with annonations without $0
+/// Creates analysis from a multi-file fixture with annotations without $0
 pub(crate) fn annotations_without_marker(ra_fixture: &str) -> (Analysis, Vec<(FileRange, String)>) {
     let mut host = AnalysisHost::default();
     let change_fixture = ChangeFixture::parse(ra_fixture);

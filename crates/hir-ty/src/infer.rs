@@ -483,7 +483,7 @@ pub(crate) struct InferenceContext<'a> {
     current_closure: Option<ClosureId>,
     /// Stores the list of closure ids that need to be analyzed before this closure. See the
     /// comment on `InferenceContext::sort_closures`
-    closure_dependecies: FxHashMap<ClosureId, Vec<ClosureId>>,
+    closure_dependencies: FxHashMap<ClosureId, Vec<ClosureId>>,
     deferred_closures: FxHashMap<ClosureId, Vec<(Ty, Ty, Vec<Ty>, ExprId)>>,
 }
 
@@ -555,7 +555,7 @@ impl<'a> InferenceContext<'a> {
             current_captures: vec![],
             current_closure: None,
             deferred_closures: FxHashMap::default(),
-            closure_dependecies: FxHashMap::default(),
+            closure_dependencies: FxHashMap::default(),
         }
     }
 
