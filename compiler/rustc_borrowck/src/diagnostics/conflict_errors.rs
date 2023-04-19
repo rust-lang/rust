@@ -1,3 +1,5 @@
+use std::iter;
+
 use either::Either;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexSet;
@@ -10,25 +12,25 @@ use rustc_hir::intravisit::{walk_block, walk_expr, Visitor};
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, LangItem};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::ObligationCause;
+use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::{
     self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, ConstraintCategory,
     FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location, Operand, Place, PlaceRef,
     ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind, VarBindingForm,
 };
-use rustc_middle::ty::{self, suggest_constraining_type_params, PredicateKind, Ty};
+use rustc_middle::ty::{self, suggest_constraining_type_params, PredicateKind, Ty, TypeckResults};
 use rustc_middle::util::CallKind;
 use rustc_mir_dataflow::move_paths::{InitKind, MoveOutIndex, MovePathIndex};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::ObligationCtxt;
 
 use crate::borrow_set::TwoPhaseActivation;
 use crate::borrowck_errors;
-
 use crate::diagnostics::conflict_errors::StorageDeadOrDrop::LocalStorageDead;
 use crate::diagnostics::{find_all_local_uses, CapturedMessageOpt};
 use crate::{
@@ -959,6 +961,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     None,
                 );
                 self.suggest_binding_for_closure_capture_self(&mut err, &issued_spans);
+                self.suggest_using_closure_argument_instead_of_capture(
+                    &mut err,
+                    issued_borrow.borrowed_place,
+                    &issued_spans,
+                );
                 err
             }
 
@@ -976,6 +983,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     &mut err,
                     place,
                     issued_borrow.borrowed_place,
+                );
+                self.suggest_using_closure_argument_instead_of_capture(
+                    &mut err,
+                    issued_borrow.borrowed_place,
+                    &issued_spans,
                 );
                 err
             }
@@ -1261,6 +1273,173 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                      two mutable non-overlapping sub-slices",
             );
         }
+    }
+
+    /// Suggest using closure argument instead of capture.
+    ///
+    /// For example:
+    /// ```ignore (illustrative)
+    /// struct S;
+    ///
+    /// impl S {
+    ///     fn call(&mut self, f: impl Fn(&mut Self)) { /* ... */ }
+    ///     fn x(&self) {}
+    /// }
+    ///
+    ///     let mut v = S;
+    ///     v.call(|this: &mut S| v.x());
+    /// //  ^\                    ^-- help: try using the closure argument: `this`
+    /// //    *-- error: cannot borrow `v` as mutable because it is also borrowed as immutable
+    /// ```
+    fn suggest_using_closure_argument_instead_of_capture(
+        &self,
+        err: &mut Diagnostic,
+        borrowed_place: Place<'tcx>,
+        issued_spans: &UseSpans<'tcx>,
+    ) {
+        let &UseSpans::ClosureUse { capture_kind_span, .. } = issued_spans else { return };
+        let tcx = self.infcx.tcx;
+        let hir = tcx.hir();
+
+        // Get the type of the local that we are trying to borrow
+        let local = borrowed_place.local;
+        let local_ty = self.body.local_decls[local].ty;
+
+        // Get the body the error happens in
+        let &body_id =
+            if let hir::Node::Item(hir::Item { kind, .. }) = hir.get(self.mir_hir_id())
+                && let hir::ItemKind::Static(_, _, body_id)
+                     | hir::ItemKind::Const(_, body_id)
+                     | hir::ItemKind::Fn(_, _, body_id) = kind
+            {
+                body_id
+            } else if let hir::Node::TraitItem(hir::TraitItem { kind, .. }) = hir.get(self.mir_hir_id())
+                && let hir::TraitItemKind::Const(_, Some(body_id))
+                     | hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(body_id)) = kind
+            {
+                body_id
+            }else if let hir::Node::ImplItem(hir::ImplItem { kind, .. }) = hir.get(self.mir_hir_id())
+                && let hir::ImplItemKind::Const(_, body_id)
+                     | hir::ImplItemKind::Fn(_, body_id) = kind
+            {
+                body_id
+            } else {
+                return
+            };
+
+        let body_expr = hir.body(body_id).value;
+
+        struct ClosureFinder<'hir> {
+            hir: rustc_middle::hir::map::Map<'hir>,
+            borrow_span: Span,
+            res: Option<(&'hir hir::Expr<'hir>, &'hir hir::Closure<'hir>)>,
+            /// The path expression with the `borrow_span` span
+            error_path: Option<(&'hir hir::Expr<'hir>, &'hir hir::QPath<'hir>)>,
+        }
+        impl<'hir> Visitor<'hir> for ClosureFinder<'hir> {
+            type NestedFilter = OnlyBodies;
+
+            fn nested_visit_map(&mut self) -> Self::Map {
+                self.hir
+            }
+
+            fn visit_expr(&mut self, ex: &'hir hir::Expr<'hir>) {
+                if let hir::ExprKind::Path(qpath) = &ex.kind
+                    && ex.span == self.borrow_span
+                {
+                    self.error_path = Some((ex, qpath));
+                }
+
+                if let hir::ExprKind::Closure(closure) = ex.kind
+                    && ex.span.contains(self.borrow_span)
+                    // To support cases like `|| { v.call(|this| v.get()) }`
+                    // FIXME: actually support such cases (need to figure out how to move from the capture place to original local)
+                    && self.res.as_ref().map_or(true, |(prev_res, _)| prev_res.span.contains(ex.span))
+                {
+                    self.res = Some((ex, closure));
+                }
+
+                hir::intravisit::walk_expr(self, ex);
+            }
+        }
+
+        // Find the closure that most tightly wraps `capture_kind_span`
+        let mut finder =
+            ClosureFinder { hir, borrow_span: capture_kind_span, res: None, error_path: None };
+        finder.visit_expr(body_expr);
+        let Some((closure_expr, closure)) = finder.res else { return };
+
+        let typeck_results: &TypeckResults<'_> =
+            tcx.typeck_opt_const_arg(self.body.source.with_opt_param().as_local().unwrap());
+
+        // Check that the parent of the closure is a method call,
+        // with receiver matching with local's type (modulo refs)
+        let parent = hir.parent_id(closure_expr.hir_id);
+        if let hir::Node::Expr(parent) = hir.get(parent) {
+            if let hir::ExprKind::MethodCall(_, recv, ..) = parent.kind {
+                let recv_ty = typeck_results.expr_ty(recv);
+
+                if recv_ty.peel_refs() != local_ty {
+                    return;
+                }
+            }
+        }
+
+        // Get closure's arguments
+        let ty::Closure(_, substs) = typeck_results.expr_ty(closure_expr).kind() else { unreachable!() };
+        let sig = substs.as_closure().sig();
+        let tupled_params =
+            tcx.erase_late_bound_regions(sig.inputs().iter().next().unwrap().map_bound(|&b| b));
+        let ty::Tuple(params) = tupled_params.kind() else { return };
+
+        // Find the first argument with a matching type, get its name
+        let Some((_, this_name)) = params
+            .iter()
+            .zip(hir.body_param_names(closure.body))
+            .find(|(param_ty, name)|{
+                // FIXME: also support deref for stuff like `Rc` arguments
+                param_ty.peel_refs() == local_ty && name != &Ident::empty()
+            })
+            else { return };
+
+        let spans;
+        if let Some((_path_expr, qpath)) = finder.error_path
+            && let hir::QPath::Resolved(_, path) = qpath
+            && let hir::def::Res::Local(local_id) = path.res
+        {
+            // Find all references to the problematic variable in this closure body
+
+            struct VariableUseFinder {
+                local_id: hir::HirId,
+                spans: Vec<Span>,
+            }
+            impl<'hir> Visitor<'hir> for VariableUseFinder {
+                fn visit_expr(&mut self, ex: &'hir hir::Expr<'hir>) {
+                    if let hir::ExprKind::Path(qpath) = &ex.kind
+                        && let hir::QPath::Resolved(_, path) = qpath
+                        && let hir::def::Res::Local(local_id) = path.res
+                        && local_id == self.local_id
+                    {
+                        self.spans.push(ex.span);
+                    }
+
+                    hir::intravisit::walk_expr(self, ex);
+                }
+            }
+
+            let mut finder = VariableUseFinder { local_id, spans: Vec::new() };
+            finder.visit_expr(hir.body(closure.body).value);
+
+            spans = finder.spans;
+        } else {
+            spans = vec![capture_kind_span];
+        }
+
+        err.multipart_suggestion(
+            "try using the closure argument",
+            iter::zip(spans, iter::repeat(this_name.to_string())).collect(),
+            Applicability::MaybeIncorrect,
+        );
     }
 
     fn suggest_binding_for_closure_capture_self(

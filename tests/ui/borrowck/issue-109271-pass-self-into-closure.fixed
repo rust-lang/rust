@@ -16,9 +16,9 @@ impl S {
 fn main() {
     let mut v = S;
 
-    v.call(|(), this: &mut S| v.get());
+    v.call(|(), this: &mut S| this.get());
     //~^ error: cannot borrow `v` as mutable because it is also borrowed as immutable
-    v.call(|(), this: &mut S| v.set());
+    v.call(|(), this: &mut S| this.set());
     //~^ error: cannot borrow `v` as mutable more than once at a time
     //~| error: cannot borrow `v` as mutable more than once at a time
 
@@ -26,10 +26,10 @@ fn main() {
         //~^ error: cannot borrow `v` as mutable more than once at a time
         //~| error: cannot borrow `v` as mutable more than once at a time
 
-        _ = v;
-        v.set();
-        v.get();
-        S::get(&v);
+        _ = this;
+        this.set();
+        this.get();
+        S::get(&this);
 
         use std::ops::Add;
         let v = 0u32;
