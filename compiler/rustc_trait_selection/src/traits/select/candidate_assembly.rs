@@ -775,7 +775,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        if obligation.has_non_region_param() {
+        if obligation.predicate.has_non_region_param() {
             return;
         }
 
