@@ -211,7 +211,7 @@ For targets: `armv7-unknown-linux-gnueabihf`
 (\*) These options have been selected to match the configuration of the arm
       toolchains shipped with Ubuntu 15.10
 (+) These options have been selected to match the gcc flags we use to compile C
-    libraries like jemalloc. See the mk/cfg/arm(v7)-uknown-linux-gnueabi{,hf}.mk
+    libraries like jemalloc. See the mk/cfg/arm(v7)-unknown-linux-gnueabi{,hf}.mk
     file in Rust's source code.
 
 ### `aarch64-linux-gnu.config`
