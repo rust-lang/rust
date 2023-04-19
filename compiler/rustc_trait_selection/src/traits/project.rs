@@ -1272,14 +1272,29 @@ fn project<'cx, 'tcx>(
         ProjectionCandidateSet::Single(candidate) => {
             Ok(Projected::Progress(confirm_candidate(selcx, obligation, candidate)))
         }
-        ProjectionCandidateSet::None => Ok(Projected::NoProgress(
-            // FIXME(associated_const_generics): this may need to change in the future?
-            // need to investigate whether or not this is fine.
-            selcx
-                .tcx()
-                .mk_projection(obligation.predicate.def_id, obligation.predicate.substs)
-                .into(),
-        )),
+        ProjectionCandidateSet::None => {
+            let tcx = selcx.tcx();
+            let term = match tcx.def_kind(obligation.predicate.def_id) {
+                DefKind::AssocTy | DefKind::ImplTraitPlaceholder => tcx
+                    .mk_projection(obligation.predicate.def_id, obligation.predicate.substs)
+                    .into(),
+                DefKind::AssocConst => tcx
+                    .mk_const(
+                        ty::ConstKind::Unevaluated(ty::UnevaluatedConst::new(
+                            obligation.predicate.def_id,
+                            obligation.predicate.substs,
+                        )),
+                        tcx.type_of(obligation.predicate.def_id)
+                            .subst(tcx, obligation.predicate.substs),
+                    )
+                    .into(),
+                kind => {
+                    bug!("unknown projection def-id: {}", kind.descr(obligation.predicate.def_id))
+                }
+            };
+
+            Ok(Projected::NoProgress(term))
+        }
         // Error occurred while trying to processing impls.
         ProjectionCandidateSet::Error(e) => Err(ProjectionError::TraitSelectionError(e)),
         // Inherent ambiguity that prevents us from even enumerating the
