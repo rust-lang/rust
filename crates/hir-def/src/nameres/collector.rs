@@ -14,6 +14,7 @@ use hir_expand::{
     builtin_attr_macro::find_builtin_attr,
     builtin_derive_macro::find_builtin_derive,
     builtin_fn_macro::find_builtin_macro,
+    hygiene::Hygiene,
     name::{name, AsName, Name},
     proc_macro::ProcMacroExpander,
     ExpandResult, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroCallLoc,
@@ -312,13 +313,14 @@ impl DefCollector<'_> {
                 }
 
                 if *attr_name == hir_expand::name![feature] {
-                    let features =
-                        attr.parse_path_comma_token_tree().into_iter().flatten().filter_map(
-                            |feat| match feat.segments() {
-                                [name] => Some(name.to_smol_str()),
-                                _ => None,
-                            },
-                        );
+                    let features = attr
+                        .parse_path_comma_token_tree(self.db.upcast(), Hygiene::new_unhygienic())
+                        .into_iter()
+                        .flatten()
+                        .filter_map(|feat| match feat.segments() {
+                            [name] => Some(name.to_smol_str()),
+                            _ => None,
+                        });
                     self.def_map.unstable_features.extend(features);
                 }
 
@@ -1223,8 +1225,9 @@ impl DefCollector<'_> {
                             }
                         };
                         let ast_id = ast_id.with_value(ast_adt_id);
+                        let hygiene = Hygiene::new(self.db.upcast(), file_id);
 
-                        match attr.parse_path_comma_token_tree() {
+                        match attr.parse_path_comma_token_tree(self.db.upcast(), hygiene) {
                             Some(derive_macros) => {
                                 let mut len = 0;
                                 for (idx, path) in derive_macros.enumerate() {

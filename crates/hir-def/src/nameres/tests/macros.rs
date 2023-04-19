@@ -665,6 +665,29 @@ pub struct bar;
 }
 
 #[test]
+fn macro_dollar_crate_is_correct_in_derive_meta() {
+    let map = compute_crate_def_map(
+        r#"
+//- minicore: derive, clone
+//- /main.rs crate:main deps:lib
+lib::foo!();
+
+//- /lib.rs crate:lib
+#[macro_export]
+macro_rules! foo {
+    () => {
+        #[derive($crate::Clone)]
+        struct S;
+    }
+}
+
+pub use core::clone::Clone;
+"#,
+    );
+    assert_eq!(map.modules[map.root].scope.impls().len(), 1);
+}
+
+#[test]
 fn expand_derive() {
     let map = compute_crate_def_map(
         r#"
