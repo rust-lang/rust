@@ -3185,7 +3185,7 @@ declare_clippy_lint! {
     /// ```rust
     /// std::process::Command::new("echo").args(["-n", "hello"]).spawn().unwrap();
     /// ```
-    #[clippy::version = "1.67.0"]
+    #[clippy::version = "1.69.0"]
     pub SUSPICIOUS_COMMAND_ARG_SPACE,
     suspicious,
     "single command line argument that looks like it should be multiple arguments"
