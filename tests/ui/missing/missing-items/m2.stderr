@@ -5,7 +5,7 @@ LL | impl m1::X for X {
    | ^^^^^^^^^^^^^^^^ missing `CONSTANT`, `Type`, `method`, `method2`, `method3`, `method4`, `method5` in implementation
    |
    = help: implement the missing item: `const CONSTANT: u32 = 42;`
-   = help: implement the missing item: `type Type = Type;`
+   = help: implement the missing item: `type Type = /* Type */;`
    = help: implement the missing item: `fn method(&self, _: String) -> <Self as m1::X>::Type { todo!() }`
    = help: implement the missing item: `fn method2(self: Box<Self>, _: String) -> <Self as m1::X>::Type { todo!() }`
    = help: implement the missing item: `fn method3(_: &Self, _: String) -> <Self as m1::X>::Type { todo!() }`
