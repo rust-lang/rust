@@ -18,7 +18,7 @@ LL |     a.push_str("foo");
 help: consider changing this to be a mutable reference
    |
 LL | pub fn foo<'a>(mut a: &'a mut String) {
-   |                       ~~~~~~~~~~~~~~
+   |                           +++
 
 error[E0596]: cannot borrow `*a` as mutable, as it is behind a `&` reference
   --> $DIR/mut-arg-hint.rs:15:9

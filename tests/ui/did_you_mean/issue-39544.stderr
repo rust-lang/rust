@@ -73,7 +73,7 @@ LL |         let _ = &mut self.x;
 help: consider changing this to be a mutable reference
    |
 LL |     fn foo3<'a>(self: &'a mut Self, other: &Z) {
-   |                       ~~~~~~~~~~~~
+   |                           +++
 
 error[E0596]: cannot borrow `other.x` as mutable, as it is behind a `&` reference
   --> $DIR/issue-39544.rs:31:17

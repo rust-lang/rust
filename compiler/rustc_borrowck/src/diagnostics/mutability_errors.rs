@@ -1241,35 +1241,41 @@ fn suggest_ampmut<'tcx>(
         }
     }
 
-    let (suggestibility, highlight_span) = match opt_ty_info {
+    let (binding_exists, span) = match opt_ty_info {
         // if this is a variable binding with an explicit type,
-        // try to highlight that for the suggestion.
+        // then we will suggest changing it to be mutable.
+        // this is `Applicability::MachineApplicable`.
         Some(ty_span) => (true, ty_span),
 
-        // otherwise, just highlight the span associated with
-        // the (MIR) LocalDecl.
+        // otherwise, we'll suggest *adding* an annotated type, we'll suggest
+        // the RHS's type for that.
+        // this is `Applicability::HasPlaceholders`.
         None => (false, local_decl.source_info.span),
     };
 
-    if let Ok(src) = tcx.sess.source_map().span_to_snippet(highlight_span)
-        && let (true, Some(ws_pos)) = (src.starts_with("&'"), src.find(char::is_whitespace))
+    // if the binding already exists and is a reference with a explicit
+    // lifetime, then we can suggest adding ` mut`. this is special-cased from
+    // the path without a explicit lifetime.
+    if let Ok(src) = tcx.sess.source_map().span_to_snippet(span)
+        && src.starts_with("&'")
+        // note that `&     'a T` is invalid so this is correct.
+        && let Some(ws_pos) = src.find(char::is_whitespace)
     {
-        let lt_name = &src[1..ws_pos];
-        let ty = &src[ws_pos..];
-        return (true, highlight_span, format!("&{lt_name} mut{ty}"));
+        let span = span.with_lo(span.lo() + BytePos(ws_pos as u32)).shrink_to_lo();
+        (true, span, " mut".to_owned())
+    } else {
+        let ty_mut = local_decl.ty.builtin_deref(true).unwrap();
+        assert_eq!(ty_mut.mutbl, hir::Mutability::Not);
+        (
+            binding_exists,
+            span,
+            if local_decl.ty.is_ref() {
+                format!("&mut {}", ty_mut.ty)
+            } else {
+                format!("*mut {}", ty_mut.ty)
+            },
+        )
     }
-
-    let ty_mut = local_decl.ty.builtin_deref(true).unwrap();
-    assert_eq!(ty_mut.mutbl, hir::Mutability::Not);
-    (
-        suggestibility,
-        highlight_span,
-        if local_decl.ty.is_ref() {
-            format!("&mut {}", ty_mut.ty)
-        } else {
-            format!("*mut {}", ty_mut.ty)
-        },
-    )
 }
 
 fn is_closure_or_generator(ty: Ty<'_>) -> bool {
