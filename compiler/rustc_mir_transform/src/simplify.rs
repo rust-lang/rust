@@ -28,7 +28,7 @@
 //! return.
 
 use crate::MirPass;
-use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_index::vec::{Idx, IndexSlice, IndexVec};
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
@@ -99,7 +99,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         // statements itself to avoid moving the (relatively) large statements twice.
         // We do not push the statements directly into the target block (`bb`) as that is slower
         // due to additional reallocations
-        let mut merged_blocks = Vec::new();
+        let mut merged_blocks = SmallVec::new();
         loop {
             let mut changed = false;
 
@@ -203,7 +203,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
     // merge a block with 1 `goto` predecessor to its parent
     fn merge_successor(
         &mut self,
-        merged_blocks: &mut Vec<BasicBlock>,
+        merged_blocks: &mut SmallVec<[BasicBlock; 2]>,
         terminator: &mut Terminator<'tcx>,
     ) -> bool {
         let target = match terminator.kind {
@@ -263,7 +263,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 pub fn remove_duplicate_unreachable_blocks<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     struct OptApplier<'tcx> {
         tcx: TyCtxt<'tcx>,
-        duplicates: FxIndexSet<BasicBlock>,
+        duplicates: SmallVec<[BasicBlock; 2]>,
     }
 
     impl<'tcx> MutVisitor<'tcx> for OptApplier<'tcx> {
@@ -296,7 +296,7 @@ pub fn remove_duplicate_unreachable_blocks<'tcx>(tcx: TyCtxt<'tcx>, body: &mut B
             bb.terminator.is_some() && bb.is_empty_unreachable() && !bb.is_cleanup
         })
         .map(|(block, _)| block)
-        .collect::<FxIndexSet<_>>();
+        .collect::<SmallVec<[_; 2]>>();
 
     if unreachable_blocks.len() > 1 {
         OptApplier { tcx, duplicates: unreachable_blocks }.visit_body(body);
