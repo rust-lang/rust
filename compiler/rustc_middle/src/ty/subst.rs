@@ -67,19 +67,6 @@ pub fn ty_slice_as_generic_args<'a, 'tcx>(ts: &'a [Ty<'tcx>]) -> &'a [GenericArg
     unsafe { slice::from_raw_parts(ts.as_ptr().cast(), ts.len()) }
 }
 
-impl<'tcx> List<Ty<'tcx>> {
-    /// Allows to freely switch between `List<Ty<'tcx>>` and `List<GenericArg<'tcx>>`.
-    ///
-    /// As lists are interned, `List<Ty<'tcx>>` and `List<GenericArg<'tcx>>` have
-    /// be interned together, see `mk_type_list` for more details.
-    #[inline]
-    pub fn as_substs(&'tcx self) -> SubstsRef<'tcx> {
-        assert_eq!(TYPE_TAG, 0);
-        // SAFETY: `List<T>` is `#[repr(C)]`. `Ty` and `GenericArg` is explained above.
-        unsafe { &*(self as *const List<Ty<'tcx>> as *const List<GenericArg<'tcx>>) }
-    }
-}
-
 impl<'tcx> GenericArgKind<'tcx> {
     #[inline]
     fn pack(self) -> GenericArg<'tcx> {
@@ -268,13 +255,16 @@ pub type InternalSubsts<'tcx> = List<GenericArg<'tcx>>;
 pub type SubstsRef<'tcx> = &'tcx InternalSubsts<'tcx>;
 
 impl<'tcx> InternalSubsts<'tcx> {
-    /// Checks whether all elements of this list are types, if so, transmute.
-    pub fn try_as_type_list(&'tcx self) -> Option<&'tcx List<Ty<'tcx>>> {
-        self.iter().all(|arg| matches!(arg.unpack(), GenericArgKind::Type(_))).then(|| {
-            assert_eq!(TYPE_TAG, 0);
-            // SAFETY: All elements are types, see `List<Ty<'tcx>>::as_substs`.
-            unsafe { &*(self as *const List<GenericArg<'tcx>> as *const List<Ty<'tcx>>) }
-        })
+    /// Converts substs to a type list.
+    ///
+    /// # Panics
+    ///
+    /// If any of the generic arguments are not types.
+    pub fn into_type_list(&self, tcx: TyCtxt<'tcx>) -> &'tcx List<Ty<'tcx>> {
+        tcx.mk_type_list_from_iter(self.iter().map(|arg| match arg.unpack() {
+            GenericArgKind::Type(ty) => ty,
+            _ => bug!("`into_type_list` called on substs with non-types"),
+        }))
     }
 
     /// Interpret these substitutions as the substitutions of a closure type.
