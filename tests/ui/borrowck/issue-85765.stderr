@@ -18,7 +18,7 @@ LL |     *r = 0;
 help: consider changing this to be a mutable reference
    |
 LL |     let r = &mut mutvar;
-   |             ~~~~~~~~~~~
+   |              +++
 
 error[E0594]: cannot assign to `*x`, which is behind a `&` reference
   --> $DIR/issue-85765.rs:19:5

@@ -10,7 +10,7 @@ LL |         **ref_mref_x = y;
 help: consider changing this to be a mutable reference
    |
 LL |     let ref_mref_x = &mut mref_x;
-   |                      ~~~~~~~~~~~
+   |                       +++
 
 error[E0596]: cannot borrow `**mref_ref_x` as mutable, as it is behind a `&` reference
   --> $DIR/mut_ref.rs:26:13

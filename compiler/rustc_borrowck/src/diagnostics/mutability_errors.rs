@@ -1202,36 +1202,42 @@ fn suggest_ampmut<'tcx>(
     opt_assignment_rhs_span: Option<Span>,
     opt_ty_info: Option<Span>,
 ) -> (bool, Span, String) {
+    // if there is a RHS and it starts with a `&` from it, then check if it is
+    // mutable, and if not, put suggest putting `mut ` to make it mutable.
+    // we don't have to worry about lifetime annotations here because they are
+    // not valid when taking a reference. For example, the following is not valid Rust:
+    //
+    // let x: &i32 = &'a 5;
+    //                ^^ lifetime annotation not allowed
+    //
     if let Some(assignment_rhs_span) = opt_assignment_rhs_span
         && let Ok(src) = tcx.sess.source_map().span_to_snippet(assignment_rhs_span)
+        && let Some(stripped) = src.strip_prefix('&')
     {
-        let is_mutbl = |ty: &str| -> bool {
-            if let Some(rest) = ty.strip_prefix("mut") {
-                match rest.chars().next() {
-                    // e.g. `&mut x`
-                    Some(c) if c.is_whitespace() => true,
-                    // e.g. `&mut(x)`
-                    Some('(') => true,
-                    // e.g. `&mut{x}`
-                    Some('{') => true,
-                    // e.g. `&mutablevar`
-                    _ => false,
-                }
-            } else {
-                false
+        let is_mut = if let Some(rest) = stripped.trim_start().strip_prefix("mut") {
+            match rest.chars().next() {
+                // e.g. `&mut x`
+                Some(c) if c.is_whitespace() => true,
+                // e.g. `&mut(x)`
+                Some('(') => true,
+                // e.g. `&mut{x}`
+                Some('{') => true,
+                // e.g. `&mutablevar`
+                _ => false,
             }
+        } else {
+            false
         };
-        if let (true, Some(ws_pos)) = (src.starts_with("&'"), src.find(char::is_whitespace)) {
-            let lt_name = &src[1..ws_pos];
-            let ty = src[ws_pos..].trim_start();
-            if !is_mutbl(ty) {
-                return (true, assignment_rhs_span, format!("&{lt_name} mut {ty}"));
-            }
-        } else if let Some(stripped) = src.strip_prefix('&') {
-            let stripped = stripped.trim_start();
-            if !is_mutbl(stripped) {
-                return (true, assignment_rhs_span, format!("&mut {stripped}"));
-            }
+        // if the reference is already mutable then there is nothing we can do
+        // here.
+        if !is_mut {
+            let span = assignment_rhs_span;
+            // shrink the span to just after the `&` in `&variable`
+            let span = span.with_lo(span.lo() + BytePos(1)).shrink_to_lo();
+
+            // FIXME(Ezrashaw): returning is bad because we still might want to
+            // update the annotated type, see #106857.
+            return (true, span, "mut ".to_owned());
         }
     }
 
