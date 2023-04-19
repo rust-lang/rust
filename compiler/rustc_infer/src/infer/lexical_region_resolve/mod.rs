@@ -692,8 +692,10 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         // (dummy_sink). In `dummy -> a -> b -> dummy`, using one
         // dummy node leads one to think (erroneously) there exists a
         // path from `b` to `a`. Two dummy nodes sidesteps the issue.
-        let dummy_source = graph.add_node(());
-        let dummy_sink = graph.add_node(());
+        // Construct them lazily because they're rarely needed and this
+        // code is hot enough for that to matter.
+        let mut dummy_source = None;
+        let mut dummy_sink = None;
 
         for constraint in self.data.constraints.keys() {
             match *constraint {
@@ -705,10 +707,12 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     );
                 }
                 Constraint::RegSubVar(_, b_id) => {
-                    graph.add_edge(dummy_source, NodeIndex(b_id.index() as usize), *constraint);
+                    let d = dummy_source.get_or_insert_with(|| graph.add_node(()));
+                    graph.add_edge(*d, NodeIndex(b_id.index() as usize), *constraint);
                 }
                 Constraint::VarSubReg(a_id, _) => {
-                    graph.add_edge(NodeIndex(a_id.index() as usize), dummy_sink, *constraint);
+                    let d = dummy_sink.get_or_insert_with(|| graph.add_node(()));
+                    graph.add_edge(NodeIndex(a_id.index() as usize), *d, *constraint);
                 }
                 Constraint::RegSubReg(..) => {
                     // this would be an edge from `dummy_source` to
