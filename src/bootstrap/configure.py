@@ -417,6 +417,8 @@ def parse_example_config(known_args, config):
         # Avoid using quotes unless it's necessary.
         targets[target][0] = targets[target][0].replace("x86_64-unknown-linux-gnu", "'{}'".format(target) if "." in target else target)
 
+    if 'profile' not in config:
+        set('profile', 'user', config)
     configure_file(sections, top_level_keys, targets, config)
     return section_order, sections, targets
 
@@ -475,7 +477,7 @@ def configure_section(lines, config):
 def configure_top_level_key(lines, top_level_key, value):
     for i, line in enumerate(lines):
         if line.startswith('#' + top_level_key + ' = ') or line.startswith(top_level_key + ' = '):
-            lines[i] = "{} = {}".format(top_level_key, value)
+            lines[i] = "{} = {}".format(top_level_key, to_toml(value))
             return
 
     raise RuntimeError("failed to find config line for {}".format(top_level_key))
