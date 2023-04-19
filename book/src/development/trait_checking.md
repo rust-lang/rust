@@ -102,5 +102,4 @@ impl LateLintPass<'_> for CheckTokioAsyncReadExtTrait {
 [symbol]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Symbol.html
 [symbol_index]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_span/symbol/sym/index.html
 [TyCtxt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html
-[using_diagnostic_items]: https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-items.html#using-diagnostic-items
 [rust]: https://github.com/rust-lang/rust
