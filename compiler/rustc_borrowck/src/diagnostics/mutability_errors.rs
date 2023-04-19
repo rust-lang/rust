@@ -1263,6 +1263,10 @@ fn suggest_ampmut<'tcx>(
     {
         let span = span.with_lo(span.lo() + BytePos(ws_pos as u32)).shrink_to_lo();
         (true, span, " mut".to_owned())
+    } else if binding_exists {
+        // shrink the span to just after the `&` in `&variable`
+        let span = span.with_lo(span.lo() + BytePos(1)).shrink_to_lo();
+        (true, span, "mut ".to_owned())
     } else {
         let ty_mut = local_decl.ty.builtin_deref(true).unwrap();
         assert_eq!(ty_mut.mutbl, hir::Mutability::Not);

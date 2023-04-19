@@ -6,8 +6,8 @@ LL |       *input = self.0;
    |
 help: consider changing that to be a mutable reference
    |
-LL |   fn example(&self, input: &mut i32); // should suggest here
-   |                            ~~~~~~~~
+LL |   fn example(&self, input: mut ); // should suggest here
+   |                            ~~~
 
 error[E0594]: cannot assign to `self.0`, which is behind a `&` reference
   --> $DIR/issue-68049-2.rs:17:5

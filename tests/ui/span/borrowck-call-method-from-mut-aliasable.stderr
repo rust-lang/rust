@@ -7,7 +7,7 @@ LL |     x.h();
 help: consider changing this to be a mutable reference
    |
 LL | fn b(x: &mut Foo) {
-   |         ~~~~~~~~
+   |          +++
 
 error: aborting due to previous error
 
