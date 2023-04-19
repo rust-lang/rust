@@ -131,6 +131,7 @@ pub fn provide(providers: &mut Providers) {
         is_ctfe_mir_available: |tcx, did| is_mir_available(tcx, did),
         mir_callgraph_reachable: inline::cycle::mir_callgraph_reachable,
         mir_inliner_callees: inline::cycle::mir_inliner_callees,
+        mir_should_inline_at: |tcx, args| inline::Inliner::check_inline_mir_at_threshold(tcx, args),
         promoted_mir: |tcx, def_id| {
             if let Some(def) = ty::WithOptConstParam::try_lookup(def_id, tcx) {
                 tcx.promoted_mir_of_const_arg(def)

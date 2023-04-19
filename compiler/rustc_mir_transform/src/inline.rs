@@ -50,9 +50,8 @@ impl<'tcx> MirPass<'tcx> for Inline {
         match sess.mir_opt_level() {
             0 | 1 => false,
             2 => {
-                (sess.opts.optimize == OptLevel::Default
-                    || sess.opts.optimize == OptLevel::Aggressive)
-                    && sess.opts.incremental == None
+                sess.opts.optimize == OptLevel::Default
+                    || sess.opts.optimize == OptLevel::Aggressive
             }
             _ => true,
         }
@@ -101,7 +100,7 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     this.changed
 }
 
-struct Inliner<'tcx> {
+pub struct Inliner<'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
     /// Caller codegen attributes.
@@ -170,8 +169,8 @@ impl<'tcx> Inliner<'tcx> {
         let callee_attrs = self.tcx.codegen_fn_attrs(callsite.callee.def_id());
         self.check_codegen_attributes(callsite, callee_attrs)?;
         self.check_mir_is_available(caller_body, &callsite.callee)?;
+        self.check_mir_body(callsite, callsite.callee, callee_attrs)?;
         let callee_body = self.tcx.instance_mir(callsite.callee.def);
-        self.check_mir_body(callsite, callee_body, callee_attrs)?;
 
         if !self.tcx.consider_optimizing(|| {
             format!("Inline {:?} into {:?}", callsite.callee, caller_body.source)
@@ -396,35 +395,56 @@ impl<'tcx> Inliner<'tcx> {
 
     /// Returns inlining decision that is based on the examination of callee MIR body.
     /// Assumes that codegen attributes have been checked for compatibility already.
-    #[instrument(level = "debug", skip(self, callee_body))]
+    #[instrument(level = "debug", skip(self, callee))]
     fn check_mir_body(
         &self,
         callsite: &CallSite<'tcx>,
-        callee_body: &Body<'tcx>,
+        callee: Instance<'tcx>,
         callee_attrs: &CodegenFnAttrs,
     ) -> Result<(), &'static str> {
         let tcx = self.tcx;
 
-        let mut threshold = if callee_attrs.requests_inline() {
+        let threshold = if callee_attrs.requests_inline() {
             self.tcx.sess.opts.unstable_opts.inline_mir_hint_threshold.unwrap_or(100)
         } else {
             self.tcx.sess.opts.unstable_opts.inline_mir_threshold.unwrap_or(50)
         };
 
+        debug!("    final inline threshold = {}", threshold);
+
+        if let InlineAttr::Always = callee_attrs.inline {
+            debug!("INLINING {:?} because inline(always)", callsite);
+            return Ok(());
+        }
+
+        let result = tcx.mir_should_inline_at((callee, self.param_env, threshold));
+        if result {
+            debug!("INLINING {:?} [cost= <= threshold={}]", callsite, threshold);
+            Ok(())
+        } else {
+            debug!("NOT inlining {:?} [cost=> threshold={}]", callsite, threshold);
+            Err("cost above threshold")
+        }
+    }
+
+    pub fn check_inline_mir_at_threshold(
+        tcx: TyCtxt<'tcx>,
+        (callee, param_env, mut threshold): (Instance<'tcx>, ParamEnv<'tcx>, usize),
+    ) -> bool {
+        let callee_body = tcx.instance_mir(callee.def);
         // Give a bonus functions with a small number of blocks,
         // We normally have two or three blocks for even
         // very small functions.
         if callee_body.basic_blocks.len() <= 3 {
             threshold += threshold / 4;
         }
-        debug!("    final inline threshold = {}", threshold);
 
         // FIXME: Give a bonus to functions with only a single caller
 
         let mut checker = CostChecker {
-            tcx: self.tcx,
-            param_env: self.param_env,
-            instance: callsite.callee,
+            tcx,
+            param_env,
+            instance: callee,
             callee_body,
             cost: 0,
             validation: Ok(()),
@@ -446,19 +466,17 @@ impl<'tcx> Inliner<'tcx> {
                 work_list.push(target);
 
                 // If the place doesn't actually need dropping, treat it like a regular goto.
-                let ty = callsite.callee.subst_mir(self.tcx, &place.ty(callee_body, tcx).ty);
-                if ty.needs_drop(tcx, self.param_env) && let UnwindAction::Cleanup(unwind) = unwind {
+                let ty = callee.subst_mir(tcx, &place.ty(callee_body, tcx).ty);
+                if ty.needs_drop(tcx, param_env) && let UnwindAction::Cleanup(unwind) = unwind {
                         work_list.push(unwind);
                     }
-            } else if callee_attrs.instruction_set != self.codegen_fn_attrs.instruction_set
-                && matches!(term.kind, TerminatorKind::InlineAsm { .. })
-            {
+            } else if let TerminatorKind::InlineAsm { .. } = term.kind {
                 // During the attribute checking stage we allow a callee with no
                 // instruction_set assigned to count as compatible with a function that does
                 // assign one. However, during this stage we require an exact match when any
                 // inline-asm is detected. LLVM will still possibly do an inline later on
                 // if the no-attribute function ends up with the same instruction set anyway.
-                return Err("Cannot move inline-asm across instruction sets");
+                return false;
             } else {
                 work_list.extend(term.successors())
             }
@@ -471,19 +489,7 @@ impl<'tcx> Inliner<'tcx> {
         }
 
         // Abort if type validation found anything fishy.
-        checker.validation?;
-
-        let cost = checker.cost;
-        if let InlineAttr::Always = callee_attrs.inline {
-            debug!("INLINING {:?} because inline(always) [cost={}]", callsite, cost);
-            Ok(())
-        } else if cost <= threshold {
-            debug!("INLINING {:?} [cost={} <= threshold={}]", callsite, cost, threshold);
-            Ok(())
-        } else {
-            debug!("NOT inlining {:?} [cost={} > threshold={}]", callsite, cost, threshold);
-            Err("cost above threshold")
-        }
+        checker.validation.is_ok() & (checker.cost <= threshold)
     }
 
     fn inline_call(

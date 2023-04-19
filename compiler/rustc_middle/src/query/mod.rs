@@ -1042,6 +1042,16 @@ rustc_queries! {
         }
     }
 
+    /// Check if the inlining threshold for the instance's mir is at most the given balue
+    query mir_should_inline_at(key: (ty::Instance<'tcx>, ty::ParamEnv<'tcx>, usize)) -> bool {
+        fatal_cycle
+        desc { |tcx|
+            "checking whether {} should be inlined at threshold {}",
+            tcx.def_path_str(key.0.def_id()),
+            key.2,
+        }
+    }
+
     /// Evaluates a constant and returns the computed allocation.
     ///
     /// **Do not use this** directly, use the `tcx.eval_static_initializer` wrapper.

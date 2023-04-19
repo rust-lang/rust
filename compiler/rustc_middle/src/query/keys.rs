@@ -486,6 +486,14 @@ impl Key for (Symbol, u32, u32) {
     }
 }
 
+impl<'tcx> Key for (ty::Instance<'tcx>, ty::ParamEnv<'tcx>, usize) {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        tcx.def_span(self.0.def_id())
+    }
+}
+
 impl<'tcx> Key for (DefId, Ty<'tcx>, SubstsRef<'tcx>, ty::ParamEnv<'tcx>) {
     type CacheSelector = DefaultCacheSelector<Self>;
 
