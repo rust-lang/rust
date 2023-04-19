@@ -46,7 +46,7 @@ declare_clippy_lint! {
     ///     do_heavy_computation_that_takes_time(owned_rslt);
     /// }
     /// ```
-    #[clippy::version = "1.67.0"]
+    #[clippy::version = "1.69.0"]
     pub SIGNIFICANT_DROP_TIGHTENING,
     nursery,
     "Searches for elements marked with `#[clippy::has_significant_drop]` that could be early dropped but are in fact dropped at the end of their scopes"
