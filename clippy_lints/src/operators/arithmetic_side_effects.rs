@@ -185,6 +185,34 @@ impl ArithmeticSideEffects {
         }
     }
 
+    /// There are some integer methods like `wrapping_div` that will panic depending on the
+    /// provided input.
+    fn manage_method_call<'tcx>(
+        &mut self,
+        args: &[hir::Expr<'tcx>],
+        cx: &LateContext<'tcx>,
+        ps: &hir::PathSegment<'tcx>,
+        receiver: &hir::Expr<'tcx>,
+    ) {
+        const METHODS: &[&str] = &["saturating_div", "wrapping_div", "wrapping_rem", "wrapping_rem_euclid"];
+        let Some(arg) = args.first() else { return; };
+        if constant_simple(cx, cx.typeck_results(), receiver).is_some() {
+            return;
+        }
+        let instance_ty = cx.typeck_results().expr_ty(receiver);
+        if !Self::is_integral(instance_ty) {
+            return;
+        }
+        if METHODS.iter().copied().all(|method| method != ps.ident.as_str()) {
+            return;
+        }
+        let (actual_arg, _) = peel_hir_expr_refs(arg);
+        match Self::literal_integer(cx, actual_arg) {
+            None | Some(0) => self.issue_lint(cx, arg),
+            Some(_) => {},
+        }
+    }
+
     fn manage_unary_ops<'tcx>(
         &mut self,
         cx: &LateContext<'tcx>,
@@ -223,6 +251,9 @@ impl<'tcx> LateLintPass<'tcx> for ArithmeticSideEffects {
         match &expr.kind {
             hir::ExprKind::AssignOp(op, lhs, rhs) | hir::ExprKind::Binary(op, lhs, rhs) => {
                 self.manage_bin_ops(cx, expr, op, lhs, rhs);
+            },
+            hir::ExprKind::MethodCall(ps, receiver, args, _) => {
+                self.manage_method_call(args, cx, ps, receiver);
             },
             hir::ExprKind::Unary(un_op, un_expr) => {
                 self.manage_unary_ops(cx, expr, un_expr, *un_op);
