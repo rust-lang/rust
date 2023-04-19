@@ -523,17 +523,17 @@ def write_config_toml(writer, section_order, targets, sections):
 
 def quit_if_file_exists(file):
     if os.path.isfile(file):
-        p("Existing '" + file + "' detected. EXITING")
-        quit()
+        err("Existing '" + file + "' detected.")
 
 if __name__ == "__main__":
+    # If 'config.toml' already exists, exit the script at this point
+    quit_if_file_exists('config.toml')
+
     p("processing command line")
     # Parse all known arguments into a configuration structure that reflects the
     # TOML we're going to write out
     p("")
     section_order, sections, targets = parse_args(sys.argv[1:])
-    # If 'config.toml' already exists, exit the script at this point
-    quit_if_file_exists('config.toml')
 
     # Now that we've built up our `config.toml`, write it all out in the same
     # order that we read it in.
