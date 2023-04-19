@@ -247,10 +247,14 @@ install!((self, builder, _config),
         }
     };
     Rustc, path = "compiler/rustc", true, only_hosts: true, {
-        let tarball = builder.ensure(dist::Rustc {
-            compiler: builder.compiler(builder.top_stage, self.target),
-        });
-        install_sh(builder, "rustc", self.compiler.stage, Some(self.target), &tarball);
+        if builder.top_stage == 0 {
+            builder.info("skipping Install Rustc stage0");
+        } else {
+            let tarball = builder.ensure(dist::Rustc {
+                compiler: builder.compiler(builder.top_stage, self.target),
+            });
+            install_sh(builder, "rustc", self.compiler.stage, Some(self.target), &tarball);
+        }
     };
 );
 
