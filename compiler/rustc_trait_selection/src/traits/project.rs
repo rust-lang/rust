@@ -2277,11 +2277,10 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
         obligation.param_env,
         cause.clone(),
         obligation.recursion_depth + 1,
-        tcx.bound_return_position_impl_trait_in_trait_tys(impl_fn_def_id)
-            .map_bound(|tys| {
-                tys.map_or_else(|guar| tcx.ty_error(guar), |tys| tys[&obligation.predicate.def_id])
-            })
-            .subst(tcx, impl_fn_substs),
+        tcx.collect_return_position_impl_trait_in_trait_tys(impl_fn_def_id).map_or_else(
+            |guar| tcx.ty_error(guar),
+            |tys| tys[&obligation.predicate.def_id].subst(tcx, impl_fn_substs),
+        ),
         &mut obligations,
     );
 
