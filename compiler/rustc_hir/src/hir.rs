@@ -3529,12 +3529,20 @@ impl<'hir> OwnerNode<'hir> {
 
     pub fn body_id(&self) -> Option<BodyId> {
         match self {
-            OwnerNode::TraitItem(TraitItem {
-                kind: TraitItemKind::Fn(_, TraitFn::Provided(body_id)),
+            OwnerNode::Item(Item {
+                kind:
+                    ItemKind::Static(_, _, body) | ItemKind::Const(_, body) | ItemKind::Fn(_, _, body),
                 ..
             })
-            | OwnerNode::ImplItem(ImplItem { kind: ImplItemKind::Fn(_, body_id), .. })
-            | OwnerNode::Item(Item { kind: ItemKind::Fn(.., body_id), .. }) => Some(*body_id),
+            | OwnerNode::TraitItem(TraitItem {
+                kind:
+                    TraitItemKind::Fn(_, TraitFn::Provided(body)) | TraitItemKind::Const(_, Some(body)),
+                ..
+            })
+            | OwnerNode::ImplItem(ImplItem {
+                kind: ImplItemKind::Fn(_, body) | ImplItemKind::Const(_, body),
+                ..
+            }) => Some(*body),
             _ => None,
         }
     }
@@ -3729,12 +3737,27 @@ impl<'hir> Node<'hir> {
 
     pub fn body_id(&self) -> Option<BodyId> {
         match self {
-            Node::TraitItem(TraitItem {
-                kind: TraitItemKind::Fn(_, TraitFn::Provided(body_id)),
+            Node::Item(Item {
+                kind:
+                    ItemKind::Static(_, _, body) | ItemKind::Const(_, body) | ItemKind::Fn(_, _, body),
                 ..
             })
-            | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(_, body_id), .. })
-            | Node::Item(Item { kind: ItemKind::Fn(.., body_id), .. }) => Some(*body_id),
+            | Node::TraitItem(TraitItem {
+                kind:
+                    TraitItemKind::Fn(_, TraitFn::Provided(body)) | TraitItemKind::Const(_, Some(body)),
+                ..
+            })
+            | Node::ImplItem(ImplItem {
+                kind: ImplItemKind::Fn(_, body) | ImplItemKind::Const(_, body),
+                ..
+            })
+            | Node::Expr(Expr {
+                kind:
+                    ExprKind::ConstBlock(AnonConst { body, .. })
+                    | ExprKind::Closure(Closure { body, .. })
+                    | ExprKind::Repeat(_, ArrayLen::Body(AnonConst { body, .. })),
+                ..
+            }) => Some(*body),
             _ => None,
         }
     }
