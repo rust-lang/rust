@@ -10,7 +10,7 @@ use rustc_lint::LateContext;
 use rustc_span::Span;
 use std::borrow::Cow;
 
-use super::WHILE_POP_UNWRAP;
+use super::MANUAL_WHILE_LET_SOME;
 
 /// The kind of statement that the `pop()` call appeared in.
 ///
@@ -31,7 +31,7 @@ enum PopStmt<'hir> {
 fn report_lint(cx: &LateContext<'_>, pop_span: Span, pop_stmt_kind: PopStmt<'_>, loop_span: Span, receiver_span: Span) {
     span_lint_and_then(
         cx,
-        WHILE_POP_UNWRAP,
+        MANUAL_WHILE_LET_SOME,
         pop_span,
         "you seem to be trying to pop elements from a `Vec` in a loop",
         |diag| {

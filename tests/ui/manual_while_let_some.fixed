@@ -1,7 +1,7 @@
 // run-rustfix
 
 #![allow(unused)]
-#![warn(clippy::while_pop_unwrap)]
+#![warn(clippy::manual_while_let_some)]
 
 struct VecInStruct {
     numbers: Vec<i32>,
@@ -73,7 +73,7 @@ fn main() {
             }
         };
     }
-    // Do not warn if the loop is in a macro.
+    // Do not warn if the loop comes from a macro.
     generate_loop!();
 
     // Try other kinds of patterns

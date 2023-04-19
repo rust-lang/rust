@@ -1,10 +1,10 @@
 error: you seem to be trying to pop elements from a `Vec` in a loop
-  --> $DIR/while_pop_unwrap.rs:23:9
+  --> $DIR/manual_while_let_some.rs:23:9
    |
 LL |         let number = numbers.pop().unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::while-pop-unwrap` implied by `-D warnings`
+   = note: `-D clippy::manual-while-let-some` implied by `-D warnings`
 help: consider using a `while..let` loop
    |
 LL ~     while let Some(number) = numbers.pop() {
@@ -12,7 +12,7 @@ LL ~
    |
 
 error: you seem to be trying to pop elements from a `Vec` in a loop
-  --> $DIR/while_pop_unwrap.rs:31:9
+  --> $DIR/manual_while_let_some.rs:31:9
    |
 LL |         let number = val.numbers.pop().unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,7 +24,7 @@ LL ~
    |
 
 error: you seem to be trying to pop elements from a `Vec` in a loop
-  --> $DIR/while_pop_unwrap.rs:35:20
+  --> $DIR/manual_while_let_some.rs:35:20
    |
 LL |         accept_i32(numbers.pop().unwrap());
    |                    ^^^^^^^^^^^^^^^^^^^^^^
@@ -36,7 +36,7 @@ LL ~         accept_i32(element);
    |
 
 error: you seem to be trying to pop elements from a `Vec` in a loop
-  --> $DIR/while_pop_unwrap.rs:39:20
+  --> $DIR/manual_while_let_some.rs:39:20
    |
 LL |         accept_i32(numbers.pop().expect(""));
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -48,7 +48,7 @@ LL ~         accept_i32(element);
    |
 
 error: you seem to be trying to pop elements from a `Vec` in a loop
-  --> $DIR/while_pop_unwrap.rs:82:9
+  --> $DIR/manual_while_let_some.rs:82:9
    |
 LL |         let (a, b) = numbers.pop().unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -60,7 +60,7 @@ LL ~
    |
 
 error: you seem to be trying to pop elements from a `Vec` in a loop
-  --> $DIR/while_pop_unwrap.rs:86:26
+  --> $DIR/manual_while_let_some.rs:86:26
    |
 LL |         accept_i32_tuple(numbers.pop().unwrap());
    |                          ^^^^^^^^^^^^^^^^^^^^^^
@@ -72,7 +72,7 @@ LL ~         accept_i32_tuple(element);
    |
 
 error: you seem to be trying to pop elements from a `Vec` in a loop
-  --> $DIR/while_pop_unwrap.rs:91:9
+  --> $DIR/manual_while_let_some.rs:91:9
    |
 LL |         let Foo { a, b } = results.pop().unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
