@@ -27,7 +27,7 @@ pub struct IndexVec<I: Idx, T> {
 impl<I: Idx, T> IndexVec<I, T> {
     #[inline]
     pub const fn new() -> Self {
-        IndexVec { raw: Vec::new(), _marker: PhantomData }
+        IndexVec::from_raw(Vec::new())
     }
 
     #[inline]
@@ -37,7 +37,7 @@ impl<I: Idx, T> IndexVec<I, T> {
 
     #[inline]
     pub fn with_capacity(capacity: usize) -> Self {
-        IndexVec { raw: Vec::with_capacity(capacity), _marker: PhantomData }
+        IndexVec::from_raw(Vec::with_capacity(capacity))
     }
 
     /// Creates a new vector with a copy of `elem` for each index in `universe`.
@@ -56,7 +56,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     where
         T: Clone,
     {
-        IndexVec { raw: vec![elem; universe.len()], _marker: PhantomData }
+        IndexVec::from_raw(vec![elem; universe.len()])
     }
 
     #[inline]
@@ -64,7 +64,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     where
         T: Clone,
     {
-        IndexVec { raw: vec![elem; n], _marker: PhantomData }
+        IndexVec::from_raw(vec![elem; n])
     }
 
     /// Create an `IndexVec` with `n` elements, where the value of each
@@ -72,8 +72,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     /// be allocated only once, with a capacity of at least `n`.)
     #[inline]
     pub fn from_fn_n(func: impl FnMut(I) -> T, n: usize) -> Self {
-        let indices = (0..n).map(I::new);
-        Self::from_raw(indices.map(func).collect())
+        IndexVec::from_raw((0..n).map(I::new).map(func).collect())
     }
 
     #[inline]
@@ -88,7 +87,7 @@ impl<I: Idx, T> IndexVec<I, T> {
 
     #[inline]
     pub fn push(&mut self, d: T) -> I {
-        let idx = I::new(self.len());
+        let idx = self.next_index();
         self.raw.push(d);
         idx
     }
@@ -139,7 +138,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     pub fn convert_index_type<Ix: Idx>(self) -> IndexVec<Ix, T> {
-        IndexVec { raw: self.raw, _marker: PhantomData }
+        IndexVec::from_raw(self.raw)
     }
 
     /// Grows the index vector so that it contains an entry for
@@ -250,7 +249,7 @@ impl<I: Idx, T> FromIterator<T> for IndexVec<I, T> {
     where
         J: IntoIterator<Item = T>,
     {
-        IndexVec { raw: FromIterator::from_iter(iter), _marker: PhantomData }
+        IndexVec::from_raw(Vec::from_iter(iter))
     }
 }
 
@@ -270,7 +269,7 @@ impl<'a, I: Idx, T> IntoIterator for &'a IndexVec<I, T> {
 
     #[inline]
     fn into_iter(self) -> slice::Iter<'a, T> {
-        self.raw.iter()
+        self.iter()
     }
 }
 
@@ -280,14 +279,14 @@ impl<'a, I: Idx, T> IntoIterator for &'a mut IndexVec<I, T> {
 
     #[inline]
     fn into_iter(self) -> slice::IterMut<'a, T> {
-        self.raw.iter_mut()
+        self.iter_mut()
     }
 }
 
 impl<I: Idx, T> Default for IndexVec<I, T> {
     #[inline]
     fn default() -> Self {
-        Self::new()
+        IndexVec::new()
     }
 }
 
@@ -308,7 +307,7 @@ impl<S: Encoder, I: Idx, T: Encodable<S>> Encodable<S> for IndexVec<I, T> {
 #[cfg(feature = "rustc_serialize")]
 impl<D: Decoder, I: Idx, T: Decodable<D>> Decodable<D> for IndexVec<I, T> {
     fn decode(d: &mut D) -> Self {
-        IndexVec { raw: Decodable::decode(d), _marker: PhantomData }
+        IndexVec::from_raw(Vec::<T>::decode(d))
     }
 }
 
