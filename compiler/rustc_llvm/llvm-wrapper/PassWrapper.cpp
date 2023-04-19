@@ -523,14 +523,14 @@ extern "C" typedef void (*LLVMRustSelfProfileBeforePassCallback)(void*, // LlvmS
 extern "C" typedef void (*LLVMRustSelfProfileAfterPassCallback)(void*); // LlvmSelfProfiler
 
 std::string LLVMRustwrappedIrGetName(const llvm::Any &WrappedIr) {
-  if (any_isa<const Module *>(WrappedIr))
-    return any_cast<const Module *>(WrappedIr)->getName().str();
-  if (any_isa<const Function *>(WrappedIr))
-    return any_cast<const Function *>(WrappedIr)->getName().str();
-  if (any_isa<const Loop *>(WrappedIr))
-    return any_cast<const Loop *>(WrappedIr)->getName().str();
-  if (any_isa<const LazyCallGraph::SCC *>(WrappedIr))
-    return any_cast<const LazyCallGraph::SCC *>(WrappedIr)->getName();
+  if (const auto *Cast = any_cast<const Module *>(&WrappedIr))
+    return (*Cast)->getName().str();
+  if (const auto *Cast = any_cast<const Function *>(&WrappedIr))
+    return (*Cast)->getName().str();
+  if (const auto *Cast = any_cast<const Loop *>(&WrappedIr))
+    return (*Cast)->getName().str();
+  if (const auto *Cast = any_cast<const LazyCallGraph::SCC *>(&WrappedIr))
+    return (*Cast)->getName();
   return "<UNKNOWN>";
 }
 
