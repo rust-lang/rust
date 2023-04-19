@@ -296,7 +296,7 @@ fn mir_const(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> &Steal<
             &Lint(check_const_item_mutation::CheckConstItemMutation),
             &Lint(function_item_references::FunctionItemReferences),
             // What we need to do constant evaluation.
-            &simplify::SimplifyCfg::new("initial"),
+            &simplify::SimplifyCfg::Initial,
             &rustc_peek::SanityCheck, // Just a lint
         ],
         None,
@@ -334,11 +334,7 @@ fn mir_promoted(
     pm::run_passes(
         tcx,
         &mut body,
-        &[
-            &promote_pass,
-            &simplify::SimplifyCfg::new("promote-consts"),
-            &coverage::InstrumentCoverage,
-        ],
+        &[&promote_pass, &simplify::SimplifyCfg::PromoteConsts, &coverage::InstrumentCoverage],
         Some(MirPhase::Analysis(AnalysisPhase::Initial)),
     );
 
@@ -467,10 +463,7 @@ fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>
         pm::run_passes(
             tcx,
             body,
-            &[
-                &remove_uninit_drops::RemoveUninitDrops,
-                &simplify::SimplifyCfg::new("remove-false-edges"),
-            ],
+            &[&remove_uninit_drops::RemoveUninitDrops, &simplify::SimplifyCfg::RemoveFalseEdges],
             None,
         );
         check_consts::post_drop_elaboration::check_live_drops(tcx, &body); // FIXME: make this a MIR lint
@@ -492,7 +485,7 @@ fn run_analysis_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let passes: &[&dyn MirPass<'tcx>] = &[
         &cleanup_post_borrowck::CleanupPostBorrowck,
         &remove_noop_landing_pads::RemoveNoopLandingPads,
-        &simplify::SimplifyCfg::new("early-opt"),
+        &simplify::SimplifyCfg::EarlyOpt,
         &deref_separator::Derefer,
     ];
 
@@ -525,7 +518,7 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 /// Returns the sequence of passes that do the initial cleanup of runtime MIR.
 fn run_runtime_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let passes: &[&dyn MirPass<'tcx>] =
-        &[&lower_intrinsics::LowerIntrinsics, &simplify::SimplifyCfg::new("elaborate-drops")];
+        &[&lower_intrinsics::LowerIntrinsics, &simplify::SimplifyCfg::ElaborateDrops];
 
     pm::run_passes(tcx, body, passes, Some(MirPhase::Runtime(RuntimePhase::PostCleanup)));
 
@@ -551,7 +544,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &lower_slice_len::LowerSliceLenCalls, // has to be done before inlining, otherwise actual call will be almost always inlined. Also simple, so can just do first
             &unreachable_prop::UnreachablePropagation,
             &uninhabited_enum_branching::UninhabitedEnumBranching,
-            &o1(simplify::SimplifyCfg::new("after-uninhabited-enum-branching")),
+            &o1(simplify::SimplifyCfg::AfterUninhabitedEnumBranching),
             &inline::Inline,
             &remove_storage_markers::RemoveStorageMarkers,
             &remove_zsts::RemoveZsts,
@@ -564,23 +557,23 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &multiple_return_terminators::MultipleReturnTerminators,
             &instcombine::InstCombine,
             &separate_const_switch::SeparateConstSwitch,
-            &simplify::SimplifyLocals::new("before-const-prop"),
+            &simplify::SimplifyLocals::BeforeConstProp,
             &copy_prop::CopyProp,
             &const_prop::ConstProp,
             &dataflow_const_prop::DataflowConstProp,
             //
             // Const-prop runs unconditionally, but doesn't mutate the MIR at mir-opt-level=0.
             &const_debuginfo::ConstDebugInfo,
-            &o1(simplify_branches::SimplifyConstCondition::new("after-const-prop")),
+            &o1(simplify_branches::SimplifyConstConditionPassName::AfterConstProp),
             &early_otherwise_branch::EarlyOtherwiseBranch,
             &simplify_comparison_integral::SimplifyComparisonIntegral,
             &dead_store_elimination::DeadStoreElimination,
             &dest_prop::DestinationPropagation,
-            &o1(simplify_branches::SimplifyConstCondition::new("final")),
+            &o1(simplify_branches::SimplifyConstConditionPassName::Final),
             &o1(remove_noop_landing_pads::RemoveNoopLandingPads),
-            &o1(simplify::SimplifyCfg::new("final")),
+            &o1(simplify::SimplifyCfg::Final),
             &nrvo::RenameReturnPlace,
-            &simplify::SimplifyLocals::new("final"),
+            &simplify::SimplifyLocals::Final,
             &multiple_return_terminators::MultipleReturnTerminators,
             &deduplicate_blocks::DeduplicateBlocks,
             &large_enums::EnumSizeOpt { discrepancy: 128 },
