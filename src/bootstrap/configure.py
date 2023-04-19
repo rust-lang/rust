@@ -475,7 +475,7 @@ def configure_section(lines, config):
 def configure_top_level_key(lines, top_level_key, value):
     for i, line in enumerate(lines):
         if line.startswith('#' + top_level_key + ' = ') or line.startswith(top_level_key + ' = '):
-            lines[i] = "{} = {}".format(top_level_key, value)
+            lines[i] = "{} = {}".format(top_level_key, to_toml(value))
             return
 
     raise RuntimeError("failed to find config line for {}".format(top_level_key))

@@ -107,10 +107,9 @@ class GenerateAndParseConfig(unittest.TestCase):
         build = self.serialize_and_parse(["--set", "target.x86_64-unknown-linux-gnu.cc=gcc"])
         self.assertEqual(build.get_toml("cc", section="target.x86_64-unknown-linux-gnu"), 'gcc')
 
-    # Uncomment when #108928 is fixed.
-    # def test_set_top_level(self):
-    #     build = self.serialize_and_parse(["--set", "profile=compiler"])
-    #     self.assertEqual(build.get_toml("profile"), 'compiler')
+    def test_set_top_level(self):
+        build = self.serialize_and_parse(["--set", "profile=compiler"])
+        self.assertEqual(build.get_toml("profile"), 'compiler')
 
 if __name__ == '__main__':
     SUITE = unittest.TestSuite()
