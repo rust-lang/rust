@@ -55,13 +55,13 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::{
     DiagnosticArgFromDisplay, DiagnosticMessage, Handler, StashKey, SubdiagnosticMessage,
 };
+use rustc_fluent_macro::fluent_messages;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::{ConstArg, GenericArg, ItemLocalId, ParamName, TraitCandidate};
 use rustc_index::vec::{Idx, IndexSlice, IndexVec};
-use rustc_macros::fluent_messages;
 use rustc_middle::{
     span_bug,
     ty::{ResolverAstLowering, TyCtxt},

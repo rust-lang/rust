@@ -7,15 +7,17 @@
 #![deny(rustc::diagnostic_outside_of_impl)]
 
 extern crate rustc_errors;
+extern crate rustc_fluent_macro;
 extern crate rustc_macros;
 extern crate rustc_session;
 extern crate rustc_span;
 
 use rustc_errors::{
-    AddToDiagnostic, IntoDiagnostic, Diagnostic, DiagnosticBuilder,
-    ErrorGuaranteed, Handler, DiagnosticMessage, SubdiagnosticMessage,
+    AddToDiagnostic, Diagnostic, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed, Handler,
+    IntoDiagnostic, SubdiagnosticMessage,
 };
-use rustc_macros::{fluent_messages, Diagnostic, Subdiagnostic};
+use rustc_fluent_macro::fluent_messages;
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
 
 fluent_messages! { "./diagnostics.ftl" }
