@@ -972,8 +972,8 @@ impl AtomicBool {
     /// # }
     /// ```
     #[inline]
-    #[stable(feature = "atomic_as_ptr", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "atomic_as_ptr", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "atomic_as_ptr", since = "1.70.0")]
+    #[rustc_const_stable(feature = "atomic_as_ptr", since = "1.70.0")]
     pub const fn as_ptr(&self) -> *mut bool {
         self.v.get().cast()
     }
@@ -1907,8 +1907,8 @@ impl<T> AtomicPtr<T> {
     /// }
     /// ```
     #[inline]
-    #[stable(feature = "atomic_as_ptr", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "atomic_as_ptr", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "atomic_as_ptr", since = "1.70.0")]
+    #[rustc_const_stable(feature = "atomic_as_ptr", since = "1.70.0")]
     pub const fn as_ptr(&self) -> *mut *mut T {
         self.p.get()
     }
@@ -2860,8 +2860,8 @@ macro_rules! atomic_int {
             /// # }
             /// ```
             #[inline]
-            #[stable(feature = "atomic_as_ptr", since = "CURRENT_RUSTC_VERSION")]
-            #[rustc_const_stable(feature = "atomic_as_ptr", since = "CURRENT_RUSTC_VERSION")]
+            #[stable(feature = "atomic_as_ptr", since = "1.70.0")]
+            #[rustc_const_stable(feature = "atomic_as_ptr", since = "1.70.0")]
             pub const fn as_ptr(&self) -> *mut $int_type {
                 self.v.get()
             }

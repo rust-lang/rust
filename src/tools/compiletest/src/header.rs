@@ -79,6 +79,9 @@ pub struct TestProps {
     pub unset_rustc_env: Vec<String>,
     // Environment settings to use during execution
     pub exec_env: Vec<(String, String)>,
+    // Environment variables to unset prior to execution.
+    // Variables are unset before applying 'exec_env'
+    pub unset_exec_env: Vec<String>,
     // Build documentation for all specified aux-builds as well
     pub build_aux_docs: bool,
     // Flag to force a crate to be built with the host architecture
@@ -184,6 +187,7 @@ mod directives {
     pub const AUX_CRATE: &'static str = "aux-crate";
     pub const EXEC_ENV: &'static str = "exec-env";
     pub const RUSTC_ENV: &'static str = "rustc-env";
+    pub const UNSET_EXEC_ENV: &'static str = "unset-exec-env";
     pub const UNSET_RUSTC_ENV: &'static str = "unset-rustc-env";
     pub const FORBID_OUTPUT: &'static str = "forbid-output";
     pub const CHECK_TEST_LINE_NUMBERS_MATCH: &'static str = "check-test-line-numbers-match";
@@ -216,6 +220,7 @@ impl TestProps {
             rustc_env: vec![],
             unset_rustc_env: vec![],
             exec_env: vec![],
+            unset_exec_env: vec![],
             build_aux_docs: false,
             force_host: false,
             check_stdout: false,
@@ -365,6 +370,12 @@ impl TestProps {
                     EXEC_ENV,
                     &mut self.exec_env,
                     Config::parse_env,
+                );
+                config.push_name_value_directive(
+                    ln,
+                    UNSET_EXEC_ENV,
+                    &mut self.unset_exec_env,
+                    |r| r,
                 );
                 config.push_name_value_directive(
                     ln,

@@ -1157,7 +1157,7 @@ macro_rules! nonzero_min_max_unsigned {
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::MIN.get(), 1", stringify!($Int), ");")]
                 /// ```
-                #[stable(feature = "nonzero_min_max", since = "CURRENT_RUSTC_VERSION")]
+                #[stable(feature = "nonzero_min_max", since = "1.70.0")]
                 pub const MIN: Self = Self::new(1).unwrap();
 
                 /// The largest value that can be represented by this non-zero
@@ -1170,7 +1170,7 @@ macro_rules! nonzero_min_max_unsigned {
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::MAX.get(), ", stringify!($Int), "::MAX);")]
                 /// ```
-                #[stable(feature = "nonzero_min_max", since = "CURRENT_RUSTC_VERSION")]
+                #[stable(feature = "nonzero_min_max", since = "1.70.0")]
                 pub const MAX: Self = Self::new(<$Int>::MAX).unwrap();
             }
         )+
@@ -1195,7 +1195,7 @@ macro_rules! nonzero_min_max_signed {
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::MIN.get(), ", stringify!($Int), "::MIN);")]
                 /// ```
-                #[stable(feature = "nonzero_min_max", since = "CURRENT_RUSTC_VERSION")]
+                #[stable(feature = "nonzero_min_max", since = "1.70.0")]
                 pub const MIN: Self = Self::new(<$Int>::MIN).unwrap();
 
                 /// The largest value that can be represented by this non-zero
@@ -1212,7 +1212,7 @@ macro_rules! nonzero_min_max_signed {
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::MAX.get(), ", stringify!($Int), "::MAX);")]
                 /// ```
-                #[stable(feature = "nonzero_min_max", since = "CURRENT_RUSTC_VERSION")]
+                #[stable(feature = "nonzero_min_max", since = "1.70.0")]
                 pub const MAX: Self = Self::new(<$Int>::MAX).unwrap();
             }
         )+

@@ -473,7 +473,7 @@ impl<T> NonNull<[T]> {
     ///
     /// (Note that this example artificially demonstrates a use of this method,
     /// but `let slice = NonNull::from(&x[..]);` would be a better way to write code like this.)
-    #[stable(feature = "nonnull_slice_from_raw_parts", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "nonnull_slice_from_raw_parts", since = "1.70.0")]
     #[rustc_const_unstable(feature = "const_slice_from_raw_parts_mut", issue = "67456")]
     #[must_use]
     #[inline]

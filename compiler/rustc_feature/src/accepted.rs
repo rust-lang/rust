@@ -239,7 +239,7 @@ declare_features! (
     /// Allows using `Self` and associated types in struct expressions and patterns.
     (accepted, more_struct_aliases, "1.16.0", Some(37544), None),
     /// Allows using the MOVBE target feature.
-    (accepted, movbe_target_feature, "CURRENT_RUSTC_VERSION", Some(44839), None),
+    (accepted, movbe_target_feature, "1.70.0", Some(44839), None),
     /// Allows patterns with concurrent by-move and by-ref bindings.
     /// For example, you can write `Foo(a, ref b)` where `a` is by-move and `b` is by-ref.
     (accepted, move_ref_pattern, "1.49.0", Some(68354), None),

@@ -303,7 +303,7 @@ where
 {
 }
 
-#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters", since = "1.70.0")]
 impl<I> Default for Flatten<I>
 where
     I: Default + Iterator<Item: IntoIterator>,
