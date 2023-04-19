@@ -4,7 +4,7 @@
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::LocalDefId;
-use rustc_index::vec::IndexSlice;
+use rustc_index::IndexSlice;
 use rustc_middle::mir::{create_dump_file, dump_enabled, dump_mir, PassWhere};
 use rustc_middle::mir::{
     Body, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind, Location, Promoted,

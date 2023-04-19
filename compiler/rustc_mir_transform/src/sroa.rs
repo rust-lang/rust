@@ -1,6 +1,6 @@
 use crate::MirPass;
 use rustc_index::bit_set::{BitSet, GrowableBitSet};
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;

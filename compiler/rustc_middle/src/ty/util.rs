@@ -16,7 +16,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::GrowableBitSet;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{Idx, IndexVec};
 use rustc_macros::HashStable;
 use rustc_session::Limit;
 use rustc_span::sym;

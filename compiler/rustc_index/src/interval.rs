@@ -3,9 +3,10 @@ use std::marker::PhantomData;
 use std::ops::RangeBounds;
 use std::ops::{Bound, Range};
 
-use crate::vec::Idx;
-use crate::vec::IndexVec;
 use smallvec::SmallVec;
+
+use crate::idx::Idx;
+use crate::vec::IndexVec;
 
 #[cfg(test)]
 mod tests;

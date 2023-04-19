@@ -12,7 +12,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Arm, Block, Expr, Local, Pat, PatKind, Stmt};
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 use rustc_middle::middle::region::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::source_map;

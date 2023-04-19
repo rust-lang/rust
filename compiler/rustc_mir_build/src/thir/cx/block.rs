@@ -5,7 +5,7 @@ use rustc_middle::middle::region;
 use rustc_middle::thir::*;
 use rustc_middle::ty;
 
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 use rustc_middle::ty::CanonicalUserTypeAnnotation;
 
 impl<'tcx> Cx<'tcx> {

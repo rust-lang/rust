@@ -1,6 +1,6 @@
 //! See docs in `build/expr/mod.rs`.
 
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{Idx, IndexVec};
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_target::abi::{Abi, FieldIdx, Primitive};
 

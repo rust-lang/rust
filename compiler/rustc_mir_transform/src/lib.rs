@@ -25,7 +25,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::mir::visit::Visitor as _;
 use rustc_middle::mir::{
     traversal, AnalysisPhase, Body, ClearCrossCrate, ConstQualifs, Constant, LocalDecl, MirPass,

@@ -1,7 +1,7 @@
 use hir::def_id::DefId;
 use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::{IndexSlice, IndexVec};
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::{GeneratorLayout, GeneratorSavedLocal};
 use rustc_middle::ty::layout::{
     IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, MAX_SIMD_LANES,

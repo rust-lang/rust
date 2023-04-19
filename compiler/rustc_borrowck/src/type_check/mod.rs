@@ -14,7 +14,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_index::vec::{IndexSlice, IndexVec};
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::region_constraints::RegionConstraintData;

@@ -21,7 +21,7 @@ use rustc_hir_analysis::astconv::AstConv;
 use rustc_hir_analysis::check::intrinsicck::InlineAsmCtxt;
 use rustc_hir_analysis::check::potentially_plural_count;
 use rustc_hir_analysis::structured_errors::StructuredDiagnostic;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_infer::infer::error_reporting::{FailureCode, ObligationCauseExt};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::TypeTrace;

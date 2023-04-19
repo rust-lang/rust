@@ -93,7 +93,7 @@ use rustc_hir::def::*;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Expr, HirId, HirIdMap, HirIdSet};
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, RootVariableMinCaptureList, Ty, TyCtxt};
 use rustc_session::lint;

@@ -24,7 +24,7 @@ use rustc_fluent_macro::fluent_messages;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::ChunkedBitSet;
-use rustc_index::vec::{IndexSlice, IndexVec};
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::{
     DefiningAnchor, InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin, TyCtxtInferExt,
 };

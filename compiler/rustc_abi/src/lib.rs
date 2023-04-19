@@ -12,7 +12,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::Hash64;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::StableOrd;
-use rustc_index::vec::{IndexSlice, IndexVec};
+use rustc_index::{IndexSlice, IndexVec};
 #[cfg(feature = "nightly")]
 use rustc_macros::HashStable_Generic;
 #[cfg(feature = "nightly")]

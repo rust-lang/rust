@@ -16,7 +16,7 @@ use rustc_middle::ty::{self, BoundVar, InferConst, List, Ty, TyCtxt, TypeFlags, 
 use std::sync::atomic::Ordering;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 use smallvec::SmallVec;
 
 impl<'tcx> InferCtxt<'tcx> {

@@ -6,7 +6,7 @@ use crate::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::visit::{TypeVisitable, TypeVisitor};
 use crate::Interner;
 use rustc_data_structures::functor::IdFunctor;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{Idx, IndexVec};
 
 use std::ops::ControlFlow;
 use std::rc::Rc;
