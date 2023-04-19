@@ -96,8 +96,9 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             | ItemKind::Struct(_, generics)
             | ItemKind::Union(_, generics) => generics,
 
-            ItemKind::Trait(_, _, generics, ..) | ItemKind::TraitAlias(generics, _) => {
-                is_trait = Some(ty::TraitRef::identity(tcx, def_id.to_def_id()));
+            ItemKind::Trait(_, _, generics, self_bounds, ..)
+            | ItemKind::TraitAlias(generics, self_bounds) => {
+                is_trait = Some(self_bounds);
                 generics
             }
             ItemKind::OpaqueTy(OpaqueTy { generics, .. }) => generics,
@@ -119,10 +120,14 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
 
     // Below we'll consider the bounds on the type parameters (including `Self`)
     // and the explicit where-clauses, but to get the full set of predicates
-    // on a trait we need to add in the supertrait bounds and bounds found on
-    // associated types.
-    if let Some(_trait_ref) = is_trait {
-        predicates.extend(tcx.implied_predicates_of(def_id).predicates.iter().cloned());
+    // on a trait we must also consider the bounds that follow the trait's name,
+    // like `trait Foo: A + B + C`.
+    if let Some(self_bounds) = is_trait {
+        predicates.extend(
+            icx.astconv()
+                .compute_bounds(tcx.types.self_param, self_bounds, OnlySelfBounds(false))
+                .predicates(),
+        );
     }
 
     // In default impls, we can assume that the self type implements

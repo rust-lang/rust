@@ -7,13 +7,21 @@ LL | trait Foo: Iterator<Item = i32, Item = i32> {}
    |                     `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/E0719.rs:6:42
+  --> $DIR/E0719.rs:1:33
+   |
+LL | trait Foo: Iterator<Item = i32, Item = i32> {}
+   |                     ----------  ^^^^^^^^^^ re-bound here
+   |                     |
+   |                     `Item` bound here first
+
+error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
+  --> $DIR/E0719.rs:7:42
    |
 LL | fn test() -> Box<dyn Iterator<Item = (), Item = Unit>> {
    |                               ---------  ^^^^^^^^^^^ re-bound here
    |                               |
    |                               `Item` bound here first
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0719`.
