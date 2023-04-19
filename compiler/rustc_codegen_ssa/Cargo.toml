@@ -7,7 +7,7 @@ edition = "2021"
 test = false
 
 [dependencies]
-ar_archive_writer = "0.1.1"
+ar_archive_writer = "0.1.3"
 bitflags = "1.2.1"
 cc = "1.0.69"
 itertools = "0.10.1"

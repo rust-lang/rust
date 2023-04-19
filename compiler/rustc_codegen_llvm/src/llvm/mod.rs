@@ -137,6 +137,7 @@ impl FromStr for ArchiveKind {
             "bsd" => Ok(ArchiveKind::K_BSD),
             "darwin" => Ok(ArchiveKind::K_DARWIN),
             "coff" => Ok(ArchiveKind::K_COFF),
+            "aix_big" => Ok(ArchiveKind::K_AIXBIG),
             _ => Err(()),
         }
     }
