@@ -831,9 +831,9 @@ fn partial_line_buffered_after_line_write() {
     assert_eq!(&writer.get_ref().buffer, b"Line 1\nLine 2\nLine 3");
 }
 
-/// Test that, given a partial line that exceeds the length of
-/// LineBuffer's buffer (that is, without a trailing newline), that that
-/// line is written to the inner writer
+/// Test that for calls to LineBuffer::write where the passed bytes do not contain
+/// a newline and on their own are greater in length than the internal buffer, the
+/// passed bytes are immediately written to the inner writer.
 #[test]
 fn long_line_flushed() {
     let writer = ProgrammableSink::default();
