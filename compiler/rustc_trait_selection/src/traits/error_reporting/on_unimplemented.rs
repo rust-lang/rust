@@ -341,6 +341,7 @@ pub struct OnUnimplementedNote {
     /// should fallback to a generic message, `Some(None)` suggests using the default
     /// appended message, `Some(Some(s))` suggests use the `s` message instead of the
     /// default one..
+    /// FIXME(bryangarza): Change this to an enum with the 3 variants described above.
     pub append_const_msg: Option<Option<Symbol>>,
 }
 
