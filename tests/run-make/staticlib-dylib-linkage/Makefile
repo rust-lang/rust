@@ -1,6 +1,7 @@
 include ../tools.mk
 
 # ignore-msvc FIXME(bjorn3) can't figure out how to link with the MSVC toolchain
+# ignore-wasm wasm doesn't support dynamic libraries
 
 all:
 	$(RUSTC) -C prefer-dynamic bar.rs
