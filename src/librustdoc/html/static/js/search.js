@@ -1996,8 +1996,13 @@ function initSearch(rawSearchIndex) {
         }
 
         if (results.query.correction !== null) {
-            output += "<h3 class=\"search-corrections\">Showing results for " +
-                `"${results.query.correction}".</h3>`;
+            const orig = results.query.returned.length > 0
+                ? results.query.returned[0].name
+                : results.query.elems[0].name;
+            output += "<h3 class=\"search-corrections\">" +
+                `Type "${orig}" not found. ` +
+                "Showing results for " +
+                `"${results.query.correction}" instead.</h3>`;
         }
 
         const resultsElem = document.createElement("div");
