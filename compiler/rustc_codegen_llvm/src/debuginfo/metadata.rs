@@ -1181,7 +1181,7 @@ fn build_generic_type_param_di_nodes<'ll, 'tcx>(
             let names = get_parameter_names(cx, generics);
             let template_params: SmallVec<_> = iter::zip(substs, names)
                 .filter_map(|(kind, name)| {
-                    kind.unpack().as_type().map(|ty| {
+                    kind.as_type().map(|ty| {
                         let actual_type =
                             cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
                         let actual_type_di_node = type_di_node(cx, actual_type);

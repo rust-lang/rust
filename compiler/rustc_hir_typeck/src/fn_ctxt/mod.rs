@@ -250,7 +250,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
 
     fn ty_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
         match param {
-            Some(param) => self.var_for_def(span, param).unpack().as_type().unwrap(),
+            Some(param) => self.var_for_def(span, param).as_type().unwrap(),
             None => self.next_ty_var(TypeVariableOrigin {
                 kind: TypeVariableOriginKind::TypeInference,
                 span,
@@ -265,7 +265,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         span: Span,
     ) -> Const<'tcx> {
         match param {
-            Some(param) => self.var_for_def(span, param).unpack().as_const().unwrap(),
+            Some(param) => self.var_for_def(span, param).as_const().unwrap(),
             None => self.next_const_var(
                 ty,
                 ConstVariableOrigin { kind: ConstVariableOriginKind::ConstInference, span },
