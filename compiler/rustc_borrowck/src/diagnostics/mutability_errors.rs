@@ -1263,21 +1263,21 @@ fn suggest_ampmut<'tcx>(
     {
         let span = span.with_lo(span.lo() + BytePos(ws_pos as u32)).shrink_to_lo();
         (true, span, " mut".to_owned())
+    // if there is already a binding, we modify it to be `mut`
     } else if binding_exists {
         // shrink the span to just after the `&` in `&variable`
         let span = span.with_lo(span.lo() + BytePos(1)).shrink_to_lo();
         (true, span, "mut ".to_owned())
+    // otherwise, suggest that the user annotates the binding; we provide the
+    // type of the local.
     } else {
         let ty_mut = local_decl.ty.builtin_deref(true).unwrap();
         assert_eq!(ty_mut.mutbl, hir::Mutability::Not);
+
         (
-            binding_exists,
+            false,
             span,
-            if local_decl.ty.is_ref() {
-                format!("&mut {}", ty_mut.ty)
-            } else {
-                format!("*mut {}", ty_mut.ty)
-            },
+            format!("{}mut {}", if local_decl.ty.is_ref() {"&"} else {"*"}, ty_mut.ty)
         )
     }
 }
