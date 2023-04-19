@@ -9,6 +9,7 @@
 use std::borrow::Cow;
 use std::collections::HashSet;
 use std::env;
+use std::ffi::OsStr;
 use std::fs;
 use std::io::prelude::*;
 use std::io::BufReader;
@@ -652,8 +653,19 @@ impl Step for Rustc {
         // so its artifacts can't be reused.
         if builder.download_rustc() && compiler.stage != 0 {
             // Copy the existing artifacts instead of rebuilding them.
-            // NOTE: this path is only taken for tools linking to rustc-dev.
-            builder.ensure(Sysroot { compiler });
+            // NOTE: this path is only taken for tools linking to rustc-dev (including ui-fulldeps tests).
+            let sysroot = builder.ensure(Sysroot { compiler });
+
+            let ci_rustc_dir = builder.out.join(&*builder.build.build.triple).join("ci-rustc");
+            for file in builder.config.rustc_dev_contents() {
+                let src = ci_rustc_dir.join(&file);
+                let dst = sysroot.join(file);
+                if src.is_dir() {
+                    t!(fs::create_dir_all(dst));
+                } else {
+                    builder.copy(&src, &dst);
+                }
+            }
             return;
         }
 
@@ -1282,7 +1294,40 @@ impl Step for Sysroot {
             }
 
             // Copy the compiler into the correct sysroot.
-            builder.cp_r(&builder.ci_rustc_dir(builder.build.build), &sysroot);
+            // NOTE(#108767): We intentionally don't copy `rustc-dev` artifacts until they're requested with `builder.ensure(Rustc)`.
+            // This fixes an issue where we'd have multiple copies of libc in the sysroot with no way to tell which to load.
+            // There are a few quirks of bootstrap that interact to make this reliable:
+            // 1. The order `Step`s are run is hard-coded in `builder.rs` and not configurable. This
+            //    avoids e.g. reordering `test::UiFulldeps` before `test::Ui` and causing the latter to
+            //    fail because of duplicate metadata.
+            // 2. The sysroot is deleted and recreated between each invocation, so running `x test
+            //    ui-fulldeps && x test ui` can't cause failures.
+            let mut filtered_files = Vec::new();
+            // Don't trim directories or files that aren't loaded per-target; they can't cause conflicts.
+            let suffix = format!("lib/rustlib/{}/lib", compiler.host);
+            for path in builder.config.rustc_dev_contents() {
+                let path = Path::new(&path);
+                if path.parent().map_or(false, |parent| parent.ends_with(&suffix)) {
+                    filtered_files.push(path.file_name().unwrap().to_owned());
+                }
+            }
+
+            let filtered_extensions = [OsStr::new("rmeta"), OsStr::new("rlib"), OsStr::new("so")];
+            let ci_rustc_dir = builder.ci_rustc_dir(builder.config.build);
+            builder.cp_filtered(&ci_rustc_dir, &sysroot, &|path| {
+                if path.extension().map_or(true, |ext| !filtered_extensions.contains(&ext)) {
+                    return true;
+                }
+                if !path.parent().map_or(true, |p| p.ends_with(&suffix)) {
+                    return true;
+                }
+                if !filtered_files.iter().all(|f| f != path.file_name().unwrap()) {
+                    builder.verbose_than(1, &format!("ignoring {}", path.display()));
+                    false
+                } else {
+                    true
+                }
+            });
             return INTERNER.intern_path(sysroot);
         }
 

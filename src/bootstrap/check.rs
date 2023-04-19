@@ -271,17 +271,9 @@ impl Step for Rustc {
             false,
         );
 
-        // HACK: This avoids putting the newly built artifacts in the sysroot if we're using
-        // `download-rustc`, to avoid "multiple candidates for `rmeta`" errors. Technically, that's
-        // not quite right: people can set `download-rustc = true` to download even if there are
-        // changes to the compiler, and in that case ideally we would put the *new* artifacts in the
-        // sysroot, in case there are API changes that should be used by tools.  In practice,
-        // though, that should be very uncommon, and people can still disable download-rustc.
-        if !builder.download_rustc() {
-            let libdir = builder.sysroot_libdir(compiler, target);
-            let hostdir = builder.sysroot_libdir(compiler, compiler.host);
-            add_to_sysroot(&builder, &libdir, &hostdir, &librustc_stamp(builder, compiler, target));
-        }
+        let libdir = builder.sysroot_libdir(compiler, target);
+        let hostdir = builder.sysroot_libdir(compiler, compiler.host);
+        add_to_sysroot(&builder, &libdir, &hostdir, &librustc_stamp(builder, compiler, target));
     }
 }
 
