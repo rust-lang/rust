@@ -1052,7 +1052,7 @@ impl fmt::Debug for Span {
                 .field("ctxt", &span.ctxt())
                 .finish()
         }
-        
+
         if SESSION_GLOBALS.is_set() {
             with_session_globals(|session_globals| {
                 if let Some(source_map) = &*session_globals.source_map.borrow() {
