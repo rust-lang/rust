@@ -5,7 +5,7 @@ use std::{
     slice,
 };
 
-use crate::{idx::Idx, vec::IndexVec};
+use crate::{Idx, IndexVec};
 
 /// A view into contiguous `T`s, indexed by `I` rather than by `usize`.
 ///
@@ -140,6 +140,17 @@ impl<I: Idx, T> IndexSlice<I, T> {
         let ptr = self.raw.as_mut_ptr();
         unsafe { (&mut *ptr.add(ai), &mut *ptr.add(bi), &mut *ptr.add(ci)) }
     }
+
+    #[inline]
+    pub fn binary_search(&self, value: &T) -> Result<I, I>
+    where
+        T: Ord,
+    {
+        match self.raw.binary_search(value) {
+            Ok(i) => Ok(Idx::new(i)),
+            Err(i) => Err(Idx::new(i)),
+        }
+    }
 }
 
 impl<I: Idx, J: Idx> IndexSlice<I, J> {
@@ -172,20 +183,6 @@ impl<I: Idx, J: Idx> IndexSlice<I, J> {
     }
 }
 
-impl<I: Idx, T: Ord> IndexSlice<I, T> {
-    #[inline]
-    pub fn binary_search(&self, value: &T) -> Result<I, I> {
-        match self.raw.binary_search(value) {
-            Ok(i) => Ok(Idx::new(i)),
-            Err(i) => Err(Idx::new(i)),
-        }
-    }
-}
-
-// Whether `IndexSlice` is `Send` depends only on the data,
-// not the phantom data.
-unsafe impl<I: Idx, T> Send for IndexSlice<I, T> where T: Send {}
-
 impl<I: Idx, T: fmt::Debug> fmt::Debug for IndexSlice<I, T> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.raw, fmt)
@@ -205,6 +202,26 @@ impl<I: Idx, T> IndexMut<I> for IndexSlice<I, T> {
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut T {
         &mut self.raw[index.index()]
+    }
+}
+
+impl<'a, I: Idx, T> IntoIterator for &'a IndexSlice<I, T> {
+    type Item = &'a T;
+    type IntoIter = slice::Iter<'a, T>;
+
+    #[inline]
+    fn into_iter(self) -> slice::Iter<'a, T> {
+        self.raw.iter()
+    }
+}
+
+impl<'a, I: Idx, T> IntoIterator for &'a mut IndexSlice<I, T> {
+    type Item = &'a mut T;
+    type IntoIter = slice::IterMut<'a, T>;
+
+    #[inline]
+    fn into_iter(self) -> slice::IterMut<'a, T> {
+        self.raw.iter_mut()
     }
 }
 
@@ -234,22 +251,6 @@ impl<I: Idx, T> Default for &mut IndexSlice<I, T> {
     }
 }
 
-impl<'a, I: Idx, T> IntoIterator for &'a IndexSlice<I, T> {
-    type Item = &'a T;
-    type IntoIter = slice::Iter<'a, T>;
-
-    #[inline]
-    fn into_iter(self) -> slice::Iter<'a, T> {
-        self.raw.iter()
-    }
-}
-
-impl<'a, I: Idx, T> IntoIterator for &'a mut IndexSlice<I, T> {
-    type Item = &'a mut T;
-    type IntoIter = slice::IterMut<'a, T>;
-
-    #[inline]
-    fn into_iter(self) -> slice::IterMut<'a, T> {
-        self.raw.iter_mut()
-    }
-}
+// Whether `IndexSlice` is `Send` depends only on the data,
+// not the phantom data.
+unsafe impl<I: Idx, T> Send for IndexSlice<I, T> where T: Send {}

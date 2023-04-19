@@ -9,8 +9,7 @@ use std::ops::{Deref, DerefMut, RangeBounds};
 use std::slice;
 use std::vec;
 
-use crate::idx::Idx;
-use crate::slice::IndexSlice;
+use crate::{Idx, IndexSlice};
 
 /// An owned contiguous collection of `T`s, indexed by `I` rather than by `usize`.
 ///
@@ -23,30 +22,6 @@ use crate::slice::IndexSlice;
 pub struct IndexVec<I: Idx, T> {
     pub raw: Vec<T>,
     _marker: PhantomData<fn(&I)>,
-}
-
-// Whether `IndexVec` is `Send` depends only on the data,
-// not the phantom data.
-unsafe impl<I: Idx, T> Send for IndexVec<I, T> where T: Send {}
-
-#[cfg(feature = "rustc_serialize")]
-impl<S: Encoder, I: Idx, T: Encodable<S>> Encodable<S> for IndexVec<I, T> {
-    fn encode(&self, s: &mut S) {
-        Encodable::encode(&self.raw, s);
-    }
-}
-
-#[cfg(feature = "rustc_serialize")]
-impl<D: Decoder, I: Idx, T: Decodable<D>> Decodable<D> for IndexVec<I, T> {
-    fn decode(d: &mut D) -> Self {
-        IndexVec { raw: Decodable::decode(d), _marker: PhantomData }
-    }
-}
-
-impl<I: Idx, T: fmt::Debug> fmt::Debug for IndexVec<I, T> {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&self.raw, fmt)
-    }
 }
 
 impl<I: Idx, T> IndexVec<I, T> {
@@ -184,9 +159,41 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
+    pub fn resize(&mut self, new_len: usize, value: T)
+    where
+        T: Clone,
+    {
+        self.raw.resize(new_len, value)
+    }
+
+    #[inline]
     pub fn resize_to_elem(&mut self, elem: I, fill_value: impl FnMut() -> T) {
         let min_new_len = elem.index() + 1;
         self.raw.resize_with(min_new_len, fill_value);
+    }
+}
+
+/// `IndexVec` is often used as a map, so it provides some map-like APIs.
+impl<I: Idx, T> IndexVec<I, Option<T>> {
+    #[inline]
+    pub fn insert(&mut self, index: I, value: T) -> Option<T> {
+        self.ensure_contains_elem(index, || None).replace(value)
+    }
+
+    #[inline]
+    pub fn get_or_insert_with(&mut self, index: I, value: impl FnOnce() -> T) -> &mut T {
+        self.ensure_contains_elem(index, || None).get_or_insert_with(value)
+    }
+
+    #[inline]
+    pub fn remove(&mut self, index: I) -> Option<T> {
+        self.get_mut(index)?.take()
+    }
+}
+
+impl<I: Idx, T: fmt::Debug> fmt::Debug for IndexVec<I, T> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.raw, fmt)
     }
 }
 
@@ -215,38 +222,6 @@ impl<I: Idx, T> Borrow<IndexSlice<I, T>> for IndexVec<I, T> {
 impl<I: Idx, T> BorrowMut<IndexSlice<I, T>> for IndexVec<I, T> {
     fn borrow_mut(&mut self) -> &mut IndexSlice<I, T> {
         self
-    }
-}
-
-/// `IndexVec` is often used as a map, so it provides some map-like APIs.
-impl<I: Idx, T> IndexVec<I, Option<T>> {
-    #[inline]
-    pub fn insert(&mut self, index: I, value: T) -> Option<T> {
-        self.ensure_contains_elem(index, || None).replace(value)
-    }
-
-    #[inline]
-    pub fn get_or_insert_with(&mut self, index: I, value: impl FnOnce() -> T) -> &mut T {
-        self.ensure_contains_elem(index, || None).get_or_insert_with(value)
-    }
-
-    #[inline]
-    pub fn remove(&mut self, index: I) -> Option<T> {
-        self.get_mut(index)?.take()
-    }
-}
-
-impl<I: Idx, T: Clone> IndexVec<I, T> {
-    #[inline]
-    pub fn resize(&mut self, new_len: usize, value: T) {
-        self.raw.resize(new_len, value)
-    }
-}
-
-impl<I: Idx, T> Default for IndexVec<I, T> {
-    #[inline]
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -279,13 +254,6 @@ impl<I: Idx, T> FromIterator<T> for IndexVec<I, T> {
     }
 }
 
-impl<I: Idx, T, const N: usize> From<[T; N]> for IndexVec<I, T> {
-    #[inline]
-    fn from(array: [T; N]) -> Self {
-        IndexVec::from_raw(array.into())
-    }
-}
-
 impl<I: Idx, T> IntoIterator for IndexVec<I, T> {
     type Item = T;
     type IntoIter = vec::IntoIter<T>;
@@ -315,6 +283,38 @@ impl<'a, I: Idx, T> IntoIterator for &'a mut IndexVec<I, T> {
         self.raw.iter_mut()
     }
 }
+
+impl<I: Idx, T> Default for IndexVec<I, T> {
+    #[inline]
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<I: Idx, T, const N: usize> From<[T; N]> for IndexVec<I, T> {
+    #[inline]
+    fn from(array: [T; N]) -> Self {
+        IndexVec::from_raw(array.into())
+    }
+}
+
+#[cfg(feature = "rustc_serialize")]
+impl<S: Encoder, I: Idx, T: Encodable<S>> Encodable<S> for IndexVec<I, T> {
+    fn encode(&self, s: &mut S) {
+        Encodable::encode(&self.raw, s);
+    }
+}
+
+#[cfg(feature = "rustc_serialize")]
+impl<D: Decoder, I: Idx, T: Decodable<D>> Decodable<D> for IndexVec<I, T> {
+    fn decode(d: &mut D) -> Self {
+        IndexVec { raw: Decodable::decode(d), _marker: PhantomData }
+    }
+}
+
+// Whether `IndexVec` is `Send` depends only on the data,
+// not the phantom data.
+unsafe impl<I: Idx, T> Send for IndexVec<I, T> where T: Send {}
 
 #[cfg(test)]
 mod tests;
