@@ -153,8 +153,7 @@ v("experimental-targets", "llvm.experimental-targets",
   "experimental LLVM targets to build")
 v("release-channel", "rust.channel", "the name of the release channel to build")
 v("release-description", "rust.description", "optional descriptive string for version output")
-v("dist-compression-formats", None,
-  "comma-separated list of compression formats to use")
+v("dist-compression-formats", None, "List of compression formats to use")
 
 # Used on systems where "cc" is unavailable
 v("default-linker", "rust.default-linker", "the default linker")
@@ -168,8 +167,8 @@ o("extended", "build.extended", "build an extended rust tool set")
 v("tools", None, "List of extended tools will be installed")
 v("codegen-backends", None, "List of codegen backends to build")
 v("build", "build.build", "GNUs ./configure syntax LLVM build triple")
-v("host", None, "GNUs ./configure syntax LLVM host triples")
-v("target", None, "GNUs ./configure syntax LLVM target triples")
+v("host", None, "List of GNUs ./configure syntax LLVM host triples")
+v("target", None, "List of GNUs ./configure syntax LLVM target triples")
 
 v("set", None, "set arbitrary key/value pairs in TOML configuration")
 
