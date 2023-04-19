@@ -35,6 +35,7 @@
 #![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 #[macro_use]
 extern crate tracing;
