@@ -97,6 +97,7 @@ class GenerateAndParseConfig(unittest.TestCase):
     def test_no_args(self):
         build = self.serialize_and_parse([])
         self.assertEqual(build.get_toml("changelog-seen"), '2')
+        self.assertEqual(build.get_toml("profile"), 'user')
         self.assertIsNone(build.get_toml("llvm.download-ci-llvm"))
 
     def test_set_section(self):
