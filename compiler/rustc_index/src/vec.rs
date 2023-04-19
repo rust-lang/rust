@@ -236,12 +236,16 @@ impl<I: Idx, T> IndexVec<I, T> {
     /// `elem`; if that is already true, then has no
     /// effect. Otherwise, inserts new values as needed by invoking
     /// `fill_value`.
+    ///
+    /// Returns a reference to the `elem` entry.
     #[inline]
-    pub fn ensure_contains_elem(&mut self, elem: I, fill_value: impl FnMut() -> T) {
+    pub fn ensure_contains_elem(&mut self, elem: I, fill_value: impl FnMut() -> T) -> &mut T {
         let min_new_len = elem.index() + 1;
         if self.len() < min_new_len {
             self.raw.resize_with(min_new_len, fill_value);
         }
+
+        &mut self[elem]
     }
 
     #[inline]
@@ -446,20 +450,17 @@ impl<I: Idx, J: Idx> IndexSlice<I, J> {
 impl<I: Idx, T> IndexVec<I, Option<T>> {
     #[inline]
     pub fn insert(&mut self, index: I, value: T) -> Option<T> {
-        self.ensure_contains_elem(index, || None);
-        self[index].replace(value)
+        self.ensure_contains_elem(index, || None).replace(value)
     }
 
     #[inline]
     pub fn get_or_insert_with(&mut self, index: I, value: impl FnOnce() -> T) -> &mut T {
-        self.ensure_contains_elem(index, || None);
-        self[index].get_or_insert_with(value)
+        self.ensure_contains_elem(index, || None).get_or_insert_with(value)
     }
 
     #[inline]
     pub fn remove(&mut self, index: I) -> Option<T> {
-        self.ensure_contains_elem(index, || None);
-        self[index].take()
+        self.get_mut(index)?.take()
     }
 }
 

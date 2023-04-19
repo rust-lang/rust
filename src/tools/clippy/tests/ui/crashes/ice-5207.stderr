@@ -1,0 +1,16 @@
+warning: future cannot be sent between threads safely
+  --> $DIR/ice-5207.rs:6:35
+   |
+LL | pub async fn bar<'a, T: 'a>(_: T) {}
+   |                                   ^ future returned by `bar` is not `Send`
+   |
+note: captured value is not `Send`
+  --> $DIR/ice-5207.rs:6:29
+   |
+LL | pub async fn bar<'a, T: 'a>(_: T) {}
+   |                             ^ has type `T` which is not `Send`
+   = note: `T` doesn't implement `std::marker::Send`
+   = note: `-D clippy::future-not-send` implied by `-D warnings`
+
+warning: 1 warning emitted
+

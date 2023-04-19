@@ -251,7 +251,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
         match tcx.collect_return_position_impl_trait_in_trait_tys(fn_def_id) {
             Ok(map) => {
                 let assoc_item = tcx.associated_item(def_id);
-                return ty::EarlyBinder(map[&assoc_item.trait_item_def_id.unwrap()]);
+                return map[&assoc_item.trait_item_def_id.unwrap()];
             }
             Err(_) => {
                 return ty::EarlyBinder(tcx.ty_error_with_message(

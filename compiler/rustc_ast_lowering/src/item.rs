@@ -89,9 +89,9 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
         lctx.with_hir_id_owner(owner, |lctx| f(lctx));
 
         for (def_id, info) in lctx.children {
-            self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
-            debug_assert!(matches!(self.owners[def_id], hir::MaybeOwner::Phantom));
-            self.owners[def_id] = info;
+            let owner = self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
+            debug_assert!(matches!(owner, hir::MaybeOwner::Phantom));
+            *owner = info;
         }
     }
 
@@ -99,8 +99,8 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
         &mut self,
         def_id: LocalDefId,
     ) -> hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>> {
-        self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
-        if let hir::MaybeOwner::Phantom = self.owners[def_id] {
+        let owner = self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
+        if let hir::MaybeOwner::Phantom = owner {
             let node = self.ast_index[def_id];
             match node {
                 AstOwner::NonOwner => {}

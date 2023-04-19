@@ -579,7 +579,7 @@ fn compare_asyncness<'tcx>(
 pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_m_def_id: LocalDefId,
-) -> Result<&'tcx FxHashMap<DefId, Ty<'tcx>>, ErrorGuaranteed> {
+) -> Result<&'tcx FxHashMap<DefId, ty::EarlyBinder<Ty<'tcx>>>, ErrorGuaranteed> {
     let impl_m = tcx.opt_associated_item(impl_m_def_id.to_def_id()).unwrap();
     let trait_m = tcx.opt_associated_item(impl_m.trait_item_def_id.unwrap()).unwrap();
     let impl_trait_ref =
@@ -782,14 +782,14 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                     })
                 });
                 debug!(%ty);
-                collected_tys.insert(def_id, ty);
+                collected_tys.insert(def_id, ty::EarlyBinder(ty));
             }
             Err(err) => {
                 let reported = tcx.sess.delay_span_bug(
                     return_span,
                     format!("could not fully resolve: {ty} => {err:?}"),
                 );
-                collected_tys.insert(def_id, tcx.ty_error(reported));
+                collected_tys.insert(def_id, ty::EarlyBinder(tcx.ty_error(reported)));
             }
         }
     }

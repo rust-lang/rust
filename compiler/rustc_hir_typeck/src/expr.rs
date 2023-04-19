@@ -38,6 +38,7 @@ use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::infer::InferOk;
+use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
@@ -53,6 +54,8 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_target::abi::FieldIdx;
 use rustc_target::spec::abi::Abi::RustIntrinsic;
 use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
+use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -2800,6 +2803,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     element_ty
                 }
                 None => {
+                    // Attempt to *shallowly* search for an impl which matches,
+                    // but has nested obligations which are unsatisfied.
+                    for (base_t, _) in self.autoderef(base.span, base_t).silence_errors() {
+                        if let Some((_, index_ty, element_ty)) =
+                            self.find_and_report_unsatisfied_index_impl(expr.hir_id, base, base_t)
+                        {
+                            self.demand_coerce(idx, idx_t, index_ty, None, AllowTwoPhase::No);
+                            return element_ty;
+                        }
+                    }
+
                     let mut err = type_error_struct!(
                         self.tcx.sess,
                         expr.span,
@@ -2841,6 +2855,82 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         }
+    }
+
+    /// Try to match an implementation of `Index` against a self type, and report
+    /// the unsatisfied predicates that result from confirming this impl.
+    ///
+    /// Given an index expression, sometimes the `Self` type shallowly but does not
+    /// deeply satisfy an impl predicate. Instead of simply saying that the type
+    /// does not support being indexed, we want to point out exactly what nested
+    /// predicates cause this to be, so that the user can add them to fix their code.
+    fn find_and_report_unsatisfied_index_impl(
+        &self,
+        index_expr_hir_id: HirId,
+        base_expr: &hir::Expr<'_>,
+        base_ty: Ty<'tcx>,
+    ) -> Option<(ErrorGuaranteed, Ty<'tcx>, Ty<'tcx>)> {
+        let index_trait_def_id = self.tcx.lang_items().index_trait()?;
+        let index_trait_output_def_id = self.tcx.get_diagnostic_item(sym::IndexOutput)?;
+
+        let mut relevant_impls = vec![];
+        self.tcx.for_each_relevant_impl(index_trait_def_id, base_ty, |impl_def_id| {
+            relevant_impls.push(impl_def_id);
+        });
+        let [impl_def_id] = relevant_impls[..] else {
+            // Only report unsatisfied impl predicates if there's one impl
+            return None;
+        };
+
+        self.commit_if_ok(|_| {
+            let ocx = ObligationCtxt::new_in_snapshot(self);
+            let impl_substs = self.fresh_substs_for_item(base_expr.span, impl_def_id);
+            let impl_trait_ref =
+                self.tcx.impl_trait_ref(impl_def_id).unwrap().subst(self.tcx, impl_substs);
+            let cause = self.misc(base_expr.span);
+
+            // Match the impl self type against the base ty. If this fails,
+            // we just skip this impl, since it's not particularly useful.
+            let impl_trait_ref = ocx.normalize(&cause, self.param_env, impl_trait_ref);
+            ocx.eq(&cause, self.param_env, impl_trait_ref.self_ty(), base_ty)?;
+
+            // Register the impl's predicates. One of these predicates
+            // must be unsatisfied, or else we wouldn't have gotten here
+            // in the first place.
+            ocx.register_obligations(traits::predicates_for_generics(
+                |idx, span| {
+                    traits::ObligationCause::new(
+                        base_expr.span,
+                        self.body_id,
+                        if span.is_dummy() {
+                            traits::ExprItemObligation(impl_def_id, index_expr_hir_id, idx)
+                        } else {
+                            traits::ExprBindingObligation(impl_def_id, span, index_expr_hir_id, idx)
+                        },
+                    )
+                },
+                self.param_env,
+                self.tcx.predicates_of(impl_def_id).instantiate(self.tcx, impl_substs),
+            ));
+
+            // Normalize the output type, which we can use later on as the
+            // return type of the index expression...
+            let element_ty = ocx.normalize(
+                &cause,
+                self.param_env,
+                self.tcx.mk_projection(index_trait_output_def_id, impl_trait_ref.substs),
+            );
+
+            let errors = ocx.select_where_possible();
+            // There should be at least one error reported. If not, we
+            // will still delay a span bug in `report_fulfillment_errors`.
+            Ok::<_, NoSolution>((
+                self.err_ctxt().report_fulfillment_errors(&errors),
+                impl_trait_ref.substs.type_at(1),
+                element_ty,
+            ))
+        })
+        .ok()
     }
 
     fn point_at_index_if_possible(

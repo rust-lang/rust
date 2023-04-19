@@ -807,7 +807,9 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx UnordSet<LocalDefId> 
     }
 }
 
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx FxHashMap<DefId, Ty<'tcx>> {
+impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
+    for &'tcx FxHashMap<DefId, ty::EarlyBinder<Ty<'tcx>>>
+{
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         RefDecodable::decode(d)
     }

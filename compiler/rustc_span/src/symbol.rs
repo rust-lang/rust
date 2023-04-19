@@ -204,6 +204,7 @@ symbols! {
         HashSet,
         Hasher,
         Implied,
+        IndexOutput,
         Input,
         Into,
         IntoDiagnostic,
