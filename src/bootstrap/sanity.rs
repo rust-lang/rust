@@ -100,7 +100,7 @@ pub fn check(build: &mut Build) {
 Couldn't find required command: cmake
 
 You should install cmake, or set `download-ci-llvm = true` in the
-`[llvm]` section section of `config.toml` to download LLVM rather
+`[llvm]` section of `config.toml` to download LLVM rather
 than building it.
 "
             );
