@@ -2247,8 +2247,7 @@ impl_eq! { Cow<'a, str>, &'b str }
 impl_eq! { Cow<'a, str>, String }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
-impl const Default for String {
+impl Default for String {
     /// Creates an empty `String`.
     #[inline]
     fn default() -> String {

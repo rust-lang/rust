@@ -46,11 +46,13 @@ fn unsync_once_cell_drop_empty() {
     drop(x);
 }
 
+/* FIXME(#110395)
 #[test]
 const fn once_cell_const() {
     let _once_cell: OnceCell<u32> = OnceCell::new();
     let _once_cell: OnceCell<u32> = OnceCell::from(32);
 }
+*/
 
 #[test]
 fn clone() {

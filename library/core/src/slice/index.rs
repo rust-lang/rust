@@ -7,10 +7,9 @@ use crate::ops;
 use crate::ptr;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
-impl<T, I> const ops::Index<I> for [T]
+impl<T, I> ops::Index<I> for [T]
 where
-    I: ~const SliceIndex<[T]>,
+    I: SliceIndex<[T]>,
 {
     type Output = I::Output;
 
@@ -21,10 +20,9 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
-impl<T, I> const ops::IndexMut<I> for [T]
+impl<T, I> ops::IndexMut<I> for [T]
 where
-    I: ~const SliceIndex<[T]>,
+    I: SliceIndex<[T]>,
 {
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut I::Output {
@@ -162,7 +160,6 @@ mod private_slice_index {
     message = "the type `{T}` cannot be indexed by `{Self}`",
     label = "slice indices are of type `usize` or ranges of `usize`"
 )]
-#[const_trait]
 pub unsafe trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
     /// The output type returned by methods.
     #[stable(feature = "slice_get_slice", since = "1.28.0")]
@@ -211,7 +208,7 @@ pub unsafe trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
 
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
-unsafe impl<T> const SliceIndex<[T]> for usize {
+unsafe impl<T> SliceIndex<[T]> for usize {
     type Output = T;
 
     #[inline]
@@ -271,7 +268,7 @@ unsafe impl<T> const SliceIndex<[T]> for usize {
 /// Because `IndexRange` guarantees `start <= end`, fewer checks are needed here
 /// than there are for a general `Range<usize>` (which might be `100..3`).
 #[rustc_const_unstable(feature = "const_index_range_slice_index", issue = "none")]
-unsafe impl<T> const SliceIndex<[T]> for ops::IndexRange {
+unsafe impl<T> SliceIndex<[T]> for ops::IndexRange {
     type Output = [T];
 
     #[inline]
@@ -347,7 +344,7 @@ unsafe impl<T> const SliceIndex<[T]> for ops::IndexRange {
 
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
-unsafe impl<T> const SliceIndex<[T]> for ops::Range<usize> {
+unsafe impl<T> SliceIndex<[T]> for ops::Range<usize> {
     type Output = [T];
 
     #[inline]
@@ -428,7 +425,7 @@ unsafe impl<T> const SliceIndex<[T]> for ops::Range<usize> {
 
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
-unsafe impl<T> const SliceIndex<[T]> for ops::RangeTo<usize> {
+unsafe impl<T> SliceIndex<[T]> for ops::RangeTo<usize> {
     type Output = [T];
 
     #[inline]
@@ -466,7 +463,7 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeTo<usize> {
 
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
-unsafe impl<T> const SliceIndex<[T]> for ops::RangeFrom<usize> {
+unsafe impl<T> SliceIndex<[T]> for ops::RangeFrom<usize> {
     type Output = [T];
 
     #[inline]
@@ -512,7 +509,7 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeFrom<usize> {
 
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
-unsafe impl<T> const SliceIndex<[T]> for ops::RangeFull {
+unsafe impl<T> SliceIndex<[T]> for ops::RangeFull {
     type Output = [T];
 
     #[inline]
@@ -548,7 +545,7 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeFull {
 
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
-unsafe impl<T> const SliceIndex<[T]> for ops::RangeInclusive<usize> {
+unsafe impl<T> SliceIndex<[T]> for ops::RangeInclusive<usize> {
     type Output = [T];
 
     #[inline]
@@ -592,7 +589,7 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeInclusive<usize> {
 
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
-unsafe impl<T> const SliceIndex<[T]> for ops::RangeToInclusive<usize> {
+unsafe impl<T> SliceIndex<[T]> for ops::RangeToInclusive<usize> {
     type Output = [T];
 
     #[inline]

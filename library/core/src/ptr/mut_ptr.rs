@@ -2036,11 +2036,10 @@ impl<T> *mut [T] {
     /// }
     /// ```
     #[unstable(feature = "slice_ptr_get", issue = "74265")]
-    #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
     #[inline(always)]
-    pub const unsafe fn get_unchecked_mut<I>(self, index: I) -> *mut I::Output
+    pub unsafe fn get_unchecked_mut<I>(self, index: I) -> *mut I::Output
     where
-        I: ~const SliceIndex<[T]>,
+        I: SliceIndex<[T]>,
     {
         // SAFETY: the caller ensures that `self` is dereferenceable and `index` in-bounds.
         unsafe { index.get_unchecked_mut(self) }

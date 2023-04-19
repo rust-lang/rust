@@ -1,18 +1,11 @@
-error[E0080]: evaluation of constant value failed
-  --> $SRC_DIR/core/src/slice/index.rs:LL:COL
-   |
-   = note: overflow executing `unchecked_sub`
-   |
-note: inside `<std::ops::Range<usize> as SliceIndex<[()]>>::get_unchecked`
-  --> $SRC_DIR/core/src/slice/index.rs:LL:COL
-note: inside `core::slice::<impl [()]>::get_unchecked::<std::ops::Range<usize>>`
-  --> $SRC_DIR/core/src/slice/mod.rs:LL:COL
-note: inside `B`
-  --> $DIR/ub-slice-get-unchecked.rs:7:27
+error[E0015]: cannot call non-const fn `core::slice::<impl [()]>::get_unchecked::<std::ops::Range<usize>>` in constants
+  --> $DIR/ub-slice-get-unchecked.rs:9:29
    |
 LL | const B: &[()] = unsafe { A.get_unchecked(3..1) };
-   |                           ^^^^^^^^^^^^^^^^^^^^^
+   |                             ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0080`.
+For more information about this error, try `rustc --explain E0015`.

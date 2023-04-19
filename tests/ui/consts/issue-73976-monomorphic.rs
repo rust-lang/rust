@@ -1,4 +1,4 @@
-// check-pass
+// known-bug: #110395
 //
 // This test is complement to the test in issue-73976-polymorphic.rs.
 // In that test we ensure that polymorphic use of type_id and type_name in patterns

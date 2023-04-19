@@ -610,10 +610,11 @@ pub struct RawPtrComparison;
 impl<'tcx> NonConstOp<'tcx> for RawPtrComparison {
     fn build_error(
         &self,
-        _: &ConstCx<'_, 'tcx>,
+        ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        span_bug!(span, "raw ptr comparison should already be caught in the trait system");
+        // FIXME(const_trait_impl): revert to span_bug?
+        ccx.tcx.sess.create_err(errors::RawPtrComparisonErr { span })
     }
 }
 

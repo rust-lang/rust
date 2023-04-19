@@ -11,5 +11,4 @@ fn main() {
     //~| ERROR cannot convert
     //~| ERROR mutable references
     //~| ERROR cannot call
-    //~| ERROR the trait bound
 }

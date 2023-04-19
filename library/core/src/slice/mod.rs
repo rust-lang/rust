@@ -333,12 +333,11 @@ impl<T> [T] {
     /// assert_eq!(None, v.get(0..4));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
     #[inline]
     #[must_use]
-    pub const fn get<I>(&self, index: I) -> Option<&I::Output>
+    pub fn get<I>(&self, index: I) -> Option<&I::Output>
     where
-        I: ~const SliceIndex<Self>,
+        I: SliceIndex<Self>,
     {
         index.get(self)
     }
@@ -359,12 +358,11 @@ impl<T> [T] {
     /// assert_eq!(x, &[0, 42, 2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
     #[inline]
     #[must_use]
-    pub const fn get_mut<I>(&mut self, index: I) -> Option<&mut I::Output>
+    pub fn get_mut<I>(&mut self, index: I) -> Option<&mut I::Output>
     where
-        I: ~const SliceIndex<Self>,
+        I: SliceIndex<Self>,
     {
         index.get_mut(self)
     }
@@ -392,12 +390,11 @@ impl<T> [T] {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
     #[inline]
     #[must_use]
-    pub const unsafe fn get_unchecked<I>(&self, index: I) -> &I::Output
+    pub unsafe fn get_unchecked<I>(&self, index: I) -> &I::Output
     where
-        I: ~const SliceIndex<Self>,
+        I: SliceIndex<Self>,
     {
         // SAFETY: the caller must uphold most of the safety requirements for `get_unchecked`;
         // the slice is dereferenceable because `self` is a safe reference.
@@ -430,12 +427,11 @@ impl<T> [T] {
     /// assert_eq!(x, &[1, 13, 4]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
     #[inline]
     #[must_use]
-    pub const unsafe fn get_unchecked_mut<I>(&mut self, index: I) -> &mut I::Output
+    pub unsafe fn get_unchecked_mut<I>(&mut self, index: I) -> &mut I::Output
     where
-        I: ~const SliceIndex<Self>,
+        I: SliceIndex<Self>,
     {
         // SAFETY: the caller must uphold the safety requirements for `get_unchecked_mut`;
         // the slice is dereferenceable because `self` is a safe reference.
@@ -678,9 +674,8 @@ impl<T> [T] {
     /// assert!(v == [3, 2, 1]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_reverse", issue = "100784")]
     #[inline]
-    pub const fn reverse(&mut self) {
+    pub fn reverse(&mut self) {
         let half_len = self.len() / 2;
         let Range { start, end } = self.as_mut_ptr_range();
 
@@ -703,7 +698,7 @@ impl<T> [T] {
         revswap(front_half, back_half, half_len);
 
         #[inline]
-        const fn revswap<T>(a: &mut [T], b: &mut [T], n: usize) {
+        fn revswap<T>(a: &mut [T], b: &mut [T], n: usize) {
             debug_assert!(a.len() == n);
             debug_assert!(b.len() == n);
 
@@ -4404,8 +4399,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
-impl<T> const Default for &[T] {
+impl<T> Default for &[T] {
     /// Creates an empty slice.
     fn default() -> Self {
         &[]
@@ -4413,8 +4407,7 @@ impl<T> const Default for &[T] {
 }
 
 #[stable(feature = "mut_slice_default", since = "1.5.0")]
-#[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
-impl<T> const Default for &mut [T] {
+impl<T> Default for &mut [T] {
     /// Creates a mutable empty slice.
     fn default() -> Self {
         &mut []
