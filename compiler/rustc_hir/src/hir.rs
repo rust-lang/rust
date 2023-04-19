@@ -1960,7 +1960,7 @@ pub enum ExprKind<'hir> {
     Lit(&'hir Lit),
     /// A cast (e.g., `foo as f64`).
     Cast(&'hir Expr<'hir>, &'hir Ty<'hir>),
-    /// A type reference (e.g., `Foo`).
+    /// A type ascription (e.g., `x: Foo`). See RFC 3307.
     Type(&'hir Expr<'hir>, &'hir Ty<'hir>),
     /// Wraps the expression in a terminating scope.
     /// This makes it semantically equivalent to `{ let _t = expr; _t }`.
