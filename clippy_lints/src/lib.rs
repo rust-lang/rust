@@ -950,9 +950,11 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(allow_attributes::AllowAttribute));
     store.register_late_pass(move |_| Box::new(manual_main_separator_str::ManualMainSeparatorStr::new(msrv())));
     store.register_late_pass(|_| Box::new(unnecessary_struct_initialization::UnnecessaryStruct));
+    let unnecessary_box_size = conf.unnecessary_box_size;
     store.register_late_pass(move |_| {
         Box::new(unnecessary_box_returns::UnnecessaryBoxReturns::new(
             avoid_breaking_exported_api,
+            unnecessary_box_size,
         ))
     });
     store.register_late_pass(|_| Box::new(lines_filter_map_ok::LinesFilterMapOk));
