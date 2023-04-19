@@ -16,7 +16,7 @@ use rustc_infer::infer::canonical::query_response::make_query_region_constraints
 use rustc_infer::infer::canonical::CanonicalVarValues;
 use rustc_infer::infer::canonical::{CanonicalExt, QueryRegionConstraints};
 use rustc_middle::traits::query::NoSolution;
-use rustc_middle::traits::solve::{ExternalConstraints, ExternalConstraintsData};
+use rustc_middle::traits::solve::{ExternalConstraints, ExternalConstraintsData, MaybeCause};
 use rustc_middle::ty::{self, BoundVar, GenericArgKind};
 use rustc_span::DUMMY_SP;
 use std::iter;
@@ -60,9 +60,38 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
         let certainty = certainty.unify_with(goals_certainty);
 
-        let external_constraints = self.compute_external_query_constraints()?;
+        let response = match certainty {
+            Certainty::Yes | Certainty::Maybe(MaybeCause::Ambiguity) => {
+                let external_constraints = self.compute_external_query_constraints()?;
+                Response { var_values: self.var_values, external_constraints, certainty }
+            }
+            Certainty::Maybe(MaybeCause::Overflow) => {
+                // If we have overflow, it's probable that we're substituting a type
+                // into itself infinitely and any partial substitutions in the query
+                // response are probably not useful anyways, so just return an empty
+                // query response.
+                Response {
+                    var_values: CanonicalVarValues {
+                        var_values: self.tcx().mk_substs_from_iter(
+                            self.var_values.var_values.iter().map(|arg| -> ty::GenericArg<'tcx> {
+                                match arg.unpack() {
+                                    GenericArgKind::Lifetime(_) => self.next_region_infer().into(),
+                                    GenericArgKind::Type(_) => self.next_ty_infer().into(),
+                                    GenericArgKind::Const(ct) => {
+                                        self.next_const_infer(ct.ty()).into()
+                                    }
+                                }
+                            }),
+                        ),
+                    },
+                    external_constraints: self
+                        .tcx()
+                        .mk_external_constraints(ExternalConstraintsData::default()),
+                    certainty,
+                }
+            }
+        };
 
-        let response = Response { var_values: self.var_values, external_constraints, certainty };
         let canonical = Canonicalizer::canonicalize(
             self.infcx,
             CanonicalizeMode::Response { max_input_universe: self.max_input_universe },
