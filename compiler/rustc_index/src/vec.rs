@@ -26,12 +26,12 @@ pub struct IndexVec<I: Idx, T> {
 
 impl<I: Idx, T> IndexVec<I, T> {
     #[inline]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         IndexVec { raw: Vec::new(), _marker: PhantomData }
     }
 
     #[inline]
-    pub fn from_raw(raw: Vec<T>) -> Self {
+    pub const fn from_raw(raw: Vec<T>) -> Self {
         IndexVec { raw, _marker: PhantomData }
     }
 

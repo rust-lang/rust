@@ -23,12 +23,12 @@ pub struct IndexSlice<I: Idx, T> {
 
 impl<I: Idx, T> IndexSlice<I, T> {
     #[inline]
-    pub fn empty() -> &'static Self {
-        Default::default()
+    pub const fn empty() -> &'static Self {
+        Self::from_raw(&[])
     }
 
     #[inline]
-    pub fn from_raw(raw: &[T]) -> &Self {
+    pub const fn from_raw(raw: &[T]) -> &Self {
         let ptr: *const [T] = raw;
         // SAFETY: `IndexSlice` is `repr(transparent)` over a normal slice
         unsafe { &*(ptr as *const Self) }
@@ -42,8 +42,13 @@ impl<I: Idx, T> IndexSlice<I, T> {
     }
 
     #[inline]
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.raw.len()
+    }
+
+    #[inline]
+    pub const fn is_empty(&self) -> bool {
+        self.raw.is_empty()
     }
 
     /// Gives the next index that will be assigned when `push` is called.
@@ -53,11 +58,6 @@ impl<I: Idx, T> IndexSlice<I, T> {
     #[inline]
     pub fn next_index(&self) -> I {
         I::new(self.len())
-    }
-
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.raw.is_empty()
     }
 
     #[inline]
