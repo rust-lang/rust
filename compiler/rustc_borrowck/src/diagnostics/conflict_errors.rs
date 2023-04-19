@@ -30,7 +30,6 @@ use crate::borrow_set::TwoPhaseActivation;
 use crate::borrowck_errors;
 
 use crate::diagnostics::conflict_errors::StorageDeadOrDrop::LocalStorageDead;
-use crate::diagnostics::mutability_errors::mut_borrow_of_mutable_ref;
 use crate::diagnostics::{find_all_local_uses, CapturedMessageOpt};
 use crate::{
     borrow_set::BorrowData, diagnostics::Instance, prefixes::IsPrefixOf,
@@ -959,11 +958,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     &msg_borrow,
                     None,
                 );
-                self.suggest_binding_for_closure_capture_self(
-                    &mut err,
-                    issued_borrow.borrowed_place,
-                    &issued_spans,
-                );
+                self.suggest_binding_for_closure_capture_self(&mut err, &issued_spans);
                 err
             }
 
@@ -1271,19 +1266,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     fn suggest_binding_for_closure_capture_self(
         &self,
         err: &mut Diagnostic,
-        borrowed_place: Place<'tcx>,
         issued_spans: &UseSpans<'tcx>,
     ) {
         let UseSpans::ClosureUse { capture_kind_span, .. } = issued_spans else { return };
         let hir = self.infcx.tcx.hir();
-
-        // check whether the borrowed place is capturing `self` by mut reference
-        let local = borrowed_place.local;
-        let Some(_) = self
-            .body
-            .local_decls
-            .get(local)
-            .map(|l| mut_borrow_of_mutable_ref(l, self.local_names[local])) else { return };
 
         struct ExpressionFinder<'hir> {
             capture_span: Span,
