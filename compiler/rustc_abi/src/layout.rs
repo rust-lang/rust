@@ -50,7 +50,7 @@ pub trait LayoutCalculator {
         repr: &ReprOptions,
         kind: StructKind,
     ) -> Option<LayoutS> {
-        let layout = univariant(self, dl, fields, repr, kind, true);
+        let layout = univariant(self, dl, fields, repr, kind, NicheBias::Start);
         // Enums prefer niches close to the beginning or the end of the variants so that other (smaller)
         // data-carrying variants can be packed into the space after/before the niche.
         // If the default field ordering does not give us a niche at the front then we do a second
@@ -66,7 +66,7 @@ pub trait LayoutCalculator {
                 // (e.g. a trailing bool) and there is tail padding. But it's non-trivial to get
                 // the unpadded size so we try anyway.
                 if fields.len() > 1 && head_space != 0 && tail_space > 0 {
-                    let alt_layout = univariant(self, dl, fields, repr, kind, false)
+                    let alt_layout = univariant(self, dl, fields, repr, kind, NicheBias::End)
                         .expect("alt layout should always work");
                     let niche = alt_layout
                         .largest_niche
@@ -776,13 +776,19 @@ pub trait LayoutCalculator {
     }
 }
 
+/// Determines towards which end of a struct layout optimizations will try to place the best niches.
+enum NicheBias {
+    Start,
+    End,
+}
+
 fn univariant(
     this: &(impl LayoutCalculator + ?Sized),
     dl: &TargetDataLayout,
     fields: &IndexSlice<FieldIdx, Layout<'_>>,
     repr: &ReprOptions,
     kind: StructKind,
-    niche_bias_start: bool,
+    niche_bias: NicheBias,
 ) -> Option<LayoutS> {
     let pack = repr.pack;
     let mut align = if pack.is_some() { dl.i8_align } else { dl.aggregate_align };
@@ -809,7 +815,10 @@ fn univariant(
         } else {
             let max_field_align = fields.iter().map(|f| f.align().abi.bytes()).max().unwrap_or(1);
             let any_niche = fields.iter().any(|f| f.largest_niche().is_some());
-            let effective_field_align = |layout: Layout<'_>| {
+
+            // Calculates a sort key to group fields by their alignment or possibly some size-derived
+            // pseudo-alignment.
+            let alignment_group_key = |layout: Layout<'_>| {
                 if let Some(pack) = pack {
                     // return the packed alignment in bytes
                     layout.align().abi.min(pack).bytes()
@@ -818,10 +827,13 @@ fn univariant(
                     // This is ok since `pack` applies to all fields equally.
                     // The calculation assumes that size is an integer multiple of align, except for ZSTs.
                     //
-                    // group [u8; 4] with align-4 or [u8; 6] with align-2 fields
                     let align = layout.align().abi.bytes();
                     let size = layout.size().bytes();
+                    // group [u8; 4] with align-4 or [u8; 6] with align-2 fields
                     let size_as_align = align.max(size).trailing_zeros();
+                    // Given `A(u8, [u8; 16])` and `B(bool, [u8; 16])` we want to bump the array
+                    // to the front in the first case (for aligned loads) but keep the bool in front
+                    // in the second case for its niches.
                     let size_as_align = if any_niche {
                         max_field_align.trailing_zeros().min(size_as_align)
                     } else {
@@ -833,21 +845,29 @@ fn univariant(
 
             match kind {
                 StructKind::AlwaysSized | StructKind::MaybeUnsized => {
+                    // Currently `LayoutS` only exposes a single niche so sorting is usually sufficient
+                    // to get one niche into the preferred position. If it ever supported multiple niches
+                    // then a more advanced pick-and-pack approach could provide better results.
+                    // But even for the single-niche cache it's not optimal. E.g. for
+                    // A(u32, (bool, u8), u16) it would be possible to move the bool to the front
+                    // but it would require packing the tuple together with the u16 to build a 4-byte
+                    // group so that the u32 can be placed after it without padding. This kind
+                    // of packing can't be achieved by sorting.
                     optimizing.sort_by_key(|&x| {
                         let f = fields[x];
                         let field_size = f.size().bytes();
                         let niche_size = f.largest_niche().map_or(0, |n| n.available(dl));
-                        let niche_size = if niche_bias_start {
-                            u128::MAX - niche_size // large niche first
-                        } else {
-                            niche_size // large niche last
+                        let niche_size_key = match niche_bias {
+                            // large niche first
+                            NicheBias::Start => !niche_size,
+                            // large niche last
+                            NicheBias::End => niche_size,
                         };
-                        let inner_niche_placement = if niche_bias_start {
-                            f.largest_niche().map_or(0, |n| n.offset.bytes())
-                        } else {
-                            f.largest_niche().map_or(0, |n| {
-                                field_size - n.value.size(dl).bytes() - n.offset.bytes()
-                            })
+                        let inner_niche_offset_key = match niche_bias {
+                            NicheBias::Start => f.largest_niche().map_or(0, |n| n.offset.bytes()),
+                            NicheBias::End => f.largest_niche().map_or(0, |n| {
+                                !(field_size - n.value.size(dl).bytes() - n.offset.bytes())
+                            }),
                         };
 
                         (
@@ -855,13 +875,13 @@ fn univariant(
                             // or two non-ZST fields. This helps Scalar/ScalarPair layouts.
                             !f.0.is_zst(),
                             // Then place largest alignments first.
-                            cmp::Reverse(effective_field_align(f)),
+                            cmp::Reverse(alignment_group_key(f)),
                             // Then prioritize niche placement within alignment group according to
                             // `niche_bias_start`.
-                            niche_size,
+                            niche_size_key,
                             // Then among fields with equally-sized niches prefer the ones
                             // closer to the start/end of the field.
-                            inner_niche_placement,
+                            inner_niche_offset_key,
                         )
                     });
                 }
@@ -874,7 +894,7 @@ fn univariant(
                     optimizing.sort_by_key(|&x| {
                         let f = fields[x];
                         let niche_size = f.largest_niche().map_or(0, |n| n.available(dl));
-                        (effective_field_align(f), niche_size)
+                        (alignment_group_key(f), niche_size)
                     });
                 }
             }
@@ -927,10 +947,11 @@ fn univariant(
 
         if let Some(mut niche) = field.largest_niche() {
             let available = niche.available(dl);
-            let prefer_new_niche = if niche_bias_start {
-                available > largest_niche_available
-            } else {
-                available >= largest_niche_available
+            // Pick up larger niches.
+            let prefer_new_niche = match niche_bias {
+                NicheBias::Start => available > largest_niche_available,
+                // if there are several niches of the same size then pick the last one
+                NicheBias::End => available >= largest_niche_available,
             };
             if prefer_new_niche {
                 largest_niche_available = available;
