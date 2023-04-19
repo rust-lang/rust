@@ -2,9 +2,10 @@ use clippy_utils::consts::{
     constant, constant_simple, Constant,
     Constant::{Int, F32, F64},
 };
-use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::higher;
-use clippy_utils::{eq_expr_value, get_parent_expr, in_constant, numeric_literal, peel_blocks, sugg};
+use clippy_utils::{
+    diagnostics::span_lint_and_sugg, eq_expr_value, get_parent_expr, higher, in_constant, is_no_std_crate,
+    numeric_literal, peel_blocks, sugg,
+};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment, UnOp};
@@ -452,6 +453,9 @@ fn is_float_mul_expr<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(&'
 
 // TODO: Fix rust-lang/rust-clippy#4735
 fn check_mul_add(cx: &LateContext<'_>, expr: &Expr<'_>) {
+    if is_no_std_crate(cx) {
+        return; // The suggested methods are not available in core
+    }
     if let ExprKind::Binary(
         Spanned {
             node: op @ (BinOpKind::Add | BinOpKind::Sub),
@@ -566,6 +570,9 @@ fn are_negated<'a>(cx: &LateContext<'_>, expr1: &'a Expr<'a>, expr2: &'a Expr<'a
 }
 
 fn check_custom_abs(cx: &LateContext<'_>, expr: &Expr<'_>) {
+    if is_no_std_crate(cx) {
+        return; // The suggested methods are not available in core
+    }
     if_chain! {
         if let Some(higher::If { cond, then, r#else: Some(r#else) }) = higher::If::hir(expr);
         let if_body_expr = peel_blocks(then);
