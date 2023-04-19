@@ -268,8 +268,7 @@ impl DropRangesBuilder {
 
     fn node_mut(&mut self, id: PostOrderId) -> &mut NodeInfo {
         let size = self.num_values();
-        self.nodes.ensure_contains_elem(id, || NodeInfo::new(size));
-        &mut self.nodes[id]
+        self.nodes.ensure_contains_elem(id, || NodeInfo::new(size))
     }
 
     fn add_control_edge(&mut self, from: PostOrderId, to: PostOrderId) {

@@ -368,8 +368,8 @@ fn index_crate<'a>(
     krate: &'a Crate,
 ) -> IndexVec<LocalDefId, AstOwner<'a>> {
     let mut indexer = Indexer { node_id_to_def_id, index: IndexVec::new() };
-    indexer.index.ensure_contains_elem(CRATE_DEF_ID, || AstOwner::NonOwner);
-    indexer.index[CRATE_DEF_ID] = AstOwner::Crate(krate);
+    *indexer.index.ensure_contains_elem(CRATE_DEF_ID, || AstOwner::NonOwner) =
+        AstOwner::Crate(krate);
     visit::walk_crate(&mut indexer, krate);
     return indexer.index;
 
@@ -386,22 +386,21 @@ fn index_crate<'a>(
 
         fn visit_item(&mut self, item: &'a ast::Item) {
             let def_id = self.node_id_to_def_id[&item.id];
-            self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner);
-            self.index[def_id] = AstOwner::Item(item);
+            *self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner) = AstOwner::Item(item);
             visit::walk_item(self, item)
         }
 
         fn visit_assoc_item(&mut self, item: &'a ast::AssocItem, ctxt: visit::AssocCtxt) {
             let def_id = self.node_id_to_def_id[&item.id];
-            self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner);
-            self.index[def_id] = AstOwner::AssocItem(item, ctxt);
+            *self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner) =
+                AstOwner::AssocItem(item, ctxt);
             visit::walk_assoc_item(self, item, ctxt);
         }
 
         fn visit_foreign_item(&mut self, item: &'a ast::ForeignItem) {
             let def_id = self.node_id_to_def_id[&item.id];
-            self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner);
-            self.index[def_id] = AstOwner::ForeignItem(item);
+            *self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner) =
+                AstOwner::ForeignItem(item);
             visit::walk_foreign_item(self, item);
         }
     }
