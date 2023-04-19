@@ -844,9 +844,10 @@ fn long_line_flushed() {
 }
 
 /// Test that, given a very long partial line *after* successfully
-/// flushing a complete line, that that line is buffered unconditionally,
-/// and no additional writes take place. This assures the property that
-/// `write` should make at-most-one attempt to write new data.
+/// flushing a complete line, the very long partial line is buffered
+/// unconditionally, and no additional writes take place. This assures
+/// the property that `write` should make at-most-one attempt to write
+/// new data.
 #[test]
 fn line_long_tail_not_flushed() {
     let writer = ProgrammableSink::default();
