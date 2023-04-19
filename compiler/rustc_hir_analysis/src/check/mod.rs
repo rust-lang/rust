@@ -466,7 +466,13 @@ fn suggestion_signature<'tcx>(
                 assoc,
             )
         }
-        ty::AssocKind::Type => format!("type {} = /* Type */;", assoc.name),
+        ty::AssocKind::Type => {
+            let (generics, where_clauses) = bounds_from_generic_predicates(
+                tcx,
+                tcx.predicates_of(assoc.def_id).instantiate_own(tcx, substs),
+            );
+            format!("type {}{generics} = /* Type */{where_clauses};", assoc.name)
+        }
         ty::AssocKind::Const => {
             let ty = tcx.type_of(assoc.def_id).subst_identity();
             let val = ty_kind_suggestion(ty).unwrap_or("todo!()");
