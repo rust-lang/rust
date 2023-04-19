@@ -78,8 +78,7 @@ implementation.
 
 > **Note**: This approach should be avoided if possible, the best thing to do would be to make a PR to [`rust-lang/rust`][rust].
 
-Below, we check if the given `expr` implements `tokio`'s
-[`AsyncReadExt`][AsyncReadExt] trait:
+Below, we check if the given `expr` implements the `Iterator`'s trait method `cloned` :
 
 ```rust
 use clippy_utils::{match_trait_method, paths};
@@ -95,7 +94,6 @@ impl LateLintPass<'_> for CheckTokioAsyncReadExtTrait {
 }
 ```
 
-[AsyncReadExt]: https://docs.rs/tokio/latest/tokio/io/trait.AsyncReadExt.html
 [DefId]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.DefId.html
 [diagnostic_items]: https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-items.html
 [lang_items]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/lang_items/struct.LanguageItems.html
