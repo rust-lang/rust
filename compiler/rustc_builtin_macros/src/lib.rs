@@ -83,7 +83,6 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         concat: concat::expand_concat,
         env: env::expand_env,
         file: source_util::expand_file,
-        format_args_nl: format::expand_format_args_nl,
         format_args: format::expand_format_args,
         const_format_args: format::expand_format_args,
         global_asm: asm::expand_global_asm,

@@ -153,21 +153,13 @@ fn parse_args<'a>(ecx: &mut ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<
     Ok(MacroInput { fmtstr, args, is_direct_literal })
 }
 
-fn make_format_args(
-    ecx: &mut ExtCtxt<'_>,
-    input: MacroInput,
-    append_newline: bool,
-) -> Result<FormatArgs, ()> {
+fn make_format_args(ecx: &mut ExtCtxt<'_>, input: MacroInput) -> Result<FormatArgs, ()> {
     let msg = "format argument must be a string literal";
     let unexpanded_fmt_span = input.fmtstr.span;
 
     let MacroInput { fmtstr: efmt, mut args, is_direct_literal } = input;
 
     let (fmt_str, fmt_style, fmt_span) = match expr_to_spanned_string(ecx, efmt, msg) {
-        Ok(mut fmt) if append_newline => {
-            fmt.0 = Symbol::intern(&format!("{}\n", fmt.0));
-            fmt
-        }
         Ok(fmt) => fmt,
         Err(err) => {
             if let Some((mut err, suggested)) = err {
@@ -196,13 +188,7 @@ fn make_format_args(
 
     let fmt_str = fmt_str.as_str(); // for the suggestions below
     let fmt_snippet = ecx.source_map().span_to_snippet(unexpanded_fmt_span).ok();
-    let mut parser = parse::Parser::new(
-        fmt_str,
-        str_style,
-        fmt_snippet,
-        append_newline,
-        parse::ParseMode::Format,
-    );
+    let mut parser = parse::Parser::new(fmt_str, str_style, fmt_snippet, parse::ParseMode::Format);
 
     let mut pieces = Vec::new();
     while let Some(piece) = parser.next() {
@@ -831,16 +817,15 @@ fn report_invalid_references(
     e.emit();
 }
 
-fn expand_format_args_impl<'cx>(
+pub fn expand_format_args<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
     mut sp: Span,
     tts: TokenStream,
-    nl: bool,
 ) -> Box<dyn base::MacResult + 'cx> {
     sp = ecx.with_def_site_ctxt(sp);
     match parse_args(ecx, sp, tts) {
         Ok(input) => {
-            if let Ok(format_args) = make_format_args(ecx, input, nl) {
+            if let Ok(format_args) = make_format_args(ecx, input) {
                 MacEager::expr(ecx.expr(sp, ExprKind::FormatArgs(P(format_args))))
             } else {
                 MacEager::expr(DummyResult::raw_expr(sp, true))
@@ -851,20 +836,4 @@ fn expand_format_args_impl<'cx>(
             DummyResult::any(sp)
         }
     }
-}
-
-pub fn expand_format_args<'cx>(
-    ecx: &'cx mut ExtCtxt<'_>,
-    sp: Span,
-    tts: TokenStream,
-) -> Box<dyn base::MacResult + 'cx> {
-    expand_format_args_impl(ecx, sp, tts, false)
-}
-
-pub fn expand_format_args_nl<'cx>(
-    ecx: &'cx mut ExtCtxt<'_>,
-    sp: Span,
-    tts: TokenStream,
-) -> Box<dyn base::MacResult + 'cx> {
-    expand_format_args_impl(ecx, sp, tts, true)
 }

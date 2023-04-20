@@ -391,7 +391,7 @@ pub fn find_format_args(cx: &LateContext<'_>, start: &Expr<'_>, expn_id: ExpnId,
         if ctxt.outer_expn().is_descendant_of(expn_id) {
             if macro_backtrace(expr.span)
                 .map(|macro_call| cx.tcx.item_name(macro_call.def_id))
-                .any(|name| matches!(name, sym::const_format_args | sym::format_args | sym::format_args_nl))
+                .any(|name| matches!(name, sym::const_format_args | sym::format_args))
             {
                 ControlFlow::Break(expr)
             } else {

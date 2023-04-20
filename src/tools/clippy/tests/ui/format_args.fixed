@@ -83,27 +83,27 @@ fn main() {
     let _ = writeln!(
         stdout(),
         "error: something failed at {}",
-        Location::caller()
+        Location::caller().to_string()
     );
     print!("error: something failed at {}", Location::caller());
-    println!("error: something failed at {}", Location::caller());
+    println!("error: something failed at {}", Location::caller().to_string());
     eprint!("error: something failed at {}", Location::caller());
-    eprintln!("error: something failed at {}", Location::caller());
+    eprintln!("error: something failed at {}", Location::caller().to_string());
     let _ = format_args!("error: something failed at {}", Location::caller());
     assert!(true, "error: something failed at {}", Location::caller());
     assert_eq!(0, 0, "error: something failed at {}", Location::caller());
     assert_ne!(0, 0, "error: something failed at {}", Location::caller());
     panic!("error: something failed at {}", Location::caller());
-    println!("{}", *X(1));
-    println!("{}", ***Y(&X(1)));
-    println!("{}", Z(1));
-    println!("{}", **x);
-    println!("{}", ***x_ref);
+    println!("{}", X(1).to_string());
+    println!("{}", Y(&X(1)).to_string());
+    println!("{}", Z(1).to_string());
+    println!("{}", x.to_string());
+    println!("{}", x_ref.to_string());
     // https://github.com/rust-lang/rust-clippy/issues/7903
-    println!("{foo}{bar}", foo = "foo", bar = "bar");
-    println!("{foo}{bar}", foo = "foo", bar = "bar");
-    println!("{foo}{bar}", bar = "bar", foo = "foo");
-    println!("{foo}{bar}", bar = "bar", foo = "foo");
+    println!("{foo}{bar}", foo = "foo".to_string(), bar = "bar");
+    println!("{foo}{bar}", foo = "foo", bar = "bar".to_string());
+    println!("{foo}{bar}", bar = "bar".to_string(), foo = "foo");
+    println!("{foo}{bar}", bar = "bar", foo = "foo".to_string());
 
     // negative tests
     println!("error: something failed at {}", Somewhere.to_string());
@@ -158,7 +158,7 @@ mod issue_9256 {
 
     fn print_substring(original: &str) {
         assert!(original.len() > 10);
-        println!("{}", &original[..10]);
+        println!("{}", original[..10].to_string());
     }
 
     fn main() {

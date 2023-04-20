@@ -37,77 +37,80 @@ fn tester(fn_arg: i32) {
     // let _ = '	';  // <- this is a single tab character
     let _: &[u8; 3] = b"	 	"; // <- <tab><space><tab>
 
-    println!("val='{local_i32}'");
-    println!("val='{local_i32}'"); // 3 spaces
-    println!("val='{local_i32}'"); // tab
-    println!("val='{local_i32}'"); // space+tab
-    println!("val='{local_i32}'"); // tab+space
+    println!("val='{}'", local_i32);
+    println!("val='{   }'", local_i32); // 3 spaces
+    println!("val='{	}'", local_i32); // tab
+    println!("val='{ 	}'", local_i32); // space+tab
+    println!("val='{	 }'", local_i32); // tab+space
     println!(
-        "val='{local_i32}'"
+        "val='{
+    }'",
+        local_i32
     );
-    println!("{local_i32}");
-    println!("{fn_arg}");
-    println!("{local_i32:?}");
-    println!("{local_i32:#?}");
-    println!("{local_i32:4}");
-    println!("{local_i32:04}");
-    println!("{local_i32:<3}");
-    println!("{local_i32:#010x}");
-    println!("{local_f64:.1}");
+    println!("{}", local_i32);
+    println!("{}", fn_arg);
+    println!("{:?}", local_i32);
+    println!("{:#?}", local_i32);
+    println!("{:4}", local_i32);
+    println!("{:04}", local_i32);
+    println!("{:<3}", local_i32);
+    println!("{:#010x}", local_i32);
+    println!("{:.1}", local_f64);
     println!("Hello {} is {:.*}", "x", local_i32, local_f64);
     println!("Hello {} is {:.*}", local_i32, 5, local_f64);
     println!("Hello {} is {2:.*}", local_i32, 5, local_f64);
-    println!("{local_i32} {local_f64}");
+    println!("{} {}", local_i32, local_f64);
     println!("{}, {}", local_i32, local_opt.unwrap());
-    println!("{val}");
-    println!("{val}");
+    println!("{}", val);
+    println!("{}", v = val);
     println!("{} {1}", local_i32, 42);
-    println!("val='{local_i32}'");
-    println!("val='{local_i32}'");
-    println!("val='{local_i32}'");
-    println!("val='{fn_arg}'");
-    println!("{local_i32}");
-    println!("{local_i32:?}");
-    println!("{local_i32:#?}");
-    println!("{local_i32:04}");
-    println!("{local_i32:<3}");
-    println!("{local_i32:#010x}");
-    println!("{local_f64:.1}");
-    println!("{local_i32} {local_i32}");
-    println!("{local_f64} {local_i32} {local_i32} {local_f64}");
-    println!("{local_i32} {local_f64}");
-    println!("{local_f64} {local_i32}");
-    println!("{local_f64} {local_i32} {local_f64} {local_i32}");
+    println!("val='{\t }'", local_i32);
+    println!("val='{\n }'", local_i32);
+    println!("val='{local_i32}'", local_i32 = local_i32);
+    println!("val='{local_i32}'", local_i32 = fn_arg);
+    println!("{0}", local_i32);
+    println!("{0:?}", local_i32);
+    println!("{0:#?}", local_i32);
+    println!("{0:04}", local_i32);
+    println!("{0:<3}", local_i32);
+    println!("{0:#010x}", local_i32);
+    println!("{0:.1}", local_f64);
+    println!("{0} {0}", local_i32);
+    println!("{1} {} {0} {}", local_i32, local_f64);
+    println!("{0} {1}", local_i32, local_f64);
+    println!("{1} {0}", local_i32, local_f64);
+    println!("{1} {0} {1} {0}", local_i32, local_f64);
     println!("{1} {0}", "str", local_i32);
-    println!("{local_i32}");
-    println!("{local_i32:width$}");
-    println!("{local_i32:width$}");
-    println!("{local_i32:.prec$}");
-    println!("{local_i32:.prec$}");
-    println!("{val:val$}");
-    println!("{val:val$}");
-    println!("{val:val$.val$}");
-    println!("{val:val$.val$}");
-    println!("{val:val$.val$}");
-    println!("{val:val$.val$}");
-    println!("{val:val$.val$}");
-    println!("{val:val$.val$}");
-    println!("{val:val$.val$}");
-    println!("{val:val$.val$}");
-    println!("{width:width$}");
-    println!("{local_i32:width$}");
-    println!("{width:width$}");
-    println!("{local_i32:width$}");
-    println!("{prec:.prec$}");
-    println!("{local_i32:.prec$}");
-    println!("{prec:.prec$}");
-    println!("{local_i32:.prec$}");
-    println!("{width:width$.prec$}");
-    println!("{width:width$.prec$}");
-    println!("{local_f64:width$.prec$}");
-    println!("{local_f64:width$.prec$} {local_f64} {width} {prec}");
+    println!("{v}", v = local_i32);
+    println!("{local_i32:0$}", width);
+    println!("{local_i32:w$}", w = width);
+    println!("{local_i32:.0$}", prec);
+    println!("{local_i32:.p$}", p = prec);
+    println!("{:0$}", v = val);
+    println!("{0:0$}", v = val);
+    println!("{:0$.0$}", v = val);
+    println!("{0:0$.0$}", v = val);
+    println!("{0:0$.v$}", v = val);
+    println!("{0:v$.0$}", v = val);
+    println!("{v:0$.0$}", v = val);
+    println!("{v:v$.0$}", v = val);
+    println!("{v:0$.v$}", v = val);
+    println!("{v:v$.v$}", v = val);
+    println!("{:0$}", width);
+    println!("{:1$}", local_i32, width);
+    println!("{:w$}", w = width);
+    println!("{:w$}", local_i32, w = width);
+    println!("{:.0$}", prec);
+    println!("{:.1$}", local_i32, prec);
+    println!("{:.p$}", p = prec);
+    println!("{:.p$}", local_i32, p = prec);
+    println!("{:0$.1$}", width, prec);
+    println!("{:0$.w$}", width, w = prec);
+    println!("{:1$.2$}", local_f64, width, prec);
+    println!("{:1$.2$} {0} {1} {2}", local_f64, width, prec);
     println!(
-        "{local_i32:width$.prec$} {local_i32:prec$.width$} {width:local_i32$.prec$} {width:prec$.local_i32$} {prec:local_i32$.width$} {prec:width$.local_i32$}",
+        "{0:1$.2$} {0:2$.1$} {1:0$.2$} {1:2$.0$} {2:0$.1$} {2:1$.0$}",
+        local_i32, width, prec,
     );
     println!(
         "{0:1$.2$} {0:2$.1$} {1:0$.2$} {1:2$.0$} {2:0$.1$} {2:1$.0$} {3}",
@@ -116,9 +119,9 @@ fn tester(fn_arg: i32) {
         prec,
         1 + 2
     );
-    println!("Width = {local_i32}, value with width = {local_f64:local_i32$}");
-    println!("{local_i32:width$.prec$}");
-    println!("{width:width$.prec$}");
+    println!("Width = {}, value with width = {:0$}", local_i32, local_f64);
+    println!("{:w$.p$}", local_i32, w = width, p = prec);
+    println!("{:w$.p$}", w = width, p = prec);
     println!("{}", format!("{}", local_i32));
     my_println!("{}", local_i32);
     my_println_args!("{}", local_i32);
@@ -138,9 +141,11 @@ fn tester(fn_arg: i32) {
     println!(no_param_str!(), local_i32);
 
     println!(
-        "{val}",
+        "{}",
+        // comment with a comma , in it
+        val,
     );
-    println!("{val}");
+    println!("{}", /* comment with a comma , in it */ val);
 
     println!(with_span!("{0} {1}" "{1} {0}"), local_i32, local_f64);
     println!("{}", with_span!(span val));
@@ -172,7 +177,7 @@ fn _under_msrv() {
 #[clippy::msrv = "1.58"]
 fn _meets_msrv() {
     let local_i32 = 1;
-    println!("expand='{local_i32}'");
+    println!("expand='{}'", local_i32);
 }
 
 fn _do_not_fire() {

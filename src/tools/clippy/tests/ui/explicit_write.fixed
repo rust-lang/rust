@@ -23,22 +23,22 @@ fn main() {
         use std::io::Write;
         print!("test");
         eprint!("test");
-        println!("test");
-        eprintln!("test");
+        println!("{}\n", $crate::format_args!($($arg)*));
+        eprintln!("{}\n", $crate::format_args!($($arg)*));
         print!("test");
         eprint!("test");
 
         // including newlines
-        println!("test\ntest");
-        eprintln!("test\ntest");
+        println!("{}\n", $crate::format_args!($($arg)*));
+        eprintln!("{}\n", $crate::format_args!($($arg)*));
 
         let value = 1;
-        eprintln!("with {}", value);
-        eprintln!("with {} {}", 2, value);
-        eprintln!("with {value}");
-        eprintln!("macro arg {}", one!());
+        eprintln!("{}\n", $crate::format_args!($($arg)*));
+        eprintln!("{}\n", $crate::format_args!($($arg)*));
+        eprintln!("{}\n", $crate::format_args!($($arg)*));
+        eprintln!("{}\n", $crate::format_args!($($arg)*));
         let width = 2;
-        eprintln!("{:w$}", value, w = width);
+        eprintln!("{}\n", $crate::format_args!($($arg)*));
     }
     // these should not warn, different destination
     {

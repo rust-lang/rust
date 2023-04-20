@@ -3,16 +3,16 @@
 
 fn main() {
     println!();
-    println!();
+    println!("");
 
     match "a" {
-        _ => println!(),
+        _ => println!(""),
     }
 
     eprintln!();
-    eprintln!();
+    eprintln!("");
 
     match "a" {
-        _ => eprintln!(),
+        _ => eprintln!(""),
     }
 }

@@ -576,7 +576,7 @@ impl<'tcx> OnUnimplementedFormatString {
         let trait_name = tcx.item_name(trait_def_id);
         let generics = tcx.generics_of(item_def_id);
         let s = self.0.as_str();
-        let parser = Parser::new(s, None, None, false, ParseMode::Format);
+        let parser = Parser::new(s, None, None, ParseMode::Format);
         let mut result = Ok(());
         for token in parser {
             match token {
@@ -650,7 +650,7 @@ impl<'tcx> OnUnimplementedFormatString {
         let empty_string = String::new();
 
         let s = self.0.as_str();
-        let parser = Parser::new(s, None, None, false, ParseMode::Format);
+        let parser = Parser::new(s, None, None, ParseMode::Format);
         let item_context = (options.get(&sym::ItemContext)).unwrap_or(&empty_string);
         parser
             .map(|p| match p {

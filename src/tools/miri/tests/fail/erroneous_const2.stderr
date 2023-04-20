@@ -16,7 +16,7 @@ note: erroneous constant used
 LL |     println!("{}", FOO);
    |                    ^^^
    |
-   = note: this note originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this note originates in the macro `$crate::format_args` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

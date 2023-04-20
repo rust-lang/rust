@@ -534,7 +534,6 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
             template_str,
             str_style,
             template_snippet,
-            false,
             parse::ParseMode::InlineAsm,
         );
         parser.curarg = curarg;

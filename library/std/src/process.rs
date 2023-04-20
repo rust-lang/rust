@@ -2266,7 +2266,7 @@ impl<T: Termination, E: fmt::Debug> Termination for Result<T, E> {
         match self {
             Ok(val) => val.report(),
             Err(err) => {
-                io::attempt_print_to_stderr(format_args_nl!("Error: {err:?}"));
+                io::attempt_print_to_stderr(format_args!("Error: {err:?}\n"));
                 ExitCode::FAILURE
             }
         }

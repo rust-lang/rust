@@ -12,35 +12,17 @@ error: `to_string` applied to a type that implements `Display` in `write!` args
 LL |         Location::caller().to_string()
    |                           ^^^^^^^^^^^^ help: remove this
 
-error: `to_string` applied to a type that implements `Display` in `writeln!` args
-  --> $DIR/format_args.rs:86:27
-   |
-LL |         Location::caller().to_string()
-   |                           ^^^^^^^^^^^^ help: remove this
-
 error: `to_string` applied to a type that implements `Display` in `print!` args
   --> $DIR/format_args.rs:88:63
    |
 LL |     print!("error: something failed at {}", Location::caller().to_string());
    |                                                               ^^^^^^^^^^^^ help: remove this
 
-error: `to_string` applied to a type that implements `Display` in `println!` args
-  --> $DIR/format_args.rs:89:65
-   |
-LL |     println!("error: something failed at {}", Location::caller().to_string());
-   |                                                                 ^^^^^^^^^^^^ help: remove this
-
 error: `to_string` applied to a type that implements `Display` in `eprint!` args
   --> $DIR/format_args.rs:90:64
    |
 LL |     eprint!("error: something failed at {}", Location::caller().to_string());
    |                                                                ^^^^^^^^^^^^ help: remove this
-
-error: `to_string` applied to a type that implements `Display` in `eprintln!` args
-  --> $DIR/format_args.rs:91:66
-   |
-LL |     eprintln!("error: something failed at {}", Location::caller().to_string());
-   |                                                                  ^^^^^^^^^^^^ help: remove this
 
 error: `to_string` applied to a type that implements `Display` in `format_args!` args
   --> $DIR/format_args.rs:92:77
@@ -72,60 +54,6 @@ error: `to_string` applied to a type that implements `Display` in `panic!` args
 LL |     panic!("error: something failed at {}", Location::caller().to_string());
    |                                                               ^^^^^^^^^^^^ help: remove this
 
-error: `to_string` applied to a type that implements `Display` in `println!` args
-  --> $DIR/format_args.rs:97:20
-   |
-LL |     println!("{}", X(1).to_string());
-   |                    ^^^^^^^^^^^^^^^^ help: use this: `*X(1)`
-
-error: `to_string` applied to a type that implements `Display` in `println!` args
-  --> $DIR/format_args.rs:98:20
-   |
-LL |     println!("{}", Y(&X(1)).to_string());
-   |                    ^^^^^^^^^^^^^^^^^^^^ help: use this: `***Y(&X(1))`
-
-error: `to_string` applied to a type that implements `Display` in `println!` args
-  --> $DIR/format_args.rs:99:24
-   |
-LL |     println!("{}", Z(1).to_string());
-   |                        ^^^^^^^^^^^^ help: remove this
-
-error: `to_string` applied to a type that implements `Display` in `println!` args
-  --> $DIR/format_args.rs:100:20
-   |
-LL |     println!("{}", x.to_string());
-   |                    ^^^^^^^^^^^^^ help: use this: `**x`
-
-error: `to_string` applied to a type that implements `Display` in `println!` args
-  --> $DIR/format_args.rs:101:20
-   |
-LL |     println!("{}", x_ref.to_string());
-   |                    ^^^^^^^^^^^^^^^^^ help: use this: `***x_ref`
-
-error: `to_string` applied to a type that implements `Display` in `println!` args
-  --> $DIR/format_args.rs:103:39
-   |
-LL |     println!("{foo}{bar}", foo = "foo".to_string(), bar = "bar");
-   |                                       ^^^^^^^^^^^^ help: remove this
-
-error: `to_string` applied to a type that implements `Display` in `println!` args
-  --> $DIR/format_args.rs:104:52
-   |
-LL |     println!("{foo}{bar}", foo = "foo", bar = "bar".to_string());
-   |                                                    ^^^^^^^^^^^^ help: remove this
-
-error: `to_string` applied to a type that implements `Display` in `println!` args
-  --> $DIR/format_args.rs:105:39
-   |
-LL |     println!("{foo}{bar}", bar = "bar".to_string(), foo = "foo");
-   |                                       ^^^^^^^^^^^^ help: remove this
-
-error: `to_string` applied to a type that implements `Display` in `println!` args
-  --> $DIR/format_args.rs:106:52
-   |
-LL |     println!("{foo}{bar}", bar = "bar", foo = "foo".to_string());
-   |                                                    ^^^^^^^^^^^^ help: remove this
-
 error: `to_string` applied to a type that implements `Display` in `print!` args
   --> $DIR/format_args.rs:118:37
    |
@@ -144,11 +72,5 @@ error: `to_string` applied to a type that implements `Display` in `format!` args
 LL |         let x = format!("{} {}", a, b.to_string());
    |                                      ^^^^^^^^^^^^ help: remove this
 
-error: `to_string` applied to a type that implements `Display` in `println!` args
-  --> $DIR/format_args.rs:161:24
-   |
-LL |         println!("{}", original[..10].to_string());
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use this: `&original[..10]`
-
-error: aborting due to 25 previous errors
+error: aborting due to 12 previous errors
 

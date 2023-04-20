@@ -233,8 +233,6 @@ pub struct Parser<'a> {
     width_map: Vec<InnerWidthMapping>,
     /// Span of the last opening brace seen, used for error reporting
     last_opening_brace: Option<InnerSpan>,
-    /// Whether the source string is comes from `println!` as opposed to `format!` or `print!`
-    append_newline: bool,
     /// Whether this formatting string was written directly in the source. This controls whether we
     /// can use spans to refer into it and give better error messages.
     /// N.B: This does _not_ control whether implicit argument captures can be used.
@@ -322,7 +320,6 @@ impl<'a> Parser<'a> {
         s: &'a str,
         style: Option<usize>,
         snippet: Option<string::String>,
-        append_newline: bool,
         mode: ParseMode,
     ) -> Parser<'a> {
         let input_string_kind = find_width_map_from_snippet(s, snippet, style);
@@ -341,7 +338,6 @@ impl<'a> Parser<'a> {
             arg_places: vec![],
             width_map,
             last_opening_brace: None,
-            append_newline,
             is_source_literal,
             cur_line_start: 0,
             line_spans: vec![],
@@ -485,8 +481,7 @@ impl<'a> Parser<'a> {
         } else {
             let description = format!("expected `{c:?}` but string was terminated");
             // point at closing `"`
-            let pos = self.input.len() - if self.append_newline { 1 } else { 0 };
-            let pos = self.to_span_index(pos);
+            let pos = self.to_span_index(self.input.len());
             if c == '}' {
                 let label = format!("expected `{c:?}`");
                 let (note, secondary_label) = if c == '}' {

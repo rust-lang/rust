@@ -549,13 +549,12 @@ macro_rules! write {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "writeln_macro")]
-#[allow_internal_unstable(format_args_nl)]
 macro_rules! writeln {
     ($dst:expr $(,)?) => {
         $crate::write!($dst, "\n")
     };
     ($dst:expr, $($arg:tt)*) => {
-        $dst.write_fmt($crate::format_args_nl!($($arg)*))
+        $dst.write_fmt($crate::format_args!("{}\n", $crate::format_args!($($arg)*)))
     };
 }
 
@@ -889,21 +888,6 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! const_format_args {
-        ($fmt:expr) => {{ /* compiler built-in */ }};
-        ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
-    }
-
-    /// Same as [`format_args`], but adds a newline in the end.
-    #[unstable(
-        feature = "format_args_nl",
-        issue = "none",
-        reason = "`format_args_nl` is only for internal \
-                  language use and is subject to change"
-    )]
-    #[allow_internal_unstable(fmt_internals)]
-    #[rustc_builtin_macro]
-    #[macro_export]
-    macro_rules! format_args_nl {
         ($fmt:expr) => {{ /* compiler built-in */ }};
         ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
     }

@@ -8,7 +8,7 @@
 fn main() {
     let var = 1;
 
-    println!("val='{var}'");
+    println!("val='{}'", var);
 
     if var > 0 {
         panic!("p1 {}", var);

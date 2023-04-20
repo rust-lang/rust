@@ -8,4 +8,6 @@ extern crate std;
 // pretty-mode:expanded
 // pp-exact:dollar-crate.pp
 
-fn main() { { ::std::io::_print(format_args!("rust\n")); }; }
+fn main() {
+    { ::std::io::_print(format_args!("{0}\n", format_args!("rust"))); };
+}

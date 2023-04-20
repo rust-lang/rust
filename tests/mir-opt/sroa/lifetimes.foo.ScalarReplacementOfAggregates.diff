@@ -11,10 +11,10 @@
       let _9: ();                          // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
       let _10: ();                         // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
       let mut _11: std::fmt::Arguments<'_>; // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
-      let mut _12: &[&str];                // in scope 0 at $DIR/lifetimes.rs:+10:19: +10:28
-      let mut _13: &[&str; 3];             // in scope 0 at $DIR/lifetimes.rs:+10:19: +10:28
-      let _14: &[&str; 3];                 // in scope 0 at $DIR/lifetimes.rs:+10:19: +10:28
-      let _15: [&str; 3];                  // in scope 0 at $DIR/lifetimes.rs:+10:19: +10:28
+      let mut _12: &[&str];                // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
+      let mut _13: &[&str; 3];             // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
+      let _14: &[&str; 3];                 // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
+      let _15: [&str; 3];                  // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
       let mut _16: &[core::fmt::rt::Argument<'_>]; // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
       let mut _17: &[core::fmt::rt::Argument<'_>; 2]; // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
       let _18: &[core::fmt::rt::Argument<'_>; 2]; // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
@@ -43,7 +43,7 @@
                   scope 4 {
                       debug x => _8;       // in scope 4 at $DIR/lifetimes.rs:+9:15: +9:16
                       let _8: std::boxed::Box<dyn std::fmt::Display>; // in scope 4 at $DIR/lifetimes.rs:+9:15: +9:16
-                      let mut _26: &[&str; 3]; // in scope 4 at $DIR/lifetimes.rs:+10:19: +10:28
+                      let mut _26: &[&str; 3]; // in scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
                   }
               }
           }
@@ -93,17 +93,17 @@
           StorageLive(_9);                 // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
           StorageLive(_10);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
           StorageLive(_11);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-          StorageLive(_12);                // scope 4 at $DIR/lifetimes.rs:+10:19: +10:28
-          StorageLive(_13);                // scope 4 at $DIR/lifetimes.rs:+10:19: +10:28
-          StorageLive(_14);                // scope 4 at $DIR/lifetimes.rs:+10:19: +10:28
-          _26 = const _;                   // scope 4 at $DIR/lifetimes.rs:+10:19: +10:28
+          StorageLive(_12);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
+          StorageLive(_13);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
+          StorageLive(_14);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
+          _26 = const _;                   // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
                                            // mir::Constant
-                                           // + span: $DIR/lifetimes.rs:27:19: 27:28
+                                           // + span: $SRC_DIR/std/src/macros.rs:LL:COL
                                            // + literal: Const { ty: &[&str; 3], val: Unevaluated(foo, [T], Some(promoted[0])) }
-          _14 = &(*_26);                   // scope 4 at $DIR/lifetimes.rs:+10:19: +10:28
-          _13 = &(*_14);                   // scope 4 at $DIR/lifetimes.rs:+10:19: +10:28
-          _12 = move _13 as &[&str] (Pointer(Unsize)); // scope 4 at $DIR/lifetimes.rs:+10:19: +10:28
-          StorageDead(_13);                // scope 4 at $DIR/lifetimes.rs:+10:27: +10:28
+          _14 = &(*_26);                   // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
+          _13 = &(*_14);                   // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
+          _12 = move _13 as &[&str] (Pointer(Unsize)); // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
+          StorageDead(_13);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
           StorageLive(_16);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
           StorageLive(_17);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
           StorageLive(_18);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL

@@ -1,6 +1,6 @@
 // compile-flags: -Z trace-macros
 
-#![recursion_limit = "5"]
+#![recursion_limit = "6"]
 
 fn main() {
     macro_rules! stack {
