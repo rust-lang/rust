@@ -353,7 +353,7 @@ pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore, sess: &Se
 pub fn read_conf(sess: &Session, path: &io::Result<(Option<PathBuf>, Vec<String>)>) -> Conf {
     if let Ok((_, warnings)) = path {
         for warning in warnings {
-            sess.warn(warning);
+            sess.warn(warning.clone());
         }
     }
     let file_name = match path {
