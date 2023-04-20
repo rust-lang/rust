@@ -62,37 +62,6 @@
 /// }
 /// ```
 ///
-// This is supposed to produce a compile error, but does not,
-// see <https://github.com/rust-lang/rust/issues/110613> for more information.
-//
-// Using the same pattern twice results in a compile error:
-//
-// ```compile_fail
-// # use rustc_data_structures::impl_tag;
-// #[derive(Copy, Clone)]
-// struct Unit;
-//
-// impl_tag! {
-//     impl Tag for Unit;
-//     Unit <=> 0,
-//     Unit <=> 1,
-// }
-// ```
-//
-// Using the same tag twice results in a compile error:
-//
-// ```compile_fail
-// # use rustc_data_structures::impl_tag;
-// #[derive(Copy, Clone)]
-// enum E { A, B };
-//
-// impl_tag! {
-//     impl Tag for E;
-//     E::A <=> 0,
-//     E::B <=> 0,
-// }
-// ```
-//
 /// Not specifying all values results in a compile error:
 ///
 /// ```compile_fail,E0004
