@@ -8,7 +8,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
   clang
 
 RUN curl -L https://github.com/bytecodealliance/wasmtime/releases/download/v8.0.0/wasmtime-v8.0.0-x86_64-linux.tar.xz | tar xJf -
-ENV PATH=$PATH:/wasmtime-dev-x86_64-linux
+ENV PATH=$PATH:/wasmtime-v8.0.0-x86_64-linux
 
 ENV CARGO_TARGET_WASM32_WASI_RUNNER="wasmtime \
   --wasm-features=threads,relaxed-simd \
