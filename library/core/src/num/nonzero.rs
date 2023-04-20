@@ -1,7 +1,7 @@
 //! Definitions of integer that is known not to equal zero.
 
 use crate::fmt;
-use crate::ops::{BitOr, BitOrAssign, Div, Rem};
+use crate::ops::{BitOr, BitOrAssign, Div, Neg, Rem};
 use crate::str::FromStr;
 
 use super::from_str_radix;
@@ -664,8 +664,7 @@ macro_rules! nonzero_signed_operations {
                 /// assert_eq!(pos, pos.wrapping_abs());
                 /// assert_eq!(pos, neg.wrapping_abs());
                 /// assert_eq!(min, min.wrapping_abs());
-                /// # // FIXME: add once Neg is implemented?
-                /// # // assert_eq!(max, (-max).wrapping_abs());
+                /// assert_eq!(max, (-max).wrapping_abs());
                 /// # Some(())
                 /// # }
                 /// ```
@@ -868,6 +867,20 @@ macro_rules! nonzero_signed_operations {
                     unsafe { $Ty::new_unchecked(result) }
                 }
             }
+
+            #[stable(feature = "signed_nonzero_neg", since = "CURRENT_RUSTC_VERSION")]
+            impl Neg for $Ty {
+                type Output = $Ty;
+
+                #[inline]
+                fn neg(self) -> $Ty {
+                    // SAFETY: negation of nonzero cannot yield zero values.
+                    unsafe { $Ty::new_unchecked(self.get().neg()) }
+                }
+            }
+
+            forward_ref_unop! { impl Neg, neg for $Ty,
+                #[stable(feature = "signed_nonzero_neg", since = "CURRENT_RUSTC_VERSION")] }
         )+
     }
 }

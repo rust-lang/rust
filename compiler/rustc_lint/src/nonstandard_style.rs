@@ -33,6 +33,11 @@ pub fn method_context(cx: &LateContext<'_>, id: LocalDefId) -> MethodLateContext
     }
 }
 
+fn assoc_item_in_trait_impl(cx: &LateContext<'_>, ii: &hir::ImplItem<'_>) -> bool {
+    let item = cx.tcx.associated_item(ii.owner_id);
+    item.trait_item_def_id.is_some()
+}
+
 declare_lint! {
     /// The `non_camel_case_types` lint detects types, variants, traits and
     /// type parameters that don't have camel case names.
@@ -177,6 +182,7 @@ impl EarlyLintPass for NonCamelCaseTypes {
             // trait impls where we should have warned for the trait definition already.
             ast::ItemKind::Impl(box ast::Impl { of_trait: None, items, .. }) => {
                 for it in items {
+                    // FIXME: this doesn't respect `#[allow(..)]` on the item itself.
                     if let ast::AssocItemKind::Type(..) = it.kind {
                         self.check_case(cx, "associated type", &it.ident);
                     }
@@ -494,15 +500,6 @@ impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
             hir::ItemKind::Const(..) => {
                 NonUpperCaseGlobals::check_upper_case(cx, "constant", &it.ident);
             }
-            // we only want to check inherent associated consts, trait consts
-            // are linted at def-site.
-            hir::ItemKind::Impl(hir::Impl { of_trait: None, items, .. }) => {
-                for it in *items {
-                    if let hir::AssocItemKind::Const = it.kind {
-                        NonUpperCaseGlobals::check_upper_case(cx, "associated constant", &it.ident);
-                    }
-                }
-            }
             _ => {}
         }
     }
@@ -510,6 +507,12 @@ impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
     fn check_trait_item(&mut self, cx: &LateContext<'_>, ti: &hir::TraitItem<'_>) {
         if let hir::TraitItemKind::Const(..) = ti.kind {
             NonUpperCaseGlobals::check_upper_case(cx, "associated constant", &ti.ident);
+        }
+    }
+
+    fn check_impl_item(&mut self, cx: &LateContext<'_>, ii: &hir::ImplItem<'_>) {
+        if let hir::ImplItemKind::Const(..) = ii.kind && !assoc_item_in_trait_impl(cx, ii) {
+            NonUpperCaseGlobals::check_upper_case(cx, "associated constant", &ii.ident);
         }
     }
 

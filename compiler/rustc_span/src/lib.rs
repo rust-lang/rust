@@ -1044,17 +1044,26 @@ impl fmt::Debug for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Use the global `SourceMap` to print the span. If that's not
         // available, fall back to printing the raw values.
-        with_session_globals(|session_globals| {
-            if let Some(source_map) = &*session_globals.source_map.borrow() {
-                write!(f, "{} ({:?})", source_map.span_to_diagnostic_string(*self), self.ctxt())
-            } else {
-                f.debug_struct("Span")
-                    .field("lo", &self.lo())
-                    .field("hi", &self.hi())
-                    .field("ctxt", &self.ctxt())
-                    .finish()
-            }
-        })
+
+        fn fallback(span: Span, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.debug_struct("Span")
+                .field("lo", &span.lo())
+                .field("hi", &span.hi())
+                .field("ctxt", &span.ctxt())
+                .finish()
+        }
+
+        if SESSION_GLOBALS.is_set() {
+            with_session_globals(|session_globals| {
+                if let Some(source_map) = &*session_globals.source_map.borrow() {
+                    write!(f, "{} ({:?})", source_map.span_to_diagnostic_string(*self), self.ctxt())
+                } else {
+                    fallback(*self, f)
+                }
+            })
+        } else {
+            fallback(*self, f)
+        }
     }
 }
 

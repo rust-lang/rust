@@ -153,7 +153,7 @@ unsafe impl<T: ?Sized + Aligned> Pointer for Box<T> {
     #[inline]
     unsafe fn from_ptr(ptr: NonNull<T>) -> Self {
         // Safety: `ptr` comes from `into_ptr` which calls `Box::into_raw`
-        Box::from_raw(ptr.as_ptr())
+        unsafe { Box::from_raw(ptr.as_ptr()) }
     }
 }
 
@@ -169,7 +169,7 @@ unsafe impl<T: ?Sized + Aligned> Pointer for Rc<T> {
     #[inline]
     unsafe fn from_ptr(ptr: NonNull<T>) -> Self {
         // Safety: `ptr` comes from `into_ptr` which calls `Rc::into_raw`
-        Rc::from_raw(ptr.as_ptr())
+        unsafe { Rc::from_raw(ptr.as_ptr()) }
     }
 }
 
@@ -185,7 +185,7 @@ unsafe impl<T: ?Sized + Aligned> Pointer for Arc<T> {
     #[inline]
     unsafe fn from_ptr(ptr: NonNull<T>) -> Self {
         // Safety: `ptr` comes from `into_ptr` which calls `Arc::into_raw`
-        Arc::from_raw(ptr.as_ptr())
+        unsafe { Arc::from_raw(ptr.as_ptr()) }
     }
 }
 
@@ -201,7 +201,7 @@ unsafe impl<'a, T: 'a + ?Sized + Aligned> Pointer for &'a T {
     unsafe fn from_ptr(ptr: NonNull<T>) -> Self {
         // Safety:
         // `ptr` comes from `into_ptr` which gets the pointer from a reference
-        ptr.as_ref()
+        unsafe { ptr.as_ref() }
     }
 }
 
@@ -217,7 +217,7 @@ unsafe impl<'a, T: 'a + ?Sized + Aligned> Pointer for &'a mut T {
     unsafe fn from_ptr(mut ptr: NonNull<T>) -> Self {
         // Safety:
         // `ptr` comes from `into_ptr` which gets the pointer from a reference
-        ptr.as_mut()
+        unsafe { ptr.as_mut() }
     }
 }
 

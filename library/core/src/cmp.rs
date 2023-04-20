@@ -321,14 +321,11 @@ pub struct AssertParamIsEq<T: Eq + ?Sized> {
 /// ```
 /// use std::cmp::Ordering;
 ///
-/// let result = 1.cmp(&2);
-/// assert_eq!(Ordering::Less, result);
+/// assert_eq!(1.cmp(&2), Ordering::Less);
 ///
-/// let result = 1.cmp(&1);
-/// assert_eq!(Ordering::Equal, result);
+/// assert_eq!(1.cmp(&1), Ordering::Equal);
 ///
-/// let result = 2.cmp(&1);
-/// assert_eq!(Ordering::Greater, result);
+/// assert_eq!(2.cmp(&1), Ordering::Greater);
 /// ```
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -784,8 +781,8 @@ pub trait Ord: Eq + PartialOrd<Self> {
     /// # Examples
     ///
     /// ```
-    /// assert_eq!(2, 1.max(2));
-    /// assert_eq!(2, 2.max(2));
+    /// assert_eq!(1.max(2), 2);
+    /// assert_eq!(2.max(2), 2);
     /// ```
     #[stable(feature = "ord_max_min", since = "1.21.0")]
     #[inline]
@@ -804,8 +801,8 @@ pub trait Ord: Eq + PartialOrd<Self> {
     /// # Examples
     ///
     /// ```
-    /// assert_eq!(1, 1.min(2));
-    /// assert_eq!(2, 2.min(2));
+    /// assert_eq!(1.min(2), 1);
+    /// assert_eq!(2.min(2), 2);
     /// ```
     #[stable(feature = "ord_max_min", since = "1.21.0")]
     #[inline]
@@ -829,9 +826,9 @@ pub trait Ord: Eq + PartialOrd<Self> {
     /// # Examples
     ///
     /// ```
-    /// assert!((-3).clamp(-2, 1) == -2);
-    /// assert!(0.clamp(-2, 1) == 0);
-    /// assert!(2.clamp(-2, 1) == 1);
+    /// assert_eq!((-3).clamp(-2, 1), -2);
+    /// assert_eq!(0.clamp(-2, 1), 0);
+    /// assert_eq!(2.clamp(-2, 1), 1);
     /// ```
     #[must_use]
     #[stable(feature = "clamp", since = "1.50.0")]
@@ -1060,11 +1057,9 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     /// # Examples
     ///
     /// ```
-    /// let result = 1.0 < 2.0;
-    /// assert_eq!(result, true);
-    ///
-    /// let result = 2.0 < 1.0;
-    /// assert_eq!(result, false);
+    /// assert_eq!(1.0 < 1.0, false);
+    /// assert_eq!(1.0 < 2.0, true);
+    /// assert_eq!(2.0 < 1.0, false);
     /// ```
     #[inline]
     #[must_use]
@@ -1079,11 +1074,9 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     /// # Examples
     ///
     /// ```
-    /// let result = 1.0 <= 2.0;
-    /// assert_eq!(result, true);
-    ///
-    /// let result = 2.0 <= 2.0;
-    /// assert_eq!(result, true);
+    /// assert_eq!(1.0 <= 1.0, true);
+    /// assert_eq!(1.0 <= 2.0, true);
+    /// assert_eq!(2.0 <= 1.0, false);
     /// ```
     #[inline]
     #[must_use]
@@ -1097,11 +1090,9 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     /// # Examples
     ///
     /// ```
-    /// let result = 1.0 > 2.0;
-    /// assert_eq!(result, false);
-    ///
-    /// let result = 2.0 > 2.0;
-    /// assert_eq!(result, false);
+    /// assert_eq!(1.0 > 1.0, false);
+    /// assert_eq!(1.0 > 2.0, false);
+    /// assert_eq!(2.0 > 1.0, true);
     /// ```
     #[inline]
     #[must_use]
@@ -1116,11 +1107,9 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     /// # Examples
     ///
     /// ```
-    /// let result = 2.0 >= 1.0;
-    /// assert_eq!(result, true);
-    ///
-    /// let result = 2.0 >= 2.0;
-    /// assert_eq!(result, true);
+    /// assert_eq!(1.0 >= 1.0, true);
+    /// assert_eq!(1.0 >= 2.0, false);
+    /// assert_eq!(2.0 >= 1.0, true);
     /// ```
     #[inline]
     #[must_use]
@@ -1150,8 +1139,8 @@ pub macro PartialOrd($item:item) {
 /// ```
 /// use std::cmp;
 ///
-/// assert_eq!(1, cmp::min(1, 2));
-/// assert_eq!(2, cmp::min(2, 2));
+/// assert_eq!(cmp::min(1, 2), 1);
+/// assert_eq!(cmp::min(2, 2), 2);
 /// ```
 #[inline]
 #[must_use]
@@ -1170,8 +1159,11 @@ pub fn min<T: Ord>(v1: T, v2: T) -> T {
 /// ```
 /// use std::cmp;
 ///
-/// assert_eq!(cmp::min_by(-2, 1, |x: &i32, y: &i32| x.abs().cmp(&y.abs())), 1);
-/// assert_eq!(cmp::min_by(-2, 2, |x: &i32, y: &i32| x.abs().cmp(&y.abs())), -2);
+/// let result = cmp::min_by(-2, 1, |x: &i32, y: &i32| x.abs().cmp(&y.abs()));
+/// assert_eq!(result, 1);
+///
+/// let result = cmp::min_by(-2, 3, |x: &i32, y: &i32| x.abs().cmp(&y.abs()));
+/// assert_eq!(result, -2);
 /// ```
 #[inline]
 #[must_use]
@@ -1192,8 +1184,11 @@ pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
 /// ```
 /// use std::cmp;
 ///
-/// assert_eq!(cmp::min_by_key(-2, 1, |x: &i32| x.abs()), 1);
-/// assert_eq!(cmp::min_by_key(-2, 2, |x: &i32| x.abs()), -2);
+/// let result = cmp::min_by_key(-2, 1, |x: &i32| x.abs());
+/// assert_eq!(result, 1);
+///
+/// let result = cmp::min_by_key(-2, 2, |x: &i32| x.abs());
+/// assert_eq!(result, -2);
 /// ```
 #[inline]
 #[must_use]
@@ -1213,8 +1208,8 @@ pub fn min_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
 /// ```
 /// use std::cmp;
 ///
-/// assert_eq!(2, cmp::max(1, 2));
-/// assert_eq!(2, cmp::max(2, 2));
+/// assert_eq!(cmp::max(1, 2), 2);
+/// assert_eq!(cmp::max(2, 2), 2);
 /// ```
 #[inline]
 #[must_use]
@@ -1233,8 +1228,11 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
 /// ```
 /// use std::cmp;
 ///
-/// assert_eq!(cmp::max_by(-2, 1, |x: &i32, y: &i32| x.abs().cmp(&y.abs())), -2);
-/// assert_eq!(cmp::max_by(-2, 2, |x: &i32, y: &i32| x.abs().cmp(&y.abs())), 2);
+/// let result = cmp::max_by(-2, 1, |x: &i32, y: &i32| x.abs().cmp(&y.abs()));
+/// assert_eq!(result, -2);
+///
+/// let result = cmp::max_by(-2, 2, |x: &i32, y: &i32| x.abs().cmp(&y.abs())) ;
+/// assert_eq!(result, 2);
 /// ```
 #[inline]
 #[must_use]
@@ -1255,8 +1253,11 @@ pub fn max_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
 /// ```
 /// use std::cmp;
 ///
-/// assert_eq!(cmp::max_by_key(-2, 1, |x: &i32| x.abs()), -2);
-/// assert_eq!(cmp::max_by_key(-2, 2, |x: &i32| x.abs()), 2);
+/// let result = cmp::max_by_key(-2, 1, |x: &i32| x.abs());
+/// assert_eq!(result, -2);
+///
+/// let result = cmp::max_by_key(-2, 2, |x: &i32| x.abs());
+/// assert_eq!(result, 2);
 /// ```
 #[inline]
 #[must_use]
