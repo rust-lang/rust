@@ -13,7 +13,7 @@ fn ub_if_b(_1: Thing) -> Thing {
 
     bb0: {
         _2 = discriminant(_1);           // scope 0 at $DIR/instcombine_duplicate_switch_targets_e2e.rs:+1:11: +1:12
-        switchInt(move _2) -> [0: bb2, 1: bb1, otherwise: bb1]; // scope 0 at $DIR/instcombine_duplicate_switch_targets_e2e.rs:+1:5: +1:12
+        switchInt(move _2) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/instcombine_duplicate_switch_targets_e2e.rs:+1:5: +1:12
     }
 
     bb1: {

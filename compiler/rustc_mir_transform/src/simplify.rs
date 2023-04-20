@@ -278,6 +278,18 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
     }
 }
 
+pub fn combine_duplicate_switch_targets(terminator: &mut Terminator<'_>) {
+    if let TerminatorKind::SwitchInt { targets, .. } = &mut terminator.kind {
+        let otherwise = targets.otherwise();
+        if targets.iter().any(|t| t.1 == otherwise) {
+            *targets = SwitchTargets::new(
+                targets.iter().filter(|t| t.1 != otherwise),
+                targets.otherwise(),
+            );
+        }
+    }
+}
+
 pub fn remove_duplicate_unreachable_blocks<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     struct OptApplier<'tcx> {
         tcx: TyCtxt<'tcx>,
@@ -297,6 +309,8 @@ pub fn remove_duplicate_unreachable_blocks<'tcx>(tcx: TyCtxt<'tcx>, body: &mut B
                     *target = self.duplicates[0];
                 }
             }
+
+            combine_duplicate_switch_targets(terminator);
 
             self.super_terminator(terminator, location);
         }
