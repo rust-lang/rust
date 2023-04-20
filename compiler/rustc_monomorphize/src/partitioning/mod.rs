@@ -118,18 +118,81 @@ use crate::errors::{
     CouldntDumpMonoStats, SymbolAlreadyDefined, UnknownCguCollectionMode, UnknownPartitionStrategy,
 };
 
+enum Partitioner {
+    Default(default::DefaultPartitioning),
+    // Other partitioning strategies can go here.
+    Unknown,
+}
+
+impl<'tcx> Partition<'tcx> for Partitioner {
+    fn place_root_mono_items<I>(
+        &mut self,
+        cx: &PartitioningCx<'_, 'tcx>,
+        mono_items: &mut I,
+    ) -> PreInliningPartitioning<'tcx>
+    where
+        I: Iterator<Item = MonoItem<'tcx>>,
+    {
+        match self {
+            Partitioner::Default(partitioner) => partitioner.place_root_mono_items(cx, mono_items),
+            Partitioner::Unknown => cx.tcx.sess.emit_fatal(UnknownPartitionStrategy),
+        }
+    }
+
+    fn merge_codegen_units(
+        &mut self,
+        cx: &PartitioningCx<'_, 'tcx>,
+        initial_partitioning: &mut PreInliningPartitioning<'tcx>,
+    ) {
+        match self {
+            Partitioner::Default(partitioner) => {
+                partitioner.merge_codegen_units(cx, initial_partitioning)
+            }
+            Partitioner::Unknown => cx.tcx.sess.emit_fatal(UnknownPartitionStrategy),
+        }
+    }
+
+    fn place_inlined_mono_items(
+        &mut self,
+        cx: &PartitioningCx<'_, 'tcx>,
+        initial_partitioning: PreInliningPartitioning<'tcx>,
+    ) -> PostInliningPartitioning<'tcx> {
+        match self {
+            Partitioner::Default(partitioner) => {
+                partitioner.place_inlined_mono_items(cx, initial_partitioning)
+            }
+            Partitioner::Unknown => cx.tcx.sess.emit_fatal(UnknownPartitionStrategy),
+        }
+    }
+
+    fn internalize_symbols(
+        &mut self,
+        cx: &PartitioningCx<'_, 'tcx>,
+        post_inlining_partitioning: &mut PostInliningPartitioning<'tcx>,
+    ) {
+        match self {
+            Partitioner::Default(partitioner) => {
+                partitioner.internalize_symbols(cx, post_inlining_partitioning)
+            }
+            Partitioner::Unknown => cx.tcx.sess.emit_fatal(UnknownPartitionStrategy),
+        }
+    }
+}
+
 pub struct PartitioningCx<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     target_cgu_count: usize,
     inlining_map: &'a InliningMap<'tcx>,
 }
 
-trait Partitioner<'tcx> {
-    fn place_root_mono_items(
+trait Partition<'tcx> {
+    fn place_root_mono_items<I>(
         &mut self,
         cx: &PartitioningCx<'_, 'tcx>,
-        mono_items: &mut dyn Iterator<Item = MonoItem<'tcx>>,
-    ) -> PreInliningPartitioning<'tcx>;
+        mono_items: &mut I,
+    ) -> PreInliningPartitioning<'tcx>
+    where
+        I: Iterator<Item = MonoItem<'tcx>>;
 
     fn merge_codegen_units(
         &mut self,
@@ -150,26 +213,27 @@ trait Partitioner<'tcx> {
     );
 }
 
-fn get_partitioner<'tcx>(tcx: TyCtxt<'tcx>) -> Box<dyn Partitioner<'tcx>> {
+fn get_partitioner(tcx: TyCtxt<'_>) -> Partitioner {
     let strategy = match &tcx.sess.opts.unstable_opts.cgu_partitioning_strategy {
         None => "default",
         Some(s) => &s[..],
     };
 
     match strategy {
-        "default" => Box::new(default::DefaultPartitioning),
-        _ => {
-            tcx.sess.emit_fatal(UnknownPartitionStrategy);
-        }
+        "default" => Partitioner::Default(default::DefaultPartitioning),
+        _ => Partitioner::Unknown,
     }
 }
 
-pub fn partition<'tcx>(
+pub fn partition<'tcx, I>(
     tcx: TyCtxt<'tcx>,
-    mono_items: &mut dyn Iterator<Item = MonoItem<'tcx>>,
+    mono_items: &mut I,
     max_cgu_count: usize,
     inlining_map: &InliningMap<'tcx>,
-) -> Vec<CodegenUnit<'tcx>> {
+) -> Vec<CodegenUnit<'tcx>>
+where
+    I: Iterator<Item = MonoItem<'tcx>>,
+{
     let _prof_timer = tcx.prof.generic_activity("cgu_partitioning");
 
     let mut partitioner = get_partitioner(tcx);
@@ -182,7 +246,9 @@ pub fn partition<'tcx>(
         partitioner.place_root_mono_items(cx, mono_items)
     };
 
-    initial_partitioning.codegen_units.iter_mut().for_each(|cgu| cgu.create_size_estimate(tcx));
+    for cgu in &mut initial_partitioning.codegen_units {
+        cgu.create_size_estimate(tcx);
+    }
 
     debug_dump(tcx, "INITIAL PARTITIONING:", initial_partitioning.codegen_units.iter());
 
@@ -202,7 +268,9 @@ pub fn partition<'tcx>(
         partitioner.place_inlined_mono_items(cx, initial_partitioning)
     };
 
-    post_inlining.codegen_units.iter_mut().for_each(|cgu| cgu.create_size_estimate(tcx));
+    for cgu in &mut post_inlining.codegen_units {
+        cgu.create_size_estimate(tcx);
+    }
 
     debug_dump(tcx, "POST INLINING:", post_inlining.codegen_units.iter());
 
@@ -380,7 +448,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
             || {
                 let mut codegen_units = partition(
                     tcx,
-                    &mut items.iter().cloned(),
+                    &mut items.iter().copied(),
                     tcx.sess.codegen_units(),
                     &inlining_map,
                 );

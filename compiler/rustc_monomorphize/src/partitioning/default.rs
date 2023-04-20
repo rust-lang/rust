@@ -16,17 +16,20 @@ use super::PartitioningCx;
 use crate::collector::InliningMap;
 use crate::partitioning::merging;
 use crate::partitioning::{
-    MonoItemPlacement, Partitioner, PostInliningPartitioning, PreInliningPartitioning,
+    MonoItemPlacement, Partition, PostInliningPartitioning, PreInliningPartitioning,
 };
 
 pub struct DefaultPartitioning;
 
-impl<'tcx> Partitioner<'tcx> for DefaultPartitioning {
-    fn place_root_mono_items(
+impl<'tcx> Partition<'tcx> for DefaultPartitioning {
+    fn place_root_mono_items<I>(
         &mut self,
         cx: &PartitioningCx<'_, 'tcx>,
-        mono_items: &mut dyn Iterator<Item = MonoItem<'tcx>>,
-    ) -> PreInliningPartitioning<'tcx> {
+        mono_items: &mut I,
+    ) -> PreInliningPartitioning<'tcx>
+    where
+        I: Iterator<Item = MonoItem<'tcx>>,
+    {
         let mut roots = FxHashSet::default();
         let mut codegen_units = FxHashMap::default();
         let is_incremental_build = cx.tcx.sess.opts.incremental.is_some();
