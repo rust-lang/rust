@@ -159,6 +159,8 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::eta_reduction::REDUNDANT_CLOSURE_FOR_METHOD_CALLS_INFO,
     crate::excessive_bools::FN_PARAMS_EXCESSIVE_BOOLS_INFO,
     crate::excessive_bools::STRUCT_EXCESSIVE_BOOLS_INFO,
+    crate::excessive_width::EXCESSIVE_INDENTATION_INFO,
+    crate::excessive_width::EXCESSIVE_WIDTH_INFO,
     crate::exhaustive_items::EXHAUSTIVE_ENUMS_INFO,
     crate::exhaustive_items::EXHAUSTIVE_STRUCTS_INFO,
     crate::exit::EXIT_INFO,
