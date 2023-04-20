@@ -1,0 +1,358 @@
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:19:21
+   |
+LL |               let z = {
+   |  _____________________^
+LL | |                 let w = { 3 };
+LL | |                 w
+LL | |             };
+   | |_____________^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+   = note: `-D clippy::excessive-nesting` implied by `-D warnings`
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:63:24
+   |
+LL |               pub fn b() {
+   |  ________________________^
+LL | |                 struct C;
+LL | |
+LL | |                 impl C {
+LL | |                     pub fn c() {}
+LL | |                 }
+LL | |             }
+   | |_____________^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:67:32
+   |
+LL |                     pub fn c() {}
+   |                                ^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:79:21
+   |
+LL |               fn cc() {
+   |  _____________________^
+LL | |                 let x = { 1 }; // not a warning
+LL | |             }
+   | |_____________^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:83:21
+   |
+LL |             let x = { 1 }; // warning
+   |                     ^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:107:17
+   |
+LL |     a_but_not({{{{{{{{0}}}}}}}});
+   |                 ^^^^^^^^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:108:11
+   |
+LL |     a.a({{{{{{{{{0}}}}}}}}});
+   |           ^^^^^^^^^^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:109:11
+   |
+LL |     (0, {{{{{{{1}}}}}}});
+   |           ^^^^^^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:113:21
+   |
+LL |               if true {
+   |  _____________________^
+LL | |                 if true {
+LL | |                     if true {
+LL | |
+LL | |                     }
+LL | |                 }
+LL | |             }
+   | |_____________^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:33:13
+   |
+LL | /             {
+LL | |                 {
+LL | |                     {
+LL | |                         {
+...  |
+LL | |                 }
+LL | |             }
+   | |_____________^
+...
+LL |       xx!();
+   |       ----- in this macro invocation
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+   = note: this error originates in the macro `xx` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:140:36
+   |
+LL |     !{boo as u32 + !{boo as u32 + !{boo as u32}}};
+   |                                    ^^^^^^^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:143:12
+   |
+LL |     y += {{{{{5}}}}};
+   |            ^^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:144:19
+   |
+LL |     let z = y + {{{{{{{{{5}}}}}}}}};
+   |                   ^^^^^^^^^^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:145:11
+   |
+LL |     [0, {{{{{{{{{{0}}}}}}}}}}];
+   |           ^^^^^^^^^^^^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:146:24
+   |
+LL |     let mut xx = [0; {{{{{{{{100}}}}}}}}];
+   |                        ^^^^^^^^^^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:147:10
+   |
+LL |     xx[{{{{{{{{{{{{{{{{{{{{{{{{3}}}}}}}}}}}}}}}}}}}}}}}}];
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:148:12
+   |
+LL |     &mut {{{{{{{{{{y}}}}}}}}}};
+   |            ^^^^^^^^^^^^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:150:16
+   |
+LL |     for i in {{{{xx}}}} {{{{{{{{}}}}}}}}
+   |                ^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:150:27
+   |
+LL |     for i in {{{{xx}}}} {{{{{{{{}}}}}}}}
+   |                           ^^^^^^^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:152:27
+   |
+LL |     while let Some(i) = {{{{{{Some(1)}}}}}} {{{{{{{}}}}}}}
+   |                           ^^^^^^^^^^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:152:47
+   |
+LL |     while let Some(i) = {{{{{{Some(1)}}}}}} {{{{{{{}}}}}}}
+   |                                               ^^^^^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:154:13
+   |
+LL |     while {{{{{{{{true}}}}}}}} {{{{{{{{{}}}}}}}}}
+   |             ^^^^^^^^^^^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:154:34
+   |
+LL |     while {{{{{{{{true}}}}}}}} {{{{{{{{{}}}}}}}}}
+   |                                  ^^^^^^^^^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:156:22
+   |
+LL |     let d = D { d: {{{{{{{{{{{{{{{{{{{{{{{3}}}}}}}}}}}}}}}}}}}}}}} };
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:158:7
+   |
+LL |     {{{{1;}}}}..{{{{{{3}}}}}};
+   |       ^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:158:19
+   |
+LL |     {{{{1;}}}}..{{{{{{3}}}}}};
+   |                   ^^^^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:159:7
+   |
+LL |     {{{{1;}}}}..={{{{{{{{{{{{{{{{{{{{{{{{{{6}}}}}}}}}}}}}}}}}}}}}}}}}};
+   |       ^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:159:20
+   |
+LL |     {{{{1;}}}}..={{{{{{{{{{{{{{{{{{{{{{{{{{6}}}}}}}}}}}}}}}}}}}}}}}}}};
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:160:9
+   |
+LL |     ..{{{{{{{5}}}}}}};
+   |         ^^^^^^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:161:10
+   |
+LL |     ..={{{{{3}}}}};
+   |          ^^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:162:7
+   |
+LL |     {{{{{1;}}}}}..;
+   |       ^^^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:164:19
+   |
+LL |     loop { break {{{{1}}}} };
+   |                   ^^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:165:12
+   |
+LL |     loop {{{{{{}}}}}}
+   |            ^^^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:167:13
+   |
+LL |     match {{{{{{true}}}}}} {
+   |             ^^^^^^^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:168:19
+   |
+LL |         true => {{{{}}}},
+   |                   ^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:169:20
+   |
+LL |         false => {{{{}}}},
+   |                    ^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:174:13
+   |
+LL | /             {
+LL | |                 {
+LL | |                     println!("warning! :)");
+LL | |                 }
+LL | |             }
+   | |_____________^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:184:27
+   |
+LL |     async fn c() -> u32 {{{{{{{0}}}}}}}
+   |                           ^^^^^^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:184:28
+   |
+LL |     async fn c() -> u32 {{{{{{{0}}}}}}}
+   |                            ^^^^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: this block is too nested
+  --> $DIR/excessive_nesting.rs:190:7
+   |
+LL |     {{{{b().await}}}};
+   |       ^^^^^^^^^^^^^
+   |
+   = help: try refactoring your code, extraction is often both easier to read and less nested
+
+error: aborting due to 40 previous errors
+

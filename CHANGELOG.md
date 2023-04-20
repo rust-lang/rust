@@ -4758,9 +4758,8 @@ Released 2018-09-13
 [`erasing_op`]: https://rust-lang.github.io/rust-clippy/master/index.html#erasing_op
 [`err_expect`]: https://rust-lang.github.io/rust-clippy/master/index.html#err_expect
 [`eval_order_dependence`]: https://rust-lang.github.io/rust-clippy/master/index.html#eval_order_dependence
-[`excessive_indentation`]: https://rust-lang.github.io/rust-clippy/master/index.html#excessive_indentation
+[`excessive_nesting`]: https://rust-lang.github.io/rust-clippy/master/index.html#excessive_nesting
 [`excessive_precision`]: https://rust-lang.github.io/rust-clippy/master/index.html#excessive_precision
-[`excessive_width`]: https://rust-lang.github.io/rust-clippy/master/index.html#excessive_width
 [`exhaustive_enums`]: https://rust-lang.github.io/rust-clippy/master/index.html#exhaustive_enums
 [`exhaustive_structs`]: https://rust-lang.github.io/rust-clippy/master/index.html#exhaustive_structs
 [`exit`]: https://rust-lang.github.io/rust-clippy/master/index.html#exit

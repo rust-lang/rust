@@ -122,7 +122,7 @@ mod equatable_if_let;
 mod escape;
 mod eta_reduction;
 mod excessive_bools;
-mod excessive_width;
+mod excessive_nesting;
 mod exhaustive_items;
 mod exit;
 mod explicit_write;
@@ -1008,14 +1008,10 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(tests_outside_test_module::TestsOutsideTestModule));
     store.register_late_pass(|_| Box::new(manual_slice_size_calculation::ManualSliceSizeCalculation));
     store.register_early_pass(|| Box::new(suspicious_doc_comments::SuspiciousDocComments));
-    let excessive_width_threshold = conf.excessive_width_threshold;
-    let excessive_width_ignore_indentation = conf.excessive_width_ignore_indentation;
-    let excessive_indentation_threshold = conf.excessive_indentation_threshold;
-    store.register_late_pass(move |_| {
-        Box::new(excessive_width::ExcessiveWidth {
-            excessive_width_threshold,
-            excessive_width_ignore_indentation,
-            excessive_indentation_threshold,
+    let excessive_nesting_threshold = conf.excessive_nesting_threshold;
+    store.register_early_pass(move || {
+        Box::new(excessive_nesting::ExcessiveNesting {
+            excessive_nesting_threshold,
         })
     });
     store.register_late_pass(|_| Box::new(items_after_test_module::ItemsAfterTestModule));

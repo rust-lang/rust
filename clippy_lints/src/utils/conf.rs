@@ -305,18 +305,10 @@ define_Conf! {
     ///
     /// The maximum cognitive complexity a function can have
     (cognitive_complexity_threshold: u64 = 25),
-    /// Lint: EXCESSIVE_WIDTH.
+    /// Lint: EXCESSIVE_NESTING.
     ///
-    /// The maximum width a statement can have
-    (excessive_width_threshold: u64 = 100),
-    /// Lint: EXCESSIVE_WIDTH.
-    ///
-    /// Whether to ignore the line's indentation
-    (excessive_width_ignore_indentation: bool = true),
-    /// Lint: EXCESSIVE_INDENTATION.
-    ///
-    /// The maximum indentation a statement can have
-    (excessive_indentation_threshold: u64 = 10),
+    /// The maximum amount of nesting a block can reside in
+    (excessive_nesting_threshold: u64 = 10),
     /// DEPRECATED LINT: CYCLOMATIC_COMPLEXITY.
     ///
     /// Use the Cognitive Complexity lint instead.
