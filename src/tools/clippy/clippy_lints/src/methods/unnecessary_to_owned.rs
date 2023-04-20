@@ -266,7 +266,7 @@ fn check_other_call_arg<'tcx>(
             Some((n_refs, receiver_ty))
         } else if trait_predicate.def_id() != deref_trait_id {
             Some((1, cx.tcx.mk_ref(
-                cx.tcx.lifetimes.re_erased,
+                cx.tcx.regions.erased,
                 ty::TypeAndMut {
                     ty: receiver_ty,
                     mutbl: Mutability::Not,

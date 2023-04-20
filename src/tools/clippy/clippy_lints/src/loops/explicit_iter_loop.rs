@@ -16,7 +16,7 @@ pub(super) fn check(cx: &LateContext<'_>, self_arg: &Expr<'_>, arg: &Expr<'_>, m
             let receiver_ty = cx.typeck_results().expr_ty(self_arg);
             let receiver_ty_adjusted = cx.typeck_results().expr_ty_adjusted(self_arg);
             let ref_receiver_ty = cx.tcx.mk_ref(
-                cx.tcx.lifetimes.re_erased,
+                cx.tcx.regions.erased,
                 ty::TypeAndMut {
                     ty: receiver_ty,
                     mutbl: Mutability::Not,
