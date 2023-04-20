@@ -11,7 +11,10 @@ use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
 use rustc_session::impl_lint_pass;
-use rustc_span::source_map::{Span, Spanned};
+use rustc_span::{
+    source_map::{Span, Spanned},
+    Symbol,
+};
 
 const HARD_CODED_ALLOWED_BINARY: &[[&str; 2]] = &[
     ["f32", "f32"],
@@ -21,6 +24,7 @@ const HARD_CODED_ALLOWED_BINARY: &[[&str; 2]] = &[
     ["std::string::String", "&str"],
 ];
 const HARD_CODED_ALLOWED_UNARY: &[&str] = &["f32", "f64", "std::num::Saturating", "std::num::Wrapping"];
+const INTEGER_METHODS: &[&str] = &["saturating_div", "wrapping_div", "wrapping_rem", "wrapping_rem_euclid"];
 
 #[derive(Debug)]
 pub struct ArithmeticSideEffects {
@@ -29,6 +33,7 @@ pub struct ArithmeticSideEffects {
     // Used to check whether expressions are constants, such as in enum discriminants and consts
     const_span: Option<Span>,
     expr_span: Option<Span>,
+    integer_methods: FxHashSet<Symbol>,
 }
 
 impl_lint_pass!(ArithmeticSideEffects => [ARITHMETIC_SIDE_EFFECTS]);
@@ -54,6 +59,7 @@ impl ArithmeticSideEffects {
             allowed_unary,
             const_span: None,
             expr_span: None,
+            integer_methods: INTEGER_METHODS.iter().map(|el| Symbol::intern(el)).collect(),
         }
     }
 
@@ -194,7 +200,6 @@ impl ArithmeticSideEffects {
         ps: &hir::PathSegment<'tcx>,
         receiver: &hir::Expr<'tcx>,
     ) {
-        const METHODS: &[&str] = &["saturating_div", "wrapping_div", "wrapping_rem", "wrapping_rem_euclid"];
         let Some(arg) = args.first() else { return; };
         if constant_simple(cx, cx.typeck_results(), receiver).is_some() {
             return;
@@ -203,7 +208,7 @@ impl ArithmeticSideEffects {
         if !Self::is_integral(instance_ty) {
             return;
         }
-        if METHODS.iter().copied().all(|method| method != ps.ident.as_str()) {
+        if !self.integer_methods.contains(&ps.ident.name) {
             return;
         }
         let (actual_arg, _) = peel_hir_expr_refs(arg);
