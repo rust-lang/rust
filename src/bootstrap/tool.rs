@@ -141,7 +141,7 @@ pub fn prepare_tool_cargo(
     mode: Mode,
     target: TargetSelection,
     command: &'static str,
-    path: &'static str,
+    path: &str,
     source_type: SourceType,
     extra_features: &[String],
 ) -> CargoCommand {

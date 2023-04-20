@@ -55,26 +55,37 @@ fn try_run_quiet(builder: &Builder<'_>, cmd: &mut Command) -> bool {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct CrateJsonDocLint {
+pub struct CrateBootstrap {
+    path: Interned<PathBuf>,
     host: TargetSelection,
 }
 
-impl Step for CrateJsonDocLint {
+impl Step for CrateBootstrap {
     type Output = ();
     const ONLY_HOSTS: bool = true;
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/jsondoclint")
+            .path("src/tools/suggest-tests")
+            .path("src/tools/replace-version-placeholder")
+            .alias("tidyselftest")
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(CrateJsonDocLint { host: run.target });
+        for path in run.paths {
+            let path = INTERNER.intern_path(path.assert_single_path().path.clone());
+            run.builder.ensure(CrateBootstrap { host: run.target, path });
+        }
     }
 
     fn run(self, builder: &Builder<'_>) {
         let bootstrap_host = builder.config.build;
         let compiler = builder.compiler(0, bootstrap_host);
+        let mut path = self.path.to_str().unwrap();
+        if path == "tidyselftest" {
+            path = "src/tools/tidy";
+        }
 
         let cargo = tool::prepare_tool_cargo(
             builder,
@@ -82,46 +93,16 @@ impl Step for CrateJsonDocLint {
             Mode::ToolBootstrap,
             bootstrap_host,
             "test",
-            "src/tools/jsondoclint",
+            path,
             SourceType::InTree,
             &[],
         );
-        run_cargo_test(cargo, &[], &[], compiler, bootstrap_host, builder);
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct SuggestTestsCrate {
-    host: TargetSelection,
-}
-
-impl Step for SuggestTestsCrate {
-    type Output = ();
-    const ONLY_HOSTS: bool = true;
-    const DEFAULT: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/suggest-tests")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(SuggestTestsCrate { host: run.target });
-    }
-
-    fn run(self, builder: &Builder<'_>) {
-        let bootstrap_host = builder.config.build;
-        let compiler = builder.compiler(0, bootstrap_host);
-
-        let cargo = tool::prepare_tool_cargo(
-            builder,
-            compiler,
-            Mode::ToolBootstrap,
+        builder.info(&format!(
+            "{} {} stage0 ({})",
+            builder.kind.test_description(),
+            path,
             bootstrap_host,
-            "test",
-            "src/tools/suggest-tests",
-            SourceType::InTree,
-            &[],
-        );
+        ));
         run_cargo_test(cargo, &[], &[], compiler, bootstrap_host, builder);
     }
 }
@@ -1148,40 +1129,6 @@ help: to skip test's attempt to check tidiness, pass `--exclude src/tools/tidy` 
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Tidy);
-    }
-}
-
-/// Runs tidy's own tests.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct TidySelfTest;
-
-impl Step for TidySelfTest {
-    type Output = ();
-    const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.alias("tidyselftest")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(TidySelfTest);
-    }
-
-    fn run(self, builder: &Builder<'_>) {
-        let bootstrap_host = builder.config.build;
-        let compiler = builder.compiler(0, bootstrap_host);
-        let cargo = tool::prepare_tool_cargo(
-            builder,
-            compiler,
-            Mode::ToolBootstrap,
-            bootstrap_host,
-            "test",
-            "src/tools/tidy",
-            SourceType::InTree,
-            &[],
-        );
-        run_cargo_test(cargo, &[], &[], compiler, bootstrap_host, builder);
     }
 }
 
@@ -2610,43 +2557,6 @@ impl Step for TierCheck {
 
         builder.info("platform support check");
         try_run(builder, &mut cargo.into());
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct ReplacePlaceholderTest;
-
-impl Step for ReplacePlaceholderTest {
-    type Output = ();
-    const ONLY_HOSTS: bool = true;
-    const DEFAULT: bool = true;
-
-    /// Ensure the version placeholder replacement tool builds
-    fn run(self, builder: &Builder<'_>) {
-        builder.info("build check for version replacement placeholder");
-
-        // Test the version placeholder replacement tool itself.
-        let bootstrap_host = builder.config.build;
-        let compiler = builder.compiler(0, bootstrap_host);
-        let cargo = tool::prepare_tool_cargo(
-            builder,
-            compiler,
-            Mode::ToolBootstrap,
-            bootstrap_host,
-            "test",
-            "src/tools/replace-version-placeholder",
-            SourceType::InTree,
-            &[],
-        );
-        add_flags_and_try_run_tests(builder, &mut cargo.into());
-    }
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/replace-version-placeholder")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Self);
     }
 }
 
