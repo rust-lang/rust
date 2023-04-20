@@ -1112,6 +1112,7 @@ supported_targets! {
 
     ("aarch64-apple-darwin", aarch64_apple_darwin),
     ("x86_64-apple-darwin", x86_64_apple_darwin),
+    ("x86_64h-apple-darwin", x86_64h_apple_darwin),
     ("i686-apple-darwin", i686_apple_darwin),
 
     // FIXME(#106649): Remove aarch64-fuchsia in favor of aarch64-unknown-fuchsia
