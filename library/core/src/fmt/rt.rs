@@ -7,11 +7,6 @@
 #[derive(Copy, Clone)]
 pub struct Placeholder {
     pub position: usize,
-    pub format: FormatSpec,
-}
-
-#[derive(Copy, Clone)]
-pub struct FormatSpec {
     pub fill: char,
     pub align: Alignment,
     pub flags: u32,
@@ -29,7 +24,7 @@ impl Placeholder {
         precision: Count,
         width: Count,
     ) -> Self {
-        Self { position, format: FormatSpec { fill, align, flags, precision, width } }
+        Self { position, fill, align, flags, precision, width }
     }
 }
 

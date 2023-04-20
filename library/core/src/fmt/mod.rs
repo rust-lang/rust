@@ -1277,14 +1277,14 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
 }
 
 unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::Placeholder, args: &[ArgumentV1<'_>]) -> Result {
-    fmt.fill = arg.format.fill;
-    fmt.align = arg.format.align;
-    fmt.flags = arg.format.flags;
+    fmt.fill = arg.fill;
+    fmt.align = arg.align;
+    fmt.flags = arg.flags;
     // SAFETY: arg and args come from the same Arguments,
     // which guarantees the indexes are always within bounds.
     unsafe {
-        fmt.width = getcount(args, &arg.format.width);
-        fmt.precision = getcount(args, &arg.format.precision);
+        fmt.width = getcount(args, &arg.width);
+        fmt.precision = getcount(args, &arg.precision);
     }
 
     // Extract the correct argument
