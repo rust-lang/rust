@@ -136,7 +136,7 @@ static TARGETS: &[&str] = &[
     "thumbv8m.main-none-eabihf",
     "wasm32-unknown-emscripten",
     "wasm32-unknown-unknown",
-    "wasm32-wasi",
+    "wasm32-wasi-preview1",
     "x86_64-apple-darwin",
     "x86_64-apple-ios",
     "x86_64-fortanix-unknown-sgx",

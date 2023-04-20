@@ -306,7 +306,7 @@ fn copy_self_contained_objects(
             .unwrap_or_else(|| {
                 panic!("Target {:?} does not have a \"wasi-root\" key", target.triple)
             })
-            .join("lib/wasm32-wasi");
+            .join("lib/wasm32-wasi-preview1");
         for &obj in &["libc.a", "crt1-command.o", "crt1-reactor.o"] {
             copy_and_stamp(
                 builder,
@@ -408,7 +408,7 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
 
         if target.ends_with("-wasi") {
             if let Some(p) = builder.wasi_root(target) {
-                let root = format!("native={}/lib/wasm32-wasi", p.to_str().unwrap());
+                let root = format!("native={}/lib/wasm32-wasi-preview1", p.to_str().unwrap());
                 cargo.rustflag("-L").rustflag(&root);
             }
         }

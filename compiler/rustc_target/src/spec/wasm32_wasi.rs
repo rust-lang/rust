@@ -1,4 +1,4 @@
-//! The `wasm32-wasi` target is a new and still (as of April 2019) an
+//! The `wasm32-wasi-preview1` target is a new and still (as of April 2019) an
 //! experimental target. The definition in this file is likely to be tweaked
 //! over time and shouldn't be relied on too much.
 //!
@@ -13,12 +13,12 @@
 //! serve two use cases here with this target:
 //!
 //! * First, we want Rust usage of the target to be as hassle-free as possible,
-//!   ideally avoiding the need to configure and install a local wasm32-wasi
+//!   ideally avoiding the need to configure and install a local wasm32-wasi-preview1
 //!   toolchain.
 //!
 //! * Second, one of the primary use cases of LLVM's new wasm backend and the
 //!   wasm support in LLD is that any compiled language can interoperate with
-//!   any other. To that the `wasm32-wasi` target is the first with a viable C
+//!   any other. To that the `wasm32-wasi-preview1` target is the first with a viable C
 //!   standard library and sysroot common definition, so we want Rust and C/C++
 //!   code to interoperate when compiled to `wasm32-unknown-unknown`.
 //!
@@ -39,7 +39,7 @@
 //! necessary.
 //!
 //! All in all, by default, no external dependencies are required. You can
-//! compile `wasm32-wasi` binaries straight out of the box. You can't, however,
+//! compile `wasm32-wasi-preview1` binaries straight out of the box. You can't, however,
 //! reliably interoperate with C code in this mode (yet).
 //!
 //! ## Interop with C required
@@ -53,7 +53,7 @@
 //!
 //! 2. If you're using rustc to build a linked artifact then you'll need to
 //!    specify `-C linker` to a `clang` binary that supports
-//!    `wasm32-wasi` and is configured with the `wasm32-wasi` sysroot. This
+//!    `wasm32-wasi-preview1` and is configured with the `wasm32-wasi-preview1` sysroot. This
 //!    will cause Rust code to be linked against the libc.a that the specified
 //!    `clang` provides.
 //!

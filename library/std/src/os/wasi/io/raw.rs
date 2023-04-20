@@ -13,7 +13,7 @@
 // As a result, the items in os::fd::raw were given the
 // rustc_allowed_through_unstable_modules attribute.
 // No regression tests were added to ensure this property,
-// as CI is not configured to test wasm32-wasi.
+// as CI is not configured to test wasm32-wasi-preview1.
 // If this module is stabilized,
 // you may want to remove those attributes
 // (assuming no other unstable modules need them).
