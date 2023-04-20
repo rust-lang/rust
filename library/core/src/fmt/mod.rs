@@ -1451,7 +1451,7 @@ impl<'a> Formatter<'a> {
                 let old_fill = crate::mem::replace(&mut self.fill, '0');
                 let old_align = crate::mem::replace(&mut self.align, rt::v1::Alignment::Right);
                 write_prefix(self, sign, prefix)?;
-                let post_padding = self.padding(min - width, rt::v1::Alignment::Right)?;
+                let post_padding = self.padding(min - width, Alignment::Right)?;
                 self.buf.write_str(buf)?;
                 post_padding.write(self)?;
                 self.fill = old_fill;
@@ -1460,7 +1460,7 @@ impl<'a> Formatter<'a> {
             }
             // Otherwise, the sign and prefix goes after the padding
             Some(min) => {
-                let post_padding = self.padding(min - width, rt::v1::Alignment::Right)?;
+                let post_padding = self.padding(min - width, Alignment::Right)?;
                 write_prefix(self, sign, prefix)?;
                 self.buf.write_str(buf)?;
                 post_padding.write(self)
@@ -1535,7 +1535,7 @@ impl<'a> Formatter<'a> {
                 // If we're under both the maximum and the minimum width, then fill
                 // up the minimum width with the specified string + some alignment.
                 else {
-                    let align = rt::v1::Alignment::Left;
+                    let align = Alignment::Left;
                     let post_padding = self.padding(width - chars_count, align)?;
                     self.buf.write_str(s)?;
                     post_padding.write(self)
@@ -1550,17 +1550,19 @@ impl<'a> Formatter<'a> {
     pub(crate) fn padding(
         &mut self,
         padding: usize,
-        default: rt::v1::Alignment,
+        default: Alignment,
     ) -> result::Result<PostPadding, Error> {
         let align = match self.align {
             rt::v1::Alignment::Unknown => default,
-            _ => self.align,
+            rt::v1::Alignment::Left => Alignment::Left,
+            rt::v1::Alignment::Right => Alignment::Right,
+            rt::v1::Alignment::Center => Alignment::Center,
         };
 
         let (pre_pad, post_pad) = match align {
-            rt::v1::Alignment::Left => (0, padding),
-            rt::v1::Alignment::Right | rt::v1::Alignment::Unknown => (padding, 0),
-            rt::v1::Alignment::Center => (padding / 2, (padding + 1) / 2),
+            Alignment::Left => (0, padding),
+            Alignment::Right => (padding, 0),
+            Alignment::Center => (padding / 2, (padding + 1) / 2),
         };
 
         for _ in 0..pre_pad {
@@ -1580,7 +1582,6 @@ impl<'a> Formatter<'a> {
             let mut formatted = formatted.clone();
             let old_fill = self.fill;
             let old_align = self.align;
-            let mut align = old_align;
             if self.sign_aware_zero_pad() {
                 // a sign always goes first
                 let sign = formatted.sign;
@@ -1589,9 +1590,8 @@ impl<'a> Formatter<'a> {
                 // remove the sign from the formatted parts
                 formatted.sign = "";
                 width = width.saturating_sub(sign.len());
-                align = rt::v1::Alignment::Right;
                 self.fill = '0';
-                self.align = rt::v1::Alignment::Right;
+                self.align = rt::Alignment::Right;
             }
 
             // remaining parts go through the ordinary padding process.
@@ -1600,7 +1600,7 @@ impl<'a> Formatter<'a> {
                 // no padding
                 self.write_formatted_parts(&formatted)
             } else {
-                let post_padding = self.padding(width - len, align)?;
+                let post_padding = self.padding(width - len, Alignment::Right)?;
                 self.write_formatted_parts(&formatted)?;
                 post_padding.write(self)
             };
