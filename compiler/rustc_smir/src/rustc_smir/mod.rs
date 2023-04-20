@@ -128,6 +128,18 @@ fn rustc_place_to_place(place: &rustc_middle::mir::Place<'_>) -> stable_mir::mir
     stable_mir::mir::Place { local: place.local.as_usize() }
 }
 
+fn rustc_unwind_to_unwind(
+    unwind: &rustc_middle::mir::UnwindAction,
+) -> stable_mir::mir::UnwindAction {
+    use rustc_middle::mir::UnwindAction;
+    match unwind {
+        UnwindAction::Continue => stable_mir::mir::UnwindAction::Continue,
+        UnwindAction::Unreachable => stable_mir::mir::UnwindAction::Unreachable,
+        UnwindAction::Terminate => stable_mir::mir::UnwindAction::Terminate,
+        UnwindAction::Cleanup(bb) => stable_mir::mir::UnwindAction::Cleanup(bb.as_usize()),
+    }
+}
+
 fn rustc_terminator_to_terminator(
     terminator: &rustc_middle::mir::Terminator<'_>,
 ) -> stable_mir::mir::Terminator {
@@ -151,7 +163,15 @@ fn rustc_terminator_to_terminator(
         Return => Terminator::Return,
         Unreachable => Terminator::Unreachable,
         Drop { .. } => todo!(),
-        Call { .. } => todo!(),
+        Call { func, args, destination, target, unwind, from_hir_call: _, fn_span: _ } => {
+            Terminator::Call {
+                func: rustc_op_to_op(func),
+                args: args.iter().map(|arg| rustc_op_to_op(arg)).collect(),
+                destination: rustc_place_to_place(destination),
+                target: target.map(|t| t.as_usize()),
+                unwind: rustc_unwind_to_unwind(unwind),
+            }
+        }
         Assert { .. } => todo!(),
         Yield { .. } => todo!(),
         GeneratorDrop => todo!(),
