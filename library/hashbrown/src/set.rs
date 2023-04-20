@@ -1221,7 +1221,9 @@ where
             None => None,
         }
     }
+}
 
+impl<T, S, A: Allocator + Clone> HashSet<T, S, A> {
     /// Returns a reference to the [`RawTable`] used underneath [`HashSet`].
     /// This function is only available if the `raw` feature of the crate is enabled.
     ///
