@@ -2000,7 +2000,7 @@ function initSearch(rawSearchIndex) {
                 : results.query.elems[0].name;
             output += "<h3 class=\"search-corrections\">" +
                 `Type "${orig}" not found. ` +
-                "Showing results for " +
+                "Showing results for closest type name " +
                 `"${results.query.correction}" instead.</h3>`;
         }
 
