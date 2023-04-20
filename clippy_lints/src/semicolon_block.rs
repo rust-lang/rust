@@ -121,10 +121,8 @@ fn semicolon_inside_block(
     let insert_span = tail.span.source_callsite().shrink_to_hi();
     let remove_span = semi_span.with_lo(block.span.hi());
 
-    if conf.semicolon_inside_block_if_multiline {
-        if get_line(cx, remove_span) == get_line(cx, insert_span) {
-            return;
-        }
+    if conf.semicolon_inside_block_if_multiline && get_line(cx, remove_span) == get_line(cx, insert_span) {
+        return;
     }
 
     span_lint_and_then(
@@ -143,16 +141,20 @@ fn semicolon_inside_block(
     );
 }
 
-fn semicolon_outside_block(conf: &mut SemicolonBlock, cx: &LateContext<'_>, block: &Block<'_>, tail_stmt_expr: &Expr<'_>, semi_span: Span) {
+fn semicolon_outside_block(
+    conf: &mut SemicolonBlock,
+    cx: &LateContext<'_>,
+    block: &Block<'_>,
+    tail_stmt_expr: &Expr<'_>,
+    semi_span: Span,
+) {
     let insert_span = block.span.with_lo(block.span.hi());
     // account for macro calls
     let semi_span = cx.sess().source_map().stmt_span(semi_span, block.span);
     let remove_span = semi_span.with_lo(tail_stmt_expr.span.source_callsite().hi());
 
-    if conf.semicolon_outside_block_if_singleline {
-        if get_line(cx, remove_span) != get_line(cx, insert_span) {
-            return;
-        }
+    if conf.semicolon_outside_block_if_singleline && get_line(cx, remove_span) != get_line(cx, insert_span) {
+        return;
     }
 
     span_lint_and_then(

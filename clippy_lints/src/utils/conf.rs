@@ -277,6 +277,14 @@ define_Conf! {
     /// `".."` can be used as part of the list to indicate, that the configured values should be appended to the
     /// default configuration of Clippy. By default, any configuration will replace the default value.
     (disallowed_names: Vec<String> = super::DEFAULT_DISALLOWED_NAMES.iter().map(ToString::to_string).collect()),
+    /// Lint: SEMICOLON_INSIDE_BLOCK.
+    ///
+    /// Whether to lint only if it's multiline.
+    (semicolon_inside_block_if_multiline: bool = false),
+    /// Lint: SEMICOLON_OUTSIDE_BLOCK.
+    ///
+    /// Whether to lint only if it's singleline.
+    (semicolon_outside_block_if_singleline: bool = false),
     /// Lint: DOC_MARKDOWN.
     ///
     /// The list of words this lint should not consider as identifiers needing ticks. The value
@@ -463,14 +471,6 @@ define_Conf! {
     ///
     /// The maximum byte size a `Future` can have, before it triggers the `clippy::large_futures` lint
     (future_size_threshold: u64 = 16 * 1024),
-    /// Lint: SEMICOLON_INSIDE_BLOCK.
-    /// 
-    /// Whether to lint only if it's multiline.
-    (semicolon_inside_block_if_multiline: bool = false),
-    /// Lint: SEMICOLON_OUTSIDE_BLOCK.
-    /// 
-    /// Whether to lint only if it's singleline.
-    (semicolon_outside_block_if_singleline: bool = false),
 }
 
 /// Search for the configuration file.
