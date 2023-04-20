@@ -220,13 +220,13 @@ pub(crate) fn verify_func(
         match cranelift_codegen::verify_function(&func, &flags) {
             Ok(_) => {}
             Err(err) => {
-                tcx.sess.err(&format!("{:?}", err));
+                tcx.sess.err(format!("{:?}", err));
                 let pretty_error = cranelift_codegen::print_errors::pretty_verifier_error(
                     &func,
                     Some(Box::new(writer)),
                     err,
                 );
-                tcx.sess.fatal(&format!("cranelift verify error:\n{}", pretty_error));
+                tcx.sess.fatal(format!("cranelift verify error:\n{}", pretty_error));
             }
         }
     });

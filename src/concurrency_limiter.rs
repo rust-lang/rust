@@ -65,7 +65,7 @@ impl ConcurrencyLimiter {
                     // Make sure to drop the mutex guard first to prevent poisoning the mutex.
                     drop(state);
                     if let Some(err) = err {
-                        handler.fatal(&err).raise();
+                        handler.fatal(err).raise();
                     } else {
                         // The error was already emitted, but compilation continued. Raise a silent
                         // fatal error.
