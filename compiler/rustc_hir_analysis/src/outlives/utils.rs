@@ -127,7 +127,7 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
             }
         }
 
-        GenericArgKind::Lifetime(r) => {
+        GenericArgKind::Region(r) => {
             if !is_free_region(r) {
                 return;
             }

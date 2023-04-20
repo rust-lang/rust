@@ -751,7 +751,7 @@ fn binders_for<'tcx>(
     chalk_ir::VariableKinds::from_iter(
         interner,
         bound_vars.iter().map(|arg| match arg.unpack() {
-            ty::subst::GenericArgKind::Lifetime(_re) => chalk_ir::VariableKind::Lifetime,
+            ty::subst::GenericArgKind::Region(_re) => chalk_ir::VariableKind::Lifetime,
             ty::subst::GenericArgKind::Type(_ty) => {
                 chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General)
             }

@@ -323,7 +323,7 @@ fn encode_substs<'tcx>(
         s.push('I');
         for subst in substs {
             match subst.unpack() {
-                GenericArgKind::Lifetime(region) => {
+                GenericArgKind::Region(region) => {
                     s.push_str(&encode_region(tcx, region, dict, options));
                 }
                 GenericArgKind::Type(ty) => {

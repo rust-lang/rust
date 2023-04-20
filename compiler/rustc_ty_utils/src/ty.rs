@@ -436,7 +436,7 @@ fn well_formed_types_in_env(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::List<Predica
             }
 
             // FIXME(eddyb) no WF conditions from lifetimes?
-            GenericArgKind::Lifetime(_) => None,
+            GenericArgKind::Region(_) => None,
 
             // FIXME(eddyb) support const generics in Chalk
             GenericArgKind::Const(_) => None,
@@ -532,7 +532,7 @@ fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> BitSet<u32
         },
 
         // We can't unsize a lifetime
-        ty::GenericArgKind::Lifetime(_) => None,
+        ty::GenericArgKind::Region(_) => None,
 
         ty::GenericArgKind::Const(ct) => match ct.kind() {
             ty::ConstKind::Param(p) => Some(p.index),

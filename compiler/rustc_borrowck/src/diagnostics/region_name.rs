@@ -597,7 +597,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     ) -> Option<&'hir hir::Lifetime> {
         for (kind, hir_arg) in iter::zip(substs, args.args) {
             match (kind.unpack(), hir_arg) {
-                (GenericArgKind::Lifetime(r), hir::GenericArg::Lifetime(lt)) => {
+                (GenericArgKind::Region(r), hir::GenericArg::Lifetime(lt)) => {
                     if r.as_var() == needle_fr {
                         return Some(lt);
                     }
@@ -613,9 +613,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 }
 
                 (
-                    GenericArgKind::Lifetime(_)
-                    | GenericArgKind::Type(_)
-                    | GenericArgKind::Const(_),
+                    GenericArgKind::Region(_) | GenericArgKind::Type(_) | GenericArgKind::Const(_),
                     _,
                 ) => {
                     // HIR lowering sometimes doesn't catch this in erroneous

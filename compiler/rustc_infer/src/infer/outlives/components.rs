@@ -84,7 +84,7 @@ fn compute_components<'tcx>(
                         GenericArgKind::Type(ty) => {
                             compute_components(tcx, ty, out, visited);
                         }
-                        GenericArgKind::Lifetime(_) => {}
+                        GenericArgKind::Region(_) => {}
                         GenericArgKind::Const(_) => {
                             compute_components_recursive(tcx, child, out, visited);
                         }
@@ -212,10 +212,10 @@ pub(super) fn compute_alias_components_recursive<'tcx>(
             GenericArgKind::Type(ty) => {
                 compute_components(tcx, ty, out, visited);
             }
-            GenericArgKind::Lifetime(lt) => {
+            GenericArgKind::Region(re) => {
                 // Ignore late-bound regions.
-                if !lt.is_late_bound() {
-                    out.push(Component::Region(lt));
+                if !re.is_late_bound() {
+                    out.push(Component::Region(re));
                 }
             }
             GenericArgKind::Const(_) => {
@@ -240,10 +240,10 @@ fn compute_components_recursive<'tcx>(
             GenericArgKind::Type(ty) => {
                 compute_components(tcx, ty, out, visited);
             }
-            GenericArgKind::Lifetime(lt) => {
+            GenericArgKind::Region(re) => {
                 // Ignore late-bound regions.
-                if !lt.is_late_bound() {
-                    out.push(Component::Region(lt));
+                if !re.is_late_bound() {
+                    out.push(Component::Region(re));
                 }
             }
             GenericArgKind::Const(_) => {

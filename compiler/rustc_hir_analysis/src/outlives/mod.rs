@@ -105,7 +105,7 @@ fn inferred_outlives_crate(tcx: TyCtxt<'_>, (): ()) -> CratePredicatesMap<'_> {
                             ty::Clause::TypeOutlives(ty::OutlivesPredicate(ty1, *region2)),
                             span,
                         )),
-                        GenericArgKind::Lifetime(region1) => Some((
+                        GenericArgKind::Region(region1) => Some((
                             ty::Clause::RegionOutlives(ty::OutlivesPredicate(region1, *region2)),
                             span,
                         )),

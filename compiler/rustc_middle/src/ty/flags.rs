@@ -380,7 +380,7 @@ impl FlagComputation {
         for kind in substs {
             match kind.unpack() {
                 GenericArgKind::Type(ty) => self.add_ty(ty),
-                GenericArgKind::Lifetime(lt) => self.add_region(lt),
+                GenericArgKind::Region(re) => self.add_region(re),
                 GenericArgKind::Const(ct) => self.add_const(ct),
             }
         }

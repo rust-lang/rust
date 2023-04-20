@@ -69,7 +69,7 @@ pub struct CanonicalVarValues<'tcx> {
 impl CanonicalVarValues<'_> {
     pub fn is_identity(&self) -> bool {
         self.var_values.iter().enumerate().all(|(bv, arg)| match arg.unpack() {
-            ty::GenericArgKind::Lifetime(r) => {
+            ty::GenericArgKind::Region(r) => {
                 matches!(*r, ty::ReLateBound(ty::INNERMOST, br) if br.var.as_usize() == bv)
             }
             ty::GenericArgKind::Type(ty) => {
@@ -83,7 +83,7 @@ impl CanonicalVarValues<'_> {
 
     pub fn is_identity_modulo_regions(&self) -> bool {
         self.var_values.iter().enumerate().all(|(bv, arg)| match arg.unpack() {
-            ty::GenericArgKind::Lifetime(_) => true,
+            ty::GenericArgKind::Region(_) => true,
             ty::GenericArgKind::Type(ty) => {
                 matches!(*ty.kind(), ty::Bound(ty::INNERMOST, bt) if bt.var.as_usize() == bv)
             }

@@ -149,7 +149,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                         opt_values[b.var] = Some(*original_value);
                     }
                 }
-                GenericArgKind::Lifetime(r) => {
+                GenericArgKind::Region(r) => {
                     if let ty::ReLateBound(debruijn, br) = *r {
                         assert_eq!(debruijn, ty::INNERMOST);
                         opt_values[br.var] = Some(*original_value);
@@ -217,7 +217,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     fn register_region_constraints(&mut self, region_constraints: &QueryRegionConstraints<'tcx>) {
         for &(ty::OutlivesPredicate(lhs, rhs), _) in &region_constraints.outlives {
             match lhs.unpack() {
-                GenericArgKind::Lifetime(lhs) => self.register_region_outlives(lhs, rhs),
+                GenericArgKind::Region(lhs) => self.register_region_outlives(lhs, rhs),
                 GenericArgKind::Type(lhs) => self.register_ty_outlives(lhs, rhs),
                 GenericArgKind::Const(_) => bug!("const outlives: {lhs:?}: {rhs:?}"),
             }

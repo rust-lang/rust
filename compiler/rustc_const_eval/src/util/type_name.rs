@@ -131,7 +131,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
     ) -> Result<Self::Path, Self::Error> {
         self = print_prefix(self)?;
         let args =
-            args.iter().cloned().filter(|arg| !matches!(arg.unpack(), GenericArgKind::Lifetime(_)));
+            args.iter().cloned().filter(|arg| !matches!(arg.unpack(), GenericArgKind::Region(_)));
         if args.clone().next().is_some() {
             self.generic_delimiters(|cx| cx.comma_sep(args))
         } else {

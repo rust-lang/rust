@@ -534,7 +534,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let is_generic = instance
             .substs
             .into_iter()
-            .any(|kind| !matches!(kind.unpack(), GenericArgKind::Lifetime(_)));
+            .any(|kind| !matches!(kind.unpack(), GenericArgKind::Region(_)));
         if is_generic {
             // Get a fresh ID.
             let mut alloc_map = self.alloc_map.lock();

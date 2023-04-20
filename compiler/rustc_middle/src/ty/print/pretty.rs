@@ -2862,7 +2862,7 @@ define_print_and_forward_display! {
 
     GenericArg<'tcx> {
         match self.unpack() {
-            GenericArgKind::Lifetime(lt) => p!(print(lt)),
+            GenericArgKind::Region(re) => p!(print(re)),
             GenericArgKind::Type(ty) => p!(print(ty)),
             GenericArgKind::Const(ct) => p!(print(ct)),
         }

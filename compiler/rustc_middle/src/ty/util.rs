@@ -430,7 +430,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let result = iter::zip(item_substs, impl_substs)
             .filter(|&(_, k)| {
                 match k.unpack() {
-                    GenericArgKind::Lifetime(region) => match region.kind() {
+                    GenericArgKind::Region(region) => match region.kind() {
                         ty::ReEarlyBound(ref ebr) => {
                             !impl_generics.region_param(ebr, self).pure_wrt_drop
                         }
@@ -466,13 +466,13 @@ impl<'tcx> TyCtxt<'tcx> {
         let mut seen = GrowableBitSet::default();
         for arg in substs {
             match arg.unpack() {
-                GenericArgKind::Lifetime(lt) => {
+                GenericArgKind::Region(re) => {
                     if ignore_regions == IgnoreRegions::No {
-                        let ty::ReEarlyBound(p) = lt.kind() else {
-                            return Err(NotUniqueParam::NotParam(lt.into()))
+                        let ty::ReEarlyBound(p) = re.kind() else {
+                            return Err(NotUniqueParam::NotParam(re.into()))
                         };
                         if !seen.insert(p.index) {
-                            return Err(NotUniqueParam::DuplicateParam(lt.into()));
+                            return Err(NotUniqueParam::DuplicateParam(re.into()));
                         }
                     }
                 }

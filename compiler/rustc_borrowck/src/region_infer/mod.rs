@@ -1114,7 +1114,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 let substs =
                     std::iter::zip(substs, tcx.variances_of(def_id)).map(|(arg, v)| {
                         match (arg.unpack(), v) {
-                            (ty::GenericArgKind::Lifetime(_), ty::Bivariant) => {
+                            (ty::GenericArgKind::Region(_), ty::Bivariant) => {
                                 tcx.lifetimes.re_static.into()
                             }
                             _ => arg.fold_with(self),

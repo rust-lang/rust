@@ -718,8 +718,8 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GATSubstCollector<'tcx> {
             ty::Alias(ty::Projection, p) if p.def_id == self.gat => {
                 for (idx, subst) in p.substs.iter().enumerate() {
                     match subst.unpack() {
-                        GenericArgKind::Lifetime(lt) if !lt.is_late_bound() => {
-                            self.regions.insert((lt, idx));
+                        GenericArgKind::Region(re) if !re.is_late_bound() => {
+                            self.regions.insert((re, idx));
                         }
                         GenericArgKind::Type(t) => {
                             self.types.insert((t, idx));

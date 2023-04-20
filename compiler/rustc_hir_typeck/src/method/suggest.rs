@@ -1315,7 +1315,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if !arg.is_suggestable(self.tcx, true) {
                         has_unsuggestable_args = true;
                         match arg.unpack() {
-                            GenericArgKind::Lifetime(_) => self
+                            GenericArgKind::Region(_) => self
                                 .next_region_var(RegionVariableOrigin::MiscVariable(
                                     rustc_span::DUMMY_SP,
                                 ))

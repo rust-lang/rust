@@ -408,7 +408,7 @@ where
         let constraint = origin.to_constraint_category();
         for (index, k) in substs.iter().enumerate() {
             match k.unpack() {
-                GenericArgKind::Lifetime(lt) => {
+                GenericArgKind::Region(re) => {
                     let variance = if let Some(variances) = opt_variances {
                         variances[index]
                     } else {
@@ -418,7 +418,7 @@ where
                         self.delegate.push_sub_region_constraint(
                             origin.clone(),
                             region,
-                            lt,
+                            re,
                             constraint,
                         );
                     }

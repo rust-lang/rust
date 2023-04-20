@@ -782,8 +782,8 @@ impl<'tcx> Relate<'tcx> for GenericArg<'tcx> {
         b: GenericArg<'tcx>,
     ) -> RelateResult<'tcx, GenericArg<'tcx>> {
         match (a.unpack(), b.unpack()) {
-            (GenericArgKind::Lifetime(a_lt), GenericArgKind::Lifetime(b_lt)) => {
-                Ok(relation.relate(a_lt, b_lt)?.into())
+            (GenericArgKind::Region(a_re), GenericArgKind::Region(b_re)) => {
+                Ok(relation.relate(a_re, b_re)?.into())
             }
             (GenericArgKind::Type(a_ty), GenericArgKind::Type(b_ty)) => {
                 Ok(relation.relate(a_ty, b_ty)?.into())
@@ -791,7 +791,7 @@ impl<'tcx> Relate<'tcx> for GenericArg<'tcx> {
             (GenericArgKind::Const(a_ct), GenericArgKind::Const(b_ct)) => {
                 Ok(relation.relate(a_ct, b_ct)?.into())
             }
-            (GenericArgKind::Lifetime(unpacked), x) => {
+            (GenericArgKind::Region(unpacked), x) => {
                 bug!("impossible case reached: can't relate: {:?} with {:?}", unpacked, x)
             }
             (GenericArgKind::Type(unpacked), x) => {

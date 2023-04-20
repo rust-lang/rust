@@ -50,7 +50,7 @@ const CONST_TAG: usize = 0b10;
 
 #[derive(Debug, TyEncodable, TyDecodable, PartialEq, Eq, PartialOrd, Ord)]
 pub enum GenericArgKind<'tcx> {
-    Lifetime(ty::Region<'tcx>),
+    Region(ty::Region<'tcx>),
     Type(Ty<'tcx>),
     Const(ty::Const<'tcx>),
 }
@@ -71,10 +71,10 @@ impl<'tcx> GenericArgKind<'tcx> {
     #[inline]
     fn pack(self) -> GenericArg<'tcx> {
         let (tag, ptr) = match self {
-            GenericArgKind::Lifetime(lt) => {
+            GenericArgKind::Region(re) => {
                 // Ensure we can use the tag bits.
-                assert_eq!(mem::align_of_val(&*lt.0.0) & TAG_MASK, 0);
-                (REGION_TAG, lt.0.0 as *const ty::RegionKind<'tcx> as usize)
+                assert_eq!(mem::align_of_val(&*re.0.0) & TAG_MASK, 0);
+                (REGION_TAG, re.0.0 as *const ty::RegionKind<'tcx> as usize)
             }
             GenericArgKind::Type(ty) => {
                 // Ensure we can use the tag bits.
@@ -95,7 +95,7 @@ impl<'tcx> GenericArgKind<'tcx> {
 impl<'tcx> fmt::Debug for GenericArg<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.unpack() {
-            GenericArgKind::Lifetime(lt) => lt.fmt(f),
+            GenericArgKind::Region(re) => re.fmt(f),
             GenericArgKind::Type(ty) => ty.fmt(f),
             GenericArgKind::Const(ct) => ct.fmt(f),
         }
@@ -117,7 +117,7 @@ impl<'tcx> PartialOrd for GenericArg<'tcx> {
 impl<'tcx> From<ty::Region<'tcx>> for GenericArg<'tcx> {
     #[inline]
     fn from(r: ty::Region<'tcx>) -> GenericArg<'tcx> {
-        GenericArgKind::Lifetime(r).pack()
+        GenericArgKind::Region(r).pack()
     }
 }
 
@@ -153,7 +153,7 @@ impl<'tcx> GenericArg<'tcx> {
         // and this is just going in the other direction.
         unsafe {
             match ptr & TAG_MASK {
-                REGION_TAG => GenericArgKind::Lifetime(ty::Region(Interned::new_unchecked(
+                REGION_TAG => GenericArgKind::Region(ty::Region(Interned::new_unchecked(
                     &*((ptr & !TAG_MASK) as *const ty::RegionKind<'tcx>),
                 ))),
                 TYPE_TAG => GenericArgKind::Type(Ty(Interned::new_unchecked(
@@ -178,7 +178,7 @@ impl<'tcx> GenericArg<'tcx> {
     #[inline]
     pub fn as_region(self) -> Option<ty::Region<'tcx>> {
         match self.unpack() {
-            GenericArgKind::Lifetime(re) => Some(re),
+            GenericArgKind::Region(re) => Some(re),
             _ => None,
         }
     }
@@ -210,7 +210,7 @@ impl<'tcx> GenericArg<'tcx> {
 
     pub fn is_non_region_infer(self) -> bool {
         match self.unpack() {
-            GenericArgKind::Lifetime(_) => false,
+            GenericArgKind::Region(_) => false,
             GenericArgKind::Type(ty) => ty.is_ty_or_numeric_infer(),
             GenericArgKind::Const(ct) => ct.is_ct_infer(),
         }
@@ -222,7 +222,7 @@ impl<'a, 'tcx> Lift<'tcx> for GenericArg<'a> {
 
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         match self.unpack() {
-            GenericArgKind::Lifetime(lt) => tcx.lift(lt).map(|lt| lt.into()),
+            GenericArgKind::Region(re) => tcx.lift(re).map(|re| re.into()),
             GenericArgKind::Type(ty) => tcx.lift(ty).map(|ty| ty.into()),
             GenericArgKind::Const(ct) => tcx.lift(ct).map(|ct| ct.into()),
         }
@@ -235,7 +235,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for GenericArg<'tcx> {
         folder: &mut F,
     ) -> Result<Self, F::Error> {
         match self.unpack() {
-            GenericArgKind::Lifetime(lt) => lt.try_fold_with(folder).map(Into::into),
+            GenericArgKind::Region(re) => re.try_fold_with(folder).map(Into::into),
             GenericArgKind::Type(ty) => ty.try_fold_with(folder).map(Into::into),
             GenericArgKind::Const(ct) => ct.try_fold_with(folder).map(Into::into),
         }
@@ -245,7 +245,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for GenericArg<'tcx> {
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for GenericArg<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         match self.unpack() {
-            GenericArgKind::Lifetime(lt) => lt.visit_with(visitor),
+            GenericArgKind::Region(re) => re.visit_with(visitor),
             GenericArgKind::Type(ty) => ty.visit_with(visitor),
             GenericArgKind::Const(ct) => ct.visit_with(visitor),
         }
@@ -402,7 +402,7 @@ impl<'tcx> InternalSubsts<'tcx> {
         &'tcx self,
     ) -> impl DoubleEndedIterator<Item = GenericArgKind<'tcx>> + 'tcx {
         self.iter().filter_map(|k| match k.unpack() {
-            GenericArgKind::Lifetime(_) => None,
+            GenericArgKind::Region(_) => None,
             generic => Some(generic),
         })
     }
@@ -825,7 +825,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for SubstFolder<'a, 'tcx> {
             ty::ReEarlyBound(data) => {
                 let rk = self.substs.get(data.index as usize).map(|k| k.unpack());
                 match rk {
-                    Some(GenericArgKind::Lifetime(lt)) => self.shift_region_through_binders(lt),
+                    Some(GenericArgKind::Region(re)) => self.shift_region_through_binders(re),
                     Some(other) => region_param_invalid(data, other),
                     None => region_param_out_of_range(data, self.substs),
                 }

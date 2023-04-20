@@ -1740,7 +1740,7 @@ impl<'tcx> TyOrConstInferVar<'tcx> {
         match arg.unpack() {
             GenericArgKind::Type(ty) => Self::maybe_from_ty(ty),
             GenericArgKind::Const(ct) => Self::maybe_from_const(ct),
-            GenericArgKind::Lifetime(_) => None,
+            GenericArgKind::Region(_) => None,
         }
     }
 

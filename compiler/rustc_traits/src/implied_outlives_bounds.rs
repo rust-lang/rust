@@ -144,7 +144,7 @@ fn compute_implied_outlives_bounds<'tcx>(
     let implied_bounds = outlives_bounds
         .into_iter()
         .flat_map(|ty::OutlivesPredicate(a, r_b)| match a.unpack() {
-            ty::GenericArgKind::Lifetime(r_a) => vec![OutlivesBound::RegionSubRegion(r_b, r_a)],
+            ty::GenericArgKind::Region(r_a) => vec![OutlivesBound::RegionSubRegion(r_b, r_a)],
             ty::GenericArgKind::Type(ty_a) => {
                 let ty_a = ocx.infcx.resolve_vars_if_possible(ty_a);
                 let mut components = smallvec![];

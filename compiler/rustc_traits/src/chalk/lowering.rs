@@ -209,7 +209,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
                 GenericArgKind::Const(..) => {
                     chalk_ir::GoalData::All(chalk_ir::Goals::empty(interner))
                 }
-                GenericArgKind::Lifetime(lt) => bug!("unexpected well formed predicate: {:?}", lt),
+                GenericArgKind::Region(re) => bug!("unexpected well formed predicate: {:?}", re),
             },
 
             ty::PredicateKind::ObjectSafe(t) => chalk_ir::GoalData::DomainGoal(
@@ -602,7 +602,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GenericArg<RustInterner<'tcx>>> for Generic
             ty::subst::GenericArgKind::Type(ty) => {
                 chalk_ir::GenericArgData::Ty(ty.lower_into(interner))
             }
-            ty::subst::GenericArgKind::Lifetime(lifetime) => {
+            ty::subst::GenericArgKind::Region(lifetime) => {
                 chalk_ir::GenericArgData::Lifetime(lifetime.lower_into(interner))
             }
             ty::subst::GenericArgKind::Const(c) => {

@@ -186,12 +186,12 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
         for k in substs {
             match k.unpack() {
-                GenericArgKind::Lifetime(lt) => {
-                    self.add_constraints_from_region(current, lt, variance_i)
+                GenericArgKind::Region(re) => {
+                    self.add_constraints_from_region(current, re, variance_i)
                 }
                 GenericArgKind::Type(ty) => self.add_constraints_from_ty(current, ty, variance_i),
-                GenericArgKind::Const(val) => {
-                    self.add_constraints_from_const(current, val, variance_i)
+                GenericArgKind::Const(ct) => {
+                    self.add_constraints_from_const(current, ct, variance_i)
                 }
             }
         }
@@ -345,13 +345,11 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 variance_decl, variance_i
             );
             match k.unpack() {
-                GenericArgKind::Lifetime(lt) => {
-                    self.add_constraints_from_region(current, lt, variance_i)
+                GenericArgKind::Region(re) => {
+                    self.add_constraints_from_region(current, re, variance_i)
                 }
                 GenericArgKind::Type(ty) => self.add_constraints_from_ty(current, ty, variance_i),
-                GenericArgKind::Const(val) => {
-                    self.add_constraints_from_const(current, val, variance)
-                }
+                GenericArgKind::Const(ct) => self.add_constraints_from_const(current, ct, variance),
             }
         }
     }

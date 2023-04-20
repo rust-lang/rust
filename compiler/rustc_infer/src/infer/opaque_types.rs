@@ -351,7 +351,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 .enumerate()
                 .filter(|(i, _)| variances[*i] == ty::Variance::Invariant)
                 .filter_map(|(_, arg)| match arg.unpack() {
-                    GenericArgKind::Lifetime(r) => Some(r),
+                    GenericArgKind::Region(r) => Some(r),
                     GenericArgKind::Type(_) | GenericArgKind::Const(_) => None,
                 })
                 .chain(std::iter::once(self.tcx.lifetimes.re_static))

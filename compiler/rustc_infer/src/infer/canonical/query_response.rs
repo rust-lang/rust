@@ -267,13 +267,13 @@ impl<'tcx> InferCtxt<'tcx> {
                 v.var_values[BoundVar::new(index)]
             });
             match (original_value.unpack(), result_value.unpack()) {
-                (GenericArgKind::Lifetime(re1), GenericArgKind::Lifetime(re2))
+                (GenericArgKind::Region(re1), GenericArgKind::Region(re2))
                     if re1.is_erased() && re2.is_erased() =>
                 {
                     // No action needed.
                 }
 
-                (GenericArgKind::Lifetime(v_o), GenericArgKind::Lifetime(v_r)) => {
+                (GenericArgKind::Region(v_o), GenericArgKind::Region(v_r)) => {
                     // To make `v_o = v_r`, we emit `v_o: v_r` and `v_r: v_o`.
                     if v_o != v_r {
                         output_query_region_constraints
@@ -456,7 +456,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         opt_values[b.var] = Some(*original_value);
                     }
                 }
-                GenericArgKind::Lifetime(result_value) => {
+                GenericArgKind::Region(result_value) => {
                     // e.g., here `result_value` might be `'?1` in the example above...
                     if let ty::ReLateBound(debruijn, br) = *result_value {
                         // ... in which case we would set `canonical_vars[0]` to `Some('static)`.
@@ -568,7 +568,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let ty::OutlivesPredicate(k1, r2) = predicate;
 
         let atom = match k1.unpack() {
-            GenericArgKind::Lifetime(r1) => {
+            GenericArgKind::Region(r1) => {
                 ty::PredicateKind::Clause(ty::Clause::RegionOutlives(ty::OutlivesPredicate(r1, r2)))
             }
             GenericArgKind::Type(t1) => {
@@ -607,12 +607,12 @@ impl<'tcx> InferCtxt<'tcx> {
                                 .into_obligations(),
                         );
                     }
-                    (GenericArgKind::Lifetime(re1), GenericArgKind::Lifetime(re2))
+                    (GenericArgKind::Region(re1), GenericArgKind::Region(re2))
                         if re1.is_erased() && re2.is_erased() =>
                     {
                         // no action needed
                     }
-                    (GenericArgKind::Lifetime(v1), GenericArgKind::Lifetime(v2)) => {
+                    (GenericArgKind::Region(v1), GenericArgKind::Region(v2)) => {
                         obligations.extend(
                             self.at(cause, param_env)
                                 .eq(DefineOpaqueTypes::Yes, v1, v2)?

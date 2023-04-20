@@ -367,8 +367,8 @@ fn check_opaque_type_parameter_valid(
     for (i, arg) in opaque_type_key.substs.iter().enumerate() {
         let arg_is_param = match arg.unpack() {
             GenericArgKind::Type(ty) => matches!(ty.kind(), ty::Param(_)),
-            GenericArgKind::Lifetime(lt) => {
-                matches!(*lt, ty::ReEarlyBound(_) | ty::ReFree(_))
+            GenericArgKind::Region(re) => {
+                matches!(*re, ty::ReEarlyBound(_) | ty::ReFree(_))
             }
             GenericArgKind::Const(ct) => matches!(ct.kind(), ty::ConstKind::Param(_)),
         };

@@ -196,7 +196,7 @@ impl DeepRejectCtxt {
         iter::zip(obligation_substs, impl_substs).all(|(obl, imp)| {
             match (obl.unpack(), imp.unpack()) {
                 // We don't fast reject based on regions for now.
-                (GenericArgKind::Lifetime(_), GenericArgKind::Lifetime(_)) => true,
+                (GenericArgKind::Region(_), GenericArgKind::Region(_)) => true,
                 (GenericArgKind::Type(obl), GenericArgKind::Type(imp)) => {
                     self.types_may_unify(obl, imp)
                 }

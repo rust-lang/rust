@@ -2177,7 +2177,7 @@ fn check_substs_compatible<'tcx>(
         for (param, arg) in std::iter::zip(&generics.params, own_args) {
             match (&param.kind, arg.unpack()) {
                 (ty::GenericParamDefKind::Type { .. }, ty::GenericArgKind::Type(_))
-                | (ty::GenericParamDefKind::Lifetime, ty::GenericArgKind::Lifetime(_))
+                | (ty::GenericParamDefKind::Lifetime, ty::GenericArgKind::Region(_))
                 | (ty::GenericParamDefKind::Const { .. }, ty::GenericArgKind::Const(_)) => {}
                 _ => return false,
             }

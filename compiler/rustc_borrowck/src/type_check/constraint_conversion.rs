@@ -141,7 +141,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
 
         let ty::OutlivesPredicate(k1, r2) = predicate;
         match k1.unpack() {
-            GenericArgKind::Lifetime(r1) => {
+            GenericArgKind::Region(r1) => {
                 let r1_vid = self.to_region_vid(r1);
                 let r2_vid = self.to_region_vid(r2);
                 self.add_outlives(r1_vid, r2_vid, constraint_category);

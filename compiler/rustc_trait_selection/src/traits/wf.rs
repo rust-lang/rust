@@ -55,7 +55,7 @@ pub fn obligations<'tcx>(
             .into()
         }
         // There is nothing we have to do for lifetimes.
-        GenericArgKind::Lifetime(..) => return Some(Vec::new()),
+        GenericArgKind::Region(..) => return Some(Vec::new()),
     };
 
     let mut wf = WfPredicates {
@@ -84,7 +84,7 @@ pub fn unnormalized_obligations<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     arg: GenericArg<'tcx>,
 ) -> Option<Vec<traits::PredicateObligation<'tcx>>> {
-    if let ty::GenericArgKind::Lifetime(..) = arg.unpack() {
+    if let ty::GenericArgKind::Region(..) = arg.unpack() {
         return Some(vec![]);
     }
 
@@ -472,7 +472,7 @@ impl<'tcx> WfPredicates<'tcx> {
 
                 // No WF constraints for lifetimes being present, any outlives
                 // obligations are handled by the parent (e.g. `ty::Ref`).
-                GenericArgKind::Lifetime(_) => continue,
+                GenericArgKind::Region(_) => continue,
 
                 GenericArgKind::Const(ct) => {
                     match ct.kind() {

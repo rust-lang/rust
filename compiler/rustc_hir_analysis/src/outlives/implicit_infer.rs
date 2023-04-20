@@ -99,7 +99,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
 
             // No predicates from lifetimes or constants, except potentially
             // constants' types, but `walk` will get to them as well.
-            GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => continue,
+            GenericArgKind::Region(_) | GenericArgKind::Const(_) => continue,
         };
 
         match *ty.kind() {

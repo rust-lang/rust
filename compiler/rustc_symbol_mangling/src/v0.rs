@@ -808,11 +808,11 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
     ) -> Result<Self::Path, Self::Error> {
         // Don't print any regions if they're all erased.
         let print_regions = args.iter().any(|arg| match arg.unpack() {
-            GenericArgKind::Lifetime(r) => !r.is_erased(),
+            GenericArgKind::Region(r) => !r.is_erased(),
             _ => false,
         });
         let args = args.iter().cloned().filter(|arg| match arg.unpack() {
-            GenericArgKind::Lifetime(_) => print_regions,
+            GenericArgKind::Region(_) => print_regions,
             _ => true,
         });
 
@@ -824,8 +824,8 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
         self = print_prefix(self)?;
         for arg in args {
             match arg.unpack() {
-                GenericArgKind::Lifetime(lt) => {
-                    self = lt.print(self)?;
+                GenericArgKind::Region(re) => {
+                    self = re.print(self)?;
                 }
                 GenericArgKind::Type(ty) => {
                     self = ty.print(self)?;
