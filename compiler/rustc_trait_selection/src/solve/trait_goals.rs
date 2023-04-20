@@ -104,6 +104,30 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         }
     }
 
+    fn consider_alias_bound_clause(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+        assumption: ty::Predicate<'tcx>,
+    ) -> QueryResult<'tcx> {
+        if let Some(poly_trait_pred) = assumption.to_opt_poly_trait_pred()
+            && poly_trait_pred.def_id() == goal.predicate.def_id()
+        {
+            // FIXME: Constness and polarity
+            ecx.probe(|ecx| {
+                let assumption_trait_pred =
+                    ecx.instantiate_binder_with_infer(poly_trait_pred);
+                ecx.eq(
+                    goal.param_env,
+                    goal.predicate.trait_ref,
+                    assumption_trait_pred.trait_ref,
+                )?;
+                ecx.evaluate_alias_bound_self_is_well_formed(goal)
+            })
+        } else {
+            Err(NoSolution)
+        }
+    }
+
     fn consider_object_bound_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,

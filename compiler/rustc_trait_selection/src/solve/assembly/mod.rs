@@ -8,6 +8,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::util::elaborate;
+use rustc_infer::traits::Reveal;
 use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, MaybeCause, QueryResult};
 use rustc_middle::ty::fast_reject::TreatProjections;
 use rustc_middle::ty::TypeFoldable;
@@ -87,7 +88,9 @@ pub(super) enum CandidateSource {
 }
 
 /// Methods used to assemble candidates for either trait or projection goals.
-pub(super) trait GoalKind<'tcx>: TypeFoldable<TyCtxt<'tcx>> + Copy + Eq {
+pub(super) trait GoalKind<'tcx>:
+    TypeFoldable<TyCtxt<'tcx>> + Copy + Eq + std::fmt::Display
+{
     fn self_ty(self) -> Ty<'tcx>;
 
     fn trait_ref(self, tcx: TyCtxt<'tcx>) -> ty::TraitRef<'tcx>;
@@ -104,6 +107,12 @@ pub(super) trait GoalKind<'tcx>: TypeFoldable<TyCtxt<'tcx>> + Copy + Eq {
         goal: Goal<'tcx, Self>,
         assumption: ty::Predicate<'tcx>,
         requirements: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
+    ) -> QueryResult<'tcx>;
+
+    fn consider_alias_bound_clause(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+        assumption: ty::Predicate<'tcx>,
     ) -> QueryResult<'tcx>;
 
     // Consider a clause specifically for a `dyn Trait` self type. This requires
@@ -463,7 +472,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
         for assumption in self.tcx().item_bounds(alias_ty.def_id).subst(self.tcx(), alias_ty.substs)
         {
-            match G::consider_implied_clause(self, goal, assumption, []) {
+            match G::consider_alias_bound_clause(self, goal, assumption) {
                 Ok(result) => {
                     candidates.push(Candidate { source: CandidateSource::AliasBound, result })
                 }
@@ -601,5 +610,57 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             }
         }
         self.flounder(&responses)
+    }
+
+    #[instrument(level = "debug", skip(self), ret)]
+    pub(super) fn evaluate_alias_bound_self_is_well_formed<G: GoalKind<'tcx>>(
+        &mut self,
+        goal: Goal<'tcx, G>,
+    ) -> QueryResult<'tcx> {
+        match *goal.predicate.self_ty().kind() {
+            ty::Alias(ty::Projection, projection_ty) => {
+                let mut param_env_candidates = vec![];
+                let projection_trait_ref = projection_ty.trait_ref(self.tcx());
+
+                if projection_trait_ref.self_ty().is_ty_var() {
+                    return self
+                        .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
+                }
+
+                let trait_goal = goal.with(
+                    self.tcx(),
+                    ty::TraitPredicate {
+                        trait_ref: projection_trait_ref,
+                        constness: ty::BoundConstness::NotConst,
+                        polarity: ty::ImplPolarity::Positive,
+                    },
+                );
+                self.assemble_param_env_candidates(trait_goal, &mut param_env_candidates);
+
+                // FIXME: Bad bad bad bad bad !!!!!
+                let lang_items = self.tcx().lang_items();
+                let trait_def_id = projection_trait_ref.def_id;
+                let funky_built_in_res = if lang_items.pointee_trait() == Some(trait_def_id) {
+                    G::consider_builtin_pointee_candidate(self, goal)
+                } else if lang_items.discriminant_kind_trait() == Some(trait_def_id) {
+                    G::consider_builtin_discriminant_kind_candidate(self, goal)
+                } else {
+                    Err(NoSolution)
+                };
+                if let Ok(result) = funky_built_in_res {
+                    param_env_candidates
+                        .push(Candidate { source: CandidateSource::BuiltinImpl, result });
+                }
+
+                self.merge_candidates(param_env_candidates)
+            }
+            ty::Alias(ty::Opaque, _opaque_ty) => match goal.param_env.reveal() {
+                Reveal::UserFacing => {
+                    self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                }
+                Reveal::All => return Err(NoSolution),
+            },
+            _ => bug!("we shouldn't have gotten here!"),
+        }
     }
 }
