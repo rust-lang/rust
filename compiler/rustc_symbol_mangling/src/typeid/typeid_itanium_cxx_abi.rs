@@ -814,16 +814,10 @@ fn transform_substs<'tcx>(
     substs: SubstsRef<'tcx>,
     options: TransformTyOptions,
 ) -> SubstsRef<'tcx> {
-    let substs = substs.iter().map(|subst| {
-        if let GenericArgKind::Type(ty) = subst.unpack() {
-            if is_c_void_ty(tcx, ty) {
-                tcx.mk_unit().into()
-            } else {
-                transform_ty(tcx, ty, options).into()
-            }
-        } else {
-            subst
-        }
+    let substs = substs.iter().map(|subst| match subst.unpack() {
+        GenericArgKind::Type(ty) if is_c_void_ty(tcx, ty) => tcx.mk_unit().into(),
+        GenericArgKind::Type(ty) => transform_ty(tcx, ty, options).into(),
+        _ => subst,
     });
     tcx.mk_substs_from_iter(substs)
 }

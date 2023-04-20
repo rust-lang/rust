@@ -167,30 +167,45 @@ impl<'tcx> GenericArg<'tcx> {
         }
     }
 
+    #[inline]
+    pub fn as_type(self) -> Option<Ty<'tcx>> {
+        match self.unpack() {
+            GenericArgKind::Type(ty) => Some(ty),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    pub fn as_region(self) -> Option<ty::Region<'tcx>> {
+        match self.unpack() {
+            GenericArgKind::Lifetime(re) => Some(re),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    pub fn as_const(self) -> Option<ty::Const<'tcx>> {
+        match self.unpack() {
+            GenericArgKind::Const(ct) => Some(ct),
+            _ => None,
+        }
+    }
+
     /// Unpack the `GenericArg` as a region when it is known certainly to be a region.
     pub fn expect_region(self) -> ty::Region<'tcx> {
-        match self.unpack() {
-            GenericArgKind::Lifetime(lt) => lt,
-            _ => bug!("expected a region, but found another kind"),
-        }
+        self.as_region().unwrap_or_else(|| bug!("expected a region, but found another kind"))
     }
 
     /// Unpack the `GenericArg` as a type when it is known certainly to be a type.
     /// This is true in cases where `Substs` is used in places where the kinds are known
     /// to be limited (e.g. in tuples, where the only parameters are type parameters).
     pub fn expect_ty(self) -> Ty<'tcx> {
-        match self.unpack() {
-            GenericArgKind::Type(ty) => ty,
-            _ => bug!("expected a type, but found another kind"),
-        }
+        self.as_type().unwrap_or_else(|| bug!("expected a type, but found another kind"))
     }
 
     /// Unpack the `GenericArg` as a const when it is known certainly to be a const.
     pub fn expect_const(self) -> ty::Const<'tcx> {
-        match self.unpack() {
-            GenericArgKind::Const(c) => c,
-            _ => bug!("expected a const, but found another kind"),
-        }
+        self.as_const().unwrap_or_else(|| bug!("expected a const, but found another kind"))
     }
 
     pub fn is_non_region_infer(self) -> bool {
@@ -369,22 +384,17 @@ impl<'tcx> InternalSubsts<'tcx> {
 
     #[inline]
     pub fn types(&'tcx self) -> impl DoubleEndedIterator<Item = Ty<'tcx>> + 'tcx {
-        self.iter()
-            .filter_map(|k| if let GenericArgKind::Type(ty) = k.unpack() { Some(ty) } else { None })
+        self.iter().filter_map(|k| k.as_type())
     }
 
     #[inline]
     pub fn regions(&'tcx self) -> impl DoubleEndedIterator<Item = ty::Region<'tcx>> + 'tcx {
-        self.iter().filter_map(|k| {
-            if let GenericArgKind::Lifetime(lt) = k.unpack() { Some(lt) } else { None }
-        })
+        self.iter().filter_map(|k| k.as_region())
     }
 
     #[inline]
     pub fn consts(&'tcx self) -> impl DoubleEndedIterator<Item = ty::Const<'tcx>> + 'tcx {
-        self.iter().filter_map(|k| {
-            if let GenericArgKind::Const(ct) = k.unpack() { Some(ct) } else { None }
-        })
+        self.iter().filter_map(|k| k.as_const())
     }
 
     #[inline]
@@ -400,31 +410,21 @@ impl<'tcx> InternalSubsts<'tcx> {
     #[inline]
     #[track_caller]
     pub fn type_at(&self, i: usize) -> Ty<'tcx> {
-        if let GenericArgKind::Type(ty) = self[i].unpack() {
-            ty
-        } else {
-            bug!("expected type for param #{} in {:?}", i, self);
-        }
+        self[i].as_type().unwrap_or_else(|| bug!("expected type for param #{} in {:?}", i, self))
     }
 
     #[inline]
     #[track_caller]
     pub fn region_at(&self, i: usize) -> ty::Region<'tcx> {
-        if let GenericArgKind::Lifetime(lt) = self[i].unpack() {
-            lt
-        } else {
-            bug!("expected region for param #{} in {:?}", i, self);
-        }
+        self[i]
+            .as_region()
+            .unwrap_or_else(|| bug!("expected region for param #{} in {:?}", i, self))
     }
 
     #[inline]
     #[track_caller]
     pub fn const_at(&self, i: usize) -> ty::Const<'tcx> {
-        if let GenericArgKind::Const(ct) = self[i].unpack() {
-            ct
-        } else {
-            bug!("expected const for param #{} in {:?}", i, self);
-        }
+        self[i].as_const().unwrap_or_else(|| bug!("expected const for param #{} in {:?}", i, self))
     }
 
     #[inline]
