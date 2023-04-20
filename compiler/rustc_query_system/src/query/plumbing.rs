@@ -412,7 +412,9 @@ where
         if let Some((cached_result, _)) = cache.lookup(&key) {
             let Some(hasher) = query.hash_result() else {
                 panic!(
-                    "fed query later has its value computed. The already cached value: {}",
+                    "no_hash fed query later has its value computed.\n\
+                    Remove `no_hash` modifier to allow recomputation.\n\
+                    The already cached value: {}",
                     (query.format_value())(&cached_result)
                 );
             };
