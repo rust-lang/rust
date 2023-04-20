@@ -2109,8 +2109,13 @@ impl Step for CrateLibrustc {
 }
 
 // Given a `cargo test` subcommand, pass it the appropriate test flags given a `builder`.
-fn cargo_test_args(cargo: &mut Command, libtest_args: &[&str], _crates: &[&str], builder: &Builder<'_>) {
-    if !builder.fail_fast {
+fn run_cargo_test(cargo: impl Into<Command>, libtest_args: &[&str], crates: &[Interned<String>], compiler: Compiler, target: TargetSelection, builder: &Builder<'_>) {
+    let mut cargo = cargo.into();
+
+    // Pass in some standard flags then iterate over the graph we've discovered
+    // in `cargo metadata` with the maps above and figure out what `-p`
+    // arguments need to get passed.
+    if builder.kind == Kind::Test && !builder.fail_fast {
         cargo.arg("--no-fail-fast");
     }
     match builder.doc_tests {
@@ -2123,8 +2128,38 @@ fn cargo_test_args(cargo: &mut Command, libtest_args: &[&str], _crates: &[&str],
         DocTests::Yes => {}
     }
 
+    for &krate in crates {
+        cargo.arg("-p").arg(krate);
+    }
+
+    // The tests are going to run with the *target* libraries, so we need to
+    // ensure that those libraries show up in the LD_LIBRARY_PATH equivalent.
+    //
+    // Note that to run the compiler we need to run with the *host* libraries,
+    // but our wrapper scripts arrange for that to be the case anyway.
+    let mut dylib_path = dylib_path();
+    dylib_path.insert(0, PathBuf::from(&*builder.sysroot_libdir(compiler, target)));
+    cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
+
+    if target.contains("emscripten") {
+        cargo.env(
+            format!("CARGO_TARGET_{}_RUNNER", envify(&target.triple)),
+            builder.config.nodejs.as_ref().expect("nodejs not configured"),
+        );
+    } else if target.starts_with("wasm32") {
+        let node = builder.config.nodejs.as_ref().expect("nodejs not configured");
+        let runner = format!("{} {}/src/etc/wasm32-shim.js", node.display(), builder.src.display());
+        cargo.env(format!("CARGO_TARGET_{}_RUNNER", envify(&target.triple)), &runner);
+    } else if builder.remote_tested(target) {
+        cargo.env(
+            format!("CARGO_TARGET_{}_RUNNER", envify(&target.triple)),
+            format!("{} run 0", builder.tool_exe(Tool::RemoteTestClient).display()),
+        );
+    }
+
     cargo.arg("--").args(&builder.config.cmd.test_args()).args(libtest_args);
-    add_flags_and_try_run_tests(builder, cargo);
+    let _time = util::timeit(&builder);
+    add_flags_and_try_run_tests(builder, &mut cargo);
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -2190,60 +2225,6 @@ impl Step for Crate {
             _ => panic!("can only test libraries"),
         };
 
-        // Build up the base `cargo test` command.
-        //
-        // Pass in some standard flags then iterate over the graph we've discovered
-        // in `cargo metadata` with the maps above and figure out what `-p`
-        // arguments need to get passed.
-        if builder.kind == Kind::Test && !builder.fail_fast {
-            cargo.arg("--no-fail-fast");
-        }
-        match builder.doc_tests {
-            DocTests::Only => {
-                cargo.arg("--doc");
-            }
-            DocTests::No => {
-                cargo.args(&["--lib", "--bins", "--examples", "--tests", "--benches"]);
-            }
-            DocTests::Yes => {}
-        }
-
-        for krate in &self.crates {
-            cargo.arg("-p").arg(krate);
-        }
-
-        // The tests are going to run with the *target* libraries, so we need to
-        // ensure that those libraries show up in the LD_LIBRARY_PATH equivalent.
-        //
-        // Note that to run the compiler we need to run with the *host* libraries,
-        // but our wrapper scripts arrange for that to be the case anyway.
-        let mut dylib_path = dylib_path();
-        dylib_path.insert(0, PathBuf::from(&*builder.sysroot_libdir(compiler, target)));
-        cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
-
-        cargo.arg("--");
-        cargo.args(&builder.config.cmd.test_args());
-
-        cargo.arg("-Z").arg("unstable-options");
-        cargo.arg("--format").arg("json");
-
-        if target.contains("emscripten") {
-            cargo.env(
-                format!("CARGO_TARGET_{}_RUNNER", envify(&target.triple)),
-                builder.config.nodejs.as_ref().expect("nodejs not configured"),
-            );
-        } else if target.starts_with("wasm32") {
-            let node = builder.config.nodejs.as_ref().expect("nodejs not configured");
-            let runner =
-                format!("{} {}/src/etc/wasm32-shim.js", node.display(), builder.src.display());
-            cargo.env(format!("CARGO_TARGET_{}_RUNNER", envify(&target.triple)), &runner);
-        } else if builder.remote_tested(target) {
-            cargo.env(
-                format!("CARGO_TARGET_{}_RUNNER", envify(&target.triple)),
-                format!("{} run 0", builder.tool_exe(Tool::RemoteTestClient).display()),
-            );
-        }
-
         let _guard = builder.msg(
             builder.kind,
             compiler.stage,
@@ -2251,8 +2232,7 @@ impl Step for Crate {
             compiler.host,
             target,
         );
-        let _time = util::timeit(&builder);
-        crate::render_tests::try_run_tests(builder, &mut cargo.into());
+        run_cargo_test(cargo, &[], &self.crates, compiler, target, builder);
     }
 }
 
@@ -2565,13 +2545,15 @@ impl Step for Bootstrap {
         check_bootstrap.arg("bootstrap_test.py").current_dir(builder.src.join("src/bootstrap/"));
         try_run(builder, &mut check_bootstrap);
 
+        let host = builder.config.build;
+        let compiler = builder.compiler(0, host);
         let mut cmd = Command::new(&builder.initial_cargo);
         cmd.arg("test")
             .current_dir(builder.src.join("src/bootstrap"))
             .env("RUSTFLAGS", "-Cdebuginfo=2")
             .env("CARGO_TARGET_DIR", builder.out.join("bootstrap"))
             .env("RUSTC_BOOTSTRAP", "1")
-            .env("RUSTDOC", builder.rustdoc(builder.compiler(0, builder.build.build)))
+            .env("RUSTDOC", builder.rustdoc(compiler))
             .env("RUSTC", &builder.initial_rustc);
         if let Some(flags) = option_env!("RUSTFLAGS") {
             // Use the same rustc flags for testing as for "normal" compilation,
@@ -2581,7 +2563,7 @@ impl Step for Bootstrap {
         }
         // rustbuild tests are racy on directory creation so just run them one at a time.
         // Since there's not many this shouldn't be a problem.
-        cargo_test_args(&mut cmd, &["--test-threads=1"], &[], builder);
+        run_cargo_test(cmd, &["--test-threads=1"], &[], compiler, host, builder);
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
