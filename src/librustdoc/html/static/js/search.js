@@ -1609,6 +1609,9 @@ function initSearch(rawSearchIndex) {
                     for (const [name, id] of typeNameIdMap) {
                         const dist = editDistance(name, elem.name, maxEditDistance);
                         if (dist <= matchDist && dist <= maxEditDistance) {
+                            if (dist === matchDist && matchName > name) {
+                                continue;
+                            }
                             match = id;
                             matchDist = dist;
                             matchName = name;
