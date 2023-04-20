@@ -1,5 +1,5 @@
 #![allow(missing_debug_implementations)]
-#![unstable(feature = "fmt_internals", issue = "none")]
+#![unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
 
 //! These are the lang items used by format_args!().
 
