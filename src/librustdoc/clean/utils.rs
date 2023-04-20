@@ -83,8 +83,8 @@ pub(crate) fn substs_to_args<'tcx>(
             0
         }));
     ret_val.extend(substs.iter().filter_map(|kind| match kind.skip_binder().unpack() {
-        GenericArgKind::Lifetime(lt) => {
-            Some(GenericArg::Lifetime(clean_middle_region(lt).unwrap_or(Lifetime::elided())))
+        GenericArgKind::Region(re) => {
+            Some(GenericArg::Lifetime(clean_middle_region(re).unwrap_or(Lifetime::elided())))
         }
         GenericArgKind::Type(_) if skip_first => {
             skip_first = false;
