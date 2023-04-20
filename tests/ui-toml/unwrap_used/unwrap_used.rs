@@ -7,7 +7,7 @@
     clippy::useless_vec
 )]
 #![warn(clippy::unwrap_used)]
-#![deny(clippy::get_unwrap)]
+#![warn(clippy::get_unwrap)]
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;

@@ -1,9 +1,5 @@
-//@compile-flags: --emit=link
-//@no-prefer-dynamic
-
 // NOTE: Copied from `ui/auxiliary/proc_macros.rs`, couldn't get `../` to work for some reason
 
-#![crate_type = "proc-macro"]
 #![feature(let_chains)]
 #![feature(proc_macro_span)]
 #![allow(clippy::excessive_nesting, dead_code)]

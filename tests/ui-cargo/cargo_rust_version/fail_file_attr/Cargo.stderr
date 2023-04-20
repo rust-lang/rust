@@ -1,22 +1,19 @@
-warning: the MSRV in `clippy.toml` and `Cargo.toml` differ; using `1.59.0` from `clippy.toml`
-
 error: unnecessary structure name repetition
-  --> $DIR/main.rs:6:21
+  --> src/main.rs:11:21
    |
-LL |     pub fn bar() -> Foo {
+11 |     pub fn bar() -> Foo {
    |                     ^^^ help: use the applicable keyword: `Self`
    |
 note: the lint level is defined here
-  --> $DIR/main.rs:1:9
+  --> src/main.rs:6:9
    |
-LL | #![deny(clippy::use_self)]
+6  | #![deny(clippy::use_self)]
    |         ^^^^^^^^^^^^^^^^
 
 error: unnecessary structure name repetition
-  --> $DIR/main.rs:7:9
+  --> src/main.rs:12:9
    |
-LL |         Foo
+12 |         Foo
    |         ^^^ help: use the applicable keyword: `Self`
 
-error: aborting due to 2 previous errors; 1 warning emitted
-
+error: could not compile `fail-file-attr` (bin "fail-file-attr") due to 2 previous errors

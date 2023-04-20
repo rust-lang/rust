@@ -1,4 +1,4 @@
-//@aux-build:proc_macro_derive.rs
+//@aux-build:proc_macro_derive.rs:proc-macro
 
 #![warn(clippy::shadow_same, clippy::shadow_reuse, clippy::shadow_unrelated)]
 #![allow(clippy::let_unit_value, clippy::needless_if)]

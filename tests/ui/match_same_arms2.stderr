@@ -2,9 +2,9 @@ error: this match arm has an identical body to the `_` wildcard arm
   --> $DIR/match_same_arms2.rs:15:9
    |
 LL | /         42 => {
+LL | |
 LL | |             foo();
 LL | |             let mut a = 42 + [23].len() as i32;
-LL | |             if true {
 ...  |
 LL | |             a
 LL | |         },
@@ -12,12 +12,12 @@ LL | |         },
    |
    = help: or try changing either arm body
 note: `_` wildcard arm here
-  --> $DIR/match_same_arms2.rs:24:9
+  --> $DIR/match_same_arms2.rs:25:9
    |
 LL | /         _ => {
-LL | |             //~ ERROR match arms have same body
 LL | |             foo();
 LL | |             let mut a = 42 + [23].len() as i32;
+LL | |             if true {
 ...  |
 LL | |             a
 LL | |         },
@@ -27,7 +27,7 @@ LL | |         },
 error: this match arm has an identical body to another arm
   --> $DIR/match_same_arms2.rs:38:9
    |
-LL |         51 => foo(), //~ ERROR match arms have same body
+LL |         51 => foo(),
    |         --^^^^^^^^^
    |         |
    |         help: try merging the arm patterns: `51 | 42`
@@ -42,7 +42,7 @@ LL |         42 => foo(),
 error: this match arm has an identical body to another arm
   --> $DIR/match_same_arms2.rs:44:9
    |
-LL |         None => 24, //~ ERROR match arms have same body
+LL |         None => 24,
    |         ----^^^^^^
    |         |
    |         help: try merging the arm patterns: `None | Some(_)`
@@ -57,7 +57,7 @@ LL |         Some(_) => 24,
 error: this match arm has an identical body to another arm
   --> $DIR/match_same_arms2.rs:66:9
    |
-LL |         (None, Some(a)) => bar(a), //~ ERROR match arms have same body
+LL |         (None, Some(a)) => bar(a),
    |         ---------------^^^^^^^^^^
    |         |
    |         help: try merging the arm patterns: `(None, Some(a)) | (Some(a), None)`
@@ -81,7 +81,7 @@ LL |         (Some(a), ..) => bar(a),
 note: other arm here
   --> $DIR/match_same_arms2.rs:72:9
    |
-LL |         (.., Some(a)) => bar(a), //~ ERROR match arms have same body
+LL |         (.., Some(a)) => bar(a),
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this match arm has an identical body to another arm
@@ -121,6 +121,7 @@ LL |           1 => {
    |           ^ help: try merging the arm patterns: `1 | 0`
    |  _________|
    | |
+LL | |
 LL | |             empty!(0);
 LL | |         },
    | |_________^
@@ -135,7 +136,7 @@ LL | |         },
    | |_________^
 
 error: match expression looks like `matches!` macro
-  --> $DIR/match_same_arms2.rs:166:16
+  --> $DIR/match_same_arms2.rs:167:16
    |
 LL |       let _ans = match x {
    |  ________________^
@@ -148,7 +149,7 @@ LL | |     };
    = note: `-D clippy::match-like-matches-macro` implied by `-D warnings`
 
 error: this match arm has an identical body to another arm
-  --> $DIR/match_same_arms2.rs:198:9
+  --> $DIR/match_same_arms2.rs:199:9
    |
 LL |         Foo::X(0) => 1,
    |         ---------^^^^^
@@ -157,13 +158,13 @@ LL |         Foo::X(0) => 1,
    |
    = help: or try changing either arm body
 note: other arm here
-  --> $DIR/match_same_arms2.rs:200:9
+  --> $DIR/match_same_arms2.rs:201:9
    |
 LL |         Foo::Z(_) => 1,
    |         ^^^^^^^^^^^^^^
 
 error: this match arm has an identical body to another arm
-  --> $DIR/match_same_arms2.rs:208:9
+  --> $DIR/match_same_arms2.rs:209:9
    |
 LL |         Foo::Z(_) => 1,
    |         ---------^^^^^
@@ -172,13 +173,13 @@ LL |         Foo::Z(_) => 1,
    |
    = help: or try changing either arm body
 note: other arm here
-  --> $DIR/match_same_arms2.rs:206:9
+  --> $DIR/match_same_arms2.rs:207:9
    |
 LL |         Foo::X(0) => 1,
    |         ^^^^^^^^^^^^^^
 
 error: this match arm has an identical body to another arm
-  --> $DIR/match_same_arms2.rs:231:9
+  --> $DIR/match_same_arms2.rs:232:9
    |
 LL |         Some(Bar { y: 0, x: 5, .. }) => 1,
    |         ----------------------------^^^^^
@@ -187,13 +188,13 @@ LL |         Some(Bar { y: 0, x: 5, .. }) => 1,
    |
    = help: or try changing either arm body
 note: other arm here
-  --> $DIR/match_same_arms2.rs:228:9
+  --> $DIR/match_same_arms2.rs:229:9
    |
 LL |         Some(Bar { x: 0, y: 5, .. }) => 1,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this match arm has an identical body to another arm
-  --> $DIR/match_same_arms2.rs:245:9
+  --> $DIR/match_same_arms2.rs:246:9
    |
 LL |         1 => cfg!(not_enable),
    |         -^^^^^^^^^^^^^^^^^^^^
@@ -202,7 +203,7 @@ LL |         1 => cfg!(not_enable),
    |
    = help: or try changing either arm body
 note: other arm here
-  --> $DIR/match_same_arms2.rs:244:9
+  --> $DIR/match_same_arms2.rs:245:9
    |
 LL |         0 => cfg!(not_enable),
    |         ^^^^^^^^^^^^^^^^^^^^^

@@ -1,4 +1,4 @@
-#![warn(clippy::borrow_interior_mutable_const)]
+#![deny(clippy::borrow_interior_mutable_const)]
 #![allow(clippy::declare_interior_mutable_const, clippy::needless_borrow)]
 #![allow(const_item_mutation)]
 
@@ -51,14 +51,14 @@ impl<T> std::ops::Deref for StaticRef<T> {
 const CELL_REF: StaticRef<(UnsafeCell<u32>,)> = unsafe { StaticRef::new(std::ptr::null()) };
 
 fn main() {
-    ATOMIC.store(1, Ordering::SeqCst); //~ ERROR interior mutability
-    assert_eq!(ATOMIC.load(Ordering::SeqCst), 5); //~ ERROR interior mutability
+    ATOMIC.store(1, Ordering::SeqCst); //~ ERROR: interior mutability
+    assert_eq!(ATOMIC.load(Ordering::SeqCst), 5); //~ ERROR: interior mutability
 
     let _once = ONCE_INIT;
-    let _once_ref = &ONCE_INIT; //~ ERROR interior mutability
-    let _once_ref_2 = &&ONCE_INIT; //~ ERROR interior mutability
-    let _once_ref_4 = &&&&ONCE_INIT; //~ ERROR interior mutability
-    let _once_mut = &mut ONCE_INIT; //~ ERROR interior mutability
+    let _once_ref = &ONCE_INIT; //~ ERROR: interior mutability
+    let _once_ref_2 = &&ONCE_INIT; //~ ERROR: interior mutability
+    let _once_ref_4 = &&&&ONCE_INIT; //~ ERROR: interior mutability
+    let _once_mut = &mut ONCE_INIT; //~ ERROR: interior mutability
     let _atomic_into_inner = ATOMIC.into_inner();
     // these should be all fine.
     let _twice = (ONCE_INIT, ONCE_INIT);
@@ -69,23 +69,23 @@ fn main() {
     let _ref_array_once = &[ONCE_INIT, ONCE_INIT][0];
 
     // referencing projection is still bad.
-    let _ = &ATOMIC_TUPLE; //~ ERROR interior mutability
-    let _ = &ATOMIC_TUPLE.0; //~ ERROR interior mutability
-    let _ = &(&&&&ATOMIC_TUPLE).0; //~ ERROR interior mutability
-    let _ = &ATOMIC_TUPLE.0[0]; //~ ERROR interior mutability
-    let _ = ATOMIC_TUPLE.0[0].load(Ordering::SeqCst); //~ ERROR interior mutability
+    let _ = &ATOMIC_TUPLE; //~ ERROR: interior mutability
+    let _ = &ATOMIC_TUPLE.0; //~ ERROR: interior mutability
+    let _ = &(&&&&ATOMIC_TUPLE).0; //~ ERROR: interior mutability
+    let _ = &ATOMIC_TUPLE.0[0]; //~ ERROR: interior mutability
+    let _ = ATOMIC_TUPLE.0[0].load(Ordering::SeqCst); //~ ERROR: interior mutability
     let _ = &*ATOMIC_TUPLE.1;
     let _ = &ATOMIC_TUPLE.2;
     let _ = (&&&&ATOMIC_TUPLE).0;
     let _ = (&&&&ATOMIC_TUPLE).2;
     let _ = ATOMIC_TUPLE.0;
-    let _ = ATOMIC_TUPLE.0[0]; //~ ERROR interior mutability
+    let _ = ATOMIC_TUPLE.0[0]; //~ ERROR: interior mutability
     let _ = ATOMIC_TUPLE.1.into_iter();
     let _ = ATOMIC_TUPLE.2;
     let _ = &{ ATOMIC_TUPLE };
 
-    CELL.set(2); //~ ERROR interior mutability
-    assert_eq!(CELL.get(), 6); //~ ERROR interior mutability
+    CELL.set(2); //~ ERROR: interior mutability
+    assert_eq!(CELL.get(), 6); //~ ERROR: interior mutability
 
     assert_eq!(INTEGER, 8);
     assert!(STRING.is_empty());

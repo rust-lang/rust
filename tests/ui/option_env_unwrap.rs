@@ -1,4 +1,4 @@
-//@aux-build:proc_macros.rs
+//@aux-build:proc_macros.rs:proc-macro
 #![warn(clippy::option_env_unwrap)]
 #![allow(clippy::map_flatten)]
 

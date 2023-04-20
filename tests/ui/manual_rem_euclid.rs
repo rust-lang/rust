@@ -1,5 +1,5 @@
 //@run-rustfix
-//@aux-build:proc_macros.rs
+//@aux-build:proc_macros.rs:proc-macro
 
 #![warn(clippy::manual_rem_euclid)]
 #![allow(clippy::let_with_type_underscore)]

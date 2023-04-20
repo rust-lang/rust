@@ -1,6 +1,6 @@
 //@aux-build:macro_rules.rs
 //@aux-build:macro_use_helper.rs
-//@aux-build:proc_macro_derive.rs
+//@aux-build:proc_macro_derive.rs:proc-macro
 //@run-rustfix
 //@ignore-32bit
 

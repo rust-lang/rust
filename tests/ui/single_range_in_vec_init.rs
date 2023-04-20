@@ -1,4 +1,4 @@
-//@aux-build:proc_macros.rs
+//@aux-build:proc_macros.rs:proc-macro
 #![allow(clippy::no_effect, clippy::useless_vec, unused)]
 #![warn(clippy::single_range_in_vec_init)]
 #![feature(generic_arg_infer)]
@@ -39,8 +39,8 @@ fn main() {
     [0.0..200.0];
     vec![0.0..200.0];
     // `Copy` is not implemented for `Range`, so this doesn't matter
-    // [0..200; 2];
-    // [vec!0..200; 2];
+    // FIXME: [0..200; 2];
+    // FIXME: [vec!0..200; 2];
 
     // Unfortunately skips any macros
     a!();

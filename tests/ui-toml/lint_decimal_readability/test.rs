@@ -1,5 +1,5 @@
 #![allow(clippy::excessive_precision)]
-#[deny(clippy::unreadable_literal)]
+#![warn(clippy::unreadable_literal)]
 
 fn allow_inconsistent_digit_grouping() {
     #![allow(clippy::inconsistent_digit_grouping)]

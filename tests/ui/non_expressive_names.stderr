@@ -1,7 +1,7 @@
 error: consider choosing a more descriptive name
   --> $DIR/non_expressive_names.rs:28:9
    |
-LL |     let _1 = 1; //~ERROR Consider a more descriptive name
+LL |     let _1 = 1;
    |         ^^
    |
    = note: `-D clippy::just-underscores-and-digits` implied by `-D warnings`
@@ -9,13 +9,13 @@ LL |     let _1 = 1; //~ERROR Consider a more descriptive name
 error: consider choosing a more descriptive name
   --> $DIR/non_expressive_names.rs:29:9
    |
-LL |     let ____1 = 1; //~ERROR Consider a more descriptive name
+LL |     let ____1 = 1;
    |         ^^^^^
 
 error: consider choosing a more descriptive name
   --> $DIR/non_expressive_names.rs:30:9
    |
-LL |     let __1___2 = 12; //~ERROR Consider a more descriptive name
+LL |     let __1___2 = 12;
    |         ^^^^^^^
 
 error: consider choosing a more descriptive name

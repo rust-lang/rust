@@ -76,14 +76,14 @@ mod issue9909 {
     fn reduced() {
         let f = &[1, 2, 3];
 
+        // include a borrow in the suggestion, even if the argument is not just a numeric literal
         let _x: &i32 = f.get(1 + 2).unwrap();
-        // ^ include a borrow in the suggestion, even if the argument is not just a numeric literal
 
+        // don't include a borrow here
         let _x = f.get(1 + 2).unwrap().to_string();
-        // ^ don't include a borrow here
 
+        // don't include a borrow here
         let _x = f.get(1 + 2).unwrap().abs();
-        // ^ don't include a borrow here
     }
 
     // original code:

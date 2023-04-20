@@ -61,7 +61,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            vec-box-size-threshold
            verbose-bit-mask-threshold
            warn-on-all-wildcard-imports
-  --> $DIR/clippy.toml:2:1
+  --> $DIR/$DIR/clippy.toml:2:1
    |
 LL | foobar = 42
    | ^^^^^^
@@ -129,7 +129,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            vec-box-size-threshold
            verbose-bit-mask-threshold
            warn-on-all-wildcard-imports
-  --> $DIR/clippy.toml:4:1
+  --> $DIR/$DIR/clippy.toml:4:1
    |
 LL | barfoo = 53
    | ^^^^^^

@@ -1,0 +1,5 @@
+error: wildcard dependency for `regex`
+  |
+  = note: `-D clippy::wildcard-dependencies` implied by `-D warnings`
+
+error: could not compile `wildcard_dependencies` (bin "wildcard_dependencies") due to previous error

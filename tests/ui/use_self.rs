@@ -1,5 +1,5 @@
 //@run-rustfix
-//@aux-build:proc_macro_derive.rs
+//@aux-build:proc_macro_derive.rs:proc-macro
 
 #![warn(clippy::use_self)]
 #![allow(dead_code, unreachable_code)]

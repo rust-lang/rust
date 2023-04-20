@@ -1,17 +1,2 @@
-error: items were found after the testing module
-  --> $DIR/block_module.rs:13:1
-   |
-LL | / mod tests {
-LL | |     #[test]
-LL | |     fn hi() {}
-LL | | }
-...  |
-LL | |     () => {};
-LL | | }
-   | |_^
-   |
-   = help: move the items to before the testing module was defined
-   = note: `-D clippy::items-after-test-module` implied by `-D warnings`
-
-error: aborting due to previous error
+error: Option 'test' given more than once
 

@@ -4,11 +4,7 @@ error: this argument (N byte) is passed by reference, but would be more efficien
 LL | fn bad(x: &u16, y: &Foo) {}
    |           ^^^^ help: consider passing by value instead: `u16`
    |
-note: the lint level is defined here
-  --> $DIR/test.rs:4:9
-   |
-LL | #![deny(clippy::trivially_copy_pass_by_ref)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `-D clippy::trivially-copy-pass-by-ref` implied by `-D warnings`
 
 error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: N byte)
   --> $DIR/test.rs:14:20

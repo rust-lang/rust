@@ -32,7 +32,7 @@ fn transmute_ptr_to_ptr() {
         // ref-ref transmutes; bad
         let _: &f32 = std::mem::transmute(&1u32);
         let _: &f64 = std::mem::transmute(&1f32);
-        // ^ this test is here because both f32 and f64 are the same TypeVariant, but they are not
+        //:^ this test is here because both f32 and f64 are the same TypeVariant, but they are not
         // the same type
         let _: &mut f32 = std::mem::transmute(&mut 1u32);
         let _: &GenericParam<f32> = std::mem::transmute(&GenericParam { t: 1u32 });

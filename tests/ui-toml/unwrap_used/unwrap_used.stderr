@@ -4,11 +4,7 @@ error: called `.get().unwrap()` on a slice. Using `[]` is more clear and more co
 LL |         let _ = boxed_slice.get(1).unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&boxed_slice[1]`
    |
-note: the lint level is defined here
-  --> $DIR/unwrap_used.rs:10:9
-   |
-LL | #![deny(clippy::get_unwrap)]
-   |         ^^^^^^^^^^^^^^^^^^
+   = note: `-D clippy::get-unwrap` implied by `-D warnings`
 
 error: used `unwrap()` on an `Option` value
   --> $DIR/unwrap_used.rs:40:17

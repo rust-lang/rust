@@ -3,7 +3,7 @@
 //! The .stderr output of this test should be empty. Otherwise it's a bug somewhere.
 
 //@aux-build:helper.rs
-//@aux-build:../../auxiliary/proc_macros.rs
+//@aux-build:../auxiliary/proc_macros.rs:proc-macro
 
 #![warn(clippy::missing_const_for_fn)]
 #![feature(start)]
@@ -44,7 +44,6 @@ static Y: u32 = 0;
 // refer to a static variable
 fn get_y() -> u32 {
     Y
-    //~^ ERROR E0013
 }
 
 // Don't lint entrypoint functions

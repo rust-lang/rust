@@ -1,3 +1,3 @@
-//@error-pattern: unknown field `foobar`, expected one of
+//@error-in-other-file: unknown field `foobar`, expected one of
 
 fn main() {}

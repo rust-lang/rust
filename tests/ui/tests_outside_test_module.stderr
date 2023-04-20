@@ -1,5 +1,5 @@
 error: this function marked with #[test] is outside a #[cfg(test)] module
-  --> $DIR/tests_outside_test_module.rs:11:1
+  --> $DIR/tests_outside_test_module.rs:10:1
    |
 LL | fn my_test() {}
    | ^^^^^^^^^^^^^^^
