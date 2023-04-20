@@ -1627,7 +1627,7 @@ struct ParamTag {
 }
 
 impl_tag! {
-    for ParamTag;
+    impl Tag for ParamTag;
     ParamTag { reveal: traits::Reveal::UserFacing, constness: hir::Constness::NotConst } <=> 0,
     ParamTag { reveal: traits::Reveal::All,        constness: hir::Constness::NotConst } <=> 1,
     ParamTag { reveal: traits::Reveal::UserFacing, constness: hir::Constness::Const    } <=> 2,

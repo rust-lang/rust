@@ -23,7 +23,7 @@
 ///
 /// impl_tag! {
 ///     // The type for which the `Tag` will be implemented
-///     for SomeTag;
+///     impl Tag for SomeTag;
 ///     // You need to specify the `{value_of_the_type} <=> {tag}` relationship
 ///     SomeTag::A <=> 0,
 ///     SomeTag::B <=> 1,
@@ -54,7 +54,7 @@
 /// struct Flags { a: bool, b: bool }
 ///
 /// impl_tag! {
-///     for Flags;
+///     impl Tag for Flags;
 ///     Flags { a: true,  b: true  } <=> 3,
 ///     Flags { a: false, b: true  } <=> 2,
 ///     Flags { a: true,  b: false } <=> 1,
@@ -73,7 +73,7 @@
 // struct Unit;
 //
 // impl_tag! {
-//     for Unit;
+//     impl Tag for Unit;
 //     Unit <=> 0,
 //     Unit <=> 1,
 // }
@@ -87,7 +87,7 @@
 // enum E { A, B };
 //
 // impl_tag! {
-//     for E;
+//     impl Tag for E;
 //     E::A <=> 0,
 //     E::B <=> 0,
 // }
@@ -104,14 +104,14 @@
 /// }
 ///
 /// impl_tag! {
-///     for E;
+///     impl Tag for E;
 ///     E::A <=> 0,
 /// }
 /// ```
 #[macro_export]
 macro_rules! impl_tag {
     (
-        for $Self:ty;
+        impl Tag for $Self:ty;
         $(
             $($path:ident)::* $( { $( $fields:tt )* })? <=> $tag:literal,
         )*
