@@ -37,6 +37,8 @@ error: error reading Clippy's configuration file `$DIR/clippy.toml`: unknown fie
            missing-docs-in-crate-items
            msrv
            pass-by-value-size-limit
+           semicolon-inside-block-if-multiline
+           semicolon-outside-block-if-singleline
            single-char-binding-names-threshold
            standard-macro-braces
            suppress-restriction-lint-in-const

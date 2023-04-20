@@ -6,7 +6,7 @@
     clippy::no_effect,
     clippy::single_element_loop
 )]
-#![warn(clippy::semicolon_outside_block_if_singleline)]
+#![warn(clippy::semicolon_outside_block)]
 
 macro_rules! m {
     (()) => {
@@ -39,16 +39,16 @@ fn main() {
     { unit_fn_block() };
     unsafe { unit_fn_block() };
 
-    { unit_fn_block() };
-    unsafe { unit_fn_block() };
+    { unit_fn_block(); }
+    unsafe { unit_fn_block(); }
 
     { unit_fn_block(); };
     unsafe { unit_fn_block(); };
 
     {
         unit_fn_block();
-        unit_fn_block();
-    }
+        unit_fn_block()
+    };
     {
         unit_fn_block();
         unit_fn_block();
@@ -59,7 +59,7 @@ fn main() {
     };
 
     { m!(()) };
-    { m!(()) };
+    { m!(()); }
     { m!(()); };
     m!(0);
     m!(1);

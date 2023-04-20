@@ -463,6 +463,14 @@ define_Conf! {
     ///
     /// The maximum byte size a `Future` can have, before it triggers the `clippy::large_futures` lint
     (future_size_threshold: u64 = 16 * 1024),
+    /// Lint: SEMICOLON_INSIDE_BLOCK.
+    /// 
+    /// Whether to lint only if it's multiline.
+    (semicolon_inside_block_if_multiline: bool = false),
+    /// Lint: SEMICOLON_OUTSIDE_BLOCK.
+    /// 
+    /// Whether to lint only if it's singleline.
+    (semicolon_outside_block_if_singleline: bool = false),
 }
 
 /// Search for the configuration file.
