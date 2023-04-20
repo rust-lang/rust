@@ -473,7 +473,7 @@ fn clean_generic_param_def<'tcx>(
     cx: &mut DocContext<'tcx>,
 ) -> GenericParamDef {
     let (name, kind) = match def.kind {
-        ty::GenericParamDefKind::Lifetime => {
+        ty::GenericParamDefKind::Region => {
             (def.name, GenericParamDefKind::Lifetime { outlives: vec![] })
         }
         ty::GenericParamDefKind::Type { has_default, synthetic, .. } => {
@@ -733,8 +733,8 @@ fn clean_ty_generics<'tcx>(
         .params
         .iter()
         .filter_map(|param| match param.kind {
-            ty::GenericParamDefKind::Lifetime if param.is_anonymous_lifetime() => None,
-            ty::GenericParamDefKind::Lifetime => Some(clean_generic_param_def(param, cx)),
+            ty::GenericParamDefKind::Region if param.is_anonymous_lifetime() => None,
+            ty::GenericParamDefKind::Region => Some(clean_generic_param_def(param, cx)),
             ty::GenericParamDefKind::Type { synthetic, .. } => {
                 if param.name == kw::SelfUpper {
                     assert_eq!(param.index, 0);
