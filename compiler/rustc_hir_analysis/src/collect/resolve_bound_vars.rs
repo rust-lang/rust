@@ -1667,7 +1667,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         .params
                         .iter()
                         .map(|param| match param.kind {
-                            ty::GenericParamDefKind::Lifetime => ty::BoundVariableKind::Region(
+                            ty::GenericParamDefKind::Region => ty::BoundVariableKind::Region(
                                 ty::BoundRegionKind::BrNamed(param.def_id, param.name),
                             ),
                             ty::GenericParamDefKind::Type { .. } => ty::BoundVariableKind::Ty(

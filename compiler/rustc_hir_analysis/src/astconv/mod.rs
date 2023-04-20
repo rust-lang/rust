@@ -437,7 +437,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 };
 
                 match (&param.kind, arg) {
-                    (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
+                    (GenericParamDefKind::Region, GenericArg::Lifetime(lt)) => {
                         self.astconv.ast_region_to_region(lt, Some(param)).into()
                     }
                     (&GenericParamDefKind::Type { has_default, .. }, GenericArg::Type(ty)) => {
@@ -481,7 +481,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             ) -> subst::GenericArg<'tcx> {
                 let tcx = self.astconv.tcx();
                 match param.kind {
-                    GenericParamDefKind::Lifetime => self
+                    GenericParamDefKind::Region => self
                         .astconv
                         .re_infer(Some(param), self.span)
                         .unwrap_or_else(|| {
@@ -1175,7 +1175,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let substs =
                 candidate.skip_binder().substs.extend_to(tcx, assoc_item.def_id, |param, _| {
                     let subst = match param.kind {
-                        GenericParamDefKind::Lifetime => tcx
+                        GenericParamDefKind::Region => tcx
                             .mk_re_late_bound(
                                 ty::INNERMOST,
                                 ty::BoundRegion {
@@ -3274,7 +3274,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             if let Some(i) = (param.index as usize).checked_sub(generics.count() - lifetimes.len())
             {
                 // Resolve our own lifetime parameters.
-                let GenericParamDefKind::Lifetime { .. } = param.kind else { bug!() };
+                let GenericParamDefKind::Region { .. } = param.kind else { bug!() };
                 let hir::GenericArg::Lifetime(lifetime) = &lifetimes[i] else { bug!() };
                 self.ast_region_to_region(lifetime, None).into()
             } else {
@@ -3651,7 +3651,7 @@ pub trait InferCtxtExt<'tcx> {
 impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     fn fresh_item_substs(&self, def_id: DefId) -> SubstsRef<'tcx> {
         InternalSubsts::for_item(self.tcx, def_id, |param, _| match param.kind {
-            GenericParamDefKind::Lifetime => self.tcx.lifetimes.re_erased.into(),
+            GenericParamDefKind::Region => self.tcx.lifetimes.re_erased.into(),
             GenericParamDefKind::Type { .. } => self
                 .next_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::SubstitutionPlaceholder,

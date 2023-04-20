@@ -1429,11 +1429,11 @@ fn compare_synthetic_generics<'tcx>(
     let trait_m_generics = tcx.generics_of(trait_m.def_id);
     let impl_m_type_params = impl_m_generics.params.iter().filter_map(|param| match param.kind {
         GenericParamDefKind::Type { synthetic, .. } => Some((param.def_id, synthetic)),
-        GenericParamDefKind::Lifetime | GenericParamDefKind::Const { .. } => None,
+        GenericParamDefKind::Region | GenericParamDefKind::Const { .. } => None,
     });
     let trait_m_type_params = trait_m_generics.params.iter().filter_map(|param| match param.kind {
         GenericParamDefKind::Type { synthetic, .. } => Some((param.def_id, synthetic)),
-        GenericParamDefKind::Lifetime | GenericParamDefKind::Const { .. } => None,
+        GenericParamDefKind::Region | GenericParamDefKind::Const { .. } => None,
     });
     for ((impl_def_id, impl_synthetic), (trait_def_id, trait_synthetic)) in
         iter::zip(impl_m_type_params, trait_m_type_params)
@@ -1599,7 +1599,7 @@ fn compare_generic_param_kinds<'tcx>(
             // this is exhaustive so that anyone adding new generic param kinds knows
             // to make sure this error is reported for them.
             (Const { .. }, Const { .. }) | (Type { .. }, Type { .. }) => false,
-            (Lifetime { .. }, _) | (_, Lifetime { .. }) => unreachable!(),
+            (Region { .. }, _) | (_, Region { .. }) => unreachable!(),
         } {
             let param_impl_span = tcx.def_span(param_impl.def_id);
             let param_trait_span = tcx.def_span(param_trait.def_id);
@@ -1623,7 +1623,7 @@ fn compare_generic_param_kinds<'tcx>(
                     )
                 }
                 Type { .. } => format!("{} type parameter", prefix),
-                Lifetime { .. } => unreachable!(),
+                Region { .. } => unreachable!(),
             };
 
             let trait_header_span = tcx.def_ident_span(tcx.parent(trait_item.def_id)).unwrap();
@@ -1916,7 +1916,7 @@ pub(super) fn check_type_bounds<'tcx>(
                 )
                 .into()
             }
-            GenericParamDefKind::Lifetime => {
+            GenericParamDefKind::Region => {
                 let kind = ty::BoundRegionKind::BrNamed(param.def_id, param.name);
                 let bound_var = ty::BoundVariableKind::Region(kind);
                 bound_vars.push(bound_var);

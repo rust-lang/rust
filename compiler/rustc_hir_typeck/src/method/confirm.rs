@@ -370,7 +370,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 arg: &GenericArg<'_>,
             ) -> subst::GenericArg<'tcx> {
                 match (&param.kind, arg) {
-                    (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
+                    (GenericParamDefKind::Region, GenericArg::Lifetime(lt)) => {
                         self.cfcx.fcx.astconv().ast_region_to_region(lt, Some(param)).into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {

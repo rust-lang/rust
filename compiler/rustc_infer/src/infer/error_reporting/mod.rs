@@ -2284,7 +2284,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             let lts_names =
                 iter::successors(Some(generics), |g| g.parent.map(|p| self.tcx.generics_of(p)))
                     .flat_map(|g| &g.params)
-                    .filter(|p| matches!(p.kind, ty::GenericParamDefKind::Lifetime))
+                    .filter(|p| matches!(p.kind, ty::GenericParamDefKind::Region))
                     .map(|p| p.name.as_str())
                     .collect::<Vec<_>>();
             possible

@@ -123,7 +123,7 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
                     report_unused_parameter(tcx, tcx.def_span(param.def_id), "type", param_ty.name);
                 }
             }
-            ty::GenericParamDefKind::Lifetime => {
+            ty::GenericParamDefKind::Region => {
                 let param_lt = cgp::Parameter::from(param.to_early_bound_region_data());
                 if lifetimes_in_associated_types.contains(&param_lt) && // (*)
                     !input_parameters.contains(&param_lt)

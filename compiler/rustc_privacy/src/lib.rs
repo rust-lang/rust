@@ -850,7 +850,7 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
     fn generics(&mut self) -> &mut Self {
         for param in &self.ev.tcx.generics_of(self.item_def_id).params {
             match param.kind {
-                GenericParamDefKind::Lifetime => {}
+                GenericParamDefKind::Region => {}
                 GenericParamDefKind::Type { has_default, .. } => {
                     if has_default {
                         self.visit(self.ev.tcx.type_of(param.def_id).subst_identity());
@@ -1755,7 +1755,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
     fn generics(&mut self) -> &mut Self {
         for param in &self.tcx.generics_of(self.item_def_id).params {
             match param.kind {
-                GenericParamDefKind::Lifetime => {}
+                GenericParamDefKind::Region => {}
                 GenericParamDefKind::Type { has_default, .. } => {
                     if has_default {
                         self.visit(self.tcx.type_of(param.def_id).subst_identity());

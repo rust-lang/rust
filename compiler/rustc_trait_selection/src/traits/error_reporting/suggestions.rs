@@ -3803,7 +3803,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             return prev_ty.into();
                         }
                     }
-                    ty::GenericParamDefKind::Lifetime | ty::GenericParamDefKind::Const { .. } => {}
+                    ty::GenericParamDefKind::Region | ty::GenericParamDefKind::Const { .. } => {}
                 }
                 self.var_for_def(span, param)
             });

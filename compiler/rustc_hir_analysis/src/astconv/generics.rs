@@ -242,7 +242,7 @@ pub fn create_substs_for_generic_args<'tcx, 'a>(
             match (args.peek(), params.peek()) {
                 (Some(&arg), Some(&param)) => {
                     match (arg, &param.kind, arg_count.explicit_late_bound) {
-                        (GenericArg::Lifetime(_), GenericParamDefKind::Lifetime, _)
+                        (GenericArg::Lifetime(_), GenericParamDefKind::Region, _)
                         | (
                             GenericArg::Type(_) | GenericArg::Infer(_),
                             GenericParamDefKind::Type { .. },
@@ -259,7 +259,7 @@ pub fn create_substs_for_generic_args<'tcx, 'a>(
                         }
                         (
                             GenericArg::Infer(_) | GenericArg::Type(_) | GenericArg::Const(_),
-                            GenericParamDefKind::Lifetime,
+                            GenericParamDefKind::Region,
                             _,
                         ) => {
                             // We expected a lifetime argument, but got a type or const

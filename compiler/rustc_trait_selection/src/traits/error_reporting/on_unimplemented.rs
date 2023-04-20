@@ -219,7 +219,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
                         substs[param.index as usize].to_string()
                     }
-                    GenericParamDefKind::Lifetime => continue,
+                    GenericParamDefKind::Region => continue,
                 };
                 let name = param.name;
                 flags.push((name, Some(value)));
@@ -631,7 +631,7 @@ impl<'tcx> OnUnimplementedFormatString {
                     GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
                         trait_ref.substs[param.index as usize].to_string()
                     }
-                    GenericParamDefKind::Lifetime => return None,
+                    GenericParamDefKind::Region => return None,
                 };
                 let name = param.name;
                 Some((name, value))

@@ -1260,7 +1260,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 arg: &GenericArg<'_>,
             ) -> ty::GenericArg<'tcx> {
                 match (&param.kind, arg) {
-                    (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
+                    (GenericParamDefKind::Region, GenericArg::Lifetime(lt)) => {
                         self.fcx.astconv().ast_region_to_region(lt, Some(param)).into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
@@ -1296,7 +1296,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ) -> ty::GenericArg<'tcx> {
                 let tcx = self.fcx.tcx();
                 match param.kind {
-                    GenericParamDefKind::Lifetime => {
+                    GenericParamDefKind::Region => {
                         self.fcx.re_infer(Some(param), self.span).unwrap().into()
                     }
                     GenericParamDefKind::Type { has_default, .. } => {
