@@ -145,7 +145,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
             let init_ty = cx.typeck_results().expr_ty(init);
             let contains_sync_guard = init_ty.walk().any(|inner| match inner.unpack() {
                 GenericArgKind::Type(inner_ty) => SYNC_GUARD_PATHS.iter().any(|path| match_type(cx, inner_ty, path)),
-                GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
+                GenericArgKind::Region(_) | GenericArgKind::Const(_) => false,
             });
             if contains_sync_guard {
                 span_lint_and_help(

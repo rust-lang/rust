@@ -458,7 +458,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
 }
 
 fn has_lifetime(ty: Ty<'_>) -> bool {
-    ty.walk().any(|t| matches!(t.unpack(), GenericArgKind::Lifetime(_)))
+    ty.walk().any(|t| matches!(t.unpack(), GenericArgKind::Region(_)))
 }
 
 /// Returns true if the named method is `Iterator::cloned` or `Iterator::copied`.

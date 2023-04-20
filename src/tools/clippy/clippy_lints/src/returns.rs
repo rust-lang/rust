@@ -333,7 +333,7 @@ fn last_statement_borrows<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) 
                 .skip_binder()
                 .output()
                 .walk()
-                .any(|arg| matches!(arg.unpack(), GenericArgKind::Lifetime(_)))
+                .any(|arg| matches!(arg.unpack(), GenericArgKind::Region(_)))
         {
             ControlFlow::Break(())
         } else {

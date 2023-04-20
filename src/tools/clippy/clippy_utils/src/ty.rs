@@ -59,7 +59,7 @@ pub fn can_partially_move_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool
 pub fn contains_adt_constructor<'tcx>(ty: Ty<'tcx>, adt: AdtDef<'tcx>) -> bool {
     ty.walk().any(|inner| match inner.unpack() {
         GenericArgKind::Type(inner_ty) => inner_ty.ty_adt_def() == Some(adt),
-        GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
+        GenericArgKind::Region(_) | GenericArgKind::Const(_) => false,
     })
 }
 
@@ -121,7 +121,7 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
 
                 false
             },
-            GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
+            GenericArgKind::Region(_) | GenericArgKind::Const(_) => false,
         })
     }
 
@@ -1070,7 +1070,7 @@ pub fn make_projection<'tcx>(
                 .find(|(_, (param, arg))| {
                     !matches!(
                         (param, arg),
-                        (ty::GenericParamDefKind::Lifetime, GenericArgKind::Lifetime(_))
+                        (ty::GenericParamDefKind::Lifetime, GenericArgKind::Region(_))
                             | (ty::GenericParamDefKind::Type { .. }, GenericArgKind::Type(_))
                             | (ty::GenericParamDefKind::Const { .. }, GenericArgKind::Const(_))
                     )
