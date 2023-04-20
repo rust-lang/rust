@@ -89,7 +89,13 @@ export function shuffleCrateGraph(ctx: CtxInit): Cmd {
 
 export function triggerParameterHints(_: CtxInit): Cmd {
     return async () => {
-        await vscode.commands.executeCommand("editor.action.triggerParameterHints");
+        const parameterHintsEnabled = vscode.workspace
+            .getConfiguration("editor")
+            .get<boolean>("parameterHints.enabled");
+
+        if (parameterHintsEnabled) {
+            await vscode.commands.executeCommand("editor.action.triggerParameterHints");
+        }
     };
 }
 
