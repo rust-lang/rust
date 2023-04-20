@@ -26,11 +26,14 @@
 //! - bound the maximum depth by a constant `MAX_BACKTRACK`;
 //! - we only traverse `Goto` terminators.
 //!
+//! We try to avoid creating irreducible control-flow by not threading through a loop header.
+//!
 //! Likewise, applying the optimisation can create a lot of new MIR, so we bound the instruction
 //! cost by `MAX_COST`.
 
 use rustc_arena::DroplessArena;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
@@ -58,14 +61,22 @@ impl<'tcx> MirPass<'tcx> for JumpThreading {
 
         let param_env = tcx.param_env_reveal_all_normalized(def_id);
         let map = Map::new(tcx, body, Some(MAX_PLACES));
+        let loop_headers = loop_headers(body);
 
         let arena = DroplessArena::default();
-        let mut finder =
-            TOFinder { tcx, param_env, body, arena: &arena, map: &map, opportunities: Vec::new() };
+        let mut finder = TOFinder {
+            tcx,
+            param_env,
+            body,
+            arena: &arena,
+            map: &map,
+            loop_headers: &loop_headers,
+            opportunities: Vec::new(),
+        };
 
         for (bb, bbdata) in body.basic_blocks.iter_enumerated() {
             debug!(?bb, term = ?bbdata.terminator());
-            if bbdata.is_cleanup {
+            if bbdata.is_cleanup || loop_headers.contains(bb) {
                 continue;
             }
             let Some((discr, targets)) = bbdata.terminator().kind.as_switch() else { continue };
@@ -108,6 +119,10 @@ impl<'tcx> MirPass<'tcx> for JumpThreading {
             return;
         }
 
+        // Verify that we do not thread through a loop header.
+        for to in opportunities.iter() {
+            assert!(to.chain.iter().all(|&block| !loop_headers.contains(block)));
+        }
         OpportunitySet::new(body, opportunities).apply(body);
     }
 }
@@ -125,6 +140,7 @@ struct TOFinder<'tcx, 'a> {
     param_env: ty::ParamEnv<'tcx>,
     body: &'a Body<'tcx>,
     map: &'a Map,
+    loop_headers: &'a BitSet<BasicBlock>,
     /// We use an arena to avoid cloning the slices when cloning `state`.
     arena: &'a DroplessArena,
     opportunities: Vec<ThreadingOpportunity>,
@@ -180,6 +196,11 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
         mut cost: CostChecker<'_, 'tcx>,
         depth: usize,
     ) {
+        // Do not thread through loop headers.
+        if self.loop_headers.contains(bb) {
+            return;
+        }
+
         debug!(cost = ?cost.cost());
         for (statement_index, stmt) in
             self.body.basic_blocks[bb].statements.iter().enumerate().rev()
@@ -635,4 +656,22 @@ fn predecessor_count(body: &Body<'_>) -> IndexVec<BasicBlock, usize> {
 enum Update {
     Incr,
     Decr,
+}
+
+/// Compute the set of loop headers in the given body. We define a loop header as a block which has
+/// at least a predecessor which it dominates. This definition is only correct for reducible CFGs.
+/// But if the CFG is already irreducible, there is no point in trying much harder.
+/// is already irreducibl
+fn loop_headers(body: &Body<'_>) -> BitSet<BasicBlock> {
+    let mut loop_headers = BitSet::new_empty(body.basic_blocks.len());
+    let dominators = body.basic_blocks.dominators();
+    // Only visit reachable blocks.
+    for (bb, bbdata) in traversal::preorder(body) {
+        for succ in bbdata.terminator().successors() {
+            if dominators.dominates(succ, bb) {
+                loop_headers.insert(bb);
+            }
+        }
+    }
+    loop_headers
 }
