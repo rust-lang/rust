@@ -303,20 +303,20 @@ pub struct CommonTypes<'tcx> {
     pub fresh_float_tys: Vec<Ty<'tcx>>,
 }
 
-pub struct CommonLifetimes<'tcx> {
-    /// `ReStatic`
+pub struct CommonRegions<'tcx> {
+    /// [`ty::ReStatic`].
     pub re_static: Region<'tcx>,
 
     /// Erased region, used outside of type inference.
-    pub re_erased: Region<'tcx>,
+    pub erased: Region<'tcx>,
 
     /// Pre-interned `ReVar(ty::RegionVar(n))` for small values of `n`.
-    pub re_vars: Vec<Region<'tcx>>,
+    pub vars: Vec<Region<'tcx>>,
 
     /// Pre-interned values of the form:
     /// `ReLateBound(DebruijnIndex(i), BoundRegion { var: v, kind: BrAnon(None) })`
     /// for small values of `i` and `v`.
-    pub re_late_bounds: Vec<Vec<Region<'tcx>>>,
+    pub late_bounds: Vec<Vec<Region<'tcx>>>,
 }
 
 pub struct CommonConsts<'tcx> {
@@ -372,8 +372,8 @@ impl<'tcx> CommonTypes<'tcx> {
     }
 }
 
-impl<'tcx> CommonLifetimes<'tcx> {
-    fn new(interners: &CtxtInterners<'tcx>) -> CommonLifetimes<'tcx> {
+impl<'tcx> CommonRegions<'tcx> {
+    fn new(interners: &CtxtInterners<'tcx>) -> CommonRegions<'tcx> {
         let mk = |r| {
             Region(Interned::new_unchecked(
                 interners.region.intern(r, |r| InternedInSet(interners.arena.alloc(r))).0,
@@ -396,11 +396,11 @@ impl<'tcx> CommonLifetimes<'tcx> {
             })
             .collect();
 
-        CommonLifetimes {
+        CommonRegions {
             re_static: mk(ty::ReStatic),
-            re_erased: mk(ty::ReErased),
-            re_vars,
-            re_late_bounds,
+            erased: mk(ty::ReErased),
+            vars: re_vars,
+            late_bounds: re_late_bounds,
         }
     }
 }
@@ -507,8 +507,8 @@ pub struct GlobalCtxt<'tcx> {
     /// Common types, pre-interned for your convenience.
     pub types: CommonTypes<'tcx>,
 
-    /// Common lifetimes, pre-interned for your convenience.
-    pub lifetimes: CommonLifetimes<'tcx>,
+    /// Common regions, pre-interned for your convenience.
+    pub regions: CommonRegions<'tcx>,
 
     /// Common consts, pre-interned for your convenience.
     pub consts: CommonConsts<'tcx>,
@@ -693,7 +693,7 @@ impl<'tcx> TyCtxt<'tcx> {
         });
         let interners = CtxtInterners::new(arena);
         let common_types = CommonTypes::new(&interners, s, &untracked);
-        let common_lifetimes = CommonLifetimes::new(&interners);
+        let common_lifetimes = CommonRegions::new(&interners);
         let common_consts = CommonConsts::new(&interners, &common_types);
 
         GlobalCtxt {
@@ -705,7 +705,7 @@ impl<'tcx> TyCtxt<'tcx> {
             dep_graph,
             prof: s.prof.clone(),
             types: common_types,
-            lifetimes: common_lifetimes,
+            regions: common_lifetimes,
             consts: common_consts,
             untracked,
             on_disk_cache,
@@ -1198,9 +1198,9 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns `&'static core::panic::Location<'static>`.
     pub fn caller_location_ty(self) -> Ty<'tcx> {
         self.mk_imm_ref(
-            self.lifetimes.re_static,
+            self.regions.re_static,
             self.type_of(self.require_lang_item(LangItem::PanicLocation, None))
-                .subst(self, self.mk_substs(&[self.lifetimes.re_static.into()])),
+                .subst(self, self.mk_substs(&[self.regions.re_static.into()])),
         )
     }
 
@@ -1731,7 +1731,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_static_str(self) -> Ty<'tcx> {
-        self.mk_imm_ref(self.lifetimes.re_static, self.types.str_)
+        self.mk_imm_ref(self.regions.re_static, self.types.str_)
     }
 
     #[inline]
@@ -1936,9 +1936,9 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn mk_task_context(self) -> Ty<'tcx> {
         let context_did = self.require_lang_item(LangItem::Context, None);
         let context_adt_ref = self.adt_def(context_did);
-        let context_substs = self.mk_substs(&[self.lifetimes.re_erased.into()]);
+        let context_substs = self.mk_substs(&[self.regions.erased.into()]);
         let context_ty = self.mk_adt(context_adt_ref, context_substs);
-        self.mk_mut_ref(self.lifetimes.re_erased, context_ty)
+        self.mk_mut_ref(self.regions.erased, context_ty)
     }
 
     #[inline]
@@ -2062,7 +2062,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> Region<'tcx> {
         // Use a pre-interned one when possible.
         if let ty::BoundRegion { var, kind: ty::BrAnon(None) } = bound_region
-            && let Some(inner) = self.lifetimes.re_late_bounds.get(debruijn.as_usize())
+            && let Some(inner) = self.regions.late_bounds.get(debruijn.as_usize())
             && let Some(re) = inner.get(var.as_usize()).copied()
         {
             re
@@ -2079,8 +2079,8 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mk_re_var(self, v: ty::RegionVid) -> Region<'tcx> {
         // Use a pre-interned one when possible.
-        self.lifetimes
-            .re_vars
+        self.regions
+            .vars
             .get(v.as_usize())
             .copied()
             .unwrap_or_else(|| self.intern_region(ty::ReVar(v)))
@@ -2100,10 +2100,10 @@ impl<'tcx> TyCtxt<'tcx> {
             ty::ReFree(ty::FreeRegion { scope, bound_region }) => {
                 self.mk_re_free(scope, bound_region)
             }
-            ty::ReStatic => self.lifetimes.re_static,
+            ty::ReStatic => self.regions.re_static,
             ty::ReVar(vid) => self.mk_re_var(vid),
             ty::RePlaceholder(region) => self.mk_re_placeholder(region),
-            ty::ReErased => self.lifetimes.re_erased,
+            ty::ReErased => self.regions.erased,
             ty::ReError(reported) => self.mk_re_error(reported),
         }
     }

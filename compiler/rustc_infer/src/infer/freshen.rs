@@ -121,7 +121,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for TypeFreshener<'a, 'tcx> {
             | ty::RePlaceholder(..)
             | ty::ReStatic
             | ty::ReError(_)
-            | ty::ReErased => self.interner().lifetimes.re_erased,
+            | ty::ReErased => self.interner().regions.erased,
         }
     }
 

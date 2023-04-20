@@ -403,7 +403,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .borrow_mut()
                     .treat_byte_string_as_slice
                     .insert(lt.hir_id.local_id);
-                pat_ty = tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_slice(tcx.types.u8));
+                pat_ty = tcx.mk_imm_ref(tcx.regions.re_static, tcx.mk_slice(tcx.types.u8));
             }
         }
 

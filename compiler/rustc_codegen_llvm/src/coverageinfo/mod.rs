@@ -188,7 +188,7 @@ fn declare_unused_fn<'tcx>(cx: &CodegenCx<'_, 'tcx>, def_id: DefId) -> Instance<
         def_id,
         InternalSubsts::for_item(tcx, def_id, |param, _| {
             if let ty::GenericParamDefKind::Region = param.kind {
-                tcx.lifetimes.re_erased.into()
+                tcx.regions.erased.into()
             } else {
                 tcx.mk_param_from_def(param)
             }

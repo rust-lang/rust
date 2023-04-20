@@ -53,7 +53,7 @@ pub fn extract_verify_if_eq<'tcx>(
             None => {
                 // If there is no mapping, then this region is unconstrained.
                 // In that case, we escalate to `'static`.
-                Some(tcx.lifetimes.re_static)
+                Some(tcx.regions.re_static)
             }
         }
     } else {

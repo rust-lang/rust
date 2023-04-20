@@ -354,7 +354,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     GenericArgKind::Region(r) => Some(r),
                     GenericArgKind::Type(_) | GenericArgKind::Const(_) => None,
                 })
-                .chain(std::iter::once(self.tcx.lifetimes.re_static))
+                .chain(std::iter::once(self.tcx.regions.re_static))
                 .collect(),
         );
 

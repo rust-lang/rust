@@ -573,7 +573,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::Ref(_, bk, place) => {
                 let mk_ref = move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| {
                     tcx.mk_ref(
-                        tcx.lifetimes.re_erased,
+                        tcx.regions.erased,
                         ty::TypeAndMut { ty, mutbl: bk.to_mutbl_lossy() },
                     )
                 };

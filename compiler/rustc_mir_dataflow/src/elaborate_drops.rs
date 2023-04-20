@@ -616,7 +616,7 @@ where
         let ty = self.place_ty(self.place);
 
         let ref_ty =
-            tcx.mk_ref(tcx.lifetimes.re_erased, ty::TypeAndMut { ty, mutbl: hir::Mutability::Mut });
+            tcx.mk_ref(tcx.regions.erased, ty::TypeAndMut { ty, mutbl: hir::Mutability::Mut });
         let ref_place = self.new_temp(ref_ty);
         let unit_temp = Place::from(self.new_temp(tcx.mk_unit()));
 
@@ -624,7 +624,7 @@ where
             statements: vec![self.assign(
                 Place::from(ref_place),
                 Rvalue::Ref(
-                    tcx.lifetimes.re_erased,
+                    tcx.regions.erased,
                     BorrowKind::Mut { allow_two_phase_borrow: false },
                     self.place,
                 ),

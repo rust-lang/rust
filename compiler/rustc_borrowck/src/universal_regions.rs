@@ -248,7 +248,7 @@ impl<'tcx> UniversalRegions<'tcx> {
         closure_def_id: LocalDefId,
     ) -> IndexVec<RegionVid, ty::Region<'tcx>> {
         let mut region_mapping = IndexVec::with_capacity(expected_num_vars);
-        region_mapping.push(tcx.lifetimes.re_static);
+        region_mapping.push(tcx.regions.re_static);
         tcx.for_each_free_region(&closure_substs, |fr| {
             region_mapping.push(fr);
         });
@@ -632,7 +632,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             DefiningTy::FnDef(_, substs) | DefiningTy::Const(_, substs) => substs,
         };
 
-        let global_mapping = iter::once((tcx.lifetimes.re_static, fr_static));
+        let global_mapping = iter::once((tcx.regions.re_static, fr_static));
         let subst_mapping =
             iter::zip(identity_substs.regions(), fr_substs.regions().map(|r| r.as_var()));
 

@@ -229,7 +229,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let lifetime_name = |def_id| tcx.hir().name(tcx.hir().local_def_id_to_hir_id(def_id));
 
         match tcx.named_bound_var(lifetime.hir_id) {
-            Some(rbv::ResolvedArg::StaticLifetime) => tcx.lifetimes.re_static,
+            Some(rbv::ResolvedArg::StaticLifetime) => tcx.regions.re_static,
 
             Some(rbv::ResolvedArg::LateBound(debruijn, index, def_id)) => {
                 let name = lifetime_name(def_id.expect_local());
@@ -2340,7 +2340,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let self_ty = tcx.replace_escaping_bound_vars_uncached(
                 self_ty,
                 FnMutDelegate {
-                    regions: &mut |_| tcx.lifetimes.re_erased,
+                    regions: &mut |_| tcx.regions.erased,
                     types: &mut |bv| {
                         tcx.mk_placeholder(ty::PlaceholderType { universe, bound: bv })
                     },
@@ -2520,7 +2520,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                     tcx,
                                     infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id),
                                 );
-                                let value = tcx.fold_regions(qself_ty, |_, _| tcx.lifetimes.re_erased);
+                                let value = tcx.fold_regions(qself_ty, |_, _| tcx.regions.erased);
                                 // FIXME: Don't bother dealing with non-lifetime binders here...
                                 if value.has_escaping_bound_vars() {
                                     return false;
@@ -3227,7 +3227,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             hir::TyKind::Typeof(e) => {
                 let ty_erased = tcx.type_of(e.def_id).subst_identity();
                 let ty = tcx.fold_regions(ty_erased, |r, _| {
-                    if r.is_erased() { tcx.lifetimes.re_static } else { r }
+                    if r.is_erased() { tcx.regions.re_static } else { r }
                 });
                 let span = ast_ty.span;
                 let (ty, opt_sugg) = if let Some(ty) = ty.make_suggestable(tcx, false) {
@@ -3519,7 +3519,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // If any of the derived region bounds are 'static, that is always
         // the best choice.
         if derived_region_bounds.iter().any(|r| r.is_static()) {
-            return Some(tcx.lifetimes.re_static);
+            return Some(tcx.regions.re_static);
         }
 
         // Determine whether there is exactly one unique region in the set
@@ -3651,7 +3651,7 @@ pub trait InferCtxtExt<'tcx> {
 impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     fn fresh_item_substs(&self, def_id: DefId) -> SubstsRef<'tcx> {
         InternalSubsts::for_item(self.tcx, def_id, |param, _| match param.kind {
-            GenericParamDefKind::Region => self.tcx.lifetimes.re_erased.into(),
+            GenericParamDefKind::Region => self.tcx.regions.erased.into(),
             GenericParamDefKind::Type { .. } => self
                 .next_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::SubstitutionPlaceholder,

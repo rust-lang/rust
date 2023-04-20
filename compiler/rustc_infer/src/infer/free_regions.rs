@@ -60,7 +60,7 @@ impl<'tcx> FreeRegionMap<'tcx> {
         r_b: Region<'tcx>,
     ) -> bool {
         assert!(r_a.is_free_or_static() && r_b.is_free_or_static());
-        let re_static = tcx.lifetimes.re_static;
+        let re_static = tcx.regions.re_static;
         if self.check_relation(re_static, r_b) {
             // `'a <= 'static` is always true, and not stored in the
             // relation explicitly, so check if `'b` is `'static` (or
@@ -93,7 +93,7 @@ impl<'tcx> FreeRegionMap<'tcx> {
             r_a
         } else {
             match self.relation.postdom_upper_bound(r_a, r_b) {
-                None => tcx.lifetimes.re_static,
+                None => tcx.regions.re_static,
                 Some(r) => r,
             }
         };

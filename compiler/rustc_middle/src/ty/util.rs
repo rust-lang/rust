@@ -619,7 +619,7 @@ impl<'tcx> TyCtxt<'tcx> {
             self.mk_imm_ptr(static_ty)
         } else {
             // FIXME: These things don't *really* have 'static lifetime.
-            self.mk_imm_ref(self.lifetimes.re_static, static_ty)
+            self.mk_imm_ref(self.regions.re_static, static_ty)
         }
     }
 
@@ -638,7 +638,7 @@ impl<'tcx> TyCtxt<'tcx> {
         } else if self.is_foreign_item(def_id) {
             self.mk_imm_ptr(static_ty)
         } else {
-            self.mk_imm_ref(self.lifetimes.re_erased, static_ty)
+            self.mk_imm_ref(self.regions.erased, static_ty)
         }
     }
 

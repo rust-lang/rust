@@ -242,7 +242,7 @@ fn vtable_entries<'tcx>(
                     // The method may have some early-bound lifetimes; add regions for those.
                     let substs = trait_ref.map_bound(|trait_ref| {
                         InternalSubsts::for_item(tcx, def_id, |param, _| match param.kind {
-                            GenericParamDefKind::Region => tcx.lifetimes.re_erased.into(),
+                            GenericParamDefKind::Region => tcx.regions.erased.into(),
                             GenericParamDefKind::Type { .. }
                             | GenericParamDefKind::Const { .. } => {
                                 trait_ref.substs[param.index as usize]

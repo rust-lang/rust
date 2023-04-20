@@ -195,9 +195,7 @@ impl<'tcx> Cx<'tcx> {
             let ty = if fn_decl.c_variadic && index == fn_decl.inputs.len() {
                 let va_list_did = self.tcx.require_lang_item(LangItem::VaList, Some(param.span));
 
-                self.tcx
-                    .type_of(va_list_did)
-                    .subst(self.tcx, &[self.tcx.lifetimes.re_erased.into()])
+                self.tcx.type_of(va_list_did).subst(self.tcx, &[self.tcx.regions.erased.into()])
             } else {
                 fn_sig.inputs()[index]
             };

@@ -1272,16 +1272,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
             // We map bounds to `&T` and `&mut T`
             let trait_pred_and_imm_ref = old_pred.map_bound(|trait_pred| {
-                (
-                    trait_pred,
-                    self.tcx.mk_imm_ref(self.tcx.lifetimes.re_static, trait_pred.self_ty()),
-                )
+                (trait_pred, self.tcx.mk_imm_ref(self.tcx.regions.re_static, trait_pred.self_ty()))
             });
             let trait_pred_and_mut_ref = old_pred.map_bound(|trait_pred| {
-                (
-                    trait_pred,
-                    self.tcx.mk_mut_ref(self.tcx.lifetimes.re_static, trait_pred.self_ty()),
-                )
+                (trait_pred, self.tcx.mk_mut_ref(self.tcx.regions.re_static, trait_pred.self_ty()))
             });
 
             let mk_result = |trait_pred_and_new_ty| {
@@ -1440,7 +1434,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         object_ty: Ty<'tcx>,
     ) {
         let ty::Dynamic(predicates, _, ty::Dyn) = object_ty.kind() else { return; };
-        let self_ref_ty = self.tcx.mk_imm_ref(self.tcx.lifetimes.re_erased, self_ty);
+        let self_ref_ty = self.tcx.mk_imm_ref(self.tcx.regions.erased, self_ty);
 
         for predicate in predicates.iter() {
             if !self.predicate_must_hold_modulo_regions(

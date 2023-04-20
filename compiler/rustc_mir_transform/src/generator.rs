@@ -413,7 +413,7 @@ fn make_generator_state_argument_indirect<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Bo
     let gen_ty = body.local_decls.raw[1].ty;
 
     let ref_gen_ty =
-        tcx.mk_ref(tcx.lifetimes.re_erased, ty::TypeAndMut { ty: gen_ty, mutbl: Mutability::Mut });
+        tcx.mk_ref(tcx.regions.erased, ty::TypeAndMut { ty: gen_ty, mutbl: Mutability::Mut });
 
     // Replace the by value generator argument
     body.local_decls.raw[1].ty = ref_gen_ty;

@@ -503,7 +503,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         // placeholder. In practice, we expect more
                         // tailored errors that don't really use this
                         // value.
-                        let sub_r = self.tcx.lifetimes.re_erased;
+                        let sub_r = self.tcx.regions.erased;
 
                         self.report_placeholder_failure(sup_origin, sub_r, sup_r).emit();
                     }

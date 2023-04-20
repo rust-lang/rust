@@ -1212,7 +1212,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let tcx = self.tcx;
 
         // In general, during probing we erase regions.
-        let region = tcx.lifetimes.re_erased;
+        let region = tcx.regions.erased;
 
         let autoref_ty = tcx.mk_ref(region, ty::TypeAndMut { ty: self_ty, mutbl });
         self.pick_method(autoref_ty, unstable_candidates).map(|r| {
@@ -1879,7 +1879,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     match param.kind {
                         GenericParamDefKind::Region => {
                             // In general, during probe we erase regions.
-                            self.tcx.lifetimes.re_erased.into()
+                            self.tcx.regions.erased.into()
                         }
                         GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
                             self.var_for_def(self.span, param)

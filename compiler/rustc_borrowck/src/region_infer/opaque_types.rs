@@ -131,7 +131,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         .iter()
                         .find(|ur_vid| self.eval_equal(vid, **ur_vid))
                         .and_then(|ur_vid| self.definitions[*ur_vid].external_name)
-                        .unwrap_or(infcx.tcx.lifetimes.re_erased),
+                        .unwrap_or(infcx.tcx.regions.erased),
                     _ => region,
                 });
             debug!(?universal_concrete_type);

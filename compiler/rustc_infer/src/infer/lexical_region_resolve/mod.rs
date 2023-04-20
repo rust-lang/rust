@@ -179,7 +179,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
             ReStatic => {
                 // nothing lives longer than `'static`
-                Ok(self.tcx().lifetimes.re_static)
+                Ok(self.tcx().regions.re_static)
             }
 
             ReError(_) => Ok(a_region),
@@ -244,7 +244,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                                     Err(placeholder) if a_universe == placeholder.universe => {
                                         cur_region
                                     }
-                                    Err(_) => self.tcx().lifetimes.re_static,
+                                    Err(_) => self.tcx().regions.re_static,
                                 };
 
                                 if lub == cur_region {
@@ -338,7 +338,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     Err(placeholder) if empty_ui.can_name(placeholder.universe) => {
                         self.tcx().mk_re_placeholder(placeholder)
                     }
-                    Err(_) => self.tcx().lifetimes.re_static,
+                    Err(_) => self.tcx().regions.re_static,
                 };
 
                 debug!("Expanding value of {:?} from empty lifetime to {:?}", b_vid, lub);
@@ -367,7 +367,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 //
                 // (This might e.g. arise from being asked to prove `for<'a> { 'b: 'a }`.)
                 if let ty::RePlaceholder(p) = *lub && b_universe.cannot_name(p.universe) {
-                    lub = self.tcx().lifetimes.re_static;
+                    lub = self.tcx().regions.re_static;
                 }
 
                 debug!("Expanding value of {:?} from {:?} to {:?}", b_vid, cur_region, lub);
@@ -469,7 +469,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         // Check for the case where we know that `'b: 'static` -- in that case,
         // `a <= b` for all `a`.
         let b_free_or_static = b.is_free_or_static();
-        if b_free_or_static && sub_free_regions(tcx.lifetimes.re_static, b) {
+        if b_free_or_static && sub_free_regions(tcx.regions.re_static, b) {
             return true;
         }
 
@@ -516,7 +516,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
             (ReStatic, _) | (_, ReStatic) => {
                 // nothing lives longer than `'static`
-                self.tcx().lifetimes.re_static
+                self.tcx().regions.re_static
             }
 
             (ReEarlyBound(_) | ReFree(_), ReEarlyBound(_) | ReFree(_)) => {
@@ -529,7 +529,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 if a == b {
                     a
                 } else {
-                    self.tcx().lifetimes.re_static
+                    self.tcx().regions.re_static
                 }
             }
         }
@@ -759,7 +759,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         for lower_bound in &lower_bounds {
             let effective_lower_bound = if let ty::RePlaceholder(p) = *lower_bound.region {
                 if node_universe.cannot_name(p.universe) {
-                    self.tcx().lifetimes.re_static
+                    self.tcx().regions.re_static
                 } else {
                     lower_bound.region
                 }
@@ -1012,7 +1012,7 @@ impl<'tcx> LexicalRegionResolutions<'tcx> {
             ty::ReVar(rid) => match self.values[rid] {
                 VarValue::Empty(_) => r,
                 VarValue::Value(r) => r,
-                VarValue::ErrorValue => tcx.lifetimes.re_static,
+                VarValue::ErrorValue => tcx.regions.re_static,
             },
             _ => r,
         };

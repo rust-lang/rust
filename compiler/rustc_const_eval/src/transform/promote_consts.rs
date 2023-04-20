@@ -859,11 +859,11 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             let span = statement.source_info.span;
 
             let ref_ty = tcx.mk_ref(
-                tcx.lifetimes.re_erased,
+                tcx.regions.erased,
                 ty::TypeAndMut { ty, mutbl: borrow_kind.to_mutbl_lossy() },
             );
 
-            *region = tcx.lifetimes.re_erased;
+            *region = tcx.regions.erased;
 
             let mut projection = vec![PlaceElem::Deref];
             projection.extend(place.projection);
@@ -887,7 +887,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             self.extra_statements.push((loc, promoted_ref_statement));
 
             Rvalue::Ref(
-                tcx.lifetimes.re_erased,
+                tcx.regions.erased,
                 *borrow_kind,
                 Place {
                     local: mem::replace(&mut place.local, promoted_ref),

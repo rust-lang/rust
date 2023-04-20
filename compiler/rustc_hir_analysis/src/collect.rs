@@ -387,7 +387,7 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
 
     fn ct_infer(&self, ty: Ty<'tcx>, _: Option<&ty::GenericParamDef>, span: Span) -> Const<'tcx> {
         let ty = self.tcx.fold_regions(ty, |r, _| match *r {
-            ty::ReErased => self.tcx.lifetimes.re_static,
+            ty::ReErased => self.tcx.regions.re_static,
             _ => r,
         });
         self.tcx().const_error_with_message(ty, span, "bad placeholder constant")
@@ -1141,7 +1141,7 @@ fn infer_return_ty_for_fn_sig<'tcx>(
             let fn_sig = tcx.typeck(def_id).liberated_fn_sigs()[hir_id];
             // Typeck doesn't expect erased regions to be returned from `type_of`.
             let fn_sig = tcx.fold_regions(fn_sig, |r, _| match *r {
-                ty::ReErased => tcx.lifetimes.re_static,
+                ty::ReErased => tcx.regions.re_static,
                 _ => r,
             });
 

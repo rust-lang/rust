@@ -360,7 +360,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                             let ty = tcx.mk_ref(
                                 // Use `ReErased` as `resolve_interior` is going to replace all the
                                 // regions anyway.
-                                tcx.lifetimes.re_erased,
+                                tcx.regions.erased,
                                 ty::TypeAndMut { ty, mutbl: hir::Mutability::Not },
                             );
                             self.interior_visitor.record(

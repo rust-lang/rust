@@ -740,9 +740,9 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
         ty::Ref(region, ty0, ..) => {
             if options.contains(TransformTyOptions::GENERALIZE_POINTERS) {
                 if ty.is_mutable_ptr() {
-                    ty = tcx.mk_mut_ref(tcx.lifetimes.re_static, tcx.mk_unit());
+                    ty = tcx.mk_mut_ref(tcx.regions.re_static, tcx.mk_unit());
                 } else {
-                    ty = tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_unit());
+                    ty = tcx.mk_imm_ref(tcx.regions.re_static, tcx.mk_unit());
                 }
             } else {
                 if ty.is_mutable_ptr() {

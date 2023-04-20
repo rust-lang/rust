@@ -687,7 +687,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         )
                         .ty;
                         let fake_borrow_ty =
-                            tcx.mk_imm_ref(tcx.lifetimes.re_erased, fake_borrow_deref_ty);
+                            tcx.mk_imm_ref(tcx.regions.erased, fake_borrow_deref_ty);
                         let fake_borrow_temp =
                             self.local_decls.push(LocalDecl::new(fake_borrow_ty, expr_span));
                         let projection = tcx.mk_place_elems(&base_place.projection[..idx]);
@@ -696,7 +696,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             source_info,
                             fake_borrow_temp.into(),
                             Rvalue::Ref(
-                                tcx.lifetimes.re_erased,
+                                tcx.regions.erased,
                                 BorrowKind::Shallow,
                                 Place { local: base_place.local, projection },
                             ),

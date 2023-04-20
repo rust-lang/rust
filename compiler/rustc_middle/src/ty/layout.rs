@@ -796,7 +796,7 @@ where
                         let unit_ptr_ty = if this.ty.is_unsafe_ptr() {
                             tcx.mk_mut_ptr(nil)
                         } else {
-                            tcx.mk_mut_ref(tcx.lifetimes.re_static, nil)
+                            tcx.mk_mut_ref(tcx.regions.re_static, nil)
                         };
 
                         // NOTE(eddyb) using an empty `ParamEnv`, and `unwrap`-ing
@@ -809,7 +809,7 @@ where
                     }
 
                     let mk_dyn_vtable = || {
-                        tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_array(tcx.types.usize, 3))
+                        tcx.mk_imm_ref(tcx.regions.re_static, tcx.mk_array(tcx.types.usize, 3))
                         /* FIXME: use actual fn pointers
                         Warning: naively computing the number of entries in the
                         vtable by counting the methods on the trait + methods on
@@ -911,10 +911,7 @@ where
                     } else if i == 1 {
                         // FIXME(dyn-star) same FIXME as above applies here too
                         TyMaybeWithLayout::Ty(
-                            tcx.mk_imm_ref(
-                                tcx.lifetimes.re_static,
-                                tcx.mk_array(tcx.types.usize, 3),
-                            ),
+                            tcx.mk_imm_ref(tcx.regions.re_static, tcx.mk_array(tcx.types.usize, 3)),
                         )
                     } else {
                         bug!("no field {i} on dyn*")

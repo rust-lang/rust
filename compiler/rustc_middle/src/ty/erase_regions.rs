@@ -62,7 +62,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RegionEraserVisitor<'tcx> {
         // whenever a substitution occurs.
         match *r {
             ty::ReLateBound(..) => r,
-            _ => self.tcx.lifetimes.re_erased,
+            _ => self.tcx.regions.erased,
         }
     }
 }

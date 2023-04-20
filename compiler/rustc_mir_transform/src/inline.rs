@@ -514,7 +514,7 @@ impl<'tcx> Inliner<'tcx> {
                 let dest = if dest_needs_borrow(destination) {
                     trace!("creating temp for return destination");
                     let dest = Rvalue::Ref(
-                        self.tcx.lifetimes.re_erased,
+                        self.tcx.regions.erased,
                         BorrowKind::Mut { allow_two_phase_borrow: false },
                         destination,
                     );

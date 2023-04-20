@@ -155,7 +155,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             },
             @call("mir_len", args) => Ok(Rvalue::Len(self.parse_place(args[0])?)),
             ExprKind::Borrow { borrow_kind, arg } => Ok(
-                Rvalue::Ref(self.tcx.lifetimes.re_erased, *borrow_kind, self.parse_place(*arg)?)
+                Rvalue::Ref(self.tcx.regions.erased, *borrow_kind, self.parse_place(*arg)?)
             ),
             ExprKind::AddressOf { mutability, arg } => Ok(
                 Rvalue::AddressOf(*mutability, self.parse_place(*arg)?)

@@ -556,8 +556,8 @@ impl<'tcx> LowerInto<'tcx, Region<'tcx>> for &chalk_ir::Lifetime<RustInterner<'t
                     kind: ty::BoundRegionKind::BrAnon(None),
                 },
             }),
-            chalk_ir::LifetimeData::Static => tcx.lifetimes.re_static,
-            chalk_ir::LifetimeData::Erased => tcx.lifetimes.re_erased,
+            chalk_ir::LifetimeData::Static => tcx.regions.re_static,
+            chalk_ir::LifetimeData::Erased => tcx.regions.erased,
             chalk_ir::LifetimeData::Phantom(void, _) => match *void {},
         }
     }

@@ -964,7 +964,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx,
                     ty,
                     max_capture_info.capture_kind,
-                    Some(self.tcx.lifetimes.re_erased),
+                    Some(self.tcx.regions.erased),
                 )
             }
         };
@@ -990,7 +990,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx,
                 capture.place.ty(),
                 capture.info.capture_kind,
-                Some(self.tcx.lifetimes.re_erased),
+                Some(self.tcx.regions.erased),
             );
 
             // Checks if a capture implements any of the auto traits

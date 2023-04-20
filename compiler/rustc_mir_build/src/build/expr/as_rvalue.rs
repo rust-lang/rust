@@ -785,7 +785,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             block,
             source_info,
             Place::from(temp),
-            Rvalue::Ref(this.tcx.lifetimes.re_erased, borrow_kind, arg_place),
+            Rvalue::Ref(this.tcx.regions.erased, borrow_kind, arg_place),
         );
 
         // See the comment in `expr_as_temp` and on the `rvalue_scopes` field for why

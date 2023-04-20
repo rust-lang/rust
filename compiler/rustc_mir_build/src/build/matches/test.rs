@@ -243,7 +243,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     if !tcx.features().string_deref_patterns {
                         bug!("matching on `String` went through without enabling string_deref_patterns");
                     }
-                    let re_erased = tcx.lifetimes.re_erased;
+                    let re_erased = tcx.regions.erased;
                     let ref_string = self.temp(tcx.mk_imm_ref(re_erased, ty), test.span);
                     let ref_str_ty = tcx.mk_imm_ref(re_erased, tcx.types.str_);
                     let ref_str = self.temp(ref_str_ty, test.span);

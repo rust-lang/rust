@@ -1360,7 +1360,7 @@ fn create_mono_items_for_default_impls<'tcx>(
     // we use the ReErased, which has no lifetime information associated with
     // it, to validate whether or not the impl is legal to instantiate at all.
     let only_region_params = |param: &ty::GenericParamDef, _: &_| match param.kind {
-        GenericParamDefKind::Region => tcx.lifetimes.re_erased.into(),
+        GenericParamDefKind::Region => tcx.regions.erased.into(),
         GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
             unreachable!(
                 "`own_requires_monomorphization` check means that \

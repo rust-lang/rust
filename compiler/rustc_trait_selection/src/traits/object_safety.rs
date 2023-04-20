@@ -549,7 +549,7 @@ fn virtual_call_violation_for_method<'tcx>(
                 }
             }
 
-            let trait_object_ty = object_ty_for_trait(tcx, trait_def_id, tcx.lifetimes.re_static);
+            let trait_object_ty = object_ty_for_trait(tcx, trait_def_id, tcx.regions.re_static);
 
             // e.g., `Rc<dyn Trait>`
             let trait_object_receiver =

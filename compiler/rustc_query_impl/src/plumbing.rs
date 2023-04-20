@@ -107,7 +107,7 @@ impl QueryContext for QueryCtxt<'_> {
         compute: impl FnOnce() -> R,
     ) -> R {
         // The `TyCtxt` stored in TLS has the same global interner lifetime
-        // as `self`, so we use `with_related_context` to relate the 'tcx lifetimes
+        // as `self`, so we use `with_related_context` to relate the 'tcx.regions
         // when accessing the `ImplicitCtxt`.
         tls::with_related_context(*self, move |current_icx| {
             if depth_limit && !self.recursion_limit().value_within_limit(current_icx.query_depth) {

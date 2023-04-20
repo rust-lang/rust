@@ -1115,7 +1115,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     std::iter::zip(substs, tcx.variances_of(def_id)).map(|(arg, v)| {
                         match (arg.unpack(), v) {
                             (ty::GenericArgKind::Region(_), ty::Bivariant) => {
-                                tcx.lifetimes.re_static.into()
+                                tcx.regions.re_static.into()
                             }
                             _ => arg.fold_with(self),
                         }
@@ -1142,7 +1142,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 .map(|u_r| tcx.mk_re_var(u_r))
                 // In the case of a failure, use `ReErased`. We will eventually
                 // return `None` in this case.
-                .unwrap_or(tcx.lifetimes.re_erased)
+                .unwrap_or(tcx.regions.erased)
         });
 
         debug!("try_promote_type_test_subject: folded ty = {:?}", ty);

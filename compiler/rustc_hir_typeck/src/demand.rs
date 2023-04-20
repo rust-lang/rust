@@ -282,7 +282,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty
                 }
             },
-            lt_op: |_| self.tcx.lifetimes.re_erased,
+            lt_op: |_| self.tcx.regions.erased,
             ct_op: |ct| {
                 if let ty::ConstKind::Infer(_) = ct.kind() {
                     self.next_const_var(
@@ -1293,10 +1293,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // ```
                 let ref_ty = match mutability {
                     hir::Mutability::Mut => {
-                        self.tcx.mk_mut_ref(self.tcx.lifetimes.re_static, checked_ty)
+                        self.tcx.mk_mut_ref(self.tcx.regions.re_static, checked_ty)
                     }
                     hir::Mutability::Not => {
-                        self.tcx.mk_imm_ref(self.tcx.lifetimes.re_static, checked_ty)
+                        self.tcx.mk_imm_ref(self.tcx.regions.re_static, checked_ty)
                     }
                 };
                 if self.can_coerce(ref_ty, expected) {

@@ -771,7 +771,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                         (None, Some(t_a)) => {
                             selcx.infcx.register_region_obligation_with_cause(
                                 t_a,
-                                selcx.infcx.tcx.lifetimes.re_static,
+                                selcx.infcx.tcx.regions.re_static,
                                 &dummy_cause,
                             );
                         }

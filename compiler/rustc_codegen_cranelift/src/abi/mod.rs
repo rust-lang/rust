@@ -668,7 +668,7 @@ pub(crate) fn codegen_drop<'tcx>(
                 let arg_value = drop_place.place_ref(
                     fx,
                     fx.layout_of(fx.tcx.mk_ref(
-                        fx.tcx.lifetimes.re_erased,
+                        fx.tcx.regions.erased,
                         TypeAndMut { ty, mutbl: crate::rustc_hir::Mutability::Mut },
                     )),
                 );

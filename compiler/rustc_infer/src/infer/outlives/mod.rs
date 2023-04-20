@@ -62,7 +62,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
         let lexical_region_resolutions = LexicalRegionResolutions {
             values: rustc_index::vec::IndexVec::from_elem_n(
-                crate::infer::lexical_region_resolve::VarValue::Value(self.tcx.lifetimes.re_erased),
+                crate::infer::lexical_region_resolve::VarValue::Value(self.tcx.regions.erased),
                 var_infos.len(),
             ),
         };

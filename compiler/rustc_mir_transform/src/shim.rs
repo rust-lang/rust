@@ -187,7 +187,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
         // It's important that we do this first, before anything that depends on `dropee_ptr`
         // has been put into the body.
         let reborrow = Rvalue::Ref(
-            tcx.lifetimes.re_erased,
+            tcx.regions.erased,
             BorrowKind::Mut { allow_two_phase_borrow: false },
             tcx.mk_place_deref(dropee_ptr),
         );
@@ -482,13 +482,13 @@ impl<'tcx> CloneShimBuilder<'tcx> {
 
         let ref_loc = self.make_place(
             Mutability::Not,
-            tcx.mk_ref(tcx.lifetimes.re_erased, ty::TypeAndMut { ty, mutbl: hir::Mutability::Not }),
+            tcx.mk_ref(tcx.regions.erased, ty::TypeAndMut { ty, mutbl: hir::Mutability::Not }),
         );
 
         // `let ref_loc: &ty = &src;`
         let statement = self.make_statement(StatementKind::Assign(Box::new((
             ref_loc,
-            Rvalue::Ref(tcx.lifetimes.re_erased, BorrowKind::Shared, src),
+            Rvalue::Ref(tcx.regions.erased, BorrowKind::Shared, src),
         ))));
 
         // `let loc = Clone::clone(ref_loc);`
@@ -701,7 +701,7 @@ fn build_call_shim<'tcx>(
             let ref_rcvr = local_decls.push(
                 LocalDecl::new(
                     tcx.mk_ref(
-                        tcx.lifetimes.re_erased,
+                        tcx.regions.erased,
                         ty::TypeAndMut { ty: sig.inputs()[0], mutbl: hir::Mutability::Mut },
                     ),
                     span,
@@ -713,7 +713,7 @@ fn build_call_shim<'tcx>(
                 source_info,
                 kind: StatementKind::Assign(Box::new((
                     Place::from(ref_rcvr),
-                    Rvalue::Ref(tcx.lifetimes.re_erased, borrow_kind, rcvr_place()),
+                    Rvalue::Ref(tcx.regions.erased, borrow_kind, rcvr_place()),
                 ))),
             });
             Operand::Move(Place::from(ref_rcvr))

@@ -194,6 +194,6 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EraseAllBoundRegions<'tcx> {
         self.tcx
     }
     fn fold_region(&mut self, r: Region<'tcx>) -> Region<'tcx> {
-        if r.is_late_bound() { self.tcx.lifetimes.re_erased } else { r }
+        if r.is_late_bound() { self.tcx.regions.erased } else { r }
     }
 }

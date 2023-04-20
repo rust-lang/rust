@@ -125,7 +125,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
         match self.map.get(&r.into()).map(|k| k.unpack()) {
             Some(GenericArgKind::Region(r1)) => r1,
             Some(u) => panic!("region mapped to unexpected kind: {:?}", u),
-            None if self.do_not_error => self.tcx.lifetimes.re_static,
+            None if self.do_not_error => self.tcx.regions.re_static,
             None => {
                 let e = self
                     .tcx
