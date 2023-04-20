@@ -386,6 +386,37 @@ impl CrateGraph {
         self.arena.alloc(data)
     }
 
+    /// Remove the crate from crate graph. If any crates depend on this crate, the dependency would be replaced
+    /// with the second input.
+    pub fn remove_and_replace(
+        &mut self,
+        id: CrateId,
+        replace_with: CrateId,
+    ) -> Result<(), CyclicDependenciesError> {
+        for (x, data) in self.arena.iter() {
+            if x == id {
+                continue;
+            }
+            for edge in &data.dependencies {
+                if edge.crate_id == id {
+                    self.check_cycle_after_dependency(edge.crate_id, replace_with)?;
+                }
+            }
+        }
+        // if everything was ok, start to replace
+        for (x, data) in self.arena.iter_mut() {
+            if x == id {
+                continue;
+            }
+            for edge in &mut data.dependencies {
+                if edge.crate_id == id {
+                    edge.crate_id = replace_with;
+                }
+            }
+        }
+        Ok(())
+    }
+
     pub fn add_dep(
         &mut self,
         from: CrateId,
@@ -393,17 +424,26 @@ impl CrateGraph {
     ) -> Result<(), CyclicDependenciesError> {
         let _p = profile::span("add_dep");
 
-        // Check if adding a dep from `from` to `to` creates a cycle. To figure
-        // that out, look for a  path in the *opposite* direction, from `to` to
-        // `from`.
-        if let Some(path) = self.find_path(&mut FxHashSet::default(), dep.crate_id, from) {
-            let path = path.into_iter().map(|it| (it, self[it].display_name.clone())).collect();
-            let err = CyclicDependenciesError { path };
-            assert!(err.from().0 == from && err.to().0 == dep.crate_id);
-            return Err(err);
-        }
+        self.check_cycle_after_dependency(from, dep.crate_id)?;
 
         self.arena[from].add_dep(dep);
+        Ok(())
+    }
+
+    /// Check if adding a dep from `from` to `to` creates a cycle. To figure
+    /// that out, look for a  path in the *opposite* direction, from `to` to
+    /// `from`.
+    fn check_cycle_after_dependency(
+        &self,
+        from: CrateId,
+        to: CrateId,
+    ) -> Result<(), CyclicDependenciesError> {
+        if let Some(path) = self.find_path(&mut FxHashSet::default(), to, from) {
+            let path = path.into_iter().map(|it| (it, self[it].display_name.clone())).collect();
+            let err = CyclicDependenciesError { path };
+            assert!(err.from().0 == from && err.to().0 == to);
+            return Err(err);
+        }
         Ok(())
     }
 

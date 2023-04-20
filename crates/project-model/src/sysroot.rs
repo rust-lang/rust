@@ -12,13 +12,15 @@ use la_arena::{Arena, Idx};
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
 
-use crate::{utf8_stdout, ManifestPath};
+use crate::{utf8_stdout, CargoConfig, CargoWorkspace, ManifestPath};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Sysroot {
     root: AbsPathBuf,
     src_root: AbsPathBuf,
     crates: Arena<SysrootCrateData>,
+    /// Stores the result of `cargo metadata` of the `RA_UNSTABLE_SYSROOT_HACK` workspace.
+    pub hack_cargo_workspace: Option<CargoWorkspace>,
 }
 
 pub(crate) type SysrootCrate = Idx<SysrootCrateData>;
@@ -125,9 +127,31 @@ impl Sysroot {
         Ok(Sysroot::load(sysroot_dir, sysroot_src_dir))
     }
 
-    pub fn load(sysroot_dir: AbsPathBuf, sysroot_src_dir: AbsPathBuf) -> Sysroot {
-        let mut sysroot =
-            Sysroot { root: sysroot_dir, src_root: sysroot_src_dir, crates: Arena::default() };
+    pub fn load(sysroot_dir: AbsPathBuf, mut sysroot_src_dir: AbsPathBuf) -> Sysroot {
+        // FIXME: Remove this `hack_cargo_workspace` field completely once we support sysroot dependencies
+        let hack_cargo_workspace = if let Ok(path) = std::env::var("RA_UNSTABLE_SYSROOT_HACK") {
+            let cargo_toml = ManifestPath::try_from(
+                AbsPathBuf::try_from(&*format!("{path}/Cargo.toml")).unwrap(),
+            )
+            .unwrap();
+            sysroot_src_dir = AbsPathBuf::try_from(&*path).unwrap().join("library");
+            CargoWorkspace::fetch_metadata(
+                &cargo_toml,
+                &AbsPathBuf::try_from("/").unwrap(),
+                &CargoConfig::default(),
+                &|_| (),
+            )
+            .map(CargoWorkspace::new)
+            .ok()
+        } else {
+            None
+        };
+        let mut sysroot = Sysroot {
+            root: sysroot_dir,
+            src_root: sysroot_src_dir,
+            crates: Arena::default(),
+            hack_cargo_workspace,
+        };
 
         for path in SYSROOT_CRATES.trim().lines() {
             let name = path.split('/').last().unwrap();
