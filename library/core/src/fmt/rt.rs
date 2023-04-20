@@ -1,20 +1,12 @@
-//! This is an internal module used by the ifmt! runtime. These structures are
-//! emitted to static arrays to precompile format strings ahead of time.
-//!
-//! These definitions are similar to their `ct` equivalents, but differ in that
-//! these can be statically allocated and are slightly optimized for the runtime
 #![allow(missing_debug_implementations)]
+#![unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+
+//! These are the lang items used by format_args!().
 
 #[lang = "format_placeholder"]
 #[derive(Copy, Clone)]
-// FIXME: Rename this to Placeholder
-pub struct Argument {
+pub struct Placeholder {
     pub position: usize,
-    pub format: FormatSpec,
-}
-
-#[derive(Copy, Clone)]
-pub struct FormatSpec {
     pub fill: char,
     pub align: Alignment,
     pub flags: u32,
@@ -22,7 +14,7 @@ pub struct FormatSpec {
     pub width: Count,
 }
 
-impl Argument {
+impl Placeholder {
     #[inline(always)]
     pub const fn new(
         position: usize,
@@ -32,7 +24,7 @@ impl Argument {
         precision: Count,
         width: Count,
     ) -> Self {
-        Self { position, format: FormatSpec { fill, align, flags, precision, width } }
+        Self { position, fill, align, flags, precision, width }
     }
 }
 
