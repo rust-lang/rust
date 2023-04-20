@@ -2108,6 +2108,25 @@ impl Step for CrateLibrustc {
     }
 }
 
+// Given a `cargo test` subcommand, pass it the appropriate test flags given a `builder`.
+fn cargo_test_args(cargo: &mut Command, libtest_args: &[&str], _crates: &[&str], builder: &Builder<'_>) {
+    if !builder.fail_fast {
+        cargo.arg("--no-fail-fast");
+    }
+    match builder.doc_tests {
+        DocTests::Only => {
+            cargo.arg("--doc");
+        }
+        DocTests::No => {
+            cargo.args(&["--lib", "--bins", "--examples", "--tests", "--benches"]);
+        }
+        DocTests::Yes => {}
+    }
+
+    cargo.arg("--").args(&builder.config.cmd.test_args()).args(libtest_args);
+    add_flags_and_try_run_tests(builder, cargo);
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Crate {
     pub compiler: Compiler,
@@ -2560,24 +2579,9 @@ impl Step for Bootstrap {
             // https://github.com/rust-lang/rust/issues/49215
             cmd.env("RUSTFLAGS", flags);
         }
-        if !builder.fail_fast {
-            cmd.arg("--no-fail-fast");
-        }
-        match builder.doc_tests {
-            DocTests::Only => {
-                cmd.arg("--doc");
-            }
-            DocTests::No => {
-                cmd.args(&["--lib", "--bins", "--examples", "--tests", "--benches"]);
-            }
-            DocTests::Yes => {}
-        }
-
-        cmd.arg("--").args(&builder.config.cmd.test_args());
         // rustbuild tests are racy on directory creation so just run them one at a time.
         // Since there's not many this shouldn't be a problem.
-        cmd.arg("--test-threads=1");
-        add_flags_and_try_run_tests(builder, &mut cmd);
+        cargo_test_args(&mut cmd, &["--test-threads=1"], &[], builder);
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
