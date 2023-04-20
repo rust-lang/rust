@@ -131,10 +131,9 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             self.dump_constraints();
         }
 
-        let graph = self.construct_graph();
         self.expansion(&mut var_data);
         self.collect_errors(&mut var_data, errors);
-        self.collect_var_errors(&var_data, &graph, errors);
+        self.collect_var_errors(&var_data, errors);
         var_data
     }
 
@@ -622,7 +621,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     fn collect_var_errors(
         &self,
         var_data: &LexicalRegionResolutions<'tcx>,
-        graph: &RegionGraph<'tcx>,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
     ) {
         debug!("collect_var_errors, var_data = {:#?}", var_data.values);
@@ -639,6 +637,10 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         // regions of the graph, but not those that derive from
         // overlapping locations.
         let mut dup_vec = IndexVec::from_elem_n(None, self.num_vars());
+
+        // Only construct the graph when necessary, because it's moderately
+        // expensive.
+        let mut graph = None;
 
         for (node_vid, value) in var_data.values.iter_enumerated() {
             match *value {
@@ -672,7 +674,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     // influence the constraints on this value for
                     // richer diagnostics in `static_impl_trait`.
 
-                    self.collect_error_for_expanding_node(graph, &mut dup_vec, node_vid, errors);
+                    let g = graph.get_or_insert_with(|| self.construct_graph());
+                    self.collect_error_for_expanding_node(g, &mut dup_vec, node_vid, errors);
                 }
             }
         }
