@@ -428,7 +428,7 @@ impl<'a> Arguments<'a> {
     /// An `UnsafeArg` is required because the following invariants must be held
     /// in order for this function to be safe:
     /// 1. The `pieces` slice must be at least as long as `fmt`.
-    /// 2. Every [`rt::Argument::position`] value within `fmt` must be a
+    /// 2. Every [`rt::Placeholder::position`] value within `fmt` must be a
     ///    valid index of `args`.
     /// 3. Every [`rt::Count::Param`] within `fmt` must contain a valid index of
     ///    `args`.
@@ -438,7 +438,7 @@ impl<'a> Arguments<'a> {
     pub fn new_v1_formatted(
         pieces: &'a [&'static str],
         args: &'a [ArgumentV1<'a>],
-        fmt: &'a [rt::Argument],
+        fmt: &'a [rt::Placeholder],
         _unsafe_arg: UnsafeArg,
     ) -> Arguments<'a> {
         Arguments { pieces, fmt: Some(fmt), args }
@@ -500,7 +500,7 @@ pub struct Arguments<'a> {
     pieces: &'a [&'static str],
 
     // Placeholder specs, or `None` if all specs are default (as in "{}{}").
-    fmt: Option<&'a [rt::Argument]>,
+    fmt: Option<&'a [rt::Placeholder]>,
 
     // Dynamic arguments for interpolation, to be interleaved with string
     // pieces. (Every argument is preceded by a string piece.)
@@ -1276,7 +1276,7 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
     Ok(())
 }
 
-unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::Argument, args: &[ArgumentV1<'_>]) -> Result {
+unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::Placeholder, args: &[ArgumentV1<'_>]) -> Result {
     fmt.fill = arg.format.fill;
     fmt.align = arg.format.align;
     fmt.flags = arg.format.flags;

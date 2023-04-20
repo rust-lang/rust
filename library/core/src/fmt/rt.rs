@@ -5,8 +5,7 @@
 
 #[lang = "format_placeholder"]
 #[derive(Copy, Clone)]
-// FIXME: Rename this to Placeholder
-pub struct Argument {
+pub struct Placeholder {
     pub position: usize,
     pub format: FormatSpec,
 }
@@ -20,7 +19,7 @@ pub struct FormatSpec {
     pub width: Count,
 }
 
-impl Argument {
+impl Placeholder {
     #[inline(always)]
     pub const fn new(
         position: usize,
