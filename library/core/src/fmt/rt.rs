@@ -1,9 +1,7 @@
-//! This is an internal module used by the ifmt! runtime. These structures are
-//! emitted to static arrays to precompile format strings ahead of time.
-//!
-//! These definitions are similar to their `ct` equivalents, but differ in that
-//! these can be statically allocated and are slightly optimized for the runtime
 #![allow(missing_debug_implementations)]
+#![unstable(feature = "fmt_internals", issue = "none")]
+
+//! These are the lang items used by format_args!().
 
 #[lang = "format_placeholder"]
 #[derive(Copy, Clone)]

@@ -18,6 +18,7 @@ mod float;
 #[cfg(no_fp_fmt_parse)]
 mod nofloat;
 mod num;
+mod rt;
 
 #[stable(feature = "fmt_flags_align", since = "1.28.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Alignment")]
@@ -37,12 +38,6 @@ pub enum Alignment {
 
 #[stable(feature = "debug_builders", since = "1.2.0")]
 pub use self::builders::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
-
-#[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
-#[doc(hidden)]
-pub mod rt {
-    pub mod v1;
-}
 
 /// The type returned by formatter methods.
 ///
@@ -227,7 +222,7 @@ impl<W: Write + ?Sized> Write for &mut W {
 pub struct Formatter<'a> {
     flags: u32,
     fill: char,
-    align: rt::v1::Alignment,
+    align: rt::Alignment,
     width: Option<usize>,
     precision: Option<usize>,
 
@@ -248,7 +243,7 @@ impl<'a> Formatter<'a> {
         Formatter {
             flags: 0,
             fill: ' ',
-            align: rt::v1::Alignment::Unknown,
+            align: rt::Alignment::Unknown,
             width: None,
             precision: None,
             buf,
@@ -433,9 +428,9 @@ impl<'a> Arguments<'a> {
     /// An `UnsafeArg` is required because the following invariants must be held
     /// in order for this function to be safe:
     /// 1. The `pieces` slice must be at least as long as `fmt`.
-    /// 2. Every [`rt::v1::Argument::position`] value within `fmt` must be a
+    /// 2. Every [`rt::Argument::position`] value within `fmt` must be a
     ///    valid index of `args`.
-    /// 3. Every [`rt::v1::Count::Param`] within `fmt` must contain a valid index of
+    /// 3. Every [`rt::Count::Param`] within `fmt` must contain a valid index of
     ///    `args`.
     #[doc(hidden)]
     #[inline]
@@ -443,7 +438,7 @@ impl<'a> Arguments<'a> {
     pub fn new_v1_formatted(
         pieces: &'a [&'static str],
         args: &'a [ArgumentV1<'a>],
-        fmt: &'a [rt::v1::Argument],
+        fmt: &'a [rt::Argument],
         _unsafe_arg: UnsafeArg,
     ) -> Arguments<'a> {
         Arguments { pieces, fmt: Some(fmt), args }
@@ -505,7 +500,7 @@ pub struct Arguments<'a> {
     pieces: &'a [&'static str],
 
     // Placeholder specs, or `None` if all specs are default (as in "{}{}").
-    fmt: Option<&'a [rt::v1::Argument]>,
+    fmt: Option<&'a [rt::Argument]>,
 
     // Dynamic arguments for interpolation, to be interleaved with string
     // pieces. (Every argument is preceded by a string piece.)
@@ -1281,7 +1276,7 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
     Ok(())
 }
 
-unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::v1::Argument, args: &[ArgumentV1<'_>]) -> Result {
+unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::Argument, args: &[ArgumentV1<'_>]) -> Result {
     fmt.fill = arg.format.fill;
     fmt.align = arg.format.align;
     fmt.flags = arg.format.flags;
@@ -1302,11 +1297,11 @@ unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::v1::Argument, args: &[ArgumentV
     (value.formatter)(value.value, fmt)
 }
 
-unsafe fn getcount(args: &[ArgumentV1<'_>], cnt: &rt::v1::Count) -> Option<usize> {
+unsafe fn getcount(args: &[ArgumentV1<'_>], cnt: &rt::Count) -> Option<usize> {
     match *cnt {
-        rt::v1::Count::Is(n) => Some(n),
-        rt::v1::Count::Implied => None,
-        rt::v1::Count::Param(i) => {
+        rt::Count::Is(n) => Some(n),
+        rt::Count::Implied => None,
+        rt::Count::Param(i) => {
             debug_assert!(i < args.len());
             // SAFETY: cnt and args come from the same Arguments,
             // which guarantees this index is always within bounds.
@@ -1449,7 +1444,7 @@ impl<'a> Formatter<'a> {
             // is zero
             Some(min) if self.sign_aware_zero_pad() => {
                 let old_fill = crate::mem::replace(&mut self.fill, '0');
-                let old_align = crate::mem::replace(&mut self.align, rt::v1::Alignment::Right);
+                let old_align = crate::mem::replace(&mut self.align, rt::Alignment::Right);
                 write_prefix(self, sign, prefix)?;
                 let post_padding = self.padding(min - width, Alignment::Right)?;
                 self.buf.write_str(buf)?;
@@ -1553,10 +1548,10 @@ impl<'a> Formatter<'a> {
         default: Alignment,
     ) -> result::Result<PostPadding, Error> {
         let align = match self.align {
-            rt::v1::Alignment::Unknown => default,
-            rt::v1::Alignment::Left => Alignment::Left,
-            rt::v1::Alignment::Right => Alignment::Right,
-            rt::v1::Alignment::Center => Alignment::Center,
+            rt::Alignment::Unknown => default,
+            rt::Alignment::Left => Alignment::Left,
+            rt::Alignment::Right => Alignment::Right,
+            rt::Alignment::Center => Alignment::Center,
         };
 
         let (pre_pad, post_pad) = match align {
@@ -1788,10 +1783,10 @@ impl<'a> Formatter<'a> {
     #[stable(feature = "fmt_flags_align", since = "1.28.0")]
     pub fn align(&self) -> Option<Alignment> {
         match self.align {
-            rt::v1::Alignment::Left => Some(Alignment::Left),
-            rt::v1::Alignment::Right => Some(Alignment::Right),
-            rt::v1::Alignment::Center => Some(Alignment::Center),
-            rt::v1::Alignment::Unknown => None,
+            rt::Alignment::Left => Some(Alignment::Left),
+            rt::Alignment::Right => Some(Alignment::Right),
+            rt::Alignment::Center => Some(Alignment::Center),
+            rt::Alignment::Unknown => None,
         }
     }
 
