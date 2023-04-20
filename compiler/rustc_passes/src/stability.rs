@@ -115,7 +115,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         let attrs = self.tcx.hir().attrs(self.tcx.hir().local_def_id_to_hir_id(def_id));
         debug!("annotate(id = {:?}, attrs = {:?})", def_id, attrs);
 
-        let depr = attr::find_deprecation(&self.tcx.sess, attrs.iter());
+        let depr = attr::find_deprecation_hir(&self.tcx.sess, attrs);
         let mut is_deprecated = false;
         if let Some((depr, span)) = &depr {
             is_deprecated = true;
@@ -161,7 +161,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
 
         let stab = attr::find_stability(&self.tcx.sess, attrs.iter(), item_sp);
         let const_stab = attr::find_const_stability(&self.tcx.sess, attrs.iter(), item_sp);
-        let body_stab = attr::find_body_stability(&self.tcx.sess, attrs.iter());
+        let body_stab = attr::find_body_stability_hir(&self.tcx.sess, attrs);
         let mut const_span = None;
 
         let const_stab = const_stab.map(|(const_stab, const_span_node)| {

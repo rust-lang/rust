@@ -4,6 +4,7 @@ use rustc_ast::{self as ast, attr};
 use rustc_ast::{Attribute, LitKind, MetaItem, MetaItemKind, MetaItemLit, NestedMetaItem, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
+use rustc_hir as hir;
 use rustc_macros::HashStable_Generic;
 use rustc_session::lint::builtin::UNEXPECTED_CFGS;
 use rustc_session::lint::BuiltinLintDiagnostics;
@@ -331,7 +332,25 @@ pub fn find_const_stability<'a>(
 
 /// Collects stability info from `rustc_default_body_unstable` attributes in `attrs`.
 /// Returns `None` if no stability attributes are found.
-pub fn find_body_stability<'a>(
+pub fn find_body_stability(
+    sess: &Session,
+    attrs: &[Attribute],
+) -> Option<(DefaultBodyStability, Span)> {
+    find_body_stability_generic(sess, attrs.iter())
+}
+
+/// Collects stability info from `rustc_default_body_unstable` attributes in `attrs`.
+/// Returns `None` if no stability attributes are found.
+pub fn find_body_stability_hir(
+    sess: &Session,
+    attrs: &hir::ItemAttributes<'_>,
+) -> Option<(DefaultBodyStability, Span)> {
+    find_body_stability_generic(sess, attrs.with_name(sym::rustc_default_body_unstable))
+}
+
+/// Collects stability info from `rustc_default_body_unstable` attributes in `attrs`.
+/// Returns `None` if no stability attributes are found.
+pub fn find_body_stability_generic<'a>(
     sess: &Session,
     attrs: impl Iterator<Item = &'a Attribute>,
 ) -> Option<(DefaultBodyStability, Span)> {
@@ -798,7 +817,11 @@ pub struct Deprecation {
 }
 
 /// Finds the deprecation attribute. `None` if none exists.
-pub fn find_deprecation<'a>(
+pub fn find_deprecation(sess: &Session, attrs: &[Attribute]) -> Option<(Deprecation, Span)> {
+    find_deprecation_generic(sess, attrs.iter())
+}
+
+fn find_deprecation_generic<'a>(
     sess: &Session,
     attrs: impl Iterator<Item = &'a Attribute>,
 ) -> Option<(Deprecation, Span)> {
@@ -929,6 +952,14 @@ pub fn find_deprecation<'a>(
     }
 
     depr
+}
+
+/// Finds the deprecation attribute. `None` if none exists.
+pub fn find_deprecation_hir(
+    sess: &Session,
+    attrs: &hir::ItemAttributes<'_>,
+) -> Option<(Deprecation, Span)> {
+    find_deprecation_generic(sess, attrs.with_name(sym::deprecated))
 }
 
 #[derive(PartialEq, Debug, Encodable, Decodable, Copy, Clone)]
@@ -1124,7 +1155,21 @@ pub enum TransparencyError {
     MultipleTransparencyAttrs(Span, Span),
 }
 
-pub fn find_transparency<'a>(
+pub fn find_transparency(
+    attrs: &[Attribute],
+    macro_rules: bool,
+) -> (Transparency, Option<TransparencyError>) {
+    find_transparency_generic(attrs.iter(), macro_rules)
+}
+
+pub fn find_transparency_hir(
+    attrs: &hir::ItemAttributes<'_>,
+    macro_rules: bool,
+) -> (Transparency, Option<TransparencyError>) {
+    find_transparency_generic(attrs.with_name(sym::rustc_macro_transparency), macro_rules)
+}
+
+fn find_transparency_generic<'a>(
     attrs: impl Iterator<Item = &'a Attribute>,
     macro_rules: bool,
 ) -> (Transparency, Option<TransparencyError>) {
@@ -1157,19 +1202,49 @@ pub fn find_transparency<'a>(
 
 pub fn allow_internal_unstable<'a>(
     sess: &'a Session,
-    attrs: impl Iterator<Item = &'a Attribute> + 'a,
+    attrs: &'a [Attribute],
 ) -> impl Iterator<Item = Symbol> + 'a {
     allow_unstable(sess, attrs, sym::allow_internal_unstable)
 }
 
+pub fn allow_internal_unstable_hir<'a>(
+    sess: &'a Session,
+    attrs: &'a hir::ItemAttributes<'a>,
+) -> impl Iterator<Item = Symbol> + 'a {
+    allow_unstable_hir(sess, attrs, sym::allow_internal_unstable)
+}
+
 pub fn rustc_allow_const_fn_unstable<'a>(
     sess: &'a Session,
-    attrs: impl Iterator<Item = &'a Attribute> + 'a,
+    attrs: &'a [Attribute],
 ) -> impl Iterator<Item = Symbol> + 'a {
     allow_unstable(sess, attrs, sym::rustc_allow_const_fn_unstable)
 }
 
+pub fn rustc_allow_const_fn_unstable_hir<'a>(
+    sess: &'a Session,
+    attrs: &'a hir::ItemAttributes<'a>,
+) -> impl Iterator<Item = Symbol> + 'a {
+    allow_unstable_hir(sess, attrs, sym::rustc_allow_const_fn_unstable)
+}
+
 fn allow_unstable<'a>(
+    sess: &'a Session,
+    attrs: &'a [Attribute],
+    symbol: Symbol,
+) -> impl Iterator<Item = Symbol> + 'a {
+    allow_unstable_generic(sess, attrs.iter(), symbol)
+}
+
+pub fn allow_unstable_hir<'a>(
+    sess: &'a Session,
+    attrs: &'a hir::ItemAttributes<'a>,
+    symbol: Symbol,
+) -> impl Iterator<Item = Symbol> + 'a {
+    allow_unstable_generic(sess, attrs.with_name(symbol), symbol)
+}
+
+fn allow_unstable_generic<'a>(
     sess: &'a Session,
     attrs: impl Iterator<Item = &'a Attribute> + 'a,
     symbol: Symbol,
