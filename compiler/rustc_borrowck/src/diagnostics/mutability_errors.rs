@@ -559,9 +559,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                 binding_mode: ty::BindingMode::BindByReference(_),
                                 ..
                             })) => {
-                                let pattern_span = local_decl.source_info.span;
+                                let pattern_span: Span = local_decl.source_info.span;
                                 suggest_ref_mut(self.infcx.tcx, pattern_span)
-                                    .map(|replacement| (true, pattern_span, replacement))
+                                    .map(|span| (true, span, "mut ".to_owned()))
                             }
 
                             _ => unreachable!(),
@@ -1316,11 +1316,13 @@ fn get_mut_span_in_struct_field<'tcx>(
 }
 
 /// If possible, suggest replacing `ref` with `ref mut`.
-fn suggest_ref_mut(tcx: TyCtxt<'_>, binding_span: Span) -> Option<String> {
-    let hi_src = tcx.sess.source_map().span_to_snippet(binding_span).ok()?;
-    if hi_src.starts_with("ref") && hi_src["ref".len()..].starts_with(rustc_lexer::is_whitespace) {
-        let replacement = format!("ref mut{}", &hi_src["ref".len()..]);
-        Some(replacement)
+fn suggest_ref_mut(tcx: TyCtxt<'_>, span: Span) -> Option<Span> {
+    let pattern_str = tcx.sess.source_map().span_to_snippet(span).ok()?;
+    if pattern_str.starts_with("ref")
+        && pattern_str["ref".len()..].starts_with(rustc_lexer::is_whitespace)
+    {
+        let span = span.with_lo(span.lo() + BytePos(4)).shrink_to_lo();
+        Some(span)
     } else {
         None
     }
