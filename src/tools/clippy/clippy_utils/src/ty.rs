@@ -1070,7 +1070,7 @@ pub fn make_projection<'tcx>(
                 .find(|(_, (param, arg))| {
                     !matches!(
                         (param, arg),
-                        (ty::GenericParamDefKind::Lifetime, GenericArgKind::Region(_))
+                        (ty::GenericParamDefKind::Region, GenericArgKind::Region(_))
                             | (ty::GenericParamDefKind::Type { .. }, GenericArgKind::Type(_))
                             | (ty::GenericParamDefKind::Const { .. }, GenericArgKind::Const(_))
                     )
