@@ -848,12 +848,12 @@ impl<'tcx> AttributeMap<'tcx> {
 #[derive(Debug)]
 pub struct ItemAttributes<'tcx> {
     items: &'tcx [Attribute],
-    index_sorted_by_key: Vec<(u32, Symbol)>,
+    index_sorted_by_key: SmallVec<[(u32, Symbol); 8]>,
 }
 
 impl<'tcx> ItemAttributes<'tcx> {
     pub const EMPTY: &'static ItemAttributes<'static> =
-        &ItemAttributes { items: &[], index_sorted_by_key: Vec::new() };
+        &ItemAttributes { items: &[], index_sorted_by_key: SmallVec::new_const() };
 
     #[inline]
     pub fn is_empty(&self) -> bool {
@@ -900,7 +900,7 @@ impl<'tcx> ItemAttributes<'tcx> {
 
     #[inline]
     pub fn from_slice(slice: &'tcx [Attribute]) -> Self {
-        let mut index_sorted_by_key = Vec::from_iter(
+        let mut index_sorted_by_key = SmallVec::from_iter(
             slice.iter().enumerate().map(|(idx, attr)| (idx as u32, attr.name_or_empty())),
         );
         index_sorted_by_key.sort_by_key(|&(_idx, name)| name);
