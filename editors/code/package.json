@@ -1455,6 +1455,11 @@
                         "Search in current workspace and dependencies."
                     ]
                 },
+                "rust-analyzer.autoTriggerParameterHints": {
+                    "type": "boolean",
+                    "default": true,
+                    "markdownDescription": "Enable or disable automatic triggering of parameter hints when accepting suggestions."
+                },
                 "$generated-end": {}
             }
         },
