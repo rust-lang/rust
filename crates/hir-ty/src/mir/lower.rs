@@ -898,7 +898,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                                 current,
                                 tmp.clone(),
                                 Rvalue::Ref(bk.clone(), p),
-                                expr_id.into(),
+                                capture.span,
                             );
                             operands.push(Operand::Move(tmp));
                         },

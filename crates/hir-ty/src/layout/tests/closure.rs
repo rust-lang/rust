@@ -106,6 +106,20 @@ fn nested_closures() {
 }
 
 #[test]
+fn capture_specific_fields2() {
+    size_and_align_expr! {
+        minicore: copy;
+        stmts: [
+            let x = &mut 2;
+        ]
+        || {
+            *x = 5;
+            &x;
+        }
+    }
+}
+
+#[test]
 fn capture_specific_fields() {
     size_and_align_expr! {
         struct X(i64, i32, (u8, i128));

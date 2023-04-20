@@ -18,7 +18,7 @@ use smallvec::SmallVec;
 use stdx::never;
 
 use crate::{
-    mir::{BorrowKind, ProjectionElem},
+    mir::{BorrowKind, MirSpan, ProjectionElem},
     static_lifetime, to_chalk_trait_id,
     traits::FnTrait,
     utils::{self, pattern_matching_dereference_count},
@@ -121,6 +121,22 @@ impl HirPlace {
         }
         ty.clone()
     }
+
+    fn capture_kind_of_truncated_place(
+        &self,
+        mut current_capture: CaptureKind,
+        len: usize,
+    ) -> CaptureKind {
+        match current_capture {
+            CaptureKind::ByRef(BorrowKind::Mut { .. }) => {
+                if self.projections[len..].iter().any(|x| *x == ProjectionElem::Deref) {
+                    current_capture = CaptureKind::ByRef(BorrowKind::Unique);
+                }
+            }
+            _ => (),
+        }
+        current_capture
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -133,6 +149,7 @@ pub(crate) enum CaptureKind {
 pub(crate) struct CapturedItem {
     pub(crate) place: HirPlace,
     pub(crate) kind: CaptureKind,
+    pub(crate) span: MirSpan,
     pub(crate) ty: Ty,
 }
 
@@ -140,6 +157,7 @@ pub(crate) struct CapturedItem {
 pub(crate) struct CapturedItemWithoutTy {
     pub(crate) place: HirPlace,
     pub(crate) kind: CaptureKind,
+    pub(crate) span: MirSpan,
 }
 
 impl CapturedItemWithoutTy {
@@ -155,7 +173,7 @@ impl CapturedItemWithoutTy {
                 TyKind::Ref(m, static_lifetime(), ty).intern(Interner)
             }
         };
-        CapturedItem { place: self.place, kind: self.kind, ty }
+        CapturedItem { place: self.place, kind: self.kind, span: self.span, ty }
     }
 }
 
@@ -211,14 +229,14 @@ impl InferenceContext<'_> {
 
     fn ref_expr(&mut self, expr: ExprId) {
         if let Some(place) = self.place_of_expr(expr) {
-            self.add_capture(place, CaptureKind::ByRef(BorrowKind::Shared));
+            self.add_capture(place, CaptureKind::ByRef(BorrowKind::Shared), expr.into());
         }
         self.walk_expr(expr);
     }
 
-    fn add_capture(&mut self, place: HirPlace, kind: CaptureKind) {
+    fn add_capture(&mut self, place: HirPlace, kind: CaptureKind, span: MirSpan) {
         if self.is_upvar(&place) {
-            self.push_capture(CapturedItemWithoutTy { place, kind });
+            self.push_capture(CapturedItemWithoutTy { place, kind, span });
         }
     }
 
@@ -227,6 +245,7 @@ impl InferenceContext<'_> {
             self.add_capture(
                 place,
                 CaptureKind::ByRef(BorrowKind::Mut { allow_two_phase_borrow: false }),
+                expr.into(),
             );
         }
         self.walk_expr(expr);
@@ -234,12 +253,12 @@ impl InferenceContext<'_> {
 
     fn consume_expr(&mut self, expr: ExprId) {
         if let Some(place) = self.place_of_expr(expr) {
-            self.consume_place(place);
+            self.consume_place(place, expr.into());
         }
         self.walk_expr(expr);
     }
 
-    fn consume_place(&mut self, place: HirPlace) {
+    fn consume_place(&mut self, place: HirPlace, span: MirSpan) {
         if self.is_upvar(&place) {
             let ty = place.ty(self).clone();
             let kind = if self.is_ty_copy(ty) {
@@ -247,7 +266,7 @@ impl InferenceContext<'_> {
             } else {
                 CaptureKind::ByValue
             };
-            self.push_capture(CapturedItemWithoutTy { place, kind });
+            self.push_capture(CapturedItemWithoutTy { place, kind, span });
         }
     }
 
@@ -281,9 +300,7 @@ impl InferenceContext<'_> {
         };
         if let Some(place) = self.place_of_expr_without_adjust(tgt_expr) {
             if let Some(place) = apply_adjusts_to_place(place, rest) {
-                if self.is_upvar(&place) {
-                    self.push_capture(CapturedItemWithoutTy { place, kind: capture_kind });
-                }
+                self.add_capture(place, capture_kind, tgt_expr.into());
             }
         }
         self.walk_expr_with_adjust(tgt_expr, rest);
@@ -456,12 +473,9 @@ impl InferenceContext<'_> {
                         "We sort closures, so we should always have data for inner closures",
                     );
                 let mut cc = mem::take(&mut self.current_captures);
-                cc.extend(
-                    captures
-                        .iter()
-                        .filter(|x| self.is_upvar(&x.place))
-                        .map(|x| CapturedItemWithoutTy { place: x.place.clone(), kind: x.kind }),
-                );
+                cc.extend(captures.iter().filter(|x| self.is_upvar(&x.place)).map(|x| {
+                    CapturedItemWithoutTy { place: x.place.clone(), kind: x.kind, span: x.span }
+                }));
                 self.current_captures = cc;
             }
             Expr::Array(Array::ElementList { elements: exprs, is_assignee_expr: _ })
@@ -552,8 +566,11 @@ impl InferenceContext<'_> {
             };
             match prev_index {
                 Some(p) => {
+                    let len = self.current_captures[p].place.projections.len();
+                    let kind_after_truncate =
+                        item.place.capture_kind_of_truncated_place(item.kind, len);
                     self.current_captures[p].kind =
-                        cmp::max(item.kind, self.current_captures[p].kind);
+                        cmp::max(kind_after_truncate, self.current_captures[p].kind);
                 }
                 None => {
                     hash_map.insert(item.place.clone(), self.current_captures.len());
@@ -603,7 +620,7 @@ impl InferenceContext<'_> {
                 };
                 match variant {
                     VariantId::EnumVariantId(_) | VariantId::UnionId(_) => {
-                        self.consume_place(place)
+                        self.consume_place(place, pat.into())
                     }
                     VariantId::StructId(s) => {
                         let vd = &*self.db.struct_data(s).variant_data;
@@ -632,7 +649,7 @@ impl InferenceContext<'_> {
             | Pat::Slice { .. }
             | Pat::ConstBlock(_)
             | Pat::Path(_)
-            | Pat::Lit(_) => self.consume_place(place),
+            | Pat::Lit(_) => self.consume_place(place, pat.into()),
             Pat::Bind { id, subpat: _ } => {
                 let mode = self.body.bindings[*id].mode;
                 if matches!(mode, BindingAnnotation::Ref | BindingAnnotation::RefMut) {
@@ -640,13 +657,13 @@ impl InferenceContext<'_> {
                 }
                 let capture_kind = match bm {
                     BindingAnnotation::Unannotated | BindingAnnotation::Mutable => {
-                        self.consume_place(place);
+                        self.consume_place(place, pat.into());
                         return;
                     }
                     BindingAnnotation::Ref => BorrowKind::Shared,
                     BindingAnnotation::RefMut => BorrowKind::Mut { allow_two_phase_borrow: false },
                 };
-                self.add_capture(place, CaptureKind::ByRef(capture_kind));
+                self.add_capture(place, CaptureKind::ByRef(capture_kind), pat.into());
             }
             Pat::TupleStruct { path: _, args, ellipsis } => {
                 pattern_matching_dereference(&mut ty, &mut bm, &mut place);
@@ -659,7 +676,7 @@ impl InferenceContext<'_> {
                 };
                 match variant {
                     VariantId::EnumVariantId(_) | VariantId::UnionId(_) => {
-                        self.consume_place(place)
+                        self.consume_place(place, pat.into())
                     }
                     VariantId::StructId(s) => {
                         let vd = &*self.db.struct_data(s).variant_data;
