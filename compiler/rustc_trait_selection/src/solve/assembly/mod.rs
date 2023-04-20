@@ -636,7 +636,12 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                         polarity: ty::ImplPolarity::Positive,
                     },
                 );
+
+                // FIXME: We probably need some sort of recursion depth incr here.
+                // Can't come up with an example yet, though, and the worst case
+                // we can have is a compiler stack overflow...
                 self.assemble_param_env_candidates(trait_goal, &mut param_env_candidates);
+                self.assemble_alias_bound_candidates(trait_goal, &mut param_env_candidates);
 
                 // FIXME: Bad bad bad bad bad !!!!!
                 let lang_items = self.tcx().lang_items();
