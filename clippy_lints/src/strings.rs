@@ -253,10 +253,6 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         use rustc_ast::LitKind;
 
-        if e.span.from_expansion() {
-            return;
-        }
-
         if_chain! {
             // Find std::str::converts::from_utf8
             if let Some(args) = match_function_call(cx, e, &paths::STR_FROM_UTF8);
@@ -296,6 +292,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
         }
 
         if_chain! {
+            if !in_external_macro(cx.sess(), e.span);
             if let ExprKind::MethodCall(path, receiver, ..) = &e.kind;
             if path.ident.name == sym!(as_bytes);
             if let ExprKind::Lit(lit) = &receiver.kind;
