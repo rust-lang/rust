@@ -267,7 +267,7 @@ extern "C" {
 #[allow(missing_debug_implementations)]
 #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
 #[doc(hidden)]
-pub struct ArgumentV1<'a> {
+pub struct Argument<'a> {
     value: &'a Opaque,
     formatter: fn(&Opaque, &mut Formatter<'_>) -> Result,
 }
@@ -321,18 +321,18 @@ macro_rules! arg_new {
         #[doc(hidden)]
         #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
         #[inline]
-        pub fn $f<'b, T: $t>(x: &'b T) -> ArgumentV1<'_> {
+        pub fn $f<'b, T: $t>(x: &'b T) -> Argument<'_> {
             Self::new(x, $t::fmt)
         }
     };
 }
 
-#[rustc_diagnostic_item = "ArgumentV1Methods"]
-impl<'a> ArgumentV1<'a> {
+#[rustc_diagnostic_item = "ArgumentMethods"]
+impl<'a> Argument<'a> {
     #[doc(hidden)]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     #[inline]
-    pub fn new<'b, T>(x: &'b T, f: fn(&T, &mut Formatter<'_>) -> Result) -> ArgumentV1<'b> {
+    pub fn new<'b, T>(x: &'b T, f: fn(&T, &mut Formatter<'_>) -> Result) -> Argument<'b> {
         // SAFETY: `mem::transmute(x)` is safe because
         //     1. `&'b T` keeps the lifetime it originated with `'b`
         //              (so as to not have an unbounded lifetime)
@@ -341,7 +341,7 @@ impl<'a> ArgumentV1<'a> {
         // `mem::transmute(f)` is safe since `fn(&T, &mut Formatter<'_>) -> Result`
         // and `fn(&Opaque, &mut Formatter<'_>) -> Result` have the same ABI
         // (as long as `T` is `Sized`)
-        unsafe { ArgumentV1 { formatter: mem::transmute(f), value: mem::transmute(x) } }
+        unsafe { Argument { formatter: mem::transmute(f), value: mem::transmute(x) } }
     }
 
     arg_new!(new_display, Display);
@@ -356,8 +356,8 @@ impl<'a> ArgumentV1<'a> {
 
     #[doc(hidden)]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
-    pub fn from_usize(x: &usize) -> ArgumentV1<'_> {
-        ArgumentV1::new(x, USIZE_MARKER)
+    pub fn from_usize(x: &usize) -> Argument<'_> {
+        Argument::new(x, USIZE_MARKER)
     }
 
     fn as_usize(&self) -> Option<usize> {
@@ -377,7 +377,7 @@ impl<'a> ArgumentV1<'a> {
 
 // flags available in the v1 format of format_args
 #[derive(Copy, Clone)]
-enum FlagV1 {
+enum Flag {
     SignPlus,
     SignMinus,
     Alternate,
@@ -404,7 +404,7 @@ impl<'a> Arguments<'a> {
     #[doc(hidden)]
     #[inline]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
-    pub fn new_v1(pieces: &'a [&'static str], args: &'a [ArgumentV1<'a>]) -> Arguments<'a> {
+    pub fn new_v1(pieces: &'a [&'static str], args: &'a [Argument<'a>]) -> Arguments<'a> {
         if pieces.len() < args.len() || pieces.len() > args.len() + 1 {
             panic!("invalid args");
         }
@@ -416,7 +416,7 @@ impl<'a> Arguments<'a> {
     #[inline]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     #[rustc_const_unstable(feature = "const_fmt_arguments_new", issue = "none")]
-    pub const fn new_v1(pieces: &'a [&'static str], args: &'a [ArgumentV1<'a>]) -> Arguments<'a> {
+    pub const fn new_v1(pieces: &'a [&'static str], args: &'a [Argument<'a>]) -> Arguments<'a> {
         if pieces.len() < args.len() || pieces.len() > args.len() + 1 {
             panic!("invalid args");
         }
@@ -435,7 +435,7 @@ impl<'a> Arguments<'a> {
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     pub fn new_v1_formatted(
         pieces: &'a [&'static str],
-        args: &'a [ArgumentV1<'a>],
+        args: &'a [Argument<'a>],
         fmt: &'a [rt::Placeholder],
         _unsafe_arg: UnsafeArg,
     ) -> Arguments<'a> {
@@ -502,7 +502,7 @@ pub struct Arguments<'a> {
 
     // Dynamic arguments for interpolation, to be interleaved with string
     // pieces. (Every argument is preceded by a string piece.)
-    args: &'a [ArgumentV1<'a>],
+    args: &'a [Argument<'a>],
 }
 
 impl<'a> Arguments<'a> {
@@ -1274,7 +1274,7 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
     Ok(())
 }
 
-unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::Placeholder, args: &[ArgumentV1<'_>]) -> Result {
+unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::Placeholder, args: &[Argument<'_>]) -> Result {
     fmt.fill = arg.fill;
     fmt.align = arg.align;
     fmt.flags = arg.flags;
@@ -1295,7 +1295,7 @@ unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::Placeholder, args: &[ArgumentV1
     (value.formatter)(value.value, fmt)
 }
 
-unsafe fn getcount(args: &[ArgumentV1<'_>], cnt: &rt::Count) -> Option<usize> {
+unsafe fn getcount(args: &[Argument<'_>], cnt: &rt::Count) -> Option<usize> {
     match *cnt {
         rt::Count::Is(n) => Some(n),
         rt::Count::Implied => None,
@@ -1878,7 +1878,7 @@ impl<'a> Formatter<'a> {
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn sign_plus(&self) -> bool {
-        self.flags & (1 << FlagV1::SignPlus as u32) != 0
+        self.flags & (1 << Flag::SignPlus as u32) != 0
     }
 
     /// Determines if the `-` flag was specified.
@@ -1907,7 +1907,7 @@ impl<'a> Formatter<'a> {
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn sign_minus(&self) -> bool {
-        self.flags & (1 << FlagV1::SignMinus as u32) != 0
+        self.flags & (1 << Flag::SignMinus as u32) != 0
     }
 
     /// Determines if the `#` flag was specified.
@@ -1935,7 +1935,7 @@ impl<'a> Formatter<'a> {
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn alternate(&self) -> bool {
-        self.flags & (1 << FlagV1::Alternate as u32) != 0
+        self.flags & (1 << Flag::Alternate as u32) != 0
     }
 
     /// Determines if the `0` flag was specified.
@@ -1961,17 +1961,17 @@ impl<'a> Formatter<'a> {
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn sign_aware_zero_pad(&self) -> bool {
-        self.flags & (1 << FlagV1::SignAwareZeroPad as u32) != 0
+        self.flags & (1 << Flag::SignAwareZeroPad as u32) != 0
     }
 
     // FIXME: Decide what public API we want for these two flags.
     // https://github.com/rust-lang/rust/issues/48584
     fn debug_lower_hex(&self) -> bool {
-        self.flags & (1 << FlagV1::DebugLowerHex as u32) != 0
+        self.flags & (1 << Flag::DebugLowerHex as u32) != 0
     }
 
     fn debug_upper_hex(&self) -> bool {
-        self.flags & (1 << FlagV1::DebugUpperHex as u32) != 0
+        self.flags & (1 << Flag::DebugUpperHex as u32) != 0
     }
 
     /// Creates a [`DebugStruct`] builder designed to assist with creation of
@@ -2531,13 +2531,13 @@ pub(crate) fn pointer_fmt_inner(ptr_addr: usize, f: &mut Formatter<'_>) -> Resul
     // or not to zero extend, and then unconditionally set it to get the
     // prefix.
     if f.alternate() {
-        f.flags |= 1 << (FlagV1::SignAwareZeroPad as u32);
+        f.flags |= 1 << (Flag::SignAwareZeroPad as u32);
 
         if f.width.is_none() {
             f.width = Some((usize::BITS / 4) as usize + 2);
         }
     }
-    f.flags |= 1 << (FlagV1::Alternate as u32);
+    f.flags |= 1 << (Flag::Alternate as u32);
 
     let ret = LowerHex::fmt(&ptr_addr, f);
 
