@@ -357,7 +357,13 @@ impl<'tcx> Inliner<'tcx> {
     ) -> Result<(), &'static str> {
         match callee_attrs.inline {
             InlineAttr::Never => return Err("never inline hint"),
-            InlineAttr::Always => {}
+            InlineAttr::Always => {
+                if self.tcx.sess.mir_opt_level() == 1 && callsite.callee.def_id().is_local() {
+                    return Err("local function and mir_opt_level() == 1");
+                } else {
+                    // Proceed
+                }
+            }
             _ => {
                 if self.tcx.sess.mir_opt_level() == 1 {
                     return Err("No inline(always) and mir_opt_level() == 1");
