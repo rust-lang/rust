@@ -32,8 +32,6 @@ pub mod io;
 #[path = "../unsupported/locks/mod.rs"]
 pub mod locks;
 pub mod net;
-#[path = "../unsupported/once.rs"]
-pub mod once;
 pub mod os;
 #[path = "../unix/os_str.rs"]
 pub mod os_str;
@@ -50,6 +48,13 @@ pub mod thread_local_dtor;
 #[path = "../unsupported/thread_local_key.rs"]
 pub mod thread_local_key;
 pub mod time;
+
+cfg_if::cfg_if! {
+    if #[cfg(not(target_feature = "atomics"))] {
+        #[path = "../unsupported/once.rs"]
+        pub mod once;
+    }
+}
 
 #[path = "../unsupported/common.rs"]
 #[deny(unsafe_op_in_unsafe_fn)]
