@@ -857,7 +857,7 @@ fn link_natively<'a>(
             if !prog.status.success() {
                 let mut output = prog.stderr.clone();
                 output.extend_from_slice(&prog.stdout);
-                let escaped_output = escape_string(&output);
+                let escaped_output = escape_linker_output(&output, flavor);
                 // FIXME: Add UI tests for this error.
                 let err = errors::LinkingFailed {
                     linker_path: &linker_path,
@@ -1047,6 +1047,59 @@ fn escape_string(s: &[u8]) -> String {
         Ok(s) => s.to_owned(),
         Err(_) => format!("Non-UTF-8 output: {}", s.escape_ascii()),
     }
+}
+
+#[cfg(not(windows))]
+fn escape_linker_output(s: &[u8], _flavour: LinkerFlavor) -> String {
+    escape_string(s)
+}
+
+/// If the output of the msvc linker is not UTF-8 and the host is Windows,
+/// then try to convert the string from the OEM encoding.
+#[cfg(windows)]
+fn escape_linker_output(s: &[u8], flavour: LinkerFlavor) -> String {
+    // This only applies to the actual MSVC linker.
+    if flavour != LinkerFlavor::Msvc(Lld::No) {
+        return escape_string(s);
+    }
+    match str::from_utf8(s) {
+        Ok(s) => return s.to_owned(),
+        Err(_) if s.len() <= i32::MAX as usize => {
+            use windows::Win32::Globalization::{
+                GetLocaleInfoEx, MultiByteToWideChar, CP_OEMCP, LOCALE_IUSEUTF8LEGACYOEMCP,
+                LOCALE_NAME_SYSTEM_DEFAULT, LOCALE_RETURN_NUMBER, MB_ERR_INVALID_CHARS,
+            };
+            // Get the legacy system OEM code page.
+            let code_page = unsafe {
+                let mut cp: u32 = 0;
+                // We're using the `LOCALE_RETURN_NUMBER` flag to return a u32.
+                // But the API requires us to pass the data as though it's a [u16] string.
+                let len = std::mem::size_of::<u32>() / std::mem::size_of::<u16>();
+                let data = std::slice::from_raw_parts_mut(&mut cp as *mut u32 as *mut u16, len);
+                let len_written = GetLocaleInfoEx(
+                    LOCALE_NAME_SYSTEM_DEFAULT,
+                    LOCALE_IUSEUTF8LEGACYOEMCP | LOCALE_RETURN_NUMBER,
+                    Some(data),
+                );
+                if len_written as usize == len { cp } else { CP_OEMCP }
+            };
+            // Error if the string is not valid for the expected code page.
+            let flags = MB_ERR_INVALID_CHARS;
+            // Call MultiByteToWideChar twice.
+            // First to calculate the length then to convert the string.
+            let mut len = unsafe { MultiByteToWideChar(code_page, flags, s, None) };
+            if len > 0 {
+                let mut utf16 = vec![0; len as usize];
+                len = unsafe { MultiByteToWideChar(code_page, flags, s, Some(&mut utf16)) };
+                if len > 0 {
+                    return String::from_utf16_lossy(&utf16[..len as usize]);
+                }
+            }
+        }
+        _ => {}
+    };
+    // The string is not UTF-8 and isn't valid for the OEM code page
+    format!("Non-UTF-8 output: {}", s.escape_ascii())
 }
 
 fn add_sanitizer_libraries(sess: &Session, crate_type: CrateType, linker: &mut dyn Linker) {

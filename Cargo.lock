@@ -3250,6 +3250,7 @@ dependencies = [
  "tempfile",
  "thorin-dwp",
  "tracing",
+ "windows 0.46.0",
 ]
 
 [[package]]
