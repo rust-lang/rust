@@ -241,8 +241,8 @@ fn format_args_expand(
     // We expand `format_args!("", a1, a2)` to
     // ```
     // $crate::fmt::Arguments::new_v1(&[], &[
-    //   $crate::fmt::ArgumentV1::new(&arg1,$crate::fmt::Display::fmt),
-    //   $crate::fmt::ArgumentV1::new(&arg2,$crate::fmt::Display::fmt),
+    //   $crate::fmt::Argument::new(&arg1,$crate::fmt::Display::fmt),
+    //   $crate::fmt::Argument::new(&arg2,$crate::fmt::Display::fmt),
     // ])
     // ```,
     // which is still not really correct, but close enough for now
@@ -267,7 +267,7 @@ fn format_args_expand(
     }
     let _format_string = args.remove(0);
     let arg_tts = args.into_iter().flat_map(|arg| {
-        quote! { #DOLLAR_CRATE::fmt::ArgumentV1::new(&(#arg), #DOLLAR_CRATE::fmt::Display::fmt), }
+        quote! { #DOLLAR_CRATE::fmt::Argument::new(&(#arg), #DOLLAR_CRATE::fmt::Display::fmt), }
     }.token_trees);
     let expanded = quote! {
         #DOLLAR_CRATE::fmt::Arguments::new_v1(&[], &[##arg_tts])
