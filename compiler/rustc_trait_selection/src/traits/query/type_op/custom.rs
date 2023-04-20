@@ -79,7 +79,7 @@ pub fn scrape_region_constraints<'tcx, Op: super::TypeOp<'tcx, Output = R>, R>(
     if !errors.is_empty() {
         infcx.tcx.sess.diagnostic().delay_span_bug(
             DUMMY_SP,
-            &format!("errors selecting obligation during MIR typeck: {:?}", errors),
+            format!("errors selecting obligation during MIR typeck: {:?}", errors),
         );
     }
 

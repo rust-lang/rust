@@ -94,7 +94,7 @@ fn push_debuginfo_type_name<'tcx>(
                         // Computing the layout can still fail here, e.g. if the target architecture
                         // cannot represent the type. See https://github.com/rust-lang/rust/issues/94961.
                         // FIXME: migrate once `rustc_middle::mir::interpret::InterpError` is translatable.
-                        tcx.sess.fatal(&format!("{}", e));
+                        tcx.sess.fatal(format!("{}", e));
                     }
                 }
             } else {

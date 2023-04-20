@@ -533,8 +533,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     }
                     _ => panic!("Unexpected type {ty:?}"),
                 };
-                diag.note(&format!("requirement occurs because of {desc}",));
-                diag.note(&note);
+                diag.note(format!("requirement occurs because of {desc}",));
+                diag.note(note);
                 diag.help("see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance");
             }
         }
@@ -863,7 +863,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
             spans_suggs.push((alias_span.shrink_to_hi(), "<'a>".to_string()));
             diag.multipart_suggestion_verbose(
-                &format!(
+                format!(
                     "to declare that the trait object {captures}, you can add a lifetime parameter `'a` in the type alias"
                 ),
                 spans_suggs,

@@ -498,7 +498,7 @@ impl IntoDiagnostic<'_> for MultipleCandidates {
         diag.code(error_code!(E0464));
         diag.set_span(self.span);
         for (i, candidate) in self.candidates.iter().enumerate() {
-            diag.note(&format!("candidate #{}: {}", i + 1, candidate.display()));
+            diag.note(format!("candidate #{}: {}", i + 1, candidate.display()));
         }
         diag
     }

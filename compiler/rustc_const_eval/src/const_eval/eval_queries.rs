@@ -368,7 +368,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                         if matches!(err.error, InterpError::UndefinedBehavior(_)) {
                             diag.note(NOTE_ON_UNDEFINED_BEHAVIOR_ERROR);
                         }
-                        diag.note(&format!(
+                        diag.note(format!(
                             "the raw bytes of the constant ({}",
                             display_allocation(
                                 *ecx.tcx,

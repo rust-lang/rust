@@ -1396,7 +1396,7 @@ impl<'tcx> Pick<'tcx> {
                         // However `self.span` only
                         // highlights the method name, so we can't use it. Also consider reusing
                         // the code from `report_method_error()`.
-                        lint.help(&format!(
+                        lint.help(format!(
                             "call with fully qualified syntax `{}(...)` to keep using the current \
                              method",
                             tcx.def_path_str(self.item.def_id),
@@ -1420,7 +1420,7 @@ impl<'tcx> Pick<'tcx> {
                 }
                 if tcx.sess.is_nightly_build() {
                     for (candidate, feature) in &self.unstable_candidates {
-                        lint.help(&format!(
+                        lint.help(format!(
                             "add `#![feature({})]` to the crate attributes to enable `{}`",
                             feature,
                             tcx.def_path_str(candidate.item.def_id),

@@ -236,7 +236,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
             if hidden_type.has_non_region_infer() {
                 let reported = infcx.tcx.sess.delay_span_bug(
                     decl.hidden_type.span,
-                    &format!("could not resolve {:#?}", hidden_type.ty.kind()),
+                    format!("could not resolve {:#?}", hidden_type.ty.kind()),
                 );
                 hidden_type.ty = infcx.tcx.ty_error(reported);
             }

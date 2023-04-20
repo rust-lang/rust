@@ -1146,7 +1146,7 @@ impl<'a> ExtCtxt<'a> {
         for (span, notes) in self.expansions.iter() {
             let mut db = self.sess.parse_sess.create_note(errors::TraceMacro { span: *span });
             for note in notes {
-                db.note(note);
+                db.note(note.clone());
             }
             db.emit();
         }

@@ -83,7 +83,7 @@ pub(crate) fn eval_to_valtree<'tcx>(
                         Some(span) => {
                             tcx.sess.create_err(MaxNumNodesInConstErr { span, global_const_id })
                         }
-                        None => tcx.sess.struct_err(&msg),
+                        None => tcx.sess.struct_err(msg),
                     };
                     diag.emit();
 

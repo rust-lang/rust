@@ -445,7 +445,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
             let plural = pluralize!(unsatisfied_bounds.len());
             let mut err = tcx.sess.struct_span_err(
                 gat_item_hir.span,
-                &format!("missing required bound{} on `{}`", plural, gat_item_hir.ident),
+                format!("missing required bound{} on `{}`", plural, gat_item_hir.ident),
             );
 
             let suggestion = format!(
@@ -455,14 +455,14 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
             );
             err.span_suggestion(
                 gat_item_hir.generics.tail_span_for_predicate_suggestion(),
-                &format!("add the required where clause{plural}"),
+                format!("add the required where clause{plural}"),
                 suggestion,
                 Applicability::MachineApplicable,
             );
 
             let bound =
                 if unsatisfied_bounds.len() > 1 { "these bounds are" } else { "this bound is" };
-            err.note(&format!(
+            err.note(format!(
                 "{} currently required to ensure that impls have maximum flexibility",
                 bound
             ));
@@ -916,14 +916,14 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
                     if is_ptr {
                         tcx.sess.span_err(
                             hir_ty.span,
-                            &format!(
+                            format!(
                                 "using {unsupported_type} as const generic parameters is forbidden",
                             ),
                         );
                     } else {
                         let mut err = tcx.sess.struct_span_err(
                             hir_ty.span,
-                            &format!(
+                            format!(
                                 "{unsupported_type} is forbidden as the type of a const generic parameter",
                             ),
                         );
@@ -1029,7 +1029,7 @@ fn check_type_defn<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'tcx>, all_sized: b
                     let ty = tcx.erase_regions(ty);
                     if ty.has_infer() {
                         tcx.sess
-                            .delay_span_bug(item.span, &format!("inference variables in {:?}", ty));
+                            .delay_span_bug(item.span, format!("inference variables in {:?}", ty));
                         // Just treat unresolved type expression as if it needs drop.
                         true
                     } else {
@@ -1651,7 +1651,7 @@ fn check_method_receiver<'tcx>(
                     &tcx.sess.parse_sess,
                     sym::arbitrary_self_types,
                     span,
-                    &format!(
+                    format!(
                         "`{receiver_ty}` cannot be used as the type of `self` without \
                          the `arbitrary_self_types` feature",
                     ),
@@ -1874,10 +1874,10 @@ fn report_bivariance(
     } else {
         format!("consider removing `{param_name}` or referring to it in a field")
     };
-    err.help(&msg);
+    err.help(msg);
 
     if matches!(param.kind, hir::GenericParamKind::Type { .. }) && !has_explicit_bounds {
-        err.help(&format!(
+        err.help(format!(
             "if you intended `{0}` to be a const parameter, use `const {0}: usize` instead",
             param_name
         ));

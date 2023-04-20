@@ -293,7 +293,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // FIXME: This should be a span_bug (#80742)
                     self.tcx.sess.delay_span_bug(
                         self.frame().current_span(),
-                        &format!("{null_op:?} MIR operator called for unsized type {ty}"),
+                        format!("{null_op:?} MIR operator called for unsized type {ty}"),
                     );
                     throw_inval!(SizeOfUnsizedType(ty));
                 }

@@ -205,7 +205,7 @@ impl CanonicalizeMode for CanonicalizeQueryResponse {
                 // `delay_span_bug` to allow type error over an ICE.
                 canonicalizer.tcx.sess.delay_span_bug(
                     rustc_span::DUMMY_SP,
-                    &format!("unexpected region in query response: `{:?}`", r),
+                    format!("unexpected region in query response: `{:?}`", r),
                 );
                 r
             }

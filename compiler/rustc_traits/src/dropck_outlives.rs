@@ -190,7 +190,7 @@ fn dtorck_constraint_for_ty<'tcx>(
 
                 tcx.sess.delay_span_bug(
                     span,
-                    &format!("upvar_tys for closure not found. Expected capture information for closure {ty}",),
+                    format!("upvar_tys for closure not found. Expected capture information for closure {ty}",),
                 );
                 return Err(NoSolution);
             }
@@ -232,7 +232,7 @@ fn dtorck_constraint_for_ty<'tcx>(
                 // be fully resolved.
                 tcx.sess.delay_span_bug(
                     span,
-                    &format!("upvar_tys for generator not found. Expected capture information for generator {ty}",),
+                    format!("upvar_tys for generator not found. Expected capture information for generator {ty}",),
                 );
                 return Err(NoSolution);
             }

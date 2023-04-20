@@ -480,7 +480,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         let span = self.path_segment.ident.span;
         let msg = self.create_error_message();
 
-        self.tcx.sess.struct_span_err_with_code(span, &msg, self.code())
+        self.tcx.sess.struct_span_err_with_code(span, msg, self.code())
     }
 
     /// Builds the `expected 1 type argument / supplied 2 type arguments` message.
@@ -602,7 +602,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
                 err.span_suggestion_verbose(
                     span.shrink_to_hi(),
-                    &msg,
+                    msg,
                     sugg,
                     Applicability::HasPlaceholders,
                 );
@@ -625,7 +625,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 let sugg = format!("{}{}{}", sugg_prefix, suggested_args, sugg_suffix);
                 debug!("sugg: {:?}", sugg);
 
-                err.span_suggestion_verbose(sugg_span, &msg, sugg, Applicability::HasPlaceholders);
+                err.span_suggestion_verbose(sugg_span, msg, sugg, Applicability::HasPlaceholders);
             }
             AngleBrackets::Implied => {
                 // We never encounter missing lifetimes in situations in which lifetimes are elided
@@ -652,7 +652,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
                 err.span_suggestion_verbose(
                     span.shrink_to_hi(),
-                    &msg,
+                    msg,
                     sugg,
                     Applicability::HasPlaceholders,
                 );
@@ -683,7 +683,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 let sugg = format!("{}{}{}", sugg_prefix, suggested_args, sugg_suffix);
                 debug!("sugg: {:?}", sugg);
 
-                err.span_suggestion_verbose(sugg_span, &msg, sugg, Applicability::HasPlaceholders);
+                err.span_suggestion_verbose(sugg_span, msg, sugg, Applicability::HasPlaceholders);
             }
         }
     }
@@ -885,7 +885,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
             err.span_suggestion(
                 span_redundant_lt_args,
-                &msg_lifetimes,
+                msg_lifetimes,
                 "",
                 Applicability::MaybeIncorrect,
             );
@@ -927,7 +927,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
             err.span_suggestion(
                 span_redundant_type_or_const_args,
-                &msg_types_or_consts,
+                msg_types_or_consts,
                 "",
                 Applicability::MaybeIncorrect,
             );
@@ -943,7 +943,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
             if !suggestions.is_empty() {
                 err.multipart_suggestion_verbose(
-                    &format!(
+                    format!(
                         "replace the generic bound{s} with the associated type{s}",
                         s = pluralize!(unbound_types.len())
                     ),
@@ -969,7 +969,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 },
             );
 
-            err.span_suggestion(span, &msg, "", Applicability::MaybeIncorrect);
+            err.span_suggestion(span, msg, "", Applicability::MaybeIncorrect);
         } else if redundant_lifetime_args && redundant_type_or_const_args {
             remove_lifetime_args(err);
             remove_type_or_const_args(err);
@@ -1029,7 +1029,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             )
         };
 
-        err.span_note(spans, &msg);
+        err.span_note(spans, msg);
     }
 
     /// Add note if `impl Trait` is explicitly specified.

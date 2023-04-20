@@ -112,7 +112,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                     self.fcx
                         .tcx
                         .sess
-                        .delay_span_bug(span, &format!("Encountered var {:?}", unresolved_term));
+                        .delay_span_bug(span, format!("Encountered var {:?}", unresolved_term));
                 } else {
                     let note = format!(
                         "the type is part of the {} because of this {}",
@@ -464,7 +464,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                     self.fcx
                         .tcx
                         .sess
-                        .delay_span_bug(expr.span, &format!("inference variables in {ty}"));
+                        .delay_span_bug(expr.span, format!("inference variables in {ty}"));
                     true
                 } else {
                     ty.needs_drop(self.fcx.tcx, self.fcx.param_env)

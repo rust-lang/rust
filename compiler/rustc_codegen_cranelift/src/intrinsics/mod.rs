@@ -42,7 +42,7 @@ fn report_atomic_type_validation_error<'tcx>(
 ) {
     fx.tcx.sess.span_err(
         span,
-        &format!(
+        format!(
             "`{}` intrinsic: expected basic integer or raw pointer type, found `{:?}`",
             intrinsic, ty
         ),
@@ -1202,7 +1202,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
         _ => {
             fx.tcx
                 .sess
-                .span_fatal(source_info.span, &format!("unsupported intrinsic {}", intrinsic));
+                .span_fatal(source_info.span, format!("unsupported intrinsic {}", intrinsic));
         }
     }
 

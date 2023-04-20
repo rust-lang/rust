@@ -115,8 +115,8 @@ pub fn report_unstable(
         soft_handler(SOFT_UNSTABLE, span, &msg)
     } else {
         let mut err =
-            feature_err_issue(&sess.parse_sess, feature, span, GateIssue::Library(issue), &msg);
-        if let Some((inner_types, ref msg, sugg, applicability)) = suggestion {
+            feature_err_issue(&sess.parse_sess, feature, span, GateIssue::Library(issue), msg);
+        if let Some((inner_types, msg, sugg, applicability)) = suggestion {
             err.span_suggestion(inner_types, msg, sugg, applicability);
         }
         err.emit();
@@ -170,7 +170,7 @@ pub fn deprecation_suggestion(
     if let Some(suggestion) = suggestion {
         diag.span_suggestion_verbose(
             span,
-            &format!("replace the use of the deprecated {}", kind),
+            format!("replace the use of the deprecated {}", kind),
             suggestion,
             Applicability::MachineApplicable,
         );
@@ -599,7 +599,7 @@ impl<'tcx> TyCtxt<'tcx> {
             |span, def_id| {
                 // The API could be uncallable for other reasons, for example when a private module
                 // was referenced.
-                self.sess.delay_span_bug(span, &format!("encountered unmarked API: {:?}", def_id));
+                self.sess.delay_span_bug(span, format!("encountered unmarked API: {:?}", def_id));
             },
         )
     }

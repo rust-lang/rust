@@ -409,14 +409,15 @@ pub fn report_msg<'tcx>(
     } else {
         // Make sure we show the message even when it is a dummy span.
         for line in span_msg {
-            err.note(&line);
+            err.note(line);
         }
         err.note("(no span available)");
     }
 
     // Show note and help messages.
     let mut extra_span = false;
-    for (span_data, note) in &notes {
+    let notes_len = notes.len();
+    for (span_data, note) in notes {
         if let Some(span_data) = span_data {
             err.span_note(span_data.span(), note);
             extra_span = true;
@@ -424,7 +425,8 @@ pub fn report_msg<'tcx>(
             err.note(note);
         }
     }
-    for (span_data, help) in &helps {
+    let helps_len = helps.len();
+    for (span_data, help) in helps {
         if let Some(span_data) = span_data {
             err.span_help(span_data.span(), help);
             extra_span = true;
@@ -432,7 +434,7 @@ pub fn report_msg<'tcx>(
             err.help(help);
         }
     }
-    if notes.len() + helps.len() > 0 {
+    if notes_len + helps_len > 0 {
         // Add visual separator before backtrace.
         err.note(if extra_span { "BACKTRACE (of the first span):" } else { "BACKTRACE:" });
     }
@@ -441,7 +443,7 @@ pub fn report_msg<'tcx>(
         let is_local = machine.is_local(frame_info);
         // No span for non-local frames and the first frame (which is the error site).
         if is_local && idx > 0 {
-            err.span_note(frame_info.span, &frame_info.to_string());
+            err.span_note(frame_info.span, frame_info.to_string());
         } else {
             let sm = sess.source_map();
             let span = sm.span_to_embeddable_string(frame_info.span);

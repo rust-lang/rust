@@ -2198,7 +2198,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     this.r
                         .tcx
                         .sess
-                        .span_err(ident.span, &format!("imports cannot refer to {}", what));
+                        .span_err(ident.span, format!("imports cannot refer to {}", what));
                 }
             };
 

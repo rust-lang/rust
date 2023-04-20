@@ -132,7 +132,7 @@ where
                             _ => {
                                 tcx.sess.delay_span_bug(
                                     tcx.hir().span_if_local(def_id).unwrap_or(DUMMY_SP),
-                                    &format!("unexpected generator witness type {:?}", witness),
+                                    format!("unexpected generator witness type {:?}", witness),
                                 );
                                 return Some(Err(AlwaysRequiresDrop));
                             }

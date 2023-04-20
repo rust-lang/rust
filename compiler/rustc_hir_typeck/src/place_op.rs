@@ -73,16 +73,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = self.resolve_vars_if_possible(ty);
         let mut err = self.tcx.sess.struct_span_err(
             span,
-            &format!("negative integers cannot be used to index on a `{ty}`"),
+            format!("negative integers cannot be used to index on a `{ty}`"),
         );
-        err.span_label(span, &format!("cannot use a negative integer for indexing on `{ty}`"));
+        err.span_label(span, format!("cannot use a negative integer for indexing on `{ty}`"));
         if let (hir::ExprKind::Path(..), Ok(snippet)) =
             (&base_expr.kind, self.tcx.sess.source_map().span_to_snippet(base_expr.span))
         {
             // `foo[-1]` to `foo[foo.len() - 1]`
             err.span_suggestion_verbose(
                 span.shrink_to_lo(),
-                &format!(
+                format!(
                     "to access an element starting from the end of the `{ty}`, compute the index",
                 ),
                 format!("{snippet}.len() "),

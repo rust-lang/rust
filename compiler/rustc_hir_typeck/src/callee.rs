@@ -397,7 +397,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .sess
                             .struct_span_err(
                                 callee_expr.span,
-                                &format!("evaluate({:?}) = {:?}", predicate, result),
+                                format!("evaluate({:?}) = {:?}", predicate, result),
                             )
                             .span_label(predicate_span, "predicate")
                             .emit();
@@ -630,7 +630,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some((removal_span, kind, path)) = &unit_variant {
             err.span_suggestion_verbose(
                 *removal_span,
-                &format!(
+                format!(
                     "`{path}` is a unit {kind}, and does not take parentheses to be constructed",
                 ),
                 "",

@@ -53,7 +53,7 @@ use std::{env, fmt, fs, io, mem, str};
 pub fn ensure_removed(diag_handler: &Handler, path: &Path) {
     if let Err(e) = fs::remove_file(path) {
         if e.kind() != io::ErrorKind::NotFound {
-            diag_handler.err(&format!("failed to remove {}: {}", path.display(), e));
+            diag_handler.err(format!("failed to remove {}: {}", path.display(), e));
         }
     }
 }
@@ -1405,7 +1405,7 @@ fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLib]) {
         sess.emit_note(errors::StaticLibraryNativeArtifacts);
         // Prefix for greppability
         // Note: This must not be translated as tools are allowed to depend on this exact string.
-        sess.note_without_error(&format!("native-static-libs: {}", &lib_args.join(" ")));
+        sess.note_without_error(format!("native-static-libs: {}", &lib_args.join(" ")));
     }
 }
 

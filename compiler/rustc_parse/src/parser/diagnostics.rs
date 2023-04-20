@@ -207,11 +207,11 @@ struct MultiSugg {
 
 impl MultiSugg {
     fn emit(self, err: &mut Diagnostic) {
-        err.multipart_suggestion(&self.msg, self.patches, self.applicability);
+        err.multipart_suggestion(self.msg, self.patches, self.applicability);
     }
 
     fn emit_verbose(self, err: &mut Diagnostic) {
-        err.multipart_suggestion_verbose(&self.msg, self.patches, self.applicability);
+        err.multipart_suggestion_verbose(self.msg, self.patches, self.applicability);
     }
 }
 
@@ -591,13 +591,13 @@ impl<'a> Parser<'a> {
         };
         self.last_unexpected_token_span = Some(self.token.span);
         // FIXME: translation requires list formatting (for `expect`)
-        let mut err = self.struct_span_err(self.token.span, &msg_exp);
+        let mut err = self.struct_span_err(self.token.span, msg_exp);
 
         if let TokenKind::Ident(symbol, _) = &self.prev_token.kind {
             if ["def", "fun", "func", "function"].contains(&symbol.as_str()) {
                 err.span_suggestion_short(
                     self.prev_token.span,
-                    &format!("write `fn` instead of `{symbol}` to declare a function"),
+                    format!("write `fn` instead of `{symbol}` to declare a function"),
                     "fn",
                     Applicability::MachineApplicable,
                 );
@@ -695,13 +695,13 @@ impl<'a> Parser<'a> {
                 err.set_span(span);
                 err.span_suggestion(
                     span,
-                    &format!("remove the extra `#`{}", pluralize!(count)),
+                    format!("remove the extra `#`{}", pluralize!(count)),
                     "",
                     Applicability::MachineApplicable,
                 );
                 err.span_label(
                     str_span,
-                    &format!("this raw string started with {n_hashes} `#`{}", pluralize!(n_hashes)),
+                    format!("this raw string started with {n_hashes} `#`{}", pluralize!(n_hashes)),
                 );
                 true
             }
@@ -1360,12 +1360,12 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, P<Expr>> {
         let mut err = self.struct_span_err(
             op_span,
-            &format!("Rust has no {} {} operator", kind.fixity, kind.op.name()),
+            format!("Rust has no {} {} operator", kind.fixity, kind.op.name()),
         );
-        err.span_label(op_span, &format!("not a valid {} operator", kind.fixity));
+        err.span_label(op_span, format!("not a valid {} operator", kind.fixity));
 
         let help_base_case = |mut err: DiagnosticBuilder<'_, _>, base| {
-            err.help(&format!("use `{}= 1` instead", kind.op.chr()));
+            err.help(format!("use `{}= 1` instead", kind.op.chr()));
             err.emit();
             Ok(base)
         };
@@ -1554,7 +1554,7 @@ impl<'a> Parser<'a> {
                 _ => this_token_str,
             },
         );
-        let mut err = self.struct_span_err(sp, &msg);
+        let mut err = self.struct_span_err(sp, msg);
         let label_exp = format!("expected `{token_str}`");
         let sm = self.sess.source_map();
         if !sm.is_multiline(prev_sp.until(sp)) {
@@ -1705,7 +1705,7 @@ impl<'a> Parser<'a> {
                     Applicability::MachineApplicable,
                 );
             }
-            err.span_suggestion(lo.shrink_to_lo(), &format!("{prefix}you can still access the deprecated `try!()` macro using the \"raw identifier\" syntax"), "r#", Applicability::MachineApplicable);
+            err.span_suggestion(lo.shrink_to_lo(), format!("{prefix}you can still access the deprecated `try!()` macro using the \"raw identifier\" syntax"), "r#", Applicability::MachineApplicable);
             err.emit();
             Ok(self.mk_expr_err(lo.to(hi)))
         } else {
@@ -2060,7 +2060,7 @@ impl<'a> Parser<'a> {
                 format!("expected expression, found {}", super::token_descr(&self.token),),
             ),
         };
-        let mut err = self.struct_span_err(span, &msg);
+        let mut err = self.struct_span_err(span, msg);
         let sp = self.sess.source_map().start_point(self.token.span);
         if let Some(sp) = self.sess.ambiguous_block_expr_parse.borrow().get(&sp) {
             err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
@@ -2131,7 +2131,7 @@ impl<'a> Parser<'a> {
         // arguments after a comma.
         let mut err = self.struct_span_err(
             self.token.span,
-            &format!("expected one of `,` or `>`, found {}", super::token_descr(&self.token)),
+            format!("expected one of `,` or `>`, found {}", super::token_descr(&self.token)),
         );
         err.span_label(self.token.span, "expected one of `,` or `>`");
         match self.recover_const_arg(arg.span(), err) {
@@ -2558,7 +2558,7 @@ impl<'a> Parser<'a> {
         let mut err = self.struct_span_err(comma_span, "unexpected `,` in pattern");
         if let Ok(seq_snippet) = self.span_to_snippet(seq_span) {
             err.multipart_suggestion(
-                &format!(
+                format!(
                     "try adding parentheses to match on a tuple{}",
                     if let CommaRecoveryMode::LikelyTuple = rt { "" } else { "..." },
                 ),

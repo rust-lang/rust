@@ -107,7 +107,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // occurred.
         self.tcx.sess.diagnostic().delay_span_bug(
             span,
-            &format!(
+            format!(
                 "broken MIR in {:?} ({}) at {:?}:\n{}",
                 self.body.source.instance,
                 self.when,
@@ -1094,7 +1094,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         if self.body.source_scopes.get(scope).is_none() {
             self.tcx.sess.diagnostic().delay_span_bug(
                 self.body.span,
-                &format!(
+                format!(
                     "broken MIR in {:?} ({}):\ninvalid source scope {:?}",
                     self.body.source.instance, self.when, scope,
                 ),

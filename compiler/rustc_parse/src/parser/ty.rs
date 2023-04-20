@@ -315,7 +315,7 @@ impl<'a> Parser<'a> {
             }
         } else {
             let msg = format!("expected type, found {}", super::token_descr(&self.token));
-            let mut err = self.struct_span_err(self.token.span, &msg);
+            let mut err = self.struct_span_err(self.token.span, msg);
             err.span_label(self.token.span, "expected type");
             return Err(err);
         };

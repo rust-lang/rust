@@ -52,7 +52,7 @@ pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), Erro
             let span = tcx.def_span(drop_impl_did);
             let reported = tcx.sess.delay_span_bug(
                 span,
-                &format!("should have been rejected by coherence check: {dtor_self_type}"),
+                format!("should have been rejected by coherence check: {dtor_self_type}"),
             );
             Err(reported)
         }
@@ -76,15 +76,15 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
         struct_span_err!(tcx.sess, drop_impl_span, E0366, "`Drop` impls cannot be specialized");
     match arg {
         ty::util::NotUniqueParam::DuplicateParam(arg) => {
-            err.note(&format!("`{arg}` is mentioned multiple times"))
+            err.note(format!("`{arg}` is mentioned multiple times"))
         }
         ty::util::NotUniqueParam::NotParam(arg) => {
-            err.note(&format!("`{arg}` is not a generic parameter"))
+            err.note(format!("`{arg}` is not a generic parameter"))
         }
     };
     err.span_note(
         item_span,
-        &format!(
+        format!(
             "use the same sequence of generic lifetime, type and const parameters \
                      as the {self_descr} definition",
         ),

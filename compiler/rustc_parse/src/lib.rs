@@ -153,7 +153,7 @@ fn try_file_to_source_file(
 ) -> Result<Lrc<SourceFile>, Diagnostic> {
     sess.source_map().load_file(path).map_err(|e| {
         let msg = format!("couldn't read {}: {}", path.display(), e);
-        let mut diag = Diagnostic::new(Level::Fatal, &msg);
+        let mut diag = Diagnostic::new(Level::Fatal, msg);
         if let Some(sp) = spanopt {
             diag.set_span(sp);
         }
@@ -190,7 +190,7 @@ pub fn maybe_file_to_stream(
     override_span: Option<Span>,
 ) -> Result<TokenStream, Vec<Diagnostic>> {
     let src = source_file.src.as_ref().unwrap_or_else(|| {
-        sess.span_diagnostic.bug(&format!(
+        sess.span_diagnostic.bug(format!(
             "cannot lex `source_file` without source: {}",
             sess.source_map().filename_for_diagnostics(&source_file.name)
         ));
@@ -247,7 +247,7 @@ pub fn parse_cfg_attr(
             match parse_in(parse_sess, tokens.clone(), "`cfg_attr` input", |p| p.parse_cfg_attr()) {
                 Ok(r) => return Some(r),
                 Err(mut e) => {
-                    e.help(&format!("the valid syntax is `{}`", CFG_ATTR_GRAMMAR_HELP))
+                    e.help(format!("the valid syntax is `{}`", CFG_ATTR_GRAMMAR_HELP))
                         .note(CFG_ATTR_NOTE_REF)
                         .emit();
                 }

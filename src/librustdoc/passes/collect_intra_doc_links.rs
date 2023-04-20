@@ -1179,9 +1179,9 @@ impl LinkCollector<'_, '_> {
                 specified.descr(),
             );
             if let Some(sp) = sp {
-                diag.span_label(sp, &note);
+                diag.span_label(sp, note);
             } else {
-                diag.note(&note);
+                diag.note(note);
             }
             suggest_disambiguator(resolved, diag, path_str, &ori_link.link, sp);
         };
@@ -1617,7 +1617,7 @@ fn report_diagnostic(
             let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
 
             // Print the line containing the `link_range` and manually mark it with '^'s.
-            lint.note(&format!(
+            lint.note(format!(
                 "the link appears in this line:\n\n{line}\n\
                      {indicator: <before$}{indicator:^<found$}",
                 line = line,
@@ -1730,9 +1730,9 @@ fn resolution_failure(
                             format!("no item named `{}` in scope", unresolved)
                         };
                         if let Some(span) = sp {
-                            diag.span_label(span, &note);
+                            diag.span_label(span, note);
                         } else {
-                            diag.note(&note);
+                            diag.note(note);
                         }
 
                         if !path_str.contains("::") {
@@ -1787,9 +1787,9 @@ fn resolution_failure(
                                 let variant = res.name(tcx);
                                 let note = format!("variant `{variant}` has no such field");
                                 if let Some(span) = sp {
-                                    diag.span_label(span, &note);
+                                    diag.span_label(span, note);
                                 } else {
-                                    diag.note(&note);
+                                    diag.note(note);
                                 }
                                 return;
                             }
@@ -1812,9 +1812,9 @@ fn resolution_failure(
                             | InlineConst => {
                                 let note = assoc_item_not_allowed(res);
                                 if let Some(span) = sp {
-                                    diag.span_label(span, &note);
+                                    diag.span_label(span, note);
                                 } else {
-                                    diag.note(&note);
+                                    diag.note(note);
                                 }
                                 return;
                             }
@@ -1834,9 +1834,9 @@ fn resolution_failure(
                         unresolved,
                     );
                     if let Some(span) = sp {
-                        diag.span_label(span, &note);
+                        diag.span_label(span, note);
                     } else {
-                        diag.note(&note);
+                        diag.note(note);
                     }
 
                     continue;
@@ -1854,9 +1854,9 @@ fn resolution_failure(
                     }
                 };
                 if let Some(span) = sp {
-                    diag.span_label(span, &note);
+                    diag.span_label(span, note);
                 } else {
-                    diag.note(&note);
+                    diag.note(note);
                 }
             }
         },
@@ -1906,7 +1906,7 @@ fn disambiguator_error(
             "see {}/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators",
             crate::DOC_RUST_LANG_ORG_CHANNEL
         );
-        diag.note(&msg);
+        diag.note(msg);
     });
 }
 
@@ -2023,13 +2023,13 @@ fn suggest_disambiguator(
     if let Some(sp) = sp {
         let mut spans = suggestion.as_help_span(path_str, ori_link, sp);
         if spans.len() > 1 {
-            diag.multipart_suggestion(&help, spans, Applicability::MaybeIncorrect);
+            diag.multipart_suggestion(help, spans, Applicability::MaybeIncorrect);
         } else {
             let (sp, suggestion_text) = spans.pop().unwrap();
-            diag.span_suggestion_verbose(sp, &help, suggestion_text, Applicability::MaybeIncorrect);
+            diag.span_suggestion_verbose(sp, help, suggestion_text, Applicability::MaybeIncorrect);
         }
     } else {
-        diag.help(&format!("{}: {}", help, suggestion.as_help(path_str)));
+        diag.help(format!("{}: {}", help, suggestion.as_help(path_str)));
     }
 }
 

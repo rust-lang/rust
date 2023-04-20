@@ -622,7 +622,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     // programs, so we need to use delay_span_bug here. See #82126.
                     self.infcx.tcx.sess.delay_span_bug(
                         hir_arg.span(),
-                        &format!("unmatched subst and hir arg: found {kind:?} vs {hir_arg:?}"),
+                        format!("unmatched subst and hir arg: found {kind:?} vs {hir_arg:?}"),
                     );
                 }
             }

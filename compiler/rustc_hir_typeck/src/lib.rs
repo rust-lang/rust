@@ -448,7 +448,7 @@ fn fatally_break_rust(sess: &Session) {
         "we would appreciate a joke overview: \
          https://github.com/rust-lang/rust/issues/43162#issuecomment-320764675",
     );
-    handler.note_without_error(&format!(
+    handler.note_without_error(format!(
         "rustc {} running on {}",
         option_env!("CFG_VERSION").unwrap_or("unknown_version"),
         config::host_triple(),

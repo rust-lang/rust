@@ -713,7 +713,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 self.tcx.sess.delay_span_bug(
                     closure_span,
-                    &format!(
+                    format!(
                         "two identical projections: ({:?}, {:?})",
                         capture1.place.projections, capture2.place.projections
                     ),
@@ -863,7 +863,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let indent = line2.split_once(|c: char| !c.is_whitespace()).unwrap_or_default().0;
                             lint.span_suggestion(
                                 closure_body_span.with_lo(closure_body_span.lo() + BytePos::from_usize(line1.len())).shrink_to_lo(),
-                                &diagnostic_msg,
+                                diagnostic_msg,
                                 format!("\n{indent}{migration_string};"),
                                 Applicability::MachineApplicable,
                             );
@@ -874,7 +874,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // directly after the `{`.
                             lint.span_suggestion(
                                 closure_body_span.with_lo(closure_body_span.lo() + BytePos(1)).shrink_to_lo(),
-                                &diagnostic_msg,
+                                diagnostic_msg,
                                 format!(" {migration_string};"),
                                 Applicability::MachineApplicable,
                             );
@@ -882,7 +882,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // This is a closure without braces around the body.
                             // We add braces to add the `let` before the body.
                             lint.multipart_suggestion(
-                                &diagnostic_msg,
+                                diagnostic_msg,
                                 vec![
                                     (closure_body_span.shrink_to_lo(), format!("{{ {migration_string}; ")),
                                     (closure_body_span.shrink_to_hi(), " }".to_string()),
@@ -893,7 +893,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     } else {
                         lint.span_suggestion(
                             closure_span,
-                            &diagnostic_msg,
+                            diagnostic_msg,
                             migration_string,
                             Applicability::HasPlaceholders
                         );
@@ -1519,7 +1519,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let span =
                     capture_info.path_expr_id.map_or(closure_span, |e| self.tcx.hir().span(e));
-                diag.span_note(span, &output_str);
+                diag.span_note(span, output_str);
             }
             diag.emit();
         }
@@ -1560,13 +1560,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             multi_span.push_span_label(path_span, path_label);
                             multi_span.push_span_label(capture_kind_span, capture_kind_label);
 
-                            diag.span_note(multi_span, &output_str);
+                            diag.span_note(multi_span, output_str);
                         } else {
                             let span = capture_info
                                 .path_expr_id
                                 .map_or(closure_span, |e| self.tcx.hir().span(e));
 
-                            diag.span_note(span, &output_str);
+                            diag.span_note(span, output_str);
                         };
                     }
                 }

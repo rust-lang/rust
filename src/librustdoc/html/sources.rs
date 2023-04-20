@@ -145,7 +145,7 @@ impl DocVisitor for SourceCollector<'_, '_> {
                 Err(e) => {
                     self.cx.shared.tcx.sess.span_err(
                         span,
-                        &format!(
+                        format!(
                             "failed to render source code for `{}`: {}",
                             filename.prefer_local(),
                             e,

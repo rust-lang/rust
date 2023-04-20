@@ -634,7 +634,7 @@ impl<'a> Parser<'a> {
 
                                 e.span_suggestion(
                                     sp.with_hi(sp.lo() + BytePos(marker.len() as u32)),
-                                    &format!(
+                                    format!(
                                         "add a space before `{}` to use a regular comment",
                                         doc_comment_marker,
                                     ),

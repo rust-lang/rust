@@ -616,7 +616,7 @@ pub trait LintContext: Sized {
                         1 => ("an ", ""),
                         _ => ("", "s"),
                     };
-                    db.span_label(span, &format!(
+                    db.span_label(span, format!(
                         "this comment contains {}invisible unicode text flow control codepoint{}",
                         an,
                         s,
@@ -680,12 +680,12 @@ pub trait LintContext: Sized {
                     );
                 }
                 BuiltinLintDiagnostics::UnknownCrateTypes(span, note, sugg) => {
-                    db.span_suggestion(span, &note, sugg, Applicability::MaybeIncorrect);
+                    db.span_suggestion(span, note, sugg, Applicability::MaybeIncorrect);
                 }
                 BuiltinLintDiagnostics::UnusedImports(message, replaces, in_test_module) => {
                     if !replaces.is_empty() {
                         db.tool_only_multipart_suggestion(
-                            &message,
+                            message,
                             replaces,
                             Applicability::MachineApplicable,
                         );
@@ -720,13 +720,13 @@ pub trait LintContext: Sized {
                 }
                 BuiltinLintDiagnostics::MissingAbi(span, default_abi) => {
                     db.span_label(span, "ABI should be specified here");
-                    db.help(&format!("the default ABI is {}", default_abi.name()));
+                    db.help(format!("the default ABI is {}", default_abi.name()));
                 }
                 BuiltinLintDiagnostics::LegacyDeriveHelpers(span) => {
                     db.span_label(span, "the attribute is introduced here");
                 }
                 BuiltinLintDiagnostics::ProcMacroBackCompat(note) => {
-                    db.note(&note);
+                    db.note(note);
                 }
                 BuiltinLintDiagnostics::OrPatternsBackCompat(span,suggestion) => {
                     db.span_suggestion(span, "use pat_param to preserve semantics", suggestion, Applicability::MachineApplicable);
@@ -747,13 +747,13 @@ pub trait LintContext: Sized {
                 } => {
                     db.span_note(
                         invoc_span,
-                        &format!("the built-in attribute `{attr_name}` will be ignored, since it's applied to the macro invocation `{macro_name}`")
+                        format!("the built-in attribute `{attr_name}` will be ignored, since it's applied to the macro invocation `{macro_name}`")
                     );
                 }
                 BuiltinLintDiagnostics::TrailingMacro(is_trailing, name) => {
                     if is_trailing {
                         db.note("macro invocations at the end of a block are treated as expressions");
-                        db.note(&format!("to ignore the value produced by the macro, add a semicolon after the invocation of `{name}`"));
+                        db.note(format!("to ignore the value produced by the macro, add a semicolon after the invocation of `{name}`"));
                     }
                 }
                 BuiltinLintDiagnostics::BreakWithLabelAndLoop(span) => {
@@ -765,7 +765,7 @@ pub trait LintContext: Sized {
                     );
                 }
                 BuiltinLintDiagnostics::NamedAsmLabel(help) => {
-                    db.help(&help);
+                    db.help(help);
                     db.note("see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information");
                 },
                 BuiltinLintDiagnostics::UnexpectedCfg((name, name_span), None) => {
@@ -793,7 +793,7 @@ pub trait LintContext: Sized {
                             possibilities.sort();
 
                             let possibilities = possibilities.join(", ");
-                            db.note(&format!("expected values for `{name}` are: {possibilities}"));
+                            db.note(format!("expected values for `{name}` are: {possibilities}"));
                         }
 
                         // Suggest the most probable if we found one
@@ -801,7 +801,7 @@ pub trait LintContext: Sized {
                             db.span_suggestion(value_span, "did you mean", format!("\"{best_match}\""), Applicability::MaybeIncorrect);
                         }
                     } else {
-                        db.note(&format!("no expected value for `{name}`"));
+                        db.note(format!("no expected value for `{name}`"));
                         if name != sym::feature {
                             db.span_suggestion(name_span.shrink_to_hi().to(value_span), "remove the value", "", Applicability::MaybeIncorrect);
                         }

@@ -527,7 +527,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
                                         lint_id,
                                         orig_ident.span,
-                                        &format!(
+                                        format!(
                                             "cannot find {} `{}` in this scope",
                                             ns.descr(),
                                             ident
