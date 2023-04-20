@@ -178,7 +178,7 @@ target | std | notes
 `thumbv8m.main-none-eabihf` | * | Bare ARMv8-M Mainline, hardfloat
 `wasm32-unknown-emscripten` | ✓ | WebAssembly via Emscripten
 `wasm32-unknown-unknown` | ✓ | WebAssembly
-`wasm32-wasi-preview1` | ✓ | WebAssembly with WASI
+`wasm32-wasi-preview1` | ✓ | WebAssembly with WASI Preview 1
 `x86_64-apple-ios` | ✓ | 64-bit x86 iOS
 [`x86_64-fortanix-unknown-sgx`](platform-support/x86_64-fortanix-unknown-sgx.md) | ✓ | [Fortanix ABI] for 64-bit Intel SGX
 `x86_64-fuchsia` | ✓ | Alias for `x86_64-unknown-fuchsia`
