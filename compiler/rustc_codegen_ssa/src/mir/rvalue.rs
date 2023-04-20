@@ -290,7 +290,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         use abi::Primitive::*;
         imm = bx.from_immediate(imm);
+
+        // When scalars are passed by value, there's no metadata recording their
+        // valid ranges. For example, `char`s are passed as just `i32`, with no
+        // way for LLVM to know that they're 0x10FFFF at most. Thus we assume
+        // the range of the input value too, not just the output range.
         self.assume_scalar_range(bx, imm, from_scalar, from_backend_ty);
+
         imm = match (from_scalar.primitive(), to_scalar.primitive()) {
             (Int(..) | F32 | F64, Int(..) | F32 | F64) => bx.bitcast(imm, to_backend_ty),
             (Pointer(..), Pointer(..)) => bx.pointercast(imm, to_backend_ty),
@@ -318,6 +324,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         backend_ty: Bx::Type,
     ) {
         if matches!(self.cx.sess().opts.optimize, OptLevel::No | OptLevel::Less)
+            // For now, the critical niches are all over `Int`eger values.
+            // Should floating-point values or pointers ever get more complex
+            // niches, then this code will probably want to handle them too.
             || !matches!(scalar.primitive(), abi::Primitive::Int(..))
             || scalar.is_always_valid(self.cx)
         {
