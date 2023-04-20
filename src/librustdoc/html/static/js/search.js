@@ -1227,11 +1227,7 @@ function initSearch(rawSearchIndex) {
             // If the current item does not match, try [unboxing] the generic.
             // [unboxing]:
             //   https://ndmitchell.com/downloads/slides-hoogle_fast_type_searching-09_aug_2008.pdf
-            if (checkIfInGenerics(row, elem)) {
-                return true;
-            }
-
-            return false;
+            return checkIfInGenerics(row, elem);
         }
 
         /**
