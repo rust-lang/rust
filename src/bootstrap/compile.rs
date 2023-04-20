@@ -1328,7 +1328,6 @@ impl Step for Sysroot {
                     true
                 }
             });
-            return INTERNER.intern_path(sysroot);
         }
 
         // Symlink the source root into the same location inside the sysroot,
