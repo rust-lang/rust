@@ -89,11 +89,11 @@ export function shuffleCrateGraph(ctx: CtxInit): Cmd {
 
 export function triggerParameterHints(_: CtxInit): Cmd {
     return async () => {
-        const autoTriggerParameterHints = vscode.workspace
-            .getConfiguration("rust-analyzer")
-            .get<boolean>("autoTriggerParameterHints");
+        const parameterHintsEnabled = vscode.workspace
+            .getConfiguration("editor")
+            .get<boolean>("parameterHints.enabled");
 
-        if (autoTriggerParameterHints) {
+        if (parameterHintsEnabled) {
             await vscode.commands.executeCommand("editor.action.triggerParameterHints");
         }
     };
