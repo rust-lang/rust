@@ -28,7 +28,7 @@ tempfile = { version = "3.2", optional = true }
 termize = "0.1"
 
 [dev-dependencies]
-compiletest_rs = { version = "0.9", features = ["tmp"] }
+compiletest_rs = { version = "0.10", features = ["tmp"] }
 tester = "0.9"
 regex = "1.5"
 toml = "0.5"

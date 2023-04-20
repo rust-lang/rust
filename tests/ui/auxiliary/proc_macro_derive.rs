@@ -1,5 +1,5 @@
-// compile-flags: --emit=link
-// no-prefer-dynamic
+//@compile-flags: --emit=link
+//@no-prefer-dynamic
 
 #![crate_type = "proc-macro"]
 #![feature(repr128, proc_macro_quote)]

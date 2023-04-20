@@ -1,5 +1,5 @@
-// needs-asm-support
-// aux-build: proc_macros.rs
+//@needs-asm-support
+//@aux-build: proc_macros.rs
 
 #![warn(clippy::missing_docs_in_private_items)]
 // When denying at the crate level, be sure to not get random warnings from the

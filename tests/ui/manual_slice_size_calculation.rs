@@ -1,5 +1,5 @@
-// run-rustfix
-// aux-build:proc_macros.rs
+//@run-rustfix
+//@aux-build:proc_macros.rs
 #![allow(unused)]
 #![warn(clippy::manual_slice_size_calculation)]
 
