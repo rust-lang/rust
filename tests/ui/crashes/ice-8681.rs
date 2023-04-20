@@ -1,4 +1,4 @@
-// aux-build: ice-8681-aux.rs
+//@aux-build: ice-8681-aux.rs
 
 #![warn(clippy::undocumented_unsafe_blocks)]
 

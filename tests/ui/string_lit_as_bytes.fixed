@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![allow(dead_code, unused_variables)]
 #![warn(clippy::string_lit_as_bytes)]

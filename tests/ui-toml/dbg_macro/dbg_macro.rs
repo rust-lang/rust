@@ -1,4 +1,4 @@
-// compile-flags: --test
+//@compile-flags: --test
 #![warn(clippy::dbg_macro)]
 
 fn foo(n: u32) -> u32 {

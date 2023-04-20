@@ -9,7 +9,11 @@ note: same as this
    |
 LL |     if function() {
    |        ^^^^^^^^^^
-   = note: `-D clippy::same-functions-in-if-condition` implied by `-D warnings`
+note: the lint level is defined here
+  --> $DIR/same_functions_in_if_condition.rs:2:9
+   |
+LL | #![deny(clippy::same_functions_in_if_condition)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this `if` has the same function call as a previous `if`
   --> $DIR/same_functions_in_if_condition.rs:42:15

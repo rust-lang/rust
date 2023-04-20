@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::flat_map_option)]
 #![allow(clippy::redundant_closure, clippy::unnecessary_filter_map)]
 

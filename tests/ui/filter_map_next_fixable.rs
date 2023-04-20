@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(unused)]

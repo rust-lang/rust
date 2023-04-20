@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::manual_async_fn)]
 #![allow(unused)]
 

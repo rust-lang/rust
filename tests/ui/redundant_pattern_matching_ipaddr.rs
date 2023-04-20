@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::all, clippy::redundant_pattern_matching)]
 #![allow(unused_must_use)]
 #![allow(

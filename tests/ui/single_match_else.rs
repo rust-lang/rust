@@ -1,4 +1,4 @@
-// aux-build: proc_macros.rs
+//@aux-build: proc_macros.rs
 #![warn(clippy::single_match_else)]
 #![allow(clippy::needless_return, clippy::no_effect, clippy::uninlined_format_args)]
 

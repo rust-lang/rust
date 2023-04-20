@@ -1,4 +1,4 @@
-// aux-build:proc_macro_derive.rs
+//@aux-build:proc_macro_derive.rs
 
 #![warn(clippy::integer_arithmetic, clippy::float_arithmetic)]
 #![allow(clippy::no_effect, clippy::unnecessary_operation, clippy::op_ref)]
