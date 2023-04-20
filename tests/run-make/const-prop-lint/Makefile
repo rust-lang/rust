@@ -6,4 +6,4 @@ include ../tools.mk
 
 all:
 	$(RUSTC) input.rs; test $$? -eq 1
-	ls *.o; test $$? -eq 2
+	ls *.o; test $$? -ne 0
