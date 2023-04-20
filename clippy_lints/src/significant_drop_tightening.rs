@@ -17,7 +17,7 @@ use rustc_span::{symbol::Ident, Span, DUMMY_SP};
 declare_clippy_lint! {
     /// ### What it does
     ///
-    /// Searches for elements marked with `#[clippy::significant_drop]` that could be early
+    /// Searches for elements marked with `#[clippy::has_significant_drop]` that could be early
     /// dropped but are in fact dropped at the end of their scopes. In other words, enforces the
     /// "tightening" of their possible lifetimes.
     ///
