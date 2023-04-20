@@ -155,22 +155,12 @@ pub const fn bits_for_tags(mut tags: &[usize]) -> u32 {
     while let &[tag, ref rest @ ..] = tags {
         tags = rest;
 
-        let b = bits_for_tag(tag);
+        // bits required to represent `tag`,
+        // position of the most significant 1
+        let b = usize::BITS - tag.leading_zeros();
         if b > bits {
             bits = b;
         }
-    }
-
-    bits
-}
-
-/// Returns `(size_of::<usize>() * 8) - tag.leading_zeros()`
-const fn bits_for_tag(mut tag: usize) -> u32 {
-    let mut bits = 0;
-
-    while tag > 0 {
-        bits += 1;
-        tag >>= 1;
     }
 
     bits
