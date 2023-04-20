@@ -22,7 +22,7 @@ declare_clippy_lint! {
     /// TODO
     #[clippy::version = "1.70.0"]
     pub EXCESSIVE_INDENTATION,
-    style,
+    nursery,
     "check for lines intended beyond a certain threshold"
 }
 declare_clippy_lint! {
@@ -42,7 +42,7 @@ declare_clippy_lint! {
     /// TODO
     #[clippy::version = "1.70.0"]
     pub EXCESSIVE_WIDTH,
-    style,
+    nursery,
     "check for lines longer than a certain threshold"
 }
 impl_lint_pass!(ExcessiveWidth => [EXCESSIVE_INDENTATION, EXCESSIVE_WIDTH]);
