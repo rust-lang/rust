@@ -276,6 +276,17 @@ pub fn non_overflowing_ops_or_ops_already_handled_by_the_compiler_should_not_tri
     _n = &1 * _n;
     _n = 23 + 85;
 
+    // Method
+    _n.saturating_div(1);
+    _n.wrapping_div(1);
+    _n.wrapping_rem(1);
+    _n.wrapping_rem_euclid(1);
+
+    _n.saturating_div(1);
+    _n.checked_div(1);
+    _n.checked_rem(1);
+    _n.checked_rem_euclid(1);
+
     // Unary
     _n = -2147483647;
     _n = -i32::MAX;
@@ -382,6 +393,17 @@ pub fn unknown_ops_or_runtime_ops_that_can_overflow() {
     _custom = _custom >> &_custom;
     _custom = Custom << _custom;
     _custom = &Custom << _custom;
+
+    // Method
+    _n.saturating_div(0);
+    _n.wrapping_div(0);
+    _n.wrapping_rem(0);
+    _n.wrapping_rem_euclid(0);
+
+    _n.saturating_div(_n);
+    _n.wrapping_div(_n);
+    _n.wrapping_rem(_n);
+    _n.wrapping_rem_euclid(_n);
 
     // Unary
     _n = -_n;
