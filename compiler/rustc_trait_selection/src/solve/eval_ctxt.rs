@@ -57,6 +57,13 @@ pub struct EvalCtxt<'a, 'tcx> {
     pub(super) search_graph: &'a mut SearchGraph<'tcx>,
 
     pub(super) nested_goals: NestedGoals<'tcx>,
+
+    // Has this `EvalCtxt` errored out with `NoSolution` in `try_evaluate_added_goals`?
+    //
+    // If so, then it can no longer be used to make a canonical query response,
+    // since subsequent calls to `try_evaluate_added_goals` have possibly dropped
+    // ambiguous goals. Instead, use a probe.
+    tainted: bool,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -121,6 +128,7 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
             max_input_universe: ty::UniverseIndex::ROOT,
             var_values: CanonicalVarValues::dummy(),
             nested_goals: NestedGoals::new(),
+            tainted: false,
         };
         let result = ecx.evaluate_goal(IsNormalizesToHack::No, goal);
 
@@ -172,6 +180,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 max_input_universe: canonical_goal.max_universe,
                 search_graph,
                 nested_goals: NestedGoals::new(),
+                tainted: false,
             };
             ecx.compute_goal(goal)
         })
@@ -391,6 +400,10 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             },
         );
 
+        if response.is_err() {
+            self.tainted = true;
+        }
+
         self.nested_goals = goals;
         response
     }
@@ -404,6 +417,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             max_input_universe: self.max_input_universe,
             search_graph: self.search_graph,
             nested_goals: self.nested_goals.clone(),
+            tainted: self.tainted,
         };
         self.infcx.probe(|_| f(&mut ecx))
     }
