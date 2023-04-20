@@ -634,6 +634,14 @@ impl Kind {
             Kind::Suggest => "suggest",
         }
     }
+
+    pub fn test_description(&self) -> &'static str {
+        match self {
+            Kind::Test => "Testing",
+            Kind::Bench => "Benchmarking",
+            _ => panic!("not a test command: {}!", self.as_str()),
+        }
+    }
 }
 
 impl<'a> Builder<'a> {

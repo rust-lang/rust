@@ -27,44 +27,6 @@ use crate::{envify, CLang, DocTests, GitRepo, Mode};
 
 const ADB_TEST_DIR: &str = "/data/local/tmp/work";
 
-/// The two modes of the test runner; tests or benchmarks.
-#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone, PartialOrd, Ord)]
-pub enum TestKind {
-    /// Run `cargo test`.
-    Test,
-    /// Run `cargo bench`.
-    Bench,
-}
-
-impl From<Kind> for TestKind {
-    fn from(kind: Kind) -> Self {
-        match kind {
-            Kind::Test => TestKind::Test,
-            Kind::Bench => TestKind::Bench,
-            _ => panic!("unexpected kind in crate: {:?}", kind),
-        }
-    }
-}
-
-impl TestKind {
-    // Return the cargo subcommand for this test kind
-    fn subcommand(self) -> &'static str {
-        match self {
-            TestKind::Test => "test",
-            TestKind::Bench => "bench",
-        }
-    }
-}
-
-impl Into<Kind> for TestKind {
-    fn into(self) -> Kind {
-        match self {
-            TestKind::Test => Kind::Test,
-            TestKind::Bench => Kind::Bench,
-        }
-    }
-}
-
 fn try_run(builder: &Builder<'_>, cmd: &mut Command) -> bool {
     if !builder.fail_fast {
         if !builder.try_run(cmd) {
@@ -2111,7 +2073,6 @@ impl Step for RustcGuide {
 pub struct CrateLibrustc {
     compiler: Compiler,
     target: TargetSelection,
-    test_kind: TestKind,
     crates: Vec<Interned<String>>,
 }
 
@@ -2133,9 +2094,8 @@ impl Step for CrateLibrustc {
             .iter()
             .map(|p| builder.crate_paths[&p.assert_single_path().path].clone())
             .collect();
-        let test_kind = builder.kind.into();
 
-        builder.ensure(CrateLibrustc { compiler, target: run.target, test_kind, crates });
+        builder.ensure(CrateLibrustc { compiler, target: run.target, crates });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -2143,7 +2103,6 @@ impl Step for CrateLibrustc {
             compiler: self.compiler,
             target: self.target,
             mode: Mode::Rustc,
-            test_kind: self.test_kind,
             crates: self.crates,
         });
     }
@@ -2154,7 +2113,6 @@ pub struct Crate {
     pub compiler: Compiler,
     pub target: TargetSelection,
     pub mode: Mode,
-    pub test_kind: TestKind,
     pub crates: Vec<Interned<String>>,
 }
 
@@ -2170,14 +2128,13 @@ impl Step for Crate {
         let builder = run.builder;
         let host = run.build_triple();
         let compiler = builder.compiler_for(builder.top_stage, host, host);
-        let test_kind = builder.kind.into();
         let crates = run
             .paths
             .iter()
             .map(|p| builder.crate_paths[&p.assert_single_path().path].clone())
             .collect();
 
-        builder.ensure(Crate { compiler, target: run.target, mode: Mode::Std, test_kind, crates });
+        builder.ensure(Crate { compiler, target: run.target, mode: Mode::Std, crates });
     }
 
     /// Runs all unit tests plus documentation tests for a given crate defined
@@ -2192,7 +2149,6 @@ impl Step for Crate {
         let compiler = self.compiler;
         let target = self.target;
         let mode = self.mode;
-        let test_kind = self.test_kind;
 
         builder.ensure(compile::Std::new(compiler, target));
         builder.ensure(RemoteCopyLibs { compiler, target });
@@ -2204,7 +2160,7 @@ impl Step for Crate {
         let compiler = builder.compiler_for(compiler.stage, compiler.host, target);
 
         let mut cargo =
-            builder.cargo(compiler, mode, SourceType::InTree, target, test_kind.subcommand());
+            builder.cargo(compiler, mode, SourceType::InTree, target, builder.kind.as_str());
         match mode {
             Mode::Std => {
                 compile::std_cargo(builder, target, compiler.stage, &mut cargo);
@@ -2220,7 +2176,7 @@ impl Step for Crate {
         // Pass in some standard flags then iterate over the graph we've discovered
         // in `cargo metadata` with the maps above and figure out what `-p`
         // arguments need to get passed.
-        if test_kind.subcommand() == "test" && !builder.fail_fast {
+        if builder.kind == Kind::Test && !builder.fail_fast {
             cargo.arg("--no-fail-fast");
         }
         match builder.doc_tests {
@@ -2270,7 +2226,7 @@ impl Step for Crate {
         }
 
         let _guard = builder.msg(
-            test_kind,
+            builder.kind,
             compiler.stage,
             crate_description(&self.crates),
             compiler.host,
@@ -2285,7 +2241,6 @@ impl Step for Crate {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct CrateRustdoc {
     host: TargetSelection,
-    test_kind: TestKind,
 }
 
 impl Step for CrateRustdoc {
@@ -2300,13 +2255,10 @@ impl Step for CrateRustdoc {
     fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
 
-        let test_kind = builder.kind.into();
-
-        builder.ensure(CrateRustdoc { host: run.target, test_kind });
+        builder.ensure(CrateRustdoc { host: run.target });
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let test_kind = self.test_kind;
         let target = self.host;
 
         let compiler = if builder.download_rustc() {
@@ -2325,12 +2277,12 @@ impl Step for CrateRustdoc {
             compiler,
             Mode::ToolRustc,
             target,
-            test_kind.subcommand(),
+            builder.kind.as_str(),
             "src/tools/rustdoc",
             SourceType::InTree,
             &[],
         );
-        if test_kind.subcommand() == "test" && !builder.fail_fast {
+        if builder.kind == Kind::Test && !builder.fail_fast {
             cargo.arg("--no-fail-fast");
         }
         match builder.doc_tests {
@@ -2391,7 +2343,7 @@ impl Step for CrateRustdoc {
             cargo.arg("--quiet");
         }
 
-        let _guard = builder.msg(test_kind, compiler.stage, "rustdoc", compiler.host, target);
+        let _guard = builder.msg(builder.kind, compiler.stage, "rustdoc", compiler.host, target);
 
         let _time = util::timeit(&builder);
 
@@ -2402,7 +2354,6 @@ impl Step for CrateRustdoc {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct CrateRustdocJsonTypes {
     host: TargetSelection,
-    test_kind: TestKind,
 }
 
 impl Step for CrateRustdocJsonTypes {
@@ -2417,13 +2368,10 @@ impl Step for CrateRustdocJsonTypes {
     fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
 
-        let test_kind = builder.kind.into();
-
-        builder.ensure(CrateRustdocJsonTypes { host: run.target, test_kind });
+        builder.ensure(CrateRustdocJsonTypes { host: run.target });
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let test_kind = self.test_kind;
         let target = self.host;
 
         // Use the previous stage compiler to reuse the artifacts that are
@@ -2438,12 +2386,12 @@ impl Step for CrateRustdocJsonTypes {
             compiler,
             Mode::ToolRustc,
             target,
-            test_kind.subcommand(),
+            builder.kind.as_str(),
             "src/rustdoc-json-types",
             SourceType::InTree,
             &[],
         );
-        if test_kind.subcommand() == "test" && !builder.fail_fast {
+        if builder.kind == Kind::Test && !builder.fail_fast {
             cargo.arg("--no-fail-fast");
         }
 
@@ -2457,7 +2405,7 @@ impl Step for CrateRustdocJsonTypes {
         }
 
         let _guard =
-            builder.msg(test_kind, compiler.stage, "rustdoc-json-types", compiler.host, target);
+            builder.msg(builder.kind, compiler.stage, "rustdoc-json-types", compiler.host, target);
         let _time = util::timeit(&builder);
 
         add_flags_and_try_run_tests(builder, &mut cargo.into());
