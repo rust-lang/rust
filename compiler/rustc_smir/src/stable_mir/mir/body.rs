@@ -26,7 +26,7 @@ pub enum Terminator {
     Drop {
         place: Place,
         target: usize,
-        unwind: Option<usize>,
+        unwind: UnwindAction,
     },
     Call {
         func: Operand,

@@ -162,7 +162,11 @@ fn rustc_terminator_to_terminator(
         Terminate => Terminator::Abort,
         Return => Terminator::Return,
         Unreachable => Terminator::Unreachable,
-        Drop { .. } => todo!(),
+        Drop { place, target, unwind } => Terminator::Drop {
+            place: rustc_place_to_place(place),
+            target: target.as_usize(),
+            unwind: rustc_unwind_to_unwind(unwind),
+        },
         Call { func, args, destination, target, unwind, from_hir_call: _, fn_span: _ } => {
             Terminator::Call {
                 func: rustc_op_to_op(func),
