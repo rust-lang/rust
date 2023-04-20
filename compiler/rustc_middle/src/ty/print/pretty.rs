@@ -738,7 +738,9 @@ pub trait PrettyPrinter<'tcx>:
                 }
             }
             ty::Placeholder(placeholder) => match placeholder.bound.kind {
-                ty::BoundTyKind::Anon => p!(write("Placeholder({:?})", placeholder)),
+                ty::BoundTyKind::Anon => {
+                    self.pretty_print_placeholder_var(placeholder.universe, placeholder.bound.var)?
+                }
                 ty::BoundTyKind::Param(_, name) => p!(write("{}", name)),
             },
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
@@ -1169,6 +1171,18 @@ pub trait PrettyPrinter<'tcx>:
             write!(self, "^{}", var.index())
         } else {
             write!(self, "^{}_{}", debruijn.index(), var.index())
+        }
+    }
+
+    fn pretty_print_placeholder_var(
+        &mut self,
+        ui: ty::UniverseIndex,
+        var: ty::BoundVar,
+    ) -> Result<(), Self::Error> {
+        if ui == ty::UniverseIndex::ROOT {
+            write!(self, "!{}", var.index())
+        } else {
+            write!(self, "!{}_{}", ui.index(), var.index())
         }
     }
 
