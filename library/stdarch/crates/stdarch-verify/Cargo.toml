@@ -16,4 +16,4 @@ test = false
 [dev-dependencies]
 serde = { version = "1.0", features = ['derive'] }
 serde-xml-rs = "0.3"
-html5ever = "0.23.0"
+serde_json = "1.0.96"

@@ -69,7 +69,7 @@ fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
     }
     assert!(!tests.is_empty());
 
-    functions.retain(|&(ref f, _)| {
+    functions.retain(|(f, _)| {
         if let syn::Visibility::Public(_) = f.vis {
             if f.sig.unsafety.is_some() {
                 return true;
@@ -350,11 +350,11 @@ fn to_type(t: &syn::Type) -> proc_macro2::TokenStream {
         }) => {
             // Both pointers and references can have a mut token (*mut and &mut)
             if mutability.is_some() {
-                let tokens = to_type(&elem);
+                let tokens = to_type(elem);
                 quote! { &Type::MutPtr(#tokens) }
             } else {
                 // If they don't (*const or &) then they are "const"
-                let tokens = to_type(&elem);
+                let tokens = to_type(elem);
                 quote! { &Type::ConstPtr(#tokens) }
             }
         }
@@ -471,11 +471,9 @@ fn find_target_feature(attrs: &[syn::Attribute]) -> Option<syn::Lit> {
     attrs
         .iter()
         .flat_map(|a| {
-            if let Ok(a) = a.parse_meta() {
-                if let syn::Meta::List(i) = a {
-                    if i.path.is_ident("target_feature") {
-                        return i.nested;
-                    }
+            if let Ok(syn::Meta::List(i)) = a.parse_meta() {
+                if i.path.is_ident("target_feature") {
+                    return i.nested;
                 }
             }
             syn::punctuated::Punctuated::new()

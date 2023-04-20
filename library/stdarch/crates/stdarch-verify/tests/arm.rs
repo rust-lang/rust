@@ -1,15 +1,8 @@
-#![allow(bad_style)]
-#![allow(unused)]
-use std::{collections::HashMap, rc::Rc};
+use std::collections::HashMap;
 
-use html5ever::{
-    driver::ParseOpts,
-    parse_document,
-    rcdom::{Node, NodeData, RcDom},
-    tendril::TendrilSink,
-    tree_builder::TreeBuilderOpts,
-};
+use serde::Deserialize;
 
+#[allow(unused)]
 struct Function {
     name: &'static str,
     arguments: &'static [&'static Type],
@@ -177,28 +170,13 @@ macro_rules! bail {
 
 #[test]
 fn verify_all_signatures() {
-    // This is a giant HTML blob downloaded from
-    // https://developer.arm.com/technologies/neon/intrinsics which contains all
-    // NEON intrinsics at least. We do manual HTML parsing below.
-    let html = include_bytes!("../arm-intrinsics.html");
-    let mut html = &html[..];
-    let opts = ParseOpts {
-        tree_builder: TreeBuilderOpts {
-            drop_doctype: true,
-            ..Default::default()
-        },
-        ..Default::default()
-    };
-    let dom = parse_document(RcDom::default(), opts)
-        .from_utf8()
-        .read_from(&mut html)
-        .unwrap();
-
-    let accordion = find_accordion(&dom.document).unwrap();
-    let map = parse_intrinsics(&accordion);
+    // Reference: https://developer.arm.com/architectures/instruction-sets/intrinsics
+    let json = include_bytes!("../../../intrinsics_data/arm_intrinsics.json");
+    let intrinsics: Vec<JsonIntrinsic> = serde_json::from_slice(json).unwrap();
+    let map = parse_intrinsics(intrinsics);
 
     let mut all_valid = true;
-    'outer: for rust in FUNCTIONS {
+    for rust in FUNCTIONS {
         if !rust.has_test {
             let skip = [
                 "vaddq_s64",
@@ -457,143 +435,6 @@ fn verify_all_signatures() {
             "vreinterpretq_p64_p128",
             "vreinterpretq_p128_p64",
             "vreinterpretq_f32_p128",
-            "vqrdmlahh_s16",
-            "vqrdmlahs_s32",
-            "vqrdmlahh_lane_s16",
-            "vqrdmlahh_laneq_s16",
-            "vqrdmlahs_lane_s32",
-            "vqrdmlahs_laneq_s32",
-            "vqrdmlah_s16",
-            "vqrdmlah_s32",
-            "vqrdmlahq_s16",
-            "vqrdmlahq_s32",
-            "vqrdmlah_lane_s16",
-            "vqrdmlah_laneq_s16",
-            "vqrdmlahq_lane_s16",
-            "vqrdmlahq_laneq_s16",
-            "vqrdmlah_lane_s32",
-            "vqrdmlah_laneq_s32",
-            "vqrdmlahq_lane_s32",
-            "vqrdmlahq_laneq_s32",
-            "vqrdmlshh_s16",
-            "vqrdmlshs_s32",
-            "vqrdmlshh_lane_s16",
-            "vqrdmlshh_laneq_s16",
-            "vqrdmlshs_lane_s32",
-            "vqrdmlshs_laneq_s32",
-            "vqrdmlsh_s16",
-            "vqrdmlshq_s16",
-            "vqrdmlsh_s32",
-            "vqrdmlshq_s32",
-            "vqrdmlsh_lane_s16",
-            "vqrdmlsh_laneq_s16",
-            "vqrdmlshq_lane_s16",
-            "vqrdmlshq_laneq_s16",
-            "vqrdmlsh_lane_s32",
-            "vqrdmlsh_laneq_s32",
-            "vqrdmlshq_lane_s32",
-            "vqrdmlshq_laneq_s32",
-            "vcadd_rot270_f32",
-            "vcadd_rot90_f32",
-            "vcaddq_rot270_f32",
-            "vcaddq_rot270_f64",
-            "vcaddq_rot90_f32",
-            "vcaddq_rot90_f64",
-            "vcmla_f32",
-            "vcmlaq_f32",
-            "vcmlaq_f64",
-            "vcmla_rot90_f32",
-            "vcmlaq_rot90_f32",
-            "vcmlaq_rot90_f64",
-            "vcmla_rot180_f32",
-            "vcmlaq_rot180_f32",
-            "vcmlaq_rot180_f64",
-            "vcmla_rot270_f32",
-            "vcmlaq_rot270_f32",
-            "vcmlaq_rot270_f64",
-            "vcmla_lane_f32",
-            "vcmla_laneq_f32",
-            "vcmlaq_lane_f32",
-            "vcmlaq_laneq_f32",
-            "vcmla_rot90_lane_f32",
-            "vcmla_rot90_laneq_f32",
-            "vcmlaq_rot90_lane_f32",
-            "vcmlaq_rot90_laneq_f32",
-            "vcmla_rot180_lane_f32",
-            "vcmla_rot180_laneq_f32",
-            "vcmlaq_rot180_lane_f32",
-            "vcmlaq_rot180_laneq_f32",
-            "vcmla_rot270_lane_f32",
-            "vcmla_rot270_laneq_f32",
-            "vcmlaq_rot270_lane_f32",
-            "vcmlaq_rot270_laneq_f32",
-            "vdot_s32",
-            "vdot_u32",
-            "vdotq_s32",
-            "vdotq_u32",
-            "vdot_lane_s32",
-            "vdot_laneq_s32",
-            "vdotq_lane_s32",
-            "vdotq_laneq_s32",
-            "vdot_lane_u32",
-            "vdot_laneq_u32",
-            "vdotq_lane_u32",
-            "vdotq_laneq_u32",
-            "vbcaxq_s8",
-            "vbcaxq_s16",
-            "vbcaxq_s32",
-            "vbcaxq_s64",
-            "vbcaxq_u8",
-            "vbcaxq_u16",
-            "vbcaxq_u32",
-            "vbcaxq_u64",
-            "veor3q_s8",
-            "veor3q_s16",
-            "veor3q_s32",
-            "veor3q_s64",
-            "veor3q_u8",
-            "veor3q_u16",
-            "veor3q_u32",
-            "veor3q_u64",
-            "vadd_p8",
-            "vadd_p16",
-            "vadd_p64",
-            "vaddq_p8",
-            "vaddq_p16",
-            "vaddq_p64",
-            "vaddq_p128",
-            "vsm4ekeyq_u32",
-            "vsm4eq_u32",
-            "vmmlaq_s32",
-            "vmmlaq_u32",
-            "vusmmlaq_s32",
-            "vsm3partw1q_u32",
-            "vsm3partw2q_u32",
-            "vsm3ss1q_u32",
-            "vsm3tt1aq_u32",
-            "vsm3tt1bq_u32",
-            "vsm3tt2aq_u32",
-            "vsm3tt2bq_u32",
-            "vrax1q_u64",
-            "vxarq_u64",
-            "vsha512hq_u64",
-            "vsha512h2q_u64",
-            "vsha512su0q_u64",
-            "vsha512su1q_u64",
-            "vrnd32x_f32",
-            "vrnd32xq_f32",
-            "vrnd32z_f32",
-            "vrnd32zq_f32",
-            "vrnd64x_f32",
-            "vrnd64xq_f32",
-            "vrnd64z_f32",
-            "vrnd64zq_f32",
-            "vcls_u8",
-            "vcls_u16",
-            "vcls_u32",
-            "vclsq_u8",
-            "vclsq_u16",
-            "vclsq_u32",
             "vtst_p16",
             "vtstq_p16",
             "__dbg",
@@ -608,7 +449,6 @@ fn verify_all_signatures() {
                 // reference for them, need to figure out where though!
                 if !rust.file.ends_with("dsp.rs\"")
                     && !rust.file.ends_with("simd32.rs\"")
-                    && !rust.file.ends_with("cmsis.rs\"")
                     && !rust.file.ends_with("v6.rs\"")
                     && !rust.file.ends_with("v7.rs\"")
                     && !rust.file.ends_with("v8.rs\"")
@@ -647,7 +487,7 @@ fn matches(rust: &Function, arm: &Intrinsic) -> Result<(), String> {
     let iter = rust.arguments.iter().zip(&arm.arguments).enumerate();
     for (i, (rust_ty, (arm, arm_const))) in iter {
         if *rust_ty != arm {
-            bail!("mismatched arguments")
+            bail!("mismatched arguments: {rust_ty:?} != {arm:?}")
         }
         if *arm_const {
             nconst += 1;
@@ -667,7 +507,11 @@ fn matches(rust: &Function, arm: &Intrinsic) -> Result<(), String> {
             arm.instruction
         );
     } else if false
-    /* not super reliable, but can be used to manually check */
+    // TODO: This instruction checking logic needs work to handle multiple instructions and to only
+    // look at aarch64 insructions.
+    // The ACLE's listed instructions are a guideline only and compilers have the freedom to use
+    // different instructions in dfferent cases which makes this an unreliable testing method. It
+    // is of questionable value given the intrinsic test tool.
     {
         for instr in rust.instrs {
             if arm.instruction.starts_with(instr) {
@@ -695,24 +539,6 @@ fn matches(rust: &Function, arm: &Intrinsic) -> Result<(), String> {
     Ok(())
 }
 
-fn find_accordion(node: &Rc<Node>) -> Option<Rc<Node>> {
-    if let NodeData::Element { attrs, .. } = &node.data {
-        for attr in attrs.borrow().iter() {
-            if attr.name.local.eq_str_ignore_ascii_case("class")
-                && attr.value.to_string() == "intrinsic-accordion"
-            {
-                return Some(node.clone());
-            }
-        }
-    }
-
-    node.children
-        .borrow()
-        .iter()
-        .filter_map(|node| find_accordion(node))
-        .next()
-}
-
 #[derive(PartialEq)]
 struct Intrinsic {
     name: String,
@@ -721,121 +547,69 @@ struct Intrinsic {
     instruction: String,
 }
 
-fn parse_intrinsics(node: &Rc<Node>) -> HashMap<String, Intrinsic> {
+// These structures are similar to those in json_parser.rs in intrinsics-test
+#[derive(Deserialize, Debug)]
+struct JsonIntrinsic {
+    name: String,
+    arguments: Vec<String>,
+    return_type: ReturnType,
+    #[serde(default)]
+    instructions: Vec<Vec<String>>,
+}
+
+#[derive(Deserialize, Debug)]
+struct ReturnType {
+    value: String,
+}
+
+fn parse_intrinsics(intrinsics: Vec<JsonIntrinsic>) -> HashMap<String, Intrinsic> {
     let mut ret = HashMap::new();
-    for child in node.children.borrow().iter() {
-        if let NodeData::Element { .. } = child.data {
-            let f = parse_intrinsic(child);
-            ret.insert(f.name.clone(), f);
-        }
+    for intr in intrinsics.into_iter() {
+        let f = parse_intrinsic(intr);
+        ret.insert(f.name.clone(), f);
     }
     ret
 }
 
-fn parse_intrinsic(node: &Rc<Node>) -> Intrinsic {
-    // <div class='intrinsic'>
-    //  <input>...</input>
-    //  <label for=$name>
-    //    <div>
-    //      $signature...
-    //  <article>
-    //    ...
-
-    let children = node.children.borrow();
-    let mut children = children
-        .iter()
-        .filter(|node| matches!(node.data, NodeData::Element { .. }));
-    let _input = children.next().expect("no <input>");
-    let label = children.next().expect("no <label>");
-    let article = children.next().expect("no <article>");
-    assert!(children.next().is_none());
-
-    // Find `for="..."` in `<label>`
-    let name = match &label.data {
-        NodeData::Element { attrs, .. } => attrs
-            .borrow()
-            .iter()
-            .filter(|attr| attr.name.local.eq_str_ignore_ascii_case("for"))
-            .map(|attr| attr.value.to_string())
-            .next()
-            .expect("no `for` attribute"),
-        _ => panic!(),
+fn parse_intrinsic(mut intr: JsonIntrinsic) -> Intrinsic {
+    let name = intr.name;
+    let ret = if intr.return_type.value == "void" {
+        None
+    } else {
+        Some(parse_ty(&intr.return_type.value))
     };
 
-    // Find contents of inner `<div>` in `<label>`
-    let label_children = label.children.borrow();
-    let mut label_children = label_children
-        .iter()
-        .filter(|node| matches!(node.data, NodeData::Element { .. }));
-    let label_div = label_children.next().expect("no <div> in <label>");
-    assert!(label_children.next().is_none());
-    let text = label_div.children.borrow();
-    let mut text = text.iter().filter_map(|node| match &node.data {
-        NodeData::Text { contents } => Some(contents.borrow().to_string()),
-        _ => None,
-    });
-    let ret = text.next().unwrap();
-    let ret = ret.trim();
-    let args = text.next().unwrap();
-    let args = args.trim();
-    assert!(text.next().is_none());
+    // This ignores multiple instructions and different optional sequences for now to mimic
+    // the old HTML scraping behaviour
+    let instruction = intr.instructions.swap_remove(0).swap_remove(0);
 
-    // Find the instruction within the article
-    let article_children = article.children.borrow();
-    let mut article_children = article_children
+    let arguments = intr
+        .arguments
         .iter()
-        .filter(|node| matches!(node.data, NodeData::Element { .. }));
-    let mut instruction = None;
-    while let Some(child) = article_children.next() {
-        let mut header = String::new();
-        collect_text(&mut header, child);
-        if !header.ends_with(" Instruction") {
-            continue;
-        }
-        let next = article_children.next().expect("no next child");
-        assert!(instruction.is_none());
-        let mut instr = String::new();
-        collect_text(&mut instr, &next);
-        instruction = Some(instr);
-    }
-
-    let instruction = match instruction {
-        Some(s) => s.trim().to_lowercase(),
-        None => panic!("can't find instruction for `{name}`"),
-    };
+        .map(|s| {
+            let (ty, konst) = match s.strip_prefix("const") {
+                Some(stripped) => (stripped.trim_start(), true),
+                None => (s.as_str(), false),
+            };
+            let ty = ty.rsplit_once(' ').unwrap().0;
+            (parse_ty(ty), konst)
+        })
+        .collect::<Vec<_>>();
 
     Intrinsic {
         name,
-        ret: if ret == "void" {
-            None
-        } else {
-            Some(parse_ty(ret))
-        },
+        ret,
         instruction,
-        arguments: args // "(...)"
-            .trim_start_matches('(') // "...)"
-            .trim_end_matches(')') // "..."
-            .split(',') // " Type name ", ".."
-            .map(|s| s.trim()) // "Type name"
-            .map(|s| s.rsplitn(2, ' ').nth(1).unwrap()) // "Type"
-            .map(|s| {
-                let const_ = "const ";
-                if s.starts_with(const_) {
-                    (parse_ty(&s[const_.len()..]), true)
-                } else {
-                    (parse_ty(s), false)
-                }
-            })
-            .collect(),
+        arguments,
     }
 }
 
 fn parse_ty(s: &str) -> Type {
     let suffix = " const *";
-    if s.ends_with(suffix) {
-        Type::ConstPtr(parse_ty_base(&s[..s.len() - suffix.len()]))
-    } else if s.ends_with(" *") {
-        Type::MutPtr(parse_ty_base(&s[..s.len() - 2]))
+    if let Some(base) = s.strip_suffix(suffix) {
+        Type::ConstPtr(parse_ty_base(base))
+    } else if let Some(base) = s.strip_suffix(" *") {
+        Type::MutPtr(parse_ty_base(base))
     } else {
         *parse_ty_base(s)
     }
@@ -973,16 +747,6 @@ fn parse_ty_base(s: &str) -> &'static Type {
         "uint8x8x3_t" => &U8X8X3,
         "uint8x8x4_t" => &U8X8X4,
 
-        _ => panic!("failed to parse html type {s:?}"),
-    }
-}
-
-fn collect_text(s: &mut String, node: &Node) {
-    if let NodeData::Text { contents } = &node.data {
-        s.push(' ');
-        s.push_str(&contents.borrow().to_string());
-    }
-    for child in node.children.borrow().iter() {
-        collect_text(s, child);
+        _ => panic!("failed to parse json type {s:?}"),
     }
 }
