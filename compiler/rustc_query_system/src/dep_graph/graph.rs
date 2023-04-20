@@ -346,6 +346,14 @@ impl<D: Deps> DepGraphData<D> {
         task: fn(Ctxt, A) -> R,
         hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
     ) -> (R, DepNodeIndex) {
+        self.assert_nonexistent_node(&key, || {
+            format!(
+                "forcing query with already existing `DepNode`\n\
+            - query-key: {arg:?}\n\
+            - dep-node: {key:?}"
+            )
+        });
+
         let with_deps = |task_deps| D::with_deps(task_deps, || task(cx, arg));
         let (result, edges) = if cx.dep_context().is_eval_always(key.kind) {
             (with_deps(TaskDepsRef::EvalAlways), EdgesVec::new())
@@ -620,6 +628,18 @@ impl<D: Deps> DepGraph<D> {
 }
 
 impl<D: Deps> DepGraphData<D> {
+    fn assert_nonexistent_node<S: std::fmt::Display>(
+        &self,
+        _dep_node: &DepNode,
+        _msg: impl FnOnce() -> S,
+    ) {
+        #[cfg(debug_assertions)]
+        if let Some(seen_dep_nodes) = &self.current.seen_dep_nodes {
+            let seen = seen_dep_nodes.lock().contains(_dep_node);
+            assert!(!seen, "{}", _msg());
+        }
+    }
+
     fn node_color(&self, dep_node: &DepNode) -> Option<DepNodeColor> {
         if let Some(prev_index) = self.previous.node_to_index_opt(dep_node) {
             self.colors.get(prev_index)
@@ -912,6 +932,18 @@ impl<D: Deps> DepGraph<D> {
     /// current compilation session. Used in various assertions
     pub fn is_green(&self, dep_node: &DepNode) -> bool {
         self.node_color(dep_node).is_some_and(|c| c.is_green())
+    }
+
+    pub fn assert_nonexistent_node<S: std::fmt::Display>(
+        &self,
+        dep_node: &DepNode,
+        msg: impl FnOnce() -> S,
+    ) {
+        if cfg!(debug_assertions)
+            && let Some(data) = &self.data
+        {
+            data.assert_nonexistent_node(dep_node, msg)
+        }
     }
 
     /// This method loads all on-disk cacheable query results into memory, so
