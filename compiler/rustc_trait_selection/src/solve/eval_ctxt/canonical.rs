@@ -51,8 +51,9 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         certainty: Certainty,
     ) -> QueryResult<'tcx> {
         let goals_certainty = self.try_evaluate_added_goals()?;
-        assert!(
-            !self.tainted,
+        assert_eq!(
+            self.tainted,
+            Ok(()),
             "EvalCtxt is tainted -- nested goals may have been dropped in a \
             previous call to `try_evaluate_added_goals!`"
         );

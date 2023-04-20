@@ -62,8 +62,9 @@ pub struct EvalCtxt<'a, 'tcx> {
     //
     // If so, then it can no longer be used to make a canonical query response,
     // since subsequent calls to `try_evaluate_added_goals` have possibly dropped
-    // ambiguous goals. Instead, use a probe.
-    tainted: bool,
+    // ambiguous goals. Instead, a probe needs to be introduced somewhere in the
+    // evaluation code.
+    tainted: Result<(), NoSolution>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -128,7 +129,7 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
             max_input_universe: ty::UniverseIndex::ROOT,
             var_values: CanonicalVarValues::dummy(),
             nested_goals: NestedGoals::new(),
-            tainted: false,
+            tainted: Ok(()),
         };
         let result = ecx.evaluate_goal(IsNormalizesToHack::No, goal);
 
@@ -180,7 +181,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 max_input_universe: canonical_goal.max_universe,
                 search_graph,
                 nested_goals: NestedGoals::new(),
-                tainted: false,
+                tainted: Ok(()),
             };
             ecx.compute_goal(goal)
         })
@@ -401,7 +402,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         );
 
         if response.is_err() {
-            self.tainted = true;
+            self.tainted = Err(NoSolution);
         }
 
         self.nested_goals = goals;
