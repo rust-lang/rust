@@ -166,10 +166,8 @@ declare_lint_pass!(BoxPointers => [BOX_POINTERS]);
 impl BoxPointers {
     fn check_heap_type(&self, cx: &LateContext<'_>, span: Span, ty: Ty<'_>) {
         for leaf in ty.walk() {
-            if let GenericArgKind::Type(leaf_ty) = leaf.unpack() {
-                if leaf_ty.is_box() {
-                    cx.emit_spanned_lint(BOX_POINTERS, span, BuiltinBoxPointers { ty });
-                }
+            if let GenericArgKind::Type(leaf_ty) = leaf.unpack() && leaf_ty.is_box() {
+                cx.emit_spanned_lint(BOX_POINTERS, span, BuiltinBoxPointers { ty });
             }
         }
     }

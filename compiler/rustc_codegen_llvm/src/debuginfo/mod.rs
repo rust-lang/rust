@@ -27,7 +27,7 @@ use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
+use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TypeVisitableExt};
 use rustc_session::config::{self, DebugInfo};
 use rustc_session::Session;
@@ -461,12 +461,12 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 let names = get_parameter_names(cx, generics);
                 iter::zip(substs, names)
                     .filter_map(|(kind, name)| {
-                        if let GenericArgKind::Type(ty) = kind.unpack() {
+                        kind.as_type().map(|ty| {
                             let actual_type =
                                 cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
                             let actual_type_metadata = type_di_node(cx, actual_type);
                             let name = name.as_str();
-                            Some(unsafe {
+                            unsafe {
                                 Some(llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
                                     DIB(cx),
                                     None,
@@ -474,10 +474,8 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                                     name.len(),
                                     actual_type_metadata,
                                 ))
-                            })
-                        } else {
-                            None
-                        }
+                            }
+                        })
                     })
                     .collect()
             } else {
