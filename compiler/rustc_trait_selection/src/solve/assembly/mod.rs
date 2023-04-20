@@ -115,10 +115,11 @@ pub(super) trait GoalKind<'tcx>:
         assumption: ty::Predicate<'tcx>,
     ) -> QueryResult<'tcx>;
 
-    // Consider a clause specifically for a `dyn Trait` self type. This requires
+    // FIXME: better wording here.
+    // Consider a clause that is spooky and we cannot trust. This requires
     // additionally checking all of the supertraits and object bounds to hold,
-    // since they're not implied by the well-formedness of the object type.
-    fn consider_object_bound_candidate(
+    // since they're not implied by the well-formedness of anything necessarily.
+    fn consider_non_wf_assumption(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
         assumption: ty::Predicate<'tcx>,
@@ -538,7 +539,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 continue;
             }
 
-            match G::consider_object_bound_candidate(self, goal, assumption) {
+            match G::consider_non_wf_assumption(self, goal, assumption) {
                 Ok(result) => {
                     candidates.push(Candidate { source: CandidateSource::BuiltinImpl, result })
                 }

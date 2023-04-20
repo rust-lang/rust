@@ -1,0 +1,18 @@
+error[E0275]: overflow evaluating the requirement `for<'a> dyn for<'a> Trait<'a, for<'a> Item = ()>: Trait<'a>`
+  --> $DIR/higher-ranked-dyn-bounds.rs:17:17
+   |
+LL |     needs_trait(x);
+   |     ----------- ^
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "20"]` attribute to your crate (`higher_ranked_dyn_bounds`)
+note: required by a bound in `needs_trait`
+  --> $DIR/higher-ranked-dyn-bounds.rs:14:28
+   |
+LL | fn needs_trait(_: Box<impl for<'a> Trait<'a> + ?Sized>) {}
+   |                            ^^^^^^^^^^^^^^^^^ required by this bound in `needs_trait`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0275`.

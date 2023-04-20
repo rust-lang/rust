@@ -106,7 +106,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         }
     }
 
-    fn consider_object_bound_candidate(
+    fn consider_non_wf_assumption(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
         assumption: ty::Predicate<'tcx>,
@@ -124,16 +124,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                     goal.predicate.projection_ty,
                     assumption_projection_pred.projection_ty,
                 )?;
-
-                let ty::Dynamic(bounds, _, _) = *goal.predicate.self_ty().kind() else {
-                    bug!("expected object type in `consider_object_bound_candidate`");
-                };
                 ecx.add_goals(
-                    structural_traits::predicates_for_object_candidate(
+                    structural_traits::requirements_for_trait_wf(
                         &ecx,
-                        goal.param_env,
                         goal.predicate.projection_ty.trait_ref(tcx),
-                        bounds,
                     )
                     .into_iter()
                     .map(|pred| goal.with(tcx, pred)),

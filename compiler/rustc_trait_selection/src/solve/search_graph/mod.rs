@@ -18,6 +18,7 @@ rustc_index::newtype_index! {
     pub struct StackDepth {}
 }
 
+#[derive(Debug)]
 struct StackElem<'tcx> {
     goal: CanonicalGoal<'tcx>,
     has_been_used: bool,

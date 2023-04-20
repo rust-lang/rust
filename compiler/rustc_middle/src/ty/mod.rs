@@ -522,6 +522,9 @@ impl<'tcx> Predicate<'tcx> {
     #[instrument(level = "debug", skip(tcx), ret)]
     pub fn is_coinductive(self, tcx: TyCtxt<'tcx>) -> bool {
         match self.kind().skip_binder() {
+            // Always coinductive in the new solver.
+            _ if tcx.trait_solver_next() => true,
+
             ty::PredicateKind::Clause(ty::Clause::Trait(data)) => {
                 tcx.trait_is_coinductive(data.def_id())
             }

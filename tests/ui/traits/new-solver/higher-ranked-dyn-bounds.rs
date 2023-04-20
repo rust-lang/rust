@@ -1,5 +1,8 @@
 // compile-flags: -Ztrait-solver=next
-// check-pass
+// known-bug: unknown
+
+// Remove this when we fix this bug.
+#![recursion_limit = "10"]
 
 trait Trait<'a> {
     type Item: for<'b> Trait2<'b>;

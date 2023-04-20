@@ -1,9 +1,6 @@
-use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::{def_id::DefId, Movability, Mutability};
+use rustc_hir::{Movability, Mutability};
 use rustc_infer::traits::query::NoSolution;
-use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
-};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 
 use crate::solve::EvalCtxt;
 
@@ -301,51 +298,11 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
     }
 }
 
-/// Assemble a list of predicates that would be present on a theoretical
-/// user impl for an object type. These predicates must be checked any time
-/// we assemble a built-in object candidate for an object type, since they
-/// are not implied by the well-formedness of the type.
-///
-/// For example, given the following traits:
-///
-/// ```rust,ignore (theoretical code)
-/// trait Foo: Baz {
-///     type Bar: Copy;
-/// }
-///
-/// trait Baz {}
-/// ```
-///
-/// For the dyn type `dyn Foo<Item = Ty>`, we can imagine there being a
-/// pair of theoretical impls:
-///
-/// ```rust,ignore (theoretical code)
-/// impl Foo for dyn Foo<Item = Ty>
-/// where
-///     Self: Baz,
-///     <Self as Foo>::Bar: Copy,
-/// {
-///     type Bar = Ty;
-/// }
-///
-/// impl Baz for dyn Foo<Item = Ty> {}
-/// ```
-///
-/// However, in order to make such impls well-formed, we need to do an
-/// additional step of eagerly folding the associated types in the where
-/// clauses of the impl. In this example, that means replacing
-/// `<Self as Foo>::Bar` with `Ty` in the first impl.
-///
-// FIXME: This is only necessary as `<Self as Trait>::Assoc: ItemBound`
-// bounds in impls are trivially proven using the item bound candidates.
-// This is unsound in general and once that is fixed, we don't need to
-// normalize eagerly here. See https://github.com/lcnr/solver-woes/issues/9
-// for more details.
-pub(in crate::solve) fn predicates_for_object_candidate<'tcx>(
+/// Assemble a list of predicates that need to hold for a trait implementation
+/// to be WF.
+pub(in crate::solve) fn requirements_for_trait_wf<'tcx>(
     ecx: &EvalCtxt<'_, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
-    object_bound: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
 ) -> Vec<ty::Predicate<'tcx>> {
     let tcx = ecx.tcx();
     let mut requirements = vec![];
@@ -359,59 +316,5 @@ pub(in crate::solve) fn predicates_for_object_candidate<'tcx>(
             requirements.extend(tcx.item_bounds(item.def_id).subst(tcx, trait_ref.substs));
         }
     }
-
-    let mut replace_projection_with = FxHashMap::default();
-    for bound in object_bound {
-        if let ty::ExistentialPredicate::Projection(proj) = bound.skip_binder() {
-            let proj = proj.with_self_ty(tcx, trait_ref.self_ty());
-            let old_ty = replace_projection_with.insert(proj.def_id(), bound.rebind(proj));
-            assert_eq!(
-                old_ty,
-                None,
-                "{} has two substitutions: {} and {}",
-                proj.projection_ty,
-                proj.term,
-                old_ty.unwrap()
-            );
-        }
-    }
-
-    requirements.fold_with(&mut ReplaceProjectionWith {
-        ecx,
-        param_env,
-        mapping: replace_projection_with,
-    })
-}
-
-struct ReplaceProjectionWith<'a, 'tcx> {
-    ecx: &'a EvalCtxt<'a, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    mapping: FxHashMap<DefId, ty::PolyProjectionPredicate<'tcx>>,
-}
-
-impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceProjectionWith<'_, 'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
-        self.ecx.tcx()
-    }
-
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if let ty::Alias(ty::Projection, alias_ty) = *ty.kind()
-            && let Some(replacement) = self.mapping.get(&alias_ty.def_id)
-        {
-            // We may have a case where our object type's projection bound is higher-ranked,
-            // but the where clauses we instantiated are not. We can solve this by instantiating
-            // the binder at the usage site.
-            let proj = self.ecx.instantiate_binder_with_infer(*replacement);
-            // FIXME: Technically this folder could be fallible?
-            let nested = self
-                .ecx
-                .eq_and_get_goals(self.param_env, alias_ty, proj.projection_ty)
-                .expect("expected to be able to unify goal projection with dyn's projection");
-            // FIXME: Technically we could register these too..
-            assert!(nested.is_empty(), "did not expect unification to have any nested goals");
-            proj.term.ty().unwrap()
-        } else {
-            ty.super_fold_with(self)
-        }
-    }
+    requirements
 }
