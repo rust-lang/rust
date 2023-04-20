@@ -24,6 +24,7 @@ use crate::aligned::Aligned;
 
 mod copy;
 mod drop;
+mod impl_tag;
 
 pub use copy::CopyTaggedPtr;
 pub use drop::TaggedPtr;
@@ -141,6 +142,40 @@ pub unsafe trait Tag: Copy {
     unsafe fn from_usize(tag: usize) -> Self;
 }
 
+/// Returns the number of bits available for use for tags in a pointer to `T`
+/// (this is based on `T`'s alignment).
+pub const fn bits_for<T: ?Sized + Aligned>() -> u32 {
+    crate::aligned::align_of::<T>().as_nonzero().trailing_zeros()
+}
+
+/// Returns the correct [`Tag::BITS`] constant for a set of tag values.
+pub const fn bits_for_tags(mut tags: &[usize]) -> u32 {
+    let mut bits = 0;
+
+    while let &[tag, ref rest @ ..] = tags {
+        tags = rest;
+
+        let b = bits_for_tag(tag);
+        if b > bits {
+            bits = b;
+        }
+    }
+
+    bits
+}
+
+/// Returns `(size_of::<usize>() * 8) - tag.leading_zeros()`
+const fn bits_for_tag(mut tag: usize) -> u32 {
+    let mut bits = 0;
+
+    while tag > 0 {
+        bits += 1;
+        tag >>= 1;
+    }
+
+    bits
+}
+
 unsafe impl<T: ?Sized + Aligned> Pointer for Box<T> {
     const BITS: u32 = bits_for::<Self::Target>();
 
@@ -219,12 +254,6 @@ unsafe impl<'a, T: 'a + ?Sized + Aligned> Pointer for &'a mut T {
         // `ptr` comes from `into_ptr` which gets the pointer from a reference
         unsafe { ptr.as_mut() }
     }
-}
-
-/// Returns the number of bits available for use for tags in a pointer to `T`
-/// (this is based on `T`'s alignment).
-pub const fn bits_for<T: ?Sized + Aligned>() -> u32 {
-    crate::aligned::align_of::<T>().as_nonzero().trailing_zeros()
 }
 
 /// A tag type used in [`CopyTaggedPtr`] and [`TaggedPtr`] tests.
