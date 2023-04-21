@@ -422,19 +422,11 @@ pub struct TargetCfgs {
 
 impl TargetCfgs {
     fn new(config: &Config) -> TargetCfgs {
-        let targets: HashMap<String, TargetCfg> = if config.stage_id.starts_with("stage0-")
-            || (config.suite == "ui-fulldeps" && config.stage_id.starts_with("stage1-"))
-        {
-            // #[cfg(bootstrap)]
-            // Needed only for one cycle, remove during the bootstrap bump.
-            Self::collect_all_slow(config)
-        } else {
-            serde_json::from_str(&rustc_output(
-                config,
-                &["--print=all-target-specs-json", "-Zunstable-options"],
-            ))
-            .unwrap()
-        };
+        let targets: HashMap<String, TargetCfg> = serde_json::from_str(&rustc_output(
+            config,
+            &["--print=all-target-specs-json", "-Zunstable-options"],
+        ))
+        .unwrap();
 
         let mut current = None;
         let mut all_targets = HashSet::new();
@@ -474,25 +466,6 @@ impl TargetCfgs {
             all_families,
             all_pointer_widths,
         }
-    }
-
-    // #[cfg(bootstrap)]
-    // Needed only for one cycle, remove during the bootstrap bump.
-    fn collect_all_slow(config: &Config) -> HashMap<String, TargetCfg> {
-        let mut result = HashMap::new();
-        for target in rustc_output(config, &["--print=target-list"]).trim().lines() {
-            let json = rustc_output(
-                config,
-                &["--print=target-spec-json", "-Zunstable-options", "--target", target],
-            );
-            match serde_json::from_str(&json) {
-                Ok(res) => {
-                    result.insert(target.into(), res);
-                }
-                Err(err) => panic!("failed to parse target spec for {target}: {err}"),
-            }
-        }
-        result
     }
 }
 

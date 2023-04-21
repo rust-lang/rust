@@ -69,29 +69,13 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
             name,
             ignore,
             ignore_message,
-            #[cfg(not(bootstrap))]
             source_file,
-            #[cfg(not(bootstrap))]
             start_line,
-            #[cfg(not(bootstrap))]
             start_col,
-            #[cfg(not(bootstrap))]
             end_line,
-            #[cfg(not(bootstrap))]
             end_col,
             ..
         } = desc;
-
-        #[cfg(bootstrap)]
-        let source_file = "";
-        #[cfg(bootstrap)]
-        let start_line = 0;
-        #[cfg(bootstrap)]
-        let start_col = 0;
-        #[cfg(bootstrap)]
-        let end_line = 0;
-        #[cfg(bootstrap)]
-        let end_col = 0;
 
         self.writeln_message(&format!(
             r#"{{ "type": "{test_type}", "event": "discovered", "name": "{}", "ignore": {ignore}, "ignore_message": "{}", "source_path": "{}", "start_line": {start_line}, "start_col": {start_col}, "end_line": {end_line}, "end_col": {end_col} }}"#,

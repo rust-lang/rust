@@ -303,19 +303,8 @@ impl<'a> Arguments<'a> {
 
     /// When using the format_args!() macro, this function is used to generate the
     /// Arguments structure.
-    #[cfg(not(bootstrap))]
     #[inline]
     pub fn new_v1(pieces: &'a [&'static str], args: &'a [rt::Argument<'a>]) -> Arguments<'a> {
-        if pieces.len() < args.len() || pieces.len() > args.len() + 1 {
-            panic!("invalid args");
-        }
-        Arguments { pieces, fmt: None, args }
-    }
-
-    #[cfg(bootstrap)]
-    #[inline]
-    #[rustc_const_unstable(feature = "const_fmt_arguments_new", issue = "none")]
-    pub const fn new_v1(pieces: &'a [&'static str], args: &'a [rt::Argument<'a>]) -> Arguments<'a> {
         if pieces.len() < args.len() || pieces.len() > args.len() + 1 {
             panic!("invalid args");
         }

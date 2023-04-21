@@ -70,7 +70,6 @@ pub unsafe fn get_context<'a, 'b>(cx: ResumeTy) -> &'a mut Context<'b> {
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
 #[inline]
-#[cfg_attr(bootstrap, lang = "identity_future")]
 pub const fn identity_future<O, Fut: Future<Output = O>>(f: Fut) -> Fut {
     f
 }
