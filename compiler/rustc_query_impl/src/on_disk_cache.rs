@@ -300,7 +300,7 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
                     interpret_alloc_index.reserve(new_n - n);
                     for idx in n..new_n {
                         let id = encoder.interpret_allocs[idx];
-                        let pos = encoder.position() as u32;
+                        let pos: u32 = encoder.position().try_into().unwrap();
                         interpret_alloc_index.push(pos);
                         interpret::specialized_encode_alloc_id(&mut encoder, tcx, id);
                     }

@@ -670,9 +670,10 @@ rustc_queries! {
         desc { "computing the inferred outlives predicates for items in this crate" }
     }
 
-    /// Maps from an impl/trait `DefId` to a list of the `DefId`s of its items.
+    /// Maps from an impl/trait or struct/variant `DefId`
+    /// to a list of the `DefId`s of its associated items or fields.
     query associated_item_def_ids(key: DefId) -> &'tcx [DefId] {
-        desc { |tcx| "collecting associated items of `{}`", tcx.def_path_str(key) }
+        desc { |tcx| "collecting associated items or fields of `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
     }

@@ -1367,7 +1367,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         if adt_def.is_enum() {
             let module_children = tcx.module_children_non_reexports(local_def_id);
-            record_array!(self.tables.children[def_id] <-
+            record_array!(self.tables.module_children_non_reexports[def_id] <-
                 module_children.iter().map(|def_id| def_id.local_def_index));
         } else {
             // For non-enum, there is only one variant, and its def_id is the adt's.
@@ -1385,7 +1385,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             record!(self.tables.variant_data[variant.def_id] <- data);
 
             self.tables.constness.set_some(variant.def_id.index, hir::Constness::Const);
-            record_array!(self.tables.children[variant.def_id] <- variant.fields.iter().map(|f| {
+            record_array!(self.tables.associated_item_or_field_def_ids[variant.def_id] <- variant.fields.iter().map(|f| {
                 assert!(f.did.is_local());
                 f.did.index
             }));
@@ -1415,7 +1415,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             record!(self.tables.expn_that_defined[def_id] <- tcx.expn_that_defined(local_def_id));
         } else {
             let non_reexports = tcx.module_children_non_reexports(local_def_id);
-            record_array!(self.tables.children[def_id] <-
+            record_array!(self.tables.module_children_non_reexports[def_id] <-
                 non_reexports.iter().map(|def_id| def_id.local_def_index));
 
             record_defaulted_array!(self.tables.module_children_reexports[def_id] <-
@@ -1617,7 +1617,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         debug!("EncodeContext::encode_info_for_item({:?})", def_id);
 
         let record_associated_item_def_ids = |this: &mut Self, def_ids: &[DefId]| {
-            record_array!(this.tables.children[def_id] <- def_ids.iter().map(|&def_id| {
+            record_array!(this.tables.associated_item_or_field_def_ids[def_id] <- def_ids.iter().map(|&def_id| {
                 assert!(def_id.is_local());
                 def_id.index
             }))
@@ -1677,6 +1677,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             hir::ItemKind::Trait(..) => {
                 record!(self.tables.trait_def[def_id] <- self.tcx.trait_def(def_id));
+
+                let module_children = tcx.module_children_non_reexports(item.owner_id.def_id);
+                record_array!(self.tables.module_children_non_reexports[def_id] <-
+                    module_children.iter().map(|def_id| def_id.local_def_index));
 
                 let associated_item_def_ids = self.tcx.associated_item_def_ids(def_id);
                 record_associated_item_def_ids(self, associated_item_def_ids);
