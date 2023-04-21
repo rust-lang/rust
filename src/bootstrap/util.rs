@@ -493,11 +493,15 @@ fn absolute_windows(path: &std::path::Path) -> std::io::Result<std::path::PathBu
 /// When `clang-cl` is used with instrumentation, we need to add clang's runtime library resource
 /// directory to the linker flags, otherwise there will be linker errors about the profiler runtime
 /// missing. This function returns the path to that directory.
-pub fn get_clang_cl_resource_dir(clang_cl_path: &str) -> PathBuf {
+pub fn get_clang_rt_dir(clang: impl AsRef<Path>, is_msvc: bool) -> PathBuf {
     // Similar to how LLVM does it, to find clang's library runtime directory:
     // - we ask `clang-cl` to locate the `clang_rt.builtins` lib.
-    let mut builtins_locator = Command::new(clang_cl_path);
-    builtins_locator.args(&["/clang:-print-libgcc-file-name", "/clang:--rtlib=compiler-rt"]);
+    let mut builtins_locator = Command::new(clang.as_ref());
+    if is_msvc {
+        builtins_locator.args(&["/clang:-print-libgcc-file-name", "/clang:--rtlib=compiler-rt"]);
+    } else {
+        builtins_locator.args(&["-print-libgcc-file-name", "-rtlib=compiler-rt"]);
+    };
 
     let clang_rt_builtins = output(&mut builtins_locator);
     let clang_rt_builtins = Path::new(clang_rt_builtins.trim());

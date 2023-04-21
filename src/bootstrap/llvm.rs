@@ -19,7 +19,7 @@ use std::process::Command;
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::channel;
 use crate::config::{Config, TargetSelection};
-use crate::util::get_clang_cl_resource_dir;
+use crate::util::get_clang_rt_dir;
 use crate::util::{self, exe, output, t, up_to_date};
 use crate::{CLang, GitRepo};
 
@@ -828,7 +828,7 @@ impl Step for Lld {
             if let Some(clang_cl_path) = builder.config.llvm_clang_cl.as_ref() {
                 // Find clang's runtime library directory and push that as a search path to the
                 // cmake linker flags.
-                let clang_rt_dir = get_clang_cl_resource_dir(clang_cl_path);
+                let clang_rt_dir = get_clang_rt_dir(clang_cl_path);
                 ldflags.push_all(&format!("/libpath:{}", clang_rt_dir.display()));
             }
         }

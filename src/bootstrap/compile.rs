@@ -27,7 +27,7 @@ use crate::config::{LlvmLibunwind, RustcLto, TargetSelection};
 use crate::dist;
 use crate::llvm;
 use crate::tool::SourceType;
-use crate::util::get_clang_cl_resource_dir;
+use crate::util::get_clang_rt_dir;
 use crate::util::{exe, is_debug_info, is_dylib, output, symlink_dir, t, up_to_date};
 use crate::LLVM_TOOLS;
 use crate::{CLang, Compiler, DependencyType, GitRepo, Mode};
@@ -923,10 +923,38 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
     // found. This is to avoid the linker errors about undefined references to
     // `__llvm_profile_instrument_memop` when linking `rustc_driver`.
     let mut llvm_linker_flags = String::new();
-    if builder.config.llvm_profile_generate && target.contains("msvc") {
-        if let Some(ref clang_cl_path) = builder.config.llvm_clang_cl {
-            // Add clang's runtime library directory to the search path
-            let clang_rt_dir = get_clang_cl_resource_dir(clang_cl_path);
+    if builder.config.llvm_profile_generate {
+        if target.contains("msvc") {
+            if let Some(ref clang_cl_path) = builder.config.llvm_clang_cl {
+                // Add clang's runtime library directory to the search path
+                let clang_rt_dir = get_clang_rt_dir(clang_cl_path, true);
+                llvm_linker_flags.push_str(&format!("-L{}", clang_rt_dir.display()));
+            }
+        }
+
+        if target.contains("apple") {
+            let clang_rt_profile_lib_suffix = if target.ends_with("ios-sim") {
+                "iossim"
+            } else if target.ends_with("ios") {
+                "ios"
+            } else if target.ends_with("tvos-sim") {
+                "tvossim"
+            } else if target.ends_with("tvos") {
+                "tvos"
+            } else if target.ends_with("darwin") {
+                "osx"
+            } else if target.ends_with("watchos-sim") {
+                "watchossim"
+            } else if target.ends_with("watchos") {
+                "watchos"
+            } else {
+                panic!("clang has no clang_rt.profile library for {target}");
+            };
+            let clang = builder.cc(target);
+            let clang_rt_dir = get_clang_rt_dir(clang, false);
+            let clang_rt_profile_lib = format!("libclang_rt.profile_{clang_rt_profile_lib_suffix}");
+            llvm_linker_flags.push_str(&format!("-l{clang_rt_profile_lib}"));
+            llvm_linker_flags.push_str(" ");
             llvm_linker_flags.push_str(&format!("-L{}", clang_rt_dir.display()));
         }
     }
