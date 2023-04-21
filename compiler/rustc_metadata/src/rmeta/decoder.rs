@@ -876,16 +876,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             variant_did,
             ctor,
             data.discr,
-            self.root
-                .tables
-                .children
-                .get(self, index)
-                .expect("fields are not encoded for a variant")
-                .decode(self)
-                .map(|index| ty::FieldDef {
-                    did: self.local_def_id(index),
-                    name: self.item_name(index),
-                    vis: self.get_visibility(index),
+            self.get_associated_item_or_field_def_ids(index)
+                .map(|did| ty::FieldDef {
+                    did,
+                    name: self.item_name(did.index),
+                    vis: self.get_visibility(did.index),
                 })
                 .collect(),
             adt_kind,
@@ -910,7 +905,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         let variants = if let ty::AdtKind::Enum = adt_kind {
             self.root
                 .tables
-                .children
+                .module_children_non_reexports
                 .get(self, item_id)
                 .expect("variants are not encoded for an enum")
                 .decode(self)
@@ -1022,11 +1017,9 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 }
             } else {
                 // Iterate over all children.
-                for child_index in self.root.tables.children.get(self, id).unwrap().decode(self) {
-                    // FIXME: Do not encode RPITITs as a part of this list.
-                    if self.root.tables.opt_rpitit_info.get(self, child_index).is_none() {
-                        yield self.get_mod_child(child_index, sess);
-                    }
+                let non_reexports = self.root.tables.module_children_non_reexports.get(self, id);
+                for child_index in non_reexports.unwrap().decode(self) {
+                    yield self.get_mod_child(child_index, sess);
                 }
 
                 let reexports = self.root.tables.module_children_reexports.get(self, id);
@@ -1058,17 +1051,16 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .map_or(false, |ident| ident.name == kw::SelfLower)
     }
 
-    fn get_associated_item_def_ids(
+    fn get_associated_item_or_field_def_ids(
         self,
         id: DefIndex,
-        sess: &'a Session,
     ) -> impl Iterator<Item = DefId> + 'a {
         self.root
             .tables
-            .children
+            .associated_item_or_field_def_ids
             .get(self, id)
-            .expect("associated items not encoded for an item")
-            .decode((self, sess))
+            .unwrap_or_else(|| self.missing("associated_item_or_field_def_ids", id))
+            .decode(self)
             .map(move |child_index| self.local_def_id(child_index))
     }
 
