@@ -773,7 +773,7 @@ fn fn_once(mut x: impl FnOnce(u8) -> u8) -> u8 {
 
     #[test]
     fn closure() {
-        // FIXME: Diagnostic spans are too large
+        // FIXME: Diagnostic spans are inconsistent inside and outside closure
         check_diagnostics(
             r#"
         //- minicore: copy, fn
@@ -786,11 +786,11 @@ fn fn_once(mut x: impl FnOnce(u8) -> u8) -> u8 {
         fn f() {
             let x = 5;
             let closure1 = || { x = 2; };
-                         //^^^^^^^^^^^^^ 💡 error: cannot mutate immutable variable `x`
+                              //^ 💡 error: cannot mutate immutable variable `x`
             let _ = closure1();
                   //^^^^^^^^ 💡 error: cannot mutate immutable variable `closure1`
             let closure2 = || { x = x; };
-                         //^^^^^^^^^^^^^ 💡 error: cannot mutate immutable variable `x`
+                              //^ 💡 error: cannot mutate immutable variable `x`
             let closure3 = || {
                 let x = 2;
                 x = 5;
@@ -799,7 +799,7 @@ fn fn_once(mut x: impl FnOnce(u8) -> u8) -> u8 {
             };
             let x = X;
             let closure4 = || { x.mutate(); };
-                         //^^^^^^^^^^^^^^^^^^ 💡 error: cannot mutate immutable variable `x`
+                              //^ 💡 error: cannot mutate immutable variable `x`
         }
                     "#,
         );
@@ -829,7 +829,7 @@ fn f() {
             || {
                 let x = 2;
                 || { || { x = 5; } }
-              //^^^^^^^^^^^^^^^^^^^^ 💡 error: cannot mutate immutable variable `x`
+                        //^ 💡 error: cannot mutate immutable variable `x`
             }
         }
     };
@@ -860,6 +860,15 @@ fn f() {
             let mut x = &mut 5;
               //^^^^^ 💡 weak: variable does not need to be mutable
             let closure1 = || { *x = 2; };
+            let _ = closure1();
+                  //^^^^^^^^ 💡 error: cannot mutate immutable variable `closure1`
+            let mut x = &mut 5;
+              //^^^^^ 💡 weak: variable does not need to be mutable
+            let closure1 = || { *x = 2; &x; };
+            let _ = closure1();
+                  //^^^^^^^^ 💡 error: cannot mutate immutable variable `closure1`
+            let mut x = &mut 5;
+            let closure1 = || { *x = 2; &x; x = &mut 3; };
             let _ = closure1();
                   //^^^^^^^^ 💡 error: cannot mutate immutable variable `closure1`
             let mut x = &mut 5;
