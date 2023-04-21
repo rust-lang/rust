@@ -390,6 +390,115 @@ fn offset_of() {
 
 #[test]
 #[cfg(not(bootstrap))]
+fn offset_of_union() {
+    #[repr(C)]
+    union Foo {
+        x: u8,
+        y: u16,
+        z: Bar,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    struct Bar(u8, u8);
+
+    assert_eq!(offset_of!(Foo, x), 0);
+    assert_eq!(offset_of!(Foo, y), 0);
+    assert_eq!(offset_of!(Foo, z.0), 0);
+    assert_eq!(offset_of!(Foo, z.1), 1);
+}
+
+#[test]
+#[cfg(not(bootstrap))]
+fn offset_of_dst() {
+    #[repr(C)]
+    struct Alpha {
+        x: u8,
+        y: u16,
+        z: [u8],
+    }
+
+    trait Trait {}
+
+    #[repr(C)]
+    struct Beta {
+        x: u8,
+        y: u16,
+        z: dyn Trait,
+    }
+
+    extern "C" {
+        type Extern;
+    }
+
+    #[repr(C)]
+    struct Gamma {
+        x: u8,
+        y: u16,
+        z: Extern,
+    }
+
+    assert_eq!(offset_of!(Alpha, x), 0);
+    assert_eq!(offset_of!(Alpha, y), 2);
+
+    assert_eq!(offset_of!(Beta, x), 0);
+    assert_eq!(offset_of!(Beta, y), 2);
+
+    assert_eq!(offset_of!(Gamma, x), 0);
+    assert_eq!(offset_of!(Gamma, y), 2);
+}
+
+#[test]
+#[cfg(not(bootstrap))]
+fn offset_of_packed() {
+    #[repr(C, packed)]
+    struct Foo {
+        x: u8,
+        y: u16,
+    }
+
+    assert_eq!(offset_of!(Foo, x), 0);
+    assert_eq!(offset_of!(Foo, y), 1);
+}
+
+#[test]
+#[cfg(not(bootstrap))]
+fn offset_of_projection() {
+    #[repr(C)]
+    struct Foo {
+        x: u8,
+        y: u16,
+    }
+
+    trait Projector {
+        type Type;
+    }
+
+    impl Projector for () {
+        type Type = Foo;
+    }
+
+    assert_eq!(offset_of!(<() as Projector>::Type, x), 0);
+    assert_eq!(offset_of!(<() as Projector>::Type, y), 2);
+}
+
+#[test]
+#[cfg(not(bootstrap))]
+fn offset_of_alias() {
+    #[repr(C)]
+    struct Foo {
+        x: u8,
+        y: u16,
+    }
+
+    type Bar = Foo;
+
+    assert_eq!(offset_of!(Bar, x), 0);
+    assert_eq!(offset_of!(Bar, y), 2);
+}
+
+#[test]
+#[cfg(not(bootstrap))]
 fn const_offset_of() {
     #[repr(C)]
     struct Foo {
@@ -423,20 +532,6 @@ fn offset_of_without_const_promotion() {
     }
 
     inner::<()>();
-}
-
-#[test]
-#[cfg(not(bootstrap))]
-fn offset_of_dst() {
-    #[repr(C)]
-    struct Foo {
-        x: u8,
-        y: u16,
-        slice: [u8],
-    }
-
-    assert_eq!(offset_of!(Foo, x), 0);
-    assert_eq!(offset_of!(Foo, y), 2);
 }
 
 #[test]

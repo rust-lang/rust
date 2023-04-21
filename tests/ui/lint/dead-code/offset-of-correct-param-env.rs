@@ -33,7 +33,7 @@ where
     // But importantly, the normalization ends up with T, which, as we've declared in our param
     // env is MyFieldDead. When we're in the param env of the `a` field, the where bound above
     // is not in scope, so we don't know what T is - it's generic.
-    // We cannot access a field on T. Boom!
+    // If we use the wrong param env, the lint will ICE.
     std::mem::offset_of!(A<GenericIsEqual<T>>, a.not_dead)
 }
 
