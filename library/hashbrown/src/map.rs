@@ -5928,8 +5928,7 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> EntryRef<'a, 'b, K, Q, V,
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn and_replace_entry_with<F>(self, f: F) -> Self
     where
-        F: FnOnce(&Q, V) -> Option<V>,
-        K: Borrow<Q>,
+        F: FnOnce(&K, V) -> Option<V>,
     {
         match self {
             EntryRef::Occupied(entry) => entry.replace_entry_with(f),
@@ -6294,8 +6293,7 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> OccupiedEntryRef<'a, 'b, 
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn replace_entry_with<F>(self, f: F) -> EntryRef<'a, 'b, K, Q, V, S, A>
     where
-        F: FnOnce(&Q, V) -> Option<V>,
-        K: Borrow<Q>,
+        F: FnOnce(&K, V) -> Option<V>,
     {
         unsafe {
             let mut spare_key = None;
@@ -6303,7 +6301,7 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> OccupiedEntryRef<'a, 'b, 
             self.table
                 .table
                 .replace_bucket_with(self.elem.clone(), |(key, value)| {
-                    if let Some(new_value) = f(key.borrow(), value) {
+                    if let Some(new_value) = f(&key, value) {
                         Some((key, new_value))
                     } else {
                         spare_key = Some(KeyOrRef::Owned(key));
