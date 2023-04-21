@@ -73,7 +73,7 @@ macro_rules! iterator {
             // Unsafe because the offset must not exceed `self.len()`.
             #[inline(always)]
             unsafe fn post_inc_start(&mut self, offset: usize) -> * $raw_mut T {
-                if mem::size_of::<T>() == 0 {
+                if T::IS_ZST {
                     zst_shrink!(self, offset);
                     self.ptr.as_ptr()
                 } else {

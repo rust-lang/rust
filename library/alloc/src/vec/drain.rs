@@ -112,9 +112,7 @@ impl<'a, T, A: Allocator> Drain<'a, T, A> {
             let unyielded_ptr = this.iter.as_slice().as_ptr();
 
             // ZSTs have no identity, so we don't need to move them around.
-            let needs_move = mem::size_of::<T>() != 0;
-
-            if needs_move {
+            if !T::IS_ZST {
                 let start_ptr = source_vec.as_mut_ptr().add(start);
 
                 // memmove back unyielded elements
