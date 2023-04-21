@@ -23,7 +23,7 @@
     </choices-outline>
     <!--
     These 'selected' scripts ensure that install and uninstall can never be selected at
-    the same time. Exectly how they work is pretty mysterious, tied to the unspecified algorithm
+    the same time. Exactly how they work is pretty mysterious, tied to the unspecified algorithm
     the installer uses to traverse the options after one is toggled.
       -->
     <choice id="install" visible="true"
