@@ -4562,7 +4562,7 @@ impl<K: Borrow<Q>, Q: ?Sized + Debug, V: Debug, S, A: Allocator + Clone> Debug
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OccupiedEntryRef")
-            .field("key", &self.key())
+            .field("key", &self.key().borrow())
             .field("value", &self.get())
             .finish()
     }
@@ -5832,7 +5832,7 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> EntryRef<'a, 'b, K, Q, V,
         K: Borrow<Q>,
     {
         match *self {
-            EntryRef::Occupied(ref entry) => entry.key(),
+            EntryRef::Occupied(ref entry) => entry.key().borrow(),
             EntryRef::Vacant(ref entry) => entry.key(),
         }
     }
@@ -5988,11 +5988,8 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> OccupiedEntryRef<'a, 'b, 
     /// }
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn key(&self) -> &Q
-    where
-        K: Borrow<Q>,
-    {
-        unsafe { &self.elem.as_ref().0 }.borrow()
+    pub fn key(&self) -> &K {
+        unsafe { &self.elem.as_ref().0 }
     }
 
     /// Take the ownership of the key and value from the map.
