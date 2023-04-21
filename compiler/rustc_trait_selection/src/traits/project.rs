@@ -1274,29 +1274,14 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
         });
     }
 
-    let impl_def_id = tcx.parent(alias_ty.def_id);
-    let impl_substs = selcx.infcx.fresh_substs_for_item(cause.span, impl_def_id);
-
-    let impl_ty = tcx.type_of(impl_def_id).subst(tcx, impl_substs);
-    let impl_ty =
-        normalize_with_depth_to(selcx, param_env, cause.clone(), depth + 1, impl_ty, obligations);
-
-    // Infer the generic parameters of the impl by unifying the
-    // impl type with the self type of the projection.
-    let self_ty = alias_ty.self_ty();
-    match selcx.infcx.at(&cause, param_env).eq(DefineOpaqueTypes::No, impl_ty, self_ty) {
-        Ok(mut ok) => obligations.append(&mut ok.obligations),
-        Err(_) => {
-            tcx.sess.delay_span_bug(
-                cause.span,
-                format!(
-                    "{self_ty:?} was a subtype of {impl_ty:?} during selection but now it is not"
-                ),
-            );
-        }
-    }
-
-    let substs = alias_ty.rebase_substs_onto_impl(impl_substs, tcx);
+    let substs = compute_inherent_assoc_ty_substs(
+        selcx,
+        param_env,
+        alias_ty,
+        cause.clone(),
+        depth,
+        obligations,
+    );
 
     // Register the obligations arising from the impl and from the associated type itself.
     let predicates = tcx.predicates_of(alias_ty.def_id).instantiate(tcx, substs);
@@ -1341,6 +1326,41 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
     }
 
     ty
+}
+
+pub fn compute_inherent_assoc_ty_substs<'a, 'b, 'tcx>(
+    selcx: &'a mut SelectionContext<'b, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    alias_ty: ty::AliasTy<'tcx>,
+    cause: ObligationCause<'tcx>,
+    depth: usize,
+    obligations: &mut Vec<PredicateObligation<'tcx>>,
+) -> ty::SubstsRef<'tcx> {
+    let tcx = selcx.tcx();
+
+    let impl_def_id = tcx.parent(alias_ty.def_id);
+    let impl_substs = selcx.infcx.fresh_substs_for_item(cause.span, impl_def_id);
+
+    let impl_ty = tcx.type_of(impl_def_id).subst(tcx, impl_substs);
+    let impl_ty =
+        normalize_with_depth_to(selcx, param_env, cause.clone(), depth + 1, impl_ty, obligations);
+
+    // Infer the generic parameters of the impl by unifying the
+    // impl type with the self type of the projection.
+    let self_ty = alias_ty.self_ty();
+    match selcx.infcx.at(&cause, param_env).eq(DefineOpaqueTypes::No, impl_ty, self_ty) {
+        Ok(mut ok) => obligations.append(&mut ok.obligations),
+        Err(_) => {
+            tcx.sess.delay_span_bug(
+                cause.span,
+                format!(
+                    "{self_ty:?} was a subtype of {impl_ty:?} during selection but now it is not"
+                ),
+            );
+        }
+    }
+
+    alias_ty.rebase_substs_onto_impl(impl_substs, tcx)
 }
 
 enum Projected<'tcx> {
