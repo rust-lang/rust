@@ -106,6 +106,8 @@ impl<'conf, 'cx> Visitor<'_> for NestingVisitor<'conf, 'cx> {
     }
 
     fn visit_block(&mut self, block: &Block) {
+        // TODO: Can we use some RAII guard instead? Borrow checker seems to hate that
+        // idea but it would be a lot cleaner.
         self.nest_level += 1;
 
         if !check_indent(self, block.span) {
@@ -167,6 +169,8 @@ impl<'conf, 'cx> Visitor<'_> for NestingVisitor<'conf, 'cx> {
     fn visit_expr(&mut self, expr: &Expr) {
         // This is a mess, but really all it does is extract every expression from every applicable variant
         // of ExprKind until it finds a Block.
+        // TODO: clippy_utils has the two functions for_each_expr and for_each_expr_with_closures, can those
+        // be used here or are they not applicable for this case?
         match &expr.kind {
             ExprKind::ConstBlock(anon_const) => self.visit_expr(&anon_const.value),
             ExprKind::Call(.., args) => {
