@@ -722,11 +722,14 @@ class RustBuild(object):
 
     def build_bootstrap(self, color, verbose_count):
         """Build bootstrap"""
-        print("Building bootstrap")
+        env = os.environ.copy()
+        if "GITHUB_ACTIONS" in env:
+            print("::group::Building bootstrap")
+        else:
+            print("Building bootstrap")
         build_dir = os.path.join(self.build_dir, "bootstrap")
         if self.clean and os.path.exists(build_dir):
             shutil.rmtree(build_dir)
-        env = os.environ.copy()
         # `CARGO_BUILD_TARGET` breaks bootstrap build.
         # See also: <https://github.com/rust-lang/rust/issues/70208>.
         if "CARGO_BUILD_TARGET" in env:
@@ -797,6 +800,9 @@ class RustBuild(object):
 
         # Run this from the source directory so cargo finds .cargo/config
         run(args, env=env, verbose=self.verbose, cwd=self.rust_root)
+
+        if "GITHUB_ACTIONS" in env:
+            print("::endgroup::")
 
     def build_triple(self):
         """Build triple as in LLVM

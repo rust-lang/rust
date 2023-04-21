@@ -143,23 +143,13 @@ impl Step for Std {
             cargo.arg("-p").arg(krate);
         }
 
-        let msg = if compiler.host == target {
-            format!(
-                "Building{} stage{} library artifacts ({}) ",
-                crate_description(&self.crates),
-                compiler.stage,
-                compiler.host
-            )
-        } else {
-            format!(
-                "Building{} stage{} library artifacts ({} -> {})",
-                crate_description(&self.crates),
-                compiler.stage,
-                compiler.host,
-                target,
-            )
-        };
-        builder.info(&msg);
+        let _guard = builder.msg(
+            Kind::Build,
+            compiler.stage,
+            format_args!("library artifacts{}", crate_description(&self.crates)),
+            compiler.host,
+            target,
+        );
         run_cargo(
             builder,
             cargo,
@@ -790,24 +780,13 @@ impl Step for Rustc {
             cargo.arg("-p").arg(krate);
         }
 
-        let msg = if compiler.host == target {
-            format!(
-                "Building{} compiler artifacts (stage{} -> stage{})",
-                crate_description(&self.crates),
-                compiler.stage,
-                compiler.stage + 1
-            )
-        } else {
-            format!(
-                "Building{} compiler artifacts (stage{}:{} -> stage{}:{})",
-                crate_description(&self.crates),
-                compiler.stage,
-                compiler.host,
-                compiler.stage + 1,
-                target,
-            )
-        };
-        builder.info(&msg);
+        let _guard = builder.msg_sysroot_tool(
+            Kind::Build,
+            compiler.stage,
+            format_args!("compiler artifacts{}", crate_description(&self.crates)),
+            compiler.host,
+            target,
+        );
         run_cargo(
             builder,
             cargo,
@@ -1114,15 +1093,7 @@ impl Step for CodegenBackend {
 
         let tmp_stamp = out_dir.join(".tmp.stamp");
 
-        let msg = if compiler.host == target {
-            format!("Building stage{} codegen backend {}", compiler.stage, backend)
-        } else {
-            format!(
-                "Building stage{} codegen backend {} ({} -> {})",
-                compiler.stage, backend, compiler.host, target
-            )
-        };
-        builder.info(&msg);
+        let _guard = builder.msg_build(compiler, format_args!("codegen backend {backend}"), target);
         let files = run_cargo(builder, cargo, vec![], &tmp_stamp, vec![], false, false);
         if builder.config.dry_run() {
             return;
