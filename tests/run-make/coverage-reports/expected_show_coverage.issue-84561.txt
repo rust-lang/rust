@@ -136,10 +136,10 @@
   134|       |
   135|       |impl std::fmt::Debug for Foo {
   136|       |    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-  137|      7|        write!(f, "try and succeed")?;
+  137|      9|        write!(f, "try and succeed")?;
                                                   ^0
-  138|      7|        Ok(())
-  139|      7|    }
+  138|      9|        Ok(())
+  139|      9|    }
   140|       |}
   141|       |
   142|       |static mut DEBUG_LEVEL_ENABLED: bool = false;
