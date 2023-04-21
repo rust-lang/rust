@@ -863,7 +863,7 @@ fn check_impl_items_against_trait<'tcx>(
         if !missing_items.is_empty() {
             let full_impl_span =
                 tcx.hir().span_with_body(tcx.hir().local_def_id_to_hir_id(impl_id));
-            missing_items_err(tcx, tcx.def_span(impl_id), &missing_items, full_impl_span);
+            missing_items_err(tcx, impl_id, &missing_items, full_impl_span);
         }
 
         if let Some(missing_items) = must_implement_one_of {
