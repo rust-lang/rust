@@ -295,10 +295,10 @@ want to build this component:
 To produce a compiler that can cross-compile for other targets,
 pass any number of `target` flags to `x build`.
 For example, if your host platform is `x86_64-unknown-linux-gnu`
-and your cross-compilation target is `wasm32-wasi`, you can build with:
+and your cross-compilation target is `wasm32-wasip1`, you can build with:
 
 ```bash
-./x build --target x86_64-unknown-linux-gnu,wasm32-wasi
+./x build --target x86_64-unknown-linux-gnu,wasm32-wasip1
 ```
 
 Note that if you want the resulting compiler to be able to build crates that
@@ -310,7 +310,7 @@ you can configure this in the `[build]` section of your `config.toml` like so:
 
 ```toml
 [build]
-target = ["x86_64-unknown-linux-gnu", "wasm32-wasi"]
+target = ["x86_64-unknown-linux-gnu", "wasm32-wasip1"]
 ```
 
 Note that building for some targets requires having external dependencies installed
@@ -331,7 +331,7 @@ If you have followed the directions from the prior section on creating a rustup 
 then once you have built your compiler you will be able to use it to cross-compile like so:
 
 ```bash
-cargo +stage1 build --target wasm32-wasi
+cargo +stage1 build --target wasm32-wasip1
 ```
 
 ## Other `x` commands
