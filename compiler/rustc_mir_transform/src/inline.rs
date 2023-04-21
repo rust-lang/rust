@@ -174,9 +174,9 @@ impl<'tcx> Inliner<'tcx> {
         let callee_body = self.tcx.instance_mir(callsite.callee.def);
         self.check_mir_body(callsite, callee_body, callee_attrs)?;
 
-        if self.tcx.sess.mir_opt_level() == 1 {
-            return Err("mir_opt_level == 1");
-        }
+        // if self.tcx.sess.mir_opt_level() == 1 {
+        //     return Err("mir_opt_level == 1");
+        // }
 
         if !self.tcx.consider_optimizing(|| {
             format!("Inline {:?} into {:?}", callsite.callee, caller_body.source)
