@@ -197,7 +197,7 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
             }
         }
 
-        let iter = mem::replace(&mut self.iter, (&mut []).iter());
+        let iter = mem::take(&mut self.iter);
         let drop_len = iter.len();
 
         let mut vec = self.vec;
