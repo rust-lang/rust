@@ -14,7 +14,7 @@ extern crate rustc_interface;
 extern crate rustc_middle;
 extern crate rustc_smir;
 
-use rustc_driver::{Callbacks, Compilation, RunCompiler};
+use rustc_driver::{Callbacks, Compilation};
 use rustc_hir::def::DefKind;
 use rustc_interface::{interface, Queries};
 use rustc_middle::ty::TyCtxt;
@@ -73,17 +73,17 @@ fn get_item<'a>(
 fn main() {
     let path = "input.rs";
     generate_input(&path).unwrap();
-    let args = vec![
+    let _args = vec![
         "rustc".to_string(),
         "--crate-type=lib".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),
         path.to_string(),
     ];
-    rustc_driver::catch_fatal_errors(|| {
-        RunCompiler::new(&args, &mut SMirCalls {}).run().unwrap();
-    })
-    .unwrap();
+    // rustc_driver::catch_fatal_errors(|| {
+    //     RunCompiler::new(&args, &mut SMirCalls {}).run().unwrap();
+    // })
+    // .unwrap();
 }
 
 struct SMirCalls {}
