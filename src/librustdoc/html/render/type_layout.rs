@@ -56,7 +56,7 @@ pub(crate) fn document_type_layout<'a, 'cx: 'a>(
                     } else {
                         span_bug!(cx.tcx().def_span(ty_def_id), "tag is neither niche nor int")
                     };
-                let variants = variants
+                variants
                     .iter_enumerated()
                     .map(|(variant_idx, variant_layout)| {
                         let Adt(adt, _) = type_layout.ty.kind() else {
@@ -68,12 +68,11 @@ pub(crate) fn document_type_layout<'a, 'cx: 'a>(
                         let size = variant_layout.size.bytes() - tag_size;
                         let type_layout_size = TypeLayoutSize { is_unsized, is_uninhabited, size };
                         (name, type_layout_size)
-                    }).collect();
-                variants
+                    })
+                    .collect()
             } else {
                 Vec::new()
-            }
-        ;
+            };
 
         let type_layout_size = tcx.layout_of(param_env.and(ty)).map(|layout| {
             let is_unsized = layout.abi.is_unsized();
