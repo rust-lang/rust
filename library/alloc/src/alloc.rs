@@ -419,15 +419,15 @@ fn rust_oom(layout: Layout) -> ! {
 /// rather than directly invoking [`panic!`] or similar.
 ///
 /// This function triggers a panic with a special payload of [`AllocErrorPanicPayload`] that holds
-/// the [`Layout`] passed into this function.
+/// information about the allocation that failed.
 ///
 /// There are 2 ways in which such panics can be handled:
 ///
 ///  * If the binary links against `std` (typically the case), then
-///   the payload is available through [`PanicInfo::payload`][std_payload]. By default, panics caused by this
-///   function will always abort the process instead of unwinding. This can be overridden by 
-///   compiling the program with the `-Z oom=unwind` option, in which case the payload is captured
-///   and can be recovered through the [`catch_unwind`] function.
+///   the payload is available through [`PanicInfo::payload`][std_payload].
+///   By default, panics caused by thisfunction will always abort the process instead of unwinding.
+///   This can be overridden by compiling the program with the `-Z oom=unwind` option, in which case
+///   the payload is captured and can be recovered through the [`catch_unwind`] function.
 ///
 /// * If the binary does not link against `std` (all of its crates are marked
 ///   [`#![no_std]`][no_std]), then [the panic handler] is called. The payload is available through
