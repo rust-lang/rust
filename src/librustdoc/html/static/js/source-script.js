@@ -52,12 +52,12 @@ function createDirEntry(elem, parent, fullPath, hasFoundFile) {
     const files = document.createElement("div");
     files.className = "files";
     if (elem[FILES_OFFSET]) {
+        const w = window.location.href.split("#")[0];
         for (const file_text of elem[FILES_OFFSET]) {
             const file = document.createElement("a");
             file.innerText = file_text;
             file.href = rootPath + "src/" + fullPath + file_text + ".html";
             file.addEventListener("click", closeSidebarIfMobile);
-            const w = window.location.href.split("#")[0];
             if (!hasFoundFile && w === file.href) {
                 file.className = "selected";
                 dirEntry.open = true;
