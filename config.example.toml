@@ -787,7 +787,7 @@ changelog-seen = 2
 #musl-libdir = musl-root/lib
 
 # The root location of the `wasm32-wasi-preview1` sysroot. Only used for the
-# `wasm32-wasi-preview1-preview1` target. If you are building wasm32-wasi-preview1 target, make sure to
+# `wasm32-wasi-preview1` target. If you are building wasm32-wasi-preview1 target, make sure to
 # create a `[target.wasm32-wasi-preview1]` section and move this field there.
 #wasi-root = <none> (path)
 
