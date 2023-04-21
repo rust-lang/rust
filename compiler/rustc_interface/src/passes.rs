@@ -794,8 +794,14 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
             }
             tcx.ensure().has_ffi_unwind_calls(def_id);
 
-            if tcx.hir().body_const_context(def_id).is_some() {
+            // If we need to codegen, ensure that we emit all errors from
+            // `mir_drops_elaborated_and_const_checked` now, to avoid discovering
+            // them later during codegen.
+            if tcx.sess.opts.output_types.should_codegen()
+                || tcx.hir().body_const_context(def_id).is_some()
+            {
                 tcx.ensure().mir_drops_elaborated_and_const_checked(def_id);
+                tcx.ensure().unused_generic_params(ty::InstanceDef::Item(def_id.to_def_id()));
             }
         }
     });
