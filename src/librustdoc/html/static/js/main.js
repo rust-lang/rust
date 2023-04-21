@@ -375,10 +375,7 @@ function preLoadCss(cssUrl) {
 
     function handleEscape(ev) {
         searchState.clearInputTimeout();
-        switchDisplayedElement(null);
-        if (browserSupportsHistoryApi()) {
-            history.replaceState(null, "", getNakedUrl() + window.location.hash);
-        }
+        searchState.hideResults();
         ev.preventDefault();
         searchState.defocus();
         window.hideAllModals(true); // true = reset focus for tooltips
