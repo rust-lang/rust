@@ -2783,6 +2783,14 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     rustc_transmute::Reason::DstIsTooBig => {
                         format!("The size of `{src}` is smaller than the size of `{dst}`")
                     }
+                    rustc_transmute::Reason::DstHasStricterAlignment => {
+                        format!(
+                            "The alignment of `{src}` should be stricter than that of `{dst}`, but it is not"
+                        )
+                    }
+                    rustc_transmute::Reason::DstIsMoreUnique => {
+                        format!("`{src}` is a shared reference, but `{dst}` is a unique reference")
+                    }
                 };
                 (custom_err_msg, Some(reason_msg))
             }
@@ -2791,7 +2799,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 span,
                 "Inconsistent rustc_transmute::is_transmutable(...) result, got Yes",
             ),
-            _ => span_bug!(span, "Unsupported rustc_transmute::Reason variant"),
+            other => span_bug!(span, "Unsupported rustc_transmute::Answer variant: `{other:?}`"),
         }
     }
 

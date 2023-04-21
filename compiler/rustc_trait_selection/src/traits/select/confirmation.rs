@@ -13,7 +13,7 @@ use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_middle::traits::SelectionOutputTypeParameterMismatch;
 use rustc_middle::ty::{
     self, Binder, GenericParamDefKind, InternalSubsts, SubstsRef, ToPolyTraitRef, ToPredicate,
-    TraitRef, Ty, TyCtxt, TypeVisitableExt,
+    TraitPredicate, TraitRef, Ty, TyCtxt, TypeVisitableExt,
 };
 use rustc_session::config::TraitSolver;
 use rustc_span::def_id::DefId;
@@ -279,10 +279,61 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         ImplSourceBuiltinData { nested: obligations }
     }
 
+    #[instrument(skip(self))]
     fn confirm_transmutability_candidate(
         &mut self,
         obligation: &TraitObligation<'tcx>,
     ) -> Result<ImplSourceBuiltinData<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+        fn flatten_answer_tree<'tcx>(
+            tcx: TyCtxt<'tcx>,
+            obligation: &TraitObligation<'tcx>,
+            predicate: TraitPredicate<'tcx>,
+            answer: rustc_transmute::Answer<rustc_transmute::layout::rustc::Ref<'tcx>>,
+        ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+            match answer {
+                rustc_transmute::Answer::Yes => Ok(vec![]),
+                rustc_transmute::Answer::No(_) => Err(Unimplemented),
+                // FIXME(bryangarza): Add separate `IfAny` case, instead of treating as `IfAll`
+                rustc_transmute::Answer::IfAll(answers)
+                | rustc_transmute::Answer::IfAny(answers) => {
+                    let mut nested = vec![];
+                    for flattened in answers
+                        .into_iter()
+                        .map(|answer| flatten_answer_tree(tcx, obligation, predicate, answer))
+                    {
+                        nested.extend(flattened?);
+                    }
+                    Ok(nested)
+                }
+                rustc_transmute::Answer::IfTransmutable { src, dst } => {
+                    let trait_def_id = obligation.predicate.def_id();
+                    let scope = predicate.trait_ref.substs.type_at(2);
+                    let assume_const = predicate.trait_ref.substs.const_at(3);
+                    let make_obl = |from_ty, to_ty| {
+                        let trait_ref1 = tcx.mk_trait_ref(
+                            trait_def_id,
+                            [
+                                ty::GenericArg::from(to_ty),
+                                ty::GenericArg::from(from_ty),
+                                ty::GenericArg::from(scope),
+                                ty::GenericArg::from(assume_const),
+                            ],
+                        );
+                        Obligation::with_depth(
+                            tcx,
+                            obligation.cause.clone(),
+                            obligation.recursion_depth + 1,
+                            obligation.param_env,
+                            trait_ref1,
+                        )
+                    };
+
+                    // // FIXME(bryangarza): Check src.mutability or dst.mutability to know whether dst -> src obligation is needed
+                    Ok(vec![make_obl(src.ty, dst.ty), make_obl(dst.ty, src.ty)])
+                }
+            }
+        }
+
         debug!(?obligation, "confirm_transmutability_candidate");
 
         // We erase regions here because transmutability calls layout queries,
@@ -312,10 +363,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             assume,
         );
 
-        match maybe_transmutable {
-            rustc_transmute::Answer::Yes => Ok(ImplSourceBuiltinData { nested: vec![] }),
-            _ => Err(Unimplemented),
-        }
+        info!(?maybe_transmutable);
+        let nested = flatten_answer_tree(self.tcx(), obligation, predicate, maybe_transmutable)?;
+        info!(?nested);
+        Ok(ImplSourceBuiltinData { nested })
     }
 
     /// This handles the case where an `auto trait Foo` impl is being used.

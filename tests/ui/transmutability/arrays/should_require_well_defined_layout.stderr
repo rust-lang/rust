@@ -23,7 +23,7 @@ error[E0277]: `u128` cannot be safely transmuted into `[String; 0]` in the defin
   --> $DIR/should_require_well_defined_layout.rs:27:47
    |
 LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
-   |                                               ^^^^^^^^^ `[String; 0]` does not have a well-specified layout
+   |                                               ^^^^^^^^^ `u128` does not have a well-specified layout
    |
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
@@ -65,7 +65,7 @@ error[E0277]: `u128` cannot be safely transmuted into `[String; 1]` in the defin
   --> $DIR/should_require_well_defined_layout.rs:33:47
    |
 LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
-   |                                               ^^^^^^^^^ `[String; 1]` does not have a well-specified layout
+   |                                               ^^^^^^^^^ `u128` does not have a well-specified layout
    |
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
@@ -107,7 +107,7 @@ error[E0277]: `u128` cannot be safely transmuted into `[String; 2]` in the defin
   --> $DIR/should_require_well_defined_layout.rs:39:47
    |
 LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
-   |                                               ^^^^^^^^^ `[String; 2]` does not have a well-specified layout
+   |                                               ^^^^^^^^^ `u128` does not have a well-specified layout
    |
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14

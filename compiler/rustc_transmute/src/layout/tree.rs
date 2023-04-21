@@ -365,6 +365,17 @@ pub(crate) mod rustc {
                         }
                     }))
                 }
+
+                ty::Ref(lifetime, ty, mutability) => {
+                    let align = layout_of(tcx, *ty)?.align();
+                    Ok(Tree::Ref(Ref {
+                        lifetime: *lifetime,
+                        ty: *ty,
+                        mutability: *mutability,
+                        align,
+                    }))
+                }
+
                 _ => Err(Err::Unspecified),
             }
         }

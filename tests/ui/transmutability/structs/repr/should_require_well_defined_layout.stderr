@@ -24,7 +24,7 @@ error[E0277]: `u128` cannot be safely transmuted into `should_reject_repr_rust::
   --> $DIR/should_require_well_defined_layout.rs:29:47
    |
 LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
-   |                                               ^^^^^^^^^ `should_reject_repr_rust::unit::repr_rust` does not have a well-specified layout
+   |                                               ^^^^^^^^^ `u128` does not have a well-specified layout
    |
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
@@ -68,7 +68,7 @@ error[E0277]: `u128` cannot be safely transmuted into `should_reject_repr_rust::
   --> $DIR/should_require_well_defined_layout.rs:35:47
    |
 LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
-   |                                               ^^^^^^^^^ `should_reject_repr_rust::tuple::repr_rust` does not have a well-specified layout
+   |                                               ^^^^^^^^^ `u128` does not have a well-specified layout
    |
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
@@ -112,7 +112,7 @@ error[E0277]: `u128` cannot be safely transmuted into `should_reject_repr_rust::
   --> $DIR/should_require_well_defined_layout.rs:41:47
    |
 LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
-   |                                               ^^^^^^^^^ `should_reject_repr_rust::braces::repr_rust` does not have a well-specified layout
+   |                                               ^^^^^^^^^ `u128` does not have a well-specified layout
    |
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
@@ -156,7 +156,7 @@ error[E0277]: `u128` cannot be safely transmuted into `aligned::repr_rust` in th
   --> $DIR/should_require_well_defined_layout.rs:47:47
    |
 LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
-   |                                               ^^^^^^^^^ `aligned::repr_rust` does not have a well-specified layout
+   |                                               ^^^^^^^^^ `u128` does not have a well-specified layout
    |
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
@@ -200,7 +200,7 @@ error[E0277]: `u128` cannot be safely transmuted into `packed::repr_rust` in the
   --> $DIR/should_require_well_defined_layout.rs:53:47
    |
 LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
-   |                                               ^^^^^^^^^ `packed::repr_rust` does not have a well-specified layout
+   |                                               ^^^^^^^^^ `u128` does not have a well-specified layout
    |
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
@@ -244,7 +244,7 @@ error[E0277]: `u128` cannot be safely transmuted into `nested::repr_c` in the de
   --> $DIR/should_require_well_defined_layout.rs:60:47
    |
 LL |         assert::is_maybe_transmutable::<u128, repr_c>();
-   |                                               ^^^^^^ `nested::repr_c` does not have a well-specified layout
+   |                                               ^^^^^^ `u128` does not have a well-specified layout
    |
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14

@@ -8,7 +8,7 @@ extern crate tracing;
 
 pub(crate) use rustc_data_structures::fx::{FxIndexMap as Map, FxIndexSet as Set};
 
-pub(crate) mod layout;
+pub mod layout;
 pub(crate) mod maybe_transmutable;
 
 #[derive(Default)]
@@ -21,10 +21,7 @@ pub struct Assume {
 
 /// The type encodes answers to the question: "Are these types transmutable?"
 #[derive(Debug, Hash, Eq, PartialEq, PartialOrd, Ord, Clone)]
-pub enum Answer<R>
-where
-    R: layout::Ref,
-{
+pub enum Answer<R> {
     /// `Src` is transmutable into `Dst`.
     Yes,
 
@@ -54,6 +51,10 @@ pub enum Reason {
     DstIsPrivate,
     /// `Dst` is larger than `Src`, and the excess bytes were not exclusively uninitialized.
     DstIsTooBig,
+    /// Src should have a stricter alignment than Dst, but it does not.
+    DstHasStricterAlignment,
+    /// Can't go from shared pointer to unique pointer
+    DstIsMoreUnique,
 }
 
 #[cfg(feature = "rustc")]

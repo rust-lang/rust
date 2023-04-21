@@ -1,11 +1,11 @@
-error[E0277]: `&Unit` cannot be safely transmuted into `&Unit` in the defining scope of `assert::Context`
-  --> $DIR/references.rs:29:52
+error[E0277]: `Unit` cannot be safely transmuted into `u8` in the defining scope of `assert::Context`
+  --> $DIR/u8-to-unit.rs:23:50
    |
-LL |     assert::is_maybe_transmutable::<&'static Unit, &'static Unit>();
-   |                                                    ^^^^^^^^^^^^^ `&Unit` does not have a well-specified layout
+LL |     assert::is_maybe_transmutable::<&'static u8, &'static Unit>();
+   |                                                  ^^^^^^^^^^^^^ The size of `Unit` is smaller than the size of `u8`
    |
 note: required by a bound in `is_maybe_transmutable`
-  --> $DIR/references.rs:16:14
+  --> $DIR/u8-to-unit.rs:10:14
    |
 LL |       pub fn is_maybe_transmutable<Src, Dst>()
    |              --------------------- required by a bound in this function

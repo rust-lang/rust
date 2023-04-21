@@ -5,6 +5,7 @@
 /// notwithstanding whatever safety checks you have asked the compiler to [`Assume`] are satisfied.
 #[unstable(feature = "transmutability", issue = "99571")]
 #[lang = "transmute_trait"]
+#[rustc_coinductive]
 pub unsafe trait BikeshedIntrinsicFrom<Src, Context, const ASSUME: Assume = { Assume::NOTHING }>
 where
     Src: ?Sized,
