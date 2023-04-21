@@ -290,6 +290,8 @@ pub fn combine_duplicate_switch_targets(terminator: &mut Terminator<'_>) {
     }
 }
 
+// Note: Trying to Turn `duplicates` into a `SmallVec` for performance did not bear fruit, see
+// https://github.com/rust-lang/rust/pull/110524
 pub fn remove_duplicate_unreachable_blocks<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     struct OptApplier<'tcx> {
         tcx: TyCtxt<'tcx>,
