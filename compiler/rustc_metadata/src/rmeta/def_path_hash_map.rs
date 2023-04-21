@@ -45,9 +45,6 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for DefPathHashMapRef<'tcx> {
 
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for DefPathHashMapRef<'static> {
     fn decode(d: &mut DecodeContext<'a, 'tcx>) -> DefPathHashMapRef<'static> {
-        // Import TyDecoder so we can access the DecodeContext::position() method
-        use crate::rustc_middle::ty::codec::TyDecoder;
-
         let len = d.read_usize();
         let pos = d.position();
         let o = slice_owned(d.blob().clone(), |blob| &blob[pos..pos + len]);

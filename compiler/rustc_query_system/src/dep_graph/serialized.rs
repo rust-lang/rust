@@ -94,20 +94,18 @@ impl<'a, K: DepKind + Decodable<MemDecoder<'a>>> Decodable<MemDecoder<'a>>
 {
     #[instrument(level = "debug", skip(d))]
     fn decode(d: &mut MemDecoder<'a>) -> SerializedDepGraph<K> {
-        let start_position = d.position();
-
         // The last 16 bytes are the node count and edge count.
         debug!("position: {:?}", d.position());
-        d.set_position(d.data.len() - 2 * IntEncodedWithFixedSize::ENCODED_SIZE);
+        let (node_count, edge_count) =
+            d.with_position(d.len() - 2 * IntEncodedWithFixedSize::ENCODED_SIZE, |d| {
+                debug!("position: {:?}", d.position());
+                let node_count = IntEncodedWithFixedSize::decode(d).0 as usize;
+                let edge_count = IntEncodedWithFixedSize::decode(d).0 as usize;
+                (node_count, edge_count)
+            });
         debug!("position: {:?}", d.position());
 
-        let node_count = IntEncodedWithFixedSize::decode(d).0 as usize;
-        let edge_count = IntEncodedWithFixedSize::decode(d).0 as usize;
         debug!(?node_count, ?edge_count);
-
-        debug!("position: {:?}", d.position());
-        d.set_position(start_position);
-        debug!("position: {:?}", d.position());
 
         let mut nodes = IndexVec::with_capacity(node_count);
         let mut fingerprints = IndexVec::with_capacity(node_count);

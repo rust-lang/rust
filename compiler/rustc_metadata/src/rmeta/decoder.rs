@@ -373,16 +373,6 @@ impl<'a, 'tcx> TyDecoder for DecodeContext<'a, 'tcx> {
         self.tcx()
     }
 
-    #[inline]
-    fn peek_byte(&self) -> u8 {
-        self.opaque.data[self.opaque.position()]
-    }
-
-    #[inline]
-    fn position(&self) -> usize {
-        self.opaque.position()
-    }
-
     fn cached_ty_for_shorthand<F>(&mut self, shorthand: usize, or_insert_with: F) -> Ty<'tcx>
     where
         F: FnOnce(&mut Self) -> Ty<'tcx>,
@@ -404,7 +394,7 @@ impl<'a, 'tcx> TyDecoder for DecodeContext<'a, 'tcx> {
     where
         F: FnOnce(&mut Self) -> R,
     {
-        let new_opaque = MemDecoder::new(self.opaque.data, pos);
+        let new_opaque = MemDecoder::new(self.opaque.data(), pos);
         let old_opaque = mem::replace(&mut self.opaque, new_opaque);
         let old_state = mem::replace(&mut self.lazy_state, LazyState::NoNode);
         let r = f(self);
@@ -625,17 +615,12 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Symbol {
             SYMBOL_OFFSET => {
                 // read str offset
                 let pos = d.read_usize();
-                let old_pos = d.opaque.position();
 
                 // move to str offset and read
-                d.opaque.set_position(pos);
-                let s = d.read_str();
-                let sym = Symbol::intern(s);
-
-                // restore position
-                d.opaque.set_position(old_pos);
-
-                sym
+                d.opaque.with_position(pos, |d| {
+                    let s = d.read_str();
+                    Symbol::intern(s)
+                })
             }
             SYMBOL_PREINTERNED => {
                 let symbol_index = d.read_u32();
