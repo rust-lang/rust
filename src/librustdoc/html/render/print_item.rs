@@ -1956,11 +1956,12 @@ fn document_type_layout<'a, 'cx: 'a>(
             return Ok(());
         }
 
-        let variants = {
-            let tcx = cx.tcx();
-            let param_env = tcx.param_env(ty_def_id);
-            let ty = tcx.type_of(ty_def_id).subst_identity();
-            let type_layout = tcx.layout_of(param_env.and(ty));
+        let tcx = cx.tcx();
+        let param_env = tcx.param_env(ty_def_id);
+        let ty = tcx.type_of(ty_def_id).subst_identity();
+        let type_layout = tcx.layout_of(param_env.and(ty));
+
+        let variants =
             if let Ok(type_layout) = type_layout &&
                 let Variants::Multiple { variants, tag, tag_encoding, .. } =
                     type_layout.layout.variants() &&
@@ -1991,19 +1992,14 @@ fn document_type_layout<'a, 'cx: 'a>(
             } else {
                 Vec::new()
             }
-        };
+        ;
 
-        let type_layout_size = {
-            let tcx = cx.tcx();
-            let param_env = tcx.param_env(ty_def_id);
-            let ty = tcx.type_of(ty_def_id).subst_identity();
-            tcx.layout_of(param_env.and(ty)).map(|layout| {
-                let is_unsized = layout.abi.is_unsized();
-                let is_uninhabited = layout.abi.is_uninhabited();
-                let size = layout.size.bytes();
-                TypeLayoutSize { is_unsized, is_uninhabited, size }
-            })
-        };
+        let type_layout_size = tcx.layout_of(param_env.and(ty)).map(|layout| {
+            let is_unsized = layout.abi.is_unsized();
+            let is_uninhabited = layout.abi.is_uninhabited();
+            let size = layout.size.bytes();
+            TypeLayoutSize { is_unsized, is_uninhabited, size }
+        });
 
         Ok(TypeLayout { variants, type_layout_size }.render_into(f).unwrap())
     })
