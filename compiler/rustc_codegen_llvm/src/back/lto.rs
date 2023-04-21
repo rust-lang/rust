@@ -7,7 +7,9 @@ use crate::{LlvmCodegenBackend, ModuleLlvm};
 use object::read::archive::ArchiveFile;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule, ThinShared};
 use rustc_codegen_ssa::back::symbol_export;
-use rustc_codegen_ssa::back::write::{CodegenContext, FatLTOInput, TargetMachineFactoryConfig};
+use rustc_codegen_ssa::back::write::{
+    CodegenContext, FatLTOInput, ModuleConfig, TargetMachineFactoryConfig,
+};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{looks_like_rust_object_file, ModuleCodegen, ModuleKind};
 use rustc_data_structures::fx::FxHashMap;
@@ -212,9 +214,12 @@ pub(crate) fn run_thin(
     )
 }
 
-pub(crate) fn prepare_thin(module: ModuleCodegen<ModuleLlvm>) -> (String, ThinBuffer) {
+pub(crate) fn prepare_thin(
+    module: ModuleCodegen<ModuleLlvm>,
+    config: &ModuleConfig,
+) -> (String, ThinBuffer) {
     let name = module.name;
-    let buffer = ThinBuffer::new(module.module_llvm.llmod(), true);
+    let buffer = ThinBuffer::new(module.module_llvm.llmod(), true, config.split_thin_lto_unit);
     (name, buffer)
 }
 
@@ -656,9 +661,9 @@ unsafe impl Send for ThinBuffer {}
 unsafe impl Sync for ThinBuffer {}
 
 impl ThinBuffer {
-    pub fn new(m: &llvm::Module, is_thin: bool) -> ThinBuffer {
+    pub fn new(m: &llvm::Module, is_thin: bool, split_lto_unit: bool) -> ThinBuffer {
         unsafe {
-            let buffer = llvm::LLVMRustThinLTOBufferCreate(m, is_thin);
+            let buffer = llvm::LLVMRustThinLTOBufferCreate(m, is_thin, split_lto_unit);
             ThinBuffer(buffer)
         }
     }

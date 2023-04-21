@@ -1361,7 +1361,7 @@ struct LLVMRustThinLTOBuffer {
 };
 
 extern "C" LLVMRustThinLTOBuffer*
-LLVMRustThinLTOBufferCreate(LLVMModuleRef M, bool is_thin) {
+LLVMRustThinLTOBufferCreate(LLVMModuleRef M, bool is_thin, bool split_lto_unit) {
   auto Ret = std::make_unique<LLVMRustThinLTOBuffer>();
   {
     raw_string_ostream OS(Ret->data);
@@ -1378,6 +1378,10 @@ LLVMRustThinLTOBufferCreate(LLVMModuleRef M, bool is_thin) {
         PB.registerLoopAnalyses(LAM);
         PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
         ModulePassManager MPM;
+        if (!unwrap(M)->getModuleFlag("EnableSplitLTOUnit")) {
+          unwrap(M)->addModuleFlag(
+              Module::Error, "EnableSplitLTOUnit", split_lto_unit);
+        }
         MPM.addPass(ThinLTOBitcodeWriterPass(OS, nullptr));
         MPM.run(*unwrap(M), MAM);
       } else {

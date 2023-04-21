@@ -104,6 +104,7 @@ pub struct ModuleConfig {
     pub emit_asm: bool,
     pub emit_obj: EmitObj,
     pub emit_thin_lto: bool,
+    pub split_thin_lto_unit: bool,
     pub bc_cmdline: String,
 
     // Miscellaneous flags. These are mostly copied from command-line
@@ -223,6 +224,7 @@ impl ModuleConfig {
             ),
             emit_obj,
             emit_thin_lto: sess.opts.unstable_opts.emit_thin_lto,
+            split_thin_lto_unit: sess.opts.unstable_opts.split_thin_lto_unit,
             bc_cmdline: sess.target.bitcode_llvm_cmdline.to_string(),
 
             verify_llvm_ir: sess.verify_llvm_ir(),
@@ -839,7 +841,7 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
     match lto_type {
         ComputedLtoType::No => finish_intra_module_work(cgcx, module, module_config),
         ComputedLtoType::Thin => {
-            let (name, thin_buffer) = B::prepare_thin(module);
+            let (name, thin_buffer) = B::prepare_thin(module, module_config);
             if let Some(path) = bitcode {
                 fs::write(&path, thin_buffer.data()).unwrap_or_else(|e| {
                     panic!("Error writing pre-lto-bitcode file `{}`: {}", path.display(), e);

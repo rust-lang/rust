@@ -615,7 +615,7 @@ pub(crate) unsafe fn codegen(
             let _timer = cgcx
                 .prof
                 .generic_activity_with_arg("LLVM_module_codegen_make_bitcode", &*module.name);
-            let thin = ThinBuffer::new(llmod, config.emit_thin_lto);
+            let thin = ThinBuffer::new(llmod, config.emit_thin_lto, config.split_thin_lto_unit);
             let data = thin.data();
 
             if let Some(bitcode_filename) = bc_out.file_name() {

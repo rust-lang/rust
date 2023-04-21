@@ -55,7 +55,10 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<CompiledModule, FatalError>;
-    fn prepare_thin(module: ModuleCodegen<Self::Module>) -> (String, Self::ThinBuffer);
+    fn prepare_thin(
+        module: ModuleCodegen<Self::Module>,
+        config: &ModuleConfig,
+    ) -> (String, Self::ThinBuffer);
     fn serialize_module(module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer);
 }
 

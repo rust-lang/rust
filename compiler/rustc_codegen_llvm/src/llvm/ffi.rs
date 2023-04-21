@@ -2431,7 +2431,11 @@ extern "C" {
     #[allow(improper_ctypes)]
     pub fn LLVMRustModuleInstructionStats(M: &Module, Str: &RustString);
 
-    pub fn LLVMRustThinLTOBufferCreate(M: &Module, is_thin: bool) -> &'static mut ThinLTOBuffer;
+    pub fn LLVMRustThinLTOBufferCreate(
+        M: &Module,
+        is_thin: bool,
+        split_lto_unit: bool,
+    ) -> &'static mut ThinLTOBuffer;
     pub fn LLVMRustThinLTOBufferFree(M: &'static mut ThinLTOBuffer);
     pub fn LLVMRustThinLTOBufferPtr(M: &ThinLTOBuffer) -> *const c_char;
     pub fn LLVMRustThinLTOBufferLen(M: &ThinLTOBuffer) -> size_t;
