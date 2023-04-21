@@ -1319,5 +1319,5 @@ impl<T> SizedTypeProperties for T {}
 #[rustc_builtin_macro]
 #[cfg(not(bootstrap))]
 pub macro offset_of($Container:ty, $($fields:tt).+ $(,)?) {
-    // ...implementation defined...
+    /* compiler built-in */
 }

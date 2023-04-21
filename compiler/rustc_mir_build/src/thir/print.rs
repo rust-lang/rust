@@ -520,7 +520,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 print_indented!(self, "}", depth_lvl);
             }
             OffsetOf { container, fields } => {
-                print_indented!(self, "InlineAsm {", depth_lvl);
+                print_indented!(self, "OffsetOf {", depth_lvl);
                 print_indented!(self, format!("container: {:?}", container), depth_lvl + 1);
                 print_indented!(self, "fields: [", depth_lvl + 1);
 

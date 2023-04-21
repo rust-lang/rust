@@ -53,7 +53,8 @@ impl Category {
             | ExprKind::Borrow { .. }
             | ExprKind::AddressOf { .. }
             | ExprKind::Yield { .. }
-            | ExprKind::Call { .. } => Some(Category::Rvalue(RvalueFunc::Into)),
+            | ExprKind::Call { .. }
+            | ExprKind::InlineAsm { .. } => Some(Category::Rvalue(RvalueFunc::Into)),
 
             ExprKind::Array { .. }
             | ExprKind::Tuple { .. }
@@ -67,7 +68,6 @@ impl Category {
             | ExprKind::Assign { .. }
             | ExprKind::AssignOp { .. }
             | ExprKind::ThreadLocalRef(_)
-            | ExprKind::InlineAsm { .. }
             | ExprKind::OffsetOf { .. } => Some(Category::Rvalue(RvalueFunc::AsRvalue)),
 
             ExprKind::ConstBlock { .. }

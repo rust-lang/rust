@@ -1557,14 +1557,13 @@ impl<'a> State<'a> {
                 self.word(",");
                 self.space();
 
-                let (&first, rest) =
-                    fields.split_first().expect("offset_of! should have at least 1 field");
+                if let Some((&first, rest)) = fields.split_first() {
+                    self.print_ident(first);
 
-                self.print_ident(first);
-
-                for &field in rest {
-                    self.word(".");
-                    self.print_ident(field);
+                    for &field in rest {
+                        self.word(".");
+                        self.print_ident(field);
+                    }
                 }
 
                 self.word(")");

@@ -3084,6 +3084,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     {
                         let field_ty = self.field_ty(expr.span, field, substs);
 
+                        // FIXME: DSTs with static alignment should be allowed
                         self.require_type_is_sized(field_ty, expr.span, traits::MiscObligation);
 
                         if field.vis.is_accessible_from(def_scope, self.tcx) {
