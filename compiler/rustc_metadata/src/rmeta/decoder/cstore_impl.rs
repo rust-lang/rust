@@ -516,14 +516,6 @@ impl CStore {
         self.get_crate_data(def.krate).get_ctor(def.index)
     }
 
-    pub fn module_children_untracked<'a>(
-        &'a self,
-        def_id: DefId,
-        sess: &'a Session,
-    ) -> impl Iterator<Item = ModChild> + 'a {
-        self.get_crate_data(def_id.krate).get_module_children(def_id.index, sess)
-    }
-
     pub fn load_macro_untracked(&self, id: DefId, sess: &Session) -> LoadedMacro {
         let _prof_timer = sess.prof.generic_activity("metadata_load_macro");
 
