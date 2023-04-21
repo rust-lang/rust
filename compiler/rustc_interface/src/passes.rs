@@ -795,8 +795,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
             tcx.ensure().has_ffi_unwind_calls(def_id);
 
             if tcx.hir().body_const_context(def_id).is_some() {
-                tcx.ensure()
-                    .mir_drops_elaborated_and_const_checked(ty::WithOptConstParam::unknown(def_id));
+                tcx.ensure().mir_drops_elaborated_and_const_checked(def_id);
             }
         }
     });

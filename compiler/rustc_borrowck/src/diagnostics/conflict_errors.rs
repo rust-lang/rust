@@ -19,7 +19,7 @@ use rustc_middle::mir::{
     FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location, Operand, Place, PlaceRef,
     ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind, VarBindingForm,
 };
-use rustc_middle::ty::{self, suggest_constraining_type_params, PredicateKind, Ty, TypeckResults};
+use rustc_middle::ty::{self, suggest_constraining_type_params, PredicateKind, Ty};
 use rustc_middle::util::CallKind;
 use rustc_mir_dataflow::move_paths::{InitKind, MoveOutIndex, MovePathIndex};
 use rustc_span::def_id::LocalDefId;
@@ -1350,8 +1350,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         finder.visit_expr(body_expr);
         let Some((closure_expr, closure)) = finder.res else { return };
 
-        let typeck_results: &TypeckResults<'_> =
-            tcx.typeck_opt_const_arg(self.body.source.with_opt_param().as_local().unwrap());
+        let typeck_results = tcx.typeck(self.mir_def_id());
 
         // Check that the parent of the closure is a method call,
         // with receiver matching with local's type (modulo refs)

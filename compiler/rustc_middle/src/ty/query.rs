@@ -76,6 +76,9 @@ use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_query_system::ich::StableHashingContext;
+
 #[derive(Default)]
 pub struct QuerySystem<'tcx> {
     pub arenas: QueryArenas<'tcx>,
@@ -477,7 +480,7 @@ macro_rules! define_feedable {
         $(impl<'tcx, K: IntoQueryParam<$($K)*> + Copy> TyCtxtFeed<'tcx, K> {
             $(#[$attr])*
             #[inline(always)]
-            pub fn $name(self, value: query_provided::$name<'tcx>) -> $V {
+            pub fn $name(self, value: query_provided::$name<'tcx>) {
                 let key = self.key().into_query_param();
 
                 let tcx = self.tcx;
@@ -485,13 +488,25 @@ macro_rules! define_feedable {
                 let value = restore::<$V>(erased);
                 let cache = &tcx.query_system.caches.$name;
 
+                let hasher: Option<fn(&mut StableHashingContext<'_>, &_) -> _> = hash_result!([$($modifiers)*]);
                 match try_get_cached(tcx, cache, &key) {
                     Some(old) => {
                         let old = restore::<$V>(old);
-                        bug!(
-                            "Trying to feed an already recorded value for query {} key={key:?}:\nold value: {old:?}\nnew value: {value:?}",
-                            stringify!($name),
-                        )
+                        if let Some(hasher) = hasher {
+                            let (value_hash, old_hash): (Fingerprint, Fingerprint) = tcx.with_stable_hashing_context(|mut hcx|
+                                (hasher(&mut hcx, &value), hasher(&mut hcx, &old))
+                            );
+                            assert_eq!(
+                                old_hash, value_hash,
+                                "Trying to feed an already recorded value for query {} key={key:?}:\nold value: {old:?}\nnew value: {value:?}",
+                                stringify!($name),
+                            )
+                        } else {
+                            bug!(
+                                "Trying to feed an already recorded value for query {} key={key:?}:\nold value: {old:?}\nnew value: {value:?}",
+                                stringify!($name),
+                            )
+                        }
                     }
                     None => {
                         let dep_node = dep_graph::DepNode::construct(tcx, dep_graph::DepKind::$name, &key);
@@ -503,7 +518,6 @@ macro_rules! define_feedable {
                             hash_result!([$($modifiers)*]),
                         );
                         cache.complete(key, erased, dep_node_index);
-                        value
                     }
                 }
             }

@@ -198,7 +198,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             let term: ty::EarlyBinder<ty::Term<'tcx>> = if is_const {
                 let identity_substs =
                     ty::InternalSubsts::identity_for_item(tcx, assoc_def.item.def_id);
-                let did = ty::WithOptConstParam::unknown(assoc_def.item.def_id);
+                let did = assoc_def.item.def_id;
                 let kind =
                     ty::ConstKind::Unevaluated(ty::UnevaluatedConst::new(did, identity_substs));
                 ty.map_bound(|ty| tcx.mk_const(kind, ty).into())

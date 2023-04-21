@@ -410,9 +410,28 @@ where
         // as its feeding query had. So if the fed query is red, so is its feeder, which will
         // get evaluated first, and re-feed the query.
         if let Some((cached_result, _)) = cache.lookup(&key) {
-            panic!(
-                "fed query later has its value computed. The already cached value: {}",
-                (query.format_value())(&cached_result)
+            let Some(hasher) = query.hash_result() else {
+                panic!(
+                    "no_hash fed query later has its value computed.\n\
+                    Remove `no_hash` modifier to allow recomputation.\n\
+                    The already cached value: {}",
+                    (query.format_value())(&cached_result)
+                );
+            };
+
+            let (old_hash, new_hash) = qcx.dep_context().with_stable_hashing_context(|mut hcx| {
+                (hasher(&mut hcx, &cached_result), hasher(&mut hcx, &result))
+            });
+            let formatter = query.format_value();
+            debug_assert_eq!(
+                old_hash,
+                new_hash,
+                "Computed query value for {:?}({:?}) is inconsistent with fed value,\n\
+                computed={:#?}\nfed={:#?}",
+                query.dep_kind(),
+                key,
+                formatter(&result),
+                formatter(&cached_result),
             );
         }
     }

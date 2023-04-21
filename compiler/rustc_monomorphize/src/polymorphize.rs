@@ -232,7 +232,7 @@ impl<'a, 'tcx> MarkUsedGenericParams<'a, 'tcx> {
     /// a closure, generator or constant).
     #[instrument(level = "debug", skip(self, def_id, substs))]
     fn visit_child_body(&mut self, def_id: DefId, substs: SubstsRef<'tcx>) {
-        let instance = ty::InstanceDef::Item(ty::WithOptConstParam::unknown(def_id));
+        let instance = ty::InstanceDef::Item(def_id);
         let unused = self.tcx.unused_generic_params(instance);
         debug!(?self.unused_parameters, ?unused);
         for (i, arg) in substs.iter().enumerate() {
@@ -272,10 +272,10 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
                 // Avoid considering `T` unused when constants are of the form:
                 //   `<Self as Foo<T>>::foo::promoted[p]`
                 if let Some(p) = promoted {
-                    if self.def_id == def.did && !self.tcx.generics_of(def.did).has_self {
+                    if self.def_id == def && !self.tcx.generics_of(def).has_self {
                         // If there is a promoted, don't look at the substs - since it will always contain
                         // the generic parameters, instead, traverse the promoted MIR.
-                        let promoted = self.tcx.promoted_mir(def.did);
+                        let promoted = self.tcx.promoted_mir(def);
                         self.visit_body(&promoted[p]);
                     }
                 }
@@ -305,9 +305,9 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for MarkUsedGenericParams<'a, 'tcx> {
                 ControlFlow::Continue(())
             }
             ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, substs })
-                if matches!(self.tcx.def_kind(def.did), DefKind::AnonConst) =>
+                if matches!(self.tcx.def_kind(def), DefKind::AnonConst) =>
             {
-                self.visit_child_body(def.did, substs);
+                self.visit_child_body(def, substs);
                 ControlFlow::Continue(())
             }
             _ => c.super_visit_with(self),

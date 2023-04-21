@@ -148,8 +148,7 @@ pub(crate) fn mir_inliner_callees<'tcx>(
     let guard;
     let body = match (instance, instance.def_id().as_local()) {
         (InstanceDef::Item(_), Some(def_id)) => {
-            let def = ty::WithOptConstParam::unknown(def_id);
-            steal = tcx.mir_promoted(def).0;
+            steal = tcx.mir_promoted(def_id).0;
             guard = steal.borrow();
             &*guard
         }

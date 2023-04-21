@@ -1,12 +1,12 @@
 //! Values computed by queries that use MIR.
 
-use crate::mir::{Body, ConstantKind, Promoted};
+use crate::mir::ConstantKind;
 use crate::ty::{self, OpaqueHiddenType, Ty, TyCtxt};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::BitMatrix;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_span::Span;
@@ -453,43 +453,4 @@ pub struct CoverageInfo {
 
     /// The total number of coverage region counter expressions added to the MIR `Body`.
     pub num_expressions: u32,
-}
-
-/// Shims which make dealing with `WithOptConstParam` easier.
-///
-/// For more information on why this is needed, consider looking
-/// at the docs for `WithOptConstParam` itself.
-impl<'tcx> TyCtxt<'tcx> {
-    #[inline]
-    pub fn mir_const_qualif_opt_const_arg(
-        self,
-        def: ty::WithOptConstParam<LocalDefId>,
-    ) -> ConstQualifs {
-        if let Some(param_did) = def.const_param_did {
-            self.mir_const_qualif_const_arg((def.did, param_did))
-        } else {
-            self.mir_const_qualif(def.did)
-        }
-    }
-
-    #[inline]
-    pub fn promoted_mir_opt_const_arg(
-        self,
-        def: ty::WithOptConstParam<DefId>,
-    ) -> &'tcx IndexVec<Promoted, Body<'tcx>> {
-        if let Some((did, param_did)) = def.as_const_arg() {
-            self.promoted_mir_of_const_arg((did, param_did))
-        } else {
-            self.promoted_mir(def.did)
-        }
-    }
-
-    #[inline]
-    pub fn mir_for_ctfe_opt_const_arg(self, def: ty::WithOptConstParam<DefId>) -> &'tcx Body<'tcx> {
-        if let Some((did, param_did)) = def.as_const_arg() {
-            self.mir_for_ctfe_of_const_arg((did, param_did))
-        } else {
-            self.mir_for_ctfe(def.did)
-        }
-    }
 }

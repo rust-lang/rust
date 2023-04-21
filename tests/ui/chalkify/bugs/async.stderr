@@ -18,7 +18,7 @@ LL | async fn foo(x: u32) -> u32 {
 #3 [mir_built] building MIR for `foo`
 #4 [unsafety_check_result] unsafety-checking `foo`
 #5 [mir_const] preparing `foo` for borrow checking
-#6 [mir_promoted] processing MIR for `foo`
+#6 [mir_promoted] promoting constants in MIR for `foo`
 #7 [mir_borrowck] borrow-checking `foo`
 #8 [type_of] computing type of `foo::{opaque#0}`
 #9 [check_mod_item_types] checking item types in top-level module

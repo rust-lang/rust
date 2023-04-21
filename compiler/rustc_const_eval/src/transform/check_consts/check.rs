@@ -874,7 +874,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     debug!("Resolving ({:?}) -> {:?}", callee, instance);
                     if let Ok(Some(func)) = instance {
                         if let InstanceDef::Item(def) = func.def {
-                            callee = def.did;
+                            callee = def;
                         }
                     }
                 }

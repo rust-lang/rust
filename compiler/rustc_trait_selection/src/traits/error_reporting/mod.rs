@@ -1476,7 +1476,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         };
                         let mut err =
                             self.tcx.sess.struct_span_err(span, "unconstrained generic constant");
-                        let const_span = self.tcx.def_span(uv.def.did);
+                        let const_span = self.tcx.def_span(uv.def);
                         match self.tcx.sess.source_map().span_to_snippet(const_span) {
                             Ok(snippet) => err.help(&format!(
                                 "try adding a `where` bound using this expression: `where [(); {}]:`",
@@ -1771,7 +1771,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         .tcx
                         .mk_const(
                             ty::UnevaluatedConst {
-                                def: ty::WithOptConstParam::unknown(data.projection_ty.def_id),
+                                def: data.projection_ty.def_id,
                                 substs: data.projection_ty.substs,
                             },
                             ct.ty(),

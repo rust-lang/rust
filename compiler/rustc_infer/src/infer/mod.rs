@@ -1500,7 +1500,7 @@ impl<'tcx> InferCtxt<'tcx> {
             Ok(Some(val)) => Ok(self.tcx.mk_const(val, ty)),
             Ok(None) => {
                 let tcx = self.tcx;
-                let def_id = unevaluated.def.did;
+                let def_id = unevaluated.def;
                 span_bug!(
                     tcx.def_span(def_id),
                     "unable to construct a constant value for the unevaluated constant {:?}",
@@ -1547,8 +1547,8 @@ impl<'tcx> InferCtxt<'tcx> {
                     substs = replace_param_and_infer_substs_with_placeholder(tcx, substs);
                 }
             } else {
-                substs = InternalSubsts::identity_for_item(tcx, unevaluated.def.did);
-                param_env = tcx.param_env(unevaluated.def.did);
+                substs = InternalSubsts::identity_for_item(tcx, unevaluated.def);
+                param_env = tcx.param_env(unevaluated.def);
             }
         }
 

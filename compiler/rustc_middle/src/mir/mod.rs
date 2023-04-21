@@ -191,18 +191,11 @@ pub struct MirSource<'tcx> {
 
 impl<'tcx> MirSource<'tcx> {
     pub fn item(def_id: DefId) -> Self {
-        MirSource {
-            instance: InstanceDef::Item(ty::WithOptConstParam::unknown(def_id)),
-            promoted: None,
-        }
+        MirSource { instance: InstanceDef::Item(def_id), promoted: None }
     }
 
     pub fn from_instance(instance: InstanceDef<'tcx>) -> Self {
         MirSource { instance, promoted: None }
-    }
-
-    pub fn with_opt_param(self) -> ty::WithOptConstParam<DefId> {
-        self.instance.with_opt_param()
     }
 
     #[inline]
@@ -2436,16 +2429,6 @@ impl<'tcx> ConstantKind<'tcx> {
         Self::Val(val, ty)
     }
 
-    /// Literals are converted to `ConstantKindVal`, const generic parameters are eagerly
-    /// converted to a constant, everything else becomes `Unevaluated`.
-    pub fn from_anon_const(
-        tcx: TyCtxt<'tcx>,
-        def_id: LocalDefId,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> Self {
-        Self::from_opt_const_arg_anon_const(tcx, ty::WithOptConstParam::unknown(def_id), param_env)
-    }
-
     #[instrument(skip(tcx), level = "debug", ret)]
     pub fn from_inline_const(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
@@ -2485,28 +2468,25 @@ impl<'tcx> ConstantKind<'tcx> {
             ty::InlineConstSubsts::new(tcx, ty::InlineConstSubstsParts { parent_substs, ty })
                 .substs;
 
-        let uneval = UnevaluatedConst {
-            def: ty::WithOptConstParam::unknown(def_id).to_global(),
-            substs,
-            promoted: None,
-        };
+        let uneval = UnevaluatedConst { def: def_id.to_def_id(), substs, promoted: None };
         debug_assert!(!uneval.has_free_regions());
 
         Self::Unevaluated(uneval, ty)
     }
 
+    /// Literals are converted to `ConstantKindVal`, const generic parameters are eagerly
+    /// converted to a constant, everything else becomes `Unevaluated`.
     #[instrument(skip(tcx), level = "debug", ret)]
-    fn from_opt_const_arg_anon_const(
+    pub fn from_anon_const(
         tcx: TyCtxt<'tcx>,
-        def: ty::WithOptConstParam<LocalDefId>,
+        def: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Self {
-        let body_id = match tcx.hir().get_by_def_id(def.did) {
+        let body_id = match tcx.hir().get_by_def_id(def) {
             hir::Node::AnonConst(ac) => ac.body,
-            _ => span_bug!(
-                tcx.def_span(def.did.to_def_id()),
-                "from_anon_const can only process anonymous constants"
-            ),
+            _ => {
+                span_bug!(tcx.def_span(def), "from_anon_const can only process anonymous constants")
+            }
         };
 
         let expr = &tcx.hir().body(body_id).value;
@@ -2522,7 +2502,7 @@ impl<'tcx> ConstantKind<'tcx> {
         };
         debug!("expr.kind: {:?}", expr.kind);
 
-        let ty = tcx.type_of(def.def_id_for_type_of()).subst_identity();
+        let ty = tcx.type_of(def).subst_identity();
         debug!(?ty);
 
         // FIXME(const_generics): We currently have to special case parameters because `min_const_generics`
@@ -2549,7 +2529,7 @@ impl<'tcx> ConstantKind<'tcx> {
             _ => {}
         }
 
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
+        let hir_id = tcx.hir().local_def_id_to_hir_id(def);
         let parent_substs = if let Some(parent_hir_id) = tcx.hir().opt_parent_id(hir_id)
             && let Some(parent_did) = parent_hir_id.as_owner()
         {
@@ -2559,15 +2539,14 @@ impl<'tcx> ConstantKind<'tcx> {
         };
         debug!(?parent_substs);
 
-        let did = def.did.to_def_id();
+        let did = def.to_def_id();
         let child_substs = InternalSubsts::identity_for_item(tcx, did);
         let substs =
             tcx.mk_substs_from_iter(parent_substs.into_iter().chain(child_substs.into_iter()));
         debug!(?substs);
 
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
-        let span = tcx.hir().span(hir_id);
-        let uneval = UnevaluatedConst::new(def.to_global(), substs);
+        let span = tcx.def_span(def);
+        let uneval = UnevaluatedConst::new(did, substs);
         debug!(?span, ?param_env);
 
         match tcx.const_eval_resolve(param_env, uneval, Some(span)) {
@@ -2581,8 +2560,8 @@ impl<'tcx> ConstantKind<'tcx> {
                 // new unevaluated const and error hard later in codegen
                 Self::Unevaluated(
                     UnevaluatedConst {
-                        def: def.to_global(),
-                        substs: InternalSubsts::identity_for_item(tcx, def.did),
+                        def: did,
+                        substs: InternalSubsts::identity_for_item(tcx, did),
                         promoted: None,
                     },
                     ty,
@@ -2607,7 +2586,7 @@ impl<'tcx> ConstantKind<'tcx> {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Lift)]
 #[derive(Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct UnevaluatedConst<'tcx> {
-    pub def: ty::WithOptConstParam<DefId>,
+    pub def: DefId,
     pub substs: SubstsRef<'tcx>,
     pub promoted: Option<Promoted>,
 }
@@ -2623,10 +2602,7 @@ impl<'tcx> UnevaluatedConst<'tcx> {
 
 impl<'tcx> UnevaluatedConst<'tcx> {
     #[inline]
-    pub fn new(
-        def: ty::WithOptConstParam<DefId>,
-        substs: SubstsRef<'tcx>,
-    ) -> UnevaluatedConst<'tcx> {
+    pub fn new(def: DefId, substs: SubstsRef<'tcx>) -> UnevaluatedConst<'tcx> {
         UnevaluatedConst { def, substs, promoted: Default::default() }
     }
 }

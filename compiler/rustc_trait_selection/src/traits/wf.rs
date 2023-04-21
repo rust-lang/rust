@@ -478,7 +478,7 @@ impl<'tcx> WfPredicates<'tcx> {
                     match ct.kind() {
                         ty::ConstKind::Unevaluated(uv) => {
                             if !ct.has_escaping_bound_vars() {
-                                let obligations = self.nominal_obligations(uv.def.did, uv.substs);
+                                let obligations = self.nominal_obligations(uv.def, uv.substs);
                                 self.out.extend(obligations);
 
                                 let predicate =

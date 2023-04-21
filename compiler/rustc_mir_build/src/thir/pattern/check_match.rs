@@ -27,7 +27,7 @@ use rustc_span::hygiene::DesugaringKind;
 use rustc_span::Span;
 
 pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    let Ok((thir, expr)) = tcx.thir_body(ty::WithOptConstParam::unknown(def_id)) else { return };
+    let Ok((thir, expr)) = tcx.thir_body(def_id) else { return };
     let thir = thir.borrow();
     let pattern_arena = TypedArena::default();
     let mut visitor = MatchVisitor {

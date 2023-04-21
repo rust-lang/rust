@@ -32,38 +32,20 @@ use super::lints;
 
 pub(crate) fn mir_built(
     tcx: TyCtxt<'_>,
-    def: ty::WithOptConstParam<LocalDefId>,
+    def: LocalDefId,
 ) -> &rustc_data_structures::steal::Steal<Body<'_>> {
-    if let Some(def) = def.try_upgrade(tcx) {
-        return tcx.mir_built(def);
-    }
-
-    let mut body = mir_build(tcx, def);
-    if def.const_param_did.is_some() {
-        assert!(matches!(body.source.instance, ty::InstanceDef::Item(_)));
-        body.source = MirSource::from_instance(ty::InstanceDef::Item(def.to_global()));
-    }
-
-    tcx.alloc_steal_mir(body)
+    tcx.alloc_steal_mir(mir_build(tcx, def))
 }
 
 /// Construct the MIR for a given `DefId`.
-fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_> {
+fn mir_build(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
     // Ensure unsafeck and abstract const building is ran before we steal the THIR.
-    match def {
-        ty::WithOptConstParam { did, const_param_did: Some(const_param_did) } => {
-            tcx.ensure_with_value().thir_check_unsafety_for_const_arg((did, const_param_did));
-            tcx.ensure_with_value().thir_abstract_const_of_const_arg((did, const_param_did));
-        }
-        ty::WithOptConstParam { did, const_param_did: None } => {
-            tcx.ensure_with_value().thir_check_unsafety(did);
-            tcx.ensure_with_value().thir_abstract_const(did);
-            tcx.ensure_with_value().check_match(did);
-        }
-    }
+    tcx.ensure_with_value().thir_check_unsafety(def);
+    tcx.ensure_with_value().thir_abstract_const(def);
+    tcx.ensure_with_value().check_match(def);
 
     let body = match tcx.thir_body(def) {
-        Err(error_reported) => construct_error(tcx, def.did, error_reported),
+        Err(error_reported) => construct_error(tcx, def, error_reported),
         Ok((thir, expr)) => {
             // We ran all queries that depended on THIR at the beginning
             // of `mir_build`, so now we can steal it
@@ -161,8 +143,7 @@ struct Builder<'a, 'tcx> {
     thir: &'a Thir<'tcx>,
     cfg: CFG<'tcx>,
 
-    def: ty::WithOptConstParam<LocalDefId>,
-    def_id: DefId,
+    def_id: LocalDefId,
     hir_id: hir::HirId,
     parent_module: DefId,
     check_overflow: bool,
@@ -428,26 +409,26 @@ macro_rules! unpack {
 
 fn construct_fn<'tcx>(
     tcx: TyCtxt<'tcx>,
-    fn_def: ty::WithOptConstParam<LocalDefId>,
+    fn_def: LocalDefId,
     thir: &Thir<'tcx>,
     expr: ExprId,
     fn_sig: ty::FnSig<'tcx>,
 ) -> Body<'tcx> {
-    let span = tcx.def_span(fn_def.did);
-    let fn_id = tcx.hir().local_def_id_to_hir_id(fn_def.did);
-    let generator_kind = tcx.generator_kind(fn_def.did);
+    let span = tcx.def_span(fn_def);
+    let fn_id = tcx.hir().local_def_id_to_hir_id(fn_def);
+    let generator_kind = tcx.generator_kind(fn_def);
 
     // The representation of thir for `-Zunpretty=thir-tree` relies on
     // the entry expression being the last element of `thir.exprs`.
     assert_eq!(expr.as_usize(), thir.exprs.len() - 1);
 
     // Figure out what primary body this item has.
-    let body_id = tcx.hir().body_owned_by(fn_def.did);
+    let body_id = tcx.hir().body_owned_by(fn_def);
     let span_with_body = tcx.hir().span_with_body(fn_id);
     let return_ty_span = tcx
         .hir()
         .fn_decl_by_hir_id(fn_id)
-        .unwrap_or_else(|| span_bug!(span, "can't build MIR for {:?}", fn_def.did))
+        .unwrap_or_else(|| span_bug!(span, "can't build MIR for {:?}", fn_def))
         .output
         .span();
 
@@ -457,7 +438,7 @@ fn construct_fn<'tcx>(
     };
 
     let mut abi = fn_sig.abi;
-    if let DefKind::Closure = tcx.def_kind(fn_def.did) {
+    if let DefKind::Closure = tcx.def_kind(fn_def) {
         // HACK(eddyb) Avoid having RustCall on closures,
         // as it adds unnecessary (and wrong) auto-tupling.
         abi = Abi::Rust;
@@ -483,7 +464,7 @@ fn construct_fn<'tcx>(
     {
         return custom::build_custom_mir(
             tcx,
-            fn_def.did.to_def_id(),
+            fn_def.to_def_id(),
             fn_id,
             thir,
             expr,
@@ -547,12 +528,12 @@ fn construct_fn<'tcx>(
 
 fn construct_const<'a, 'tcx>(
     tcx: TyCtxt<'tcx>,
-    def: ty::WithOptConstParam<LocalDefId>,
+    def: LocalDefId,
     thir: &'a Thir<'tcx>,
     expr: ExprId,
     const_ty: Ty<'tcx>,
 ) -> Body<'tcx> {
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def);
 
     // Figure out what primary body this item has.
     let (span, const_ty_span) = match tcx.hir().get(hir_id) {
@@ -568,10 +549,10 @@ fn construct_const<'a, 'tcx>(
             ..
         }) => (*span, ty.span),
         Node::AnonConst(_) => {
-            let span = tcx.def_span(def.did);
+            let span = tcx.def_span(def);
             (span, span)
         }
-        _ => span_bug!(tcx.def_span(def.did), "can't build MIR for {:?}", def.did),
+        _ => span_bug!(tcx.def_span(def), "can't build MIR for {:?}", def),
     };
 
     let infcx = tcx.infer_ctxt().build();
@@ -669,7 +650,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn new(
         thir: &'a Thir<'tcx>,
         infcx: InferCtxt<'tcx>,
-        def: ty::WithOptConstParam<LocalDefId>,
+        def: LocalDefId,
         hir_id: hir::HirId,
         span: Span,
         arg_count: usize,
@@ -688,20 +669,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         check_overflow |= tcx.sess.overflow_checks();
         // Constants always need overflow checks.
         check_overflow |= matches!(
-            tcx.hir().body_owner_kind(def.did),
+            tcx.hir().body_owner_kind(def),
             hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_)
         );
 
         let lint_level = LintLevel::Explicit(hir_id);
-        let param_env = tcx.param_env(def.did);
+        let param_env = tcx.param_env(def);
         let mut builder = Builder {
             thir,
             tcx,
             infcx,
-            region_scope_tree: tcx.region_scope_tree(def.did),
+            region_scope_tree: tcx.region_scope_tree(def),
             param_env,
-            def,
-            def_id: def.did.to_def_id(),
+            def_id: def,
             hir_id,
             parent_module: tcx.parent_module(hir_id).to_def_id(),
             check_overflow,
@@ -741,7 +721,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         Body::new(
-            MirSource::item(self.def_id),
+            MirSource::item(self.def_id.to_def_id()),
             self.cfg.basic_blocks,
             self.source_scopes,
             self.local_decls,
@@ -779,7 +759,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let tcx = self.tcx;
         self.upvars = tcx
-            .closure_captures(self.def.did)
+            .closure_captures(self.def_id)
             .iter()
             .zip(capture_tys)
             .enumerate()
