@@ -207,6 +207,47 @@ class WindowsPipeline(Pipeline):
     def supports_bolt(self) -> bool:
         return False
 
+class DarwinPipeline(Pipeline):
+    def __init__(self):
+        self.checkout_dir = Path(os.getcwd())
+
+    def checkout_path(self) -> Path:
+        return self.checkout_dir
+
+    def downloaded_llvm_dir(self) -> Path:
+        return self.checkout_path() / "citools" / "clang-rust"
+
+    def build_root(self) -> Path:
+        return self.checkout_path()
+
+    def opt_artifacts(self) -> Path:
+        return Path("/tmp/tmp-multistage/opt-artifacts")
+
+    def build_rustc_perf(self):
+        # rustc-perf version from 2022-07-22
+        perf_commit = "9dfaa35193154b690922347ee1141a06ec87a199"
+        rustc_perf_zip_path = self.opt_artifacts() / "perf.zip"
+
+        def download_rustc_perf():
+            download_file(
+                f"https://github.com/rust-lang/rustc-perf/archive/{perf_commit}.zip",
+                rustc_perf_zip_path
+            )
+            with change_cwd(self.opt_artifacts()):
+                unpack_archive(rustc_perf_zip_path)
+                move_path(Path(f"rustc-perf-{perf_commit}"), self.rustc_perf_dir())
+                delete_file(rustc_perf_zip_path)
+
+        retry_action(download_rustc_perf, "Download rustc-perf")
+
+        with change_cwd(self.rustc_perf_dir()):
+            cmd([self.cargo_stage_0(), "build", "-p", "collector"], env=dict(
+                RUSTC=str(self.rustc_stage_0()),
+                RUSTC_BOOTSTRAP="1"
+            ))
+
+    def supports_bolt(self) -> bool:
+        return False
 
 def get_timestamp() -> float:
     return time.time()
@@ -576,6 +617,8 @@ def create_pipeline() -> Pipeline:
         return LinuxPipeline()
     elif sys.platform in ("cygwin", "win32"):
         return WindowsPipeline()
+    elif sys.platform == "darwin":
+        return DarwinPipeline()
     else:
         raise Exception(f"Optimized build is not supported for platform {sys.platform}")
 

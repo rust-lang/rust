@@ -950,6 +950,7 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
             } else {
                 panic!("clang has no clang_rt.profile library for {target}");
             };
+
             let clang = builder.cc(target);
             let clang_rt_dir = get_clang_rt_dir(clang, false);
             let clang_rt_profile_lib = format!("libclang_rt.profile_{clang_rt_profile_lib_suffix}");

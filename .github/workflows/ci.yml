@@ -317,7 +317,7 @@ jobs:
             os: ubuntu-20.04-8core-32gb
           - name: dist-x86_64-apple
             env:
-              SCRIPT: "./x.py dist bootstrap --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin"
+              SCRIPT: PGO_HOST=x86_64-apple-darwin python3 src/ci/stage-build.py python3 ./x.py dist bootstrap --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin
               RUST_CONFIGURE_ARGS: "--enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false --set rust.lto=thin"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.7

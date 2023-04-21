@@ -331,7 +331,10 @@ impl Step for Llvm {
         // This flag makes sure `FileCheck` is copied in the final binaries directory.
         cfg.define("LLVM_INSTALL_UTILS", "ON");
 
+        let mut enabled_llvm_projects = Vec::new();
+
         if builder.config.llvm_profile_generate {
+            enabled_llvm_projects.push("compiler-rt");
             cfg.define("LLVM_BUILD_INSTRUMENTED", "IR");
             if let Ok(llvm_profile_dir) = std::env::var("LLVM_PROFILE_DIR") {
                 cfg.define("LLVM_PROFILE_DATA_DIR", llvm_profile_dir);
@@ -344,6 +347,7 @@ impl Step for Llvm {
         if builder.config.llvm_bolt_profile_generate
             || builder.config.llvm_bolt_profile_use.is_some()
         {
+            enabled_llvm_projects.push("bolt");
             // Relocations are required for BOLT to work.
             ldflags.push_all("-Wl,-q");
         }
@@ -402,8 +406,6 @@ impl Step for Llvm {
         if target.starts_with("i686") {
             cfg.define("LLVM_BUILD_32_BITS", "ON");
         }
-
-        let mut enabled_llvm_projects = Vec::new();
 
         if util::forcing_clang_based_tests() {
             enabled_llvm_projects.push("clang");
@@ -828,7 +830,7 @@ impl Step for Lld {
             if let Some(clang_cl_path) = builder.config.llvm_clang_cl.as_ref() {
                 // Find clang's runtime library directory and push that as a search path to the
                 // cmake linker flags.
-                let clang_rt_dir = get_clang_rt_dir(clang_cl_path);
+                let clang_rt_dir = get_clang_rt_dir(clang_cl_path, true);
                 ldflags.push_all(&format!("/libpath:{}", clang_rt_dir.display()));
             }
         }
