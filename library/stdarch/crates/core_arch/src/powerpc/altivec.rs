@@ -1865,6 +1865,47 @@ mod sealed {
     vector_mladd! { vector_unsigned_short, vector_signed_short, vector_signed_short }
     vector_mladd! { vector_signed_short, vector_unsigned_short, vector_signed_short }
     vector_mladd! { vector_signed_short, vector_signed_short, vector_signed_short }
+
+    pub trait VectorOr<Other> {
+        type Result;
+        unsafe fn vec_or(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_trait! { [VectorOr vec_or] ~(simd_or) }
+
+    pub trait VectorXor<Other> {
+        type Result;
+        unsafe fn vec_xor(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_trait! { [VectorXor vec_xor] ~(simd_xor) }
+
+    macro_rules! vector_vnor {
+        ($fun:ident $ty:ident) => {
+            #[inline]
+            #[target_feature(enable = "altivec")]
+            #[cfg_attr(all(test, not(target_feature = "vsx")), assert_instr(vnor))]
+            #[cfg_attr(all(test, target_feature = "vsx"), assert_instr(xxlnor))]
+            pub unsafe fn $fun(a: t_t_l!($ty), b: t_t_l!($ty)) -> t_t_l!($ty) {
+                let o = vec_splats(!0 as $ty);
+                vec_xor(vec_or(a, b), o)
+            }
+        };
+    }
+
+    vector_vnor! { vec_vnorsb i8 }
+    vector_vnor! { vec_vnorsh i16 }
+    vector_vnor! { vec_vnorsw i32 }
+    vector_vnor! { vec_vnorub u8 }
+    vector_vnor! { vec_vnoruh u16 }
+    vector_vnor! { vec_vnoruw u32 }
+
+    pub trait VectorNor<Other> {
+        type Result;
+        unsafe fn vec_nor(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_trait! { [VectorNor vec_nor] 2 (vec_vnorub, vec_vnorsb, vec_vnoruh, vec_vnorsh, vec_vnoruw, vec_vnorsw) }
 }
 
 /// Vector ld.
@@ -1977,6 +2018,36 @@ where
     T: sealed::VectorAnd<U>,
 {
     a.vec_and(b)
+}
+
+/// Vector or.
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_or<T, U>(a: T, b: U) -> <T as sealed::VectorOr<U>>::Result
+where
+    T: sealed::VectorOr<U>,
+{
+    a.vec_or(b)
+}
+
+/// Vector nor.
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_nor<T, U>(a: T, b: U) -> <T as sealed::VectorNor<U>>::Result
+where
+    T: sealed::VectorNor<U>,
+{
+    a.vec_nor(b)
+}
+
+/// Vector xor.
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_xor<T, U>(a: T, b: U) -> <T as sealed::VectorXor<U>>::Result
+where
+    T: sealed::VectorXor<U>,
+{
+    a.vec_xor(b)
 }
 
 /// Vector adds.
