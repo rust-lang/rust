@@ -198,7 +198,7 @@ fn report_forbidden_specialization(tcx: TyCtxt<'_>, impl_item: DefId, parent_imp
 
 fn missing_items_err(
     tcx: TyCtxt<'_>,
-    impl_span: Span,
+    impl_def_id: LocalDefId,
     missing_items: &[ty::AssocItem],
     full_impl_span: Span,
 ) {
@@ -211,6 +211,7 @@ fn missing_items_err(
         .collect::<Vec<_>>()
         .join("`, `");
 
+    let impl_span = tcx.def_span(impl_def_id);
     let mut err = struct_span_err!(
         tcx.sess,
         impl_span,
@@ -229,7 +230,11 @@ fn missing_items_err(
         tcx.sess.source_map().indentation_before(sugg_sp).unwrap_or_else(|| String::new());
 
     for &trait_item in missing_items {
-        let snippet = suggestion_signature(trait_item, tcx);
+        let snippet = suggestion_signature(
+            tcx,
+            trait_item,
+            tcx.impl_trait_ref(impl_def_id).unwrap().subst_identity(),
+        );
         let code = format!("{}{}\n{}", padding, snippet, padding);
         let msg = format!("implement the missing item: `{snippet}`");
         let appl = Applicability::HasPlaceholders;
@@ -301,11 +306,11 @@ fn default_body_is_unstable(
 /// Re-sugar `ty::GenericPredicates` in a way suitable to be used in structured suggestions.
 fn bounds_from_generic_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
-    predicates: ty::GenericPredicates<'tcx>,
+    predicates: impl IntoIterator<Item = (ty::Predicate<'tcx>, Span)>,
 ) -> (String, String) {
     let mut types: FxHashMap<Ty<'tcx>, Vec<DefId>> = FxHashMap::default();
     let mut projections = vec![];
-    for (predicate, _) in predicates.predicates {
+    for (predicate, _) in predicates {
         debug!("predicate {:?}", predicate);
         let bound_predicate = predicate.kind();
         match bound_predicate.skip_binder() {
@@ -367,7 +372,7 @@ fn fn_sig_suggestion<'tcx>(
     tcx: TyCtxt<'tcx>,
     sig: ty::FnSig<'tcx>,
     ident: Ident,
-    predicates: ty::GenericPredicates<'tcx>,
+    predicates: impl IntoIterator<Item = (ty::Predicate<'tcx>, Span)>,
     assoc: ty::AssocItem,
 ) -> String {
     let args = sig
@@ -436,7 +441,17 @@ pub fn ty_kind_suggestion(ty: Ty<'_>) -> Option<&'static str> {
 /// Return placeholder code for the given associated item.
 /// Similar to `ty::AssocItem::suggestion`, but appropriate for use as the code snippet of a
 /// structured suggestion.
-fn suggestion_signature(assoc: ty::AssocItem, tcx: TyCtxt<'_>) -> String {
+fn suggestion_signature<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    assoc: ty::AssocItem,
+    impl_trait_ref: ty::TraitRef<'tcx>,
+) -> String {
+    let substs = ty::InternalSubsts::identity_for_item(tcx, assoc.def_id).rebase_onto(
+        tcx,
+        assoc.container_id(tcx),
+        impl_trait_ref.with_self_ty(tcx, tcx.types.self_param).substs,
+    );
+
     match assoc.kind {
         ty::AssocKind::Fn => {
             // We skip the binder here because the binder would deanonymize all
@@ -445,16 +460,22 @@ fn suggestion_signature(assoc: ty::AssocItem, tcx: TyCtxt<'_>) -> String {
             // regions just fine, showing `fn(&MyType)`.
             fn_sig_suggestion(
                 tcx,
-                tcx.fn_sig(assoc.def_id).subst_identity().skip_binder(),
+                tcx.fn_sig(assoc.def_id).subst(tcx, substs).skip_binder(),
                 assoc.ident(tcx),
-                tcx.predicates_of(assoc.def_id),
+                tcx.predicates_of(assoc.def_id).instantiate_own(tcx, substs),
                 assoc,
             )
         }
-        ty::AssocKind::Type => format!("type {} = Type;", assoc.name),
+        ty::AssocKind::Type => {
+            let (generics, where_clauses) = bounds_from_generic_predicates(
+                tcx,
+                tcx.predicates_of(assoc.def_id).instantiate_own(tcx, substs),
+            );
+            format!("type {}{generics} = /* Type */{where_clauses};", assoc.name)
+        }
         ty::AssocKind::Const => {
             let ty = tcx.type_of(assoc.def_id).subst_identity();
-            let val = ty_kind_suggestion(ty).unwrap_or("value");
+            let val = ty_kind_suggestion(ty).unwrap_or("todo!()");
             format!("const {}: {} = {};", assoc.name, ty, val)
         }
     }
