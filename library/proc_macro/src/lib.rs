@@ -44,7 +44,7 @@ mod diagnostic;
 pub use diagnostic::{Diagnostic, Level, MultiSpan};
 
 use std::cmp::Ordering;
-use std::ops::RangeBounds;
+use std::ops::{Range, RangeBounds};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::{error, fmt};
@@ -486,6 +486,12 @@ impl Span {
     #[unstable(feature = "proc_macro_span", issue = "54725")]
     pub fn source(&self) -> Span {
         Span(self.0.source())
+    }
+
+    /// Returns the span's byte position range in the source file.
+    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    pub fn byte_range(&self) -> Range<usize> {
+        self.0.byte_range()
     }
 
     /// Gets the starting line/column in the source file for this span.
