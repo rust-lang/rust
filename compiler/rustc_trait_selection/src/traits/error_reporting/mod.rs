@@ -15,8 +15,7 @@ use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::query::normalize::QueryNormalizeExt as _;
 use crate::traits::specialize::to_pretty_impl_header;
 use crate::traits::NormalizeExt;
-use on_unimplemented::OnUnimplementedNote;
-use on_unimplemented::TypeErrCtxtExt as _;
+use on_unimplemented::{AppendConstMessage, OnUnimplementedNote, TypeErrCtxtExt as _};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{
     pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
@@ -707,7 +706,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                      conversion on the error value using the `From` trait"
                                         .to_owned(),
                                 ),
-                                Some(None),
+                                Some(AppendConstMessage::Default),
                             )
                         } else {
                             (message, note, append_const_msg)
@@ -1272,7 +1271,7 @@ trait InferCtxtPrivExt<'tcx> {
         trait_predicate: &ty::PolyTraitPredicate<'tcx>,
         message: Option<String>,
         predicate_is_const: bool,
-        append_const_msg: Option<Option<rustc_span::Symbol>>,
+        append_const_msg: Option<AppendConstMessage>,
         post_message: String,
     ) -> String;
 
@@ -2682,7 +2681,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         trait_predicate: &ty::PolyTraitPredicate<'tcx>,
         message: Option<String>,
         predicate_is_const: bool,
-        append_const_msg: Option<Option<rustc_span::Symbol>>,
+        append_const_msg: Option<AppendConstMessage>,
         post_message: String,
     ) -> String {
         message
@@ -2691,17 +2690,19 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     // do nothing if predicate is not const
                     (false, _) => Some(cannot_do_this),
                     // suggested using default post message
-                    (true, Some(None)) => Some(format!("{cannot_do_this} in const contexts")),
+                    (true, Some(AppendConstMessage::Default)) => {
+                        Some(format!("{cannot_do_this} in const contexts"))
+                    }
                     // overridden post message
-                    (true, Some(Some(post_message))) => {
-                        Some(format!("{cannot_do_this}{post_message}"))
+                    (true, Some(AppendConstMessage::Custom(custom_msg))) => {
+                        Some(format!("{cannot_do_this}{custom_msg}"))
                     }
                     // fallback to generic message
                     (true, None) => None,
                 }
             })
             .unwrap_or_else(|| {
-                format!("the trait bound `{}` is not satisfied{}", trait_predicate, post_message,)
+                format!("the trait bound `{}` is not satisfied{}", trait_predicate, post_message)
             })
     }
 
