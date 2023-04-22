@@ -4,7 +4,9 @@ pub mod adt;
 
 use std::sync::Arc;
 
-use hir_expand::{name::Name, AstId, ExpandResult, HirFileId, InFile, MacroCallId, MacroDefKind};
+use hir_expand::{
+    name::Name, AstId, ExpandResult, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefKind,
+};
 use intern::Interned;
 use smallvec::SmallVec;
 use syntax::{ast, Parse};
@@ -13,7 +15,9 @@ use crate::{
     attr::Attrs,
     db::DefDatabase,
     expander::{Expander, Mark},
-    item_tree::{self, AssocItem, FnFlags, ItemTree, ItemTreeId, ModItem, Param, TreeId},
+    item_tree::{
+        self, AssocItem, FnFlags, ItemTree, ItemTreeId, MacroCall, ModItem, Param, TreeId,
+    },
     macro_call_as_call_id, macro_id_to_def_id,
     nameres::{
         attr_resolution::ResolvedAttr,
@@ -520,7 +524,7 @@ struct AssocItemCollector<'a> {
     db: &'a dyn DefDatabase,
     module_id: ModuleId,
     def_map: Arc<DefMap>,
-    inactive_diagnostics: Vec<DefDiagnostic>,
+    diagnostics: Vec<DefDiagnostic>,
     container: ItemContainerId,
     expander: Expander,
 
@@ -543,7 +547,7 @@ impl<'a> AssocItemCollector<'a> {
             expander: Expander::new(db, file_id, module_id),
             items: Vec::new(),
             attr_calls: Vec::new(),
-            inactive_diagnostics: Vec::new(),
+            diagnostics: Vec::new(),
         }
     }
 
@@ -557,11 +561,10 @@ impl<'a> AssocItemCollector<'a> {
         (
             self.items,
             if self.attr_calls.is_empty() { None } else { Some(Box::new(self.attr_calls)) },
-            self.inactive_diagnostics,
+            self.diagnostics,
         )
     }
 
-    // FIXME: proc-macro diagnostics
     fn collect(&mut self, item_tree: &ItemTree, tree_id: TreeId, assoc_items: &[AssocItem]) {
         let container = self.container;
         self.items.reserve(assoc_items.len());
@@ -569,7 +572,7 @@ impl<'a> AssocItemCollector<'a> {
         'items: for &item in assoc_items {
             let attrs = item_tree.attrs(self.db, self.module_id.krate, ModItem::from(item).into());
             if !attrs.is_cfg_enabled(self.expander.cfg_options()) {
-                self.inactive_diagnostics.push(DefDiagnostic::unconfigured_code(
+                self.diagnostics.push(DefDiagnostic::unconfigured_code(
                     self.module_id.local_id,
                     InFile::new(self.expander.current_file_id(), item.ast_id(item_tree).upcast()),
                     attrs.cfg().unwrap(),
@@ -583,90 +586,125 @@ impl<'a> AssocItemCollector<'a> {
                     AstId::new(self.expander.current_file_id(), item.ast_id(item_tree).upcast());
                 let ast_id_with_path = AstIdWithPath { path: (*attr.path).clone(), ast_id };
 
-                if let Ok(ResolvedAttr::Macro(call_id)) = self.def_map.resolve_attr_macro(
+                match self.def_map.resolve_attr_macro(
                     self.db,
                     self.module_id.local_id,
                     ast_id_with_path,
                     attr,
                 ) {
-                    self.attr_calls.push((ast_id, call_id));
-                    // If proc attribute macro expansion is disabled, skip expanding it here
-                    if !self.db.expand_proc_attr_macros() {
-                        continue 'attrs;
-                    }
-                    let loc = self.db.lookup_intern_macro_call(call_id);
-                    if let MacroDefKind::ProcMacro(exp, ..) = loc.def.kind {
-                        // If there's no expander for the proc macro (e.g. the
-                        // proc macro is ignored, or building the proc macro
-                        // crate failed), skip expansion like we would if it was
-                        // disabled. This is analogous to the handling in
-                        // `DefCollector::collect_macros`.
-                        if exp.is_dummy() {
+                    Ok(ResolvedAttr::Macro(call_id)) => {
+                        self.attr_calls.push((ast_id, call_id));
+                        // If proc attribute macro expansion is disabled, skip expanding it here
+                        if !self.db.expand_proc_attr_macros() {
                             continue 'attrs;
                         }
-                    }
+                        let loc = self.db.lookup_intern_macro_call(call_id);
+                        if let MacroDefKind::ProcMacro(exp, ..) = loc.def.kind {
+                            // If there's no expander for the proc macro (e.g. the
+                            // proc macro is ignored, or building the proc macro
+                            // crate failed), skip expansion like we would if it was
+                            // disabled. This is analogous to the handling in
+                            // `DefCollector::collect_macros`.
+                            if exp.is_dummy() {
+                                continue 'attrs;
+                            }
+                        }
 
-                    let res = self.expander.enter_expand_id::<ast::MacroItems>(self.db, call_id);
-                    self.collect_macro_items(res, &|| loc.kind.clone());
-                    continue 'items;
+                        let res =
+                            self.expander.enter_expand_id::<ast::MacroItems>(self.db, call_id);
+                        self.collect_macro_items(res, &|| loc.kind.clone());
+                        continue 'items;
+                    }
+                    Ok(_) => (),
+                    Err(_) => {
+                        self.diagnostics.push(DefDiagnostic::unresolved_macro_call(
+                            self.module_id.local_id,
+                            MacroCallKind::Attr {
+                                ast_id,
+                                attr_args: Arc::new((tt::Subtree::empty(), Default::default())),
+                                invoc_attr_index: attr.id,
+                                is_derive: false,
+                            },
+                            attr.path().clone(),
+                        ));
+                    }
                 }
             }
 
-            match item {
-                AssocItem::Function(id) => {
-                    let item = &item_tree[id];
+            self.collect_item(item_tree, tree_id, container, item);
+        }
+    }
 
-                    let def =
-                        FunctionLoc { container, id: ItemTreeId::new(tree_id, id) }.intern(self.db);
-                    self.items.push((item.name.clone(), def.into()));
-                }
-                AssocItem::Const(id) => {
-                    let item = &item_tree[id];
+    fn collect_item(
+        &mut self,
+        item_tree: &ItemTree,
+        tree_id: TreeId,
+        container: ItemContainerId,
+        item: AssocItem,
+    ) {
+        match item {
+            AssocItem::Function(id) => {
+                let item = &item_tree[id];
 
-                    let name = match item.name.clone() {
-                        Some(name) => name,
-                        None => continue,
-                    };
-                    let def =
-                        ConstLoc { container, id: ItemTreeId::new(tree_id, id) }.intern(self.db);
-                    self.items.push((name, def.into()));
-                }
-                AssocItem::TypeAlias(id) => {
-                    let item = &item_tree[id];
+                let def =
+                    FunctionLoc { container, id: ItemTreeId::new(tree_id, id) }.intern(self.db);
+                self.items.push((item.name.clone(), def.into()));
+            }
+            AssocItem::Const(id) => {
+                let item = &item_tree[id];
+                let Some(name) = item.name.clone() else { return };
+                let def = ConstLoc { container, id: ItemTreeId::new(tree_id, id) }.intern(self.db);
+                self.items.push((name, def.into()));
+            }
+            AssocItem::TypeAlias(id) => {
+                let item = &item_tree[id];
 
-                    let def = TypeAliasLoc { container, id: ItemTreeId::new(tree_id, id) }
-                        .intern(self.db);
-                    self.items.push((item.name.clone(), def.into()));
-                }
-                AssocItem::MacroCall(call) => {
-                    let file_id = self.expander.current_file_id();
-                    let call = &item_tree[call];
-                    let module = self.expander.module.local_id;
+                let def =
+                    TypeAliasLoc { container, id: ItemTreeId::new(tree_id, id) }.intern(self.db);
+                self.items.push((item.name.clone(), def.into()));
+            }
+            AssocItem::MacroCall(call) => {
+                let file_id = self.expander.current_file_id();
+                let MacroCall { ast_id, expand_to, ref path } = item_tree[call];
+                let module = self.expander.module.local_id;
 
-                    if let Ok(Some(call_id)) = macro_call_as_call_id(
-                        self.db.upcast(),
-                        &AstIdWithPath::new(file_id, call.ast_id, Clone::clone(&call.path)),
-                        call.expand_to,
-                        self.expander.module.krate(),
-                        |path| {
-                            self.def_map
-                                .resolve_path(
-                                    self.db,
-                                    module,
-                                    &path,
-                                    crate::item_scope::BuiltinShadowMode::Other,
-                                )
-                                .0
-                                .take_macros()
-                                .map(|it| macro_id_to_def_id(self.db, it))
-                        },
-                    ) {
+                let resolver = |path| {
+                    self.def_map
+                        .resolve_path(
+                            self.db,
+                            module,
+                            &path,
+                            crate::item_scope::BuiltinShadowMode::Other,
+                        )
+                        .0
+                        .take_macros()
+                        .map(|it| macro_id_to_def_id(self.db, it))
+                };
+                match macro_call_as_call_id(
+                    self.db.upcast(),
+                    &AstIdWithPath::new(file_id, ast_id, Clone::clone(path)),
+                    expand_to,
+                    self.expander.module.krate(),
+                    resolver,
+                ) {
+                    Ok(Some(call_id)) => {
                         let res =
                             self.expander.enter_expand_id::<ast::MacroItems>(self.db, call_id);
                         self.collect_macro_items(res, &|| hir_expand::MacroCallKind::FnLike {
-                            ast_id: InFile::new(file_id, call.ast_id),
+                            ast_id: InFile::new(file_id, ast_id),
                             expand_to: hir_expand::ExpandTo::Items,
                         });
+                    }
+                    Ok(None) => (),
+                    Err(_) => {
+                        self.diagnostics.push(DefDiagnostic::unresolved_macro_call(
+                            self.module_id.local_id,
+                            MacroCallKind::FnLike {
+                                ast_id: InFile::new(file_id, ast_id),
+                                expand_to,
+                            },
+                            Clone::clone(path),
+                        ));
                     }
                 }
             }
@@ -681,14 +719,25 @@ impl<'a> AssocItemCollector<'a> {
         let Some((mark, parse)) = value else { return };
 
         if let Some(err) = err {
-            self.inactive_diagnostics.push(DefDiagnostic::macro_error(
-                self.module_id.local_id,
-                error_call_kind(),
-                err.to_string(),
-            ));
+            let diag = match err {
+                // why is this reported here?
+                hir_expand::ExpandError::UnresolvedProcMacro(krate) => {
+                    DefDiagnostic::unresolved_proc_macro(
+                        self.module_id.local_id,
+                        error_call_kind(),
+                        krate,
+                    )
+                }
+                _ => DefDiagnostic::macro_error(
+                    self.module_id.local_id,
+                    error_call_kind(),
+                    err.to_string(),
+                ),
+            };
+            self.diagnostics.push(diag);
         }
         if let errors @ [_, ..] = parse.errors() {
-            self.inactive_diagnostics.push(DefDiagnostic::macro_expansion_parse_error(
+            self.diagnostics.push(DefDiagnostic::macro_expansion_parse_error(
                 self.module_id.local_id,
                 error_call_kind(),
                 errors.into(),

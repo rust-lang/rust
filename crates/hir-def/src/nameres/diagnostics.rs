@@ -88,7 +88,8 @@ impl DefDiagnostic {
         Self { in_module: container, kind: DefDiagnosticKind::UnconfiguredCode { ast, cfg, opts } }
     }
 
-    pub(super) fn unresolved_proc_macro(
+    // FIXME: Whats the difference between this and unresolved_macro_call
+    pub(crate) fn unresolved_proc_macro(
         container: LocalModuleId,
         ast: MacroCallKind,
         krate: CrateId,
@@ -118,7 +119,8 @@ impl DefDiagnostic {
         }
     }
 
-    pub(super) fn unresolved_macro_call(
+    // FIXME: Whats the difference between this and unresolved_proc_macro
+    pub(crate) fn unresolved_macro_call(
         container: LocalModuleId,
         ast: MacroCallKind,
         path: ModPath,
