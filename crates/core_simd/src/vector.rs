@@ -163,21 +163,31 @@ where
     /// Converts an array to a SIMD vector.
     pub const fn from_array(array: [T; LANES]) -> Self {
         // SAFETY: Transmuting between `Simd<T, LANES>` and `[T; LANES]`
-        // is always valid.
+        // is always valid. We need to use `read_unaligned` here, since
+        // the array may have a lower alignment than the vector.
+        //
+        // FIXME: We currently use a pointer read instead of `transmute_copy` because
+        // it results in better codegen with optimizations disabled, but we should
+        // probably just use `transmute` once that works on const generic types.
         //
         // NOTE: This deliberately doesn't just use `Self(array)`, see the comment
         // on the struct definition for details.
-        unsafe { core::mem::transmute_copy(&array) }
+        unsafe { (&array as *const [T; LANES] as *const Self).read_unaligned() }
     }
 
     /// Converts a SIMD vector to an array.
     pub const fn to_array(self) -> [T; LANES] {
         // SAFETY: Transmuting between `Simd<T, LANES>` and `[T; LANES]`
-        // is always valid.
+        // is always valid. No need to use `read_unaligned` here, since
+        // the vector never has a lower alignment than the array.
+        //
+        // FIXME: We currently use a pointer read instead of `transmute_copy` because
+        // it results in better codegen with optimizations disabled, but we should
+        // probably just use `transmute` once that works on const generic types.
         //
         // NOTE: This deliberately doesn't just use `self.0`, see the comment
         // on the struct definition for details.
-        unsafe { core::mem::transmute_copy(&self) }
+        unsafe { (&self as *const Self as *const [T; LANES]).read() }
     }
 
     /// Converts a slice to a SIMD vector containing `slice[..LANES]`.
