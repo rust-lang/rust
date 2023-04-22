@@ -35,6 +35,35 @@ const itemTypes = [
     "traitalias",
 ];
 
+const longItemTypes = [
+    "module",
+    "extern crate",
+    "re-export",
+    "struct",
+    "enum",
+    "function",
+    "type alias",
+    "static",
+    "trait",
+    "",
+    "trait method",
+    "method",
+    "struct field",
+    "enum variant",
+    "macro",
+    "primitive type",
+    "associated type",
+    "constant",
+    "associated constant",
+    "union",
+    "foreign type",
+    "keyword",
+    "existential type",
+    "attribute macro",
+    "derive macro",
+    "trait alias",
+];
+
 // used for special search precedence
 const TY_PRIMITIVE = itemTypes.indexOf("primitive");
 const TY_KEYWORD = itemTypes.indexOf("keyword");
@@ -1836,15 +1865,10 @@ function initSearch(rawSearchIndex) {
             array.forEach(item => {
                 const name = item.name;
                 const type = itemTypes[item.ty];
+                const longType = longItemTypes[item.ty];
+                let extra = longType.length !== 0 ? ` <i>(${longType})</i>` : "";
 
                 length += 1;
-
-                let extra = "";
-                if (type === "primitive") {
-                    extra = " <i>(primitive type)</i>";
-                } else if (type === "keyword") {
-                    extra = " <i>(keyword)</i>";
-                }
 
                 const link = document.createElement("a");
                 link.className = "result-" + type;
@@ -1854,6 +1878,7 @@ function initSearch(rawSearchIndex) {
                 resultName.className = "result-name";
 
                 if (item.is_alias) {
+                    extra = "";
                     const alias = document.createElement("span");
                     alias.className = "alias";
 
@@ -1863,13 +1888,13 @@ function initSearch(rawSearchIndex) {
 
                     alias.insertAdjacentHTML(
                         "beforeend",
-                        "<span class=\"grey\"><i>&nbsp;- see&nbsp;</i></span>");
+                        "<i class=\"grey\">&nbsp;- see&nbsp;</i>");
 
                     resultName.appendChild(alias);
                 }
                 resultName.insertAdjacentHTML(
                     "beforeend",
-                    item.displayPath + "<span class=\"" + type + "\">" + name + extra + "</span>");
+                    item.displayPath + "<span class=\"" + type + "\">" + name + "</span>" + extra);
                 link.appendChild(resultName);
 
                 const description = document.createElement("div");
