@@ -73,8 +73,8 @@ use crate::intrinsics;
 /// ```
 ///
 /// While using `unreachable_unchecked()` is perfectly sound in the following
-/// example, the compiler is able to prove that a division by zero is not
-/// possible. Benchmarking reveals that `unreachable_unchecked()` provides
+/// example, as the compiler is able to prove that a division by zero is not
+/// possible, benchmarking reveals that `unreachable_unchecked()` provides
 /// no benefit over using [`unreachable!`], while the latter does not introduce
 /// the possibility of Undefined Behavior.
 ///
