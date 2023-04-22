@@ -33,6 +33,7 @@ pub use crate::Compiler;
 // - use std::lazy for `Lazy`
 // - use std::cell for `OnceCell`
 // Once they get stabilized and reach beta.
+use clap::ValueEnum;
 use once_cell::sync::{Lazy, OnceCell};
 
 pub struct Builder<'a> {
@@ -576,19 +577,24 @@ impl<'a> ShouldRun<'a> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, ValueEnum)]
 pub enum Kind {
+    #[clap(alias = "b")]
     Build,
+    #[clap(alias = "c")]
     Check,
     Clippy,
     Fix,
     Format,
+    #[clap(alias = "t")]
     Test,
     Bench,
+    #[clap(alias = "d")]
     Doc,
     Clean,
     Dist,
     Install,
+    #[clap(alias = "r")]
     Run,
     Setup,
     Suggest,
@@ -887,18 +893,19 @@ impl<'a> Builder<'a> {
     }
 
     pub fn new(build: &Build) -> Builder<'_> {
+        let paths = &build.config.paths;
         let (kind, paths) = match build.config.cmd {
-            Subcommand::Build { ref paths } => (Kind::Build, &paths[..]),
-            Subcommand::Check { ref paths } => (Kind::Check, &paths[..]),
-            Subcommand::Clippy { ref paths, .. } => (Kind::Clippy, &paths[..]),
-            Subcommand::Fix { ref paths } => (Kind::Fix, &paths[..]),
-            Subcommand::Doc { ref paths, .. } => (Kind::Doc, &paths[..]),
-            Subcommand::Test { ref paths, .. } => (Kind::Test, &paths[..]),
-            Subcommand::Bench { ref paths, .. } => (Kind::Bench, &paths[..]),
-            Subcommand::Dist { ref paths } => (Kind::Dist, &paths[..]),
-            Subcommand::Install { ref paths } => (Kind::Install, &paths[..]),
-            Subcommand::Run { ref paths, .. } => (Kind::Run, &paths[..]),
-            Subcommand::Clean { ref paths, .. } => (Kind::Clean, &paths[..]),
+            Subcommand::Build => (Kind::Build, &paths[..]),
+            Subcommand::Check { .. } => (Kind::Check, &paths[..]),
+            Subcommand::Clippy { .. } => (Kind::Clippy, &paths[..]),
+            Subcommand::Fix => (Kind::Fix, &paths[..]),
+            Subcommand::Doc { .. } => (Kind::Doc, &paths[..]),
+            Subcommand::Test { .. } => (Kind::Test, &paths[..]),
+            Subcommand::Bench { .. } => (Kind::Bench, &paths[..]),
+            Subcommand::Dist => (Kind::Dist, &paths[..]),
+            Subcommand::Install => (Kind::Install, &paths[..]),
+            Subcommand::Run { .. } => (Kind::Run, &paths[..]),
+            Subcommand::Clean { .. } => (Kind::Clean, &paths[..]),
             Subcommand::Format { .. } => (Kind::Format, &[][..]),
             Subcommand::Suggest { .. } => (Kind::Suggest, &[][..]),
             Subcommand::Setup { profile: ref path } => (
