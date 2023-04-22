@@ -10,7 +10,6 @@ proc-macro = true
 annotate-snippets = "0.9"
 fluent-bundle = "0.15.2"
 fluent-syntax = "0.11"
-synstructure = "0.13.0"
 syn = { version = "2", features = ["full"] }
 proc-macro2 = "1"
 quote = "1"
