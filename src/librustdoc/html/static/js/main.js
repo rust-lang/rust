@@ -375,10 +375,7 @@ function preLoadCss(cssUrl) {
 
     function handleEscape(ev) {
         searchState.clearInputTimeout();
-        switchDisplayedElement(null);
-        if (browserSupportsHistoryApi()) {
-            history.replaceState(null, "", getNakedUrl() + window.location.hash);
-        }
+        searchState.hideResults();
         ev.preventDefault();
         searchState.defocus();
         window.hideAllModals(true); // true = reset focus for tooltips
@@ -533,9 +530,11 @@ function preLoadCss(cssUrl) {
         // ignored are included in the attribute `data-ignore-extern-crates`.
         const script = document
             .querySelector("script[data-ignore-extern-crates]");
-        const ignoreExternCrates = script ? script.getAttribute("data-ignore-extern-crates") : "";
+        const ignoreExternCrates = new Set(
+            (script ? script.getAttribute("data-ignore-extern-crates") : "").split(",")
+        );
         for (const lib of libs) {
-            if (lib === window.currentCrate || ignoreExternCrates.indexOf(lib) !== -1) {
+            if (lib === window.currentCrate || ignoreExternCrates.has(lib)) {
                 continue;
             }
             const structs = imp[lib];

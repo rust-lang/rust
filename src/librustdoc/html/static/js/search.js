@@ -2412,10 +2412,6 @@ function initSearch(rawSearchIndex) {
         const searchAfter500ms = () => {
             searchState.clearInputTimeout();
             if (searchState.input.value.length === 0) {
-                if (browserSupportsHistoryApi()) {
-                    history.replaceState(null, window.currentCrate + " - Rust",
-                        getNakedUrl() + window.location.hash);
-                }
                 searchState.hideResults();
             } else {
                 searchState.timeout = setTimeout(search, 500);
