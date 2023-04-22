@@ -645,12 +645,16 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             // FIXME: Handling opaques here is kinda sus. Especially because we
             // simplify them to PlaceholderSimplifiedType.
             | ty::Alias(ty::Opaque, _) => {
-                if let Some(def_id) = self.tcx().find_map_relevant_impl(
+                let mut disqualifying_impl = None;
+                self.tcx().for_each_relevant_impl_treating_projections(
                     goal.predicate.def_id(),
                     goal.predicate.self_ty(),
                     TreatProjections::NextSolverLookup,
-                    Some,
-                ) {
+                    |impl_def_id| {
+                        disqualifying_impl = Some(impl_def_id);
+                    },
+                );
+                if let Some(def_id) = disqualifying_impl {
                     debug!(?def_id, ?goal, "disqualified auto-trait implementation");
                     // No need to actually consider the candidate here,
                     // since we do that in `consider_impl_candidate`.
