@@ -14,6 +14,7 @@ use crate::{
     db::DefDatabase,
     expander::{Expander, Mark},
     item_tree::{self, AssocItem, FnFlags, ItemTree, ItemTreeId, ModItem, Param, TreeId},
+    macro_call_as_call_id, macro_id_to_def_id,
     nameres::{
         attr_resolution::ResolvedAttr,
         diagnostics::DefDiagnostic,
@@ -639,18 +640,15 @@ impl<'a> AssocItemCollector<'a> {
                 }
                 AssocItem::MacroCall(call) => {
                     let file_id = self.expander.current_file_id();
-                    let root = self.db.parse_or_expand(file_id);
                     let call = &item_tree[call];
-
-                    let ast_id_map = self.db.ast_id_map(file_id);
-                    let macro_call = ast_id_map.get(call.ast_id).to_node(&root);
-                    let _cx = stdx::panic_context::enter(format!(
-                        "collect_items MacroCall: {macro_call}"
-                    ));
                     let module = self.expander.module.local_id;
 
-                    if let Ok(res) =
-                        self.expander.enter_expand::<ast::MacroItems>(self.db, macro_call, |path| {
+                    if let Ok(Some(call_id)) = macro_call_as_call_id(
+                        self.db.upcast(),
+                        &AstIdWithPath::new(file_id, call.ast_id, Clone::clone(&call.path)),
+                        call.expand_to,
+                        self.expander.module.krate(),
+                        |path| {
                             self.def_map
                                 .resolve_path(
                                     self.db,
@@ -660,8 +658,11 @@ impl<'a> AssocItemCollector<'a> {
                                 )
                                 .0
                                 .take_macros()
-                        })
-                    {
+                                .map(|it| macro_id_to_def_id(self.db, it))
+                        },
+                    ) {
+                        let res =
+                            self.expander.enter_expand_id::<ast::MacroItems>(self.db, call_id);
                         self.collect_macro_items(res, &|| hir_expand::MacroCallKind::FnLike {
                             ast_id: InFile::new(file_id, call.ast_id),
                             expand_to: hir_expand::ExpandTo::Items,
