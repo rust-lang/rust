@@ -199,20 +199,6 @@ impl Node {
         }
     }
 
-    /// Set the `next` field depending on the lock state. If there are threads
-    /// queued, the `next` field will be set to a pointer to the next node in
-    /// the queue. Otherwise the `next` field will be set to the lock count if
-    /// the state is read-locked or to zero if it is write-locked.
-    fn set_state(&mut self, state: State) {
-        self.next.0 = AtomicPtr::new(state.mask(MASK).cast());
-    }
-
-    /// Assuming the node contains a reader lock count, decrement that count.
-    /// Returns `true` if this thread was the last lock owner.
-    fn decrement_count(&self) -> bool {
-        self.next.0.fetch_byte_sub(SINGLE, AcqRel).addr() - SINGLE == 0
-    }
-
     /// Prepare this node for waiting.
     fn prepare(&mut self) {
         // Fall back to creating an unnamed `Thread` handle to allow locking in
@@ -312,10 +298,11 @@ impl RwLock {
 
     #[inline]
     pub fn try_write(&self) -> bool {
-        // This is lowered to a single atomic instruction on most modern processors
-        // (e.g. "lock bts" on x86 and "ldseta" on modern AArch64), and therefore
-        // is more efficient than `fetch_update(lock(true))`, which can spuriously
-        // fail if a new node is appended to the queue.
+        // Atomically set the `LOCKED` bit. This is lowered to a single atomic
+        // instruction on most modern processors (e.g. "lock bts" on x86 and
+        // "ldseta" on modern AArch64), and therefore is more efficient than
+        // `fetch_update(lock(true))`, which can spuriously fail if a new node
+        // is appended to the queue.
         self.state.fetch_or(LOCKED, Acquire).addr() & LOCKED == 0
     }
 
@@ -351,7 +338,12 @@ impl RwLock {
             } else {
                 // Fall back to parking. First, prepare the node.
                 node.prepare();
-                node.set_state(state);
+
+                // If there are threads queued, set the `next` field to a
+                // pointer to the next node in the queue. Otherwise set it to
+                // the lock count if the state is read-locked or to zero if it
+                // is write-locked.
+                node.next.0 = AtomicPtr::new(state.mask(MASK).cast());
                 node.prev = AtomicLink::new(None);
                 let mut next = ptr::from_ref(&node)
                     .map_addr(|addr| addr | QUEUED | (state.addr() & LOCKED))
@@ -370,8 +362,8 @@ impl RwLock {
                     next = next.map_addr(|addr| addr | QUEUE_LOCKED);
                 }
 
-                // Use release ordering to propagate our changes to the waking
-                // thread.
+                // Register the node, using release ordering to propagate our
+                // changes to the waking thread.
                 if let Err(new) = self.state.compare_exchange_weak(state, next, AcqRel, Relaxed) {
                     // The state has changed, just try again.
                     state = new;
@@ -430,8 +422,16 @@ impl RwLock {
         // The state was observed with acquire ordering above, so the current
         // thread will observe all node initializations.
 
-        let tail = unsafe { find_tail(to_node(state)) };
-        let was_last = unsafe { tail.as_ref().decrement_count() };
+        // SAFETY:
+        // Because new read-locks cannot be acquired while threads are queued,
+        // all queue-lock owners will observe the set `LOCKED` bit. Because they
+        // do not modify the queue while there is a lock owner, the queue will
+        // not be removed from here.
+        let tail = unsafe { find_tail(to_node(state)).as_ref() };
+        // The lock count is stored in the `next` field of `tail`.
+        // Decrement it, making sure to observe all changes made to the queue
+        // by the other lock owners by using acquire-release ordering.
+        let was_last = tail.next.0.fetch_byte_sub(SINGLE, AcqRel).addr() - SINGLE == 0;
         if was_last {
             // SAFETY:
             // Other threads cannot read-lock while threads are queued. Also,
