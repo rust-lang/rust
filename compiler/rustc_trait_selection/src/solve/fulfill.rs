@@ -72,6 +72,8 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
     }
 
     fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
+        assert!(infcx.use_new_solver);
+
         let mut errors = Vec::new();
         for i in 0.. {
             if !infcx.tcx.recursion_limit().value_within_limit(i) {

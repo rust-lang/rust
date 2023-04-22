@@ -173,6 +173,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             };
             let (ref infcx, goal, var_values) = tcx
                 .infer_ctxt()
+                .with_new_solver()
                 .intercrate(intercrate)
                 .build_with_canonical(DUMMY_SP, &canonical_goal);
             let mut ecx = EvalCtxt {

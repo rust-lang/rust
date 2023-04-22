@@ -58,11 +58,21 @@ pub struct ObligationCtxt<'a, 'tcx> {
 
 impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'tcx>) -> Self {
-        Self { infcx, engine: RefCell::new(<dyn TraitEngine<'_>>::new(infcx.tcx)) }
+        let engine = if infcx.use_new_solver {
+            Box::new(crate::solve::FulfillmentCtxt::new())
+        } else {
+            <dyn TraitEngine<'_>>::new(infcx.tcx)
+        };
+        Self { infcx, engine: RefCell::new(engine) }
     }
 
     pub fn new_in_snapshot(infcx: &'a InferCtxt<'tcx>) -> Self {
-        Self { infcx, engine: RefCell::new(<dyn TraitEngine<'_>>::new_in_snapshot(infcx.tcx)) }
+        let engine = if infcx.use_new_solver {
+            Box::new(crate::solve::FulfillmentCtxt::new())
+        } else {
+            <dyn TraitEngine<'_>>::new_in_snapshot(infcx.tcx)
+        };
+        Self { infcx, engine: RefCell::new(engine) }
     }
 
     pub fn register_obligation(&self, obligation: PredicateObligation<'tcx>) {

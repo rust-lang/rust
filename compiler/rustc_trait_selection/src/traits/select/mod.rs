@@ -537,7 +537,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
         self.evaluation_probe(|this| {
-            if this.tcx().trait_solver_next() {
+            if this.infcx.use_new_solver {
                 this.evaluate_predicates_recursively_in_new_solver([obligation.clone()])
             } else {
                 this.evaluate_predicate_recursively(
@@ -583,7 +583,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     where
         I: IntoIterator<Item = PredicateObligation<'tcx>> + std::fmt::Debug,
     {
-        if self.tcx().trait_solver_next() {
+        if self.infcx.use_new_solver {
             self.evaluate_predicates_recursively_in_new_solver(predicates)
         } else {
             let mut result = EvaluatedToOk;

@@ -152,7 +152,7 @@ pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId,
     let impl1_trait_ref = tcx.impl_trait_ref(impl1_def_id).unwrap().subst_identity();
 
     // Create an infcx, taking the predicates of impl1 as assumptions:
-    let infcx = tcx.infer_ctxt().build();
+    let infcx = tcx.infer_ctxt().with_new_solver().build();
     let impl1_trait_ref =
         match traits::fully_normalize(&infcx, ObligationCause::dummy(), penv, impl1_trait_ref) {
             Ok(impl1_trait_ref) => impl1_trait_ref,

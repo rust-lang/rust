@@ -121,12 +121,12 @@ impl<'tcx> InferCtxt<'tcx> {
             | (
                 ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)),
                 ty::Alias(AliasKind::Projection, _),
-            ) if self.tcx.trait_solver_next() => {
+            ) if self.use_new_solver => {
                 bug!()
             }
 
             (_, ty::Alias(AliasKind::Projection, _)) | (ty::Alias(AliasKind::Projection, _), _)
-                if self.tcx.trait_solver_next() =>
+                if self.use_new_solver =>
             {
                 relation.register_type_relate_obligation(a, b);
                 Ok(a)
@@ -242,7 +242,18 @@ impl<'tcx> InferCtxt<'tcx> {
                 // FIXME(#59490): Need to remove the leak check to accommodate
                 // escaping bound variables here.
                 if !a.has_escaping_bound_vars() && !b.has_escaping_bound_vars() {
-                    relation.register_const_equate_obligation(a, b);
+                    let (a, b) = if relation.a_is_expected() { (a, b) } else { (b, a) };
+
+                    // FIXME(deferred_projection_equality): What do here...
+                    relation.register_predicates([ty::Binder::dummy(if self.use_new_solver {
+                        ty::PredicateKind::AliasRelate(
+                            a.into(),
+                            b.into(),
+                            ty::AliasRelationDirection::Equate,
+                        )
+                    } else {
+                        ty::PredicateKind::ConstEquate(a, b)
+                    })]);
                 }
                 return Ok(b);
             }
@@ -250,7 +261,18 @@ impl<'tcx> InferCtxt<'tcx> {
                 // FIXME(#59490): Need to remove the leak check to accommodate
                 // escaping bound variables here.
                 if !a.has_escaping_bound_vars() && !b.has_escaping_bound_vars() {
-                    relation.register_const_equate_obligation(a, b);
+                    let (a, b) = if relation.a_is_expected() { (a, b) } else { (b, a) };
+
+                    // FIXME(deferred_projection_equality): What do here...
+                    relation.register_predicates([ty::Binder::dummy(if self.use_new_solver {
+                        ty::PredicateKind::AliasRelate(
+                            a.into(),
+                            b.into(),
+                            ty::AliasRelationDirection::Equate,
+                        )
+                    } else {
+                        ty::PredicateKind::ConstEquate(a, b)
+                    })]);
                 }
                 return Ok(a);
             }
@@ -834,19 +856,6 @@ pub trait ObligationEmittingRelation<'tcx>: TypeRelation<'tcx> {
     /// a default obligation cause, [`ObligationEmittingRelation::register_obligations`] should
     /// be used if control over the obligation causes is required.
     fn register_predicates(&mut self, obligations: impl IntoIterator<Item: ToPredicate<'tcx>>);
-
-    /// Register an obligation that both constants must be equal to each other.
-    ///
-    /// If they aren't equal then the relation doesn't hold.
-    fn register_const_equate_obligation(&mut self, a: ty::Const<'tcx>, b: ty::Const<'tcx>) {
-        let (a, b) = if self.a_is_expected() { (a, b) } else { (b, a) };
-
-        self.register_predicates([ty::Binder::dummy(if self.tcx().trait_solver_next() {
-            ty::PredicateKind::AliasRelate(a.into(), b.into(), ty::AliasRelationDirection::Equate)
-        } else {
-            ty::PredicateKind::ConstEquate(a, b)
-        })]);
-    }
 
     /// Register an obligation that both types must be related to each other according to
     /// the [`ty::AliasRelationDirection`] given by [`ObligationEmittingRelation::alias_relate_direction`]

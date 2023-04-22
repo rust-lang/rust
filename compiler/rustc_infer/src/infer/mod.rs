@@ -347,6 +347,8 @@ pub struct InferCtxt<'tcx> {
     /// that we only collect region information for `BorrowckInferCtxt::reg_var_to_origin`
     /// inside non-canonicalization contexts.
     inside_canonicalization_ctxt: Cell<bool>,
+
+    pub use_new_solver: bool,
 }
 
 /// See the `error_reporting` module for more details.
@@ -561,6 +563,8 @@ pub struct InferCtxtBuilder<'tcx> {
     considering_regions: bool,
     /// Whether we are in coherence mode.
     intercrate: bool,
+    /// Whether to use the new trait solver for calls to `predicate_may_hold`, etc.
+    use_new_solver: bool,
 }
 
 pub trait TyCtxtInferExt<'tcx> {
@@ -574,6 +578,7 @@ impl<'tcx> TyCtxtInferExt<'tcx> for TyCtxt<'tcx> {
             defining_use_anchor: DefiningAnchor::Error,
             considering_regions: true,
             intercrate: false,
+            use_new_solver: self.trait_solver_next(),
         }
     }
 }
@@ -587,6 +592,11 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     /// in mir borrowck.
     pub fn with_opaque_type_inference(mut self, defining_use_anchor: DefiningAnchor) -> Self {
         self.defining_use_anchor = defining_use_anchor;
+        self
+    }
+
+    pub fn with_new_solver(mut self) -> Self {
+        self.use_new_solver = true;
         self
     }
 
@@ -621,7 +631,13 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     }
 
     pub fn build(&mut self) -> InferCtxt<'tcx> {
-        let InferCtxtBuilder { tcx, defining_use_anchor, considering_regions, intercrate } = *self;
+        let InferCtxtBuilder {
+            tcx,
+            defining_use_anchor,
+            considering_regions,
+            intercrate,
+            use_new_solver,
+        } = *self;
         InferCtxt {
             tcx,
             defining_use_anchor,
@@ -639,6 +655,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             universe: Cell::new(ty::UniverseIndex::ROOT),
             intercrate,
             inside_canonicalization_ctxt: Cell::new(false),
+            use_new_solver,
         }
     }
 }

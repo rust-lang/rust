@@ -98,6 +98,7 @@ pub fn overlapping_impls(
 
     let infcx = tcx
         .infer_ctxt()
+        .with_new_solver()
         .with_opaque_type_inference(DefiningAnchor::Bubble)
         .intercrate(true)
         .build();
@@ -113,6 +114,7 @@ pub fn overlapping_impls(
     // diagnostics. (These take time and can lead to false errors.)
     let infcx = tcx
         .infer_ctxt()
+        .with_new_solver()
         .with_opaque_type_inference(DefiningAnchor::Bubble)
         .intercrate(true)
         .build();
@@ -299,7 +301,7 @@ fn negative_impl(tcx: TyCtxt<'_>, impl1_def_id: DefId, impl2_def_id: DefId) -> b
     debug!("negative_impl(impl1_def_id={:?}, impl2_def_id={:?})", impl1_def_id, impl2_def_id);
 
     // Create an infcx, taking the predicates of impl1 as assumptions:
-    let infcx = tcx.infer_ctxt().build();
+    let infcx = tcx.infer_ctxt().with_new_solver().build();
     // create a parameter environment corresponding to a (placeholder) instantiation of impl1
     let impl_env = tcx.param_env(impl1_def_id);
     let subject1 = match traits::fully_normalize(

@@ -85,6 +85,7 @@ impl<'tcx> InferCtxt<'tcx> {
             universe: self.universe.clone(),
             intercrate: self.intercrate,
             inside_canonicalization_ctxt: Cell::new(self.inside_canonicalization_ctxt()),
+            use_new_solver: self.use_new_solver,
         }
     }
 }
