@@ -83,6 +83,30 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         }
     }
 
+    fn consider_alias_bound_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+        assumption: ty::Predicate<'tcx>,
+    ) -> QueryResult<'tcx> {
+        if let Some(poly_projection_pred) = assumption.to_opt_poly_projection_pred()
+            && poly_projection_pred.projection_def_id() == goal.predicate.def_id()
+        {
+            ecx.probe(|ecx| {
+                let assumption_projection_pred =
+                    ecx.instantiate_binder_with_infer(poly_projection_pred);
+                ecx.eq(
+                    goal.param_env,
+                    goal.predicate.projection_ty,
+                    assumption_projection_pred.projection_ty,
+                )?;
+                ecx.eq(goal.param_env, goal.predicate.term, assumption_projection_pred.term)?;
+                ecx.validate_alias_bound_self_from_param_env(goal)
+            })
+        } else {
+            Err(NoSolution)
+        }
+    }
+
     fn consider_object_bound_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
