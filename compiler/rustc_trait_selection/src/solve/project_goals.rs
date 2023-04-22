@@ -73,7 +73,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                     goal.predicate.projection_ty,
                     assumption_projection_pred.projection_ty,
                 )?;
-                ecx.eq(goal.param_env, goal.predicate.term, assumption_projection_pred.term)?;
+                ecx.eq(goal.param_env, goal.predicate.term, assumption_projection_pred.term)
+                    .expect("expected goal term to be fully unconstrained");
                 ecx.add_goals(requirements);
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             })
@@ -114,7 +115,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                     .into_iter()
                     .map(|pred| goal.with(tcx, pred)),
                 );
-                ecx.eq(goal.param_env, goal.predicate.term, assumption_projection_pred.term)?;
+                ecx.eq(goal.param_env, goal.predicate.term, assumption_projection_pred.term)
+                    .expect("expected goal term to be fully unconstrained");
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             })
         } else {
@@ -206,7 +208,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 ty.map_bound(|ty| ty.into())
             };
 
-            ecx.eq(goal.param_env, goal.predicate.term, term.subst(tcx, substs))?;
+            ecx.eq(goal.param_env, goal.predicate.term, term.subst(tcx, substs))
+                .expect("expected goal term to be fully unconstrained");
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -375,7 +378,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 ),
             };
 
-            ecx.eq(goal.param_env, goal.predicate.term, metadata_ty.into())?;
+            ecx.eq(goal.param_env, goal.predicate.term, metadata_ty.into())
+                .expect("expected goal term to be fully unconstrained");
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -513,7 +517,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         };
 
         ecx.probe(|ecx| {
-            ecx.eq(goal.param_env, goal.predicate.term, discriminant_ty.into())?;
+            ecx.eq(goal.param_env, goal.predicate.term, discriminant_ty.into())
+                .expect("expected goal term to be fully unconstrained");
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
