@@ -1109,7 +1109,7 @@ pub(super) struct CurrentDepGraph<K: DepKind> {
     forbidden_edge: Option<EdgeFilter<K>>,
 
     /// Used to verify the absence of hash collisions among DepNodes.
-    /// This field is only `Some` if the `-Z incremental_verify_depnodes` option is present.
+    /// This field is only `Some` if the `-Z incremental_verify_ich` option is present.
     #[cfg(debug_assertions)]
     seen_dep_nodes: Option<Lock<FxHashSet<DepNode<K>>>>,
 
@@ -1195,7 +1195,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
             #[cfg(debug_assertions)]
             fingerprints: Lock::new(IndexVec::from_elem_n(None, new_node_count_estimate)),
             #[cfg(debug_assertions)]
-            seen_dep_nodes: session.opts.unstable_opts.incremental_verify_depnodes.then(|| {
+            seen_dep_nodes: session.opts.unstable_opts.incremental_verify_ich.then(|| {
                 Lock::new(FxHashSet::with_capacity_and_hasher(
                     new_node_count_estimate,
                     Default::default(),
