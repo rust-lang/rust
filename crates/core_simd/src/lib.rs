@@ -1,6 +1,8 @@
 #![no_std]
 #![feature(
     const_ptr_read,
+    const_refs_to_cell,
+    const_transmute_copy,
     convert_float_to_int,
     decl_macro,
     intra_doc_pointers,

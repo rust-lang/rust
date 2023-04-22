@@ -135,22 +135,32 @@ where
     /// assert_eq!(v.as_array(), &[0, 1, 2, 3]);
     /// ```
     pub const fn as_array(&self) -> &[T; LANES] {
-        &self.0
+        // SAFETY: Transmuting between `Simd<T, LANES>` and `[T; LANES]`
+        // is always valid and `Simd<T, LANES>` never has a lower alignment
+        // than `[T; LANES]`.
+        unsafe { &*(self as *const Self as *const [T; LANES]) }
     }
 
     /// Returns a mutable array reference containing the entire SIMD vector.
     pub fn as_mut_array(&mut self) -> &mut [T; LANES] {
-        &mut self.0
+        // SAFETY: Transmuting between `Simd<T, LANES>` and `[T; LANES]`
+        // is always valid and `Simd<T, LANES>` never has a lower alignment
+        // than `[T; LANES]`.
+        unsafe { &mut *(self as *mut Self as *mut [T; LANES]) }
     }
 
     /// Converts an array to a SIMD vector.
     pub const fn from_array(array: [T; LANES]) -> Self {
-        Self(array)
+        // SAFETY: Transmuting between `Simd<T, LANES>` and `[T; LANES]`
+        // is always valid.
+        unsafe { core::mem::transmute_copy(&array) }
     }
 
     /// Converts a SIMD vector to an array.
     pub const fn to_array(self) -> [T; LANES] {
-        self.0
+        // SAFETY: Transmuting between `Simd<T, LANES>` and `[T; LANES]`
+        // is always valid.
+        unsafe { core::mem::transmute_copy(&self) }
     }
 
     /// Converts a slice to a SIMD vector containing `slice[..LANES]`.
@@ -735,7 +745,7 @@ where
 {
     #[inline]
     fn as_ref(&self) -> &[T; LANES] {
-        &self.0
+        self.as_array()
     }
 }
 
@@ -746,7 +756,7 @@ where
 {
     #[inline]
     fn as_mut(&mut self) -> &mut [T; LANES] {
-        &mut self.0
+        self.as_mut_array()
     }
 }
 
@@ -758,7 +768,7 @@ where
 {
     #[inline]
     fn as_ref(&self) -> &[T] {
-        &self.0
+        self.as_array()
     }
 }
 
@@ -769,7 +779,7 @@ where
 {
     #[inline]
     fn as_mut(&mut self) -> &mut [T] {
-        &mut self.0
+        self.as_mut_array()
     }
 }
 
