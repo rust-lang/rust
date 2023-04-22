@@ -32,6 +32,7 @@ mod context;
 mod print_item;
 mod sidebar;
 mod span_map;
+mod type_layout;
 mod write_shared;
 
 pub(crate) use self::context::*;
