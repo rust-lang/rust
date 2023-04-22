@@ -569,6 +569,7 @@ impl Error for JoinPathsError {
 /// The 'HOME' environment variable is not standard on Windows, and may not produce
 /// desired results; for instance, under Cygwin or Mingw it will return `/home/you`
 /// when it should return `C:\Users\you`.
+/// Consider using a crate from crates.io such as [`home`](https://crates.io/crates/home).
 ///
 /// # Examples
 ///
@@ -583,7 +584,7 @@ impl Error for JoinPathsError {
 #[deprecated(
     since = "1.29.0",
     note = "This function's behavior may be unexpected on Windows. \
-            Consider using a crate from crates.io instead."
+            Consider using a crate from crates.io such as [`home`](https://crates.io/crates/home)."
 )]
 #[must_use]
 #[stable(feature = "env", since = "1.0.0")]
