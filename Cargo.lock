@@ -3348,7 +3348,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.8",
- "synstructure 0.13.0",
  "unic-langid",
 ]
 
