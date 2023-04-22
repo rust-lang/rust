@@ -248,6 +248,7 @@ struct Crate {
     name: Interned<String>,
     deps: HashSet<Interned<String>>,
     path: PathBuf,
+    has_lib: bool,
 }
 
 impl Crate {
