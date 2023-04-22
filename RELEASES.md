@@ -88,7 +88,11 @@ Compatibility Notes
 - [When `default-features` is set to false of a workspace dependency, and an inherited dependency of a member has `default-features = true`, Cargo will enable default features of that dependency.](https://github.com/rust-lang/cargo/pull/11409/)
 - [Cargo denies `CARGO_HOME` in the `[env]` configuration table. Cargo itself doesn't pick up this value, but recursive calls to cargo would, which was not intended.](https://github.com/rust-lang/cargo/pull/11644/)
 - [Debuginfo for build dependencies is now off if not explicitly set. This is expected to improve the overall build time.](https://github.com/rust-lang/cargo/pull/11252/)
-
+- [The Rust distribution no longer always includes rustdoc](https://github.com/rust-lang/rust/pull/106886)
+  If `tools = [...]` is set in config.toml, we will respect a missing rustdoc in that list. By
+  default rustdoc remains included. To retain the prior behavior explicitly add `"rustdoc"` to the
+  list.
+  
 <a id="1.69.0-Internal-Changes"></a>
 
 Internal Changes
