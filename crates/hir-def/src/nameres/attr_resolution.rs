@@ -61,7 +61,6 @@ impl DefMap {
             attr,
             self.krate,
             macro_id_to_def_id(db, def),
-            false,
         )))
     }
 

@@ -481,7 +481,6 @@ impl DefCollector<'_> {
                                 Default::default(),
                             )),
                             invoc_attr_index: attr.id,
-                            is_derive: false,
                         },
                         attr.path().clone(),
                     ));
@@ -1273,7 +1272,6 @@ impl DefCollector<'_> {
                                     attr,
                                     self.def_map.krate,
                                     def,
-                                    true,
                                 );
                                 self.def_map.modules[directive.module_id]
                                     .scope
@@ -1293,14 +1291,8 @@ impl DefCollector<'_> {
                     }
 
                     // Not resolved to a derive helper or the derive attribute, so try to treat as a normal attribute.
-                    let call_id = attr_macro_as_call_id(
-                        self.db,
-                        file_ast_id,
-                        attr,
-                        self.def_map.krate,
-                        def,
-                        false,
-                    );
+                    let call_id =
+                        attr_macro_as_call_id(self.db, file_ast_id, attr, self.def_map.krate, def);
                     let loc: MacroCallLoc = self.db.lookup_intern_macro_call(call_id);
 
                     // If proc attribute macro expansion is disabled, skip expanding it here

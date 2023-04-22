@@ -984,7 +984,6 @@ fn attr_macro_as_call_id(
     macro_attr: &Attr,
     krate: CrateId,
     def: MacroDefId,
-    is_derive: bool,
 ) -> MacroCallId {
     let arg = match macro_attr.input.as_deref() {
         Some(AttrInput::TokenTree(tt, map)) => (
@@ -1005,7 +1004,6 @@ fn attr_macro_as_call_id(
             ast_id: item_attr.ast_id,
             attr_args: Arc::new(arg),
             invoc_attr_index: macro_attr.id,
-            is_derive,
         },
     )
 }
