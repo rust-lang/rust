@@ -794,7 +794,7 @@ fn univariant(
     let mut align = if pack.is_some() { dl.i8_align } else { dl.aggregate_align };
     let mut inverse_memory_index: IndexVec<u32, FieldIdx> = fields.indices().collect();
     let optimize = !repr.inhibit_struct_field_reordering_opt();
-    if optimize {
+    if optimize && fields.len() > 1 {
         let end = if let StructKind::MaybeUnsized = kind { fields.len() - 1 } else { fields.len() };
         let optimizing = &mut inverse_memory_index.raw[..end];
 
@@ -814,7 +814,12 @@ fn univariant(
             // Otherwise we just leave things alone and actually optimize the type's fields
         } else {
             let max_field_align = fields.iter().map(|f| f.align().abi.bytes()).max().unwrap_or(1);
-            let any_niche = fields.iter().any(|f| f.largest_niche().is_some());
+            let largest_niche_size = fields
+                .iter()
+                .filter_map(|f| f.largest_niche())
+                .map(|n| n.available(dl))
+                .max()
+                .unwrap_or(0);
 
             // Calculates a sort key to group fields by their alignment or possibly some size-derived
             // pseudo-alignment.
@@ -829,13 +834,23 @@ fn univariant(
                     //
                     let align = layout.align().abi.bytes();
                     let size = layout.size().bytes();
+                    let niche_size = layout.largest_niche().map(|n| n.available(dl)).unwrap_or(0);
                     // group [u8; 4] with align-4 or [u8; 6] with align-2 fields
                     let size_as_align = align.max(size).trailing_zeros();
-                    // Given `A(u8, [u8; 16])` and `B(bool, [u8; 16])` we want to bump the array
-                    // to the front in the first case (for aligned loads) but keep the bool in front
-                    // in the second case for its niches.
-                    let size_as_align = if any_niche {
-                        max_field_align.trailing_zeros().min(size_as_align)
+                    let size_as_align = if largest_niche_size > 0 {
+                        match niche_bias {
+                            // Given `A(u8, [u8; 16])` and `B(bool, [u8; 16])` we want to bump the array
+                            // to the front in the first case (for aligned loads) but keep the bool in front
+                            // in the second case for its niches.
+                            NicheBias::Start => max_field_align.trailing_zeros().min(size_as_align),
+                            // When moving niches towards the end of the struct then for
+                            // A((u8, u8, u8, bool), (u8, bool, u8)) we want to keep the first tuple
+                            // in the align-1 group because its bool can be moved closer to the end.
+                            NicheBias::End if niche_size == largest_niche_size => {
+                                align.trailing_zeros()
+                            }
+                            NicheBias::End => size_as_align,
+                        }
                     } else {
                         size_as_align
                     };

@@ -198,6 +198,18 @@ struct ReorderWithNiche {
     ary: [u8; 8]
 }
 
+#[repr(C)]
+struct EndNiche8([u8; 7], bool);
+
+#[repr(C)]
+struct MiddleNiche4(u8, u8, bool, u8);
+
+struct ReorderEndNiche {
+    a: EndNiche8,
+    b: MiddleNiche4,
+}
+
+
 // standins for std types which we want to be laid out in a reasonable way
 struct RawVecDummy {
     ptr: NonNull<u8>,
@@ -316,4 +328,11 @@ pub fn main() {
             "here [u8; 8] should group with _at least_ align-4 fields");
     assert_eq!(ptr::from_ref(&v), ptr::from_ref(&v.b).cast(),
                "sort niches to the front where possible");
+
+    // Neither field has a niche at the beginning so the layout algorithm should try move niches to
+    // the end which means the 8-sized field shouldn't be alignment-promoted before the 4-sized one.
+    let v = ReorderEndNiche { a: EndNiche8([0; 7], false), b: MiddleNiche4(0, 0, false, 0) };
+    assert!(ptr::from_ref(&v.a).addr() > ptr::from_ref(&v.b).addr());
+
+
 }
