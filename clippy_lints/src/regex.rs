@@ -129,30 +129,32 @@ fn const_str<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> Option<String> 
 }
 
 fn is_trivial_regex(s: &regex_syntax::hir::Hir) -> Option<&'static str> {
-    use regex_syntax::hir::Anchor::{EndText, StartText};
-    use regex_syntax::hir::HirKind::{Alternation, Anchor, Concat, Empty, Literal};
+    use regex_syntax::hir::HirKind::{Alternation, Concat, Empty, Literal, Look};
+    use regex_syntax::hir::Look as HirLook;
 
     let is_literal = |e: &[regex_syntax::hir::Hir]| e.iter().all(|e| matches!(*e.kind(), Literal(_)));
 
     match *s.kind() {
-        Empty | Anchor(_) => Some("the regex is unlikely to be useful as it is"),
+        Empty | Look(_) => Some("the regex is unlikely to be useful as it is"),
         Literal(_) => Some("consider using `str::contains`"),
         Alternation(ref exprs) => {
-            if exprs.iter().all(|e| e.kind().is_empty()) {
+            if exprs.iter().all(|e| matches!(e.kind(), Empty)) {
                 Some("the regex is unlikely to be useful as it is")
             } else {
                 None
             }
         },
         Concat(ref exprs) => match (exprs[0].kind(), exprs[exprs.len() - 1].kind()) {
-            (&Anchor(StartText), &Anchor(EndText)) if exprs[1..(exprs.len() - 1)].is_empty() => {
+            (&Look(HirLook::Start), &Look(HirLook::End)) if exprs[1..(exprs.len() - 1)].is_empty() => {
                 Some("consider using `str::is_empty`")
             },
-            (&Anchor(StartText), &Anchor(EndText)) if is_literal(&exprs[1..(exprs.len() - 1)]) => {
+            (&Look(HirLook::Start), &Look(HirLook::End)) if is_literal(&exprs[1..(exprs.len() - 1)]) => {
                 Some("consider using `==` on `str`s")
             },
-            (&Anchor(StartText), &Literal(_)) if is_literal(&exprs[1..]) => Some("consider using `str::starts_with`"),
-            (&Literal(_), &Anchor(EndText)) if is_literal(&exprs[1..(exprs.len() - 1)]) => {
+            (&Look(HirLook::Start), &Literal(_)) if is_literal(&exprs[1..]) => {
+                Some("consider using `str::starts_with`")
+            },
+            (&Literal(_), &Look(HirLook::End)) if is_literal(&exprs[1..(exprs.len() - 1)]) => {
                 Some("consider using `str::ends_with`")
             },
             _ if is_literal(exprs) => Some("consider using `str::contains`"),
@@ -175,10 +177,7 @@ fn check_set<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
 }
 
 fn check_regex<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
-    let mut parser = regex_syntax::ParserBuilder::new()
-        .unicode(true)
-        .allow_invalid_utf8(!utf8)
-        .build();
+    let mut parser = regex_syntax::ParserBuilder::new().unicode(true).utf8(!utf8).build();
 
     if let ExprKind::Lit(ref lit) = expr.kind {
         if let LitKind::Str(ref r, style) = lit.node {
