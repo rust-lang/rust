@@ -219,7 +219,7 @@ fn exported_symbols_provider_local(
         for symbol_name in ALLOCATOR_METHODS
             .iter()
             .map(|method| format!("__rust_{}", method.name))
-            .chain(["__rust_alloc_error_handler".to_string(), OomStrategy::SYMBOL.to_string()])
+            .chain([OomStrategy::SYMBOL.to_string()])
         {
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &symbol_name));
 

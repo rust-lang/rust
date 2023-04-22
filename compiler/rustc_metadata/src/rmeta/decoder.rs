@@ -1683,10 +1683,6 @@ impl CrateMetadata {
         self.root.has_global_allocator
     }
 
-    pub(crate) fn has_alloc_error_handler(&self) -> bool {
-        self.root.has_alloc_error_handler
-    }
-
     pub(crate) fn has_default_lib_allocator(&self) -> bool {
         self.root.has_default_lib_allocator
     }

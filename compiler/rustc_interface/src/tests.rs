@@ -777,7 +777,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(no_link, true);
     tracked!(no_profiler_runtime, true);
     tracked!(no_unique_section_names, true);
-    tracked!(oom, OomStrategy::Panic);
+    tracked!(oom, OomStrategy::Unwind);
     tracked!(osx_rpath_install_name, true);
     tracked!(packed_bundled_libs, true);
     tracked!(panic_abort_tests, true);

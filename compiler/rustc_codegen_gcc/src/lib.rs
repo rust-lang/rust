@@ -163,11 +163,11 @@ impl CodegenBackend for GccCodegenBackend {
 }
 
 impl ExtraBackendMethods for GccCodegenBackend {
-    fn codegen_allocator<'tcx>(&self, tcx: TyCtxt<'tcx>, module_name: &str, kind: AllocatorKind, alloc_error_handler_kind: AllocatorKind) -> Self::Module {
+    fn codegen_allocator<'tcx>(&self, tcx: TyCtxt<'tcx>, module_name: &str, kind: AllocatorKind) -> Self::Module {
         let mut mods = GccContext {
             context: Context::default(),
         };
-        unsafe { allocator::codegen(tcx, &mut mods, module_name, kind, alloc_error_handler_kind); }
+        unsafe { allocator::codegen(tcx, &mut mods, module_name, kind); }
         mods
     }
 

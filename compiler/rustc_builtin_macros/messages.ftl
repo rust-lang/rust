@@ -4,8 +4,6 @@ builtin_macros_requires_cfg_pattern =
 
 builtin_macros_expected_one_cfg_pattern = expected 1 cfg-pattern
 
-builtin_macros_alloc_error_must_be_fn = alloc_error_handler must be a function
-
 builtin_macros_assert_requires_boolean = macro requires a boolean expression as an argument
     .label = boolean expression required
 
