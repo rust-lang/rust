@@ -39,6 +39,9 @@ where
 
     /// `Src` is transmutable into `Dst` if any of the enclosed requirements are met.
     IfAny(Vec<Answer<R>>),
+
+    /// Encountered an error during safe transmute computation
+    Err(ErrorGuaranteed),
 }
 
 /// Answers: Why wasn't the source type transmutable into the destination type?
@@ -162,3 +165,4 @@ mod rustc {
 
 #[cfg(feature = "rustc")]
 pub use rustc::*;
+use rustc_span::ErrorGuaranteed;

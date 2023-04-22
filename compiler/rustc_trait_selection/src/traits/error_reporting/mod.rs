@@ -741,11 +741,17 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             == self.tcx.lang_items().transmute_trait()
                         {
                             // Recompute the safe transmute reason and use that for the error reporting
-                            self.get_safe_transmute_error_and_reason(
+                            match self.get_safe_transmute_error_and_reason(
                                 obligation.clone(),
                                 trait_ref,
                                 span,
-                            )
+                            ) {
+                                SafeTransmuteError::ShouldReport { err_msg, explanation } => {
+                                    (err_msg, Some(explanation))
+                                }
+                                // An error is guaranteed to already have been reported at this point, no need to continue
+                                SafeTransmuteError::ErrorGuaranteed(_) => return,
+                            }
                         } else {
                             (err_msg, None)
                         };
@@ -1631,7 +1637,7 @@ trait InferCtxtPrivExt<'tcx> {
         obligation: Obligation<'tcx, ty::Predicate<'tcx>>,
         trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
         span: Span,
-    ) -> (String, Option<String>);
+    ) -> SafeTransmuteError;
 }
 
 impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
@@ -2922,7 +2928,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         obligation: Obligation<'tcx, ty::Predicate<'tcx>>,
         trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
         span: Span,
-    ) -> (String, Option<String>) {
+    ) -> SafeTransmuteError {
         // Erase regions because layout code doesn't particularly care about regions.
         let trait_ref = self.tcx.erase_regions(self.tcx.erase_late_bound_regions(trait_ref));
 
@@ -2944,10 +2950,10 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             rustc_transmute::Answer::No(reason) => {
                 let dst = trait_ref.substs.type_at(0);
                 let src = trait_ref.substs.type_at(1);
-                let custom_err_msg = format!(
+                let err_msg = format!(
                     "`{src}` cannot be safely transmuted into `{dst}` in the defining scope of `{scope}`"
                 );
-                let reason_msg = match reason {
+                let explanation = match reason {
                     rustc_transmute::Reason::SrcIsUnspecified => {
                         format!("`{src}` does not have a well-specified layout")
                     }
@@ -2968,13 +2974,14 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         format!("The size of `{src}` is smaller than the size of `{dst}`")
                     }
                 };
-                (custom_err_msg, Some(reason_msg))
+                SafeTransmuteError::ShouldReport { err_msg, explanation }
             }
             // Should never get a Yes at this point! We already ran it before, and did not get a Yes.
             rustc_transmute::Answer::Yes => span_bug!(
                 span,
                 "Inconsistent rustc_transmute::is_transmutable(...) result, got Yes",
             ),
+            rustc_transmute::Answer::Err(guar) => SafeTransmuteError::ErrorGuaranteed(guar),
             _ => span_bug!(span, "Unsupported rustc_transmute::Reason variant"),
         }
     }
@@ -3102,4 +3109,9 @@ impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for HasNumericInferVisitor {
 pub enum DefIdOrName {
     DefId(DefId),
     Name(&'static str),
+}
+
+enum SafeTransmuteError {
+    ShouldReport { err_msg: String, explanation: String },
+    ErrorGuaranteed(ErrorGuaranteed),
 }

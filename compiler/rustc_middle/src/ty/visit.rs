@@ -59,15 +59,7 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
         self.has_type_flags(TypeFlags::HAS_ERROR)
     }
     fn error_reported(&self) -> Result<(), ErrorGuaranteed> {
-        if self.references_error() {
-            if let Some(reported) = ty::tls::with(|tcx| tcx.sess.is_compilation_going_to_fail()) {
-                Err(reported)
-            } else {
-                bug!("expect tcx.sess.is_compilation_going_to_fail return `Some`");
-            }
-        } else {
-            Ok(())
-        }
+        if self.references_error() { Err(ty::tls::expect_compilation_to_fail()) } else { Ok(()) }
     }
     fn has_non_region_param(&self) -> bool {
         self.has_type_flags(TypeFlags::NEEDS_SUBST - TypeFlags::HAS_RE_PARAM)

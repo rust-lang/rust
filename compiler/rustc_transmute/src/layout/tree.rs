@@ -187,15 +187,15 @@ pub(crate) mod rustc {
     pub(crate) enum Err {
         /// The layout of the type is unspecified.
         Unspecified,
-        /// This error will be surfaced elsewhere by rustc, so don't surface it.
-        Unknown,
+        Unknown(ErrorGuaranteed),
         TypeError(ErrorGuaranteed),
     }
 
     impl<'tcx> From<LayoutError<'tcx>> for Err {
         fn from(err: LayoutError<'tcx>) -> Self {
+            let guar = rustc_middle::ty::tls::expect_compilation_to_fail();
             match err {
-                LayoutError::Unknown(..) => Self::Unknown,
+                LayoutError::Unknown(..) => Self::Unknown(guar),
                 err => unimplemented!("{:?}", err),
             }
         }

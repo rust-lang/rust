@@ -4,6 +4,7 @@ use crate::dep_graph::TaskDepsRef;
 use crate::ty::query;
 use rustc_data_structures::sync::{self, Lock};
 use rustc_errors::Diagnostic;
+use rustc_errors::ErrorGuaranteed;
 #[cfg(not(parallel_compiler))]
 use std::cell::Cell;
 use std::mem;
@@ -152,4 +153,12 @@ where
     F: for<'tcx> FnOnce(Option<TyCtxt<'tcx>>) -> R,
 {
     with_context_opt(|opt_context| f(opt_context.map(|context| context.tcx)))
+}
+
+pub fn expect_compilation_to_fail() -> ErrorGuaranteed {
+    if let Some(guar) = with(|tcx| tcx.sess.is_compilation_going_to_fail()) {
+        guar
+    } else {
+        bug!("expect tcx.sess.is_compilation_going_to_fail() to return `Some`");
+    }
 }

@@ -672,7 +672,9 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             rustc_transmute::Answer::No(_)
             | rustc_transmute::Answer::IfTransmutable { .. }
             | rustc_transmute::Answer::IfAll(_)
-            | rustc_transmute::Answer::IfAny(_) => Err(NoSolution),
+            | rustc_transmute::Answer::IfAny(_)
+            // FIXME(bryangarza): Pass the `ErrorGuaranteed` along instead of losing it?
+            | rustc_transmute::Answer::Err(_) => Err(NoSolution),
         }
     }
 }

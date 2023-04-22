@@ -75,12 +75,10 @@ mod rustc {
                 let dst = Tree::from_ty(dst, context);
 
                 match (src, dst) {
-                    // Answer `Yes` here, because 'unknown layout' and type errors will already
-                    // be reported by rustc. No need to spam the user with more errors.
-                    (Err(Err::TypeError(_)), _) => Err(Answer::Yes),
-                    (_, Err(Err::TypeError(_))) => Err(Answer::Yes),
-                    (Err(Err::Unknown), _) => Err(Answer::Yes),
-                    (_, Err(Err::Unknown)) => Err(Answer::Yes),
+                    (Err(Err::TypeError(guar)), _) => Err(Answer::Err(guar)),
+                    (_, Err(Err::TypeError(guar))) => Err(Answer::Err(guar)),
+                    (Err(Err::Unknown(guar)), _) => Err(Answer::Err(guar)),
+                    (_, Err(Err::Unknown(guar))) => Err(Answer::Err(guar)),
                     (Err(Err::Unspecified), _) => Err(Answer::No(Reason::SrcIsUnspecified)),
                     (_, Err(Err::Unspecified)) => Err(Answer::No(Reason::DstIsUnspecified)),
                     (Ok(src), Ok(dst)) => Ok((src, dst)),
