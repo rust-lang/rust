@@ -152,6 +152,7 @@ macro_rules! thread_local {
     // empty (base case for the recursion)
     () => {};
 
+    // the `__thread_local_inner` macro is declared in `sys::common::thread_local`
     ($(#[$attr:meta])* $vis:vis static $name:ident: $t:ty = const { $init:expr }; $($rest:tt)*) => (
         $crate::__thread_local_inner!($(#[$attr])* $vis $name, $t, const $init);
         $crate::thread_local!($($rest)*);
