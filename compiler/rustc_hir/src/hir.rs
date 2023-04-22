@@ -1715,6 +1715,7 @@ impl Expr<'_> {
             ExprKind::Continue(..) => ExprPrecedence::Continue,
             ExprKind::Ret(..) => ExprPrecedence::Ret,
             ExprKind::InlineAsm(..) => ExprPrecedence::InlineAsm,
+            ExprKind::OffsetOf(..) => ExprPrecedence::OffsetOf,
             ExprKind::Struct(..) => ExprPrecedence::Struct,
             ExprKind::Repeat(..) => ExprPrecedence::Repeat,
             ExprKind::Yield(..) => ExprPrecedence::Yield,
@@ -1774,6 +1775,7 @@ impl Expr<'_> {
             | ExprKind::Loop(..)
             | ExprKind::Assign(..)
             | ExprKind::InlineAsm(..)
+            | ExprKind::OffsetOf(..)
             | ExprKind::AssignOp(..)
             | ExprKind::Lit(_)
             | ExprKind::ConstBlock(..)
@@ -1818,7 +1820,7 @@ impl Expr<'_> {
 
     pub fn can_have_side_effects(&self) -> bool {
         match self.peel_drop_temps().kind {
-            ExprKind::Path(_) | ExprKind::Lit(_) => false,
+            ExprKind::Path(_) | ExprKind::Lit(_) | ExprKind::OffsetOf(..) => false,
             ExprKind::Type(base, _)
             | ExprKind::Unary(_, base)
             | ExprKind::Field(base, _)
@@ -2021,6 +2023,9 @@ pub enum ExprKind<'hir> {
 
     /// Inline assembly (from `asm!`), with its outputs and inputs.
     InlineAsm(&'hir InlineAsm<'hir>),
+
+    /// Field offset (`offset_of!`)
+    OffsetOf(&'hir Ty<'hir>, &'hir [Ident]),
 
     /// A struct or struct-like variant literal expression.
     ///

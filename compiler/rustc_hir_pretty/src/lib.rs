@@ -1551,6 +1551,23 @@ impl<'a> State<'a> {
                 self.word("asm!");
                 self.print_inline_asm(asm);
             }
+            hir::ExprKind::OffsetOf(container, ref fields) => {
+                self.word("offset_of!(");
+                self.print_type(container);
+                self.word(",");
+                self.space();
+
+                if let Some((&first, rest)) = fields.split_first() {
+                    self.print_ident(first);
+
+                    for &field in rest {
+                        self.word(".");
+                        self.print_ident(field);
+                    }
+                }
+
+                self.word(")");
+            }
             hir::ExprKind::Yield(expr, _) => {
                 self.word_space("yield");
                 self.print_expr_maybe_paren(expr, parser::PREC_JUMP);

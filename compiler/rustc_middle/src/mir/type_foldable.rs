@@ -16,7 +16,6 @@ TrivialTypeTraversalAndLiftImpls! {
     UserTypeAnnotationIndex,
     BorrowKind,
     CastKind,
-    NullOp,
     hir::Movability,
     BasicBlock,
     SwitchTargets,
@@ -26,6 +25,7 @@ TrivialTypeTraversalAndLiftImpls! {
 
 TrivialTypeTraversalImpls! {
     ConstValue<'tcx>,
+    NullOp<'tcx>,
 }
 
 impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx [InlineAsmTemplatePiece] {

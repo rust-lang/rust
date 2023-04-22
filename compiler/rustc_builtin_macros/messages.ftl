@@ -149,3 +149,6 @@ builtin_macros_format_pos_mismatch = {$n} positional {$n ->
     [one] argument
     *[more] arguments
     } in format string, but {$desc}
+builtin_macros_offset_of_expected_field = expected field
+
+builtin_macros_offset_of_expected_two_args = expected 2 arguments

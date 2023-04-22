@@ -289,6 +289,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::ExprKind::InlineAsm(self.lower_inline_asm(e.span, asm))
                 }
                 ExprKind::FormatArgs(fmt) => self.lower_format_args(e.span, fmt),
+                ExprKind::OffsetOf(container, fields) => hir::ExprKind::OffsetOf(
+                    self.lower_ty(
+                        container,
+                        &mut ImplTraitContext::Disallowed(ImplTraitPosition::OffsetOf),
+                    ),
+                    self.arena.alloc_from_iter(fields.iter().map(|&ident| self.lower_ident(ident))),
+                ),
                 ExprKind::Struct(se) => {
                     let rest = match &se.rest {
                         StructRest::Base(e) => Some(self.lower_expr(e)),

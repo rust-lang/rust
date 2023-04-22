@@ -309,6 +309,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.deferred_asm_checks.borrow_mut().push((asm, expr.hir_id));
                 self.check_expr_asm(asm)
             }
+            ExprKind::OffsetOf(container, ref fields) => {
+                self.check_offset_of(container, fields, expr)
+            }
             ExprKind::Break(destination, ref expr_opt) => {
                 self.check_expr_break(destination, expr_opt.as_deref(), expr)
             }
@@ -2450,15 +2453,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base_did: DefId,
         return_ty: Option<Ty<'tcx>>,
     ) -> ErrorGuaranteed {
-        let struct_path = self.tcx().def_path_str(base_did);
-        let kind_name = self.tcx().def_descr(base_did);
-        let mut err = struct_span_err!(
-            self.tcx().sess,
-            field.span,
-            E0616,
-            "field `{field}` of {kind_name} `{struct_path}` is private",
-        );
-        err.span_label(field.span, "private field");
+        let mut err = self.private_field_err(field, base_did);
+
         // Also check if an accessible method exists, which is often what is meant.
         if self.method_exists(field, expr_t, expr.hir_id, false, return_ty)
             && !self.expr_in_place(expr.hir_id)
@@ -2695,6 +2691,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             }
         }
+        err
+    }
+
+    fn private_field_err(
+        &self,
+        field: Ident,
+        base_did: DefId,
+    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+        let struct_path = self.tcx().def_path_str(base_did);
+        let kind_name = self.tcx().def_descr(base_did);
+        let mut err = struct_span_err!(
+            self.tcx().sess,
+            field.span,
+            E0616,
+            "field `{field}` of {kind_name} `{struct_path}` is private",
+        );
+        err.span_label(field.span, "private field");
+
         err
     }
 
@@ -3041,5 +3055,79 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             self.tcx.mk_unit()
         }
+    }
+
+    fn check_offset_of(
+        &self,
+        container: &'tcx hir::Ty<'tcx>,
+        fields: &[Ident],
+        expr: &'tcx hir::Expr<'tcx>,
+    ) -> Ty<'tcx> {
+        let container = self.to_ty(container).normalized;
+
+        let mut field_indices = Vec::with_capacity(fields.len());
+        let mut current_container = container;
+
+        for &field in fields {
+            let container = self.structurally_resolved_type(expr.span, current_container);
+
+            match container.kind() {
+                ty::Adt(container_def, substs) if !container_def.is_enum() => {
+                    let block = self.tcx.hir().local_def_id_to_hir_id(self.body_id);
+                    let (ident, def_scope) =
+                        self.tcx.adjust_ident_and_get_scope(field, container_def.did(), block);
+
+                    let fields = &container_def.non_enum_variant().fields;
+                    if let Some((index, field)) = fields
+                        .iter_enumerated()
+                        .find(|(_, f)| f.ident(self.tcx).normalize_to_macros_2_0() == ident)
+                    {
+                        let field_ty = self.field_ty(expr.span, field, substs);
+
+                        // FIXME: DSTs with static alignment should be allowed
+                        self.require_type_is_sized(field_ty, expr.span, traits::MiscObligation);
+
+                        if field.vis.is_accessible_from(def_scope, self.tcx) {
+                            self.tcx.check_stability(field.did, Some(expr.hir_id), expr.span, None);
+                        } else {
+                            self.private_field_err(ident, container_def.did()).emit();
+                        }
+
+                        // Save the index of all fields regardless of their visibility in case
+                        // of error recovery.
+                        field_indices.push(index);
+                        current_container = field_ty;
+
+                        continue;
+                    }
+                }
+                ty::Tuple(tys) => {
+                    let fstr = field.as_str();
+
+                    if let Ok(index) = fstr.parse::<usize>() {
+                        if fstr == index.to_string() {
+                            if let Some(&field_ty) = tys.get(index) {
+                                field_indices.push(index.into());
+                                current_container = field_ty;
+
+                                continue;
+                            }
+                        }
+                    }
+                }
+                _ => (),
+            };
+
+            self.no_such_field_err(field, container, expr.hir_id).emit();
+
+            break;
+        }
+
+        self.typeck_results
+            .borrow_mut()
+            .offset_of_data_mut()
+            .insert(expr.hir_id, (container, field_indices));
+
+        self.tcx.types.usize
     }
 }

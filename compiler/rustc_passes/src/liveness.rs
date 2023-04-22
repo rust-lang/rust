@@ -473,6 +473,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             | hir::ExprKind::Struct(..)
             | hir::ExprKind::Repeat(..)
             | hir::ExprKind::InlineAsm(..)
+            | hir::ExprKind::OffsetOf(..)
             | hir::ExprKind::Type(..)
             | hir::ExprKind::Err(_)
             | hir::ExprKind::Path(hir::QPath::TypeRelative(..))
@@ -1129,7 +1130,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             | hir::ExprKind::ConstBlock(..)
             | hir::ExprKind::Err(_)
             | hir::ExprKind::Path(hir::QPath::TypeRelative(..))
-            | hir::ExprKind::Path(hir::QPath::LangItem(..)) => succ,
+            | hir::ExprKind::Path(hir::QPath::LangItem(..))
+            | hir::ExprKind::OffsetOf(..) => succ,
 
             // Note that labels have been resolved, so we don't need to look
             // at the label ident
@@ -1418,6 +1420,7 @@ fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr<'tcx>) {
         | hir::ExprKind::ConstBlock(..)
         | hir::ExprKind::Block(..)
         | hir::ExprKind::AddrOf(..)
+        | hir::ExprKind::OffsetOf(..)
         | hir::ExprKind::Struct(..)
         | hir::ExprKind::Repeat(..)
         | hir::ExprKind::Closure { .. }

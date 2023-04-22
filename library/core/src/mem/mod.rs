@@ -1279,3 +1279,45 @@ pub trait SizedTypeProperties: Sized {
 #[doc(hidden)]
 #[unstable(feature = "sized_type_properties", issue = "none")]
 impl<T> SizedTypeProperties for T {}
+
+/// Expands to the offset in bytes of a field from the beginning of the given type.
+///
+/// Only structs, unions and tuples are supported.
+///
+/// Nested field accesses may be used, but not array indexes like in `C`'s `offsetof`.
+///
+/// Note that the output of this macro is not stable, except for `#[repr(C)]` types.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(offset_of)]
+///
+/// use std::mem;
+/// #[repr(C)]
+/// struct FieldStruct {
+///     first: u8,
+///     second: u16,
+///     third: u8
+/// }
+///
+/// assert_eq!(mem::offset_of!(FieldStruct, first), 0);
+/// assert_eq!(mem::offset_of!(FieldStruct, second), 2);
+/// assert_eq!(mem::offset_of!(FieldStruct, third), 4);
+///
+/// #[repr(C)]
+/// struct NestedA {
+///     b: NestedB
+/// }
+///
+/// #[repr(C)]
+/// struct NestedB(u8);
+///
+/// assert_eq!(mem::offset_of!(NestedA, b.0), 0);
+/// ```
+#[unstable(feature = "offset_of", issue = "106655")]
+#[rustc_builtin_macro]
+#[cfg(not(bootstrap))]
+pub macro offset_of($Container:ty, $($fields:tt).+ $(,)?) {
+    /* compiler built-in */
+}

@@ -664,6 +664,14 @@ impl<'tcx> Cx<'tcx> {
                 line_spans: asm.line_spans,
             })),
 
+            hir::ExprKind::OffsetOf(_, _) => {
+                let data = self.typeck_results.offset_of_data();
+                let &(container, ref indices) = data.get(expr.hir_id).unwrap();
+                let fields = tcx.mk_fields_from_iter(indices.iter().copied());
+
+                ExprKind::OffsetOf { container, fields }
+            }
+
             hir::ExprKind::ConstBlock(ref anon_const) => {
                 let ty = self.typeck_results().node_type(anon_const.hir_id);
                 let did = anon_const.def_id.to_def_id();

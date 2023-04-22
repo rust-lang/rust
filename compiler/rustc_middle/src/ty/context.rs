@@ -155,6 +155,7 @@ pub struct CtxtInterners<'tcx> {
     layout: InternedSet<'tcx, LayoutS>,
     adt_def: InternedSet<'tcx, AdtDefData>,
     external_constraints: InternedSet<'tcx, ExternalConstraintsData<'tcx>>,
+    fields: InternedSet<'tcx, List<FieldIdx>>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -178,6 +179,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             layout: Default::default(),
             adt_def: Default::default(),
             external_constraints: Default::default(),
+            fields: Default::default(),
         }
     }
 
@@ -1571,6 +1573,7 @@ slice_interners!(
     projs: pub mk_projs(ProjectionKind),
     place_elems: pub mk_place_elems(PlaceElem<'tcx>),
     bound_variable_kinds: pub mk_bound_variable_kinds(ty::BoundVariableKind),
+    fields: pub mk_fields(FieldIdx),
 );
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -2237,6 +2240,14 @@ impl<'tcx> TyCtxt<'tcx> {
         T: CollectAndApply<PlaceElem<'tcx>, &'tcx List<PlaceElem<'tcx>>>,
     {
         T::collect_and_apply(iter, |xs| self.mk_place_elems(xs))
+    }
+
+    pub fn mk_fields_from_iter<I, T>(self, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<FieldIdx, &'tcx List<FieldIdx>>,
+    {
+        T::collect_and_apply(iter, |xs| self.mk_fields(xs))
     }
 
     pub fn mk_substs_trait(

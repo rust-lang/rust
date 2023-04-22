@@ -20,7 +20,7 @@ use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::{self, BinOp, BorrowKind, FakeReadCause, Mutability, UnOp};
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, AdtDef, FnSig, Ty, UpvarSubsts};
+use rustc_middle::ty::{self, AdtDef, FnSig, List, Ty, UpvarSubsts};
 use rustc_middle::ty::{CanonicalUserType, CanonicalUserTypeAnnotation};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
@@ -481,6 +481,11 @@ pub enum ExprKind<'tcx> {
     },
     /// Inline assembly, i.e. `asm!()`.
     InlineAsm(Box<InlineAsmExpr<'tcx>>),
+    /// Field offset (`offset_of!`)
+    OffsetOf {
+        container: Ty<'tcx>,
+        fields: &'tcx List<FieldIdx>,
+    },
     /// An expression taking a reference to a thread local.
     ThreadLocalRef(DefId),
     /// A `yield` expression.

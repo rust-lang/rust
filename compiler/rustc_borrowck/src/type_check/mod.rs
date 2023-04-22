@@ -2306,7 +2306,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             Rvalue::AddressOf(..)
             | Rvalue::ThreadLocalRef(..)
             | Rvalue::Len(..)
-            | Rvalue::Discriminant(..) => {}
+            | Rvalue::Discriminant(..)
+            | Rvalue::NullaryOp(NullOp::OffsetOf(..), _) => {}
         }
     }
 

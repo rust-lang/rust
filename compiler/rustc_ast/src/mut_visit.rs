@@ -1456,6 +1456,12 @@ pub fn noop_visit_expr<T: MutVisitor>(
         }
         ExprKind::InlineAsm(asm) => vis.visit_inline_asm(asm),
         ExprKind::FormatArgs(fmt) => vis.visit_format_args(fmt),
+        ExprKind::OffsetOf(container, fields) => {
+            vis.visit_ty(container);
+            for field in fields.iter_mut() {
+                vis.visit_ident(field);
+            }
+        }
         ExprKind::MacCall(mac) => vis.visit_mac_call(mac),
         ExprKind::Struct(se) => {
             let StructExpr { qself, path, fields, rest } = se.deref_mut();

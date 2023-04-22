@@ -283,6 +283,7 @@ enum ImplTraitPosition {
     FieldTy,
     Cast,
     ImplSelf,
+    OffsetOf,
 }
 
 impl std::fmt::Display for ImplTraitPosition {
@@ -313,6 +314,7 @@ impl std::fmt::Display for ImplTraitPosition {
             ImplTraitPosition::FieldTy => "field types",
             ImplTraitPosition::Cast => "cast types",
             ImplTraitPosition::ImplSelf => "impl headers",
+            ImplTraitPosition::OffsetOf => "`offset_of!` params",
         };
 
         write!(f, "{name}")

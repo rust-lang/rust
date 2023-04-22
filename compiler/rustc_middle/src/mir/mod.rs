@@ -2041,7 +2041,11 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             }
             UnaryOp(ref op, ref a) => write!(fmt, "{:?}({:?})", op, a),
             Discriminant(ref place) => write!(fmt, "discriminant({:?})", place),
-            NullaryOp(ref op, ref t) => write!(fmt, "{:?}({:?})", op, t),
+            NullaryOp(ref op, ref t) => match op {
+                NullOp::SizeOf => write!(fmt, "SizeOf({:?})", t),
+                NullOp::AlignOf => write!(fmt, "AlignOf({:?})", t),
+                NullOp::OffsetOf(fields) => write!(fmt, "OffsetOf({:?}, {:?})", t, fields),
+            },
             ThreadLocalRef(did) => ty::tls::with(|tcx| {
                 let muta = tcx.static_mutability(did).unwrap().prefix_str();
                 write!(fmt, "&/*tls*/ {}{}", muta, tcx.def_path_str(did))

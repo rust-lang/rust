@@ -124,6 +124,21 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     {
         Ty::is_unit(self)
     }
+
+    pub fn offset_of_subfield<C>(self, cx: &C, indices: impl Iterator<Item = usize>) -> Size
+    where
+        Ty: TyAbiInterface<'a, C>,
+    {
+        let mut layout = self;
+        let mut offset = Size::ZERO;
+
+        for index in indices {
+            offset += layout.fields.offset(index);
+            layout = layout.field(cx, index);
+        }
+
+        offset
+    }
 }
 
 impl<'a, Ty> TyAndLayout<'a, Ty> {

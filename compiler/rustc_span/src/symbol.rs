@@ -1037,6 +1037,7 @@ symbols! {
         object_safe_for_dispatch,
         of,
         offset,
+        offset_of,
         omit_gdb_pretty_printer_section,
         on,
         on_unimplemented,

@@ -300,6 +300,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             hir::ExprKind::Continue(..)
             | hir::ExprKind::Lit(..)
             | hir::ExprKind::ConstBlock(..)
+            | hir::ExprKind::OffsetOf(..)
             | hir::ExprKind::Err(_) => {}
 
             hir::ExprKind::Loop(blk, ..) => {
