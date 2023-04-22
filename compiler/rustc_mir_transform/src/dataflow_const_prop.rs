@@ -24,7 +24,6 @@ use crate::MirPass;
 
 // These constants are somewhat random guesses and have not been optimized.
 // If `tcx.sess.mir_opt_level() >= 4`, we ignore the limits (this can become very expensive).
-const BLOCK_LIMIT: usize = 100;
 const PLACE_LIMIT: usize = 100;
 
 pub struct ConstProp;
@@ -37,10 +36,6 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
     #[instrument(skip_all level = "debug")]
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!(def_id = ?body.source.def_id());
-        if tcx.sess.mir_opt_level() < 4 && body.basic_blocks.len() > BLOCK_LIMIT {
-            debug!("aborted dataflow const prop due too many basic blocks");
-            return;
-        }
 
         // We want to have a somewhat linear runtime w.r.t. the number of statements/terminators.
         // Let's call this number `n`. Dataflow analysis has `O(h*n)` transfer function
