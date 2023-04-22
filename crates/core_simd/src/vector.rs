@@ -76,6 +76,11 @@ use crate::simd::{
 /// [`read`]: pointer::read
 /// [`write`]: pointer::write
 /// [as_simd]: slice::as_simd
+//
+// NOTE: Accessing the inner array directly in any way (e.g. by using the `.0` field syntax) or
+// directly constructing an instance of the type (i.e. `let vector = Simd(array)`) should be
+// avoided, as it will likely become illegal on `#[repr(simd)]` structs in the future. It also
+// causes rustc to emit illegal LLVM IR in some cases.
 #[repr(simd)]
 pub struct Simd<T, const LANES: usize>([T; LANES])
 where
@@ -138,6 +143,9 @@ where
         // SAFETY: Transmuting between `Simd<T, LANES>` and `[T; LANES]`
         // is always valid and `Simd<T, LANES>` never has a lower alignment
         // than `[T; LANES]`.
+        //
+        // NOTE: This deliberately doesn't just use `&self.0`, see the comment
+        // on the struct definition for details.
         unsafe { &*(self as *const Self as *const [T; LANES]) }
     }
 
@@ -146,6 +154,9 @@ where
         // SAFETY: Transmuting between `Simd<T, LANES>` and `[T; LANES]`
         // is always valid and `Simd<T, LANES>` never has a lower alignment
         // than `[T; LANES]`.
+        //
+        // NOTE: This deliberately doesn't just use `&mut self.0`, see the comment
+        // on the struct definition for details.
         unsafe { &mut *(self as *mut Self as *mut [T; LANES]) }
     }
 
@@ -153,6 +164,9 @@ where
     pub const fn from_array(array: [T; LANES]) -> Self {
         // SAFETY: Transmuting between `Simd<T, LANES>` and `[T; LANES]`
         // is always valid.
+        //
+        // NOTE: This deliberately doesn't just use `Self(array)`, see the comment
+        // on the struct definition for details.
         unsafe { core::mem::transmute_copy(&array) }
     }
 
@@ -160,6 +174,9 @@ where
     pub const fn to_array(self) -> [T; LANES] {
         // SAFETY: Transmuting between `Simd<T, LANES>` and `[T; LANES]`
         // is always valid.
+        //
+        // NOTE: This deliberately doesn't just use `self.0`, see the comment
+        // on the struct definition for details.
         unsafe { core::mem::transmute_copy(&self) }
     }
 
