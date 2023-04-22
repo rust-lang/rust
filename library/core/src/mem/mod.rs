@@ -1315,9 +1315,9 @@ impl<T> SizedTypeProperties for T {}
 ///
 /// assert_eq!(mem::offset_of!(NestedA, b.0), 0);
 /// ```
-#[unstable(feature = "offset_of", issue = "106655")]
-#[rustc_builtin_macro]
 #[cfg(not(bootstrap))]
+#[unstable(feature = "offset_of", issue = "106655")]
+#[allow_internal_unstable(builtin_syntax)]
 pub macro offset_of($Container:ty, $($fields:tt).+ $(,)?) {
-    /* compiler built-in */
+    builtin # offset_of($Container, $($fields).+)
 }

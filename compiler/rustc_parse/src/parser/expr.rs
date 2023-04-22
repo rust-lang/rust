@@ -1759,7 +1759,11 @@ impl<'a> Parser<'a> {
 
     /// Parse `builtin # ident(args,*)`.
     fn parse_expr_builtin(&mut self) -> PResult<'a, P<Expr>> {
-        self.parse_builtin(|_this, _lo, _ident| {
+        self.parse_builtin(|this, lo, ident| {
+            if ident.name == sym::offset_of {
+                return Ok(Some(this.parse_expr_offset_of(lo)?));
+            }
+
             Ok(None)
         })
     }
@@ -1791,6 +1795,20 @@ impl<'a> Parser<'a> {
         self.expect(&TokenKind::CloseDelim(Delimiter::Parenthesis))?;
 
         ret
+    }
+
+    pub(crate) fn parse_expr_offset_of(&mut self, lo: Span) -> PResult<'a, P<Expr>> {
+        let container = self.parse_ty()?;
+        self.expect(&TokenKind::Comma)?;
+
+        let seq_sep = SeqSep { sep: Some(token::Dot), trailing_sep_allowed: false };
+        let (fields, _trailing, _recovered) = self.parse_seq_to_before_end(
+            &TokenKind::CloseDelim(Delimiter::Parenthesis),
+            seq_sep,
+            Parser::parse_field_name,
+        )?;
+        let span = lo.to(self.token.span);
+        Ok(self.mk_expr(span, ExprKind::OffsetOf(container, fields.to_vec().into())))
     }
 
     /// Returns a string literal if the next token is a string literal.
