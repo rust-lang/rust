@@ -781,12 +781,15 @@ fn codegen_stmt<'tcx>(
                     let operand = operand.load_scalar(fx);
                     lval.write_cvalue(fx, CValue::by_val(operand, box_layout));
                 }
-                Rvalue::NullaryOp(null_op, ty) => {
+                Rvalue::NullaryOp(ref null_op, ty) => {
                     assert!(lval.layout().ty.is_sized(fx.tcx, ParamEnv::reveal_all()));
                     let layout = fx.layout_of(fx.monomorphize(ty));
                     let val = match null_op {
                         NullOp::SizeOf => layout.size.bytes(),
                         NullOp::AlignOf => layout.align.abi.bytes(),
+                        NullOp::OffsetOf(fields) => {
+                            layout.offset_of_subfield(fx, fields.iter().map(|f| f.index())).bytes()
+                        }
                     };
                     let val = CValue::const_val(fx, fx.layout_of(fx.tcx.types.usize), val.into());
                     lval.write_cvalue(fx, val);
