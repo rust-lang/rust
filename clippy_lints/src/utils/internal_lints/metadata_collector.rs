@@ -195,8 +195,14 @@ This lint has the following configuration variables:
 
     fn get_markdown_docs(&self) -> String {
         format!(
-            "## Lint Configuration Options\n| <div style=\"width:290px\">Option</div> | Default Value |\n|--|--|\n{}\n\n{}\n",
-            self.configs_to_markdown(ClippyConfiguration::to_markdown_table_entry),
+            r#"# Lint Configuration Options
+
+The following list shows each configuration option, along with a description, its default value, an example
+and lints affected.
+
+---
+
+{}"#,
             self.configs_to_markdown(ClippyConfiguration::to_markdown_paragraph),
         )
     }
