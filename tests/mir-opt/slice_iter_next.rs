@@ -1,4 +1,4 @@
-// compile-flags: -O -Z inline-mir-hint-threshold=10000 -C debuginfo=0
+// compile-flags: -O -Z inline-mir-hint-threshold=500 -C debuginfo=0 -Zmir-opt-level=2
 // only-64bit
 // ignore-debug
 

@@ -5,55 +5,58 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
     let mut _0: std::option::Option<&T>; // return place in scope 0 at $DIR/slice_iter_next.rs:+0:68: +0:81
     scope 1 (inlined <std::slice::Iter<'_, T> as Iterator>::next) { // at $DIR/slice_iter_next.rs:18:8: 18:14
         debug self => _1;                // in scope 1 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        let mut _2: bool;                // in scope 1 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        let mut _3: *const T;            // in scope 1 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        let mut _2: *const T;            // in scope 1 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        let mut _3: std::ptr::NonNull<T>; // in scope 1 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
         let mut _4: bool;                // in scope 1 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
         let mut _5: *const T;            // in scope 1 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        let _6: &T;                      // in scope 1 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        let mut _9: usize;               // in scope 1 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        let mut _21: *const T;           // in scope 1 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        let mut _22: *const T;           // in scope 1 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        let mut _6: bool;                // in scope 1 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        let mut _7: *const T;            // in scope 1 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        let mut _8: std::ptr::NonNull<T>; // in scope 1 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        let mut _9: *const T;            // in scope 1 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        let _10: &T;                     // in scope 1 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        let _11: *const T;               // in scope 1 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        let mut _14: usize;              // in scope 1 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
         scope 2 {
             scope 3 (inlined NonNull::<T>::as_const_ptr) { // at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-                debug self => std::ptr::NonNull<T>{ .0 => _21, }; // in scope 3 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
+                debug self => _3;        // in scope 3 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
             }
             scope 4 (inlined ptr::assume_not_null::<T>) { // at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-                debug ptr => _21;        // in scope 4 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-                let mut _7: bool;        // in scope 4 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+                debug ptr => _2;         // in scope 4 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+                let mut _12: bool;       // in scope 4 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
                 scope 5 {
                 }
             }
             scope 6 (inlined ptr::assume_not_null::<T>) { // at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-                debug ptr => _3;         // in scope 6 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-                let mut _8: bool;        // in scope 6 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+                debug ptr => _5;         // in scope 6 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+                let mut _13: bool;       // in scope 6 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
                 scope 7 {
                 }
             }
             scope 8 (inlined NonNull::<T>::as_const_ptr) { // at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-                debug self => std::ptr::NonNull<T>{ .0 => _22, }; // in scope 8 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
+                debug self => _8;        // in scope 8 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
             }
             scope 9 (inlined std::slice::Iter::<'_, T>::post_inc_start) { // at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
                 debug self => _1;        // in scope 9 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-                debug offset => _9;      // in scope 9 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-                let mut _10: bool;       // in scope 9 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-                let mut _11: *const T;   // in scope 9 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-                let mut _12: *const u8;  // in scope 9 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-                let mut _13: *const u8;  // in scope 9 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-                let mut _14: *const T;   // in scope 9 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+                debug offset => _14;     // in scope 9 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
                 let mut _15: std::ptr::NonNull<T>; // in scope 9 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-                let mut _16: *const T;   // in scope 9 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-                let mut _23: *const T;   // in scope 9 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+                let mut _16: bool;       // in scope 9 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+                let mut _17: *const T;   // in scope 9 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+                let mut _18: *const u8;  // in scope 9 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+                let mut _19: *const u8;  // in scope 9 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+                let mut _20: *const T;   // in scope 9 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+                let mut _21: std::ptr::NonNull<T>; // in scope 9 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+                let mut _22: *const T;   // in scope 9 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
                 scope 10 {
-                    debug old => _23;    // in scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+                    debug old => _11;    // in scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
                     scope 12 {
                         scope 20 (inlined ptr::const_ptr::<impl *const T>::add) { // at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-                            debug self => _23; // in scope 20 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-                            debug count => _9; // in scope 20 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-                            let mut _20: isize; // in scope 20 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+                            debug self => _11; // in scope 20 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+                            debug count => _14; // in scope 20 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+                            let mut _26: isize; // in scope 20 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
                             scope 21 {
                                 scope 22 (inlined ptr::const_ptr::<impl *const T>::offset) { // at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-                                    debug self => _23; // in scope 22 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-                                    debug count => _20; // in scope 22 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+                                    debug self => _11; // in scope 22 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+                                    debug count => _26; // in scope 22 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
                                     scope 23 {
                                     }
                                 }
@@ -61,30 +64,30 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
                         }
                     }
                     scope 13 (inlined ptr::const_ptr::<impl *const T>::cast::<u8>) { // at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-                        debug self => _14; // in scope 13 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+                        debug self => _20; // in scope 13 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
                     }
                     scope 14 (inlined ptr::const_ptr::<impl *const u8>::wrapping_sub) { // at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-                        debug self => _13; // in scope 14 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-                        debug count => _9; // in scope 14 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-                        let mut _17: isize; // in scope 14 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-                        let mut _18: isize; // in scope 14 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+                        debug self => _19; // in scope 14 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+                        debug count => _14; // in scope 14 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+                        let mut _23: isize; // in scope 14 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+                        let mut _24: isize; // in scope 14 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
                         scope 15 (inlined core::num::<impl isize>::wrapping_neg) { // at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-                            debug self => _18; // in scope 15 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
-                            let mut _19: isize; // in scope 15 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
+                            debug self => _24; // in scope 15 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
+                            let mut _25: isize; // in scope 15 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
                             scope 16 (inlined core::num::<impl isize>::wrapping_sub) { // at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
-                                debug self => _19; // in scope 16 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
-                                debug rhs => _18; // in scope 16 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
+                                debug self => _25; // in scope 16 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
+                                debug rhs => _24; // in scope 16 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
                             }
                         }
                         scope 17 (inlined ptr::const_ptr::<impl *const u8>::wrapping_offset) { // at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-                            debug self => _13; // in scope 17 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-                            debug count => _17; // in scope 17 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+                            debug self => _19; // in scope 17 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+                            debug count => _23; // in scope 17 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
                             scope 18 {
                             }
                         }
                     }
                     scope 19 (inlined ptr::const_ptr::<impl *const u8>::cast::<T>) { // at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-                        debug self => _12; // in scope 19 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+                        debug self => _18; // in scope 19 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
                     }
                 }
                 scope 11 {
@@ -94,43 +97,53 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
     }
 
     bb0: {
-        StorageLive(_6);                 // scope 0 at $DIR/slice_iter_next.rs:+1:8: +1:14
-        _21 = (((*_1).0: std::ptr::NonNull<T>).0: *const T); // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        StorageLive(_7);                 // scope 5 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-        _7 = Ne(_21, const _);           // scope 5 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        StorageLive(_10);                // scope 0 at $DIR/slice_iter_next.rs:+1:8: +1:14
+        StorageLive(_2);                 // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageLive(_3);                 // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        _3 = ((*_1).0: std::ptr::NonNull<T>); // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        _2 = (_3.0: *const T);           // scope 3 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
+        StorageDead(_3);                 // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageLive(_12);                // scope 5 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        _12 = Ne(_2, const _);           // scope 5 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/ptr/mod.rs:LL:COL
                                          // + literal: Const { ty: *const T, val: Unevaluated(ptr::assume_not_null::{constant#0}, [T, *const T], None) }
-        assume(move _7);                 // scope 5 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-        StorageDead(_7);                 // scope 5 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-        StorageLive(_2);                 // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        _2 = Not(const _);               // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        switchInt(move _2) -> [0: bb2, otherwise: bb1]; // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        assume(move _12);                // scope 5 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        StorageDead(_12);                // scope 5 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        StorageDead(_2);                 // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageLive(_4);                 // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        _4 = Not(const _);               // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        switchInt(move _4) -> [0: bb2, otherwise: bb1]; // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
     }
 
     bb1: {
-        StorageLive(_3);                 // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        _3 = ((*_1).1: *const T);        // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        StorageLive(_8);                 // scope 7 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-        _8 = Ne(_3, const _);            // scope 7 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        StorageLive(_5);                 // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        _5 = ((*_1).1: *const T);        // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageLive(_13);                // scope 7 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        _13 = Ne(_5, const _);           // scope 7 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/ptr/mod.rs:LL:COL
                                          // + literal: Const { ty: *const T, val: Unevaluated(ptr::assume_not_null::{constant#0}, [T, *const T], None) }
-        assume(move _8);                 // scope 7 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-        StorageDead(_8);                 // scope 7 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-        StorageDead(_3);                 // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        assume(move _13);                // scope 7 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        StorageDead(_13);                // scope 7 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        StorageDead(_5);                 // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
         goto -> bb2;                     // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
     }
 
     bb2: {
-        StorageDead(_2);                 // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        StorageLive(_4);                 // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        _22 = (((*_1).0: std::ptr::NonNull<T>).0: *const T); // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        StorageLive(_5);                 // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        _5 = ((*_1).1: *const T);        // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        _4 = Eq(_22, move _5);           // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        StorageDead(_5);                 // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        switchInt(move _4) -> [0: bb4, otherwise: bb3]; // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageDead(_4);                 // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageLive(_6);                 // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageLive(_7);                 // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageLive(_8);                 // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        _8 = ((*_1).0: std::ptr::NonNull<T>); // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        _7 = (_8.0: *const T);           // scope 8 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
+        StorageDead(_8);                 // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageLive(_9);                 // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        _9 = ((*_1).1: *const T);        // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        _6 = Eq(move _7, move _9);       // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageDead(_9);                 // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageDead(_7);                 // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        switchInt(move _6) -> [0: bb4, otherwise: bb3]; // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
     }
 
     bb3: {
@@ -139,72 +152,79 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
     }
 
     bb4: {
-        StorageLive(_9);                 // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        _23 = (((*_1).0: std::ptr::NonNull<T>).0: *const T); // scope 11 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        StorageLive(_10);                // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        _10 = const _;                   // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        switchInt(move _10) -> [0: bb7, otherwise: bb6]; // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageLive(_11);                // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageLive(_14);                // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageLive(_15);                // scope 11 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        _15 = ((*_1).0: std::ptr::NonNull<T>); // scope 11 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        _11 = move (_15.0: *const T);    // scope 11 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageDead(_15);                // scope 11 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageLive(_16);                // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        _16 = const _;                   // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        switchInt(move _16) -> [0: bb7, otherwise: bb6]; // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
     }
 
     bb5: {
-        StorageDead(_4);                 // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        StorageDead(_6);                 // scope 0 at $DIR/slice_iter_next.rs:+1:8: +1:14
+        StorageDead(_6);                 // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageDead(_10);                // scope 0 at $DIR/slice_iter_next.rs:+1:8: +1:14
         return;                          // scope 0 at $DIR/slice_iter_next.rs:+2:2: +2:2
     }
 
     bb6: {
-        StorageLive(_11);                // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        StorageLive(_12);                // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        StorageLive(_13);                // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        StorageLive(_14);                // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        _14 = ((*_1).1: *const T);       // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        _13 = _14 as *const u8 (PtrToPtr); // scope 13 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-        StorageDead(_14);                // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        StorageLive(_17);                // scope 14 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-        StorageLive(_18);                // scope 14 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-        StorageLive(_19);                // scope 15 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
-        StorageDead(_19);                // scope 15 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
-        StorageDead(_18);                // scope 14 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-        _12 = arith_offset::<u8>(_13, const -1_isize) -> [return: bb9, unwind unreachable]; // scope 18 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+        StorageLive(_17);                // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageLive(_18);                // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageLive(_19);                // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageLive(_20);                // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        _20 = ((*_1).1: *const T);       // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        _19 = _20 as *const u8 (PtrToPtr); // scope 13 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+        StorageDead(_20);                // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageLive(_23);                // scope 14 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+        StorageLive(_24);                // scope 14 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+        StorageLive(_25);                // scope 15 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
+        _23 = const -1_isize;            // scope 16 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
+        StorageDead(_25);                // scope 15 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
+        StorageDead(_24);                // scope 14 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+        _18 = arith_offset::<u8>(_19, _23) -> [return: bb9, unwind unreachable]; // scope 18 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(*const u8, isize) -> *const u8 {arith_offset::<u8>}, val: Value(<ZST>) }
     }
 
     bb7: {
-        StorageLive(_15);                // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        StorageLive(_16);                // scope 12 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        StorageLive(_20);                // scope 21 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-        _16 = offset::<T>(_23, const 1_isize) -> [return: bb10, unwind unreachable]; // scope 23 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+        StorageLive(_21);                // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageLive(_22);                // scope 12 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageLive(_26);                // scope 21 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+        _26 = const 1_isize;             // scope 21 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+        _22 = offset::<T>(_11, _26) -> [return: bb10, unwind unreachable]; // scope 23 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(*const T, isize) -> *const T {offset::<T>}, val: Value(<ZST>) }
     }
 
     bb8: {
-        StorageDead(_10);                // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        StorageDead(_9);                 // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        _6 = &(*_23);                    // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        _0 = Option::<&T>::Some(_6);     // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageDead(_16);                // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageDead(_14);                // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        _10 = &(*_11);                   // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        _0 = Option::<&T>::Some(_10);    // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageDead(_11);                // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
         goto -> bb5;                     // scope 2 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
     }
 
     bb9: {
-        StorageDead(_17);                // scope 14 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-        StorageDead(_13);                // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        _11 = _12 as *const T (PtrToPtr); // scope 19 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-        StorageDead(_12);                // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        ((*_1).1: *const T) = move _11;  // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        StorageDead(_11);                // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageDead(_23);                // scope 14 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+        StorageDead(_19);                // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        _17 = _18 as *const T (PtrToPtr); // scope 19 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+        StorageDead(_18);                // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        ((*_1).1: *const T) = move _17;  // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageDead(_17);                // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
         goto -> bb8;                     // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
     }
 
     bb10: {
-        StorageDead(_20);                // scope 21 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-        _15 = move _16 as std::ptr::NonNull<T> (Transmute); // scope 12 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        StorageDead(_16);                // scope 12 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        ((*_1).0: std::ptr::NonNull<T>) = move _15; // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
-        StorageDead(_15);                // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageDead(_26);                // scope 21 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+        _21 = move _22 as std::ptr::NonNull<T> (Transmute); // scope 12 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageDead(_22);                // scope 12 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        ((*_1).0: std::ptr::NonNull<T>) = move _21; // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
+        StorageDead(_21);                // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
         goto -> bb8;                     // scope 10 at $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
     }
 }
