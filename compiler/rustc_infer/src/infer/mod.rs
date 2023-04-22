@@ -1228,11 +1228,11 @@ impl<'tcx> InferCtxt<'tcx> {
     /// hence that `resolve_regions_and_report_errors` can never be
     /// called. This is used only during NLL processing to "hand off" ownership
     /// of the set of region variables into the NLL region context.
-    pub fn take_region_var_origins(&self) -> VarInfos {
+    pub fn get_region_var_origins(&self) -> VarInfos {
         let mut inner = self.inner.borrow_mut();
         let (var_infos, data) = inner
             .region_constraint_storage
-            .take()
+            .clone()
             .expect("regions already resolved")
             .with_log(&mut inner.undo_log)
             .into_infos_and_data();

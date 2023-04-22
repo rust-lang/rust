@@ -10,7 +10,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::GeneratorKind;
 use rustc_index::vec::IndexSlice;
-use rustc_infer::infer::{LateBoundRegionConversionTime, TyCtxtInferExt};
+use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::{
     AggregateKind, Constant, FakeReadCause, Local, LocalInfo, LocalKind, Location, Operand, Place,
@@ -1042,15 +1042,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     if let Some((CallDesugaringKind::ForLoopIntoIter, _)) = desugaring {
                         let ty = moved_place.ty(self.body, tcx).ty;
                         let suggest = match tcx.get_diagnostic_item(sym::IntoIterator) {
-                            Some(def_id) => {
-                                let infcx = self.infcx.tcx.infer_ctxt().build();
-                                type_known_to_meet_bound_modulo_regions(
-                                    &infcx,
-                                    self.param_env,
-                                    tcx.mk_imm_ref(tcx.lifetimes.re_erased, tcx.erase_regions(ty)),
-                                    def_id,
-                                )
-                            }
+                            Some(def_id) => type_known_to_meet_bound_modulo_regions(
+                                &self.infcx,
+                                self.param_env,
+                                tcx.mk_imm_ref(tcx.lifetimes.re_erased, ty),
+                                def_id,
+                            ),
                             _ => false,
                         };
                         if suggest {
@@ -1094,20 +1091,18 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             is_partial,
                             is_loop_message,
                         });
-                        let infcx = tcx.infer_ctxt().build();
                         // Erase and shadow everything that could be passed to the new infcx.
-                        let ty = tcx.erase_regions(moved_place.ty(self.body, tcx).ty);
-                        let method_substs = tcx.erase_regions(method_substs);
+                        let ty = moved_place.ty(self.body, tcx).ty;
 
                         if let ty::Adt(def, substs) = ty.kind()
                             && Some(def.did()) == tcx.lang_items().pin_type()
                             && let ty::Ref(_, _, hir::Mutability::Mut) = substs.type_at(0).kind()
-                            && let self_ty = infcx.instantiate_binder_with_fresh_vars(
+                            && let self_ty = self.infcx.instantiate_binder_with_fresh_vars(
                                 fn_call_span,
                                 LateBoundRegionConversionTime::FnCall,
                                 tcx.fn_sig(method_did).subst(tcx, method_substs).input(0),
                             )
-                            && infcx.can_eq(self.param_env, ty, self_ty)
+                            && self.infcx.can_eq(self.param_env, ty, self_ty)
                         {
                             err.eager_subdiagnostic(
                                 &self.infcx.tcx.sess.parse_sess.span_diagnostic,
@@ -1123,7 +1118,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 self.param_env,
                                 ty::Binder::dummy(trait_ref),
                             )
-                            && infcx.predicate_must_hold_modulo_regions(&o)
+                            && self.infcx.predicate_must_hold_modulo_regions(&o)
                         {
                             err.span_suggestion_verbose(
                                 fn_call_span.shrink_to_lo(),
