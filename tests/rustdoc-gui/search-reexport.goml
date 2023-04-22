@@ -14,7 +14,7 @@ assert-attribute: (
     "//a[@class='result-import']",
     {"href": "../test_docs/index.html#reexport.TheStdReexport"},
 )
-assert-text: ("//a[@class='result-import']", "test_docs::TheStdReexport")
+assert-text: ("//a[@class='result-import']", "test_docs::TheStdReexport (re-export)")
 click: "//a[@class='result-import']"
 // We check that it has the background modified thanks to the focus.
 wait-for-css: ("//*[@id='reexport.TheStdReexport']", {"background-color": "rgb(73, 74, 61)"})
