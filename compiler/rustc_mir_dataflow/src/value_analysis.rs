@@ -32,6 +32,7 @@
 //! Because of that, we can assume that the only way to change the value behind a tracked place is
 //! by direct assignment.
 
+use std::collections::VecDeque;
 use std::fmt::{Debug, Formatter};
 
 use rustc_data_structures::fx::FxHashMap;
@@ -608,7 +609,7 @@ impl Map {
     pub fn from_filter<'tcx>(
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
-        filter: impl FnMut(Ty<'tcx>) -> bool,
+        filter: impl Fn(Ty<'tcx>) -> bool,
         place_limit: Option<usize>,
     ) -> Self {
         let mut map = Self::new();
@@ -623,51 +624,67 @@ impl Map {
         &mut self,
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
-        mut filter: impl FnMut(Ty<'tcx>) -> bool,
+        filter: impl Fn(Ty<'tcx>) -> bool,
         exclude: BitSet<Local>,
         place_limit: Option<usize>,
     ) {
         // We use this vector as stack, pushing and popping projections.
-        let mut projection = Vec::new();
+        let mut worklist = VecDeque::with_capacity(place_limit.unwrap_or(body.local_decls.len()));
+        self.locals = IndexVec::from_elem(None, &body.local_decls);
         for (local, decl) in body.local_decls.iter_enumerated() {
-            if !exclude.contains(local) {
-                self.register_with_filter_rec(
-                    tcx,
-                    local,
-                    &mut projection,
-                    decl.ty,
-                    &mut filter,
-                    place_limit,
-                );
+            if exclude.contains(local) {
+                continue;
             }
+
+            // Create a place for the local.
+            debug_assert!(self.locals[local].is_none());
+            let place = self.places.push(PlaceInfo::new(None));
+            self.locals[local] = Some(place);
+
+            // And push the eventual children places to the worklist.
+            self.register_children(tcx, place, decl.ty, &filter, &mut worklist);
+        }
+
+        // `place.elem1.elem2` with type `ty`.
+        while let Some((mut place, elem1, elem2, ty)) = worklist.pop_front() {
+            if let Some(place_limit) = place_limit && self.value_count >= place_limit {
+                break
+            }
+
+            // Create a place for this projection.
+            for elem in [elem1, Some(elem2)].into_iter().flatten() {
+                place = *self.projections.entry((place, elem)).or_insert_with(|| {
+                    // Prepend new child to the linked list.
+                    let next = self.places.push(PlaceInfo::new(Some(elem)));
+                    self.places[next].next_sibling = self.places[place].first_child;
+                    self.places[place].first_child = Some(next);
+                    next
+                });
+            }
+
+            // And push the eventual children places to the worklist.
+            self.register_children(tcx, place, ty, &filter, &mut worklist);
         }
     }
 
     /// Potentially register the (local, projection) place and its fields, recursively.
     ///
     /// Invariant: The projection must only contain trackable elements.
-    fn register_with_filter_rec<'tcx>(
+    fn register_children<'tcx>(
         &mut self,
         tcx: TyCtxt<'tcx>,
-        local: Local,
-        projection: &mut Vec<PlaceElem<'tcx>>,
+        place: PlaceIndex,
         ty: Ty<'tcx>,
-        filter: &mut impl FnMut(Ty<'tcx>) -> bool,
-        place_limit: Option<usize>,
+        filter: &impl Fn(Ty<'tcx>) -> bool,
+        worklist: &mut VecDeque<(PlaceIndex, Option<TrackElem>, TrackElem, Ty<'tcx>)>,
     ) {
-        if let Some(place_limit) = place_limit && self.value_count >= place_limit {
-            return
-        }
-
-        // We know that the projection only contains trackable elements.
-        let place = self.make_place(local, projection).unwrap();
-
         // Allocate a value slot if it doesn't have one, and the user requested one.
         if self.places[place].value_index.is_none() && filter(ty) {
             self.places[place].value_index = Some(self.value_count.into());
             self.value_count += 1;
         }
 
+        // For enums, directly create the `Discriminant`, as that's their main use.
         if ty.is_enum() {
             let discr_ty = ty.discriminant_ty(tcx);
             if filter(discr_ty) {
@@ -692,46 +709,13 @@ impl Map {
 
         // Recurse with all fields of this place.
         iter_fields(ty, tcx, ty::ParamEnv::reveal_all(), |variant, field, ty| {
-            if let Some(variant) = variant {
-                projection.push(PlaceElem::Downcast(None, variant));
-                let _ = self.make_place(local, projection);
-                projection.push(PlaceElem::Field(field, ty));
-                self.register_with_filter_rec(tcx, local, projection, ty, filter, place_limit);
-                projection.pop();
-                projection.pop();
-                return;
-            }
-            projection.push(PlaceElem::Field(field, ty));
-            self.register_with_filter_rec(tcx, local, projection, ty, filter, place_limit);
-            projection.pop();
+            worklist.push_back((
+                place,
+                variant.map(TrackElem::Variant),
+                TrackElem::Field(field),
+                ty,
+            ))
         });
-    }
-
-    /// Tries to add the place to the map, without allocating a value slot.
-    ///
-    /// Can fail if the projection contains non-trackable elements.
-    fn make_place<'tcx>(
-        &mut self,
-        local: Local,
-        projection: &[PlaceElem<'tcx>],
-    ) -> Result<PlaceIndex, ()> {
-        // Get the base index of the local.
-        let mut index =
-            *self.locals.get_or_insert_with(local, || self.places.push(PlaceInfo::new(None)));
-
-        // Apply the projection.
-        for &elem in projection {
-            let elem = elem.try_into()?;
-            index = *self.projections.entry((index, elem)).or_insert_with(|| {
-                // Prepend new child to the linked list.
-                let next = self.places.push(PlaceInfo::new(Some(elem)));
-                self.places[next].next_sibling = self.places[index].first_child;
-                self.places[index].first_child = Some(next);
-                next
-            });
-        }
-
-        Ok(index)
     }
 
     /// Returns the number of tracked places, i.e., those for which a value can be stored.
@@ -750,7 +734,7 @@ impl Map {
         place: PlaceRef<'_>,
         extra: impl IntoIterator<Item = TrackElem>,
     ) -> Option<PlaceIndex> {
-        let mut index = *self.locals.get(place.local)?.as_ref()?;
+        let mut index = *self.locals[place.local].as_ref()?;
 
         for &elem in place.projection {
             index = self.apply(index, elem.try_into().ok()?)?;
@@ -794,7 +778,7 @@ impl Map {
             // We do not track indirect places.
             return;
         }
-        let Some(&Some(mut index)) = self.locals.get(place.local) else {
+        let Some(mut index) = self.locals[place.local] else {
             // The local is not tracked at all, so it does not alias anything.
             return;
         };
