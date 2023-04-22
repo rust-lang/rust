@@ -12,8 +12,7 @@ use syntax::{ast, match_ast, AstNode, SmolStr, SyntaxNode};
 use crate::{
     db::ExpandDatabase,
     hygiene::Hygiene,
-    mod_path::{ModPath, PathKind},
-    name::AsName,
+    mod_path::ModPath,
     tt::{self, Subtree},
     InFile,
 };
@@ -267,7 +266,11 @@ impl Attr {
     }
 
     /// Parses this attribute as a token tree consisting of comma separated paths.
-    pub fn parse_path_comma_token_tree(&self) -> Option<impl Iterator<Item = ModPath> + '_> {
+    pub fn parse_path_comma_token_tree<'a>(
+        &'a self,
+        db: &'a dyn ExpandDatabase,
+        hygiene: &'a Hygiene,
+    ) -> Option<impl Iterator<Item = ModPath> + 'a> {
         let args = self.token_tree_value()?;
 
         if args.delimiter.kind != DelimiterKind::Parenthesis {
@@ -276,15 +279,25 @@ impl Attr {
         let paths = args
             .token_trees
             .split(|tt| matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Punct(Punct { char: ',', .. }))))
-            .filter_map(|tts| {
+            .filter_map(move |tts| {
                 if tts.is_empty() {
                     return None;
                 }
-                let segments = tts.iter().filter_map(|tt| match tt {
-                    tt::TokenTree::Leaf(tt::Leaf::Ident(id)) => Some(id.as_name()),
-                    _ => None,
-                });
-                Some(ModPath::from_segments(PathKind::Plain, segments))
+                // FIXME: This is necessarily a hack. It'd be nice if we could avoid allocation here.
+                let subtree = tt::Subtree {
+                    delimiter: tt::Delimiter::unspecified(),
+                    token_trees: tts.into_iter().cloned().collect(),
+                };
+                let (parse, _) =
+                    mbe::token_tree_to_syntax_node(&subtree, mbe::TopEntryPoint::MetaItem);
+                let meta = ast::Meta::cast(parse.syntax_node())?;
+                // Only simple paths are allowed.
+                if meta.eq_token().is_some() || meta.expr().is_some() || meta.token_tree().is_some()
+                {
+                    return None;
+                }
+                let path = meta.path()?;
+                ModPath::from_src(db, path, hygiene)
             });
 
         Some(paths)
