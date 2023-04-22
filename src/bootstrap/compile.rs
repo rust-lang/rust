@@ -40,11 +40,18 @@ pub struct Std {
     ///
     /// This shouldn't be used from other steps; see the comment on [`Rustc`].
     crates: Interned<Vec<String>>,
+    /// When using download-rustc, we need to use a new build of `std` for running unit tests of Std itself,
+    /// but we need to use the downloaded copy of std for linking to rustdoc. Allow this to be overriden by `builder.ensure` from other steps.
+    force_recompile: bool,
 }
 
 impl Std {
     pub fn new(compiler: Compiler, target: TargetSelection) -> Self {
-        Self { target, compiler, crates: Default::default() }
+        Self { target, compiler, crates: Default::default(), force_recompile: false }
+    }
+
+    pub fn force_recompile(compiler: Compiler, target: TargetSelection) -> Self {
+        Self { target, compiler, crates: Default::default(), force_recompile: true }
     }
 }
 
@@ -77,6 +84,7 @@ impl Step for Std {
             compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
             target: run.target,
             crates: make_run_crates(&run, "library"),
+            force_recompile: false,
         });
     }
 
@@ -89,11 +97,20 @@ impl Step for Std {
         let target = self.target;
         let compiler = self.compiler;
 
-        // When using `download-rustc`, we already have artifacts for the host available
-        // (they were copied in `impl Step for Sysroot`). Don't recompile them.
-        // NOTE: the ABI of the beta compiler is different from the ABI of the downloaded compiler,
-        // so its artifacts can't be reused.
-        if builder.download_rustc() && compiler.stage != 0 && target == builder.build.build {
+        // When using `download-rustc`, we already have artifacts for the host available. Don't
+        // recompile them.
+        if builder.download_rustc() && target == builder.build.build
+            // NOTE: the beta compiler may generate different artifacts than the downloaded compiler, so
+            // its artifacts can't be reused.
+            && compiler.stage != 0
+            // This check is specific to testing std itself; see `test::Std` for more details.
+            && !self.force_recompile
+        {
+            cp_rustc_component_to_ci_sysroot(
+                builder,
+                compiler,
+                builder.config.ci_rust_std_contents(),
+            );
             return;
         }
 
@@ -428,6 +445,8 @@ struct StdLink {
     pub target: TargetSelection,
     /// Not actually used; only present to make sure the cache invalidation is correct.
     crates: Interned<Vec<String>>,
+    /// See [`Std::force_recompile`].
+    force_recompile: bool,
 }
 
 impl StdLink {
@@ -437,6 +456,7 @@ impl StdLink {
             target_compiler: std.compiler,
             target: std.target,
             crates: std.crates,
+            force_recompile: std.force_recompile,
         }
     }
 }
@@ -460,8 +480,24 @@ impl Step for StdLink {
         let compiler = self.compiler;
         let target_compiler = self.target_compiler;
         let target = self.target;
-        let libdir = builder.sysroot_libdir(target_compiler, target);
-        let hostdir = builder.sysroot_libdir(target_compiler, compiler.host);
+
+        // NOTE: intentionally does *not* check `target == builder.build` to avoid having to add the same check in `test::Crate`.
+        let (libdir, hostdir) = if self.force_recompile && builder.download_rustc() {
+            // NOTE: copies part of `sysroot_libdir` to avoid having to add a new `force_recompile` argument there too
+            let lib = builder.sysroot_libdir_relative(self.compiler);
+            let sysroot = builder.ensure(crate::compile::Sysroot {
+                compiler: self.compiler,
+                force_recompile: self.force_recompile,
+            });
+            let libdir = sysroot.join(lib).join("rustlib").join(target.triple).join("lib");
+            let hostdir = sysroot.join(lib).join("rustlib").join(compiler.host.triple).join("lib");
+            (INTERNER.intern_path(libdir), INTERNER.intern_path(hostdir))
+        } else {
+            let libdir = builder.sysroot_libdir(target_compiler, target);
+            let hostdir = builder.sysroot_libdir(target_compiler, compiler.host);
+            (libdir, hostdir)
+        };
+
         add_to_sysroot(builder, &libdir, &hostdir, &libstd_stamp(builder, compiler, target));
     }
 }
@@ -594,6 +630,25 @@ impl Step for StartupObjects {
     }
 }
 
+fn cp_rustc_component_to_ci_sysroot(
+    builder: &Builder<'_>,
+    compiler: Compiler,
+    contents: Vec<String>,
+) {
+    let sysroot = builder.ensure(Sysroot { compiler, force_recompile: false });
+
+    let ci_rustc_dir = builder.out.join(&*builder.build.build.triple).join("ci-rustc");
+    for file in contents {
+        let src = ci_rustc_dir.join(&file);
+        let dst = sysroot.join(file);
+        if src.is_dir() {
+            t!(fs::create_dir_all(dst));
+        } else {
+            builder.copy(&src, &dst);
+        }
+    }
+}
+
 #[derive(Debug, PartialOrd, Ord, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Rustc {
     pub target: TargetSelection,
@@ -653,18 +708,11 @@ impl Step for Rustc {
         if builder.download_rustc() && compiler.stage != 0 {
             // Copy the existing artifacts instead of rebuilding them.
             // NOTE: this path is only taken for tools linking to rustc-dev (including ui-fulldeps tests).
-            let sysroot = builder.ensure(Sysroot { compiler });
-
-            let ci_rustc_dir = builder.out.join(&*builder.build.build.triple).join("ci-rustc");
-            for file in builder.config.rustc_dev_contents() {
-                let src = ci_rustc_dir.join(&file);
-                let dst = sysroot.join(file);
-                if src.is_dir() {
-                    t!(fs::create_dir_all(dst));
-                } else {
-                    builder.copy(&src, &dst);
-                }
-            }
+            cp_rustc_component_to_ci_sysroot(
+                builder,
+                compiler,
+                builder.config.ci_rustc_dev_contents(),
+            );
             return;
         }
 
@@ -1225,6 +1273,14 @@ pub fn compiler_file(
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Sysroot {
     pub compiler: Compiler,
+    /// See [`Std::force_recompile`].
+    force_recompile: bool,
+}
+
+impl Sysroot {
+    pub(crate) fn new(compiler: Compiler) -> Self {
+        Sysroot { compiler, force_recompile: false }
+    }
 }
 
 impl Step for Sysroot {
@@ -1247,6 +1303,8 @@ impl Step for Sysroot {
         let sysroot_dir = |stage| {
             if stage == 0 {
                 host_dir.join("stage0-sysroot")
+            } else if self.force_recompile && stage == compiler.stage {
+                host_dir.join(format!("stage{stage}-test-sysroot"))
             } else if builder.download_rustc() && compiler.stage != builder.top_stage {
                 host_dir.join("ci-rustc-sysroot")
             } else {
@@ -1286,14 +1344,19 @@ impl Step for Sysroot {
             // 2. The sysroot is deleted and recreated between each invocation, so running `x test
             //    ui-fulldeps && x test ui` can't cause failures.
             let mut filtered_files = Vec::new();
-            // Don't trim directories or files that aren't loaded per-target; they can't cause conflicts.
-            let suffix = format!("lib/rustlib/{}/lib", compiler.host);
-            for path in builder.config.rustc_dev_contents() {
-                let path = Path::new(&path);
-                if path.parent().map_or(false, |parent| parent.ends_with(&suffix)) {
-                    filtered_files.push(path.file_name().unwrap().to_owned());
+            let mut add_filtered_files = |suffix, contents| {
+                for path in contents {
+                    let path = Path::new(&path);
+                    if path.parent().map_or(false, |parent| parent.ends_with(&suffix)) {
+                        filtered_files.push(path.file_name().unwrap().to_owned());
+                    }
                 }
-            }
+            };
+            let suffix = format!("lib/rustlib/{}/lib", compiler.host);
+            add_filtered_files(suffix.as_str(), builder.config.ci_rustc_dev_contents());
+            // NOTE: we can't copy std eagerly because `stage2-test-sysroot` needs to have only the
+            // newly compiled std, not the downloaded std.
+            add_filtered_files("lib", builder.config.ci_rust_std_contents());
 
             let filtered_extensions = [OsStr::new("rmeta"), OsStr::new("rlib"), OsStr::new("so")];
             let ci_rustc_dir = builder.ci_rustc_dir(builder.config.build);
@@ -1411,7 +1474,8 @@ impl Step for Assemble {
 
         // If we're downloading a compiler from CI, we can use the same compiler for all stages other than 0.
         if builder.download_rustc() {
-            let sysroot = builder.ensure(Sysroot { compiler: target_compiler });
+            let sysroot =
+                builder.ensure(Sysroot { compiler: target_compiler, force_recompile: false });
             // Ensure that `libLLVM.so` ends up in the newly created target directory,
             // so that tools using `rustc_private` can use it.
             dist::maybe_install_llvm_target(builder, target_compiler.host, &sysroot);
