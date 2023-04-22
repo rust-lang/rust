@@ -164,8 +164,8 @@ impl fmt::Display for FilesStats {
     }
 }
 
-impl StatCollect<FileId, Arc<String>> for FilesStats {
-    fn collect_entry(&mut self, _: FileId, value: Option<Arc<String>>) {
+impl StatCollect<FileId, Arc<str>> for FilesStats {
+    fn collect_entry(&mut self, _: FileId, value: Option<Arc<str>>) {
         self.total += 1;
         self.size += value.unwrap().len();
     }

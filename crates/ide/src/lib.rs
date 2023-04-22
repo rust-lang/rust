@@ -244,7 +244,7 @@ impl Analysis {
             Err("Analysis::from_single_file has no target layout".into()),
             None,
         );
-        change.change_file(file_id, Some(Arc::new(text)));
+        change.change_file(file_id, Some(Arc::from(text)));
         change.set_crate_graph(crate_graph);
         host.apply_change(change);
         (host.analysis(), file_id)
@@ -263,7 +263,7 @@ impl Analysis {
     }
 
     /// Gets the text of the source file.
-    pub fn file_text(&self, file_id: FileId) -> Cancellable<Arc<String>> {
+    pub fn file_text(&self, file_id: FileId) -> Cancellable<Arc<str>> {
         self.with_db(|db| db.file_text(file_id))
     }
 

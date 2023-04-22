@@ -438,11 +438,11 @@ impl<'a> FindUsages<'a> {
         fn scope_files<'a>(
             sema: &'a Semantics<'_, RootDatabase>,
             scope: &'a SearchScope,
-        ) -> impl Iterator<Item = (Arc<String>, FileId, TextRange)> + 'a {
+        ) -> impl Iterator<Item = (Arc<str>, FileId, TextRange)> + 'a {
             scope.entries.iter().map(|(&file_id, &search_range)| {
                 let text = sema.db.file_text(file_id);
                 let search_range =
-                    search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(text.as_str())));
+                    search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(&*text)));
 
                 (text, file_id, search_range)
             })
@@ -553,7 +553,7 @@ impl<'a> FindUsages<'a> {
 
                 let text = sema.db.file_text(file_id);
                 let search_range =
-                    search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(text.as_str())));
+                    search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(&*text)));
 
                 let tree = Lazy::new(|| sema.parse(file_id).syntax().clone());
                 let finder = &Finder::new("self");

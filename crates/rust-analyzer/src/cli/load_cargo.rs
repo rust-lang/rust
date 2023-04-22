@@ -162,9 +162,9 @@ fn load_crate_graph(
     let changes = vfs.take_changes();
     for file in changes {
         if file.exists() {
-            let contents = vfs.file_contents(file.file_id).to_vec();
-            if let Ok(text) = String::from_utf8(contents) {
-                analysis_change.change_file(file.file_id, Some(Arc::new(text)))
+            let contents = vfs.file_contents(file.file_id);
+            if let Ok(text) = std::str::from_utf8(contents) {
+                analysis_change.change_file(file.file_id, Some(Arc::from(text)))
             }
         }
     }

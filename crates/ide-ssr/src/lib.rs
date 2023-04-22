@@ -224,7 +224,7 @@ impl<'db> MatchFinder<'db> {
         let file = self.sema.parse(file_id);
         let mut res = Vec::new();
         let file_text = self.sema.db.file_text(file_id);
-        let mut remaining_text = file_text.as_str();
+        let mut remaining_text = &*file_text;
         let mut base = 0;
         let len = snippet.len() as u32;
         while let Some(offset) = remaining_text.find(snippet) {

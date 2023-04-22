@@ -15,7 +15,7 @@ fn check_def_map_is_not_recomputed(ra_fixture_initial: &str, ra_fixture_change: 
         });
         assert!(format!("{events:?}").contains("crate_def_map"), "{events:#?}")
     }
-    db.set_file_text(pos.file_id, Arc::new(ra_fixture_change.to_string()));
+    db.set_file_text(pos.file_id, Arc::from(ra_fixture_change));
 
     {
         let events = db.log_executed(|| {
@@ -96,7 +96,7 @@ fn typing_inside_a_macro_should_not_invalidate_def_map() {
         });
         assert!(format!("{events:?}").contains("crate_def_map"), "{events:#?}")
     }
-    db.set_file_text(pos.file_id, Arc::new("m!(Y);".to_string()));
+    db.set_file_text(pos.file_id, Arc::from("m!(Y);"));
 
     {
         let events = db.log_executed(|| {
@@ -150,7 +150,7 @@ fn quux() { 92 }
 m!(Y);
 m!(Z);
 "#;
-    db.set_file_text(pos.file_id, Arc::new(new_text.to_string()));
+    db.set_file_text(pos.file_id, Arc::from(new_text));
 
     {
         let events = db.log_executed(|| {

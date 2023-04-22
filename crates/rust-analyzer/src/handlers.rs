@@ -103,6 +103,7 @@ pub(crate) fn handle_analyzer_status(
                 .collect::<Vec<&AbsPath>>()
         );
     }
+    format_to!(buf, "\nVfs memory usage: {}\n", snap.vfs_memory_usage());
     buf.push_str("\nAnalysis:\n");
     buf.push_str(
         &snap

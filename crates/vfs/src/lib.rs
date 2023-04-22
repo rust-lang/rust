@@ -139,6 +139,11 @@ impl Vfs {
         self.get(file_id).as_deref().unwrap()
     }
 
+    /// Returns the overall memory usage for the stored files.
+    pub fn memory_usage(&self) -> usize {
+        self.data.iter().flatten().map(|d| d.capacity()).sum()
+    }
+
     /// Returns an iterator over the stored ids and their corresponding paths.
     ///
     /// This will skip deleted files.
@@ -158,7 +163,7 @@ impl Vfs {
     ///
     /// If the path does not currently exists in the `Vfs`, allocates a new
     /// [`FileId`] for it.
-    pub fn set_file_contents(&mut self, path: VfsPath, contents: Option<Vec<u8>>) -> bool {
+    pub fn set_file_contents(&mut self, path: VfsPath, mut contents: Option<Vec<u8>>) -> bool {
         let file_id = self.alloc_file_id(path);
         let change_kind = match (self.get(file_id), &contents) {
             (None, None) => return false,
@@ -167,7 +172,9 @@ impl Vfs {
             (Some(_), None) => ChangeKind::Delete,
             (Some(_), Some(_)) => ChangeKind::Modify,
         };
-
+        if let Some(contents) = &mut contents {
+            contents.shrink_to_fit();
+        }
         *self.get_mut(file_id) = contents;
         self.changes.push(ChangedFile { file_id, change_kind });
         true
