@@ -57,7 +57,7 @@ pub const DEFAULT_LRU_CAP: usize = 128;
 
 pub trait FileLoader {
     /// Text of the file.
-    fn file_text(&self, file_id: FileId) -> Arc<String>;
+    fn file_text(&self, file_id: FileId) -> Arc<str>;
     fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId>;
     fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>>;
 }
@@ -90,7 +90,7 @@ fn parse_query(db: &dyn SourceDatabase, file_id: FileId) -> Parse<ast::SourceFil
 #[salsa::query_group(SourceDatabaseExtStorage)]
 pub trait SourceDatabaseExt: SourceDatabase {
     #[salsa::input]
-    fn file_text(&self, file_id: FileId) -> Arc<String>;
+    fn file_text(&self, file_id: FileId) -> Arc<str>;
     /// Path to a file, relative to the root of its source root.
     /// Source root of the file.
     #[salsa::input]
@@ -118,7 +118,7 @@ fn source_root_crates(db: &dyn SourceDatabaseExt, id: SourceRootId) -> Arc<FxHas
 pub struct FileLoaderDelegate<T>(pub T);
 
 impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
-    fn file_text(&self, file_id: FileId) -> Arc<String> {
+    fn file_text(&self, file_id: FileId) -> Arc<str> {
         SourceDatabaseExt::file_text(self.0, file_id)
     }
     fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId> {

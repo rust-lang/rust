@@ -65,7 +65,7 @@ fn integrated_highlighting_benchmark() {
         let mut text = host.analysis().file_text(file_id).unwrap().to_string();
         text.push_str("\npub fn _dummy() {}\n");
         let mut change = Change::new();
-        change.change_file(file_id, Some(Arc::new(text)));
+        change.change_file(file_id, Some(Arc::from(text)));
         host.apply_change(change);
     }
 
@@ -121,7 +121,7 @@ fn integrated_completion_benchmark() {
             patch(&mut text, "db.struct_data(self.id)", "sel;\ndb.struct_data(self.id)")
                 + "sel".len();
         let mut change = Change::new();
-        change.change_file(file_id, Some(Arc::new(text)));
+        change.change_file(file_id, Some(Arc::from(text)));
         host.apply_change(change);
         completion_offset
     };
@@ -160,7 +160,7 @@ fn integrated_completion_benchmark() {
             patch(&mut text, "sel;\ndb.struct_data(self.id)", "self.;\ndb.struct_data(self.id)")
                 + "self.".len();
         let mut change = Change::new();
-        change.change_file(file_id, Some(Arc::new(text)));
+        change.change_file(file_id, Some(Arc::from(text)));
         host.apply_change(change);
         completion_offset
     };

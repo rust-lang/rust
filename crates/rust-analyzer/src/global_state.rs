@@ -269,7 +269,7 @@ impl GlobalState {
                     String::from_utf8(bytes).ok().and_then(|text| {
                         let (text, line_endings) = LineEndings::normalize(text);
                         line_endings_map.insert(file.file_id, line_endings);
-                        Some(Arc::new(text))
+                        Some(Arc::from(text))
                     })
                 } else {
                     None

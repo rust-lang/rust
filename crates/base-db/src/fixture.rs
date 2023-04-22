@@ -190,7 +190,7 @@ impl ChangeFixture {
                 default_target_data_layout = meta.target_data_layout;
             }
 
-            change.change_file(file_id, Some(Arc::new(text)));
+            change.change_file(file_id, Some(Arc::from(text)));
             let path = VfsPath::new_virtual_path(meta.path);
             file_set.insert(file_id, path);
             files.push(file_id);
@@ -240,7 +240,7 @@ impl ChangeFixture {
             fs.insert(core_file, VfsPath::new_virtual_path("/sysroot/core/lib.rs".to_string()));
             roots.push(SourceRoot::new_library(fs));
 
-            change.change_file(core_file, Some(Arc::new(mini_core.source_code())));
+            change.change_file(core_file, Some(Arc::from(mini_core.source_code())));
 
             let all_crates = crate_graph.crates_in_topological_order();
 
@@ -279,7 +279,7 @@ impl ChangeFixture {
             );
             roots.push(SourceRoot::new_library(fs));
 
-            change.change_file(proc_lib_file, Some(Arc::new(source)));
+            change.change_file(proc_lib_file, Some(Arc::from(source)));
 
             let all_crates = crate_graph.crates_in_topological_order();
 

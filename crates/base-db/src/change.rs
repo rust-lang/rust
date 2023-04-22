@@ -12,7 +12,7 @@ use crate::{CrateGraph, ProcMacros, SourceDatabaseExt, SourceRoot, SourceRootId}
 #[derive(Default)]
 pub struct Change {
     pub roots: Option<Vec<SourceRoot>>,
-    pub files_changed: Vec<(FileId, Option<Arc<String>>)>,
+    pub files_changed: Vec<(FileId, Option<Arc<str>>)>,
     pub crate_graph: Option<CrateGraph>,
     pub proc_macros: Option<ProcMacros>,
 }
@@ -42,7 +42,7 @@ impl Change {
         self.roots = Some(roots);
     }
 
-    pub fn change_file(&mut self, file_id: FileId, new_text: Option<Arc<String>>) {
+    pub fn change_file(&mut self, file_id: FileId, new_text: Option<Arc<str>>) {
         self.files_changed.push((file_id, new_text))
     }
 
@@ -72,7 +72,7 @@ impl Change {
             let source_root = db.source_root(source_root_id);
             let durability = durability(&source_root);
             // XXX: can't actually remove the file, just reset the text
-            let text = text.unwrap_or_default();
+            let text = text.unwrap_or_else(|| Arc::from(""));
             db.set_file_text_with_durability(file_id, text, durability)
         }
         if let Some(crate_graph) = self.crate_graph {

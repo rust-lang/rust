@@ -572,10 +572,9 @@ fn salsa_bug() {
             let x = 1;
             x.push(1);
         }
-    "
-    .to_string();
+    ";
 
-    db.set_file_text(pos.file_id, Arc::new(new_text));
+    db.set_file_text(pos.file_id, Arc::from(new_text));
 
     let module = db.module_for_file(pos.file_id);
     let crate_def_map = module.def_map(&db);
