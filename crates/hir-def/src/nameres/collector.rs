@@ -123,6 +123,7 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: T
         from_glob_import: Default::default(),
         skip_attrs: Default::default(),
         is_proc_macro,
+        hygienes: FxHashMap::default(),
     };
     if tree_id.is_block() {
         collector.seed_with_inner(tree_id);
@@ -270,6 +271,12 @@ struct DefCollector<'a> {
     /// This also stores the attributes to skip when we resolve derive helpers and non-macro
     /// non-builtin attributes in general.
     skip_attrs: FxHashMap<InFile<ModItem>, AttrId>,
+    /// `Hygiene` cache, because `Hygiene` construction is expensive.
+    ///
+    /// Almost all paths should have been lowered to `ModPath` during `ItemTree` construction.
+    /// However, `DefCollector` still needs to lower paths in attributes, in particular those in
+    /// derive meta item list.
+    hygienes: FxHashMap<HirFileId, Hygiene>,
 }
 
 impl DefCollector<'_> {
@@ -313,8 +320,9 @@ impl DefCollector<'_> {
                 }
 
                 if *attr_name == hir_expand::name![feature] {
+                    let hygiene = &Hygiene::new_unhygienic();
                     let features = attr
-                        .parse_path_comma_token_tree(self.db.upcast(), Hygiene::new_unhygienic())
+                        .parse_path_comma_token_tree(self.db.upcast(), hygiene)
                         .into_iter()
                         .flatten()
                         .filter_map(|feat| match feat.segments() {
@@ -1225,7 +1233,18 @@ impl DefCollector<'_> {
                             }
                         };
                         let ast_id = ast_id.with_value(ast_adt_id);
-                        let hygiene = Hygiene::new(self.db.upcast(), file_id);
+
+                        let extend_unhygenic;
+                        let hygiene = if file_id.is_macro() {
+                            self.hygienes
+                                .entry(file_id)
+                                .or_insert_with(|| Hygiene::new(self.db.upcast(), file_id))
+                        } else {
+                            // Avoid heap allocation (`Hygiene` embraces `Arc`) and hash map entry
+                            // when we're in an oridinary (non-macro) file.
+                            extend_unhygenic = Hygiene::new_unhygienic();
+                            &extend_unhygenic
+                        };
 
                         match attr.parse_path_comma_token_tree(self.db.upcast(), hygiene) {
                             Some(derive_macros) => {
@@ -2215,6 +2234,7 @@ mod tests {
             from_glob_import: Default::default(),
             skip_attrs: Default::default(),
             is_proc_macro: false,
+            hygienes: FxHashMap::default(),
         };
         collector.seed_with_top_level();
         collector.collect();

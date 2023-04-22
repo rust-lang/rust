@@ -269,7 +269,7 @@ impl Attr {
     pub fn parse_path_comma_token_tree<'a>(
         &'a self,
         db: &'a dyn ExpandDatabase,
-        hygiene: Hygiene,
+        hygiene: &'a Hygiene,
     ) -> Option<impl Iterator<Item = ModPath> + 'a> {
         let args = self.token_tree_value()?;
 
@@ -297,7 +297,7 @@ impl Attr {
                     return None;
                 }
                 let path = meta.path()?;
-                ModPath::from_src(db, path, &hygiene)
+                ModPath::from_src(db, path, hygiene)
             });
 
         Some(paths)
