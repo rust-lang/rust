@@ -3,6 +3,9 @@
 // normalize-stderr-test "S1M" -> "SXX"
 // error-pattern: too big for the current
 
+// compile-flags: -Z mir-opt-level=0
+// (The optimizations would remove the values on which this errors.)
+
 // FIXME https://github.com/rust-lang/rust/issues/59774
 // normalize-stderr-test "thread.*panicked.*Metadata module not compiled.*\n" -> ""
 // normalize-stderr-test "note:.*RUST_BACKTRACE=1.*\n" -> ""
