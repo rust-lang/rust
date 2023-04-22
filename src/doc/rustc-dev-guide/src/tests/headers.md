@@ -52,6 +52,8 @@ found in [`header.rs`] from the compiletest source.
     * [`stderr-per-bitwidth`](ui.md#output-comparison) — separate output per bit width
     * [`dont-check-compiler-stderr`](ui.md#output-comparison) — don't validate stderr
     * [`dont-check-compiler-stdout`](ui.md#output-comparison) — don't validate stdout
+    * [`compare-output-lines-by-subset`](ui.md#output-comparison) — checks output by
+      line subset
 * [Building auxiliary crates](compiletest.md#building-auxiliary-crates)
     * `aux-build`
     * `aux-crate`
