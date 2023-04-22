@@ -1558,6 +1558,9 @@ options! {
         "use like `-Zmir-enable-passes=+DestProp,-InstCombine`. Forces the specified passes to be \
         enabled, overriding all other checks. Passes that are not specified are enabled or \
         disabled by other flags as usual."),
+    mir_keep_place_mention: bool = (false, parse_bool, [TRACKED],
+        "keep place mention MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0 \
+        (default: no)"),
     #[rustc_lint_opt_deny_field_access("use `Session::mir_opt_level` instead of this field")]
     mir_opt_level: Option<usize> = (None, parse_opt_number, [TRACKED],
         "MIR optimization level (0-4; default: 1 in non optimized builds and 2 in optimized builds)"),

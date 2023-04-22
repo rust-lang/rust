@@ -665,7 +665,7 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
             }
             // Only relevant for mir typeck
             StatementKind::AscribeUserType(..)
-            // Only relevant for unsafeck
+            // Only relevant for liveness and unsafeck
             | StatementKind::PlaceMention(..)
             // Doesn't have any language semantics
             | StatementKind::Coverage(..)

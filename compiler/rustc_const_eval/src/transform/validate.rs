@@ -802,14 +802,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                 }
             }
-            StatementKind::PlaceMention(..) => {
-                if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
-                    self.fail(
-                        location,
-                        "`PlaceMention` should have been removed after drop lowering phase",
-                    );
-                }
-            }
             StatementKind::AscribeUserType(..) => {
                 if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(
@@ -919,6 +911,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             StatementKind::StorageDead(_)
             | StatementKind::Coverage(_)
             | StatementKind::ConstEvalCounter
+            | StatementKind::PlaceMention(..)
             | StatementKind::Nop => {}
         }
 

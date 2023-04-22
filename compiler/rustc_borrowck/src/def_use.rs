@@ -52,12 +52,16 @@ pub fn categorize(context: PlaceContext) -> Option<DefUse> {
         PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow) |
         PlaceContext::NonMutatingUse(NonMutatingUseContext::UniqueBorrow) |
 
+        // `PlaceMention` and `AscribeUserType` both evaluate the place, which must not
+        // contain dangling references.
+        PlaceContext::NonUse(NonUseContext::PlaceMention) |
+        PlaceContext::NonUse(NonUseContext::AscribeUserTy) |
+
         PlaceContext::MutatingUse(MutatingUseContext::AddressOf) |
         PlaceContext::NonMutatingUse(NonMutatingUseContext::AddressOf) |
         PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect) |
         PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) |
         PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) |
-        PlaceContext::NonUse(NonUseContext::AscribeUserTy) |
         PlaceContext::MutatingUse(MutatingUseContext::Retag) =>
             Some(DefUse::Use),
 
@@ -72,8 +76,6 @@ pub fn categorize(context: PlaceContext) -> Option<DefUse> {
         PlaceContext::MutatingUse(MutatingUseContext::Drop) =>
             Some(DefUse::Drop),
 
-        // This statement exists to help unsafeck. It does not require the place to be live.
-        PlaceContext::NonUse(NonUseContext::PlaceMention) => None,
         // Debug info is neither def nor use.
         PlaceContext::NonUse(NonUseContext::VarDebugInfo) => None,
 
