@@ -145,10 +145,8 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
             let untracked_paths = untracked_paths_output
                 .lines()
                 .filter(|entry| entry.starts_with("??"))
-                .filter_map(|entry| {
-                    let path =
-                        entry.split(' ').nth(1).expect("every git status entry should list a path");
-                    path.ends_with(".rs").then_some(path)
+                .map(|entry| {
+                    entry.split(' ').nth(1).expect("every git status entry should list a path")
                 });
             for untracked_path in untracked_paths {
                 println!("skip untracked path {} during rustfmt invocations", untracked_path);
