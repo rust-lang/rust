@@ -558,6 +558,10 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 kind!("InlineAsm(_)");
                 out!("// unimplemented: `ExprKind::InlineAsm` is not further destructured at the moment");
             },
+            ExprKind::OffsetOf(container, ref fields) => {
+                bind!(self, container, fields);
+                kind!("OffsetOf({container}, {fields})");
+            }
             ExprKind::Struct(qpath, fields, base) => {
                 bind!(self, qpath, fields);
                 opt_bind!(self, base);
