@@ -50,6 +50,6 @@ The following steps should serve as a rough guide to add suggestions to
    as either static or dynamic.
 3. Implement the suggestion. If it is dynamic then a test is highly recommended,
    to verify that your logic is correct and to give an example of the suggestion.
-   See the [tests.rs](https://github.com/rust-lang/rust/blob/master/src/tools/suggest-tests/src/static_suggestions.rs)
+   See the [tests.rs](https://github.com/rust-lang/rust/blob/master/src/tools/suggest-tests/src/tests.rs)
    file.
 4. Open a PR implementing your suggestion. **(TODO: add example PR)**
