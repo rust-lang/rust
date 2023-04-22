@@ -861,6 +861,11 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
     pub fn is_const_if_const(self) -> bool {
         self.skip_binder().is_const_if_const()
     }
+
+    #[inline]
+    pub fn polarity(self) -> ImplPolarity {
+        self.skip_binder().polarity
+    }
 }
 
 /// `A: B`
