@@ -115,6 +115,7 @@ impl AstIdMap {
                 }
             }
         }
+        res.arena.shrink_to_fit();
         res
     }
 
