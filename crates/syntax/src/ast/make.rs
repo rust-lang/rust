@@ -158,6 +158,47 @@ fn ty_from_text(text: &str) -> ast::Type {
     ast_from_text(&format!("type _T = {text};"))
 }
 
+/// Related goto [link](https://doc.rust-lang.org/reference/items/type-aliases.html)
+/// Type Alias syntax is
+/// ```
+/// TypeAlias :
+/// type IDENTIFIER GenericParams? ( : TypeParamBounds )? WhereClause? ( = Type WhereClause?)? ;
+/// ```
+/// FIXME : ident should be of type ast::Ident
+pub fn ty_alias(
+    ident: &str,
+    generic_param_list: Option<ast::GenericParamList>,
+    type_param_bounds: Option<ast::TypeParam>,
+    where_clause: Option<ast::WhereClause>,
+    assignment: Option<(ast::Type, Option<ast::WhereClause>)>,
+) -> ast::TypeAlias {
+    let mut s = String::new();
+    s.push_str(&format!("type {}", ident));
+
+    if let Some(list) = generic_param_list {
+        s.push_str(&list.to_string());
+    }
+
+    if let Some(list) = type_param_bounds {
+        s.push_str(&format!(" : {}", &list));
+    }
+
+    if let Some(cl) = where_clause {
+        s.push_str(&format!(" {}", &cl.to_string()));
+    }
+
+    if let Some(exp) = assignment {
+        if let Some(cl) = exp.1 {
+            s.push_str(&format!("= {} {}", &exp.0.to_string(), &cl.to_string()));
+        } else {
+            s.push_str(&format!("= {}", &exp.0.to_string()));
+        }
+    }
+
+    s.push_str(";");
+    ast_from_text(&s)
+}
+
 pub fn assoc_item_list() -> ast::AssocItemList {
     ast_from_text("impl C for D {}")
 }
