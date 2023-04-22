@@ -99,6 +99,17 @@ pub(super) trait GoalKind<'tcx>:
 
     fn trait_def_id(self, tcx: TyCtxt<'tcx>) -> DefId;
 
+    // Try equating an assumption predicate against a goal's predicate. If it
+    // holds, then execute the `then` callback, which should do any additional
+    // work, then produce a response (typically by executing
+    // [`EvalCtxt::evaluate_added_goals_and_make_canonical_response`]).
+    fn probe_and_match_goal_against_assumption(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+        assumption: ty::Predicate<'tcx>,
+        then: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> QueryResult<'tcx>,
+    ) -> QueryResult<'tcx>;
+
     // Consider a clause, which consists of a "assumption" and some "requirements",
     // to satisfy a goal. If the requirements hold, then attempt to satisfy our
     // goal by equating it with the assumption.
@@ -107,7 +118,12 @@ pub(super) trait GoalKind<'tcx>:
         goal: Goal<'tcx, Self>,
         assumption: ty::Predicate<'tcx>,
         requirements: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
-    ) -> QueryResult<'tcx>;
+    ) -> QueryResult<'tcx> {
+        Self::probe_and_match_goal_against_assumption(ecx, goal, assumption, |ecx| {
+            ecx.add_goals(requirements);
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        })
+    }
 
     /// Consider a bound originating from the item bounds of an alias. For this we
     /// require that the well-formed requirements of the self type of the goal
@@ -117,7 +133,11 @@ pub(super) trait GoalKind<'tcx>:
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
         assumption: ty::Predicate<'tcx>,
-    ) -> QueryResult<'tcx>;
+    ) -> QueryResult<'tcx> {
+        Self::probe_and_match_goal_against_assumption(ecx, goal, assumption, |ecx| {
+            ecx.validate_alias_bound_self_from_param_env(goal)
+        })
+    }
 
     // Consider a clause specifically for a `dyn Trait` self type. This requires
     // additionally checking all of the supertraits and object bounds to hold,
@@ -126,7 +146,25 @@ pub(super) trait GoalKind<'tcx>:
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
         assumption: ty::Predicate<'tcx>,
-    ) -> QueryResult<'tcx>;
+    ) -> QueryResult<'tcx> {
+        Self::probe_and_match_goal_against_assumption(ecx, goal, assumption, |ecx| {
+            let tcx = ecx.tcx();
+            let ty::Dynamic(bounds, _, _) = *goal.predicate.self_ty().kind() else {
+                    bug!("expected object type in `consider_object_bound_candidate`");
+                };
+            ecx.add_goals(
+                structural_traits::predicates_for_object_candidate(
+                    &ecx,
+                    goal.param_env,
+                    goal.predicate.trait_ref(tcx),
+                    bounds,
+                )
+                .into_iter()
+                .map(|pred| goal.with(tcx, pred)),
+            );
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        })
+    }
 
     fn consider_impl_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
