@@ -440,6 +440,10 @@ impl GlobalStateSnapshot {
             ProjectWorkspace::DetachedFiles { .. } => None,
         })
     }
+
+    pub(crate) fn vfs_memory_usage(&self) -> usize {
+        self.vfs.read().0.memory_usage()
+    }
 }
 
 pub(crate) fn file_id_to_url(vfs: &vfs::Vfs, id: FileId) -> Url {
