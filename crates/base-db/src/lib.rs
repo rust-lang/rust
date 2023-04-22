@@ -53,7 +53,7 @@ pub struct FileRange {
     pub range: TextRange,
 }
 
-pub const DEFAULT_LRU_CAP: usize = 128;
+pub const DEFAULT_PARSE_LRU_CAP: usize = 128;
 
 pub trait FileLoader {
     /// Text of the file.
