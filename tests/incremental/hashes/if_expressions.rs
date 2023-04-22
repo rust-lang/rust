@@ -131,9 +131,9 @@ pub fn change_condition_if_let(x: Option<u32>) -> u32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,typeck")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,typeck")]
 #[rustc_clean(cfg="cfail6")]
 pub fn change_condition_if_let(x: Option<u32>) -> u32 {
     if let Some(_ ) = x {
