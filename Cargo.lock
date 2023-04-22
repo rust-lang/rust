@@ -3093,7 +3093,6 @@ dependencies = [
  "serde",
  "serde_json",
  "smallvec",
- "tempfile",
  "tracing",
 ]
 
@@ -3187,7 +3186,6 @@ dependencies = [
  "rustc_macros",
  "rustc_serialize",
  "smallvec",
- "stable_deref_trait",
  "stacker",
  "tempfile",
  "thin-vec",
@@ -3401,7 +3399,6 @@ dependencies = [
  "rustc_trait_selection",
  "rustc_type_ir",
  "smallvec",
- "thin-vec",
  "tracing",
 ]
 
@@ -3538,7 +3535,6 @@ dependencies = [
  "rustc_trait_selection",
  "rustc_traits",
  "rustc_ty_utils",
- "smallvec",
  "tracing",
 ]
 
@@ -3646,7 +3642,6 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "rustc_type_ir",
- "smallvec",
  "snap",
  "tempfile",
  "tracing",
@@ -3776,7 +3771,6 @@ dependencies = [
  "rustc_target",
  "serde",
  "serde_json",
- "smallvec",
  "tracing",
 ]
 
@@ -3895,7 +3889,6 @@ version = "0.0.0"
 dependencies = [
  "parking_lot 0.11.2",
  "rustc-rayon-core",
- "rustc_arena",
  "rustc_ast",
  "rustc_data_structures",
  "rustc_errors",
@@ -3965,7 +3958,6 @@ dependencies = [
  "rustc_fluent_macro",
  "rustc_fs_util",
  "rustc_hir",
- "rustc_index",
  "rustc_lint_defs",
  "rustc_macros",
  "rustc_serialize",
@@ -4034,7 +4026,6 @@ dependencies = [
  "rustc_data_structures",
  "rustc_feature",
  "rustc_fs_util",
- "rustc_index",
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
@@ -4052,7 +4043,6 @@ checksum = "8ba09476327c4b70ccefb6180f046ef588c26a24cf5d269a9feba316eb4f029f"
 name = "rustc_trait_selection"
 version = "0.0.0"
 dependencies = [
- "itertools",
  "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",
@@ -4084,7 +4074,6 @@ dependencies = [
  "rustc_ast",
  "rustc_data_structures",
  "rustc_hir",
- "rustc_index",
  "rustc_infer",
  "rustc_middle",
  "rustc_span",

@@ -27,5 +27,4 @@ rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_lint_defs = { path = "../rustc_lint_defs" }
 rustc_type_ir = { path = "../rustc_type_ir" }
 rustc_feature = { path = "../rustc_feature" }
-thin-vec = "0.2.12"
 tracing = "0.1"
