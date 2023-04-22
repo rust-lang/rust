@@ -9,6 +9,8 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
     let mut _5: std::option::Option<impl Sized>;
     let mut _6: isize;
     let _8: ();
+    let mut _9: std::vec::Vec<impl Sized>;
+    let mut _10: impl Sized;
     scope 1 {
         debug iter => _3;
         let _7: impl Sized;

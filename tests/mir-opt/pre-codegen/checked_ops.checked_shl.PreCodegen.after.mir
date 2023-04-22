@@ -4,6 +4,8 @@ fn checked_shl(_1: u32, _2: u32) -> Option<u32> {
     debug x => _1;
     debug rhs => _2;
     let mut _0: std::option::Option<u32>;
+    let mut _7: u32;
+    let mut _8: u32;
     scope 1 (inlined core::num::<impl u32>::checked_shl) {
         debug self => _1;
         debug rhs => _2;

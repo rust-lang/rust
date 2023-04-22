@@ -11,7 +11,10 @@
 +         debug self => _3;
 +         debug rhs => _4;
 +         let mut _5: u16;
-+         let mut _6: bool;
++         let mut _6: u16;
++         let mut _7: bool;
++         let mut _8: u32;
++         let mut _9: u32;
 +         scope 2 {
 +         }
 +     }
@@ -26,12 +29,18 @@
 - 
 -     bb1: {
 +         StorageLive(_5);
++         StorageLive(_8);
++         StorageLive(_9);
 +         StorageLive(_6);
-+         _6 = Le(_4, const 65535_u32);
-+         assume(move _6);
++         StorageLive(_7);
++         _7 = Le(_4, const 65535_u32);
++         assume(move _7);
++         StorageDead(_7);
++         _6 = _4 as u16 (IntToInt);
++         _0 = ShlUnchecked(_3, move _6);
 +         StorageDead(_6);
-+         _5 = _4 as u16 (IntToInt);
-+         _0 = ShlUnchecked(_3, move _5);
++         StorageDead(_9);
++         StorageDead(_8);
 +         StorageDead(_5);
           StorageDead(_4);
           StorageDead(_3);

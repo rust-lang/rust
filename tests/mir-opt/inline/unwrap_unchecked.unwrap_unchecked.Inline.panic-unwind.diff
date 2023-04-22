@@ -9,14 +9,16 @@
 +         debug self => _2;
 +         let mut _3: &std::option::Option<T>;
 +         let mut _4: isize;
-+         let mut _5: bool;
++         let _5: T;
 +         scope 2 {
 +             debug val => _0;
 +         }
 +         scope 3 {
 +             scope 5 (inlined unreachable_unchecked) {
++                 let mut _7: bool;
 +                 scope 6 {
 +                     scope 7 (inlined unreachable_unchecked::runtime) {
++                         let _6: !;
 +                     }
 +                 }
 +             }
@@ -30,25 +32,37 @@
           StorageLive(_2);
           _2 = move _1;
 -         _0 = Option::<T>::unwrap_unchecked(move _2) -> [return: bb1, unwind: bb2];
--     }
-- 
--     bb1: {
 +         StorageLive(_3);
 +         StorageLive(_4);
 +         StorageLive(_5);
++         StorageLive(_6);
 +         _4 = discriminant(_2);
-+         _5 = Eq(_4, const 1_isize);
-+         assume(move _5);
++         switchInt(move _4) -> [0: bb1, 1: bb3, otherwise: bb2];
+      }
+  
+      bb1: {
+-         StorageDead(_2);
+-         return;
++         StorageLive(_7);
++         _7 = const false;
++         assume(move _7);
++         _6 = core::panicking::panic_nounwind(const "unsafe precondition(s) violated: hint::unreachable_unchecked must never be reached") -> unwind unreachable;
+      }
+  
+-     bb2 (cleanup): {
+-         resume;
++     bb2: {
++         unreachable;
++     }
++ 
++     bb3: {
 +         _0 = move ((_2 as Some).0: T);
++         StorageDead(_6);
 +         StorageDead(_5);
 +         StorageDead(_4);
 +         StorageDead(_3);
-          StorageDead(_2);
-          return;
--     }
-- 
--     bb2 (cleanup): {
--         resume;
++         StorageDead(_2);
++         return;
       }
   }
   

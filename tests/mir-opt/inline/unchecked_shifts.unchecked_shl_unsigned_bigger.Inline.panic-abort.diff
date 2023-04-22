@@ -11,6 +11,8 @@
 +         debug self => _3;
 +         debug rhs => _4;
 +         let mut _5: u64;
++         let mut _6: u64;
++         let mut _7: u32;
 +         scope 2 {
 +         }
 +     }
@@ -25,8 +27,12 @@
 - 
 -     bb1: {
 +         StorageLive(_5);
-+         _5 = _4 as u64 (IntToInt);
-+         _0 = ShlUnchecked(_3, move _5);
++         StorageLive(_7);
++         StorageLive(_6);
++         _6 = _4 as u64 (IntToInt);
++         _0 = ShlUnchecked(_3, move _6);
++         StorageDead(_6);
++         StorageDead(_7);
 +         StorageDead(_5);
           StorageDead(_4);
           StorageDead(_3);

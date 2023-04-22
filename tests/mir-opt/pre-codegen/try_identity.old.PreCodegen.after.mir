@@ -6,6 +6,8 @@ fn old(_1: Result<T, E>) -> Result<T, E> {
     let mut _2: isize;
     let _3: T;
     let _4: E;
+    let mut _5: T;
+    let mut _6: E;
     scope 1 {
         debug v => _3;
     }

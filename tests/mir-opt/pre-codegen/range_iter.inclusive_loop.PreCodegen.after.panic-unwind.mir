@@ -13,6 +13,10 @@ fn inclusive_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
     let mut _10: &impl Fn(u32);
     let mut _11: (u32,);
     let _12: ();
+    let mut _13: std::ops::RangeInclusive<u32>;
+    let mut _14: u32;
+    let mut _15: u32;
+    let mut _16: u32;
     scope 1 {
         debug iter => _5;
         let _9: u32;

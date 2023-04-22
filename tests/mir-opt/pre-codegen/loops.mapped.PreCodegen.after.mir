@@ -10,6 +10,10 @@ fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
     let mut _6: std::option::Option<U>;
     let mut _7: isize;
     let _9: ();
+    let mut _10: std::iter::Map<impl Iterator<Item = T>, impl Fn(T) -> U>;
+    let mut _11: impl Iterator<Item = T>;
+    let mut _12: impl Fn(T) -> U;
+    let mut _13: U;
     scope 1 {
         debug iter => _4;
         let _8: U;

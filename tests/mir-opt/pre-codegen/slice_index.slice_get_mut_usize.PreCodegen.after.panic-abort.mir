@@ -4,6 +4,7 @@ fn slice_get_mut_usize(_1: &mut [u32], _2: usize) -> Option<&mut u32> {
     debug slice => _1;
     debug index => _2;
     let mut _0: std::option::Option<&mut u32>;
+    let mut _9: usize;
     scope 1 (inlined core::slice::<impl [u32]>::get_mut::<usize>) {
         debug self => _1;
         debug index => _2;
@@ -20,7 +21,8 @@ fn slice_get_mut_usize(_1: &mut [u32], _2: usize) -> Option<&mut u32> {
                     debug self => _2;
                     debug slice => _5;
                     let mut _6: *mut u32;
-                    let mut _9: &[&str];
+                    let mut _10: *mut [u32];
+                    let mut _11: &[&str];
                     scope 5 {
                         scope 10 (inlined std::ptr::mut_ptr::<impl *mut [u32]>::as_mut_ptr) {
                             debug self => _5;
@@ -33,16 +35,16 @@ fn slice_get_mut_usize(_1: &mut [u32], _2: usize) -> Option<&mut u32> {
                         }
                     }
                     scope 6 (inlined std::ptr::mut_ptr::<impl *mut [u32]>::len) {
-                        debug self => _5;
-                        let mut _10: *const [u32];
+                        debug self => _10;
+                        let mut _12: *const [u32];
                         scope 7 (inlined std::ptr::metadata::<[u32]>) {
-                            debug ptr => _10;
+                            debug ptr => _12;
                             scope 8 {
                             }
                         }
                     }
                     scope 9 (inlined Arguments::<'_>::new_const) {
-                        debug pieces => _9;
+                        debug pieces => _11;
                     }
                 }
             }
@@ -60,7 +62,7 @@ fn slice_get_mut_usize(_1: &mut [u32], _2: usize) -> Option<&mut u32> {
 
     bb1: {
         StorageDead(_3);
-        _0 = const Option::<&mut u32>::None;
+        _0 = Option::<&mut u32>::None;
         goto -> bb3;
     }
 
@@ -69,14 +71,16 @@ fn slice_get_mut_usize(_1: &mut [u32], _2: usize) -> Option<&mut u32> {
         StorageLive(_8);
         StorageLive(_5);
         _5 = &raw mut (*_1);
-        StorageLive(_9);
         StorageLive(_10);
+        StorageLive(_11);
+        StorageLive(_12);
         StorageLive(_6);
         _6 = _5 as *mut u32 (PtrToPtr);
         _7 = Offset(_6, _2);
         StorageDead(_6);
+        StorageDead(_12);
+        StorageDead(_11);
         StorageDead(_10);
-        StorageDead(_9);
         StorageDead(_5);
         _8 = &mut (*_7);
         _0 = Option::<&mut u32>::Some(move _8);

@@ -15,7 +15,7 @@ fn main() {
     // CHECK: debug sum => const 6_u8;
     // CHECK: debug s => const "hello, world!";
     // CHECK: debug f => {{_.*}};
-    // CHECK: debug o => {{_.*}};
+    // CHECK: debug o => const Option::<u16>::Some(99_u16);
     // CHECK: debug p => const Point
     // CHECK: debug a => const 64_u32;
     let x = 1u8;

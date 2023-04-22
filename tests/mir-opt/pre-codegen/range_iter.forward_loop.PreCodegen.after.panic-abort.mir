@@ -13,6 +13,10 @@ fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
     let mut _17: &impl Fn(u32);
     let mut _18: (u32,);
     let _19: ();
+    let mut _20: std::ops::Range<u32>;
+    let mut _21: u32;
+    let mut _22: u32;
+    let mut _23: u32;
     scope 1 {
         debug iter => _5;
         let _16: u32;

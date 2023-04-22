@@ -233,8 +233,9 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         })
     }
 
+    #[instrument(level = "trace", skip(self), ret)]
     fn scalar_to_backend(&self, cv: Scalar, layout: abi::Scalar, llty: &'ll Type) -> &'ll Value {
-        let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
+        let bitsize = if llty == self.type_i1() { 1 } else { layout.size(self).bits() };
         match cv {
             Scalar::Int(int) => {
                 let data = int.assert_bits(layout.size(self));

@@ -100,8 +100,6 @@ fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:8:25: 8:39}, _2
         StorageLive(_12);
         _12 = _8;
         _13 = &_12;
-        StorageLive(_14);
-        StorageLive(_15);
         _14 = deref_copy _4;
         _15 = deref_copy _12;
         StorageLive(_16);
@@ -111,8 +109,6 @@ fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:8:25: 8:39}, _2
         _18 = Le(move _16, move _17);
         StorageDead(_17);
         StorageDead(_16);
-        StorageDead(_15);
-        StorageDead(_14);
         switchInt(move _18) -> [0: bb1, otherwise: bb2];
     }
 
@@ -134,8 +130,6 @@ fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:8:25: 8:39}, _2
         StorageLive(_20);
         _20 = _6;
         _21 = &_20;
-        StorageLive(_22);
-        StorageLive(_23);
         _22 = deref_copy _10;
         _23 = deref_copy _20;
         StorageLive(_24);
@@ -145,8 +139,6 @@ fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:8:25: 8:39}, _2
         _26 = Le(move _24, move _25);
         StorageDead(_25);
         StorageDead(_24);
-        StorageDead(_23);
-        StorageDead(_22);
         switchInt(move _26) -> [0: bb3, otherwise: bb8];
     }
 
@@ -165,8 +157,6 @@ fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:8:25: 8:39}, _2
         StorageLive(_28);
         _28 = _4;
         _29 = &_28;
-        StorageLive(_30);
-        StorageLive(_31);
         _30 = deref_copy _8;
         _31 = deref_copy _28;
         StorageLive(_32);
@@ -176,8 +166,6 @@ fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:8:25: 8:39}, _2
         _34 = Le(move _32, move _33);
         StorageDead(_33);
         StorageDead(_32);
-        StorageDead(_31);
-        StorageDead(_30);
         switchInt(move _34) -> [0: bb5, otherwise: bb6];
     }
 
@@ -199,8 +187,6 @@ fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:8:25: 8:39}, _2
         StorageLive(_36);
         _36 = _10;
         _37 = &_36;
-        StorageLive(_38);
-        StorageLive(_39);
         _38 = deref_copy _6;
         _39 = deref_copy _36;
         StorageLive(_40);
@@ -210,8 +196,6 @@ fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:8:25: 8:39}, _2
         _0 = Le(move _40, move _41);
         StorageDead(_41);
         StorageDead(_40);
-        StorageDead(_39);
-        StorageDead(_38);
         StorageDead(_36);
         StorageDead(_37);
         StorageDead(_35);

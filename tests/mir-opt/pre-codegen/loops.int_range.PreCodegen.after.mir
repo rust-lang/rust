@@ -10,6 +10,10 @@ fn int_range(_1: usize, _2: usize) -> () {
     let mut _11: std::option::Option<usize>;
     let mut _14: isize;
     let _16: ();
+    let mut _17: std::ops::Range<usize>;
+    let mut _18: usize;
+    let mut _19: usize;
+    let mut _20: usize;
     scope 1 {
         debug iter => _4;
         let _15: usize;
@@ -106,7 +110,7 @@ fn int_range(_1: usize, _2: usize) -> () {
 
     bb7: {
         _15 = ((_11 as Some).0: usize);
-        _16 = opaque::<usize>(move _15) -> [return: bb8, unwind continue];
+        _16 = opaque::<usize>(_15) -> [return: bb8, unwind continue];
     }
 
     bb8: {

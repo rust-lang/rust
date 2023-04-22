@@ -10,6 +10,10 @@ fn new(_1: Result<T, E>) -> Result<T, E> {
     let mut _6: isize;
     let _7: T;
     let _8: E;
+    let mut _9: T;
+    let mut _10: T;
+    let mut _11: E;
+    let mut _12: E;
     scope 1 {
         debug v => _3;
     }

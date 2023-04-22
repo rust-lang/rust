@@ -8,7 +8,8 @@ use std::mem::transmute;
 // EMIT_MIR transmute.less_as_i8.ConstProp.diff
 pub fn less_as_i8() -> i8 {
     // CHECK-LABEL: fn less_as_i8(
-    // CHECK: _0 = const -1_i8;
+    // CHECK: [[less:_.*]] = Less;
+    // CHECK: _0 = move [[less]] as i8 (Transmute);
     unsafe { transmute(std::cmp::Ordering::Less) }
 }
 
@@ -52,8 +53,8 @@ pub unsafe fn undef_union_as_integer() -> u32 {
 // EMIT_MIR transmute.unreachable_direct.ConstProp.diff
 pub unsafe fn unreachable_direct() -> ! {
     // CHECK-LABEL: fn unreachable_direct(
-    // CHECK: [[unit:_.*]] = ();
-    // CHECK: move [[unit]] as Never (Transmute);
+    // CHECK: = const ();
+    // CHECK: = const ZeroSized: Never;
     let x: Never = unsafe { transmute(()) };
     match x {}
 }

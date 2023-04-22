@@ -41,12 +41,17 @@
       }
   
       bb4: {
-          _1 = Add(move _2, const 0_i32);
+-         _1 = Add(move _2, const 0_i32);
++         _1 = const 42_i32;
           StorageDead(_2);
           StorageDead(_3);
           _0 = const ();
           StorageDead(_1);
           return;
       }
++ }
++ 
++ ALLOC0 (size: 1, align: 1) {
++     01                                              │ .
   }
   

@@ -581,16 +581,14 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             // inst combine is after MatchBranchSimplification to clean up Ne(_1, false)
             &multiple_return_terminators::MultipleReturnTerminators,
             &instsimplify::InstSimplify,
-            &simplify::SimplifyLocals::BeforeConstProp,
-            &copy_prop::CopyProp,
+            &o1(simplify::SimplifyLocals::BeforeConstProp),
+            &gvn::GVN,
+            &o1(simplify::SimplifyLocals::AfterGVN),
             // Perform `SeparateConstSwitch` after SSA-based analyses, as cloning blocks may
             // destroy the SSA property. It should still happen before const-propagation, so the
             // latter pass will leverage the created opportunities.
             &separate_const_switch::SeparateConstSwitch,
-            &const_prop::ConstProp,
-            &gvn::GVN,
-            &simplify::SimplifyLocals::AfterGVN,
-            &dataflow_const_prop::DataflowConstProp,
+            &dataflow_const_prop::ConstProp,
             &const_debuginfo::ConstDebugInfo,
             &o1(simplify_branches::SimplifyConstCondition::AfterConstProp),
             &jump_threading::JumpThreading,
@@ -605,6 +603,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &simplify::SimplifyLocals::Final,
             &multiple_return_terminators::MultipleReturnTerminators,
             &deduplicate_blocks::DeduplicateBlocks,
+            &copy_prop::CopyProp,
             &large_enums::EnumSizeOpt { discrepancy: 128 },
             // Some cleanup necessary at least for LLVM and potentially other codegen backends.
             &add_call_guards::CriticalCallEdges,

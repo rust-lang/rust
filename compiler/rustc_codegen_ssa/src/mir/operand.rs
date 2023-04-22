@@ -84,6 +84,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         OperandRef { val: OperandValue::ZeroSized, layout }
     }
 
+    #[instrument(level = "debug", skip(bx))]
     pub fn from_const<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
         val: mir::ConstValue<'tcx>,
@@ -125,6 +126,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         OperandRef { val, layout }
     }
 
+    #[instrument(level = "debug", skip(bx), ret)]
     fn from_const_alloc<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
         layout: TyAndLayout<'tcx>,
@@ -560,13 +562,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx.load_operand(place)
     }
 
+    #[instrument(level = "debug", skip(self, bx))]
     pub fn codegen_operand(
         &mut self,
         bx: &mut Bx,
         operand: &mir::Operand<'tcx>,
     ) -> OperandRef<'tcx, Bx::Value> {
-        debug!("codegen_operand(operand={:?})", operand);
-
         match *operand {
             mir::Operand::Copy(ref place) | mir::Operand::Move(ref place) => {
                 self.codegen_consume(bx, place.as_ref())

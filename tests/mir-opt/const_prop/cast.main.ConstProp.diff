@@ -4,11 +4,21 @@
   fn main() -> () {
       let mut _0: ();
       let _1: u32;
+      let mut _5: u8;
+      let mut _6: i32;
       scope 1 {
           debug x => _1;
           let _2: u8;
           scope 2 {
               debug y => _2;
+              let _3: i32;
+              scope 3 {
+                  debug a => _3;
+                  let _4: u8;
+                  scope 4 {
+                      debug b => _4;
+                  }
+              }
           }
       }
   
@@ -19,7 +29,22 @@
           StorageLive(_2);
 -         _2 = const 42_u32 as u8 (IntToInt);
 +         _2 = const 42_u8;
+          StorageLive(_3);
+          _3 = const 257_i32;
+          StorageLive(_4);
+          StorageLive(_5);
+          StorageLive(_6);
+-         _6 = _3;
+-         _5 = move _6 as u8 (IntToInt);
++         _6 = const 257_i32;
++         _5 = const 1_u8;
+          StorageDead(_6);
+-         _4 = Add(move _5, const 1_u8);
++         _4 = const 2_u8;
+          StorageDead(_5);
           _0 = const ();
+          StorageDead(_4);
+          StorageDead(_3);
           StorageDead(_2);
           StorageDead(_1);
           return;

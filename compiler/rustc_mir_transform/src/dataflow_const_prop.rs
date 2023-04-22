@@ -27,11 +27,11 @@ use crate::MirPass;
 const BLOCK_LIMIT: usize = 100;
 const PLACE_LIMIT: usize = 100;
 
-pub struct DataflowConstProp;
+pub struct ConstProp;
 
-impl<'tcx> MirPass<'tcx> for DataflowConstProp {
+impl<'tcx> MirPass<'tcx> for ConstProp {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 3
+        sess.mir_opt_level() >= 2
     }
 
     #[instrument(skip_all level = "debug")]

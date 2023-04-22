@@ -34,7 +34,8 @@
                               debug f => _10;
                               let _11: std::option::Option<u16>;
                               scope 7 {
-                                  debug o => _11;
+-                                 debug o => _11;
++                                 debug o => const Option::<u16>::Some(99_u16);
                                   let _12: Point;
                                   scope 8 {
 -                                     debug p => _12;
@@ -79,7 +80,7 @@
           StorageLive(_10);
           _10 = (const true, const false, const 123_u32);
           StorageLive(_11);
-          _11 = Option::<u16>::Some(const 99_u16);
+          _11 = const Option::<u16>::Some(99_u16);
           StorageLive(_12);
           _12 = const Point {{ x: 32_u32, y: 32_u32 }};
           StorageLive(_13);
@@ -106,5 +107,9 @@
   
   ALLOC0 (size: 8, align: 4) {
       20 00 00 00 20 00 00 00                         │  ... ...
+  }
+  
+  ALLOC1 (size: 4, align: 2) {
+      01 00 63 00                                     │ ..c.
   }
   

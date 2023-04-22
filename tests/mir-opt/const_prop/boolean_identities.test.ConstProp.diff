@@ -7,19 +7,17 @@
       let mut _0: bool;
       let mut _3: bool;
       let mut _4: bool;
-      let mut _5: bool;
-      let mut _6: bool;
   
       bb0: {
           StorageLive(_3);
 -         _3 = BitOr(_2, const true);
 +         _3 = const true;
-          StorageLive(_5);
--         _5 = BitAnd(_1, const false);
--         _0 = BitAnd(move _3, move _5);
-+         _5 = const false;
+          StorageLive(_4);
+-         _4 = BitAnd(_1, const false);
+-         _0 = BitAnd(move _3, move _4);
++         _4 = const false;
 +         _0 = const false;
-          StorageDead(_5);
+          StorageDead(_4);
           StorageDead(_3);
           return;
       }

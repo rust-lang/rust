@@ -1,0 +1,112 @@
+- // MIR for `main` before ConstProp
++ // MIR for `main` after ConstProp
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: A;
+      let mut _2: std::boxed::Box<[bool]>;
+      scope 1 {
+          debug a => _1;
+      }
+      scope 2 (inlined <Box<[bool]> as Default>::default) {
+          let _3: std::ptr::Unique<[bool]>;
+          let mut _4: std::ptr::Unique<[bool; 0]>;
+          let mut _5: std::ptr::Unique<[bool]>;
+          scope 3 {
+              debug ptr => _3;
+          }
+          scope 4 (inlined Unique::<[bool; 0]>::dangling) {
+              let mut _6: std::ptr::NonNull<[bool; 0]>;
+              scope 5 (inlined NonNull::<[bool; 0]>::dangling) {
+                  let mut _8: usize;
+                  scope 6 {
+                      let _7: *mut [bool; 0];
+                      scope 7 {
+                          debug ptr => _7;
+                          scope 11 (inlined NonNull::<[bool; 0]>::new_unchecked) {
+                              debug ptr => _7;
+                              let mut _9: *const [bool; 0];
+                              let mut _10: *mut [bool; 0];
+                              scope 12 {
+                                  scope 13 (inlined NonNull::<T>::new_unchecked::runtime::<[bool; 0]>) {
+                                      debug ptr => _10;
+                                      scope 14 (inlined std::ptr::mut_ptr::<impl *mut [bool; 0]>::is_null) {
+                                          debug self => _10;
+                                          let mut _11: *mut u8;
+                                          scope 15 {
+                                              scope 16 (inlined std::ptr::mut_ptr::<impl *mut T>::is_null::runtime_impl) {
+                                                  debug ptr => _11;
+                                                  scope 17 (inlined std::ptr::mut_ptr::<impl *mut u8>::addr) {
+                                                      debug self => _11;
+                                                      scope 18 {
+                                                          scope 19 (inlined std::ptr::mut_ptr::<impl *mut u8>::cast::<()>) {
+                                                              debug self => _11;
+                                                          }
+                                                      }
+                                                  }
+                                              }
+                                          }
+                                      }
+                                  }
+                              }
+                          }
+                      }
+                      scope 8 (inlined align_of::<[bool; 0]>) {
+                      }
+                      scope 9 (inlined invalid_mut::<[bool; 0]>) {
+                          debug addr => _8;
+                          scope 10 {
+                          }
+                      }
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          StorageLive(_3);
+          StorageLive(_5);
+          StorageLive(_4);
+          StorageLive(_6);
+          StorageLive(_7);
+          StorageLive(_8);
+-         _8 = AlignOf([bool; 0]);
+-         _7 = _8 as *mut [bool; 0] (Transmute);
++         _8 = const 1_usize;
++         _7 = const {0x1 as *mut [bool; 0]};
+          StorageDead(_8);
+          StorageLive(_9);
+          StorageLive(_10);
+          StorageLive(_11);
+-         _9 = _7 as *const [bool; 0] (PointerCoercion(MutToConstPointer));
++         _9 = const {0x1 as *mut [bool; 0]} as *const [bool; 0] (PointerCoercion(MutToConstPointer));
+          _6 = NonNull::<[bool; 0]> { pointer: _9 };
+          StorageDead(_11);
+          StorageDead(_10);
+          StorageDead(_9);
+          StorageDead(_7);
+          _4 = Unique::<[bool; 0]> { pointer: move _6, _marker: const PhantomData::<[bool; 0]> };
+          StorageDead(_6);
+          _3 = move _4 as std::ptr::Unique<[bool]> (PointerCoercion(Unsize));
+          StorageDead(_4);
+          _2 = Box::<[bool]>(_3, const std::alloc::Global);
+          StorageDead(_5);
+          StorageDead(_3);
+          _1 = A { foo: move _2 };
+          StorageDead(_2);
+          _0 = const ();
+          drop(_1) -> [return: bb1, unwind: bb2];
+      }
+  
+      bb1: {
+          StorageDead(_1);
+          return;
+      }
+  
+      bb2 (cleanup): {
+          resume;
+      }
+  }
+  
