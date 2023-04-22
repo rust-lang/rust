@@ -159,14 +159,12 @@ fn ty_from_text(text: &str) -> ast::Type {
 }
 
 /// Related goto [link](https://doc.rust-lang.org/reference/items/type-aliases.html)
-///     Type Alias syntax is
-///
-///     ```
-///     TypeAlias :
-///        type IDENTIFIER GenericParams? ( : TypeParamBounds )? WhereClause? ( = Type WhereClause?)? ;
-///     ```
-///
-///     FIXME : ident should be of type ast::Ident
+/// Type Alias syntax is
+/// ```
+/// TypeAlias :
+/// type IDENTIFIER GenericParams? ( : TypeParamBounds )? WhereClause? ( = Type WhereClause?)? ;
+/// ```
+/// FIXME : ident should be of type ast::Ident
 pub fn ty_alias(
     ident: &str,
     generic_param_list: Option<ast::GenericParamList>,
@@ -182,7 +180,7 @@ pub fn ty_alias(
     }
 
     if let Some(list) = type_param_bounds {
-        s.push_str(&format!(" : {}", &list.to_string()));
+        s.push_str(&format!(" : {}", &list));
     }
 
     if let Some(cl) = where_clause {
