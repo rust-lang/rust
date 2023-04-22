@@ -495,6 +495,20 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
     unsafe { drop_in_place(to_drop) }
 }
 
+/// [`intrinsics::assume`]s that the `ptr` is not [`null()`].
+///
+/// Equivalent to `assume(!ptr.is_null())`, but more convenient and (because it
+/// only handles `Sized` pointees) substantially simpler in MIR.
+///
+/// # Safety
+///
+/// `ptr` must not be `null()`.
+#[inline(always)]
+pub(crate) unsafe fn assume_not_null<T>(ptr: *const T) {
+    // SAFETY: By our safety precondition, this is ok.
+    unsafe { intrinsics::assume(ptr != const { null::<T>() }) }
+}
+
 /// Creates a null raw pointer.
 ///
 /// # Examples

@@ -5,7 +5,7 @@ macro_rules! is_empty {
     // The way we encode the length of a ZST iterator, this works both for ZST
     // and non-ZST.
     ($self: ident) => {
-        $self.ptr.as_ptr() as *const T == $self.end
+        $self.ptr.as_const_ptr() == $self.end
     };
 }
 
@@ -54,7 +54,9 @@ macro_rules! iterator {
         // backwards by `n`. `n` must not exceed `self.len()`.
         macro_rules! zst_shrink {
             ($self: ident, $n: ident) => {
-                $self.end = $self.end.wrapping_byte_sub($n);
+                // Not using `wrapping_byte_sub` because that has to monomorphize
+                // metadata handling, which we don't need since `T: Sized`.
+                $self.end = $self.end.cast::<u8>().wrapping_sub($n).cast();
             }
         }
 
@@ -73,16 +75,16 @@ macro_rules! iterator {
             // Unsafe because the offset must not exceed `self.len()`.
             #[inline(always)]
             unsafe fn post_inc_start(&mut self, offset: usize) -> * $raw_mut T {
+                // SAFETY: `NonNull<T>` to `*const T` or `*mut T` is always sound.
+                let old: * $raw_mut T = unsafe { mem::transmute(self.ptr) };
                 if T::IS_ZST {
                     zst_shrink!(self, offset);
-                    self.ptr.as_ptr()
                 } else {
-                    let old = self.ptr.as_ptr();
                     // SAFETY: the caller guarantees that `offset` doesn't exceed `self.len()`,
                     // so this new pointer is inside `self` and thus guaranteed to be non-null.
-                    self.ptr = unsafe { NonNull::new_unchecked(self.ptr.as_ptr().add(offset)) };
-                    old
+                    self.ptr = unsafe { mem::transmute(old.add(offset)) };
                 }
+                old
             }
 
             // Helper function for moving the end of the iterator backwards by `offset` elements,
@@ -129,9 +131,9 @@ macro_rules! iterator {
                 // non-null end pointer. The call to `next_unchecked!` is safe
                 // since we check if the iterator is empty first.
                 unsafe {
-                    assume(!self.ptr.as_ptr().is_null());
+                    assume_not_null(self.ptr.as_const_ptr());
                     if !<T>::IS_ZST {
-                        assume(!self.end.is_null());
+                        assume_not_null(self.end);
                     }
                     if is_empty!(self) {
                         None
@@ -344,9 +346,9 @@ macro_rules! iterator {
                 // The call to `next_back_unchecked!` is safe since we check if the iterator is
                 // empty first.
                 unsafe {
-                    assume(!self.ptr.as_ptr().is_null());
+                    assume_not_null(self.ptr.as_const_ptr());
                     if !<T>::IS_ZST {
-                        assume(!self.end.is_null());
+                        assume_not_null(self.end);
                     }
                     if is_empty!(self) {
                         None

@@ -326,6 +326,11 @@ impl<T: ?Sized> NonNull<T> {
         self.pointer as *mut T
     }
 
+    #[inline(always)]
+    pub(crate) const fn as_const_ptr(self) -> *const T {
+        self.pointer
+    }
+
     /// Returns a shared reference to the value. If the value may be uninitialized, [`as_uninit_ref`]
     /// must be used instead.
     ///
