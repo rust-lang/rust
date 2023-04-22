@@ -26,8 +26,6 @@ const CALL_PENALTY: usize = 25;
 const LANDINGPAD_PENALTY: usize = 50;
 const RESUME_PENALTY: usize = 45;
 
-const UNKNOWN_SIZE_COST: usize = 10;
-
 const TOP_DOWN_DEPTH_LIMIT: usize = 5;
 
 pub struct Inline;
@@ -464,12 +462,6 @@ impl<'tcx> Inliner<'tcx> {
             }
         }
 
-        // Count up the cost of local variables and temps, if we know the size
-        // use that, otherwise we use a moderately-large dummy cost.
-        for v in callee_body.vars_and_temps_iter() {
-            checker.visit_local_decl(v, &callee_body.local_decls[v]);
-        }
-
         // Abort if type validation found anything fishy.
         checker.validation?;
 
@@ -764,14 +756,6 @@ impl<'tcx> Inliner<'tcx> {
     }
 }
 
-fn type_size_of<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    ty: Ty<'tcx>,
-) -> Option<u64> {
-    tcx.layout_of(param_env.and(ty)).ok().map(|layout| layout.size.bytes())
-}
-
 /// Verify that the callee body is compatible with the caller.
 ///
 /// This visitor mostly computes the inlining cost,
@@ -843,24 +827,6 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
         }
 
         self.super_terminator(terminator, location);
-    }
-
-    /// Count up the cost of local variables and temps, if we know the size
-    /// use that, otherwise we use a moderately-large dummy cost.
-    fn visit_local_decl(&mut self, local: Local, local_decl: &LocalDecl<'tcx>) {
-        let tcx = self.tcx;
-        let ptr_size = tcx.data_layout.pointer_size.bytes();
-
-        let ty = self.instance.subst_mir(tcx, &local_decl.ty);
-        // Cost of the var is the size in machine-words, if we know
-        // it.
-        if let Some(size) = type_size_of(tcx, self.param_env, ty) {
-            self.cost += ((size + ptr_size - 1) / ptr_size) as usize;
-        } else {
-            self.cost += UNKNOWN_SIZE_COST;
-        }
-
-        self.super_local_decl(local, local_decl)
     }
 
     /// This method duplicates code from MIR validation in an attempt to detect type mismatches due
