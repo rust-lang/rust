@@ -1,6 +1,9 @@
 //@ build-fail
 //@ ignore-32bit
 
+//@ compile-flags: -Z mir-opt-level=0
+// (The optimizations would remove the values on which this errors.)
+
 fn main() {
     let x = [0usize; 0xffff_ffff_ffff_ffff]; //~ ERROR too big
 }

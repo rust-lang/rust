@@ -1,6 +1,9 @@
 //@ ignore-64bit
 //@ build-fail
 
+//@ compile-flags: -Z mir-opt-level=0
+// (The optimizations would remove the values on which this errors.)
+
 #![allow(arithmetic_overflow)]
 
 fn main() {
