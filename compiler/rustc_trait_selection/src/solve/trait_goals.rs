@@ -86,8 +86,9 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
     ) -> QueryResult<'tcx> {
         if let Some(poly_trait_pred) = assumption.to_opt_poly_trait_pred()
             && poly_trait_pred.def_id() == goal.predicate.def_id()
+            && poly_trait_pred.polarity() == goal.predicate.polarity
         {
-            // FIXME: Constness and polarity
+            // FIXME: Constness
             ecx.probe(|ecx| {
                 let assumption_trait_pred =
                     ecx.instantiate_binder_with_infer(poly_trait_pred);
@@ -111,6 +112,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
     ) -> QueryResult<'tcx> {
         if let Some(poly_trait_pred) = assumption.to_opt_poly_trait_pred()
             && poly_trait_pred.def_id() == goal.predicate.def_id()
+            && poly_trait_pred.polarity() == goal.predicate.polarity
         {
             // FIXME: Constness and polarity
             ecx.probe(|ecx| {
@@ -147,6 +149,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
         if let Some(result) = ecx.disqualify_auto_trait_candidate_due_to_possible_impl(goal) {
             return result;
         }
@@ -161,6 +167,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
         let tcx = ecx.tcx();
 
         ecx.probe(|ecx| {
@@ -176,6 +186,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
         ecx.probe_and_evaluate_goal_for_constituent_tys(
             goal,
             structural_traits::instantiate_constituent_tys_for_sized_trait,
@@ -186,6 +200,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
         ecx.probe_and_evaluate_goal_for_constituent_tys(
             goal,
             structural_traits::instantiate_constituent_tys_for_copy_clone_trait,
@@ -196,6 +214,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
         if goal.predicate.self_ty().has_non_region_infer() {
             return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
         }
@@ -217,6 +239,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
         if let ty::FnPtr(..) = goal.predicate.self_ty().kind() {
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         } else {
@@ -229,6 +255,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         goal: Goal<'tcx, Self>,
         goal_kind: ty::ClosureKind,
     ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
         let tcx = ecx.tcx();
         let tupled_inputs_and_output =
             match structural_traits::extract_tupled_inputs_and_output_from_callable(
@@ -259,6 +289,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
         if let ty::Tuple(..) = goal.predicate.self_ty().kind() {
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         } else {
@@ -268,8 +302,12 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
     fn consider_builtin_pointee_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
-        _goal: Goal<'tcx, Self>,
+        goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
         ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 
@@ -277,6 +315,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
         let ty::Generator(def_id, _, _) = *goal.predicate.self_ty().kind() else {
             return Err(NoSolution);
         };
@@ -297,6 +339,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
         let self_ty = goal.predicate.self_ty();
         let ty::Generator(def_id, substs, _) = *self_ty.kind() else {
             return Err(NoSolution);
@@ -326,6 +372,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
         let tcx = ecx.tcx();
         let a_ty = goal.predicate.self_ty();
         let b_ty = goal.predicate.trait_ref.substs.type_at(1);
@@ -447,6 +497,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> Vec<CanonicalResponse<'tcx>> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return vec![];
+        }
+
         let tcx = ecx.tcx();
 
         let a_ty = goal.predicate.self_ty();
@@ -521,8 +575,12 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
     fn consider_builtin_discriminant_kind_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
-        _goal: Goal<'tcx, Self>,
+        goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
         // `DiscriminantKind` is automatically implemented for every type.
         ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
@@ -531,6 +589,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
         if !goal.param_env.is_const() {
             // `Destruct` is automatically implemented for every type in
             // non-const environments.
@@ -545,6 +607,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
         // `rustc_transmute` does not have support for type or const params
         if goal.has_non_region_placeholders() {
             return Err(NoSolution);
