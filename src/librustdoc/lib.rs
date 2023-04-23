@@ -212,8 +212,6 @@ fn init_logging() {
         .with_verbose_exit(true)
         .with_verbose_entry(true)
         .with_indent_amount(2);
-    #[cfg(all(parallel_compiler, debug_assertions))]
-    let layer = layer.with_thread_ids(true).with_thread_names(true);
 
     use tracing_subscriber::layer::SubscriberExt;
     let subscriber = tracing_subscriber::Registry::default().with(filter).with(layer);
@@ -740,7 +738,7 @@ fn main_args(at_args: &[String]) -> MainResult {
     };
 
     // Set parallel mode before error handler creation, which will create `Lock`s.
-    interface::set_thread_safe_mode(&options.unstable_opts);
+    interface::set_parallel_mode(&options.unstable_opts);
 
     let diag = core::new_handler(
         options.error_format,

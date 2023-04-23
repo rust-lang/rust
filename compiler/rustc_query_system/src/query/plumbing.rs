@@ -12,12 +12,14 @@ use crate::query::job::{report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobI
 use crate::query::SerializedDepNodeIndex;
 use crate::query::{QueryContext, QueryMap, QuerySideEffects, QueryStackFrame};
 use crate::HandleCycleError;
+#[cfg(parallel_compiler)]
+use rustc_data_structures::cold_path;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lock;
-#[cfg(parallel_compiler)]
-use rustc_data_structures::{cold_path, sharded::Sharded};
+
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, FatalError};
 use rustc_span::{Span, DUMMY_SP};
 use std::cell::Cell;
@@ -25,15 +27,13 @@ use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem;
+use std::ops::DerefMut;
 use thin_vec::ThinVec;
 
 use super::QueryConfig;
 
 pub struct QueryState<K, D: DepKind> {
-    #[cfg(parallel_compiler)]
     active: Sharded<FxHashMap<K, QueryResult<D>>>,
-    #[cfg(not(parallel_compiler))]
-    active: Lock<FxHashMap<K, QueryResult<D>>>,
 }
 
 /// Indicates the state of a query for a given key in a query map.
@@ -52,15 +52,8 @@ where
     D: DepKind,
 {
     pub fn all_inactive(&self) -> bool {
-        #[cfg(parallel_compiler)]
-        {
-            let shards = self.active.lock_shards();
-            shards.iter().all(|shard| shard.is_empty())
-        }
-        #[cfg(not(parallel_compiler))]
-        {
-            self.active.lock().is_empty()
-        }
+        let shards = self.active.lock_shards();
+        shards.iter().all(|shard| shard.is_empty())
     }
 
     pub fn try_collect_active_jobs<Qcx: Copy>(
@@ -69,27 +62,11 @@ where
         make_query: fn(Qcx, K) -> QueryStackFrame<D>,
         jobs: &mut QueryMap<D>,
     ) -> Option<()> {
-        #[cfg(parallel_compiler)]
-        {
-            // We use try_lock_shards here since we are called from the
-            // deadlock handler, and this shouldn't be locked.
-            let shards = self.active.try_lock_shards()?;
-            for shard in shards.iter() {
-                for (k, v) in shard.iter() {
-                    if let QueryResult::Started(ref job) = *v {
-                        let query = make_query(qcx, *k);
-                        jobs.insert(job.id, QueryJobInfo { query, job: job.clone() });
-                    }
-                }
-            }
-        }
-        #[cfg(not(parallel_compiler))]
-        {
-            // We use try_lock here since we are called from the
-            // deadlock handler, and this shouldn't be locked.
-            // (FIXME: Is this relevant for non-parallel compilers? It doesn't
-            // really hurt much.)
-            for (k, v) in self.active.try_lock()?.iter() {
+        // We use try_lock_shards here since we are called from the
+        // deadlock handler, and this shouldn't be locked.
+        let shards = self.active.try_lock_shards()?;
+        for shard in shards.iter() {
+            for (k, v) in shard.iter() {
                 if let QueryResult::Started(ref job) = *v {
                     let query = make_query(qcx, *k);
                     jobs.insert(job.id, QueryJobInfo { query, job: job.clone() });
@@ -183,14 +160,10 @@ where
         cache.complete(key, result, dep_node_index);
 
         let job = {
-            #[cfg(parallel_compiler)]
-            let mut lock = state.active.get_shard_by_value(&key).lock();
-            #[cfg(not(parallel_compiler))]
-            let mut lock = state.active.lock();
-            match lock.remove(&key).unwrap() {
+            state.active.with_get_shard_by_value(&key, |lock| match lock.remove(&key).unwrap() {
                 QueryResult::Started(job) => job,
                 QueryResult::Poisoned => panic!(),
-            }
+            })
         };
 
         job.signal_complete();
@@ -208,16 +181,14 @@ where
         // Poison the query so jobs waiting on it panic.
         let state = self.state;
         let job = {
-            #[cfg(parallel_compiler)]
-            let mut shard = state.active.get_shard_by_value(&self.key).lock();
-            #[cfg(not(parallel_compiler))]
-            let mut shard = state.active.lock();
-            let job = match shard.remove(&self.key).unwrap() {
-                QueryResult::Started(job) => job,
-                QueryResult::Poisoned => panic!(),
-            };
-            shard.insert(self.key, QueryResult::Poisoned);
-            job
+            state.active.with_get_shard_by_value(&self.key, |shard| {
+                let job = match shard.remove(&self.key).unwrap() {
+                    QueryResult::Started(job) => job,
+                    QueryResult::Poisoned => panic!(),
+                };
+                shard.insert(self.key, QueryResult::Poisoned);
+                job
+            })
         };
         // Also signal the completion of the job, so waiters
         // will continue execution.
@@ -254,7 +225,6 @@ where
 
 #[cold]
 #[inline(never)]
-#[cfg(not(parallel_compiler))]
 fn cycle_error<Q, Qcx>(
     query: Q,
     qcx: Qcx,
@@ -324,10 +294,8 @@ where
     Qcx: QueryContext,
 {
     let state = query.query_state(qcx);
-    #[cfg(parallel_compiler)]
     let mut state_lock = state.active.get_shard_by_value(&key).lock();
-    #[cfg(not(parallel_compiler))]
-    let mut state_lock = state.active.lock();
+    let lock = state_lock.deref_mut();
 
     // For the parallel compiler we need to check both the query cache and query state structures
     // while holding the state lock to ensure that 1) the query has not yet completed and 2) the
@@ -344,7 +312,7 @@ where
 
     let current_job_id = qcx.current_query_job();
 
-    match state_lock.entry(key) {
+    match lock.entry(key) {
         Entry::Vacant(entry) => {
             // Nothing has computed or is computing the query, so we start a new job and insert it in the
             // state map.
@@ -370,6 +338,14 @@ where
                 }
                 #[cfg(parallel_compiler)]
                 QueryResult::Started(job) => {
+                    if std::intrinsics::likely(!rustc_data_structures::sync::active()) {
+                        let id = job.id;
+                        drop(state_lock);
+
+                        // If we are single-threaded we know that we have cycle error,
+                        // so we just return the error.
+                        return cycle_error(query, qcx, id, span);
+                    }
                     // Get the latch out
                     let latch = job.latch();
                     drop(state_lock);
