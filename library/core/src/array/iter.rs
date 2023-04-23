@@ -3,8 +3,9 @@
 use crate::num::NonZeroUsize;
 use crate::{
     fmt,
+    intrinsics::transmute_unchecked,
     iter::{self, ExactSizeIterator, FusedIterator, TrustedLen},
-    mem::{self, MaybeUninit},
+    mem::MaybeUninit,
     ops::{IndexRange, Range},
     ptr,
 };
@@ -63,18 +64,11 @@ impl<T, const N: usize> IntoIterator for [T; N] {
         // an array of `T`.
         //
         // With that, this initialization satisfies the invariants.
-
-        // FIXME(LukasKalbertodt): actually use `mem::transmute` here, once it
-        // works with const generics:
-        //     `mem::transmute::<[T; N], [MaybeUninit<T>; N]>(array)`
         //
-        // Until then, we can use `mem::transmute_copy` to create a bitwise copy
-        // as a different type, then forget `array` so that it is not dropped.
-        unsafe {
-            let iter = IntoIter { data: mem::transmute_copy(&self), alive: IndexRange::zero_to(N) };
-            mem::forget(self);
-            iter
-        }
+        // FIXME: If normal `transmute` ever gets smart enough to allow this
+        // directly, use it instead of `transmute_unchecked`.
+        let data: [MaybeUninit<T>; N] = unsafe { transmute_unchecked(self) };
+        IntoIter { data, alive: IndexRange::zero_to(N) }
     }
 }
 

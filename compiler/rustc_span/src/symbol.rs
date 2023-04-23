@@ -1505,6 +1505,7 @@ symbols! {
         transmute_generic_consts,
         transmute_opts,
         transmute_trait,
+        transmute_unchecked,
         transparent,
         transparent_enums,
         transparent_unions,

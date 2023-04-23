@@ -221,7 +221,7 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             terminator.kind = TerminatorKind::Goto { target };
                         }
                     }
-                    sym::transmute => {
+                    sym::transmute | sym::transmute_unchecked => {
                         let dst_ty = destination.ty(local_decls, tcx).ty;
                         let Ok([arg]) = <[_; 1]>::try_from(std::mem::take(args)) else {
                             span_bug!(
