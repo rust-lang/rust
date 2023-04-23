@@ -245,17 +245,9 @@ impl Command {
         self.args.push(arg);
     }
 
-    pub fn args<I, S>(&mut self, args: I)
-    where
-        I: Iterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        let (lower, _) = args.size_hint();
-        self.argv.0.reserve(lower);
-        self.args.reserve(lower);
-        args.for_each(|arg| {
-            self.arg(AsRef::as_ref(&arg));
-        });
+    pub fn reserve_args(&mut self, additional: usize) {
+        self.argv.0.reserve(additional);
+        self.args.reserve(additional);
     }
 
     pub fn cwd(&mut self, dir: &OsStr) {
