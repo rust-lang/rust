@@ -2750,7 +2750,7 @@ mod tests {
     }
 
     #[simd_test(enable = "altivec")]
-    unsafe fn test_vec_lde() {
+    unsafe fn test_vec_lde_u8() {
         let pat = [u8x16::new(
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
         )];
@@ -2758,11 +2758,19 @@ mod tests {
             let v: u8x16 = transmute(vec_lde(off, pat.as_ptr() as *const u8));
             assert_eq!(off as u8, v.extract(off as _));
         }
+    }
+
+    #[simd_test(enable = "altivec")]
+    unsafe fn test_vec_lde_u16() {
         let pat = [u16x8::new(0, 1, 2, 3, 4, 5, 6, 7)];
         for off in 0..8 {
             let v: u16x8 = transmute(vec_lde(off * 2, pat.as_ptr() as *const u8));
             assert_eq!(off as u16, v.extract(off as _));
         }
+    }
+
+    #[simd_test(enable = "altivec")]
+    unsafe fn test_vec_lde_u32() {
         let pat = [u32x4::new(0, 1, 2, 3)];
         for off in 0..4 {
             let v: u32x4 = transmute(vec_lde(off * 4, pat.as_ptr() as *const u8));
