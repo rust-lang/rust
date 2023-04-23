@@ -236,6 +236,7 @@
 //
 // Language features:
 // tidy-alphabetical-start
+#![feature(alloc_error_handler)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]

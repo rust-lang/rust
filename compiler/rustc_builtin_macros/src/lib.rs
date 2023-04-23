@@ -27,6 +27,7 @@ use rustc_expand::proc_macro::BangProcMacro;
 use rustc_fluent_macro::fluent_messages;
 use rustc_span::symbol::sym;
 
+mod alloc_error_handler;
 mod assert;
 mod cfg;
 mod cfg_accessible;
@@ -103,6 +104,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
     }
 
     register_attr! {
+        alloc_error_handler: alloc_error_handler::expand,
         bench: test::expand_bench,
         cfg_accessible: cfg_accessible::Expander,
         cfg_eval: cfg_eval::expand,

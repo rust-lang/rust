@@ -1531,6 +1531,15 @@ pub(crate) mod builtin {
         /* compiler built-in */
     }
 
+    /// Deprecated attribute for functionality now handled by panic_handler
+    #[unstable(feature = "alloc_error_handler", issue = "51540")]
+    #[deprecated(since = "1.71", note = "Please use #[panic_handler] instead")]
+    #[allow_internal_unstable(rustc_attrs)]
+    #[rustc_builtin_macro]
+    pub macro alloc_error_handler($item:item) {
+        /* compiler built-in */
+    }
+
     /// Keeps the item it's applied to if the passed path is accessible, and removes it otherwise.
     #[unstable(
         feature = "cfg_accessible",
