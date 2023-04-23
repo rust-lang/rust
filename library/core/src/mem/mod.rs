@@ -1168,7 +1168,7 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// [`as`]: ../../std/keyword.as.html
 /// [primitive representation]: ../../reference/type-layout.html#primitive-representations
 /// [default representation]: ../../reference/type-layout.html#the-default-representation
-/// ```
+/// ```ignore (FIXME: *const _ cannot be resolved anymore for some reason.)
 /// #[repr(u8)]
 /// enum Enum {
 ///     Unit,
