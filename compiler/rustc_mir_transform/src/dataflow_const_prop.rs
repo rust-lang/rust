@@ -6,7 +6,7 @@ use rustc_const_eval::const_eval::CheckAlignment;
 use rustc_const_eval::interpret::{ConstValue, ImmTy, Immediate, InterpCx, Scalar};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
-use rustc_middle::mir::visit::{MutVisitor, Visitor};
+use rustc_middle::mir::visit::{MutVisitor, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
@@ -545,9 +545,27 @@ impl<'tcx> MutVisitor<'tcx> for CollectAndPatch<'tcx, '_> {
                 if let Some(value) = self.before_effect.get(&(location, *place)) {
                     let ty = place.ty(self.local_decls, self.tcx).ty;
                     *operand = self.make_operand(*value, ty);
+                } else if !place.projection.is_empty() {
+                    self.super_operand(operand, location)
                 }
             }
             Operand::Constant(_) => {}
+        }
+    }
+
+    fn process_projection_elem(
+        &mut self,
+        elem: PlaceElem<'tcx>,
+        location: Location,
+    ) -> Option<PlaceElem<'tcx>> {
+        if let PlaceElem::Index(local) = elem
+            && let Some(value) = self.before_effect.get(&(location, local.into()))
+            && let Ok(offset) = value.try_to_target_usize(self.tcx)
+            && let Some(min_length) = offset.checked_add(1)
+        {
+            Some(PlaceElem::ConstantIndex { offset, min_length, from_end: false })
+        } else {
+            None
         }
     }
 }
@@ -560,17 +578,21 @@ struct OperandCollector<'tcx, 'map, 'locals, 'a> {
 
 impl<'tcx> Visitor<'tcx> for OperandCollector<'tcx, '_, '_, '_> {
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
-        match operand {
-            Operand::Copy(place) | Operand::Move(place) => {
-                match self.state.get(place.as_ref(), self.map) {
-                    FlatSet::Top => (),
-                    FlatSet::Elem(value) => {
-                        self.visitor.before_effect.insert((location, *place), value);
-                    }
-                    FlatSet::Bottom => (),
-                }
+        if let Some(place) = operand.place() {
+            if let FlatSet::Elem(value) = self.state.get(place.as_ref(), self.map) {
+                self.visitor.before_effect.insert((location, place), value);
+            } else if !place.projection.is_empty() {
+                // Try to propagate into `Index` projections.
+                self.super_operand(operand, location)
             }
-            _ => (),
+        }
+    }
+
+    fn visit_local(&mut self, local: Local, ctxt: PlaceContext, location: Location) {
+        if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy | NonMutatingUseContext::Move) = ctxt
+            && let FlatSet::Elem(value) = self.state.get(local.into(), self.map)
+        {
+            self.visitor.before_effect.insert((location, local.into()), value);
         }
     }
 }
