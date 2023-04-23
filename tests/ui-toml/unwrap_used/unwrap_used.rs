@@ -1,4 +1,4 @@
-// compile-flags: --test
+//@compile-flags: --test
 
 #![allow(unused_mut, clippy::get_first, clippy::from_iter_instead_of_collect)]
 #![warn(clippy::unwrap_used)]

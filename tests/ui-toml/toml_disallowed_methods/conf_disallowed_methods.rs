@@ -1,4 +1,4 @@
-// compile-flags: --crate-name conf_disallowed_methods
+//@compile-flags: --crate-name conf_disallowed_methods
 
 #![warn(clippy::disallowed_methods)]
 

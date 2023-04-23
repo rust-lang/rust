@@ -846,7 +846,7 @@ pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
         },
         ExprKind::Tup(items) | ExprKind::Array(items) => items.iter().all(|x| is_default_equivalent(cx, x)),
         ExprKind::Repeat(x, ArrayLen::Body(len)) => if_chain! {
-            if let ExprKind::Lit(ref const_lit) = cx.tcx.hir().body(len.body).value.kind;
+            if let ExprKind::Lit(const_lit) = cx.tcx.hir().body(len.body).value.kind;
             if let LitKind::Int(v, _) = const_lit.node;
             if v <= 32 && is_default_equivalent(cx, x);
             then {
@@ -875,7 +875,7 @@ fn is_default_equivalent_from(cx: &LateContext<'_>, from_func: &Expr<'_>, arg: &
             }) => return sym.is_empty() && is_path_lang_item(cx, ty, LangItem::String),
             ExprKind::Array([]) => return is_path_diagnostic_item(cx, ty, sym::Vec),
             ExprKind::Repeat(_, ArrayLen::Body(len)) => {
-                if let ExprKind::Lit(ref const_lit) = cx.tcx.hir().body(len.body).value.kind &&
+                if let ExprKind::Lit(const_lit) = cx.tcx.hir().body(len.body).value.kind &&
                     let LitKind::Int(v, _) = const_lit.node
                 {
                         return v == 0 && is_path_diagnostic_item(cx, ty, sym::Vec);
@@ -1569,7 +1569,7 @@ pub fn is_integer_const(cx: &LateContext<'_>, e: &Expr<'_>, value: u128) -> bool
 /// Checks whether the given expression is a constant literal of the given value.
 pub fn is_integer_literal(expr: &Expr<'_>, value: u128) -> bool {
     // FIXME: use constant folding
-    if let ExprKind::Lit(ref spanned) = expr.kind {
+    if let ExprKind::Lit(spanned) = expr.kind {
         if let LitKind::Int(v, _) = spanned.node {
             return v == value;
         }
@@ -2165,10 +2165,7 @@ pub fn fn_has_unsatisfiable_preds(cx: &LateContext<'_>, did: DefId) -> bool {
         .predicates
         .iter()
         .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
-    traits::impossible_predicates(
-        cx.tcx,
-        traits::elaborate(cx.tcx, predicates).collect::<Vec<_>>(),
-    )
+    traits::impossible_predicates(cx.tcx, traits::elaborate(cx.tcx, predicates).collect::<Vec<_>>())
 }
 
 /// Returns the `DefId` of the callee if the given expression is a function or method call.

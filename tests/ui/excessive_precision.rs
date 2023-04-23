@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::excessive_precision)]
 #![allow(dead_code, unused_variables, clippy::print_literal)]
 

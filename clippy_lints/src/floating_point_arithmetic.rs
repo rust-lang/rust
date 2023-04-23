@@ -677,7 +677,7 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
             {
                 let mut proposal = format!("{}.to_degrees()", Sugg::hir(cx, mul_lhs, "..").maybe_par());
                 if_chain! {
-                    if let ExprKind::Lit(ref literal) = mul_lhs.kind;
+                    if let ExprKind::Lit(literal) = mul_lhs.kind;
                     if let ast::LitKind::Float(ref value, float_type) = literal.node;
                     if float_type == ast::LitFloatType::Unsuffixed;
                     then {
@@ -703,7 +703,7 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
             {
                 let mut proposal = format!("{}.to_radians()", Sugg::hir(cx, mul_lhs, "..").maybe_par());
                 if_chain! {
-                    if let ExprKind::Lit(ref literal) = mul_lhs.kind;
+                    if let ExprKind::Lit(literal) = mul_lhs.kind;
                     if let ast::LitKind::Float(ref value, float_type) = literal.node;
                     if float_type == ast::LitFloatType::Unsuffixed;
                     then {

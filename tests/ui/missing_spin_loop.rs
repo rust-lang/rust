@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::missing_spin_loop)]
 #![allow(clippy::bool_comparison)]
 #![allow(unused_braces)]

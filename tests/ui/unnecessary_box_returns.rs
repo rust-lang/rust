@@ -54,6 +54,16 @@ fn string() -> String {
     String::from("Hello, world")
 }
 
+struct Huge([u8; 500]);
+struct HasHuge(Box<Huge>);
+
+impl HasHuge {
+    // don't lint: The size of `Huge` is very large
+    fn into_huge(self) -> Box<Huge> {
+        self.0
+    }
+}
+
 fn main() {
     // don't lint: this is a closure
     let a = || -> Box<usize> { Box::new(5) };

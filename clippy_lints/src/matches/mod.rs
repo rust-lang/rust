@@ -843,7 +843,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usages of `Err(x)?`.
+    /// Checks for usage of `Err(x)?`.
     ///
     /// ### Why is this bad?
     /// The `?` operator is designed to allow calls that
@@ -878,7 +878,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usages of `match` which could be implemented using `map`
+    /// Checks for usage of `match` which could be implemented using `map`
     ///
     /// ### Why is this bad?
     /// Using the `map` method is clearer and more concise.
@@ -902,7 +902,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usages of `match` which could be implemented using `filter`
+    /// Checks for usage of `match` which could be implemented using `filter`
     ///
     /// ### Why is this bad?
     /// Using the `filter` method is clearer and more concise.

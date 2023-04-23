@@ -42,11 +42,11 @@ fn get_open_options(cx: &LateContext<'_>, argument: &Expr<'_>, options: &mut Vec
         // Only proceed if this is a call on some object of type std::fs::OpenOptions
         if match_type(cx, obj_ty, &paths::OPEN_OPTIONS) && !arguments.is_empty() {
             let argument_option = match arguments[0].kind {
-                ExprKind::Lit(ref span) => {
+                ExprKind::Lit(span) => {
                     if let Spanned {
                         node: LitKind::Bool(lit),
                         ..
-                    } = *span
+                    } = span
                     {
                         if *lit { Argument::True } else { Argument::False }
                     } else {

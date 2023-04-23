@@ -1,5 +1,5 @@
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> $DIR/derive.rs:8:1
+  --> $DIR/derive.rs:7:1
    |
 LL | / impl Clone for Qux {
 LL | |     fn clone(&self) -> Self {
@@ -9,7 +9,7 @@ LL | | }
    | |_^
    |
 note: consider deriving `Clone` or removing `Copy`
-  --> $DIR/derive.rs:8:1
+  --> $DIR/derive.rs:7:1
    |
 LL | / impl Clone for Qux {
 LL | |     fn clone(&self) -> Self {
@@ -20,7 +20,7 @@ LL | | }
    = note: `-D clippy::expl-impl-clone-on-copy` implied by `-D warnings`
 
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> $DIR/derive.rs:32:1
+  --> $DIR/derive.rs:31:1
    |
 LL | / impl<'a> Clone for Lt<'a> {
 LL | |     fn clone(&self) -> Self {
@@ -30,7 +30,7 @@ LL | | }
    | |_^
    |
 note: consider deriving `Clone` or removing `Copy`
-  --> $DIR/derive.rs:32:1
+  --> $DIR/derive.rs:31:1
    |
 LL | / impl<'a> Clone for Lt<'a> {
 LL | |     fn clone(&self) -> Self {
@@ -40,7 +40,7 @@ LL | | }
    | |_^
 
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> $DIR/derive.rs:43:1
+  --> $DIR/derive.rs:42:1
    |
 LL | / impl Clone for BigArray {
 LL | |     fn clone(&self) -> Self {
@@ -50,7 +50,7 @@ LL | | }
    | |_^
    |
 note: consider deriving `Clone` or removing `Copy`
-  --> $DIR/derive.rs:43:1
+  --> $DIR/derive.rs:42:1
    |
 LL | / impl Clone for BigArray {
 LL | |     fn clone(&self) -> Self {
@@ -60,7 +60,7 @@ LL | | }
    | |_^
 
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> $DIR/derive.rs:54:1
+  --> $DIR/derive.rs:53:1
    |
 LL | / impl Clone for FnPtr {
 LL | |     fn clone(&self) -> Self {
@@ -70,7 +70,7 @@ LL | | }
    | |_^
    |
 note: consider deriving `Clone` or removing `Copy`
-  --> $DIR/derive.rs:54:1
+  --> $DIR/derive.rs:53:1
    |
 LL | / impl Clone for FnPtr {
 LL | |     fn clone(&self) -> Self {
@@ -80,7 +80,7 @@ LL | | }
    | |_^
 
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> $DIR/derive.rs:74:1
+  --> $DIR/derive.rs:73:1
    |
 LL | / impl<T: Clone> Clone for Generic2<T> {
 LL | |     fn clone(&self) -> Self {
@@ -90,7 +90,7 @@ LL | | }
    | |_^
    |
 note: consider deriving `Clone` or removing `Copy`
-  --> $DIR/derive.rs:74:1
+  --> $DIR/derive.rs:73:1
    |
 LL | / impl<T: Clone> Clone for Generic2<T> {
 LL | |     fn clone(&self) -> Self {

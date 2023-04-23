@@ -22,7 +22,7 @@ use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for use of `Box<T>` where T is a collection such as Vec anywhere in the code.
+    /// Checks for usage of `Box<T>` where T is a collection such as Vec anywhere in the code.
     /// Check the [Box documentation](https://doc.rust-lang.org/std/boxed/index.html) for more information.
     ///
     /// ### Why is this bad?
@@ -52,7 +52,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for use of `Vec<Box<T>>` where T: Sized anywhere in the code.
+    /// Checks for usage of `Vec<Box<T>>` where T: Sized anywhere in the code.
     /// Check the [Box documentation](https://doc.rust-lang.org/std/boxed/index.html) for more information.
     ///
     /// ### Why is this bad?
@@ -85,7 +85,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for use of `Option<Option<_>>` in function signatures and type
+    /// Checks for usage of `Option<Option<_>>` in function signatures and type
     /// definitions
     ///
     /// ### Why is this bad?
@@ -164,7 +164,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for use of `&Box<T>` anywhere in the code.
+    /// Checks for usage of `&Box<T>` anywhere in the code.
     /// Check the [Box documentation](https://doc.rust-lang.org/std/boxed/index.html) for more information.
     ///
     /// ### Why is this bad?
@@ -190,7 +190,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for use of redundant allocations anywhere in the code.
+    /// Checks for usage of redundant allocations anywhere in the code.
     ///
     /// ### Why is this bad?
     /// Expressions such as `Rc<&T>`, `Rc<Rc<T>>`, `Rc<Arc<T>>`, `Rc<Box<T>>`, `Arc<&T>`, `Arc<Rc<T>>`,
