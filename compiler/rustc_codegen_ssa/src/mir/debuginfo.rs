@@ -494,6 +494,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let Some(dbg_loc) = self.dbg_loc(var.source_info) else { continue };
 
                         if let Ok(operand) = self.eval_mir_constant_to_operand(bx, &c) {
+                            self.set_debug_loc(bx, var.source_info);
                             let base = Self::spill_operand_to_stack(
                                 &operand,
                                 Some(var.name.to_string()),

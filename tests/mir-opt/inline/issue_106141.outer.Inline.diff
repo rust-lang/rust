@@ -8,7 +8,7 @@
 +         let mut _2: bool;                // in scope 1 at $DIR/issue_106141.rs:14:8: 14:21
 +         let mut _3: &[bool; 1];          // in scope 1 at $DIR/issue_106141.rs:12:18: 12:25
 +         scope 2 {
-+             debug buffer => _3;          // in scope 2 at $DIR/issue_106141.rs:12:9: 12:15
++             debug buffer => const _;     // in scope 2 at $DIR/issue_106141.rs:12:9: 12:15
 +             scope 3 {
 +                 debug index => _0;       // in scope 3 at $DIR/issue_106141.rs:13:9: 13:14
 +             }
