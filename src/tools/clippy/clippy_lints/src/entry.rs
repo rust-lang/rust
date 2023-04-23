@@ -19,7 +19,7 @@ use rustc_span::{Span, SyntaxContext, DUMMY_SP};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for uses of `contains_key` + `insert` on `HashMap`
+    /// Checks for usage of `contains_key` + `insert` on `HashMap`
     /// or `BTreeMap`.
     ///
     /// ### Why is this bad?

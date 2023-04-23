@@ -1,5 +1,5 @@
-// run-rustfix
-// aux-build:proc_macros.rs
+//@run-rustfix
+//@aux-build:proc_macros.rs
 
 #![feature(lint_reasons)]
 #![warn(clippy::default_numeric_fallback)]

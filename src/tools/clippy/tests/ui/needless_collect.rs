@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![allow(unused, clippy::suspicious_map, clippy::iter_count)]
 

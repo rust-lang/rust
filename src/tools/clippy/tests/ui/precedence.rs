@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::precedence)]
 #![allow(unused_must_use, clippy::no_effect, clippy::unnecessary_operation)]
 #![allow(clippy::identity_op)]

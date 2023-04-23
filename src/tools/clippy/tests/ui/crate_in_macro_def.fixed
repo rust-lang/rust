@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::crate_in_macro_def)]
 
 mod hygienic {

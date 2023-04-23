@@ -1,4 +1,5 @@
 use super::ARITHMETIC_SIDE_EFFECTS;
+use clippy_utils::is_from_proc_macro;
 use clippy_utils::{
     consts::{constant, constant_simple, Constant},
     diagnostics::span_lint,
@@ -10,7 +11,10 @@ use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
 use rustc_session::impl_lint_pass;
-use rustc_span::source_map::{Span, Spanned};
+use rustc_span::{
+    source_map::{Span, Spanned},
+    Symbol,
+};
 
 const HARD_CODED_ALLOWED_BINARY: &[[&str; 2]] = &[
     ["f32", "f32"],
@@ -20,6 +24,7 @@ const HARD_CODED_ALLOWED_BINARY: &[[&str; 2]] = &[
     ["std::string::String", "&str"],
 ];
 const HARD_CODED_ALLOWED_UNARY: &[&str] = &["f32", "f64", "std::num::Saturating", "std::num::Wrapping"];
+const INTEGER_METHODS: &[&str] = &["saturating_div", "wrapping_div", "wrapping_rem", "wrapping_rem_euclid"];
 
 #[derive(Debug)]
 pub struct ArithmeticSideEffects {
@@ -28,6 +33,7 @@ pub struct ArithmeticSideEffects {
     // Used to check whether expressions are constants, such as in enum discriminants and consts
     const_span: Option<Span>,
     expr_span: Option<Span>,
+    integer_methods: FxHashSet<Symbol>,
 }
 
 impl_lint_pass!(ArithmeticSideEffects => [ARITHMETIC_SIDE_EFFECTS]);
@@ -53,6 +59,7 @@ impl ArithmeticSideEffects {
             allowed_unary,
             const_span: None,
             expr_span: None,
+            integer_methods: INTEGER_METHODS.iter().map(|el| Symbol::intern(el)).collect(),
         }
     }
 
@@ -184,6 +191,33 @@ impl ArithmeticSideEffects {
         }
     }
 
+    /// There are some integer methods like `wrapping_div` that will panic depending on the
+    /// provided input.
+    fn manage_method_call<'tcx>(
+        &mut self,
+        args: &[hir::Expr<'tcx>],
+        cx: &LateContext<'tcx>,
+        ps: &hir::PathSegment<'tcx>,
+        receiver: &hir::Expr<'tcx>,
+    ) {
+        let Some(arg) = args.first() else { return; };
+        if constant_simple(cx, cx.typeck_results(), receiver).is_some() {
+            return;
+        }
+        let instance_ty = cx.typeck_results().expr_ty(receiver);
+        if !Self::is_integral(instance_ty) {
+            return;
+        }
+        if !self.integer_methods.contains(&ps.ident.name) {
+            return;
+        }
+        let (actual_arg, _) = peel_hir_expr_refs(arg);
+        match Self::literal_integer(cx, actual_arg) {
+            None | Some(0) => self.issue_lint(cx, arg),
+            Some(_) => {},
+        }
+    }
+
     fn manage_unary_ops<'tcx>(
         &mut self,
         cx: &LateContext<'tcx>,
@@ -206,8 +240,9 @@ impl ArithmeticSideEffects {
         self.issue_lint(cx, expr);
     }
 
-    fn should_skip_expr(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
+    fn should_skip_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr<'tcx>) -> bool {
         is_lint_allowed(cx, ARITHMETIC_SIDE_EFFECTS, expr.hir_id)
+            || is_from_proc_macro(cx, expr)
             || self.expr_span.is_some()
             || self.const_span.map_or(false, |sp| sp.contains(expr.span))
     }
@@ -221,6 +256,9 @@ impl<'tcx> LateLintPass<'tcx> for ArithmeticSideEffects {
         match &expr.kind {
             hir::ExprKind::AssignOp(op, lhs, rhs) | hir::ExprKind::Binary(op, lhs, rhs) => {
                 self.manage_bin_ops(cx, expr, op, lhs, rhs);
+            },
+            hir::ExprKind::MethodCall(ps, receiver, args, _) => {
+                self.manage_method_call(args, cx, ps, receiver);
             },
             hir::ExprKind::Unary(un_op, un_expr) => {
                 self.manage_unary_ops(cx, expr, un_expr, *un_op);

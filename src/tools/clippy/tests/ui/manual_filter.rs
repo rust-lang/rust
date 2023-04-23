@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![warn(clippy::manual_filter)]
 #![allow(unused_variables, dead_code)]

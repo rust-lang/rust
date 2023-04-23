@@ -1,5 +1,5 @@
-// run-rustfix
-// aux-build:proc_macros.rs
+//@run-rustfix
+//@aux-build:proc_macros.rs
 #![feature(let_chains)]
 #![allow(unused)]
 #![allow(

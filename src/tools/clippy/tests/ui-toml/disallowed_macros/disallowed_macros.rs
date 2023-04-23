@@ -1,4 +1,4 @@
-// aux-build:macros.rs
+//@aux-build:macros.rs
 
 #![allow(unused)]
 
