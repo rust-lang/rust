@@ -139,7 +139,7 @@ whether the pattern matched.
 
 ## Pattern syntax
 
-The following examples demonstate the pattern syntax:
+The following examples demonstrate the pattern syntax:
 
 
 #### Any (`_`)

@@ -82,7 +82,7 @@ pub fn rename_my_lifetimes(_args: TokenStream, input: TokenStream) -> TokenStrea
                     elided += 1;
 
                     // HACK: Syn uses `Span` from the proc_macro2 crate, and does not seem to reexport it.
-                    // In order to avoid adding the dependency, get a default span from a non-existent token.
+                    // In order to avoid adding the dependency, get a default span from a nonexistent token.
                     // A default span is needed to mark the code as coming from expansion.
                     let span = Star::default().span();
 

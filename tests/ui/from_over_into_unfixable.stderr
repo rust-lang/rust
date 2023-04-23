@@ -4,7 +4,7 @@ error: an implementation of `From` is preferred since it gives you `Into<_>` for
 LL | impl Into<InMacro> for String {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: replace the `Into` implentation with `From<std::string::String>`
+   = help: replace the `Into` implementation with `From<std::string::String>`
    = note: `-D clippy::from-over-into` implied by `-D warnings`
 
 error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
@@ -13,7 +13,7 @@ error: an implementation of `From` is preferred since it gives you `Into<_>` for
 LL | impl Into<WeirdUpperSelf> for &'static [u8] {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: replace the `Into` implentation with `From<&'static [u8]>`
+   = help: replace the `Into` implementation with `From<&'static [u8]>`
 
 error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
   --> $DIR/from_over_into_unfixable.rs:28:1
@@ -23,7 +23,7 @@ LL | impl Into<u8> for ContainsVal {
    |
    = help: `impl From<Local> for Foreign` is allowed by the orphan rules, for more information see
            https://doc.rust-lang.org/reference/items/implementations.html#trait-implementation-coherence
-   = help: replace the `Into` implentation with `From<ContainsVal>`
+   = help: replace the `Into` implementation with `From<ContainsVal>`
 
 error: aborting due to 3 previous errors
 

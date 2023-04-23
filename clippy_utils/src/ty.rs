@@ -93,7 +93,7 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                     for &(predicate, _span) in cx.tcx.explicit_item_bounds(def_id) {
                         match predicate.kind().skip_binder() {
                             // For `impl Trait<U>`, it will register a predicate of `T: Trait<U>`, so we go through
-                            // and check substituions to find `U`.
+                            // and check substitutions to find `U`.
                             ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) => {
                                 if trait_predicate
                                     .trait_ref
@@ -1101,7 +1101,7 @@ pub fn make_projection<'tcx>(
 ///
 /// This function is for associated types which are "known" to be valid with the given
 /// substitutions, and as such, will only return `None` when debug assertions are disabled in order
-/// to prevent ICE's. With debug assertions enabled this will check that that type normalization
+/// to prevent ICE's. With debug assertions enabled this will check that type normalization
 /// succeeds as well as everything checked by `make_projection`.
 pub fn make_normalized_projection<'tcx>(
     tcx: TyCtxt<'tcx>,
