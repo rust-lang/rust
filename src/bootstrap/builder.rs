@@ -634,6 +634,14 @@ impl Kind {
             Kind::Suggest => "suggest",
         }
     }
+
+    pub fn test_description(&self) -> &'static str {
+        match self {
+            Kind::Test => "Testing",
+            Kind::Bench => "Benchmarking",
+            _ => panic!("not a test command: {}!", self.as_str()),
+        }
+    }
 }
 
 impl<'a> Builder<'a> {
@@ -695,7 +703,6 @@ impl<'a> Builder<'a> {
                 crate::toolstate::ToolStateCheck,
                 test::ExpandYamlAnchors,
                 test::Tidy,
-                test::TidySelfTest,
                 test::Ui,
                 test::RunPassValgrind,
                 test::MirOpt,
@@ -711,11 +718,9 @@ impl<'a> Builder<'a> {
                 test::CrateLibrustc,
                 test::CrateRustdoc,
                 test::CrateRustdocJsonTypes,
-                test::CrateJsonDocLint,
-                test::SuggestTestsCrate,
+                test::CrateBootstrap,
                 test::Linkcheck,
                 test::TierCheck,
-                test::ReplacePlaceholderTest,
                 test::Cargotest,
                 test::Cargo,
                 test::RustAnalyzer,
