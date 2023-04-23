@@ -28,6 +28,10 @@ fn f() -> Box<dyn Display> {
     Box::new(1)
 }
 
+fn g() -> impl Fn() {
+    || {}
+}
+
 fn main() {
     let _ = a();
     let _ = b(1);
@@ -35,6 +39,7 @@ fn main() {
     let _ = d(&1);
     let _ = e();
     let _ = f();
+    let _ = g();
 
     _ = a();
     _ = b(1);
