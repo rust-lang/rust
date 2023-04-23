@@ -77,9 +77,21 @@ fn lines() {
     assert_eq!(s.next().unwrap().unwrap(), "12\r".to_string());
     assert!(s.next().is_none());
 
-    let buf = Cursor::new(&b"12\r\n\n"[..]);
+    // same behavior as &str::split
+    let buf = Cursor::new(&b"\n\r\n36\n\n12\r\n\n"[..]);
     let mut s = buf.lines();
+    assert_eq!(s.next().unwrap().unwrap(), "".to_string());
+    assert_eq!(s.next().unwrap().unwrap(), "".to_string());
+    assert_eq!(s.next().unwrap().unwrap(), "36".to_string());
+    assert_eq!(s.next().unwrap().unwrap(), "".to_string());
     assert_eq!(s.next().unwrap().unwrap(), "12".to_string());
+    assert_eq!(s.next().unwrap().unwrap(), "".to_string());
+    assert_eq!(s.next().unwrap().unwrap(), "".to_string());
+    assert!(s.next().is_none());
+
+    // same behavior as &str::split
+    let buf = Cursor::new(&b""[..]);
+    let mut s = buf.lines();
     assert_eq!(s.next().unwrap().unwrap(), "".to_string());
     assert!(s.next().is_none());
 }

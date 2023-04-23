@@ -2287,6 +2287,8 @@ pub trait BufRead: Read {
     /// <code>[io::Result]<[String]></code>. Each string returned will *not* have a newline
     /// byte (the `0xA` byte) or `CRLF` (`0xD`, `0xA` bytes) at the end.
     ///
+    /// An empty reader is considered to contain a single, empty line.
+    ///
     /// [io::Result]: self::Result "io::Result"
     ///
     /// # Examples
@@ -2315,7 +2317,7 @@ pub trait BufRead: Read {
     where
         Self: Sized,
     {
-        Lines { buf: self }
+        Lines { buf: self, after_delim: true }
     }
 }
 
@@ -2861,6 +2863,8 @@ impl<B: BufRead> Iterator for Split<B> {
 #[derive(Debug)]
 pub struct Lines<B> {
     buf: B,
+    /// whether we previously read EOL, or it's the beginning
+    after_delim: bool,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2870,13 +2874,23 @@ impl<B: BufRead> Iterator for Lines<B> {
     fn next(&mut self) -> Option<Result<String>> {
         let mut buf = String::new();
         match self.buf.read_line(&mut buf) {
-            Ok(0) => None,
+            Ok(0) => {
+                if self.after_delim {
+                    self.after_delim = false;
+                    Some(Ok(String::new()))
+                } else {
+                    None
+                }
+            }
             Ok(_n) => {
                 if buf.ends_with('\n') {
+                    self.after_delim = true;
                     buf.pop();
                     if buf.ends_with('\r') {
                         buf.pop();
                     }
+                } else {
+                    self.after_delim = false
                 }
                 Some(Ok(buf))
             }
