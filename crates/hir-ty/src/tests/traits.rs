@@ -4375,3 +4375,38 @@ fn derive_macro_bounds() {
         "#,
     );
 }
+
+#[test]
+fn trait_obligations_should_be_registered_during_path_inference() {
+    check_types(
+        r#"
+//- minicore: fn, from
+struct S<T>(T);
+fn map<T, U, F: FnOnce(T) -> S<U>>(_: T, _: F) -> U { loop {} }
+
+fn test(v: S<i32>) {
+    let res = map(v, Into::into);
+      //^^^ i32
+}
+"#,
+    );
+}
+
+#[test]
+fn fn_obligation_should_be_registered_during_path_inference() {
+    check_types(
+        r#"
+//- minicore: fn, from
+struct S<T>(T);
+impl<T> S<T> {
+    fn foo<U: Into<S<T>>>(_: U) -> Self { loop {} }
+}
+fn map<T, U, F: FnOnce(T) -> U>(_: T, _: F) -> U { loop {} }
+
+fn test(v: S<i32>) {
+    let res = map(v, S::foo);
+      //^^^ S<i32>
+}
+"#,
+    );
+}

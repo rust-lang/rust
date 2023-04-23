@@ -231,7 +231,10 @@ impl<'a> InferenceTable<'a> {
     /// type annotation (e.g. from a let type annotation, field type or function
     /// call). `make_ty` handles this already, but e.g. for field types we need
     /// to do it as well.
-    pub(crate) fn normalize_associated_types_in(&mut self, ty: Ty) -> Ty {
+    pub(crate) fn normalize_associated_types_in<T>(&mut self, ty: T) -> T
+    where
+        T: HasInterner<Interner = Interner> + TypeFoldable<Interner>,
+    {
         fold_tys(
             ty,
             |ty, _| match ty.kind(Interner) {
@@ -720,7 +723,10 @@ impl<'a> InferenceTable<'a> {
         }
     }
 
-    pub(super) fn insert_type_vars(&mut self, ty: Ty) -> Ty {
+    pub(super) fn insert_type_vars<T>(&mut self, ty: T) -> T
+    where
+        T: HasInterner<Interner = Interner> + TypeFoldable<Interner>,
+    {
         fold_tys_and_consts(
             ty,
             |x, _| match x {

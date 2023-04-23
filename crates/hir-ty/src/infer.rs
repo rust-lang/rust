@@ -16,7 +16,10 @@
 use std::sync::Arc;
 use std::{convert::identity, ops::Index};
 
-use chalk_ir::{cast::Cast, DebruijnIndex, Mutability, Safety, Scalar, TypeFlags};
+use chalk_ir::{
+    cast::Cast, fold::TypeFoldable, interner::HasInterner, DebruijnIndex, Mutability, Safety,
+    Scalar, TypeFlags,
+};
 use either::Either;
 use hir_def::{
     body::Body,
@@ -798,7 +801,10 @@ impl<'a> InferenceContext<'a> {
         self.table.insert_type_vars_shallow(ty)
     }
 
-    fn insert_type_vars(&mut self, ty: Ty) -> Ty {
+    fn insert_type_vars<T>(&mut self, ty: T) -> T
+    where
+        T: HasInterner<Interner = Interner> + TypeFoldable<Interner>,
+    {
         self.table.insert_type_vars(ty)
     }
 
@@ -875,7 +881,10 @@ impl<'a> InferenceContext<'a> {
     /// type annotation (e.g. from a let type annotation, field type or function
     /// call). `make_ty` handles this already, but e.g. for field types we need
     /// to do it as well.
-    fn normalize_associated_types_in(&mut self, ty: Ty) -> Ty {
+    fn normalize_associated_types_in<T>(&mut self, ty: T) -> T
+    where
+        T: HasInterner<Interner = Interner> + TypeFoldable<Interner>,
+    {
         self.table.normalize_associated_types_in(ty)
     }
 
