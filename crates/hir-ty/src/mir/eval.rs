@@ -769,6 +769,7 @@ impl Evaluator<'_> {
                     }
                 }
             }
+            Rvalue::Repeat(_, _) => not_supported!("evaluating repeat rvalue"),
             Rvalue::ShallowInitBox(_, _) => not_supported!("shallow init box"),
             Rvalue::CopyForDeref(_) => not_supported!("copy for deref"),
             Rvalue::Aggregate(kind, values) => {
