@@ -34,6 +34,7 @@
 
 use std::collections::VecDeque;
 use std::fmt::{Debug, Formatter};
+use std::ops::Range;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::bit_set::BitSet;
@@ -448,10 +449,8 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
 
     pub fn flood_with(&mut self, place: PlaceRef<'_>, map: &Map, value: V) {
         let StateData::Reachable(values) = &mut self.0 else { return };
-        map.for_each_aliasing_place(place, None, &mut |place| {
-            if let Some(vi) = map.places[place].value_index {
-                values[vi] = value.clone();
-            }
+        map.for_each_aliasing_place(place, None, &mut |vi| {
+            values[vi] = value.clone();
         });
     }
 
@@ -461,10 +460,8 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
 
     pub fn flood_discr_with(&mut self, place: PlaceRef<'_>, map: &Map, value: V) {
         let StateData::Reachable(values) = &mut self.0 else { return };
-        map.for_each_aliasing_place(place, Some(TrackElem::Discriminant), &mut |place| {
-            if let Some(vi) = map.places[place].value_index {
-                values[vi] = value.clone();
-            }
+        map.for_each_aliasing_place(place, Some(TrackElem::Discriminant), &mut |vi| {
+            values[vi] = value.clone();
         });
     }
 
@@ -589,6 +586,9 @@ pub struct Map {
     projections: FxHashMap<(PlaceIndex, TrackElem), PlaceIndex>,
     places: IndexVec<PlaceIndex, PlaceInfo>,
     value_count: usize,
+    // The Range corresponds to a slice into `inner_values_buffer`.
+    inner_values: IndexVec<PlaceIndex, Range<usize>>,
+    inner_values_buffer: Vec<ValueIndex>,
 }
 
 impl Map {
@@ -598,6 +598,8 @@ impl Map {
             projections: FxHashMap::default(),
             places: IndexVec::new(),
             value_count: 0,
+            inner_values: IndexVec::new(),
+            inner_values_buffer: Vec::new(),
         }
     }
 
@@ -665,6 +667,14 @@ impl Map {
             // And push the eventual children places to the worklist.
             self.register_children(tcx, place, ty, &filter, &mut worklist);
         }
+
+        self.inner_values_buffer = Vec::with_capacity(self.value_count);
+        self.inner_values = IndexVec::from_elem(0..0, &self.places);
+        for local in body.local_decls.indices() {
+            if let Some(place) = self.locals[local] {
+                self.cache_preorder_invoke(place);
+            }
+        }
     }
 
     /// Potentially register the (local, projection) place and its fields, recursively.
@@ -718,6 +728,25 @@ impl Map {
         });
     }
 
+    /// Precompute the list of values inside `root` and store it inside
+    /// as a slice within `inner_values_buffer`.
+    fn cache_preorder_invoke(&mut self, root: PlaceIndex) {
+        let start = self.inner_values_buffer.len();
+        if let Some(vi) = self.places[root].value_index {
+            self.inner_values_buffer.push(vi);
+        }
+
+        // We manually iterate instead of using `children` as we need to mutate `self`.
+        let mut next_child = self.places[root].first_child;
+        while let Some(child) = next_child {
+            self.cache_preorder_invoke(child);
+            next_child = self.places[child].next_sibling;
+        }
+
+        let end = self.inner_values_buffer.len();
+        self.inner_values[root] = start..end;
+    }
+
     /// Returns the number of tracked places, i.e., those for which a value can be stored.
     pub fn tracked_places(&self) -> usize {
         self.value_count
@@ -768,11 +797,11 @@ impl Map {
     ///
     /// `tail_elem` allows to support discriminants that are not a place in MIR, but that we track
     /// as such.
-    pub fn for_each_aliasing_place(
+    fn for_each_aliasing_place(
         &self,
         place: PlaceRef<'_>,
         tail_elem: Option<TrackElem>,
-        f: &mut impl FnMut(PlaceIndex),
+        f: &mut impl FnMut(ValueIndex),
     ) {
         if place.is_indirect() {
             // We do not track indirect places.
@@ -789,7 +818,9 @@ impl Map {
             .chain(tail_elem.map(Ok).into_iter());
         for elem in elems {
             // A field aliases the parent place.
-            f(index);
+            if let Some(vi) = self.places[index].value_index {
+                f(vi);
+            }
 
             let Ok(elem) = elem else { return };
             let sub = self.apply(index, elem);
@@ -803,7 +834,7 @@ impl Map {
                 return;
             }
         }
-        self.preorder_invoke(index, f);
+        self.for_each_value_inside(index, f);
     }
 
     /// Invoke the given function on all the descendants of the given place, except one branch.
@@ -811,7 +842,7 @@ impl Map {
         &self,
         parent: PlaceIndex,
         preserved_child: Option<PlaceIndex>,
-        f: &mut impl FnMut(PlaceIndex),
+        f: &mut impl FnMut(ValueIndex),
     ) {
         for sibling in self.children(parent) {
             let elem = self.places[sibling].proj_elem;
@@ -821,16 +852,17 @@ impl Map {
                 // Only invalidate the other variants, the current one is fine.
                 && Some(sibling) != preserved_child
             {
-                self.preorder_invoke(sibling, f);
+                self.for_each_value_inside(sibling, f);
             }
         }
     }
 
-    /// Invoke a function on the given place and all descendants.
-    fn preorder_invoke(&self, root: PlaceIndex, f: &mut impl FnMut(PlaceIndex)) {
-        f(root);
-        for child in self.children(root) {
-            self.preorder_invoke(child, f);
+    /// Invoke a function on each value in the given place and all descendants.
+    fn for_each_value_inside(&self, root: PlaceIndex, f: &mut impl FnMut(ValueIndex)) {
+        let range = self.inner_values[root].clone();
+        let values = &self.inner_values_buffer[range];
+        for &v in values {
+            f(v)
         }
     }
 }
