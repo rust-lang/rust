@@ -176,6 +176,10 @@ fn main() {
         // No error; `HasWrongIsEmpty` does not have `.is_empty()`.
         println!("Or this!");
     }
+
+    // issue #10529
+    (has_is_empty.len() > 0).then(|| println!("This can happen."));
+    (has_is_empty.len() == 0).then(|| println!("Or this!"));
 }
 
 fn test_slice(b: &[u8]) {
