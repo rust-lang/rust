@@ -223,3 +223,6 @@ resolve_remove_surrounding_derive =
 resolve_add_as_non_derive =
     add as non-Derive macro
     `#[{$macro_path}]`
+
+resolve_proc_macro_same_crate = can't use a procedural macro from the same crate that defines it
+    .help = you can define integration tests in a directory named `tests`

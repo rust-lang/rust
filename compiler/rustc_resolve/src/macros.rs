@@ -1,7 +1,7 @@
 //! A bunch of methods and structures more or less related to resolving macros and
 //! interface provided by `Resolver` to macro expander.
 
-use crate::errors::{AddAsNonDerive, MacroExpectedFound, RemoveSurroundingDerive};
+use crate::errors::{self, AddAsNonDerive, MacroExpectedFound, RemoveSurroundingDerive};
 use crate::Namespace::*;
 use crate::{BuiltinMacroState, Determinacy};
 use crate::{DeriveData, Finalize, ParentScope, ResolutionError, Resolver, ScopeSet};
@@ -513,10 +513,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 if let Some(def_id) = def_id.as_local() {
                     self.unused_macros.remove(&def_id);
                     if self.proc_macro_stubs.contains(&def_id) {
-                        self.tcx.sess.span_err(
-                            path.span,
-                            "can't use a procedural macro from the same crate that defines it",
-                        );
+                        self.tcx.sess.emit_err(errors::ProcMacroSameCrate {
+                            span: path.span,
+                            is_test: self.tcx.sess.is_test_crate(),
+                        });
                     }
                 }
             }
