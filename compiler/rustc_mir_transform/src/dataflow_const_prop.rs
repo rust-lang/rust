@@ -184,6 +184,23 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                     }
                 }
             }
+            Rvalue::Cast(
+                CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize),
+                operand,
+                _,
+            ) => {
+                let pointer = self.handle_operand(operand, state);
+                state.assign(target.as_ref(), pointer, self.map());
+
+                if let Some(target_len) = self.map().find_len(target.as_ref())
+                    && let operand_ty = operand.ty(self.local_decls, self.tcx)
+                    && let Some(operand_ty) = operand_ty.builtin_deref(true)
+                    && let ty::Array(_, len) = operand_ty.ty.kind()
+                    && let Some(len) = ConstantKind::Ty(*len).eval(self.tcx, self.param_env).try_to_scalar_int()
+                {
+                    state.insert_value_idx(target_len, FlatSet::Elem(len), self.map());
+                }
+            }
             _ => self.super_assign(target, rvalue, state),
         }
     }
@@ -194,6 +211,19 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
         state: &mut State<Self::Value>,
     ) -> ValueOrPlace<Self::Value> {
         let val = match rvalue {
+            Rvalue::Len(place) => {
+                let place_ty = place.ty(self.local_decls, self.tcx);
+                if let ty::Array(_, len) = place_ty.ty.kind() {
+                    ConstantKind::Ty(*len)
+                        .eval(self.tcx, self.param_env)
+                        .try_to_scalar_int()
+                        .map_or(FlatSet::Top, FlatSet::Elem)
+                } else if let [ProjectionElem::Deref] = place.projection[..] {
+                    state.get_len(place.local.into(), self.map())
+                } else {
+                    FlatSet::Top
+                }
+            }
             Rvalue::Cast(CastKind::IntToInt | CastKind::IntToFloat, operand, ty) => {
                 match self.eval_operand(operand, state) {
                     FlatSet::Elem(op) => self

@@ -581,6 +581,14 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
         }
     }
 
+    /// Retrieve the value stored for a place, or ⊤ if it is not tracked.
+    pub fn get_len(&self, place: PlaceRef<'_>, map: &Map) -> V {
+        match map.find_len(place) {
+            Some(place) => self.get_idx(place, map),
+            None => V::TOP,
+        }
+    }
+
     /// Retrieve the value stored for a place index, or ⊤ if it is not tracked.
     pub fn get_idx(&self, place: PlaceIndex, map: &Map) -> V {
         match &self.0 {
@@ -750,6 +758,24 @@ impl Map {
             self.value_count += 1;
         }
 
+        if let Some(ref_ty) = ty.builtin_deref(true) && let ty::Slice(..) = ref_ty.ty.kind() {
+            assert!(self.places[place].value_index.is_none(), "slices are not scalars");
+
+            // Prepend new child to the linked list.
+            let len = self.places.push(PlaceInfo::new(Some(TrackElem::DerefLen)));
+            self.places[len].next_sibling = self.places[place].first_child;
+            self.places[place].first_child = Some(len);
+
+            let old = self.projections.insert((place, TrackElem::DerefLen), len);
+            assert!(old.is_none());
+
+            // Allocate a value slot if it doesn't have one.
+            if self.places[len].value_index.is_none() {
+                self.places[len].value_index = Some(self.value_count.into());
+                self.value_count += 1;
+            }
+        }
+
         // Recurse with all fields of this place.
         iter_fields(ty, tcx, param_env, |variant, field, ty| {
             worklist.push_back((
@@ -816,6 +842,11 @@ impl Map {
     /// Locates the given place and applies `Discriminant`, if it exists in the tree.
     pub fn find_discr(&self, place: PlaceRef<'_>) -> Option<PlaceIndex> {
         self.find_extra(place, [TrackElem::Discriminant])
+    }
+
+    /// Locates the given place and applies `DerefLen`, if it exists in the tree.
+    pub fn find_len(&self, place: PlaceRef<'_>) -> Option<PlaceIndex> {
+        self.find_extra(place, [TrackElem::DerefLen])
     }
 
     /// Iterate over all direct children.
@@ -969,6 +1000,8 @@ pub enum TrackElem {
     Field(FieldIdx),
     Variant(VariantIdx),
     Discriminant,
+    // Length of a slice.
+    DerefLen,
 }
 
 impl<V, T> TryFrom<ProjectionElem<V, T>> for TrackElem {
@@ -1107,6 +1140,9 @@ fn debug_with_context_rec<V: Debug + Eq>(
                 } else {
                     format!("{}.{}", place_str, field.index())
                 }
+            }
+            TrackElem::DerefLen => {
+                format!("Len(*{})", place_str)
             }
         };
         debug_with_context_rec(child, &child_place_str, new, old, map, f)?;

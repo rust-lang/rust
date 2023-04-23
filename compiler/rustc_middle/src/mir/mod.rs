@@ -1751,6 +1751,13 @@ impl<'tcx> PlaceRef<'tcx> {
     }
 }
 
+impl From<Local> for PlaceRef<'_> {
+    #[inline]
+    fn from(local: Local) -> Self {
+        PlaceRef { local, projection: &[] }
+    }
+}
+
 impl Debug for Place<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         for elem in self.projection.iter().rev() {
