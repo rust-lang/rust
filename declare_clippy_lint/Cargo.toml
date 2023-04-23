@@ -10,7 +10,7 @@ proc-macro = true
 [dependencies]
 itertools = "0.10.1"
 quote = "1.0.21"
-syn = "1.0.100"
+syn = "2.0"
 
 [features]
 deny-warnings = []

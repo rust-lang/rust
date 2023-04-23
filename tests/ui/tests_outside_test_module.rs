@@ -1,4 +1,4 @@
-// compile-flags: --test
+//@compile-flags: --test
 #![allow(unused)]
 #![warn(clippy::tests_outside_test_module)]
 

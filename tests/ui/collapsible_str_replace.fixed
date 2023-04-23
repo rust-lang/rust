@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![allow(unused)]
 #![warn(clippy::collapsible_str_replace)]

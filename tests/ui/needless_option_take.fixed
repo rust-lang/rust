@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 fn main() {
     println!("Testing non erroneous option_take_on_temporary");

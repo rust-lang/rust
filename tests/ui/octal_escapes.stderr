@@ -64,6 +64,22 @@ LL |     let _bad4 = "/x001234567";
    |                 ~~~~~~~~~~~~~
 
 error: octal-looking escape in string literal
+  --> $DIR/octal_escapes.rs:9:17
+   |
+LL |     let _bad5 = "/0/03";
+   |                 ^^^^^^^
+   |
+   = help: octal escapes are not supported, `/0` is always a null character
+help: if an octal escape was intended, use the hexadecimal representation instead
+   |
+LL |     let _bad5 = "/0/x03";
+   |                 ~~~~~~~~
+help: if the null character is intended, disambiguate using
+   |
+LL |     let _bad5 = "/0/x003";
+   |                 ~~~~~~~~~
+
+error: octal-looking escape in string literal
   --> $DIR/octal_escapes.rs:10:17
    |
 LL |     let _bad6 = "Text-/055/077-MoreText";
@@ -127,5 +143,5 @@ help: if the null character is intended, disambiguate using
 LL |     let _bad9 = "锈/x0011锈";
    |                 ~~~~~~~~~~~~
 
-error: aborting due to 8 previous errors
+error: aborting due to 9 previous errors
 

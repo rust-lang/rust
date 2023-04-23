@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![warn(clippy::transmute_ptr_to_ref)]
 #![allow(clippy::match_single_binding)]

@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::cast_slice_from_raw_parts)]
 
 #[allow(unused_imports, unused_unsafe)]
