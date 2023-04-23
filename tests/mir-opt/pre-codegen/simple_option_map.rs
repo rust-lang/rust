@@ -1,3 +1,7 @@
+// compile-flags: -O -C debuginfo=0 -Zmir-opt-level=2
+// only-64bit
+// ignore-debug
+
 #[inline(always)]
 fn map<T, U, F>(slf: Option<T>, f: F) -> Option<U>
 where
@@ -9,7 +13,7 @@ where
     }
 }
 
-// EMIT_MIR simple_option_map_e2e.ezmap.PreCodegen.after.mir
+// EMIT_MIR simple_option_map.ezmap.PreCodegen.after.mir
 pub fn ezmap(x: Option<i32>) -> Option<i32> {
     map(x, |n| n + 1)
 }

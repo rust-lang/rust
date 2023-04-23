@@ -1,16 +1,20 @@
+// compile-flags: -O -C debuginfo=0 -Zmir-opt-level=2
+// only-64bit
+// ignore-debug
+
 // Checks that we do not have any branches in the MIR for the two tested functions.
 
 // compile-flags: -Cpanic=abort
 #![feature(core_intrinsics)]
 #![crate_type = "lib"]
 
-// EMIT_MIR lower_intrinsics_e2e.f_unit.PreCodegen.after.mir
+// EMIT_MIR intrinsics.f_unit.PreCodegen.after.mir
 pub fn f_unit() {
     f_dispatch(());
 }
 
 
-// EMIT_MIR lower_intrinsics_e2e.f_u64.PreCodegen.after.mir
+// EMIT_MIR intrinsics.f_u64.PreCodegen.after.mir
 pub fn f_u64() {
     f_dispatch(0u64);
 }

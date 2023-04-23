@@ -1,5 +1,4 @@
 // ignore-wasm32 compiled with panic=abort by default
-// unit-test
 // compile-flags: -C overflow-checks=on
 
 struct Point {
