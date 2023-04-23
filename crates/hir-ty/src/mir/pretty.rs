@@ -321,6 +321,11 @@ impl<'a> MirPrettyCtx<'a> {
                 self.operand_list(x);
                 w!(self, "]");
             }
+            Rvalue::Repeat(op, len) => {
+                w!(self, "[");
+                self.operand(op);
+                w!(self, "; {}]", len.display(self.db));
+            }
             Rvalue::Aggregate(AggregateKind::Adt(_, _), x) => {
                 w!(self, "Adt(");
                 self.operand_list(x);

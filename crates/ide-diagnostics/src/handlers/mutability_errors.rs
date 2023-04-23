@@ -546,6 +546,15 @@ fn f(x: i32) {
 }
 "#,
         );
+        check_diagnostics(
+            r#"
+fn f((x, y): (i32, i32)) {
+    let t = [0; 2];
+   x = 5;
+ //^^^^^ 💡 error: cannot mutate immutable variable `x`
+}
+"#,
+        );
     }
 
     #[test]

@@ -964,7 +964,22 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     self.push_assignment(current, place, r, expr_id.into());
                     Ok(Some(current))
                 }
-                Array::Repeat { .. } => not_supported!("array repeat"),
+                Array::Repeat { initializer, .. } => {
+                    let Some((init, current)) = self.lower_expr_to_some_operand(*initializer, current)? else {
+                        return Ok(None);
+                    };
+                    let len = match &self.expr_ty(expr_id).data(Interner).kind {
+                        TyKind::Array(_, len) => len.clone(),
+                        _ => {
+                            return Err(MirLowerError::TypeError(
+                                "Array repeat expression with non array type",
+                            ))
+                        }
+                    };
+                    let r = Rvalue::Repeat(init, len);
+                    self.push_assignment(current, place, r, expr_id.into());
+                    Ok(Some(current))
+                },
             },
             Expr::Literal(l) => {
                 let ty = self.expr_ty(expr_id);
@@ -1433,7 +1448,12 @@ impl<'ctx> MirLowerCtx<'ctx> {
     fn binding_local(&self, b: BindingId) -> Result<LocalId> {
         match self.result.binding_locals.get(b) {
             Some(x) => Ok(*x),
-            None => Err(MirLowerError::UnaccessableLocal),
+            None => {
+                // FIXME: It should never happens, but currently it will happen in `const_dependent_on_local` test, which
+                // is a hir lowering problem IMO.
+                // never!("Using unaccessable local for binding is always a bug");
+                Err(MirLowerError::UnaccessableLocal)
+            }
         }
     }
 }
@@ -1588,14 +1608,23 @@ pub fn lower_to_mir(
         }
     };
     // 1 to param_len is for params
-    let current = if let DefWithBodyId::FunctionId(fid) = owner {
-        let substs = TyBuilder::placeholder_subst(db, fid);
-        let callable_sig = db.callable_item_signature(fid.into()).substitute(Interner, &substs);
-        ctx.lower_params_and_bindings(
-            body.params.iter().zip(callable_sig.params().iter()).map(|(x, y)| (*x, y.clone())),
-            binding_picker,
-        )?
-    } else {
+    // FIXME: replace with let chain once it becomes stable
+    let current = 'b: {
+        if body.body_expr == root_expr {
+            // otherwise it's an inline const, and has no parameter
+            if let DefWithBodyId::FunctionId(fid) = owner {
+                let substs = TyBuilder::placeholder_subst(db, fid);
+                let callable_sig =
+                    db.callable_item_signature(fid.into()).substitute(Interner, &substs);
+                break 'b ctx.lower_params_and_bindings(
+                    body.params
+                        .iter()
+                        .zip(callable_sig.params().iter())
+                        .map(|(x, y)| (*x, y.clone())),
+                    binding_picker,
+                )?;
+            }
+        }
         ctx.lower_params_and_bindings([].into_iter(), binding_picker)?
     };
     if let Some(b) = ctx.lower_expr_to_place(root_expr, return_slot().into(), current)? {

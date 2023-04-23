@@ -714,13 +714,8 @@ pub enum Rvalue {
 
     /// Creates an array where each element is the value of the operand.
     ///
-    /// This is the cause of a bug in the case where the repetition count is zero because the value
-    /// is not dropped, see [#74836].
-    ///
     /// Corresponds to source code like `[x; 32]`.
-    ///
-    /// [#74836]: https://github.com/rust-lang/rust/issues/74836
-    //Repeat(Operand, ty::Const),
+    Repeat(Operand, Const),
 
     /// Creates a reference of the indicated kind to the place.
     ///
@@ -932,6 +927,7 @@ impl MirBody {
                             Rvalue::ShallowInitBox(o, _)
                             | Rvalue::UnaryOp(_, o)
                             | Rvalue::Cast(_, o, _)
+                            | Rvalue::Repeat(o, _)
                             | Rvalue::Use(o) => for_operand(o, &mut f),
                             Rvalue::CopyForDeref(p)
                             | Rvalue::Discriminant(p)

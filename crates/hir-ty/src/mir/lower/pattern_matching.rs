@@ -129,7 +129,7 @@ impl MirLowerCtx<'_> {
                 _ => not_supported!("expression path literal"),
             },
             Pat::Bind { id, subpat } => {
-                let target_place = self.result.binding_locals[*id];
+                let target_place = self.binding_local(*id)?;
                 let mode = self.body.bindings[*id].mode;
                 if let Some(subpat) = subpat {
                     (current, current_else) = self.pattern_match(
