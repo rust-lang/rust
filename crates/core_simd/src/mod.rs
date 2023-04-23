@@ -17,6 +17,7 @@ mod masks;
 mod ops;
 mod ord;
 mod select;
+mod swizzle_dyn;
 mod vector;
 mod vendor;
 
@@ -32,5 +33,6 @@ pub mod simd {
     pub use crate::core_simd::masks::*;
     pub use crate::core_simd::ord::*;
     pub use crate::core_simd::swizzle::*;
+    pub use crate::core_simd::swizzle_dyn::*;
     pub use crate::core_simd::vector::*;
 }
