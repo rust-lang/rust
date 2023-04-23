@@ -249,20 +249,20 @@ fn default_hook(info: &PanicInfo<'_>) {
     let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
 
     let write = |err: &mut dyn crate::io::Write| {
-        // Use the panic message directly if available, otherwise take it from
-        // the payload.
-        if let Some(msg) = info.message() {
-            let _ = writeln!(err, "thread '{name}' panicked at '{msg}', {location}");
+        // The std panic runtime always sets a `&str` or `String` payload for `panic!` and related
+        // macros with the formatted message.
+        // We try using the payload first to avoid formatting the message twice.
+        let msg: &dyn fmt::Display = if let Some(s) = info.payload().downcast_ref::<&'static str>()
+        {
+            s
+        } else if let Some(s) = info.payload().downcast_ref::<String>() {
+            s
+        } else if let Some(msg) = info.message() {
+            msg
         } else {
-            let msg = if let Some(s) = info.payload().downcast_ref::<&'static str>() {
-                *s
-            } else if let Some(s) = info.payload().downcast_ref::<String>() {
-                &s[..]
-            } else {
-                "Box<dyn Any>"
-            };
-            let _ = writeln!(err, "thread '{name}' panicked at '{msg}', {location}");
-        }
+            &"Box<dyn Any>"
+        };
+        let _ = writeln!(err, "thread '{name}' panicked at '{msg}', {location}");
 
         static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 
