@@ -1,4 +1,3 @@
-// check-pass
 #![feature(lint_reasons)]
 //! This file tests the `#[expect]` attribute implementation for tool lints. The same
 //! file is used to test clippy and rustdoc. Any changes to this file should be synced
