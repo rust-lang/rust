@@ -113,6 +113,10 @@ pub fn for_each_expr_with_closures<'tcx, B, C: Continue>(
         f: F,
         res: Option<B>,
     }
+    // FIXME: more details in #106930
+    impl<'tcx, B, F> !Send for V<'tcx, B, F> {}
+    impl<'tcx, B, F> !Sync for V<'tcx, B, F> {}
+
     impl<'tcx, B, C: Continue, F: FnMut(&'tcx Expr<'tcx>) -> ControlFlow<B, C>> Visitor<'tcx> for V<'tcx, B, F> {
         type NestedFilter = nested_filter::OnlyBodies;
         fn nested_visit_map(&mut self) -> Self::Map {
@@ -513,6 +517,10 @@ pub fn for_each_local_use_after_expr<'tcx, B>(
         res: ControlFlow<B>,
         f: F,
     }
+    // FIXME: more details in #106930
+    impl<'cx, 'tcx, B, F> !Send for V<'cx, 'tcx, B, F> {}
+    impl<'cx, 'tcx, B, F> !Sync for V<'cx, 'tcx, B, F> {}
+
     impl<'cx, 'tcx, F: FnMut(&'tcx Expr<'tcx>) -> ControlFlow<B>, B> Visitor<'tcx> for V<'cx, 'tcx, F, B> {
         type NestedFilter = nested_filter::OnlyBodies;
         fn nested_visit_map(&mut self) -> Self::Map {
@@ -694,6 +702,10 @@ pub fn for_each_local_assignment<'tcx, B>(
         res: ControlFlow<B>,
         f: F,
     }
+    // FIXME: more details in #106930
+    impl<'cx, 'tcx, F, B> !Send for V<'cx, 'tcx, F, B> {}
+    impl<'cx, 'tcx, F, B> !Sync for V<'cx, 'tcx, F, B> {}
+
     impl<'cx, 'tcx, F: FnMut(&'tcx Expr<'tcx>) -> ControlFlow<B>, B> Visitor<'tcx> for V<'cx, 'tcx, F, B> {
         type NestedFilter = nested_filter::OnlyBodies;
         fn nested_visit_map(&mut self) -> Self::Map {

@@ -20,5 +20,25 @@ error: crate `cfg_if` required to be available in rlib format, but was not found
 
 error: crate `libc` required to be available in rlib format, but was not found in this form
 
-error: aborting due to 10 previous errors
+error: crate `rayon` required to be available in rlib format, but was not found in this form
+
+error: crate `either` required to be available in rlib format, but was not found in this form
+
+error: crate `rayon_core` required to be available in rlib format, but was not found in this form
+
+error: crate `crossbeam_channel` required to be available in rlib format, but was not found in this form
+
+error: crate `crossbeam_utils` required to be available in rlib format, but was not found in this form
+
+error: crate `crossbeam_deque` required to be available in rlib format, but was not found in this form
+
+error: crate `crossbeam_epoch` required to be available in rlib format, but was not found in this form
+
+error: crate `scopeguard` required to be available in rlib format, but was not found in this form
+
+error: crate `memoffset` required to be available in rlib format, but was not found in this form
+
+error: crate `num_cpus` required to be available in rlib format, but was not found in this form
+
+error: aborting due to 20 previous errors
 

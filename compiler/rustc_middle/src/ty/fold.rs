@@ -21,6 +21,22 @@ where
     pub ct_op: H,
 }
 
+// FIXME: More information in <https://github.com/rust-lang/rust/pull/106930>.
+impl<'tcx, F, G, H> !Send for BottomUpFolder<'tcx, F, G, H>
+where
+    F: FnMut(Ty<'tcx>) -> Ty<'tcx>,
+    G: FnMut(ty::Region<'tcx>) -> ty::Region<'tcx>,
+    H: FnMut(ty::Const<'tcx>) -> ty::Const<'tcx>,
+{
+}
+impl<'tcx, F, G, H> !Sync for BottomUpFolder<'tcx, F, G, H>
+where
+    F: FnMut(Ty<'tcx>) -> Ty<'tcx>,
+    G: FnMut(ty::Region<'tcx>) -> ty::Region<'tcx>,
+    H: FnMut(ty::Const<'tcx>) -> ty::Const<'tcx>,
+{
+}
+
 impl<'tcx, F, G, H> TypeFolder<TyCtxt<'tcx>> for BottomUpFolder<'tcx, F, G, H>
 where
     F: FnMut(Ty<'tcx>) -> Ty<'tcx>,

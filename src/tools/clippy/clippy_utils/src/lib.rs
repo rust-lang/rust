@@ -2,6 +2,7 @@
 #![feature(box_patterns)]
 #![feature(let_chains)]
 #![feature(lint_reasons)]
+#![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(rustc_private)]
 #![recursion_limit = "512"]

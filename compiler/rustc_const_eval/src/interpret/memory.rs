@@ -121,6 +121,21 @@ pub struct AllocRef<'a, 'tcx, Prov: Provenance, Extra, Bytes: AllocBytes = Box<[
     tcx: TyCtxt<'tcx>,
     alloc_id: AllocId,
 }
+
+// FIXME: More information in <https://github.com/rust-lang/rust/pull/106930>.
+unsafe impl<'a, 'tcx, Prov: Provenance, Extra, Bytes: AllocBytes> Send
+    for AllocRef<'a, 'tcx, Prov, Extra, Bytes>
+where
+    Allocation<Prov, Extra, Bytes>: Sync,
+{
+}
+unsafe impl<'a, 'tcx, Prov: Provenance, Extra, Bytes: AllocBytes> Sync
+    for AllocRef<'a, 'tcx, Prov, Extra, Bytes>
+where
+    Allocation<Prov, Extra, Bytes>: Sync,
+{
+}
+
 /// A reference to some allocation that was already bounds-checked for the given region
 /// and had the on-access machine hooks run.
 pub struct AllocRefMut<'a, 'tcx, Prov: Provenance, Extra, Bytes: AllocBytes = Box<[u8]>> {
@@ -128,6 +143,16 @@ pub struct AllocRefMut<'a, 'tcx, Prov: Provenance, Extra, Bytes: AllocBytes = Bo
     range: AllocRange,
     tcx: TyCtxt<'tcx>,
     alloc_id: AllocId,
+}
+
+// FIXME: More information in <https://github.com/rust-lang/rust/pull/106930>.
+impl<'a, 'tcx, Prov: Provenance, Extra, Bytes: AllocBytes> !Send
+    for AllocRefMut<'a, 'tcx, Prov, Extra, Bytes>
+{
+}
+impl<'a, 'tcx, Prov: Provenance, Extra, Bytes: AllocBytes> !Sync
+    for AllocRefMut<'a, 'tcx, Prov, Extra, Bytes>
+{
 }
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
