@@ -3,8 +3,8 @@
 use std::{fmt::Display, iter};
 
 use crate::{
-    db::HirDatabase, infer::PointerCast, ClosureId, Const, ConstScalar, InferenceResult, Interner,
-    MemoryMap, Substitution, Ty, TyKind,
+    db::HirDatabase, display::HirDisplay, infer::PointerCast, lang_items::is_box, ClosureId, Const,
+    ConstScalar, InferenceResult, Interner, MemoryMap, Substitution, Ty, TyKind,
 };
 use chalk_ir::Mutability;
 use hir_def::{
@@ -115,8 +115,11 @@ impl<V, T> ProjectionElem<V, T> {
         match self {
             ProjectionElem::Deref => match &base.data(Interner).kind {
                 TyKind::Raw(_, inner) | TyKind::Ref(_, _, inner) => inner.clone(),
+                TyKind::Adt(adt, subst) if is_box(db, adt.0) => {
+                    subst.at(Interner, 0).assert_ty_ref(Interner).clone()
+                }
                 _ => {
-                    never!("Overloaded deref is not a projection");
+                    never!("Overloaded deref on type {} is not a projection", base.display(db));
                     return TyKind::Error.intern(Interner);
                 }
             },

@@ -1939,3 +1939,54 @@ fn foo() {
 "#,
     );
 }
+
+#[test]
+fn box_deref_is_builtin() {
+    check(
+        r#"
+//- minicore: deref
+use core::ops::Deref;
+
+#[lang = "owned_box"]
+struct Box<T>(*mut T);
+
+impl<T> Box<T> {
+    fn new(t: T) -> Self {
+        loop {}
+    }
+}
+
+impl<T> Deref for Box<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target;
+}
+
+struct Foo;
+impl Foo {
+    fn foo(&self) {}
+}
+fn test() {
+    Box::new(Foo).foo();
+  //^^^^^^^^^^^^^ adjustments: Deref(None), Borrow(Ref(Not))
+}
+"#,
+    );
+}
+
+#[test]
+fn manually_drop_deref_is_not_builtin() {
+    check(
+        r#"
+//- minicore: manually_drop, deref
+struct Foo;
+impl Foo {
+    fn foo(&self) {}
+}
+use core::mem::ManuallyDrop;
+fn test() {
+    ManuallyDrop::new(Foo).foo();
+  //^^^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(Some(OverloadedDeref(Some(Not)))), Borrow(Ref(Not))
+}
+"#,
+    );
+}

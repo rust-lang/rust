@@ -60,7 +60,7 @@ bitflags! {
         /// Indicates whether this struct is `ManuallyDrop`.
         const IS_MANUALLY_DROP = 1 << 6;
         /// Indicates whether this struct is `UnsafeCell`.
-        const IS_UNSAFE_CELL   = 1 << 6;
+        const IS_UNSAFE_CELL   = 1 << 7;
     }
 }
 
