@@ -80,7 +80,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
         src_hash.hash_stable(hcx, hasher);
 
         // We are always in `Lines` form by the time we reach here.
-        assert!(self.lines.borrow().is_lines());
+        assert!(self.lines.with_borrow(|lines| lines.is_lines()));
         self.lines(|lines| {
             // We only hash the relative position within this source_file
             lines.len().hash_stable(hcx, hasher);

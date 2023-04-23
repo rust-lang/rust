@@ -39,7 +39,7 @@ impl GatedSpans {
     /// Feature gate the given `span` under the given `feature`
     /// which is same `Symbol` used in `active.rs`.
     pub fn gate(&self, feature: Symbol, span: Span) {
-        self.spans.borrow_mut().entry(feature).or_default().push(span);
+        self.spans.with_lock(|spans| spans.entry(feature).or_default().push(span));
     }
 
     /// Ungate the last span under the given `feature`.
@@ -47,7 +47,8 @@ impl GatedSpans {
     ///
     /// Using this is discouraged unless you have a really good reason to.
     pub fn ungate_last(&self, feature: Symbol, span: Span) {
-        let removed_span = self.spans.borrow_mut().entry(feature).or_default().pop().unwrap();
+        let removed_span =
+            self.spans.with_lock(|spans| spans.entry(feature).or_default().pop().unwrap());
         debug_assert_eq!(span, removed_span);
     }
 
@@ -55,16 +56,17 @@ impl GatedSpans {
     ///
     /// Using this is discouraged unless you have a really good reason to.
     pub fn is_ungated(&self, feature: Symbol) -> bool {
-        self.spans.borrow().get(&feature).map_or(true, |spans| spans.is_empty())
+        self.spans.with_borrow(|spans| spans.get(&feature).map_or(true, |spans| spans.is_empty()))
     }
 
     /// Prepend the given set of `spans` onto the set in `self`.
     pub fn merge(&self, mut spans: FxHashMap<Symbol, Vec<Span>>) {
-        let mut inner = self.spans.borrow_mut();
-        for (gate, mut gate_spans) in inner.drain() {
-            spans.entry(gate).or_default().append(&mut gate_spans);
-        }
-        *inner = spans;
+        self.spans.with_lock(|inner| {
+            for (gate, mut gate_spans) in inner.drain() {
+                spans.entry(gate).or_default().append(&mut gate_spans);
+            }
+            *inner = spans;
+        })
     }
 }
 
@@ -78,7 +80,9 @@ impl SymbolGallery {
     /// Insert a symbol and its span into symbol gallery.
     /// If the symbol has occurred before, ignore the new occurrence.
     pub fn insert(&self, symbol: Symbol, span: Span) {
-        self.symbols.lock().entry(symbol).or_insert(span);
+        self.symbols.with_lock(|symbols| {
+            symbols.entry(symbol).or_insert(span);
+        })
     }
 }
 

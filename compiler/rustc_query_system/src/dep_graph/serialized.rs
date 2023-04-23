@@ -186,7 +186,7 @@ impl<K: DepKind> EncoderState<K> {
             if let Some(record_graph) = &mut record_graph.try_lock() {
                 record_graph.push(index, node.node, &node.edges);
             }
-        }
+        };
 
         if let Some(stats) = &mut self.stats {
             let kind = node.node.kind;
@@ -242,7 +242,7 @@ impl<K: DepKind + Encodable<FileEncoder>> GraphEncoder<K> {
 
     pub(crate) fn with_query(&self, f: impl Fn(&DepGraphQuery<K>)) {
         if let Some(record_graph) = &self.record_graph {
-            f(&record_graph.lock())
+            record_graph.with_borrow(f)
         }
     }
 
@@ -307,7 +307,7 @@ impl<K: DepKind + Encodable<FileEncoder>> GraphEncoder<K> {
     ) -> DepNodeIndex {
         let _prof_timer = profiler.generic_activity("incr_comp_encode_dep_graph");
         let node = NodeInfo { node, fingerprint, edges };
-        self.status.lock().encode_node(&node, &self.record_graph)
+        self.status.with_lock(|status| status.encode_node(&node, &self.record_graph))
     }
 
     pub fn finish(self, profiler: &SelfProfilerRef) -> FileEncodeResult {
