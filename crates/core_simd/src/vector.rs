@@ -830,7 +830,7 @@ where
     T: SimdElement,
 {
     fn from(array: [T; N]) -> Self {
-        Self(array)
+        Self::from_array(array)
     }
 }
 
