@@ -297,6 +297,7 @@ impl CargoWorkspace {
             let other_options: Vec<_> = targets
                 .into_iter()
                 .flat_map(|target| ["--filter-platform".to_string(), target])
+                .chain(config.extra_args.clone())
                 .collect();
             meta.other_options(other_options);
         }
