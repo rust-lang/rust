@@ -301,6 +301,9 @@ impl HirEqInterExpr<'_, '_, '_> {
             (&ExprKind::Unary(l_op, le), &ExprKind::Unary(r_op, re)) => l_op == r_op && self.eq_expr(le, re),
             (&ExprKind::Array(l), &ExprKind::Array(r)) => self.eq_exprs(l, r),
             (&ExprKind::DropTemps(le), &ExprKind::DropTemps(re)) => self.eq_expr(le, re),
+            (&ExprKind::OffsetOf(l_container, l_fields), &ExprKind::OffsetOf(r_container, r_fields)) => {
+                self.eq_ty(l_container, r_container) && over(l_fields, r_fields, |l, r| l.name == r.name)
+            },
             _ => false,
         };
         (is_eq && (!self.should_ignore(left) || !self.should_ignore(right)))
@@ -701,6 +704,12 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     }
                 }
             },
+            ExprKind::OffsetOf(container, fields) => {
+                self.hash_ty(container);
+                for field in fields {
+                    self.hash_name(field.name);
+                }
+            },
             ExprKind::Let(Let { pat, init, ty, .. }) => {
                 self.hash_expr(init);
                 if let Some(ty) = ty {
@@ -709,7 +718,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_pat(pat);
             },
             ExprKind::Err(_) => {},
-            ExprKind::Lit(ref l) => {
+            ExprKind::Lit(l) => {
                 l.node.hash(&mut self.s);
             },
             ExprKind::Loop(b, ref i, ..) => {

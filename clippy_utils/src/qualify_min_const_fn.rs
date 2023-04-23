@@ -194,7 +194,9 @@ fn check_rvalue<'tcx>(
                 ))
             }
         },
-        Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _) | Rvalue::ShallowInitBox(_, _) => Ok(()),
+        Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(_), _) | Rvalue::ShallowInitBox(_, _) => {
+            Ok(())
+        },
         Rvalue::UnaryOp(_, operand) => {
             let ty = operand.ty(body, tcx);
             if ty.is_integral() || ty.is_bool() {
@@ -301,13 +303,13 @@ fn check_terminator<'tcx>(
         | TerminatorKind::Goto { .. }
         | TerminatorKind::Return
         | TerminatorKind::Resume
+        | TerminatorKind::Terminate
         | TerminatorKind::Unreachable => Ok(()),
 
         TerminatorKind::Drop { place, .. } => check_place(tcx, *place, span, body),
 
         TerminatorKind::SwitchInt { discr, targets: _ } => check_operand(tcx, discr, span, body),
 
-        TerminatorKind::Abort => Err((span, "abort is not stable in const fn".into())),
         TerminatorKind::GeneratorDrop | TerminatorKind::Yield { .. } => {
             Err((span, "const fn generators are unstable".into()))
         },
@@ -318,7 +320,7 @@ fn check_terminator<'tcx>(
             from_hir_call: _,
             destination: _,
             target: _,
-            cleanup: _,
+            unwind: _,
             fn_span: _,
         } => {
             let fn_ty = func.ty(body, tcx);
@@ -361,7 +363,7 @@ fn check_terminator<'tcx>(
             expected: _,
             msg: _,
             target: _,
-            cleanup: _,
+            unwind: _,
         } => check_operand(tcx, cond, span, body),
 
         TerminatorKind::InlineAsm { .. } => Err((span, "cannot use inline assembly in const fn".into())),

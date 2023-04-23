@@ -334,7 +334,7 @@ fn find_good_method_for_match<'a>(
     };
 
     match body_node_pair {
-        (ExprKind::Lit(ref lit_left), ExprKind::Lit(ref lit_right)) => match (&lit_left.node, &lit_right.node) {
+        (ExprKind::Lit(lit_left), ExprKind::Lit(lit_right)) => match (&lit_left.node, &lit_right.node) {
             (LitKind::Bool(true), LitKind::Bool(false)) => Some(should_be_left),
             (LitKind::Bool(false), LitKind::Bool(true)) => Some(should_be_right),
             _ => None,

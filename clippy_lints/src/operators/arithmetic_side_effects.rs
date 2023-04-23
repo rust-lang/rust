@@ -110,7 +110,7 @@ impl ArithmeticSideEffects {
     /// like `i32::MAX` or constant references like `N` from `const N: i32 = 1;`,
     fn literal_integer(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<u128> {
         let actual = peel_hir_expr_unary(expr).0;
-        if let hir::ExprKind::Lit(ref lit) = actual.kind && let ast::LitKind::Int(n, _) = lit.node {
+        if let hir::ExprKind::Lit(lit) = actual.kind && let ast::LitKind::Int(n, _) = lit.node {
             return Some(n)
         }
         if let Some((Constant::Int(n), _)) = constant(cx, cx.typeck_results(), expr) {

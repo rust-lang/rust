@@ -324,7 +324,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
         match e.kind {
             ExprKind::Path(ref qpath) => self.fetch_path(qpath, e.hir_id, self.typeck_results.expr_ty(e)),
             ExprKind::Block(block, _) => self.block(block),
-            ExprKind::Lit(ref lit) => {
+            ExprKind::Lit(lit) => {
                 if is_direct_expn_of(e.span, "cfg").is_some() {
                     None
                 } else {
@@ -450,11 +450,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                 let result = self
                     .lcx
                     .tcx
-                    .const_eval_resolve(
-                        self.param_env,
-                        mir::UnevaluatedConst::new(ty::WithOptConstParam::unknown(def_id), substs),
-                        None,
-                    )
+                    .const_eval_resolve(self.param_env, mir::UnevaluatedConst::new(def_id, substs), None)
                     .ok()
                     .map(|val| rustc_middle::mir::ConstantKind::from_value(val, ty))?;
                 let result = miri_to_const(self.lcx.tcx, result);

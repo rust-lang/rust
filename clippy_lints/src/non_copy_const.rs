@@ -196,11 +196,9 @@ fn is_value_unfrozen_poly<'tcx>(cx: &LateContext<'tcx>, body_id: BodyId, ty: Ty<
 fn is_value_unfrozen_expr<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId, def_id: DefId, ty: Ty<'tcx>) -> bool {
     let substs = cx.typeck_results().node_substs(hir_id);
 
-    let result = cx.tcx.const_eval_resolve(
-        cx.param_env,
-        mir::UnevaluatedConst::new(ty::WithOptConstParam::unknown(def_id), substs),
-        None,
-    );
+    let result = cx
+        .tcx
+        .const_eval_resolve(cx.param_env, mir::UnevaluatedConst::new(def_id, substs), None);
     is_value_unfrozen_raw(cx, result, ty)
 }
 

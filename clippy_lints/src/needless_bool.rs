@@ -369,7 +369,7 @@ fn fetch_bool_block(expr: &Expr<'_>) -> Option<Expression> {
 }
 
 fn fetch_bool_expr(expr: &Expr<'_>) -> Option<bool> {
-    if let ExprKind::Lit(ref lit_ptr) = peel_blocks(expr).kind {
+    if let ExprKind::Lit(lit_ptr) = peel_blocks(expr).kind {
         if let LitKind::Bool(value) = lit_ptr.node {
             return Some(value);
         }

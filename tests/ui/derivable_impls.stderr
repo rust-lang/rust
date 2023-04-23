@@ -14,7 +14,8 @@ LL | | }
    = help: remove the manual implementation...
 help: ...and instead derive it
    |
-LL | #[derive(Default)]
+LL + #[derive(Default)]
+LL | struct FooDefault<'a> {
    |
 
 error: this `impl` can be derived
@@ -30,7 +31,8 @@ LL | | }
    = help: remove the manual implementation...
 help: ...and instead derive it
    |
-LL | #[derive(Default)]
+LL + #[derive(Default)]
+LL | struct TupleDefault(bool, i32, u64);
    |
 
 error: this `impl` can be derived
@@ -46,7 +48,8 @@ LL | | }
    = help: remove the manual implementation...
 help: ...and instead derive it
    |
-LL | #[derive(Default)]
+LL + #[derive(Default)]
+LL | struct StrDefault<'a>(&'a str);
    |
 
 error: this `impl` can be derived
@@ -62,7 +65,8 @@ LL | | }
    = help: remove the manual implementation...
 help: ...and instead derive it
    |
-LL | #[derive(Default)]
+LL + #[derive(Default)]
+LL | struct Y(u32);
    |
 
 error: this `impl` can be derived
@@ -78,7 +82,8 @@ LL | | }
    = help: remove the manual implementation...
 help: ...and instead derive it
    |
-LL | #[derive(Default)]
+LL + #[derive(Default)]
+LL | struct WithoutSelfCurly {
    |
 
 error: this `impl` can be derived
@@ -94,7 +99,8 @@ LL | | }
    = help: remove the manual implementation...
 help: ...and instead derive it
    |
-LL | #[derive(Default)]
+LL + #[derive(Default)]
+LL | struct WithoutSelfParan(bool);
    |
 
 error: this `impl` can be derived
@@ -110,7 +116,8 @@ LL | | }
    = help: remove the manual implementation...
 help: ...and instead derive it
    |
-LL | #[derive(Default)]
+LL + #[derive(Default)]
+LL | pub struct RepeatDefault1 {
    |
 
 error: this `impl` can be derived
@@ -126,7 +133,8 @@ LL | | }
    = help: remove the manual implementation...
 help: ...and instead derive it...
    |
-LL | #[derive(Default)]
+LL + #[derive(Default)]
+LL | pub enum SimpleEnum {
    |
 help: ...and mark the default variant
    |
