@@ -357,9 +357,17 @@ where
 // of data to return. Simply tacking on an extra DEFAULT_BUF_SIZE space every
 // time is 4,500 times (!) slower than a default reservation size of 32 if the
 // reader has a very small amount of data to return.
-pub(crate) fn default_read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> {
+pub(crate) fn default_read_to_end<R: Read + ?Sized>(
+    r: &mut R,
+    buf: &mut Vec<u8>,
+    size_hint: Option<usize>,
+) -> Result<usize> {
     let start_len = buf.len();
     let start_cap = buf.capacity();
+    // Optionally limit the maximum bytes read on each iteration.
+    // This adds an arbitrary fiddle factor to allow for more data than we expect.
+    let max_read_size =
+        size_hint.and_then(|s| s.checked_add(1024)?.checked_next_multiple_of(DEFAULT_BUF_SIZE));
 
     let mut initialized = 0; // Extra initialized bytes from previous loop iteration
     loop {
@@ -367,7 +375,12 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>
             buf.reserve(32); // buf is full, need more space
         }
 
-        let mut read_buf: BorrowedBuf<'_> = buf.spare_capacity_mut().into();
+        let mut spare = buf.spare_capacity_mut();
+        if let Some(size) = max_read_size {
+            let len = cmp::min(spare.len(), size);
+            spare = &mut spare[..len]
+        }
+        let mut read_buf: BorrowedBuf<'_> = spare.into();
 
         // SAFETY: These bytes were initialized but not filled in the previous loop
         unsafe {
@@ -419,6 +432,7 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>
 pub(crate) fn default_read_to_string<R: Read + ?Sized>(
     r: &mut R,
     buf: &mut String,
+    size_hint: Option<usize>,
 ) -> Result<usize> {
     // Note that we do *not* call `r.read_to_end()` here. We are passing
     // `&mut Vec<u8>` (the raw contents of `buf`) into the `read_to_end`
@@ -429,7 +443,7 @@ pub(crate) fn default_read_to_string<R: Read + ?Sized>(
     // To prevent extraneously checking the UTF-8-ness of the entire buffer
     // we pass it to our hardcoded `default_read_to_end` implementation which
     // we know is guaranteed to only read data into the end of the buffer.
-    unsafe { append_to_string(buf, |b| default_read_to_end(r, b)) }
+    unsafe { append_to_string(buf, |b| default_read_to_end(r, b, size_hint)) }
 }
 
 pub(crate) fn default_read_vectored<F>(read: F, bufs: &mut [IoSliceMut<'_>]) -> Result<usize>
@@ -709,7 +723,7 @@ pub trait Read {
     /// [`std::fs::read`]: crate::fs::read
     #[stable(feature = "rust1", since = "1.0.0")]
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
-        default_read_to_end(self, buf)
+        default_read_to_end(self, buf, None)
     }
 
     /// Read all bytes until EOF in this source, appending them to `buf`.
@@ -752,7 +766,7 @@ pub trait Read {
     /// [`std::fs::read_to_string`]: crate::fs::read_to_string
     #[stable(feature = "rust1", since = "1.0.0")]
     fn read_to_string(&mut self, buf: &mut String) -> Result<usize> {
-        default_read_to_string(self, buf)
+        default_read_to_string(self, buf, None)
     }
 
     /// Read the exact number of bytes required to fill `buf`.

@@ -288,6 +288,7 @@
 #![feature(float_next_up_down)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
+#![feature(int_roundings)]
 #![feature(ip)]
 #![feature(ip_in_core)]
 #![feature(maybe_uninit_slice)]

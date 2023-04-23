@@ -249,9 +249,9 @@ pub struct DirBuilder {
 pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
     fn inner(path: &Path) -> io::Result<Vec<u8>> {
         let mut file = File::open(path)?;
-        let size = file.metadata().map(|m| m.len()).unwrap_or(0);
-        let mut bytes = Vec::with_capacity(size as usize);
-        io::default_read_to_end(&mut file, &mut bytes)?;
+        let size = file.metadata().map(|m| m.len() as usize).ok();
+        let mut bytes = Vec::with_capacity(size.unwrap_or(0));
+        io::default_read_to_end(&mut file, &mut bytes, size)?;
         Ok(bytes)
     }
     inner(path.as_ref())
@@ -289,9 +289,9 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
 pub fn read_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
     fn inner(path: &Path) -> io::Result<String> {
         let mut file = File::open(path)?;
-        let size = file.metadata().map(|m| m.len()).unwrap_or(0);
-        let mut string = String::with_capacity(size as usize);
-        io::default_read_to_string(&mut file, &mut string)?;
+        let size = file.metadata().map(|m| m.len() as usize).ok();
+        let mut string = String::with_capacity(size.unwrap_or(0));
+        io::default_read_to_string(&mut file, &mut string, size)?;
         Ok(string)
     }
     inner(path.as_ref())
@@ -732,12 +732,12 @@ impl fmt::Debug for File {
 }
 
 /// Indicates how much extra capacity is needed to read the rest of the file.
-fn buffer_capacity_required(mut file: &File) -> usize {
-    let size = file.metadata().map(|m| m.len()).unwrap_or(0);
-    let pos = file.stream_position().unwrap_or(0);
+fn buffer_capacity_required(mut file: &File) -> Option<usize> {
+    let size = file.metadata().map(|m| m.len()).ok()?;
+    let pos = file.stream_position().ok()?;
     // Don't worry about `usize` overflow because reading will fail regardless
     // in that case.
-    size.saturating_sub(pos) as usize
+    Some(size.saturating_sub(pos) as usize)
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -761,14 +761,16 @@ impl Read for File {
 
     // Reserves space in the buffer based on the file size when available.
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        buf.reserve(buffer_capacity_required(self));
-        io::default_read_to_end(self, buf)
+        let size = buffer_capacity_required(self);
+        buf.reserve(size.unwrap_or(0));
+        io::default_read_to_end(self, buf, size)
     }
 
     // Reserves space in the buffer based on the file size when available.
     fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
-        buf.reserve(buffer_capacity_required(self));
-        io::default_read_to_string(self, buf)
+        let size = buffer_capacity_required(self);
+        buf.reserve(size.unwrap_or(0));
+        io::default_read_to_string(self, buf, size)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -817,14 +819,16 @@ impl Read for &File {
 
     // Reserves space in the buffer based on the file size when available.
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        buf.reserve(buffer_capacity_required(self));
-        io::default_read_to_end(self, buf)
+        let size = buffer_capacity_required(self);
+        buf.reserve(size.unwrap_or(0));
+        io::default_read_to_end(self, buf, size)
     }
 
     // Reserves space in the buffer based on the file size when available.
     fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
-        buf.reserve(buffer_capacity_required(self));
-        io::default_read_to_string(self, buf)
+        let size = buffer_capacity_required(self);
+        buf.reserve(size.unwrap_or(0));
+        io::default_read_to_string(self, buf, size)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
