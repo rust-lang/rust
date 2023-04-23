@@ -1080,46 +1080,70 @@ pub struct ThreadId(NonZeroU64);
 impl ThreadId {
     // Generate a new unique thread ID.
     fn new() -> ThreadId {
+        /// A permutation function that always maps 0 to 0.
+        ///
+        /// Ported from <https://www.gkbrk.com/wiki/avalanche-diagram/>.
+        /// This permutation is subject to change. **DO NOT** rely on it.
+        /// Always treat thread ids as opaque.
+        fn permute(x: u64) -> u64 {
+            let mut a = x;
+            let mut b = 0;
+            let mut c = 0;
+            for _ in 0..4 {
+                b ^= a.wrapping_add(c).rotate_left(7);
+                c ^= b.wrapping_add(a).rotate_left(9);
+                a ^= c.wrapping_add(b).rotate_left(13);
+            }
+            a
+        }
+
         #[cold]
         fn exhausted() -> ! {
             panic!("failed to generate unique thread ID: bitspace exhausted")
         }
 
-        cfg_if::cfg_if! {
-            if #[cfg(target_has_atomic = "64")] {
-                use crate::sync::atomic::{AtomicU64, Ordering::Relaxed};
+        fn generate() -> u64 {
+            cfg_if::cfg_if! {
+                if #[cfg(target_has_atomic = "64")] {
+                    use crate::sync::atomic::{AtomicU64, Ordering::Relaxed};
 
-                static COUNTER: AtomicU64 = AtomicU64::new(0);
+                    static COUNTER: AtomicU64 = AtomicU64::new(0);
 
-                let mut last = COUNTER.load(Relaxed);
-                loop {
-                    let Some(id) = last.checked_add(1) else {
+                    let mut last = COUNTER.load(Relaxed);
+                    loop {
+                        let Some(id) = last.checked_add(1) else {
+                            exhausted();
+                        };
+
+                        match COUNTER.compare_exchange_weak(last, id, Relaxed, Relaxed) {
+                            Ok(_) => return id,
+                            Err(id) => last = id,
+                        }
+                    }
+                } else {
+                    use crate::sync::{Mutex, PoisonError};
+
+                    static COUNTER: Mutex<u64> = Mutex::new(0);
+
+                    let mut counter = COUNTER.lock().unwrap_or_else(PoisonError::into_inner);
+                    let Some(id) = counter.checked_add(1) else {
+                        // in case the panic handler ends up calling `ThreadId::new()`,
+                        // avoid reentrant lock acquire.
+                        drop(counter);
                         exhausted();
                     };
 
-                    match COUNTER.compare_exchange_weak(last, id, Relaxed, Relaxed) {
-                        Ok(_) => return ThreadId(NonZeroU64::new(id).unwrap()),
-                        Err(id) => last = id,
-                    }
-                }
-            } else {
-                use crate::sync::{Mutex, PoisonError};
-
-                static COUNTER: Mutex<u64> = Mutex::new(0);
-
-                let mut counter = COUNTER.lock().unwrap_or_else(PoisonError::into_inner);
-                let Some(id) = counter.checked_add(1) else {
-                    // in case the panic handler ends up calling `ThreadId::new()`,
-                    // avoid reentrant lock acquire.
+                    *counter = id;
                     drop(counter);
-                    exhausted();
-                };
-
-                *counter = id;
-                drop(counter);
-                ThreadId(NonZeroU64::new(id).unwrap())
+                    id
+                }
             }
         }
+
+        // Permute ids to stop users from relying on the exact value of
+        // `ThreadId`. Since `generate` never returns zero the id will not
+        // be zero either, as `permute` maps zero to itself.
+        ThreadId(NonZeroU64::new(permute(generate())).unwrap())
     }
 
     /// This returns a numeric identifier for the thread identified by this
