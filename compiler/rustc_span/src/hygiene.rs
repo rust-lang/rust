@@ -1152,6 +1152,7 @@ pub enum DesugaringKind {
     ForLoop,
     WhileLoop,
     Replace,
+    FormatArgs,
 }
 
 impl DesugaringKind {
@@ -1168,6 +1169,7 @@ impl DesugaringKind {
             DesugaringKind::ForLoop => "`for` loop",
             DesugaringKind::WhileLoop => "`while` loop",
             DesugaringKind::Replace => "drop and replace",
+            DesugaringKind::FormatArgs => "`format_args!` expansion",
         }
     }
 }

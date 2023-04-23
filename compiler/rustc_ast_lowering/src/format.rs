@@ -5,6 +5,7 @@ use rustc_ast::*;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_span::{
+    hygiene::DesugaringKind,
     sym,
     symbol::{kw, Ident},
     Span, Symbol,
@@ -425,14 +426,36 @@ fn expand_format_args<'hir>(
 
     if allow_const && arguments.is_empty() && argmap.is_empty() {
         // Generate:
-        //     <core::fmt::Arguments>::new_const(lit_pieces)
-        let new = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
+        //     const { <core::fmt::Arguments>::new_const(lit_pieces) }
+        let span = ctx.mark_span_with_reason(
+            DesugaringKind::FormatArgs,
             macsp,
+            ctx.allow_format_args.clone(),
+        );
+        let new = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
+            span,
             hir::LangItem::FormatArguments,
             sym::new_const,
         ));
         let new_args = ctx.arena.alloc_from_iter([lit_pieces]);
-        return hir::ExprKind::Call(new, new_args);
+        let call = hir::ExprKind::Call(new, new_args);
+
+        let node_id = ctx.next_node_id();
+        let call_expr = hir::Expr { hir_id: ctx.lower_node_id(node_id), kind: call, span };
+
+        let parent_def_id = ctx.current_hir_id_owner;
+        let node_id = ctx.next_node_id();
+        let def_id = ctx.create_def(
+            parent_def_id.def_id,
+            node_id,
+            hir::definitions::DefPathData::AnonConst,
+            span,
+        );
+        return hir::ExprKind::ConstBlock(hir::AnonConst {
+            def_id,
+            hir_id: ctx.lower_node_id(node_id),
+            body: ctx.lower_body(|_this| (&[], call_expr)),
+        });
     }
 
     // If the args array contains exactly all the original arguments once,

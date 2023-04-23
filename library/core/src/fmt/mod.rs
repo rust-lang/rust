@@ -393,7 +393,8 @@ impl<'a> Arguments<'a> {
     #[rustc_const_unstable(feature = "const_fmt_arguments_new", issue = "none")]
     pub const fn new_const(pieces: &'a [&'static str]) -> Self {
         if pieces.len() > 1 {
-            panic!("invalid args");
+            // panic! expands to a call to this function, so we do this to avoid recursion.
+            crate::panicking::panic("invalid args");
         }
         Arguments { pieces, fmt: None, args: &[] }
     }

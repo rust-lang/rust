@@ -84,6 +84,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
             allow_try_trait: Some([sym::try_trait_v2, sym::yeet_desugar_details][..].into()),
             allow_gen_future: Some([sym::gen_future, sym::closure_track_caller][..].into()),
             allow_into_future: Some([sym::into_future][..].into()),
+            allow_format_args: Some([sym::const_fmt_arguments_new, sym::fmt_internals][..].into()),
             generics_def_id_map: Default::default(),
         };
         lctx.with_hir_id_owner(owner, |lctx| f(lctx));
