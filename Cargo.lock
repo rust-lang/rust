@@ -593,9 +593,8 @@ dependencies = [
  "rustc-semver",
  "rustc-workspace-hack",
  "rustc_tools_util",
- "semver",
  "serde",
- "syn 1.0.102",
+ "syn 2.0.8",
  "tempfile",
  "termize",
  "tester",
@@ -746,9 +745,9 @@ dependencies = [
 
 [[package]]
 name = "compiletest_rs"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70489bbb718aea4f92e5f48f2e3b5be670c2051de30e57cb6e5377b4aa08b372"
+checksum = "e2731272cf25196735df1b52ab5bcba22cf9f99455626c4c8dc092bd5f7f66d0"
 dependencies = [
  "diff",
  "filetime",
@@ -973,7 +972,7 @@ version = "0.1.70"
 dependencies = [
  "itertools",
  "quote",
- "syn 1.0.102",
+ "syn 2.0.8",
 ]
 
 [[package]]
