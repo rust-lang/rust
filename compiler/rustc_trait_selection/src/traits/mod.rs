@@ -17,6 +17,7 @@ pub mod query;
 mod select;
 mod specialize;
 mod structural_match;
+mod structural_normalize;
 mod util;
 mod vtable;
 pub mod wf;
@@ -62,6 +63,7 @@ pub use self::specialize::{
 pub use self::structural_match::{
     search_for_adt_const_param_violation, search_for_structural_match_violation,
 };
+pub use self::structural_normalize::StructurallyNormalizeExt;
 pub use self::util::elaborate;
 pub use self::util::{expand_trait_aliases, TraitAliasExpander};
 pub use self::util::{get_vtable_index_of_object_method, impl_item_is_final, upcast_choices};
