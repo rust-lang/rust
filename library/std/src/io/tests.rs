@@ -32,9 +32,21 @@ fn split() {
     assert_eq!(s.next().unwrap().unwrap(), vec![b'1', b'2']);
     assert!(s.next().is_none());
 
-    let buf = Cursor::new(&b"1233"[..]);
+    // same behavior as &str::split
+    let buf = Cursor::new(&b"3345331233"[..]);
     let mut s = buf.split(b'3');
+    assert_eq!(s.next().unwrap().unwrap(), vec![]);
+    assert_eq!(s.next().unwrap().unwrap(), vec![]);
+    assert_eq!(s.next().unwrap().unwrap(), vec![b'4', b'5']);
+    assert_eq!(s.next().unwrap().unwrap(), vec![]);
     assert_eq!(s.next().unwrap().unwrap(), vec![b'1', b'2']);
+    assert_eq!(s.next().unwrap().unwrap(), vec![]);
+    assert_eq!(s.next().unwrap().unwrap(), vec![]);
+    assert!(s.next().is_none());
+
+    // same behavior as &str::split
+    let buf = Cursor::new(&b""[..]);
+    let mut s = buf.split(b'3');
     assert_eq!(s.next().unwrap().unwrap(), vec![]);
     assert!(s.next().is_none());
 }

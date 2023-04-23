@@ -2244,6 +2244,12 @@ pub trait BufRead: Read {
     /// <code>[io::Result]<[Vec]\<u8>></code>. Each vector returned will *not* have
     /// the delimiter byte at the end.
     ///
+    /// Empty vectors are returned in the following cases:
+    /// * the reader starts by the delimiter,
+    /// * the reader ends by the delimter,
+    /// * the reader contains two adjacent delimiters.
+    /// * the reader is empty
+    ///
     /// This function will yield errors whenever [`read_until`] would have
     /// also yielded an error.
     ///
@@ -2272,7 +2278,7 @@ pub trait BufRead: Read {
     where
         Self: Sized,
     {
-        Split { buf: self, delim: byte }
+        Split { buf: self, delim: byte, after_delim: true }
     }
 
     /// Returns an iterator over the lines of this reader.
@@ -2813,6 +2819,8 @@ impl SizeHint for &[u8] {
 pub struct Split<B> {
     buf: B,
     delim: u8,
+    /// whether we previously read a delimiter, or it's the beginning
+    after_delim: bool,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2822,9 +2830,18 @@ impl<B: BufRead> Iterator for Split<B> {
     fn next(&mut self) -> Option<Result<Vec<u8>>> {
         let mut buf = Vec::new();
         match self.buf.read_until(self.delim, &mut buf) {
-            Ok(0) => None,
+            Ok(0) => {
+                if self.after_delim {
+                    // either empty reader, or trailing delimiter
+                    self.after_delim = false;
+                    Some(Ok(Vec::new()))
+                } else {
+                    None
+                }
+            }
             Ok(_n) => {
-                if buf[buf.len() - 1] == self.delim {
+                self.after_delim = buf[buf.len() - 1] == self.delim;
+                if self.after_delim {
                     buf.pop();
                 }
                 Some(Ok(buf))
