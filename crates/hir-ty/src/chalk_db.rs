@@ -803,17 +803,17 @@ pub(crate) fn adt_variance_query(
     )
 }
 
+/// Returns instantiated predicates.
 pub(super) fn convert_where_clauses(
     db: &dyn HirDatabase,
     def: GenericDefId,
     substs: &Substitution,
 ) -> Vec<chalk_ir::QuantifiedWhereClause<Interner>> {
-    let generic_predicates = db.generic_predicates(def);
-    let mut result = Vec::with_capacity(generic_predicates.len());
-    for pred in generic_predicates.iter() {
-        result.push(pred.clone().substitute(Interner, substs));
-    }
-    result
+    db.generic_predicates(def)
+        .iter()
+        .cloned()
+        .map(|pred| pred.substitute(Interner, substs))
+        .collect()
 }
 
 pub(super) fn generic_predicate_to_inline_bound(
