@@ -76,6 +76,11 @@ use crate::simd::{
 /// [`read`]: pointer::read
 /// [`write`]: pointer::write
 /// [as_simd]: slice::as_simd
+//
+// NOTE: Accessing the inner array directly in any way (e.g. by using the `.0` field syntax) or
+// directly constructing an instance of the type (i.e. `let vector = Simd(array)`) should be
+// avoided, as it will likely become illegal on `#[repr(simd)]` structs in the future. It also
+// causes rustc to emit illegal LLVM IR in some cases.
 #[repr(simd)]
 pub struct Simd<T, const LANES: usize>([T; LANES])
 where
@@ -135,22 +140,54 @@ where
     /// assert_eq!(v.as_array(), &[0, 1, 2, 3]);
     /// ```
     pub const fn as_array(&self) -> &[T; LANES] {
-        &self.0
+        // SAFETY: Transmuting between `Simd<T, LANES>` and `[T; LANES]`
+        // is always valid and `Simd<T, LANES>` never has a lower alignment
+        // than `[T; LANES]`.
+        //
+        // NOTE: This deliberately doesn't just use `&self.0`, see the comment
+        // on the struct definition for details.
+        unsafe { &*(self as *const Self as *const [T; LANES]) }
     }
 
     /// Returns a mutable array reference containing the entire SIMD vector.
     pub fn as_mut_array(&mut self) -> &mut [T; LANES] {
-        &mut self.0
+        // SAFETY: Transmuting between `Simd<T, LANES>` and `[T; LANES]`
+        // is always valid and `Simd<T, LANES>` never has a lower alignment
+        // than `[T; LANES]`.
+        //
+        // NOTE: This deliberately doesn't just use `&mut self.0`, see the comment
+        // on the struct definition for details.
+        unsafe { &mut *(self as *mut Self as *mut [T; LANES]) }
     }
 
     /// Converts an array to a SIMD vector.
     pub const fn from_array(array: [T; LANES]) -> Self {
-        Self(array)
+        // SAFETY: Transmuting between `Simd<T, LANES>` and `[T; LANES]`
+        // is always valid. We need to use `read_unaligned` here, since
+        // the array may have a lower alignment than the vector.
+        //
+        // FIXME: We currently use a pointer read instead of `transmute_copy` because
+        // it results in better codegen with optimizations disabled, but we should
+        // probably just use `transmute` once that works on const generic types.
+        //
+        // NOTE: This deliberately doesn't just use `Self(array)`, see the comment
+        // on the struct definition for details.
+        unsafe { (&array as *const [T; LANES] as *const Self).read_unaligned() }
     }
 
     /// Converts a SIMD vector to an array.
     pub const fn to_array(self) -> [T; LANES] {
-        self.0
+        // SAFETY: Transmuting between `Simd<T, LANES>` and `[T; LANES]`
+        // is always valid. No need to use `read_unaligned` here, since
+        // the vector never has a lower alignment than the array.
+        //
+        // FIXME: We currently use a pointer read instead of `transmute_copy` because
+        // it results in better codegen with optimizations disabled, but we should
+        // probably just use `transmute` once that works on const generic types.
+        //
+        // NOTE: This deliberately doesn't just use `self.0`, see the comment
+        // on the struct definition for details.
+        unsafe { (&self as *const Self as *const [T; LANES]).read() }
     }
 
     /// Converts a slice to a SIMD vector containing `slice[..LANES]`.
@@ -735,7 +772,7 @@ where
 {
     #[inline]
     fn as_ref(&self) -> &[T; LANES] {
-        &self.0
+        self.as_array()
     }
 }
 
@@ -746,7 +783,7 @@ where
 {
     #[inline]
     fn as_mut(&mut self) -> &mut [T; LANES] {
-        &mut self.0
+        self.as_mut_array()
     }
 }
 
@@ -758,7 +795,7 @@ where
 {
     #[inline]
     fn as_ref(&self) -> &[T] {
-        &self.0
+        self.as_array()
     }
 }
 
@@ -769,7 +806,7 @@ where
 {
     #[inline]
     fn as_mut(&mut self) -> &mut [T] {
-        &mut self.0
+        self.as_mut_array()
     }
 }
 
