@@ -349,7 +349,7 @@ pub(crate) unsafe fn box_free<T: ?Sized, A: Allocator>(ptr: Unique<T>, alloc: A)
 }
 
 /// Payload passed to the panic handler when `handle_alloc_error` is called.
-#[unstable(feature = "panic_oom_payload", issue = "none")]
+#[unstable(feature = "panic_oom_payload", issue = "110730")]
 #[derive(Debug)]
 pub struct AllocErrorPanicPayload {
     layout: Layout,
@@ -364,7 +364,7 @@ impl AllocErrorPanicPayload {
     }
 
     /// Returns the [`Layout`] of the allocation attempt that caused the error.
-    #[unstable(feature = "panic_oom_payload", issue = "none")]
+    #[unstable(feature = "panic_oom_payload", issue = "110730")]
     pub fn layout(&self) -> Layout {
         self.layout
     }
