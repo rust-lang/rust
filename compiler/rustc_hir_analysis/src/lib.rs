@@ -496,8 +496,6 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
         tcx.hir().for_each_module(|module| tcx.ensure().check_mod_item_types(module))
     });
 
-    tcx.sess.time("item_bodies_checking", || tcx.typeck_item_bodies(()));
-
     check_unused::check_crate(tcx);
     check_for_entry_fn(tcx);
 

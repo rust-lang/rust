@@ -51,6 +51,13 @@ fn mir_build(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
             // of `mir_build`, so now we can steal it
             let thir = thir.steal();
 
+            tcx.ensure().check_match(def);
+            // this must run before MIR dump, because
+            // "not all control paths return a value" is reported here.
+            //
+            // maybe move the check to a MIR pass?
+            tcx.ensure().check_liveness(def);
+
             match thir.body_type {
                 thir::BodyTy::Fn(fn_sig) => construct_fn(tcx, def, &thir, expr, fn_sig),
                 thir::BodyTy::Const(ty) => construct_const(tcx, def, &thir, expr, ty),

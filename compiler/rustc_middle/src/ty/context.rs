@@ -80,6 +80,8 @@ use std::iter;
 use std::mem;
 use std::ops::{Bound, Deref};
 
+use super::query::IntoQueryParam;
+
 const TINY_CONST_EVAL_LIMIT: Limit = Limit(20);
 
 pub trait OnDiskCache<'tcx>: rustc_data_structures::sync::Sync {
@@ -824,7 +826,8 @@ impl<'tcx> TyCtxt<'tcx> {
         self.features_query(())
     }
 
-    pub fn def_key(self, id: DefId) -> rustc_hir::definitions::DefKey {
+    pub fn def_key(self, id: impl IntoQueryParam<DefId>) -> rustc_hir::definitions::DefKey {
+        let id = id.into_query_param();
         // Accessing the DefKey is ok, since it is part of DefPathHash.
         if let Some(id) = id.as_local() {
             self.definitions_untracked().def_key(id)

@@ -90,7 +90,7 @@ use rustc_errors::Applicability;
 use rustc_errors::Diagnostic;
 use rustc_hir as hir;
 use rustc_hir::def::*;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Expr, HirId, HirIdMap, HirIdSet};
 use rustc_index::vec::IndexVec;
@@ -98,6 +98,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, RootVariableMinCaptureList, Ty, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::DUMMY_SP;
 use rustc_span::{BytePos, Span};
 
 use std::collections::VecDeque;
@@ -137,14 +138,9 @@ fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_>) -> String {
     }
 }
 
-fn check_liveness(tcx: TyCtxt<'_>, def_id: DefId) {
-    let local_def_id = match def_id.as_local() {
-        None => return,
-        Some(def_id) => def_id,
-    };
-
+fn check_liveness(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     // Don't run unused pass for #[derive()]
-    let parent = tcx.local_parent(local_def_id);
+    let parent = tcx.local_parent(def_id);
     if let DefKind::Impl { .. } = tcx.def_kind(parent)
         && tcx.has_attr(parent, sym::automatically_derived)
     {
@@ -152,12 +148,12 @@ fn check_liveness(tcx: TyCtxt<'_>, def_id: DefId) {
     }
 
     // Don't run unused pass for #[naked]
-    if tcx.has_attr(def_id, sym::naked) {
+    if tcx.has_attr(def_id.to_def_id(), sym::naked) {
         return;
     }
 
     let mut maps = IrMaps::new(tcx);
-    let body_id = tcx.hir().body_owned_by(local_def_id);
+    let body_id = tcx.hir().body_owned_by(def_id);
     let hir_id = tcx.hir().body_owner(body_id);
     let body = tcx.hir().body(body_id);
 
@@ -173,7 +169,7 @@ fn check_liveness(tcx: TyCtxt<'_>, def_id: DefId) {
     maps.visit_body(body);
 
     // compute liveness
-    let mut lsets = Liveness::new(&mut maps, local_def_id);
+    let mut lsets = Liveness::new(&mut maps, def_id);
     let entry_ln = lsets.compute(&body, hir_id);
     lsets.log_liveness(entry_ln, body_id.hir_id);
 
@@ -592,8 +588,13 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn assigned_on_exit(&self, ln: LiveNode, var: Variable) -> bool {
-        let successor = self.successors[ln].unwrap();
-        self.assigned_on_entry(successor, var)
+        match self.successors[ln] {
+            Some(successor) => self.assigned_on_entry(successor, var),
+            None => {
+                self.ir.tcx.sess.delay_span_bug(DUMMY_SP, "no successor");
+                true
+            }
+        }
     }
 
     fn write_vars<F>(&self, wr: &mut dyn Write, mut test: F) -> io::Result<()>

@@ -54,14 +54,6 @@ LL |         ref mut a @ box ref b => {
    |         |
    |         value is mutably borrowed by `a` here
 
-error: cannot borrow value as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-pat-at-and-box.rs:54:11
-   |
-LL |     fn f5(ref mut a @ box ref b: Box<NC>) {
-   |           ^^^^^^^^^       ----- value is borrowed by `b` here
-   |           |
-   |           value is mutably borrowed by `a` here
-
 error[E0382]: borrow of moved value
   --> $DIR/borrowck-pat-at-and-box.rs:31:9
    |
@@ -119,6 +111,14 @@ LL |         ref mut a @ box ref b => {
 ...
 LL |             drop(b);
    |                  - immutable borrow later used here
+
+error: cannot borrow value as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-pat-at-and-box.rs:54:11
+   |
+LL |     fn f5(ref mut a @ box ref b: Box<NC>) {
+   |           ^^^^^^^^^       ----- value is borrowed by `b` here
+   |           |
+   |           value is mutably borrowed by `a` here
 
 error[E0502]: cannot borrow value as mutable because it is also borrowed as immutable
   --> $DIR/borrowck-pat-at-and-box.rs:54:11

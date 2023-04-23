@@ -6,12 +6,6 @@ LL |     use bar::gpriv;
 
 error: requires `sized` lang_item
 
-error: requires `sized` lang_item
-
-error: requires `sized` lang_item
-
-error: requires `sized` lang_item
-
-error: aborting due to 5 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0432`.

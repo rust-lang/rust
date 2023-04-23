@@ -155,7 +155,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
 
     debug!(
         ?item.owner_id,
-        item.name = ? tcx.def_path_str(def_id.to_def_id())
+        item.name = ? tcx.def_path_str(def_id)
     );
 
     match item.kind {
@@ -251,7 +251,7 @@ fn check_foreign_item(tcx: TyCtxt<'_>, item: &hir::ForeignItem<'_>) {
 
     debug!(
         ?item.owner_id,
-        item.name = ? tcx.def_path_str(def_id.to_def_id())
+        item.name = ? tcx.def_path_str(def_id)
     );
 
     match item.kind {

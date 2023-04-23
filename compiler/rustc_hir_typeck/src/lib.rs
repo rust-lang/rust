@@ -152,10 +152,6 @@ fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &UnordSet<LocalDef
     &*tcx.typeck(def_id).used_trait_imports
 }
 
-fn typeck_item_bodies(tcx: TyCtxt<'_>, (): ()) {
-    tcx.hir().par_body_owners(|body_owner_def_id| tcx.ensure().typeck(body_owner_def_id));
-}
-
 fn typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::TypeckResults<'tcx> {
     let fallback = move || tcx.type_of(def_id.to_def_id()).subst_identity();
     typeck_with_fallback(tcx, def_id, fallback)
@@ -479,7 +475,6 @@ fn has_expected_num_generic_args(
 pub fn provide(providers: &mut Providers) {
     method::provide(providers);
     *providers = Providers {
-        typeck_item_bodies,
         typeck,
         diagnostic_only_typeck,
         has_typeck_results,
