@@ -53,6 +53,14 @@ types! {
 extern "C" {
     #[link_name = "llvm.ppc.altivec.lvx"]
     fn lvx(p: *const i8) -> vector_unsigned_int;
+
+    #[link_name = "llvm.ppc.altivec.lvebx"]
+    fn lvebx(p: *const i8) -> vector_signed_char;
+    #[link_name = "llvm.ppc.altivec.lvehx"]
+    fn lvehx(p: *const i8) -> vector_signed_short;
+    #[link_name = "llvm.ppc.altivec.lvewx"]
+    fn lvewx(p: *const i8) -> vector_signed_int;
+
     #[link_name = "llvm.ppc.altivec.vperm"]
     fn vperm(
         a: vector_signed_int,
@@ -439,6 +447,43 @@ mod sealed {
     impl_vec_ld! { vec_ld_i32 i32 }
 
     impl_vec_ld! { vec_ld_f32 f32 }
+
+    pub trait VectorLde {
+        type Result;
+        unsafe fn vec_lde(self, a: isize) -> Self::Result;
+    }
+
+    macro_rules! impl_vec_lde {
+        ($fun:ident $instr:ident $ty:ident) => {
+            #[inline]
+            #[target_feature(enable = "altivec")]
+            #[cfg_attr(test, assert_instr($instr))]
+            pub unsafe fn $fun(a: isize, b: *const $ty) -> t_t_l!($ty) {
+                let addr = (b as *const i8).offset(a);
+                transmute($instr(addr))
+            }
+
+            impl VectorLde for *const $ty {
+                type Result = t_t_l!($ty);
+                #[inline]
+                #[target_feature(enable = "altivec")]
+                unsafe fn vec_lde(self, a: isize) -> Self::Result {
+                    $fun(a, self)
+                }
+            }
+        };
+    }
+
+    impl_vec_lde! { vec_lde_u8 lvebx u8 }
+    impl_vec_lde! { vec_lde_i8 lvebx i8 }
+
+    impl_vec_lde! { vec_lde_u16 lvehx u16 }
+    impl_vec_lde! { vec_lde_i16 lvehx i16 }
+
+    impl_vec_lde! { vec_lde_u32 lvewx u32 }
+    impl_vec_lde! { vec_lde_i32 lvewx i32 }
+
+    impl_vec_lde! { vec_lde_f32 lvewx f32 }
 
     test_impl! { vec_floor(a: vector_float) -> vector_float [ vfloor, vrfim / xvrspim ] }
 
@@ -1918,6 +1963,16 @@ where
     p.vec_ld(off)
 }
 
+/// Vector Load Element Indexed.
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_lde<T>(off: isize, p: T) -> <T as sealed::VectorLde>::Result
+where
+    T: sealed::VectorLde,
+{
+    p.vec_lde(off)
+}
+
 /// Vector floor.
 #[inline]
 #[target_feature(enable = "altivec")]
@@ -2647,6 +2702,27 @@ mod tests {
                 v,
                 u8x16::new(16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31)
             );
+        }
+    }
+
+    #[simd_test(enable = "altivec")]
+    unsafe fn test_vec_lde() {
+        let pat = [u8x16::new(
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+        )];
+        for off in 0..16 {
+            let v: u8x16 = transmute(vec_lde(off, pat.as_ptr() as *const u8));
+            assert_eq!(off as u8, v.extract(off as _));
+        }
+        let pat = [u16x8::new(0, 1, 2, 3, 4, 5, 6, 7)];
+        for off in 0..8 {
+            let v: u16x8 = transmute(vec_lde(off * 2, pat.as_ptr() as *const u8));
+            assert_eq!(off as u16, v.extract(off as _));
+        }
+        let pat = [u32x4::new(0, 1, 2, 3)];
+        for off in 0..4 {
+            let v: u32x4 = transmute(vec_lde(off * 4, pat.as_ptr() as *const u8));
+            assert_eq!(off as u32, v.extract(off as _));
         }
     }
 
