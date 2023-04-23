@@ -256,6 +256,15 @@ set-local-storage: {"rustdoc-disable-shortcuts": "false"}
 click: ".setting-line:last-child .setting-check span"
 assert-local-storage: {"rustdoc-disable-shortcuts": "true"}
 
+// We now check that focusing a toggle and pressing Space is like clicking on it.
+assert-local-storage: {"rustdoc-disable-shortcuts": "true"}
+focus: ".setting-line:last-child .setting-check input"
+press-key: "Space"
+assert-local-storage: {"rustdoc-disable-shortcuts": "false"}
+focus: ".setting-line:last-child .setting-check input"
+press-key: "Space"
+assert-local-storage: {"rustdoc-disable-shortcuts": "true"}
+
 // Make sure that "Disable keyboard shortcuts" actually took effect.
 press-key: "Escape"
 press-key: "?"
