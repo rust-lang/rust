@@ -352,7 +352,7 @@ pub use std::sync::OnceLock as OnceCell;
 
 pub use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicUsize};
 
-pub type MTRef<'a, T> = &'a T;
+pub type MTLockRef<'a, T> = &'a MTLock<T>;
 
 #[derive(Debug, Default)]
 pub struct MTLock<T>(Lock<T>);
@@ -422,9 +422,10 @@ unsafe impl<T: DynSend> Send for FromDyn<T> {}
 #[cfg(parallel_compiler)]
 unsafe impl<T: DynSync> Sync for FromDyn<T> {}
 
-impl<T> const std::ops::Deref for FromDyn<T> {
+impl<T> std::ops::Deref for FromDyn<T> {
     type Target = T;
 
+    #[inline(always)]
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -564,23 +565,25 @@ pub struct LockGuard<'a, T> {
     marker: PhantomData<&'a mut T>,
 }
 
-impl<T> const Deref for LockGuard<'_, T> {
+impl<T> Deref for LockGuard<'_, T> {
     type Target = T;
 
+    #[inline(always)]
     fn deref(&self) -> &T {
         unsafe { &*self.lock.data.get() }
     }
 }
 
-impl<T> const DerefMut for LockGuard<'_, T> {
+impl<T> DerefMut for LockGuard<'_, T> {
+    #[inline(always)]
     fn deref_mut(&mut self) -> &mut T {
         unsafe { &mut *self.lock.data.get() }
     }
 }
 
 #[inline(never)]
-unsafe fn unlock_mt<T>(guard: &mut LockGuard<'_, T>) {
-    guard.lock.mutex.unlock()
+fn unlock_mt<T>(guard: &mut LockGuard<'_, T>) {
+    unsafe { guard.lock.mutex.unlock() }
 }
 
 impl<'a, T> Drop for LockGuard<'a, T> {
@@ -590,7 +593,7 @@ impl<'a, T> Drop for LockGuard<'a, T> {
             debug_assert!(self.lock.borrow.get());
             self.lock.borrow.set(false);
         } else {
-            unsafe { unlock_mt(self) }
+            unlock_mt(self)
         }
     }
 }
