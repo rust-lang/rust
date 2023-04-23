@@ -28,7 +28,7 @@
   
       bb1: {
 -         _1 = _2[_3];
-+         _1 = const 2_u32;
++         _1 = _2[2 of 3];
           StorageDead(_3);
           StorageDead(_2);
           _0 = const ();

@@ -24,9 +24,8 @@
   
       bb0: {
           StorageLive(_1);
--         _2 = CheckedAdd(const 2_i32, const 2_i32);
+          _2 = CheckedAdd(const 2_i32, const 2_i32);
 -         assert(!move (_2.1: bool), "attempt to compute `{} + {}`, which would overflow", const 2_i32, const 2_i32) -> [success: bb1, unwind unreachable];
-+         _2 = const (4_i32, false);
 +         assert(!const false, "attempt to compute `{} + {}`, which would overflow", const 2_i32, const 2_i32) -> [success: bb1, unwind unreachable];
       }
   
@@ -47,7 +46,7 @@
   
       bb2: {
 -         _3 = _4[_5];
-+         _3 = const 3_i32;
++         _3 = _4[3 of 4];
           StorageDead(_5);
           StorageDead(_4);
           _9 = const 42_u32;

@@ -63,7 +63,7 @@ fn slice_get_mut_usize(_1: &mut [u32], _2: usize) -> Option<&mut u32> {
 
     bb1: {
         StorageDead(_3);
-        _0 = const Option::<&mut u32>::None;
+        _0 = Option::<&mut u32>::None;
         goto -> bb3;
     }
 

@@ -48,14 +48,12 @@
       }
   
       bb2: {
--         _6 = MinusPlus;
-+         _6 = const MinusPlus;
+          _6 = MinusPlus;
           goto -> bb4;
       }
   
       bb3: {
--         _6 = Minus;
-+         _6 = const Minus;
+          _6 = Minus;
           goto -> bb4;
       }
   

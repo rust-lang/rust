@@ -638,8 +638,13 @@ impl Map {
     ///
     /// This is currently the only way to create a [`Map`]. The way in which the tracked places are
     /// chosen is an implementation detail and may not be relied upon (other than that their type
-    /// are scalars).
-    pub fn new<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, value_limit: Option<usize>) -> Self {
+    /// are scalars and pass the filter).
+    pub fn from_filter<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        body: &Body<'tcx>,
+        filter: impl Fn(Local) -> bool,
+        value_limit: Option<usize>,
+    ) -> Self {
         let mut map = Self {
             locals: IndexVec::new(),
             projections: FxHashMap::default(),
@@ -648,8 +653,7 @@ impl Map {
             inner_values: IndexVec::new(),
             inner_values_buffer: Vec::new(),
         };
-        let exclude = excluded_locals(body);
-        map.register(tcx, body, exclude, value_limit);
+        map.register(tcx, body, filter, value_limit);
         debug!("registered {} places ({} nodes in total)", map.value_count, map.places.len());
         map
     }
@@ -659,7 +663,7 @@ impl Map {
         &mut self,
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
-        exclude: BitSet<Local>,
+        filter: impl Fn(Local) -> bool,
         value_limit: Option<usize>,
     ) {
         let mut worklist = VecDeque::with_capacity(value_limit.unwrap_or(body.local_decls.len()));
@@ -668,7 +672,7 @@ impl Map {
         // Start by constructing the places for each bare local.
         self.locals = IndexVec::from_elem(None, &body.local_decls);
         for (local, decl) in body.local_decls.iter_enumerated() {
-            if exclude.contains(local) {
+            if !filter(local) {
                 continue;
             }
 

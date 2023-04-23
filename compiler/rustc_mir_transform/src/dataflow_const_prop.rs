@@ -11,7 +11,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_mir_dataflow::value_analysis::{
-    Map, State, TrackElem, ValueAnalysis, ValueAnalysisWrapper, ValueOrPlace,
+    excluded_locals, Map, State, TrackElem, ValueAnalysis, ValueAnalysisWrapper, ValueOrPlace,
 };
 use rustc_mir_dataflow::{lattice::FlatSet, Analysis, Results, ResultsVisitor};
 use rustc_span::DUMMY_SP;
@@ -22,9 +22,9 @@ use crate::MirPass;
 // These constants are somewhat random guesses and have not been optimized.
 // If `tcx.sess.mir_opt_level() >= 4`, we ignore the limits (this can become very expensive).
 const BLOCK_LIMIT: usize = 100;
-const PLACE_LIMIT: usize = 100;
+pub(crate) const PLACE_LIMIT: usize = 100;
 
-pub struct DataflowConstProp;
+pub(crate) struct DataflowConstProp;
 
 impl<'tcx> MirPass<'tcx> for DataflowConstProp {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
@@ -50,10 +50,11 @@ impl<'tcx> MirPass<'tcx> for DataflowConstProp {
         let place_limit = if tcx.sess.mir_opt_level() < 4 { Some(PLACE_LIMIT) } else { None };
 
         // Decide which places to track during the analysis.
-        let map = Map::new(tcx, body, place_limit);
+        let exclude = excluded_locals(body);
+        let map = Map::from_filter(tcx, body, |local| !exclude.contains(local), place_limit);
 
         // Perform the actual dataflow analysis.
-        let analysis = ConstAnalysis::new(tcx, body, map);
+        let analysis = ConstAnalysis::new(tcx, body, &map);
         let mut results = debug_span!("analyze")
             .in_scope(|| analysis.wrap().into_engine(tcx, body).iterate_to_fixpoint());
 
@@ -68,15 +69,15 @@ impl<'tcx> MirPass<'tcx> for DataflowConstProp {
     }
 }
 
-struct ConstAnalysis<'a, 'tcx> {
-    map: Map,
+pub(crate) struct ConstAnalysis<'a, 'm, 'tcx> {
+    map: &'m Map,
     tcx: TyCtxt<'tcx>,
     local_decls: &'a LocalDecls<'tcx>,
     ecx: InterpCx<'tcx, 'tcx, DummyMachine>,
     param_env: ty::ParamEnv<'tcx>,
 }
 
-impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
+impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, '_, 'tcx> {
     type Value = FlatSet<ScalarInt>;
 
     const NAME: &'static str = "ConstAnalysis";
@@ -318,8 +319,8 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, map: Map) -> Self {
+impl<'a, 'm, 'tcx> ConstAnalysis<'a, 'm, 'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, map: &'m Map) -> Self {
         let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
         Self {
             map,
@@ -428,7 +429,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
     }
 }
 
-struct CollectAndPatch<'tcx, 'locals> {
+pub(crate) struct CollectAndPatch<'tcx, 'locals> {
     tcx: TyCtxt<'tcx>,
     local_decls: &'locals LocalDecls<'tcx>,
 
@@ -438,11 +439,11 @@ struct CollectAndPatch<'tcx, 'locals> {
     before_effect: FxHashMap<(Location, Place<'tcx>), ScalarInt>,
 
     /// Stores the assigned values for assignments where the Rvalue is constant.
-    assignments: FxHashMap<Location, ScalarInt>,
+    pub(crate) assignments: FxHashMap<Location, ScalarInt>,
 }
 
 impl<'tcx, 'locals> CollectAndPatch<'tcx, 'locals> {
-    fn new(tcx: TyCtxt<'tcx>, local_decls: &'locals LocalDecls<'tcx>) -> Self {
+    pub fn new(tcx: TyCtxt<'tcx>, local_decls: &'locals LocalDecls<'tcx>) -> Self {
         Self {
             tcx,
             local_decls,
@@ -461,14 +462,14 @@ impl<'tcx, 'locals> CollectAndPatch<'tcx, 'locals> {
 }
 
 impl<'mir, 'tcx>
-    ResultsVisitor<'mir, 'tcx, Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, 'tcx>>>>
+    ResultsVisitor<'mir, 'tcx, Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, '_, 'tcx>>>>
     for CollectAndPatch<'tcx, '_>
 {
     type FlowState = State<FlatSet<ScalarInt>>;
 
     fn visit_statement_before_primary_effect(
         &mut self,
-        results: &mut Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, 'tcx>>>,
+        results: &mut Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, '_, 'tcx>>>,
         state: &Self::FlowState,
         statement: &'mir Statement<'tcx>,
         location: Location,
@@ -484,7 +485,7 @@ impl<'mir, 'tcx>
 
     fn visit_statement_after_primary_effect(
         &mut self,
-        results: &mut Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, 'tcx>>>,
+        results: &mut Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, '_, 'tcx>>>,
         state: &Self::FlowState,
         statement: &'mir Statement<'tcx>,
         location: Location,
@@ -510,7 +511,7 @@ impl<'mir, 'tcx>
 
     fn visit_terminator_before_primary_effect(
         &mut self,
-        results: &mut Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, 'tcx>>>,
+        results: &mut Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, '_, 'tcx>>>,
         state: &Self::FlowState,
         terminator: &'mir Terminator<'tcx>,
         location: Location,
@@ -570,10 +571,10 @@ impl<'tcx> MutVisitor<'tcx> for CollectAndPatch<'tcx, '_> {
     }
 }
 
-struct OperandCollector<'tcx, 'map, 'locals, 'a> {
-    state: &'a State<FlatSet<ScalarInt>>,
-    visitor: &'a mut CollectAndPatch<'tcx, 'locals>,
-    map: &'map Map,
+pub(crate) struct OperandCollector<'tcx, 'map, 'locals, 'a> {
+    pub(crate) state: &'a State<FlatSet<ScalarInt>>,
+    pub(crate) visitor: &'a mut CollectAndPatch<'tcx, 'locals>,
+    pub(crate) map: &'map Map,
 }
 
 impl<'tcx> Visitor<'tcx> for OperandCollector<'tcx, '_, '_, '_> {

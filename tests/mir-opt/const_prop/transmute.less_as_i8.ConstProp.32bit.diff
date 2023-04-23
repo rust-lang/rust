@@ -9,10 +9,8 @@
   
       bb0: {
           StorageLive(_1);
--         _1 = Less;
--         _0 = move _1 as i8 (Transmute);
-+         _1 = const Less;
-+         _0 = const -1_i8;
+          _1 = Less;
+          _0 = move _1 as i8 (Transmute);
           StorageDead(_1);
           return;
       }

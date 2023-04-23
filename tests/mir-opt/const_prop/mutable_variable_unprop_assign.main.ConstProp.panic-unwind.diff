@@ -28,8 +28,7 @@
   
       bb1: {
           StorageLive(_2);
--         _2 = (const 1_i32, const 2_i32);
-+         _2 = const (1_i32, 2_i32);
+          _2 = (const 1_i32, const 2_i32);
           StorageLive(_3);
           _3 = _1;
           (_2.1: i32) = move _3;
@@ -37,8 +36,7 @@
           StorageLive(_4);
           _4 = (_2.1: i32);
           StorageLive(_5);
--         _5 = (_2.0: i32);
-+         _5 = const 1_i32;
+          _5 = (_2.0: i32);
           _0 = const ();
           StorageDead(_5);
           StorageDead(_4);
