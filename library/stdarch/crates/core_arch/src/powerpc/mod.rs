@@ -3,14 +3,10 @@
 #[macro_use]
 mod macros;
 
-#[cfg(any(target_feature = "altivec", doc))]
 mod altivec;
-#[cfg(any(target_feature = "altivec", doc))]
 pub use self::altivec::*;
 
-#[cfg(any(target_feature = "vsx", doc))]
 mod vsx;
-#[cfg(any(target_feature = "vsx", doc))]
 pub use self::vsx::*;
 
 #[cfg(test)]
