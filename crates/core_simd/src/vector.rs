@@ -2,6 +2,7 @@ use crate::simd::{
     intrinsics, LaneCount, Mask, MaskElement, SimdCast, SimdCastPtr, SimdConstPtr, SimdMutPtr,
     SimdPartialOrd, SupportedLaneCount, Swizzle,
 };
+use core::convert::{TryFrom, TryInto};
 
 /// A SIMD vector with the shape of `[T; N]` but the operations of `T`.
 ///
@@ -109,7 +110,7 @@ where
     T: SimdElement,
 {
     /// Number of elements in this vector.
-    pub const N: usize = N;
+    pub const LANES: usize = N;
 
     /// Returns the number of elements in this SIMD vector.
     ///
@@ -122,7 +123,7 @@ where
     /// assert_eq!(v.lanes(), 4);
     /// ```
     pub const fn lanes(&self) -> usize {
-        Self::N
+        Self::LANES
     }
 
     /// Constructs a new SIMD vector with all elements set to the given value.
@@ -260,7 +261,7 @@ where
     #[must_use]
     pub const fn from_slice(slice: &[T]) -> Self {
         assert!(
-            slice.len() >= Self::N,
+            slice.len() >= Self::LANES,
             "slice length must be at least the number of elements"
         );
         // SAFETY: We just checked that the slice contains
@@ -288,7 +289,7 @@ where
     /// ```
     pub fn copy_to_slice(self, slice: &mut [T]) {
         assert!(
-            slice.len() >= Self::N,
+            slice.len() >= Self::LANES,
             "slice length must be at least the number of elements"
         );
         // SAFETY: We just checked that the slice contains
@@ -883,7 +884,7 @@ where
 {
     type Error = core::array::TryFromSliceError;
 
-    fn try_from(slice: &[T]) -> Result<Self, Self::Error> {
+    fn try_from(slice: &[T]) -> Result<Self, core::array::TryFromSliceError> {
         Ok(Self::from_array(slice.try_into()?))
     }
 }
@@ -895,7 +896,7 @@ where
 {
     type Error = core::array::TryFromSliceError;
 
-    fn try_from(slice: &mut [T]) -> Result<Self, Self::Error> {
+    fn try_from(slice: &mut [T]) -> Result<Self, core::array::TryFromSliceError> {
         Ok(Self::from_array(slice.try_into()?))
     }
 }
