@@ -30,7 +30,7 @@ use rustc_middle::mir::visit::Visitor as _;
 use rustc_middle::mir::{
     traversal, AnalysisPhase, Body, ClearCrossCrate, ConstQualifs, Constant, LocalDecl, MirPass,
     MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, SourceInfo,
-    Statement, StatementKind, TerminatorKind,
+    Statement, StatementKind, TerminatorKind, START_BLOCK,
 };
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
@@ -491,9 +491,10 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     //
     // We don't usually need to worry about this kind of case,
     // since we would get a compilation error if the user tried
-    // to call it. However, since we can do const propagation
-    // even without any calls to the function, we need to make
-    // sure that it even makes sense to try to evaluate the body.
+    // to call it. However, since we optimize even without any
+    // calls to the function, we need to make sure that it even
+    // makes sense to try to evaluate the body.
+    //
     // If there are unsatisfiable where clauses, then all bets are
     // off, and we just give up.
     //
@@ -515,16 +516,17 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
     if traits::impossible_predicates(tcx, traits::elaborate(tcx, predicates).collect()) {
         trace!("optimizations skipped for {:?}: found unsatisfiable predicates", body.source);
+        // Clear the body to only contain a single `unreachable` statement.
+        let bbs = body.basic_blocks.as_mut();
+        bbs.raw.truncate(1);
+        bbs[START_BLOCK].statements.clear();
+        bbs[START_BLOCK].terminator_mut().kind = TerminatorKind::Unreachable;
+        body.var_debug_info.clear();
+        body.local_decls.raw.truncate(body.arg_count + 1);
         pm::run_passes(
             tcx,
             body,
-            &[
-                &reveal_all::RevealAll,
-                &simplify::SimplifyCfg::Final,
-                &simplify::SimplifyLocals::Final,
-                // Dump the end result for testing and debugging purposes.
-                &dump_mir::Marker("PreCodegen"),
-            ],
+            &[&reveal_all::RevealAll, &dump_mir::Marker("PreCodegen")],
             Some(MirPhase::Runtime(RuntimePhase::Optimized)),
         );
         return;
