@@ -2,7 +2,6 @@
 
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir;
-use crate::ty::fast_reject::TreatProjections;
 use crate::ty::layout::IntegerExt;
 use crate::ty::{
     self, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
@@ -359,21 +358,29 @@ impl<'tcx> TyCtxt<'tcx> {
         self.ensure().coherent_trait(drop_trait);
 
         let ty = self.type_of(adt_did).subst_identity();
-        let (did, constness) = self.find_map_relevant_impl(
-            drop_trait,
-            ty,
-            // FIXME: This could also be some other mode, like "unexpected"
-            TreatProjections::ForLookup,
-            |impl_did| {
-                if let Some(item_id) = self.associated_item_def_ids(impl_did).first() {
-                    if validate(self, impl_did).is_ok() {
-                        return Some((*item_id, self.constness(impl_did)));
-                    }
-                }
-                None
-            },
-        )?;
+        let mut dtor_candidate = None;
+        self.for_each_relevant_impl(drop_trait, ty, |impl_did| {
+            let Some(item_id) = self.associated_item_def_ids(impl_did).first() else {
+                self.sess.delay_span_bug(self.def_span(impl_did), "Drop impl without drop function");
+                return;
+            };
 
+            if validate(self, impl_did).is_err() {
+                // Already `ErrorGuaranteed`, no need to delay a span bug here.
+                return;
+            }
+
+            if let Some((old_item_id, _)) = dtor_candidate {
+                self.sess
+                    .struct_span_err(self.def_span(item_id), "multiple drop impls found")
+                    .span_note(self.def_span(old_item_id), "other impl here")
+                    .delay_as_bug();
+            }
+
+            dtor_candidate = Some((*item_id, self.constness(impl_did)));
+        });
+
+        let (did, constness) = dtor_candidate?;
         Some(ty::Destructor { did, constness })
     }
 
