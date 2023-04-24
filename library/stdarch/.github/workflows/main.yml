@@ -211,3 +211,13 @@ jobs:
       if: "matrix.os == 'ubuntu-latest' && !startsWith(matrix.target, 'thumb')"
       env:
         TARGET: ${{ matrix.target }}
+
+  build-std-detect:
+    needs: [style]
+    name: Build std_detect
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Install Rust
+      run: rustup update nightly && rustup default nightly
+    - run: ./ci/build-std-detect.sh
