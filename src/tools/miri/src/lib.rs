@@ -130,6 +130,7 @@ pub const MIRI_DEFAULT_ARGS: &[&str] = &[
     "-Zalways-encode-mir",
     "-Zextra-const-ub-checks",
     "-Zmir-emit-retag",
+    "-Zmir-keep-place-mention",
     "-Zmir-opt-level=0",
     "-Zmir-enable-passes=-CheckAlignment",
 ];
