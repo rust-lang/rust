@@ -13,10 +13,11 @@ use crate::{parser::MetaVarKind, tt, ExpandError, ExpandResult};
 pub(crate) fn expand_rules(
     rules: &[crate::Rule],
     input: &tt::Subtree,
+    is_2021: bool,
 ) -> ExpandResult<tt::Subtree> {
     let mut match_: Option<(matcher::Match, &crate::Rule)> = None;
     for rule in rules {
-        let new_match = matcher::match_(&rule.lhs, input);
+        let new_match = matcher::match_(&rule.lhs, input, is_2021);
 
         if new_match.err.is_none() {
             // If we find a rule that applies without errors, we're done.

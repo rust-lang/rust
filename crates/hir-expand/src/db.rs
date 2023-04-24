@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use base_db::{salsa, SourceDatabase};
+use base_db::{salsa, Edition, SourceDatabase};
 use either::Either;
 use limit::Limit;
 use mbe::syntax_node_to_token_tree;
@@ -406,13 +406,14 @@ fn macro_def(
 ) -> Result<Arc<TokenExpander>, mbe::ParseError> {
     match id.kind {
         MacroDefKind::Declarative(ast_id) => {
+            let is_2021 = db.crate_graph()[id.krate].edition >= Edition::Edition2021;
             let (mac, def_site_token_map) = match ast_id.to_node(db) {
                 ast::Macro::MacroRules(macro_rules) => {
                     let arg = macro_rules
                         .token_tree()
                         .ok_or_else(|| mbe::ParseError::Expected("expected a token tree".into()))?;
                     let (tt, def_site_token_map) = mbe::syntax_node_to_token_tree(arg.syntax());
-                    let mac = mbe::DeclarativeMacro::parse_macro_rules(&tt)?;
+                    let mac = mbe::DeclarativeMacro::parse_macro_rules(&tt, is_2021)?;
                     (mac, def_site_token_map)
                 }
                 ast::Macro::MacroDef(macro_def) => {
@@ -420,7 +421,7 @@ fn macro_def(
                         .body()
                         .ok_or_else(|| mbe::ParseError::Expected("expected a token tree".into()))?;
                     let (tt, def_site_token_map) = mbe::syntax_node_to_token_tree(arg.syntax());
-                    let mac = mbe::DeclarativeMacro::parse_macro2(&tt)?;
+                    let mac = mbe::DeclarativeMacro::parse_macro2(&tt, is_2021)?;
                     (mac, def_site_token_map)
                 }
             };
