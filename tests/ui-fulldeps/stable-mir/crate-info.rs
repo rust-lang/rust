@@ -69,6 +69,15 @@ fn test_stable_mir(tcx: TyCtxt<'_>) {
         stable_mir::mir::Terminator::Drop { .. } => {}
         other => panic!("{other:?}"),
     }
+
+    let assert = get_item(tcx, &items, (DefKind::Fn, "assert")).unwrap();
+    let body = assert.body();
+    assert_eq!(body.blocks.len(), 2);
+    let block = &body.blocks[0];
+    match &block.terminator {
+        stable_mir::mir::Terminator::Assert { .. } => {}
+        other => panic!("{other:?}"),
+    }
 }
 
 // Use internal API to find a function in a crate.
@@ -142,7 +151,11 @@ fn generate_input(path: &str) -> std::io::Result<()> {
         x_64.wrapping_add(y_64)
     }}
 
-    pub fn drop(_: String) {{}}"#
+    pub fn drop(_: String) {{}}
+
+    pub fn assert(x: i32) -> i32 {{
+        x + 1
+    }}"#
     )?;
     Ok(())
 }
