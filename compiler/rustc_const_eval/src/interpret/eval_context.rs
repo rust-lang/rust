@@ -5,7 +5,7 @@ use std::mem;
 use either::{Either, Left, Right};
 
 use rustc_hir::{self as hir, def_id::DefId, definitions::DefPathData};
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{ErrorHandled, InterpError};
 use rustc_middle::ty::layout::{

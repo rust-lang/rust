@@ -13,7 +13,7 @@ use rustc_data_structures::graph::implementation::{
     Direction, Graph, NodeIndex, INCOMING, OUTGOING,
 };
 use rustc_data_structures::intern::Interned;
-use rustc_index::vec::{IndexSlice, IndexVec};
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::PlaceholderRegion;
 use rustc_middle::ty::{self, Ty, TyCtxt};

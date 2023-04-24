@@ -8,7 +8,7 @@ use hir::{
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::{
     hir::map::Map,

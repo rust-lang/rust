@@ -20,7 +20,7 @@ use rustc_hir::{
     hir_id::OwnerId,
     HirId, ItemLocalId, ItemLocalMap, ItemLocalSet,
 };
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{Idx, IndexVec};
 use rustc_macros::HashStable;
 use rustc_middle::mir::FakeReadCause;
 use rustc_session::Session;

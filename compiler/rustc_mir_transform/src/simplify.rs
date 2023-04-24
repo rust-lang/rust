@@ -29,7 +29,7 @@
 
 use crate::MirPass;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
-use rustc_index::vec::{Idx, IndexSlice, IndexVec};
+use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;

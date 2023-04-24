@@ -36,7 +36,7 @@ use std::fmt::{Debug, Formatter};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::{IndexSlice, IndexVec};
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};

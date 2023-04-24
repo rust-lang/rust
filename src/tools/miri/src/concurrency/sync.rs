@@ -5,7 +5,7 @@ use std::ops::Not;
 use log::trace;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{Idx, IndexVec};
 
 use super::init_once::InitOnce;
 use super::vector_clock::VClock;

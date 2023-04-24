@@ -50,7 +50,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
     Constness, ExprKind, HirId, ImplItemKind, ItemKind, Node, TraitCandidate, TraitItemKind,
 };
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_macros::HashStable;
 use rustc_query_system::dep_graph::DepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;

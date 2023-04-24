@@ -19,7 +19,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::BodyOwnerKind;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, InlineConstSubsts, InlineConstSubstsParts, RegionVid, Ty, TyCtxt};

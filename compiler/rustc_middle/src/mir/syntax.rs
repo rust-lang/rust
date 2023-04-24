@@ -16,7 +16,7 @@ use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir};
 use rustc_hir::{self, GeneratorKind};
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
 use rustc_ast::Mutability;

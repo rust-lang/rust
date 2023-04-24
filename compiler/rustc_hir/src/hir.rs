@@ -14,7 +14,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_error_messages::MultiSpan;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_macros::HashStable_Generic;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
@@ -863,7 +863,7 @@ pub struct OwnerNodes<'tcx> {
 
 impl<'tcx> OwnerNodes<'tcx> {
     pub fn node(&self) -> OwnerNode<'tcx> {
-        use rustc_index::vec::Idx;
+        use rustc_index::Idx;
         let node = self.nodes[ItemLocalId::new(0)].as_ref().unwrap().node;
         let node = node.as_owner().unwrap(); // Indexing must ensure it is an OwnerNode.
         node

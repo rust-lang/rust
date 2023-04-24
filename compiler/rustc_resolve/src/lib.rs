@@ -40,7 +40,7 @@ use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap, LocalDefIdSe
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::TraitCandidate;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::privacy::EffectiveVisibilities;

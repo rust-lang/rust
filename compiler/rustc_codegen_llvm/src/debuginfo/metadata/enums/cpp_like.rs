@@ -6,7 +6,7 @@ use rustc_codegen_ssa::{
     traits::ConstMethods,
 };
 
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::{
     bug,
     ty::{

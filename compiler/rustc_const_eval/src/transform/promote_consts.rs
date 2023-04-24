@@ -21,7 +21,7 @@ use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, List, TyCtxt, TypeVisitableExt};
 use rustc_span::Span;
 
-use rustc_index::vec::{Idx, IndexSlice, IndexVec};
+use rustc_index::{Idx, IndexSlice, IndexVec};
 
 use std::cell::Cell;
 use std::{cmp, iter, mem};

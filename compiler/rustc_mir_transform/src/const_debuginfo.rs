@@ -10,7 +10,7 @@ use rustc_middle::{
 };
 
 use crate::MirPass;
-use rustc_index::{bit_set::BitSet, vec::IndexVec};
+use rustc_index::{bit_set::BitSet, IndexVec};
 
 pub struct ConstDebugInfo;
 

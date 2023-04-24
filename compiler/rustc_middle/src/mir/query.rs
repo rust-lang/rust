@@ -8,7 +8,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::BitMatrix;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{Idx, IndexVec};
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use smallvec::SmallVec;

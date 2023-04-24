@@ -11,7 +11,7 @@ use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::*;
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 use rustc_middle::hir::nested_filter;
 use rustc_span::def_id::StableCrateId;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};

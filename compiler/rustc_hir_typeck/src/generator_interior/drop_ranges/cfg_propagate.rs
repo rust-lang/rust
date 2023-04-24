@@ -1,5 +1,5 @@
 use super::{DropRangesBuilder, PostOrderId};
-use rustc_index::{bit_set::BitSet, vec::IndexVec};
+use rustc_index::{bit_set::BitSet, IndexVec};
 use std::collections::BTreeMap;
 
 impl DropRangesBuilder {

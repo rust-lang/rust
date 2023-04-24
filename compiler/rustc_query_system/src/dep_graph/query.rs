@@ -1,6 +1,6 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::implementation::{Direction, Graph, NodeIndex, INCOMING};
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 
 use super::{DepKind, DepNode, DepNodeIndex};
 

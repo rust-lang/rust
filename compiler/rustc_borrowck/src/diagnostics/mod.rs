@@ -9,7 +9,7 @@ use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::GeneratorKind;
-use rustc_index::vec::IndexSlice;
+use rustc_index::IndexSlice;
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::{

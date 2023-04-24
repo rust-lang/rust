@@ -57,7 +57,7 @@ use rustc_hir::def_id::{
 use rustc_hir::hir_id::OwnerId;
 use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{Crate, ItemLocalId, TraitCandidate};
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 pub(crate) use rustc_query_system::query::QueryJobId;
 use rustc_query_system::query::*;
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
