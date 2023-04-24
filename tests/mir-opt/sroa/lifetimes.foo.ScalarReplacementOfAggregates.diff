@@ -113,11 +113,11 @@
           StorageLive(_22);                // scope 4 at $DIR/lifetimes.rs:+10:20: +10:23
           _22 = &_8;                       // scope 4 at $DIR/lifetimes.rs:+10:20: +10:23
           _21 = &(*_22);                   // scope 4 at $DIR/lifetimes.rs:+10:20: +10:23
-          _20 = core::fmt::ArgumentV1::<'_>::new_display::<Box<dyn std::fmt::Display>>(move _21) -> [return: bb3, unwind unreachable]; // scope 4 at $DIR/lifetimes.rs:+10:20: +10:23
+          _20 = core::fmt::ArgumentV1::<'_>::new_simple_display::<Box<dyn std::fmt::Display>>(move _21) -> [return: bb3, unwind unreachable]; // scope 4 at $DIR/lifetimes.rs:+10:20: +10:23
                                            // mir::Constant
                                            // + span: $DIR/lifetimes.rs:27:20: 27:23
                                            // + user_ty: UserType(4)
-                                           // + literal: Const { ty: for<'b> fn(&'b Box<dyn std::fmt::Display>) -> core::fmt::ArgumentV1<'b> {core::fmt::ArgumentV1::<'_>::new_display::<Box<dyn std::fmt::Display>>}, val: Value(<ZST>) }
+                                           // + literal: Const { ty: fn(&Box<dyn std::fmt::Display>) -> core::fmt::ArgumentV1<'_> {core::fmt::ArgumentV1::<'_>::new_simple_display::<Box<dyn std::fmt::Display>>}, val: Value(<ZST>) }
       }
   
       bb3: {
@@ -127,11 +127,11 @@
           StorageLive(_25);                // scope 4 at $DIR/lifetimes.rs:+10:24: +10:27
           _25 = &_6;                       // scope 4 at $DIR/lifetimes.rs:+10:24: +10:27
           _24 = &(*_25);                   // scope 4 at $DIR/lifetimes.rs:+10:24: +10:27
-          _23 = core::fmt::ArgumentV1::<'_>::new_display::<u32>(move _24) -> [return: bb4, unwind unreachable]; // scope 4 at $DIR/lifetimes.rs:+10:24: +10:27
+          _23 = core::fmt::ArgumentV1::<'_>::new_simple_display::<u32>(move _24) -> [return: bb4, unwind unreachable]; // scope 4 at $DIR/lifetimes.rs:+10:24: +10:27
                                            // mir::Constant
                                            // + span: $DIR/lifetimes.rs:27:24: 27:27
                                            // + user_ty: UserType(5)
-                                           // + literal: Const { ty: for<'b> fn(&'b u32) -> core::fmt::ArgumentV1<'b> {core::fmt::ArgumentV1::<'_>::new_display::<u32>}, val: Value(<ZST>) }
+                                           // + literal: Const { ty: fn(&u32) -> core::fmt::ArgumentV1<'_> {core::fmt::ArgumentV1::<'_>::new_simple_display::<u32>}, val: Value(<ZST>) }
       }
   
       bb4: {

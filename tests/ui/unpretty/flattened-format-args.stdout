@@ -11,6 +11,6 @@ fn main() {
         {
                 ::std::io::_print(<#[lang = "format_arguments"]>::new_v1(&["a 123 b ",
                                     " xyz\n"],
-                        &[<#[lang = "format_argument"]>::new_display(&x)]));
+                        &[<#[lang = "format_argument"]>::new_simple_display(&x)]));
             };
     }
