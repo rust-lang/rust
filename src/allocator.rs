@@ -5,10 +5,11 @@ use rustc_ast::expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::OomStrategy;
+use rustc_span::symbol::sym;
 
 use crate::GccContext;
 
-pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_name: &str, kind: AllocatorKind) {
+pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_name: &str, kind: AllocatorKind, alloc_error_handler_kind: AllocatorKind) {
     let context = &mods.context;
     let usize =
         match tcx.sess.target.pointer_width {
@@ -85,6 +86,37 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_nam
         // TODO(@Commeownist): Check if we need to emit some extra debugging info in certain circumstances
         // as described in https://github.com/rust-lang/rust/commit/77a96ed5646f7c3ee8897693decc4626fe380643
     }
+
+    let types = [usize, usize];
+    let name = "__rust_alloc_error_handler".to_string();
+    let args: Vec<_> = types.iter().enumerate()
+        .map(|(index, typ)| context.new_parameter(None, *typ, &format!("param{}", index)))
+        .collect();
+    let func = context.new_function(None, FunctionType::Exported, void, &args, name, false);
+
+    if tcx.sess.target.default_hidden_visibility {
+        #[cfg(feature="master")]
+        func.add_attribute(FnAttribute::Visibility(gccjit::Visibility::Hidden));
+    }
+
+    let callee = alloc_error_handler_kind.fn_name(sym::oom);
+    let args: Vec<_> = types.iter().enumerate()
+        .map(|(index, typ)| context.new_parameter(None, *typ, &format!("param{}", index)))
+        .collect();
+    let callee = context.new_function(None, FunctionType::Extern, void, &args, callee, false);
+    #[cfg(feature="master")]
+    callee.add_attribute(FnAttribute::Visibility(gccjit::Visibility::Hidden));
+
+    let block = func.new_block("entry");
+
+    let args = args
+        .iter()
+        .enumerate()
+        .map(|(i, _)| func.get_param(i as i32).to_rvalue())
+        .collect::<Vec<_>>();
+    let _ret = context.new_call(None, callee, &args);
+    //llvm::LLVMSetTailCall(ret, True);
+    block.end_with_void_return(None);
 
     let name = OomStrategy::SYMBOL.to_string();
     let global = context.new_global(None, GlobalKind::Exported, i8, name);
