@@ -70,22 +70,6 @@ struct ConstAnalysis<'a, 'tcx> {
     param_env: ty::ParamEnv<'tcx>,
 }
 
-impl<'tcx> ConstAnalysis<'_, 'tcx> {
-    fn eval_discriminant(
-        &self,
-        enum_ty: Ty<'tcx>,
-        variant_index: VariantIdx,
-    ) -> Option<ScalarTy<'tcx>> {
-        if !enum_ty.is_enum() {
-            return None;
-        }
-        let discr = enum_ty.discriminant_for_variant(self.tcx, variant_index)?;
-        let discr_layout = self.tcx.layout_of(self.param_env.and(discr.ty)).ok()?;
-        let discr_value = Scalar::try_from_uint(discr.val, discr_layout.size)?;
-        Some(ScalarTy(discr_value, discr.ty))
-    }
-}
-
 impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
     type Value = FlatSet<ScalarTy<'tcx>>;
 
@@ -126,46 +110,44 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                 // we must make sure that all `target as Variant#i` are `Top`.
                 state.flood(target.as_ref(), self.map());
 
-                if let Some(target_idx) = self.map().find(target.as_ref()) {
-                    let (variant_target, variant_index) = match **kind {
-                        AggregateKind::Tuple | AggregateKind::Closure(..) => {
-                            (Some(target_idx), None)
-                        }
-                        AggregateKind::Adt(def_id, variant_index, ..) => {
-                            match self.tcx.def_kind(def_id) {
-                                DefKind::Struct => (Some(target_idx), None),
-                                DefKind::Enum => (
-                                    self.map.apply(target_idx, TrackElem::Variant(variant_index)),
-                                    Some(variant_index),
-                                ),
-                                _ => (None, None),
-                            }
-                        }
-                        _ => (None, None),
-                    };
-                    if let Some(variant_target_idx) = variant_target {
-                        for (field_index, operand) in operands.iter().enumerate() {
-                            if let Some(field) = self.map().apply(
-                                variant_target_idx,
-                                TrackElem::Field(FieldIdx::from_usize(field_index)),
-                            ) {
-                                let result = self.handle_operand(operand, state);
-                                state.insert_idx(field, result, self.map());
-                            }
+                let Some(target_idx) = self.map().find(target.as_ref()) else { return };
+
+                let (variant_target, variant_index) = match **kind {
+                    AggregateKind::Tuple | AggregateKind::Closure(..) => (Some(target_idx), None),
+                    AggregateKind::Adt(def_id, variant_index, ..) => {
+                        match self.tcx.def_kind(def_id) {
+                            DefKind::Struct => (Some(target_idx), None),
+                            DefKind::Enum => (
+                                self.map.apply(target_idx, TrackElem::Variant(variant_index)),
+                                Some(variant_index),
+                            ),
+                            _ => return,
                         }
                     }
-                    if let Some(variant_index) = variant_index
-                        && let Some(discr_idx) = self.map().apply(target_idx, TrackElem::Discriminant)
-                    {
-                        // We are assigning the discriminant as part of an aggregate.
-                        // This discriminant can only alias a variant field's value if the operand
-                        // had an invalid value for that type.
-                        // Using invalid values is UB, so we are allowed to perform the assignment
-                        // without extra flooding.
-                        let enum_ty = target.ty(self.local_decls, self.tcx).ty;
-                        if let Some(discr_val) = self.eval_discriminant(enum_ty, variant_index) {
-                            state.insert_value_idx(discr_idx, FlatSet::Elem(discr_val), &self.map);
+                    _ => return,
+                };
+                if let Some(variant_target_idx) = variant_target {
+                    for (field_index, operand) in operands.iter().enumerate() {
+                        if let Some(field) = self.map().apply(
+                            variant_target_idx,
+                            TrackElem::Field(FieldIdx::from_usize(field_index)),
+                        ) {
+                            let result = self.handle_operand(operand, state);
+                            state.insert_idx(field, result, self.map());
                         }
+                    }
+                }
+                if let Some(variant_index) = variant_index
+                    && let Some(discr_idx) = self.map().apply(target_idx, TrackElem::Discriminant)
+                {
+                    // We are assigning the discriminant as part of an aggregate.
+                    // This discriminant can only alias a variant field's value if the operand
+                    // had an invalid value for that type.
+                    // Using invalid values is UB, so we are allowed to perform the assignment
+                    // without extra flooding.
+                    let enum_ty = target.ty(self.local_decls, self.tcx).ty;
+                    if let Some(discr_val) = self.eval_discriminant(enum_ty, variant_index) {
+                        state.insert_value_idx(discr_idx, FlatSet::Elem(discr_val), &self.map);
                     }
                 }
             }
@@ -173,12 +155,10 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                 // Flood everything now, so we can use `insert_value_idx` directly later.
                 state.flood(target.as_ref(), self.map());
 
-                let target = self.map().find(target.as_ref());
+                let Some(target) = self.map().find(target.as_ref()) else { return };
 
-                let value_target = target
-                    .and_then(|target| self.map().apply(target, TrackElem::Field(0_u32.into())));
-                let overflow_target = target
-                    .and_then(|target| self.map().apply(target, TrackElem::Field(1_u32.into())));
+                let value_target = self.map().apply(target, TrackElem::Field(0_u32.into()));
+                let overflow_target = self.map().apply(target, TrackElem::Field(1_u32.into()));
 
                 if value_target.is_some() || overflow_target.is_some() {
                     let (val, overflow) = self.binary_op(state, *op, left, right);
@@ -377,6 +357,20 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         }
     }
 
+    fn eval_discriminant(
+        &self,
+        enum_ty: Ty<'tcx>,
+        variant_index: VariantIdx,
+    ) -> Option<ScalarTy<'tcx>> {
+        if !enum_ty.is_enum() {
+            return None;
+        }
+        let discr = enum_ty.discriminant_for_variant(self.tcx, variant_index)?;
+        let discr_layout = self.tcx.layout_of(self.param_env.and(discr.ty)).ok()?;
+        let discr_value = Scalar::try_from_uint(discr.val, discr_layout.size)?;
+        Some(ScalarTy(discr_value, discr.ty))
+    }
+
     fn wrap_scalar(&self, scalar: Scalar, ty: Ty<'tcx>) -> FlatSet<ScalarTy<'tcx>> {
         FlatSet::Elem(ScalarTy(scalar, ty))
     }
@@ -518,21 +512,6 @@ impl<'tcx, 'map, 'a> Visitor<'tcx> for OperandCollector<'tcx, 'map, 'a> {
                 }
             }
             _ => (),
-        }
-    }
-
-    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
-        match rvalue {
-            Rvalue::Discriminant(place) => {
-                match self.state.get_discr(place.as_ref(), self.visitor.map) {
-                    FlatSet::Top => (),
-                    FlatSet::Elem(value) => {
-                        self.visitor.before_effect.insert((location, *place), value);
-                    }
-                    FlatSet::Bottom => (),
-                }
-            }
-            _ => self.super_rvalue(rvalue, location),
         }
     }
 }
