@@ -11,6 +11,7 @@ use crate::toolstate::ToolState;
 use crate::util::{add_dylib_path, exe, t};
 use crate::Compiler;
 use crate::Mode;
+use crate::{gha, Kind};
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum SourceType {
@@ -32,41 +33,27 @@ struct ToolBuild {
     allow_features: &'static str,
 }
 
-fn tooling_output(
-    mode: Mode,
-    tool: &str,
-    build_stage: u32,
-    host: &TargetSelection,
-    target: &TargetSelection,
-) -> String {
-    match mode {
-        // depends on compiler stage, different to host compiler
-        Mode::ToolRustc => {
-            if host == target {
-                format!("Building tool {} (stage{} -> stage{})", tool, build_stage, build_stage + 1)
-            } else {
-                format!(
-                    "Building tool {} (stage{}:{} -> stage{}:{})",
-                    tool,
-                    build_stage,
-                    host,
-                    build_stage + 1,
-                    target
-                )
-            }
+impl Builder<'_> {
+    fn msg_tool(
+        &self,
+        mode: Mode,
+        tool: &str,
+        build_stage: u32,
+        host: &TargetSelection,
+        target: &TargetSelection,
+    ) -> Option<gha::Group> {
+        match mode {
+            // depends on compiler stage, different to host compiler
+            Mode::ToolRustc => self.msg_sysroot_tool(
+                Kind::Build,
+                build_stage,
+                format_args!("tool {tool}"),
+                *host,
+                *target,
+            ),
+            // doesn't depend on compiler, same as host compiler
+            _ => self.msg(Kind::Build, build_stage, format_args!("tool {tool}"), *host, *target),
         }
-        // doesn't depend on compiler, same as host compiler
-        Mode::ToolStd => {
-            if host == target {
-                format!("Building tool {} (stage{})", tool, build_stage)
-            } else {
-                format!(
-                    "Building tool {} (stage{}:{} -> stage{}:{})",
-                    tool, build_stage, host, build_stage, target
-                )
-            }
-        }
-        _ => format!("Building tool {} (stage{})", tool, build_stage),
     }
 }
 
@@ -111,14 +98,13 @@ impl Step for ToolBuild {
         if !self.allow_features.is_empty() {
             cargo.allow_features(self.allow_features);
         }
-        let msg = tooling_output(
+        let _guard = builder.msg_tool(
             self.mode,
             self.tool,
             self.compiler.stage,
             &self.compiler.host,
             &self.target,
         );
-        builder.info(&msg);
 
         let mut cargo = Command::from(cargo);
         let is_expected = builder.try_run(&mut cargo);
@@ -492,14 +478,13 @@ impl Step for Rustdoc {
             cargo.rustflag("--cfg=parallel_compiler");
         }
 
-        let msg = tooling_output(
+        let _guard = builder.msg_tool(
             Mode::ToolRustc,
             "rustdoc",
             build_compiler.stage,
             &self.compiler.host,
             &target,
         );
-        builder.info(&msg);
         builder.run(&mut cargo.into());
 
         // Cargo adds a number of paths to the dylib search path on windows, which results in
