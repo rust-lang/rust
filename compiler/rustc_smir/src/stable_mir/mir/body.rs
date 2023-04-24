@@ -42,6 +42,7 @@ pub enum Terminator {
         target: usize,
         unwind: UnwindAction,
     },
+    GeneratorDrop,
 }
 
 #[derive(Clone, Debug)]

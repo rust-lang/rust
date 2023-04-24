@@ -282,7 +282,7 @@ fn rustc_terminator_to_terminator(
             unwind: rustc_unwind_to_unwind(unwind),
         },
         Yield { .. } => todo!(),
-        GeneratorDrop => todo!(),
+        GeneratorDrop => Terminator::GeneratorDrop,
         FalseEdge { .. } => todo!(),
         FalseUnwind { .. } => todo!(),
         InlineAsm { .. } => todo!(),
