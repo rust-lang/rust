@@ -33,7 +33,7 @@ impl<const N: usize> Trait<N> for [u8; N] {}
 // @has foo/struct.Foo.html '//pre[@class="rust item-decl"]' \
 //      'pub struct Foo<const N: usize> where u8: Trait<N>'
 pub struct Foo<const N: usize> where u8: Trait<N>;
-// @has foo/struct.Bar.html '//pre[@class="rust item-decl"]' 'pub struct Bar<T, const N: usize>(_)'
+// @has foo/struct.Bar.html '//pre[@class="rust item-decl"]' 'pub struct Bar<T, const N: usize>('
 pub struct Bar<T, const N: usize>([T; N]);
 
 // @has foo/struct.Foo.html '//*[@id="impl-Foo%3CM%3E"]/h3[@class="code-header"]' 'impl<const M: usize> Foo<M>where u8: Trait<M>'
@@ -92,7 +92,7 @@ macro_rules! define_me {
 }
 
 // @has foo/struct.Foz.html '//pre[@class="rust item-decl"]' \
-//      'pub struct Foz<const N: usize>(_);'
+//      'pub struct Foz<const N: usize>(/* private fields */);'
 define_me!(Foz<N>);
 
 trait Q {

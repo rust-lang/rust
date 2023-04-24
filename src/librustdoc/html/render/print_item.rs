@@ -1226,6 +1226,12 @@ fn print_tuple_struct_fields<'a, 'cx: 'a>(
     s: &'a [clean::Item],
 ) -> impl fmt::Display + 'a + Captures<'cx> {
     display_fn(|f| {
+        if s.iter()
+            .all(|field| matches!(*field.kind, clean::StrippedItem(box clean::StructFieldItem(..))))
+        {
+            return f.write_str("/* private fields */");
+        }
+
         for (i, ty) in s.iter().enumerate() {
             if i > 0 {
                 f.write_str(", ")?;
@@ -1838,21 +1844,31 @@ fn render_struct(
         }
         Some(CtorKind::Fn) => {
             w.write_str("(");
-            for (i, field) in fields.iter().enumerate() {
-                if i > 0 {
-                    w.write_str(", ");
-                }
-                match *field.kind {
-                    clean::StrippedItem(box clean::StructFieldItem(..)) => write!(w, "_"),
-                    clean::StructFieldItem(ref ty) => {
-                        write!(
-                            w,
-                            "{}{}",
-                            visibility_print_with_space(field.visibility(tcx), field.item_id, cx),
-                            ty.print(cx),
-                        )
+            if fields.iter().all(|field| {
+                matches!(*field.kind, clean::StrippedItem(box clean::StructFieldItem(..)))
+            }) {
+                write!(w, "/* private fields */");
+            } else {
+                for (i, field) in fields.iter().enumerate() {
+                    if i > 0 {
+                        w.write_str(", ");
                     }
-                    _ => unreachable!(),
+                    match *field.kind {
+                        clean::StrippedItem(box clean::StructFieldItem(..)) => write!(w, "_"),
+                        clean::StructFieldItem(ref ty) => {
+                            write!(
+                                w,
+                                "{}{}",
+                                visibility_print_with_space(
+                                    field.visibility(tcx),
+                                    field.item_id,
+                                    cx
+                                ),
+                                ty.print(cx),
+                            )
+                        }
+                        _ => unreachable!(),
+                    }
                 }
             }
             w.write_str(")");

@@ -4,8 +4,8 @@ use std::io::Lines;
 
 pub trait MyTrait { fn dummy(&self) { } }
 
-// @has foo/struct.Alpha.html '//pre' "pub struct Alpha<A>(_) where A: MyTrait"
-pub struct Alpha<A>(A) where A: MyTrait;
+// @has foo/struct.Alpha.html '//pre' "pub struct Alpha<A>where A: MyTrait"
+pub struct Alpha<A> where A: MyTrait { a: A }
 // @has foo/trait.Bravo.html '//pre' "pub trait Bravo<B>where B: MyTrait"
 pub trait Bravo<B> where B: MyTrait { fn get(&self, B: B); }
 // @has foo/fn.charlie.html '//pre' "pub fn charlie<C>()where C: MyTrait"
