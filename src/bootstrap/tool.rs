@@ -573,18 +573,18 @@ impl Step for Cargo {
         if self.target.contains("windows") {
             build_cred(
                 "cargo-credential-wincred",
-                "src/tools/cargo/crates/credential/cargo-credential-wincred",
+                "src/tools/cargo/credential/cargo-credential-wincred",
             );
         }
         if self.target.contains("apple-darwin") {
             build_cred(
                 "cargo-credential-macos-keychain",
-                "src/tools/cargo/crates/credential/cargo-credential-macos-keychain",
+                "src/tools/cargo/credential/cargo-credential-macos-keychain",
             );
         }
         build_cred(
             "cargo-credential-1password",
-            "src/tools/cargo/crates/credential/cargo-credential-1password",
+            "src/tools/cargo/credential/cargo-credential-1password",
         );
         cargo_bin_path
     }
