@@ -10,7 +10,7 @@ use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Detect uses of `lines.filter_map(Result::ok)` or `lines.flat_map(Result::ok)`
+    /// Checks for usage of `lines.filter_map(Result::ok)` or `lines.flat_map(Result::ok)`
     /// when `lines` has type `std::io::Lines`.
     ///
     /// ### Why is this bad?

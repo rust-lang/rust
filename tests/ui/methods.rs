@@ -1,4 +1,4 @@
-// aux-build:option_helpers.rs
+//@aux-build:option_helpers.rs
 
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(

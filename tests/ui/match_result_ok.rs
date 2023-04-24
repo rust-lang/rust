@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::match_result_ok)]
 #![allow(dead_code)]
 #![allow(clippy::boxed_local, clippy::uninlined_format_args)]

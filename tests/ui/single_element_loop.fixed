@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 // Tests from for_loop.rs that don't have suggestions
 
 #[warn(clippy::single_element_loop)]

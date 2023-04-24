@@ -1,5 +1,5 @@
 #![feature(adt_const_params)]
-#![warn(clippy::same_functions_in_if_condition)]
+#![deny(clippy::same_functions_in_if_condition)]
 // ifs_same_cond warning is different from `ifs_same_cond`.
 // clippy::if_same_then_else, clippy::comparison_chain -- all empty blocks
 #![allow(incomplete_features)]

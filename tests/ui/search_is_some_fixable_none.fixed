@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![allow(dead_code, clippy::explicit_auto_deref)]
 #![warn(clippy::search_is_some)]
 

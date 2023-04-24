@@ -1,4 +1,4 @@
-warning: future cannot be sent between threads safely
+error: future cannot be sent between threads safely
   --> $DIR/ice-5207.rs:6:35
    |
 LL | pub async fn bar<'a, T: 'a>(_: T) {}
@@ -12,5 +12,5 @@ LL | pub async fn bar<'a, T: 'a>(_: T) {}
    = note: `T` doesn't implement `std::marker::Send`
    = note: `-D clippy::future-not-send` implied by `-D warnings`
 
-warning: 1 warning emitted
+error: aborting due to previous error
 
