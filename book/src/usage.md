@@ -111,7 +111,8 @@ fn main() {
 
 ### Automatically applying Clippy suggestions
 
-Clippy can automatically apply some lint suggestions, just like the compiler.
+Clippy can automatically apply some lint suggestions, just like the compiler. Note that `--fix` implies
+`--all-targets`, so it can fix as much code as it can.
 
 ```terminal
 cargo clippy --fix
