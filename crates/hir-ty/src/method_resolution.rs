@@ -742,9 +742,8 @@ fn find_matching_impl(
     actual_trait_ref: TraitRef,
 ) -> Option<(Arc<ImplData>, Substitution)> {
     let db = table.db;
-    loop {
-        let impl_ = impls.next()?;
-        let r = table.run_in_snapshot(|table| {
+    impls.find_map(|impl_| {
+        table.run_in_snapshot(|table| {
             let impl_data = db.impl_data(impl_);
             let impl_substs =
                 TyBuilder::subst_for_def(db, impl_, None).fill_with_inference_vars(table).build();
@@ -762,11 +761,8 @@ fn find_matching_impl(
                 .map(|b| b.cast(Interner));
             let goal = crate::Goal::all(Interner, wcs);
             table.try_obligation(goal).map(|_| (impl_data, table.resolve_completely(impl_substs)))
-        });
-        if r.is_some() {
-            break r;
-        }
-    }
+        })
+    })
 }
 
 fn is_inherent_impl_coherent(
