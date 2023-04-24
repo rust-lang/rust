@@ -71,7 +71,8 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
     #[cfg(all(
         feature = "std_detect_dlsym_getauxval",
         not(all(target_os = "linux", target_env = "gnu")),
-        not(target_os = "android"),
+        // TODO: libc crate currently doesn't provide getauxval on 32-bit Android.
+        not(all(target_os = "android", target_pointer_width = "64")),
     ))]
     {
         // Try to call a dynamically-linked getauxval function.
@@ -118,7 +119,8 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
     #[cfg(any(
         not(feature = "std_detect_dlsym_getauxval"),
         all(target_os = "linux", target_env = "gnu"),
-        target_os = "android",
+        // TODO: libc crate currently doesn't provide getauxval on 32-bit Android.
+        all(target_os = "android", target_pointer_width = "64"),
     ))]
     {
         // Targets with only AT_HWCAP:
