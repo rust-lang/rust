@@ -245,24 +245,19 @@ fn default_hook(info: &PanicInfo<'_>) {
 
     // The current implementation always returns `Some`.
     let location = info.location().unwrap();
+
+    let msg = match info.payload().downcast_ref::<&'static str>() {
+        Some(s) => *s,
+        None => match info.payload().downcast_ref::<String>() {
+            Some(s) => &s[..],
+            None => "Box<dyn Any>",
+        },
+    };
     let thread = thread_info::current_thread();
     let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
 
     let write = |err: &mut dyn crate::io::Write| {
-        // Use the panic message directly if available, otherwise take it from
-        // the payload.
-        if let Some(msg) = info.message() {
-            let _ = writeln!(err, "thread '{name}' panicked at '{msg}', {location}");
-        } else {
-            let msg = if let Some(s) = info.payload().downcast_ref::<&'static str>() {
-                *s
-            } else if let Some(s) = info.payload().downcast_ref::<String>() {
-                &s[..]
-            } else {
-                "Box<dyn Any>"
-            };
-            let _ = writeln!(err, "thread '{name}' panicked at '{msg}', {location}");
-        }
+        let _ = writeln!(err, "thread '{name}' panicked at '{msg}', {location}");
 
         static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 
@@ -529,8 +524,6 @@ pub fn panicking() -> bool {
 #[cfg(not(test))]
 #[panic_handler]
 pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
-    use alloc::alloc::AllocErrorPanicPayload;
-
     struct PanicPayload<'a> {
         inner: &'a fmt::Arguments<'a>,
         string: Option<String>,
@@ -557,7 +550,8 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
     unsafe impl<'a> BoxMeUp for PanicPayload<'a> {
         fn take_box(&mut self) -> *mut (dyn Any + Send) {
             // We do two allocations here, unfortunately. But (a) they're required with the current
-            // scheme, and (b) OOM uses its own separate payload type which doesn't allocate.
+            // scheme, and (b) we don't handle panic + OOM properly anyway (see comment in
+            // begin_panic below).
             let contents = mem::take(self.fill());
             Box::into_raw(Box::new(contents))
         }
@@ -582,14 +576,7 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
     let loc = info.location().unwrap(); // The current implementation always returns Some
     let msg = info.message().unwrap(); // The current implementation always returns Some
     crate::sys_common::backtrace::__rust_end_short_backtrace(move || {
-        if let Some(payload) = info.payload().downcast_ref::<AllocErrorPanicPayload>() {
-            rust_panic_with_hook(
-                &mut payload.internal_clone(),
-                info.message(),
-                loc,
-                info.can_unwind(),
-            );
-        } else if let Some(msg) = msg.as_str() {
+        if let Some(msg) = msg.as_str() {
             rust_panic_with_hook(&mut StrPanicPayload(msg), info.message(), loc, info.can_unwind());
         } else {
             rust_panic_with_hook(
@@ -636,7 +623,11 @@ pub const fn begin_panic<M: Any + Send>(msg: M) -> ! {
 
     unsafe impl<A: Send + 'static> BoxMeUp for PanicPayload<A> {
         fn take_box(&mut self) -> *mut (dyn Any + Send) {
-            // Note that this should be the only allocation performed in this code path.
+            // Note that this should be the only allocation performed in this code path. Currently
+            // this means that panic!() on OOM will invoke this code path, but then again we're not
+            // really ready for panic on OOM anyway. If we do start doing this, then we should
+            // propagate this allocation to be performed in the parent of this thread instead of the
+            // thread that's panicking.
             let data = match self.inner.take() {
                 Some(a) => Box::new(a) as Box<dyn Any + Send>,
                 None => process::abort(),
