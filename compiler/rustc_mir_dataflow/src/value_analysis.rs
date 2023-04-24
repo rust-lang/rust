@@ -74,11 +74,11 @@ pub trait ValueAnalysis<'tcx> {
             StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
                 // StorageLive leaves the local in an uninitialized state.
                 // StorageDead makes it UB to access the local afterwards.
-                state.flood_with(Place::from(*local).as_ref(), self.map(), Self::Value::bottom());
+                state.flood_with(Place::from(*local).as_ref(), self.map(), Self::Value::BOTTOM);
             }
             StatementKind::Deinit(box place) => {
                 // Deinit makes the place uninitialized.
-                state.flood_with(place.as_ref(), self.map(), Self::Value::bottom());
+                state.flood_with(place.as_ref(), self.map(), Self::Value::BOTTOM);
             }
             StatementKind::Retag(..) => {
                 // We don't track references.
@@ -154,7 +154,7 @@ pub trait ValueAnalysis<'tcx> {
             Rvalue::CopyForDeref(place) => self.handle_operand(&Operand::Copy(*place), state),
             Rvalue::Ref(..) | Rvalue::AddressOf(..) => {
                 // We don't track such places.
-                ValueOrPlace::top()
+                ValueOrPlace::TOP
             }
             Rvalue::Repeat(..)
             | Rvalue::ThreadLocalRef(..)
@@ -168,7 +168,7 @@ pub trait ValueAnalysis<'tcx> {
             | Rvalue::Aggregate(..)
             | Rvalue::ShallowInitBox(..) => {
                 // No modification is possible through these r-values.
-                ValueOrPlace::top()
+                ValueOrPlace::TOP
             }
         }
     }
@@ -196,7 +196,7 @@ pub trait ValueAnalysis<'tcx> {
                 self.map()
                     .find(place.as_ref())
                     .map(ValueOrPlace::Place)
-                    .unwrap_or(ValueOrPlace::top())
+                    .unwrap_or(ValueOrPlace::TOP)
             }
         }
     }
@@ -214,7 +214,7 @@ pub trait ValueAnalysis<'tcx> {
         _constant: &Constant<'tcx>,
         _state: &mut State<Self::Value>,
     ) -> Self::Value {
-        Self::Value::top()
+        Self::Value::TOP
     }
 
     /// The effect of a successful function call return should not be
@@ -229,7 +229,7 @@ pub trait ValueAnalysis<'tcx> {
                 // Effect is applied by `handle_call_return`.
             }
             TerminatorKind::Drop { place, .. } => {
-                state.flood_with(place.as_ref(), self.map(), Self::Value::bottom());
+                state.flood_with(place.as_ref(), self.map(), Self::Value::BOTTOM);
             }
             TerminatorKind::Yield { .. } => {
                 // They would have an effect, but are not allowed in this phase.
@@ -307,7 +307,7 @@ impl<'tcx, T: ValueAnalysis<'tcx>> AnalysisDomain<'tcx> for ValueAnalysisWrapper
     fn initialize_start_block(&self, body: &Body<'tcx>, state: &mut Self::Domain) {
         // The initial state maps all tracked places of argument projections to ⊤ and the rest to ⊥.
         assert!(matches!(state.0, StateData::Unreachable));
-        let values = IndexVec::from_elem_n(T::Value::bottom(), self.0.map().value_count);
+        let values = IndexVec::from_elem_n(T::Value::BOTTOM, self.0.map().value_count);
         *state = State(StateData::Reachable(values));
         for arg in body.args_iter() {
             state.flood(PlaceRef { local: arg, projection: &[] }, self.0.map());
@@ -437,7 +437,7 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
     }
 
     pub fn flood_all(&mut self) {
-        self.flood_all_with(V::top())
+        self.flood_all_with(V::TOP)
     }
 
     pub fn flood_all_with(&mut self, value: V) {
@@ -455,7 +455,7 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
     }
 
     pub fn flood(&mut self, place: PlaceRef<'_>, map: &Map) {
-        self.flood_with(place, map, V::top())
+        self.flood_with(place, map, V::TOP)
     }
 
     pub fn flood_discr_with(&mut self, place: PlaceRef<'_>, map: &Map, value: V) {
@@ -468,7 +468,7 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
     }
 
     pub fn flood_discr(&mut self, place: PlaceRef<'_>, map: &Map) {
-        self.flood_discr_with(place, map, V::top())
+        self.flood_discr_with(place, map, V::TOP)
     }
 
     /// Low-level method that assigns to a place.
@@ -538,14 +538,14 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
 
     /// Retrieve the value stored for a place, or ⊤ if it is not tracked.
     pub fn get(&self, place: PlaceRef<'_>, map: &Map) -> V {
-        map.find(place).map(|place| self.get_idx(place, map)).unwrap_or(V::top())
+        map.find(place).map(|place| self.get_idx(place, map)).unwrap_or(V::TOP)
     }
 
     /// Retrieve the value stored for a place, or ⊤ if it is not tracked.
     pub fn get_discr(&self, place: PlaceRef<'_>, map: &Map) -> V {
         match map.find_discr(place) {
             Some(place) => self.get_idx(place, map),
-            None => V::top(),
+            None => V::TOP,
         }
     }
 
@@ -553,11 +553,11 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
     pub fn get_idx(&self, place: PlaceIndex, map: &Map) -> V {
         match &self.0 {
             StateData::Reachable(values) => {
-                map.places[place].value_index.map(|v| values[v].clone()).unwrap_or(V::top())
+                map.places[place].value_index.map(|v| values[v].clone()).unwrap_or(V::TOP)
             }
             StateData::Unreachable => {
                 // Because this is unreachable, we can return any value we want.
-                V::bottom()
+                V::BOTTOM
             }
         }
     }
@@ -909,9 +909,7 @@ pub enum ValueOrPlace<V> {
 }
 
 impl<V: HasTop> ValueOrPlace<V> {
-    pub fn top() -> Self {
-        ValueOrPlace::Value(V::top())
-    }
+    pub const TOP: Self = ValueOrPlace::Value(V::TOP);
 }
 
 /// The set of projection elements that can be used by a tracked place.

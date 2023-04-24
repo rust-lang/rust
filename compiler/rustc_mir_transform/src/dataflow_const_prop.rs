@@ -208,8 +208,8 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                     _ => unreachable!(),
                 }
                 .map(|result| ValueOrPlace::Value(self.wrap_immediate(result, *ty)))
-                .unwrap_or(ValueOrPlace::top()),
-                _ => ValueOrPlace::top(),
+                .unwrap_or(ValueOrPlace::TOP),
+                _ => ValueOrPlace::TOP,
             },
             Rvalue::BinaryOp(op, box (left, right)) => {
                 // Overflows must be ignored here.
