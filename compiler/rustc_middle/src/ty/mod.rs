@@ -1628,10 +1628,10 @@ struct ParamTag {
 
 impl_tag! {
     impl Tag for ParamTag;
-    ParamTag { reveal: traits::Reveal::UserFacing, constness: hir::Constness::NotConst } <=> 0,
-    ParamTag { reveal: traits::Reveal::All,        constness: hir::Constness::NotConst } <=> 1,
-    ParamTag { reveal: traits::Reveal::UserFacing, constness: hir::Constness::Const    } <=> 2,
-    ParamTag { reveal: traits::Reveal::All,        constness: hir::Constness::Const    } <=> 3,
+    ParamTag { reveal: traits::Reveal::UserFacing, constness: hir::Constness::NotConst },
+    ParamTag { reveal: traits::Reveal::All,        constness: hir::Constness::NotConst },
+    ParamTag { reveal: traits::Reveal::UserFacing, constness: hir::Constness::Const    },
+    ParamTag { reveal: traits::Reveal::All,        constness: hir::Constness::Const    },
 }
 
 impl<'tcx> fmt::Debug for ParamEnv<'tcx> {
