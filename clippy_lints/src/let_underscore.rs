@@ -6,6 +6,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::{BytePos, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -205,8 +206,13 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                     LET_UNDERSCORE_UNTYPED,
                     local.span,
                     "non-binding `let` without a type annotation",
-                    None,
-                    "consider adding a type annotation or removing the `let` keyword",
+                    Some(
+						Span::new(local.pat.span.hi(),
+						local.pat.span.hi() + BytePos(1),
+						local.pat.span.ctxt(),
+						local.pat.span.parent()
+					)),
+                    "consider adding a type annotation",
                 );
             }
         }
