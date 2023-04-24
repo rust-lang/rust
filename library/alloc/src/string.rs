@@ -2261,6 +2261,10 @@ impl fmt::Display for String {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&**self, f)
     }
+    #[inline]
+    fn simple_fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&**self)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

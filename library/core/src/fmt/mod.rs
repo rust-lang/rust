@@ -356,6 +356,13 @@ impl<'a> ArgumentV1<'a> {
 
     #[doc(hidden)]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    #[inline]
+    pub fn new_simple_display<T: Display>(x: &'a T) -> Self {
+        Self::new(x, Display::simple_fmt)
+    }
+
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     pub fn from_usize(x: &usize) -> ArgumentV1<'_> {
         ArgumentV1::new(x, USIZE_MARKER)
     }
@@ -822,6 +829,19 @@ pub trait Display {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
+
+    /// Formats the value using the given formatter, but may ignore all formatting options.
+    ///
+    /// This method is called when using a placeholder without any formatting options,
+    /// like in `println!("{value:?}")`.
+    ///
+    /// The default implementation just calls `fmt`, but this can be overridden
+    /// with a more optimized version that ignores all formatting options.
+    #[unstable(feature = "simple_fmt", issue = "105054")]
+    #[inline]
+    fn simple_fmt(&self, f: &mut Formatter<'_>) -> Result {
+        self.fmt(f)
+    }
 }
 
 /// `o` formatting.
@@ -2418,7 +2438,26 @@ macro_rules! fmt_refs {
     }
 }
 
-fmt_refs! { Debug, Display, Octal, Binary, LowerHex, UpperHex, LowerExp, UpperExp }
+fmt_refs! { Debug, Octal, Binary, LowerHex, UpperHex, LowerExp, UpperExp }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized + Display> Display for &T {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        Display::fmt(&**self, f)
+    }
+    fn simple_fmt(&self, f: &mut Formatter<'_>) -> Result {
+        Display::simple_fmt(&**self, f)
+    }
+}
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized + Display> Display for &mut T {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        Display::fmt(&**self, f)
+    }
+    fn simple_fmt(&self, f: &mut Formatter<'_>) -> Result {
+        Display::simple_fmt(&**self, f)
+    }
+}
 
 #[unstable(feature = "never_type", issue = "35121")]
 impl Debug for ! {
@@ -2479,6 +2518,10 @@ impl Display for str {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         f.pad(self)
     }
+    #[inline]
+    fn simple_fmt(&self, f: &mut Formatter<'_>) -> Result {
+        f.write_str(self)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2504,6 +2547,10 @@ impl Display for char {
         } else {
             f.pad(self.encode_utf8(&mut [0; 4]))
         }
+    }
+    #[inline]
+    fn simple_fmt(&self, f: &mut Formatter<'_>) -> Result {
+        f.write_char(*self)
     }
 }
 

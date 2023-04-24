@@ -2,7 +2,7 @@ use super::LoweringContext;
 use rustc_ast as ast;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::*;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
 use rustc_hir as hir;
 use rustc_span::{
     sym,
@@ -193,26 +193,36 @@ fn make_argument<'hir>(
     sp: Span,
     arg: &'hir hir::Expr<'hir>,
     ty: ArgumentType,
+    simple: bool,
 ) -> hir::Expr<'hir> {
     use ArgumentType::*;
     use FormatTrait::*;
     let new_fn = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
         sp,
         hir::LangItem::FormatArgument,
-        match ty {
-            Format(Display) => sym::new_display,
-            Format(Debug) => sym::new_debug,
-            Format(LowerExp) => sym::new_lower_exp,
-            Format(UpperExp) => sym::new_upper_exp,
-            Format(Octal) => sym::new_octal,
-            Format(Pointer) => sym::new_pointer,
-            Format(Binary) => sym::new_binary,
-            Format(LowerHex) => sym::new_lower_hex,
-            Format(UpperHex) => sym::new_upper_hex,
-            Usize => sym::from_usize,
+        match (simple, ty) {
+            (true, Format(Display)) => sym::new_simple_display,
+            (false, Format(Display)) => sym::new_display,
+            (_, Format(Debug)) => sym::new_debug,
+            (_, Format(LowerExp)) => sym::new_lower_exp,
+            (_, Format(UpperExp)) => sym::new_upper_exp,
+            (_, Format(Octal)) => sym::new_octal,
+            (_, Format(Pointer)) => sym::new_pointer,
+            (_, Format(Binary)) => sym::new_binary,
+            (_, Format(LowerHex)) => sym::new_lower_hex,
+            (_, Format(UpperHex)) => sym::new_upper_hex,
+            (_, Usize) => sym::from_usize,
         },
     ));
     ctx.expr_call_mut(sp, new_fn, std::slice::from_ref(arg))
+}
+
+/// The data we track for each unique (argument, trait) pair.
+struct ArgMeta {
+    /// Whether all uses of this argument as this trait use no formatting options.
+    simple: bool,
+    /// The span of the first placeholder that uses this argument-trait combination.
+    span: Option<Span>,
 }
 
 /// Generate a hir expression for a format_args Count.
@@ -238,7 +248,7 @@ fn make_count<'hir>(
     ctx: &mut LoweringContext<'_, 'hir>,
     sp: Span,
     count: &Option<FormatCount>,
-    argmap: &mut FxIndexMap<(usize, ArgumentType), Option<Span>>,
+    argmap: &mut FxIndexMap<(usize, ArgumentType), ArgMeta>,
 ) -> hir::Expr<'hir> {
     match count {
         Some(FormatCount::Literal(n)) => {
@@ -252,7 +262,10 @@ fn make_count<'hir>(
         }
         Some(FormatCount::Argument(arg)) => {
             if let Ok(arg_index) = arg.index {
-                let (i, _) = argmap.insert_full((arg_index, ArgumentType::Usize), arg.span);
+                let (i, _) = argmap.insert_full(
+                    (arg_index, ArgumentType::Usize),
+                    ArgMeta { simple: true, span: arg.span },
+                );
                 let count_param = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
                     sp,
                     hir::LangItem::FormatCount,
@@ -291,14 +304,13 @@ fn make_format_spec<'hir>(
     ctx: &mut LoweringContext<'_, 'hir>,
     sp: Span,
     placeholder: &FormatPlaceholder,
-    argmap: &mut FxIndexMap<(usize, ArgumentType), Option<Span>>,
+    argmap: &mut FxIndexMap<(usize, ArgumentType), ArgMeta>,
 ) -> hir::Expr<'hir> {
     let position = match placeholder.argument.index {
         Ok(arg_index) => {
-            let (i, _) = argmap.insert_full(
-                (arg_index, ArgumentType::Format(placeholder.format_trait)),
-                placeholder.span,
-            );
+            let i = argmap
+                .get_index_of(&(arg_index, ArgumentType::Format(placeholder.format_trait)))
+                .unwrap();
             ctx.expr_usize(sp, i)
         }
         Err(_) => ctx.expr(
@@ -388,21 +400,25 @@ fn expand_format_args<'hir>(
 
     // Create a list of all _unique_ (argument, format trait) combinations.
     // E.g. "{0} {0:x} {0} {1}" -> [(0, Display), (0, LowerHex), (1, Display)]
-    let mut argmap = FxIndexMap::default();
+    let mut argmap = FxIndexMap::<(usize, ArgumentType), ArgMeta>::default();
     for piece in &fmt.template {
         let FormatArgsPiece::Placeholder(placeholder) = piece else { continue };
-        if placeholder.format_options != Default::default() {
+        let simple = placeholder.format_options == Default::default();
+        if !simple {
             // Can't use basic form if there's any formatting options.
             use_format_options = true;
         }
         if let Ok(index) = placeholder.argument.index {
-            if argmap
-                .insert((index, ArgumentType::Format(placeholder.format_trait)), placeholder.span)
-                .is_some()
-            {
-                // Duplicate (argument, format trait) combination,
-                // which we'll only put once in the args array.
-                use_format_options = true;
+            match argmap.entry((index, ArgumentType::Format(placeholder.format_trait))) {
+                IndexEntry::Occupied(mut entry) => {
+                    entry.get_mut().simple &= simple;
+                    // Duplicate (argument, format trait) combination,
+                    // which we'll only put once in the args array.
+                    use_format_options = true;
+                }
+                IndexEntry::Vacant(entry) => {
+                    entry.insert(ArgMeta { simple, span: placeholder.span });
+                }
             }
         }
     }
@@ -457,9 +473,8 @@ fn expand_format_args<'hir>(
         let elements: Vec<_> = arguments
             .iter()
             .zip(argmap)
-            .map(|(arg, ((_, ty), placeholder_span))| {
-                let placeholder_span =
-                    placeholder_span.unwrap_or(arg.expr.span).with_ctxt(macsp.ctxt());
+            .map(|(arg, ((_, ty), ArgMeta { simple, span }))| {
+                let placeholder_span = span.unwrap_or(arg.expr.span).with_ctxt(macsp.ctxt());
                 let arg_span = match arg.kind {
                     FormatArgumentKind::Captured(_) => placeholder_span,
                     _ => arg.expr.span.with_ctxt(macsp.ctxt()),
@@ -469,7 +484,7 @@ fn expand_format_args<'hir>(
                     arg_span,
                     hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, arg),
                 ));
-                make_argument(ctx, placeholder_span, ref_arg, ty)
+                make_argument(ctx, placeholder_span, ref_arg, ty, simple)
             })
             .collect();
         ctx.expr_array_ref(macsp, ctx.arena.alloc_from_iter(elements))
@@ -486,10 +501,9 @@ fn expand_format_args<'hir>(
         let args_ident = Ident::new(sym::args, macsp);
         let (args_pat, args_hir_id) = ctx.pat_ident(macsp, args_ident);
         let args = ctx.arena.alloc_from_iter(argmap.iter().map(
-            |(&(arg_index, ty), &placeholder_span)| {
+            |(&(arg_index, ty), &ArgMeta { simple, span })| {
                 let arg = &arguments[arg_index];
-                let placeholder_span =
-                    placeholder_span.unwrap_or(arg.expr.span).with_ctxt(macsp.ctxt());
+                let placeholder_span = span.unwrap_or(arg.expr.span).with_ctxt(macsp.ctxt());
                 let arg_span = match arg.kind {
                     FormatArgumentKind::Captured(_) => placeholder_span,
                     _ => arg.expr.span.with_ctxt(macsp.ctxt()),
@@ -502,7 +516,7 @@ fn expand_format_args<'hir>(
                         Ident::new(sym::integer(arg_index), macsp),
                     ),
                 ));
-                make_argument(ctx, placeholder_span, arg, ty)
+                make_argument(ctx, placeholder_span, arg, ty, simple)
             },
         ));
         let elements: Vec<_> = arguments
