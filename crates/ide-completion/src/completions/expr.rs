@@ -88,7 +88,13 @@ pub(crate) fn complete_expr_path(
                     let module_scope = module.scope(ctx.db, Some(ctx.module));
                     for (name, def) in module_scope {
                         if scope_def_applicable(def) {
-                            acc.add_path_resolution(ctx, path_ctx, name, def, vec![]);
+                            acc.add_path_resolution(
+                                ctx,
+                                path_ctx,
+                                name,
+                                def,
+                                ctx.doc_aliases_in_scope(def),
+                            );
                         }
                     }
                 }

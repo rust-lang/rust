@@ -1086,3 +1086,141 @@ fn here_we_go() {
         "#]],
     );
 }
+
+#[test]
+fn completes_field_name_via_doc_alias_in_fn_body() {
+    check(
+        r#"
+struct Foo {
+    #[doc(alias = "qux")]
+    bar: u8
+};
+
+fn here_we_go() {
+    let foo = Foo { q$0 }
+}
+"#,
+        expect![[r#"
+            fd bar (alias qux) u8
+        "#]],
+    );
+}
+
+#[test]
+fn completes_fn_name_via_doc_alias_in_fn_body() {
+    check(
+        r#"
+#[doc(alias = "qux")]
+fn foo() {}
+fn bar() { qu$0 }
+"#,
+        expect![[r#"
+            fn bar()             fn()
+            fn foo() (alias qux) fn()
+            bt u32
+            kw const
+            kw crate::
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw let
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+}
+
+#[test]
+fn completes_struct_name_via_doc_alias_in_another_mod() {
+    check(
+        r#"
+mod foo {
+    #[doc(alias = "Qux")]
+    pub struct Bar(u8);
+}
+
+fn here_we_go() {
+    use foo;
+    let foo = foo::Q$0
+}
+"#,
+        expect![[r#"
+            st Bar (alias Qux)
+        "#]],
+    );
+}
+
+#[test]
+fn completes_use_via_doc_alias_in_another_mod() {
+    check(
+        r#"
+mod foo {
+    #[doc(alias = "Qux")]
+    pub struct Bar(u8);
+}
+
+fn here_we_go() {
+    use foo::Q$0;
+}
+"#,
+        expect![[r#"
+            st Bar (alias Qux)
+        "#]],
+    );
+}
+
+#[test]
+fn completes_flyimport_with_doc_alias_in_another_mod() {
+    check(
+        r#"
+mod foo {
+    #[doc(alias = "Qux")]
+    pub struct Bar();
+}
+
+fn here_we_go() {
+    let foo = Bar$0
+}
+"#,
+        expect![[r#"
+            fn here_we_go()           fn()
+            md foo
+            st Bar (alias Qux) (use foo::Bar)
+            bt u32
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw return
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+        "#]],
+    );
+}
