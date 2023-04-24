@@ -8,7 +8,6 @@ edition = "2021"
 [dependencies]
 serde = "1"
 serde_json = "1"
-smallvec = { version = "1.8.1", features = [ "union", "may_dangle" ] }
 tracing = "0.1"
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }

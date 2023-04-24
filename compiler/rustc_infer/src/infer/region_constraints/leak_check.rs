@@ -5,7 +5,7 @@ use rustc_data_structures::{
     graph::{scc::Sccs, vec_graph::VecGraph},
     undo_log::UndoLogs,
 };
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::RelateResult;
 

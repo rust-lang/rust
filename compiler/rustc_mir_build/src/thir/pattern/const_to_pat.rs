@@ -1,5 +1,5 @@
 use rustc_hir as hir;
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
 use rustc_middle::mir;

@@ -9,7 +9,7 @@ use rustc_target::abi::call::{FnAbi, PassMode};
 use std::iter;
 
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 
 use self::debuginfo::{FunctionDebugContext, PerLocalVarDebugInfo};
 use self::place::PlaceRef;

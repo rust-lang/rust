@@ -3,7 +3,7 @@
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
-use rustc_index::vec::IndexSlice;
+use rustc_index::IndexSlice;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::mir::{
     Body, CastKind, ConstraintCategory, FakeReadCause, Local, LocalInfo, Location, Operand, Place,

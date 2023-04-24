@@ -3,7 +3,7 @@
 
 use crate::ssa::SsaLocals;
 use crate::MirPass;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};

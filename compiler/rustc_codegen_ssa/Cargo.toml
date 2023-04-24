@@ -12,7 +12,6 @@ bitflags = "1.2.1"
 cc = "1.0.69"
 itertools = "0.10.1"
 tracing = "0.1"
-libc = "0.2.50"
 jobserver = "0.1.22"
 tempfile = "3.2"
 thorin-dwp = "0.4"
@@ -42,6 +41,9 @@ rustc_metadata = { path = "../rustc_metadata" }
 rustc_query_system = { path = "../rustc_query_system" }
 rustc_target = { path = "../rustc_target" }
 rustc_session = { path = "../rustc_session" }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2.50"
 
 [dependencies.object]
 version = "0.30.1"

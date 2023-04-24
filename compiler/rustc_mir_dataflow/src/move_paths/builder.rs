@@ -1,6 +1,6 @@
 use crate::move_paths::FxHashMap;
 use crate::un_derefer::UnDerefer;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::mir::tcx::RvalueInitializationState;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};

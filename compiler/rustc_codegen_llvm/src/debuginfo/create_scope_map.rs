@@ -12,7 +12,7 @@ use rustc_middle::ty::{self, Instance};
 use rustc_session::config::DebugInfo;
 
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 
 /// Produces DIScope DIEs for each MIR Scope which has variables defined in it.
 // FIXME(eddyb) almost all of this should be in `rustc_codegen_ssa::mir::debuginfo`.

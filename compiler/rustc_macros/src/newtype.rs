@@ -254,7 +254,7 @@ impl Parse for Newtype {
                 }
             }
 
-            impl rustc_index::vec::Idx for #name {
+            impl rustc_index::Idx for #name {
                 #[inline]
                 fn new(value: usize) -> Self {
                     Self::from_usize(value)

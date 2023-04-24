@@ -3,7 +3,7 @@
 //! This file provides API for compiler consumers.
 
 use rustc_hir::def_id::LocalDefId;
-use rustc_index::vec::IndexSlice;
+use rustc_index::IndexSlice;
 use rustc_infer::infer::{DefiningAnchor, TyCtxtInferExt};
 use rustc_middle::mir::Body;
 use rustc_middle::ty::TyCtxt;
