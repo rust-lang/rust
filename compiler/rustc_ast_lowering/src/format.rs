@@ -327,7 +327,7 @@ fn make_format_spec<'hir>(
             None => sym::Unknown,
         },
     );
-    // This needs to match `Flag` in library/core/src/fmt/mod.rs.
+    // This needs to match `Flag` in library/core/src/fmt/rt.rs.
     let flags: u32 = ((sign == Some(FormatSign::Plus)) as u32)
         | ((sign == Some(FormatSign::Minus)) as u32) << 1
         | (alternate as u32) << 2
