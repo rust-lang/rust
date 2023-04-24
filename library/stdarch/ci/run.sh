@@ -73,6 +73,9 @@ cargo_test() {
         wasm32*)
             cmd="$cmd --nocapture"
             ;;
+        # qemu has an erratic behavior on those tests
+        powerpc64*)
+            cmd="$cmd --skip test_vec_lde_u16 --skip test_vec_lde_u32 --skip test_vec_expte"
     esac
 
     if [ "$SKIP_TESTS" != "" ]; then
