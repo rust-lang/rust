@@ -172,8 +172,8 @@ pub fn expand_speculative(
     );
 
     let (attr_arg, token_id) = match loc.kind {
-        MacroCallKind::Attr { invoc_attr_index, is_derive, .. } => {
-            let attr = if is_derive {
+        MacroCallKind::Attr { invoc_attr_index, .. } => {
+            let attr = if loc.def.is_attribute_derive() {
                 // for pseudo-derive expansion we actually pass the attribute itself only
                 ast::Attr::cast(speculative_args.clone())
             } else {
@@ -285,8 +285,8 @@ fn parse_macro_expansion(
             // Note:
             // The final goal we would like to make all parse_macro success,
             // such that the following log will not call anyway.
-            let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
-            let node = loc.kind.to_node(db);
+            let loc = db.lookup_intern_macro_call(macro_file.macro_call_id);
+            let node = loc.to_node(db);
 
             // collect parent information for warning log
             let parents = std::iter::successors(loc.kind.file_id().call_node(db), |it| {
@@ -360,7 +360,7 @@ fn censor_for_macro_input(loc: &MacroCallLoc, node: &SyntaxNode) -> FxHashSet<Sy
                     .map(|it| it.syntax().clone())
                     .collect()
             }
-            MacroCallKind::Attr { is_derive: true, .. } => return None,
+            MacroCallKind::Attr { .. } if loc.def.is_attribute_derive() => return None,
             MacroCallKind::Attr { invoc_attr_index, .. } => {
                 cov_mark::hit!(attribute_macro_attr_censoring);
                 ast::Item::cast(node.clone())?
@@ -442,7 +442,7 @@ fn macro_def(
 
 fn macro_expand(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<Arc<tt::Subtree>> {
     let _p = profile::span("macro_expand");
-    let loc: MacroCallLoc = db.lookup_intern_macro_call(id);
+    let loc = db.lookup_intern_macro_call(id);
     if let Some(eager) = &loc.eager {
         return ExpandResult { value: eager.arg_or_expansion.clone(), err: eager.error.clone() };
     }
@@ -511,7 +511,7 @@ fn parse_macro_expansion_error(
 }
 
 fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<tt::Subtree> {
-    let loc: MacroCallLoc = db.lookup_intern_macro_call(id);
+    let loc = db.lookup_intern_macro_call(id);
     let Some(macro_arg) = db.macro_arg(id) else {
         return ExpandResult {
             value: tt::Subtree {
@@ -547,8 +547,7 @@ fn hygiene_frame(db: &dyn ExpandDatabase, file_id: HirFileId) -> Arc<HygieneFram
 }
 
 fn macro_expand_to(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandTo {
-    let loc: MacroCallLoc = db.lookup_intern_macro_call(id);
-    loc.kind.expand_to()
+    db.lookup_intern_macro_call(id).expand_to()
 }
 
 fn token_tree_to_syntax_node(

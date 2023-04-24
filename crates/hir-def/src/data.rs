@@ -623,7 +623,6 @@ impl<'a> AssocItemCollector<'a> {
                                 ast_id,
                                 attr_args: Arc::new((tt::Subtree::empty(), Default::default())),
                                 invoc_attr_index: attr.id,
-                                is_derive: false,
                             },
                             attr.path().clone(),
                         ));
