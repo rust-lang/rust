@@ -1,5 +1,5 @@
-// compile-flags: --emit=link
-// no-prefer-dynamic
+//@compile-flags: --emit=link
+//@no-prefer-dynamic
 
 #![crate_type = "proc-macro"]
 #![feature(repr128, proc_macro_hygiene, proc_macro_quote, box_patterns)]
@@ -28,7 +28,7 @@ pub fn dummy(_args: TokenStream, input: TokenStream) -> TokenStream {
 pub fn fake_async_trait(_args: TokenStream, input: TokenStream) -> TokenStream {
     let mut item = parse_macro_input!(input as ItemTrait);
     for inner in &mut item.items {
-        if let TraitItem::Method(method) = inner {
+        if let TraitItem::Fn(method) = inner {
             let sig = &method.sig;
             let block = &mut method.default;
             if let Some(block) = block {
@@ -70,7 +70,7 @@ pub fn rename_my_lifetimes(_args: TokenStream, input: TokenStream) -> TokenStrea
 
     // Look for methods having arbitrary self type taken by &mut ref
     for inner in &mut item.items {
-        if let ImplItem::Method(method) = inner {
+        if let ImplItem::Fn(method) = inner {
             if let Some(FnArg::Typed(pat_type)) = mut_receiver_of(&mut method.sig) {
                 if let box Type::Reference(reference) = &mut pat_type.ty {
                     // Target only unnamed lifetimes

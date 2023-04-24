@@ -1,4 +1,4 @@
-// compile-flags: --test
+//@compile-flags: --test
 
 #![warn(clippy::module_name_repetitions)]
 #![allow(dead_code)]

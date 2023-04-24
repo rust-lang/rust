@@ -168,25 +168,27 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
         }
 
         if let ExprKind::Binary(Spanned { node: cmp, .. }, left, right) = expr.kind {
+            // expr.span might contains parenthesis, see issue #10529
+            let actual_span = left.span.with_hi(right.span.hi());
             match cmp {
                 BinOpKind::Eq => {
-                    check_cmp(cx, expr.span, left, right, "", 0); // len == 0
-                    check_cmp(cx, expr.span, right, left, "", 0); // 0 == len
+                    check_cmp(cx, actual_span, left, right, "", 0); // len == 0
+                    check_cmp(cx, actual_span, right, left, "", 0); // 0 == len
                 },
                 BinOpKind::Ne => {
-                    check_cmp(cx, expr.span, left, right, "!", 0); // len != 0
-                    check_cmp(cx, expr.span, right, left, "!", 0); // 0 != len
+                    check_cmp(cx, actual_span, left, right, "!", 0); // len != 0
+                    check_cmp(cx, actual_span, right, left, "!", 0); // 0 != len
                 },
                 BinOpKind::Gt => {
-                    check_cmp(cx, expr.span, left, right, "!", 0); // len > 0
-                    check_cmp(cx, expr.span, right, left, "", 1); // 1 > len
+                    check_cmp(cx, actual_span, left, right, "!", 0); // len > 0
+                    check_cmp(cx, actual_span, right, left, "", 1); // 1 > len
                 },
                 BinOpKind::Lt => {
-                    check_cmp(cx, expr.span, left, right, "", 1); // len < 1
-                    check_cmp(cx, expr.span, right, left, "!", 0); // 0 < len
+                    check_cmp(cx, actual_span, left, right, "", 1); // len < 1
+                    check_cmp(cx, actual_span, right, left, "!", 0); // 0 < len
                 },
-                BinOpKind::Ge => check_cmp(cx, expr.span, left, right, "!", 1), // len >= 1
-                BinOpKind::Le => check_cmp(cx, expr.span, right, left, "!", 1), // 1 <= len
+                BinOpKind::Ge => check_cmp(cx, actual_span, left, right, "!", 1), // len >= 1
+                BinOpKind::Le => check_cmp(cx, actual_span, right, left, "!", 1), // 1 <= len
                 _ => (),
             }
         }

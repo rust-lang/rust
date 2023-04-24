@@ -1,5 +1,5 @@
-// run-rustfix
-// aux-build: macro_rules.rs
+//@run-rustfix
+//@aux-build: macro_rules.rs
 
 #![warn(clippy::all)]
 #![allow(

@@ -506,7 +506,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for uses of the `abs()` method that cast the result to unsigned.
+    /// Checks for usage of the `abs()` method that cast the result to unsigned.
     ///
     /// ### Why is this bad?
     /// The `unsigned_abs()` method avoids panic when called on the MIN value.
@@ -625,14 +625,14 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// let string = String::with_capacity(1);
-    /// let ptr = string.as_ptr() as *mut u8;
+    /// let mut vec = Vec::<u8>::with_capacity(1);
+    /// let ptr = vec.as_ptr() as *mut u8;
     /// unsafe { ptr.write(4) }; // UNDEFINED BEHAVIOUR
     /// ```
     /// Use instead:
     /// ```rust
-    /// let mut string = String::with_capacity(1);
-    /// let ptr = string.as_mut_ptr();
+    /// let mut vec = Vec::<u8>::with_capacity(1);
+    /// let ptr = vec.as_mut_ptr();
     /// unsafe { ptr.write(4) };
     /// ```
     #[clippy::version = "1.66.0"]

@@ -1,51 +1,46 @@
 error: manual slice size calculation
-  --> $DIR/manual_slice_size_calculation.rs:11:13
+  --> $DIR/manual_slice_size_calculation.rs:16:13
    |
 LL |     let _ = s_i32.len() * size_of::<i32>(); // WARNING
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::mem::size_of_val(s_i32)`
    |
-   = help: consider using std::mem::size_of_value instead
    = note: `-D clippy::manual-slice-size-calculation` implied by `-D warnings`
-
-error: manual slice size calculation
-  --> $DIR/manual_slice_size_calculation.rs:12:13
-   |
-LL |     let _ = size_of::<i32>() * s_i32.len(); // WARNING
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider using std::mem::size_of_value instead
-
-error: manual slice size calculation
-  --> $DIR/manual_slice_size_calculation.rs:13:13
-   |
-LL |     let _ = size_of::<i32>() * s_i32.len() * 5; // WARNING
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider using std::mem::size_of_value instead
 
 error: manual slice size calculation
   --> $DIR/manual_slice_size_calculation.rs:17:13
    |
-LL |     let _ = len * size_of::<i32>(); // WARNING
-   |             ^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider using std::mem::size_of_value instead
+LL |     let _ = size_of::<i32>() * s_i32.len(); // WARNING
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::mem::size_of_val(s_i32)`
 
 error: manual slice size calculation
   --> $DIR/manual_slice_size_calculation.rs:18:13
    |
-LL |     let _ = s_i32.len() * size; // WARNING
-   |             ^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider using std::mem::size_of_value instead
+LL |     let _ = size_of::<i32>() * s_i32.len() * 5; // WARNING
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::mem::size_of_val(s_i32)`
 
 error: manual slice size calculation
-  --> $DIR/manual_slice_size_calculation.rs:19:13
+  --> $DIR/manual_slice_size_calculation.rs:22:13
+   |
+LL |     let _ = len * size_of::<i32>(); // WARNING
+   |             ^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::mem::size_of_val(s_i32)`
+
+error: manual slice size calculation
+  --> $DIR/manual_slice_size_calculation.rs:23:13
+   |
+LL |     let _ = s_i32.len() * size; // WARNING
+   |             ^^^^^^^^^^^^^^^^^^ help: try: `std::mem::size_of_val(s_i32)`
+
+error: manual slice size calculation
+  --> $DIR/manual_slice_size_calculation.rs:24:13
    |
 LL |     let _ = len * size; // WARNING
-   |             ^^^^^^^^^^
-   |
-   = help: consider using std::mem::size_of_value instead
+   |             ^^^^^^^^^^ help: try: `std::mem::size_of_val(s_i32)`
 
-error: aborting due to 6 previous errors
+error: manual slice size calculation
+  --> $DIR/manual_slice_size_calculation.rs:26:13
+   |
+LL |     let _ = external!(&[1u64][..]).len() * size_of::<u64>();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::mem::size_of_val(external!(&[1u64][..]))`
+
+error: aborting due to 7 previous errors
 

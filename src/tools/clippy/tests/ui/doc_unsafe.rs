@@ -1,4 +1,4 @@
-// aux-build:proc_macros.rs
+//@aux-build:proc_macros.rs
 
 #![allow(clippy::let_unit_value)]
 

@@ -1,5 +1,5 @@
-// aux-build:proc_macro_derive.rs
-// run-rustfix
+//@aux-build:proc_macro_derive.rs
+//@run-rustfix
 
 #![warn(clippy::nonstandard_macro_braces)]
 

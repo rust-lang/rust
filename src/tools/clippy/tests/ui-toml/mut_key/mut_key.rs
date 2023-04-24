@@ -1,4 +1,4 @@
-// compile-flags: --crate-name mut_key
+//@compile-flags: --crate-name mut_key
 
 #![warn(clippy::mutable_key_type)]
 

@@ -164,7 +164,7 @@ The process of generating the `.stderr` file is the same, and prepending the
 ## Rustfix tests
 
 If the lint you are working on is making use of structured suggestions, the test
-file should include a `// run-rustfix` comment at the top. This will
+file should include a `//@run-rustfix` comment at the top. This will
 additionally run [rustfix] for that test. Rustfix will apply the suggestions
 from the lint to the code of the test file and compare that to the contents of a
 `.fixed` file.

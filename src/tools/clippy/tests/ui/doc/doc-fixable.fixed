@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 //! This file tests for the `DOC_MARKDOWN` lint.
 
 #![allow(dead_code, incomplete_features)]

@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 // will emits unused mut warnings after fixing
 #![allow(unused_mut)]
 // will emits needless collect warnings after fixing
