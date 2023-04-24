@@ -32,7 +32,6 @@ use rustc_infer::infer::{InferOk, TypeTrace};
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::fast_reject::TreatProjections;
 use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::print::{with_forced_trimmed_paths, FmtPrinter, Print};
 use rustc_middle::ty::{
@@ -1836,57 +1835,61 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 });
             let mut diag = struct_span_err!(self.tcx.sess, obligation.cause.span, E0271, "{msg}");
 
-            let secondary_span = match predicate.kind().skip_binder() {
-                ty::PredicateKind::Clause(ty::Clause::Projection(proj)) => self
-                    .tcx
-                    .opt_associated_item(proj.projection_ty.def_id)
-                    .and_then(|trait_assoc_item| {
-                        self.tcx
-                            .trait_of_item(proj.projection_ty.def_id)
-                            .map(|id| (trait_assoc_item, id))
-                    })
-                    .and_then(|(trait_assoc_item, id)| {
-                        let trait_assoc_ident = trait_assoc_item.ident(self.tcx);
-                        self.tcx.find_map_relevant_impl(
-                            id,
-                            proj.projection_ty.self_ty(),
-                            TreatProjections::ForLookup,
-                            |did| {
-                                self.tcx
-                                    .associated_items(did)
-                                    .in_definition_order()
-                                    .find(|assoc| assoc.ident(self.tcx) == trait_assoc_ident)
-                            },
-                        )
-                    })
-                    .and_then(|item| match self.tcx.hir().get_if_local(item.def_id) {
-                        Some(
-                            hir::Node::TraitItem(hir::TraitItem {
-                                kind: hir::TraitItemKind::Type(_, Some(ty)),
-                                ..
-                            })
-                            | hir::Node::ImplItem(hir::ImplItem {
-                                kind: hir::ImplItemKind::Type(ty),
-                                ..
-                            }),
-                        ) => Some((
-                            ty.span,
-                            with_forced_trimmed_paths!(format!(
-                                "type mismatch resolving `{}`",
-                                self.resolve_vars_if_possible(predicate)
-                                    .print(FmtPrinter::new_with_limit(
-                                        self.tcx,
-                                        Namespace::TypeNS,
-                                        rustc_session::Limit(5),
-                                    ))
-                                    .unwrap()
-                                    .into_buffer()
-                            )),
+            let secondary_span = (|| {
+                let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) =
+                    predicate.kind().skip_binder()
+                else {
+                    return None;
+                };
+
+                let trait_assoc_item = self.tcx.opt_associated_item(proj.projection_ty.def_id)?;
+                let trait_assoc_ident = trait_assoc_item.ident(self.tcx);
+
+                let mut associated_items = vec![];
+                self.tcx.for_each_relevant_impl(
+                    self.tcx.trait_of_item(proj.projection_ty.def_id)?,
+                    proj.projection_ty.self_ty(),
+                    |impl_def_id| {
+                        associated_items.extend(
+                            self.tcx
+                                .associated_items(impl_def_id)
+                                .in_definition_order()
+                                .find(|assoc| assoc.ident(self.tcx) == trait_assoc_ident),
+                        );
+                    },
+                );
+
+                let [associated_item]: &[ty::AssocItem] = &associated_items[..] else {
+                    return None;
+                };
+                match self.tcx.hir().get_if_local(associated_item.def_id) {
+                    Some(
+                        hir::Node::TraitItem(hir::TraitItem {
+                            kind: hir::TraitItemKind::Type(_, Some(ty)),
+                            ..
+                        })
+                        | hir::Node::ImplItem(hir::ImplItem {
+                            kind: hir::ImplItemKind::Type(ty),
+                            ..
+                        }),
+                    ) => Some((
+                        ty.span,
+                        with_forced_trimmed_paths!(format!(
+                            "type mismatch resolving `{}`",
+                            self.resolve_vars_if_possible(predicate)
+                                .print(FmtPrinter::new_with_limit(
+                                    self.tcx,
+                                    Namespace::TypeNS,
+                                    rustc_session::Limit(5),
+                                ))
+                                .unwrap()
+                                .into_buffer()
                         )),
-                        _ => None,
-                    }),
-                _ => None,
-            };
+                    )),
+                    _ => None,
+                }
+            })();
+
             self.note_type_err(
                 &mut diag,
                 &obligation.cause,
@@ -2228,14 +2231,18 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         err: &mut Diagnostic,
         trait_ref: &ty::PolyTraitRef<'tcx>,
     ) -> bool {
-        let get_trait_impl = |trait_def_id| {
-            self.tcx.find_map_relevant_impl(
+        let get_trait_impls = |trait_def_id| {
+            let mut trait_impls = vec![];
+            self.tcx.for_each_relevant_impl(
                 trait_def_id,
                 trait_ref.skip_binder().self_ty(),
-                TreatProjections::ForLookup,
-                Some,
-            )
+                |impl_def_id| {
+                    trait_impls.push(impl_def_id);
+                },
+            );
+            trait_impls
         };
+
         let required_trait_path = self.tcx.def_path_str(trait_ref.def_id());
         let traits_with_same_path: std::collections::BTreeSet<_> = self
             .tcx
@@ -2245,17 +2252,23 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             .collect();
         let mut suggested = false;
         for trait_with_same_path in traits_with_same_path {
-            if let Some(impl_def_id) = get_trait_impl(trait_with_same_path) {
-                let impl_span = self.tcx.def_span(impl_def_id);
-                err.span_help(impl_span, "trait impl with same name found");
-                let trait_crate = self.tcx.crate_name(trait_with_same_path.krate);
-                let crate_msg = format!(
-                    "perhaps two different versions of crate `{}` are being used?",
-                    trait_crate
-                );
-                err.note(&crate_msg);
-                suggested = true;
+            let trait_impls = get_trait_impls(trait_with_same_path);
+            if trait_impls.is_empty() {
+                continue;
             }
+            let impl_spans: Vec<_> =
+                trait_impls.iter().map(|impl_def_id| self.tcx.def_span(*impl_def_id)).collect();
+            err.span_help(
+                impl_spans,
+                format!("trait impl{} with same name found", pluralize!(trait_impls.len())),
+            );
+            let trait_crate = self.tcx.crate_name(trait_with_same_path.krate);
+            let crate_msg = format!(
+                "perhaps two different versions of crate `{}` are being used?",
+                trait_crate
+            );
+            err.note(&crate_msg);
+            suggested = true;
         }
         suggested
     }
