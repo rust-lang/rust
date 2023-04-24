@@ -5,7 +5,6 @@
 
 use std::env;
 use std::ffi::OsString;
-use std::fmt;
 use std::fs;
 use std::iter;
 use std::path::{Path, PathBuf};
@@ -57,12 +56,12 @@ impl TestKind {
     }
 }
 
-impl fmt::Display for TestKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match *self {
-            TestKind::Test => "Testing",
-            TestKind::Bench => "Benchmarking",
-        })
+impl Into<Kind> for TestKind {
+    fn into(self) -> Kind {
+        match self {
+            TestKind::Test => Kind::Test,
+            TestKind::Bench => Kind::Bench,
+        }
     }
 }
 
@@ -1905,7 +1904,13 @@ impl BookTest {
         rustbook_cmd.env("RUSTC_BOOTSTRAP", "1");
         rustbook_cmd.env("PATH", new_path).arg("test").arg(path);
         builder.add_rust_test_threads(&mut rustbook_cmd);
-        builder.info(&format!("Testing rustbook {}", self.path.display()));
+        let _guard = builder.msg(
+            Kind::Test,
+            compiler.stage,
+            format_args!("rustbook {}", self.path.display()),
+            compiler.host,
+            compiler.host,
+        );
         let _time = util::timeit(&builder);
         let toolstate = if try_run(builder, &mut rustbook_cmd) {
             ToolState::TestPass
@@ -2033,7 +2038,8 @@ impl Step for ErrorIndex {
         let mut tool = tool::ErrorIndex::command(builder);
         tool.arg("markdown").arg(&output);
 
-        builder.info(&format!("Testing error-index stage{}", compiler.stage));
+        let _guard =
+            builder.msg(Kind::Test, compiler.stage, "error-index", compiler.host, compiler.host);
         let _time = util::timeit(&builder);
         builder.run_quiet(&mut tool);
         // The tests themselves need to link to std, so make sure it is
@@ -2263,14 +2269,13 @@ impl Step for Crate {
             );
         }
 
-        builder.info(&format!(
-            "{}{} stage{} ({} -> {})",
+        let _guard = builder.msg(
             test_kind,
-            crate_description(&self.crates),
             compiler.stage,
-            &compiler.host,
-            target
-        ));
+            crate_description(&self.crates),
+            compiler.host,
+            target,
+        );
         let _time = util::timeit(&builder);
         crate::render_tests::try_run_tests(builder, &mut cargo.into());
     }
@@ -2386,10 +2391,8 @@ impl Step for CrateRustdoc {
             cargo.arg("--quiet");
         }
 
-        builder.info(&format!(
-            "{} rustdoc stage{} ({} -> {})",
-            test_kind, compiler.stage, &compiler.host, target
-        ));
+        let _guard = builder.msg(test_kind, compiler.stage, "rustdoc", compiler.host, target);
+
         let _time = util::timeit(&builder);
 
         add_flags_and_try_run_tests(builder, &mut cargo.into());
@@ -2453,10 +2456,8 @@ impl Step for CrateRustdocJsonTypes {
             cargo.arg("'-Ctarget-feature=-crt-static'");
         }
 
-        builder.info(&format!(
-            "{} rustdoc-json-types stage{} ({} -> {})",
-            test_kind, compiler.stage, &compiler.host, target
-        ));
+        let _guard =
+            builder.msg(test_kind, compiler.stage, "rustdoc-json-types", compiler.host, target);
         let _time = util::timeit(&builder);
 
         add_flags_and_try_run_tests(builder, &mut cargo.into());
@@ -2845,7 +2846,7 @@ impl Step for TestHelpers {
             return;
         }
 
-        builder.info("Building test helpers");
+        let _guard = builder.msg_unstaged(Kind::Build, "test helpers", target);
         t!(fs::create_dir_all(&dst));
         let mut cfg = cc::Build::new();
         // FIXME: Workaround for https://github.com/emscripten-core/emscripten/issues/9013

@@ -105,15 +105,7 @@ impl Step for Std {
             cargo.arg("--lib");
         }
 
-        let msg = if compiler.host == target {
-            format!("Checking stage{} library artifacts ({target})", builder.top_stage)
-        } else {
-            format!(
-                "Checking stage{} library artifacts ({} -> {})",
-                builder.top_stage, &compiler.host, target
-            )
-        };
-        builder.info(&msg);
+        let _guard = builder.msg_check("library artifacts", target);
         run_cargo(
             builder,
             cargo,
@@ -167,18 +159,7 @@ impl Step for Std {
             cargo.arg("-p").arg(krate.name);
         }
 
-        let msg = if compiler.host == target {
-            format!(
-                "Checking stage{} library test/bench/example targets ({target})",
-                builder.top_stage
-            )
-        } else {
-            format!(
-                "Checking stage{} library test/bench/example targets ({} -> {})",
-                builder.top_stage, &compiler.host, target
-            )
-        };
-        builder.info(&msg);
+        let _guard = builder.msg_check("library test/bench/example targets", target);
         run_cargo(
             builder,
             cargo,
@@ -252,15 +233,7 @@ impl Step for Rustc {
             cargo.arg("-p").arg(krate.name);
         }
 
-        let msg = if compiler.host == target {
-            format!("Checking stage{} compiler artifacts ({target})", builder.top_stage)
-        } else {
-            format!(
-                "Checking stage{} compiler artifacts ({} -> {})",
-                builder.top_stage, &compiler.host, target
-            )
-        };
-        builder.info(&msg);
+        let _guard = builder.msg_check("compiler artifacts", target);
         run_cargo(
             builder,
             cargo,
@@ -317,15 +290,7 @@ impl Step for CodegenBackend {
             .arg(builder.src.join(format!("compiler/rustc_codegen_{}/Cargo.toml", backend)));
         rustc_cargo_env(builder, &mut cargo, target, compiler.stage);
 
-        let msg = if compiler.host == target {
-            format!("Checking stage{} {} artifacts ({target})", builder.top_stage, backend)
-        } else {
-            format!(
-                "Checking stage{} {} library ({} -> {})",
-                builder.top_stage, backend, &compiler.host.triple, target.triple
-            )
-        };
-        builder.info(&msg);
+        let _guard = builder.msg_check(&backend, target);
 
         run_cargo(
             builder,
@@ -385,15 +350,7 @@ impl Step for RustAnalyzer {
             cargo.arg("--benches");
         }
 
-        let msg = if compiler.host == target {
-            format!("Checking stage{} {} artifacts ({target})", compiler.stage, "rust-analyzer")
-        } else {
-            format!(
-                "Checking stage{} {} artifacts ({} -> {})",
-                compiler.stage, "rust-analyzer", &compiler.host.triple, target.triple
-            )
-        };
-        builder.info(&msg);
+        let _guard = builder.msg_check("rust-analyzer artifacts", target);
         run_cargo(
             builder,
             cargo,
@@ -460,18 +417,7 @@ macro_rules! tool_check_step {
                 // NOTE: this doesn't enable lints for any other tools unless they explicitly add `#![warn(rustc::internal)]`
                 // See https://github.com/rust-lang/rust/pull/80573#issuecomment-754010776
                 cargo.rustflag("-Zunstable-options");
-                let msg = if compiler.host == target {
-                    format!("Checking stage{} {} artifacts ({target})", builder.top_stage, stringify!($name).to_lowercase())
-                } else {
-                    format!(
-                        "Checking stage{} {} artifacts ({} -> {})",
-                        builder.top_stage,
-                        stringify!($name).to_lowercase(),
-                        &compiler.host.triple,
-                        target.triple
-                    )
-                };
-                builder.info(&msg);
+                let _guard = builder.msg_check(&concat!(stringify!($name), " artifacts").to_lowercase(), target);
                 run_cargo(
                     builder,
                     cargo,
