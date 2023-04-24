@@ -16,7 +16,7 @@ pub fn get(
             let mut cmd = Command::new(toolchain::rustc());
             cmd.envs(extra_env);
             cmd.current_dir(cargo_toml.parent())
-                .args(["-Z", "unstable-options", "rustc", "--print", "target-spec-json"])
+                .args(["-Z", "unstable-options", "--print", "target-spec-json"])
                 .env("RUSTC_BOOTSTRAP", "1");
             if let Some(target) = target {
                 cmd.args(["--target", target]);
