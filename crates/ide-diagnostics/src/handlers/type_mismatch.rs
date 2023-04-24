@@ -1,6 +1,7 @@
 use either::Either;
 use hir::{db::ExpandDatabase, ClosureStyle, HirDisplay, InFile, Type};
 use ide_db::{famous_defs::FamousDefs, source_change::SourceChange};
+use stdx::never;
 use syntax::{
     ast::{self, BlockExpr, ExprStmt},
     AstNode, AstPtr,
@@ -15,15 +16,29 @@ use crate::{adjusted_display_range, fix, Assist, Diagnostic, DiagnosticsContext}
 // the expected type.
 pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch) -> Diagnostic {
     let display_range = match &d.expr_or_pat {
-        Either::Left(expr) => adjusted_display_range::<ast::BlockExpr>(
-            ctx,
-            expr.clone().map(|it| it.into()),
-            &|block| {
-                let r_curly_range = block.stmt_list()?.r_curly_token()?.text_range();
+        Either::Left(expr) => {
+            adjusted_display_range::<ast::Expr>(ctx, expr.clone().map(|it| it.into()), &|expr| {
+                if !expr.is_block_like() {
+                    return None;
+                }
+
+                let salient_token_range = match expr {
+                    ast::Expr::IfExpr(it) => it.if_token()?.text_range(),
+                    ast::Expr::LoopExpr(it) => it.loop_token()?.text_range(),
+                    ast::Expr::ForExpr(it) => it.for_token()?.text_range(),
+                    ast::Expr::WhileExpr(it) => it.while_token()?.text_range(),
+                    ast::Expr::BlockExpr(it) => it.stmt_list()?.r_curly_token()?.text_range(),
+                    ast::Expr::MatchExpr(it) => it.match_token()?.text_range(),
+                    _ => {
+                        never!();
+                        return None;
+                    }
+                };
+
                 cov_mark::hit!(type_mismatch_on_block);
-                Some(r_curly_range)
-            },
-        ),
+                Some(salient_token_range)
+            })
+        }
         Either::Right(pat) => {
             ctx.sema.diagnostics_display_range(pat.clone().map(|it| it.into())).range
         }
@@ -620,6 +635,10 @@ fn f() -> i32 {
     let _ = x + y;
   }
 //^ error: expected i32, found ()
+
+fn h() -> i32 {
+    while true {}
+} //^^^^^ error: expected i32, found ()
 "#,
         );
     }
