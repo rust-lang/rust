@@ -675,6 +675,15 @@ impl Map {
                 self.cache_preorder_invoke(place);
             }
         }
+
+        // Trim useless places.
+        for opt_place in self.locals.iter_mut() {
+            if let Some(place) = *opt_place && self.inner_values[place].is_empty() {
+                *opt_place = None;
+            }
+        }
+        #[allow(rustc::potential_query_instability)]
+        self.projections.retain(|_, child| !self.inner_values[*child].is_empty());
     }
 
     /// Potentially register the (local, projection) place and its fields, recursively.
@@ -803,7 +812,7 @@ impl Map {
         tail_elem: Option<TrackElem>,
         f: &mut impl FnMut(ValueIndex),
     ) {
-        if place.is_indirect() {
+        if place.has_deref() {
             // We do not track indirect places.
             return;
         }
