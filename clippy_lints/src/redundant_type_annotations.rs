@@ -23,7 +23,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.70.0"]
     pub REDUNDANT_TYPE_ANNOTATIONS,
-    pedantic,
+    restriction,
     "warns about needless / redundant type annotations."
 }
 declare_lint_pass!(RedundantTypeAnnotations => [REDUNDANT_TYPE_ANNOTATIONS]);
