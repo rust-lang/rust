@@ -7,8 +7,8 @@
 //!
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
-use crate::stable_mir::{self, Context};
-use rustc_middle::ty::TyCtxt;
+use crate::stable_mir::{self, ty::TyKind, Context};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use tracing::debug;
 
@@ -34,7 +34,7 @@ impl<'tcx> Context for Tables<'tcx> {
     fn entry_fn(&mut self) -> Option<stable_mir::CrateItem> {
         Some(self.crate_item(self.tcx.entry_fn(())?.0))
     }
-    fn mir_body(&self, item: &stable_mir::CrateItem) -> stable_mir::mir::Body {
+    fn mir_body(&mut self, item: &stable_mir::CrateItem) -> stable_mir::mir::Body {
         let def_id = self.item_def_id(item);
         let mir = self.tcx.optimized_mir(def_id);
         stable_mir::mir::Body {
@@ -46,17 +46,68 @@ impl<'tcx> Context for Tables<'tcx> {
                     statements: block.statements.iter().map(rustc_statement_to_statement).collect(),
                 })
                 .collect(),
+            locals: mir.local_decls.iter().map(|decl| self.intern_ty(decl.ty)).collect(),
         }
     }
 
     fn rustc_tables(&mut self, f: &mut dyn FnMut(&mut Tables<'_>)) {
         f(self)
     }
+
+    fn ty_kind(&mut self, ty: crate::stable_mir::ty::Ty) -> TyKind {
+        self.rustc_ty_to_ty(self.types[ty.0])
+    }
 }
 
 pub struct Tables<'tcx> {
     pub tcx: TyCtxt<'tcx>,
     pub def_ids: Vec<DefId>,
+    pub types: Vec<Ty<'tcx>>,
+}
+
+impl<'tcx> Tables<'tcx> {
+    fn rustc_ty_to_ty(&mut self, ty: Ty<'tcx>) -> TyKind {
+        match ty.kind() {
+            ty::Bool => TyKind::Bool,
+            ty::Char => todo!(),
+            ty::Int(_) => todo!(),
+            ty::Uint(_) => todo!(),
+            ty::Float(_) => todo!(),
+            ty::Adt(_, _) => todo!(),
+            ty::Foreign(_) => todo!(),
+            ty::Str => todo!(),
+            ty::Array(_, _) => todo!(),
+            ty::Slice(_) => todo!(),
+            ty::RawPtr(_) => todo!(),
+            ty::Ref(_, _, _) => todo!(),
+            ty::FnDef(_, _) => todo!(),
+            ty::FnPtr(_) => todo!(),
+            ty::Placeholder(..) => todo!(),
+            ty::Dynamic(_, _, _) => todo!(),
+            ty::Closure(_, _) => todo!(),
+            ty::Generator(_, _, _) => todo!(),
+            ty::GeneratorWitness(_) => todo!(),
+            ty::GeneratorWitnessMIR(_, _) => todo!(),
+            ty::Never => todo!(),
+            ty::Tuple(fields) => {
+                TyKind::Tuple(fields.iter().map(|ty| self.intern_ty(ty)).collect())
+            }
+            ty::Alias(_, _) => todo!(),
+            ty::Param(_) => todo!(),
+            ty::Bound(_, _) => todo!(),
+            ty::Infer(_) => todo!(),
+            ty::Error(_) => todo!(),
+        }
+    }
+
+    fn intern_ty(&mut self, ty: Ty<'tcx>) -> stable_mir::ty::Ty {
+        if let Some(id) = self.types.iter().position(|&t| t == ty) {
+            return stable_mir::ty::Ty(id);
+        }
+        let id = self.types.len();
+        self.types.push(ty);
+        stable_mir::ty::Ty(id)
+    }
 }
 
 /// Build a stable mir crate from a given crate number.

@@ -47,5 +47,5 @@ pub fn crate_num(item: &stable_mir::Crate) -> CrateNum {
 }
 
 pub fn run(tcx: TyCtxt<'_>, f: impl FnOnce()) {
-    crate::stable_mir::run(Tables { tcx, def_ids: vec![] }, f);
+    crate::stable_mir::run(Tables { tcx, def_ids: vec![], types: vec![] }, f);
 }
