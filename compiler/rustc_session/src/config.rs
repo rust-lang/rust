@@ -3048,9 +3048,9 @@ pub(crate) mod dep_tracking {
 #[derive(Clone, Copy, PartialEq, Hash, Debug, Encodable, Decodable, HashStable_Generic)]
 pub enum OomStrategy {
     /// Generate a panic that can be caught by `catch_unwind`.
-    Unwind,
+    Panic,
 
-    /// Calls the panic hook as normal but aborts instead of unwinding.
+    /// Abort the process immediately.
     Abort,
 }
 
@@ -3059,7 +3059,7 @@ impl OomStrategy {
 
     pub fn should_panic(self) -> u8 {
         match self {
-            OomStrategy::Unwind => 1,
+            OomStrategy::Panic => 1,
             OomStrategy::Abort => 0,
         }
     }

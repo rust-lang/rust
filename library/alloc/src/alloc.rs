@@ -398,7 +398,7 @@ fn rust_oom(layout: Layout) -> ! {
         fn panic_impl(pi: &core::panic::PanicInfo<'_>) -> !;
 
         // This symbol is emitted by rustc .
-        // Its value depends on the -Zoom={unwind,abort} compiler option.
+        // Its value depends on the -Zoom={panic,abort} compiler option.
         static __rust_alloc_error_handler_should_panic: u8;
     }
 
@@ -458,7 +458,7 @@ pub mod __alloc_error_handler {
     pub unsafe fn __rdl_oom(size: usize, _align: usize) -> ! {
         extern "Rust" {
             // This symbol is emitted by rustc next to __rust_alloc_error_handler.
-            // Its value depends on the -Zoom={unwind,abort} compiler option.
+            // Its value depends on the -Zoom={panic,abort} compiler option.
             static __rust_alloc_error_handler_should_panic: u8;
         }
 

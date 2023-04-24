@@ -1,4 +1,4 @@
-// compile-flags: -Z oom=unwind
+// compile-flags: -Z oom=panic
 // run-pass
 // no-prefer-dynamic
 // needs-unwind
