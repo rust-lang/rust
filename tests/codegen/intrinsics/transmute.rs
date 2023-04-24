@@ -8,10 +8,10 @@
 #![feature(inline_const)]
 #![allow(unreachable_code)]
 
-use std::mem::{transmute, MaybeUninit};
+use std::mem::MaybeUninit;
+use std::intrinsics::{transmute, transmute_unchecked};
 
-// Some of the cases here are statically rejected by `mem::transmute`, so
-// we need to generate custom MIR for those cases to get to codegen.
+// Some of these need custom MIR to not get removed by MIR optimizations.
 use std::intrinsics::mir::*;
 
 enum Never {}
@@ -30,59 +30,35 @@ pub struct Aggregate8(u8);
 
 // CHECK-LABEL: @check_bigger_size(
 #[no_mangle]
-#[custom_mir(dialect = "runtime", phase = "initial")]
 pub unsafe fn check_bigger_size(x: u16) -> u32 {
     // CHECK: call void @llvm.trap
-    mir!{
-        {
-            RET = CastTransmute(x);
-            Return()
-        }
-    }
+    transmute_unchecked(x)
 }
 
 // CHECK-LABEL: @check_smaller_size(
 #[no_mangle]
-#[custom_mir(dialect = "runtime", phase = "initial")]
 pub unsafe fn check_smaller_size(x: u32) -> u16 {
     // CHECK: call void @llvm.trap
-    mir!{
-        {
-            RET = CastTransmute(x);
-            Return()
-        }
-    }
+    transmute_unchecked(x)
 }
 
 // CHECK-LABEL: @check_smaller_array(
 #[no_mangle]
-#[custom_mir(dialect = "runtime", phase = "initial")]
 pub unsafe fn check_smaller_array(x: [u32; 7]) -> [u32; 3] {
     // CHECK: call void @llvm.trap
-    mir!{
-        {
-            RET = CastTransmute(x);
-            Return()
-        }
-    }
+    transmute_unchecked(x)
 }
 
 // CHECK-LABEL: @check_bigger_array(
 #[no_mangle]
-#[custom_mir(dialect = "runtime", phase = "initial")]
 pub unsafe fn check_bigger_array(x: [u32; 3]) -> [u32; 7] {
     // CHECK: call void @llvm.trap
-    mir!{
-        {
-            RET = CastTransmute(x);
-            Return()
-        }
-    }
+    transmute_unchecked(x)
 }
 
 // CHECK-LABEL: @check_to_uninhabited(
 #[no_mangle]
-#[custom_mir(dialect = "runtime", phase = "initial")]
+#[custom_mir(dialect = "runtime", phase = "optimized")]
 pub unsafe fn check_to_uninhabited(x: u16) -> BigNever {
     // CHECK: call void @llvm.trap
     mir!{
@@ -95,7 +71,7 @@ pub unsafe fn check_to_uninhabited(x: u16) -> BigNever {
 
 // CHECK-LABEL: @check_from_uninhabited(
 #[no_mangle]
-#[custom_mir(dialect = "runtime", phase = "initial")]
+#[custom_mir(dialect = "runtime", phase = "optimized")]
 pub unsafe fn check_from_uninhabited(x: BigNever) -> u16 {
     // CHECK: ret i16 poison
     mir!{
