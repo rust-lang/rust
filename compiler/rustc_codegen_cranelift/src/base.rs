@@ -1,7 +1,7 @@
 //! Codegen of a single function
 
 use rustc_ast::InlineAsmOptions;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;

@@ -1,6 +1,6 @@
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::mir::{BasicBlock, Body, Location};
 
 /// Maps between a MIR Location, which identifies a particular

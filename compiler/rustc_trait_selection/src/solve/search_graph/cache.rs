@@ -10,7 +10,7 @@
 //! before then or if I still haven't done that before January 2023.
 use super::StackDepth;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::traits::solve::{CanonicalGoal, QueryResult};
 
 rustc_index::newtype_index! {

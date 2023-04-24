@@ -14,7 +14,7 @@ use rustc_errors::{DecorateLint, DiagnosticBuilder, DiagnosticMessage, MultiSpan
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::HirId;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::{
     reveal_actual_level, struct_lint_level, LevelAndSource, LintExpectation, LintLevelSource,

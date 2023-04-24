@@ -2,7 +2,7 @@ use cranelift_codegen::isa::TargetFrontendConfig;
 use gimli::write::FileId;
 
 use rustc_data_structures::sync::Lrc;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers,
 };

@@ -17,13 +17,13 @@ macro_rules! arena_types {
             [decode] mir: rustc_middle::mir::Body<'tcx>,
             [] steal_promoted:
                 rustc_data_structures::steal::Steal<
-                    rustc_index::vec::IndexVec<
+                    rustc_index::IndexVec<
                         rustc_middle::mir::Promoted,
                         rustc_middle::mir::Body<'tcx>
                     >
                 >,
             [decode] promoted:
-                rustc_index::vec::IndexVec<
+                rustc_index::IndexVec<
                     rustc_middle::mir::Promoted,
                     rustc_middle::mir::Body<'tcx>
                 >,

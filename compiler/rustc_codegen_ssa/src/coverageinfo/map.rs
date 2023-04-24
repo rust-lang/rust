@@ -1,6 +1,6 @@
 pub use super::ffi::*;
 
-use rustc_index::vec::{IndexSlice, IndexVec};
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::coverage::{
     CodeRegion, CounterValueReference, ExpressionOperandId, InjectedExpressionId,
     InjectedExpressionIndex, MappedExpressionIndex, Op,

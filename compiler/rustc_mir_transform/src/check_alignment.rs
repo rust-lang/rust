@@ -1,7 +1,7 @@
 use crate::MirPass;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::mir::*;
 use rustc_middle::mir::{
     interpret::{ConstValue, Scalar},

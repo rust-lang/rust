@@ -33,7 +33,7 @@
 use std::cmp::Ordering;
 
 use rustc_index::bit_set::{BitSet, ChunkedBitSet, HybridBitSet};
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 use rustc_middle::mir::{self, BasicBlock, Location};
 use rustc_middle::ty::TyCtxt;
 

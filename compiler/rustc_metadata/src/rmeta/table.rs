@@ -2,7 +2,7 @@ use crate::rmeta::*;
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_hir::def::{CtorKind, CtorOf};
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 use rustc_middle::ty::{ParameterizedOverTcx, UnusedGenericParams};
 use rustc_serialize::opaque::FileEncoder;
 use rustc_serialize::Encoder as _;
