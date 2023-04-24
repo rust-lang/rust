@@ -1,5 +1,6 @@
-// compile-flags: -Zmir-opt-level=2 -Zinline-mir
+// compile-flags: -O -Zmir-opt-level=2 -Cdebuginfo=0
 // ignore-debug: standard library debug assertions add a panic that breaks this optimization
+
 #![crate_type = "lib"]
 
 pub enum Thing {
@@ -7,7 +8,7 @@ pub enum Thing {
     B,
 }
 
-// EMIT_MIR instcombine_duplicate_switch_targets_e2e.ub_if_b.PreCodegen.after.mir
+// EMIT_MIR duplicate_switch_targets.ub_if_b.PreCodegen.after.mir
 pub unsafe fn ub_if_b(t: Thing) -> Thing {
     match t {
         Thing::A => t,

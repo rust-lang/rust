@@ -1,9 +1,13 @@
+// compile-flags: -O -C debuginfo=0 -Zmir-opt-level=2
+// only-64bit
+// ignore-debug
+
 // Track the status of MIR optimizations simplifying `Ok(res?)` for both the old and new desugarings
 // of that syntax.
 
 use std::ops::ControlFlow;
 
-// EMIT_MIR try_identity_e2e.new.PreCodegen.after.mir
+// EMIT_MIR try_identity.new.PreCodegen.after.mir
 fn new<T, E>(x: Result<T, E>) -> Result<T, E> {
     Ok(
         match {
@@ -18,7 +22,7 @@ fn new<T, E>(x: Result<T, E>) -> Result<T, E> {
     )
 }
 
-// EMIT_MIR try_identity_e2e.old.PreCodegen.after.mir
+// EMIT_MIR try_identity.old.PreCodegen.after.mir
 fn old<T, E>(x: Result<T, E>) -> Result<T, E> {
     Ok(
         match x {
