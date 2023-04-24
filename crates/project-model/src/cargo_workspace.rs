@@ -293,14 +293,16 @@ impl CargoWorkspace {
         }
         meta.current_dir(current_dir.as_os_str());
 
+        let mut other_options = config.extra_args.clone();
         if !targets.is_empty() {
-            let other_options: Vec<_> = targets
-                .into_iter()
-                .flat_map(|target| ["--filter-platform".to_string(), target])
-                .chain(config.extra_args.clone())
-                .collect();
-            meta.other_options(other_options);
+            other_options.append(
+                &mut targets
+                    .into_iter()
+                    .flat_map(|target| ["--filter-platform".to_string(), target])
+                    .collect(),
+            );
         }
+        meta.other_options(other_options);
 
         // FIXME: Fetching metadata is a slow process, as it might require
         // calling crates.io. We should be reporting progress here, but it's
