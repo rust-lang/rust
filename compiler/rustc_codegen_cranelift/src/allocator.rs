@@ -6,6 +6,7 @@ use crate::prelude::*;
 use rustc_ast::expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
 use rustc_codegen_ssa::base::allocator_kind_for_codegen;
 use rustc_session::config::OomStrategy;
+use rustc_span::symbol::sym;
 
 /// Returns whether an allocator shim was created
 pub(crate) fn codegen(
@@ -14,7 +15,13 @@ pub(crate) fn codegen(
     unwind_context: &mut UnwindContext,
 ) -> bool {
     let Some(kind) = allocator_kind_for_codegen(tcx) else { return false };
-    codegen_inner(module, unwind_context, kind, tcx.sess.opts.unstable_opts.oom);
+    codegen_inner(
+        module,
+        unwind_context,
+        kind,
+        tcx.alloc_error_handler_kind(()).unwrap(),
+        tcx.sess.opts.unstable_opts.oom,
+    );
     true
 }
 
@@ -22,6 +29,7 @@ fn codegen_inner(
     module: &mut impl Module,
     unwind_context: &mut UnwindContext,
     kind: AllocatorKind,
+    alloc_error_handler_kind: AllocatorKind,
     oom_strategy: OomStrategy,
 ) {
     let usize_ty = module.target_config().pointer_type();
@@ -62,6 +70,19 @@ fn codegen_inner(
             &kind.fn_name(method.name),
         );
     }
+
+    let sig = Signature {
+        call_conv: module.target_config().default_call_conv,
+        params: vec![AbiParam::new(usize_ty), AbiParam::new(usize_ty)],
+        returns: vec![],
+    };
+    crate::common::create_wrapper_function(
+        module,
+        unwind_context,
+        sig,
+        "__rust_alloc_error_handler",
+        &alloc_error_handler_kind.fn_name(sym::oom),
+    );
 
     let data_id = module.declare_data(OomStrategy::SYMBOL, Linkage::Export, false, false).unwrap();
     let mut data_ctx = DataContext::new();
