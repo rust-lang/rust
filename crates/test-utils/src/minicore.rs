@@ -31,6 +31,7 @@
 //!     infallible:
 //!     iterator: option
 //!     iterators: iterator, fn
+//!     manually_drop: drop
 //!     non_zero:
 //!     option: panic
 //!     ord: eq, option
@@ -194,6 +195,30 @@ pub mod convert {
 
 // region:drop
 pub mod mem {
+    // region:manually_drop
+    #[lang = "manually_drop"]
+    #[repr(transparent)]
+    pub struct ManuallyDrop<T: ?Sized> {
+        value: T,
+    }
+
+    impl<T> ManuallyDrop<T> {
+        pub const fn new(value: T) -> ManuallyDrop<T> {
+            ManuallyDrop { value }
+        }
+    }
+
+    // region:deref
+    impl<T: ?Sized> crate::ops::Deref for ManuallyDrop<T> {
+        type Target = T;
+        fn deref(&self) -> &T {
+            &self.value
+        }
+    }
+    // endregion:deref
+
+    // endregion:manually_drop
+
     pub fn drop<T>(_x: T) {}
 }
 // endregion:drop
