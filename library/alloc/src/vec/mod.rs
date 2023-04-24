@@ -2809,6 +2809,60 @@ impl<T, A: Allocator> Vec<T, A> {
         //      for item in iterator {
         //          self.push(item);
         //      }
+        if const { !T::IS_ZST && core::mem::size_of::<T>() <= 32 } {
+            const CHUNK_SZ: usize = 8;
+            const UPPER_MAX: usize = 4096;
+
+            loop {
+                let len = self.len();
+                let chunk = if self.capacity() - len < CHUNK_SZ {
+                    // Gauge the accuracy of the upper bound by comparing it before and
+                    // after taking CHUNK_SZ items. This helps adapters such as Filter or ResultShunt
+                    // as long as their conditions are almost always true.
+                    // But it can still lead to overallocation for things that are true until they
+                    // aren't, such as TakeWhile.
+                    let old_hint = iterator.size_hint();
+                    let chunk = iterator.next_chunk::<CHUNK_SZ>();
+                    let new_hint = iterator.size_hint();
+                    let hint = match (new_hint.0, old_hint.1, new_hint.1) {
+                        (lower, Some(old_upper), Some(new_upper))
+                            if new_upper == old_upper.saturating_sub(CHUNK_SZ) =>
+                        {
+                            // Limit worst-case behavior
+                            new_upper.min(UPPER_MAX).max(lower)
+                        }
+                        (lower, _, _) => lower,
+                    };
+                    if chunk.is_ok() {
+                        self.reserve(CHUNK_SZ.saturating_add(hint));
+                    }
+                    chunk
+                } else {
+                    iterator.next_chunk::<CHUNK_SZ>()
+                };
+                unsafe {
+                    match chunk {
+                        Ok(ary) => {
+                            ptr::write(self.as_mut_ptr().add(len).cast::<[T; CHUNK_SZ]>(), ary);
+                            self.set_len(len.unchecked_add(CHUNK_SZ));
+                        }
+                        Err(tail) => {
+                            let tail_len = tail.len();
+                            self.reserve(tail_len);
+                            ptr::copy_nonoverlapping(
+                                tail.as_slice().as_ptr(),
+                                self.as_mut_ptr().add(len),
+                                tail_len,
+                            );
+                            mem::forget(tail);
+                            self.set_len(len + tail_len);
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
         while let Some(element) = iterator.next() {
             let len = self.len();
             if len == self.capacity() {

@@ -594,6 +594,16 @@ fn bench_chain_extend_value(b: &mut Bencher) {
 }
 
 #[bench]
+fn bench_extend_upper_size_hint(b: &mut Bencher) {
+    b.iter(|| {
+        let mut v = Vec::new();
+        let it = (0..LEN).filter(|_| true);
+        v.extend(it);
+        v
+    });
+}
+
+#[bench]
 fn bench_rev_1(b: &mut Bencher) {
     let data = black_box([0; LEN]);
     b.iter(|| {
