@@ -1293,15 +1293,49 @@ ok!();
 }
 
 #[test]
-fn test_vertical_bar_with_pat() {
+fn test_vertical_bar_with_pat_param() {
     check(
         r#"
-macro_rules! m { (|$pat:pat| ) => { ok!(); } }
+macro_rules! m { (|$pat:pat_param| ) => { ok!(); } }
 m! { |x| }
  "#,
         expect![[r#"
-macro_rules! m { (|$pat:pat| ) => { ok!(); } }
+macro_rules! m { (|$pat:pat_param| ) => { ok!(); } }
 ok!();
+ "#]],
+    );
+}
+
+#[test]
+fn test_new_std_matches() {
+    check(
+        r#"
+macro_rules! matches {
+    ($expression:expr, $pattern:pat $(if $guard:expr)? $(,)?) => {
+        match $expression {
+            $pattern $(if $guard)? => true,
+            _ => false
+        }
+    };
+}
+fn main() {
+    matches!(0, 0 | 1 if true);
+}
+ "#,
+        expect![[r#"
+macro_rules! matches {
+    ($expression:expr, $pattern:pat $(if $guard:expr)? $(,)?) => {
+        match $expression {
+            $pattern $(if $guard)? => true,
+            _ => false
+        }
+    };
+}
+fn main() {
+    match 0 {
+        0|1if true =>true , _=>false
+    };
+}
  "#]],
     );
 }

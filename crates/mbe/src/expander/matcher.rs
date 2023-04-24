@@ -111,8 +111,8 @@ impl Match {
 }
 
 /// Matching errors are added to the `Match`.
-pub(super) fn match_(pattern: &MetaTemplate, input: &tt::Subtree) -> Match {
-    let mut res = match_loop(pattern, input);
+pub(super) fn match_(pattern: &MetaTemplate, input: &tt::Subtree, is_2021: bool) -> Match {
+    let mut res = match_loop(pattern, input, is_2021);
     res.bound_count = count(res.bindings.bindings());
     return res;
 
@@ -354,6 +354,7 @@ struct MatchState<'t> {
 /// - `eof_items`: the set of items that would be valid if this was the EOF.
 /// - `bb_items`: the set of items that are waiting for the black-box parser.
 /// - `error_items`: the set of items in errors, used for error-resilient parsing
+#[inline]
 fn match_loop_inner<'t>(
     src: TtIter<'t>,
     stack: &[TtIter<'t>],
@@ -364,6 +365,7 @@ fn match_loop_inner<'t>(
     next_items: &mut Vec<MatchState<'t>>,
     eof_items: &mut SmallVec<[MatchState<'t>; 1]>,
     error_items: &mut SmallVec<[MatchState<'t>; 1]>,
+    is_2021: bool,
 ) {
     macro_rules! try_push {
         ($items: expr, $it:expr) => {
@@ -474,7 +476,7 @@ fn match_loop_inner<'t>(
             OpDelimited::Op(Op::Var { kind, name, .. }) => {
                 if let &Some(kind) = kind {
                     let mut fork = src.clone();
-                    let match_res = match_meta_var(kind, &mut fork);
+                    let match_res = match_meta_var(kind, &mut fork, is_2021);
                     match match_res.err {
                         None => {
                             // Some meta variables are optional (e.g. vis)
@@ -583,7 +585,7 @@ fn match_loop_inner<'t>(
     }
 }
 
-fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
+fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree, is_2021: bool) -> Match {
     let mut src = TtIter::new(src);
     let mut stack: SmallVec<[TtIter<'_>; 1]> = SmallVec::new();
     let mut res = Match::default();
@@ -622,6 +624,7 @@ fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
             &mut next_items,
             &mut eof_items,
             &mut error_items,
+            is_2021,
         );
         stdx::always!(cur_items.is_empty());
 
@@ -731,14 +734,17 @@ fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
     }
 }
 
-fn match_meta_var(kind: MetaVarKind, input: &mut TtIter<'_>) -> ExpandResult<Option<Fragment>> {
+fn match_meta_var(
+    kind: MetaVarKind,
+    input: &mut TtIter<'_>,
+    is_2021: bool,
+) -> ExpandResult<Option<Fragment>> {
     let fragment = match kind {
         MetaVarKind::Path => parser::PrefixEntryPoint::Path,
         MetaVarKind::Ty => parser::PrefixEntryPoint::Ty,
-        // FIXME: These two should actually behave differently depending on the edition.
-        //
-        // https://doc.rust-lang.org/edition-guide/rust-2021/or-patterns-macro-rules.html
-        MetaVarKind::Pat | MetaVarKind::PatParam => parser::PrefixEntryPoint::Pat,
+        MetaVarKind::Pat if is_2021 => parser::PrefixEntryPoint::PatTop,
+        MetaVarKind::Pat => parser::PrefixEntryPoint::Pat,
+        MetaVarKind::PatParam => parser::PrefixEntryPoint::Pat,
         MetaVarKind::Stmt => parser::PrefixEntryPoint::Stmt,
         MetaVarKind::Block => parser::PrefixEntryPoint::Block,
         MetaVarKind::Meta => parser::PrefixEntryPoint::MetaItem,

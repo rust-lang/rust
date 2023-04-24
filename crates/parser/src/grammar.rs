@@ -66,6 +66,10 @@ pub(crate) mod entry {
             patterns::pattern_single(p);
         }
 
+        pub(crate) fn pat_top(p: &mut Parser<'_>) {
+            patterns::pattern_top(p);
+        }
+
         pub(crate) fn ty(p: &mut Parser<'_>) {
             types::type_(p);
         }
