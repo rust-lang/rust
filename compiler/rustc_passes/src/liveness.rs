@@ -327,7 +327,7 @@ impl<'tcx> IrMaps<'tcx> {
                     pats.extend(inner_pat.iter());
                 }
                 Struct(_, fields, _) => {
-                    let (short, not_short): (Vec<_>, _) =
+                    let (short, not_short): (Vec<hir::PatField<'_>>, _) =
                         fields.iter().partition(|f| f.is_shorthand);
                     shorthand_field_ids.extend(short.iter().map(|f| f.pat.hir_id));
                     pats.extend(not_short.iter().map(|f| f.pat));
