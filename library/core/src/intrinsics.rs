@@ -1376,6 +1376,20 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn transmute<Src, Dst>(src: Src) -> Dst;
 
+    /// Like [`transmute`], but even less checked at compile-time: rather than
+    /// giving an error for `size_of::<Src>() != size_of::<Dst>()`, it's
+    /// **Undefined Behaviour** at runtime.
+    ///
+    /// Prefer normal `transmute` where possible, for the extra checking, since
+    /// both do exactly the same thing at runtime, if they both compile.
+    ///
+    /// This is not expected to ever be exposed directly to users, rather it
+    /// may eventually be exposed through some more-constrained API.
+    #[cfg(not(bootstrap))]
+    #[rustc_const_stable(feature = "const_transmute", since = "1.56.0")]
+    #[rustc_nounwind]
+    pub fn transmute_unchecked<Src, Dst>(src: Src) -> Dst;
+
     /// Returns `true` if the actual type given as `T` requires drop
     /// glue; returns `false` if the actual type provided for `T`
     /// implements `Copy`.
@@ -2797,4 +2811,12 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
         );
         write_bytes(dst, val, count)
     }
+}
+
+/// Polyfill for bootstrap
+#[cfg(bootstrap)]
+pub const unsafe fn transmute_unchecked<Src, Dst>(src: Src) -> Dst {
+    use crate::mem::*;
+    // SAFETY: It's a transmute -- the caller promised it's fine.
+    unsafe { transmute_copy(&ManuallyDrop::new(src)) }
 }
