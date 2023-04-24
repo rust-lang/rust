@@ -123,7 +123,7 @@ impl Callbacks for SMirCalls {
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
         queries.global_ctxt().unwrap().enter(|tcx| {
-            test_stable_mir(tcx);
+            rustc_smir::rustc_internal::run(tcx, || test_stable_mir(tcx));
         });
         // No need to keep going.
         Compilation::Stop
