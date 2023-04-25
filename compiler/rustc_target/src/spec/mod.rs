@@ -319,6 +319,19 @@ impl LinkerFlavor {
         self.with_hints(LinkerFlavor::infer_linker_hints(linker_stem))
     }
 
+    pub fn check_compatibility(self, cli: LinkerFlavorCli) -> Option<String> {
+        // The CLI flavor should be compatible with the target if it survives this roundtrip.
+        let compatible = |cli| cli == self.with_cli_hints(cli).to_cli();
+        (!compatible(cli)).then(|| {
+            LinkerFlavorCli::all()
+                .iter()
+                .filter(|cli| compatible(**cli))
+                .map(|cli| cli.desc())
+                .intersperse(", ")
+                .collect()
+        })
+    }
+
     pub fn lld_flavor(self) -> LldFlavor {
         match self {
             LinkerFlavor::Gnu(..)
@@ -340,6 +353,10 @@ impl LinkerFlavor {
 macro_rules! linker_flavor_cli_impls {
     ($(($($flavor:tt)*) $string:literal)*) => (
         impl LinkerFlavorCli {
+            const fn all() -> &'static [LinkerFlavorCli] {
+                &[$($($flavor)*,)*]
+            }
+
             pub const fn one_of() -> &'static str {
                 concat!("one of: ", $($string, " ",)*)
             }
@@ -351,8 +368,8 @@ macro_rules! linker_flavor_cli_impls {
                 })
             }
 
-            pub fn desc(&self) -> &str {
-                match *self {
+            pub fn desc(self) -> &'static str {
+                match self {
                     $($($flavor)* => $string,)*
                 }
             }

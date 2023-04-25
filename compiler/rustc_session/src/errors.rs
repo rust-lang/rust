@@ -422,3 +422,11 @@ pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: 
 pub struct OptimisationFuelExhausted {
     pub msg: String,
 }
+
+#[derive(Diagnostic)]
+#[diag(session_incompatible_linker_flavor)]
+#[note]
+pub struct IncompatibleLinkerFlavor {
+    pub flavor: &'static str,
+    pub compatible_list: String,
+}
