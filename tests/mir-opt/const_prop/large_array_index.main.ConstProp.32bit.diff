@@ -27,7 +27,8 @@
       }
   
       bb1: {
-          _1 = _2[_3];                     // scope 0 at $DIR/large_array_index.rs:+2:17: +2:32
+-         _1 = _2[_3];                     // scope 0 at $DIR/large_array_index.rs:+2:17: +2:32
++         _1 = _2[2 of 3];                 // scope 0 at $DIR/large_array_index.rs:+2:17: +2:32
           StorageDead(_3);                 // scope 0 at $DIR/large_array_index.rs:+2:32: +2:33
           StorageDead(_2);                 // scope 0 at $DIR/large_array_index.rs:+2:32: +2:33
           _0 = const ();                   // scope 0 at $DIR/large_array_index.rs:+0:11: +3:2
