@@ -29,8 +29,16 @@ use crate::{
     FilePosition, Semantics,
 };
 
-/// Weblink to an item's documentation.
-pub(crate) type DocumentationLink = String;
+/// Web and local links to an item's documentation.
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
+pub struct DocumentationLinks {
+    /// The URL to the documentation on docs.rs.
+    /// Could be invalid.
+    pub web_url: Option<String>,
+    /// The URL to the documentation in the local file system.
+    /// Could be invalid.
+    pub local_url: Option<String>,
+}
 
 const MARKDOWN_OPTIONS: Options =
     Options::ENABLE_FOOTNOTES.union(Options::ENABLE_TABLES).union(Options::ENABLE_TASKLISTS);
@@ -119,10 +127,7 @@ pub(crate) fn remove_links(markdown: &str) -> String {
 //
 // | VS Code | **rust-analyzer: Open Docs**
 // |===
-pub(crate) fn external_docs(
-    db: &RootDatabase,
-    position: &FilePosition,
-) -> Option<DocumentationLink> {
+pub(crate) fn external_docs(db: &RootDatabase, position: &FilePosition) -> DocumentationLinks {
     let sema = &Semantics::new(db);
     let file = sema.parse(position.file_id).syntax().clone();
     let token = pick_best_token(file.token_at_offset(position.offset), |kind| match kind {
@@ -130,27 +135,30 @@ pub(crate) fn external_docs(
         T!['('] | T![')'] => 2,
         kind if kind.is_trivia() => 0,
         _ => 1,
-    })?;
+    });
+    let Some(token) = token else { return Default::default() };
     let token = sema.descend_into_macros_single(token);
 
-    let node = token.parent()?;
+    let Some(node) = token.parent() else { return Default::default() };
     let definition = match_ast! {
         match node {
-            ast::NameRef(name_ref) => match NameRefClass::classify(sema, &name_ref)? {
-                NameRefClass::Definition(def) => def,
-                NameRefClass::FieldShorthand { local_ref: _, field_ref } => {
+            ast::NameRef(name_ref) => match NameRefClass::classify(sema, &name_ref) {
+                Some(NameRefClass::Definition(def)) => def,
+                Some(NameRefClass::FieldShorthand { local_ref: _, field_ref }) => {
                     Definition::Field(field_ref)
                 }
+                None => return Default::default(),
             },
-            ast::Name(name) => match NameClass::classify(sema, &name)? {
-                NameClass::Definition(it) | NameClass::ConstReference(it) => it,
-                NameClass::PatFieldShorthand { local_def: _, field_ref } => Definition::Field(field_ref),
+            ast::Name(name) => match NameClass::classify(sema, &name) {
+                Some(NameClass::Definition(it) | NameClass::ConstReference(it)) => it,
+                Some(NameClass::PatFieldShorthand { local_def: _, field_ref }) => Definition::Field(field_ref),
+                None => return Default::default(),
             },
-            _ => return None,
+            _ => return Default::default(),
         }
     };
 
-    get_doc_link(db, definition)
+    return get_doc_links(db, definition);
 }
 
 /// Extracts all links from a given markdown text returning the definition text range, link-text
@@ -308,19 +316,34 @@ fn broken_link_clone_cb(link: BrokenLink<'_>) -> Option<(CowStr<'_>, CowStr<'_>)
 //
 // This should cease to be a problem if RFC2988 (Stable Rustdoc URLs) is implemented
 // https://github.com/rust-lang/rfcs/pull/2988
-fn get_doc_link(db: &RootDatabase, def: Definition) -> Option<String> {
-    let (target, file, frag) = filename_and_frag_for_def(db, def)?;
+fn get_doc_links(db: &RootDatabase, def: Definition) -> DocumentationLinks {
+    let Some((target, file, frag)) = filename_and_frag_for_def(db, def) else { return Default::default(); };
 
-    let mut url = get_doc_base_url(db, target)?;
+    let (mut web_url, mut local_url) = get_doc_base_urls(db, target);
 
     if let Some(path) = mod_path_of_def(db, target) {
-        url = url.join(&path).ok()?;
+        web_url = join_url(web_url, &path);
+        local_url = join_url(local_url, &path);
     }
 
-    url = url.join(&file).ok()?;
-    url.set_fragment(frag.as_deref());
+    web_url = join_url(web_url, &file);
+    local_url = join_url(local_url, &file);
 
-    Some(url.into())
+    set_fragment_for_url(web_url.as_mut(), frag.as_deref());
+    set_fragment_for_url(local_url.as_mut(), frag.as_deref());
+
+    return DocumentationLinks {
+        web_url: web_url.map(|it| it.into()),
+        local_url: local_url.map(|it| it.into()),
+    };
+
+    fn join_url(base_url: Option<Url>, path: &str) -> Option<Url> {
+        base_url.and_then(|url| url.join(path).ok())
+    }
+
+    fn set_fragment_for_url(url: Option<&mut Url>, frag: Option<&str>) {
+        url.map(|url| url.set_fragment(frag));
+    }
 }
 
 fn rewrite_intra_doc_link(
@@ -332,7 +355,7 @@ fn rewrite_intra_doc_link(
     let (link, ns) = parse_intra_doc_link(target);
 
     let resolved = resolve_doc_path_for_def(db, def, link, ns)?;
-    let mut url = get_doc_base_url(db, resolved)?;
+    let mut url = get_doc_base_urls(db, resolved).0?;
 
     let (_, file, frag) = filename_and_frag_for_def(db, resolved)?;
     if let Some(path) = mod_path_of_def(db, resolved) {
@@ -351,7 +374,7 @@ fn rewrite_url_link(db: &RootDatabase, def: Definition, target: &str) -> Option<
         return None;
     }
 
-    let mut url = get_doc_base_url(db, def)?;
+    let mut url = get_doc_base_urls(db, def).0?;
     let (def, file, frag) = filename_and_frag_for_def(db, def)?;
 
     if let Some(path) = mod_path_of_def(db, def) {
@@ -427,18 +450,26 @@ fn map_links<'e>(
 /// https://doc.rust-lang.org/std/iter/trait.Iterator.html#tymethod.next
 /// ^^^^^^^^^^^^^^^^^^^^^^^^^^
 /// ```
-fn get_doc_base_url(db: &RootDatabase, def: Definition) -> Option<Url> {
+fn get_doc_base_urls(db: &RootDatabase, def: Definition) -> (Option<Url>, Option<Url>) {
+    // TODO: get this is from `CargoWorkspace`
+    // TODO: get `CargoWorkspace` from `db`
+    let target_path = "file:///project/root/target";
+    let target_path = Url::parse(target_path).ok();
+    let local_doc_path = target_path.and_then(|url| url.join("doc").ok());
+    debug_assert!(local_doc_path.is_some(), "failed to parse local doc path");
+
     // special case base url of `BuiltinType` to core
     // https://github.com/rust-lang/rust-analyzer/issues/12250
     if let Definition::BuiltinType(..) = def {
-        return Url::parse("https://doc.rust-lang.org/nightly/core/").ok();
+        let weblink = Url::parse("https://doc.rust-lang.org/nightly/core/").ok();
+        return (weblink, local_doc_path);
     };
 
-    let krate = def.krate(db)?;
-    let display_name = krate.display_name(db)?;
+    let Some(krate) = def.krate(db) else { return Default::default() };
+    let Some(display_name) = krate.display_name(db) else { return Default::default() };
     let crate_data = &db.crate_graph()[krate.into()];
     let channel = crate_data.channel.map_or("nightly", ReleaseChannel::as_str);
-    let base = match &crate_data.origin {
+    let (web_base, local_base) = match &crate_data.origin {
         // std and co do not specify `html_root_url` any longer so we gotta handwrite this ourself.
         // FIXME: Use the toolchains channel instead of nightly
         CrateOrigin::Lang(
@@ -447,16 +478,14 @@ fn get_doc_base_url(db: &RootDatabase, def: Definition) -> Option<Url> {
             | LangCrateOrigin::ProcMacro
             | LangCrateOrigin::Std
             | LangCrateOrigin::Test),
-        ) => {
-            format!("https://doc.rust-lang.org/{channel}/{origin}")
-        }
-        CrateOrigin::Lang(_) => return None,
+        ) => (Some(format!("https://doc.rust-lang.org/{channel}/{origin}")), None),
+        CrateOrigin::Lang(_) => return (None, None),
         CrateOrigin::Rustc { name: _ } => {
-            format!("https://doc.rust-lang.org/{channel}/nightly-rustc/")
+            (Some(format!("https://doc.rust-lang.org/{channel}/nightly-rustc/")), None)
         }
         CrateOrigin::Local { repo: _, name: _ } => {
             // FIXME: These should not attempt to link to docs.rs!
-            krate.get_html_root_url(db).or_else(|| {
+            let weblink = krate.get_html_root_url(db).or_else(|| {
                 let version = krate.version(db);
                 // Fallback to docs.rs. This uses `display_name` and can never be
                 // correct, but that's what fallbacks are about.
@@ -468,10 +497,11 @@ fn get_doc_base_url(db: &RootDatabase, def: Definition) -> Option<Url> {
                     krate = display_name,
                     version = version.as_deref().unwrap_or("*")
                 ))
-            })?
+            });
+            (weblink, local_doc_path)
         }
         CrateOrigin::Library { repo: _, name } => {
-            krate.get_html_root_url(db).or_else(|| {
+            let weblink = krate.get_html_root_url(db).or_else(|| {
                 let version = krate.version(db);
                 // Fallback to docs.rs. This uses `display_name` and can never be
                 // correct, but that's what fallbacks are about.
@@ -483,10 +513,14 @@ fn get_doc_base_url(db: &RootDatabase, def: Definition) -> Option<Url> {
                     krate = name,
                     version = version.as_deref().unwrap_or("*")
                 ))
-            })?
+            });
+            (weblink, local_doc_path)
         }
     };
-    Url::parse(&base).ok()?.join(&format!("{display_name}/")).ok()
+    let web_base = web_base
+        .and_then(|it| Url::parse(&it).ok())
+        .and_then(|it| it.join(&format!("{display_name}/")).ok());
+    (web_base, local_base)
 }
 
 /// Get the filename and extension generated for a symbol by rustdoc.

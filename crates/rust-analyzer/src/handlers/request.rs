@@ -1535,13 +1535,16 @@ pub(crate) fn handle_semantic_tokens_range(
 pub(crate) fn handle_open_docs(
     snap: GlobalStateSnapshot,
     params: lsp_types::TextDocumentPositionParams,
-) -> Result<Option<lsp_types::Url>> {
+) -> Result<(Option<lsp_types::Url>, Option<lsp_types::Url>)> {
     let _p = profile::span("handle_open_docs");
     let position = from_proto::file_position(&snap, params)?;
 
-    let remote = snap.analysis.external_docs(position)?;
+    let Ok(remote_urls) = snap.analysis.external_docs(position) else { return Ok((None, None)); };
 
-    Ok(remote.and_then(|remote| Url::parse(&remote).ok()))
+    let web_url = remote_urls.web_url.and_then(|it| Url::parse(&it).ok());
+    let local_url = remote_urls.local_url.and_then(|it| Url::parse(&it).ok());
+
+    Ok((web_url, local_url))
 }
 
 pub(crate) fn handle_open_cargo_toml(

@@ -471,7 +471,7 @@ impl Analysis {
     pub fn external_docs(
         &self,
         position: FilePosition,
-    ) -> Cancellable<Option<doc_links::DocumentationLink>> {
+    ) -> Cancellable<doc_links::DocumentationLinks> {
         self.with_db(|db| doc_links::external_docs(db, &position))
     }
 
