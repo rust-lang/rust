@@ -328,6 +328,13 @@ impl<'tcx> WfPredicates<'tcx> {
         let tcx = self.tcx;
         let trait_ref = &trait_pred.trait_ref;
 
+        // Negative trait predicates don't require supertraits to hold, just
+        // that their substs are WF.
+        if trait_pred.polarity == ty::ImplPolarity::Negative {
+            self.compute_negative_trait_pred(trait_ref);
+            return;
+        }
+
         // if the trait predicate is not const, the wf obligations should not be const as well.
         let obligations = if trait_pred.constness == ty::BoundConstness::NotConst {
             self.nominal_obligations_without_const(trait_ref.def_id, trait_ref.substs)
@@ -391,6 +398,14 @@ impl<'tcx> WfPredicates<'tcx> {
                     )
                 }),
         );
+    }
+
+    // Compute the obligations that are required for `trait_ref` to be WF,
+    // given that it is a *negative* trait predicate.
+    fn compute_negative_trait_pred(&mut self, trait_ref: &ty::TraitRef<'tcx>) {
+        for arg in trait_ref.substs {
+            self.compute(arg);
+        }
     }
 
     /// Pushes the obligations required for `trait_ref::Item` to be WF

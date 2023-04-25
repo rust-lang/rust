@@ -701,6 +701,16 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let mut dup_bindings = FxHashMap::default();
         for binding in &assoc_bindings {
+            // Don't register additional associated type bounds for negative bounds,
+            // since we should have emitten an error for them earlier, and they will
+            // not be well-formed!
+            if polarity == ty::ImplPolarity::Negative {
+                self.tcx()
+                    .sess
+                    .delay_span_bug(binding.span, "negative trait bounds should not have bindings");
+                continue;
+            }
+
             // Specify type to assert that error was already reported in `Err` case.
             let _: Result<_, ErrorGuaranteed> = self.add_predicates_for_ast_type_binding(
                 hir_id,
