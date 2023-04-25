@@ -467,7 +467,10 @@ impl Analysis {
         self.with_db(|db| moniker::moniker(db, position))
     }
 
-    /// Return URL(s) for the documentation of the symbol under the cursor.
+    /// Returns URL(s) for the documentation of the symbol under the cursor.
+    /// # Arguments
+    /// * `position` - Position in the file.
+    /// * `target_dir` - Directory where the build output is storeda.
     pub fn external_docs(
         &self,
         position: FilePosition,

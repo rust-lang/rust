@@ -35,10 +35,10 @@ use crate::{
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct DocumentationLinks {
     /// The URL to the documentation on docs.rs.
-    /// Could be invalid.
+    /// May not lead anywhere.
     pub web_url: Option<String>,
     /// The URL to the documentation in the local file system.
-    /// Could be invalid.
+    /// May not lead anywhere.
     pub local_url: Option<String>,
 }
 
@@ -119,7 +119,7 @@ pub(crate) fn remove_links(markdown: &str) -> String {
 
 // Feature: Open Docs
 //
-// Retrieve a link to documentation for the given symbol.
+// Retrieve a links to documentation for the given symbol.
 //
 // The simplest way to use this feature is via the context menu. Right-click on
 // the selected item. The context menu opens. Select **Open Docs**.
@@ -459,6 +459,8 @@ fn map_links<'e>(
 /// ```ignore
 /// https://doc.rust-lang.org/std/iter/trait.Iterator.html#tymethod.next
 /// ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/// file:///project/root/target/doc/std/iter/trait.Iterator.html#tymethod.next
+/// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 /// ```
 fn get_doc_base_urls(
     db: &RootDatabase,
