@@ -1351,6 +1351,13 @@ rustc_queries! {
         desc { "checking if the crate has_global_allocator" }
         separate_provide_extern
     }
+    query has_alloc_error_handler(_: CrateNum) -> bool {
+        // This query depends on untracked global state in CStore
+        eval_always
+        fatal_cycle
+        desc { "checking if the crate has_alloc_error_handler" }
+        separate_provide_extern
+    }
     query has_panic_handler(_: CrateNum) -> bool {
         fatal_cycle
         desc { "checking if the crate has_panic_handler" }
@@ -1722,6 +1729,10 @@ rustc_queries! {
     query allocator_kind(_: ()) -> Option<AllocatorKind> {
         eval_always
         desc { "getting the allocator kind for the current crate" }
+    }
+    query alloc_error_handler_kind(_: ()) -> Option<AllocatorKind> {
+        eval_always
+        desc { "alloc error handler kind for the current crate" }
     }
 
     query upvars_mentioned(def_id: DefId) -> Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>> {

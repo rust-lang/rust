@@ -662,7 +662,7 @@ mod parse {
 
     pub(crate) fn parse_oom_strategy(slot: &mut OomStrategy, v: Option<&str>) -> bool {
         match v {
-            Some("unwind") => *slot = OomStrategy::Unwind,
+            Some("panic") => *slot = OomStrategy::Panic,
             Some("abort") => *slot = OomStrategy::Abort,
             _ => return false,
         }

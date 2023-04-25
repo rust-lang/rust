@@ -635,9 +635,16 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     if let Some(kind) = allocator_kind_for_codegen(tcx) {
         let llmod_id =
             cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("allocator")).to_string();
-        let module_llvm = tcx
-            .sess
-            .time("write_allocator_module", || backend.codegen_allocator(tcx, &llmod_id, kind));
+        let module_llvm = tcx.sess.time("write_allocator_module", || {
+            backend.codegen_allocator(
+                tcx,
+                &llmod_id,
+                kind,
+                // If allocator_kind is Some then alloc_error_handler_kind must
+                // also be Some.
+                tcx.alloc_error_handler_kind(()).unwrap(),
+            )
+        });
 
         ongoing_codegen.submit_pre_codegened_module_to_llvm(
             tcx,

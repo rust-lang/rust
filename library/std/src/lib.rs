@@ -236,6 +236,7 @@
 //
 // Language features:
 // tidy-alphabetical-start
+#![feature(alloc_error_handler)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
@@ -319,7 +320,6 @@
 #![feature(get_mut_unchecked)]
 #![feature(map_try_insert)]
 #![feature(new_uninit)]
-#![feature(panic_oom_payload)]
 #![feature(slice_concat_trait)]
 #![feature(thin_box)]
 #![feature(try_reserve_kind)]
