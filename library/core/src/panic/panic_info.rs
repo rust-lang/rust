@@ -24,7 +24,7 @@ use crate::panic::Location;
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 #[derive(Debug)]
 pub struct PanicInfo<'a> {
-    payload: &'a (dyn Any + Send),
+    payload: &'a dyn Any,
     message: Option<&'a fmt::Arguments<'a>>,
     location: &'a Location<'a>,
     can_unwind: bool,
@@ -81,7 +81,7 @@ impl<'a> PanicInfo<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "panic_hooks", since = "1.10.0")]
-    pub fn payload(&self) -> &(dyn Any + Send) {
+    pub fn payload(&self) -> &dyn Any {
         self.payload
     }
 
