@@ -168,6 +168,7 @@ mod arm;
 mod avr;
 mod bpf;
 mod hexagon;
+mod loongarch;
 mod m68k;
 mod mips;
 mod msp430;
@@ -184,6 +185,7 @@ pub use arm::{ArmInlineAsmReg, ArmInlineAsmRegClass};
 pub use avr::{AvrInlineAsmReg, AvrInlineAsmRegClass};
 pub use bpf::{BpfInlineAsmReg, BpfInlineAsmRegClass};
 pub use hexagon::{HexagonInlineAsmReg, HexagonInlineAsmRegClass};
+pub use loongarch::{LoongArchInlineAsmReg, LoongArchInlineAsmRegClass};
 pub use m68k::{M68kInlineAsmReg, M68kInlineAsmRegClass};
 pub use mips::{MipsInlineAsmReg, MipsInlineAsmRegClass};
 pub use msp430::{Msp430InlineAsmReg, Msp430InlineAsmRegClass};
@@ -205,6 +207,7 @@ pub enum InlineAsmArch {
     RiscV64,
     Nvptx64,
     Hexagon,
+    LoongArch64,
     Mips,
     Mips64,
     PowerPC,
@@ -234,6 +237,7 @@ impl FromStr for InlineAsmArch {
             "powerpc" => Ok(Self::PowerPC),
             "powerpc64" => Ok(Self::PowerPC64),
             "hexagon" => Ok(Self::Hexagon),
+            "loongarch64" => Ok(Self::LoongArch64),
             "mips" => Ok(Self::Mips),
             "mips64" => Ok(Self::Mips64),
             "s390x" => Ok(Self::S390x),
@@ -259,6 +263,7 @@ pub enum InlineAsmReg {
     Nvptx(NvptxInlineAsmReg),
     PowerPC(PowerPCInlineAsmReg),
     Hexagon(HexagonInlineAsmReg),
+    LoongArch(LoongArchInlineAsmReg),
     Mips(MipsInlineAsmReg),
     S390x(S390xInlineAsmReg),
     SpirV(SpirVInlineAsmReg),
@@ -280,6 +285,7 @@ impl InlineAsmReg {
             Self::RiscV(r) => r.name(),
             Self::PowerPC(r) => r.name(),
             Self::Hexagon(r) => r.name(),
+            Self::LoongArch(r) => r.name(),
             Self::Mips(r) => r.name(),
             Self::S390x(r) => r.name(),
             Self::Bpf(r) => r.name(),
@@ -298,6 +304,7 @@ impl InlineAsmReg {
             Self::RiscV(r) => InlineAsmRegClass::RiscV(r.reg_class()),
             Self::PowerPC(r) => InlineAsmRegClass::PowerPC(r.reg_class()),
             Self::Hexagon(r) => InlineAsmRegClass::Hexagon(r.reg_class()),
+            Self::LoongArch(r) => InlineAsmRegClass::LoongArch(r.reg_class()),
             Self::Mips(r) => InlineAsmRegClass::Mips(r.reg_class()),
             Self::S390x(r) => InlineAsmRegClass::S390x(r.reg_class()),
             Self::Bpf(r) => InlineAsmRegClass::Bpf(r.reg_class()),
@@ -324,6 +331,7 @@ impl InlineAsmReg {
                 Self::PowerPC(PowerPCInlineAsmReg::parse(name)?)
             }
             InlineAsmArch::Hexagon => Self::Hexagon(HexagonInlineAsmReg::parse(name)?),
+            InlineAsmArch::LoongArch64 => Self::LoongArch(LoongArchInlineAsmReg::parse(name)?),
             InlineAsmArch::Mips | InlineAsmArch::Mips64 => {
                 Self::Mips(MipsInlineAsmReg::parse(name)?)
             }
@@ -354,6 +362,9 @@ impl InlineAsmReg {
             Self::RiscV(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
             Self::PowerPC(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
             Self::Hexagon(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
+            Self::LoongArch(r) => {
+                r.validate(arch, reloc_model, target_features, target, is_clobber)
+            }
             Self::Mips(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
             Self::S390x(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
             Self::Bpf(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
@@ -379,6 +390,7 @@ impl InlineAsmReg {
             Self::RiscV(r) => r.emit(out, arch, modifier),
             Self::PowerPC(r) => r.emit(out, arch, modifier),
             Self::Hexagon(r) => r.emit(out, arch, modifier),
+            Self::LoongArch(r) => r.emit(out, arch, modifier),
             Self::Mips(r) => r.emit(out, arch, modifier),
             Self::S390x(r) => r.emit(out, arch, modifier),
             Self::Bpf(r) => r.emit(out, arch, modifier),
@@ -397,6 +409,7 @@ impl InlineAsmReg {
             Self::RiscV(_) => cb(self),
             Self::PowerPC(r) => r.overlapping_regs(|r| cb(Self::PowerPC(r))),
             Self::Hexagon(r) => r.overlapping_regs(|r| cb(Self::Hexagon(r))),
+            Self::LoongArch(_) => cb(self),
             Self::Mips(_) => cb(self),
             Self::S390x(_) => cb(self),
             Self::Bpf(r) => r.overlapping_regs(|r| cb(Self::Bpf(r))),
@@ -418,6 +431,7 @@ pub enum InlineAsmRegClass {
     Nvptx(NvptxInlineAsmRegClass),
     PowerPC(PowerPCInlineAsmRegClass),
     Hexagon(HexagonInlineAsmRegClass),
+    LoongArch(LoongArchInlineAsmRegClass),
     Mips(MipsInlineAsmRegClass),
     S390x(S390xInlineAsmRegClass),
     SpirV(SpirVInlineAsmRegClass),
@@ -440,6 +454,7 @@ impl InlineAsmRegClass {
             Self::Nvptx(r) => r.name(),
             Self::PowerPC(r) => r.name(),
             Self::Hexagon(r) => r.name(),
+            Self::LoongArch(r) => r.name(),
             Self::Mips(r) => r.name(),
             Self::S390x(r) => r.name(),
             Self::SpirV(r) => r.name(),
@@ -464,6 +479,7 @@ impl InlineAsmRegClass {
             Self::Nvptx(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Nvptx),
             Self::PowerPC(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::PowerPC),
             Self::Hexagon(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Hexagon),
+            Self::LoongArch(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::LoongArch),
             Self::Mips(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Mips),
             Self::S390x(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::S390x),
             Self::SpirV(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::SpirV),
@@ -495,6 +511,7 @@ impl InlineAsmRegClass {
             Self::Nvptx(r) => r.suggest_modifier(arch, ty),
             Self::PowerPC(r) => r.suggest_modifier(arch, ty),
             Self::Hexagon(r) => r.suggest_modifier(arch, ty),
+            Self::LoongArch(r) => r.suggest_modifier(arch, ty),
             Self::Mips(r) => r.suggest_modifier(arch, ty),
             Self::S390x(r) => r.suggest_modifier(arch, ty),
             Self::SpirV(r) => r.suggest_modifier(arch, ty),
@@ -522,6 +539,7 @@ impl InlineAsmRegClass {
             Self::Nvptx(r) => r.default_modifier(arch),
             Self::PowerPC(r) => r.default_modifier(arch),
             Self::Hexagon(r) => r.default_modifier(arch),
+            Self::LoongArch(r) => r.default_modifier(arch),
             Self::Mips(r) => r.default_modifier(arch),
             Self::S390x(r) => r.default_modifier(arch),
             Self::SpirV(r) => r.default_modifier(arch),
@@ -548,6 +566,7 @@ impl InlineAsmRegClass {
             Self::Nvptx(r) => r.supported_types(arch),
             Self::PowerPC(r) => r.supported_types(arch),
             Self::Hexagon(r) => r.supported_types(arch),
+            Self::LoongArch(r) => r.supported_types(arch),
             Self::Mips(r) => r.supported_types(arch),
             Self::S390x(r) => r.supported_types(arch),
             Self::SpirV(r) => r.supported_types(arch),
@@ -575,6 +594,7 @@ impl InlineAsmRegClass {
                 Self::PowerPC(PowerPCInlineAsmRegClass::parse(name)?)
             }
             InlineAsmArch::Hexagon => Self::Hexagon(HexagonInlineAsmRegClass::parse(name)?),
+            InlineAsmArch::LoongArch64 => Self::LoongArch(LoongArchInlineAsmRegClass::parse(name)?),
             InlineAsmArch::Mips | InlineAsmArch::Mips64 => {
                 Self::Mips(MipsInlineAsmRegClass::parse(name)?)
             }
@@ -601,6 +621,7 @@ impl InlineAsmRegClass {
             Self::Nvptx(r) => r.valid_modifiers(arch),
             Self::PowerPC(r) => r.valid_modifiers(arch),
             Self::Hexagon(r) => r.valid_modifiers(arch),
+            Self::LoongArch(r) => r.valid_modifiers(arch),
             Self::Mips(r) => r.valid_modifiers(arch),
             Self::S390x(r) => r.valid_modifiers(arch),
             Self::SpirV(r) => r.valid_modifiers(arch),
@@ -758,6 +779,11 @@ pub fn allocatable_registers(
         InlineAsmArch::Hexagon => {
             let mut map = hexagon::regclass_map();
             hexagon::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
+            map
+        }
+        InlineAsmArch::LoongArch64 => {
+            let mut map = loongarch::regclass_map();
+            loongarch::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
             map
         }
         InlineAsmArch::Mips | InlineAsmArch::Mips64 => {
