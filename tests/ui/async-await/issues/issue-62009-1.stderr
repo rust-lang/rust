@@ -1,36 +1,36 @@
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/issue-62009-1.rs:6:22
+  --> $DIR/issue-62009-1.rs:6:23
    |
 LL | fn main() {
    |    ---- this is not `async`
 LL |     async { let (); }.await;
-   |                      ^^^^^^ only allowed inside `async` functions and blocks
+   |                       ^^^^^ only allowed inside `async` functions and blocks
 
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/issue-62009-1.rs:10:6
+  --> $DIR/issue-62009-1.rs:10:7
    |
 LL | fn main() {
    |    ---- this is not `async`
 ...
 LL |     }.await;
-   |      ^^^^^^ only allowed inside `async` functions and blocks
+   |       ^^^^^ only allowed inside `async` functions and blocks
 
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/issue-62009-1.rs:12:15
+  --> $DIR/issue-62009-1.rs:12:16
    |
 LL | fn main() {
    |    ---- this is not `async`
 ...
 LL |     (|_| 2333).await;
-   |               ^^^^^^ only allowed inside `async` functions and blocks
+   |                ^^^^^ only allowed inside `async` functions and blocks
 
 error[E0277]: `[closure@$DIR/issue-62009-1.rs:12:6: 12:9]` is not a future
-  --> $DIR/issue-62009-1.rs:12:15
+  --> $DIR/issue-62009-1.rs:12:16
    |
 LL |     (|_| 2333).await;
-   |               ^^^^^^
-   |               |
-   |               `[closure@$DIR/issue-62009-1.rs:12:6: 12:9]` is not a future
+   |               -^^^^^
+   |               ||
+   |               |`[closure@$DIR/issue-62009-1.rs:12:6: 12:9]` is not a future
    |               help: remove the `.await`
    |
    = help: the trait `Future` is not implemented for closure `[closure@$DIR/issue-62009-1.rs:12:6: 12:9]`

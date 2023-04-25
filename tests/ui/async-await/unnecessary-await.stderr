@@ -1,8 +1,8 @@
 error[E0277]: `()` is not a future
-  --> $DIR/unnecessary-await.rs:9:10
+  --> $DIR/unnecessary-await.rs:9:11
    |
 LL |     boo().await;
-   |     -----^^^^^^ `()` is not a future
+   |     ----- ^^^^^ `()` is not a future
    |     |
    |     this call returns `()`
    |

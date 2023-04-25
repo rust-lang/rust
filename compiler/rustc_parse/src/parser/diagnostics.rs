@@ -1646,7 +1646,7 @@ impl<'a> Parser<'a> {
             // Avoid knock-down errors as we don't know whether to interpret this as `foo().await?`
             // or `foo()?.await` (the very reason we went with postfix syntax 😅).
             ExprKind::Try(_) => ExprKind::Err,
-            _ => ExprKind::Await(expr),
+            _ => ExprKind::Await(expr, await_sp),
         };
         let expr = self.mk_expr(lo.to(sp), kind);
         self.maybe_recover_from_bad_qpath(expr)

@@ -1583,55 +1583,59 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     }
 
     fn suggest_remove_await(&self, obligation: &PredicateObligation<'tcx>, err: &mut Diagnostic) {
-        let span = obligation.cause.span;
+        let hir = self.tcx.hir();
+        if let ObligationCauseCode::AwaitableExpr(Some(hir_id)) = obligation.cause.code().peel_derives()
+            && let hir::Node::Expr(expr) = hir.get(*hir_id)
+        {
+            // FIXME: use `obligation.predicate.kind()...trait_ref.self_ty()` to see if we have `()`
+            // and if not maybe suggest doing something else? If we kept the expression around we
+            // could also check if it is an fn call (very likely) and suggest changing *that*, if
+            // it is from the local crate.
 
-        if let ObligationCauseCode::AwaitableExpr(hir_id) = obligation.cause.code().peel_derives() {
-            let hir = self.tcx.hir();
-            if let Some(hir::Node::Expr(expr)) = hir_id.and_then(|hir_id| hir.find(hir_id)) {
-                // FIXME: use `obligation.predicate.kind()...trait_ref.self_ty()` to see if we have `()`
-                // and if not maybe suggest doing something else? If we kept the expression around we
-                // could also check if it is an fn call (very likely) and suggest changing *that*, if
-                // it is from the local crate.
+            if let hir::Node::Expr(parent_expr) = hir.get_parent(*hir_id)
+                // Peel off the DesugaringKind from the span
+                && let Some(desugar_parent_span) = parent_expr.span.parent_callsite()
+            {
                 err.span_suggestion(
-                    span,
+                    self.tcx.sess.source.shrink_to_hi().to(desugar_parent_span),
                     "remove the `.await`",
                     "",
                     Applicability::MachineApplicable,
                 );
-                // FIXME: account for associated `async fn`s.
-                if let hir::Expr { span, kind: hir::ExprKind::Call(base, _), .. } = expr {
-                    if let ty::PredicateKind::Clause(ty::Clause::Trait(pred)) =
-                        obligation.predicate.kind().skip_binder()
-                    {
-                        err.span_label(*span, &format!("this call returns `{}`", pred.self_ty()));
-                    }
-                    if let Some(typeck_results) = &self.typeck_results
-                            && let ty = typeck_results.expr_ty_adjusted(base)
-                            && let ty::FnDef(def_id, _substs) = ty.kind()
-                            && let Some(hir::Node::Item(hir::Item { ident, span, vis_span, .. })) =
-                                hir.get_if_local(*def_id)
-                        {
-                            let msg = format!(
-                                "alternatively, consider making `fn {}` asynchronous",
-                                ident
-                            );
-                            if vis_span.is_empty() {
-                                err.span_suggestion_verbose(
-                                    span.shrink_to_lo(),
-                                    &msg,
-                                    "async ",
-                                    Applicability::MaybeIncorrect,
-                                );
-                            } else {
-                                err.span_suggestion_verbose(
-                                    vis_span.shrink_to_hi(),
-                                    &msg,
-                                    " async",
-                                    Applicability::MaybeIncorrect,
-                                );
-                            }
-                        }
+            }
+            // FIXME: account for associated `async fn`s.
+            if let hir::Expr { span, kind: hir::ExprKind::Call(base, _), .. } = expr {
+                if let ty::PredicateKind::Clause(ty::Clause::Trait(pred)) =
+                    obligation.predicate.kind().skip_binder()
+                {
+                    err.span_label(*span, &format!("this call returns `{}`", pred.self_ty()));
                 }
+                if let Some(typeck_results) = &self.typeck_results
+                        && let ty = typeck_results.expr_ty_adjusted(base)
+                        && let ty::FnDef(def_id, _substs) = ty.kind()
+                        && let Some(hir::Node::Item(hir::Item { ident, span, vis_span, .. })) =
+                            hir.get_if_local(*def_id)
+                    {
+                        let msg = format!(
+                            "alternatively, consider making `fn {}` asynchronous",
+                            ident
+                        );
+                        if vis_span.is_empty() {
+                            err.span_suggestion_verbose(
+                                span.shrink_to_lo(),
+                                &msg,
+                                "async ",
+                                Applicability::MaybeIncorrect,
+                            );
+                        } else {
+                            err.span_suggestion_verbose(
+                                vis_span.shrink_to_hi(),
+                                &msg,
+                                " async",
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                    }
             }
         }
     }
