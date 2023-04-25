@@ -285,6 +285,11 @@ extern "C" {
     fn vcmpgtfp_p(cr: i32, a: vector_float, b: vector_float) -> i32;
     #[link_name = "llvm.ppc.altivec.vcmpbfp.p"]
     fn vcmpbfp_p(cr: i32, a: vector_float, b: vector_float) -> i32;
+
+    #[link_name = "llvm.ppc.altivec.vcfsx"]
+    fn vcfsx(a: vector_signed_int, b: i32) -> vector_float;
+    #[link_name = "llvm.ppc.altivec.vcfux"]
+    fn vcfux(a: vector_unsigned_int, b: i32) -> vector_float;
 }
 
 macro_rules! s_t_l {
@@ -1960,6 +1965,38 @@ mod sealed {
     }
 
     impl_vec_trait! { [VectorNor vec_nor] 2 (vec_vnorub, vec_vnorsb, vec_vnoruh, vec_vnorsh, vec_vnoruw, vec_vnorsw) }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcfsx, IMM5 = 1))]
+    unsafe fn vec_ctf_i32<const IMM5: i32>(a: vector_signed_int) -> vector_float {
+        static_assert_uimm_bits!(IMM5, 5);
+        vcfsx(a, IMM5)
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vcfux, IMM5 = 1))]
+    unsafe fn vec_ctf_u32<const IMM5: i32>(a: vector_unsigned_int) -> vector_float {
+        static_assert_uimm_bits!(IMM5, 5);
+        vcfux(a, IMM5)
+    }
+
+    pub trait VectorCtf {
+        unsafe fn vec_ctf<const IMM5: i32>(self) -> vector_float;
+    }
+
+    impl VectorCtf for vector_signed_int {
+        unsafe fn vec_ctf<const IMM5: i32>(self) -> vector_float {
+            vec_ctf_i32::<IMM5>(self)
+        }
+    }
+
+    impl VectorCtf for vector_unsigned_int {
+        unsafe fn vec_ctf<const IMM5: i32>(self) -> vector_float {
+            vec_ctf_u32::<IMM5>(self)
+        }
+    }
 }
 
 /// Vector Load Indexed.
@@ -2219,6 +2256,16 @@ where
     T: sealed::VectorAdd<U>,
 {
     a.vec_add(b)
+}
+
+/// Vector Convert to Floating-Point
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_ctf<const IMM5: i32, T>(a: T) -> vector_float
+where
+    T: sealed::VectorCtf,
+{
+    a.vec_ctf::<IMM5>()
 }
 
 /// Endian-biased intrinsics
@@ -4509,5 +4556,29 @@ mod tests {
         let y: vector_signed_int = transmute(y);
         let z = vec_add(x, y);
         assert_eq!(i32x4::splat(5), transmute(z));
+    }
+
+    #[simd_test(enable = "altivec")]
+    unsafe fn vec_ctf_u32() {
+        let v: vector_unsigned_int = transmute(u32x4::new(0, u32::MAX, u32::MAX - 42, 42));
+        let v2 = vec_ctf::<1, _>(v);
+        let r2: vector_float = transmute(f32x4::new(0.0, 2147483600.0, 2147483600.0, 21.0));
+        let v4 = vec_ctf::<2, _>(v);
+        let r4: vector_float = transmute(f32x4::new(0.0, 1073741800.0, 1073741800.0, 10.5));
+        let v8 = vec_ctf::<3, _>(v);
+        let r8: vector_float = transmute(f32x4::new(0.0, 536870900.0, 536870900.0, 5.25));
+
+        let check = |a, b| {
+            let r = transmute(vec_cmple(
+                vec_abs(vec_sub(a, b)),
+                vec_splats(std::f32::EPSILON),
+            ));
+            let e = m32x4::new(true, true, true, true);
+            assert_eq!(e, r);
+        };
+
+        check(v2, r2);
+        check(v4, r4);
+        check(v8, r8);
     }
 }
