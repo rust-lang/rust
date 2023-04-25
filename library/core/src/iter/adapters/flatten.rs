@@ -135,6 +135,19 @@ where
 {
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<I, U, F> ExactSizeIterator for FlatMap<I, U, F>
+where
+    I: Iterator,
+    U: IntoIterator,
+    F: FnMut(I::Item) -> U,
+    FlattenCompat<Map<I, F>, <U as IntoIterator>::IntoIter>: ExactSizeIterator,
+{
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
+
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<T, I, F, const N: usize> TrustedLen for FlatMap<I, [T; N], F>
 where
@@ -293,6 +306,18 @@ where
     I: FusedIterator<Item: IntoIterator<IntoIter = U, Item = U::Item>>,
     U: Iterator,
 {
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<I> ExactSizeIterator for Flatten<I>
+where
+    I: Iterator,
+    <I as Iterator>::Item: IntoIterator,
+    FlattenCompat<I, <I::Item as IntoIterator>::IntoIter>: ExactSizeIterator,
+{
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
@@ -657,6 +682,45 @@ where
             ControlFlow::Continue(remaining) => NonZeroUsize::new(remaining).map_or(Ok(()), Err),
             _ => Ok(()),
         }
+    }
+}
+
+impl<const N: usize, I, T> ExactSizeIterator
+    for FlattenCompat<I, <[T; N] as IntoIterator>::IntoIter>
+where
+    I: ExactSizeIterator<Item = [T; N]>,
+{
+    fn len(&self) -> usize {
+        let Self { iter, frontiter, backiter } = self;
+        N * iter.len()
+            + frontiter.as_ref().map_or(0, |iter| iter.len())
+            + backiter.as_ref().map_or(0, |iter| iter.len())
+    }
+}
+
+impl<'a, const N: usize, I, T> ExactSizeIterator
+    for FlattenCompat<I, <&'a [T; N] as IntoIterator>::IntoIter>
+where
+    I: ExactSizeIterator<Item = &'a [T; N]>,
+{
+    fn len(&self) -> usize {
+        let Self { iter, frontiter, backiter } = self;
+        N * iter.len()
+            + frontiter.as_ref().map_or(0, |iter| iter.len())
+            + backiter.as_ref().map_or(0, |iter| iter.len())
+    }
+}
+
+impl<'a, const N: usize, I, T> ExactSizeIterator
+    for FlattenCompat<I, <&'a mut [T; N] as IntoIterator>::IntoIter>
+where
+    I: ExactSizeIterator<Item = &'a mut [T; N]>,
+{
+    fn len(&self) -> usize {
+        let Self { iter, frontiter, backiter } = self;
+        N * iter.len()
+            + frontiter.as_ref().map_or(0, |iter| iter.len())
+            + backiter.as_ref().map_or(0, |iter| iter.len())
     }
 }
 

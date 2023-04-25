@@ -133,8 +133,8 @@ fn test_double_ended_flatten() {
 }
 
 #[test]
-fn test_trusted_len_flatten() {
-    fn assert_trusted_len<T: TrustedLen>(_: &T) {}
+fn test_trusted_len_exact_size_flatten() {
+    fn assert_trusted_len<T: TrustedLen + ExactSizeIterator>(_: &T) {}
     let mut iter = IntoIterator::into_iter([[0; 3]; 4]).flatten();
     assert_trusted_len(&iter);
 
