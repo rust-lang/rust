@@ -58,8 +58,16 @@ use std::str;
 use std::sync::LazyLock;
 use std::time::Instant;
 
+// This import blocks the use of panicking `print` and `println` in all the code
+// below. Please use `safe_print` and `safe_println` to avoid ICE when
+// encountering an I/O error during print.
+#[allow(unused_imports)]
+use std::{compile_error as print, compile_error as println};
+
 pub mod args;
 pub mod pretty;
+#[macro_use]
+mod print;
 mod session_diagnostics;
 
 use crate::session_diagnostics::{
@@ -511,7 +519,7 @@ fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
             if io::stdout().is_terminal() {
                 show_content_with_pager(&text);
             } else {
-                print!("{text}");
+                safe_print!("{text}");
             }
         }
         Err(InvalidErrorCode) => {
@@ -547,7 +555,7 @@ fn show_content_with_pager(content: &str) {
     // If pager fails for whatever reason, we should still print the content
     // to standard output
     if fallback_to_println {
-        print!("{content}");
+        safe_print!("{content}");
     }
 }
 
@@ -601,7 +609,7 @@ pub fn list_metadata(sess: &Session, metadata_loader: &dyn MetadataLoader) -> Co
                 let path = &(*ifile);
                 let mut v = Vec::new();
                 locator::list_file_metadata(&sess.target, path, metadata_loader, &mut v).unwrap();
-                println!("{}", String::from_utf8(v).unwrap());
+                safe_println!("{}", String::from_utf8(v).unwrap());
             }
             Input::Str { .. } => {
                 early_error(ErrorOutputType::default(), "cannot list metadata for stdin");
@@ -642,12 +650,12 @@ fn print_crate_info(
             TargetList => {
                 let mut targets = rustc_target::spec::TARGETS.to_vec();
                 targets.sort_unstable();
-                println!("{}", targets.join("\n"));
+                safe_println!("{}", targets.join("\n"));
             }
-            Sysroot => println!("{}", sess.sysroot.display()),
-            TargetLibdir => println!("{}", sess.target_tlib_path.dir.display()),
+            Sysroot => safe_println!("{}", sess.sysroot.display()),
+            TargetLibdir => safe_println!("{}", sess.target_tlib_path.dir.display()),
             TargetSpec => {
-                println!("{}", serde_json::to_string_pretty(&sess.target.to_json()).unwrap());
+                safe_println!("{}", serde_json::to_string_pretty(&sess.target.to_json()).unwrap());
             }
             AllTargetSpecs => {
                 let mut targets = BTreeMap::new();
@@ -656,7 +664,7 @@ fn print_crate_info(
                     let target = Target::expect_builtin(&triple);
                     targets.insert(name, target.to_json());
                 }
-                println!("{}", serde_json::to_string_pretty(&targets).unwrap());
+                safe_println!("{}", serde_json::to_string_pretty(&targets).unwrap());
             }
             FileNames | CrateName => {
                 let Some(attrs) = attrs.as_ref() else {
@@ -666,14 +674,14 @@ fn print_crate_info(
                 let t_outputs = rustc_interface::util::build_output_filenames(attrs, sess);
                 let id = rustc_session::output::find_crate_name(sess, attrs);
                 if *req == PrintRequest::CrateName {
-                    println!("{id}");
+                    safe_println!("{id}");
                     continue;
                 }
                 let crate_types = collect_crate_types(sess, attrs);
                 for &style in &crate_types {
                     let fname =
                         rustc_session::output::filename_for_input(sess, style, id, &t_outputs);
-                    println!("{}", fname.file_name().unwrap().to_string_lossy());
+                    safe_println!("{}", fname.file_name().unwrap().to_string_lossy());
                 }
             }
             Cfg => {
@@ -707,13 +715,13 @@ fn print_crate_info(
 
                 cfgs.sort();
                 for cfg in cfgs {
-                    println!("{cfg}");
+                    safe_println!("{cfg}");
                 }
             }
             CallingConventions => {
                 let mut calling_conventions = rustc_target::spec::abi::all_names();
                 calling_conventions.sort_unstable();
-                println!("{}", calling_conventions.join("\n"));
+                safe_println!("{}", calling_conventions.join("\n"));
             }
             RelocationModels
             | CodeModels
@@ -733,7 +741,7 @@ fn print_crate_info(
                     let stable = sess.target.options.supported_split_debuginfo.contains(split);
                     let unstable_ok = sess.unstable_options();
                     if stable || unstable_ok {
-                        println!("{split}");
+                        safe_println!("{split}");
                     }
                 }
             }
@@ -770,14 +778,14 @@ pub fn version_at_macro_invocation(
 ) {
     let verbose = matches.opt_present("verbose");
 
-    println!("{binary} {version}");
+    safe_println!("{binary} {version}");
 
     if verbose {
-        println!("binary: {binary}");
-        println!("commit-hash: {commit_hash}");
-        println!("commit-date: {commit_date}");
-        println!("host: {}", config::host_triple());
-        println!("release: {release}");
+        safe_println!("binary: {binary}");
+        safe_println!("commit-hash: {commit_hash}");
+        safe_println!("commit-date: {commit_date}");
+        safe_println!("host: {}", config::host_triple());
+        safe_println!("release: {release}");
 
         let debug_flags = matches.opt_strs("Z");
         let backend_name = debug_flags.iter().find_map(|x| x.strip_prefix("codegen-backend="));
@@ -807,7 +815,7 @@ fn usage(verbose: bool, include_unstable_options: bool, nightly_build: bool) {
     } else {
         ""
     };
-    println!(
+    safe_println!(
         "{options}{at_path}\nAdditional help:
     -C help             Print codegen options
     -W help             \
@@ -820,7 +828,7 @@ fn usage(verbose: bool, include_unstable_options: bool, nightly_build: bool) {
 }
 
 fn print_wall_help() {
-    println!(
+    safe_println!(
         "
 The flag `-Wall` does not exist in `rustc`. Most useful lints are enabled by
 default. Use `rustc -W help` to see all available lints. It's more common to put
@@ -832,7 +840,7 @@ the command line flag directly.
 
 /// Write to stdout lint command options, together with a list of all available lints
 pub fn describe_lints(sess: &Session, lint_store: &LintStore, loaded_plugins: bool) {
-    println!(
+    safe_println!(
         "
 Available lint options:
     -W <foo>           Warn about <foo>
@@ -877,21 +885,21 @@ Available lint options:
         s
     };
 
-    println!("Lint checks provided by rustc:\n");
+    safe_println!("Lint checks provided by rustc:\n");
 
     let print_lints = |lints: Vec<&Lint>| {
-        println!("    {}  {:7.7}  {}", padded("name"), "default", "meaning");
-        println!("    {}  {:7.7}  {}", padded("----"), "-------", "-------");
+        safe_println!("    {}  {:7.7}  {}", padded("name"), "default", "meaning");
+        safe_println!("    {}  {:7.7}  {}", padded("----"), "-------", "-------");
         for lint in lints {
             let name = lint.name_lower().replace('_', "-");
-            println!(
+            safe_println!(
                 "    {}  {:7.7}  {}",
                 padded(&name),
                 lint.default_level(sess.edition()).as_str(),
                 lint.desc
             );
         }
-        println!("\n");
+        safe_println!("\n");
     };
 
     print_lints(builtin);
@@ -912,14 +920,14 @@ Available lint options:
         s
     };
 
-    println!("Lint groups provided by rustc:\n");
+    safe_println!("Lint groups provided by rustc:\n");
 
     let print_lint_groups = |lints: Vec<(&'static str, Vec<LintId>)>, all_warnings| {
-        println!("    {}  sub-lints", padded("name"));
-        println!("    {}  ---------", padded("----"));
+        safe_println!("    {}  sub-lints", padded("name"));
+        safe_println!("    {}  ---------", padded("----"));
 
         if all_warnings {
-            println!("    {}  all lints that are set to issue warnings", padded("warnings"));
+            safe_println!("    {}  all lints that are set to issue warnings", padded("warnings"));
         }
 
         for (name, to) in lints {
@@ -929,26 +937,26 @@ Available lint options:
                 .map(|x| x.to_string().replace('_', "-"))
                 .collect::<Vec<String>>()
                 .join(", ");
-            println!("    {}  {}", padded(&name), desc);
+            safe_println!("    {}  {}", padded(&name), desc);
         }
-        println!("\n");
+        safe_println!("\n");
     };
 
     print_lint_groups(builtin_groups, true);
 
     match (loaded_plugins, plugin.len(), plugin_groups.len()) {
         (false, 0, _) | (false, _, 0) => {
-            println!("Lint tools like Clippy can provide additional lints and lint groups.");
+            safe_println!("Lint tools like Clippy can provide additional lints and lint groups.");
         }
         (false, ..) => panic!("didn't load lint plugins but got them anyway!"),
-        (true, 0, 0) => println!("This crate does not load any lint plugins or lint groups."),
+        (true, 0, 0) => safe_println!("This crate does not load any lint plugins or lint groups."),
         (true, l, g) => {
             if l > 0 {
-                println!("Lint checks provided by plugins loaded by this crate:\n");
+                safe_println!("Lint checks provided by plugins loaded by this crate:\n");
                 print_lints(plugin);
             }
             if g > 0 {
-                println!("Lint groups provided by plugins loaded by this crate:\n");
+                safe_println!("Lint groups provided by plugins loaded by this crate:\n");
                 print_lint_groups(plugin_groups, false);
             }
         }
@@ -996,12 +1004,12 @@ pub fn describe_flag_categories(matches: &Matches) -> bool {
 }
 
 fn describe_debug_flags() {
-    println!("\nAvailable options:\n");
+    safe_println!("\nAvailable options:\n");
     print_flag_list("-Z", config::Z_OPTIONS);
 }
 
 fn describe_codegen_flags() {
-    println!("\nAvailable codegen options:\n");
+    safe_println!("\nAvailable codegen options:\n");
     print_flag_list("-C", config::CG_OPTIONS);
 }
 
@@ -1012,7 +1020,7 @@ fn print_flag_list<T>(
     let max_len = flag_list.iter().map(|&(name, _, _, _)| name.chars().count()).max().unwrap_or(0);
 
     for &(name, _, _, desc) in flag_list {
-        println!(
+        safe_println!(
             "    {} {:>width$}=val -- {}",
             cmdline_opt,
             name.replace('_', "-"),
