@@ -87,7 +87,6 @@ name = "base-db"
 version = "0.0.0"
 dependencies = [
  "cfg",
- "indexmap",
  "la-arena",
  "profile",
  "rustc-hash",
@@ -580,7 +579,6 @@ dependencies = [
  "hir-def",
  "hir-expand",
  "hkalbasi-rustc-ap-rustc_index",
- "indexmap",
  "intern",
  "itertools",
  "la-arena",
