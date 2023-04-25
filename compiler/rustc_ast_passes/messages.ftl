@@ -238,3 +238,6 @@ ast_passes_show_span = {$msg}
 
 ast_passes_negative_bound_not_supported =
     negative bounds are not supported
+
+ast_passes_constraint_on_negative_bound =
+    associated type constraints not allowed on negative bounds

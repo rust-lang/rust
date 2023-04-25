@@ -701,3 +701,10 @@ pub struct NegativeBoundUnsupported {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_constraint_on_negative_bound)]
+pub struct ConstraintOnNegativeBound {
+    #[primary_span]
+    pub span: Span,
+}

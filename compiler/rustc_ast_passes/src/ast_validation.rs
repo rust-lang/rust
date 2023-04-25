@@ -1177,6 +1177,18 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
         }
 
+        // Negative trait bounds are not allowed to have associated constraints
+        if let GenericBound::Trait(trait_ref, TraitBoundModifier::Negative) = bound
+            && let Some(segment) = trait_ref.trait_ref.path.segments.last()
+            && let Some(ast::GenericArgs::AngleBracketed(args)) = segment.args.as_deref()
+        {
+            for arg in &args.args {
+                if let ast::AngleBracketedArg::Constraint(constraint) = arg {
+                    self.err_handler().emit_err(errors::ConstraintOnNegativeBound { span: constraint.span });
+                }
+            }
+        }
+
         visit::walk_param_bound(self, bound)
     }
 
