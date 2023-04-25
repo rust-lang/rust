@@ -32,6 +32,7 @@ pub struct CargoWorkspace {
     packages: Arena<PackageData>,
     targets: Arena<TargetData>,
     workspace_root: AbsPathBuf,
+    target_directory: AbsPathBuf,
 }
 
 impl ops::Index<Package> for CargoWorkspace {
@@ -414,7 +415,10 @@ impl CargoWorkspace {
         let workspace_root =
             AbsPathBuf::assert(PathBuf::from(meta.workspace_root.into_os_string()));
 
-        CargoWorkspace { packages, targets, workspace_root }
+        let target_directory =
+            AbsPathBuf::assert(PathBuf::from(meta.target_directory.into_os_string()));
+
+        CargoWorkspace { packages, targets, workspace_root, target_directory }
     }
 
     pub fn packages(&self) -> impl Iterator<Item = Package> + ExactSizeIterator + '_ {
@@ -430,6 +434,10 @@ impl CargoWorkspace {
 
     pub fn workspace_root(&self) -> &AbsPath {
         &self.workspace_root
+    }
+
+    pub fn target_directory(&self) -> &AbsPath {
+        &self.target_directory
     }
 
     pub fn package_flag(&self, package: &PackageData) -> String {
