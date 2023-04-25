@@ -1603,7 +1603,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = ty.kind() else { return false };
         let future_trait = self.require_lang_item(LangItem::Future, None);
 
-        self.explicit_item_bounds(def_id).iter().any(|(predicate, _)| {
+        self.explicit_item_bounds(def_id).skip_binder().iter().any(|&(predicate, _)| {
             let ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) = predicate.kind().skip_binder() else {
                 return false;
             };

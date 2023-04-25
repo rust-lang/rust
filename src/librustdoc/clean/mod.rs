@@ -422,8 +422,8 @@ fn clean_projection<'tcx>(
         let bounds = cx
             .tcx
             .explicit_item_bounds(ty.skip_binder().def_id)
-            .iter()
-            .map(|(bound, _)| EarlyBinder(*bound).subst(cx.tcx, ty.skip_binder().substs))
+            .subst_iter_copied(cx.tcx, ty.skip_binder().substs)
+            .map(|(pred, _)| pred)
             .collect::<Vec<_>>();
         return clean_middle_opaque_bounds(cx, bounds);
     }
@@ -1315,10 +1315,11 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
             }
 
             if let ty::TraitContainer = assoc_item.container {
-                let bounds = tcx.explicit_item_bounds(assoc_item.def_id);
+                let bounds =
+                    tcx.explicit_item_bounds(assoc_item.def_id).subst_identity_iter_copied();
                 let predicates = tcx.explicit_predicates_of(assoc_item.def_id).predicates;
                 let predicates =
-                    tcx.arena.alloc_from_iter(bounds.into_iter().chain(predicates).copied());
+                    tcx.arena.alloc_from_iter(bounds.chain(predicates.iter().copied()));
                 let mut generics = clean_ty_generics(
                     cx,
                     tcx.generics_of(assoc_item.def_id),
@@ -1845,8 +1846,8 @@ pub(crate) fn clean_middle_ty<'tcx>(
             let bounds = cx
                 .tcx
                 .explicit_item_bounds(def_id)
-                .iter()
-                .map(|(bound, _)| EarlyBinder(*bound).subst(cx.tcx, substs))
+                .subst_iter_copied(cx.tcx, substs)
+                .map(|(bound, _)| bound)
                 .collect::<Vec<_>>();
             clean_middle_opaque_bounds(cx, bounds)
         }

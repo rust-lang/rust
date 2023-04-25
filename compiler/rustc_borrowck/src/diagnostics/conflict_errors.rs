@@ -702,7 +702,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 .copied()
                 .find_map(find_fn_kind_from_did),
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => tcx
-                .bound_explicit_item_bounds(def_id)
+                .explicit_item_bounds(def_id)
                 .subst_iter_copied(tcx, substs)
                 .find_map(find_fn_kind_from_did),
             ty::Closure(_, substs) => match substs.as_closure().kind() {
