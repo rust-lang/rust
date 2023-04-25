@@ -1861,7 +1861,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline(always)]
-    fn check_and_mk_substs(
+    pub(crate) fn check_and_mk_substs(
         self,
         _def_id: DefId,
         substs: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,

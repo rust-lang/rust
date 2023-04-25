@@ -3,6 +3,7 @@
 #![allow(rustc::usage_of_ty_tykind)]
 
 use crate::infer::canonical::Canonical;
+use crate::ty::query::TyCtxtAt;
 use crate::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use crate::ty::visit::ValidateBoundVars;
 use crate::ty::InferTy::*;
@@ -825,6 +826,24 @@ pub struct TraitRef<'tcx> {
 }
 
 impl<'tcx> TraitRef<'tcx> {
+    pub fn new(
+        tcx: TyCtxt<'tcx>,
+        trait_def_id: DefId,
+        substs: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
+    ) -> Self {
+        let substs = tcx.check_and_mk_substs(trait_def_id, substs);
+        Self { def_id: trait_def_id, substs, _use_mk_trait_ref_instead: () }
+    }
+
+    pub fn from_lang_item(
+        tcx: TyCtxtAt<'tcx>,
+        trait_lang_item: LangItem,
+        substs: impl IntoIterator<Item: Into<ty::GenericArg<'tcx>>>,
+    ) -> Self {
+        let trait_def_id = tcx.require_lang_item(trait_lang_item, Some(tcx.span));
+        Self::new(tcx.tcx, trait_def_id, substs)
+    }
+
     pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
         tcx.mk_trait_ref(
             self.def_id,
