@@ -5,6 +5,8 @@ mod tests;
 
 mod intra_doc_links;
 
+use std::ffi::OsStr;
+
 use pulldown_cmark::{BrokenLink, CowStr, Event, InlineStr, LinkType, Options, Parser, Tag};
 use pulldown_cmark_to_cmark::{cmark_resume_with_options, Options as CMarkOptions};
 use stdx::format_to;
@@ -127,7 +129,11 @@ pub(crate) fn remove_links(markdown: &str) -> String {
 //
 // | VS Code | **rust-analyzer: Open Docs**
 // |===
-pub(crate) fn external_docs(db: &RootDatabase, position: &FilePosition) -> DocumentationLinks {
+pub(crate) fn external_docs(
+    db: &RootDatabase,
+    position: &FilePosition,
+    target_dir: Option<&OsStr>,
+) -> DocumentationLinks {
     let sema = &Semantics::new(db);
     let file = sema.parse(position.file_id).syntax().clone();
     let token = pick_best_token(file.token_at_offset(position.offset), |kind| match kind {
@@ -158,7 +164,7 @@ pub(crate) fn external_docs(db: &RootDatabase, position: &FilePosition) -> Docum
         }
     };
 
-    return get_doc_links(db, definition);
+    return get_doc_links(db, definition, target_dir);
 }
 
 /// Extracts all links from a given markdown text returning the definition text range, link-text
@@ -316,10 +322,14 @@ fn broken_link_clone_cb(link: BrokenLink<'_>) -> Option<(CowStr<'_>, CowStr<'_>)
 //
 // This should cease to be a problem if RFC2988 (Stable Rustdoc URLs) is implemented
 // https://github.com/rust-lang/rfcs/pull/2988
-fn get_doc_links(db: &RootDatabase, def: Definition) -> DocumentationLinks {
+fn get_doc_links(
+    db: &RootDatabase,
+    def: Definition,
+    target_dir: Option<&OsStr>,
+) -> DocumentationLinks {
     let Some((target, file, frag)) = filename_and_frag_for_def(db, def) else { return Default::default(); };
 
-    let (mut web_url, mut local_url) = get_doc_base_urls(db, target);
+    let (mut web_url, mut local_url) = get_doc_base_urls(db, target, target_dir);
 
     if let Some(path) = mod_path_of_def(db, target) {
         web_url = join_url(web_url, &path);
@@ -355,7 +365,7 @@ fn rewrite_intra_doc_link(
     let (link, ns) = parse_intra_doc_link(target);
 
     let resolved = resolve_doc_path_for_def(db, def, link, ns)?;
-    let mut url = get_doc_base_urls(db, resolved).0?;
+    let mut url = get_doc_base_urls(db, resolved, None).0?;
 
     let (_, file, frag) = filename_and_frag_for_def(db, resolved)?;
     if let Some(path) = mod_path_of_def(db, resolved) {
@@ -374,7 +384,7 @@ fn rewrite_url_link(db: &RootDatabase, def: Definition, target: &str) -> Option<
         return None;
     }
 
-    let mut url = get_doc_base_urls(db, def).0?;
+    let mut url = get_doc_base_urls(db, def, None).0?;
     let (def, file, frag) = filename_and_frag_for_def(db, def)?;
 
     if let Some(path) = mod_path_of_def(db, def) {
@@ -450,14 +460,14 @@ fn map_links<'e>(
 /// https://doc.rust-lang.org/std/iter/trait.Iterator.html#tymethod.next
 /// ^^^^^^^^^^^^^^^^^^^^^^^^^^
 /// ```
-fn get_doc_base_urls(db: &RootDatabase, def: Definition) -> (Option<Url>, Option<Url>) {
-    // TODO: get this is from `CargoWorkspace`
-    // TODO: get `CargoWorkspace` from `db`
-    let target_path = "file:///project/root/target";
-    let target_path = Url::parse(target_path).ok();
-    let local_doc_path = target_path.and_then(|url| url.join("doc").ok());
-    debug_assert!(local_doc_path.is_some(), "failed to parse local doc path");
-
+fn get_doc_base_urls(
+    db: &RootDatabase,
+    def: Definition,
+    target_dir: Option<&OsStr>,
+) -> (Option<Url>, Option<Url>) {
+    let local_doc_path = target_dir
+        .and_then(|it| Url::from_directory_path(it).ok())
+        .and_then(|it| it.join("doc").ok());
     // special case base url of `BuiltinType` to core
     // https://github.com/rust-lang/rust-analyzer/issues/12250
     if let Definition::BuiltinType(..) = def {
@@ -465,8 +475,8 @@ fn get_doc_base_urls(db: &RootDatabase, def: Definition) -> (Option<Url>, Option
         return (weblink, local_doc_path);
     };
 
-    let Some(krate) = def.krate(db) else { return Default::default() };
-    let Some(display_name) = krate.display_name(db) else { return Default::default() };
+    let Some(krate) = def.krate(db) else { return (None, local_doc_path) };
+    let Some(display_name) = krate.display_name(db) else { return (None, local_doc_path) };
     let crate_data = &db.crate_graph()[krate.into()];
     let channel = crate_data.channel.map_or("nightly", ReleaseChannel::as_str);
     let (web_base, local_base) = match &crate_data.origin {

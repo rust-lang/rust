@@ -1539,7 +1539,13 @@ pub(crate) fn handle_open_docs(
     let _p = profile::span("handle_open_docs");
     let position = from_proto::file_position(&snap, params)?;
 
-    let Ok(remote_urls) = snap.analysis.external_docs(position) else { return Ok((None, None)); };
+    let cargo = match snap.workspaces.get(0) {
+        Some(ProjectWorkspace::Cargo { cargo, .. }) => Some(cargo),
+        _ => None,
+    };
+    let target_dir =
+        cargo.and_then(|cargo| Some(cargo.target_directory())).and_then(|p| Some(p.as_os_str()));
+    let Ok(remote_urls) = snap.analysis.external_docs(position, target_dir) else { return Ok((None, None)); };
 
     let web_url = remote_urls.web_url.and_then(|it| Url::parse(&it).ok());
     let local_url = remote_urls.local_url.and_then(|it| Url::parse(&it).ok());

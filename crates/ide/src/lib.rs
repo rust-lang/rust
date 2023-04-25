@@ -61,7 +61,7 @@ mod view_item_tree;
 mod shuffle_crate_graph;
 mod fetch_crates;
 
-use std::sync::Arc;
+use std::{ffi::OsStr, sync::Arc};
 
 use cfg::CfgOptions;
 use fetch_crates::CrateInfo;
@@ -471,8 +471,9 @@ impl Analysis {
     pub fn external_docs(
         &self,
         position: FilePosition,
+        target_dir: Option<&OsStr>,
     ) -> Cancellable<doc_links::DocumentationLinks> {
-        self.with_db(|db| doc_links::external_docs(db, &position))
+        self.with_db(|db| doc_links::external_docs(db, &position, target_dir))
     }
 
     /// Computes parameter information at the given position.
