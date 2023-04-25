@@ -114,13 +114,16 @@ impl CommandEnv {
 ///
 /// See [`Command::capture_envs`][crate::process::Command::capture_envs] documentation for more.
 pub struct CapturedEnvs {
-    iter: crate::collections::btree_map::IntoIter<OsString, OsString>,
+    iter: crate::collections::btree_map::IntoIter<EnvKey, OsString>,
 }
+
 impl Iterator for CapturedEnvs {
     type Item = (OsString, OsString);
-    fn next(&mut self) -> Option<(OsString, OsString)> {
-        self.iter.next()
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next().into()
     }
+
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
