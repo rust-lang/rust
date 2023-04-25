@@ -60,6 +60,7 @@
 #![feature(const_option)]
 #![feature(trait_alias)]
 #![feature(ptr_alignment_type)]
+#![feature(macro_metavar_expr)]
 #![recursion_limit = "512"]
 #![allow(rustc::potential_query_instability)]
 
