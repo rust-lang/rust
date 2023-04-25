@@ -481,7 +481,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // For the purposes of this function, we hope that it is a `struct` type, and that our current `expr` is a literal of
         // that struct type.
         let impl_trait_self_ref = if self.tcx.is_trait_alias(obligation.impl_or_alias_def_id) {
-            self.tcx.mk_trait_ref(
+            ty::TraitRef::new(
+                self.tcx,
                 obligation.impl_or_alias_def_id,
                 ty::InternalSubsts::identity_for_item(self.tcx, obligation.impl_or_alias_def_id),
             )

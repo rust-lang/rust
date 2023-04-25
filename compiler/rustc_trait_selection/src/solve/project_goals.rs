@@ -274,8 +274,9 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                         .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
                 }
             };
-        let output_is_sized_pred = tupled_inputs_and_output
-            .map_bound(|(_, output)| tcx.at(DUMMY_SP).mk_trait_ref(LangItem::Sized, [output]));
+        let output_is_sized_pred = tupled_inputs_and_output.map_bound(|(_, output)| {
+            ty::TraitRef::from_lang_item(tcx.at(DUMMY_SP), LangItem::Sized, [output])
+        });
 
         let pred = tupled_inputs_and_output
             .map_bound(|(inputs, output)| ty::ProjectionPredicate {
@@ -333,7 +334,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
 
                 ty::Alias(_, _) | ty::Param(_) | ty::Placeholder(..) => {
                     // FIXME(ptr_metadata): It would also be possible to return a `Ok(Ambig)` with no constraints.
-                    let sized_predicate = ty::Binder::dummy(tcx.at(DUMMY_SP).mk_trait_ref(
+                    let sized_predicate = ty::Binder::dummy(ty::TraitRef::from_lang_item(
+                        tcx.at(DUMMY_SP),
                         LangItem::Sized,
                         [ty::GenericArg::from(goal.predicate.self_ty())],
                     ));

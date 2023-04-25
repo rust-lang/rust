@@ -1319,7 +1319,7 @@ fn assemble_candidate_for_impl_trait_in_trait<'cx, 'tcx>(
         let trait_substs =
             obligation.predicate.substs.truncate_to(tcx, tcx.generics_of(trait_def_id));
         // FIXME(named-returns): Binders
-        let trait_predicate = ty::Binder::dummy(tcx.mk_trait_ref(trait_def_id, trait_substs));
+        let trait_predicate = ty::Binder::dummy(ty::TraitRef::new(tcx, trait_def_id, trait_substs));
 
         let _ = selcx.infcx.commit_if_ok(|_| {
             match selcx.select(&obligation.with(tcx, trait_predicate)) {
@@ -1683,7 +1683,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                                 &obligation.with(
                                     selcx.tcx(),
                                     ty::Binder::dummy(
-                                        selcx.tcx().at(obligation.cause.span()).mk_trait_ref(LangItem::Sized, [self_ty]),
+                                        ty::TraitRef::from_lang_item(selcx.tcx().at(obligation.cause.span()), LangItem::Sized, [self_ty]),
                                     )
                                     .without_const(),
                                 ),
@@ -1948,9 +1948,11 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
             )
         });
         if check_is_sized {
-            let sized_predicate = ty::Binder::dummy(
-                tcx.at(obligation.cause.span()).mk_trait_ref(LangItem::Sized, [self_ty]),
-            )
+            let sized_predicate = ty::Binder::dummy(ty::TraitRef::from_lang_item(
+                tcx.at(obligation.cause.span()),
+                LangItem::Sized,
+                [self_ty],
+            ))
             .without_const();
             obligations.push(obligation.with(tcx, sized_predicate));
         }

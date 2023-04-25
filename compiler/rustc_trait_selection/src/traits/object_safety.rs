@@ -769,9 +769,11 @@ fn receiver_is_dispatchable<'tcx>(
         let param_env = tcx.param_env(method.def_id);
 
         // Self: Unsize<U>
-        let unsize_predicate = ty::Binder::dummy(
-            tcx.mk_trait_ref(unsize_did, [tcx.types.self_param, unsized_self_ty]),
-        )
+        let unsize_predicate = ty::Binder::dummy(ty::TraitRef::new(
+            tcx,
+            unsize_did,
+            [tcx.types.self_param, unsized_self_ty],
+        ))
         .without_const()
         .to_predicate(tcx);
 
@@ -782,7 +784,7 @@ fn receiver_is_dispatchable<'tcx>(
                 if param.index == 0 { unsized_self_ty.into() } else { tcx.mk_param_from_def(param) }
             });
 
-            ty::Binder::dummy(tcx.mk_trait_ref(trait_def_id, substs)).to_predicate(tcx)
+            ty::Binder::dummy(ty::TraitRef::new(tcx, trait_def_id, substs)).to_predicate(tcx)
         };
 
         let caller_bounds =
@@ -797,9 +799,11 @@ fn receiver_is_dispatchable<'tcx>(
 
     // Receiver: DispatchFromDyn<Receiver[Self => U]>
     let obligation = {
-        let predicate = ty::Binder::dummy(
-            tcx.mk_trait_ref(dispatch_from_dyn_did, [receiver_ty, unsized_receiver_ty]),
-        );
+        let predicate = ty::Binder::dummy(ty::TraitRef::new(
+            tcx,
+            dispatch_from_dyn_did,
+            [receiver_ty, unsized_receiver_ty],
+        ));
 
         Obligation::new(tcx, ObligationCause::dummy(), param_env, predicate)
     };

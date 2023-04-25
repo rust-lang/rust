@@ -262,7 +262,7 @@ pub fn closure_trait_ref_and_return_type<'tcx>(
         TupleArgumentsFlag::No => sig.skip_binder().inputs()[0],
         TupleArgumentsFlag::Yes => tcx.mk_tup(sig.skip_binder().inputs()),
     };
-    let trait_ref = tcx.mk_trait_ref(fn_trait_def_id, [self_ty, arguments_tuple]);
+    let trait_ref = ty::TraitRef::new(tcx, fn_trait_def_id, [self_ty, arguments_tuple]);
     sig.map_bound(|sig| (trait_ref, sig.output()))
 }
 
@@ -273,7 +273,7 @@ pub fn generator_trait_ref_and_outputs<'tcx>(
     sig: ty::PolyGenSig<'tcx>,
 ) -> ty::Binder<'tcx, (ty::TraitRef<'tcx>, Ty<'tcx>, Ty<'tcx>)> {
     assert!(!self_ty.has_escaping_bound_vars());
-    let trait_ref = tcx.mk_trait_ref(fn_trait_def_id, [self_ty, sig.skip_binder().resume_ty]);
+    let trait_ref = ty::TraitRef::new(tcx, fn_trait_def_id, [self_ty, sig.skip_binder().resume_ty]);
     sig.map_bound(|sig| (trait_ref, sig.yield_ty, sig.return_ty))
 }
 
@@ -284,7 +284,7 @@ pub fn future_trait_ref_and_outputs<'tcx>(
     sig: ty::PolyGenSig<'tcx>,
 ) -> ty::Binder<'tcx, (ty::TraitRef<'tcx>, Ty<'tcx>)> {
     assert!(!self_ty.has_escaping_bound_vars());
-    let trait_ref = tcx.mk_trait_ref(fn_trait_def_id, [self_ty]);
+    let trait_ref = ty::TraitRef::new(tcx, fn_trait_def_id, [self_ty]);
     sig.map_bound(|sig| (trait_ref, sig.return_ty))
 }
 

@@ -66,7 +66,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         params: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> traits::EvaluationResult {
-        let trait_ref = self.tcx.mk_trait_ref(trait_def_id, params);
+        let trait_ref = ty::TraitRef::new(self.tcx, trait_def_id, params);
 
         let obligation = traits::Obligation {
             cause: traits::ObligationCause::dummy(),

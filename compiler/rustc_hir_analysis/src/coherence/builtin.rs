@@ -340,7 +340,8 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
                         tcx,
                         cause.clone(),
                         param_env,
-                        ty::Binder::dummy(tcx.mk_trait_ref(
+                        ty::Binder::dummy(ty::TraitRef::new(
+                            tcx,
                             dispatch_from_dyn_trait,
                             [field.ty(tcx, substs_a), field.ty(tcx, substs_b)],
                         )),
@@ -579,8 +580,12 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) -> Coe
     // Register an obligation for `A: Trait<B>`.
     let ocx = ObligationCtxt::new(&infcx);
     let cause = traits::ObligationCause::misc(span, impl_did);
-    let obligation =
-        Obligation::new(tcx, cause, param_env, tcx.mk_trait_ref(trait_def_id, [source, target]));
+    let obligation = Obligation::new(
+        tcx,
+        cause,
+        param_env,
+        ty::TraitRef::new(tcx, trait_def_id, [source, target]),
+    );
     ocx.register_obligation(obligation);
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {

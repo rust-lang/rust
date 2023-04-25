@@ -169,8 +169,11 @@ pub trait Printer<'tcx>: Sized {
                 self.path_append(
                     |cx: Self| {
                         if trait_qualify_parent {
-                            let trait_ref =
-                                cx.tcx().mk_trait_ref(parent_def_id, parent_substs.iter().copied());
+                            let trait_ref = ty::TraitRef::new(
+                                cx.tcx(),
+                                parent_def_id,
+                                parent_substs.iter().copied(),
+                            );
                             cx.path_qualified(trait_ref.self_ty(), Some(trait_ref))
                         } else {
                             cx.print_def_path(parent_def_id, parent_substs)

@@ -97,7 +97,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         def_id: DefId,
     ) {
         let tcx = self.infcx.tcx;
-        let trait_ref = tcx.mk_trait_ref(def_id, [ty]);
+        let trait_ref = ty::TraitRef::new(tcx, def_id, [ty]);
         self.register_obligation(Obligation {
             cause,
             recursion_depth: 0,

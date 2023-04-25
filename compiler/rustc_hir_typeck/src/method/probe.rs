@@ -954,7 +954,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     ) {
         debug!("assemble_extension_candidates_for_trait(trait_def_id={:?})", trait_def_id);
         let trait_substs = self.fresh_item_substs(trait_def_id);
-        let trait_ref = self.tcx.mk_trait_ref(trait_def_id, trait_substs);
+        let trait_ref = ty::TraitRef::new(self.tcx, trait_def_id, trait_substs);
 
         if self.tcx.is_trait_alias(trait_def_id) {
             // For trait aliases, recursively assume all explicitly named traits are relevant

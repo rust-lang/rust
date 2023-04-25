@@ -242,12 +242,13 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                         .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
                 }
             };
-        let output_is_sized_pred = tupled_inputs_and_output
-            .map_bound(|(_, output)| tcx.at(DUMMY_SP).mk_trait_ref(LangItem::Sized, [output]));
+        let output_is_sized_pred = tupled_inputs_and_output.map_bound(|(_, output)| {
+            ty::TraitRef::from_lang_item(tcx.at(DUMMY_SP), LangItem::Sized, [output])
+        });
 
         let pred = tupled_inputs_and_output
             .map_bound(|(inputs, _)| {
-                tcx.mk_trait_ref(goal.predicate.def_id(), [goal.predicate.self_ty(), inputs])
+                ty::TraitRef::new(tcx, goal.predicate.def_id(), [goal.predicate.self_ty(), inputs])
             })
             .to_predicate(tcx);
         // A built-in `Fn` impl only holds if the output is sized.
@@ -312,9 +313,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         Self::consider_implied_clause(
             ecx,
             goal,
-            ty::Binder::dummy(
-                tcx.mk_trait_ref(goal.predicate.def_id(), [self_ty, generator.resume_ty()]),
-            )
+            ty::Binder::dummy(ty::TraitRef::new(
+                tcx,
+                goal.predicate.def_id(),
+                [self_ty, generator.resume_ty()],
+            ))
             .to_predicate(tcx),
             // Technically, we need to check that the generator types are Sized,
             // but that's already proven by the generator being WF.
@@ -360,9 +363,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                         data.iter().map(|pred| goal.with(tcx, pred.with_self_ty(tcx, a_ty))),
                     );
                     // The type must be Sized to be unsized.
-                    ecx.add_goal(
-                        goal.with(tcx, ty::Binder::dummy(tcx.mk_trait_ref(sized_def_id, [a_ty]))),
-                    );
+                    ecx.add_goal(goal.with(
+                        tcx,
+                        ty::Binder::dummy(ty::TraitRef::new(tcx, sized_def_id, [a_ty])),
+                    ));
                     // The type must outlive the lifetime of the `dyn` we're unsizing into.
                     ecx.add_goal(
                         goal.with(tcx, ty::Binder::dummy(ty::OutlivesPredicate(a_ty, region))),
@@ -411,9 +415,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                     ecx.eq(goal.param_env, unsized_a_ty, b_ty)?;
                     ecx.add_goal(goal.with(
                         tcx,
-                        ty::Binder::dummy(
-                            tcx.mk_trait_ref(goal.predicate.def_id(), [a_tail_ty, b_tail_ty]),
-                        ),
+                        ty::Binder::dummy(ty::TraitRef::new(
+                            tcx,
+                            goal.predicate.def_id(),
+                            [a_tail_ty, b_tail_ty],
+                        )),
                     ));
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }
@@ -432,9 +438,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                     // Similar to ADTs, require that the rest of the fields are equal.
                     ecx.add_goal(goal.with(
                         tcx,
-                        ty::Binder::dummy(
-                            tcx.mk_trait_ref(goal.predicate.def_id(), [*a_last_ty, *b_last_ty]),
-                        ),
+                        ty::Binder::dummy(ty::TraitRef::new(
+                            tcx,
+                            goal.predicate.def_id(),
+                            [*a_last_ty, *b_last_ty],
+                        )),
                     ));
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }

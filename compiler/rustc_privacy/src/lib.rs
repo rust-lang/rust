@@ -127,18 +127,19 @@ where
 
     fn visit_projection_ty(&mut self, projection: ty::AliasTy<'tcx>) -> ControlFlow<V::BreakTy> {
         let tcx = self.def_id_visitor.tcx();
-        let (trait_ref, assoc_substs) =
-            if tcx.def_kind(projection.def_id) != DefKind::ImplTraitPlaceholder {
-                projection.trait_ref_and_own_substs(tcx)
-            } else {
-                // HACK(RPITIT): Remove this when RPITITs are lowered to regular assoc tys
-                let def_id = tcx.impl_trait_in_trait_parent_fn(projection.def_id);
-                let trait_generics = tcx.generics_of(def_id);
-                (
-                    tcx.mk_trait_ref(def_id, projection.substs.truncate_to(tcx, trait_generics)),
-                    &projection.substs[trait_generics.count()..],
-                )
-            };
+        let (trait_ref, assoc_substs) = if tcx.def_kind(projection.def_id)
+            != DefKind::ImplTraitPlaceholder
+        {
+            projection.trait_ref_and_own_substs(tcx)
+        } else {
+            // HACK(RPITIT): Remove this when RPITITs are lowered to regular assoc tys
+            let def_id = tcx.impl_trait_in_trait_parent_fn(projection.def_id);
+            let trait_generics = tcx.generics_of(def_id);
+            (
+                ty::TraitRef::new(tcx, def_id, projection.substs.truncate_to(tcx, trait_generics)),
+                &projection.substs[trait_generics.count()..],
+            )
+        };
         self.visit_trait(trait_ref)?;
         if self.def_id_visitor.shallow() {
             ControlFlow::Continue(())

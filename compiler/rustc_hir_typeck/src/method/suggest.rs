@@ -72,7 +72,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.autoderef(span, ty).any(|(ty, _)| {
                     info!("check deref {:?} impl FnOnce", ty);
                     self.probe(|_| {
-                        let trait_ref = tcx.mk_trait_ref(
+                        let trait_ref = ty::TraitRef::new(
+                            tcx,
                             fn_once,
                             [
                                 ty,

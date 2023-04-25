@@ -359,7 +359,7 @@ pub(crate) fn vtable_trait_upcasting_coercion_new_vptr_slot<'tcx>(
     // this has been typecked-before, so diagnostics is not really needed.
     let unsize_trait_did = tcx.require_lang_item(LangItem::Unsize, None);
 
-    let trait_ref = tcx.mk_trait_ref(unsize_trait_did, [source, target]);
+    let trait_ref = ty::TraitRef::new(tcx, unsize_trait_did, [source, target]);
 
     match tcx.codegen_select_candidate((ty::ParamEnv::reveal_all(), ty::Binder::dummy(trait_ref))) {
         Ok(ImplSource::TraitUpcasting(implsrc_traitcasting)) => {
