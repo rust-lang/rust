@@ -10,6 +10,7 @@ pushd rust
 
 command -v rg >/dev/null 2>&1 || cargo install ripgrep
 
+# FIXME add needs-asm-support to all tests in tests/ui/asm
 rm -r tests/ui/{unsized-locals/,lto/,linkage*} || true
 for test in $(rg --files-with-matches "lto|// needs-asm-support|// needs-unwind" tests/{codegen-units,ui,incremental}); do
   rm $test
@@ -27,6 +28,7 @@ rm tests/ui/parser/unclosed-delimiter-in-dep.rs # submodule contains //~ERROR
 # ================
 
 # requires stack unwinding
+# FIXME add needs-unwind to these tests
 rm tests/incremental/change_crate_dep_kind.rs
 rm tests/incremental/issue-80691-bad-eval-cache.rs # -Cpanic=abort causes abort instead of exit(101)
 rm -r tests/run-make/c-unwind-abi-catch-lib-panic
