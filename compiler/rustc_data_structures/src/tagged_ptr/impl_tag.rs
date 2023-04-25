@@ -100,6 +100,7 @@ macro_rules! impl_tag {
                 )*
             ]);
 
+            #[inline]
             fn into_usize(self) -> usize {
                 // This forbids use of repeating patterns (`Enum::V`&`Enum::V`, etc)
                 // (or at least it should, see <https://github.com/rust-lang/rust/issues/110613>)
@@ -112,6 +113,7 @@ macro_rules! impl_tag {
                 }
             }
 
+            #[inline]
             unsafe fn from_usize(tag: usize) -> Self {
                 match tag {
                     $(
