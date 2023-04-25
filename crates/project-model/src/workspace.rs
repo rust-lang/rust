@@ -2,7 +2,12 @@
 //! metadata` or `rust-project.json`) into representation stored in the salsa
 //! database -- `CrateGraph`.
 
-use std::{collections::VecDeque, fmt, fs, process::Command, sync::Arc};
+use std::{
+    collections::{hash_map::Entry, VecDeque},
+    fmt, fs,
+    process::Command,
+    sync::Arc,
+};
 
 use anyhow::{format_err, Context, Result};
 use base_db::{
@@ -844,12 +849,12 @@ fn cargo_to_crate_graph(
         None => (SysrootPublicDeps::default(), None),
     };
 
-    let cfg_options = {
+    let cfg_options = forced_cfg.clone().unwrap_or_else(|| {
         let mut cfg_options = CfgOptions::default();
         cfg_options.extend(rustc_cfg);
         cfg_options.insert_atom("debug_assertions".into());
         cfg_options
-    };
+    });
 
     // Mapping of a package to its library target
     let mut pkg_to_lib_crate = FxHashMap::default();
@@ -861,32 +866,6 @@ fn cargo_to_crate_graph(
     for pkg in cargo.packages() {
         has_private |= cargo[pkg].metadata.rustc_private;
 
-        let cfg_options = forced_cfg.clone().unwrap_or_else(|| {
-            let mut cfg_options = cfg_options.clone();
-
-            // Add test cfg for local crates
-            if cargo[pkg].is_local {
-                cfg_options.insert_atom("test".into());
-            }
-
-            let overrides = match override_cfg {
-                CfgOverrides::Wildcard(cfg_diff) => Some(cfg_diff),
-                CfgOverrides::Selective(cfg_overrides) => cfg_overrides.get(&cargo[pkg].name),
-            };
-
-            if let Some(overrides) = overrides {
-                // FIXME: this is sort of a hack to deal with #![cfg(not(test))] vanishing such as seen
-                // in ed25519_dalek (#7243), and libcore (#9203) (although you only hit that one while
-                // working on rust-lang/rust as that's the only time it appears outside sysroot).
-                //
-                // A more ideal solution might be to reanalyze crates based on where the cursor is and
-                // figure out the set of cfgs that would have to apply to make it active.
-
-                cfg_options.apply_diff(overrides.clone());
-            };
-            cfg_options
-        });
-
         let mut lib_tgt = None;
         for &tgt in cargo[pkg].targets.iter() {
             if cargo[tgt].kind != TargetKind::Lib && !cargo[pkg].is_member {
@@ -897,7 +876,7 @@ fn cargo_to_crate_graph(
                 // https://github.com/rust-lang/rust-analyzer/issues/11300
                 continue;
             }
-            let Some(file_id) =  load(&cargo[tgt].root) else { continue };
+            let Some(file_id) = load(&cargo[tgt].root) else { continue };
 
             let crate_id = add_target_crate_root(
                 crate_graph,
@@ -925,15 +904,19 @@ fn cargo_to_crate_graph(
             pkg_crates.entry(pkg).or_insert_with(Vec::new).push((crate_id, cargo[tgt].kind));
         }
 
+        let Some(targets) = pkg_crates.get(&pkg) else { continue };
         // Set deps to the core, std and to the lib target of the current package
-        for &(from, kind) in pkg_crates.get(&pkg).into_iter().flatten() {
+        for &(from, kind) in targets {
             // Add sysroot deps first so that a lib target named `core` etc. can overwrite them.
             public_deps.add_to_crate_graph(crate_graph, from);
 
             // Add dep edge of all targets to the package's lib target
             if let Some((to, name)) = lib_tgt.clone() {
-                if to != from && kind != TargetKind::BuildScript {
-                    // (build script can not depend on its library target)
+                if to != from {
+                    if kind == TargetKind::BuildScript {
+                        // build script can not depend on its library target
+                        continue;
+                    }
 
                     // For root projects with dashes in their name,
                     // cargo metadata does not do any normalization,
@@ -941,6 +924,47 @@ fn cargo_to_crate_graph(
                     let name = CrateName::normalize_dashes(&name);
                     add_dep(crate_graph, from, name, to);
                 }
+            }
+        }
+    }
+
+    // We now need to duplicate workspace members that are used as dev-dependencies to prevent
+    // cycles from forming.
+
+    // Map from crate id to it's dev-dependency clone id
+    let mut test_dupes = FxHashMap::default();
+    let mut work = vec![];
+
+    // Get all dependencies of the workspace members that are used as dev-dependencies
+    for pkg in cargo.packages() {
+        for dep in &cargo[pkg].dependencies {
+            if dep.kind == DepKind::Dev && cargo[dep.pkg].is_member {
+                work.push(dep.pkg);
+            }
+        }
+    }
+    while let Some(pkg) = work.pop() {
+        let Some(&to) = pkg_to_lib_crate.get(&pkg) else { continue };
+        match test_dupes.entry(to) {
+            Entry::Occupied(_) => continue,
+            Entry::Vacant(v) => {
+                for dep in &cargo[pkg].dependencies {
+                    if dep.kind == DepKind::Normal && cargo[dep.pkg].is_member {
+                        work.push(dep.pkg);
+                    }
+                }
+                v.insert({
+                    let duped = crate_graph.duplicate(to);
+                    tracing::info!(
+                        "duplicating workspace crate {:?} as it is being used as a dev-dependency: {to:?} -> {duped:?}",
+                        crate_graph[to].display_name
+                    );
+                    if let Some(proc_macro) = proc_macros.get(&to).cloned() {
+                        proc_macros.insert(duped, proc_macro);
+                    }
+                    crate_graph[duped].cfg_options.insert_atom("test".into());
+                    duped
+                });
             }
         }
     }
@@ -958,12 +982,71 @@ fn cargo_to_crate_graph(
                 if (dep.kind == DepKind::Build) != (kind == TargetKind::BuildScript) {
                     continue;
                 }
+                add_dep(
+                    crate_graph,
+                    from,
+                    name.clone(),
+                    if dep.kind == DepKind::Dev {
+                        // point to the test enabled duplicate for dev-dependencies
+                        test_dupes.get(&to).copied().unwrap_or(to)
+                    } else {
+                        to
+                    },
+                );
 
-                add_dep(crate_graph, from, name.clone(), to)
+                if dep.kind == DepKind::Normal && cargo[dep.pkg].is_member {
+                    // Also apply the dependency as a test enabled dependency to the test duplicate
+                    if let Some(&dupe) = test_dupes.get(&from) {
+                        let to = test_dupes.get(&to).copied().unwrap_or_else(|| {
+                            panic!(
+                                "dependency of a dev dependency did not get duplicated! {:?} {:?}",
+                                crate_graph[to].display_name, crate_graph[from].display_name,
+                            )
+                        });
+                        add_dep(crate_graph, dupe, name.clone(), to);
+                    }
+                }
             }
         }
     }
 
+    for (&pkg, targets) in &pkg_crates {
+        for &(krate, _) in targets {
+            if let Some(&dupe) = test_dupes.get(&krate) {
+                tracing::info!(
+                    "{krate:?} {:?} {dupe:?} {:?}",
+                    crate_graph[krate].cfg_options,
+                    crate_graph[dupe].cfg_options
+                );
+                // if the crate got duped as a dev-dep the dupe already has test set
+                continue;
+            }
+            let cfg_options = &mut crate_graph[krate].cfg_options;
+
+            // Add test cfg for local crates
+            if cargo[pkg].is_local {
+                cfg_options.insert_atom("test".into());
+            }
+
+            let overrides = match override_cfg {
+                CfgOverrides::Wildcard(cfg_diff) => Some(cfg_diff),
+                CfgOverrides::Selective(cfg_overrides) => cfg_overrides.get(&cargo[pkg].name),
+            };
+
+            if let Some(overrides) = overrides {
+                // FIXME: this is sort of a hack to deal with #![cfg(not(test))] vanishing such as seen
+                // in ed25519_dalek (#7243), and libcore (#9203) (although you only hit that one while
+                // working on rust-lang/rust as that's the only time it appears outside sysroot).
+                //
+                // A more ideal solution might be to reanalyze crates based on where the cursor is and
+                // figure out the set of cfgs that would have to apply to make it active.
+
+                cfg_options.apply_diff(overrides.clone());
+            };
+        }
+    }
+
+    // FIXME: Handle rustc private crates properly when used as dev-dependencies
     if has_private {
         // If the user provided a path to rustc sources, we add all the rustc_private crates
         // and create dependencies on them for the crates which opt-in to that
@@ -1087,7 +1170,9 @@ fn handle_rustc_crates(
                 continue;
             }
             for dep in &rustc_workspace[pkg].dependencies {
-                queue.push_back(dep.pkg);
+                if dep.kind == DepKind::Normal {
+                    queue.push_back(dep.pkg);
+                }
             }
 
             let mut cfg_options = cfg_options.clone();
@@ -1397,10 +1482,12 @@ fn handle_hack_cargo_workspace(
         .collect()
 }
 
+#[track_caller]
 fn add_dep(graph: &mut CrateGraph, from: CrateId, name: CrateName, to: CrateId) {
     add_dep_inner(graph, from, Dependency::new(name, to))
 }
 
+#[track_caller]
 fn add_dep_with_prelude(
     graph: &mut CrateGraph,
     from: CrateId,
@@ -1411,13 +1498,18 @@ fn add_dep_with_prelude(
     add_dep_inner(graph, from, Dependency::with_prelude(name, to, prelude))
 }
 
+#[track_caller]
 fn add_proc_macro_dep(crate_graph: &mut CrateGraph, from: CrateId, to: CrateId, prelude: bool) {
     add_dep_with_prelude(crate_graph, from, CrateName::new("proc_macro").unwrap(), to, prelude);
 }
 
+#[track_caller]
 fn add_dep_inner(graph: &mut CrateGraph, from: CrateId, dep: Dependency) {
     if let Err(err) = graph.add_dep(from, dep) {
-        tracing::error!("{}", err)
+        if cfg!(test) {
+            panic!("{}", err);
+        }
+        tracing::error!("{}", err);
     }
 }
 

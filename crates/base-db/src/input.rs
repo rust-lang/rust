@@ -417,6 +417,11 @@ impl CrateGraph {
         Ok(())
     }
 
+    pub fn duplicate(&mut self, id: CrateId) -> CrateId {
+        let data = self[id].clone();
+        self.arena.alloc(data)
+    }
+
     pub fn add_dep(
         &mut self,
         from: CrateId,
@@ -609,6 +614,12 @@ impl ops::Index<CrateId> for CrateGraph {
     type Output = CrateData;
     fn index(&self, crate_id: CrateId) -> &CrateData {
         &self.arena[crate_id]
+    }
+}
+
+impl ops::IndexMut<CrateId> for CrateGraph {
+    fn index_mut(&mut self, crate_id: CrateId) -> &mut CrateData {
+        &mut self.arena[crate_id]
     }
 }
 

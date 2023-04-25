@@ -119,7 +119,9 @@ impl SourceToDefCtx<'_, '_> {
     pub(super) fn file_to_def(&self, file: FileId) -> SmallVec<[ModuleId; 1]> {
         let _p = profile::span("SourceBinder::to_module_def");
         let mut mods = SmallVec::new();
-        for &crate_id in self.db.relevant_crates(file).iter() {
+        // HACK: We iterate in reverse so that dev-dependency duplicated crates appear first in this
+        // Most code only deals with one module and we want to prefer the test enabled code where possible
+        for &crate_id in self.db.relevant_crates(file).iter().rev() {
             // FIXME: inner items
             let crate_def_map = self.db.crate_def_map(crate_id);
             mods.extend(
