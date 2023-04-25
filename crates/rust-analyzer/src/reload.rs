@@ -215,13 +215,17 @@ impl GlobalState {
                 let mut i = 0;
                 while i < workspaces.len() {
                     if let Ok(w) = &workspaces[i] {
-                        if let Some(dupe) = workspaces[i + 1..]
+                        let dupes: Vec<_> = workspaces
                             .iter()
-                            .filter_map(|it| it.as_ref().ok())
-                            .position(|ws| ws.eq_ignore_build_data(w))
-                        {
-                            _ = workspaces.remove(dupe);
-                        }
+                            .enumerate()
+                            .skip(i + 1)
+                            .filter_map(|(i, it)| {
+                                it.as_ref().ok().filter(|ws| ws.eq_ignore_build_data(w)).map(|_| i)
+                            })
+                            .collect();
+                        dupes.into_iter().rev().for_each(|d| {
+                            _ = workspaces.remove(d);
+                        });
                     }
                     i += 1;
                 }

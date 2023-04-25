@@ -102,6 +102,7 @@ pub trait ExpandDatabase: SourceDatabase {
     #[salsa::transparent]
     fn parse_or_expand_with_err(&self, file_id: HirFileId) -> ExpandResult<Parse<SyntaxNode>>;
     /// Implementation for the macro case.
+    // This query is LRU cached
     fn parse_macro_expansion(
         &self,
         macro_file: MacroFile,
@@ -130,11 +131,12 @@ pub trait ExpandDatabase: SourceDatabase {
     fn macro_def(&self, id: MacroDefId) -> Result<Arc<TokenExpander>, mbe::ParseError>;
 
     /// Expand macro call to a token tree.
+    // This query is LRU cached
     fn macro_expand(&self, macro_call: MacroCallId) -> ExpandResult<Arc<tt::Subtree>>;
     /// Special case of the previous query for procedural macros. We can't LRU
     /// proc macros, since they are not deterministic in general, and
-    /// non-determinism breaks salsa in a very, very, very bad way. @edwin0cheng
-    /// heroically debugged this once!
+    /// non-determinism breaks salsa in a very, very, very bad way.
+    /// @edwin0cheng heroically debugged this once!
     fn expand_proc_macro(&self, call: MacroCallId) -> ExpandResult<tt::Subtree>;
     /// Firewall query that returns the errors from the `parse_macro_expansion` query.
     fn parse_macro_expansion_error(
