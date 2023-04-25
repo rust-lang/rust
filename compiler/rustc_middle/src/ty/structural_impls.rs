@@ -95,7 +95,7 @@ impl<'tcx> fmt::Debug for ty::FnSig<'tcx> {
 
 impl<'tcx> fmt::Debug for ty::ConstVid<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "_#{}c", self.index)
+        write!(f, "?{}c", self.index)
     }
 }
 

@@ -1,9 +1,9 @@
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 
-// The goal is to get an unevaluated const `ct` with a `Ty::Infer(TyVar(_#1t)` subst.
+// The goal is to get an unevaluated const `ct` with a `Ty::Infer(TyVar(?1t)` subst.
 //
-// If we are then able to infer `ty::Infer(TyVar(_#1t) := Ty<ct>` we introduced an
+// If we are then able to infer `ty::Infer(TyVar(?1t) := Ty<ct>` we introduced an
 // artificial inference cycle.
 struct Foo<const N: usize>;
 
@@ -20,8 +20,8 @@ impl<T> Bind<T> for Foo<{ 6 + 1 }> {
 
 fn main() {
     let (mut t, foo) = Foo::bind();
-    // `t` is `ty::Infer(TyVar(_#1t))`
-    // `foo` contains `ty::Infer(TyVar(_#1t))` in its substs
+    // `t` is `ty::Infer(TyVar(?1t))`
+    // `foo` contains `ty::Infer(TyVar(?1t))` in its substs
     t = foo;
     //~^ ERROR mismatched types
     //~| NOTE cyclic type

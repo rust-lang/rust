@@ -6,13 +6,13 @@ LL |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y
    |
    = note: defining type: supply::{closure#0} with closure substs [
                i16,
-               for<Region(BrAnon(None)), Region(BrAnon(None)), Region(BrAnon(None)), Region(BrAnon(None)), Region(BrAnon(None)), Region(BrAnon(None))> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(None) }) std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(None) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 2, kind: BrAnon(None) }) std::cell::Cell<&'_#2r &ReLateBound(DebruijnIndex(0), BoundRegion { var: 3, kind: BrAnon(None) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 4, kind: BrAnon(None) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(None) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 5, kind: BrAnon(None) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 3, kind: BrAnon(None) }) u32>)),
+               for<Region(BrAnon(None)), Region(BrAnon(None)), Region(BrAnon(None)), Region(BrAnon(None)), Region(BrAnon(None)), Region(BrAnon(None))> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(None) }) std::cell::Cell<&'?1 &ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(None) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 2, kind: BrAnon(None) }) std::cell::Cell<&'?2 &ReLateBound(DebruijnIndex(0), BoundRegion { var: 3, kind: BrAnon(None) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 4, kind: BrAnon(None) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(None) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 5, kind: BrAnon(None) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 3, kind: BrAnon(None) }) u32>)),
                (),
            ]
-   = note: late-bound region is '_#3r
-   = note: late-bound region is '_#4r
+   = note: late-bound region is '?3
+   = note: late-bound region is '?4
    = note: number of external vids: 5
-   = note: where '_#1r: '_#0r
+   = note: where '?1: '?0
 
 note: no external requirements
   --> $DIR/propagate-approximated-shorter-to-static-wrong-bound.rs:34:1
@@ -40,7 +40,7 @@ LL | |     });
    | |______`cell_a` escapes the function body here
    |        argument requires that `'a` must outlive `'static`
    |
-   = note: requirement occurs because of the type `Cell<&'_#10r u32>`, which makes the generic argument `&'_#10r u32` invariant
+   = note: requirement occurs because of the type `Cell<&'?10 u32>`, which makes the generic argument `&'?10 u32` invariant
    = note: the struct `Cell<T>` is invariant over the parameter `T`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 

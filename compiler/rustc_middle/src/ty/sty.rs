@@ -1436,7 +1436,7 @@ pub struct ConstVid<'tcx> {
 rustc_index::newtype_index! {
     /// A **region** (lifetime) **v**ariable **ID**.
     #[derive(HashStable)]
-    #[debug_format = "'_#{}r"]
+    #[debug_format = "'?{}"]
     pub struct RegionVid {}
 }
 

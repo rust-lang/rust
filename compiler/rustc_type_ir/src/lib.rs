@@ -537,7 +537,7 @@ pub struct FloatVarValue(pub FloatTy);
 
 rustc_index::newtype_index! {
     /// A **ty**pe **v**ariable **ID**.
-    #[debug_format = "_#{}t"]
+    #[debug_format = "?{}t"]
     pub struct TyVid {}
 }
 
@@ -739,13 +739,13 @@ impl fmt::Debug for FloatVarValue {
 
 impl fmt::Debug for IntVid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "_#{}i", self.index)
+        write!(f, "?{}i", self.index)
     }
 }
 
 impl fmt::Debug for FloatVid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "_#{}f", self.index)
+        write!(f, "?{}f", self.index)
     }
 }
 

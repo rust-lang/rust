@@ -4,15 +4,15 @@ note: external requirements
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^
    |
-   = note: defining type: no_relationships_late::<'_#1r, T>::{closure#0} with closure substs [
+   = note: defining type: no_relationships_late::<'?1, T>::{closure#0} with closure substs [
                i32,
-               extern "rust-call" fn((std::cell::Cell<&'_#2r ()>, T)),
+               extern "rust-call" fn((std::cell::Cell<&'?2 ()>, T)),
                (),
            ]
-   = note: late-bound region is '_#3r
+   = note: late-bound region is '?3
    = note: number of external vids: 4
-   = note: where T: '_#2r
-   = note: where '_#1r: '_#2r
+   = note: where T: '?2
+   = note: where '?1: '?2
 
 note: no external requirements
   --> $DIR/projection-one-region-closure.rs:41:1
@@ -22,7 +22,7 @@ LL | | where
 LL | |     T: Anything<'b>,
    | |____________________^
    |
-   = note: defining type: no_relationships_late::<'_#1r, T>
+   = note: defining type: no_relationships_late::<'?1, T>
 
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/projection-one-region-closure.rs:45:39
@@ -54,14 +54,14 @@ note: external requirements
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^
    |
-   = note: defining type: no_relationships_early::<'_#1r, '_#2r, T>::{closure#0} with closure substs [
+   = note: defining type: no_relationships_early::<'?1, '?2, T>::{closure#0} with closure substs [
                i32,
-               extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T)),
+               extern "rust-call" fn((std::cell::Cell<&'?3 ()>, T)),
                (),
            ]
    = note: number of external vids: 4
-   = note: where T: '_#3r
-   = note: where '_#2r: '_#3r
+   = note: where T: '?3
+   = note: where '?2: '?3
 
 note: no external requirements
   --> $DIR/projection-one-region-closure.rs:51:1
@@ -72,7 +72,7 @@ LL | |     T: Anything<'b>,
 LL | |     'a: 'a,
    | |___________^
    |
-   = note: defining type: no_relationships_early::<'_#1r, '_#2r, T>
+   = note: defining type: no_relationships_early::<'?1, '?2, T>
 
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/projection-one-region-closure.rs:56:39
@@ -104,13 +104,13 @@ note: external requirements
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^
    |
-   = note: defining type: projection_outlives::<'_#1r, '_#2r, T>::{closure#0} with closure substs [
+   = note: defining type: projection_outlives::<'?1, '?2, T>::{closure#0} with closure substs [
                i32,
-               extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T)),
+               extern "rust-call" fn((std::cell::Cell<&'?3 ()>, T)),
                (),
            ]
    = note: number of external vids: 4
-   = note: where <T as Anything<'_#2r>>::AssocType: '_#3r
+   = note: where <T as Anything<'?2>>::AssocType: '?3
 
 note: no external requirements
   --> $DIR/projection-one-region-closure.rs:62:1
@@ -121,7 +121,7 @@ LL | |     T: Anything<'b>,
 LL | |     T::AssocType: 'a,
    | |_____________________^
    |
-   = note: defining type: projection_outlives::<'_#1r, '_#2r, T>
+   = note: defining type: projection_outlives::<'?1, '?2, T>
 
 note: external requirements
   --> $DIR/projection-one-region-closure.rs:80:29
@@ -129,14 +129,14 @@ note: external requirements
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^
    |
-   = note: defining type: elements_outlive::<'_#1r, '_#2r, T>::{closure#0} with closure substs [
+   = note: defining type: elements_outlive::<'?1, '?2, T>::{closure#0} with closure substs [
                i32,
-               extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T)),
+               extern "rust-call" fn((std::cell::Cell<&'?3 ()>, T)),
                (),
            ]
    = note: number of external vids: 4
-   = note: where T: '_#3r
-   = note: where '_#2r: '_#3r
+   = note: where T: '?3
+   = note: where '?2: '?3
 
 note: no external requirements
   --> $DIR/projection-one-region-closure.rs:74:1
@@ -148,7 +148,7 @@ LL | |     T: 'a,
 LL | |     'b: 'a,
    | |___________^
    |
-   = note: defining type: elements_outlive::<'_#1r, '_#2r, T>
+   = note: defining type: elements_outlive::<'?1, '?2, T>
 
 error: aborting due to 4 previous errors
 
