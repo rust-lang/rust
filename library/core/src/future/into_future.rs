@@ -99,6 +99,7 @@ use crate::future::Future;
 /// }
 /// ```
 #[stable(feature = "into_future", since = "1.64.0")]
+#[rustc_diagnostic_item = "IntoFuture"]
 pub trait IntoFuture {
     /// The output that the future will produce on completion.
     #[stable(feature = "into_future", since = "1.64.0")]

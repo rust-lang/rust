@@ -19,6 +19,8 @@ pub enum CallDesugaringKind {
     QuestionFromResidual,
     /// try { ..; x } calls type_of(x)::from_output(x)
     TryBlockFromOutput,
+    /// `.await` calls `IntoFuture::into_future`
+    Await,
 }
 
 impl CallDesugaringKind {
@@ -29,6 +31,7 @@ impl CallDesugaringKind {
                 tcx.require_lang_item(LangItem::Try, None)
             }
             Self::QuestionFromResidual => tcx.get_diagnostic_item(sym::FromResidual).unwrap(),
+            Self::Await => tcx.get_diagnostic_item(sym::IntoFuture).unwrap(),
         }
     }
 }
@@ -129,6 +132,8 @@ pub fn call_kind<'tcx>(
             && fn_call_span.desugaring_kind() == Some(DesugaringKind::TryBlock)
         {
             Some((CallDesugaringKind::TryBlockFromOutput, method_substs.type_at(0)))
+        } else if fn_call_span.is_desugaring(DesugaringKind::Await) {
+            Some((CallDesugaringKind::Await, method_substs.type_at(0)))
         } else {
             None
         };

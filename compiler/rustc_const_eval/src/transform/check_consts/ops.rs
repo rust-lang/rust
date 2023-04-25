@@ -184,6 +184,9 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                     CallDesugaringKind::TryBlockFromOutput => {
                         error!("`try` block cannot convert `{}` to the result in {}s")
                     }
+                    CallDesugaringKind::Await => {
+                        error!("cannot convert `{}` into a future in {}s")
+                    }
                 };
 
                 diag_trait(&mut err, self_ty, kind.trait_def_id(tcx));
