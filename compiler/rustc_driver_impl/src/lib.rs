@@ -51,7 +51,8 @@ use std::cmp::max;
 use std::collections::BTreeMap;
 use std::env;
 use std::ffi::OsString;
-use std::fs;
+use std::fmt;
+use std::fs::{self, File};
 use std::io::{self, IsTerminal, Read, Write};
 use std::panic::{self, catch_unwind};
 use std::path::PathBuf;
@@ -65,6 +66,11 @@ macro do_not_use_print($($t:tt)*) {
     std::compile_error!(
         "Don't use `print` or `println` here, use `safe_print` or `safe_println` instead"
     )
+}
+
+#[allow(unused_macros)]
+macro do_not_use_safe_print($($t:tt)*) {
+    std::compile_error!("Don't use `safe_print` or `safe_println` here, use `println_info` instead")
 }
 
 // This import blocks the use of panicking `print` and `println` in all the code
@@ -718,6 +724,13 @@ fn print_crate_info(
     parse_attrs: bool,
 ) -> Compilation {
     use rustc_session::config::PrintRequest::*;
+
+    // This import prevents the following code from using the printing macros
+    // used by the rest of the module. Within this function, we only write to
+    // the output specified by `sess.io.output_file`.
+    #[allow(unused_imports)]
+    use {do_not_use_safe_print as safe_print, do_not_use_safe_print as safe_println};
+
     // NativeStaticLibs and LinkArgs are special - printed during linking
     // (empty iterator returns true)
     if sess.opts.prints.iter().all(|&p| p == NativeStaticLibs || p == LinkArgs) {
@@ -736,17 +749,42 @@ fn print_crate_info(
     } else {
         None
     };
+
+    let mut output_io: Box<dyn Write> = match &sess.io.output_file {
+        Some(OutFileName::Real(output_file_path)) => match File::create(output_file_path) {
+            Ok(output_file) => Box::new(output_file),
+            Err(err) => handler.early_error(format!(
+                "failed to create {}: {}",
+                output_file_path.display(),
+                err,
+            )),
+        },
+        None | Some(OutFileName::Stdout) => Box::new(io::stdout()),
+    };
+
+    fn write_output(output_io: &mut dyn Write, args: fmt::Arguments<'_>) {
+        if let Err(_) = output_io.write_fmt(args) {
+            rustc_errors::FatalError.raise();
+        }
+    }
+
+    macro_rules! println_info {
+        ($($arg:tt)*) => {
+            write_output(&mut *output_io, format_args!("{}\n", format_args!($($arg)*)))
+        };
+    }
+
     for req in &sess.opts.prints {
         match *req {
             TargetList => {
                 let mut targets = rustc_target::spec::TARGETS.to_vec();
                 targets.sort_unstable();
-                safe_println!("{}", targets.join("\n"));
+                println_info!("{}", targets.join("\n"));
             }
-            Sysroot => safe_println!("{}", sess.sysroot.display()),
-            TargetLibdir => safe_println!("{}", sess.target_tlib_path.dir.display()),
+            Sysroot => println_info!("{}", sess.sysroot.display()),
+            TargetLibdir => println_info!("{}", sess.target_tlib_path.dir.display()),
             TargetSpec => {
-                safe_println!("{}", serde_json::to_string_pretty(&sess.target.to_json()).unwrap());
+                println_info!("{}", serde_json::to_string_pretty(&sess.target.to_json()).unwrap());
             }
             AllTargetSpecs => {
                 let mut targets = BTreeMap::new();
@@ -755,7 +793,7 @@ fn print_crate_info(
                     let target = Target::expect_builtin(&triple);
                     targets.insert(name, target.to_json());
                 }
-                safe_println!("{}", serde_json::to_string_pretty(&targets).unwrap());
+                println_info!("{}", serde_json::to_string_pretty(&targets).unwrap());
             }
             FileNames | CrateName => {
                 let Some(attrs) = attrs.as_ref() else {
@@ -765,14 +803,14 @@ fn print_crate_info(
                 let t_outputs = rustc_interface::util::build_output_filenames(attrs, sess);
                 let id = rustc_session::output::find_crate_name(sess, attrs);
                 if *req == PrintRequest::CrateName {
-                    safe_println!("{id}");
+                    println_info!("{id}");
                     continue;
                 }
                 let crate_types = collect_crate_types(sess, attrs);
                 for &style in &crate_types {
                     let fname =
                         rustc_session::output::filename_for_input(sess, style, id, &t_outputs);
-                    safe_println!("{}", fname.as_path().file_name().unwrap().to_string_lossy());
+                    println_info!("{}", fname.as_path().file_name().unwrap().to_string_lossy());
                 }
             }
             Cfg => {
@@ -806,13 +844,13 @@ fn print_crate_info(
 
                 cfgs.sort();
                 for cfg in cfgs {
-                    safe_println!("{cfg}");
+                    println_info!("{cfg}");
                 }
             }
             CallingConventions => {
                 let mut calling_conventions = rustc_target::spec::abi::all_names();
                 calling_conventions.sort_unstable();
-                safe_println!("{}", calling_conventions.join("\n"));
+                println_info!("{}", calling_conventions.join("\n"));
             }
             RelocationModels
             | CodeModels
@@ -830,7 +868,7 @@ fn print_crate_info(
 
                 for split in &[Off, Packed, Unpacked] {
                     if sess.target.options.supported_split_debuginfo.contains(split) {
-                        safe_println!("{split}");
+                        println_info!("{split}");
                     }
                 }
             }
@@ -838,7 +876,7 @@ fn print_crate_info(
                 use rustc_target::spec::current_apple_deployment_target;
 
                 if sess.target.is_like_osx {
-                    safe_println!(
+                    println_info!(
                         "deployment_target={}",
                         current_apple_deployment_target(&sess.target)
                             .expect("unknown Apple target OS")
