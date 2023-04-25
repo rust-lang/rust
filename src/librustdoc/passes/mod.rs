@@ -35,6 +35,9 @@ pub(crate) use self::calculate_doc_coverage::CALCULATE_DOC_COVERAGE;
 mod lint;
 pub(crate) use self::lint::RUN_LINTS;
 
+mod check_custom_code_classes;
+pub(crate) use self::check_custom_code_classes::CHECK_CUSTOM_CODE_CLASSES;
+
 /// A single pass over the cleaned documentation.
 ///
 /// Runs in the compiler context, so it has access to types and traits and the like.
@@ -66,6 +69,7 @@ pub(crate) enum Condition {
 
 /// The full list of passes.
 pub(crate) const PASSES: &[Pass] = &[
+    CHECK_CUSTOM_CODE_CLASSES,
     CHECK_DOC_TEST_VISIBILITY,
     STRIP_HIDDEN,
     STRIP_PRIVATE,
@@ -79,6 +83,7 @@ pub(crate) const PASSES: &[Pass] = &[
 
 /// The list of passes run by default.
 pub(crate) const DEFAULT_PASSES: &[ConditionalPass] = &[
+    ConditionalPass::always(CHECK_CUSTOM_CODE_CLASSES),
     ConditionalPass::always(COLLECT_TRAIT_IMPLS),
     ConditionalPass::always(CHECK_DOC_TEST_VISIBILITY),
     ConditionalPass::new(STRIP_HIDDEN, WhenNotDocumentHidden),

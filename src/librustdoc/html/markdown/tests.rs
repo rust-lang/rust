@@ -117,6 +117,30 @@ fn test_lang_string_parse() {
         edition: Some(Edition::Edition2018),
         ..Default::default()
     });
+    t(LangString {
+        original: "class:test".into(),
+        added_classes: vec!["test".into()],
+        rust: false,
+        ..Default::default()
+    });
+    t(LangString {
+        original: "rust,class:test".into(),
+        added_classes: vec!["test".into()],
+        rust: true,
+        ..Default::default()
+    });
+    t(LangString {
+        original: "class:test:with:colon".into(),
+        added_classes: vec!["test:with:colon".into()],
+        rust: false,
+        ..Default::default()
+    });
+    t(LangString {
+        original: "class:first,class:second".into(),
+        added_classes: vec!["first".into(), "second".into()],
+        rust: false,
+        ..Default::default()
+    });
 }
 
 #[test]

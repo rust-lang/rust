@@ -37,8 +37,9 @@ use once_cell::sync::Lazy;
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::fmt::Write;
+use std::iter::Peekable;
 use std::ops::{ControlFlow, Range};
-use std::str;
+use std::str::{self, CharIndices};
 
 use crate::clean::RenderedLink;
 use crate::doctest;
@@ -243,11 +244,21 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 let parse_result =
                     LangString::parse_without_check(lang, self.check_error_codes, false);
                 if !parse_result.rust {
+                    let added_classes = parse_result.added_classes;
+                    let lang_string = if let Some(lang) = parse_result.unknown.first() {
+                        format!("language-{}", lang)
+                    } else {
+                        String::new()
+                    };
+                    let whitespace = if added_classes.is_empty() { "" } else { " " };
                     return Some(Event::Html(
                         format!(
                             "<div class=\"example-wrap\">\
-                                 <pre class=\"language-{lang}\"><code>{text}</code></pre>\
+                                 <pre class=\"{lang_string}{whitespace}{added_classes}\">\
+                                     <code>{text}</code>\
+                                 </pre>\
                              </div>",
+                            added_classes = added_classes.join(" "),
                             text = Escape(&original_text),
                         )
                         .into(),
@@ -258,6 +269,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             CodeBlockKind::Indented => Default::default(),
         };
 
+        let added_classes = parse_result.added_classes;
         let lines = original_text.lines().filter_map(|l| map_line(l).for_html());
         let text = lines.intersperse("\n".into()).collect::<String>();
 
@@ -315,6 +327,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             &mut s,
             tooltip,
             playground_button.as_deref(),
+            &added_classes,
         );
         Some(Event::Html(s.into_inner().into()))
     }
@@ -712,6 +725,17 @@ pub(crate) fn find_testable_code<T: doctest::Tester>(
     enable_per_target_ignores: bool,
     extra_info: Option<&ExtraInfo<'_>>,
 ) {
+    find_codes(doc, tests, error_codes, enable_per_target_ignores, extra_info, false)
+}
+
+pub(crate) fn find_codes<T: doctest::Tester>(
+    doc: &str,
+    tests: &mut T,
+    error_codes: ErrorCodes,
+    enable_per_target_ignores: bool,
+    extra_info: Option<&ExtraInfo<'_>>,
+    include_non_rust: bool,
+) {
     let mut parser = Parser::new(doc).into_offset_iter();
     let mut prev_offset = 0;
     let mut nb_lines = 0;
@@ -734,7 +758,7 @@ pub(crate) fn find_testable_code<T: doctest::Tester>(
                     }
                     CodeBlockKind::Indented => Default::default(),
                 };
-                if !block_info.rust {
+                if !include_non_rust && !block_info.rust {
                     continue;
                 }
 
@@ -784,7 +808,19 @@ impl<'tcx> ExtraInfo<'tcx> {
         ExtraInfo { def_id, sp, tcx }
     }
 
-    fn error_invalid_codeblock_attr(&self, msg: String, help: &'static str) {
+    fn error_invalid_codeblock_attr(&self, msg: &str) {
+        if let Some(def_id) = self.def_id.as_local() {
+            self.tcx.struct_span_lint_hir(
+                crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
+                self.tcx.hir().local_def_id_to_hir_id(def_id),
+                self.sp,
+                msg,
+                |l| l,
+            );
+        }
+    }
+
+    fn error_invalid_codeblock_attr_with_help(&self, msg: &str, help: &str) {
         if let Some(def_id) = self.def_id.as_local() {
             self.tcx.struct_span_lint_hir(
                 crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
@@ -808,6 +844,8 @@ pub(crate) struct LangString {
     pub(crate) compile_fail: bool,
     pub(crate) error_codes: Vec<String>,
     pub(crate) edition: Option<Edition>,
+    pub(crate) added_classes: Vec<String>,
+    pub(crate) unknown: Vec<String>,
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -815,6 +853,109 @@ pub(crate) enum Ignore {
     All,
     None,
     Some(Vec<String>),
+}
+
+pub(crate) struct TagIterator<'a, 'tcx> {
+    inner: Peekable<CharIndices<'a>>,
+    data: &'a str,
+    is_in_attribute_block: bool,
+    extra: Option<&'a ExtraInfo<'tcx>>,
+}
+
+#[derive(Debug, PartialEq)]
+pub(crate) enum TokenKind<'a> {
+    Token(&'a str),
+    Attribute(&'a str),
+}
+
+fn is_separator(c: char) -> bool {
+    c == ' ' || c == ',' || c == '\t'
+}
+
+impl<'a, 'tcx> TagIterator<'a, 'tcx> {
+    pub(crate) fn new(data: &'a str, extra: Option<&'a ExtraInfo<'tcx>>) -> Self {
+        Self { inner: data.char_indices().peekable(), data, extra, is_in_attribute_block: false }
+    }
+
+    fn skip_separators(&mut self) -> Option<usize> {
+        while let Some((pos, c)) = self.inner.peek() {
+            if !is_separator(*c) {
+                return Some(*pos);
+            }
+            self.inner.next();
+        }
+        None
+    }
+
+    fn emit_error(&self, err: &str) {
+        if let Some(extra) = self.extra {
+            extra.error_invalid_codeblock_attr(err);
+        }
+    }
+}
+
+impl<'a, 'tcx> Iterator for TagIterator<'a, 'tcx> {
+    type Item = TokenKind<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let Some(start) = self.skip_separators() else {
+            if self.is_in_attribute_block {
+                self.emit_error("unclosed attribute block (`{}`): missing `}` at the end");
+            }
+            return None;
+        };
+        if self.is_in_attribute_block {
+            while let Some((pos, c)) = self.inner.next() {
+                if is_separator(c) {
+                    return Some(TokenKind::Attribute(&self.data[start..pos]));
+                } else if c == '{' {
+                    // There shouldn't be a nested block!
+                    self.emit_error("unexpected `{` inside attribute block (`{}`)");
+                    let attr = &self.data[start..pos];
+                    if attr.is_empty() {
+                        return self.next();
+                    }
+                    self.inner.next();
+                    return Some(TokenKind::Attribute(attr));
+                } else if c == '}' {
+                    self.is_in_attribute_block = false;
+                    let attr = &self.data[start..pos];
+                    if attr.is_empty() {
+                        return self.next();
+                    }
+                    return Some(TokenKind::Attribute(attr));
+                }
+            }
+            // Unclosed attribute block!
+            self.emit_error("unclosed attribute block (`{}`): missing `}` at the end");
+            let token = &self.data[start..];
+            if token.is_empty() { None } else { Some(TokenKind::Attribute(token)) }
+        } else {
+            while let Some((pos, c)) = self.inner.next() {
+                if is_separator(c) {
+                    return Some(TokenKind::Token(&self.data[start..pos]));
+                } else if c == '{' {
+                    self.is_in_attribute_block = true;
+                    let token = &self.data[start..pos];
+                    if token.is_empty() {
+                        return self.next();
+                    }
+                    return Some(TokenKind::Token(token));
+                } else if c == '}' {
+                    // We're not in a block so it shouldn't be there!
+                    self.emit_error("unexpected `}` outside attribute block (`{}`)");
+                    let token = &self.data[start..pos];
+                    if token.is_empty() {
+                        return self.next();
+                    }
+                    self.inner.next();
+                    return Some(TokenKind::Attribute(token));
+                }
+            }
+            let token = &self.data[start..];
+            if token.is_empty() { None } else { Some(TokenKind::Token(token)) }
+        }
+    }
 }
 
 impl Default for LangString {
@@ -829,7 +970,19 @@ impl Default for LangString {
             compile_fail: false,
             error_codes: Vec::new(),
             edition: None,
+            added_classes: Vec::new(),
+            unknown: Vec::new(),
         }
+    }
+}
+
+fn handle_class(class: &str, after: &str, data: &mut LangString, extra: Option<&ExtraInfo<'_>>) {
+    if class.is_empty() {
+        if let Some(extra) = extra {
+            extra.error_invalid_codeblock_attr(&format!("missing class name after `{after}`"));
+        }
+    } else {
+        data.added_classes.push(class.to_owned());
     }
 }
 
@@ -838,33 +991,8 @@ impl LangString {
         string: &str,
         allow_error_code_check: ErrorCodes,
         enable_per_target_ignores: bool,
-    ) -> LangString {
+    ) -> Self {
         Self::parse(string, allow_error_code_check, enable_per_target_ignores, None)
-    }
-
-    fn tokens(string: &str) -> impl Iterator<Item = &str> {
-        // Pandoc, which Rust once used for generating documentation,
-        // expects lang strings to be surrounded by `{}` and for each token
-        // to be proceeded by a `.`. Since some of these lang strings are still
-        // loose in the wild, we strip a pair of surrounding `{}` from the lang
-        // string and a leading `.` from each token.
-
-        let string = string.trim();
-
-        let first = string.chars().next();
-        let last = string.chars().last();
-
-        let string = if first == Some('{') && last == Some('}') {
-            &string[1..string.len() - 1]
-        } else {
-            string
-        };
-
-        string
-            .split(|c| c == ',' || c == ' ' || c == '\t')
-            .map(str::trim)
-            .map(|token| token.strip_prefix('.').unwrap_or(token))
-            .filter(|token| !token.is_empty())
     }
 
     fn parse(
@@ -872,7 +1000,7 @@ impl LangString {
         allow_error_code_check: ErrorCodes,
         enable_per_target_ignores: bool,
         extra: Option<&ExtraInfo<'_>>,
-    ) -> LangString {
+    ) -> Self {
         let allow_error_code_check = allow_error_code_check.as_bool();
         let mut seen_rust_tags = false;
         let mut seen_other_tags = false;
@@ -881,43 +1009,45 @@ impl LangString {
 
         data.original = string.to_owned();
 
-        for token in Self::tokens(string) {
+        for token in TagIterator::new(string, extra) {
             match token {
-                "should_panic" => {
+                TokenKind::Token("should_panic") => {
                     data.should_panic = true;
                     seen_rust_tags = !seen_other_tags;
                 }
-                "no_run" => {
+                TokenKind::Token("no_run") => {
                     data.no_run = true;
                     seen_rust_tags = !seen_other_tags;
                 }
-                "ignore" => {
+                TokenKind::Token("ignore") => {
                     data.ignore = Ignore::All;
                     seen_rust_tags = !seen_other_tags;
                 }
-                x if x.starts_with("ignore-") => {
+                TokenKind::Token(x) if x.starts_with("ignore-") => {
                     if enable_per_target_ignores {
                         ignores.push(x.trim_start_matches("ignore-").to_owned());
                         seen_rust_tags = !seen_other_tags;
                     }
                 }
-                "rust" => {
+                TokenKind::Token("rust") => {
                     data.rust = true;
                     seen_rust_tags = true;
                 }
-                "test_harness" => {
+                TokenKind::Token("test_harness") => {
                     data.test_harness = true;
                     seen_rust_tags = !seen_other_tags || seen_rust_tags;
                 }
-                "compile_fail" => {
+                TokenKind::Token("compile_fail") => {
                     data.compile_fail = true;
                     seen_rust_tags = !seen_other_tags || seen_rust_tags;
                     data.no_run = true;
                 }
-                x if x.starts_with("edition") => {
+                TokenKind::Token(x) if x.starts_with("edition") => {
                     data.edition = x[7..].parse::<Edition>().ok();
                 }
-                x if allow_error_code_check && x.starts_with('E') && x.len() == 5 => {
+                TokenKind::Token(x)
+                    if allow_error_code_check && x.starts_with('E') && x.len() == 5 =>
+                {
                     if x[1..].parse::<u32>().is_ok() {
                         data.error_codes.push(x.to_owned());
                         seen_rust_tags = !seen_other_tags || seen_rust_tags;
@@ -925,7 +1055,7 @@ impl LangString {
                         seen_other_tags = true;
                     }
                 }
-                x if extra.is_some() => {
+                TokenKind::Token(x) if extra.is_some() => {
                     let s = x.to_lowercase();
                     if let Some((flag, help)) = if s == "compile-fail"
                         || s == "compile_fail"
@@ -958,15 +1088,31 @@ impl LangString {
                         None
                     } {
                         if let Some(extra) = extra {
-                            extra.error_invalid_codeblock_attr(
-                                format!("unknown attribute `{x}`. Did you mean `{flag}`?"),
+                            extra.error_invalid_codeblock_attr_with_help(
+                                &format!("unknown attribute `{}`. Did you mean `{}`?", x, flag),
                                 help,
                             );
                         }
                     }
                     seen_other_tags = true;
+                    data.unknown.push(x.to_owned());
                 }
-                _ => seen_other_tags = true,
+                TokenKind::Token(x) => {
+                    seen_other_tags = true;
+                    data.unknown.push(x.to_owned());
+                }
+                TokenKind::Attribute(attr) => {
+                    seen_other_tags = true;
+                    if let Some(class) = attr.strip_prefix('.') {
+                        handle_class(class, ".", &mut data, extra);
+                    } else if let Some(class) = attr.strip_prefix("class=") {
+                        handle_class(class, "class=", &mut data, extra);
+                    } else if let Some(extra) = extra {
+                        extra.error_invalid_codeblock_attr(&format!(
+                            "unsupported attribute `{attr}`"
+                        ));
+                    }
+                }
             }
         }
 
