@@ -1596,8 +1596,15 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // Peel off the DesugaringKind from the span
                 && let Some(desugar_parent_span) = parent_expr.span.parent_callsite()
             {
+                let removal_span = self.tcx
+                    .sess
+                    .source_map()
+                    .span_extend_while(expr.span, char::is_whitespace)
+                    .unwrap_or(expr.span)
+                    .shrink_to_hi()
+                    .to(desugar_parent_span);
                 err.span_suggestion(
-                    self.tcx.sess.source.shrink_to_hi().to(desugar_parent_span),
+                    removal_span,
                     "remove the `.await`",
                     "",
                     Applicability::MachineApplicable,

@@ -1,13 +1,11 @@
 error[E0277]: `()` is not a future
   --> $DIR/issue-101715.rs:11:10
    |
-LL |       S.very_long_method_name_the_longest_method_name_in_the_whole_universe()
-   |  ____________________________________________________________________________-
-LL | |         .await
-   | |          ^^^^-
-   | |__________|___|
-   |            |   help: remove the `.await`
-   |            `()` is not a future
+LL |         .await
+   |         -^^^^^
+   |         ||
+   |         |`()` is not a future
+   |         help: remove the `.await`
    |
    = help: the trait `Future` is not implemented for `()`
    = note: () must be a future or must implement `IntoFuture` to be awaited
