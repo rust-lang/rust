@@ -280,11 +280,11 @@ define_Conf! {
     /// Lint: SEMICOLON_INSIDE_BLOCK.
     ///
     /// Whether to lint only if it's multiline.
-    (semicolon_inside_block_if_multiline: bool = false),
+    (semicolon_inside_block_ignore_singleline: bool = false),
     /// Lint: SEMICOLON_OUTSIDE_BLOCK.
     ///
     /// Whether to lint only if it's singleline.
-    (semicolon_outside_block_if_singleline: bool = false),
+    (semicolon_outside_block_ignore_multiline: bool = false),
     /// Lint: DOC_MARKDOWN.
     ///
     /// The list of words this lint should not consider as identifiers needing ticks. The value
