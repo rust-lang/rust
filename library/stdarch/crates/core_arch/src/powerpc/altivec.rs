@@ -290,6 +290,11 @@ extern "C" {
     fn vcfsx(a: vector_signed_int, b: i32) -> vector_float;
     #[link_name = "llvm.ppc.altivec.vcfux"]
     fn vcfux(a: vector_unsigned_int, b: i32) -> vector_float;
+
+    #[link_name = "llvm.ppc.altivec.vctsxs"]
+    fn vctsxs(a: vector_float, b: i32) -> vector_signed_int;
+    #[link_name = "llvm.ppc.altivec.vctuxs"]
+    fn vctuxs(a: vector_float, b: i32) -> vector_unsigned_int;
 }
 
 macro_rules! s_t_l {
@@ -2266,6 +2271,26 @@ where
     T: sealed::VectorCtf,
 {
     a.vec_ctf::<IMM5>()
+}
+
+/// Vector Convert to Signed Integer
+#[inline]
+#[target_feature(enable = "altivec")]
+#[cfg_attr(test, assert_instr(vctsxs, IMM5 = 1))]
+pub unsafe fn vec_cts<const IMM5: i32>(a: vector_float) -> vector_signed_int {
+    static_assert_uimm_bits!(IMM5, 5);
+
+    vctsxs(a, IMM5)
+}
+
+/// Vector Convert to Signed Integer
+#[inline]
+#[target_feature(enable = "altivec")]
+#[cfg_attr(test, assert_instr(vctuxs, IMM5 = 1))]
+pub unsafe fn vec_ctu<const IMM5: i32>(a: vector_float) -> vector_unsigned_int {
+    static_assert_uimm_bits!(IMM5, 5);
+
+    vctuxs(a, IMM5)
 }
 
 /// Endian-biased intrinsics
@@ -4560,7 +4585,7 @@ mod tests {
 
     #[simd_test(enable = "altivec")]
     unsafe fn vec_ctf_u32() {
-        let v: vector_unsigned_int = transmute(u32x4::new(0, u32::MAX, u32::MAX - 42, 42));
+        let v: vector_unsigned_int = transmute(u32x4::new(u32::MIN, u32::MAX, u32::MAX, 42));
         let v2 = vec_ctf::<1, _>(v);
         let r2: vector_float = transmute(f32x4::new(0.0, 2147483600.0, 2147483600.0, 21.0));
         let v4 = vec_ctf::<2, _>(v);
@@ -4580,5 +4605,85 @@ mod tests {
         check(v2, r2);
         check(v4, r4);
         check(v8, r8);
+    }
+
+    #[simd_test(enable = "altivec")]
+    unsafe fn test_vec_ctu() {
+        let v = u32x4::new(u32::MIN, u32::MAX, u32::MAX, 42);
+        let v2: u32x4 = transmute(vec_ctu::<1>(transmute(f32x4::new(
+            0.0,
+            2147483600.0,
+            2147483600.0,
+            21.0,
+        ))));
+        let v4: u32x4 = transmute(vec_ctu::<2>(transmute(f32x4::new(
+            0.0,
+            1073741800.0,
+            1073741800.0,
+            10.5,
+        ))));
+        let v8: u32x4 = transmute(vec_ctu::<3>(transmute(f32x4::new(
+            0.0,
+            536870900.0,
+            536870900.0,
+            5.25,
+        ))));
+
+        assert_eq!(v2, v);
+        assert_eq!(v4, v);
+        assert_eq!(v8, v);
+    }
+
+    #[simd_test(enable = "altivec")]
+    unsafe fn vec_ctf_i32() {
+        let v: vector_signed_int = transmute(i32x4::new(i32::MIN, i32::MAX, i32::MAX - 42, 42));
+        let v2 = vec_ctf::<1, _>(v);
+        let r2: vector_float =
+            transmute(f32x4::new(-1073741800.0, 1073741800.0, 1073741800.0, 21.0));
+        let v4 = vec_ctf::<2, _>(v);
+        let r4: vector_float = transmute(f32x4::new(-536870900.0, 536870900.0, 536870900.0, 10.5));
+        let v8 = vec_ctf::<3, _>(v);
+        let r8: vector_float = transmute(f32x4::new(-268435460.0, 268435460.0, 268435460.0, 5.25));
+
+        let check = |a, b| {
+            let r = transmute(vec_cmple(
+                vec_abs(vec_sub(a, b)),
+                vec_splats(std::f32::EPSILON),
+            ));
+            println!("{:?} {:?}", a, b);
+            let e = m32x4::new(true, true, true, true);
+            assert_eq!(e, r);
+        };
+
+        check(v2, r2);
+        check(v4, r4);
+        check(v8, r8);
+    }
+
+    #[simd_test(enable = "altivec")]
+    unsafe fn test_vec_cts() {
+        let v = i32x4::new(i32::MIN, i32::MAX, i32::MAX, 42);
+        let v2: i32x4 = transmute(vec_cts::<1>(transmute(f32x4::new(
+            -1073741800.0,
+            1073741800.0,
+            1073741800.0,
+            21.0,
+        ))));
+        let v4: i32x4 = transmute(vec_cts::<2>(transmute(f32x4::new(
+            -536870900.0,
+            536870900.0,
+            536870900.0,
+            10.5,
+        ))));
+        let v8: i32x4 = transmute(vec_cts::<3>(transmute(f32x4::new(
+            -268435460.0,
+            268435460.0,
+            268435460.0,
+            5.25,
+        ))));
+
+        assert_eq!(v2, v);
+        assert_eq!(v4, v);
+        assert_eq!(v8, v);
     }
 }
