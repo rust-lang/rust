@@ -625,3 +625,32 @@ and check the values of `feature`: `foo` and `bar`.
 
 This flag enables the generation of links in the source code pages which allow the reader
 to jump to a type definition.
+
+### Custom CSS classes for code blocks
+
+```rust
+#![feature(custom_code_classes_in_docs)]
+
+/// ```{class=language-c}
+/// int main(void) { return 0; }
+/// ```
+pub struct Bar;
+```
+
+The text `int main(void) { return 0; }` is rendered without highlighting in a code block
+with the class `language-c`. This can be used to highlight other languages through JavaScript
+libraries for example.
+
+To be noted that you can replace `class=` with `.` to achieve the same result:
+
+```rust
+#![feature(custom_code_classes_in_docs)]
+
+/// ```{.language-c}
+/// int main(void) { return 0; }
+/// ```
+pub struct Bar;
+```
+
+To be noted, `rust` and `.rust`/`class=rust` have different effects: `rust` indicates that this is
+a Rust code block whereas the two others add a "rust" CSS class on the code block.
