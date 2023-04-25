@@ -117,7 +117,11 @@ unsafe impl<'a, T: 'a> Pointer for Interned<'a, T> {
     }
 
     unsafe fn from_ptr(ptr: ptr::NonNull<Self::Target>) -> Self {
-        Self::new_unchecked(<&'a T>::from_ptr(ptr))
+        // Safety:
+        // `Self::into_ptr` uses `<&T>::into_ptr`,
+        // which is compatible with `<&T>::from_ptr`.
+        let reference = unsafe { <&'a T>::from_ptr(ptr) };
+        Self::new_unchecked(reference)
     }
 }
 
