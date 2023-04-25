@@ -591,7 +591,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     fn evaluate_nested_obligations(
         &self,
         ty: Ty<'_>,
-        nested: impl Iterator<Item = Obligation<'tcx, ty::Predicate<'tcx>>>,
+        nested: impl Iterator<Item = PredicateObligation<'tcx>>,
         computed_preds: &mut FxIndexSet<ty::Predicate<'tcx>>,
         fresh_preds: &mut FxHashSet<ty::Predicate<'tcx>>,
         predicates: &mut VecDeque<ty::PolyTraitPredicate<'tcx>>,

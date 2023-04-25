@@ -1,4 +1,4 @@
-#![feature(panic_handler)]
+#![feature(panic_handler, alloc_error_handler)]
 #![crate_type = "cdylib"]
 #![no_std]
 
@@ -22,6 +22,11 @@ static A: B = B;
 pub extern fn foo(a: u32) -> u32 {
     assert_eq!(a, 3);
     a * 2
+}
+
+#[alloc_error_handler]
+fn a(_: core::alloc::Layout) -> ! {
+    loop {}
 }
 
 #[panic_handler]

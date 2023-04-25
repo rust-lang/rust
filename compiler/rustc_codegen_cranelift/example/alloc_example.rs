@@ -1,4 +1,4 @@
-#![feature(start, core_intrinsics)]
+#![feature(start, core_intrinsics, alloc_error_handler)]
 #![no_std]
 
 extern crate alloc;
@@ -19,6 +19,11 @@ extern "C" {
 
 #[panic_handler]
 fn panic_handler(_: &core::panic::PanicInfo) -> ! {
+    core::intrinsics::abort();
+}
+
+#[alloc_error_handler]
+fn alloc_error_handler(_: alloc::alloc::Layout) -> ! {
     core::intrinsics::abort();
 }
 

@@ -4,6 +4,7 @@ use rustc_ast::expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{DebugInfo, OomStrategy};
+use rustc_span::symbol::sym;
 
 use crate::debuginfo;
 use crate::llvm::{self, False, True};
@@ -14,6 +15,7 @@ pub(crate) unsafe fn codegen(
     module_llvm: &mut ModuleLlvm,
     module_name: &str,
     kind: AllocatorKind,
+    alloc_error_handler_kind: AllocatorKind,
 ) {
     let llcx = &*module_llvm.llcx;
     let llmod = module_llvm.llmod();
@@ -97,6 +99,52 @@ pub(crate) unsafe fn codegen(
         }
         llvm::LLVMDisposeBuilder(llbuilder);
     }
+
+    // rust alloc error handler
+    let args = [usize, usize]; // size, align
+
+    let ty = llvm::LLVMFunctionType(void, args.as_ptr(), args.len() as c_uint, False);
+    let name = "__rust_alloc_error_handler";
+    let llfn = llvm::LLVMRustGetOrInsertFunction(llmod, name.as_ptr().cast(), name.len(), ty);
+    // -> ! DIFlagNoReturn
+    let no_return = llvm::AttributeKind::NoReturn.create_attr(llcx);
+    attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[no_return]);
+
+    if tcx.sess.target.default_hidden_visibility {
+        llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
+    }
+    if tcx.sess.must_emit_unwind_tables() {
+        let uwtable = attributes::uwtable_attr(llcx);
+        attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[uwtable]);
+    }
+
+    let callee = alloc_error_handler_kind.fn_name(sym::oom);
+    let callee = llvm::LLVMRustGetOrInsertFunction(llmod, callee.as_ptr().cast(), callee.len(), ty);
+    // -> ! DIFlagNoReturn
+    attributes::apply_to_llfn(callee, llvm::AttributePlace::Function, &[no_return]);
+    llvm::LLVMRustSetVisibility(callee, llvm::Visibility::Hidden);
+
+    let llbb = llvm::LLVMAppendBasicBlockInContext(llcx, llfn, "entry\0".as_ptr().cast());
+
+    let llbuilder = llvm::LLVMCreateBuilderInContext(llcx);
+    llvm::LLVMPositionBuilderAtEnd(llbuilder, llbb);
+    let args = args
+        .iter()
+        .enumerate()
+        .map(|(i, _)| llvm::LLVMGetParam(llfn, i as c_uint))
+        .collect::<Vec<_>>();
+    let ret = llvm::LLVMRustBuildCall(
+        llbuilder,
+        ty,
+        callee,
+        args.as_ptr(),
+        args.len() as c_uint,
+        [].as_ptr(),
+        0 as c_uint,
+    );
+    llvm::LLVMSetTailCall(ret, True);
+    llvm::LLVMBuildRetVoid(llbuilder);
+    llvm::LLVMDisposeBuilder(llbuilder);
 
     // __rust_alloc_error_handler_should_panic
     let name = OomStrategy::SYMBOL;
