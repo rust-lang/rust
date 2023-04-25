@@ -1293,7 +1293,9 @@ impl<'a, 'tcx> Lift<'tcx> for Ty<'a> {
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         tcx.interners
             .type_
-            .contains_pointer_to::<InternedInSet<WithCachedTypeInfo<TyKind<'a>>>>(&InternedInSet(&*self.0.pointer().0))
+            .contains_pointer_to::<InternedInSet<'a, WithCachedTypeInfo<TyKind<'a>>>>(
+                &InternedInSet(&*self.0.pointer().0),
+            )
             // SAFETY: `self` is interned and therefore valid
             // for the entire lifetime of the `TyCtxt`.
             .then(|| unsafe { mem::transmute(self) })
