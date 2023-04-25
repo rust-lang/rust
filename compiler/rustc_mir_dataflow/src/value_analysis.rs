@@ -123,16 +123,18 @@ pub trait ValueAnalysis<'tcx> {
     fn super_intrinsic(
         &self,
         intrinsic: &NonDivergingIntrinsic<'tcx>,
-        state: &mut State<Self::Value>,
+        _state: &mut State<Self::Value>,
     ) {
         match intrinsic {
             NonDivergingIntrinsic::Assume(..) => {
                 // Could use this, but ignoring it is sound.
             }
-            NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping { dst, .. }) => {
-                if let Some(place) = dst.place() {
-                    state.flood(place.as_ref(), self.map());
-                }
+            NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping {
+                dst: _,
+                src: _,
+                count: _,
+            }) => {
+                // This statement represents `*dst = *src`, `count` times.
             }
         }
     }
