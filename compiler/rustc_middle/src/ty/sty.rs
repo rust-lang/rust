@@ -844,11 +844,13 @@ impl<'tcx> TraitRef<'tcx> {
         Self::new(tcx.tcx, trait_def_id, substs)
     }
 
-    pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
-        tcx.mk_trait_ref(
-            self.def_id,
-            [self_ty.into()].into_iter().chain(self.substs.iter().skip(1)),
-        )
+    pub fn from_method(
+        tcx: TyCtxt<'tcx>,
+        trait_id: DefId,
+        substs: SubstsRef<'tcx>,
+    ) -> ty::TraitRef<'tcx> {
+        let defs = tcx.generics_of(trait_id);
+        tcx.mk_trait_ref(trait_id, tcx.mk_substs(&substs[..defs.params.len()]))
     }
 
     /// Returns a `TraitRef` of the form `P0: Foo<P1..Pn>` where `Pi`
@@ -857,18 +859,16 @@ impl<'tcx> TraitRef<'tcx> {
         ty::Binder::dummy(tcx.mk_trait_ref(def_id, InternalSubsts::identity_for_item(tcx, def_id)))
     }
 
+    pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
+        tcx.mk_trait_ref(
+            self.def_id,
+            [self_ty.into()].into_iter().chain(self.substs.iter().skip(1)),
+        )
+    }
+
     #[inline]
     pub fn self_ty(&self) -> Ty<'tcx> {
         self.substs.type_at(0)
-    }
-
-    pub fn from_method(
-        tcx: TyCtxt<'tcx>,
-        trait_id: DefId,
-        substs: SubstsRef<'tcx>,
-    ) -> ty::TraitRef<'tcx> {
-        let defs = tcx.generics_of(trait_id);
-        tcx.mk_trait_ref(trait_id, tcx.mk_substs(&substs[..defs.params.len()]))
     }
 }
 
