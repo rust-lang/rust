@@ -1265,7 +1265,7 @@ impl<'tcx> AliasTy<'tcx> {
 
     /// Extracts the underlying trait reference and own substs from this projection.
     /// For example, if this is a projection of `<T as StreamingIterator>::Item<'a>`,
-    /// then this function would return a `T: Iterator` trait reference and `['a]` as the own substs
+    /// then this function would return a `T: StreamingIterator` trait reference and `['a]` as the own substs
     pub fn trait_ref_and_own_substs(
         self,
         tcx: TyCtxt<'tcx>,

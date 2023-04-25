@@ -36,7 +36,12 @@ pub struct Discr<'tcx> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum CheckRegions {
     No,
+    /// Only permit early bound regions. This is useful for Adts which
+    /// can never have late bound regions.
     OnlyEarlyBound,
+    /// Permit both late bound and early bound regions. Use this for functions,
+    /// which frequently have late bound regions.
+    Bound,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -471,15 +476,21 @@ impl<'tcx> TyCtxt<'tcx> {
         ignore_regions: CheckRegions,
     ) -> Result<(), NotUniqueParam<'tcx>> {
         let mut seen = GrowableBitSet::default();
+        let mut seen_late = FxHashSet::default();
         for arg in substs {
             match arg.unpack() {
                 GenericArgKind::Lifetime(lt) => match (ignore_regions, lt.kind()) {
-                    (CheckRegions::OnlyEarlyBound, ty::ReEarlyBound(p)) => {
+                    (CheckRegions::Bound, ty::ReLateBound(di, reg)) => {
+                        if !seen_late.insert((di, reg)) {
+                            return Err(NotUniqueParam::DuplicateParam(lt.into()));
+                        }
+                    }
+                    (CheckRegions::OnlyEarlyBound | CheckRegions::Bound, ty::ReEarlyBound(p)) => {
                         if !seen.insert(p.index) {
                             return Err(NotUniqueParam::DuplicateParam(lt.into()));
                         }
                     }
-                    (CheckRegions::OnlyEarlyBound, _) => {
+                    (CheckRegions::OnlyEarlyBound | CheckRegions::Bound, _) => {
                         return Err(NotUniqueParam::NotParam(lt.into()));
                     }
                     (CheckRegions::No, _) => {}

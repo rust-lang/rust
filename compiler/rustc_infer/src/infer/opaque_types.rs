@@ -3,10 +3,9 @@ use super::{DefineOpaqueTypes, InferResult};
 use crate::errors::OpaqueHiddenTypeDiag;
 use crate::infer::{DefiningAnchor, InferCtxt, InferOk};
 use crate::traits;
-use hir::def::DefKind;
 use hir::def_id::{DefId, LocalDefId};
 use hir::OpaqueTyOrigin;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_middle::traits::ObligationCause;
@@ -54,9 +53,7 @@ impl<'tcx> InferCtxt<'tcx> {
         }
         let mut obligations = vec![];
         let replace_opaque_type = |def_id: DefId| {
-            def_id
-                .as_local()
-                .map_or(false, |def_id| self.opaque_type_origin(def_id, param_env).is_some())
+            def_id.as_local().map_or(false, |def_id| self.opaque_type_origin(def_id).is_some())
         };
         let value = value.fold_with(&mut BottomUpFolder {
             tcx: self.tcx,
@@ -141,7 +138,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         //     let x = || foo(); // returns the Opaque assoc with `foo`
                         // }
                         // ```
-                        self.opaque_type_origin(def_id, param_env)?
+                        self.opaque_type_origin(def_id)?
                     }
                     DefiningAnchor::Bubble => self.opaque_type_origin_unchecked(def_id),
                     DefiningAnchor::Error => return None,
@@ -152,9 +149,8 @@ impl<'tcx> InferCtxt<'tcx> {
                     // no one encounters it in practice.
                     // It does occur however in `fn fut() -> impl Future<Output = i32> { async { 42 } }`,
                     // where it is of no concern, so we only check for TAITs.
-                    if let Some(OpaqueTyOrigin::TyAlias { .. }) = b_def_id
-                        .as_local()
-                        .and_then(|b_def_id| self.opaque_type_origin(b_def_id, param_env))
+                    if let Some(OpaqueTyOrigin::TyAlias { .. }) =
+                        b_def_id.as_local().and_then(|b_def_id| self.opaque_type_origin(b_def_id))
                     {
                         self.tcx.sess.emit_err(OpaqueHiddenTypeDiag {
                             span: cause.span,
@@ -370,12 +366,8 @@ impl<'tcx> InferCtxt<'tcx> {
 
     /// Returns the origin of the opaque type `def_id` if we're currently
     /// in its defining scope.
-    #[instrument(skip(self, param_env), level = "trace", ret)]
-    pub fn opaque_type_origin(
-        &self,
-        def_id: LocalDefId,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> Option<OpaqueTyOrigin> {
+    #[instrument(skip(self), level = "trace", ret)]
+    pub fn opaque_type_origin(&self, def_id: LocalDefId) -> Option<OpaqueTyOrigin> {
         let opaque_hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
         let parent_def_id = match self.defining_use_anchor {
             DefiningAnchor::Bubble | DefiningAnchor::Error => return None,
@@ -391,7 +383,7 @@ impl<'tcx> InferCtxt<'tcx> {
             // Named `type Foo = impl Bar;`
             hir::OpaqueTyOrigin::TyAlias { in_assoc_ty } => {
                 if in_assoc_ty {
-                    may_define_impl_trait_in_assoc_ty(self.tcx, parent_def_id, def_id, param_env)
+                    self.tcx.opaque_types_defined_by(parent_def_id).contains(&def_id)
                 } else {
                     may_define_opaque_type(self.tcx, parent_def_id, opaque_hir_id)
                 }
@@ -653,106 +645,4 @@ fn may_define_opaque_type(tcx: TyCtxt<'_>, def_id: LocalDefId, opaque_hir_id: hi
         res
     );
     res
-}
-
-#[derive(Debug, TypeVisitable, Clone)]
-/// Helper datastructure containing the signature
-/// that the opaque type extraction logic uses for determining
-/// whether an opaque type may have its hidden types registered
-/// by an item.
-enum FnSigOrTy<'tcx> {
-    FnSig(ty::PolyFnSig<'tcx>),
-    Ty(Ty<'tcx>),
-}
-
-/// Checks that the item may register hidden types for the
-/// opaque type, if the opaque type shows up in its signature.
-#[instrument(level = "debug", skip(tcx), ret)]
-pub fn may_define_impl_trait_in_assoc_ty_modulo_sig<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
-    opaque_def_id: LocalDefId,
-) -> Option<impl TypeVisitable<TyCtxt<'tcx>>> {
-    let sig = match tcx.def_kind(def_id) {
-        DefKind::AssocFn => FnSigOrTy::FnSig(tcx.fn_sig(def_id).subst_identity()),
-        DefKind::AssocConst | DefKind::AssocTy => {
-            FnSigOrTy::Ty(tcx.type_of(def_id).subst_identity())
-        }
-        _ => return None,
-    };
-    let impl_id = tcx.local_parent(def_id);
-    trace!(?impl_id);
-    let mut assoc_id = opaque_def_id;
-    // Peel nested opaque types.
-    while let DefKind::OpaqueTy = tcx.def_kind(assoc_id) {
-        trace!(?assoc_id);
-        assoc_id = tcx.local_parent(assoc_id);
-    }
-    trace!(?assoc_id);
-    if !matches!(tcx.def_kind(assoc_id), DefKind::AssocTy) {
-        tcx.sess
-            .delay_span_bug(tcx.def_span(opaque_def_id), format!("{:?}", tcx.def_kind(assoc_id)));
-    }
-    let assoc_impl_id = tcx.local_parent(assoc_id);
-    trace!(?assoc_impl_id);
-
-    if impl_id != assoc_impl_id {
-        return None;
-    }
-
-    Some(sig)
-}
-
-#[instrument(level = "debug", skip(tcx, param_env), ret)]
-fn may_define_impl_trait_in_assoc_ty<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
-    opaque_def_id: LocalDefId,
-    param_env: ty::ParamEnv<'tcx>,
-) -> bool {
-    let Some(sig) = may_define_impl_trait_in_assoc_ty_modulo_sig(tcx, def_id, opaque_def_id) else {
-        return false;
-    };
-
-    struct Visitor<'tcx> {
-        opaque_def_id: LocalDefId,
-        param_env: ty::ParamEnv<'tcx>,
-        tcx: TyCtxt<'tcx>,
-        seen: FxHashSet<LocalDefId>,
-    }
-
-    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for Visitor<'tcx> {
-        type BreakTy = ();
-        #[instrument(level = "trace", skip(self), ret)]
-        fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<()> {
-            // FIXME(oli-obk): We should be checking if the associated type
-            // is mentioned instead of normalizing to find the opaque type.
-            // But that requires a way to figure out that a projection refers
-            // to a specific opaque type. That is probably doable by checking for
-            // `Self` as the `substs[0]`.
-            let normalized_ty = self.tcx.normalize_erasing_regions(self.param_env, ty);
-            if let ty::Alias(ty::Opaque, alias) = normalized_ty.kind() {
-                if let Some(def_id) = alias.def_id.as_local() {
-                    trace!(?alias.def_id);
-                    if def_id == self.opaque_def_id {
-                        return ControlFlow::Break(());
-                    }
-
-                    if self.seen.insert(def_id) {
-                        // Look into nested obligations like `impl Trait<Assoc = impl OtherTrait>`.
-                        for (pred, _) in self
-                            .tcx
-                            .explicit_item_bounds(alias.def_id)
-                            .subst_iter_copied(self.tcx, alias.substs)
-                        {
-                            pred.visit_with(self)?;
-                        }
-                    }
-                }
-            }
-            normalized_ty.super_visit_with(self)
-        }
-    }
-    sig.visit_with(&mut Visitor { opaque_def_id, param_env, tcx, seen: Default::default() })
-        .is_break()
 }

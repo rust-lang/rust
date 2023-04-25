@@ -1,10 +1,9 @@
-use crate::infer::opaque_types::may_define_impl_trait_in_assoc_ty_modulo_sig;
-
 use super::TypeErrCtxt;
 use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
 use rustc_errors::{pluralize, Diagnostic, MultiSpan};
 use rustc_hir as hir;
-use rustc_middle::traits::ObligationCauseCode::{self, MiscObligation};
+use rustc_hir::def::DefKind;
+use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::Printer;
 use rustc_middle::{
@@ -258,9 +257,9 @@ impl<T> Trait<T> for X {
                             );
                         }
                     }
-                    (ty::Alias(ty::Opaque, alias), _) | (_, ty::Alias(ty::Opaque, alias)) if matches!(cause.code(), MiscObligation) => {
-                        if let Some(def_id) = alias.def_id.as_local() {
-                            if may_define_impl_trait_in_assoc_ty_modulo_sig(tcx, body_owner_def_id.expect_local(), def_id).is_some() {
+                    (ty::Alias(ty::Opaque, alias), _) | (_, ty::Alias(ty::Opaque, alias)) if alias.def_id.is_local() && matches!(tcx.def_kind(body_owner_def_id), DefKind::AssocFn | DefKind::AssocConst) => {
+                        if tcx.is_type_alias_impl_trait(alias.def_id) {
+                            if !tcx.opaque_types_defined_by(body_owner_def_id.expect_local()).contains(&alias.def_id.expect_local()) {
                                 diag.span_note(tcx.def_span(body_owner_def_id), "\
                                     this item must have the opaque type in its signature \
                                     in order to be able to register hidden types");

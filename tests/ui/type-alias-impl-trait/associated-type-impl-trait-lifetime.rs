@@ -12,7 +12,9 @@ impl<'a> Trait for &'a () {
     type Opaque1 = impl Sized;
     type Opaque2 = impl Sized + 'a;
     fn constrain(self) -> (Self::Opaque1, Self::Opaque2) {
-        ((), self)
+        let a: Self::Opaque1 = ();
+        let b: Self::Opaque2 = self;
+        (a, b)
     }
 }
 
