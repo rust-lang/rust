@@ -34,9 +34,9 @@ pub struct Discr<'tcx> {
 
 /// Used as an input to [`TyCtxt::uses_unique_generic_params`].
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum IgnoreRegions {
-    Yes,
+pub enum CheckRegions {
     No,
+    OnlyEarlyBound,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -468,13 +468,13 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn uses_unique_generic_params(
         self,
         substs: SubstsRef<'tcx>,
-        ignore_regions: IgnoreRegions,
+        ignore_regions: CheckRegions,
     ) -> Result<(), NotUniqueParam<'tcx>> {
         let mut seen = GrowableBitSet::default();
         for arg in substs {
             match arg.unpack() {
                 GenericArgKind::Lifetime(lt) => {
-                    if ignore_regions == IgnoreRegions::No {
+                    if ignore_regions == CheckRegions::OnlyEarlyBound {
                         let ty::ReEarlyBound(p) = lt.kind() else {
                             return Err(NotUniqueParam::NotParam(lt.into()))
                         };

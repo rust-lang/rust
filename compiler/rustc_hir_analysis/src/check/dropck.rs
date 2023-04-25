@@ -6,7 +6,7 @@ use rustc_errors::{struct_span_err, ErrorGuaranteed};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::util::IgnoreRegions;
+use rustc_middle::ty::util::CheckRegions;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 
@@ -81,7 +81,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
     self_type_did: DefId,
     adt_to_impl_substs: SubstsRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    let Err(arg) = tcx.uses_unique_generic_params(adt_to_impl_substs, IgnoreRegions::No) else {
+    let Err(arg) = tcx.uses_unique_generic_params(adt_to_impl_substs, CheckRegions::OnlyEarlyBound) else {
         return Ok(())
     };
 
