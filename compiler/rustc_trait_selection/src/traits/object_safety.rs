@@ -784,7 +784,7 @@ fn receiver_is_dispatchable<'tcx>(
                 if param.index == 0 { unsized_self_ty.into() } else { tcx.mk_param_from_def(param) }
             });
 
-            ty::Binder::dummy(ty::TraitRef::new(tcx, trait_def_id, substs)).to_predicate(tcx)
+            ty::TraitRef::new(tcx, trait_def_id, substs).to_predicate(tcx)
         };
 
         let caller_bounds =
@@ -799,11 +799,8 @@ fn receiver_is_dispatchable<'tcx>(
 
     // Receiver: DispatchFromDyn<Receiver[Self => U]>
     let obligation = {
-        let predicate = ty::Binder::dummy(ty::TraitRef::new(
-            tcx,
-            dispatch_from_dyn_did,
-            [receiver_ty, unsized_receiver_ty],
-        ));
+        let predicate =
+            ty::TraitRef::new(tcx, dispatch_from_dyn_did, [receiver_ty, unsized_receiver_ty]);
 
         Obligation::new(tcx, ObligationCause::dummy(), param_env, predicate)
     };

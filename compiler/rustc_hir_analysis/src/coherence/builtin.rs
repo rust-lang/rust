@@ -340,11 +340,11 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
                         tcx,
                         cause.clone(),
                         param_env,
-                        ty::Binder::dummy(ty::TraitRef::new(
+                        ty::TraitRef::new(
                             tcx,
                             dispatch_from_dyn_trait,
                             [field.ty(tcx, substs_a), field.ty(tcx, substs_b)],
-                        )),
+                        ),
                     ));
                 }
                 let errors = ocx.select_all_or_error();
