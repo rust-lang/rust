@@ -67,8 +67,8 @@ pub trait ValueAnalysis<'tcx> {
             StatementKind::Assign(box (place, rvalue)) => {
                 self.handle_assign(*place, rvalue, state);
             }
-            StatementKind::SetDiscriminant { box ref place, .. } => {
-                state.flood_discr(place.as_ref(), self.map());
+            StatementKind::SetDiscriminant { box place, variant_index } => {
+                self.handle_set_discriminant(*place, *variant_index, state);
             }
             StatementKind::Intrinsic(box intrinsic) => {
                 self.handle_intrinsic(intrinsic, state);
@@ -92,6 +92,24 @@ pub trait ValueAnalysis<'tcx> {
             | StatementKind::Coverage(..)
             | StatementKind::AscribeUserType(..) => (),
         }
+    }
+
+    fn handle_set_discriminant(
+        &self,
+        place: Place<'tcx>,
+        variant_index: VariantIdx,
+        state: &mut State<Self::Value>,
+    ) {
+        self.super_set_discriminant(place, variant_index, state)
+    }
+
+    fn super_set_discriminant(
+        &self,
+        place: Place<'tcx>,
+        _variant_index: VariantIdx,
+        state: &mut State<Self::Value>,
+    ) {
+        state.flood_discr(place.as_ref(), self.map());
     }
 
     fn handle_intrinsic(

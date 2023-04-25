@@ -79,22 +79,22 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
         &self.map
     }
 
-    fn handle_statement(&self, statement: &Statement<'tcx>, state: &mut State<Self::Value>) {
-        match statement.kind {
-            StatementKind::SetDiscriminant { box ref place, variant_index } => {
-                state.flood_discr(place.as_ref(), &self.map);
-                if self.map.find_discr(place.as_ref()).is_some() {
-                    let enum_ty = place.ty(self.local_decls, self.tcx).ty;
-                    if let Some(discr) = self.eval_discriminant(enum_ty, variant_index) {
-                        state.assign_discr(
-                            place.as_ref(),
-                            ValueOrPlace::Value(FlatSet::Elem(discr)),
-                            &self.map,
-                        );
-                    }
-                }
+    fn handle_set_discriminant(
+        &self,
+        place: Place<'tcx>,
+        variant_index: VariantIdx,
+        state: &mut State<Self::Value>,
+    ) {
+        state.flood_discr(place.as_ref(), &self.map);
+        if self.map.find_discr(place.as_ref()).is_some() {
+            let enum_ty = place.ty(self.local_decls, self.tcx).ty;
+            if let Some(discr) = self.eval_discriminant(enum_ty, variant_index) {
+                state.assign_discr(
+                    place.as_ref(),
+                    ValueOrPlace::Value(FlatSet::Elem(discr)),
+                    &self.map,
+                );
             }
-            _ => self.super_statement(statement, state),
         }
     }
 
