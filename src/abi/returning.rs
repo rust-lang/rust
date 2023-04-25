@@ -9,7 +9,7 @@ use smallvec::{smallvec, SmallVec};
 /// this adds an extra parameter pointing to where the return value needs to be stored.
 pub(super) fn codegen_return_param<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
-    ssa_analyzed: &rustc_index::vec::IndexVec<Local, crate::analyze::SsaKind>,
+    ssa_analyzed: &rustc_index::IndexSlice<Local, crate::analyze::SsaKind>,
     block_params_iter: &mut impl Iterator<Item = Value>,
 ) -> CPlace<'tcx> {
     let (ret_place, ret_param): (_, SmallVec<[_; 2]>) = match fx.fn_abi.as_ref().unwrap().ret.mode {
