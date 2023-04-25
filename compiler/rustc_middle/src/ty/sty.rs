@@ -5,11 +5,11 @@
 use crate::infer::canonical::Canonical;
 use crate::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use crate::ty::visit::ValidateBoundVars;
-use crate::ty::{InferTy::*, HotTypeFlags};
 use crate::ty::{
     self, AdtDef, Discr, Term, Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor,
 };
+use crate::ty::{HotTypeFlags, InferTy::*};
 use crate::ty::{List, ParamEnv};
 use hir::def::DefKind;
 use polonius_engine::Atom;
@@ -1716,7 +1716,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn flags(self) -> TypeFlags {
         self.0.flags
     }
-    
+
     #[inline(always)]
     pub fn hot_flags(self) -> HotTypeFlags {
         self.0.tag()
