@@ -1456,7 +1456,6 @@ pub struct TimSortRun {
 
 /// Takes a range as denoted by start and end, that is already sorted and extends it to the right if
 /// necessary with sorts optimized for smaller ranges such as insertion sort.
-#[cfg(not(no_global_oom_handling))]
 fn provide_sorted_batch<T, F>(v: &mut [T], start: usize, mut end: usize, is_less: &mut F) -> usize
 where
     F: FnMut(&T, &T) -> bool,

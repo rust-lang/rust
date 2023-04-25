@@ -251,7 +251,7 @@ rustc_queries! {
     /// `key` is the `DefId` of the associated type or opaque type.
     ///
     /// Bounds from the parent (e.g. with nested impl trait) are not included.
-    query explicit_item_bounds(key: DefId) -> &'tcx [(ty::Predicate<'tcx>, Span)] {
+    query explicit_item_bounds(key: DefId) -> ty::EarlyBinder<&'tcx [(ty::Predicate<'tcx>, Span)]> {
         desc { |tcx| "finding item bounds for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern

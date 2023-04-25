@@ -269,7 +269,7 @@ where
                     // and are visited by shallow visitors.
                     self.visit_predicates(ty::GenericPredicates {
                         parent: None,
-                        predicates: tcx.explicit_item_bounds(def_id),
+                        predicates: tcx.explicit_item_bounds(def_id).skip_binder(),
                     })?;
                 }
             }
@@ -1784,7 +1784,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
     fn bounds(&mut self) -> &mut Self {
         self.visit_predicates(ty::GenericPredicates {
             parent: None,
-            predicates: self.tcx.explicit_item_bounds(self.item_def_id),
+            predicates: self.tcx.explicit_item_bounds(self.item_def_id).skip_binder(),
         });
         self
     }

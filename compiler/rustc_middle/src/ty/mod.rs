@@ -861,6 +861,11 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
     pub fn is_const_if_const(self) -> bool {
         self.skip_binder().is_const_if_const()
     }
+
+    #[inline]
+    pub fn polarity(self) -> ImplPolarity {
+        self.skip_binder().polarity
+    }
 }
 
 /// `A: B`
@@ -1497,29 +1502,12 @@ struct ParamTag {
     constness: hir::Constness,
 }
 
-unsafe impl rustc_data_structures::tagged_ptr::Tag for ParamTag {
-    const BITS: u32 = 2;
-
-    #[inline]
-    fn into_usize(self) -> usize {
-        match self {
-            Self { reveal: traits::Reveal::UserFacing, constness: hir::Constness::NotConst } => 0,
-            Self { reveal: traits::Reveal::All, constness: hir::Constness::NotConst } => 1,
-            Self { reveal: traits::Reveal::UserFacing, constness: hir::Constness::Const } => 2,
-            Self { reveal: traits::Reveal::All, constness: hir::Constness::Const } => 3,
-        }
-    }
-
-    #[inline]
-    unsafe fn from_usize(ptr: usize) -> Self {
-        match ptr {
-            0 => Self { reveal: traits::Reveal::UserFacing, constness: hir::Constness::NotConst },
-            1 => Self { reveal: traits::Reveal::All, constness: hir::Constness::NotConst },
-            2 => Self { reveal: traits::Reveal::UserFacing, constness: hir::Constness::Const },
-            3 => Self { reveal: traits::Reveal::All, constness: hir::Constness::Const },
-            _ => std::hint::unreachable_unchecked(),
-        }
-    }
+impl_tag! {
+    impl Tag for ParamTag;
+    ParamTag { reveal: traits::Reveal::UserFacing, constness: hir::Constness::NotConst },
+    ParamTag { reveal: traits::Reveal::All,        constness: hir::Constness::NotConst },
+    ParamTag { reveal: traits::Reveal::UserFacing, constness: hir::Constness::Const    },
+    ParamTag { reveal: traits::Reveal::All,        constness: hir::Constness::Const    },
 }
 
 impl<'tcx> fmt::Debug for ParamEnv<'tcx> {

@@ -914,7 +914,7 @@ pub trait PrettyPrinter<'tcx>:
 
         // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
         // by looking up the projections associated with the def_id.
-        let bounds = tcx.bound_explicit_item_bounds(def_id);
+        let bounds = tcx.explicit_item_bounds(def_id);
 
         let mut traits = FxIndexMap::default();
         let mut fn_traits = FxIndexMap::default();

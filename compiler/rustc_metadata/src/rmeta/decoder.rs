@@ -23,7 +23,7 @@ use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::ty::codec::TyDecoder;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::GeneratorDiagnosticData;
-use rustc_middle::ty::{self, ParameterizedOverTcx, Ty, TyCtxt, Visibility};
+use rustc_middle::ty::{self, ParameterizedOverTcx, Predicate, Ty, TyCtxt, Visibility};
 use rustc_serialize::opaque::MemDecoder;
 use rustc_serialize::{Decodable, Decoder};
 use rustc_session::cstore::{
@@ -855,6 +855,20 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             Symbol::intern(name),
             &attrs,
         )
+    }
+
+    fn get_explicit_item_bounds(
+        self,
+        index: DefIndex,
+        tcx: TyCtxt<'tcx>,
+    ) -> ty::EarlyBinder<&'tcx [(Predicate<'tcx>, Span)]> {
+        let lazy = self.root.tables.explicit_item_bounds.get(self, index);
+        let output = if lazy.is_default() {
+            &mut []
+        } else {
+            tcx.arena.alloc_from_iter(lazy.decode((self, tcx)))
+        };
+        ty::EarlyBinder(&*output)
     }
 
     fn get_variant(self, kind: &DefKind, index: DefIndex, parent_did: DefId) -> ty::VariantDef {

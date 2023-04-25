@@ -360,7 +360,9 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
                             tcx,
                             param_env,
                             item_def_id,
-                            tcx.explicit_item_bounds(item_def_id).to_vec(),
+                            tcx.explicit_item_bounds(item_def_id)
+                                .subst_identity_iter_copied()
+                                .collect::<Vec<_>>(),
                             &FxIndexSet::default(),
                             gat_def_id.def_id,
                             gat_generics,
@@ -1125,7 +1127,7 @@ fn check_associated_type_bounds(wfcx: &WfCheckingCtxt<'_, '_>, item: ty::AssocIt
     let bounds = wfcx.tcx().explicit_item_bounds(item.def_id);
 
     debug!("check_associated_type_bounds: bounds={:?}", bounds);
-    let wf_obligations = bounds.iter().flat_map(|&(bound, bound_span)| {
+    let wf_obligations = bounds.subst_identity_iter_copied().flat_map(|(bound, bound_span)| {
         let normalized_bound = wfcx.normalize(span, None, bound);
         traits::wf::predicate_obligations(
             wfcx.infcx,
@@ -1588,7 +1590,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
                 }
             });
             for (bound, bound_span) in tcx
-                .bound_explicit_item_bounds(opaque_ty.def_id)
+                .explicit_item_bounds(opaque_ty.def_id)
                 .subst_iter_copied(tcx, opaque_ty.substs)
             {
                 let bound = self.wfcx.normalize(bound_span, None, bound);

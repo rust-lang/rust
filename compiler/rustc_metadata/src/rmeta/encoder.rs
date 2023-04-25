@@ -1423,7 +1423,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_explicit_item_bounds(&mut self, def_id: DefId) {
         debug!("EncodeContext::encode_explicit_item_bounds({:?})", def_id);
-        let bounds = self.tcx.explicit_item_bounds(def_id);
+        let bounds = self.tcx.explicit_item_bounds(def_id).skip_binder();
         record_defaulted_array!(self.tables.explicit_item_bounds[def_id] <- bounds);
     }
 

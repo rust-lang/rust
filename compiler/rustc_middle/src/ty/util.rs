@@ -701,13 +701,6 @@ impl<'tcx> TyCtxt<'tcx> {
         if visitor.found_recursion { Err(expanded_type) } else { Ok(expanded_type) }
     }
 
-    pub fn bound_explicit_item_bounds(
-        self,
-        def_id: DefId,
-    ) -> ty::EarlyBinder<&'tcx [(ty::Predicate<'tcx>, rustc_span::Span)]> {
-        ty::EarlyBinder(self.explicit_item_bounds(def_id))
-    }
-
     /// Returns names of captured upvars for closures and generators.
     ///
     /// Here are some examples:

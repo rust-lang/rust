@@ -540,7 +540,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 .obligations;
         }
 
-        let item_bounds = tcx.bound_explicit_item_bounds(def_id.to_def_id());
+        let item_bounds = tcx.explicit_item_bounds(def_id);
 
         for (predicate, _) in item_bounds.subst_iter_copied(tcx, substs) {
             let predicate = predicate.fold_with(&mut BottomUpFolder {
