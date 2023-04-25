@@ -473,16 +473,17 @@ impl<'tcx> TyCtxt<'tcx> {
         let mut seen = GrowableBitSet::default();
         for arg in substs {
             match arg.unpack() {
-                GenericArgKind::Lifetime(lt) => {
-                    if ignore_regions == CheckRegions::OnlyEarlyBound {
-                        let ty::ReEarlyBound(p) = lt.kind() else {
-                            return Err(NotUniqueParam::NotParam(lt.into()))
-                        };
+                GenericArgKind::Lifetime(lt) => match (ignore_regions, lt.kind()) {
+                    (CheckRegions::OnlyEarlyBound, ty::ReEarlyBound(p)) => {
                         if !seen.insert(p.index) {
                             return Err(NotUniqueParam::DuplicateParam(lt.into()));
                         }
                     }
-                }
+                    (CheckRegions::OnlyEarlyBound, _) => {
+                        return Err(NotUniqueParam::NotParam(lt.into()));
+                    }
+                    (CheckRegions::No, _) => {}
+                },
                 GenericArgKind::Type(t) => match t.kind() {
                     ty::Param(p) => {
                         if !seen.insert(p.index) {
