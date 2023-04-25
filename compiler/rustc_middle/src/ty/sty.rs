@@ -821,8 +821,8 @@ pub struct TraitRef<'tcx> {
     pub def_id: DefId,
     pub substs: SubstsRef<'tcx>,
     /// This field exists to prevent the creation of `TraitRef` without
-    /// calling [TyCtxt::mk_trait_ref].
-    pub(super) _use_mk_trait_ref_instead: (),
+    /// calling [`TraitRef::new`].
+    pub(super) _use_trait_ref_new_instead: (),
 }
 
 impl<'tcx> TraitRef<'tcx> {
@@ -832,7 +832,7 @@ impl<'tcx> TraitRef<'tcx> {
         substs: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
     ) -> Self {
         let substs = tcx.check_and_mk_substs(trait_def_id, substs);
-        Self { def_id: trait_def_id, substs, _use_mk_trait_ref_instead: () }
+        Self { def_id: trait_def_id, substs, _use_trait_ref_new_instead: () }
     }
 
     pub fn from_lang_item(
