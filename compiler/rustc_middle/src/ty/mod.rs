@@ -483,6 +483,7 @@ impl HotTypeFlags {
 }
 
 unsafe impl Tag for HotTypeFlags {
+    // at most 3
     const BITS: u32 = 1;
 
     fn into_usize(self) -> usize {
