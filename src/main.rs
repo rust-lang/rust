@@ -13,7 +13,7 @@ Usage:
 
 Common options:
     --no-deps                Run Clippy only on the given crate, without linting the dependencies
-    --fix                    Automatically apply lint suggestions. This flag implies `--no-deps`
+    --fix                    Automatically apply lint suggestions. This flag implies `--no-deps` and `--all-targets`
     -h, --help               Print this message
     -V, --version            Print version info and exit
     --explain LINT           Print the documentation for a given lint
