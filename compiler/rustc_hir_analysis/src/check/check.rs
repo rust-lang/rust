@@ -397,14 +397,7 @@ fn check_opaque_meets_bounds<'tcx>(
 ) {
     let defining_use_anchor = match *origin {
         hir::OpaqueTyOrigin::FnReturn(did) | hir::OpaqueTyOrigin::AsyncFn(did) => did,
-        hir::OpaqueTyOrigin::TyAlias { .. } => {
-            let mut def_id = def_id;
-            // Find the surrounding item (type alias or assoc type)
-            while let DefKind::OpaqueTy = tcx.def_kind(def_id) {
-                def_id = tcx.local_parent(def_id);
-            }
-            def_id
-        }
+        hir::OpaqueTyOrigin::TyAlias { .. } => tcx.impl_trait_parent(def_id),
     };
     let param_env = tcx.param_env(defining_use_anchor);
 
