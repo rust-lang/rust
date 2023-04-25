@@ -29,7 +29,7 @@ use rustc_session::lint::builtin::{
 };
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{BytePos, Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
@@ -927,30 +927,18 @@ impl CheckAttrVisitor<'_> {
         hir_id: HirId,
     ) -> bool {
         if hir_id != CRATE_HIR_ID {
-            self.tcx.struct_span_lint_hir(
+            // insert a bang between `#` and `[...`
+            let bang_span = attr.span.lo() + BytePos(1);
+            let sugg = (attr.style == AttrStyle::Outer
+                && self.tcx.hir().get_parent_item(hir_id) == CRATE_OWNER_ID)
+                .then_some(errors::AttrCrateLevelOnlySugg {
+                    attr: attr.span.with_lo(bang_span).with_hi(bang_span),
+                });
+            self.tcx.emit_spanned_lint(
                 INVALID_DOC_ATTRIBUTES,
                 hir_id,
                 meta.span(),
-                fluent::passes_attr_crate_level,
-                |err| {
-                    if attr.style == AttrStyle::Outer
-                        && self.tcx.hir().get_parent_item(hir_id) == CRATE_OWNER_ID
-                    {
-                        if let Ok(mut src) = self.tcx.sess.source_map().span_to_snippet(attr.span) {
-                            src.insert(1, '!');
-                            err.span_suggestion_verbose(
-                                attr.span,
-                                fluent::passes_suggestion,
-                                src,
-                                Applicability::MaybeIncorrect,
-                            );
-                        } else {
-                            err.span_help(attr.span, fluent::passes_help);
-                        }
-                    }
-                    err.note(fluent::passes_note);
-                    err
-                },
+                errors::AttrCrateLevelOnly { sugg },
             );
             return false;
         }

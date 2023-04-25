@@ -139,7 +139,6 @@ passes_doc_attr_not_crate_level =
 passes_attr_crate_level =
     this attribute can only be applied at the crate level
     .suggestion = to apply to the crate, use an inner attribute
-    .help = to apply to the crate, use an inner attribute
     .note = read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
 
 passes_doc_test_unknown =
@@ -724,3 +723,45 @@ passes_skipping_const_checks = skipping const checks
 passes_invalid_macro_export_arguments = `{$name}` isn't a valid `#[macro_export]` argument
 
 passes_invalid_macro_export_arguments_too_many_items = `#[macro_export]` can only take 1 or 0 arguments
+
+passes_unreachable_due_to_uninhabited = unreachable {$descr}
+    .label = unreachable {$descr}
+    .label_orig = any code following this expression is unreachable
+    .note = this expression has type `{$ty}`, which is uninhabited
+
+passes_unused_var_maybe_capture_ref = unused variable: `{$name}`
+    .help = did you mean to capture by reference instead?
+
+passes_unused_capture_maybe_capture_ref = value captured by `{$name}` is never read
+    .help = did you mean to capture by reference instead?
+
+passes_unused_var_remove_field = unused variable: `{$name}`
+passes_unused_var_remove_field_suggestion = try removing the field
+
+passes_unused_var_assigned_only = variable `{$name}` is assigned to, but never used
+    .note = consider using `_{$name}` instead
+
+passes_unnecessary_stable_feature = the feature `{$feature}` has been stable since {$since} and no longer requires an attribute to enable
+
+passes_unnecessary_partial_stable_feature = the feature `{$feature}` has been partially stabilized since {$since} and is succeeded by the feature `{$implies}`
+    .suggestion = if you are using features which are still unstable, change to using `{$implies}`
+    .suggestion_remove = if you are using features which are now stable, remove this line
+
+passes_ineffective_unstable_impl = an `#[unstable]` annotation here has no effect
+    .note = see issue #55436 <https://github.com/rust-lang/rust/issues/55436> for more information
+
+passes_unused_assign = value assigned to `{$name}` is never read
+    .help = maybe it is overwritten before being read?
+
+passes_unused_assign_passed = value passed to `{$name}` is never read
+    .help = maybe it is overwritten before being read?
+
+passes_maybe_string_interpolation = you might have meant to use string interpolation in this string literal
+passes_string_interpolation_only_works = string interpolation only works in `format!` invocations
+
+passes_unused_variable_try_prefix = unused variable: `{$name}`
+    .label = unused variable
+    .suggestion = if this is intentional, prefix it with an underscore
+
+passes_unused_variable_try_ignore = unused variable: `{$name}`
+    .suggestion = try ignoring the field
