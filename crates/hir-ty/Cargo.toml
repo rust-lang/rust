@@ -30,7 +30,6 @@ la-arena = { version = "0.3.0", path = "../../lib/la-arena" }
 once_cell = "1.17.0"
 typed-arena = "2.0.1"
 rustc_index = { version = "0.0.20221221", package = "hkalbasi-rustc-ap-rustc_index", default-features = false }
-indexmap = "1.6.0"
 
 # local deps
 stdx.workspace = true

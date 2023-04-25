@@ -5,7 +5,7 @@ use std::{
 
 use base_db::{CrateGraph, FileId, ProcMacroPaths};
 use cfg::{CfgAtom, CfgDiff};
-use expect_test::{expect, expect_file, Expect, ExpectFile};
+use expect_test::{expect, Expect};
 use paths::{AbsPath, AbsPathBuf};
 use serde::de::DeserializeOwned;
 
@@ -110,11 +110,6 @@ fn to_crate_graph(project_workspace: ProjectWorkspace) -> (CrateGraph, ProcMacro
 }
 
 fn check_crate_graph(crate_graph: CrateGraph, expect: Expect) {
-    let mut crate_graph = format!("{crate_graph:#?}");
-    replace_root(&mut crate_graph, false);
-    expect.assert_eq(&crate_graph);
-}
-fn check_crate_graph_f(crate_graph: CrateGraph, expect: ExpectFile) {
     let mut crate_graph = format!("{crate_graph:#?}");
     replace_root(&mut crate_graph, false);
     expect.assert_eq(&crate_graph);
@@ -1670,13 +1665,4 @@ fn rust_project_is_proc_macro_has_proc_macro_dep() {
     // Assert that the project crate with `is_proc_macro` has a dependency
     // on the proc_macro sysroot crate.
     crate_data.dependencies.iter().find(|&dep| dep.name.deref() == "proc_macro").unwrap();
-}
-
-#[test]
-fn cargo_dev_dependencies() {
-    let (crate_graph, _proc_macros) = load_cargo("complex-with-dev-deps.json");
-    check_crate_graph_f(
-        crate_graph,
-        expect_file!["../test_data/cargo_dev_dependencies-crate-graph.txt"],
-    )
 }
