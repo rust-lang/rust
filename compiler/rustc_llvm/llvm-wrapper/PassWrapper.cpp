@@ -410,10 +410,15 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   }
   Options.RelaxELFRelocations = RelaxELFRelocations;
   Options.UseInitArray = UseInitArray;
+
+#if LLVM_VERSION_LT(17, 0)
   if (ForceEmulatedTls) {
     Options.ExplicitEmulatedTLS = true;
     Options.EmulatedTLS = true;
   }
+#else
+  Options.EmulatedTLS = ForceEmulatedTls || Trip.hasDefaultEmulatedTLS();
+#endif
 
   if (TrapUnreachable) {
     // Tell LLVM to codegen `unreachable` into an explicit trap instruction.
