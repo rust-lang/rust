@@ -126,17 +126,12 @@ rm tests/ui/proc-macro/no-missing-docs.rs # same
 rm tests/ui/rust-2018/proc-macro-crate-in-paths.rs # same
 rm tests/ui/proc-macro/allowed-signatures.rs # same
 
+# rustdoc-clif passes extra args, suppressing the help message when no args are passed
+rm -r tests/run-make/issue-88756-default-output
+
 # doesn't work due to the way the rustc test suite is invoked.
 # should work when using ./x.py test the way it is intended
 # ============================================================
-rm -r tests/run-make/emit-shared-files # requires the rustdoc executable in dist/bin/
-rm -r tests/run-make/unstable-flag-required # same
-rm -r tests/run-make/rustdoc-* # same
-rm -r tests/run-make/issue-88756-default-output # same
-rm -r tests/run-make/doctests-keep-binaries # same
-rm -r tests/run-make/exit-code # same
-rm -r tests/run-make/issue-22131 # same
-rm -r tests/run-make/issue-38237 # same
 rm -r tests/run-make/remap-path-prefix-dwarf # requires llvm-dwarfdump
 rm -r tests/ui/consts/missing_span_in_backtrace.rs # expects sysroot source to be elsewhere
 
@@ -161,6 +156,26 @@ rm tests/ui/backtrace.rs # TODO warning
 rm tests/ui/process/nofile-limit.rs # TODO some AArch64 linking issue
 
 rm tests/ui/stdio-is-blocking.rs # really slow with unoptimized libstd
+
+cp ../dist/bin/rustdoc-clif ../dist/bin/rustdoc # some tests expect bin/rustdoc to exist
+
+# prevent $(RUSTDOC) from picking up the sysroot built by x.py. It conflicts with the one used by
+# rustdoc-clif
+cat <<EOF | git apply -
+diff --git a/tests/run-make/tools.mk b/tests/run-make/tools.mk
+index ea06b620c4c..b969d0009c6 100644
+--- a/tests/run-make/tools.mk
++++ b/tests/run-make/tools.mk
+@@ -9,7 +9,7 @@ RUSTC_ORIGINAL := \$(RUSTC)
+ BARE_RUSTC := \$(HOST_RPATH_ENV) '\$(RUSTC)'
+ BARE_RUSTDOC := \$(HOST_RPATH_ENV) '\$(RUSTDOC)'
+ RUSTC := \$(BARE_RUSTC) --out-dir \$(TMPDIR) -L \$(TMPDIR) \$(RUSTFLAGS)
+-RUSTDOC := \$(BARE_RUSTDOC) -L \$(TARGET_RPATH_DIR)
++RUSTDOC := \$(BARE_RUSTDOC)
+ ifdef RUSTC_LINKER
+ RUSTC := \$(RUSTC) -Clinker='\$(RUSTC_LINKER)'
+ RUSTDOC := \$(RUSTDOC) -Clinker='\$(RUSTC_LINKER)'
+EOF
 
 echo "[TEST] rustc test suite"
 COMPILETEST_FORCE_STAGE0=1 ./x.py test --stage 0 --test-args=--nocapture tests/{codegen-units,run-make,run-pass-valgrind,ui,incremental}
