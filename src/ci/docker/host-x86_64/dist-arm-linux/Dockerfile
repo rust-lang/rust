@@ -1,10 +1,10 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 COPY scripts/cross-apt-packages.sh /scripts/
 RUN sh /scripts/cross-apt-packages.sh
 
-COPY scripts/crosstool-ng-1.24.sh /scripts/
-RUN sh /scripts/crosstool-ng-1.24.sh
+COPY scripts/crosstool-ng.sh /scripts/
+RUN sh /scripts/crosstool-ng.sh
 
 WORKDIR /build
 

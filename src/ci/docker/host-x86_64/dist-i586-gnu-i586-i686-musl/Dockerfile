@@ -21,8 +21,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY scripts/cross-apt-packages.sh /scripts/
 RUN sh /scripts/cross-apt-packages.sh
 
-COPY scripts/crosstool-ng-1.24.sh /scripts/
-RUN sh /scripts/crosstool-ng-1.24.sh
+COPY scripts/crosstool-ng.sh /scripts/
+RUN sh /scripts/crosstool-ng.sh
 
 COPY scripts/rustbuild-setup.sh /scripts/
 RUN sh /scripts/rustbuild-setup.sh

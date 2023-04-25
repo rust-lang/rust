@@ -21,7 +21,6 @@ exit 1
 mkdir build
 cd build
 cp ../aarch64-linux-gnu.config .config
-ct-ng oldconfig
 hide_output ct-ng build
 cd ..
 rm -rf build

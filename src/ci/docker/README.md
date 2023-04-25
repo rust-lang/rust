@@ -163,14 +163,16 @@ $category > $option = $value -- $comment
 For targets: `arm-unknown-linux-gnueabi`
 
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
-- Path and misc options > Patches origin = Bundled only
+- Path and misc options > Use a mirror = ENABLE
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
 - Target options > Target Architecture = arm
 - Target options > Architecture level = armv6 -- (+)
 - Target options > Floating point = software (no FPU) -- (\*)
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 3.2.101
+- Binary utilities > Version of binutils = 2.32
 - C-library > glibc version = 2.17.0
-- C compiler > gcc version = 8.3.0
+- C compiler > gcc version = 8.5.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 ### `arm-linux-gnueabihf.config`
@@ -178,7 +180,8 @@ For targets: `arm-unknown-linux-gnueabi`
 For targets: `arm-unknown-linux-gnueabihf`
 
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
-- Path and misc options > Patches origin = Bundled only
+- Path and misc options > Use a mirror = ENABLE
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
 - Target options > Target Architecture = arm
 - Target options > Architecture level = armv6 -- (+)
 - Target options > Use specific FPU = vfp -- (+)
@@ -186,8 +189,9 @@ For targets: `arm-unknown-linux-gnueabihf`
 - Target options > Default instruction set mode = arm -- (+)
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 3.2.101
+- Binary utilities > Version of binutils = 2.32
 - C-library > glibc version = 2.17.0
-- C compiler > gcc version = 8.3.0
+- C compiler > gcc version = 8.5.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 ### `armv7-linux-gnueabihf.config`
@@ -195,7 +199,8 @@ For targets: `arm-unknown-linux-gnueabihf`
 For targets: `armv7-unknown-linux-gnueabihf`
 
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
-- Path and misc options > Patches origin = Bundled only
+- Path and misc options > Use a mirror = ENABLE
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
 - Target options > Target Architecture = arm
 - Target options > Suffix to the arch-part = v7
 - Target options > Architecture level = armv7-a -- (+)
@@ -204,8 +209,9 @@ For targets: `armv7-unknown-linux-gnueabihf`
 - Target options > Default instruction set mode = thumb -- (\*)
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 3.2.101
+- Binary utilities > Version of binutils = 2.32
 - C-library > glibc version = 2.17.0
-- C compiler > gcc version = 8.3.0
+- C compiler > gcc version = 8.5.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 (\*) These options have been selected to match the configuration of the arm
@@ -225,9 +231,9 @@ For targets: `aarch64-unknown-linux-gnu`
 - Target options > Bitness = 64-bit
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 4.1.49
-- Binary utilities > Version of binutils = 2.32
+- Binary utilities > Version of binutils = 2.29.1
 - C-library > glibc version = 2.17 -- aarch64 support was introduced in this version
-- C compiler > gcc version = 8.3.0
+- C compiler > gcc version = 8.5.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 ### `i586-linux-gnu.config`
@@ -235,7 +241,6 @@ For targets: `aarch64-unknown-linux-gnu`
 For targets: `i586-unknown-linux-gnu`
 
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
-- Path and misc options > Patches origin = Bundled only
 - Target options > Target Architecture = x86
 - Target options > Architecture level = i586
 - Target options > Target CFLAGS = -Wa,-mrelax-relocations=no
@@ -244,7 +249,7 @@ For targets: `i586-unknown-linux-gnu`
 - Binary utilities > Version of binutils = 2.32
 - Binary utilities > binutils extra config = --enable-compressed-debug-sections=none -- (\*)
 - C-library > glibc version = 2.17.0
-- C compiler > gcc version = 8.3.0
+- C compiler > gcc version = 8.5.0
 - C compiler > C++ = ENABLE
 
 (\*) Compressed debug is enabled by default for gas (assembly) on Linux/x86 targets,
@@ -265,10 +270,10 @@ For targets: `mips-unknown-linux-gnu`
 - Target options > Bitness = 32-bit
 - Target options > Architecture level = mips32r2
 - Operating System > Target OS = linux
-- Operating System > Linux kernel version = 4.4.174
+- Operating System > Linux kernel version = 4.4.302
 - Binary utilities > Version of binutils = 2.32
 - C-library > glibc version = 2.23
-- C compiler > gcc version = 8.3.0
+- C compiler > gcc version = 8.5.0
 - C compiler > gcc extra config = --with-fp-32=xx --with-odd-spreg-32=no
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
@@ -287,10 +292,10 @@ For targets: `mipsel-unknown-linux-gnu`
 - Target options > Bitness = 32-bit
 - Target options > Architecture level = mips32r2
 - Operating System > Target OS = linux
-- Operating System > Linux kernel version = 4.4.174
+- Operating System > Linux kernel version = 4.4.302
 - Binary utilities > Version of binutils = 2.32
 - C-library > glibc version = 2.23
-- C compiler > gcc version = 8.3.0
+- C compiler > gcc version = 8.5.0
 - C compiler > gcc extra config = --with-fp-32=xx --with-odd-spreg-32=no
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
@@ -309,10 +314,10 @@ For targets: `mips64-unknown-linux-gnuabi64`
 - Target options > Bitness = 64-bit
 - Target options > Architecture level = mips64r2
 - Operating System > Target OS = linux
-- Operating System > Linux kernel version = 4.4.174
+- Operating System > Linux kernel version = 4.4.302
 - Binary utilities > Version of binutils = 2.32
 - C-library > glibc version = 2.23
-- C compiler > gcc version = 8.3.0
+- C compiler > gcc version = 8.5.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 ### `mips64el-linux-gnu.config`
@@ -330,10 +335,10 @@ For targets: `mips64el-unknown-linux-gnuabi64`
 - Target options > Bitness = 64-bit
 - Target options > Architecture level = mips64r2
 - Operating System > Target OS = linux
-- Operating System > Linux kernel version = 4.4.174
+- Operating System > Linux kernel version = 4.4.302
 - Binary utilities > Version of binutils = 2.32
 - C-library > glibc version = 2.23
-- C compiler > gcc version = 8.3.0
+- C compiler > gcc version = 8.5.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 ### `powerpc-linux-gnu.config`
@@ -349,7 +354,7 @@ For targets: `powerpc-unknown-linux-gnu`
 - Operating System > Linux kernel version = 3.2.101
 - Binary utilities > Version of binutils = 2.30
 - C-library > glibc version = 2.17 -- ~RHEL7 glibc
-- C compiler > gcc version = 8.3.0
+- C compiler > gcc version = 8.5.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 ### `powerpc64-linux-gnu.config`
@@ -367,10 +372,26 @@ For targets: `powerpc64-unknown-linux-gnu`
 - Operating System > Linux kernel version = 3.2.101
 - Binary utilities > Version of binutils = 2.32
 - C-library > glibc version = 2.17 -- ~RHEL7 glibc
-- C compiler > gcc version = 8.3.0
+- C compiler > gcc version = 8.5.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 (+) These CPU options match the configuration of the toolchains in RHEL6.
+
+### `riscv64-unknown-linux-gnu.config`
+
+For targets: `riscv64-unknown-linux-gnu`
+
+- Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
+- Path and misc options > Use a mirror = ENABLE
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Target options > Target Architecture = riscv
+- Target options > Bitness = 64-bit
+- Operating System > Target OS = linux
+- Operating System > Linux kernel version = 4.20.17
+- Binary utilities > Version of binutils = 2.32
+- C-library > glibc version = 2.29
+- C compiler > gcc version = 8.5.0
+- C compiler > C++ = ENABLE -- to cross compile LLVM
 
 ### `s390x-linux-gnu.config`
 
@@ -385,6 +406,6 @@ For targets: `s390x-unknown-linux-gnu`
 - Operating System > Linux kernel version = 3.2.101
 - Binary utilities > Version of binutils = 2.32
 - C-library > glibc version = 2.17 -- ~RHEL7 glibc
-- C compiler > gcc version = 8.3.0
+- C compiler > gcc version = 8.5.0
 - C compiler > gcc extra config = --with-arch=z10 -- LLVM's minimum support
 - C compiler > C++ = ENABLE -- to cross compile LLVM
