@@ -1168,7 +1168,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     });
                 }
                 (_, TraitBoundModifier::MaybeConstMaybe) => {
-                    self.err_handler().emit_err(errors::OptionalConstExclusive {span: bound.span()});
+                    self.err_handler().emit_err(errors::OptionalConstExclusive {span: bound.span(), modifier: "?" });
+                }
+                (_, TraitBoundModifier::MaybeConstNegative) => {
+                    self.err_handler().emit_err(errors::OptionalConstExclusive {span: bound.span(), modifier: "!" });
                 }
                 _ => {}
             }

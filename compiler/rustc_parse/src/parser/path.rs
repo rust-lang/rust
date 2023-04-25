@@ -606,7 +606,7 @@ impl<'a> Parser<'a> {
                     let kind = if self.eat(&token::Colon) {
                         // Parse associated type constraint bound.
 
-                        let bounds = self.parse_generic_bounds(Some(self.prev_token.span))?;
+                        let bounds = self.parse_generic_bounds()?;
                         AssocConstraintKind::Bound { bounds }
                     } else if self.eat(&token::Eq) {
                         self.parse_assoc_equality_term(ident, self.prev_token.span)?

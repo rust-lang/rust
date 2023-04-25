@@ -603,6 +603,12 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(dyn_star, "`dyn*` trait objects are experimental");
     gate_all!(const_closures, "const closures are experimental");
 
+    if !visitor.features.negative_bounds {
+        for &span in spans.get(&sym::negative_bounds).iter().copied().flatten() {
+            sess.emit_err(errors::NegativeBoundUnsupported { span });
+        }
+    }
+
     // All uses of `gate_all!` below this point were added in #65742,
     // and subsequently disabled (with the non-early gating readded).
     // We emit an early future-incompatible warning for these.

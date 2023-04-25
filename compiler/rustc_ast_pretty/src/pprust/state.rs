@@ -1570,11 +1570,18 @@ impl<'a> State<'a> {
                 GenericBound::Trait(tref, modifier) => {
                     match modifier {
                         TraitBoundModifier::None => {}
+                        TraitBoundModifier::Negative => {
+                            self.word("!");
+                        }
                         TraitBoundModifier::Maybe => {
                             self.word("?");
                         }
                         TraitBoundModifier::MaybeConst => {
                             self.word_space("~const");
+                        }
+                        TraitBoundModifier::MaybeConstNegative => {
+                            self.word_space("~const");
+                            self.word("!");
                         }
                         TraitBoundModifier::MaybeConstMaybe => {
                             self.word_space("~const");
