@@ -134,3 +134,8 @@ pub fn option_payload(o: &Option<usize>, p: &Option<String>) {
         let _y = core::intrinsics::option_payload_ptr(p);
     }
 }
+
+// EMIT_MIR lower_intrinsics.ptr_offset.LowerIntrinsics.diff
+pub unsafe fn ptr_offset(p: *const i32, d: isize) -> *const i32 {
+    core::intrinsics::offset(p, d)
+}
