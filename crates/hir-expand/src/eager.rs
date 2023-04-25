@@ -54,8 +54,8 @@ pub fn expand_eager_macro(
     let expand_to = ExpandTo::from_call_site(&macro_call.value);
 
     // Note:
-    // When `lazy_expand` is called, its *parent* file must be already exists.
-    // Here we store an eager macro id for the argument expanded subtree here
+    // When `lazy_expand` is called, its *parent* file must already exist.
+    // Here we store an eager macro id for the argument expanded subtree
     // for that purpose.
     let arg_id = db.intern_macro_call(MacroCallLoc {
         def,
@@ -79,7 +79,11 @@ pub fn expand_eager_macro(
     let Some(value ) = value else {
         return Ok(ExpandResult { value: None, err })
     };
-    let subtree = to_subtree(&value);
+    let subtree = {
+        let mut subtree = mbe::syntax_node_to_token_tree(&value).0;
+        subtree.delimiter = crate::tt::Delimiter::unspecified();
+        subtree
+    };
 
     let res = eager.expand(db, arg_id, &subtree);
     if err.is_none() {
@@ -100,12 +104,6 @@ pub fn expand_eager_macro(
     Ok(ExpandResult { value: Some(db.intern_macro_call(loc)), err })
 }
 
-fn to_subtree(node: &SyntaxNode) -> crate::tt::Subtree {
-    let mut subtree = mbe::syntax_node_to_token_tree(node).0;
-    subtree.delimiter = crate::tt::Delimiter::unspecified();
-    subtree
-}
-
 fn lazy_expand(
     db: &dyn ExpandDatabase,
     def: &MacroDefId,
@@ -121,7 +119,8 @@ fn lazy_expand(
         MacroCallKind::FnLike { ast_id: macro_call.with_value(ast_id), expand_to },
     );
 
-    db.parse_or_expand_with_err(id.as_file()).map(|parse| InFile::new(id.as_file(), parse))
+    let file_id = id.as_file();
+    db.parse_or_expand_with_err(file_id).map(|parse| InFile::new(file_id, parse))
 }
 
 fn eager_macro_recur(
