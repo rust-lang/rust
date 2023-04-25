@@ -771,12 +771,10 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         match context {
             PlaceContext::MutatingUse(_) => ty::Invariant,
-            PlaceContext::NonUse(StorageDead | StorageLive | PlaceMention | VarDebugInfo) => {
-                ty::Invariant
-            }
+            PlaceContext::NonUse(StorageDead | StorageLive | VarDebugInfo) => ty::Invariant,
             PlaceContext::NonMutatingUse(
-                Inspect | Copy | Move | SharedBorrow | ShallowBorrow | UniqueBorrow | AddressOf
-                | Projection,
+                Inspect | Copy | Move | PlaceMention | SharedBorrow | ShallowBorrow | UniqueBorrow
+                | AddressOf | Projection,
             ) => ty::Covariant,
             PlaceContext::NonUse(AscribeUserTy) => ty::Covariant,
         }

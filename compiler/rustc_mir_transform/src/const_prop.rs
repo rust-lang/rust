@@ -774,6 +774,7 @@ impl Visitor<'_> for CanConstProp {
             | NonMutatingUse(NonMutatingUseContext::Move)
             | NonMutatingUse(NonMutatingUseContext::Inspect)
             | NonMutatingUse(NonMutatingUseContext::Projection)
+            | NonMutatingUse(NonMutatingUseContext::PlaceMention)
             | NonUse(_) => {}
 
             // These could be propagated with a smarter analysis or just some careful thinking about
