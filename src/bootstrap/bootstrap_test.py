@@ -117,6 +117,8 @@ class GenerateAndParseConfig(unittest.TestCase):
         self.assertNotEqual(build.config_toml.find("codegen-backends = ['cranelift']"), -1)
         build = self.serialize_and_parse(["--set", "rust.codegen-backends=cranelift,llvm"])
         self.assertNotEqual(build.config_toml.find("codegen-backends = ['cranelift', 'llvm']"), -1)
+        build = self.serialize_and_parse(["--enable-full-tools"])
+        self.assertNotEqual(build.config_toml.find("codegen-backends = ['llvm']"), -1)
 
 if __name__ == '__main__':
     SUITE = unittest.TestSuite()

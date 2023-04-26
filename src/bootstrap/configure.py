@@ -299,7 +299,7 @@ def set(key, value, config):
     parts = key.split('.')
     for i, part in enumerate(parts):
         if i == len(parts) - 1:
-            if is_value_list(part):
+            if is_value_list(part) and isinstance(value, str):
                 value = value.split(',')
             arr[part] = value
         else:
