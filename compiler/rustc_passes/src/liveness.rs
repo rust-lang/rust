@@ -81,13 +81,13 @@
 //! We generate various special nodes for various, well, special purposes.
 //! These are described in the `Liveness` struct.
 
+use crate::errors;
+
 use self::LiveNodeKind::*;
 use self::VarKind::*;
 
 use rustc_ast::InlineAsmOptions;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::Applicability;
-use rustc_errors::Diagnostic;
 use rustc_hir as hir;
 use rustc_hir::def::*;
 use rustc_hir::def_id::LocalDefId;
@@ -1297,13 +1297,13 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         self.exit_ln
     }
 
-    fn warn_about_unreachable(
+    fn warn_about_unreachable<'desc>(
         &mut self,
         orig_span: Span,
         orig_ty: Ty<'tcx>,
         expr_span: Span,
         expr_id: HirId,
-        descr: &str,
+        descr: &'desc str,
     ) {
         if !orig_ty.is_never() {
             // Unreachable code warnings are already emitted during type checking.
@@ -1316,22 +1316,15 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             // that we do not emit the same warning twice if the uninhabited type
             // is indeed `!`.
 
-            let msg = format!("unreachable {}", descr);
-            self.ir.tcx.struct_span_lint_hir(
+            self.ir.tcx.emit_spanned_lint(
                 lint::builtin::UNREACHABLE_CODE,
                 expr_id,
                 expr_span,
-                &msg,
-                |diag| {
-                    diag.span_label(expr_span, &msg)
-                        .span_label(orig_span, "any code following this expression is unreachable")
-                        .span_note(
-                            orig_span,
-                            &format!(
-                                "this expression has type `{}`, which is uninhabited",
-                                orig_ty
-                            ),
-                        )
+                errors::UnreachableDueToUninhabited {
+                    expr: expr_span,
+                    orig: orig_span,
+                    descr,
+                    ty: orig_ty,
                 },
             );
         }
@@ -1483,23 +1476,21 @@ impl<'tcx> Liveness<'_, 'tcx> {
                 if self.used_on_entry(entry_ln, var) {
                     if !self.live_on_entry(entry_ln, var) {
                         if let Some(name) = self.should_warn(var) {
-                            self.ir.tcx.struct_span_lint_hir(
+                            self.ir.tcx.emit_spanned_lint(
                                 lint::builtin::UNUSED_ASSIGNMENTS,
                                 var_hir_id,
                                 vec![span],
-                                format!("value captured by `{}` is never read", name),
-                                |lint| lint.help("did you mean to capture by reference instead?"),
+                                errors::UnusedCaptureMaybeCaptureRef { name },
                             );
                         }
                     }
                 } else {
                     if let Some(name) = self.should_warn(var) {
-                        self.ir.tcx.struct_span_lint_hir(
+                        self.ir.tcx.emit_spanned_lint(
                             lint::builtin::UNUSED_VARIABLES,
                             var_hir_id,
                             vec![span],
-                            format!("unused variable: `{}`", name),
-                            |lint| lint.help("did you mean to capture by reference instead?"),
+                            errors::UnusedVarMaybeCaptureRef { name },
                         );
                     }
                 }
@@ -1514,11 +1505,14 @@ impl<'tcx> Liveness<'_, 'tcx> {
                 Some(entry_ln),
                 Some(body),
                 |spans, hir_id, ln, var| {
-                    if !self.live_on_entry(ln, var) {
-                        self.report_unused_assign(hir_id, spans, var, |name| {
-                            format!("value passed to `{}` is never read", name)
-                        });
-                    }
+                    if !self.live_on_entry(ln, var)
+                        && let Some(name) = self.should_warn(var) {
+                            self.ir.tcx.emit_spanned_lint(
+                                lint::builtin::UNUSED_ASSIGNMENTS,
+                                hir_id,
+                                spans,
+                                errors::UnusedAssignPassed { name },
+                            );                    }
                 },
             );
         }
@@ -1587,39 +1581,35 @@ impl<'tcx> Liveness<'_, 'tcx> {
                 if ln == self.exit_ln { false } else { self.assigned_on_exit(ln, var) };
 
             if is_assigned {
-                self.ir.tcx.struct_span_lint_hir(
+                self.ir.tcx.emit_spanned_lint(
                     lint::builtin::UNUSED_VARIABLES,
                     first_hir_id,
                     hir_ids_and_spans
                         .into_iter()
                         .map(|(_, _, ident_span)| ident_span)
                         .collect::<Vec<_>>(),
-                    format!("variable `{}` is assigned to, but never used", name),
-                    |lint| lint.note(&format!("consider using `_{}` instead", name)),
+                    errors::UnusedVarAssignedOnly { name },
                 )
             } else if can_remove {
-                self.ir.tcx.struct_span_lint_hir(
+                let spans = hir_ids_and_spans
+                    .iter()
+                    .map(|(_, pat_span, _)| {
+                        let span = self
+                            .ir
+                            .tcx
+                            .sess
+                            .source_map()
+                            .span_extend_to_next_char(*pat_span, ',', true);
+                        span.with_hi(BytePos(span.hi().0 + 1))
+                    })
+                    .collect();
+                self.ir.tcx.emit_spanned_lint(
                     lint::builtin::UNUSED_VARIABLES,
                     first_hir_id,
                     hir_ids_and_spans.iter().map(|(_, pat_span, _)| *pat_span).collect::<Vec<_>>(),
-                    format!("unused variable: `{}`", name),
-                    |lint| {
-                        lint.multipart_suggestion(
-                            "try removing the field",
-                            hir_ids_and_spans
-                                .iter()
-                                .map(|(_, pat_span, _)| {
-                                    let span = self
-                                        .ir
-                                        .tcx
-                                        .sess
-                                        .source_map()
-                                        .span_extend_to_next_char(*pat_span, ',', true);
-                                    (span.with_hi(BytePos(span.hi().0 + 1)), String::new())
-                                })
-                                .collect(),
-                            Applicability::MachineApplicable,
-                        )
+                    errors::UnusedVarRemoveField {
+                        name,
+                        sugg: errors::UnusedVarRemoveFieldSugg { spans },
                     },
                 );
             } else {
@@ -1633,55 +1623,46 @@ impl<'tcx> Liveness<'_, 'tcx> {
                 // the field" message, and suggest `_` for the non-shorthands. If we only
                 // have non-shorthand, then prefix with an underscore instead.
                 if !shorthands.is_empty() {
-                    let shorthands = shorthands
-                        .into_iter()
-                        .map(|(_, pat_span, _)| (pat_span, format!("{}: _", name)))
-                        .chain(
-                            non_shorthands
-                                .into_iter()
-                                .map(|(_, pat_span, _)| (pat_span, "_".to_string())),
-                        )
-                        .collect::<Vec<_>>();
+                    let shorthands =
+                        shorthands.into_iter().map(|(_, pat_span, _)| pat_span).collect();
+                    let non_shorthands =
+                        non_shorthands.into_iter().map(|(_, pat_span, _)| pat_span).collect();
 
-                    self.ir.tcx.struct_span_lint_hir(
+                    self.ir.tcx.emit_spanned_lint(
                         lint::builtin::UNUSED_VARIABLES,
                         first_hir_id,
                         hir_ids_and_spans
                             .iter()
                             .map(|(_, pat_span, _)| *pat_span)
                             .collect::<Vec<_>>(),
-                        format!("unused variable: `{}`", name),
-                        |lint| {
-                            lint.multipart_suggestion(
-                                "try ignoring the field",
+                        errors::UnusedVarTryIgnore {
+                            sugg: errors::UnusedVarTryIgnoreSugg {
                                 shorthands,
-                                Applicability::MachineApplicable,
-                            )
+                                non_shorthands,
+                                name,
+                            },
                         },
                     );
                 } else {
                     let non_shorthands = non_shorthands
                         .into_iter()
-                        .map(|(_, _, ident_span)| (ident_span, format!("_{}", name)))
+                        .map(|(_, _, ident_span)| ident_span)
                         .collect::<Vec<_>>();
-
-                    self.ir.tcx.struct_span_lint_hir(
+                    let suggestions = self.string_interp_suggestions(&name, opt_body);
+                    self.ir.tcx.emit_spanned_lint(
                         lint::builtin::UNUSED_VARIABLES,
                         first_hir_id,
                         hir_ids_and_spans
                             .iter()
                             .map(|(_, _, ident_span)| *ident_span)
                             .collect::<Vec<_>>(),
-                        format!("unused variable: `{}`", name),
-                        |lint| {
-                            if self.has_added_lit_match_name_span(&name, opt_body, lint) {
-                                lint.span_label(pat.span, "unused variable");
-                            }
-                            lint.multipart_suggestion(
-                                "if this is intentional, prefix it with an underscore",
-                                non_shorthands,
-                                Applicability::MachineApplicable,
-                            )
+                        errors::UnusedVariableTryPrefix {
+                            label: if !suggestions.is_empty() { Some(pat.span) } else { None },
+                            sugg: errors::UnusedVariableTryPrefixSugg {
+                                spans: non_shorthands,
+                                name,
+                            },
+                            string_interp: suggestions,
                         },
                     );
                 }
@@ -1689,65 +1670,40 @@ impl<'tcx> Liveness<'_, 'tcx> {
         }
     }
 
-    fn has_added_lit_match_name_span(
+    fn string_interp_suggestions(
         &self,
         name: &str,
         opt_body: Option<&hir::Body<'_>>,
-        err: &mut Diagnostic,
-    ) -> bool {
-        let mut has_litstring = false;
-        let Some(opt_body) = opt_body else {return false;};
+    ) -> Vec<errors::UnusedVariableStringInterp> {
+        let mut suggs = Vec::new();
+        let Some(opt_body) = opt_body else { return suggs; };
         let mut visitor = CollectLitsVisitor { lit_exprs: vec![] };
         intravisit::walk_body(&mut visitor, opt_body);
         for lit_expr in visitor.lit_exprs {
             let hir::ExprKind::Lit(litx) = &lit_expr.kind else { continue };
             let rustc_ast::LitKind::Str(syb, _) = litx.node else{ continue; };
             let name_str: &str = syb.as_str();
-            let mut name_pa = String::from("{");
-            name_pa.push_str(&name);
-            name_pa.push('}');
+            let name_pa = format!("{{{name}}}");
             if name_str.contains(&name_pa) {
-                err.span_label(
-                    lit_expr.span,
-                    "you might have meant to use string interpolation in this string literal",
-                );
-                err.multipart_suggestion(
-                    "string interpolation only works in `format!` invocations",
-                    vec![
-                        (lit_expr.span.shrink_to_lo(), "format!(".to_string()),
-                        (lit_expr.span.shrink_to_hi(), ")".to_string()),
-                    ],
-                    Applicability::MachineApplicable,
-                );
-                has_litstring = true;
+                suggs.push(errors::UnusedVariableStringInterp {
+                    lit: lit_expr.span,
+                    lo: lit_expr.span.shrink_to_lo(),
+                    hi: lit_expr.span.shrink_to_hi(),
+                });
             }
         }
-        has_litstring
+        suggs
     }
 
     fn warn_about_dead_assign(&self, spans: Vec<Span>, hir_id: HirId, ln: LiveNode, var: Variable) {
-        if !self.live_on_exit(ln, var) {
-            self.report_unused_assign(hir_id, spans, var, |name| {
-                format!("value assigned to `{}` is never read", name)
-            });
-        }
-    }
-
-    fn report_unused_assign(
-        &self,
-        hir_id: HirId,
-        spans: Vec<Span>,
-        var: Variable,
-        message: impl Fn(&str) -> String,
-    ) {
-        if let Some(name) = self.should_warn(var) {
-            self.ir.tcx.struct_span_lint_hir(
-                lint::builtin::UNUSED_ASSIGNMENTS,
-                hir_id,
-                spans,
-                message(&name),
-                |lint| lint.help("maybe it is overwritten before being read?"),
-            )
-        }
+        if !self.live_on_exit(ln, var)
+            && let Some(name) = self.should_warn(var) {
+                self.ir.tcx.emit_spanned_lint(
+                    lint::builtin::UNUSED_ASSIGNMENTS,
+                    hir_id,
+                    spans,
+                    errors::UnusedAssign { name },
+                );
+            }
     }
 }
