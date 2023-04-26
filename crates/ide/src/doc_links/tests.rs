@@ -1,3 +1,5 @@
+use std::ffi::OsStr;
+
 use expect_test::{expect, Expect};
 use hir::{HasAttrs, Semantics};
 use ide_db::{
@@ -13,11 +15,32 @@ use crate::{
     fixture, TryToNav,
 };
 
-fn check_external_docs(ra_fixture: &str, expect: Expect) {
+fn check_external_docs(
+    ra_fixture: &str,
+    target_dir: Option<&OsStr>,
+    expect_web_url: Option<Expect>,
+    expect_local_url: Option<Expect>,
+) {
     let (analysis, position) = fixture::position(ra_fixture);
-    let url = analysis.external_docs(position).unwrap().expect("could not find url for symbol");
+    let links = analysis.external_docs(position, target_dir).unwrap();
 
-    expect.assert_eq(&url)
+    let web_url = links.web_url;
+    let local_url = links.local_url;
+
+    println!("web_url: {:?}", web_url);
+    println!("local_url: {:?}", local_url);
+
+    match (expect_web_url, web_url) {
+        (Some(expect), Some(url)) => expect.assert_eq(&url),
+        (None, None) => (),
+        _ => panic!("Unexpected web url"),
+    }
+
+    match (expect_local_url, local_url) {
+        (Some(expect), Some(url)) => expect.assert_eq(&url),
+        (None, None) => (),
+        _ => panic!("Unexpected local url"),
+    }
 }
 
 fn check_rewrite(ra_fixture: &str, expect: Expect) {
@@ -105,7 +128,9 @@ use foo$0::Foo;
 //- /lib.rs crate:foo
 pub struct Foo;
 "#,
-        expect![[r#"https://docs.rs/foo/*/foo/index.html"#]],
+        Some(&OsStr::new("/home/user/project/")),
+        Some(expect![[r#"https://docs.rs/foo/*/foo/index.html"#]]),
+        Some(expect![[r#"file:///home/user/project/doc/foo/index.html"#]]),
     );
 }
 
@@ -116,7 +141,9 @@ fn external_docs_doc_url_std_crate() {
 //- /main.rs crate:std
 use self$0;
 "#,
-        expect!["https://doc.rust-lang.org/stable/std/index.html"],
+        Some(&OsStr::new("/home/user/project/")),
+        Some(expect!["https://doc.rust-lang.org/stable/std/index.html"]),
+        None,
     );
 }
 
@@ -127,7 +154,35 @@ fn external_docs_doc_url_struct() {
 //- /main.rs crate:foo
 pub struct Fo$0o;
 "#,
-        expect![[r#"https://docs.rs/foo/*/foo/struct.Foo.html"#]],
+        Some(&OsStr::new("/home/user/project/")),
+        Some(expect![[r#"https://docs.rs/foo/*/foo/struct.Foo.html"#]]),
+        Some(expect![[r#"file:///home/user/project/doc/foo/struct.Foo.html"#]]),
+    );
+}
+
+#[test]
+fn external_docs_doc_url_windows_backslash_path() {
+    check_external_docs(
+        r#"
+//- /main.rs crate:foo
+pub struct Fo$0o;
+"#,
+        Some(&OsStr::new(r"C:\Users\user\project")),
+        Some(expect![[r#"https://docs.rs/foo/*/foo/struct.Foo.html"#]]),
+        Some(expect![[r#"file:///C:\Users\user\project/doc/foo/struct.Foo.html"#]]),
+    );
+}
+
+#[test]
+fn external_docs_doc_url_windows_slash_path() {
+    check_external_docs(
+        r#"
+//- /main.rs crate:foo
+pub struct Fo$0o;
+"#,
+        Some(&OsStr::new(r"C:/Users/user/project")),
+        Some(expect![[r#"https://docs.rs/foo/*/foo/struct.Foo.html"#]]),
+        Some(expect![[r#"file:///C:/Users/user/project/doc/foo/struct.Foo.html"#]]),
     );
 }
 
@@ -140,7 +195,9 @@ pub struct Foo {
     field$0: ()
 }
 "#,
-        expect![[r##"https://docs.rs/foo/*/foo/struct.Foo.html#structfield.field"##]],
+        None,
+        Some(expect![[r##"https://docs.rs/foo/*/foo/struct.Foo.html#structfield.field"##]]),
+        None,
     );
 }
 
@@ -151,7 +208,9 @@ fn external_docs_doc_url_fn() {
 //- /main.rs crate:foo
 pub fn fo$0o() {}
 "#,
-        expect![[r#"https://docs.rs/foo/*/foo/fn.foo.html"#]],
+        None,
+        Some(expect![[r#"https://docs.rs/foo/*/foo/fn.foo.html"#]]),
+        None,
     );
 }
 
@@ -165,7 +224,9 @@ impl Foo {
     pub fn method$0() {}
 }
 "#,
-        expect![[r##"https://docs.rs/foo/*/foo/struct.Foo.html#method.method"##]],
+        None,
+        Some(expect![[r##"https://docs.rs/foo/*/foo/struct.Foo.html#method.method"##]]),
+        None,
     );
     check_external_docs(
         r#"
@@ -175,7 +236,9 @@ impl Foo {
     const CONST$0: () = ();
 }
 "#,
-        expect![[r##"https://docs.rs/foo/*/foo/struct.Foo.html#associatedconstant.CONST"##]],
+        None,
+        Some(expect![[r##"https://docs.rs/foo/*/foo/struct.Foo.html#associatedconstant.CONST"##]]),
+        None,
     );
 }
 
@@ -192,7 +255,9 @@ impl Trait for Foo {
     pub fn method$0() {}
 }
 "#,
-        expect![[r##"https://docs.rs/foo/*/foo/struct.Foo.html#method.method"##]],
+        None,
+        Some(expect![[r##"https://docs.rs/foo/*/foo/struct.Foo.html#method.method"##]]),
+        None,
     );
     check_external_docs(
         r#"
@@ -205,7 +270,9 @@ impl Trait for Foo {
     const CONST$0: () = ();
 }
 "#,
-        expect![[r##"https://docs.rs/foo/*/foo/struct.Foo.html#associatedconstant.CONST"##]],
+        None,
+        Some(expect![[r##"https://docs.rs/foo/*/foo/struct.Foo.html#associatedconstant.CONST"##]]),
+        None,
     );
     check_external_docs(
         r#"
@@ -218,7 +285,9 @@ impl Trait for Foo {
     type Type$0 = ();
 }
 "#,
-        expect![[r##"https://docs.rs/foo/*/foo/struct.Foo.html#associatedtype.Type"##]],
+        None,
+        Some(expect![[r##"https://docs.rs/foo/*/foo/struct.Foo.html#associatedtype.Type"##]]),
+        None,
     );
 }
 
@@ -231,7 +300,9 @@ pub trait Foo {
     fn method$0();
 }
 "#,
-        expect![[r##"https://docs.rs/foo/*/foo/trait.Foo.html#tymethod.method"##]],
+        None,
+        Some(expect![[r##"https://docs.rs/foo/*/foo/trait.Foo.html#tymethod.method"##]]),
+        None,
     );
     check_external_docs(
         r#"
@@ -240,7 +311,9 @@ pub trait Foo {
     const CONST$0: ();
 }
 "#,
-        expect![[r##"https://docs.rs/foo/*/foo/trait.Foo.html#associatedconstant.CONST"##]],
+        None,
+        Some(expect![[r##"https://docs.rs/foo/*/foo/trait.Foo.html#associatedconstant.CONST"##]]),
+        None,
     );
     check_external_docs(
         r#"
@@ -249,7 +322,9 @@ pub trait Foo {
     type Type$0;
 }
 "#,
-        expect![[r##"https://docs.rs/foo/*/foo/trait.Foo.html#associatedtype.Type"##]],
+        None,
+        Some(expect![[r##"https://docs.rs/foo/*/foo/trait.Foo.html#associatedtype.Type"##]]),
+        None,
     );
 }
 
@@ -260,7 +335,9 @@ fn external_docs_trait() {
 //- /main.rs crate:foo
 trait Trait$0 {}
 "#,
-        expect![[r#"https://docs.rs/foo/*/foo/trait.Trait.html"#]],
+        None,
+        Some(expect![[r#"https://docs.rs/foo/*/foo/trait.Trait.html"#]]),
+        None,
     )
 }
 
@@ -273,7 +350,9 @@ pub mod foo {
     pub mod ba$0r {}
 }
 "#,
-        expect![[r#"https://docs.rs/foo/*/foo/foo/bar/index.html"#]],
+        None,
+        Some(expect![[r#"https://docs.rs/foo/*/foo/foo/bar/index.html"#]]),
+        None,
     )
 }
 
@@ -294,7 +373,9 @@ fn foo() {
     let bar: wrapper::It$0em;
 }
         "#,
-        expect![[r#"https://docs.rs/foo/*/foo/wrapper/module/struct.Item.html"#]],
+        None,
+        Some(expect![[r#"https://docs.rs/foo/*/foo/wrapper/module/struct.Item.html"#]]),
+        None,
     )
 }
 
