@@ -1,4 +1,4 @@
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 use rustc_span::{Span, SpanData, DUMMY_SP};
 use smallvec::SmallVec;
 use std::{
