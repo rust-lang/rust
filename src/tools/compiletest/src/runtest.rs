@@ -224,6 +224,7 @@ enum Emit {
     Metadata,
     LlvmIr,
     Asm,
+    LinkArgsAsm,
 }
 
 impl<'test> TestCx<'test> {
@@ -2035,6 +2036,9 @@ impl<'test> TestCx<'test> {
             Emit::Asm => {
                 rustc.args(&["--emit", "asm"]);
             }
+            Emit::LinkArgsAsm => {
+                rustc.args(&["-Clink-args=--emit=asm"]);
+            }
         }
 
         if !is_rustdoc {
@@ -2326,6 +2330,10 @@ impl<'test> TestCx<'test> {
         match self.props.assembly_output.as_ref().map(AsRef::as_ref) {
             Some("emit-asm") => {
                 emit = Emit::Asm;
+            }
+
+            Some("bpf-linker") => {
+                emit = Emit::LinkArgsAsm;
             }
 
             Some("ptx-linker") => {
