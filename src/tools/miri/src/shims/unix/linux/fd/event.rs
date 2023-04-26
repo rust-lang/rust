@@ -1,6 +1,8 @@
 use crate::shims::unix::fs::FileDescriptor;
 
 use rustc_const_eval::interpret::InterpResult;
+use rustc_middle::ty::TyCtxt;
+use rustc_target::abi::Endian;
 
 use std::cell::Cell;
 use std::io;
@@ -36,7 +38,7 @@ impl FileDescriptor for Event {
     }
 
     /// A write call adds the 8-byte integer value supplied in
-    /// its buffer to the counter.  The maximum value that may be
+    /// its buffer (in native endianess) to the counter.  The maximum value that may be
     /// stored in the counter is the largest unsigned 64-bit value
     /// minus 1 (i.e., 0xfffffffffffffffe).  If the addition would
     /// cause the counter's value to exceed the maximum, then the
@@ -47,17 +49,22 @@ impl FileDescriptor for Event {
     /// A write fails with the error EINVAL if the size of the
     /// supplied buffer is less than 8 bytes, or if an attempt is
     /// made to write the value 0xffffffffffffffff.
-    ///
-    /// FIXME: use endianness
     fn write<'tcx>(
         &self,
         _communicate_allowed: bool,
         bytes: &[u8],
+        tcx: TyCtxt<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         let v1 = self.val.get();
+        let bytes: [u8; 8] = bytes.try_into().unwrap(); // FIXME fail gracefully when this has the wrong size
+        // Convert from target endianess to host endianess.
+        let num = match tcx.sess.target.endian {
+            Endian::Little => u64::from_le_bytes(bytes),
+            Endian::Big => u64::from_be_bytes(bytes),
+        };
         // FIXME handle blocking when addition results in exceeding the max u64 value
         // or fail with EAGAIN if the file descriptor is nonblocking.
-        let v2 = v1.checked_add(u64::from_be_bytes(bytes.try_into().unwrap())).unwrap();
+        let v2 = v1.checked_add(num).unwrap();
         self.val.set(v2);
         assert_eq!(8, bytes.len());
         Ok(Ok(8))
