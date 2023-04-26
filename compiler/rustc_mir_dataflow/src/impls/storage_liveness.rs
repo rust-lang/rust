@@ -97,6 +97,7 @@ impl<'tcx> crate::AnalysisDomain<'tcx> for MaybeStorageDead {
 
     fn initialize_start_block(&self, body: &mir::Body<'tcx>, on_entry: &mut Self::Domain) {
         assert_eq!(body.local_decls.len(), self.always_live_locals.domain_size());
+        // Do not iterate on return place and args, as they are trivially always live.
         for local in body.vars_and_temps_iter() {
             if !self.always_live_locals.contains(local) {
                 on_entry.insert(local);
