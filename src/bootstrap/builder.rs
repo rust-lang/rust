@@ -1581,7 +1581,7 @@ impl<'a> Builder<'a> {
         // Clippy support is a hack and uses the default `cargo-clippy` in path.
         // Don't override RUSTC so that the `cargo-clippy` in path will be run.
         if cmd != "clippy" {
-            cargo.env("RUSTC", self.bootstrap_out.join("rustc"));
+            cargo.env("RUSTC_WRAPPER", self.bootstrap_out.join("rustc"));
         }
 
         // Dealing with rpath here is a little special, so let's go into some

@@ -24,7 +24,12 @@ use std::str::FromStr;
 use std::time::Instant;
 
 fn main() {
-    let args = env::args_os().skip(1).collect::<Vec<_>>();
+    let mut args = env::args_os().skip(1).collect::<Vec<_>>();
+
+    let _compiler = args.remove(0);
+
+    let args = args;
+
     let arg = |name| args.windows(2).find(|args| args[0] == name).and_then(|args| args[1].to_str());
 
     // Detect whether or not we're a build script depending on whether --target
