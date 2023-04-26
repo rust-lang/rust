@@ -712,7 +712,7 @@ impl Process {
 //
 // This is not actually an "exit status" in Unix terminology.  Rather, it is a "wait status".
 // See the discussion in comments and doc comments for `std::process::ExitStatus`.
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Default)]
 pub struct ExitStatus(c_int);
 
 impl fmt::Debug for ExitStatus {

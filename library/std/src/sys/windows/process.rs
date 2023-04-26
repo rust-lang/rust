@@ -643,7 +643,7 @@ impl Process {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Default)]
 pub struct ExitStatus(c::DWORD);
 
 impl ExitStatus {
