@@ -679,6 +679,10 @@ pub(crate) fn make_test(
             // parse the source, but only has false positives, not false
             // negatives.
             if s.contains(crate_name) {
+                // rustdoc implicitly inserts an `extern crate` item for the own crate
+                // which may be unused, so we need to allow the lint.
+                prog.push_str(&format!("#[allow(unused_extern_crates)]\n"));
+
                 prog.push_str(&format!("extern crate r#{crate_name};\n"));
                 line_offset += 1;
             }
