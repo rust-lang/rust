@@ -184,12 +184,15 @@ where
     /// # Safety
     /// Reading `ptr` must be safe, as if by `<*const [T; N]>::read_unaligned`.
     const unsafe fn load(ptr: *const [T; N]) -> Self {
-        let mut tmp = core::mem::MaybeUninit::uninit();
+        // There are potentially simpler ways to write this function, but this should result in
+        // LLVM `load <N x T>`
+
+        let mut tmp = core::mem::MaybeUninit::<Self>::uninit();
         // SAFETY: `Simd<T, N>` always contains `N` elements of type `T`.  It may have padding
         // which does not need to be initialized.  The safety of reading `ptr` is ensured by the
         // caller.
         unsafe {
-            core::ptr::copy_nonoverlapping(ptr, tmp.as_mut_ptr() as *mut _, 1);
+            core::ptr::copy_nonoverlapping(ptr, tmp.as_mut_ptr().cast(), 1);
             tmp.assume_init()
         }
     }
@@ -201,9 +204,14 @@ where
     /// # Safety
     /// Writing to `ptr` must be safe, as if by `<*mut [T; N]>::write_unaligned`.
     const unsafe fn store(self, ptr: *mut [T; N]) {
+        // There are potentially simpler ways to write this function, but this should result in
+        // LLVM `store <N x T>`
+
+        // Creating a temporary helps LLVM turn the memcpy into a store.
+        let tmp = self;
         // SAFETY: `Simd<T, N>` always contains `N` elements of type `T`.  The safety of writing
         // `ptr` is ensured by the caller.
-        unsafe { core::ptr::copy_nonoverlapping(self.as_array(), ptr, 1) }
+        unsafe { core::ptr::copy_nonoverlapping(tmp.as_array(), ptr, 1) }
     }
 
     /// Converts an array to a SIMD vector.
