@@ -272,9 +272,8 @@ impl Time {
     fn get_wait_time(&self, clock: &Clock) -> Duration {
         match self {
             Time::Monotonic(instant) => instant.duration_since(clock.now()),
-            Time::RealTime(time) => {
-                time.duration_since(SystemTime::now()).unwrap_or(Duration::new(0, 0))
-            }
+            Time::RealTime(time) =>
+                time.duration_since(SystemTime::now()).unwrap_or(Duration::new(0, 0)),
         }
     }
 }
