@@ -855,12 +855,8 @@ impl<'tcx> TraitRef<'tcx> {
 
     /// Returns a `TraitRef` of the form `P0: Foo<P1..Pn>` where `Pi`
     /// are the parameters defined on trait.
-    pub fn identity(tcx: TyCtxt<'tcx>, def_id: DefId) -> Binder<'tcx, TraitRef<'tcx>> {
-        ty::Binder::dummy(ty::TraitRef::new(
-            tcx,
-            def_id,
-            InternalSubsts::identity_for_item(tcx, def_id),
-        ))
+    pub fn identity(tcx: TyCtxt<'tcx>, def_id: DefId) -> TraitRef<'tcx> {
+        ty::TraitRef::new(tcx, def_id, InternalSubsts::identity_for_item(tcx, def_id))
     }
 
     pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {

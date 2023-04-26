@@ -279,7 +279,7 @@ fn predicates_reference_self(
     trait_def_id: DefId,
     supertraits_only: bool,
 ) -> SmallVec<[Span; 1]> {
-    let trait_ref = ty::TraitRef::identity(tcx, trait_def_id);
+    let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(tcx, trait_def_id));
     let predicates = if supertraits_only {
         tcx.super_predicates_of(trait_def_id)
     } else {
@@ -661,9 +661,9 @@ fn object_ty_for_trait<'tcx>(
     let trait_ref = ty::TraitRef::identity(tcx, trait_def_id);
     debug!(?trait_ref);
 
-    let trait_predicate = trait_ref.map_bound(|trait_ref| {
-        ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref))
-    });
+    let trait_predicate = ty::Binder::dummy(ty::ExistentialPredicate::Trait(
+        ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref),
+    ));
     debug!(?trait_predicate);
 
     let pred: ty::Predicate<'tcx> = trait_ref.to_predicate(tcx);
@@ -880,7 +880,8 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
 
                     // Compute supertraits of current trait lazily.
                     if self.supertraits.is_none() {
-                        let trait_ref = ty::TraitRef::identity(self.tcx, self.trait_def_id);
+                        let trait_ref =
+                            ty::Binder::dummy(ty::TraitRef::identity(self.tcx, self.trait_def_id));
                         self.supertraits = Some(
                             traits::supertraits(self.tcx, trait_ref).map(|t| t.def_id()).collect(),
                         );
