@@ -29,6 +29,11 @@ name = "sccache-plus-cl"
 path = "bin/sccache-plus-cl.rs"
 test = false
 
+[[bin]]
+name = "rustc-shim"
+path = "bin/rustc-shim.rs"
+test = false
+
 [dependencies]
 is-terminal = "0.4"
 build_helper = { path = "../tools/build_helper" }

@@ -315,6 +315,7 @@ impl Step for Cargotest {
             cmd.arg(&cargo)
                 .arg(&out_dir)
                 .args(builder.config.cmd.test_args())
+                .env("RUSTC", builder.bootstrap_out.join("rustc-shim"))
                 .env("RUSTC_WRAPPER", builder.rustc(compiler))
                 .env("RUSTDOC", builder.rustdoc(compiler)),
         );
@@ -1094,6 +1095,7 @@ impl Step for RustdocGUI {
                     .arg(&out_dir)
                     .env("RUSTC_BOOTSTRAP", "1")
                     .env("RUSTDOC", builder.rustdoc(self.compiler))
+                    .env("RUSTC", builder.bootstrap_out.join("rustc-shim"))
                     .env("RUSTC_WRAPPER", builder.rustc(self.compiler))
                     .current_dir(path);
                 // FIXME: implement a `// compile-flags` command or similar
@@ -2796,6 +2798,7 @@ impl Step for RustInstaller {
         cmd.current_dir(&tmpdir);
         cmd.env("CARGO_TARGET_DIR", tmpdir.join("cargo-target"));
         cmd.env("CARGO", &builder.initial_cargo);
+        cmd.env("RUSTC", &builder.bootstrap_out.join("rustc-shim"));
         cmd.env("RUSTC_WRAPPER", &builder.initial_rustc);
         cmd.env("TMP_DIR", &tmpdir);
         try_run(builder, &mut cmd);

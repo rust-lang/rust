@@ -1,4 +1,4 @@
-//! Shim which is passed to Cargo as "rustc" when running the bootstrap.
+//! Shim which is passed to Cargo as "RUSTC_WRAPPER" when running the bootstrap.
 //!
 //! This shim will take care of some various tasks that our build process
 //! requires that Cargo can't quite do through normal configuration:
