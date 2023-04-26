@@ -819,8 +819,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     .builtin_deref(true)
                     .unwrap_or_else(|| bug!("deref of non-pointer {:?}", input_ty))
                     .ty;
-                let llty = bx.cx().backend_type(bx.cx().layout_of(pointee_type));
-                bx.inbounds_gep(llty, lhs, &[rhs])
+                let pointee_layout = bx.cx().layout_of(pointee_type);
+                if pointee_layout.is_zst() {
+                    // `Offset` works in terms of the size of pointee,
+                    // so offsetting a pointer to ZST is a noop.
+                    lhs
+                } else {
+                    let llty = bx.cx().backend_type(pointee_layout);
+                    bx.inbounds_gep(llty, lhs, &[rhs])
+                }
             }
             mir::BinOp::Shl => common::build_unchecked_lshift(bx, lhs, rhs),
             mir::BinOp::Shr => common::build_unchecked_rshift(bx, input_ty, lhs, rhs),

@@ -916,8 +916,16 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
+        #[cfg(bootstrap)]
         // SAFETY: the caller must uphold the safety contract for `offset`.
-        unsafe { self.offset(count as isize) }
+        unsafe {
+            self.offset(count as isize)
+        }
+        #[cfg(not(bootstrap))]
+        // SAFETY: the caller must uphold the safety contract for `offset`.
+        unsafe {
+            intrinsics::offset(self, count)
+        }
     }
 
     /// Calculates the offset from a pointer in bytes (convenience for `.byte_offset(count as isize)`).
