@@ -1,0 +1,7 @@
+// unit-test: Inline
+// compile-flags: --crate-type=lib
+
+// EMIT_MIR inline_box_fn.call.Inline.diff
+fn call(x: Box<dyn Fn(i32)>) {
+    x(1);
+}
