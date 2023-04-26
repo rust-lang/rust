@@ -50,7 +50,7 @@ ENV RUST_CONFIGURE_ARGS \
       --set rust.thin-lto-import-instr-limit=10
 
 # NOTE: intentionally uses all of `x.py`, `x`, and `x.ps1` to make sure they all work on Linux.
-ENV SCRIPT ../x.py --stage 2 test --exclude src/tools/tidy && \
+ENV SCRIPT ../x.py --verbose --stage 2 test --exclude src/tools/tidy && \
            # Run the `mir-opt` tests again but this time for a 32-bit target.
            # This enforces that tests using `// EMIT_MIR_FOR_EACH_BIT_WIDTH` have
            # both 32-bit and 64-bit outputs updated by the PR author, before
