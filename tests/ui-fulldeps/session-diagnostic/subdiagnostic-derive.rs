@@ -707,9 +707,9 @@ struct BP {
 }
 
 #[derive(Subdiagnostic)]
-//~^ ERROR cannot find value `__code_29` in this scope
+//~^ ERROR cannot find value `__code_29`
 //~| NOTE in this expansion
-//~| NOTE not found in this scope
+//~| NOTE `__code_29` not found in expanded code of this `derive` macro
 #[multipart_suggestion(no_crate_example)]
 struct BQ {
     #[suggestion_part(code = 3)]

@@ -600,11 +600,11 @@ error[E0425]: cannot find value `slug` in module `crate::fluent_generated`
 LL | #[label(slug)]
    |         ^^^^ not found in `crate::fluent_generated`
 
-error[E0425]: cannot find value `__code_29` in this scope
+error[E0425]: cannot find value `__code_29` in the expanded code of `derive` macro `Subdiagnostic`
   --> $DIR/subdiagnostic-derive.rs:709:10
    |
 LL | #[derive(Subdiagnostic)]
-   |          ^^^^^^^^^^^^^ not found in this scope
+   |          ^^^^^^^^^^^^^ `__code_29` not found in expanded code of this `derive` macro
    |
    = note: this error originates in the derive macro `Subdiagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
