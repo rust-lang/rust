@@ -204,9 +204,12 @@ pub use self::local::{AccessError, LocalKey};
 // by the elf linker. "static" is for single-threaded platforms where a global
 // static is sufficient.
 
+// Implementation details used by the thread_local!{} macro.
 #[doc(hidden)]
-#[unstable(feature = "libstd_thread_internals", issue = "none")]
-pub use crate::sys::common::thread_local::Key as __LocalKeyInner;
+#[unstable(feature = "thread_local_internals", issue = "none")]
+pub mod local_impl {
+    pub use crate::sys::common::thread_local::{thread_local_inner, Key};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Builder
