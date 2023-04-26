@@ -270,7 +270,7 @@ impl<T: ?Sized> *mut T {
         let dest_addr = addr as isize;
         let offset = dest_addr.wrapping_sub(self_addr);
 
-        // This is the canonical desugarring of this operation
+        // This is the canonical desugaring of this operation
         self.wrapping_byte_offset(offset)
     }
 

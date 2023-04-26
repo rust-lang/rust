@@ -4451,7 +4451,7 @@ impl<T, const N: usize> SlicePattern for [T; N] {
 /// This will do `binomial(N + 1, 2) = N * (N + 1) / 2 = 0, 1, 3, 6, 10, ..`
 /// comparison operations.
 fn get_many_check_valid<const N: usize>(indices: &[usize; N], len: usize) -> bool {
-    // NB: The optimzer should inline the loops into a sequence
+    // NB: The optimizer should inline the loops into a sequence
     // of instructions without additional branching.
     let mut valid = true;
     for (i, &idx) in indices.iter().enumerate() {
