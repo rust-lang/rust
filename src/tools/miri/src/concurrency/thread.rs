@@ -10,7 +10,7 @@ use log::trace;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_span::Span;
@@ -272,8 +272,9 @@ impl Time {
     fn get_wait_time(&self, clock: &Clock) -> Duration {
         match self {
             Time::Monotonic(instant) => instant.duration_since(clock.now()),
-            Time::RealTime(time) =>
-                time.duration_since(SystemTime::now()).unwrap_or(Duration::new(0, 0)),
+            Time::RealTime(time) => {
+                time.duration_since(SystemTime::now()).unwrap_or(Duration::new(0, 0))
+            }
         }
     }
 }
@@ -603,10 +604,11 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         // this allows us to have a deterministic scheduler.
         for thread in self.threads.indices() {
             match self.timeout_callbacks.entry(thread) {
-                Entry::Occupied(entry) =>
+                Entry::Occupied(entry) => {
                     if entry.get().call_time.get_wait_time(clock) == Duration::new(0, 0) {
                         return Some((thread, entry.remove().callback));
-                    },
+                    }
+                }
                 Entry::Vacant(_) => {}
             }
         }
