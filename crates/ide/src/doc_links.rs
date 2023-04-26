@@ -473,7 +473,7 @@ fn get_doc_base_urls(
     // https://github.com/rust-lang/rust-analyzer/issues/12250
     if let Definition::BuiltinType(..) = def {
         let weblink = Url::parse("https://doc.rust-lang.org/nightly/core/").ok();
-        return (weblink, local_doc_path);
+        return (weblink, None);
     };
 
     let Some(krate) = def.krate(db) else { return Default::default() };

@@ -120,6 +120,19 @@ fn node_to_def(
 }
 
 #[test]
+fn external_docs_doc_builtin_type() {
+    check_external_docs(
+        r#"
+//- /main.rs crate:foo
+let x: u3$02 = 0;
+"#,
+        Some(&OsStr::new("/home/user/project")),
+        Some(expect![[r#"https://doc.rust-lang.org/nightly/core/primitive.u32.html"#]]),
+        None,
+    );
+}
+
+#[test]
 fn external_docs_doc_url_crate() {
     check_external_docs(
         r#"
