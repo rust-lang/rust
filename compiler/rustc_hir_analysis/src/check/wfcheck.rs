@@ -1576,17 +1576,10 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
             && let hir::OpaqueTyOrigin::FnReturn(source) | hir::OpaqueTyOrigin::AsyncFn(source) = opaque.origin
             && source == self.fn_def_id
         {
-            let opaque_ty = tcx.fold_regions(unshifted_opaque_ty, |re, depth| {
-                if let ty::ReLateBound(index, bv) = re.kind() {
-                    if depth != ty::INNERMOST {
-                        return tcx.mk_re_error_with_message(
-                            DUMMY_SP,
-                            "we shouldn't walk non-predicate binders with `impl Trait`...",
-                        );
-                    }
-                    tcx.mk_re_late_bound(index.shifted_out_to_binder(self.depth), bv)
-                } else {
-                    re
+            let opaque_ty = tcx.fold_regions(unshifted_opaque_ty, |re, _depth| {
+                match re.kind() {
+                    ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReError(_) => re,
+                    r => bug!("unexpected region: {r:?}"),
                 }
             });
             for (bound, bound_span) in tcx
