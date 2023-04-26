@@ -535,13 +535,11 @@ fn get_doc_base_urls(
 
     return (web_base, local_base);
 
-    // On Windows, cargo metadata returns paths without leading slashes, but
-    // Url::from_directory_path requires them.
-    // In unix adding another "/" will not make any difference.
     fn create_url_from_os_str(path: &OsStr) -> Option<Url> {
-        let mut with_leading_slash = OsStr::new("/").to_os_string();
-        with_leading_slash.push(path);
-        Url::from_directory_path(with_leading_slash.as_os_str()).ok()
+        let mut with_prefix = OsStr::new("file:///").to_os_string();
+        with_prefix.push(path);
+        with_prefix.push("/");
+        with_prefix.to_str().and_then(|s| Url::parse(s).ok())
     }
 }
 
