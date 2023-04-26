@@ -765,8 +765,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             self.cause.clone(),
             self.param_env,
             ty::TraitRef::from_lang_item(
-                self.tcx.at(self.cause.span),
+                self.tcx,
                 hir::LangItem::PointerLike,
+                self.cause.span,
                 [a],
             ),
         ));

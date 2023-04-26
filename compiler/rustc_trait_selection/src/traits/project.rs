@@ -1683,7 +1683,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                                 &obligation.with(
                                     selcx.tcx(),
                                     ty::Binder::dummy(
-                                        ty::TraitRef::from_lang_item(selcx.tcx().at(obligation.cause.span()), LangItem::Sized, [self_ty]),
+                                        ty::TraitRef::from_lang_item(selcx.tcx(), LangItem::Sized, obligation.cause.span(),[self_ty]),
                                     )
                                     .without_const(),
                                 ),
@@ -1949,8 +1949,9 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
         });
         if check_is_sized {
             let sized_predicate = ty::Binder::dummy(ty::TraitRef::from_lang_item(
-                tcx.at(obligation.cause.span()),
+                tcx,
                 LangItem::Sized,
+                obligation.cause.span(),
                 [self_ty],
             ))
             .without_const();

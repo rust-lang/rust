@@ -158,8 +158,9 @@ impl Qualif for NeedsNonConstDrop {
             ObligationCause::dummy_with_span(cx.body.span),
             cx.param_env,
             ty::Binder::dummy(ty::TraitRef::from_lang_item(
-                cx.tcx.at(cx.body.span),
+                cx.tcx,
                 LangItem::Destruct,
+                cx.body.span,
                 [ty],
             ))
             .with_constness(ty::BoundConstness::ConstIfConst),

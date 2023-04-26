@@ -243,7 +243,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                 }
             };
         let output_is_sized_pred = tupled_inputs_and_output.map_bound(|(_, output)| {
-            ty::TraitRef::from_lang_item(tcx.at(DUMMY_SP), LangItem::Sized, [output])
+            ty::TraitRef::from_lang_item(tcx, LangItem::Sized, DUMMY_SP, [output])
         });
 
         let pred = tupled_inputs_and_output

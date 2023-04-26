@@ -646,8 +646,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             output_ty,
             &mut nested,
         );
-        let tr =
-            ty::TraitRef::from_lang_item(self.tcx().at(cause.span), LangItem::Sized, [output_ty]);
+        let tr = ty::TraitRef::from_lang_item(self.tcx(), LangItem::Sized, cause.span, [output_ty]);
         nested.push(Obligation::new(self.infcx.tcx, cause, obligation.param_env, tr));
 
         Ok(ImplSourceFnPointerData { fn_ty: self_ty, nested })
@@ -1051,8 +1050,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // We can only make objects from sized types.
                 let tr = ty::Binder::dummy(ty::TraitRef::from_lang_item(
-                    tcx.at(cause.span),
+                    tcx,
                     LangItem::Sized,
+                    cause.span,
                     [source],
                 ));
                 nested.push(predicate_to_obligation(tr.without_const().to_predicate(tcx)));
@@ -1281,8 +1281,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         obligation.recursion_depth + 1,
                         self_ty.rebind(ty::TraitPredicate {
                             trait_ref: ty::TraitRef::from_lang_item(
-                                self.tcx().at(cause.span),
+                                self.tcx(),
                                 LangItem::Destruct,
+                                cause.span,
                                 [nested_ty],
                             ),
                             constness: ty::BoundConstness::ConstIfConst,
@@ -1306,8 +1307,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 _ => {
                     let predicate = self_ty.rebind(ty::TraitPredicate {
                         trait_ref: ty::TraitRef::from_lang_item(
-                            self.tcx().at(cause.span),
+                            self.tcx(),
                             LangItem::Destruct,
+                            cause.span,
                             [nested_ty],
                         ),
                         constness: ty::BoundConstness::ConstIfConst,
