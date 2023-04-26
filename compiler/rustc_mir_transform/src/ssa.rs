@@ -1,3 +1,16 @@
+//! We denote as "SSA" the set of locals that verify the following properties:
+//! 1/ They are only assigned-to once, either as a function parameter, or in an assign statement;
+//! 2/ This single assignment dominates all uses;
+//!
+//! As a consequence of rule 2, we consider that borrowed locals are not SSA, even if they are
+//! `Freeze`, as we do not track that the assignment dominates all uses of the borrow.
+//!
+//! We say a local has a stable address if its address has SSA-like properties:
+//! 1/ It has a single `StorageLive` statement, or none at all (always-live);
+//! 2/ All its uses dominate this `StorageLive` statement.
+//!
+//! We do not discard borrowed locals from this analysis, as we cannot take their address' address.
+
 use either::Either;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::bit_set::BitSet;
@@ -5,7 +18,6 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{ParamEnv, TyCtxt};
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 
 #[derive(Debug)]
@@ -62,12 +74,7 @@ impl SmallDominators {
 }
 
 impl SsaLocals {
-    pub fn new<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        param_env: ParamEnv<'tcx>,
-        body: &Body<'tcx>,
-        borrowed_locals: &BitSet<Local>,
-    ) -> SsaLocals {
+    pub fn new<'tcx>(body: &Body<'tcx>) -> SsaLocals {
         let assignment_order = Vec::with_capacity(body.local_decls.len());
 
         let assignments = IndexVec::from_elem(Set1::Empty, &body.local_decls);
@@ -80,13 +87,8 @@ impl SsaLocals {
         let mut visitor =
             SsaVisitor { assignments, assignment_order, dominators, direct_uses, storage_live };
 
-        for (local, decl) in body.local_decls.iter_enumerated() {
-            if matches!(body.local_kind(local), LocalKind::Arg) {
-                visitor.assignments[local] = Set1::One(LocationExtended::Arg);
-            }
-            if borrowed_locals.contains(local) && !decl.ty.is_freeze(tcx, param_env) {
-                visitor.assignments[local] = Set1::Many;
-            }
+        for local in body.args_iter() {
+            visitor.assignments[local] = Set1::One(LocationExtended::Arg);
         }
 
         for local in always_storage_live_locals(body).iter() {
@@ -237,6 +239,8 @@ struct SsaVisitor {
 impl<'tcx> Visitor<'tcx> for SsaVisitor {
     fn visit_local(&mut self, local: Local, ctxt: PlaceContext, loc: Location) {
         match ctxt {
+            PlaceContext::MutatingUse(MutatingUseContext::Projection)
+            | PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection) => bug!(),
             PlaceContext::MutatingUse(MutatingUseContext::Store) => {
                 self.assignments[local].insert(LocationExtended::Plain(loc));
                 if let Set1::One(_) = self.assignments[local] {
@@ -246,13 +250,18 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor {
                 self.dominators.check_dominates(&mut self.storage_live[local], loc);
             }
             // Anything can happen with raw pointers, so remove them.
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::AddressOf)
+            // We do not verify that all uses of the borrow dominate the assignment to `local`,
+            // so we have to remove them too.
+            PlaceContext::NonMutatingUse(
+                NonMutatingUseContext::SharedBorrow
+                | NonMutatingUseContext::ShallowBorrow
+                | NonMutatingUseContext::UniqueBorrow
+                | NonMutatingUseContext::AddressOf,
+            )
             | PlaceContext::MutatingUse(_) => {
                 self.assignments[local] = Set1::Many;
                 self.dominators.check_dominates(&mut self.storage_live[local], loc);
             }
-            // Immutable borrows are taken into account in `SsaLocals::new` by
-            // removing non-freeze locals.
             PlaceContext::NonMutatingUse(_) => {
                 self.dominators.check_dominates(&mut self.assignments[local], loc);
                 self.dominators.check_dominates(&mut self.storage_live[local], loc);
@@ -270,15 +279,17 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor {
             // Do not do anything for storage statements and debuginfo.
             if ctxt.is_use() {
                 // Only change the context if it is a real use, not a "use" in debuginfo.
-                let new_ctxt = PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection);
+                let new_ctxt = PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy);
 
                 self.visit_projection(place.as_ref(), new_ctxt, loc);
                 self.dominators.check_dominates(&mut self.assignments[place.local], loc);
                 self.dominators.check_dominates(&mut self.storage_live[place.local], loc);
             }
             return;
+        } else {
+            self.visit_projection(place.as_ref(), ctxt, loc);
+            self.visit_local(place.local, ctxt, loc);
         }
-        self.super_place(place, ctxt, loc);
     }
 }
 

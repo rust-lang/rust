@@ -178,9 +178,8 @@
           StorageLive(_17);                // scope 9 at $DIR/reference_prop.rs:+22:13: +22:14
           _17 = &_16;                      // scope 9 at $DIR/reference_prop.rs:+22:17: +22:19
           StorageLive(_18);                // scope 10 at $DIR/reference_prop.rs:+23:13: +23:14
--         _18 = (*_16);                    // scope 10 at $DIR/reference_prop.rs:+23:17: +23:19
+          _18 = (*_16);                    // scope 10 at $DIR/reference_prop.rs:+23:17: +23:19
 -         _14 = const ();                  // scope 0 at $DIR/reference_prop.rs:+19:5: +24:6
-+         _18 = _15;                       // scope 10 at $DIR/reference_prop.rs:+23:17: +23:19
           StorageDead(_18);                // scope 10 at $DIR/reference_prop.rs:+24:5: +24:6
           StorageDead(_17);                // scope 9 at $DIR/reference_prop.rs:+24:5: +24:6
           StorageDead(_16);                // scope 8 at $DIR/reference_prop.rs:+24:5: +24:6
