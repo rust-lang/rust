@@ -60,7 +60,7 @@ use crate::mir::mono::MonoItem;
 use crate::ty::TyCtxt;
 
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalModDefId, ModDefId, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathHash;
 use rustc_hir::{HirId, ItemLocalId, OwnerId};
 use rustc_query_system::dep_graph::FingerprintStyle;
@@ -387,3 +387,53 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for HirId {
         }
     }
 }
+
+macro_rules! impl_for_typed_def_id {
+    ($Name:ident, $LocalName:ident) => {
+        impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for $Name {
+            #[inline(always)]
+            fn fingerprint_style() -> FingerprintStyle {
+                FingerprintStyle::DefPathHash
+            }
+
+            #[inline(always)]
+            fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
+                self.to_def_id().to_fingerprint(tcx)
+            }
+
+            #[inline(always)]
+            fn to_debug_str(&self, tcx: TyCtxt<'tcx>) -> String {
+                self.to_def_id().to_debug_str(tcx)
+            }
+
+            #[inline(always)]
+            fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self> {
+                DefId::recover(tcx, dep_node).map($Name::new_unchecked)
+            }
+        }
+
+        impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for $LocalName {
+            #[inline(always)]
+            fn fingerprint_style() -> FingerprintStyle {
+                FingerprintStyle::DefPathHash
+            }
+
+            #[inline(always)]
+            fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
+                self.to_def_id().to_fingerprint(tcx)
+            }
+
+            #[inline(always)]
+            fn to_debug_str(&self, tcx: TyCtxt<'tcx>) -> String {
+                self.to_def_id().to_debug_str(tcx)
+            }
+
+            #[inline(always)]
+            fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self> {
+                LocalDefId::recover(tcx, dep_node).map($LocalName::new_unchecked)
+            }
+        }
+    };
+}
+
+impl_for_typed_def_id! { ModDefId, LocalModDefId }

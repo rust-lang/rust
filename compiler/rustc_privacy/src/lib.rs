@@ -519,7 +519,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
         loop {
             let changed_reachability =
                 self.update_macro_reachable(module_def_id, macro_module_def_id, macro_ev);
-            if changed_reachability || module_def_id == CRATE_DEF_ID {
+            if changed_reachability || module_def_id == LocalModDefId::CRATE_DEF_ID {
                 break;
             }
             module_def_id = self.tcx.local_parent(module_def_id);

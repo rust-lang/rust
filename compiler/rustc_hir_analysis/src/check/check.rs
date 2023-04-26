@@ -1448,7 +1448,7 @@ pub(super) fn check_mod_item_types(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     for id in module.items() {
         check_item_type(tcx, id);
     }
-    if module_def_id == CRATE_DEF_ID {
+    if module_def_id == LocalModDefId::CRATE_DEF_ID {
         super::entry::check_for_entry_fn(tcx);
     }
 }
