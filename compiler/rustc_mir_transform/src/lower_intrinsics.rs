@@ -192,6 +192,23 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             terminator.kind = TerminatorKind::Goto { target };
                         }
                     }
+                    sym::offset => {
+                        let target = target.unwrap();
+                        let Ok([ptr, delta]) = <[_; 2]>::try_from(std::mem::take(args)) else {
+                            span_bug!(
+                                terminator.source_info.span,
+                                "Wrong number of arguments for offset intrinsic",
+                            );
+                        };
+                        block.statements.push(Statement {
+                            source_info: terminator.source_info,
+                            kind: StatementKind::Assign(Box::new((
+                                *destination,
+                                Rvalue::BinaryOp(BinOp::Offset, Box::new((ptr, delta))),
+                            ))),
+                        });
+                        terminator.kind = TerminatorKind::Goto { target };
+                    }
                     sym::option_payload_ptr => {
                         if let (Some(target), Some(arg)) = (*target, args[0].place()) {
                             let ty::RawPtr(ty::TypeAndMut { ty: dest_ty, .. }) =

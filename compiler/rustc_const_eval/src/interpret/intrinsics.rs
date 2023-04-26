@@ -286,14 +286,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             sym::write_bytes => {
                 self.write_bytes_intrinsic(&args[0], &args[1], &args[2])?;
             }
-            sym::offset => {
-                let ptr = self.read_pointer(&args[0])?;
-                let offset_count = self.read_target_isize(&args[1])?;
-                let pointee_ty = substs.type_at(0);
-
-                let offset_ptr = self.ptr_offset_inbounds(ptr, pointee_ty, offset_count)?;
-                self.write_pointer(offset_ptr, dest)?;
-            }
             sym::arith_offset => {
                 let ptr = self.read_pointer(&args[0])?;
                 let offset_count = self.read_target_isize(&args[1])?;
