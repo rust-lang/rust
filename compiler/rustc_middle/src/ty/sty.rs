@@ -871,6 +871,18 @@ impl<'tcx> TraitRef<'tcx> {
         )
     }
 
+    /// Converts this trait ref to a trait predicate with a given `constness` and a positive polarity.
+    #[inline]
+    pub fn with_constness(self, constness: ty::BoundConstness) -> ty::TraitPredicate<'tcx> {
+        ty::TraitPredicate { trait_ref: self, constness, polarity: ty::ImplPolarity::Positive }
+    }
+
+    /// Converts this trait ref to a trait predicate without `const` and a positive polarity.
+    #[inline]
+    pub fn without_const(self) -> ty::TraitPredicate<'tcx> {
+        self.with_constness(ty::BoundConstness::NotConst)
+    }
+
     #[inline]
     pub fn self_ty(&self) -> Ty<'tcx> {
         self.substs.type_at(0)

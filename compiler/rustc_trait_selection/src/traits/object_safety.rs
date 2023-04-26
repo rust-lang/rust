@@ -769,13 +769,10 @@ fn receiver_is_dispatchable<'tcx>(
         let param_env = tcx.param_env(method.def_id);
 
         // Self: Unsize<U>
-        let unsize_predicate = ty::Binder::dummy(ty::TraitRef::new(
-            tcx,
-            unsize_did,
-            [tcx.types.self_param, unsized_self_ty],
-        ))
-        .without_const()
-        .to_predicate(tcx);
+        let unsize_predicate =
+            ty::TraitRef::new(tcx, unsize_did, [tcx.types.self_param, unsized_self_ty])
+                .without_const()
+                .to_predicate(tcx);
 
         // U: Trait<Arg1, ..., ArgN>
         let trait_predicate = {
