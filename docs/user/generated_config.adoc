@@ -679,8 +679,7 @@ This config takes a map of crate names with the exported proc-macro names to ign
 [[rust-analyzer.procMacro.server]]rust-analyzer.procMacro.server (default: `null`)::
 +
 --
-Internal config, path to proc-macro server executable (typically,
-this is rust-analyzer itself, but we override this in tests).
+Internal config, path to proc-macro server executable.
 --
 [[rust-analyzer.references.excludeImports]]rust-analyzer.references.excludeImports (default: `false`)::
 +

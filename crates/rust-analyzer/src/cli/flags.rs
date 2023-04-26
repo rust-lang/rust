@@ -106,8 +106,6 @@ xflags::xflags! {
             optional --debug snippet: String
         }
 
-        cmd proc-macro {}
-
         cmd lsif {
             required path: PathBuf
         }
@@ -141,7 +139,6 @@ pub enum RustAnalyzerCmd {
     Diagnostics(Diagnostics),
     Ssr(Ssr),
     Search(Search),
-    ProcMacro(ProcMacro),
     Lsif(Lsif),
     Scip(Scip),
 }
@@ -202,9 +199,6 @@ pub struct Search {
 
     pub debug: Option<String>,
 }
-
-#[derive(Debug)]
-pub struct ProcMacro;
 
 #[derive(Debug)]
 pub struct Lsif {
