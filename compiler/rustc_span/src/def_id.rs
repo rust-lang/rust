@@ -28,9 +28,15 @@ impl CrateNum {
         CrateNum::from_usize(x)
     }
 
+    // FIXME(Nilstrieb): Replace this with `as_mod_def_id`.
     #[inline]
     pub fn as_def_id(self) -> DefId {
         DefId { krate: self, index: CRATE_DEF_INDEX }
+    }
+
+    #[inline]
+    pub fn as_mod_def_id(self) -> ModDefId {
+        ModDefId::new_unchecked(DefId { krate: self, index: CRATE_DEF_INDEX })
     }
 }
 
@@ -478,5 +484,92 @@ impl<CTX: HashStableContext> ToStableHashKey<CTX> for CrateNum {
     #[inline]
     fn to_stable_hash_key(&self, hcx: &CTX) -> DefPathHash {
         self.as_def_id().to_stable_hash_key(hcx)
+    }
+}
+
+macro_rules! typed_def_id {
+    ($Name:ident, $LocalName:ident) => {
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, HashStable_Generic)]
+        pub struct $Name(DefId);
+
+        impl $Name {
+            pub const fn new_unchecked(def_id: DefId) -> Self {
+                Self(def_id)
+            }
+
+            pub fn to_def_id(self) -> DefId {
+                self.into()
+            }
+
+            pub fn is_local(self) -> bool {
+                self.0.is_local()
+            }
+
+            pub fn as_local(self) -> Option<$LocalName> {
+                self.0.as_local().map($LocalName::new_unchecked)
+            }
+        }
+
+        impl From<$LocalName> for $Name {
+            fn from(local: $LocalName) -> Self {
+                Self(local.0.to_def_id())
+            }
+        }
+
+        impl From<$Name> for DefId {
+            fn from(typed: $Name) -> Self {
+                typed.0
+            }
+        }
+
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, HashStable_Generic)]
+        pub struct $LocalName(LocalDefId);
+
+        impl !Ord for $LocalName {}
+        impl !PartialOrd for $LocalName {}
+
+        impl $LocalName {
+            pub const fn new_unchecked(def_id: LocalDefId) -> Self {
+                Self(def_id)
+            }
+
+            pub fn to_def_id(self) -> DefId {
+                self.0.into()
+            }
+
+            pub fn to_local_def_id(self) -> LocalDefId {
+                self.0
+            }
+        }
+
+        impl From<$LocalName> for LocalDefId {
+            fn from(typed: $LocalName) -> Self {
+                typed.0
+            }
+        }
+
+        impl From<$LocalName> for DefId {
+            fn from(typed: $LocalName) -> Self {
+                typed.0.into()
+            }
+        }
+    };
+}
+
+typed_def_id! { ModDefId, LocalModDefId }
+
+impl LocalModDefId {
+    pub const CRATE_DEF_ID: Self = Self::new_unchecked(CRATE_DEF_ID);
+}
+
+impl ModDefId {
+    pub fn is_top_level_module(self) -> bool {
+        self.0.is_top_level_module()
+    }
+}
+
+impl LocalModDefId {
+    pub fn is_top_level_module(self) -> bool {
+        self.0.is_top_level_module()
     }
 }
