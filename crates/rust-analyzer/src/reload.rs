@@ -283,8 +283,8 @@ impl GlobalState {
             let mut res = FxHashMap::default();
             let chain = proc_macro_clients
                 .iter()
-                .map(|res| res.as_ref().map_err(|e| &**e))
-                .chain(iter::repeat_with(|| Err("Proc macros servers are not running")));
+                .map(|res| res.as_ref().map_err(|e| e.to_string()))
+                .chain(iter::repeat_with(|| Err("Proc macros servers are not running".into())));
             for (client, paths) in chain.zip(paths) {
                 res.extend(paths.into_iter().map(move |(crate_id, res)| {
                     (
@@ -293,16 +293,18 @@ impl GlobalState {
                             |_| Err("proc macro crate is missing dylib".to_owned()),
                             |(crate_name, path)| {
                                 progress(path.display().to_string());
-                                load_proc_macro(
-                                    client,
-                                    &path,
-                                    crate_name
-                                        .as_deref()
-                                        .and_then(|crate_name| {
-                                            dummy_replacements.get(crate_name).map(|v| &**v)
-                                        })
-                                        .unwrap_or_default(),
-                                )
+                                client.as_ref().map_err(Clone::clone).and_then(|client| {
+                                    load_proc_macro(
+                                        client,
+                                        &path,
+                                        crate_name
+                                            .as_deref()
+                                            .and_then(|crate_name| {
+                                                dummy_replacements.get(crate_name).map(|v| &**v)
+                                            })
+                                            .unwrap_or_default(),
+                                    )
+                                })
                             },
                         ),
                     )
@@ -410,39 +412,25 @@ impl GlobalState {
         let project_folders = ProjectFolders::new(&self.workspaces, &files_config.exclude);
 
         if self.proc_macro_clients.is_empty() || !same_workspaces {
-            if let Some((path, path_manually_set)) = self.config.proc_macro_srv() {
+            if self.config.expand_proc_macros() {
                 tracing::info!("Spawning proc-macro servers");
+
                 self.proc_macro_clients = self
                     .workspaces
                     .iter()
                     .map(|ws| {
-                        let path = if path_manually_set {
-                            tracing::debug!(
-                                "Pro-macro server path explicitly set: {}",
-                                path.display()
-                            );
-                            path.clone()
-                        } else {
-                            match ws.find_sysroot_proc_macro_srv() {
-                                Some(server_path) => server_path,
-                                None => path.clone(),
-                            }
-                        };
-                        let args: &[_] = if path.file_stem() == Some("rust-analyzer".as_ref()) {
-                            &["proc-macro"]
-                        } else {
-                            &[]
+                        let path = match self.config.proc_macro_srv() {
+                            Some(path) => path,
+                            None => ws.find_sysroot_proc_macro_srv()?,
                         };
 
-                        tracing::info!(?args, "Using proc-macro server at {}", path.display(),);
-                        ProcMacroServer::spawn(path.clone(), args).map_err(|err| {
-                            let error = format!(
+                        tracing::info!("Using proc-macro server at {}", path.display(),);
+                        ProcMacroServer::spawn(path.clone()).map_err(|err| {
+                            anyhow::anyhow!(
                                 "Failed to run proc-macro server from path {}, error: {:?}",
                                 path.display(),
                                 err
-                            );
-                            tracing::error!(error);
-                            error
+                            )
                         })
                     })
                     .collect()
@@ -740,11 +728,10 @@ impl SourceRootConfig {
 /// Load the proc-macros for the given lib path, replacing all expanders whose names are in `dummy_replace`
 /// with an identity dummy expander.
 pub(crate) fn load_proc_macro(
-    server: Result<&ProcMacroServer, &str>,
+    server: &ProcMacroServer,
     path: &AbsPath,
     dummy_replace: &[Box<str>],
 ) -> ProcMacroLoadResult {
-    let server = server.map_err(ToOwned::to_owned)?;
     let res: Result<Vec<_>, String> = (|| {
         let dylib = MacroDylib::new(path.to_path_buf());
         let vec = server.load_dylib(dylib).map_err(|e| format!("{e}"))?;

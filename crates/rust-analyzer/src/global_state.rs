@@ -63,7 +63,7 @@ pub(crate) struct GlobalState {
     pub(crate) source_root_config: SourceRootConfig,
 
     pub(crate) proc_macro_changed: bool,
-    pub(crate) proc_macro_clients: Arc<[Result<ProcMacroServer, String>]>,
+    pub(crate) proc_macro_clients: Arc<[anyhow::Result<ProcMacroServer>]>,
 
     pub(crate) flycheck: Arc<[FlycheckHandle]>,
     pub(crate) flycheck_sender: Sender<flycheck::Message>,

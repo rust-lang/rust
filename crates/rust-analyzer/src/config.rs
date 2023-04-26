@@ -437,8 +437,7 @@ config_data! {
         ///
         /// This config takes a map of crate names with the exported proc-macro names to ignore as values.
         procMacro_ignored: FxHashMap<Box<str>, Box<[Box<str>]>>          = "{}",
-        /// Internal config, path to proc-macro server executable (typically,
-        /// this is rust-analyzer itself, but we override this in tests).
+        /// Internal config, path to proc-macro server executable.
         procMacro_server: Option<PathBuf>          = "null",
 
         /// Exclude imports from find-all-references.
@@ -1102,17 +1101,13 @@ impl Config {
         self.data.lru_query_capacities.is_empty().not().then(|| &self.data.lru_query_capacities)
     }
 
-    pub fn proc_macro_srv(&self) -> Option<(AbsPathBuf, /* is path explicitly set */ bool)> {
-        if !self.data.procMacro_enable {
-            return None;
-        }
-        Some(match &self.data.procMacro_server {
-            Some(it) => (
-                AbsPathBuf::try_from(it.clone()).unwrap_or_else(|path| self.root_path.join(path)),
-                true,
-            ),
-            None => (AbsPathBuf::assert(std::env::current_exe().ok()?), false),
-        })
+    pub fn proc_macro_srv(&self) -> Option<AbsPathBuf> {
+        self.data
+            .procMacro_server
+            .clone()
+            .map(AbsPathBuf::try_from)?
+            .ok()
+            .map(|path| self.root_path.join(path))
     }
 
     pub fn dummy_replacements(&self) -> &FxHashMap<Box<str>, Box<[Box<str>]>> {

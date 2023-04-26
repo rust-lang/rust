@@ -459,18 +459,35 @@ impl ProjectWorkspace {
         }
     }
 
-    pub fn find_sysroot_proc_macro_srv(&self) -> Option<AbsPathBuf> {
+    pub fn find_sysroot_proc_macro_srv(&self) -> Result<AbsPathBuf> {
         match self {
             ProjectWorkspace::Cargo { sysroot: Ok(sysroot), .. }
-            | ProjectWorkspace::Json { sysroot: Ok(sysroot), .. } => {
+            | ProjectWorkspace::Json { sysroot: Ok(sysroot), .. }
+            | ProjectWorkspace::DetachedFiles { sysroot: Ok(sysroot), .. } => {
                 let standalone_server_name =
                     format!("rust-analyzer-proc-macro-srv{}", std::env::consts::EXE_SUFFIX);
                 ["libexec", "lib"]
                     .into_iter()
                     .map(|segment| sysroot.root().join(segment).join(&standalone_server_name))
                     .find(|server_path| std::fs::metadata(server_path).is_ok())
+                    .ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "cannot find proc-macro server in sysroot `{}`",
+                            sysroot.root().display()
+                        )
+                    })
             }
-            _ => None,
+            ProjectWorkspace::DetachedFiles { .. } => {
+                Err(anyhow::anyhow!("cannot find proc-macro server, no sysroot was found"))
+            }
+            ProjectWorkspace::Cargo { cargo, .. } => Err(anyhow::anyhow!(
+                "cannot find proc-macro-srv, the workspace `{}` is missing a sysroot",
+                cargo.workspace_root().display()
+            )),
+            ProjectWorkspace::Json { project, .. } => Err(anyhow::anyhow!(
+                "cannot find proc-macro-srv, the workspace `{}` is missing a sysroot",
+                project.path().display()
+            )),
         }
     }
 

@@ -13,7 +13,6 @@ mod version;
 
 use paths::AbsPathBuf;
 use std::{
-    ffi::OsStr,
     fmt, io,
     sync::{Arc, Mutex},
 };
@@ -103,11 +102,8 @@ pub struct MacroPanic {
 
 impl ProcMacroServer {
     /// Spawns an external process as the proc macro server and returns a client connected to it.
-    pub fn spawn(
-        process_path: AbsPathBuf,
-        args: impl IntoIterator<Item = impl AsRef<OsStr>> + Clone,
-    ) -> io::Result<ProcMacroServer> {
-        let process = ProcMacroProcessSrv::run(process_path, args)?;
+    pub fn spawn(process_path: AbsPathBuf) -> io::Result<ProcMacroServer> {
+        let process = ProcMacroProcessSrv::run(process_path)?;
         Ok(ProcMacroServer { process: Arc::new(Mutex::new(process)) })
     }
 

@@ -1,8 +1,8 @@
 //! Loads a Cargo project into a static instance of analysis, without support
 //! for incorporating changes.
-use std::{convert::identity, path::Path, sync::Arc};
+use std::{path::Path, sync::Arc};
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use crossbeam_channel::{unbounded, Receiver};
 use ide::{AnalysisHost, Change};
 use ide_db::{
@@ -26,7 +26,7 @@ pub struct LoadCargoConfig {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProcMacroServerChoice {
     Sysroot,
-    Explicit(AbsPathBuf, Vec<String>),
+    Explicit(AbsPathBuf),
     None,
 }
 
@@ -71,14 +71,11 @@ pub fn load_workspace(
     let proc_macro_server = match &load_config.with_proc_macro_server {
         ProcMacroServerChoice::Sysroot => ws
             .find_sysroot_proc_macro_srv()
-            .ok_or_else(|| "failed to find sysroot proc-macro server".to_owned())
-            .and_then(|it| {
-                ProcMacroServer::spawn(it, identity::<&[&str]>(&[])).map_err(|e| e.to_string())
-            }),
-        ProcMacroServerChoice::Explicit(path, args) => {
-            ProcMacroServer::spawn(path.clone(), args).map_err(|e| e.to_string())
+            .and_then(|it| ProcMacroServer::spawn(it).map_err(Into::into)),
+        ProcMacroServerChoice::Explicit(path) => {
+            ProcMacroServer::spawn(path.clone()).map_err(Into::into)
         }
-        ProcMacroServerChoice::None => Err("proc macro server disabled".to_owned()),
+        ProcMacroServerChoice::None => Err(anyhow!("proc macro server disabled")),
     };
 
     let (crate_graph, proc_macros) = ws.to_crate_graph(
@@ -93,7 +90,7 @@ pub fn load_workspace(
     let proc_macros = {
         let proc_macro_server = match &proc_macro_server {
             Ok(it) => Ok(it),
-            Err(e) => Err(e.as_str()),
+            Err(e) => Err(e.to_string()),
         };
         proc_macros
             .into_iter()
@@ -102,7 +99,11 @@ pub fn load_workspace(
                     crate_id,
                     path.map_or_else(
                         |_| Err("proc macro crate is missing dylib".to_owned()),
-                        |(_, path)| load_proc_macro(proc_macro_server, &path, &[]),
+                        |(_, path)| {
+                            proc_macro_server.as_ref().map_err(Clone::clone).and_then(
+                                |proc_macro_server| load_proc_macro(proc_macro_server, &path, &[]),
+                            )
+                        },
                     ),
                 )
             })

@@ -1464,7 +1464,6 @@ dependencies = [
  "parking_lot 0.12.1",
  "parking_lot_core 0.9.6",
  "proc-macro-api",
- "proc-macro-srv-cli",
  "profile",
  "project-model",
  "rayon",
