@@ -45,16 +45,7 @@ fn slice_get_mut_usize(_1: &mut [u32], _2: usize) -> Option<&mut u32> {
                             scope 12 (inlined ptr::mut_ptr::<impl *mut u32>::add) { // at $SRC_DIR/core/src/slice/index.rs:LL:COL
                                 debug self => _9; // in scope 12 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
                                 debug count => _2; // in scope 12 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
-                                let mut _13: isize; // in scope 12 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
                                 scope 13 {
-                                    scope 14 (inlined ptr::mut_ptr::<impl *mut u32>::offset) { // at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
-                                        debug self => _9; // in scope 14 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
-                                        debug count => _13; // in scope 14 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
-                                        let mut _14: *const u32; // in scope 14 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
-                                        let mut _15: *const u32; // in scope 14 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
-                                        scope 15 {
-                                        }
-                                    }
                                 }
                             }
                         }
@@ -86,16 +77,7 @@ fn slice_get_mut_usize(_1: &mut [u32], _2: usize) -> Option<&mut u32> {
         StorageLive(_12);                // scope 3 at $SRC_DIR/core/src/slice/index.rs:LL:COL
         StorageLive(_9);                 // scope 6 at $SRC_DIR/core/src/slice/index.rs:LL:COL
         _9 = _8 as *mut u32 (PtrToPtr);  // scope 11 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
-        StorageLive(_13);                // scope 13 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
-        _13 = _2 as isize (IntToInt);    // scope 13 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
-        StorageLive(_14);                // scope 15 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
-        StorageLive(_15);                // scope 15 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
-        _15 = _9 as *const u32 (Pointer(MutToConstPointer)); // scope 15 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
-        _14 = Offset(move _15, _13);     // scope 15 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
-        StorageDead(_15);                // scope 15 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
-        _7 = move _14 as *mut u32 (PtrToPtr); // scope 15 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
-        StorageDead(_14);                // scope 15 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
-        StorageDead(_13);                // scope 13 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
+        _7 = Offset(_9, _2);             // scope 13 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
         StorageDead(_9);                 // scope 6 at $SRC_DIR/core/src/slice/index.rs:LL:COL
         StorageDead(_12);                // scope 3 at $SRC_DIR/core/src/slice/index.rs:LL:COL
         StorageDead(_11);                // scope 3 at $SRC_DIR/core/src/slice/index.rs:LL:COL
