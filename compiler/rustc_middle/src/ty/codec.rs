@@ -530,6 +530,16 @@ macro_rules! implement_ty_decoder {
                 fn read_raw_bytes(&mut self, len: usize) -> &[u8] {
                     self.opaque.read_raw_bytes(len)
                 }
+
+                #[inline]
+                fn position(&self) -> usize {
+                    self.opaque.position()
+                }
+
+                #[inline]
+                fn peek_byte(&self) -> u8 {
+                    self.opaque.peek_byte()
+                }
             }
         }
     }

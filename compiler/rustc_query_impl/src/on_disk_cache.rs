@@ -169,13 +169,12 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
 
             // Decode the *position* of the footer, which can be found in the
             // last 8 bytes of the file.
-            decoder.set_position(data.len() - IntEncodedWithFixedSize::ENCODED_SIZE);
-            let footer_pos = IntEncodedWithFixedSize::decode(&mut decoder).0 as usize;
-
+            let footer_pos = decoder
+                .with_position(decoder.len() - IntEncodedWithFixedSize::ENCODED_SIZE, |decoder| {
+                    IntEncodedWithFixedSize::decode(decoder).0 as usize
+                });
             // Decode the file footer, which contains all the lookup tables, etc.
-            decoder.set_position(footer_pos);
-
-            decode_tagged(&mut decoder, TAG_FILE_FOOTER)
+            decoder.with_position(footer_pos, |decoder| decode_tagged(decoder, TAG_FILE_FOOTER))
         };
 
         Self {
@@ -522,29 +521,13 @@ impl<'a, 'tcx> CacheDecoder<'a, 'tcx> {
     }
 }
 
-trait DecoderWithPosition: Decoder {
-    fn position(&self) -> usize;
-}
-
-impl<'a> DecoderWithPosition for MemDecoder<'a> {
-    fn position(&self) -> usize {
-        self.position()
-    }
-}
-
-impl<'a, 'tcx> DecoderWithPosition for CacheDecoder<'a, 'tcx> {
-    fn position(&self) -> usize {
-        self.opaque.position()
-    }
-}
-
 // Decodes something that was encoded with `encode_tagged()` and verify that the
 // tag matches and the correct amount of bytes was read.
 fn decode_tagged<D, T, V>(decoder: &mut D, expected_tag: T) -> V
 where
     T: Decodable<D> + Eq + std::fmt::Debug,
     V: Decodable<D>,
-    D: DecoderWithPosition,
+    D: Decoder,
 {
     let start_pos = decoder.position();
 
@@ -566,16 +549,6 @@ impl<'a, 'tcx> TyDecoder for CacheDecoder<'a, 'tcx> {
     #[inline]
     fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
-    }
-
-    #[inline]
-    fn position(&self) -> usize {
-        self.opaque.position()
-    }
-
-    #[inline]
-    fn peek_byte(&self) -> u8 {
-        self.opaque.data[self.opaque.position()]
     }
 
     fn cached_ty_for_shorthand<F>(&mut self, shorthand: usize, or_insert_with: F) -> Ty<'tcx>
@@ -600,9 +573,9 @@ impl<'a, 'tcx> TyDecoder for CacheDecoder<'a, 'tcx> {
     where
         F: FnOnce(&mut Self) -> R,
     {
-        debug_assert!(pos < self.opaque.data.len());
+        debug_assert!(pos < self.opaque.len());
 
-        let new_opaque = MemDecoder::new(self.opaque.data, pos);
+        let new_opaque = MemDecoder::new(self.opaque.data(), pos);
         let old_opaque = mem::replace(&mut self.opaque, new_opaque);
         let r = f(self);
         self.opaque = old_opaque;
@@ -743,17 +716,12 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Symbol {
             SYMBOL_OFFSET => {
                 // read str offset
                 let pos = d.read_usize();
-                let old_pos = d.opaque.position();
 
                 // move to str offset and read
-                d.opaque.set_position(pos);
-                let s = d.read_str();
-                let sym = Symbol::intern(s);
-
-                // restore position
-                d.opaque.set_position(old_pos);
-
-                sym
+                d.opaque.with_position(pos, |d| {
+                    let s = d.read_str();
+                    Symbol::intern(s)
+                })
             }
             SYMBOL_PREINTERNED => {
                 let symbol_index = d.read_u32();

@@ -84,6 +84,8 @@ pub trait Decoder {
     fn read_char(&mut self) -> char;
     fn read_str(&mut self) -> &str;
     fn read_raw_bytes(&mut self, len: usize) -> &[u8];
+    fn peek_byte(&self) -> u8;
+    fn position(&self) -> usize;
 }
 
 /// Trait for types that can be serialized
