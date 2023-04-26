@@ -70,25 +70,14 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 // into itself infinitely and any partial substitutions in the query
                 // response are probably not useful anyways, so just return an empty
                 // query response.
-                Response {
-                    var_values: CanonicalVarValues {
-                        var_values: self.tcx().mk_substs_from_iter(
-                            self.var_values.var_values.iter().map(|arg| -> ty::GenericArg<'tcx> {
-                                match arg.unpack() {
-                                    GenericArgKind::Lifetime(_) => self.next_region_infer().into(),
-                                    GenericArgKind::Type(_) => self.next_ty_infer().into(),
-                                    GenericArgKind::Const(ct) => {
-                                        self.next_const_infer(ct.ty()).into()
-                                    }
-                                }
-                            }),
-                        ),
-                    },
-                    external_constraints: self
-                        .tcx()
-                        .mk_external_constraints(ExternalConstraintsData::default()),
-                    certainty,
-                }
+                //
+                // This may prevent us from potentially useful inference, e.g.
+                // 2 candidates, one ambiguous and one overflow, which both
+                // have the same inference constraints.
+                //
+                // Changing this to retain some constraints in the future
+                // won't be a breaking change, so this is good enough for now.
+                return Ok(self.make_ambiguous_response_no_constraints(MaybeCause::Overflow));
             }
         };
 
@@ -99,6 +88,40 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             response,
         );
         Ok(canonical)
+    }
+
+    /// Constructs a totally unconstrained, ambiguous response to a goal.
+    ///
+    /// Take care when using this, since often it's useful to respond with
+    /// ambiguity but return constrained variables to guide inference.
+    pub(in crate::solve) fn make_ambiguous_response_no_constraints(
+        &self,
+        maybe_cause: MaybeCause,
+    ) -> CanonicalResponse<'tcx> {
+        let unconstrained_response = Response {
+            var_values: CanonicalVarValues {
+                var_values: self.tcx().mk_substs_from_iter(self.var_values.var_values.iter().map(
+                    |arg| -> ty::GenericArg<'tcx> {
+                        match arg.unpack() {
+                            GenericArgKind::Lifetime(_) => self.next_region_infer().into(),
+                            GenericArgKind::Type(_) => self.next_ty_infer().into(),
+                            GenericArgKind::Const(ct) => self.next_const_infer(ct.ty()).into(),
+                        }
+                    },
+                )),
+            },
+            external_constraints: self
+                .tcx()
+                .mk_external_constraints(ExternalConstraintsData::default()),
+            certainty: Certainty::Maybe(maybe_cause),
+        };
+
+        Canonicalizer::canonicalize(
+            self.infcx,
+            CanonicalizeMode::Response { max_input_universe: self.max_input_universe },
+            &mut Default::default(),
+            unconstrained_response,
+        )
     }
 
     #[instrument(level = "debug", skip(self), ret)]
