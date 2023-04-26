@@ -545,6 +545,7 @@ macro_rules! define_feedable {
 
 mod sealed {
     use super::{DefId, LocalDefId, OwnerId};
+    use rustc_hir::def_id::{LocalModDefId, ModDefId};
 
     /// An analogue of the `Into` trait that's intended only for query parameters.
     ///
@@ -586,6 +587,27 @@ mod sealed {
         #[inline(always)]
         fn into_query_param(self) -> DefId {
             self.to_def_id()
+        }
+    }
+
+    impl IntoQueryParam<DefId> for ModDefId {
+        #[inline(always)]
+        fn into_query_param(self) -> DefId {
+            self.to_def_id()
+        }
+    }
+
+    impl IntoQueryParam<DefId> for LocalModDefId {
+        #[inline(always)]
+        fn into_query_param(self) -> DefId {
+            self.to_def_id()
+        }
+    }
+
+    impl IntoQueryParam<LocalDefId> for LocalModDefId {
+        #[inline(always)]
+        fn into_query_param(self) -> LocalDefId {
+            self.into()
         }
     }
 }

@@ -1551,7 +1551,7 @@ fn first_non_private<'tcx>(
         }
         [parent, leaf] if parent.ident.name == kw::Super => {
             let parent_mod = cx.tcx.parent_module(hir_id);
-            if let Some(super_parent) = cx.tcx.opt_local_parent(parent_mod) {
+            if let Some(super_parent) = cx.tcx.opt_local_parent(parent_mod.to_local_def_id()) {
                 (super_parent, leaf.ident)
             } else {
                 // If we can't find the parent of the parent, then the parent is already the crate.
@@ -2828,7 +2828,7 @@ fn clean_use_statement_inner<'tcx>(
     // The parent of the module in which this import resides. This
     // is the same as `current_mod` if that's already the top
     // level module.
-    let parent_mod = cx.tcx.parent_module_from_def_id(current_mod);
+    let parent_mod = cx.tcx.parent_module_from_def_id(current_mod.to_local_def_id());
 
     // This checks if the import can be seen from a higher level module.
     // In other words, it checks if the visibility is the equivalent of
