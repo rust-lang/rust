@@ -228,3 +228,42 @@ impl HelpUseLatestEdition {
         }
     }
 }
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_const_select_must_be_const)]
+#[help]
+pub struct ConstSelectMustBeConst {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_const_select_must_be_fn)]
+#[note]
+#[help]
+pub struct ConstSelectMustBeFn<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'a>,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_union_pat_multiple_fields)]
+pub struct UnionPatMultipleFields {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_union_pat_dotdot)]
+pub struct UnionPatDotDot {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_arg_mismatch_indeterminate)]
+pub struct ArgMismatchIndeterminate {
+    #[primary_span]
+    pub span: Span,
+}

@@ -742,3 +742,33 @@ parse_bad_return_type_notation_output =
 parse_bad_return_type_notation_dotdot =
     return type notation uses `()` instead of `(..)` for elided arguments
     .suggestion = remove the `..`
+
+parse_bad_assoc_type_bounds = bounds on associated types do not belong here
+    .label = belongs in `where` clause
+
+parse_attr_after_generic = trailing attribute after generic parameter
+    .label = attributes must go before parameters
+
+parse_attr_without_generics = attribute without generic parameters
+    .label = attributes are only permitted when preceding parameters
+
+parse_where_generics = generic parameters on `where` clauses are reserved for future use
+    .label = currently unsupported
+
+parse_generics_in_path = unexpected generic arguments in path
+
+parse_assoc_lifetime = associated lifetimes are not supported
+    .label = the lifetime is given here
+    .help = if you meant to specify a trait object, write `dyn Trait + 'lifetime`
+
+parse_tilde_const_lifetime = `~const` may only modify trait bounds, not lifetime bounds
+
+parse_maybe_lifetime = `?` may only modify trait bounds, not lifetime bounds
+
+parse_parenthesized_lifetime = parenthesized lifetime bounds are not supported
+    .suggestion = remove the parentheses
+
+parse_const_bounds_missing_tilde = const bounds must start with `~`
+    .suggestion = add `~`
+
+parse_underscore_literal_suffix = underscore literal suffix is not allowed

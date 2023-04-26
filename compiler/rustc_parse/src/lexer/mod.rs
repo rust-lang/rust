@@ -209,11 +209,7 @@ impl<'a> StringReader<'a> {
                         if string == "_" {
                             self.sess
                                 .span_diagnostic
-                                .struct_span_err(
-                                    self.mk_sp(suffix_start, self.pos),
-                                    "underscore literal suffix is not allowed",
-                                )
-                                .emit();
+                                .emit_err(errors::UnderscoreLiteralSuffix { span: self.mk_sp(suffix_start, self.pos) });
                             None
                         } else {
                             Some(Symbol::intern(string))

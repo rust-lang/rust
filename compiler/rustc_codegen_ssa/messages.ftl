@@ -291,3 +291,16 @@ codegen_ssa_invalid_monomorphization_unsupported_cast = invalid monomorphization
 codegen_ssa_invalid_monomorphization_unsupported_operation = invalid monomorphization of `{$name}` intrinsic: unsupported operation on `{$in_ty}` with element `{$in_elem}`
 
 codegen_ssa_invalid_monomorphization_expected_vector_element_type = invalid monomorphization of `{$name}` intrinsic: expected element type `{$expected_element}` of vector type `{$vector_type}` to be a signed or unsigned integer type
+
+codegen_ssa_invalid_no_sanitize = invalid argument for `no_sanitize`
+    .note = expected one of: `address`, `cfi`, `hwaddress`, `kcfi`, `memory`, `memtag`, `shadow-call-stack`, or `thread`
+
+codegen_ssa_invalid_link_ordinal_nargs = incorrect number of arguments to `#[link_ordinal]`
+    .note = the attribute requires exactly one argument
+
+codegen_ssa_illegal_link_ordinal_format = illegal ordinal format in `link_ordinal`
+    .note = an unsuffixed integer value, e.g., `1`, is expected
+
+codegen_ssa_target_feature_safe_trait = `#[target_feature(..)]` cannot be applied to safe trait method
+    .label = cannot be applied to safe trait method
+    .label_def = not an `unsafe` function

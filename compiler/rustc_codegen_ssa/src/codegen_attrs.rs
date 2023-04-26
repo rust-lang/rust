@@ -14,6 +14,7 @@ use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span};
 use rustc_target::spec::{abi, SanitizerSet};
 
+use crate::errors;
 use crate::target_features::from_target_feature;
 use crate::{errors::ExpectedUsedSymbol, target_features::check_target_feature_trait_unsafe};
 
@@ -334,10 +335,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                                 codegen_fn_attrs.no_sanitize |= SanitizerSet::HWADDRESS
                             }
                             _ => {
-                                tcx.sess
-                                    .struct_span_err(item.span(), "invalid argument for `no_sanitize`")
-                                    .note("expected one of: `address`, `cfi`, `hwaddress`, `kcfi`, `memory`, `memtag`, `shadow-call-stack`, or `thread`")
-                                    .emit();
+                                tcx.sess.emit_err(errors::InvalidNoSanitize { span: item.span() });
                             }
                         }
                     }
@@ -608,10 +606,7 @@ fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<u16> {
     let sole_meta_list = match meta_item_list {
         Some([item]) => item.lit(),
         Some(_) => {
-            tcx.sess
-                .struct_span_err(attr.span, "incorrect number of arguments to `#[link_ordinal]`")
-                .note("the attribute requires exactly one argument")
-                .emit();
+            tcx.sess.emit_err(errors::InvalidLinkOrdinalNargs { span: attr.span });
             return None;
         }
         _ => None,
@@ -642,10 +637,7 @@ fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<u16> {
             None
         }
     } else {
-        tcx.sess
-            .struct_span_err(attr.span, "illegal ordinal format in `link_ordinal`")
-            .note("an unsuffixed integer value, e.g., `1`, is expected")
-            .emit();
+        tcx.sess.emit_err(errors::InvalidLinkOrdinalFormat { span: attr.span });
         None
     }
 }

@@ -633,6 +633,7 @@ pub(crate) struct SIMDFFIHighlyExperimental {
 }
 
 #[derive(Diagnostic)]
+
 pub enum ImplNotMarkedDefault {
     #[diag(hir_analysis_impl_not_marked_default, code = "E0520")]
     #[note]
@@ -768,4 +769,49 @@ pub(crate) struct TransparentNonZeroSized<'a> {
     pub spans: Vec<Span>,
     pub field_count: usize,
     pub desc: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_too_large_static)]
+pub(crate) struct TooLargeStatic {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_specialization_trait)]
+#[help]
+pub(crate) struct SpecializationTrait {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_closure_implicit_hrtb)]
+pub(crate) struct ClosureImplicitHrtb {
+    #[primary_span]
+    pub spans: Vec<Span>,
+    #[label]
+    pub for_sp: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_const_specialize)]
+pub(crate) struct ConstSpecialize {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_static_specialize)]
+pub(crate) struct StaticSpecialize {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_missing_tilde_const)]
+pub(crate) struct MissingTildeConst {
+    #[primary_span]
+    pub span: Span,
 }

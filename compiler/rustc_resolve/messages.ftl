@@ -226,3 +226,10 @@ resolve_add_as_non_derive =
 
 resolve_proc_macro_same_crate = can't use a procedural macro from the same crate that defines it
     .help = you can define integration tests in a directory named `tests`
+
+resolve_imported_crate = `$crate` may not be imported
+
+resolve_macro_use_extern_crate_self = `#[macro_use]` is not supported on `extern crate self`
+
+resolve_accessible_unsure = not sure whether the path is accessible or not
+    .note = the type may have associated items, but we are currently not checking them

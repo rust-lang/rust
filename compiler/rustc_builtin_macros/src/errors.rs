@@ -551,3 +551,71 @@ pub(crate) struct FormatPositionalMismatch {
     #[subdiagnostic]
     pub(crate) highlight: SingleLabelManySpans,
 }
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_test_case_non_item)]
+pub(crate) struct TestCaseNonItem {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_test_bad_fn)]
+pub(crate) struct TestBadFn {
+    #[primary_span]
+    pub(crate) span: Span,
+    #[label]
+    pub(crate) cause: Span,
+    pub(crate) kind: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_asm_explicit_register_name)]
+pub(crate) struct AsmExplicitRegisterName {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_asm_mutually_exclusive)]
+pub(crate) struct AsmMutuallyExclusive {
+    #[primary_span]
+    pub(crate) spans: Vec<Span>,
+    pub(crate) opt1: &'static str,
+    pub(crate) opt2: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_asm_pure_combine)]
+pub(crate) struct AsmPureCombine {
+    #[primary_span]
+    pub(crate) spans: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_asm_pure_no_output)]
+pub(crate) struct AsmPureNoOutput {
+    #[primary_span]
+    pub(crate) spans: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_asm_modifier_invalid)]
+pub(crate) struct AsmModifierInvalid {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_test_runner_invalid)]
+pub(crate) struct TestRunnerInvalid {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_test_runner_nargs)]
+pub(crate) struct TestRunnerNargs {
+    #[primary_span]
+    pub(crate) span: Span,
+}

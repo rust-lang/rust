@@ -9,7 +9,9 @@ use crate::def_collector::collect_definitions;
 use crate::imports::{Import, ImportKind};
 use crate::macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
 use crate::Namespace::{self, MacroNS, TypeNS, ValueNS};
-use crate::{Determinacy, ExternPreludeEntry, Finalize, Module, ModuleKind, ModuleOrUniformRoot};
+use crate::{
+    errors, Determinacy, ExternPreludeEntry, Finalize, Module, ModuleKind, ModuleOrUniformRoot,
+};
 use crate::{
     MacroData, NameBinding, NameBindingKind, ParentScope, PathResult, PerNS, ResolutionError,
 };
@@ -523,11 +525,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                             ident.name = crate_name;
                         }
 
-                        self.r
-                            .tcx
-                            .sess
-                            .struct_span_err(item.span, "`$crate` may not be imported")
-                            .emit();
+                        self.r.tcx.sess.emit_err(errors::CrateImported { span: item.span });
                     }
                 }
 
@@ -1028,11 +1026,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                         self.r
                             .tcx
                             .sess
-                            .struct_span_err(
-                                attr.span,
-                                "`#[macro_use]` is not supported on `extern crate self`",
-                            )
-                            .emit();
+                            .emit_err(errors::MacroUseExternCrateSelf { span: attr.span });
                     }
                 }
                 let ill_formed = |span| {

@@ -2,8 +2,8 @@ use crate::coercion::CoerceMany;
 use crate::fn_ctxt::arg_matrix::{ArgMatrix, Compatibility, Error, ExpectedIdx, ProvidedIdx};
 use crate::gather_locals::Declaration;
 use crate::method::MethodCallee;
-use crate::Expectation::*;
 use crate::TupleArgumentsFlag::*;
+use crate::{errors, Expectation::*};
 use crate::{
     struct_span_err, BreakableCtxt, Diverges, Expectation, FnCtxt, LocalTy, Needs, RawTy,
     TupleArgumentsFlag,
@@ -283,19 +283,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if idx == 1 && !self.tcx.is_const_fn_raw(*def_id) {
                         self.tcx
                             .sess
-                            .struct_span_err(provided_arg.span, "this argument must be a `const fn`")
-                            .help("consult the documentation on `const_eval_select` for more information")
-                            .emit();
+                            .emit_err(errors::ConstSelectMustBeConst { span: provided_arg.span });
                     }
                 } else {
-                    self.tcx
-                        .sess
-                        .struct_span_err(provided_arg.span, "this argument must be a function item")
-                        .note(format!("expected a function item, found {checked_ty}"))
-                        .help(
-                            "consult the documentation on `const_eval_select` for more information",
-                        )
-                        .emit();
+                    self.tcx.sess.emit_err(errors::ConstSelectMustBeFn {
+                        span: provided_arg.span,
+                        ty: checked_ty,
+                    });
                 }
             }
 
@@ -744,17 +738,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if cfg!(debug_assertions) {
                 span_bug!(error_span, "expected errors from argument matrix");
             } else {
-                tcx.sess
-                    .struct_span_err(
-                        error_span,
-                        "argument type mismatch was detected, \
-                        but rustc had trouble determining where",
-                    )
-                    .note(
-                        "we would appreciate a bug report: \
-                        https://github.com/rust-lang/rust/issues/new",
-                    )
-                    .emit();
+                tcx.sess.emit_err(errors::ArgMismatchIndeterminate { span: error_span });
             }
             return;
         }
