@@ -386,13 +386,13 @@ rust-analyzer supports only one `kind`, `"cargo"`. The `args` for `"cargo"` look
 
 ## Open External Documentation
 
-This request is sent from client to server to get a URL to documentation for the symbol under the cursor, if available.
+This request is sent from client to server to get a web and local URL(s) to documentation for the symbol under the cursor, if available.
 
 **Method** `experimental/externalDocs`
 
 **Request:**: `TextDocumentPositionParams`
 
-**Response** `string | null`
+**Response** `[string | null, string | null]`
 
 
 ## Analyzer Status
