@@ -467,9 +467,8 @@ fn get_doc_base_urls(
     def: Definition,
     target_dir: Option<&OsStr>,
 ) -> (Option<Url>, Option<Url>) {
-    let local_doc_path = target_dir
-        .and_then(|it| Url::from_directory_path(it).ok())
-        .and_then(|it| it.join("doc").ok());
+    let local_doc_path =
+        target_dir.and_then(create_url_from_os_str).and_then(|it| it.join("doc/").ok());
     // special case base url of `BuiltinType` to core
     // https://github.com/rust-lang/rust-analyzer/issues/12250
     if let Definition::BuiltinType(..) = def {
@@ -477,8 +476,8 @@ fn get_doc_base_urls(
         return (weblink, local_doc_path);
     };
 
-    let Some(krate) = def.krate(db) else { return (None, local_doc_path) };
-    let Some(display_name) = krate.display_name(db) else { return (None, local_doc_path) };
+    let Some(krate) = def.krate(db) else { return Default::default() };
+    let Some(display_name) = krate.display_name(db) else { return Default::default() };
     let crate_data = &db.crate_graph()[krate.into()];
     let channel = crate_data.channel.map_or("nightly", ReleaseChannel::as_str);
     let (web_base, local_base) = match &crate_data.origin {
@@ -532,7 +531,18 @@ fn get_doc_base_urls(
     let web_base = web_base
         .and_then(|it| Url::parse(&it).ok())
         .and_then(|it| it.join(&format!("{display_name}/")).ok());
-    (web_base, local_base)
+    let local_base = local_base.and_then(|it| it.join(&format!("{display_name}/")).ok());
+
+    return (web_base, local_base);
+
+    // On Windows, cargo metadata returns paths without leading slashes, but
+    // Url::from_directory_path requires them.
+    // In unix adding another "/" will not make any difference.
+    fn create_url_from_os_str(path: &OsStr) -> Option<Url> {
+        let mut with_leading_slash = OsStr::new("/").to_os_string();
+        with_leading_slash.push(path);
+        Url::from_directory_path(with_leading_slash.as_os_str()).ok()
+    }
 }
 
 /// Get the filename and extension generated for a symbol by rustdoc.
