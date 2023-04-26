@@ -131,8 +131,8 @@ fn compute_replacement<'tcx>(
         let maybe_dead = maybe_dead.contains(target.local);
 
         if target.projection.first() == Some(&PlaceElem::Deref) {
-            // We are creating a reborrow. As `place.local` is a reference, removing the
-            // `StorageDead` is fine.
+            // We are creating a reborrow. As `place.local` is a reference, removing the storage
+            // statements should not make it much harder for LLVM to optimize.
             if maybe_dead {
                 storage_to_remove.insert(target.local);
             }
