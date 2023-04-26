@@ -131,7 +131,7 @@ fn clean_generic_bound<'tcx>(
         hir::GenericBound::LangItemTrait(lang_item, span, _, generic_args) => {
             let def_id = cx.tcx.require_lang_item(lang_item, Some(span));
 
-            let trait_ref = ty::TraitRef::identity(cx.tcx, def_id);
+            let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(cx.tcx, def_id));
 
             let generic_args = clean_generic_args(generic_args, cx);
             let GenericArgs::AngleBracketed { bindings, .. } = generic_args
