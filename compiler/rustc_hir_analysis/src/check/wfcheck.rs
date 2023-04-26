@@ -5,7 +5,7 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::ItemKind;
 use rustc_infer::infer::outlives::env::{OutlivesEnvironment, RegionBoundPairs};
@@ -1942,7 +1942,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
     }
 }
 
-fn check_mod_type_wf(tcx: TyCtxt<'_>, module: LocalDefId) {
+fn check_mod_type_wf(tcx: TyCtxt<'_>, module: LocalModDefId) {
     let items = tcx.hir_module_items(module);
     items.par_items(|item| tcx.ensure().check_well_formed(item.owner_id));
     items.par_impl_items(|item| tcx.ensure().check_well_formed(item.owner_id));

@@ -20,7 +20,7 @@ use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
+use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId, CRATE_DEF_ID};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{AssocItemKind, HirIdSet, ItemId, Node, PatKind};
 use rustc_middle::bug;
@@ -412,7 +412,7 @@ struct EmbargoVisitor<'tcx> {
     /// pub macro m() {
     ///     n::p::f()
     /// }
-    macro_reachable: FxHashSet<(LocalDefId, LocalDefId)>,
+    macro_reachable: FxHashSet<(LocalModDefId, LocalModDefId)>,
     /// Previous visibility level; `None` means unreachable.
     prev_level: Option<Level>,
     /// Has something changed in the level map?
@@ -437,7 +437,8 @@ impl<'tcx> EmbargoVisitor<'tcx> {
         if level > old_level {
             self.effective_visibilities.set_public_at_level(
                 def_id,
-                || ty::Visibility::Restricted(self.tcx.parent_module_from_def_id(def_id)),
+                // FIXME(typed_def_id): Make `Visibility::Restricted` use a `LocalModDefId` by default.
+                || ty::Visibility::Restricted(self.tcx.parent_module_from_def_id(def_id).into()),
                 level.unwrap(),
             );
             self.changed = true;
@@ -475,6 +476,8 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             // The macro's parent doesn't correspond to a `mod`, return early (#63164, #65252).
             return;
         }
+        // FIXME(typed_def_id): Introduce checked constructors that check def_kind.
+        let macro_module_def_id = LocalModDefId::new_unchecked(macro_module_def_id);
 
         if self.get(local_def_id).is_none() {
             return;
@@ -486,10 +489,10 @@ impl<'tcx> EmbargoVisitor<'tcx> {
         loop {
             let changed_reachability =
                 self.update_macro_reachable(module_def_id, macro_module_def_id);
-            if changed_reachability || module_def_id == CRATE_DEF_ID {
+            if changed_reachability || module_def_id == LocalModDefId::CRATE_DEF_ID {
                 break;
             }
-            module_def_id = self.tcx.local_parent(module_def_id);
+            module_def_id = LocalModDefId::new_unchecked(self.tcx.local_parent(module_def_id));
         }
     }
 
@@ -497,8 +500,8 @@ impl<'tcx> EmbargoVisitor<'tcx> {
     /// module. Returns `true` if the level has changed.
     fn update_macro_reachable(
         &mut self,
-        module_def_id: LocalDefId,
-        defining_mod: LocalDefId,
+        module_def_id: LocalModDefId,
+        defining_mod: LocalModDefId,
     ) -> bool {
         if self.macro_reachable.insert((module_def_id, defining_mod)) {
             self.update_macro_reachable_mod(module_def_id, defining_mod);
@@ -508,7 +511,11 @@ impl<'tcx> EmbargoVisitor<'tcx> {
         }
     }
 
-    fn update_macro_reachable_mod(&mut self, module_def_id: LocalDefId, defining_mod: LocalDefId) {
+    fn update_macro_reachable_mod(
+        &mut self,
+        module_def_id: LocalModDefId,
+        defining_mod: LocalModDefId,
+    ) {
         let module = self.tcx.hir().get_module(module_def_id).0;
         for item_id in module.item_ids {
             let def_kind = self.tcx.def_kind(item_id.owner_id);
@@ -530,7 +537,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
         def_id: LocalDefId,
         def_kind: DefKind,
         vis: ty::Visibility,
-        module: LocalDefId,
+        module: LocalModDefId,
     ) {
         let level = Some(Level::Reachable);
         if vis.is_public() {
@@ -563,7 +570,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             // the module, however may be reachable.
             DefKind::Mod => {
                 if vis.is_accessible_from(module, self.tcx) {
-                    self.update_macro_reachable(def_id, module);
+                    self.update_macro_reachable(LocalModDefId::new_unchecked(def_id), module);
                 }
             }
 
@@ -925,7 +932,9 @@ impl<'tcx, 'a> TestReachabilityVisitor<'tcx, 'a> {
                         ty::Visibility::Restricted(restricted_id) => {
                             if restricted_id.is_top_level_module() {
                                 "pub(crate)".to_string()
-                            } else if *restricted_id == self.tcx.parent_module_from_def_id(def_id) {
+                            } else if *restricted_id
+                                == self.tcx.parent_module_from_def_id(def_id).to_local_def_id()
+                            {
                                 "pub(self)".to_string()
                             } else {
                                 format!("pub({})", self.tcx.item_name(restricted_id.to_def_id()))
@@ -1818,7 +1827,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
             let vis_descr = match vis {
                 ty::Visibility::Public => "public",
                 ty::Visibility::Restricted(vis_def_id) => {
-                    if vis_def_id == self.tcx.parent_module(hir_id) {
+                    if vis_def_id == self.tcx.parent_module(hir_id).to_local_def_id() {
                         "private"
                     } else if vis_def_id.is_top_level_module() {
                         "crate-private"
@@ -2078,7 +2087,7 @@ fn local_visibility(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Visibility {
                     kind: hir::ItemKind::Use(_, hir::UseKind::ListStem)
                         | hir::ItemKind::OpaqueTy(..),
                     ..
-                }) => ty::Visibility::Restricted(tcx.parent_module(hir_id)),
+                }) => ty::Visibility::Restricted(tcx.parent_module(hir_id).to_local_def_id()),
                 // Visibilities of trait impl items are inherited from their traits
                 // and are not filled in resolve.
                 Node::ImplItem(impl_item) => {
@@ -2106,18 +2115,25 @@ fn local_visibility(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Visibility {
     }
 }
 
-fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
+fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
     // Check privacy of names not checked in previous compilation stages.
-    let mut visitor =
-        NamePrivacyVisitor { tcx, maybe_typeck_results: None, current_item: module_def_id };
+    let mut visitor = NamePrivacyVisitor {
+        tcx,
+        maybe_typeck_results: None,
+        current_item: module_def_id.to_local_def_id(),
+    };
     let (module, span, hir_id) = tcx.hir().get_module(module_def_id);
 
     intravisit::walk_mod(&mut visitor, module, hir_id);
 
     // Check privacy of explicitly written types and traits as well as
     // inferred types of expressions and patterns.
-    let mut visitor =
-        TypePrivacyVisitor { tcx, maybe_typeck_results: None, current_item: module_def_id, span };
+    let mut visitor = TypePrivacyVisitor {
+        tcx,
+        maybe_typeck_results: None,
+        current_item: module_def_id.to_local_def_id(),
+        span,
+    };
     intravisit::walk_mod(&mut visitor, module, hir_id);
 }
 

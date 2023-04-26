@@ -2455,8 +2455,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// e.g. a glob import can introduce a lot of names, all with the same `DefId`.
     /// That's why the list needs to contain `ModChild` structures describing all the names
     /// individually instead of `DefId`s.
-    pub fn module_children_reexports(self, def_id: LocalDefId) -> &'tcx [ModChild] {
-        self.resolutions(()).module_children_reexports.get(&def_id).map_or(&[], |v| &v[..])
+    pub fn module_children_reexports(self, def_id: impl Into<LocalDefId>) -> &'tcx [ModChild] {
+        self.resolutions(()).module_children_reexports.get(&def_id.into()).map_or(&[], |v| &v[..])
     }
 }
 

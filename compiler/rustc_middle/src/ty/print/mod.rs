@@ -323,7 +323,8 @@ impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::Const<'tcx> {
 }
 
 // This is only used by query descriptions
-pub fn describe_as_module(def_id: LocalDefId, tcx: TyCtxt<'_>) -> String {
+pub fn describe_as_module(def_id: impl Into<LocalDefId>, tcx: TyCtxt<'_>) -> String {
+    let def_id = def_id.into();
     if def_id.is_top_level_module() {
         "top-level module".to_string()
     } else {

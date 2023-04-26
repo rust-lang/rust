@@ -7,7 +7,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::*;
@@ -146,7 +146,7 @@ impl<'hir> Map<'hir> {
     }
 
     #[inline]
-    pub fn module_items(self, module: LocalDefId) -> impl Iterator<Item = ItemId> + 'hir {
+    pub fn module_items(self, module: LocalModDefId) -> impl Iterator<Item = ItemId> + 'hir {
         self.tcx.hir_module_items(module).items()
     }
 
@@ -172,8 +172,8 @@ impl<'hir> Map<'hir> {
     }
 
     #[inline]
-    pub fn local_def_id_to_hir_id(self, def_id: LocalDefId) -> HirId {
-        self.tcx.local_def_id_to_hir_id(def_id)
+    pub fn local_def_id_to_hir_id(self, def_id: impl Into<LocalDefId>) -> HirId {
+        self.tcx.local_def_id_to_hir_id(def_id.into())
     }
 
     /// Do not call this function directly. The query should be called.
@@ -543,8 +543,8 @@ impl<'hir> Map<'hir> {
         self.krate_attrs().iter().any(|attr| attr.has_name(sym::rustc_coherence_is_core))
     }
 
-    pub fn get_module(self, module: LocalDefId) -> (&'hir Mod<'hir>, Span, HirId) {
-        let hir_id = HirId::make_owner(module);
+    pub fn get_module(self, module: LocalModDefId) -> (&'hir Mod<'hir>, Span, HirId) {
+        let hir_id = HirId::make_owner(module.to_local_def_id());
         match self.tcx.hir_owner(hir_id.owner).map(|o| o.node) {
             Some(OwnerNode::Item(&Item { span, kind: ItemKind::Mod(ref m), .. })) => {
                 (m, span, hir_id)
@@ -556,7 +556,7 @@ impl<'hir> Map<'hir> {
 
     /// Walks the contents of the local crate. See also `visit_all_item_likes_in_crate`.
     pub fn walk_toplevel_module(self, visitor: &mut impl Visitor<'hir>) {
-        let (top_mod, span, hir_id) = self.get_module(CRATE_DEF_ID);
+        let (top_mod, span, hir_id) = self.get_module(LocalModDefId::CRATE_DEF_ID);
         visitor.visit_mod(top_mod, span, hir_id);
     }
 
@@ -609,7 +609,7 @@ impl<'hir> Map<'hir> {
 
     /// This method is the equivalent of `visit_all_item_likes_in_crate` but restricted to
     /// item-likes in a single module.
-    pub fn visit_item_likes_in_module<V>(self, module: LocalDefId, visitor: &mut V)
+    pub fn visit_item_likes_in_module<V>(self, module: LocalModDefId, visitor: &mut V)
     where
         V: Visitor<'hir>,
     {
@@ -632,17 +632,19 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn for_each_module(self, mut f: impl FnMut(LocalDefId)) {
+    pub fn for_each_module(self, mut f: impl FnMut(LocalModDefId)) {
         let crate_items = self.tcx.hir_crate_items(());
         for module in crate_items.submodules.iter() {
-            f(module.def_id)
+            f(LocalModDefId::new_unchecked(module.def_id))
         }
     }
 
     #[inline]
-    pub fn par_for_each_module(self, f: impl Fn(LocalDefId) + Sync + Send) {
+    pub fn par_for_each_module(self, f: impl Fn(LocalModDefId) + Sync + Send) {
         let crate_items = self.tcx.hir_crate_items(());
-        par_for_each_in(&crate_items.submodules[..], |module| f(module.def_id))
+        par_for_each_in(&crate_items.submodules[..], |module| {
+            f(LocalModDefId::new_unchecked(module.def_id))
+        })
     }
 
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
@@ -1305,7 +1307,7 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
     }
 }
 
-pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalDefId) -> ModuleItems {
+pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModDefId) -> ModuleItems {
     let mut collector = ItemCollector::new(tcx, false);
 
     let (hir_mod, span, hir_id) = tcx.hir().get_module(module_id);

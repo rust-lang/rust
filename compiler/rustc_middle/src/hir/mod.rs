@@ -10,7 +10,7 @@ use crate::ty::query::Providers;
 use crate::ty::{EarlyBinder, ImplSubject, TyCtxt};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::*;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_span::{ExpnId, DUMMY_SP};
@@ -100,7 +100,7 @@ impl<'tcx> TyCtxt<'tcx> {
         map::Map { tcx: self }
     }
 
-    pub fn parent_module(self, id: HirId) -> LocalDefId {
+    pub fn parent_module(self, id: HirId) -> LocalModDefId {
         self.parent_module_from_def_id(id.owner.def_id)
     }
 
@@ -115,7 +115,9 @@ impl<'tcx> TyCtxt<'tcx> {
 pub fn provide(providers: &mut Providers) {
     providers.parent_module_from_def_id = |tcx, id| {
         let hir = tcx.hir();
-        hir.get_module_parent_node(hir.local_def_id_to_hir_id(id)).def_id
+        LocalModDefId::new_unchecked(
+            hir.get_module_parent_node(hir.local_def_id_to_hir_id(id)).def_id,
+        )
     };
     providers.hir_crate_items = map::hir_crate_items;
     providers.crate_hash = map::crate_hash;

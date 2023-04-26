@@ -52,7 +52,8 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, DocLinkResMap};
 use rustc_hir::def_id::{
-    CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId, LocalDefIdMap, LocalDefIdSet,
+    CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId, LocalDefIdMap, LocalDefIdSet, LocalModDefId,
+    ModDefId,
 };
 use rustc_hir::hir_id::OwnerId;
 use rustc_hir::lang_items::{LangItem, LanguageItems};
@@ -541,7 +542,7 @@ rustc_query_append! { define_callbacks! }
 rustc_feedable_queries! { define_feedable! }
 
 mod sealed {
-    use super::{DefId, LocalDefId, OwnerId};
+    use super::{DefId, LocalDefId, LocalModDefId, ModDefId, OwnerId};
 
     /// An analogue of the `Into` trait that's intended only for query parameters.
     ///
@@ -583,6 +584,27 @@ mod sealed {
         #[inline(always)]
         fn into_query_param(self) -> DefId {
             self.to_def_id()
+        }
+    }
+
+    impl IntoQueryParam<DefId> for ModDefId {
+        #[inline(always)]
+        fn into_query_param(self) -> DefId {
+            self.to_def_id()
+        }
+    }
+
+    impl IntoQueryParam<DefId> for LocalModDefId {
+        #[inline(always)]
+        fn into_query_param(self) -> DefId {
+            self.to_def_id()
+        }
+    }
+
+    impl IntoQueryParam<LocalDefId> for LocalModDefId {
+        #[inline(always)]
+        fn into_query_param(self) -> LocalDefId {
+            self.into()
         }
     }
 }

@@ -10,7 +10,7 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
-use rustc_hir::def_id::{DefId, DefIdSet, CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, DefIdSet, ModDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPathData, DefPathDataName, DisambiguatedDefPathData};
 use rustc_hir::LangItem;
 use rustc_session::config::TrimmedDefPaths;
@@ -320,7 +320,8 @@ pub trait PrettyPrinter<'tcx>:
             {
                 this
                     .tcx()
-                    .module_children(visible_parent)
+                    // FIXME(typed_def_id): Further propagate ModDefId
+                    .module_children(ModDefId::new_unchecked(*visible_parent))
                     .iter()
                     .filter(|child| child.res.opt_def_id() == Some(def_id))
                     .find(|child| child.vis.is_public() && child.ident.name != kw::Underscore)
@@ -545,7 +546,8 @@ pub trait PrettyPrinter<'tcx>:
                 // that's public and whose identifier isn't `_`.
                 let reexport = self
                     .tcx()
-                    .module_children(visible_parent)
+                    // FIXME(typed_def_id): Further propagate ModDefId
+                    .module_children(ModDefId::new_unchecked(visible_parent))
                     .iter()
                     .filter(|child| child.res.opt_def_id() == Some(def_id))
                     .find(|child| child.vis.is_public() && child.ident.name != kw::Underscore)

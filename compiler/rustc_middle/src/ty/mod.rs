@@ -353,8 +353,8 @@ impl TyCtxt<'_> {
 
     #[inline]
     #[track_caller]
-    pub fn local_parent(self, id: LocalDefId) -> LocalDefId {
-        self.parent(id.to_def_id()).expect_local()
+    pub fn local_parent(self, id: impl Into<LocalDefId>) -> LocalDefId {
+        self.parent(id.into().to_def_id()).expect_local()
     }
 
     pub fn is_descendant_of(self, mut descendant: DefId, ancestor: DefId) -> bool {

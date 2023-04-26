@@ -14,7 +14,7 @@ use min_specialization::check_min_specialization;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def_id::{LocalDefId, LocalModDefId};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_span::{Span, Symbol};
@@ -51,7 +51,7 @@ mod min_specialization;
 /// impl<'a> Trait<Foo> for Bar { type X = &'a i32; }
 /// //   ^ 'a is unused and appears in assoc type, error
 /// ```
-fn check_mod_impl_wf(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
+fn check_mod_impl_wf(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
     let min_specialization = tcx.features().min_specialization;
     let module = tcx.hir_module_items(module_def_id);
     for id in module.items() {

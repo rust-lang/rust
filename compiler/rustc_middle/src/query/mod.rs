@@ -81,7 +81,7 @@ rustc_queries! {
     ///
     /// This can be conveniently accessed by `tcx.hir().visit_item_likes_in_module`.
     /// Avoid calling this query directly.
-    query hir_module_items(key: LocalDefId) -> &'tcx rustc_middle::hir::ModuleItems {
+    query hir_module_items(key: LocalModDefId) -> &'tcx rustc_middle::hir::ModuleItems {
         arena_cache
         desc { |tcx| "getting HIR module items in `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { true }
@@ -303,7 +303,7 @@ rustc_queries! {
         desc { "computing `#[expect]`ed lints in this crate" }
     }
 
-    query parent_module_from_def_id(key: LocalDefId) -> LocalDefId {
+    query parent_module_from_def_id(key: LocalDefId) -> LocalModDefId {
         eval_always
         desc { |tcx| "getting the parent module of `{}`", tcx.def_path_str(key) }
     }
@@ -797,40 +797,40 @@ rustc_queries! {
     }
 
     /// Performs lint checking for the module.
-    query lint_mod(key: LocalDefId) -> () {
+    query lint_mod(key: LocalModDefId) -> () {
         desc { |tcx| "linting {}", describe_as_module(key, tcx) }
     }
 
     /// Checks the attributes in the module.
-    query check_mod_attrs(key: LocalDefId) -> () {
+    query check_mod_attrs(key: LocalModDefId) -> () {
         desc { |tcx| "checking attributes in {}", describe_as_module(key, tcx) }
     }
 
     /// Checks for uses of unstable APIs in the module.
-    query check_mod_unstable_api_usage(key: LocalDefId) -> () {
+    query check_mod_unstable_api_usage(key: LocalModDefId) -> () {
         desc { |tcx| "checking for unstable API usage in {}", describe_as_module(key, tcx) }
     }
 
     /// Checks the const bodies in the module for illegal operations (e.g. `if` or `loop`).
-    query check_mod_const_bodies(key: LocalDefId) -> () {
+    query check_mod_const_bodies(key: LocalModDefId) -> () {
         desc { |tcx| "checking consts in {}", describe_as_module(key, tcx) }
     }
 
     /// Checks the loops in the module.
-    query check_mod_loops(key: LocalDefId) -> () {
+    query check_mod_loops(key: LocalModDefId) -> () {
         desc { |tcx| "checking loops in {}", describe_as_module(key, tcx) }
     }
 
-    query check_mod_naked_functions(key: LocalDefId) -> () {
+    query check_mod_naked_functions(key: LocalModDefId) -> () {
         desc { |tcx| "checking naked functions in {}", describe_as_module(key, tcx) }
     }
 
-    query check_mod_item_types(key: LocalDefId) -> () {
+    query check_mod_item_types(key: LocalModDefId) -> () {
         desc { |tcx| "checking item types in {}", describe_as_module(key, tcx) }
     }
 
-    query check_mod_privacy(key: LocalDefId) -> () {
-        desc { |tcx| "checking privacy in {}", describe_as_module(key, tcx) }
+    query check_mod_privacy(key: LocalModDefId) -> () {
+        desc { |tcx| "checking privacy in {}", describe_as_module(key.to_local_def_id(), tcx) }
     }
 
     query check_liveness(key: LocalDefId) {
@@ -849,19 +849,19 @@ rustc_queries! {
         desc { "finding live symbols in crate" }
     }
 
-    query check_mod_deathness(key: LocalDefId) -> () {
+    query check_mod_deathness(key: LocalModDefId) -> () {
         desc { |tcx| "checking deathness of variables in {}", describe_as_module(key, tcx) }
     }
 
-    query check_mod_impl_wf(key: LocalDefId) -> () {
+    query check_mod_impl_wf(key: LocalModDefId) -> () {
         desc { |tcx| "checking that impls are well-formed in {}", describe_as_module(key, tcx) }
     }
 
-    query check_mod_type_wf(key: LocalDefId) -> () {
+    query check_mod_type_wf(key: LocalModDefId) -> () {
         desc { |tcx| "checking that types are well-formed in {}", describe_as_module(key, tcx) }
     }
 
-    query collect_mod_item_types(key: LocalDefId) -> () {
+    query collect_mod_item_types(key: LocalModDefId) -> () {
         desc { |tcx| "collecting item types in {}", describe_as_module(key, tcx) }
     }
 

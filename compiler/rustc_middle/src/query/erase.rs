@@ -224,6 +224,7 @@ trivial! {
     rustc_hir::def_id::DefId,
     rustc_hir::def_id::DefIndex,
     rustc_hir::def_id::LocalDefId,
+    rustc_hir::def_id::LocalModDefId,
     rustc_hir::def::DefKind,
     rustc_hir::Defaultness,
     rustc_hir::definitions::DefKey,

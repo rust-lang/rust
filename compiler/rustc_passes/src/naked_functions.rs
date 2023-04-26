@@ -3,7 +3,7 @@
 use rustc_ast::InlineAsmOptions;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def_id::{LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{ExprKind, InlineAsmOperand, StmtKind};
 use rustc_middle::ty::query::Providers;
@@ -23,7 +23,7 @@ pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { check_mod_naked_functions, ..*providers };
 }
 
-fn check_mod_naked_functions(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
+fn check_mod_naked_functions(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
     let items = tcx.hir_module_items(module_def_id);
     for def_id in items.definitions() {
         if !matches!(tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn) {
