@@ -549,8 +549,8 @@ fn non_local_item_children_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: Symbol)
         DefKind::Mod | DefKind::Enum | DefKind::Trait => tcx
             .module_children(def_id)
             .iter()
-            .filter(|item| item.ident.name == name)
-            .map(|child| child.res.expect_non_local())
+            .filter(|item| item.name(tcx) == name)
+            .map(|child| child.res(tcx).expect_non_local())
             .collect(),
         DefKind::Impl { .. } => tcx
             .associated_item_def_ids(def_id)

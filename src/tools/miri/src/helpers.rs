@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use log::trace;
 
-use rustc_hir::def::{DefKind, Namespace};
+use rustc_hir::def::{DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_middle::mir;
 use rustc_middle::ty::{
@@ -94,16 +94,17 @@ const UNIX_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
 ///
 /// A `None` namespace indicates we are looking for a module.
 fn try_resolve_did(tcx: TyCtxt<'_>, path: &[&str], namespace: Option<Namespace>) -> Option<DefId> {
-    /// Yield all children of the given item, that have the given name.
-    fn find_children<'tcx: 'a, 'a>(
-        tcx: TyCtxt<'tcx>,
+    /// Find a child of the given item, that have the given name and resolution.
+    fn find_child(
+        tcx: TyCtxt<'_>,
         item: DefId,
-        name: &'a str,
-    ) -> impl Iterator<Item = DefId> + 'a {
-        tcx.module_children(item)
-            .iter()
-            .filter(move |item| item.ident.name.as_str() == name)
-            .map(move |item| item.res.def_id())
+        name: &str,
+        cond: impl Fn(Res<!>) -> bool,
+    ) -> Option<DefId> {
+        tcx.module_children(item).iter().find_map(|child| {
+            let res = child.res(tcx);
+            if cond(res) && child.name(tcx).as_str() == name { res.opt_def_id() } else { None }
+        })
     }
 
     // Take apart the path: leading crate, a sequence of modules, and potentially a final item.
@@ -122,16 +123,14 @@ fn try_resolve_did(tcx: TyCtxt<'_>, path: &[&str], namespace: Option<Namespace>)
     let mut cur_item = DefId { krate: *krate, index: CRATE_DEF_INDEX };
     // Then go over the modules.
     for &segment in modules {
-        cur_item = find_children(tcx, cur_item, segment)
-            .find(|item| tcx.def_kind(item) == DefKind::Mod)?;
+        cur_item =
+            find_child(tcx, cur_item, segment, |res| matches!(res, Res::Def(DefKind::Mod, _)))?;
     }
     // Finally, look up the desired item in this module, if any.
     match item {
-        Some((item_name, namespace)) =>
-            Some(
-                find_children(tcx, cur_item, item_name)
-                    .find(|item| tcx.def_kind(item).ns() == Some(namespace))?,
-            ),
+        Some((item_name, namespace)) => {
+            Some(find_child(tcx, cur_item, item_name, |res| res.ns() == Some(namespace))?)
+        }
         None => Some(cur_item),
     }
 }

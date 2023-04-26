@@ -357,11 +357,10 @@ define_tables! {
     associated_types_for_impl_traits_in_associated_fn: Table<DefIndex, LazyArray<DefId>>,
     opt_rpitit_info: Table<DefIndex, Option<LazyValue<ty::ImplTraitInTraitData>>>,
     unused_generic_params: Table<DefIndex, UnusedGenericParams>,
-    module_children_reexports: Table<DefIndex, LazyArray<ModChild>>,
 
 - optional:
     attributes: Table<DefIndex, LazyArray<ast::Attribute>>,
-    module_children_non_reexports: Table<DefIndex, LazyArray<DefIndex>>,
+    module_children: Table<DefIndex, LazyArray<ModChild>>,
     associated_item_or_field_def_ids: Table<DefIndex, LazyArray<DefIndex>>,
     opt_def_kind: Table<DefIndex, DefKind>,
     visibility: Table<DefIndex, LazyValue<ty::Visibility<DefIndex>>>,

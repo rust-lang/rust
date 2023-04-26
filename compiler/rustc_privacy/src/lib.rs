@@ -25,6 +25,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{AssocItemKind, HirIdSet, ItemId, Node, PatKind};
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
+use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::privacy::{EffectiveVisibilities, Level};
 use rustc_middle::span_bug;
 use rustc_middle::ty::query::Providers;
@@ -515,7 +516,8 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             let vis = self.tcx.local_visibility(item_id.owner_id.def_id);
             self.update_macro_reachable_def(item_id.owner_id.def_id, def_kind, vis, defining_mod);
         }
-        for export in self.tcx.module_children_reexports(module_def_id) {
+        for child in self.tcx.module_children_local(module_def_id) {
+            let ModChild::Reexport(export) = child else { continue };
             if export.vis.is_accessible_from(defining_mod, self.tcx)
                 && let Res::Def(def_kind, def_id) = export.res
                 && let Some(def_id) = def_id.as_local() {

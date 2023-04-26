@@ -16,8 +16,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{pluralize, struct_span_err, Applicability, MultiSpan};
 use rustc_hir::def::{self, DefKind, PartialRes};
-use rustc_middle::metadata::ModChild;
-use rustc_middle::metadata::Reexport;
+use rustc_middle::metadata::{ModChild, ModChildData, Reexport};
 use rustc_middle::span_bug;
 use rustc_middle::ty;
 use rustc_session::lint::builtin::{
@@ -1261,13 +1260,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         *module.globs.borrow_mut() = Vec::new();
 
         if let Some(def_id) = module.opt_def_id() {
-            let mut non_reexports = Vec::new();
-            let mut reexports = Vec::new();
+            let mut children = Vec::new();
 
             module.for_each_child(self, |this, ident, _, binding| {
                 let res = binding.res().expect_non_local();
                 if !binding.is_import() {
-                    non_reexports.push(res.def_id().expect_local());
+                    children.push(ModChild::Def(res.def_id()));
                 } else if res != def::Res::Err && !binding.is_ambiguity() {
                     let mut reexport_chain = SmallVec::new();
                     let mut next_binding = binding;
@@ -1276,17 +1274,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         next_binding = binding;
                     }
 
-                    reexports.push(ModChild { ident, res, vis: binding.vis, reexport_chain });
+                    children.push(ModChild::Reexport(ModChildData {
+                        ident,
+                        res,
+                        vis: binding.vis,
+                        reexport_chain,
+                    }));
                 }
             });
 
-            // Should be fine because this code is only called for local modules.
-            let def_id = def_id.expect_local();
-            if !non_reexports.is_empty() {
-                self.module_children_non_reexports.insert(def_id, non_reexports);
-            }
-            if !reexports.is_empty() {
-                self.module_children_reexports.insert(def_id, reexports);
+            if !children.is_empty() {
+                // Should be fine because this code is only called for local modules.
+                self.module_children.insert(def_id.expect_local(), children);
             }
         }
     }

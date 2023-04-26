@@ -236,7 +236,11 @@ impl ExternalCrate {
                 })
                 .collect()
         } else {
-            tcx.module_children(root).iter().map(|item| item.res).filter_map(as_keyword).collect()
+            tcx.module_children(root)
+                .iter()
+                .map(|item| item.res(tcx))
+                .filter_map(as_keyword)
+                .collect()
         }
     }
 
@@ -284,7 +288,11 @@ impl ExternalCrate {
                 })
                 .collect()
         } else {
-            tcx.module_children(root).iter().map(|item| item.res).filter_map(as_primitive).collect()
+            tcx.module_children(root)
+                .iter()
+                .map(|item| item.res(tcx))
+                .filter_map(as_primitive)
+                .collect()
         }
     }
 }

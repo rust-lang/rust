@@ -1364,9 +1364,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         record!(self.tables.params_in_repr[def_id] <- params_in_repr);
 
         if adt_def.is_enum() {
-            let module_children = tcx.module_children_non_reexports(local_def_id);
-            record_array!(self.tables.module_children_non_reexports[def_id] <-
-                module_children.iter().map(|def_id| def_id.local_def_index));
+            record_array!(self.tables.module_children[def_id] <-
+                tcx.module_children_local(local_def_id));
         } else {
             // For non-enum, there is only one variant, and its def_id is the adt's.
             debug_assert_eq!(adt_def.variants().len(), 1);
@@ -1412,12 +1411,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             // Encode this here because we don't do it in encode_def_ids.
             record!(self.tables.expn_that_defined[def_id] <- tcx.expn_that_defined(local_def_id));
         } else {
-            let non_reexports = tcx.module_children_non_reexports(local_def_id);
-            record_array!(self.tables.module_children_non_reexports[def_id] <-
-                non_reexports.iter().map(|def_id| def_id.local_def_index));
-
-            record_defaulted_array!(self.tables.module_children_reexports[def_id] <-
-                tcx.module_children_reexports(local_def_id));
+            record_array!(self.tables.module_children[def_id] <-
+                tcx.module_children_local(local_def_id));
         }
     }
 
@@ -1676,9 +1671,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             hir::ItemKind::Trait(..) => {
                 record!(self.tables.trait_def[def_id] <- self.tcx.trait_def(def_id));
 
-                let module_children = tcx.module_children_non_reexports(item.owner_id.def_id);
-                record_array!(self.tables.module_children_non_reexports[def_id] <-
-                    module_children.iter().map(|def_id| def_id.local_def_index));
+                record_array!(self.tables.module_children[def_id] <-
+                    tcx.module_children_local(item.owner_id.def_id));
 
                 let associated_item_def_ids = self.tcx.associated_item_def_ids(def_id);
                 record_associated_item_def_ids(self, associated_item_def_ids);

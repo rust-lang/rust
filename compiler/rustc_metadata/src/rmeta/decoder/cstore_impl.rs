@@ -10,7 +10,7 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_middle::arena::ArenaAllocatable;
-use rustc_middle::metadata::ModChild;
+use rustc_middle::metadata::{ModChild, ModChildData};
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::middle::stability::DeprecationEntry;
 use rustc_middle::query::LocalCrate;
@@ -441,12 +441,12 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             }
 
             let mut add_child = |bfs_queue: &mut VecDeque<_>, child: &ModChild, parent: DefId| {
-                if !child.vis.is_public() {
+                if !child.vis(tcx).is_public() {
                     return;
                 }
 
-                if let Some(def_id) = child.res.opt_def_id() {
-                    if child.ident.name == kw::Underscore {
+                if let Some(def_id) = child.opt_def_id() {
+                    if child.name(tcx) == kw::Underscore {
                         fallback_map.push((def_id, parent));
                         return;
                     }
@@ -467,7 +467,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                         Entry::Vacant(entry) => {
                             entry.insert(parent);
                             if matches!(
-                                child.res,
+                                child.res(tcx),
                                 Res::Def(DefKind::Mod | DefKind::Enum | DefKind::Trait, _)
                             ) {
                                 bfs_queue.push_back(def_id);
@@ -478,7 +478,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             };
 
             while let Some(def) = bfs_queue.pop_front() {
-                for child in tcx.module_children(def).iter() {
+                for child in tcx.module_children(def) {
                     add_child(bfs_queue, child, def);
                 }
             }
@@ -512,6 +512,10 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
 }
 
 impl CStore {
+    pub fn mod_child_data_untracked(&self, def_id: DefId, sess: &Session) -> ModChildData {
+        self.get_crate_data(def_id.krate).get_mod_child_data(def_id.index, sess)
+    }
+
     pub fn ctor_untracked(&self, def: DefId) -> Option<(CtorKind, DefId)> {
         self.get_crate_data(def.krate).get_ctor(def.index)
     }

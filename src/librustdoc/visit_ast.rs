@@ -8,6 +8,7 @@ use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, LocalDefIdSet};
 use rustc_hir::intravisit::{walk_item, Visitor};
 use rustc_hir::{Node, CRATE_HIR_ID};
 use rustc_middle::hir::nested_filter;
+use rustc_middle::metadata::ModChild;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_span::hygiene::MacroKind;
@@ -136,7 +137,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         // is declared but also a reexport of itself producing two exports of the same
         // macro in the same module.
         let mut inserted = FxHashSet::default();
-        for export in self.cx.tcx.module_children_reexports(CRATE_DEF_ID) {
+        for child in self.cx.tcx.module_children_local(CRATE_DEF_ID) {
+            let ModChild::Reexport(export) = child else { continue };
             if let Res::Def(DefKind::Macro(_), def_id) = export.res &&
                 let Some(local_def_id) = def_id.as_local() &&
                 self.cx.tcx.has_attr(def_id, sym::macro_export) &&

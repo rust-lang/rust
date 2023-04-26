@@ -2070,11 +2070,12 @@ pub(crate) fn reexport_chain<'tcx>(
     import_def_id: LocalDefId,
     target_def_id: LocalDefId,
 ) -> &'tcx [Reexport] {
-    for child in tcx.module_children_reexports(tcx.local_parent(import_def_id)) {
-        if child.res.opt_def_id() == Some(target_def_id.to_def_id())
-            && child.reexport_chain[0].id() == Some(import_def_id.to_def_id())
+    for child in tcx.module_children_local(tcx.local_parent(import_def_id)) {
+        if child.opt_def_id() == Some(target_def_id.to_def_id())
+            && child.reexport_chain().first().and_then(|rx| rx.id())
+                == Some(import_def_id.to_def_id())
         {
-            return &child.reexport_chain;
+            return child.reexport_chain();
         }
     }
     &[]

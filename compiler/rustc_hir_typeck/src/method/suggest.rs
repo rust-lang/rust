@@ -2266,13 +2266,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let (candidates, globs): (Vec<_>, Vec<_>) = candidates.into_iter().partition(|trait_did| {
             if let Some(parent_did) = parent_map.get(trait_did) {
                 // If the item is re-exported as `_`, we should suggest a glob-import instead.
-                if *parent_did != self.tcx.parent(*trait_did)
-                    && self
-                        .tcx
+                let tcx = self.tcx;
+                if *parent_did != tcx.parent(*trait_did)
+                    && tcx
                         .module_children(*parent_did)
                         .iter()
-                        .filter(|child| child.res.opt_def_id() == Some(*trait_did))
-                        .all(|child| child.ident.name == kw::Underscore)
+                        .filter(|child| child.opt_def_id() == Some(*trait_did))
+                        .all(|child| child.name(tcx) == kw::Underscore)
                 {
                     return false;
                 }

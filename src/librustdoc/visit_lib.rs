@@ -53,9 +53,9 @@ impl LibEmbargoVisitor<'_, '_> {
             return;
         }
 
-        for item in self.tcx.module_children(def_id).iter() {
-            if let Some(def_id) = item.res.opt_def_id() {
-                if item.vis.is_public() {
+        for item in self.tcx.module_children(def_id) {
+            if let Some(def_id) = item.opt_def_id() {
+                if item.vis(self.tcx).is_public() {
                     self.visit_item(def_id);
                 }
             }

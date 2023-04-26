@@ -17,7 +17,7 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE}
 use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc_hir::diagnostic_items::DiagnosticItems;
 use rustc_index::{Idx, IndexVec};
-use rustc_middle::metadata::ModChild;
+use rustc_middle::metadata::{ModChild, ModChildData};
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::ty::codec::TyDecoder;
@@ -904,15 +904,17 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         let variants = if let ty::AdtKind::Enum = adt_kind {
             self.root
                 .tables
-                .module_children_non_reexports
+                .module_children
                 .get(self, item_id)
                 .expect("variants are not encoded for an enum")
                 .decode(self)
-                .filter_map(|index| {
-                    let kind = self.def_kind(index);
+                .filter_map(|child| {
+                    let ModChild::Def(def_id) = child else { bug!() };
+                    assert_eq!(def_id.krate, self.cnum);
+                    let kind = self.def_kind(def_id.index);
                     match kind {
                         DefKind::Ctor(..) => None,
-                        _ => Some(self.get_variant(&kind, index, did)),
+                        _ => Some(self.get_variant(&kind, def_id.index, did)),
                     }
                 })
                 .collect()
@@ -988,12 +990,12 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         DiagnosticItems { id_to_name, name_to_id }
     }
 
-    fn get_mod_child(self, id: DefIndex, sess: &Session) -> ModChild {
+    fn get_mod_child_data(self, id: DefIndex, sess: &Session) -> ModChildData {
         let ident = self.item_ident(id, sess);
         let res = Res::Def(self.def_kind(id), self.local_def_id(id));
         let vis = self.get_visibility(id);
 
-        ModChild { ident, res, vis, reexport_chain: Default::default() }
+        ModChildData { ident, res, vis, reexport_chain: Default::default() }
     }
 
     /// Iterates over all named children of the given module,
@@ -1011,21 +1013,15 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 // the view of this crate as a proc macro crate.
                 if id == CRATE_DEF_INDEX {
                     for child_index in data.macros.decode(self) {
-                        yield self.get_mod_child(child_index, sess);
+                        yield ModChild::Def(self.local_def_id(child_index));
                     }
                 }
             } else {
                 // Iterate over all children.
-                let non_reexports = self.root.tables.module_children_non_reexports.get(self, id);
-                for child_index in non_reexports.unwrap().decode(self) {
-                    yield self.get_mod_child(child_index, sess);
-                }
-
-                let reexports = self.root.tables.module_children_reexports.get(self, id);
-                if !reexports.is_default() {
-                    for reexport in reexports.decode((self, sess)) {
-                        yield reexport;
-                    }
+                for child in
+                    self.root.tables.module_children.get(self, id).unwrap().decode((self, sess))
+                {
+                    yield child;
                 }
             }
         })

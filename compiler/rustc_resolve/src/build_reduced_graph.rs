@@ -27,7 +27,7 @@ use rustc_expand::expand::AstFragment;
 use rustc_hir::def::{self, *};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_metadata::creader::LoadedMacro;
-use rustc_middle::metadata::ModChild;
+use rustc_middle::metadata::{ModChild, ModChildData};
 use rustc_middle::{bug, ty};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -926,7 +926,15 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
     /// Builds the reduced graph for a single item in an external crate.
     fn build_reduced_graph_for_external_crate_res(&mut self, child: &ModChild) {
         let parent = self.parent_scope.module;
-        let ModChild { ident, res, vis, ref reexport_chain } = *child;
+        let data;
+        let data = match child {
+            ModChild::Def(def_id) => {
+                data = self.r.cstore().mod_child_data_untracked(*def_id, self.r.tcx.sess);
+                &data
+            }
+            ModChild::Reexport(reexport) => reexport,
+        };
+        let ModChildData { ident, res, vis, ref reexport_chain } = *data;
         let span = self.r.def_span(
             reexport_chain
                 .first()

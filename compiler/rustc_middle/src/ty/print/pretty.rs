@@ -318,13 +318,16 @@ pub trait PrettyPrinter<'tcx>:
                 && let DefPathData::TypeNs(_) = key.disambiguated_data.data
                 && Some(*visible_parent) != actual_parent
             {
-                this
-                    .tcx()
-                    .module_children(visible_parent)
+                let tcx = this.tcx();
+                tcx.module_children(visible_parent)
                     .iter()
-                    .filter(|child| child.res.opt_def_id() == Some(def_id))
-                    .find(|child| child.vis.is_public() && child.ident.name != kw::Underscore)
-                    .map(|child| child.ident.name)
+                    .find_map(|child| {
+                        let name = child.name(tcx);
+                        (name != kw::Underscore
+                            && child.opt_def_id() == Some(def_id)
+                            && child.vis(tcx).is_public())
+                        .then_some(name)
+                    })
                     .unwrap_or(name)
             } else {
                 name
@@ -543,13 +546,14 @@ pub trait PrettyPrinter<'tcx>:
             DefPathData::TypeNs(ref mut name) if Some(visible_parent) != actual_parent => {
                 // Item might be re-exported several times, but filter for the one
                 // that's public and whose identifier isn't `_`.
-                let reexport = self
-                    .tcx()
-                    .module_children(visible_parent)
-                    .iter()
-                    .filter(|child| child.res.opt_def_id() == Some(def_id))
-                    .find(|child| child.vis.is_public() && child.ident.name != kw::Underscore)
-                    .map(|child| child.ident.name);
+                let tcx = self.tcx();
+                let reexport = tcx.module_children(visible_parent).iter().find_map(|child| {
+                    let name = child.name(tcx);
+                    (name != kw::Underscore
+                        && child.opt_def_id() == Some(def_id)
+                        && child.vis(tcx).is_public())
+                    .then_some(name)
+                });
 
                 if let Some(new_name) = reexport {
                     *name = new_name;
@@ -2894,7 +2898,7 @@ define_print_and_forward_display! {
     }
 }
 
-fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, Namespace, DefId)) {
+fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(Symbol, Namespace, DefId)) {
     // Iterate all local crate items no matter where they are defined.
     let hir = tcx.hir();
     for id in hir.items() {
@@ -2909,7 +2913,7 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
 
         let def_id = item.owner_id.to_def_id();
         let ns = tcx.def_kind(def_id).ns().unwrap_or(Namespace::TypeNS);
-        collect_fn(&item.ident, ns, def_id);
+        collect_fn(item.ident.name, ns, def_id);
     }
 
     // Now take care of extern crate items.
@@ -2934,17 +2938,17 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
 
     // Iterate external crate defs but be mindful about visibility
     while let Some(def) = queue.pop() {
-        for child in tcx.module_children(def).iter() {
-            if !child.vis.is_public() {
+        for child in tcx.module_children(def) {
+            if !child.vis(tcx).is_public() {
                 continue;
             }
 
-            match child.res {
+            match child.res(tcx) {
                 def::Res::Def(DefKind::AssocTy, _) => {}
                 def::Res::Def(DefKind::TyAlias, _) => {}
                 def::Res::Def(defkind, def_id) => {
                     if let Some(ns) = defkind.ns() {
-                        collect_fn(&child.ident, ns, def_id);
+                        collect_fn(child.name(tcx), ns, def_id);
                     }
 
                     if matches!(defkind, DefKind::Mod | DefKind::Enum | DefKind::Trait)
@@ -2997,10 +3001,10 @@ fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> FxHashMap<DefId, Symbol> {
         }
     }
 
-    for_each_def(tcx, |ident, ns, def_id| {
+    for_each_def(tcx, |name, ns, def_id| {
         use std::collections::hash_map::Entry::{Occupied, Vacant};
 
-        match unique_symbols_rev.entry((ns, ident.name)) {
+        match unique_symbols_rev.entry((ns, name)) {
             Occupied(mut v) => match v.get() {
                 None => {}
                 Some(existing) => {

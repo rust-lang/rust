@@ -152,9 +152,9 @@ pub(crate) fn try_inline_glob(
             // reexported by the glob, e.g. because they are shadowed by something else.
             let reexports = cx
                 .tcx
-                .module_children_reexports(current_mod)
+                .module_children_local(current_mod)
                 .iter()
-                .filter_map(|child| child.res.opt_def_id())
+                .filter_map(|child| child.opt_def_id())
                 .collect();
             let mut items = build_module_items(cx, did, visited, inlined_names, Some(&reexports));
             items.drain_filter(|item| {
@@ -557,9 +557,9 @@ fn build_module_items(
     // If we're re-exporting a re-export it may actually re-export something in
     // two namespaces, so the target may be listed twice. Make sure we only
     // visit each node at most once.
-    for item in cx.tcx.module_children(did).iter() {
-        if item.vis.is_public() {
-            let res = item.res.expect_non_local();
+    for item in cx.tcx.module_children(did) {
+        if item.vis(cx.tcx).is_public() {
+            let res = item.res(cx.tcx).expect_non_local();
             if let Some(def_id) = res.opt_def_id()
                 && let Some(allowed_def_ids) = allowed_def_ids
                 && !allowed_def_ids.contains(&def_id) {
@@ -570,7 +570,7 @@ fn build_module_items(
                 // two distinct modules with the same name. We don't want to
                 // inline it, or mark any of its contents as visited.
                 if did == def_id
-                    || inlined_names.contains(&(ItemType::Module, item.ident.name))
+                    || inlined_names.contains(&(ItemType::Module, item.name(cx.tcx)))
                     || !visited.insert(def_id)
                 {
                     continue;
@@ -586,7 +586,7 @@ fn build_module_items(
                     // from it is `DefId.krate`.
                     item_id: ItemId::DefId(did),
                     kind: Box::new(clean::ImportItem(clean::Import::new_simple(
-                        item.ident.name,
+                        item.name(cx.tcx),
                         clean::ImportSource {
                             path: clean::Path {
                                 res,
@@ -605,7 +605,7 @@ fn build_module_items(
                     cfg: None,
                     inline_stmt_id: None,
                 });
-            } else if let Some(i) = try_inline(cx, res, item.ident.name, None, visited) {
+            } else if let Some(i) = try_inline(cx, res, item.name(cx.tcx), None, visited) {
                 items.extend(i)
             }
         }
