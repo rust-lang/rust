@@ -10,9 +10,10 @@ COPY scripts/rustbuild-setup.sh /scripts/
 RUN sh /scripts/rustbuild-setup.sh
 WORKDIR /tmp
 
+COPY scripts/crosstool-ng-build.sh /scripts/
 COPY host-x86_64/dist-mips-linux/patches/ /tmp/patches/
-COPY host-x86_64/dist-mips64-linux/mips64-linux-gnu.config host-x86_64/dist-mips64-linux/build-mips64-toolchain.sh /tmp/
-RUN su rustbuild -c ./build-mips64-toolchain.sh
+COPY host-x86_64/dist-mips64-linux/mips64-linux-gnu.defconfig /tmp/crosstool.defconfig
+RUN /scripts/crosstool-ng-build.sh
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh

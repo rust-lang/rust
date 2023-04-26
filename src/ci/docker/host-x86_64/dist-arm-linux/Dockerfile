@@ -17,13 +17,11 @@ RUN CFLAGS="-Wa,--compress-debug-sections=none -Wl,--compress-debug-sections=non
 
 COPY scripts/rustbuild-setup.sh /scripts/
 RUN sh /scripts/rustbuild-setup.sh
-USER rustbuild
 WORKDIR /tmp
 
-COPY host-x86_64/dist-arm-linux/arm-linux-gnueabi.config host-x86_64/dist-arm-linux/build-toolchains.sh /tmp/
-RUN ./build-toolchains.sh
-
-USER root
+COPY scripts/crosstool-ng-build.sh /scripts/
+COPY host-x86_64/dist-arm-linux/arm-linux-gnueabi.defconfig /tmp/crosstool.defconfig
+RUN /scripts/crosstool-ng-build.sh
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh

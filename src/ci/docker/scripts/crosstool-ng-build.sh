@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
+
 set -ex
+
+if [ $UID -eq 0 ]; then
+    exec su rustbuild -c "$0"
+fi
 
 hide_output() {
   set +x
@@ -20,7 +25,8 @@ exit 1
 
 mkdir build
 cd build
-cp ../mips64el-linux-gnu.config .config
+cp ../crosstool.defconfig .config
+ct-ng olddefconfig
 hide_output ct-ng build
 cd ..
 rm -rf build
