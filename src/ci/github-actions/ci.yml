@@ -416,10 +416,10 @@ jobs:
             <<: *job-linux-8c
 
           - name: i686-gnu
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: i686-gnu-nopt
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: mingw-check
             <<: *job-linux-8c

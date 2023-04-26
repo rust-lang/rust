@@ -260,10 +260,10 @@ jobs:
             os: ubuntu-20.04-8core-32gb
             env: {}
           - name: i686-gnu
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: i686-gnu-nopt
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: mingw-check
             os: ubuntu-20.04-8core-32gb
