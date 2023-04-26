@@ -764,11 +764,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             self.tcx,
             self.cause.clone(),
             self.param_env,
-            ty::Binder::dummy(ty::TraitRef::from_lang_item(
+            ty::TraitRef::from_lang_item(
                 self.tcx.at(self.cause.span),
                 hir::LangItem::PointerLike,
                 [a],
-            )),
+            ),
         ));
 
         Ok(InferOk {

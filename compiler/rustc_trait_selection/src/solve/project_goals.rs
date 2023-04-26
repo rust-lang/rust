@@ -334,11 +334,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
 
                 ty::Alias(_, _) | ty::Param(_) | ty::Placeholder(..) => {
                     // FIXME(ptr_metadata): It would also be possible to return a `Ok(Ambig)` with no constraints.
-                    let sized_predicate = ty::Binder::dummy(ty::TraitRef::from_lang_item(
+                    let sized_predicate = ty::TraitRef::from_lang_item(
                         tcx.at(DUMMY_SP),
                         LangItem::Sized,
                         [ty::GenericArg::from(goal.predicate.self_ty())],
-                    ));
+                    );
                     ecx.add_goal(goal.with(tcx, sized_predicate));
                     tcx.types.unit
                 }
