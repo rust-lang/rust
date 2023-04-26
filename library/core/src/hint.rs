@@ -217,16 +217,13 @@ pub fn spin_loop() {
 /// Note however, that `black_box` is only (and can only be) provided on a "best-effort" basis. The
 /// extent to which it can block optimisations may vary depending upon the platform and code-gen
 /// backend used. Programs cannot rely on `black_box` for *correctness*, beyond it behaving as the
-/// identity function.
+/// identity function. As such, it **must not be relied upon to control critical program behavior.**
+/// This _immediately_ precludes any direct use of this function for cryptographic or security
+/// purposes.
 ///
 /// [`std::convert::identity`]: crate::convert::identity
 ///
 /// # When is this useful?
-///
-/// First and foremost: `black_box` does _not_ guarantee any exact behavior and, in some cases, may
-/// do nothing at all. As such, it **must not be relied upon to control critical program behavior.**
-/// This _immediately_ precludes any direct use of this function for cryptographic or security
-/// purposes.
 ///
 /// While not suitable in those mission-critical cases, `black_box`'s functionality can generally be
 /// relied upon for benchmarking, and should be used there. It will try to ensure that the
