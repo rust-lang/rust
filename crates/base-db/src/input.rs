@@ -9,7 +9,7 @@
 use std::{fmt, mem, ops, panic::RefUnwindSafe, str::FromStr, sync::Arc};
 
 use cfg::CfgOptions;
-use la_arena::{Arena, Idx, RawIdx};
+use la_arena::{Arena, Idx};
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::SmolStr;
 use tt::token_id::Subtree;
@@ -534,28 +534,46 @@ impl CrateGraph {
         Some(crate_id)
     }
 
+    pub fn sort_deps(&mut self) {
+        self.arena
+            .iter_mut()
+            .for_each(|(_, data)| data.dependencies.sort_by_key(|dep| dep.crate_id));
+    }
+
     /// Extends this crate graph by adding a complete disjoint second crate
     /// graph and adjust the ids in the [`ProcMacroPaths`] accordingly.
     ///
-    /// The ids of the crates in the `other` graph are shifted by the return
-    /// amount.
-    pub fn extend(&mut self, other: CrateGraph, proc_macros: &mut ProcMacroPaths) -> u32 {
-        let start = self.arena.len() as u32;
-        self.arena.extend(other.arena.into_iter().map(|(_, mut data)| {
-            for dep in &mut data.dependencies {
-                dep.crate_id =
-                    CrateId::from_raw(RawIdx::from(u32::from(dep.crate_id.into_raw()) + start));
-            }
-            data
-        }));
+    /// This will deduplicate the crates of the graph where possible.
+    /// Note that for deduplication to fully work, `self`'s crate dependencies must be sorted by crate id.
+    /// If the crate dependencies were sorted, the resulting graph from this `extend` call will also have the crate dependencies sorted.
+    pub fn extend(&mut self, mut other: CrateGraph, proc_macros: &mut ProcMacroPaths) {
+        let topo = other.crates_in_topological_order();
+        let mut id_map: FxHashMap<CrateId, CrateId> = FxHashMap::default();
 
-        *proc_macros = mem::take(proc_macros)
-            .into_iter()
-            .map(|(id, macros)| {
-                (CrateId::from_raw(RawIdx::from(u32::from(id.into_raw()) + start)), macros)
-            })
-            .collect();
-        start
+        for topo in topo {
+            let crate_data = &mut other.arena[topo];
+            crate_data.dependencies.iter_mut().for_each(|dep| dep.crate_id = id_map[&dep.crate_id]);
+            crate_data.dependencies.sort_by_key(|dep| dep.crate_id);
+
+            let res = self.arena.iter().find_map(
+                |(id, data)| {
+                    if data == crate_data {
+                        Some(id)
+                    } else {
+                        None
+                    }
+                },
+            );
+            if let Some(res) = res {
+                id_map.insert(topo, res);
+            } else {
+                let id = self.arena.alloc(crate_data.clone());
+                id_map.insert(topo, id);
+            }
+        }
+
+        *proc_macros =
+            mem::take(proc_macros).into_iter().map(|(id, macros)| (id_map[&id], macros)).collect();
     }
 
     fn find_path(
@@ -586,8 +604,10 @@ impl CrateGraph {
     // Work around for https://github.com/rust-lang/rust-analyzer/issues/6038.
     // As hacky as it gets.
     pub fn patch_cfg_if(&mut self) -> bool {
-        let cfg_if = self.hacky_find_crate("cfg_if");
-        let std = self.hacky_find_crate("std");
+        // we stupidly max by version in an attempt to have all duplicated std's depend on the same cfg_if so that deduplication still works
+        let cfg_if =
+            self.hacky_find_crate("cfg_if").max_by_key(|&it| self.arena[it].version.clone());
+        let std = self.hacky_find_crate("std").next();
         match (cfg_if, std) {
             (Some(cfg_if), Some(std)) => {
                 self.arena[cfg_if].dependencies.clear();
@@ -600,8 +620,8 @@ impl CrateGraph {
         }
     }
 
-    fn hacky_find_crate(&self, display_name: &str) -> Option<CrateId> {
-        self.iter().find(|it| self[*it].display_name.as_deref() == Some(display_name))
+    fn hacky_find_crate<'a>(&'a self, display_name: &'a str) -> impl Iterator<Item = CrateId> + 'a {
+        self.iter().filter(move |it| self[*it].display_name.as_deref() == Some(display_name))
     }
 }
 

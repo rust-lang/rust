@@ -1,0 +1,462 @@
+{
+    0: CrateData {
+        root_file_id: FileId(
+            1,
+        ),
+        edition: Edition2021,
+        version: None,
+        display_name: Some(
+            CrateDisplayName {
+                crate_name: CrateName(
+                    "alloc",
+                ),
+                canonical_name: "alloc",
+            },
+        ),
+        cfg_options: CfgOptions(
+            [],
+        ),
+        potential_cfg_options: None,
+        env: Env {
+            entries: {},
+        },
+        dependencies: [
+            Dependency {
+                crate_id: Idx::<CrateData>(1),
+                name: CrateName(
+                    "core",
+                ),
+                prelude: true,
+            },
+        ],
+        origin: Lang(
+            Alloc,
+        ),
+        is_proc_macro: false,
+        target_layout: Err(
+            "rust-project.json projects have no target layout set",
+        ),
+        channel: None,
+    },
+    1: CrateData {
+        root_file_id: FileId(
+            2,
+        ),
+        edition: Edition2021,
+        version: None,
+        display_name: Some(
+            CrateDisplayName {
+                crate_name: CrateName(
+                    "core",
+                ),
+                canonical_name: "core",
+            },
+        ),
+        cfg_options: CfgOptions(
+            [],
+        ),
+        potential_cfg_options: None,
+        env: Env {
+            entries: {},
+        },
+        dependencies: [],
+        origin: Lang(
+            Core,
+        ),
+        is_proc_macro: false,
+        target_layout: Err(
+            "rust-project.json projects have no target layout set",
+        ),
+        channel: None,
+    },
+    2: CrateData {
+        root_file_id: FileId(
+            3,
+        ),
+        edition: Edition2021,
+        version: None,
+        display_name: Some(
+            CrateDisplayName {
+                crate_name: CrateName(
+                    "panic_abort",
+                ),
+                canonical_name: "panic_abort",
+            },
+        ),
+        cfg_options: CfgOptions(
+            [],
+        ),
+        potential_cfg_options: None,
+        env: Env {
+            entries: {},
+        },
+        dependencies: [],
+        origin: Lang(
+            Other,
+        ),
+        is_proc_macro: false,
+        target_layout: Err(
+            "rust-project.json projects have no target layout set",
+        ),
+        channel: None,
+    },
+    3: CrateData {
+        root_file_id: FileId(
+            4,
+        ),
+        edition: Edition2021,
+        version: None,
+        display_name: Some(
+            CrateDisplayName {
+                crate_name: CrateName(
+                    "panic_unwind",
+                ),
+                canonical_name: "panic_unwind",
+            },
+        ),
+        cfg_options: CfgOptions(
+            [],
+        ),
+        potential_cfg_options: None,
+        env: Env {
+            entries: {},
+        },
+        dependencies: [],
+        origin: Lang(
+            Other,
+        ),
+        is_proc_macro: false,
+        target_layout: Err(
+            "rust-project.json projects have no target layout set",
+        ),
+        channel: None,
+    },
+    4: CrateData {
+        root_file_id: FileId(
+            5,
+        ),
+        edition: Edition2021,
+        version: None,
+        display_name: Some(
+            CrateDisplayName {
+                crate_name: CrateName(
+                    "proc_macro",
+                ),
+                canonical_name: "proc_macro",
+            },
+        ),
+        cfg_options: CfgOptions(
+            [],
+        ),
+        potential_cfg_options: None,
+        env: Env {
+            entries: {},
+        },
+        dependencies: [
+            Dependency {
+                crate_id: Idx::<CrateData>(6),
+                name: CrateName(
+                    "std",
+                ),
+                prelude: true,
+            },
+            Dependency {
+                crate_id: Idx::<CrateData>(1),
+                name: CrateName(
+                    "core",
+                ),
+                prelude: true,
+            },
+        ],
+        origin: Lang(
+            Other,
+        ),
+        is_proc_macro: false,
+        target_layout: Err(
+            "rust-project.json projects have no target layout set",
+        ),
+        channel: None,
+    },
+    5: CrateData {
+        root_file_id: FileId(
+            6,
+        ),
+        edition: Edition2021,
+        version: None,
+        display_name: Some(
+            CrateDisplayName {
+                crate_name: CrateName(
+                    "profiler_builtins",
+                ),
+                canonical_name: "profiler_builtins",
+            },
+        ),
+        cfg_options: CfgOptions(
+            [],
+        ),
+        potential_cfg_options: None,
+        env: Env {
+            entries: {},
+        },
+        dependencies: [],
+        origin: Lang(
+            Other,
+        ),
+        is_proc_macro: false,
+        target_layout: Err(
+            "rust-project.json projects have no target layout set",
+        ),
+        channel: None,
+    },
+    6: CrateData {
+        root_file_id: FileId(
+            7,
+        ),
+        edition: Edition2021,
+        version: None,
+        display_name: Some(
+            CrateDisplayName {
+                crate_name: CrateName(
+                    "std",
+                ),
+                canonical_name: "std",
+            },
+        ),
+        cfg_options: CfgOptions(
+            [],
+        ),
+        potential_cfg_options: None,
+        env: Env {
+            entries: {},
+        },
+        dependencies: [
+            Dependency {
+                crate_id: Idx::<CrateData>(0),
+                name: CrateName(
+                    "alloc",
+                ),
+                prelude: true,
+            },
+            Dependency {
+                crate_id: Idx::<CrateData>(3),
+                name: CrateName(
+                    "panic_unwind",
+                ),
+                prelude: true,
+            },
+            Dependency {
+                crate_id: Idx::<CrateData>(2),
+                name: CrateName(
+                    "panic_abort",
+                ),
+                prelude: true,
+            },
+            Dependency {
+                crate_id: Idx::<CrateData>(1),
+                name: CrateName(
+                    "core",
+                ),
+                prelude: true,
+            },
+            Dependency {
+                crate_id: Idx::<CrateData>(5),
+                name: CrateName(
+                    "profiler_builtins",
+                ),
+                prelude: true,
+            },
+            Dependency {
+                crate_id: Idx::<CrateData>(9),
+                name: CrateName(
+                    "unwind",
+                ),
+                prelude: true,
+            },
+            Dependency {
+                crate_id: Idx::<CrateData>(7),
+                name: CrateName(
+                    "std_detect",
+                ),
+                prelude: true,
+            },
+            Dependency {
+                crate_id: Idx::<CrateData>(8),
+                name: CrateName(
+                    "test",
+                ),
+                prelude: true,
+            },
+        ],
+        origin: Lang(
+            Std,
+        ),
+        is_proc_macro: false,
+        target_layout: Err(
+            "rust-project.json projects have no target layout set",
+        ),
+        channel: None,
+    },
+    7: CrateData {
+        root_file_id: FileId(
+            8,
+        ),
+        edition: Edition2021,
+        version: None,
+        display_name: Some(
+            CrateDisplayName {
+                crate_name: CrateName(
+                    "std_detect",
+                ),
+                canonical_name: "std_detect",
+            },
+        ),
+        cfg_options: CfgOptions(
+            [],
+        ),
+        potential_cfg_options: None,
+        env: Env {
+            entries: {},
+        },
+        dependencies: [],
+        origin: Lang(
+            Other,
+        ),
+        is_proc_macro: false,
+        target_layout: Err(
+            "rust-project.json projects have no target layout set",
+        ),
+        channel: None,
+    },
+    8: CrateData {
+        root_file_id: FileId(
+            9,
+        ),
+        edition: Edition2021,
+        version: None,
+        display_name: Some(
+            CrateDisplayName {
+                crate_name: CrateName(
+                    "test",
+                ),
+                canonical_name: "test",
+            },
+        ),
+        cfg_options: CfgOptions(
+            [],
+        ),
+        potential_cfg_options: None,
+        env: Env {
+            entries: {},
+        },
+        dependencies: [],
+        origin: Lang(
+            Test,
+        ),
+        is_proc_macro: false,
+        target_layout: Err(
+            "rust-project.json projects have no target layout set",
+        ),
+        channel: None,
+    },
+    9: CrateData {
+        root_file_id: FileId(
+            10,
+        ),
+        edition: Edition2021,
+        version: None,
+        display_name: Some(
+            CrateDisplayName {
+                crate_name: CrateName(
+                    "unwind",
+                ),
+                canonical_name: "unwind",
+            },
+        ),
+        cfg_options: CfgOptions(
+            [],
+        ),
+        potential_cfg_options: None,
+        env: Env {
+            entries: {},
+        },
+        dependencies: [],
+        origin: Lang(
+            Other,
+        ),
+        is_proc_macro: false,
+        target_layout: Err(
+            "rust-project.json projects have no target layout set",
+        ),
+        channel: None,
+    },
+    10: CrateData {
+        root_file_id: FileId(
+            11,
+        ),
+        edition: Edition2018,
+        version: None,
+        display_name: Some(
+            CrateDisplayName {
+                crate_name: CrateName(
+                    "hello_world",
+                ),
+                canonical_name: "hello_world",
+            },
+        ),
+        cfg_options: CfgOptions(
+            [],
+        ),
+        potential_cfg_options: None,
+        env: Env {
+            entries: {},
+        },
+        dependencies: [
+            Dependency {
+                crate_id: Idx::<CrateData>(1),
+                name: CrateName(
+                    "core",
+                ),
+                prelude: true,
+            },
+            Dependency {
+                crate_id: Idx::<CrateData>(0),
+                name: CrateName(
+                    "alloc",
+                ),
+                prelude: true,
+            },
+            Dependency {
+                crate_id: Idx::<CrateData>(6),
+                name: CrateName(
+                    "std",
+                ),
+                prelude: true,
+            },
+            Dependency {
+                crate_id: Idx::<CrateData>(8),
+                name: CrateName(
+                    "test",
+                ),
+                prelude: false,
+            },
+            Dependency {
+                crate_id: Idx::<CrateData>(4),
+                name: CrateName(
+                    "proc_macro",
+                ),
+                prelude: false,
+            },
+        ],
+        origin: Local {
+            repo: None,
+            name: Some(
+                "hello_world",
+            ),
+        },
+        is_proc_macro: false,
+        target_layout: Err(
+            "rust-project.json projects have no target layout set",
+        ),
+        channel: None,
+    },
+}
