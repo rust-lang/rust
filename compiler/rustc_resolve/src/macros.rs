@@ -436,9 +436,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
                 // HACK(Urgau): This shouldn't be necessary
                 PathResult::Failed { is_error_from_last_segment: false, .. } => {
                     self.tcx.sess
-                        .struct_span_err(span, "not sure whether the path is accessible or not")
-                        .note("the type may have associated items, but we are currently not checking them")
-                        .emit();
+                        .emit_err(errors::CfgAccessibleUnsure { span });
 
                     // If we get a partially resolved NonModule in one namespace, we should get the
                     // same result in any other namespaces, so we can return early.

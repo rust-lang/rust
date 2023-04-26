@@ -136,26 +136,12 @@ where
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<T, I, F, const N: usize> TrustedLen for FlatMap<I, [T; N], F>
+unsafe impl<I, U, F> TrustedLen for FlatMap<I, U, F>
 where
-    I: TrustedLen,
-    F: FnMut(I::Item) -> [T; N],
-{
-}
-
-#[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<'a, T, I, F, const N: usize> TrustedLen for FlatMap<I, &'a [T; N], F>
-where
-    I: TrustedLen,
-    F: FnMut(I::Item) -> &'a [T; N],
-{
-}
-
-#[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<'a, T, I, F, const N: usize> TrustedLen for FlatMap<I, &'a mut [T; N], F>
-where
-    I: TrustedLen,
-    F: FnMut(I::Item) -> &'a mut [T; N],
+    I: Iterator,
+    U: IntoIterator,
+    F: FnMut(I::Item) -> U,
+    FlattenCompat<Map<I, F>, <U as IntoIterator>::IntoIter>: TrustedLen,
 {
 }
 
@@ -298,8 +284,8 @@ where
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<I> TrustedLen for Flatten<I>
 where
-    I: TrustedLen,
-    <I as Iterator>::Item: TrustedConstSize,
+    I: Iterator<Item: IntoIterator>,
+    FlattenCompat<I, <I::Item as IntoIterator>::IntoIter>: TrustedLen,
 {
 }
 
@@ -660,6 +646,27 @@ where
     }
 }
 
+unsafe impl<const N: usize, I, T> TrustedLen
+    for FlattenCompat<I, <[T; N] as IntoIterator>::IntoIter>
+where
+    I: TrustedLen<Item = [T; N]>,
+{
+}
+
+unsafe impl<'a, const N: usize, I, T> TrustedLen
+    for FlattenCompat<I, <&'a [T; N] as IntoIterator>::IntoIter>
+where
+    I: TrustedLen<Item = &'a [T; N]>,
+{
+}
+
+unsafe impl<'a, const N: usize, I, T> TrustedLen
+    for FlattenCompat<I, <&'a mut [T; N] as IntoIterator>::IntoIter>
+where
+    I: TrustedLen<Item = &'a mut [T; N]>,
+{
+}
+
 trait ConstSizeIntoIterator: IntoIterator {
     // FIXME(#31844): convert to an associated const once specialization supports that
     fn size() -> Option<usize>;
@@ -695,19 +702,6 @@ impl<T, const N: usize> ConstSizeIntoIterator for &mut [T; N] {
         Some(N)
     }
 }
-
-#[doc(hidden)]
-#[unstable(feature = "std_internals", issue = "none")]
-// FIXME(#20400): Instead of this helper trait there should be multiple impl TrustedLen for Flatten<>
-//   blocks with different bounds on Iterator::Item but the compiler erroneously considers them overlapping
-pub unsafe trait TrustedConstSize: IntoIterator {}
-
-#[unstable(feature = "std_internals", issue = "none")]
-unsafe impl<T, const N: usize> TrustedConstSize for [T; N] {}
-#[unstable(feature = "std_internals", issue = "none")]
-unsafe impl<T, const N: usize> TrustedConstSize for &'_ [T; N] {}
-#[unstable(feature = "std_internals", issue = "none")]
-unsafe impl<T, const N: usize> TrustedConstSize for &'_ mut [T; N] {}
 
 #[inline]
 fn and_then_or_clear<T, U>(opt: &mut Option<T>, f: impl FnOnce(&mut T) -> Option<U>) -> Option<U> {

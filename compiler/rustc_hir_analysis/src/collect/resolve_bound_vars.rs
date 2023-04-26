@@ -455,13 +455,9 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     .collect::<Vec<_>>();
 
                 if !infer_spans.is_empty() {
-                    self.tcx.sess
-                        .struct_span_err(
-                            infer_spans,
-                            "implicit types in closure signatures are forbidden when `for<...>` is present",
-                        )
-                        .span_label(for_sp, "`for<...>` is here")
-                        .emit();
+                    self.tcx
+                        .sess
+                        .emit_err(errors::ClosureImplicitHrtb { spans: infer_spans, for_sp });
                 }
             }
 

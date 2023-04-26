@@ -2474,7 +2474,7 @@ extern "rust-intrinsic" {
 /// This macro should be called as `assert_unsafe_precondition!([Generics](name: Type) => Expression)`
 /// where the names specified will be moved into the macro as captured variables, and defines an item
 /// to call `const_eval_select` on. The tokens inside the square brackets are used to denote generics
-/// for the function declaractions and can be omitted if there is no generics.
+/// for the function declarations and can be omitted if there is no generics.
 ///
 /// # Safety
 ///
@@ -2733,7 +2733,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     // SAFETY: the safety contract for `copy` must be upheld by the caller.
     unsafe {
         assert_unsafe_precondition!(
-            "ptr::copy requires that both pointer arguments are aligned aligned and non-null",
+            "ptr::copy requires that both pointer arguments are aligned and non-null",
             [T](src: *const T, dst: *mut T) =>
             is_aligned_and_not_null(src) && is_aligned_and_not_null(dst)
         );

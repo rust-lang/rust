@@ -386,8 +386,10 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
 
     fn ct_infer(&self, ty: Ty<'tcx>, _: Option<&ty::GenericParamDef>, span: Span) -> Const<'tcx> {
         let ty = self.tcx.fold_regions(ty, |r, _| match *r {
-            ty::ReErased => self.tcx.lifetimes.re_static,
-            _ => r,
+            // This is never reached in practice. If it ever is reached,
+            // `ReErased` should be changed to `ReStatic`, and any other region
+            // left alone.
+            r => bug!("unexpected region: {r:?}"),
         });
         self.tcx().const_error_with_message(ty, span, "bad placeholder constant")
     }

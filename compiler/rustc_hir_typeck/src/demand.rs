@@ -1508,6 +1508,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // FIXME(compiler-errors): We can actually do this if the checked_ty is
                         // `steps` layers of boxes, not just one, but this is easier and most likely.
                         || (checked_ty.is_box() && steps == 1)
+                        // We can always deref a binop that takes its arguments by ref.
+                        || matches!(
+                            self.tcx.hir().get_parent(expr.hir_id),
+                            hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Binary(op, ..), .. })
+                                if !op.node.is_by_value()
+                        )
                     {
                         let deref_kind = if checked_ty.is_box() {
                             "unboxing the value"

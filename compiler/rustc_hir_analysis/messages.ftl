@@ -262,3 +262,17 @@ hir_analysis_transparent_non_zero_sized_enum = the variant of a transparent {$de
 hir_analysis_transparent_non_zero_sized = transparent {$desc} needs at most one non-zero-sized field, but has {$field_count}
     .label = needs at most one non-zero-sized field, but has {$field_count}
     .labels = this field is non-zero-sized
+
+hir_analysis_too_large_static = extern static is too large for the current architecture
+
+hir_analysis_specialization_trait = implementing `rustc_specialization_trait` traits is unstable
+    .help = add `#![feature(min_specialization)]` to the crate attributes to enable
+
+hir_analysis_closure_implicit_hrtb = implicit types in closure signatures are forbidden when `for<...>` is present
+    .label = `for<...>` is here
+
+hir_analysis_const_specialize = cannot specialize on const impl with non-const impl
+
+hir_analysis_static_specialize = cannot specialize on `'static` lifetime
+
+hir_analysis_missing_tilde_const = missing `~const` qualifier for specialization

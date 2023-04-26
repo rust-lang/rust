@@ -2126,7 +2126,7 @@ mod new_fn_ptr_impl {
 /// assert_eq!(unsafe { raw_f2.read_unaligned() }, 2);
 /// ```
 ///
-/// See [`addr_of_mut`] for how to create a pointer to unininitialized data.
+/// See [`addr_of_mut`] for how to create a pointer to uninitialized data.
 /// Doing that with `addr_of` would not make much sense since one could only
 /// read the data, and that would be Undefined Behavior.
 #[stable(feature = "raw_ref_macros", since = "1.51.0")]

@@ -494,7 +494,7 @@ impl Builder {
                 MaybeDangling(mem::MaybeUninit::new(x))
             }
             fn into_inner(self) -> T {
-                // SAFETY: we are always initiailized.
+                // SAFETY: we are always initialized.
                 let ret = unsafe { self.0.assume_init_read() };
                 // Make sure we don't drop.
                 mem::forget(self);
@@ -503,7 +503,7 @@ impl Builder {
         }
         impl<T> Drop for MaybeDangling<T> {
             fn drop(&mut self) {
-                // SAFETY: we are always initiailized.
+                // SAFETY: we are always initialized.
                 unsafe { self.0.assume_init_drop() };
             }
         }

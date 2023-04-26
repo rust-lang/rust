@@ -741,8 +741,10 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for RegionReplacer<'a, 'tcx> {
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
+            // These are the regions that can be seen in the AST.
             ty::ReVar(vid) => self.vid_to_region.get(&vid).cloned().unwrap_or(r),
-            _ => r,
+            ty::ReEarlyBound(_) | ty::ReStatic | ty::ReLateBound(..) | ty::ReError(_) => r,
+            r => bug!("unexpected region: {r:?}"),
         }
     }
 }
