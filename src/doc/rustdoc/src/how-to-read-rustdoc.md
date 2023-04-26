@@ -68,7 +68,7 @@ Typing in the search bar instantly searches the available documentation for
 the string entered with a fuzzy matching algorithm that is tolerant of minor
 typos.
 
-By default, the search results give are "In Names",
+By default, the search results given are "In Names",
 meaning that the fuzzy match is made against the names of items.
 Matching names are shown on the left, and the first few words of their
 descriptions are given on the right.
@@ -104,11 +104,6 @@ will match these queries:
 * `Read -> Result<Vec<u8>>`
 
 But it *does not* match `Result<Vec, u8>` or `Result<u8<Vec>>`.
-
-### Changing displayed theme
-
-You can change the displayed theme by opening the settings menu (the gear
-icon in the upper right) and then pick a new one from there.
 
 ### Shortcuts
 
