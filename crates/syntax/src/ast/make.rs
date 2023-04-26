@@ -232,6 +232,10 @@ pub fn impl_trait(
     ast_from_text(&format!("impl{ty_params_str} {trait_} for {ty}{ty_genargs_str} {{}}"))
 }
 
+pub fn impl_trait_type(bounds: ast::TypeBoundList) -> ast::ImplTraitType {
+    ast_from_text(&format!("fn f(x: impl {bounds}) {{}}"))
+}
+
 pub fn path_segment(name_ref: ast::NameRef) -> ast::PathSegment {
     ast_from_text(&format!("type __ = {name_ref};"))
 }

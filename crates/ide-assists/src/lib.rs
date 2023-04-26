@@ -193,6 +193,7 @@ mod handlers {
     mod replace_arith_op;
     mod introduce_named_generic;
     mod replace_let_with_if_let;
+    mod replace_named_generic_with_impl;
     mod replace_qualified_name_with_use;
     mod replace_string_with_char;
     mod replace_turbofish_with_explicit_type;
@@ -299,6 +300,7 @@ mod handlers {
             replace_let_with_if_let::replace_let_with_if_let,
             replace_method_eager_lazy::replace_with_eager_method,
             replace_method_eager_lazy::replace_with_lazy_method,
+            replace_named_generic_with_impl::replace_named_generic_with_impl,
             replace_turbofish_with_explicit_type::replace_turbofish_with_explicit_type,
             replace_qualified_name_with_use::replace_qualified_name_with_use,
             replace_arith_op::replace_arith_with_wrapping,
