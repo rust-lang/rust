@@ -266,7 +266,7 @@ jobs:
             os: ubuntu-20.04-8core-32gb
             env: {}
           - name: mingw-check
-            os: ubuntu-20.04-8core-32gb
+            os: ubuntu-20.04-4core-16gb
             env: {}
           - name: test-various
             os: ubuntu-20.04-8core-32gb

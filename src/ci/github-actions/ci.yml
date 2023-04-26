@@ -73,6 +73,10 @@ x--expand-yaml-anchors--remove:
   - &base-job
     env: {}
 
+  - &job-linux-4c
+    os: ubuntu-20.04-4core-16gb
+    <<: *base-job
+
   - &job-linux-8c
     os: ubuntu-20.04-8core-32gb
     <<: *base-job
@@ -422,7 +426,7 @@ jobs:
             <<: *job-linux-8c
 
           - name: mingw-check
-            <<: *job-linux-8c
+            <<: *job-linux-4c
 
           - name: test-various
             <<: *job-linux-8c
