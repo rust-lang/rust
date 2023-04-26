@@ -552,8 +552,12 @@ impl Rewrite for ast::GenericBound {
                     ast::TraitBoundModifier::MaybeConstMaybe => poly_trait_ref
                         .rewrite(context, shape.offset_left(8)?)
                         .map(|s| format!("~const ?{}", s)),
-                    rustc_ast::TraitBoundModifier::Negative
-                    | rustc_ast::TraitBoundModifier::MaybeConstNegative => None,
+                    ast::TraitBoundModifier::Negative => poly_trait_ref
+                        .rewrite(context, shape.offset_left(1)?)
+                        .map(|s| format!("!{}", s)),
+                    ast::TraitBoundModifier::MaybeConstNegative => poly_trait_ref
+                        .rewrite(context, shape.offset_left(8)?)
+                        .map(|s| format!("~const !{}", s)),
                 };
                 rewrite.map(|s| if has_paren { format!("({})", s) } else { s })
             }
