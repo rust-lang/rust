@@ -8,14 +8,14 @@
 // libstd ignores SIGPIPE, and other libraries may set signal masks.
 // Make sure that these behaviors don't get inherited to children
 // spawned via std::process, since they're needed for traditional UNIX
-// filter behavior. This test checks that `yes | head` terminates
+// filter behavior.
+// This test checks that `while echo y ; do : ; done | head` terminates
 // (instead of running forever), and that it does not print an error
 // message about a broken pipe.
 
 // ignore-emscripten no threads support
 // ignore-vxworks no 'sh'
 // ignore-fuchsia no 'sh'
-// ignore-nto no 'yes'
 
 use std::process;
 use std::thread;
@@ -27,7 +27,11 @@ fn main() {
         thread::sleep_ms(5000);
         process::exit(1);
     });
-    let output = process::Command::new("sh").arg("-c").arg("yes | head").output().unwrap();
+    let output = process::Command::new("sh")
+        .arg("-c")
+        .arg("while echo y ; do : ; done | head")
+        .output()
+        .unwrap();
     assert!(output.status.success());
     assert!(output.stderr.len() == 0);
 }

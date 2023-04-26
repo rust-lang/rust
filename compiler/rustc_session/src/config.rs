@@ -1400,7 +1400,8 @@ The default is {DEFAULT_EDITION} and the latest stable edition is {LATEST_STABLE
 pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
     vec![
         opt::flag_s("h", "help", "Display this message"),
-        opt::multi_s("", "cfg", "Configure the compilation environment", "SPEC"),
+        opt::multi_s("", "cfg", "Configure the compilation environment.
+                             SPEC supports the syntax `NAME[=\"VALUE\"]`.", "SPEC"),
         opt::multi("", "check-cfg", "Provide list of valid cfg options for checking", "SPEC"),
         opt::multi_s(
             "L",
