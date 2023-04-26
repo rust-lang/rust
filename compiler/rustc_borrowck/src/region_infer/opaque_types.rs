@@ -88,15 +88,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     Some(region) => {
                         let vid = self.universal_regions.to_region_vid(region);
                         subst_regions.push(vid);
-                        region
+                        Some(region)
                     }
                     None => {
                         subst_regions.push(vid);
-                        ty::Region::new_error_with_message(
-                            infcx.tcx,
-                            concrete_type.span,
-                            "opaque type with non-universal region substs",
-                        )
+                        None
                     }
                 }
             };
@@ -118,7 +114,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     return region;
                 }
                 let vid = self.to_region_vid(region);
-                to_universal_region(vid, &mut subst_regions)
+                to_universal_region(vid, &mut subst_regions).unwrap_or(region)
             });
             debug!(?universal_substs);
             debug!(?subst_regions);
