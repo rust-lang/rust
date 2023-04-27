@@ -18,7 +18,6 @@ use rustc_middle::ty::{self, ConstKind, Instance, ParamEnv, Ty, TyCtxt, TypeVisi
 use rustc_span::{def_id::DefId, Span, DUMMY_SP};
 use rustc_target::abi::{self, Align, HasDataLayout, Size, TargetDataLayout};
 use rustc_target::spec::abi::Abi as CallAbi;
-use rustc_trait_selection::traits;
 
 use crate::MirPass;
 use rustc_const_eval::interpret::{
@@ -81,42 +80,6 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
         // computing their layout.
         if is_generator {
             trace!("ConstProp skipped for generator {:?}", def_id);
-            return;
-        }
-
-        // Check if it's even possible to satisfy the 'where' clauses
-        // for this item.
-        // This branch will never be taken for any normal function.
-        // However, it's possible to `#!feature(trivial_bounds)]` to write
-        // a function with impossible to satisfy clauses, e.g.:
-        // `fn foo() where String: Copy {}`
-        //
-        // We don't usually need to worry about this kind of case,
-        // since we would get a compilation error if the user tried
-        // to call it. However, since we can do const propagation
-        // even without any calls to the function, we need to make
-        // sure that it even makes sense to try to evaluate the body.
-        // If there are unsatisfiable where clauses, then all bets are
-        // off, and we just give up.
-        //
-        // We manually filter the predicates, skipping anything that's not
-        // "global". We are in a potentially generic context
-        // (e.g. we are evaluating a function without substituting generic
-        // parameters, so this filtering serves two purposes:
-        //
-        // 1. We skip evaluating any predicates that we would
-        // never be able prove are unsatisfiable (e.g. `<T as Foo>`
-        // 2. We avoid trying to normalize predicates involving generic
-        // parameters (e.g. `<T as Foo>::MyItem`). This can confuse
-        // the normalization code (leading to cycle errors), since
-        // it's usually never invoked in this way.
-        let predicates = tcx
-            .predicates_of(def_id.to_def_id())
-            .predicates
-            .iter()
-            .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
-        if traits::impossible_predicates(tcx, traits::elaborate(tcx, predicates).collect()) {
-            trace!("ConstProp skipped for {:?}: found unsatisfiable predicates", def_id);
             return;
         }
 
