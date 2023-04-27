@@ -51,41 +51,50 @@ pub(crate) fn publish_diagnostics(
 
 pub(crate) fn fetch_dependency_list(
     state: GlobalStateSnapshot,
-    _params: FetchDependencyListParams,
-) -> Result<FetchDependencyListResult> {
+    _params: lsp_ext::FetchDependencyListParams,
+) -> Result<lsp_ext::FetchDependencyListResult> {
     let crates = state.analysis.fetch_crates()?;
-    Ok(FetchDependencyListResult {
-        crates: crates
-            .into_iter()
-            .filter_map(|it| {
-                let root_file_path = state.file_id_to_file_path(it.root_file_id);
-                crate_path(it.name.as_ref(), root_file_path).map(|crate_path| CrateInfoResult {
-                    name: it.name,
-                    version: it.version,
-                    path: crate_path.to_string(),
-                })
+    let crate_infos = crates
+        .into_iter()
+        .filter_map(|it| {
+            let root_file_path = state.file_id_to_file_path(it.root_file_id);
+            crate_path(it.name.as_ref(), root_file_path).map(|path| CrateInfoResult {
+                name: it.name,
+                version: it.version,
+                path: path.to_string(),
             })
-            .collect(),
-    })
+        })
+        .collect();
+    Ok(FetchDependencyListResult { crates: crate_infos })
 }
 
-//Thats a best effort to try and find the crate path
+/// Searches for the directory of a Rust crate with a given name in the directory tree
+/// of the root file of that crate.
+///
+/// # Arguments
+///
+/// * `crate_name`: The name of the crate to search for. This should be a `Some` value if
+///   a crate name has been specified, or `None` if no crate name has been specified.
+/// * `root_file_path`: The path to the root file of the crate.
+///
+/// # Returns
+///
+/// An `Option` value representing the path to the directory of the crate with the given
+/// name, if such a crate is found. If no crate with the given name is found, this function
+/// returns `None`.
 fn crate_path(crate_name: Option<&String>, root_file_path: VfsPath) -> Option<VfsPath> {
     crate_name.and_then(|crate_name| {
-        let mut crate_path = None;
         let mut root_path = root_file_path;
         while let Some(path) = root_path.parent() {
-            match path.name_and_extension() {
-                Some((name, _)) => {
-                    if name.starts_with(crate_name.as_str()) {
-                        crate_path = Some(path);
-                        break;
-                    }
+            if let Some((name, _)) = path.name_and_extension() {
+                if name.starts_with(crate_name.as_str()) {
+                    return Some(path);
                 }
-                None => break,
+            } else {
+                break;
             }
             root_path = path;
         }
-        crate_path
+        None
     })
 }
