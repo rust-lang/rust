@@ -1317,24 +1317,25 @@ fn sysroot_to_crate_graph(
             .filter_map(|krate| {
                 let file_id = load(&sysroot[krate].root)?;
 
-            let env = Env::default();
-            let display_name = CrateDisplayName::from_canonical_name(sysroot[krate].name.clone());
-            let crate_id = crate_graph.add_crate_root(
+                let env = Env::default();
+                let display_name =
+                    CrateDisplayName::from_canonical_name(sysroot[krate].name.clone());
+                let crate_id = crate_graph.add_crate_root(
                     file_id,
                     Edition::CURRENT,
                     Some(display_name),
                     None,
-                cfg_options.clone(),
-                None,
-                env,
-                false,
-                CrateOrigin::Lang(LangCrateOrigin::from(&*sysroot[krate].name)),
-                target_layout.clone(),
-                channel,
-            );
-            Some((krate, crate_id))
-        })
-        .collect(),
+                    cfg_options.clone(),
+                    None,
+                    env,
+                    false,
+                    CrateOrigin::Lang(LangCrateOrigin::from(&*sysroot[krate].name)),
+                    target_layout.clone(),
+                    channel,
+                );
+                Some((krate, crate_id))
+            })
+            .collect(),
     };
     for from in sysroot.crates() {
         for &to in sysroot[from].deps.iter() {
