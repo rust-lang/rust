@@ -30,16 +30,19 @@ where
     T: Tag,
 {
     /// Tags `pointer` with `tag`.
+    #[inline]
     pub fn new(pointer: P, tag: T) -> Self {
         TaggedPtr { raw: CopyTaggedPtr::new(pointer, tag) }
     }
 
     /// Retrieves the tag.
+    #[inline]
     pub fn tag(&self) -> T {
         self.raw.tag()
     }
 
     /// Sets the tag to a new value.
+    #[inline]
     pub fn set_tag(&mut self, tag: T) {
         self.raw.set_tag(tag)
     }
@@ -63,6 +66,8 @@ where
     T: Tag,
 {
     type Target = P::Target;
+
+    #[inline]
     fn deref(&self) -> &Self::Target {
         self.raw.deref()
     }
@@ -73,6 +78,7 @@ where
     P: Pointer + DerefMut,
     T: Tag,
 {
+    #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.raw.deref_mut()
     }
@@ -108,6 +114,7 @@ where
     P: Pointer,
     T: Tag,
 {
+    #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.raw.eq(&other.raw)
     }
@@ -125,6 +132,7 @@ where
     P: Pointer,
     T: Tag,
 {
+    #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.raw.hash(state);
     }
