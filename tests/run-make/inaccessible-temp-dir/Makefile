@@ -1,4 +1,5 @@
 # only-linux
+# ignore-arm - linker error on `armhf-gnu`
 
 include ../tools.mk
 
