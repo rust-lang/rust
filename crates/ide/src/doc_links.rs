@@ -481,6 +481,8 @@ fn get_doc_base_urls(
     let Some(display_name) = krate.display_name(db) else { return Default::default() };
     let crate_data = &db.crate_graph()[krate.into()];
     let channel = crate_data.channel.map_or("nightly", ReleaseChannel::as_str);
+    let sysroot = "/home/ddystopia/.rustup/toolchains/stable-x86_64-unknown-linux-gnu";
+
     let (web_base, local_base) = match &crate_data.origin {
         // std and co do not specify `html_root_url` any longer so we gotta handwrite this ourself.
         // FIXME: Use the toolchains channel instead of nightly
@@ -490,7 +492,14 @@ fn get_doc_base_urls(
             | LangCrateOrigin::ProcMacro
             | LangCrateOrigin::Std
             | LangCrateOrigin::Test),
-        ) => (Some(format!("https://doc.rust-lang.org/{channel}/{origin}")), None),
+        ) => {
+            let local_url = format!("file:///{sysroot}/share/doc/rust/html/{origin}/index.html");
+            let local_url = Url::parse(&local_url).ok();
+            let web_url = format!("https://doc.rust-lang.org/{channel}/{origin}");
+            println!("local_url: {:?}", local_url.unwrap().to_string());
+            panic!();
+            (Some(web_url), local_url)
+        },
         CrateOrigin::Lang(_) => return (None, None),
         CrateOrigin::Rustc { name: _ } => {
             (Some(format!("https://doc.rust-lang.org/{channel}/nightly-rustc/")), None)
