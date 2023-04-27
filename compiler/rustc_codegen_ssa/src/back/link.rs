@@ -1064,42 +1064,66 @@ fn escape_linker_output(s: &[u8], flavour: LinkerFlavor) -> String {
     }
     match str::from_utf8(s) {
         Ok(s) => return s.to_owned(),
-        Err(_) if s.len() <= i32::MAX as usize => {
-            use windows::Win32::Globalization::{
-                GetLocaleInfoEx, MultiByteToWideChar, CP_OEMCP, LOCALE_IUSEUTF8LEGACYOEMCP,
-                LOCALE_NAME_SYSTEM_DEFAULT, LOCALE_RETURN_NUMBER, MB_ERR_INVALID_CHARS,
-            };
-            // Get the legacy system OEM code page.
-            let code_page = unsafe {
-                let mut cp: u32 = 0;
-                // We're using the `LOCALE_RETURN_NUMBER` flag to return a u32.
-                // But the API requires us to pass the data as though it's a [u16] string.
-                let len = std::mem::size_of::<u32>() / std::mem::size_of::<u16>();
-                let data = std::slice::from_raw_parts_mut(&mut cp as *mut u32 as *mut u16, len);
-                let len_written = GetLocaleInfoEx(
-                    LOCALE_NAME_SYSTEM_DEFAULT,
-                    LOCALE_IUSEUTF8LEGACYOEMCP | LOCALE_RETURN_NUMBER,
-                    Some(data),
-                );
-                if len_written as usize == len { cp } else { CP_OEMCP }
-            };
-            // Error if the string is not valid for the expected code page.
-            let flags = MB_ERR_INVALID_CHARS;
-            // Call MultiByteToWideChar twice.
-            // First to calculate the length then to convert the string.
-            let mut len = unsafe { MultiByteToWideChar(code_page, flags, s, None) };
+        Err(_) => match win::locale_byte_str_to_string(s, win::oem_code_page()) {
+            Some(s) => s,
+            // The string is not UTF-8 and isn't valid for the OEM code page
+            None => format!("Non-UTF-8 output: {}", s.escape_ascii()),
+        },
+    }
+}
+
+/// Wrappers around the Windows API.
+#[cfg(windows)]
+mod win {
+    use windows::Win32::Globalization::{
+        GetLocaleInfoEx, MultiByteToWideChar, CP_OEMCP, LOCALE_IUSEUTF8LEGACYOEMCP,
+        LOCALE_NAME_SYSTEM_DEFAULT, LOCALE_RETURN_NUMBER, MB_ERR_INVALID_CHARS,
+    };
+
+    /// Get the Windows system OEM code page. This is most notably the code page
+    /// used for link.exe's output.
+    pub fn oem_code_page() -> u32 {
+        unsafe {
+            let mut cp: u32 = 0;
+            // We're using the `LOCALE_RETURN_NUMBER` flag to return a u32.
+            // But the API requires us to pass the data as though it's a [u16] string.
+            let len = std::mem::size_of::<u32>() / std::mem::size_of::<u16>();
+            let data = std::slice::from_raw_parts_mut(&mut cp as *mut u32 as *mut u16, len);
+            let len_written = GetLocaleInfoEx(
+                LOCALE_NAME_SYSTEM_DEFAULT,
+                LOCALE_IUSEUTF8LEGACYOEMCP | LOCALE_RETURN_NUMBER,
+                Some(data),
+            );
+            if len_written as usize == len { cp } else { CP_OEMCP }
+        }
+    }
+    /// Try to convert a multi-byte string to a UTF-8 string using the given code page
+    /// The string does not need to be null terminated.
+    ///
+    /// This is implemented as a wrapper around `MultiByteToWideChar`.
+    /// See <https://learn.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-multibytetowidechar>
+    ///
+    /// It will fail if the multi-byte string is longer than `i32::MAX` or if it contains
+    /// any invalid bytes for the expected encoding.
+    pub fn locale_byte_str_to_string(s: &[u8], code_page: u32) -> Option<String> {
+        // `MultiByteToWideChar` requires a length to be a "positive integer".
+        if s.len() > isize::MAX as usize {
+            return None;
+        }
+        // Error if the string is not valid for the expected code page.
+        let flags = MB_ERR_INVALID_CHARS;
+        // Call MultiByteToWideChar twice.
+        // First to calculate the length then to convert the string.
+        let mut len = unsafe { MultiByteToWideChar(code_page, flags, s, None) };
+        if len > 0 {
+            let mut utf16 = vec![0; len as usize];
+            len = unsafe { MultiByteToWideChar(code_page, flags, s, Some(&mut utf16)) };
             if len > 0 {
-                let mut utf16 = vec![0; len as usize];
-                len = unsafe { MultiByteToWideChar(code_page, flags, s, Some(&mut utf16)) };
-                if len > 0 {
-                    return String::from_utf16_lossy(&utf16[..len as usize]);
-                }
+                return utf16.get(..len as usize).map(String::from_utf16_lossy);
             }
         }
-        _ => {}
-    };
-    // The string is not UTF-8 and isn't valid for the OEM code page
-    format!("Non-UTF-8 output: {}", s.escape_ascii())
+        None
+    }
 }
 
 fn add_sanitizer_libraries(sess: &Session, crate_type: CrateType, linker: &mut dyn Linker) {
