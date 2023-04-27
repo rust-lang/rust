@@ -329,7 +329,13 @@ pub(crate) fn print(req: PrintRequest, sess: &Session) {
     require_inited();
     let tm = create_informational_target_machine(sess);
     match req {
-        PrintRequest::TargetCPUs => unsafe { llvm::LLVMRustPrintTargetCPUs(tm) },
+        PrintRequest::TargetCPUs => {
+            println!(
+                "Default CPU for this target:\n    {}",
+                handle_native(sess.target.cpu.as_ref())
+            );
+            unsafe { llvm::LLVMRustPrintTargetCPUs(tm, handle_native(sess.target.cpu.as_ref())) };
+        }
         PrintRequest::TargetFeatures => print_target_features(sess, tm),
         _ => bug!("rustc_codegen_llvm can't handle print request: {:?}", req),
     }

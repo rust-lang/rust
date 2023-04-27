@@ -307,7 +307,7 @@ static size_t getLongestEntryLength(ArrayRef<KV> Table) {
   return MaxLen;
 }
 
-extern "C" void LLVMRustPrintTargetCPUs(LLVMTargetMachineRef TM) {
+extern "C" void LLVMRustPrintTargetCPUs(LLVMTargetMachineRef TM, &Char[]) {
   const TargetMachine *Target = unwrap(TM);
   const MCSubtargetInfo *MCInfo = Target->getMCSubtargetInfo();
   const Triple::ArchType HostArch = Triple(sys::getDefaultTargetTriple()).getArch();
@@ -324,7 +324,14 @@ extern "C" void LLVMRustPrintTargetCPUs(LLVMTargetMachineRef TM) {
       MaxCPULen, "native", (int)HostCPU.size(), HostCPU.data());
   }
   for (auto &CPU : CPUTable)
-    printf("    %-*s\n", MaxCPULen, CPU.Key);
+
+    printf("    %-*s", MaxCPULen, CPU.Key);
+    if (CPU.Key == Target->getTargetTriple().getArch()) {
+      printf("  default target\n");
+    }
+    else {
+      printf("\n");
+    }
   printf("\n");
 }
 
