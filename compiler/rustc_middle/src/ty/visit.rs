@@ -93,7 +93,7 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
         // Just to be sure hot flags are in sync
         debug_assert_eq!(
             result,
-            self.has_type_flags(TypeFlags::NEEDS_INFER - TypeFlags::HAS_RE_INFER)
+            self.has_type_flags(TypeFlags::HAS_INFER - TypeFlags::HAS_RE_INFER)
         );
 
         result
