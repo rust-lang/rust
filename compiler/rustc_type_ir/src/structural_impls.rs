@@ -141,6 +141,10 @@ impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Vec<T> {
     }
 }
 
+// `TypeFoldable` isn't impl'd for `&[T]`. It doesn't make sense in the general
+// case, because we can't return a new slice. But note that there are a couple
+// of trivial impls of `TypeFoldable` for specific slice types elsewhere.
+
 impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for &[T] {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|t| t.visit_with(visitor))
