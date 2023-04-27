@@ -128,8 +128,9 @@ macro_rules! impl_tag {
                     _ => unsafe {
                         debug_assert!(
                             false,
-                            "invalid tag: {tag}\
-                             (this is a bug in the caller of `from_usize`)"
+                            "invalid tag: {}\
+                             (this is a bug in the caller of `from_usize`)",
+                            tag
                         );
                         std::hint::unreachable_unchecked()
                     },
