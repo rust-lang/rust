@@ -164,7 +164,7 @@ pub(crate) fn external_docs(
         }
     };
 
-    return get_doc_links(db, definition, target_dir);
+    get_doc_links(db, definition, target_dir)
 }
 
 /// Extracts all links from a given markdown text returning the definition text range, link-text
