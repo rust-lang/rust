@@ -1,3 +1,4 @@
+use core::iter::Iterator;
 use rand::RngCore;
 use std::iter::repeat;
 use test::{black_box, Bencher};
@@ -594,10 +595,20 @@ fn bench_chain_extend_value(b: &mut Bencher) {
 }
 
 #[bench]
-fn bench_extend_upper_size_hint(b: &mut Bencher) {
+fn bench_extend_upper_size_hint_filter(b: &mut Bencher) {
     b.iter(|| {
         let mut v = Vec::new();
         let it = (0..LEN).filter(|_| true);
+        v.extend(it);
+        v
+    });
+}
+
+#[bench]
+fn bench_extend_upper_size_hint_filter_map(b: &mut Bencher) {
+    b.iter(|| {
+        let mut v = Vec::new();
+        let it = (0..LEN).filter_map(|i| Some(i));
         v.extend(it);
         v
     });
