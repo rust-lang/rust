@@ -138,18 +138,31 @@ Otherwise, the `else` keyword and opening brace should be placed on the next lin
 For example:
 
 ```rust
-let Some(x) = abcdef()
-    .foo(
-        "abc",
-        some_really_really_really_long_ident,
-        "ident",
-        "123456",
-    )
-    .bar()
-    .baz()
-    .qux("fffffffffffffffff")
-else {
-    foo_bar()
+fn main() {
+    let Some(x) = abcdef()
+        .foo(
+            "abc",
+            some_really_really_really_long_ident,
+            "ident",
+            "123456",
+        )
+        .bar()
+        .baz()
+        .qux("fffffffffffffffff")
+    else {
+        return
+    };
+
+    let Some(x) = some_really_really_really_really_really_really_really_really_really_long_name
+    else {
+        return;
+    };
+
+    let Some(aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa) =
+        bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+    else {
+        return;
+    };
 }
 ```
 
