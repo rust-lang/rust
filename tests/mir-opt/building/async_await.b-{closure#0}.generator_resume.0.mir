@@ -12,7 +12,7 @@
         _1: GeneratorSavedTy {
             ty: impl std::future::Future<Output = ()>,
             source_info: SourceInfo {
-                span: $DIR/async_await.rs:16:8: 16:14 (#11),
+                span: $DIR/async_await.rs:16:8: 16:14 (#10),
                 scope: scope[0],
             },
             ignore_for_traits: false,

@@ -858,13 +858,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let awaitee_arm = self.arm(awaitee_pat, loop_expr);
 
         // `match ::std::future::IntoFuture::into_future(<expr>) { ... }`
-        let into_future_span = self.mark_span_with_reason(
-            DesugaringKind::Await,
-            dot_await_span,
-            self.allow_into_future.clone(),
-        );
         let into_future_expr = self.expr_call_lang_item_fn(
-            into_future_span,
+            span,
             hir::LangItem::IntoFutureIntoFuture,
             arena_vec![self; expr],
             Some(expr_hir_id),

@@ -136,7 +136,6 @@ struct LoweringContext<'a, 'hir> {
 
     allow_try_trait: Option<Lrc<[Symbol]>>,
     allow_gen_future: Option<Lrc<[Symbol]>>,
-    allow_into_future: Option<Lrc<[Symbol]>>,
 
     /// Mapping from generics `def_id`s to TAIT generics `def_id`s.
     /// For each captured lifetime (e.g., 'a), we create a new lifetime parameter that is a generic
