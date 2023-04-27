@@ -84,6 +84,11 @@ pub trait Decoder {
     fn read_char(&mut self) -> char;
     fn read_str(&mut self) -> &str;
     fn read_raw_bytes(&mut self, len: usize) -> &[u8];
+
+    // Although there is an `emit_enum_variant` method in `Encoder`, the code
+    // patterns in decoding are different enough to encoding that there is no
+    // need for a corresponding `read_enum_variant` method here.
+
     fn peek_byte(&self) -> u8;
     fn position(&self) -> usize;
 }
