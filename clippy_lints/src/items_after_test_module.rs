@@ -64,20 +64,21 @@ impl LateLintPass<'_> for ItemsAfterTestModule {
                 span_lint_and_help(cx, ITEMS_AFTER_TEST_MODULE, test_mod_span.unwrap().with_hi(item.span.hi()), "items were found after the testing module", None, "move the items to before the testing module was defined");
             }};
 
-            if matches!(item.kind, ItemKind::Mod(_)) {
-                for attr in cx.tcx.get_attrs(item.owner_id.to_def_id(), sym::cfg) {
-                    if_chain! {
-                        if attr.has_name(sym::cfg);
+            if let ItemKind::Mod(module) = item.kind && item.span.hi() == module.spans.inner_span.hi() {
+			// Check that it works the same way, the only I way I've found for #10713
+				for attr in cx.tcx.get_attrs(item.owner_id.to_def_id(), sym::cfg) {
+					if_chain! {
+						if attr.has_name(sym::cfg);
                         if let Some(mitems) = attr.meta_item_list();
                         if let [mitem] = &*mitems;
                         if mitem.has_name(sym::test);
                         then {
-                            was_test_mod_visited = true;
-                            test_mod_span = Some(item.span);
+							was_test_mod_visited = true;
+                            test_mod_span = Some(module.spans.inner_span.with_lo(item.span.lo()));
                         }
                     }
                 }
-            }
+			}
         }
     }
 }
