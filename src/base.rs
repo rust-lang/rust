@@ -28,7 +28,7 @@ pub(crate) fn codegen_fn<'tcx>(
     module: &mut dyn Module,
     instance: Instance<'tcx>,
 ) -> CodegenedFunction {
-    debug_assert!(!instance.substs.needs_infer());
+    debug_assert!(!instance.substs.has_infer());
 
     let symbol_name = tcx.symbol_name(instance).name.to_string();
     let _timer = tcx.prof.generic_activity_with_arg("codegen fn", &*symbol_name);
