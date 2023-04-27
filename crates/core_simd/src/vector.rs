@@ -176,34 +176,70 @@ where
         unsafe { &mut *(self as *mut Self as *mut [T; N]) }
     }
 
+    /// Load a vector from an array of `T`.
+    ///
+    /// This function is necessary since `repr(simd)` has padding for non-power-of-2 vectors (at the time of writing).
+    /// With padding, `read_unaligned` will read past the end of an array of N elements.
+    ///
+    /// # Safety
+    /// Reading `ptr` must be safe, as if by `<*const [T; N]>::read_unaligned`.
+    const unsafe fn load(ptr: *const [T; N]) -> Self {
+        // There are potentially simpler ways to write this function, but this should result in
+        // LLVM `load <N x T>`
+
+        let mut tmp = core::mem::MaybeUninit::<Self>::uninit();
+        // SAFETY: `Simd<T, N>` always contains `N` elements of type `T`.  It may have padding
+        // which does not need to be initialized.  The safety of reading `ptr` is ensured by the
+        // caller.
+        unsafe {
+            core::ptr::copy_nonoverlapping(ptr, tmp.as_mut_ptr().cast(), 1);
+            tmp.assume_init()
+        }
+    }
+
+    /// Store a vector to an array of `T`.
+    ///
+    /// See `load` as to why this function is necessary.
+    ///
+    /// # Safety
+    /// Writing to `ptr` must be safe, as if by `<*mut [T; N]>::write_unaligned`.
+    const unsafe fn store(self, ptr: *mut [T; N]) {
+        // There are potentially simpler ways to write this function, but this should result in
+        // LLVM `store <N x T>`
+
+        // Creating a temporary helps LLVM turn the memcpy into a store.
+        let tmp = self;
+        // SAFETY: `Simd<T, N>` always contains `N` elements of type `T`.  The safety of writing
+        // `ptr` is ensured by the caller.
+        unsafe { core::ptr::copy_nonoverlapping(tmp.as_array(), ptr, 1) }
+    }
+
     /// Converts an array to a SIMD vector.
     pub const fn from_array(array: [T; N]) -> Self {
-        // SAFETY: Transmuting between `Simd<T, N>` and `[T; N]`
-        // is always valid. We need to use `read_unaligned` here, since
-        // the array may have a lower alignment than the vector.
+        // SAFETY: `&array` is safe to read.
         //
-        // FIXME: We currently use a pointer read instead of `transmute_copy` because
-        // it results in better codegen with optimizations disabled, but we should
-        // probably just use `transmute` once that works on const generic types.
+        // FIXME: We currently use a pointer load instead of `transmute_copy` because `repr(simd)`
+        // results in padding for non-power-of-2 vectors (so vectors are larger than arrays).
         //
         // NOTE: This deliberately doesn't just use `Self(array)`, see the comment
         // on the struct definition for details.
-        unsafe { (&array as *const [T; N] as *const Self).read_unaligned() }
+        unsafe { Self::load(&array) }
     }
 
     /// Converts a SIMD vector to an array.
     pub const fn to_array(self) -> [T; N] {
-        // SAFETY: Transmuting between `Simd<T, N>` and `[T; N]`
-        // is always valid. No need to use `read_unaligned` here, since
-        // the vector never has a lower alignment than the array.
+        let mut tmp = core::mem::MaybeUninit::uninit();
+        // SAFETY: writing to `tmp` is safe and initializes it.
         //
-        // FIXME: We currently use a pointer read instead of `transmute_copy` because
-        // it results in better codegen with optimizations disabled, but we should
-        // probably just use `transmute` once that works on const generic types.
+        // FIXME: We currently use a pointer store instead of `transmute_copy` because `repr(simd)`
+        // results in padding for non-power-of-2 vectors (so vectors are larger than arrays).
         //
         // NOTE: This deliberately doesn't just use `self.0`, see the comment
         // on the struct definition for details.
-        unsafe { (&self as *const Self as *const [T; N]).read() }
+        unsafe {
+            self.store(tmp.as_mut_ptr());
+            tmp.assume_init()
+        }
     }
 
     /// Converts a slice to a SIMD vector containing `slice[..N]`.
