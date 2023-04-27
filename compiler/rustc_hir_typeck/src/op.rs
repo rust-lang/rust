@@ -408,7 +408,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 };
 
-                let is_compatible = |lhs_ty, rhs_ty| {
+                let is_compatible_after_call = |lhs_ty, rhs_ty| {
                     self.lookup_op_method(
                         lhs_ty,
                         Some((rhs_expr, rhs_ty)),
@@ -416,6 +416,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         expected,
                     )
                     .is_ok()
+                        // Suggest calling even if, after calling, the types don't
+                        // implement the operator, since it'll lead to better
+                        // diagnostics later.
+                        || self.can_eq(self.param_env, lhs_ty, rhs_ty)
                 };
 
                 // We should suggest `a + b` => `*a + b` if `a` is copy, and suggest
@@ -436,16 +440,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         suggest_deref_binop(*lhs_deref_ty);
                     }
                 } else if self.suggest_fn_call(&mut err, lhs_expr, lhs_ty, |lhs_ty| {
-                    is_compatible(lhs_ty, rhs_ty)
+                    is_compatible_after_call(lhs_ty, rhs_ty)
                 }) || self.suggest_fn_call(&mut err, rhs_expr, rhs_ty, |rhs_ty| {
-                    is_compatible(lhs_ty, rhs_ty)
+                    is_compatible_after_call(lhs_ty, rhs_ty)
                 }) || self.suggest_two_fn_call(
                     &mut err,
                     rhs_expr,
                     rhs_ty,
                     lhs_expr,
                     lhs_ty,
-                    |lhs_ty, rhs_ty| is_compatible(lhs_ty, rhs_ty),
+                    |lhs_ty, rhs_ty| is_compatible_after_call(lhs_ty, rhs_ty),
                 ) {
                     // Cool
                 }

@@ -11,11 +11,12 @@ note: an implementation of `PartialEq<fn(()) -> A {A::Value}>` might be missing 
    |
 LL | enum A {
    | ^^^^^^ must implement `PartialEq<fn(()) -> A {A::Value}>`
-help: consider annotating `A` with `#[derive(PartialEq)]`
+note: the trait `PartialEq` must be implemented
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+help: use parentheses to construct this tuple variant
    |
-LL + #[derive(PartialEq)]
-LL | enum A {
-   |
+LL |     a == A::Value(/* () */);
+   |                  ++++++++++
 
 error: aborting due to previous error
 
