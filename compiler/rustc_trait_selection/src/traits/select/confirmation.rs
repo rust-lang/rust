@@ -279,11 +279,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         ImplSourceBuiltinData { nested: obligations }
     }
 
-    #[instrument(skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn confirm_transmutability_candidate(
         &mut self,
         obligation: &TraitObligation<'tcx>,
     ) -> Result<ImplSourceBuiltinData<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+        #[instrument(level = "debug", skip(tcx, obligation, predicate))]
         fn flatten_answer_tree<'tcx>(
             tcx: TyCtxt<'tcx>,
             obligation: &TraitObligation<'tcx>,
@@ -291,11 +292,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             answer: rustc_transmute::Answer<rustc_transmute::layout::rustc::Ref<'tcx>>,
         ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
             match answer {
-                rustc_transmute::Answer::Yes => Ok(vec![]),
-                rustc_transmute::Answer::No(_) => Err(Unimplemented),
+                Ok(None) => Ok(vec![]),
+                Err(_) => Err(Unimplemented),
                 // FIXME(bryangarza): Add separate `IfAny` case, instead of treating as `IfAll`
-                rustc_transmute::Answer::IfAll(answers)
-                | rustc_transmute::Answer::IfAny(answers) => {
+                Ok(Some(rustc_transmute::Condition::IfAll(answers)))
+                | Ok(Some(rustc_transmute::Condition::IfAny(answers))) => {
                     let mut nested = vec![];
                     for flattened in answers
                         .into_iter()
@@ -305,7 +306,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                     Ok(nested)
                 }
-                rustc_transmute::Answer::IfTransmutable { src, dst } => {
+                Ok(Some(rustc_transmute::Condition::IfTransmutable { src, dst })) => {
                     let trait_def_id = obligation.predicate.def_id();
                     let scope = predicate.trait_ref.substs.type_at(2);
                     let assume_const = predicate.trait_ref.substs.const_at(3);
@@ -334,8 +335,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
         }
 
-        debug!(?obligation, "confirm_transmutability_candidate");
-
         // We erase regions here because transmutability calls layout queries,
         // which does not handle inference regions and doesn't particularly
         // care about other regions. Erasing late-bound regions is equivalent
@@ -352,21 +351,21 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return Err(Unimplemented);
         };
 
+        let dst = predicate.trait_ref.substs.type_at(0);
+        let src = predicate.trait_ref.substs.type_at(1);
         let mut transmute_env = rustc_transmute::TransmuteTypeEnv::new(self.infcx);
         let maybe_transmutable = transmute_env.is_transmutable(
             obligation.cause.clone(),
-            rustc_transmute::Types {
-                dst: predicate.trait_ref.substs.type_at(0),
-                src: predicate.trait_ref.substs.type_at(1),
-            },
+            rustc_transmute::Types { dst, src },
             predicate.trait_ref.substs.type_at(2),
             assume,
         );
 
-        info!(?maybe_transmutable);
-        let nested = flatten_answer_tree(self.tcx(), obligation, predicate, maybe_transmutable)?;
-        info!(?nested);
-        Ok(ImplSourceBuiltinData { nested })
+        debug!(?src, ?dst);
+        let fully_flattened =
+            flatten_answer_tree(self.tcx(), obligation, predicate, maybe_transmutable)?;
+        debug!(?fully_flattened);
+        Ok(ImplSourceBuiltinData { nested: fully_flattened })
     }
 
     /// This handles the case where an `auto trait Foo` impl is being used.

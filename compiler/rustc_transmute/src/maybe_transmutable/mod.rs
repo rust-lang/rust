@@ -5,7 +5,7 @@ mod tests;
 use crate::{
     layout::{self, dfa, Byte, Dfa, Nfa, Ref, Tree, Uninhabited},
     maybe_transmutable::query_context::QueryContext,
-    Answer, Map, Reason,
+    Answer, Condition, Map, Reason,
 };
 
 pub(crate) struct MaybeTransmutableQuery<L, C>
@@ -76,12 +76,12 @@ mod rustc {
                 let dst = Tree::from_ty(dst, context);
 
                 match (src, dst) {
-                    // Answer `Yes` here, because 'unknown layout' and type errors will already
+                    // Answer `Ok(None)` here, because 'unknown layout' and type errors will already
                     // be reported by rustc. No need to spam the user with more errors.
-                    (Err(Err::TypeError(_)), _) | (_, Err(Err::TypeError(_))) => Err(Answer::Yes),
-                    (Err(Err::Unknown), _) | (_, Err(Err::Unknown)) => Err(Answer::Yes),
+                    (Err(Err::TypeError(_)), _) | (_, Err(Err::TypeError(_))) => Err(Ok(None)),
+                    (Err(Err::Unknown), _) | (_, Err(Err::Unknown)) => Err(Ok(None)),
                     (Err(Err::Unspecified), _) | (_, Err(Err::Unspecified)) => {
-                        Err(Answer::No(Reason::SrcIsUnspecified))
+                        Err(Err(Reason::SrcIsUnspecified))
                     }
                     (Ok(src), Ok(dst)) => Ok((src, dst)),
                 }
@@ -127,13 +127,12 @@ where
             // Convert `src` from a tree-based representation to an NFA-based representation.
             // If the conversion fails because `src` is uninhabited, conclude that the transmutation
             // is acceptable, because instances of the `src` type do not exist.
-            let src = Nfa::from_tree(src).map_err(|Uninhabited| Answer::Yes)?;
+            let src = Nfa::from_tree(src).map_err(|Uninhabited| Ok(None))?;
 
             // Convert `dst` from a tree-based representation to an NFA-based representation.
             // If the conversion fails because `src` is uninhabited, conclude that the transmutation
             // is unacceptable, because instances of the `dst` type do not exist.
-            let dst =
-                Nfa::from_tree(dst).map_err(|Uninhabited| Answer::No(Reason::DstIsPrivate))?;
+            let dst = Nfa::from_tree(dst).map_err(|Uninhabited| Err(Reason::DstIsPrivate))?;
 
             Ok((src, dst))
         });
@@ -205,13 +204,13 @@ where
         } else {
             let answer = if dst_state == self.dst.accepting {
                 // truncation: `size_of(Src) >= size_of(Dst)`
-                Answer::Yes
+                Ok(None)
             } else if src_state == self.src.accepting {
                 // extension: `size_of(Src) >= size_of(Dst)`
                 if let Some(dst_state_prime) = self.dst.byte_from(dst_state, Byte::Uninit) {
                     self.answer_memo(cache, src_state, dst_state_prime)
                 } else {
-                    Answer::No(Reason::DstIsTooBig)
+                    Err(Reason::DstIsTooBig)
                 }
             } else {
                 let src_quantifier = if self.assume.validity {
@@ -244,7 +243,7 @@ where
                             } else {
                                 // otherwise, we've exhausted our options.
                                 // the DFAs, from this point onwards, are bit-incompatible.
-                                Answer::No(Reason::DstIsBitIncompatible)
+                                Err(Reason::DstIsBitIncompatible)
                             }
                         },
                     ),
@@ -252,16 +251,16 @@ where
 
                 // The below early returns reflect how this code would behave:
                 //   if self.assume.validity {
-                //       bytes_answer.or(refs_answer)
+                //       or(bytes_answer, refs_answer)
                 //   } else {
-                //       bytes_answer.and(refs_answer)
+                //       and(bytes_answer, refs_answer)
                 //   }
                 // ...if `refs_answer` was computed lazily. The below early
                 // returns can be deleted without impacting the correctness of
                 // the algoritm; only its performance.
                 match bytes_answer {
-                    Answer::No(..) if !self.assume.validity => return bytes_answer,
-                    Answer::Yes if self.assume.validity => return bytes_answer,
+                    Err(_) if !self.assume.validity => return bytes_answer,
+                    Ok(None) if self.assume.validity => return bytes_answer,
                     _ => {}
                 };
 
@@ -277,20 +276,25 @@ where
                                     .into_iter()
                                     .map(|(&dst_ref, &dst_state_prime)| {
                                         if !src_ref.is_mutable() && dst_ref.is_mutable() {
-                                            Answer::No(Reason::DstIsMoreUnique)
+                                            Err(Reason::DstIsMoreUnique)
                                         } else if !self.assume.alignment
                                             && src_ref.min_align() < dst_ref.min_align()
                                         {
-                                            Answer::No(Reason::DstHasStricterAlignment)
+                                            Err(Reason::DstHasStricterAlignment)
                                         } else {
                                             // ...such that `src` is transmutable into `dst`, if
                                             // `src_ref` is transmutability into `dst_ref`.
-                                            Answer::IfTransmutable { src: src_ref, dst: dst_ref }
-                                                .and(self.answer_memo(
+                                            and(
+                                                Ok(Some(Condition::IfTransmutable {
+                                                    src: src_ref,
+                                                    dst: dst_ref,
+                                                })),
+                                                self.answer_memo(
                                                     cache,
                                                     src_state_prime,
                                                     dst_state_prime,
-                                                ))
+                                                ),
+                                            )
                                         }
                                     }),
                             )
@@ -299,9 +303,9 @@ where
                 );
 
                 if self.assume.validity {
-                    bytes_answer.or(refs_answer)
+                    or(bytes_answer, refs_answer)
                 } else {
-                    bytes_answer.and(refs_answer)
+                    and(bytes_answer, refs_answer)
                 }
             };
             if let Some(..) = cache.insert((src_state, dst_state), answer.clone()) {
@@ -312,81 +316,55 @@ where
     }
 }
 
-impl<R> Answer<R>
-where
-    R: layout::Ref,
-{
-    pub(crate) fn and(self, rhs: Self) -> Self {
-        match (self, rhs) {
-            (_, Self::No(reason)) | (Self::No(reason), _) => Self::No(reason),
-
-            (Self::Yes, other) | (other, Self::Yes) => other,
-
-            (Self::IfAll(mut lhs), Self::IfAll(ref mut rhs)) => {
-                lhs.append(rhs);
-                Self::IfAll(lhs)
-            }
-
-            (constraint, Self::IfAll(mut constraints))
-            | (Self::IfAll(mut constraints), constraint) => {
-                constraints.push(constraint);
-                Self::IfAll(constraints)
-            }
-
-            (lhs, rhs) => Self::IfAll(vec![lhs, rhs]),
+fn and<R>(lhs: Answer<R>, rhs: Answer<R>) -> Answer<R> {
+    // Should propagate errors on the right side, because the initial value
+    // used in `apply` is on the left side.
+    let rhs = rhs?;
+    let lhs = lhs?;
+    Ok(match (lhs, rhs) {
+        // If only one side has a condition, pass it along
+        (None, other) | (other, None) => other,
+        // If both sides have IfAll conditions, merge them
+        (Some(Condition::IfAll(mut lhs)), Some(Condition::IfAll(ref mut rhs))) => {
+            lhs.append(rhs);
+            Some(Condition::IfAll(lhs))
         }
-    }
-
-    pub(crate) fn or(self, rhs: Self) -> Self {
-        match (self, rhs) {
-            (Self::Yes, _) | (_, Self::Yes) => Self::Yes,
-            (other, Self::No(reason)) | (Self::No(reason), other) => other,
-            (Self::IfAny(mut lhs), Self::IfAny(ref mut rhs)) => {
-                lhs.append(rhs);
-                Self::IfAny(lhs)
-            }
-            (constraint, Self::IfAny(mut constraints))
-            | (Self::IfAny(mut constraints), constraint) => {
-                constraints.push(constraint);
-                Self::IfAny(constraints)
-            }
-            (lhs, rhs) => Self::IfAny(vec![lhs, rhs]),
+        // If only one side is an IfAll, add the other Condition to it
+        (constraint, Some(Condition::IfAll(mut constraints)))
+        | (Some(Condition::IfAll(mut constraints)), constraint) => {
+            constraints.push(Ok(constraint));
+            Some(Condition::IfAll(constraints))
         }
-    }
+        // Otherwise, both lhs and rhs conditions can be combined in a parent IfAll
+        (lhs, rhs) => Some(Condition::IfAll(vec![Ok(lhs), Ok(rhs)])),
+    })
 }
 
-pub fn for_all<R, I, F>(iter: I, f: F) -> Answer<R>
-where
-    R: layout::Ref,
-    I: IntoIterator,
-    F: FnMut(<I as IntoIterator>::Item) -> Answer<R>,
-{
-    use std::ops::ControlFlow::{Break, Continue};
-    let (Continue(result) | Break(result)) =
-        iter.into_iter().map(f).try_fold(Answer::Yes, |constraints, constraint| {
-            match constraint.and(constraints) {
-                Answer::No(reason) => Break(Answer::No(reason)),
-                maybe => Continue(maybe),
-            }
-        });
-    result
-}
-
-pub fn there_exists<R, I, F>(iter: I, f: F) -> Answer<R>
-where
-    R: layout::Ref,
-    I: IntoIterator,
-    F: FnMut(<I as IntoIterator>::Item) -> Answer<R>,
-{
-    use std::ops::ControlFlow::{Break, Continue};
-    let (Continue(result) | Break(result)) = iter.into_iter().map(f).try_fold(
-        Answer::No(Reason::DstIsBitIncompatible),
-        |constraints, constraint| match constraint.or(constraints) {
-            Answer::Yes => Break(Answer::Yes),
-            maybe => Continue(maybe),
-        },
-    );
-    result
+fn or<R>(lhs: Answer<R>, rhs: Answer<R>) -> Answer<R> {
+    // If both are errors, then we should return the one on the right
+    if lhs.is_err() && rhs.is_err() {
+        return rhs;
+    }
+    // Otherwise, errors can be ignored for the rest of the pattern matching
+    let lhs = lhs.unwrap_or(None);
+    let rhs = rhs.unwrap_or(None);
+    Ok(match (lhs, rhs) {
+        // If only one side has a condition, pass it along
+        (None, other) | (other, None) => other,
+        // If both sides have IfAny conditions, merge them
+        (Some(Condition::IfAny(mut lhs)), Some(Condition::IfAny(ref mut rhs))) => {
+            lhs.append(rhs);
+            Some(Condition::IfAny(lhs))
+        }
+        // If only one side is an IfAny, add the other Condition to it
+        (constraint, Some(Condition::IfAny(mut constraints)))
+        | (Some(Condition::IfAny(mut constraints)), constraint) => {
+            constraints.push(Ok(constraint));
+            Some(Condition::IfAny(constraints))
+        }
+        // Otherwise, both lhs and rhs conditions can be combined in a parent IfAny
+        (lhs, rhs) => Some(Condition::IfAny(vec![Ok(lhs), Ok(rhs)])),
+    })
 }
 
 pub enum Quantifier {
@@ -403,16 +381,14 @@ impl Quantifier {
         use std::ops::ControlFlow::{Break, Continue};
 
         let (init, try_fold_f): (_, fn(_, _) -> _) = match self {
-            Self::ThereExists => {
-                (Answer::No(Reason::DstIsBitIncompatible), |accum: Answer<R>, next| {
-                    match accum.or(next) {
-                        Answer::Yes => Break(Answer::Yes),
-                        maybe => Continue(maybe),
-                    }
-                })
-            }
-            Self::ForAll => (Answer::Yes, |accum: Answer<R>, next| match accum.and(next) {
-                Answer::No(reason) => Break(Answer::No(reason)),
+            Self::ThereExists => (Err(Reason::DstIsBitIncompatible), |accum: Answer<R>, next| {
+                match or(accum, next) {
+                    Ok(None) => Break(Ok(None)),
+                    maybe => Continue(maybe),
+                }
+            }),
+            Self::ForAll => (Ok(None), |accum: Answer<R>, next| match and(accum, next) {
+                Err(reason) => Break(Err(reason)),
                 maybe => Continue(maybe),
             }),
         };

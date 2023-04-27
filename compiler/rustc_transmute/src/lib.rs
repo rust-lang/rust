@@ -19,15 +19,12 @@ pub struct Assume {
     pub validity: bool,
 }
 
-/// The type encodes answers to the question: "Are these types transmutable?"
-#[derive(Debug, Hash, Eq, PartialEq, PartialOrd, Ord, Clone)]
-pub enum Answer<R> {
-    /// `Src` is transmutable into `Dst`.
-    Yes,
+/// Either we have an error, or we have an optional Condition that must hold.
+pub type Answer<R> = Result<Option<Condition<R>>, Reason>;
 
-    /// `Src` is NOT transmutable into `Dst`.
-    No(Reason),
-
+/// A condition which must hold for safe transmutation to be possible
+#[derive(Debug, Hash, Eq, PartialEq, Clone)]
+pub enum Condition<R> {
     /// `Src` is transmutable into `Dst`, if `src` is transmutable into `dst`.
     IfTransmutable { src: R, dst: R },
 

@@ -2751,13 +2751,14 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             rustc_transmute::Assume::from_const(self.infcx.tcx, obligation.param_env, trait_ref.substs.const_at(3)) else {
                 span_bug!(span, "Unable to construct rustc_transmute::Assume where it was previously possible");
             };
+        // FIXME(bryangarza): Need to flatten here too
         match rustc_transmute::TransmuteTypeEnv::new(self.infcx).is_transmutable(
             obligation.cause,
             src_and_dst,
             scope,
             assume,
         ) {
-            rustc_transmute::Answer::No(reason) => {
+            Err(reason) => {
                 let dst = trait_ref.substs.type_at(0);
                 let src = trait_ref.substs.type_at(1);
                 let custom_err_msg = format!(
@@ -2795,7 +2796,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 (custom_err_msg, Some(reason_msg))
             }
             // Should never get a Yes at this point! We already ran it before, and did not get a Yes.
-            rustc_transmute::Answer::Yes => span_bug!(
+            Ok(None) => span_bug!(
                 span,
                 "Inconsistent rustc_transmute::is_transmutable(...) result, got Yes",
             ),

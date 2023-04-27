@@ -675,11 +675,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             scope,
             assume,
         ) {
-            rustc_transmute::Answer::Yes => Ok(Certainty::Yes),
-            rustc_transmute::Answer::No(_)
-            | rustc_transmute::Answer::IfTransmutable { .. }
-            | rustc_transmute::Answer::IfAll(_)
-            | rustc_transmute::Answer::IfAny(_) => Err(NoSolution),
+            Ok(None) => Ok(Certainty::Yes),
+            Err(_)
+            | Ok(Some(rustc_transmute::Condition::IfTransmutable { .. }))
+            | Ok(Some(rustc_transmute::Condition::IfAll(_)))
+            | Ok(Some(rustc_transmute::Condition::IfAny(_))) => Err(NoSolution),
         }
     }
 }

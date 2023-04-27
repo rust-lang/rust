@@ -1,6 +1,6 @@
 use super::query_context::test::{Def, UltraMinimal};
 use crate::maybe_transmutable::MaybeTransmutableQuery;
-use crate::{layout, Answer, Reason};
+use crate::{layout, Reason};
 use itertools::Itertools;
 
 mod bool {
@@ -17,7 +17,7 @@ mod bool {
             UltraMinimal,
         )
         .answer();
-        assert_eq!(answer, Answer::Yes);
+        assert_eq!(answer, Ok(None));
     }
 
     #[test]
@@ -30,7 +30,7 @@ mod bool {
             UltraMinimal,
         )
         .answer();
-        assert_eq!(answer, Answer::Yes);
+        assert_eq!(answer, Ok(None));
     }
 
     #[test]
@@ -65,7 +65,7 @@ mod bool {
 
                 if src_set.is_subset(&dst_set) {
                     assert_eq!(
-                        Answer::Yes,
+                        Ok(None),
                         MaybeTransmutableQuery::new(
                             src_layout.clone(),
                             dst_layout.clone(),
@@ -80,7 +80,7 @@ mod bool {
                     );
                 } else if !src_set.is_disjoint(&dst_set) {
                     assert_eq!(
-                        Answer::Yes,
+                        Ok(None),
                         MaybeTransmutableQuery::new(
                             src_layout.clone(),
                             dst_layout.clone(),
@@ -95,7 +95,7 @@ mod bool {
                     );
                 } else {
                     assert_eq!(
-                        Answer::No(Reason::DstIsBitIncompatible),
+                        Err(Reason::DstIsBitIncompatible),
                         MaybeTransmutableQuery::new(
                             src_layout.clone(),
                             dst_layout.clone(),
