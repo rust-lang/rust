@@ -2421,3 +2421,227 @@ pub(crate) struct UnderscoreLiteralSuffix {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(parse_expect_label_found_ident)]
+pub(crate) struct ExpectedLabelFoundIdent {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code = "'", applicability = "machine-applicable", style = "short")]
+    pub start: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_inappropriate_default)]
+#[note]
+pub(crate) struct InappropriateDefault {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub article: &'static str,
+    pub descr: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_recover_import_as_use)]
+pub(crate) struct RecoverImportAsUse {
+    #[primary_span]
+    #[suggestion(code = "use", applicability = "machine-applicable", style = "short")]
+    pub span: Span,
+    pub token_name: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_single_colon_import_path)]
+#[note]
+pub(crate) struct SingleColonImportPath {
+    #[primary_span]
+    #[suggestion(code = "::", applicability = "machine-applicable", style = "short")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_bad_item_kind)]
+#[help]
+pub(crate) struct BadItemKind {
+    #[primary_span]
+    pub span: Span,
+    pub descr: &'static str,
+    pub ctx: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_single_colon_struct_type)]
+pub(crate) struct SingleColonStructType {
+    #[primary_span]
+    #[suggestion(code = "::", applicability = "maybe-incorrect", style = "verbose")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_equals_struct_default)]
+pub(crate) struct EqualsStructDefault {
+    #[primary_span]
+    #[suggestion(code = "", applicability = "machine-applicable")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_macro_rules_missing_bang)]
+pub(crate) struct MacroRulesMissingBang {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code = "!", applicability = "machine-applicable", style = "verbose")]
+    pub hi: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_macro_name_remove_bang)]
+pub(crate) struct MacroNameRemoveBang {
+    #[primary_span]
+    #[suggestion(code = "", applicability = "machine-applicable")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_macro_rules_visibility)]
+pub(crate) struct MacroRulesVisibility<'a> {
+    #[primary_span]
+    #[suggestion(code = "#[macro_export]", applicability = "maybe-incorrect")]
+    pub span: Span,
+    pub vis: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_macro_invocation_visibility)]
+#[help]
+pub(crate) struct MacroInvocationVisibility<'a> {
+    #[primary_span]
+    #[suggestion(code = "", applicability = "machine-applicable")]
+    pub span: Span,
+    pub vis: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_nested_adt)]
+pub(crate) struct NestedAdt<'a> {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code = "", applicability = "maybe-incorrect")]
+    pub item: Span,
+    pub keyword: &'a str,
+    pub kw_str: Cow<'a, str>,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_function_body_equals_expr)]
+pub(crate) struct FunctionBodyEqualsExpr {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: FunctionBodyEqualsExprSugg,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
+pub(crate) struct FunctionBodyEqualsExprSugg {
+    #[suggestion_part(code = "{{")]
+    pub eq: Span,
+    #[suggestion_part(code = " }}")]
+    pub semi: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_box_not_pat)]
+pub(crate) struct BoxNotPat {
+    #[primary_span]
+    pub span: Span,
+    #[note]
+    pub kw: Span,
+    #[suggestion(code = "r#", applicability = "maybe-incorrect", style = "verbose")]
+    pub lo: Span,
+    pub descr: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_unmatched_angle)]
+pub(crate) struct UnmatchedAngle {
+    #[primary_span]
+    #[suggestion(code = "", applicability = "machine-applicable")]
+    pub span: Span,
+    pub plural: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_missing_plus_in_bounds)]
+pub(crate) struct MissingPlusBounds {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code = " +", applicability = "maybe-incorrect", style = "verbose")]
+    pub hi: Span,
+    pub sym: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_incorrect_braces_trait_bounds)]
+pub(crate) struct IncorrectBracesTraitBounds {
+    #[primary_span]
+    pub span: Vec<Span>,
+    #[subdiagnostic]
+    pub sugg: IncorrectBracesTraitBoundsSugg,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
+pub(crate) struct IncorrectBracesTraitBoundsSugg {
+    #[suggestion_part(code = " ")]
+    pub l: Span,
+    #[suggestion_part(code = "")]
+    pub r: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_kw_bad_case)]
+pub(crate) struct KwBadCase<'a> {
+    #[primary_span]
+    #[suggestion(code = "{kw}", applicability = "machine-applicable")]
+    pub span: Span,
+    pub kw: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_meta_bad_delim)]
+pub(crate) struct MetaBadDelim {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: MetaBadDelimSugg,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_cfg_attr_bad_delim)]
+pub(crate) struct CfgAttrBadDelim {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: MetaBadDelimSugg,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parse_meta_bad_delim_suggestion, applicability = "machine-applicable")]
+pub(crate) struct MetaBadDelimSugg {
+    #[suggestion_part(code = "(")]
+    pub open: Span,
+    #[suggestion_part(code = ")")]
+    pub close: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_malformed_cfg_attr)]
+#[note]
+pub(crate) struct MalformedCfgAttr {
+    #[primary_span]
+    #[suggestion(code = "{sugg}")]
+    pub span: Span,
+    pub sugg: &'static str,
+}

@@ -1,6 +1,6 @@
 //! Meta-syntax validation logic of attributes for post-expansion.
 
-use crate::parse_in;
+use crate::{errors, parse_in};
 
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::MetaItemKind;
@@ -45,7 +45,7 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
         kind: match &item.args {
             AttrArgs::Empty => MetaItemKind::Word,
             AttrArgs::Delimited(DelimArgs { dspan, delim, tokens }) => {
-                check_meta_bad_delim(sess, *dspan, *delim, "wrong meta list delimiters");
+                check_meta_bad_delim(sess, *dspan, *delim);
                 let nmis = parse_in(sess, tokens.clone(), "meta list", |p| p.parse_meta_seq_top())?;
                 MetaItemKind::List(nmis)
             }
@@ -84,19 +84,24 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
     })
 }
 
-pub fn check_meta_bad_delim(sess: &ParseSess, span: DelimSpan, delim: MacDelimiter, msg: &str) {
+pub fn check_meta_bad_delim(sess: &ParseSess, span: DelimSpan, delim: MacDelimiter) {
     if let ast::MacDelimiter::Parenthesis = delim {
         return;
     }
+    sess.emit_err(errors::MetaBadDelim {
+        span: span.entire(),
+        sugg: errors::MetaBadDelimSugg { open: span.open, close: span.close },
+    });
+}
 
-    sess.span_diagnostic
-        .struct_span_err(span.entire(), msg)
-        .multipart_suggestion(
-            "the delimiters should be `(` and `)`",
-            vec![(span.open, "(".to_string()), (span.close, ")".to_string())],
-            Applicability::MachineApplicable,
-        )
-        .emit();
+pub fn check_cfg_attr_bad_delim(sess: &ParseSess, span: DelimSpan, delim: MacDelimiter) {
+    if let ast::MacDelimiter::Parenthesis = delim {
+        return;
+    }
+    sess.emit_err(errors::CfgAttrBadDelim {
+        span: span.entire(),
+        sugg: errors::MetaBadDelimSugg { open: span.open, close: span.close },
+    });
 }
 
 /// Checks that the given meta-item is compatible with this `AttributeTemplate`.

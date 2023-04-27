@@ -8,7 +8,7 @@ use rustc_ast::{
     AssocConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, ParenthesizedArgs,
     Path, PathSegment, QSelf,
 };
-use rustc_errors::{pluralize, Applicability, PResult};
+use rustc_errors::{Applicability, PResult};
 use rustc_span::source_map::{BytePos, Span};
 use rustc_span::symbol::{kw, sym, Ident};
 use std::mem;
@@ -464,23 +464,10 @@ impl<'a> Parser<'a> {
                     // i.e. no multibyte characters, in this range.
                     let span =
                         lo.with_hi(lo.lo() + BytePos(snapshot.unmatched_angle_bracket_count));
-                    self.struct_span_err(
+                    self.sess.emit_err(errors::UnmatchedAngle {
                         span,
-                        &format!(
-                            "unmatched angle bracket{}",
-                            pluralize!(snapshot.unmatched_angle_bracket_count)
-                        ),
-                    )
-                    .span_suggestion(
-                        span,
-                        &format!(
-                            "remove extra angle bracket{}",
-                            pluralize!(snapshot.unmatched_angle_bracket_count)
-                        ),
-                        "",
-                        Applicability::MachineApplicable,
-                    )
-                    .emit();
+                        plural: snapshot.unmatched_angle_bracket_count > 1,
+                    });
 
                     // Try again without unmatched angle bracket characters.
                     self.parse_angle_args(ty_generics)

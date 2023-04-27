@@ -3151,14 +3151,10 @@ impl<'a> Parser<'a> {
         let label = format!("'{}", ident.name);
         let ident = Ident { name: Symbol::intern(&label), span: ident.span };
 
-        self.struct_span_err(ident.span, "expected a label, found an identifier")
-            .span_suggestion(
-                ident.span,
-                "labels start with a tick",
-                label,
-                Applicability::MachineApplicable,
-            )
-            .emit();
+        self.sess.emit_err(errors::ExpectedLabelFoundIdent {
+            span: ident.span,
+            start: ident.span.shrink_to_lo(),
+        });
 
         Label { ident }
     }
