@@ -133,7 +133,7 @@ pub(crate) fn external_docs(
     db: &RootDatabase,
     position: &FilePosition,
     target_dir: Option<&OsStr>,
-) -> DocumentationLinks {
+) -> Option<DocumentationLinks> {
     let sema = &Semantics::new(db);
     let file = sema.parse(position.file_id).syntax().clone();
     let token = pick_best_token(file.token_at_offset(position.offset), |kind| match kind {
@@ -141,11 +141,10 @@ pub(crate) fn external_docs(
         T!['('] | T![')'] => 2,
         kind if kind.is_trivia() => 0,
         _ => 1,
-    });
-    let Some(token) = token else { return Default::default() };
+    })?;
     let token = sema.descend_into_macros_single(token);
 
-    let Some(node) = token.parent() else { return Default::default() };
+    let node = token.parent()?;
     let definition = match_ast! {
         match node {
             ast::NameRef(name_ref) => match NameRefClass::classify(sema, &name_ref) {
@@ -153,18 +152,18 @@ pub(crate) fn external_docs(
                 Some(NameRefClass::FieldShorthand { local_ref: _, field_ref }) => {
                     Definition::Field(field_ref)
                 }
-                None => return Default::default(),
+                None => return None,
             },
             ast::Name(name) => match NameClass::classify(sema, &name) {
                 Some(NameClass::Definition(it) | NameClass::ConstReference(it)) => it,
                 Some(NameClass::PatFieldShorthand { local_def: _, field_ref }) => Definition::Field(field_ref),
-                None => return Default::default(),
+                None => return None,
             },
-            _ => return Default::default(),
+            _ => return None
         }
     };
 
-    get_doc_links(db, definition, target_dir)
+    Some(get_doc_links(db, definition, target_dir))
 }
 
 /// Extracts all links from a given markdown text returning the definition text range, link-text
@@ -327,6 +326,10 @@ fn get_doc_links(
     def: Definition,
     target_dir: Option<&OsStr>,
 ) -> DocumentationLinks {
+    let join_url = |base_url: Option<Url>, path: &str| -> Option<Url> {
+        base_url.and_then(|url| url.join(path).ok())
+    };
+
     let Some((target, file, frag)) = filename_and_frag_for_def(db, def) else { return Default::default(); };
 
     let (mut web_url, mut local_url) = get_doc_base_urls(db, target, target_dir);
@@ -339,21 +342,13 @@ fn get_doc_links(
     web_url = join_url(web_url, &file);
     local_url = join_url(local_url, &file);
 
-    set_fragment_for_url(web_url.as_mut(), frag.as_deref());
-    set_fragment_for_url(local_url.as_mut(), frag.as_deref());
+    web_url.as_mut().map(|url| url.set_fragment(frag.as_deref()));
+    local_url.as_mut().map(|url| url.set_fragment(frag.as_deref()));
 
     return DocumentationLinks {
         web_url: web_url.map(|it| it.into()),
         local_url: local_url.map(|it| it.into()),
     };
-
-    fn join_url(base_url: Option<Url>, path: &str) -> Option<Url> {
-        base_url.and_then(|url| url.join(path).ok())
-    }
-
-    fn set_fragment_for_url(url: Option<&mut Url>, frag: Option<&str>) {
-        url.map(|url| url.set_fragment(frag));
-    }
 }
 
 fn rewrite_intra_doc_link(
@@ -467,8 +462,14 @@ fn get_doc_base_urls(
     def: Definition,
     target_dir: Option<&OsStr>,
 ) -> (Option<Url>, Option<Url>) {
-    let local_doc_path =
-        target_dir.and_then(create_url_from_os_str).and_then(|it| it.join("doc/").ok());
+    let local_doc_path = target_dir
+        .and_then(|path: &OsStr| -> Option<Url> {
+            let mut with_prefix = OsStr::new("file:///").to_os_string();
+            with_prefix.push(path);
+            with_prefix.push("/");
+            with_prefix.to_str().and_then(|s| Url::parse(s).ok())
+        })
+        .and_then(|it| it.join("doc/").ok());
     // special case base url of `BuiltinType` to core
     // https://github.com/rust-lang/rust-analyzer/issues/12250
     if let Definition::BuiltinType(..) = def {
@@ -533,14 +534,7 @@ fn get_doc_base_urls(
         .and_then(|it| it.join(&format!("{display_name}/")).ok());
     let local_base = local_base.and_then(|it| it.join(&format!("{display_name}/")).ok());
 
-    return (web_base, local_base);
-
-    fn create_url_from_os_str(path: &OsStr) -> Option<Url> {
-        let mut with_prefix = OsStr::new("file:///").to_os_string();
-        with_prefix.push(path);
-        with_prefix.push("/");
-        with_prefix.to_str().and_then(|s| Url::parse(s).ok())
-    }
+    (web_base, local_base)
 }
 
 /// Get the filename and extension generated for a symbol by rustdoc.

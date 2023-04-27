@@ -476,7 +476,7 @@ impl Analysis {
         position: FilePosition,
         target_dir: Option<&OsStr>,
     ) -> Cancellable<doc_links::DocumentationLinks> {
-        self.with_db(|db| doc_links::external_docs(db, &position, target_dir))
+        self.with_db(|db| doc_links::external_docs(db, &position, target_dir).unwrap_or_default())
     }
 
     /// Computes parameter information at the given position.

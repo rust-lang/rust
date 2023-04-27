@@ -1537,14 +1537,16 @@ pub(crate) fn handle_open_docs(
     params: lsp_types::TextDocumentPositionParams,
 ) -> Result<(Option<lsp_types::Url>, Option<lsp_types::Url>)> {
     let _p = profile::span("handle_open_docs");
+    let file_uri = &params.text_document.uri;
+    let file_id = from_proto::file_id(&snap, file_uri)?;
     let position = from_proto::file_position(&snap, params)?;
 
-    let cargo = match snap.workspaces.get(0) {
-        Some(ProjectWorkspace::Cargo { cargo, .. }) => Some(cargo),
+    let cargo = match &*snap.analysis.crates_for(file_id)? {
+        &[crate_id, ..] => snap.cargo_target_for_crate_root(crate_id).map(|(it, _)| it),
         _ => None,
     };
-    let target_dir =
-        cargo.and_then(|cargo| Some(cargo.target_directory())).and_then(|p| Some(p.as_os_str()));
+
+    let target_dir = cargo.map(|cargo| cargo.target_directory()).map(|p| p.as_os_str());
     let Ok(remote_urls) = snap.analysis.external_docs(position, target_dir) else { return Ok((None, None)); };
 
     let web_url = remote_urls.web_url.and_then(|it| Url::parse(&it).ok());
