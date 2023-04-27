@@ -573,22 +573,6 @@ impl<'a> MemDecoder<'a> {
         self.read_raw_bytes(N).try_into().unwrap()
     }
 
-    // The trait method doesn't have a lifetime parameter, and we need a version of this
-    // that definitely returns a slice based on the underlying storage as opposed to
-    // the Decoder itself in order to implement read_str efficiently.
-    #[inline]
-    fn read_raw_bytes_inherent(&mut self, bytes: usize) -> &'a [u8] {
-        if bytes > self.remaining() {
-            Self::decoder_exhausted();
-        }
-        // SAFETY: We just checked if this range is in-bounds above.
-        unsafe {
-            let slice = std::slice::from_raw_parts(self.current, bytes);
-            self.current = self.current.add(bytes);
-            slice
-        }
-    }
-
     /// While we could manually expose manipulation of the decoder position,
     /// all current users of that method would need to reset the position later,
     /// incurring the bounds check of set_position twice.
@@ -706,14 +690,22 @@ impl<'a> Decoder for MemDecoder<'a> {
     #[inline]
     fn read_str(&mut self) -> &str {
         let len = self.read_usize();
-        let bytes = self.read_raw_bytes_inherent(len + 1);
+        let bytes = self.read_raw_bytes(len + 1);
         assert!(bytes[len] == STR_SENTINEL);
         unsafe { std::str::from_utf8_unchecked(&bytes[..len]) }
     }
 
     #[inline]
-    fn read_raw_bytes(&mut self, bytes: usize) -> &[u8] {
-        self.read_raw_bytes_inherent(bytes)
+    fn read_raw_bytes(&mut self, bytes: usize) -> &'a [u8] {
+        if bytes > self.remaining() {
+            Self::decoder_exhausted();
+        }
+        // SAFETY: We just checked if this range is in-bounds above.
+        unsafe {
+            let slice = std::slice::from_raw_parts(self.current, bytes);
+            self.current = self.current.add(bytes);
+            slice
+        }
     }
 
     #[inline]
