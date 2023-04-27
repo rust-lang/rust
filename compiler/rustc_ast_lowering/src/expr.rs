@@ -185,15 +185,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::AsyncGeneratorKind::Block,
                     |this| this.with_new_scopes(|this| this.lower_block_expr(block)),
                 ),
-                ExprKind::Await(expr, await_kw_span) => {
-                    let await_kw_span = if expr.span.hi() < await_kw_span.hi() {
-                        *await_kw_span
-                    } else {
-                        // this is a recovered `await expr`
-                        e.span
-                    };
-                    self.lower_expr_await(await_kw_span, expr)
-                }
+                ExprKind::Await(expr, await_kw_span) => self.lower_expr_await(*await_kw_span, expr),
                 ExprKind::Closure(box Closure {
                     binder,
                     capture_clause,
@@ -710,7 +702,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             Some(hir::GeneratorKind::Async(_)) => {}
             Some(hir::GeneratorKind::Gen) | None => {
                 self.tcx.sess.emit_err(AwaitOnlyInAsyncFnAndBlocks {
-                    dot_await_span: await_kw_span,
+                    await_kw_span,
                     item_span: self.current_item,
                 });
             }

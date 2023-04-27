@@ -1592,23 +1592,25 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             // could also check if it is an fn call (very likely) and suggest changing *that*, if
             // it is from the local crate.
 
-            if let hir::Node::Expr(parent_expr) = hir.get_parent(*hir_id)
-                // Peel off the DesugaringKind from the span
-                && let Some(desugar_parent_span) = parent_expr.span.parent_callsite()
+            // use nth(1) to skip one layer of desugaring from `IntoIter::into_iter`
+            if let Some((_, hir::Node::Expr(await_expr))) = hir.parent_iter(*hir_id).nth(1)
+                && let Some(expr_span) = expr.span.find_ancestor_inside(await_expr.span)
             {
                 let removal_span = self.tcx
                     .sess
                     .source_map()
-                    .span_extend_while(expr.span, char::is_whitespace)
-                    .unwrap_or(expr.span)
+                    .span_extend_while(expr_span, char::is_whitespace)
+                    .unwrap_or(expr_span)
                     .shrink_to_hi()
-                    .to(desugar_parent_span);
+                    .to(await_expr.span.shrink_to_hi());
                 err.span_suggestion(
                     removal_span,
                     "remove the `.await`",
                     "",
                     Applicability::MachineApplicable,
                 );
+            } else {
+                err.span_label(obligation.cause.span, "remove the `.await`");
             }
             // FIXME: account for associated `async fn`s.
             if let hir::Expr { span, kind: hir::ExprKind::Call(base, _), .. } = expr {
