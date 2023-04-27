@@ -133,7 +133,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
     fn write_ty_to_typeck_results(&mut self, hir_id: hir::HirId, ty: Ty<'tcx>) {
         debug!("write_ty_to_typeck_results({:?}, {:?})", hir_id, ty);
-        assert!(!ty.needs_infer() && !ty.has_placeholders() && !ty.has_free_regions());
+        assert!(!ty.has_infer() && !ty.has_placeholders() && !ty.has_free_regions());
         self.typeck_results.node_types_mut().insert(hir_id, ty);
     }
 
@@ -508,7 +508,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             fcx_typeck_results.user_provided_types().items().map(|(local_id, c_ty)| {
                 let hir_id = hir::HirId { owner: common_hir_owner, local_id };
 
-                if cfg!(debug_assertions) && c_ty.needs_infer() {
+                if cfg!(debug_assertions) && c_ty.has_infer() {
                     span_bug!(
                         hir_id.to_span(self.fcx.tcx),
                         "writeback: `{:?}` has inference variables",
@@ -527,7 +527,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
         self.typeck_results.user_provided_sigs.extend(
             fcx_typeck_results.user_provided_sigs.items().map(|(&def_id, c_sig)| {
-                if cfg!(debug_assertions) && c_sig.needs_infer() {
+                if cfg!(debug_assertions) && c_sig.has_infer() {
                     span_bug!(
                         self.fcx.tcx.def_span(def_id),
                         "writeback: `{:?}` has inference variables",
@@ -618,7 +618,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         if let Some(substs) = self.fcx.typeck_results.borrow().node_substs_opt(hir_id) {
             let substs = self.resolve(substs, &span);
             debug!("write_substs_to_tcx({:?}, {:?})", hir_id, substs);
-            assert!(!substs.needs_infer() && !substs.has_placeholders());
+            assert!(!substs.has_infer() && !substs.has_placeholders());
             self.typeck_results.node_substs_mut().insert(hir_id, substs);
         }
     }
@@ -693,7 +693,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         {
             let hir_id = hir::HirId { owner: common_hir_owner, local_id };
 
-            if cfg!(debug_assertions) && container.needs_infer() {
+            if cfg!(debug_assertions) && container.has_infer() {
                 span_bug!(
                     hir_id.to_span(self.fcx.tcx),
                     "writeback: `{:?}` has inference variables",
@@ -711,7 +711,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     {
         let mut resolver = Resolver::new(self.fcx, span, self.body);
         let x = x.fold_with(&mut resolver);
-        if cfg!(debug_assertions) && x.needs_infer() {
+        if cfg!(debug_assertions) && x.has_infer() {
             span_bug!(span.to_span(self.fcx.tcx), "writeback: `{:?}` has inference variables", x);
         }
 

@@ -17,7 +17,7 @@ use crate::context::CodegenCx;
 pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>) -> Function<'gcc> {
     let tcx = cx.tcx();
 
-    assert!(!instance.substs.needs_infer());
+    assert!(!instance.substs.has_infer());
     assert!(!instance.substs.has_escaping_bound_vars());
 
     let sym = tcx.symbol_name(instance).name;

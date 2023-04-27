@@ -457,7 +457,7 @@ fn emit_newtype_suggestion_for_raw_ptr(
     ptr_ty: &ty::TypeAndMut<'_>,
     diag: &mut Diagnostic,
 ) {
-    if !self_ty.needs_subst() {
+    if !self_ty.has_param() {
         let mut_key = ptr_ty.mutbl.prefix_str();
         let msg_sugg = "consider introducing a new wrapper type".to_owned();
         let sugg = vec![

@@ -104,8 +104,8 @@ fn resolve_associated_item<'tcx>(
                 "resolving ImplSource::UserDefined: {:?}, {:?}, {:?}, {:?}",
                 param_env, trait_item_id, rcvr_substs, impl_data
             );
-            assert!(!rcvr_substs.needs_infer());
-            assert!(!trait_ref.needs_infer());
+            assert!(!rcvr_substs.has_infer());
+            assert!(!trait_ref.has_infer());
 
             let trait_def_id = tcx.trait_id_of_impl(impl_data.impl_def_id).unwrap();
             let trait_def = tcx.trait_def(trait_def_id);

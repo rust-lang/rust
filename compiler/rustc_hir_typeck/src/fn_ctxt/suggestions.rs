@@ -1384,7 +1384,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         let item_ty = self.tcx.type_of(item.def_id).subst_identity();
         // FIXME(compiler-errors): This check is *so* rudimentary
-        if item_ty.needs_subst() {
+        if item_ty.has_param() {
             return false;
         }
         if self.can_coerce(item_ty, expected_ty) {

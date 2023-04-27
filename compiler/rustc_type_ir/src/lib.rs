@@ -179,7 +179,7 @@ bitflags! {
         /// Does this have `ConstKind::Param`?
         const HAS_CT_PARAM                = 1 << 2;
 
-        const NEEDS_SUBST                 = TypeFlags::HAS_TY_PARAM.bits
+        const HAS_PARAM                 = TypeFlags::HAS_TY_PARAM.bits
                                           | TypeFlags::HAS_RE_PARAM.bits
                                           | TypeFlags::HAS_CT_PARAM.bits;
 
@@ -192,7 +192,7 @@ bitflags! {
 
         /// Does this have inference variables? Used to determine whether
         /// inference is required.
-        const NEEDS_INFER                 = TypeFlags::HAS_TY_INFER.bits
+        const HAS_INFER                 = TypeFlags::HAS_TY_INFER.bits
                                           | TypeFlags::HAS_RE_INFER.bits
                                           | TypeFlags::HAS_CT_INFER.bits;
 

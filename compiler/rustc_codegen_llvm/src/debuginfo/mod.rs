@@ -515,7 +515,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                         ty::Adt(def, ..) if !def.is_box() => {
                             // Again, only create type information if full debuginfo is enabled
                             if cx.sess().opts.debuginfo == DebugInfo::Full
-                                && !impl_self_ty.needs_subst()
+                                && !impl_self_ty.has_param()
                             {
                                 Some(type_di_node(cx, impl_self_ty))
                             } else {

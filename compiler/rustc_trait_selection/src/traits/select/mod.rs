@@ -449,7 +449,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?stack, ?candidates, "winnowed to {} candidates", candidates.len());
 
-        let needs_infer = stack.obligation.predicate.has_non_region_infer();
+        let has_non_region_infer = stack.obligation.predicate.has_non_region_infer();
 
         // If there are STILL multiple candidates, we can further
         // reduce the list by dropping duplicates -- including
@@ -461,7 +461,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.candidate_should_be_dropped_in_favor_of(
                         &candidates[i],
                         &candidates[j],
-                        needs_infer,
+                        has_non_region_infer,
                     ) == DropVictim::Yes
                 });
                 if should_drop_i {
@@ -1000,7 +1000,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Result<EvaluationResult, OverflowError> {
         if !self.is_intercrate()
             && obligation.is_global()
-            && obligation.param_env.caller_bounds().iter().all(|bound| bound.needs_subst())
+            && obligation.param_env.caller_bounds().iter().all(|bound| bound.has_param())
         {
             // If a param env has no global bounds, global obligations do not
             // depend on its particular value in order to work, so we can clear
@@ -1330,7 +1330,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         if self.can_use_global_caches(param_env) {
-            if !trait_pred.needs_infer() {
+            if !trait_pred.has_infer() {
                 debug!(?trait_pred, ?result, "insert_evaluation_cache global");
                 // This may overwrite the cache with the same value
                 // FIXME: Due to #50507 this overwrites the different values
@@ -1516,7 +1516,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // If there are any inference variables in the `ParamEnv`, then we
         // always use a cache local to this particular scope. Otherwise, we
         // switch to a global cache.
-        if param_env.needs_infer() {
+        if param_env.has_infer() {
             return false;
         }
 
@@ -1587,7 +1587,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return false;
         }
         match result {
-            Ok(Some(SelectionCandidate::ParamCandidate(trait_ref))) => !trait_ref.needs_infer(),
+            Ok(Some(SelectionCandidate::ParamCandidate(trait_ref))) => !trait_ref.has_infer(),
             _ => true,
         }
     }
@@ -1613,8 +1613,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if self.can_use_global_caches(param_env) {
             if let Err(Overflow(OverflowError::Canonical)) = candidate {
                 // Don't cache overflow globally; we only produce this in certain modes.
-            } else if !pred.needs_infer() {
-                if !candidate.needs_infer() {
+            } else if !pred.has_infer() {
+                if !candidate.has_infer() {
                     debug!(?pred, ?candidate, "insert_candidate_cache global");
                     // This may overwrite the cache with the same value.
                     tcx.selection_cache.insert((param_env, pred), dep_node, candidate);
@@ -1724,7 +1724,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .map(|InferOk { obligations: _, value: () }| {
                 // This method is called within a probe, so we can't have
                 // inference variables and placeholders escape.
-                if !trait_bound.needs_infer() && !trait_bound.has_placeholders() {
+                if !trait_bound.has_infer() && !trait_bound.has_placeholders() {
                     Some(trait_bound)
                 } else {
                     None
@@ -1840,7 +1840,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         &mut self,
         victim: &EvaluatedCandidate<'tcx>,
         other: &EvaluatedCandidate<'tcx>,
-        needs_infer: bool,
+        has_non_region_infer: bool,
     ) -> DropVictim {
         if victim.candidate == other.candidate {
             return DropVictim::Yes;
@@ -1956,7 +1956,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | (ObjectCandidate(i), ObjectCandidate(j)) => {
                 // Arbitrarily pick the lower numbered candidate for backwards
                 // compatibility reasons. Don't let this affect inference.
-                DropVictim::drop_if(i < j && !needs_infer)
+                DropVictim::drop_if(i < j && !has_non_region_infer)
             }
             (ObjectCandidate(_), ProjectionCandidate(..))
             | (ProjectionCandidate(..), ObjectCandidate(_)) => {
@@ -2062,7 +2062,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                         // existence of multiple marker trait impls tells us nothing
                         // about which one should actually apply.
                         DropVictim::drop_if(
-                            !needs_infer && other.evaluation.must_apply_considering_regions(),
+                            !has_non_region_infer
+                                && other.evaluation.must_apply_considering_regions(),
                         )
                     }
                     None => DropVictim::No,

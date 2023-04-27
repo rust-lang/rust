@@ -305,7 +305,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
 
                 // When polymorphization is enabled, methods which do not depend on their generic
                 // parameters, but the self-type of their impl block do will fail to normalize.
-                if !tcx.sess.opts.unstable_opts.polymorphize || !instance.needs_subst() {
+                if !tcx.sess.opts.unstable_opts.polymorphize || !instance.has_param() {
                     // This is a method within an impl, find out what the self-type is:
                     let impl_self_ty = tcx.subst_and_normalize_erasing_regions(
                         instance.substs,

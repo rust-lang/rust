@@ -2318,7 +2318,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let infcx = match self.infcx() {
             Some(infcx) => infcx,
             None => {
-                assert!(!self_ty.needs_infer());
+                assert!(!self_ty.has_infer());
                 infcx_ = tcx.infer_ctxt().ignoring_regions().build();
                 &infcx_
             }
@@ -2489,7 +2489,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let infcx = if let Some(infcx) = self.infcx() {
             infcx
         } else {
-            assert!(!qself_ty.needs_infer());
+            assert!(!qself_ty.has_infer());
             infcx_ = tcx.infer_ctxt().build();
             &infcx_
         };
@@ -3039,7 +3039,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // the anon const, which is empty. This is why the
                 // `AlwaysApplicable` impl needs a `T: ?Sized` bound for
                 // this to compile if we were to normalize here.
-                if forbid_generic && ty.needs_subst() {
+                if forbid_generic && ty.has_param() {
                     let mut err = tcx.sess.struct_span_err(
                         path.span,
                         "generic `Self` types are currently not permitted in anonymous constants",
