@@ -152,7 +152,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
     instance: Instance<'tcx>,
 ) {
-    assert!(!instance.substs.needs_infer());
+    assert!(!instance.substs.has_infer());
 
     let llfn = cx.get_fn(instance);
 

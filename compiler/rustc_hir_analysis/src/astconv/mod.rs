@@ -2318,7 +2318,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let infcx = match self.infcx() {
             Some(infcx) => infcx,
             None => {
-                assert!(!self_ty.needs_infer());
+                assert!(!self_ty.has_infer());
                 infcx_ = tcx.infer_ctxt().ignoring_regions().build();
                 &infcx_
             }
@@ -2489,7 +2489,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let infcx = if let Some(infcx) = self.infcx() {
             infcx
         } else {
-            assert!(!qself_ty.needs_infer());
+            assert!(!qself_ty.has_infer());
             infcx_ = tcx.infer_ctxt().build();
             &infcx_
         };

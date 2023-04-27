@@ -1027,7 +1027,7 @@ fn check_type_defn<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'tcx>, all_sized: b
                 packed && {
                     let ty = tcx.type_of(variant.fields.raw.last().unwrap().did).subst_identity();
                     let ty = tcx.erase_regions(ty);
-                    if ty.needs_infer() {
+                    if ty.has_infer() {
                         tcx.sess
                             .delay_span_bug(item.span, &format!("inference variables in {:?}", ty));
                         // Just treat unresolved type expression as if it needs drop.

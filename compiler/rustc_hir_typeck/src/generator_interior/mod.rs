@@ -460,7 +460,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                 // Avoid ICEs in needs_drop.
                 let ty = self.fcx.resolve_vars_if_possible(ty);
                 let ty = self.fcx.tcx.erase_regions(ty);
-                if ty.needs_infer() {
+                if ty.has_infer() {
                     self.fcx
                         .tcx
                         .sess

@@ -1327,7 +1327,7 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        if !value.needs_infer() {
+        if !value.has_infer() {
             return value; // Avoid duplicated subst-folding.
         }
         let mut r = InferenceLiteralEraser { tcx: self.tcx };
@@ -1365,7 +1365,7 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn fully_resolve<T: TypeFoldable<TyCtxt<'tcx>>>(&self, value: T) -> FixupResult<'tcx, T> {
         let value = resolve::fully_resolve(self, value);
         assert!(
-            value.as_ref().map_or(true, |value| !value.needs_infer()),
+            value.as_ref().map_or(true, |value| !value.has_infer()),
             "`{value:?}` is not fully resolved"
         );
         value

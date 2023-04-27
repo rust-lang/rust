@@ -79,10 +79,10 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
         self.has_type_flags(TypeFlags::HAS_TY_INFER)
     }
     fn has_non_region_infer(&self) -> bool {
-        self.has_type_flags(TypeFlags::NEEDS_INFER - TypeFlags::HAS_RE_INFER)
+        self.has_type_flags(TypeFlags::HAS_INFER - TypeFlags::HAS_RE_INFER)
     }
-    fn needs_infer(&self) -> bool {
-        self.has_type_flags(TypeFlags::NEEDS_INFER)
+    fn has_infer(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_INFER)
     }
     fn has_placeholders(&self) -> bool {
         self.has_type_flags(

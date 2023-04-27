@@ -215,7 +215,7 @@ impl<'tcx> CtxtInterners<'tcx> {
     ) -> Fingerprint {
         // It's impossible to hash inference variables (and will ICE), so we don't need to try to cache them.
         // Without incremental, we rarely stable-hash types, so let's not do it proactively.
-        if flags.flags.intersects(TypeFlags::NEEDS_INFER) || sess.opts.incremental.is_none() {
+        if flags.flags.intersects(TypeFlags::HAS_INFER) || sess.opts.incremental.is_none() {
             Fingerprint::ZERO
         } else {
             let mut hasher = StableHasher::new();

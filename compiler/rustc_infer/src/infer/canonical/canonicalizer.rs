@@ -564,12 +564,12 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         let _inside_canonical_ctxt_guard = infcx.set_canonicalization_ctxt();
 
         let needs_canonical_flags = if canonicalize_region_mode.any() {
-            TypeFlags::NEEDS_INFER |
+            TypeFlags::HAS_INFER |
             TypeFlags::HAS_FREE_REGIONS | // `HAS_RE_PLACEHOLDER` implies `HAS_FREE_REGIONS`
             TypeFlags::HAS_TY_PLACEHOLDER |
             TypeFlags::HAS_CT_PLACEHOLDER
         } else {
-            TypeFlags::NEEDS_INFER
+            TypeFlags::HAS_INFER
                 | TypeFlags::HAS_RE_PLACEHOLDER
                 | TypeFlags::HAS_TY_PLACEHOLDER
                 | TypeFlags::HAS_CT_PLACEHOLDER
@@ -600,7 +600,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         // Once we have canonicalized `out_value`, it should not
         // contain anything that ties it to this inference context
         // anymore.
-        debug_assert!(!out_value.needs_infer() && !out_value.has_placeholders());
+        debug_assert!(!out_value.has_infer() && !out_value.has_placeholders());
 
         let canonical_variables =
             tcx.mk_canonical_var_infos(&canonicalizer.universe_canonicalized_variables());

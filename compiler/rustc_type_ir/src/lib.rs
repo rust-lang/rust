@@ -192,7 +192,7 @@ bitflags! {
 
         /// Does this have inference variables? Used to determine whether
         /// inference is required.
-        const NEEDS_INFER                 = TypeFlags::HAS_TY_INFER.bits
+        const HAS_INFER                 = TypeFlags::HAS_TY_INFER.bits
                                           | TypeFlags::HAS_RE_INFER.bits
                                           | TypeFlags::HAS_CT_INFER.bits;
 

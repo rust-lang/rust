@@ -366,7 +366,7 @@ fn check_predicates<'tcx>(
             wf::obligations(infcx, tcx.param_env(impl1_def_id), impl1_def_id, 0, arg, span)
                 .unwrap();
 
-        assert!(!obligations.needs_infer());
+        assert!(!obligations.has_infer());
         impl2_predicates
             .extend(traits::elaborate(tcx, obligations).map(|obligation| obligation.predicate))
     }

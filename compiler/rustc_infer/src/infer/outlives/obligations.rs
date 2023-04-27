@@ -347,7 +347,7 @@ where
         let is_opaque = alias_ty.kind(self.tcx) == ty::Opaque;
         if approx_env_bounds.is_empty()
             && trait_bounds.is_empty()
-            && (alias_ty.needs_infer() || is_opaque)
+            && (alias_ty.has_infer() || is_opaque)
         {
             debug!("no declared bounds");
             let opt_variances = is_opaque.then(|| self.tcx.variances_of(alias_ty.def_id));

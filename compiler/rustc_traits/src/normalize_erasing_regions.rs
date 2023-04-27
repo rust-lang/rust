@@ -47,7 +47,7 @@ fn try_normalize_after_erasing_regions<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Par
             // us a test case.
             debug_assert_eq!(normalized_value, resolved_value);
             let erased = infcx.tcx.erase_regions(resolved_value);
-            debug_assert!(!erased.needs_infer(), "{erased:?}");
+            debug_assert!(!erased.has_infer(), "{erased:?}");
             Ok(erased)
         }
         Err(NoSolution) => Err(NoSolution),
