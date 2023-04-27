@@ -82,11 +82,13 @@ where
     /// drop, use [`TaggedPtr`] instead.
     ///
     /// [`TaggedPtr`]: crate::tagged_ptr::TaggedPtr
+    #[inline]
     pub fn new(pointer: P, tag: T) -> Self {
         Self { packed: Self::pack(P::into_ptr(pointer), tag), tag_ghost: PhantomData }
     }
 
     /// Retrieves the pointer.
+    #[inline]
     pub fn pointer(self) -> P
     where
         P: Copy,
@@ -123,6 +125,7 @@ where
     /// according to `self.packed` encoding scheme.
     ///
     /// [`P::into_ptr`]: Pointer::into_ptr
+    #[inline]
     fn pack(ptr: NonNull<P::Target>, tag: T) -> NonNull<P::Target> {
         // Trigger assert!
         let () = Self::ASSERTION;
@@ -145,6 +148,7 @@ where
     }
 
     /// Retrieves the original raw pointer from `self.packed`.
+    #[inline]
     pub(super) fn pointer_raw(&self) -> NonNull<P::Target> {
         self.packed.map_addr(|addr| unsafe { NonZeroUsize::new_unchecked(addr.get() << T::BITS) })
     }
@@ -184,6 +188,7 @@ where
     P: Pointer + Copy,
     T: Tag,
 {
+    #[inline]
     fn clone(&self) -> Self {
         *self
     }
@@ -196,6 +201,7 @@ where
 {
     type Target = P::Target;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         // Safety:
         // `pointer_raw` returns the original pointer from `P::into_ptr` which,
@@ -209,6 +215,7 @@ where
     P: Pointer + DerefMut,
     T: Tag,
 {
+    #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         // Safety:
         // `pointer_raw` returns the original pointer from `P::into_ptr` which,
@@ -235,6 +242,7 @@ where
     P: Pointer,
     T: Tag,
 {
+    #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.packed == other.packed
     }
@@ -252,6 +260,7 @@ where
     P: Pointer,
     T: Tag,
 {
+    #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.packed.hash(state);
     }
