@@ -304,7 +304,7 @@ pub(crate) fn clean_predicate<'tcx>(
             clean_region_outlives_predicate(pred)
         }
         ty::PredicateKind::Clause(ty::Clause::TypeOutlives(pred)) => {
-            clean_type_outlives_predicate(pred, cx)
+            clean_type_outlives_predicate(bound_predicate.rebind(pred), cx)
         }
         ty::PredicateKind::Clause(ty::Clause::Projection(pred)) => {
             Some(clean_projection_predicate(bound_predicate.rebind(pred), cx))
@@ -345,7 +345,7 @@ fn clean_poly_trait_predicate<'tcx>(
 }
 
 fn clean_region_outlives_predicate<'tcx>(
-    pred: ty::OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>,
+    pred: ty::RegionOutlivesPredicate<'tcx>,
 ) -> Option<WherePredicate> {
     let ty::OutlivesPredicate(a, b) = pred;
 
@@ -358,13 +358,13 @@ fn clean_region_outlives_predicate<'tcx>(
 }
 
 fn clean_type_outlives_predicate<'tcx>(
-    pred: ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>,
+    pred: ty::Binder<'tcx, ty::TypeOutlivesPredicate<'tcx>>,
     cx: &mut DocContext<'tcx>,
 ) -> Option<WherePredicate> {
-    let ty::OutlivesPredicate(ty, lt) = pred;
+    let ty::OutlivesPredicate(ty, lt) = pred.skip_binder();
 
     Some(WherePredicate::BoundPredicate {
-        ty: clean_middle_ty(ty::Binder::dummy(ty), cx, None),
+        ty: clean_middle_ty(pred.rebind(ty), cx, None),
         bounds: vec![GenericBound::Outlives(
             clean_middle_region(lt).expect("failed to clean lifetimes"),
         )],
