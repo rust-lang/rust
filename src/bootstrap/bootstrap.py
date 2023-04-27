@@ -211,8 +211,9 @@ def default_build_triple(verbose):
     default_encoding = sys.getdefaultencoding()
 
     if sys.platform == 'darwin':
-        print("not using rustc detection as it is unreliable on macOS")
-        print("falling back to auto-detect")
+        if verbose:
+            print("not using rustc detection as it is unreliable on macOS")
+            print("falling back to auto-detect")
     else:
         try:
             version = subprocess.check_output(["rustc", "--version", "--verbose"],
