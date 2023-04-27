@@ -51,13 +51,6 @@ macro_rules! write_leb128 {
     }};
 }
 
-/// A byte that [cannot occur in UTF8 sequences][utf8]. Used to mark the end of a string.
-/// This way we can skip validation and still be relatively sure that deserialization
-/// did not desynchronize.
-///
-/// [utf8]: https://en.wikipedia.org/w/index.php?title=UTF-8&oldid=1058865525#Codepage_layout
-const STR_SENTINEL: u8 = 0xC1;
-
 impl Encoder for MemEncoder {
     #[inline]
     fn emit_usize(&mut self, v: usize) {
@@ -112,28 +105,6 @@ impl Encoder for MemEncoder {
     #[inline]
     fn emit_i16(&mut self, v: i16) {
         self.data.extend_from_slice(&v.to_le_bytes());
-    }
-
-    #[inline]
-    fn emit_i8(&mut self, v: i8) {
-        self.emit_u8(v as u8);
-    }
-
-    #[inline]
-    fn emit_bool(&mut self, v: bool) {
-        self.emit_u8(if v { 1 } else { 0 });
-    }
-
-    #[inline]
-    fn emit_char(&mut self, v: char) {
-        self.emit_u32(v as u32);
-    }
-
-    #[inline]
-    fn emit_str(&mut self, v: &str) {
-        self.emit_usize(v.len());
-        self.emit_raw_bytes(v.as_bytes());
-        self.emit_u8(STR_SENTINEL);
     }
 
     #[inline]
@@ -481,28 +452,6 @@ impl Encoder for FileEncoder {
     }
 
     #[inline]
-    fn emit_i8(&mut self, v: i8) {
-        self.emit_u8(v as u8);
-    }
-
-    #[inline]
-    fn emit_bool(&mut self, v: bool) {
-        self.emit_u8(if v { 1 } else { 0 });
-    }
-
-    #[inline]
-    fn emit_char(&mut self, v: char) {
-        self.emit_u32(v as u32);
-    }
-
-    #[inline]
-    fn emit_str(&mut self, v: &str) {
-        self.emit_usize(v.len());
-        self.emit_raw_bytes(v.as_bytes());
-        self.emit_u8(STR_SENTINEL);
-    }
-
-    #[inline]
     fn emit_raw_bytes(&mut self, s: &[u8]) {
         self.write_all(s);
     }
@@ -666,33 +615,8 @@ impl<'a> Decoder for MemDecoder<'a> {
     }
 
     #[inline]
-    fn read_i8(&mut self) -> i8 {
-        self.read_byte() as i8
-    }
-
-    #[inline]
     fn read_isize(&mut self) -> isize {
         read_leb128!(self, read_isize_leb128)
-    }
-
-    #[inline]
-    fn read_bool(&mut self) -> bool {
-        let value = self.read_u8();
-        value != 0
-    }
-
-    #[inline]
-    fn read_char(&mut self) -> char {
-        let bits = self.read_u32();
-        std::char::from_u32(bits).unwrap()
-    }
-
-    #[inline]
-    fn read_str(&mut self) -> &str {
-        let len = self.read_usize();
-        let bytes = self.read_raw_bytes(len + 1);
-        assert!(bytes[len] == STR_SENTINEL);
-        unsafe { std::str::from_utf8_unchecked(&bytes[..len]) }
     }
 
     #[inline]
