@@ -6,11 +6,11 @@ LL |     let _ = s == t;
    |             |
    |             S<T>
    |
-note: an implementation of `PartialEq<_>` might be missing for `S<T>`
+note: an implementation of `PartialEq` might be missing for `S<T>`
   --> $DIR/invalid-bin-op.rs:5:1
    |
 LL | struct S<T>(T);
-   | ^^^^^^^^^^^ must implement `PartialEq<_>`
+   | ^^^^^^^^^^^ must implement `PartialEq`
 help: consider annotating `S<T>` with `#[derive(PartialEq)]`
    |
 LL + #[derive(PartialEq)]

@@ -21,11 +21,11 @@ LL |     let y = World::Hello + World::Goodbye;
    |             |
    |             World
    |
-note: an implementation of `Add<_>` might be missing for `World`
+note: an implementation of `Add` might be missing for `World`
   --> $DIR/issue-39018.rs:15:1
    |
 LL | enum World {
-   | ^^^^^^^^^^ must implement `Add<_>`
+   | ^^^^^^^^^^ must implement `Add`
 note: the trait `Add` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 

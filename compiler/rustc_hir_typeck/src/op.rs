@@ -776,6 +776,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ok(method)
             }
             None => {
+                // This path may do some inference, so make sure we've really
+                // doomed compilation so as to not accidentally stabilize new
+                // inference or something here...
+                self.tcx.sess.delay_span_bug(span, "this path really should be doomed...");
+                // Guide inference for the RHS expression if it's provided --
+                // this will allow us to better error reporting, at the expense
+                // of making some error messages a bit more specific.
+                if let Some((rhs_expr, rhs_ty)) = opt_rhs
+                    && rhs_ty.is_ty_var()
+                {
+                    self.check_expr_coercible_to_type(rhs_expr, rhs_ty, None);
+                }
+
                 let (obligation, _) =
                     self.obligation_for_method(cause, trait_did, lhs_ty, Some(input_types));
                 // FIXME: This should potentially just add the obligation to the `FnCtxt`
