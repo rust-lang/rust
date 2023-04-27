@@ -6,11 +6,10 @@ use crate::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::visit::{TypeVisitable, TypeVisitor};
 use crate::Interner;
 use rustc_data_structures::functor::IdFunctor;
+use rustc_data_structures::sync::Lrc;
 use rustc_index::{Idx, IndexVec};
 
 use std::ops::ControlFlow;
-use std::rc::Rc;
-use std::sync::Arc;
 
 ///////////////////////////////////////////////////////////////////////////
 // Atomic structs
@@ -106,25 +105,13 @@ impl<I: Interner, T: TypeVisitable<I>, E: TypeVisitable<I>> TypeVisitable<I> for
     }
 }
 
-impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Rc<T> {
+impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Lrc<T> {
     fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
         self.try_map_id(|value| value.try_fold_with(folder))
     }
 }
 
-impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Rc<T> {
-    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        (**self).visit_with(visitor)
-    }
-}
-
-impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Arc<T> {
-    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        self.try_map_id(|value| value.try_fold_with(folder))
-    }
-}
-
-impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Arc<T> {
+impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Lrc<T> {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         (**self).visit_with(visitor)
     }
@@ -154,19 +141,11 @@ impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Vec<T> {
     }
 }
 
+// `TypeFoldable` isn't impl'd for `&[T]`. It doesn't make sense in the general
+// case, because we can't return a new slice. But note that there are a couple
+// of trivial impls of `TypeFoldable` for specific slice types elsewhere.
+
 impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for &[T] {
-    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        self.iter().try_for_each(|t| t.visit_with(visitor))
-    }
-}
-
-impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Box<[T]> {
-    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        self.try_map_id(|t| t.try_fold_with(folder))
-    }
-}
-
-impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Box<[T]> {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|t| t.visit_with(visitor))
     }

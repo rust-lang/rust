@@ -20,7 +20,7 @@ pub struct MismatchedProjectionTypes<'tcx> {
     pub err: ty::error::TypeError<'tcx>,
 }
 
-#[derive(Clone, TypeFoldable, TypeVisitable)]
+#[derive(Clone)]
 pub struct Normalized<'tcx, T> {
     pub value: T,
     pub obligations: Vec<PredicateObligation<'tcx>>,
