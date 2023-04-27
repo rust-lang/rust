@@ -133,6 +133,7 @@ pub(crate) fn external_docs(
     db: &RootDatabase,
     position: &FilePosition,
     target_dir: Option<&OsStr>,
+    sysroot: Option<&OsStr>,
 ) -> Option<DocumentationLinks> {
     let sema = &Semantics::new(db);
     let file = sema.parse(position.file_id).syntax().clone();
@@ -163,7 +164,7 @@ pub(crate) fn external_docs(
         }
     };
 
-    Some(get_doc_links(db, definition, target_dir))
+    Some(get_doc_links(db, definition, target_dir, sysroot))
 }
 
 /// Extracts all links from a given markdown text returning the definition text range, link-text
@@ -325,6 +326,7 @@ fn get_doc_links(
     db: &RootDatabase,
     def: Definition,
     target_dir: Option<&OsStr>,
+    sysroot: Option<&OsStr>,
 ) -> DocumentationLinks {
     let join_url = |base_url: Option<Url>, path: &str| -> Option<Url> {
         base_url.and_then(|url| url.join(path).ok())
@@ -332,7 +334,7 @@ fn get_doc_links(
 
     let Some((target, file, frag)) = filename_and_frag_for_def(db, def) else { return Default::default(); };
 
-    let (mut web_url, mut local_url) = get_doc_base_urls(db, target, target_dir);
+    let (mut web_url, mut local_url) = get_doc_base_urls(db, target, target_dir, sysroot);
 
     if let Some(path) = mod_path_of_def(db, target) {
         web_url = join_url(web_url, &path);
@@ -360,7 +362,7 @@ fn rewrite_intra_doc_link(
     let (link, ns) = parse_intra_doc_link(target);
 
     let resolved = resolve_doc_path_for_def(db, def, link, ns)?;
-    let mut url = get_doc_base_urls(db, resolved, None).0?;
+    let mut url = get_doc_base_urls(db, resolved, None, None).0?;
 
     let (_, file, frag) = filename_and_frag_for_def(db, resolved)?;
     if let Some(path) = mod_path_of_def(db, resolved) {
@@ -379,7 +381,7 @@ fn rewrite_url_link(db: &RootDatabase, def: Definition, target: &str) -> Option<
         return None;
     }
 
-    let mut url = get_doc_base_urls(db, def, None).0?;
+    let mut url = get_doc_base_urls(db, def, None, None).0?;
     let (def, file, frag) = filename_and_frag_for_def(db, def)?;
 
     if let Some(path) = mod_path_of_def(db, def) {
@@ -461,27 +463,29 @@ fn get_doc_base_urls(
     db: &RootDatabase,
     def: Definition,
     target_dir: Option<&OsStr>,
+    sysroot: Option<&OsStr>,
 ) -> (Option<Url>, Option<Url>) {
-    let local_doc_path = target_dir
-        .and_then(|path: &OsStr| -> Option<Url> {
-            let mut with_prefix = OsStr::new("file:///").to_os_string();
-            with_prefix.push(path);
-            with_prefix.push("/");
-            with_prefix.to_str().and_then(|s| Url::parse(s).ok())
-        })
+    let local_doc = target_dir
+        .and_then(|path| path.to_str())
+        .and_then(|path| Url::parse(&format!("file:///{path}/")).ok())
         .and_then(|it| it.join("doc/").ok());
+    let system_doc = sysroot
+        .and_then(|it| it.to_str())
+        .map(|sysroot| format!("file:///{sysroot}/share/doc/rust/html/"))
+        .and_then(|it| Url::parse(&it).ok());
+
     // special case base url of `BuiltinType` to core
     // https://github.com/rust-lang/rust-analyzer/issues/12250
     if let Definition::BuiltinType(..) = def {
-        let weblink = Url::parse("https://doc.rust-lang.org/nightly/core/").ok();
-        return (weblink, None);
+        let web_link = Url::parse("https://doc.rust-lang.org/nightly/core/").ok();
+        let system_link = system_doc.and_then(|it| it.join("core/").ok());
+        return (web_link, system_link);
     };
 
     let Some(krate) = def.krate(db) else { return Default::default() };
     let Some(display_name) = krate.display_name(db) else { return Default::default() };
     let crate_data = &db.crate_graph()[krate.into()];
     let channel = crate_data.channel.map_or("nightly", ReleaseChannel::as_str);
-    let sysroot = "/home/ddystopia/.rustup/toolchains/stable-x86_64-unknown-linux-gnu";
 
     let (web_base, local_base) = match &crate_data.origin {
         // std and co do not specify `html_root_url` any longer so we gotta handwrite this ourself.
@@ -493,13 +497,10 @@ fn get_doc_base_urls(
             | LangCrateOrigin::Std
             | LangCrateOrigin::Test),
         ) => {
-            let local_url = format!("file:///{sysroot}/share/doc/rust/html/{origin}/index.html");
-            let local_url = Url::parse(&local_url).ok();
+            let system_url = system_doc.and_then(|it| it.join(&format!("{origin}")).ok());
             let web_url = format!("https://doc.rust-lang.org/{channel}/{origin}");
-            println!("local_url: {:?}", local_url.unwrap().to_string());
-            panic!();
-            (Some(web_url), local_url)
-        },
+            (Some(web_url), system_url)
+        }
         CrateOrigin::Lang(_) => return (None, None),
         CrateOrigin::Rustc { name: _ } => {
             (Some(format!("https://doc.rust-lang.org/{channel}/nightly-rustc/")), None)
@@ -519,7 +520,7 @@ fn get_doc_base_urls(
                     version = version.as_deref().unwrap_or("*")
                 ))
             });
-            (weblink, local_doc_path)
+            (weblink, local_doc)
         }
         CrateOrigin::Library { repo: _, name } => {
             let weblink = krate.get_html_root_url(db).or_else(|| {
@@ -535,7 +536,7 @@ fn get_doc_base_urls(
                     version = version.as_deref().unwrap_or("*")
                 ))
             });
-            (weblink, local_doc_path)
+            (weblink, local_doc)
         }
     };
     let web_base = web_base
