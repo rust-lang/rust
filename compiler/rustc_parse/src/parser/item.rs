@@ -181,11 +181,11 @@ impl<'a> Parser<'a> {
     /// Error in-case `default` was parsed in an in-appropriate context.
     fn error_on_unconsumed_default(&self, def: Defaultness, kind: &ItemKind) {
         if let Defaultness::Default(span) = def {
-            let msg = format!("{} {} cannot be `default`", kind.article(), kind.descr());
-            self.struct_span_err(span, &msg)
-                .span_label(span, "`default` because of this")
-                .note("only associated `fn`, `const`, and `type` items can be `default`")
-                .emit();
+            self.sess.emit_err(errors::InappropriateDefault {
+                span,
+                article: kind.article(),
+                descr: kind.descr(),
+            });
         }
     }
 
@@ -310,14 +310,7 @@ impl<'a> Parser<'a> {
         self.bump();
         match self.parse_use_item() {
             Ok(u) => {
-                self.struct_span_err(span, format!("expected item, found {token_name}"))
-                    .span_suggestion_short(
-                        span,
-                        "items are imported using the `use` keyword",
-                        "use",
-                        Applicability::MachineApplicable,
-                    )
-                    .emit();
+                self.sess.emit_err(errors::RecoverImportAsUse { span, token_name });
                 Ok(Some(u))
             }
             Err(e) => {
@@ -963,15 +956,8 @@ impl<'a> Parser<'a> {
             } else {
                 // Recover from using a colon as path separator.
                 while self.eat_noexpect(&token::Colon) {
-                    self.struct_span_err(self.prev_token.span, "expected `::`, found `:`")
-                        .span_suggestion_short(
-                            self.prev_token.span,
-                            "use double colon",
-                            "::",
-                            Applicability::MachineApplicable,
-                        )
-                        .note_once("import paths are delimited using `::`")
-                        .emit();
+                    self.sess
+                        .emit_err(errors::SingleColonImportPath { span: self.prev_token.span });
 
                     // We parse the rest of the path and append it to the original prefix.
                     self.parse_path_segments(&mut prefix.segments, PathStyle::Mod, None)?;
@@ -1134,13 +1120,11 @@ impl<'a> Parser<'a> {
         ))
     }
 
-    fn error_bad_item_kind<T>(&self, span: Span, kind: &ItemKind, ctx: &str) -> Option<T> {
+    fn error_bad_item_kind<T>(&self, span: Span, kind: &ItemKind, ctx: &'static str) -> Option<T> {
         // FIXME(#100717): needs variant for each `ItemKind` (instead of using `ItemKind::descr()`)
         let span = self.sess.source_map().guess_head_span(span);
         let descr = kind.descr();
-        self.struct_span_err(span, &format!("{descr} is not supported in {ctx}"))
-            .help(&format!("consider moving the {descr} out to a nearby module scope"))
-            .emit();
+        self.sess.emit_err(errors::BadItemKind { span, descr, ctx });
         None
     }
 
@@ -1713,27 +1697,13 @@ impl<'a> Parser<'a> {
         self.expect_field_ty_separator()?;
         let ty = self.parse_ty()?;
         if self.token.kind == token::Colon && self.look_ahead(1, |tok| tok.kind != token::Colon) {
-            self.struct_span_err(self.token.span, "found single colon in a struct field type path")
-                .span_suggestion_verbose(
-                    self.token.span,
-                    "write a path separator here",
-                    "::",
-                    Applicability::MaybeIncorrect,
-                )
-                .emit();
+            self.sess.emit_err(errors::SingleColonStructType { span: self.token.span });
         }
         if self.token.kind == token::Eq {
             self.bump();
             let const_expr = self.parse_expr_anon_const()?;
             let sp = ty.span.shrink_to_hi().to(const_expr.value.span);
-            self.struct_span_err(sp, "default values on `struct` fields aren't supported")
-                .span_suggestion(
-                    sp,
-                    "remove this unsupported default value",
-                    "",
-                    Applicability::MachineApplicable,
-                )
-                .emit();
+            self.sess.emit_err(errors::EqualsStructDefault { span: sp });
         }
         Ok(FieldDef {
             span: lo.to(self.prev_token.span),
@@ -1871,14 +1841,10 @@ impl<'a> Parser<'a> {
                 return IsMacroRulesItem::Yes { has_bang: true };
             } else if self.look_ahead(1, |t| (t.is_ident())) {
                 // macro_rules foo
-                self.struct_span_err(macro_rules_span, "expected `!` after `macro_rules`")
-                    .span_suggestion(
-                        macro_rules_span,
-                        "add a `!`",
-                        "macro_rules!",
-                        Applicability::MachineApplicable,
-                    )
-                    .emit();
+                self.sess.emit_err(errors::MacroRulesMissingBang {
+                    span: macro_rules_span,
+                    hi: macro_rules_span.shrink_to_hi(),
+                });
 
                 return IsMacroRulesItem::Yes { has_bang: false };
             }
@@ -1903,9 +1869,7 @@ impl<'a> Parser<'a> {
         if self.eat(&token::Not) {
             // Handle macro_rules! foo!
             let span = self.prev_token.span;
-            self.struct_span_err(span, "macro names aren't followed by a `!`")
-                .span_suggestion(span, "remove the `!`", "", Applicability::MachineApplicable)
-                .emit();
+            self.sess.emit_err(errors::MacroNameRemoveBang { span });
         }
 
         let body = self.parse_delim_args()?;
@@ -1925,25 +1889,9 @@ impl<'a> Parser<'a> {
         let vstr = pprust::vis_to_string(vis);
         let vstr = vstr.trim_end();
         if macro_rules {
-            let msg = format!("can't qualify macro_rules invocation with `{vstr}`");
-            self.struct_span_err(vis.span, &msg)
-                .span_suggestion(
-                    vis.span,
-                    "try exporting the macro",
-                    "#[macro_export]",
-                    Applicability::MaybeIncorrect, // speculative
-                )
-                .emit();
+            self.sess.emit_err(errors::MacroRulesVisibility { span: vis.span, vis: vstr });
         } else {
-            self.struct_span_err(vis.span, "can't qualify macro invocation with `pub`")
-                .span_suggestion(
-                    vis.span,
-                    "remove the visibility",
-                    "",
-                    Applicability::MachineApplicable,
-                )
-                .help(&format!("try adjusting the macro to put `{vstr}` inside the invocation"))
-                .emit();
+            self.sess.emit_err(errors::MacroInvocationVisibility { span: vis.span, vis: vstr });
         }
     }
 
@@ -1989,18 +1937,12 @@ impl<'a> Parser<'a> {
             let kw_token = self.token.clone();
             let kw_str = pprust::token_to_string(&kw_token);
             let item = self.parse_item(ForceCollect::No)?;
-
-            self.struct_span_err(
-                kw_token.span,
-                &format!("`{kw_str}` definition cannot be nested inside `{keyword}`"),
-            )
-            .span_suggestion(
-                item.unwrap().span,
-                &format!("consider creating a new `{kw_str}` definition instead of nesting"),
-                "",
-                Applicability::MaybeIncorrect,
-            )
-            .emit();
+            self.sess.emit_err(errors::NestedAdt {
+                span: kw_token.span,
+                item: item.unwrap().span,
+                kw_str,
+                keyword: keyword.as_str(),
+            });
             // We successfully parsed the item but we must inform the caller about nested problem.
             return Ok(false);
         }
@@ -2139,13 +2081,10 @@ impl<'a> Parser<'a> {
             let _ = self.parse_expr()?;
             self.expect_semi()?; // `;`
             let span = eq_sp.to(self.prev_token.span);
-            self.struct_span_err(span, "function body cannot be `= expression;`")
-                .multipart_suggestion(
-                    "surround the expression with `{` and `}` instead of `=` and `;`",
-                    vec![(eq_sp, "{".to_string()), (self.prev_token.span, " }".to_string())],
-                    Applicability::MachineApplicable,
-                )
-                .emit();
+            self.sess.emit_err(errors::FunctionBodyEqualsExpr {
+                span,
+                sugg: errors::FunctionBodyEqualsExprSugg { eq: eq_sp, semi: self.prev_token.span },
+            });
             (AttrVec::new(), Some(self.mk_block_err(span)))
         } else {
             let expected = if req_body {
