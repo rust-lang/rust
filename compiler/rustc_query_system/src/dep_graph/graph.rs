@@ -354,23 +354,19 @@ impl<K: DepKind> DepGraphData<K> {
                  - dep-node: {key:?}"
         );
 
-        let task_deps = if cx.dep_context().is_eval_always(key.kind) {
-            None
+        let with_deps = |task_deps| K::with_deps(task_deps, || task(cx, arg));
+        let (result, edges) = if cx.dep_context().is_eval_always(key.kind) {
+            (with_deps(TaskDepsRef::EvalAlways), smallvec![])
         } else {
-            Some(Lock::new(TaskDeps {
+            let task_deps = Lock::new(TaskDeps {
                 #[cfg(debug_assertions)]
                 node: Some(key),
                 reads: SmallVec::new(),
                 read_set: Default::default(),
                 phantom_data: PhantomData,
-            }))
+            });
+            (with_deps(TaskDepsRef::Allow(&task_deps)), task_deps.into_inner().reads)
         };
-
-        let task_deps_ref =
-            task_deps.as_ref().map(TaskDepsRef::Allow).unwrap_or(TaskDepsRef::EvalAlways);
-
-        let result = K::with_deps(task_deps_ref, || task(cx, arg));
-        let edges = task_deps.map_or_else(|| smallvec![], |lock| lock.into_inner().reads);
 
         let dcx = cx.dep_context();
         let hashing_timer = dcx.profiler().incr_result_hashing();
@@ -1236,76 +1232,48 @@ impl<K: DepKind> CurrentDepGraph<K> {
             self.node_intern_event_id.map(|eid| profiler.generic_activity_with_event_id(eid));
 
         if let Some(prev_index) = prev_graph.node_to_index_opt(&key) {
-            // Determine the color and index of the new `DepNode`.
-            if let Some(fingerprint) = fingerprint {
-                if fingerprint == prev_graph.fingerprint_by_index(prev_index) {
-                    if print_status {
-                        eprintln!("[task::green] {key:?}");
-                    }
-
-                    // This is a green node: it existed in the previous compilation,
-                    // its query was re-executed, and it has the same result as before.
-                    let mut prev_index_to_index = self.prev_index_to_index.lock();
-
-                    let dep_node_index = match prev_index_to_index[prev_index] {
-                        Some(dep_node_index) => dep_node_index,
-                        None => {
-                            let dep_node_index =
-                                self.encoder.borrow().send(profiler, key, fingerprint, edges);
-                            prev_index_to_index[prev_index] = Some(dep_node_index);
-                            dep_node_index
-                        }
-                    };
-
-                    #[cfg(debug_assertions)]
-                    self.record_edge(dep_node_index, key, fingerprint);
-                    (dep_node_index, Some((prev_index, DepNodeColor::Green(dep_node_index))))
-                } else {
-                    if print_status {
-                        eprintln!("[task::red] {key:?}");
-                    }
-
-                    // This is a red node: it existed in the previous compilation, its query
-                    // was re-executed, but it has a different result from before.
-                    let mut prev_index_to_index = self.prev_index_to_index.lock();
-
-                    let dep_node_index = match prev_index_to_index[prev_index] {
-                        Some(dep_node_index) => dep_node_index,
-                        None => {
-                            let dep_node_index =
-                                self.encoder.borrow().send(profiler, key, fingerprint, edges);
-                            prev_index_to_index[prev_index] = Some(dep_node_index);
-                            dep_node_index
-                        }
-                    };
-
-                    #[cfg(debug_assertions)]
-                    self.record_edge(dep_node_index, key, fingerprint);
-                    (dep_node_index, Some((prev_index, DepNodeColor::Red)))
-                }
-            } else {
+            let get_dep_node_index = |color, fingerprint| {
                 if print_status {
-                    eprintln!("[task::unknown] {key:?}");
+                    eprintln!("[task::{color:}] {key:?}");
                 }
 
-                // This is a red node, effectively: it existed in the previous compilation
-                // session, its query was re-executed, but it doesn't compute a result hash
-                // (i.e. it represents a `no_hash` query), so we have no way of determining
-                // whether or not the result was the same as before.
                 let mut prev_index_to_index = self.prev_index_to_index.lock();
 
                 let dep_node_index = match prev_index_to_index[prev_index] {
                     Some(dep_node_index) => dep_node_index,
                     None => {
                         let dep_node_index =
-                            self.encoder.borrow().send(profiler, key, Fingerprint::ZERO, edges);
+                            self.encoder.borrow().send(profiler, key, fingerprint, edges);
                         prev_index_to_index[prev_index] = Some(dep_node_index);
                         dep_node_index
                     }
                 };
 
                 #[cfg(debug_assertions)]
-                self.record_edge(dep_node_index, key, Fingerprint::ZERO);
+                self.record_edge(dep_node_index, key, fingerprint);
+
+                dep_node_index
+            };
+
+            // Determine the color and index of the new `DepNode`.
+            if let Some(fingerprint) = fingerprint {
+                if fingerprint == prev_graph.fingerprint_by_index(prev_index) {
+                    // This is a green node: it existed in the previous compilation,
+                    // its query was re-executed, and it has the same result as before.
+                    let dep_node_index = get_dep_node_index("green", fingerprint);
+                    (dep_node_index, Some((prev_index, DepNodeColor::Green(dep_node_index))))
+                } else {
+                    // This is a red node: it existed in the previous compilation, its query
+                    // was re-executed, but it has a different result from before.
+                    let dep_node_index = get_dep_node_index("red", fingerprint);
+                    (dep_node_index, Some((prev_index, DepNodeColor::Red)))
+                }
+            } else {
+                // This is a red node, effectively: it existed in the previous compilation
+                // session, its query was re-executed, but it doesn't compute a result hash
+                // (i.e. it represents a `no_hash` query), so we have no way of determining
+                // whether or not the result was the same as before.
+                let dep_node_index = get_dep_node_index("unknown", Fingerprint::ZERO);
                 (dep_node_index, Some((prev_index, DepNodeColor::Red)))
             }
         } else {
