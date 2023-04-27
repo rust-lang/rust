@@ -354,23 +354,19 @@ impl<K: DepKind> DepGraphData<K> {
                  - dep-node: {key:?}"
         );
 
-        let task_deps = if cx.dep_context().is_eval_always(key.kind) {
-            None
+        let with_deps = |task_deps| K::with_deps(task_deps, || task(cx, arg));
+        let (result, edges) = if cx.dep_context().is_eval_always(key.kind) {
+            (with_deps(TaskDepsRef::EvalAlways), smallvec![])
         } else {
-            Some(Lock::new(TaskDeps {
+            let task_deps = Lock::new(TaskDeps {
                 #[cfg(debug_assertions)]
                 node: Some(key),
                 reads: SmallVec::new(),
                 read_set: Default::default(),
                 phantom_data: PhantomData,
-            }))
+            });
+            (with_deps(TaskDepsRef::Allow(&task_deps)), task_deps.into_inner().reads)
         };
-
-        let task_deps_ref =
-            task_deps.as_ref().map(TaskDepsRef::Allow).unwrap_or(TaskDepsRef::EvalAlways);
-
-        let result = K::with_deps(task_deps_ref, || task(cx, arg));
-        let edges = task_deps.map_or_else(|| smallvec![], |lock| lock.into_inner().reads);
 
         let dcx = cx.dep_context();
         let hashing_timer = dcx.profiler().incr_result_hashing();
