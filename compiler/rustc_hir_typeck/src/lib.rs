@@ -221,12 +221,6 @@ fn typeck_with_fallback<'tcx>(
             }))
         } else if let Node::AnonConst(_) = node {
             match tcx.hir().get(tcx.hir().parent_id(id)) {
-                Node::Expr(&hir::Expr {
-                    kind: hir::ExprKind::ConstBlock(ref anon_const), ..
-                }) if anon_const.hir_id == id => Some(fcx.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::TypeInference,
-                    span,
-                })),
                 Node::Ty(&hir::Ty { kind: hir::TyKind::Typeof(ref anon_const), .. })
                     if anon_const.hir_id == id =>
                 {
