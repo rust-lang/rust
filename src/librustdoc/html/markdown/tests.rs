@@ -218,6 +218,18 @@ fn test_lang_string_parse() {
         rust: false,
         ..Default::default()
     });
+    t(LangString {
+        original: r#"{class="first"}"#.into(),
+        added_classes: vec!["first".into()],
+        rust: false,
+        ..Default::default()
+    });
+    t(LangString {
+        original: r#"{class=f"irst"}"#.into(),
+        added_classes: vec!["first".into()],
+        rust: false,
+        ..Default::default()
+    });
 }
 
 #[test]

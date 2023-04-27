@@ -654,3 +654,14 @@ pub struct Bar;
 
 To be noted, `rust` and `.rust`/`class=rust` have different effects: `rust` indicates that this is
 a Rust code block whereas the two others add a "rust" CSS class on the code block.
+
+You can also use double quotes:
+
+```rust
+#![feature(custom_code_classes_in_docs)]
+
+/// ```"not rust" {."hello everyone"}
+/// int main(void) { return 0; }
+/// ```
+pub struct Bar;
+```

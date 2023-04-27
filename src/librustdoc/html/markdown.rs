@@ -892,6 +892,75 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
             extra.error_invalid_codeblock_attr(err);
         }
     }
+
+    /// Returns false if the string is unfinished.
+    fn skip_string(&mut self) -> bool {
+        while let Some((_, c)) = self.inner.next() {
+            if c == '"' {
+                return true;
+            }
+        }
+        self.emit_error("unclosed quote string: missing `\"` at the end");
+        false
+    }
+
+    fn parse_in_attribute_block(&mut self, start: usize) -> Option<TokenKind<'a>> {
+        while let Some((pos, c)) = self.inner.next() {
+            if is_separator(c) {
+                return Some(TokenKind::Attribute(&self.data[start..pos]));
+            } else if c == '{' {
+                // There shouldn't be a nested block!
+                self.emit_error("unexpected `{` inside attribute block (`{}`)");
+                let attr = &self.data[start..pos];
+                if attr.is_empty() {
+                    return self.next();
+                }
+                self.inner.next();
+                return Some(TokenKind::Attribute(attr));
+            } else if c == '}' {
+                self.is_in_attribute_block = false;
+                let attr = &self.data[start..pos];
+                if attr.is_empty() {
+                    return self.next();
+                }
+                return Some(TokenKind::Attribute(attr));
+            } else if c == '"' && !self.skip_string() {
+                return None;
+            }
+        }
+        // Unclosed attribute block!
+        self.emit_error("unclosed attribute block (`{}`): missing `}` at the end");
+        let token = &self.data[start..];
+        if token.is_empty() { None } else { Some(TokenKind::Attribute(token)) }
+    }
+
+    fn parse_outside_attribute_block(&mut self, start: usize) -> Option<TokenKind<'a>> {
+        while let Some((pos, c)) = self.inner.next() {
+            if is_separator(c) {
+                return Some(TokenKind::Token(&self.data[start..pos]));
+            } else if c == '{' {
+                self.is_in_attribute_block = true;
+                let token = &self.data[start..pos];
+                if token.is_empty() {
+                    return self.next();
+                }
+                return Some(TokenKind::Token(token));
+            } else if c == '}' {
+                // We're not in a block so it shouldn't be there!
+                self.emit_error("unexpected `}` outside attribute block (`{}`)");
+                let token = &self.data[start..pos];
+                if token.is_empty() {
+                    return self.next();
+                }
+                self.inner.next();
+                return Some(TokenKind::Attribute(token));
+            } else if c == '"' && !self.skip_string() {
+                return None;
+            }
+        }
+        let token = &self.data[start..];
+        if token.is_empty() { None } else { Some(TokenKind::Token(token)) }
+    }
 }
 
 impl<'a, 'tcx> Iterator for TagIterator<'a, 'tcx> {
@@ -905,55 +974,9 @@ impl<'a, 'tcx> Iterator for TagIterator<'a, 'tcx> {
             return None;
         };
         if self.is_in_attribute_block {
-            while let Some((pos, c)) = self.inner.next() {
-                if is_separator(c) {
-                    return Some(TokenKind::Attribute(&self.data[start..pos]));
-                } else if c == '{' {
-                    // There shouldn't be a nested block!
-                    self.emit_error("unexpected `{` inside attribute block (`{}`)");
-                    let attr = &self.data[start..pos];
-                    if attr.is_empty() {
-                        return self.next();
-                    }
-                    self.inner.next();
-                    return Some(TokenKind::Attribute(attr));
-                } else if c == '}' {
-                    self.is_in_attribute_block = false;
-                    let attr = &self.data[start..pos];
-                    if attr.is_empty() {
-                        return self.next();
-                    }
-                    return Some(TokenKind::Attribute(attr));
-                }
-            }
-            // Unclosed attribute block!
-            self.emit_error("unclosed attribute block (`{}`): missing `}` at the end");
-            let token = &self.data[start..];
-            if token.is_empty() { None } else { Some(TokenKind::Attribute(token)) }
+            self.parse_in_attribute_block(start)
         } else {
-            while let Some((pos, c)) = self.inner.next() {
-                if is_separator(c) {
-                    return Some(TokenKind::Token(&self.data[start..pos]));
-                } else if c == '{' {
-                    self.is_in_attribute_block = true;
-                    let token = &self.data[start..pos];
-                    if token.is_empty() {
-                        return self.next();
-                    }
-                    return Some(TokenKind::Token(token));
-                } else if c == '}' {
-                    // We're not in a block so it shouldn't be there!
-                    self.emit_error("unexpected `}` outside attribute block (`{}`)");
-                    let token = &self.data[start..pos];
-                    if token.is_empty() {
-                        return self.next();
-                    }
-                    self.inner.next();
-                    return Some(TokenKind::Attribute(token));
-                }
-            }
-            let token = &self.data[start..];
-            if token.is_empty() { None } else { Some(TokenKind::Token(token)) }
+            self.parse_outside_attribute_block(start)
         }
     }
 }
@@ -982,7 +1005,7 @@ fn handle_class(class: &str, after: &str, data: &mut LangString, extra: Option<&
             extra.error_invalid_codeblock_attr(&format!("missing class name after `{after}`"));
         }
     } else {
-        data.added_classes.push(class.to_owned());
+        data.added_classes.push(class.replace('"', ""));
     }
 }
 
