@@ -9,7 +9,7 @@ use crate::mir::visit::MirVisitable;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::ty::print::{FmtPrinter, Printer};
-use crate::ty::visit::{TypeVisitable, TypeVisitableExt, TypeVisitor};
+use crate::ty::visit::TypeVisitableExt;
 use crate::ty::{self, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, ScalarInt, UserTypeAnnotationIndex};
 use crate::ty::{GenericArg, InternalSubsts, SubstsRef};
@@ -36,7 +36,7 @@ use either::Either;
 
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Display, Formatter, Write};
-use std::ops::{ControlFlow, Index, IndexMut};
+use std::ops::{Index, IndexMut};
 use std::{iter, mem};
 
 pub use self::query::*;
@@ -2722,6 +2722,7 @@ impl<'tcx> UserTypeProjections {
 ///   `field[0]` (aka `.0`), indicating that the type of `s` is
 ///   determined by finding the type of the `.0` field from `T`.
 #[derive(Clone, Debug, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub struct UserTypeProjection {
     pub base: UserTypeAnnotationIndex,
     pub projs: Vec<ProjectionKind>,
@@ -2762,28 +2763,6 @@ impl UserTypeProjection {
         ));
         self.projs.push(ProjectionElem::Field(field_index, ()));
         self
-    }
-}
-
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for UserTypeProjection {
-    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        Ok(UserTypeProjection {
-            base: self.base.try_fold_with(folder)?,
-            projs: self.projs.try_fold_with(folder)?,
-        })
-    }
-}
-
-impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for UserTypeProjection {
-    fn visit_with<Vs: TypeVisitor<TyCtxt<'tcx>>>(
-        &self,
-        visitor: &mut Vs,
-    ) -> ControlFlow<Vs::BreakTy> {
-        self.base.visit_with(visitor)
-        // Note: there's nothing in `self.proj` to visit.
     }
 }
 
