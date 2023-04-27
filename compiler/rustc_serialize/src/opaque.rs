@@ -779,12 +779,7 @@ impl Encodable<FileEncoder> for IntEncodedWithFixedSize {
 impl<'a> Decodable<MemDecoder<'a>> for IntEncodedWithFixedSize {
     #[inline]
     fn decode(decoder: &mut MemDecoder<'a>) -> IntEncodedWithFixedSize {
-        let _start_pos = decoder.position();
-        let bytes = decoder.read_raw_bytes(IntEncodedWithFixedSize::ENCODED_SIZE);
-        let value = u64::from_le_bytes(bytes.try_into().unwrap());
-        let _end_pos = decoder.position();
-        debug_assert_eq!((_end_pos - _start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
-
-        IntEncodedWithFixedSize(value)
+        let bytes = decoder.read_array::<{ IntEncodedWithFixedSize::ENCODED_SIZE }>();
+        IntEncodedWithFixedSize(u64::from_le_bytes(bytes))
     }
 }
