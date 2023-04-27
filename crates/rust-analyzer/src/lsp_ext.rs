@@ -4,11 +4,11 @@ use std::{collections::HashMap, path::PathBuf};
 
 use ide_db::line_index::WideEncoding;
 use lsp_types::request::Request;
-use lsp_types::PositionEncodingKind;
 use lsp_types::{
     notification::Notification, CodeActionKind, DocumentOnTypeFormattingParams,
     PartialResultParams, Position, Range, TextDocumentIdentifier, WorkDoneProgressParams,
 };
+use lsp_types::{PositionEncodingKind, Url};
 use serde::{Deserialize, Serialize};
 
 use crate::line_index::PositionEncoding;
@@ -32,7 +32,7 @@ pub struct AnalyzerStatusParams {
 pub struct CrateInfoResult {
     pub name: Option<String>,
     pub version: Option<String>,
-    pub path: String,
+    pub path: Url,
 }
 pub enum FetchDependencyList {}
 

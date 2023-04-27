@@ -58,23 +58,20 @@ pub(crate) fn fetch_dependency_list(
         .into_iter()
         .filter_map(|it| {
             let root_file_path = state.file_id_to_file_path(it.root_file_id);
-            crate_path(it.name.as_ref(), root_file_path).map(|path| CrateInfoResult {
+            crate_path(root_file_path).and_then(to_url).map(|path| CrateInfoResult {
                 name: it.name,
                 version: it.version,
-                path: path.to_string(),
+                path,
             })
         })
         .collect();
     Ok(FetchDependencyListResult { crates: crate_infos })
 }
 
-/// Searches for the directory of a Rust crate with a given name in the directory tree
-/// of the root file of that crate.
+/// Searches for the directory of a Rust crate given this crate's root file path.
 ///
 /// # Arguments
 ///
-/// * `crate_name`: The name of the crate to search for. This should be a `Some` value if
-///   a crate name has been specified, or `None` if no crate name has been specified.
 /// * `root_file_path`: The path to the root file of the crate.
 ///
 /// # Returns
@@ -82,19 +79,21 @@ pub(crate) fn fetch_dependency_list(
 /// An `Option` value representing the path to the directory of the crate with the given
 /// name, if such a crate is found. If no crate with the given name is found, this function
 /// returns `None`.
-fn crate_path(crate_name: Option<&String>, root_file_path: VfsPath) -> Option<VfsPath> {
-    crate_name.and_then(|crate_name| {
-        let mut root_path = root_file_path;
-        while let Some(path) = root_path.parent() {
-            if let Some((name, _)) = path.name_and_extension() {
-                if name.starts_with(crate_name.as_str()) {
-                    return Some(path);
-                }
-            } else {
-                break;
-            }
-            root_path = path;
+fn crate_path(root_file_path: VfsPath) -> Option<VfsPath> {
+    let mut current_dir = root_file_path.parent();
+    while let Some(path) = current_dir {
+        let cargo_toml_path = path.join("../Cargo.toml")?;
+        if fs::metadata(cargo_toml_path.as_path()?).is_ok() {
+            let crate_path = cargo_toml_path.parent()?;
+            return Some(crate_path);
         }
-        None
-    })
+        current_dir = path.parent();
+    }
+    None
+}
+
+fn to_url(path: VfsPath) -> Option<Url> {
+    let path = path.as_path()?;
+    let str_path = path.as_os_str().to_str()?;
+    Url::from_file_path(str_path).ok()
 }

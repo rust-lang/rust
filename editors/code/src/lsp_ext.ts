@@ -2,6 +2,7 @@
  * This file mirrors `crates/rust-analyzer/src/lsp_ext.rs` declarations.
  */
 
+import { Uri } from "vscode";
 import * as lc from "vscode-languageclient";
 
 // rust-analyzer overrides

@@ -276,6 +276,9 @@ export function openCargoToml(ctx: CtxInit): Cmd {
 
 export function revealDependency(ctx: CtxInit): Cmd {
     return async (editor: RustEditor) => {
+        if (!ctx.dependencies?.isInitialized()) {
+            return;
+        }
         const documentPath = editor.document.uri.fsPath;
         const dep = ctx.dependencies?.getDependency(documentPath);
         if (dep) {

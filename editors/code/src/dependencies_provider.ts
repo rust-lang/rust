@@ -32,6 +32,10 @@ export class RustDependenciesProvider
         return filePath.toLowerCase() in this.dependenciesMap;
     }
 
+    isInitialized(): boolean {
+        return Object.keys(this.dependenciesMap).length !== 0;
+    }
+
     refresh(): void {
         this.dependenciesMap = {};
         this._onDidChangeTreeData.fire();
@@ -89,7 +93,12 @@ export class RustDependenciesProvider
     }
 
     private toDep(moduleName: string, version: string, path: string): Dependency {
-        return new Dependency(moduleName, version, path, vscode.TreeItemCollapsibleState.Collapsed);
+        return new Dependency(
+            moduleName,
+            version,
+            vscode.Uri.parse(path).fsPath,
+            vscode.TreeItemCollapsibleState.Collapsed
+        );
     }
 }
 
@@ -101,9 +110,9 @@ export class Dependency extends vscode.TreeItem {
         public readonly collapsibleState: vscode.TreeItemCollapsibleState
     ) {
         super(label, collapsibleState);
-        this.id = this.dependencyPath.toLowerCase();
-        this.description = this.version;
         this.resourceUri = vscode.Uri.file(dependencyPath);
+        this.id = this.resourceUri.fsPath.toLowerCase();
+        this.description = this.version;
         if (this.version) {
             this.tooltip = `${this.label}-${this.version}`;
         } else {
@@ -120,13 +129,13 @@ export class DependencyFile extends vscode.TreeItem {
         public readonly collapsibleState: vscode.TreeItemCollapsibleState
     ) {
         super(vscode.Uri.file(dependencyPath), collapsibleState);
-        this.id = this.dependencyPath.toLowerCase();
-        const isDir = fs.lstatSync(this.dependencyPath).isDirectory();
+        this.id = this.resourceUri!.fsPath.toLowerCase();
+        const isDir = fs.lstatSync(this.resourceUri!.fsPath).isDirectory();
         if (!isDir) {
             this.command = {
                 command: "vscode.open",
                 title: "Open File",
-                arguments: [vscode.Uri.file(this.dependencyPath)],
+                arguments: [this.resourceUri],
             };
         }
     }
