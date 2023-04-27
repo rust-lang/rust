@@ -5,7 +5,7 @@ use ide_db::{
 use itertools::Itertools;
 use syntax::{
     ast::{self, Expr},
-    match_ast, AstNode, NodeOrToken, SyntaxKind, TextRange, TextSize,
+    match_ast, AstNode, NodeOrToken, SyntaxKind, TextRange,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -71,10 +71,7 @@ pub(crate) fn unwrap_result_return_type(acc: &mut Assists, ctx: &AssistContext<'
 
                 if let Some(NodeOrToken::Token(token)) = ret_type.syntax().next_sibling_or_token() {
                     if token.kind() == SyntaxKind::WHITESPACE {
-                        text_range = TextRange::new(
-                            text_range.start(),
-                            text_range.end() + TextSize::from(1u32),
-                        );
+                        text_range = TextRange::new(text_range.start(), token.text_range().end());
                     }
                 }
 
@@ -134,11 +131,11 @@ fn tail_cb_impl(acc: &mut Vec<ast::Expr>, e: &ast::Expr) {
 // Tries to extract `T` from `Result<T, E>`.
 fn unwrap_result_type(ty: &ast::Type) -> Option<ast::Type> {
     let ast::Type::PathType(path_ty) = ty else { return None; };
-    let Some(path) = path_ty.path() else { return None; };
-    let Some(segment) = path.first_segment() else { return None; };
-    let Some(generic_arg_list) = segment.generic_arg_list() else { return None; };
+    let path = path_ty.path()?;
+    let segment = path.first_segment()?;
+    let generic_arg_list = segment.generic_arg_list()?;
     let generic_args: Vec<_> = generic_arg_list.generic_args().collect();
-    let Some(ast::GenericArg::TypeArg(ok_type)) = generic_args.first() else { return None; };
+    let ast::GenericArg::TypeArg(ok_type) = generic_args.first()? else { return None; };
     ok_type.ty()
 }
 
