@@ -92,7 +92,7 @@ pub(crate) fn mir_callgraph_reachable<'tcx>(
                     // FIXME: A not fully substituted drop shim can cause ICEs if one attempts to
                     // have its MIR built. Likely oli-obk just screwed up the `ParamEnv`s, so this
                     // needs some more analysis.
-                    if callee.needs_subst() {
+                    if callee.has_param() {
                         continue;
                     }
                 }

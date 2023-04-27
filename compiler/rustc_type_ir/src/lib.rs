@@ -179,7 +179,7 @@ bitflags! {
         /// Does this have `ConstKind::Param`?
         const HAS_CT_PARAM                = 1 << 2;
 
-        const NEEDS_SUBST                 = TypeFlags::HAS_TY_PARAM.bits
+        const HAS_PARAM                 = TypeFlags::HAS_TY_PARAM.bits
                                           | TypeFlags::HAS_RE_PARAM.bits
                                           | TypeFlags::HAS_CT_PARAM.bits;
 

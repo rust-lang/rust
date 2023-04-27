@@ -761,7 +761,7 @@ impl<'tcx, T: TypeFoldable<TyCtxt<'tcx>>> ty::EarlyBinder<T> {
 
     /// Returns the inner value, but only if it contains no bound vars.
     pub fn no_bound_vars(self) -> Option<T> {
-        if !self.0.needs_subst() { Some(self.0) } else { None }
+        if !self.0.has_param() { Some(self.0) } else { None }
     }
 }
 
@@ -840,7 +840,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for SubstFolder<'a, 'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if !t.needs_subst() {
+        if !t.has_param() {
             return t;
         }
 

@@ -14,7 +14,7 @@ where
     T: TypeVisitable<TyCtxt<'tcx>>,
 {
     debug!("ensure_monomorphic_enough: ty={:?}", ty);
-    if !ty.needs_subst() {
+    if !ty.has_param() {
         return Ok(());
     }
 
@@ -27,7 +27,7 @@ where
         type BreakTy = FoundParam;
 
         fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-            if !ty.needs_subst() {
+            if !ty.has_param() {
                 return ControlFlow::Continue(());
             }
 
@@ -46,7 +46,7 @@ where
                         // are used and require substitution.
                         // Just in case there are closures or generators within this subst,
                         // recurse.
-                        if unused_params.is_used(index) && subst.needs_subst() {
+                        if unused_params.is_used(index) && subst.has_param() {
                             return subst.visit_with(self);
                         }
                     }

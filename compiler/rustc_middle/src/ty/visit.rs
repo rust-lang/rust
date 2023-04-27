@@ -70,7 +70,7 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
         }
     }
     fn has_non_region_param(&self) -> bool {
-        self.has_type_flags(TypeFlags::NEEDS_SUBST - TypeFlags::HAS_RE_PARAM)
+        self.has_type_flags(TypeFlags::HAS_PARAM - TypeFlags::HAS_RE_PARAM)
     }
     fn has_infer_regions(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_RE_INFER)
@@ -94,8 +94,8 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
     fn has_non_region_placeholders(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_PLACEHOLDER | TypeFlags::HAS_CT_PLACEHOLDER)
     }
-    fn needs_subst(&self) -> bool {
-        self.has_type_flags(TypeFlags::NEEDS_SUBST)
+    fn has_param(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_PARAM)
     }
     /// "Free" regions in this context means that it has any region
     /// that is not (a) erased or (b) late-bound.

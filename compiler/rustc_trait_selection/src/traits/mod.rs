@@ -414,7 +414,7 @@ fn subst_and_check_impossible_predicates<'tcx>(
         predicates.push(ty::Binder::dummy(trait_ref).to_predicate(tcx));
     }
 
-    predicates.retain(|predicate| !predicate.needs_subst());
+    predicates.retain(|predicate| !predicate.has_param());
     let result = impossible_predicates(tcx, predicates);
 
     debug!("subst_and_check_impossible_predicates(key={:?}) = {:?}", key, result);

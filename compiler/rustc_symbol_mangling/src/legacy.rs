@@ -108,7 +108,7 @@ fn get_symbol_hash<'tcx>(
             tcx.def_path_hash(def_id).hash_stable(&mut hcx, &mut hasher);
 
             // Include the main item-type. Note that, in this case, the
-            // assertions about `needs_subst` may not hold, but this item-type
+            // assertions about `has_param` may not hold, but this item-type
             // ought to be the same for every reference anyway.
             assert!(!item_type.has_erasable_regions());
             hcx.while_hashing_spans(false, |hcx| {

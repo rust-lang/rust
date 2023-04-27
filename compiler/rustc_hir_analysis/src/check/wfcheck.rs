@@ -1292,7 +1292,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                     // Ignore dependent defaults -- that is, where the default of one type
                     // parameter includes another (e.g., `<T, U = T>`). In those cases, we can't
                     // be sure if it will error or not as user might always specify the other.
-                    if !ty.needs_subst() {
+                    if !ty.has_param() {
                         wfcx.register_wf_obligation(
                             tcx.def_span(param.def_id),
                             Some(WellFormedLoc::Ty(param.def_id.expect_local())),
@@ -1308,7 +1308,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                     // for `struct Foo<const N: usize, const M: usize = { 1 - 2 }>`
                     // we should eagerly error.
                     let default_ct = tcx.const_param_default(param.def_id).subst_identity();
-                    if !default_ct.needs_subst() {
+                    if !default_ct.has_param() {
                         wfcx.register_wf_obligation(
                             tcx.def_span(param.def_id),
                             None,
@@ -1342,7 +1342,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                 if is_our_default(param) {
                     let default_ty = tcx.type_of(param.def_id).subst_identity();
                     // ... and it's not a dependent default, ...
-                    if !default_ty.needs_subst() {
+                    if !default_ty.has_param() {
                         // ... then substitute it with the default.
                         return default_ty.into();
                     }
@@ -1355,7 +1355,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                 if is_our_default(param) {
                     let default_ct = tcx.const_param_default(param.def_id).subst_identity();
                     // ... and it's not a dependent default, ...
-                    if !default_ct.needs_subst() {
+                    if !default_ct.has_param() {
                         // ... then substitute it with the default.
                         return default_ct.into();
                     }

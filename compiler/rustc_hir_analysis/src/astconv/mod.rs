@@ -3039,7 +3039,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // the anon const, which is empty. This is why the
                 // `AlwaysApplicable` impl needs a `T: ?Sized` bound for
                 // this to compile if we were to normalize here.
-                if forbid_generic && ty.needs_subst() {
+                if forbid_generic && ty.has_param() {
                     let mut err = tcx.sess.struct_span_err(
                         path.span,
                         "generic `Self` types are currently not permitted in anonymous constants",
