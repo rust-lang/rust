@@ -8,6 +8,6 @@ struct NotParam;
 struct CantParam(NotParam);
 
 impl std::marker::ConstParamTy for CantParam {}
-//~^ error: the trait `ConstParamTy` may not be implemented for this type
+//~^ error: the trait `ConstParamTy` cannot be implemented for this type
 
 fn main() {}
