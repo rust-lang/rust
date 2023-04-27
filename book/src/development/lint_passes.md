@@ -50,7 +50,7 @@ questions already, but the parser is okay with it. This is what we
 mean when we say `EarlyLintPass` deals with only syntax on the AST level.
 
 Alternatively, think of the `foo_functions` lint we mentioned in
-[define new lints](define_lints.md#name-the-lint) chapter.
+define new lints <!-- FIXME: add link --> chapter.
 
 We want the `foo_functions` lint to detect functions with `foo` as their name.
 Writing a lint that only checks for the name of a function means that we only
