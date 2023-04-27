@@ -505,19 +505,6 @@ impl<'a> MemDecoder<'a> {
     }
 
     #[inline]
-    fn read_byte(&mut self) -> u8 {
-        if self.current == self.end {
-            Self::decoder_exhausted();
-        }
-        // SAFETY: This type guarantees current <= end, and we just checked current == end.
-        unsafe {
-            let byte = *self.current;
-            self.current = self.current.add(1);
-            byte
-        }
-    }
-
-    #[inline]
     fn read_array<const N: usize>(&mut self) -> [u8; N] {
         self.read_raw_bytes(N).try_into().unwrap()
     }
@@ -586,7 +573,15 @@ impl<'a> Decoder for MemDecoder<'a> {
 
     #[inline]
     fn read_u8(&mut self) -> u8 {
-        self.read_byte()
+        if self.current == self.end {
+            Self::decoder_exhausted();
+        }
+        // SAFETY: This type guarantees current <= end, and we just checked current == end.
+        unsafe {
+            let byte = *self.current;
+            self.current = self.current.add(1);
+            byte
+        }
     }
 
     #[inline]
