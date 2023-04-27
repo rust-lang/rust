@@ -2690,7 +2690,7 @@ impl<'tcx> ty::PolyTraitPredicate<'tcx> {
     }
 }
 
-#[derive(Debug, Copy, Clone, TypeFoldable, TypeVisitable, Lift)]
+#[derive(Debug, Copy, Clone, Lift)]
 pub struct PrintClosureAsImpl<'tcx> {
     pub closure: ty::ClosureSubsts<'tcx>,
 }

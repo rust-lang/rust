@@ -2284,6 +2284,11 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// See [`fs::remove_file`] and [`fs::remove_dir`].
 ///
+/// `remove_dir_all` will fail if `remove_dir` or `remove_file` fail on any constituent paths, including the root path.
+/// As a result, the directory you are deleting must exist, meaning that this function is not idempotent.
+///
+/// Consider ignoring the error if validating the removal is not required for your use case.
+///
 /// [`fs::remove_file`]: remove_file
 /// [`fs::remove_dir`]: remove_dir
 ///

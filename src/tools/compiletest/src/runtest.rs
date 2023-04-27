@@ -224,6 +224,7 @@ enum Emit {
     Metadata,
     LlvmIr,
     Asm,
+    LinkArgsAsm,
 }
 
 impl<'test> TestCx<'test> {
@@ -2035,6 +2036,9 @@ impl<'test> TestCx<'test> {
             Emit::Asm => {
                 rustc.args(&["--emit", "asm"]);
             }
+            Emit::LinkArgsAsm => {
+                rustc.args(&["-Clink-args=--emit=asm"]);
+            }
         }
 
         if !is_rustdoc {
@@ -2328,11 +2332,15 @@ impl<'test> TestCx<'test> {
                 emit = Emit::Asm;
             }
 
+            Some("bpf-linker") => {
+                emit = Emit::LinkArgsAsm;
+            }
+
             Some("ptx-linker") => {
                 // No extra flags needed.
             }
 
-            Some(_) => self.fatal("unknown 'assembly-output' header"),
+            Some(header) => self.fatal(&format!("unknown 'assembly-output' header: {header}")),
             None => self.fatal("missing 'assembly-output' header"),
         }
 
