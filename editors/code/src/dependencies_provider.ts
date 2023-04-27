@@ -1,17 +1,12 @@
 import * as vscode from "vscode";
 import * as fspath from "path";
 import * as fs from "fs";
-import { CtxInit } from "./ctx";
+import {CtxInit} from "./ctx";
 import * as ra from "./lsp_ext";
-import { FetchDependencyListResult } from "./lsp_ext";
-import { Ctx } from "./ctx";
-import { setFlagsFromString } from "v8";
-import * as ra from "./lsp_ext";
-
+import {FetchDependencyListResult} from "./lsp_ext";
 
 export class RustDependenciesProvider
-    implements vscode.TreeDataProvider<Dependency | DependencyFile>
-{
+    implements vscode.TreeDataProvider<Dependency | DependencyFile> {
     dependenciesMap: { [id: string]: Dependency | DependencyFile };
     ctx: CtxInit;
 
@@ -61,7 +56,6 @@ export class RustDependenciesProvider
                 void vscode.window.showInformationMessage("No dependency in empty workspace");
                 return Promise.resolve([]);
             }
-
             if (element) {
                 const files = fs.readdirSync(element.dependencyPath).map((fileName) => {
                     const filePath = fspath.join(element.dependencyPath, fileName);
@@ -80,20 +74,17 @@ export class RustDependenciesProvider
     }
 
     private async getRootDependencies(): Promise<Dependency[]> {
-        const crates = await this.ctx.client.sendRequest(ra.fetchDependencyGraph, {});
-
         const dependenciesResult: FetchDependencyListResult = await this.ctx.client.sendRequest(
             ra.fetchDependencyList,
             {}
         );
         const crates = dependenciesResult.crates;
-        const deps = crates.map((crate) => {
-        const dep = this.toDep(crate.name || "unknown", crate.version || "", crate.path);
+
+        return crates.map((crate) => {
+            const dep = this.toDep(crate.name || "unknown", crate.version || "", crate.path);
             this.dependenciesMap[dep.dependencyPath.toLowerCase()] = dep;
-        this.dependenciesMap[stdlib.dependencyPath.toLowerCase()] = stdlib;
-        return dep;
+            return dep;
         });
-        return deps;
     }
 
     private toDep(moduleName: string, version: string, path: string): Dependency {
@@ -131,11 +122,13 @@ export class DependencyFile extends vscode.TreeItem {
         this.id = this.dependencyPath.toLowerCase();
         const isDir = fs.lstatSync(this.dependencyPath).isDirectory();
         if (!isDir) {
-            this.command = { command: "vscode.open",
+            this.command = {
+                command: "vscode.open",
                 title: "Open File",
                 arguments: [vscode.Uri.file(this.dependencyPath)],
-        };
-    }}
+            };
+        }
+    }
 }
 
 export type DependencyId = { id: string };

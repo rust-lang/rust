@@ -22,13 +22,6 @@ import {
     DependencyId,
 } from "./dependencies_provider";
 import { execRevealDependency } from "./commands";
-import {
-    Dependency,
-    DependencyFile,
-    RustDependenciesProvider,
-    DependencyId,
-} from "./dependencies_provider";
-import { execRevealDependency } from "./commands";
 import { PersistentState } from "./persistent_state";
 import { bootstrap } from "./bootstrap";
 import { ExecOptions } from "child_process";
@@ -40,12 +33,12 @@ import { ExecOptions } from "child_process";
 export type Workspace =
     | { kind: "Empty" }
     | {
-          kind: "Workspace Folder";
-      }
+    kind: "Workspace Folder";
+}
     | {
-          kind: "Detached Files";
-          files: vscode.TextDocument[];
-      };
+    kind: "Detached Files";
+    files: vscode.TextDocument[];
+};
 
 export function fetchWorkspace(): Workspace {
     const folders = (vscode.workspace.workspaceFolders || []).filter(
@@ -59,9 +52,9 @@ export function fetchWorkspace(): Workspace {
         ? rustDocuments.length === 0
             ? { kind: "Empty" }
             : {
-                  kind: "Detached Files",
-                  files: rustDocuments,
-              }
+                kind: "Detached Files",
+                files: rustDocuments,
+            }
         : { kind: "Workspace Folder" };
 }
 
