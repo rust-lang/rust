@@ -16,7 +16,7 @@ LL | #![deny(warnings)]
 help: to apply to the crate, use an inner attribute
    |
 LL | #![doc(test(no_crate_inject))]
-   |
+   |  +
 
 error: this attribute can only be applied to a `use` item
   --> $DIR/invalid-doc-attr.rs:9:7

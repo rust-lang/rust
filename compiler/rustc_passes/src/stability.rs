@@ -7,7 +7,6 @@ use rustc_attr::{
     UnstableReason, VERSION_PLACEHOLDER,
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
-use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
@@ -759,12 +758,11 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                         // do not lint when the trait isn't resolved, since resolution error should
                         // be fixed first
                         if t.path.res != Res::Err && c.fully_stable {
-                            self.tcx.struct_span_lint_hir(
+                            self.tcx.emit_spanned_lint(
                                 INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
                                 item.hir_id(),
                                 span,
-                                "an `#[unstable]` annotation here has no effect",
-                                |lint| lint.note("see issue #55436 <https://github.com/rust-lang/rust/issues/55436> for more information")
+                                errors::IneffectiveUnstableImpl,
                             );
                         }
                     }
@@ -1095,29 +1093,16 @@ fn unnecessary_partially_stable_feature_lint(
     implies: Symbol,
     since: Symbol,
 ) {
-    tcx.struct_span_lint_hir(
+    tcx.emit_spanned_lint(
         lint::builtin::STABLE_FEATURES,
         hir::CRATE_HIR_ID,
         span,
-        format!(
-            "the feature `{feature}` has been partially stabilized since {since} and is succeeded \
-             by the feature `{implies}`"
-        ),
-        |lint| {
-            lint.span_suggestion(
-                span,
-                &format!(
-                "if you are using features which are still unstable, change to using `{implies}`"
-            ),
-                implies,
-                Applicability::MaybeIncorrect,
-            )
-            .span_suggestion(
-                tcx.sess.source_map().span_extend_to_line(span),
-                "if you are using features which are now stable, remove this line",
-                "",
-                Applicability::MaybeIncorrect,
-            )
+        errors::UnnecessaryPartialStableFeature {
+            span,
+            line: tcx.sess.source_map().span_extend_to_line(span),
+            feature,
+            since,
+            implies,
         },
     );
 }
@@ -1131,7 +1116,10 @@ fn unnecessary_stable_feature_lint(
     if since.as_str() == VERSION_PLACEHOLDER {
         since = rust_version_symbol();
     }
-    tcx.struct_span_lint_hir(lint::builtin::STABLE_FEATURES, hir::CRATE_HIR_ID, span, format!("the feature `{feature}` has been stable since {since} and no longer requires an attribute to enable"), |lint| {
-        lint
-    });
+    tcx.emit_spanned_lint(
+        lint::builtin::STABLE_FEATURES,
+        hir::CRATE_HIR_ID,
+        span,
+        errors::UnnecessaryStableFeature { feature, since },
+    );
 }
