@@ -1,5 +1,5 @@
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:180:70
+  --> $DIR/unescaped_backticks.rs:186:70
    |
 LL | /// if you want your MIR to be modified by the full MIR pipeline, or `#![custom_mir(dialect =
    |                                                                      ^
@@ -19,7 +19,7 @@ LL | /// if you want your MIR to be modified by the full MIR pipeline, or \`#![c
    |                                                                      +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:225:13
+  --> $DIR/unescaped_backticks.rs:231:13
    |
 LL |         //! `#![rustc_expected_cgu_reuse(module="spike", cfg="rpass2", kind="post-lto")]
    |             ^
@@ -34,7 +34,7 @@ LL |         //! \`#![rustc_expected_cgu_reuse(module="spike", cfg="rpass2", kin
    |             +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:230:13
+  --> $DIR/unescaped_backticks.rs:236:13
    |
 LL |         /// `cfg=...
    |             ^
@@ -49,7 +49,7 @@ LL |         /// \`cfg=...
    |             +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:234:42
+  --> $DIR/unescaped_backticks.rs:240:42
    |
 LL |         /// `cfg=... and not `#[cfg_attr]`
    |                                          ^
@@ -64,7 +64,7 @@ LL |         /// `cfg=... and not `#[cfg_attr]\`
    |                                          +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:186:91
+  --> $DIR/unescaped_backticks.rs:192:91
    |
 LL |     /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` with the given `msg to
    |                                                                                           ^
@@ -79,7 +79,7 @@ LL |     /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` 
    |                                                                                           +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:195:34
+  --> $DIR/unescaped_backticks.rs:201:34
    |
 LL |         /// in `nt_to_tokenstream`
    |                                  ^
@@ -94,7 +94,7 @@ LL |         /// in `nt_to_tokenstream\`
    |                                  +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:201:62
+  --> $DIR/unescaped_backticks.rs:207:62
    |
 LL |     /// that `Option<Symbol>` only takes up 4 bytes, because `newtype_index! reserves
    |                                                              ^
@@ -109,7 +109,7 @@ LL |     /// that `Option<Symbol>` only takes up 4 bytes, because \`newtype_inde
    |                                                              +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:209:52
+  --> $DIR/unescaped_backticks.rs:215:52
    |
 LL |     /// also avoids the need to import `OpenOptions`.
    |                                                    ^
@@ -124,7 +124,7 @@ LL |     /// also avoids the need to import `OpenOptions\`.
    |                                                    +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:214:46
+  --> $DIR/unescaped_backticks.rs:220:46
    |
 LL |     /// `HybridBitSet`. Has no effect if `row` does not exist.
    |                                              ^
@@ -139,7 +139,7 @@ LL |     /// `HybridBitSet`. Has no effect if `row\` does not exist.
    |                                              +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:240:12
+  --> $DIR/unescaped_backticks.rs:246:12
    |
 LL |     /// RWU`s can get very large, so it uses a more compact representation.
    |            ^
@@ -154,7 +154,7 @@ LL |     /// RWU\`s can get very large, so it uses a more compact representation
    |            +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:247:15
+  --> $DIR/unescaped_backticks.rs:253:15
    |
 LL |     /// in `U2`.
    |               ^
@@ -169,7 +169,7 @@ LL |     /// in `U2\`.
    |               +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:264:42
+  --> $DIR/unescaped_backticks.rs:270:42
    |
 LL |     /// because it contains `[type error]`. Yuck! (See issue #29857 for
    |                                          ^
@@ -184,7 +184,7 @@ LL |     /// because it contains `[type error]\`. Yuck! (See issue #29857 for
    |                                          +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:274:53
+  --> $DIR/unescaped_backticks.rs:280:53
    |
 LL |     /// well as the second instance of `A: AutoTrait`) to suppress
    |                                                     ^
@@ -199,7 +199,7 @@ LL |     /// well as the second instance of `A: AutoTrait\`) to suppress
    |                                                     +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:284:40
+  --> $DIR/unescaped_backticks.rs:290:40
    |
 LL |     /// `'a` with `'b` and not `'static`. But it will have to do for
    |                                        ^
@@ -211,7 +211,7 @@ LL |     /// `'a` with `'b` and not `'static\`. But it will have to do for
    |                                        +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:293:54
+  --> $DIR/unescaped_backticks.rs:299:54
    |
 LL | /// `None`. Otherwise, it will return `Some(Dispatch)`.
    |                                                      ^
@@ -226,7 +226,7 @@ LL | /// `None`. Otherwise, it will return `Some(Dispatch)\`.
    |                                                      +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:297:13
+  --> $DIR/unescaped_backticks.rs:303:13
    |
 LL | /// or `None` if it isn't.
    |             ^
@@ -238,7 +238,7 @@ LL | /// or `None\` if it isn't.
    |             +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:301:14
+  --> $DIR/unescaped_backticks.rs:307:14
    |
 LL | /// `on_event` should be called.
    |              ^
@@ -253,7 +253,7 @@ LL | /// `on_event\` should be called.
    |              +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:306:29
+  --> $DIR/unescaped_backticks.rs:312:29
    |
 LL | /// [`rebuild_interest_cache`][rebuild] is called after the value of the max
    |                             ^
@@ -268,7 +268,81 @@ LL | /// [`rebuild_interest_cache\`][rebuild] is called after the value of the m
    |                             +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:5:5
+  --> $DIR/unescaped_backticks.rs:322:5
+   |
+LL | /     /// The Subscriber` may be accessed by calling [`WeakDispatch::upgrade`],
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     /// [`rebuild_interest_cache`][rebuild] is called after the value of the max
+LL | |     /// level changes.
+   | |______________________^
+   |
+   = help: the opening backtick of a previous inline code may be missing
+            change: The Subscriber` may be accessed by calling [`WeakDispatch::upgrade`],
+           to this: The `Subscriber` may be accessed by calling [`WeakDispatch::upgrade`],
+   = help: if you meant to use a literal backtick, escape it
+            change: `None`. Otherwise, it will return `Some(Dispatch)`.
+           to this: `None`. Otherwise, it will return `Some(Dispatch)\`.
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:322:5
+   |
+LL | /     /// The Subscriber` may be accessed by calling [`WeakDispatch::upgrade`],
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     /// [`rebuild_interest_cache`][rebuild] is called after the value of the max
+LL | |     /// level changes.
+   | |______________________^
+   |
+   = help: the opening or closing backtick of an inline code may be missing
+   = help: if you meant to use a literal backtick, escape it
+            change: or `None` if it isn't.
+           to this: or `None\` if it isn't.
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:322:5
+   |
+LL | /     /// The Subscriber` may be accessed by calling [`WeakDispatch::upgrade`],
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     /// [`rebuild_interest_cache`][rebuild] is called after the value of the max
+LL | |     /// level changes.
+   | |______________________^
+   |
+   = help: a previous inline code might be longer than expected
+            change: Called before the filtered [`Layer]'s [`on_event`], to determine if
+           to this: Called before the filtered [`Layer`]'s [`on_event`], to determine if
+   = help: if you meant to use a literal backtick, escape it
+            change: `on_event` should be called.
+           to this: `on_event\` should be called.
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:322:5
+   |
+LL | /     /// The Subscriber` may be accessed by calling [`WeakDispatch::upgrade`],
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     /// [`rebuild_interest_cache`][rebuild] is called after the value of the max
+LL | |     /// level changes.
+   | |______________________^
+   |
+   = help: a previous inline code might be longer than expected
+            change: Therefore, if the `Filter will change the value returned by this
+           to this: Therefore, if the `Filter` will change the value returned by this
+   = help: if you meant to use a literal backtick, escape it
+            change: [`rebuild_interest_cache`][rebuild] is called after the value of the max
+           to this: [`rebuild_interest_cache\`][rebuild] is called after the value of the max
+
+error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:11:5
    |
 LL | /// `
    |     ^
@@ -280,7 +354,7 @@ LL | /// \`
    |     +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:12:7
+  --> $DIR/unescaped_backticks.rs:18:7
    |
 LL | /// \`
    |       ^
@@ -295,7 +369,7 @@ LL | /// \\`
    |       +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:19:6
+  --> $DIR/unescaped_backticks.rs:25:6
    |
 LL | /// [`link1]
    |      ^
@@ -310,7 +384,7 @@ LL | /// [\`link1]
    |      +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:23:11
+  --> $DIR/unescaped_backticks.rs:29:11
    |
 LL | /// [link2`]
    |           ^
@@ -325,7 +399,7 @@ LL | /// [link2\`]
    |           +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:27:6
+  --> $DIR/unescaped_backticks.rs:33:6
    |
 LL | /// [`link_long](link_long)
    |      ^
@@ -340,7 +414,7 @@ LL | /// [\`link_long](link_long)
    |      +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:31:6
+  --> $DIR/unescaped_backticks.rs:37:6
    |
 LL | /// [`broken-link]
    |      ^
@@ -355,7 +429,7 @@ LL | /// [\`broken-link]
    |      +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:38:8
+  --> $DIR/unescaped_backticks.rs:44:8
    |
 LL | /// <x:`>
    |        ^
@@ -370,7 +444,7 @@ LL | /// <x:\`>
    |        +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:48:6
+  --> $DIR/unescaped_backticks.rs:54:6
    |
 LL | /// 🦀`🦀
    |       ^
@@ -389,7 +463,7 @@ LL | /// 🦀\`🦀
    |       +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:52:5
+  --> $DIR/unescaped_backticks.rs:58:5
    |
 LL | /// `foo(
    |     ^
@@ -404,7 +478,7 @@ LL | /// \`foo(
    |     +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:58:14
+  --> $DIR/unescaped_backticks.rs:64:14
    |
 LL | /// `foo `bar`
    |              ^
@@ -419,7 +493,7 @@ LL | /// `foo `bar\`
    |              +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:64:5
+  --> $DIR/unescaped_backticks.rs:70:5
    |
 LL | /// `foo(
    |     ^
@@ -434,7 +508,7 @@ LL | /// \`foo(
    |     +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:69:83
+  --> $DIR/unescaped_backticks.rs:75:83
    |
 LL | /// Addition is commutative, which means that add(a, b)` is the same as `add(b, a)`.
    |                                                                                   ^
@@ -449,7 +523,7 @@ LL | /// Addition is commutative, which means that add(a, b)` is the same as `ad
    |                                                                                   +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:73:51
+  --> $DIR/unescaped_backticks.rs:79:51
    |
 LL | /// or even to add a number `n` to 42 (`add(42, b)`)!
    |                                                   ^
@@ -464,7 +538,7 @@ LL | /// or even to add a number `n` to 42 (`add(42, b)\`)!
    |                                                   +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:77:83
+  --> $DIR/unescaped_backticks.rs:83:83
    |
 LL | /// Addition is commutative, which means that `add(a, b) is the same as `add(b, a)`.
    |                                                                                   ^
@@ -479,7 +553,7 @@ LL | /// Addition is commutative, which means that `add(a, b) is the same as `ad
    |                                                                                   +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:81:51
+  --> $DIR/unescaped_backticks.rs:87:51
    |
 LL | /// or even to add a number `n` to 42 (`add(42, n)`)!
    |                                                   ^
@@ -494,7 +568,7 @@ LL | /// or even to add a number `n` to 42 (`add(42, n)\`)!
    |                                                   +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:85:83
+  --> $DIR/unescaped_backticks.rs:91:83
    |
 LL | /// Addition is commutative, which means that `add(a, b)` is the same as add(b, a)`.
    |                                                                                   ^
@@ -509,7 +583,7 @@ LL | /// Addition is commutative, which means that `add(a, b)` is the same as ad
    |                                                                                   +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:89:50
+  --> $DIR/unescaped_backticks.rs:95:50
    |
 LL | /// or even to add a number `n` to 42 (add(42, n)`)!
    |                                                  ^
@@ -524,7 +598,7 @@ LL | /// or even to add a number `n` to 42 (add(42, n)\`)!
    |                                                  +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:93:74
+  --> $DIR/unescaped_backticks.rs:99:74
    |
 LL | /// Addition is commutative, which means that `add(a, b)` is the same as `add(b, a).
    |                                                                          ^
@@ -539,7 +613,7 @@ LL | /// Addition is commutative, which means that `add(a, b)` is the same as \`
    |                                                                          +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:97:51
+  --> $DIR/unescaped_backticks.rs:103:51
    |
 LL | /// or even to add a number `n` to 42 (`add(42, n)`)!
    |                                                   ^
@@ -554,7 +628,7 @@ LL | /// or even to add a number `n` to 42 (`add(42, n)\`)!
    |                                                   +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:101:1
+  --> $DIR/unescaped_backticks.rs:107:1
    |
 LL | #[doc = "`"]
    | ^^^^^^^^^^^^
@@ -565,7 +639,7 @@ LL | #[doc = "`"]
            to this: \`
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:108:1
+  --> $DIR/unescaped_backticks.rs:114:1
    |
 LL | #[doc = concat!("\\", "`")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -578,7 +652,7 @@ LL | #[doc = concat!("\\", "`")]
            to this: \\`
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:112:1
+  --> $DIR/unescaped_backticks.rs:118:1
    |
 LL | #[doc = "Addition is commutative, which means that add(a, b)` is the same as `add(b, a)`."]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -591,7 +665,7 @@ LL | #[doc = "Addition is commutative, which means that add(a, b)` is the same a
            to this: Addition is commutative, which means that add(a, b)` is the same as `add(b, a)\`.
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:116:1
+  --> $DIR/unescaped_backticks.rs:122:1
    |
 LL | #[doc = "Addition is commutative, which means that `add(a, b) is the same as `add(b, a)`."]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -604,7 +678,7 @@ LL | #[doc = "Addition is commutative, which means that `add(a, b) is the same a
            to this: Addition is commutative, which means that `add(a, b) is the same as `add(b, a)\`.
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:120:1
+  --> $DIR/unescaped_backticks.rs:126:1
    |
 LL | #[doc = "Addition is commutative, which means that `add(a, b)` is the same as add(b, a)`."]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -617,7 +691,7 @@ LL | #[doc = "Addition is commutative, which means that `add(a, b)` is the same 
            to this: Addition is commutative, which means that `add(a, b)` is the same as add(b, a)\`.
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:124:1
+  --> $DIR/unescaped_backticks.rs:130:1
    |
 LL | #[doc = "Addition is commutative, which means that `add(a, b)` is the same as `add(b, a)."]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -630,7 +704,7 @@ LL | #[doc = "Addition is commutative, which means that `add(a, b)` is the same 
            to this: Addition is commutative, which means that `add(a, b)` is the same as \`add(b, a).
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:129:5
+  --> $DIR/unescaped_backticks.rs:135:5
    |
 LL | /// `foo
    |     ^
@@ -645,7 +719,7 @@ LL | /// \`foo
    |     +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:133:7
+  --> $DIR/unescaped_backticks.rs:139:7
    |
 LL | /// # `(heading
    |       ^
@@ -660,7 +734,7 @@ LL | /// # \`(heading
    |       +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:135:17
+  --> $DIR/unescaped_backticks.rs:141:17
    |
 LL | /// ## heading2)`
    |                 ^
@@ -675,7 +749,7 @@ LL | /// ## heading2)\`
    |                 +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:138:11
+  --> $DIR/unescaped_backticks.rs:144:11
    |
 LL | /// multi `(
    |           ^
@@ -690,7 +764,7 @@ LL | /// multi \`(
    |           +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:144:10
+  --> $DIR/unescaped_backticks.rs:150:10
    |
 LL | /// para)`(graph
    |          ^
@@ -709,7 +783,7 @@ LL | /// para)\`(graph
    |          +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:147:10
+  --> $DIR/unescaped_backticks.rs:153:10
    |
 LL | /// para)`(graph2
    |          ^
@@ -728,7 +802,7 @@ LL | /// para)\`(graph2
    |          +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:150:12
+  --> $DIR/unescaped_backticks.rs:156:12
    |
 LL | /// 1. foo)`
    |            ^
@@ -743,7 +817,7 @@ LL | /// 1. foo)\`
    |            +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:152:8
+  --> $DIR/unescaped_backticks.rs:158:8
    |
 LL | /// 2. `(bar
    |        ^
@@ -758,7 +832,7 @@ LL | /// 2. \`(bar
    |        +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:154:11
+  --> $DIR/unescaped_backticks.rs:160:11
    |
 LL | /// * baz)`
    |           ^
@@ -773,7 +847,7 @@ LL | /// * baz)\`
    |           +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:156:7
+  --> $DIR/unescaped_backticks.rs:162:7
    |
 LL | /// * `(quux
    |       ^
@@ -788,7 +862,7 @@ LL | /// * \`(quux
    |       +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:159:5
+  --> $DIR/unescaped_backticks.rs:165:5
    |
 LL | /// `#![this_is_actually_an_image(and(not), an = "attribute")]
    |     ^
@@ -803,7 +877,7 @@ LL | /// \`#![this_is_actually_an_image(and(not), an = "attribute")]
    |     +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:162:62
+  --> $DIR/unescaped_backticks.rs:168:62
    |
 LL | /// #![this_is_actually_an_image(and(not), an = "attribute")]`
    |                                                              ^
@@ -818,7 +892,7 @@ LL | /// #![this_is_actually_an_image(and(not), an = "attribute")]\`
    |                                                              +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:167:7
+  --> $DIR/unescaped_backticks.rs:173:7
    |
 LL | /// | `table( | )head` |
    |       ^
@@ -833,7 +907,7 @@ LL | /// | \`table( | )head` |
    |       +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:167:22
+  --> $DIR/unescaped_backticks.rs:173:22
    |
 LL | /// | `table( | )head` |
    |                      ^
@@ -848,7 +922,7 @@ LL | /// | `table( | )head\` |
    |                      +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:171:12
+  --> $DIR/unescaped_backticks.rs:177:12
    |
 LL | /// | table`( | )`body |
    |            ^
@@ -863,7 +937,7 @@ LL | /// | table\`( | )`body |
    |            +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:171:18
+  --> $DIR/unescaped_backticks.rs:177:18
    |
 LL | /// | table`( | )`body |
    |                  ^
@@ -881,5 +955,5 @@ help: if you meant to use a literal backtick, escape it
 LL | /// | table`( | )\`body |
    |                  +
 
-error: aborting due to 59 previous errors
+error: aborting due to 63 previous errors
 

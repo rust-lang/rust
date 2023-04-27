@@ -2,6 +2,12 @@
 #![allow(rustdoc::broken_intra_doc_links)]
 #![allow(rustdoc::invalid_html_tags)]
 
+///
+pub fn empty() {}
+
+#[doc = ""]
+pub fn empty2() {}
+
 /// `
 //~^ ERROR unescaped backtick
 pub fn single() {}
@@ -307,3 +313,30 @@ pub mod rustc {
 //~^ ERROR unescaped backtick
 /// level changes.
 pub mod tracing {}
+
+macro_rules! id {
+    ($($tt:tt)*) => { $($tt)* }
+}
+
+id! {
+    /// The Subscriber` may be accessed by calling [`WeakDispatch::upgrade`],
+    //~^ ERROR unescaped backtick
+    //~| ERROR unescaped backtick
+    //~| ERROR unescaped backtick
+    //~| ERROR unescaped backtick
+    /// which returns an `Option<Dispatch>`. If all [`Dispatch`] clones that point
+    /// at the `Subscriber` have been dropped, [`WeakDispatch::upgrade`] will return
+    /// `None`. Otherwise, it will return `Some(Dispatch)`.
+    ///
+    /// Returns some reference to this `[`Subscriber`] value if it is of type `T`,
+    /// or `None` if it isn't.
+    ///
+    /// Called before the filtered [`Layer]'s [`on_event`], to determine if
+    /// `on_event` should be called.
+    ///
+    /// Therefore, if the `Filter will change the value returned by this
+    /// method, it is responsible for ensuring that
+    /// [`rebuild_interest_cache`][rebuild] is called after the value of the max
+    /// level changes.
+    pub mod tracing_macro {}
+}
