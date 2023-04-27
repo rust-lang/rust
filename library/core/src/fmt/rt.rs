@@ -54,7 +54,7 @@ pub enum Count {
 
 // This needs to match the order of flags in compiler/rustc_ast_lowering/src/format.rs.
 #[derive(Copy, Clone)]
-pub enum Flag {
+pub(super) enum Flag {
     SignPlus,
     SignMinus,
     Alternate,
