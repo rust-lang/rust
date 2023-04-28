@@ -1102,12 +1102,8 @@ impl Config {
     }
 
     pub fn proc_macro_srv(&self) -> Option<AbsPathBuf> {
-        self.data
-            .procMacro_server
-            .clone()
-            .map(AbsPathBuf::try_from)?
-            .ok()
-            .map(|path| self.root_path.join(path))
+        let path = self.data.procMacro_server.clone()?;
+        Some(AbsPathBuf::try_from(path).unwrap_or_else(|path| self.root_path.join(&path)))
     }
 
     pub fn dummy_replacements(&self) -> &FxHashMap<Box<str>, Box<[Box<str>]>> {
@@ -2423,5 +2419,44 @@ mod tests {
 
     fn remove_ws(text: &str) -> String {
         text.replace(char::is_whitespace, "")
+    }
+
+    #[test]
+    fn proc_macro_srv_null() {
+        let mut config =
+            Config::new(AbsPathBuf::try_from(project_root()).unwrap(), Default::default(), vec![]);
+        config
+            .update(serde_json::json!({
+                "procMacro_server": null,
+            }))
+            .unwrap();
+        assert_eq!(config.proc_macro_srv(), None);
+    }
+
+    #[test]
+    fn proc_macro_srv_abs() {
+        let mut config =
+            Config::new(AbsPathBuf::try_from(project_root()).unwrap(), Default::default(), vec![]);
+        config
+            .update(serde_json::json!({
+                "procMacro": {"server": project_root().display().to_string()}
+            }))
+            .unwrap();
+        assert_eq!(config.proc_macro_srv(), Some(AbsPathBuf::try_from(project_root()).unwrap()));
+    }
+
+    #[test]
+    fn proc_macro_srv_rel() {
+        let mut config =
+            Config::new(AbsPathBuf::try_from(project_root()).unwrap(), Default::default(), vec![]);
+        config
+            .update(serde_json::json!({
+                "procMacro": {"server": "./server"}
+            }))
+            .unwrap();
+        assert_eq!(
+            config.proc_macro_srv(),
+            Some(AbsPathBuf::try_from(project_root().join("./server")).unwrap())
+        );
     }
 }

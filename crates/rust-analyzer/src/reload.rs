@@ -426,6 +426,11 @@ impl GlobalState {
 
                         tracing::info!("Using proc-macro server at {}", path.display(),);
                         ProcMacroServer::spawn(path.clone()).map_err(|err| {
+                            tracing::error!(
+                                "Failed to run proc-macro server from path {}, error: {:?}",
+                                path.display(),
+                                err
+                            );
                             anyhow::anyhow!(
                                 "Failed to run proc-macro server from path {}, error: {:?}",
                                 path.display(),
