@@ -26,7 +26,7 @@ use rustc_target::spec::abi::Abi;
 use smallvec::SmallVec;
 use std::fmt;
 
-#[derive(Debug, Copy, Clone, Encodable, HashStable_Generic)]
+#[derive(Debug, Copy, Clone, HashStable_Generic)]
 pub struct Lifetime {
     pub hir_id: HirId,
 
@@ -41,8 +41,7 @@ pub struct Lifetime {
     pub res: LifetimeName,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Encodable, Hash, Copy)]
-#[derive(HashStable_Generic)]
+#[derive(Debug, Copy, Clone, HashStable_Generic)]
 pub enum ParamName {
     /// Some user-given name like `T` or `'x`.
     Plain(Ident),
@@ -85,8 +84,7 @@ impl ParamName {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Encodable, Hash, Copy)]
-#[derive(HashStable_Generic)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable_Generic)]
 pub enum LifetimeName {
     /// User-given names or fresh (synthetic) names.
     Param(LocalDefId),
@@ -243,13 +241,13 @@ impl<'hir> PathSegment<'hir> {
     }
 }
 
-#[derive(Encodable, Clone, Copy, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, Debug, HashStable_Generic)]
 pub struct ConstArg {
     pub value: AnonConst,
     pub span: Span,
 }
 
-#[derive(Encodable, Clone, Copy, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, Debug, HashStable_Generic)]
 pub struct InferArg {
     pub hir_id: HirId,
     pub span: Span,
@@ -422,8 +420,7 @@ impl<'hir> GenericArgs<'hir> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Encodable, Hash, Debug)]
-#[derive(HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, HashStable_Generic)]
 pub enum GenericArgsParentheses {
     No,
     /// Bounds for `feature(return_type_notation)`, like `T: Trait<method(..): Send>`,
@@ -435,8 +432,7 @@ pub enum GenericArgsParentheses {
 
 /// A modifier on a bound, currently this is only used for `?Sized`, where the
 /// modifier is `Maybe`. Negative bounds should also be handled here.
-#[derive(Copy, Clone, PartialEq, Eq, Encodable, Hash, Debug)]
-#[derive(HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum TraitBoundModifier {
     None,
     Maybe,
@@ -474,7 +470,7 @@ impl GenericBound<'_> {
 
 pub type GenericBounds<'hir> = &'hir [GenericBound<'hir>];
 
-#[derive(Copy, Clone, PartialEq, Eq, Encodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub enum LifetimeParamKind {
     // Indicates that the lifetime definition was explicitly declared (e.g., in
     // `fn foo<'a>(x: &'a u8) -> &'a u8 { x }`).
@@ -539,7 +535,7 @@ impl<'hir> GenericParam<'hir> {
 /// early-bound (but can be a late-bound lifetime in functions, for example),
 /// or from a `for<...>` binder, in which case it's late-bound (and notably,
 /// does not show up in the parent item's generics).
-#[derive(Debug, HashStable_Generic, PartialEq, Eq, Copy, Clone)]
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum GenericParamSource {
     // Early or late-bound parameters defined on an item
     Generics,
@@ -1097,7 +1093,7 @@ pub struct PatField<'hir> {
     pub span: Span,
 }
 
-#[derive(Copy, Clone, PartialEq, Encodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Debug, HashStable_Generic)]
 pub enum RangeEnd {
     Included,
     Excluded,
@@ -1197,7 +1193,7 @@ pub enum PatKind<'hir> {
     Slice(&'hir [Pat<'hir>], Option<&'hir Pat<'hir>>, &'hir [Pat<'hir>]),
 }
 
-#[derive(Copy, Clone, PartialEq, Encodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Debug, HashStable_Generic)]
 pub enum BinOpKind {
     /// The `+` operator (addition).
     Add,
@@ -1325,7 +1321,7 @@ impl Into<ast::BinOpKind> for BinOpKind {
 
 pub type BinOp = Spanned<BinOpKind>;
 
-#[derive(Copy, Clone, PartialEq, Encodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Debug, HashStable_Generic)]
 pub enum UnOp {
     /// The `*` operator (dereferencing).
     Deref,
@@ -1450,19 +1446,19 @@ pub struct ExprField<'hir> {
     pub is_shorthand: bool,
 }
 
-#[derive(Copy, Clone, PartialEq, Encodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Debug, HashStable_Generic)]
 pub enum BlockCheckMode {
     DefaultBlock,
     UnsafeBlock(UnsafeSource),
 }
 
-#[derive(Copy, Clone, PartialEq, Encodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Debug, HashStable_Generic)]
 pub enum UnsafeSource {
     CompilerGenerated,
     UserProvided,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct BodyId {
     pub hir_id: HirId,
 }
@@ -1506,7 +1502,7 @@ impl<'hir> Body<'hir> {
 }
 
 /// The type of source expression that caused this generator to be created.
-#[derive(Clone, PartialEq, PartialOrd, Eq, Hash, Debug, Copy)]
+#[derive(Clone, PartialEq, Eq, Debug, Copy, Hash)]
 #[derive(HashStable_Generic, Encodable, Decodable)]
 pub enum GeneratorKind {
     /// An explicit `async` block or the body of an async function.
@@ -1539,7 +1535,7 @@ impl GeneratorKind {
 ///
 /// This helps error messages but is also used to drive coercions in
 /// type-checking (see #60424).
-#[derive(Clone, PartialEq, PartialOrd, Eq, Hash, Debug, Copy)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
 #[derive(HashStable_Generic, Encodable, Decodable)]
 pub enum AsyncGeneratorKind {
     /// An explicit `async` block written by the user.
@@ -1649,7 +1645,7 @@ impl fmt::Display for ConstContext {
 /// A literal.
 pub type Lit = Spanned<LitKind>;
 
-#[derive(Copy, Clone, PartialEq, Eq, Encodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub enum ArrayLen {
     Infer(HirId, Span),
     Body(AnonConst),
@@ -1671,7 +1667,7 @@ impl ArrayLen {
 ///
 /// You can check if this anon const is a default in a const param
 /// `const N: usize = { ... }` with `tcx.hir().opt_const_param_default_param_def_id(..)`
-#[derive(Copy, Clone, PartialEq, Eq, Encodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub struct AnonConst {
     pub hir_id: HirId,
     pub def_id: LocalDefId,
@@ -2105,7 +2101,7 @@ impl<'hir> QPath<'hir> {
 }
 
 /// Hints at the original code for a let statement.
-#[derive(Copy, Clone, Encodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub enum LocalSource {
     /// A `match _ { .. }`.
     Normal,
@@ -2158,7 +2154,7 @@ impl MatchSource {
 }
 
 /// The loop type that yielded an `ExprKind::Loop`.
-#[derive(Copy, Clone, PartialEq, Encodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Debug, HashStable_Generic)]
 pub enum LoopSource {
     /// A `loop { .. }` loop.
     Loop,
@@ -2178,7 +2174,7 @@ impl LoopSource {
     }
 }
 
-#[derive(Copy, Clone, Encodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub enum LoopIdError {
     OutsideLoopScope,
     UnlabeledCfInWhileCondition,
@@ -2197,7 +2193,7 @@ impl fmt::Display for LoopIdError {
     }
 }
 
-#[derive(Copy, Clone, Encodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub struct Destination {
     /// This is `Some(_)` iff there is an explicit user-specified 'label
     pub label: Option<Label>,
@@ -2208,7 +2204,7 @@ pub struct Destination {
 }
 
 /// The yield kind that caused an `ExprKind::Yield`.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encodable, Decodable, HashStable_Generic)]
+#[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub enum YieldSource {
     /// An `<expr>.await`.
     Await { expr: Option<HirId> },
@@ -2327,7 +2323,7 @@ impl<'hir> TraitItem<'hir> {
 }
 
 /// Represents a trait method's body (or just argument names).
-#[derive(Encodable, Debug, Clone, Copy, HashStable_Generic)]
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum TraitFn<'hir> {
     /// No default body in the trait, just a signature.
     Required(&'hir [Ident]),
@@ -2658,7 +2654,7 @@ pub struct OpaqueTy<'hir> {
 }
 
 /// From whence the opaque type came.
-#[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, HashStable_Generic)]
 pub enum OpaqueTyOrigin {
     /// `-> impl Trait`
     FnReturn(LocalDefId),
@@ -2818,7 +2814,7 @@ impl ImplicitSelfKind {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Decodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug)]
 #[derive(HashStable_Generic)]
 pub enum IsAsync {
     Async,
@@ -2831,7 +2827,7 @@ impl IsAsync {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Encodable, Decodable, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Encodable, Decodable, HashStable_Generic)]
 pub enum Defaultness {
     Default { has_value: bool },
     Final,
@@ -2887,13 +2883,13 @@ pub enum ClosureBinder {
     For { span: Span },
 }
 
-#[derive(Encodable, Debug, Clone, Copy, HashStable_Generic)]
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Mod<'hir> {
     pub spans: ModSpans,
     pub item_ids: &'hir [ItemId],
 }
 
-#[derive(Copy, Clone, Debug, HashStable_Generic, Encodable)]
+#[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub struct ModSpans {
     /// A span from the first token past `{` to the last token until `}`.
     /// For `mod foo;`, the inner span ranges from the first token
@@ -2922,7 +2918,7 @@ pub struct Variant<'hir> {
     pub span: Span,
 }
 
-#[derive(Copy, Clone, PartialEq, Encodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Debug, HashStable_Generic)]
 pub enum UseKind {
     /// One import, e.g., `use foo::bar` or `use foo::bar as baz`.
     /// Also produced for each element of a list `use`, e.g.
@@ -3233,7 +3229,7 @@ impl fmt::Display for Unsafety {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 #[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum Constness {
     Const,
@@ -3249,7 +3245,7 @@ impl fmt::Display for Constness {
     }
 }
 
-#[derive(Copy, Clone, Encodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub struct FnHeader {
     pub unsafety: Unsafety,
     pub constness: Constness,
@@ -3381,7 +3377,7 @@ impl ItemKind<'_> {
 /// type or method, and whether it is public). This allows other
 /// passes to find the impl they want without loading the ID (which
 /// means fewer edges in the incremental compilation graph).
-#[derive(Encodable, Debug, Clone, Copy, HashStable_Generic)]
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct TraitItemRef {
     pub id: TraitItemId,
     pub ident: Ident,
@@ -3405,7 +3401,7 @@ pub struct ImplItemRef {
     pub trait_item_def_id: Option<DefId>,
 }
 
-#[derive(Copy, Clone, PartialEq, Encodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Debug, HashStable_Generic)]
 pub enum AssocItemKind {
     Const,
     Fn { has_self: bool },
@@ -3474,7 +3470,7 @@ pub enum ForeignItemKind<'hir> {
 }
 
 /// A variable captured by a closure.
-#[derive(Debug, Copy, Clone, Encodable, HashStable_Generic)]
+#[derive(Debug, Copy, Clone, HashStable_Generic)]
 pub struct Upvar {
     /// First span where it is accessed (there can be multiple).
     pub span: Span,
@@ -3483,7 +3479,7 @@ pub struct Upvar {
 // The TraitCandidate's import_ids is empty if the trait is defined in the same module, and
 // has length > 0 if the trait is found through an chain of imports, starting with the
 // import/use statement in the scope where the trait is used.
-#[derive(Encodable, Decodable, Debug, Clone, HashStable_Generic)]
+#[derive(Debug, Clone, HashStable_Generic)]
 pub struct TraitCandidate {
     pub def_id: DefId,
     pub import_ids: SmallVec<[LocalDefId; 1]>,

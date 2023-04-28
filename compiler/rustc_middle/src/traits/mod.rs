@@ -199,7 +199,7 @@ impl<'tcx> ObligationCause<'tcx> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Lift, HashStable, TyEncodable, TyDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, Lift, HashStable, TyEncodable, TyDecodable)]
 #[derive(TypeVisitable, TypeFoldable)]
 pub struct UnifyReceiverContext<'tcx> {
     pub assoc_item: ty::AssocItem,
@@ -207,7 +207,7 @@ pub struct UnifyReceiverContext<'tcx> {
     pub substs: SubstsRef<'tcx>,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Lift, Default, HashStable)]
+#[derive(Clone, PartialEq, Eq, Lift, Default, HashStable)]
 #[derive(TypeVisitable, TypeFoldable, TyEncodable, TyDecodable)]
 pub struct InternedObligationCauseCode<'tcx> {
     /// `None` for `ObligationCauseCode::MiscObligation` (a common case, occurs ~60% of
@@ -243,7 +243,7 @@ impl<'tcx> std::ops::Deref for InternedObligationCauseCode<'tcx> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Lift, HashStable, TyEncodable, TyDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, Lift, HashStable, TyEncodable, TyDecodable)]
 #[derive(TypeVisitable, TypeFoldable)]
 pub enum ObligationCauseCode<'tcx> {
     /// Not well classified or should be obvious from the span.
@@ -468,7 +468,7 @@ pub enum WellFormedLoc {
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Lift, HashStable, TyEncodable, TyDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, Lift, HashStable, TyEncodable, TyDecodable)]
 #[derive(TypeVisitable, TypeFoldable)]
 pub struct ImplDerivedObligationCause<'tcx> {
     pub derived: DerivedObligationCause<'tcx>,
@@ -529,7 +529,7 @@ impl<'tcx> ty::Lift<'tcx> for StatementAsExpression {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Lift, HashStable, TyEncodable, TyDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, Lift, HashStable, TyEncodable, TyDecodable)]
 #[derive(TypeVisitable, TypeFoldable)]
 pub struct MatchExpressionArmCause<'tcx> {
     pub arm_block_id: Option<hir::HirId>,
@@ -545,7 +545,7 @@ pub struct MatchExpressionArmCause<'tcx> {
     pub opt_suggest_box_span: Option<Span>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[derive(Lift, TypeFoldable, TypeVisitable, HashStable, TyEncodable, TyDecodable)]
 pub struct IfExpressionCause<'tcx> {
     pub then_id: hir::HirId,
@@ -556,7 +556,7 @@ pub struct IfExpressionCause<'tcx> {
     pub opt_suggest_box_span: Option<Span>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Lift, HashStable, TyEncodable, TyDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, Lift, HashStable, TyEncodable, TyDecodable)]
 #[derive(TypeVisitable, TypeFoldable)]
 pub struct DerivedObligationCause<'tcx> {
     /// The trait predicate of the parent obligation that led to the
