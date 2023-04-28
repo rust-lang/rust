@@ -473,10 +473,20 @@ impl<T: ?Sized> *mut T {
     where
         T: Sized,
     {
+        #[cfg(bootstrap)]
         // SAFETY: the caller must uphold the safety contract for `offset`.
         // The obtained pointer is valid for writes since the caller must
         // guarantee that it points to the same allocated object as `self`.
-        unsafe { intrinsics::offset(self, count) as *mut T }
+        unsafe {
+            intrinsics::offset(self, count) as *mut T
+        }
+        #[cfg(not(bootstrap))]
+        // SAFETY: the caller must uphold the safety contract for `offset`.
+        // The obtained pointer is valid for writes since the caller must
+        // guarantee that it points to the same allocated object as `self`.
+        unsafe {
+            intrinsics::offset(self, count)
+        }
     }
 
     /// Calculates the offset from a pointer in bytes.
@@ -1016,8 +1026,16 @@ impl<T: ?Sized> *mut T {
     where
         T: Sized,
     {
+        #[cfg(bootstrap)]
         // SAFETY: the caller must uphold the safety contract for `offset`.
-        unsafe { self.offset(count as isize) }
+        unsafe {
+            self.offset(count as isize)
+        }
+        #[cfg(not(bootstrap))]
+        // SAFETY: the caller must uphold the safety contract for `offset`.
+        unsafe {
+            intrinsics::offset(self, count)
+        }
     }
 
     /// Calculates the offset from a pointer in bytes (convenience for `.byte_offset(count as isize)`).

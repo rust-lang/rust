@@ -1413,6 +1413,10 @@ extern "rust-intrinsic" {
     /// This is implemented as an intrinsic to avoid converting to and from an
     /// integer, since the conversion would throw away aliasing information.
     ///
+    /// This can only be used with `Ptr` as a raw pointer type (`*mut` or `*const`)
+    /// to a `Sized` pointee and with `Delta` as `usize` or `isize`.  Any other
+    /// instantiations may arbitrarily misbehave, and that's *not* a compiler bug.
+    ///
     /// # Safety
     ///
     /// Both the starting and resulting pointer must be either in bounds or one
@@ -1421,6 +1425,14 @@ extern "rust-intrinsic" {
     /// returned value will result in undefined behavior.
     ///
     /// The stabilized version of this intrinsic is [`pointer::offset`].
+    #[cfg(not(bootstrap))]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
+    #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
+    #[rustc_nounwind]
+    pub fn offset<Ptr, Delta>(dst: Ptr, offset: Delta) -> Ptr;
+
+    /// The bootstrap version of this is more restricted.
+    #[cfg(bootstrap)]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[rustc_nounwind]
