@@ -218,17 +218,3 @@ impl<'tcx> Const<'tcx> {
         matches!(self.kind(), ty::ConstKind::Infer(_))
     }
 }
-
-pub fn const_param_default(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Const<'_>> {
-    let default_def_id = match tcx.hir().get_by_def_id(def_id) {
-        hir::Node::GenericParam(hir::GenericParam {
-            kind: hir::GenericParamKind::Const { default: Some(ac), .. },
-            ..
-        }) => ac.def_id,
-        _ => span_bug!(
-            tcx.def_span(def_id),
-            "`const_param_default` expected a generic parameter with a constant"
-        ),
-    };
-    ty::EarlyBinder(Const::from_anon_const(tcx, default_def_id))
-}

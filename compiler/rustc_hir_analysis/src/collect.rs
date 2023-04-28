@@ -77,6 +77,7 @@ pub fn provide(providers: &mut Providers) {
         generator_kind,
         collect_mod_item_types,
         is_type_alias_impl_trait,
+        const_param_default,
         ..*providers
     };
 }
@@ -291,7 +292,9 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
                     self.tcx.ensure().type_of(param.def_id);
                     if let Some(default) = default {
                         // need to store default and type of default
-                        self.tcx.ensure().type_of(default.def_id);
+                        if let hir::ConstArgKind::AnonConst(_, anon_ct) = default.kind {
+                            self.tcx.ensure().type_of(anon_ct.def_id);
+                        }
                         self.tcx.ensure().const_param_default(param.def_id);
                     }
                 }
@@ -1486,5 +1489,21 @@ fn is_type_alias_impl_trait<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool
             matches!(opaque.origin, hir::OpaqueTyOrigin::TyAlias)
         }
         _ => bug!("tried getting opaque_ty_origin for non-opaque: {:?}", def_id),
+    }
+}
+
+fn const_param_default(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Const<'_>> {
+    let item_def_id = tcx.parent(def_id.to_def_id()).expect_local();
+    let item_ctxt = ItemCtxt::new(tcx, item_def_id);
+
+    match tcx.hir().get_by_def_id(def_id) {
+        hir::Node::GenericParam(hir::GenericParam {
+            kind: hir::GenericParamKind::Const { default: Some(ac), .. },
+            ..
+        }) => ty::EarlyBinder(item_ctxt.astconv().ast_const_to_const(ac, def_id.to_def_id())),
+        _ => span_bug!(
+            tcx.def_span(def_id),
+            "`const_param_default` expected a generic parameter with a constant"
+        ),
     }
 }

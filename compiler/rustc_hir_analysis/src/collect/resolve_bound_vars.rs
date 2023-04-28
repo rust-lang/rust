@@ -918,8 +918,8 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     }
                     GenericParamKind::Const { ty, default } => {
                         this.visit_ty(ty);
-                        if let Some(default) = default {
-                            this.visit_body(this.tcx.hir().body(default.body));
+                        if let Some(arg) = default { 
+                            this.visit_const_arg(arg);
                         }
                     }
                 }

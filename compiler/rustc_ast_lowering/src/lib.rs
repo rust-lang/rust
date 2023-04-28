@@ -2287,7 +2287,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     &ty,
                     &ImplTraitContext::Disallowed(ImplTraitPosition::GenericDefault),
                 );
-                let default = default.as_ref().map(|def| self.lower_anon_const(def));
+                let default = default.as_ref().map(|def| {
+                    self.lower_const_arg(
+                        def,
+                        &ImplTraitContext::Disallowed(ImplTraitPosition::GenericDefault),
+                    )
+                });
                 (
                     hir::ParamName::Plain(self.lower_ident(param.ident)),
                     hir::GenericParamKind::Const { ty, default },
