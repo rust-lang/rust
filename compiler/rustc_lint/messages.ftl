@@ -192,6 +192,9 @@ lint_redundant_semicolons =
         *[false] this semicolon
     }
 
+lint_useless_send_constraint =
+    constraining a reference to `Send` is useless, consider removing it
+
 lint_drop_trait_constraints =
     bounds on `{$predicate}` are most likely incorrect, consider instead using `{$needs_drop}` to detect whether a type can be trivially dropped
 

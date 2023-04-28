@@ -1168,6 +1168,14 @@ pub struct RedundantSemicolonsDiag {
     pub suggestion: Span,
 }
 
+// redundant_semicolon.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_useless_send_constraint)]
+pub struct UselessSendConstraintDiag {
+    #[suggestion(code = "", applicability = "maybe-incorrect")]
+    pub suggestion: Span,
+}
+
 // traits.rs
 pub struct DropTraitConstraintsDiag<'a> {
     pub predicate: Predicate<'a>,
