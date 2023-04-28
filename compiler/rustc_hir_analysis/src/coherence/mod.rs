@@ -5,6 +5,7 @@
 // done by the orphan and overlap modules. Then we build up various
 // mappings. That mapping code resides here.
 
+use crate::errors;
 use rustc_errors::{error_code, struct_span_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::query::Providers;
@@ -22,7 +23,7 @@ fn check_impl(tcx: TyCtxt<'_>, impl_def_id: LocalDefId, trait_ref: ty::TraitRef<
     debug!(
         "(checking implementation) adding impl for trait '{:?}', item '{}'",
         trait_ref,
-        tcx.def_path_str(impl_def_id.to_def_id())
+        tcx.def_path_str(impl_def_id)
     );
 
     // Skip impls where one of the self type is an error type.
@@ -67,13 +68,7 @@ fn enforce_trait_manually_implementable(
         tcx.trait_def(trait_def_id).specialization_kind
     {
         if !tcx.features().specialization && !tcx.features().min_specialization {
-            tcx.sess
-                .struct_span_err(
-                    impl_header_span,
-                    "implementing `rustc_specialization_trait` traits is unstable",
-                )
-                .help("add `#![feature(min_specialization)]` to the crate attributes to enable")
-                .emit();
+            tcx.sess.emit_err(errors::SpecializationTrait { span: impl_header_span });
             return;
         }
     }

@@ -72,7 +72,7 @@ fn main() -> Result<()> {
                         )
                     }
                     [sel] => eprintln!(
-                        "{} not in index or paths, but refered to at '{}'",
+                        "{} not in index or paths, but referred to at '{}'",
                         err.id.0,
                         json_find::to_jsonpath(&sel)
                     ),
@@ -85,12 +85,12 @@ fn main() -> Result<()> {
                                 .collect::<Vec<_>>()
                                 .join(", ");
                             eprintln!(
-                                "{} not in index or paths, but refered to at {sels}",
+                                "{} not in index or paths, but referred to at {sels}",
                                 err.id.0
                             );
                         } else {
                             eprintln!(
-                                "{} not in index or paths, but refered to at '{}' and {} more",
+                                "{} not in index or paths, but referred to at '{}' and {} more",
                                 err.id.0,
                                 json_find::to_jsonpath(&sel),
                                 sels.len() - 1,

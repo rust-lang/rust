@@ -1,7 +1,7 @@
 // unit-test: LowerIntrinsics
 // ignore-wasm32 compiled with panic=abort by default
 
-#![feature(core_intrinsics, intrinsics)]
+#![feature(core_intrinsics, intrinsics, rustc_attrs)]
 #![crate_type = "lib"]
 
 // EMIT_MIR lower_intrinsics.wrapping.LowerIntrinsics.diff
@@ -87,6 +87,7 @@ pub fn discriminant<T>(t: T) {
 
 extern "rust-intrinsic" {
     // Cannot use `std::intrinsics::copy_nonoverlapping` as that is a wrapper function
+    #[rustc_nounwind]
     fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
 }
 
@@ -132,4 +133,9 @@ pub fn option_payload(o: &Option<usize>, p: &Option<String>) {
         let _x = core::intrinsics::option_payload_ptr(o);
         let _y = core::intrinsics::option_payload_ptr(p);
     }
+}
+
+// EMIT_MIR lower_intrinsics.ptr_offset.LowerIntrinsics.diff
+pub unsafe fn ptr_offset(p: *const i32, d: isize) -> *const i32 {
+    core::intrinsics::offset(p, d)
 }

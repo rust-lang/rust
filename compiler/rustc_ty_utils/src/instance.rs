@@ -1,5 +1,5 @@
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::traits::CodegenObligationError;
 use rustc_middle::ty::subst::SubstsRef;
@@ -14,54 +14,26 @@ fn resolve_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, (DefId, SubstsRef<'tcx>)>,
 ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
-    let (param_env, (did, substs)) = key.into_parts();
-    if let Some(did) = did.as_local() {
-        if let Some(param_did) = tcx.opt_const_param_of(did) {
-            return tcx.resolve_instance_of_const_arg(param_env.and((did, param_did, substs)));
-        }
-    }
-
-    inner_resolve_instance(tcx, param_env.and((ty::WithOptConstParam::unknown(did), substs)))
-}
-
-fn resolve_instance_of_const_arg<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    key: ty::ParamEnvAnd<'tcx, (LocalDefId, DefId, SubstsRef<'tcx>)>,
-) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
-    let (param_env, (did, const_param_did, substs)) = key.into_parts();
-    inner_resolve_instance(
-        tcx,
-        param_env.and((
-            ty::WithOptConstParam { did: did.to_def_id(), const_param_did: Some(const_param_did) },
-            substs,
-        )),
-    )
-}
-
-fn inner_resolve_instance<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    key: ty::ParamEnvAnd<'tcx, (ty::WithOptConstParam<DefId>, SubstsRef<'tcx>)>,
-) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
     let (param_env, (def, substs)) = key.into_parts();
 
-    let result = if let Some(trait_def_id) = tcx.trait_of_item(def.did) {
+    let result = if let Some(trait_def_id) = tcx.trait_of_item(def) {
         debug!(" => associated item, attempting to find impl in param_env {:#?}", param_env);
         resolve_associated_item(
             tcx,
-            def.did,
+            def,
             param_env,
             trait_def_id,
             tcx.normalize_erasing_regions(param_env, substs),
         )
     } else {
-        let ty = tcx.type_of(def.def_id_for_type_of());
+        let ty = tcx.type_of(def);
         let item_type =
             tcx.subst_and_normalize_erasing_regions(substs, param_env, ty.skip_binder());
 
         let def = match *item_type.kind() {
             ty::FnDef(def_id, ..) if tcx.is_intrinsic(def_id) => {
                 debug!(" => intrinsic");
-                ty::InstanceDef::Intrinsic(def.did)
+                ty::InstanceDef::Intrinsic(def)
             }
             ty::FnDef(def_id, substs) if Some(def_id) == tcx.lang_items().drop_in_place_fn() => {
                 let ty = substs.type_at(0);
@@ -132,8 +104,8 @@ fn resolve_associated_item<'tcx>(
                 "resolving ImplSource::UserDefined: {:?}, {:?}, {:?}, {:?}",
                 param_env, trait_item_id, rcvr_substs, impl_data
             );
-            assert!(!rcvr_substs.needs_infer());
-            assert!(!trait_ref.needs_infer());
+            assert!(!rcvr_substs.has_infer());
+            assert!(!trait_ref.has_infer());
 
             let trait_def_id = tcx.trait_id_of_impl(impl_data.impl_def_id).unwrap();
             let trait_def = tcx.trait_def(trait_def_id);
@@ -206,15 +178,11 @@ fn resolve_associated_item<'tcx>(
             Some(ty::Instance::new(leaf_def.item.def_id, substs))
         }
         traits::ImplSource::Generator(generator_data) => Some(Instance {
-            def: ty::InstanceDef::Item(ty::WithOptConstParam::unknown(
-                generator_data.generator_def_id,
-            )),
+            def: ty::InstanceDef::Item(generator_data.generator_def_id),
             substs: generator_data.substs,
         }),
         traits::ImplSource::Future(future_data) => Some(Instance {
-            def: ty::InstanceDef::Item(ty::WithOptConstParam::unknown(
-                future_data.generator_def_id,
-            )),
+            def: ty::InstanceDef::Item(future_data.generator_def_id),
             substs: future_data.substs,
         }),
         traits::ImplSource::Closure(closure_data) => {
@@ -234,15 +202,12 @@ fn resolve_associated_item<'tcx>(
             _ => None,
         },
         traits::ImplSource::Object(ref data) => {
-            if let Some(index) = traits::get_vtable_index_of_object_method(tcx, data, trait_item_id)
-            {
-                Some(Instance {
+            traits::get_vtable_index_of_object_method(tcx, data, trait_item_id).map(|index| {
+                Instance {
                     def: ty::InstanceDef::Virtual(trait_item_id, index),
                     substs: rcvr_substs,
-                })
-            } else {
-                None
-            }
+                }
+            })
         }
         traits::ImplSource::Builtin(..) => {
             let lang_items = tcx.lang_items();
@@ -301,6 +266,5 @@ fn resolve_associated_item<'tcx>(
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {
-    *providers =
-        ty::query::Providers { resolve_instance, resolve_instance_of_const_arg, ..*providers };
+    *providers = ty::query::Providers { resolve_instance, ..*providers };
 }

@@ -237,6 +237,37 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         }
     }
 
+    fn handle_offset_of(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+        let data = self.typeck_results().offset_of_data();
+        let &(container, ref indices) =
+            data.get(expr.hir_id).expect("no offset_of_data for offset_of");
+
+        let body_did = self.typeck_results().hir_owner.to_def_id();
+        let param_env = self.tcx.param_env(body_did);
+
+        let mut current_ty = container;
+
+        for &index in indices {
+            match current_ty.kind() {
+                ty::Adt(def, subst) => {
+                    let field = &def.non_enum_variant().fields[index];
+
+                    self.insert_def_id(field.did);
+                    let field_ty = field.ty(self.tcx, subst);
+
+                    current_ty = self.tcx.normalize_erasing_regions(param_env, field_ty);
+                }
+                // we don't need to mark tuple fields as live,
+                // but we may need to mark subfields
+                ty::Tuple(tys) => {
+                    current_ty =
+                        self.tcx.normalize_erasing_regions(param_env, tys[index.as_usize()]);
+                }
+                _ => span_bug!(expr.span, "named field access on non-ADT"),
+            }
+        }
+    }
+
     fn mark_live_symbols(&mut self) {
         let mut scanned = LocalDefIdSet::default();
         while let Some(id) = self.worklist.pop() {
@@ -404,6 +435,9 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
             }
             hir::ExprKind::Closure(cls) => {
                 self.insert_def_id(cls.def_id.to_def_id());
+            }
+            hir::ExprKind::OffsetOf(..) => {
+                self.handle_offset_of(expr);
             }
             _ => (),
         }
@@ -700,6 +734,13 @@ impl<'tcx> DeadVisitor<'tcx> {
             .collect();
 
         let descr = tcx.def_descr(first_id.to_def_id());
+        // `impl` blocks are "batched" and (unlike other batching) might
+        // contain different kinds of associated items.
+        let descr = if dead_codes.iter().any(|did| tcx.def_descr(did.to_def_id()) != descr) {
+            "associated item"
+        } else {
+            descr
+        };
         let num = dead_codes.len();
         let multiple = num > 6;
         let name_list = names.into();
@@ -712,12 +753,12 @@ impl<'tcx> DeadVisitor<'tcx> {
 
         let parent_info = if let Some(parent_item) = parent_item {
             let parent_descr = tcx.def_descr(parent_item.to_def_id());
-            Some(ParentInfo {
-                num,
-                descr,
-                parent_descr,
-                span: tcx.def_ident_span(parent_item).unwrap(),
-            })
+            let span = if let DefKind::Impl { .. } = tcx.def_kind(parent_item) {
+                tcx.def_span(parent_item)
+            } else {
+                tcx.def_ident_span(parent_item).unwrap()
+            };
+            Some(ParentInfo { num, descr, parent_descr, span })
         } else {
             None
         };
@@ -800,16 +841,7 @@ impl<'tcx> DeadVisitor<'tcx> {
     }
 
     fn check_definition(&mut self, def_id: LocalDefId) {
-        if self.live_symbols.contains(&def_id) {
-            return;
-        }
-        if has_allow_dead_code_or_lang_attr(self.tcx, def_id) {
-            return;
-        }
-        let Some(name) = self.tcx.opt_item_name(def_id.to_def_id()) else {
-            return
-        };
-        if name.as_str().starts_with('_') {
+        if self.is_live_code(def_id) {
             return;
         }
         match self.tcx.def_kind(def_id) {
@@ -827,6 +859,18 @@ impl<'tcx> DeadVisitor<'tcx> {
             _ => {}
         }
     }
+
+    fn is_live_code(&self, def_id: LocalDefId) -> bool {
+        // if we cannot get a name for the item, then we just assume that it is
+        // live. I mean, we can't really emit a lint.
+        let Some(name) = self.tcx.opt_item_name(def_id.to_def_id()) else {
+            return true;
+        };
+
+        self.live_symbols.contains(&def_id)
+            || has_allow_dead_code_or_lang_attr(self.tcx, def_id)
+            || name.as_str().starts_with('_')
+    }
 }
 
 fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
@@ -836,6 +880,22 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
     let module_items = tcx.hir_module_items(module);
 
     for item in module_items.items() {
+        if let hir::ItemKind::Impl(impl_item) = tcx.hir().item(item).kind {
+            let mut dead_items = Vec::new();
+            for item in impl_item.items {
+                let did = item.id.owner_id.def_id;
+                if !visitor.is_live_code(did) {
+                    dead_items.push(did)
+                }
+            }
+            visitor.warn_multiple_dead_codes(
+                &dead_items,
+                "used",
+                Some(item.owner_id.def_id),
+                false,
+            );
+        }
+
         if !live_symbols.contains(&item.owner_id.def_id) {
             let parent = tcx.local_parent(item.owner_id.def_id);
             if parent != module && !live_symbols.contains(&parent) {
@@ -898,10 +958,6 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
                 false,
             );
         }
-    }
-
-    for impl_item in module_items.impl_items() {
-        visitor.check_definition(impl_item.owner_id.def_id);
     }
 
     for foreign_item in module_items.foreign_items() {

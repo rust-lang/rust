@@ -6,7 +6,7 @@ pub(super) use overflow::OverflowHandler;
 use self::cache::ProvisionalEntry;
 use cache::ProvisionalCache;
 use overflow::OverflowData;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::dep_graph::DepKind;
 use rustc_middle::traits::solve::{CanonicalGoal, Certainty, MaybeCause, QueryResult};
 use rustc_middle::ty::TyCtxt;
@@ -153,7 +153,7 @@ impl<'tcx> SearchGraph<'tcx> {
     /// coinductive cycles.
     ///
     /// When we encounter a coinductive cycle, we have to prove the final result of that cycle
-    /// while we are still computing that result. Because of this we continously recompute the
+    /// while we are still computing that result. Because of this we continuously recompute the
     /// cycle until the result of the previous iteration is equal to the final result, at which
     /// point we are done.
     ///

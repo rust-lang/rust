@@ -84,33 +84,45 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             ty::Adt(adt, substs) if adt.repr().simd() => {
                 let fields = &adt.non_enum_variant().fields;
                 let elem_ty = fields[FieldIdx::from_u32(0)].ty(self.tcx, substs);
-                match elem_ty.kind() {
-                    ty::Never | ty::Error(_) => return None,
-                    ty::Int(IntTy::I8) | ty::Uint(UintTy::U8) => {
-                        Some(InlineAsmType::VecI8(fields.len() as u64))
+
+                let (size, ty) = match elem_ty.kind() {
+                    ty::Array(ty, len) => {
+                        if let Some(len) =
+                            len.try_eval_target_usize(self.tcx, self.tcx.param_env(adt.did()))
+                        {
+                            (len, *ty)
+                        } else {
+                            return None;
+                        }
                     }
+                    _ => (fields.len() as u64, elem_ty),
+                };
+
+                match ty.kind() {
+                    ty::Never | ty::Error(_) => return None,
+                    ty::Int(IntTy::I8) | ty::Uint(UintTy::U8) => Some(InlineAsmType::VecI8(size)),
                     ty::Int(IntTy::I16) | ty::Uint(UintTy::U16) => {
-                        Some(InlineAsmType::VecI16(fields.len() as u64))
+                        Some(InlineAsmType::VecI16(size))
                     }
                     ty::Int(IntTy::I32) | ty::Uint(UintTy::U32) => {
-                        Some(InlineAsmType::VecI32(fields.len() as u64))
+                        Some(InlineAsmType::VecI32(size))
                     }
                     ty::Int(IntTy::I64) | ty::Uint(UintTy::U64) => {
-                        Some(InlineAsmType::VecI64(fields.len() as u64))
+                        Some(InlineAsmType::VecI64(size))
                     }
                     ty::Int(IntTy::I128) | ty::Uint(UintTy::U128) => {
-                        Some(InlineAsmType::VecI128(fields.len() as u64))
+                        Some(InlineAsmType::VecI128(size))
                     }
                     ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize) => {
                         Some(match self.tcx.sess.target.pointer_width {
-                            16 => InlineAsmType::VecI16(fields.len() as u64),
-                            32 => InlineAsmType::VecI32(fields.len() as u64),
-                            64 => InlineAsmType::VecI64(fields.len() as u64),
+                            16 => InlineAsmType::VecI16(size),
+                            32 => InlineAsmType::VecI32(size),
+                            64 => InlineAsmType::VecI64(size),
                             _ => unreachable!(),
                         })
                     }
-                    ty::Float(FloatTy::F32) => Some(InlineAsmType::VecF32(fields.len() as u64)),
-                    ty::Float(FloatTy::F64) => Some(InlineAsmType::VecF64(fields.len() as u64)),
+                    ty::Float(FloatTy::F32) => Some(InlineAsmType::VecF32(size)),
+                    ty::Float(FloatTy::F64) => Some(InlineAsmType::VecF64(size)),
                     _ => None,
                 }
             }

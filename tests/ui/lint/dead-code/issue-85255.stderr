@@ -14,6 +14,16 @@ note: the lint level is defined here
 LL | #![warn(dead_code)]
    |         ^^^^^^^^^
 
+warning: methods `a` and `b` are never used
+  --> $DIR/issue-85255.rs:14:8
+   |
+LL | impl Bar {
+   | -------- methods in this implementation
+LL |     fn a(&self) -> i32 { 5 }
+   |        ^
+LL |     pub fn b(&self) -> i32 { 6 }
+   |            ^
+
 warning: fields `a` and `b` are never read
   --> $DIR/issue-85255.rs:19:5
    |
@@ -23,6 +33,16 @@ LL |     a: i32,
    |     ^
 LL |     pub b: i32,
    |         ^
+
+warning: methods `a` and `b` are never used
+  --> $DIR/issue-85255.rs:26:8
+   |
+LL | impl Bar1 {
+   | --------- methods in this implementation
+LL |     fn a(&self) -> i32 { 5 }
+   |        ^
+LL |     pub fn b(&self) -> i32 { 6 }
+   |            ^
 
 warning: fields `a` and `b` are never read
   --> $DIR/issue-85255.rs:31:5
@@ -34,41 +54,15 @@ LL |     a: i32,
 LL |     pub b: i32,
    |         ^
 
-warning: method `a` is never used
-  --> $DIR/issue-85255.rs:14:8
-   |
-LL |     fn a(&self) -> i32 { 5 }
-   |        ^
-
-warning: method `b` is never used
-  --> $DIR/issue-85255.rs:15:12
-   |
-LL |     pub fn b(&self) -> i32 { 6 }
-   |            ^
-
-warning: method `a` is never used
-  --> $DIR/issue-85255.rs:26:8
-   |
-LL |     fn a(&self) -> i32 { 5 }
-   |        ^
-
-warning: method `b` is never used
-  --> $DIR/issue-85255.rs:27:12
-   |
-LL |     pub fn b(&self) -> i32 { 6 }
-   |            ^
-
-warning: method `a` is never used
+warning: methods `a` and `b` are never used
   --> $DIR/issue-85255.rs:38:8
    |
+LL | impl Bar2 {
+   | --------- methods in this implementation
 LL |     fn a(&self) -> i32 { 5 }
    |        ^
-
-warning: method `b` is never used
-  --> $DIR/issue-85255.rs:39:12
-   |
 LL |     pub fn b(&self) -> i32 { 6 }
    |            ^
 
-warning: 9 warnings emitted
+warning: 6 warnings emitted
 

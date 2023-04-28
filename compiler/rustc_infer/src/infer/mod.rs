@@ -45,8 +45,7 @@ use self::combine::CombineFields;
 use self::error_reporting::TypeErrCtxt;
 use self::free_regions::RegionRelations;
 use self::lexical_region_resolve::LexicalRegionResolutions;
-use self::outlives::env::OutlivesEnvironment;
-use self::region_constraints::{GenericKind, RegionConstraintData, VarInfos, VerifyBound};
+use self::region_constraints::{GenericKind, VarInfos, VerifyBound};
 use self::region_constraints::{
     RegionConstraintCollector, RegionConstraintStorage, RegionSnapshot,
 };
@@ -1213,95 +1212,6 @@ impl<'tcx> InferCtxt<'tcx> {
         self.tainted_by_errors.set(Some(e));
     }
 
-    pub fn skip_region_resolution(&self) {
-        let (var_infos, _) = {
-            let mut inner = self.inner.borrow_mut();
-            let inner = &mut *inner;
-            // Note: `inner.region_obligations` may not be empty, because we
-            // didn't necessarily call `process_registered_region_obligations`.
-            // This is okay, because that doesn't introduce new vars.
-            inner
-                .region_constraint_storage
-                .take()
-                .expect("regions already resolved")
-                .with_log(&mut inner.undo_log)
-                .into_infos_and_data()
-        };
-
-        let lexical_region_resolutions = LexicalRegionResolutions {
-            values: rustc_index::vec::IndexVec::from_elem_n(
-                crate::infer::lexical_region_resolve::VarValue::Value(self.tcx.lifetimes.re_erased),
-                var_infos.len(),
-            ),
-        };
-
-        let old_value = self.lexical_region_resolutions.replace(Some(lexical_region_resolutions));
-        assert!(old_value.is_none());
-    }
-
-    /// Process the region constraints and return any errors that
-    /// result. After this, no more unification operations should be
-    /// done -- or the compiler will panic -- but it is legal to use
-    /// `resolve_vars_if_possible` as well as `fully_resolve`.
-    pub fn resolve_regions(
-        &self,
-        outlives_env: &OutlivesEnvironment<'tcx>,
-    ) -> Vec<RegionResolutionError<'tcx>> {
-        let (var_infos, data) = {
-            let mut inner = self.inner.borrow_mut();
-            let inner = &mut *inner;
-            assert!(
-                self.tainted_by_errors().is_some() || inner.region_obligations.is_empty(),
-                "region_obligations not empty: {:#?}",
-                inner.region_obligations
-            );
-            inner
-                .region_constraint_storage
-                .take()
-                .expect("regions already resolved")
-                .with_log(&mut inner.undo_log)
-                .into_infos_and_data()
-        };
-
-        let region_rels = &RegionRelations::new(self.tcx, outlives_env.free_region_map());
-
-        let (lexical_region_resolutions, errors) =
-            lexical_region_resolve::resolve(outlives_env.param_env, region_rels, var_infos, data);
-
-        let old_value = self.lexical_region_resolutions.replace(Some(lexical_region_resolutions));
-        assert!(old_value.is_none());
-
-        errors
-    }
-    /// Obtains (and clears) the current set of region
-    /// constraints. The inference context is still usable: further
-    /// unifications will simply add new constraints.
-    ///
-    /// This method is not meant to be used with normal lexical region
-    /// resolution. Rather, it is used in the NLL mode as a kind of
-    /// interim hack: basically we run normal type-check and generate
-    /// region constraints as normal, but then we take them and
-    /// translate them into the form that the NLL solver
-    /// understands. See the NLL module for mode details.
-    pub fn take_and_reset_region_constraints(&self) -> RegionConstraintData<'tcx> {
-        assert!(
-            self.inner.borrow().region_obligations.is_empty(),
-            "region_obligations not empty: {:#?}",
-            self.inner.borrow().region_obligations
-        );
-
-        self.inner.borrow_mut().unwrap_region_constraints().take_and_reset_data()
-    }
-
-    /// Gives temporary access to the region constraint data.
-    pub fn with_region_constraints<R>(
-        &self,
-        op: impl FnOnce(&RegionConstraintData<'tcx>) -> R,
-    ) -> R {
-        let mut inner = self.inner.borrow_mut();
-        op(inner.unwrap_region_constraints().data())
-    }
-
     pub fn region_var_origin(&self, vid: ty::RegionVid) -> RegionVariableOrigin {
         let mut inner = self.inner.borrow_mut();
         let inner = &mut *inner;
@@ -1318,11 +1228,11 @@ impl<'tcx> InferCtxt<'tcx> {
     /// hence that `resolve_regions_and_report_errors` can never be
     /// called. This is used only during NLL processing to "hand off" ownership
     /// of the set of region variables into the NLL region context.
-    pub fn take_region_var_origins(&self) -> VarInfos {
+    pub fn get_region_var_origins(&self) -> VarInfos {
         let mut inner = self.inner.borrow_mut();
         let (var_infos, data) = inner
             .region_constraint_storage
-            .take()
+            .clone()
             .expect("regions already resolved")
             .with_log(&mut inner.undo_log)
             .into_infos_and_data();
@@ -1417,7 +1327,7 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        if !value.needs_infer() {
+        if !value.has_infer() {
             return value; // Avoid duplicated subst-folding.
         }
         let mut r = InferenceLiteralEraser { tcx: self.tcx };
@@ -1455,7 +1365,7 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn fully_resolve<T: TypeFoldable<TyCtxt<'tcx>>>(&self, value: T) -> FixupResult<'tcx, T> {
         let value = resolve::fully_resolve(self, value);
         assert!(
-            value.as_ref().map_or(true, |value| !value.needs_infer()),
+            value.as_ref().map_or(true, |value| !value.has_infer()),
             "`{value:?}` is not fully resolved"
         );
         value
@@ -1590,7 +1500,7 @@ impl<'tcx> InferCtxt<'tcx> {
             Ok(Some(val)) => Ok(self.tcx.mk_const(val, ty)),
             Ok(None) => {
                 let tcx = self.tcx;
-                let def_id = unevaluated.def.did;
+                let def_id = unevaluated.def;
                 span_bug!(
                     tcx.def_span(def_id),
                     "unable to construct a constant value for the unevaluated constant {:?}",
@@ -1637,8 +1547,8 @@ impl<'tcx> InferCtxt<'tcx> {
                     substs = replace_param_and_infer_substs_with_placeholder(tcx, substs);
                 }
             } else {
-                substs = InternalSubsts::identity_for_item(tcx, unevaluated.def.did);
-                param_env = tcx.param_env(unevaluated.def.did);
+                substs = InternalSubsts::identity_for_item(tcx, unevaluated.def);
+                param_env = tcx.param_env(unevaluated.def);
             }
         }
 
@@ -1667,10 +1577,10 @@ impl<'tcx> InferCtxt<'tcx> {
             (TyOrConstInferVar::Ty(ty_var), Ok(inner)) => {
                 use self::type_variable::TypeVariableValue;
 
-                match inner.try_type_variables_probe_ref(ty_var) {
-                    Some(TypeVariableValue::Unknown { .. }) => true,
-                    _ => false,
-                }
+                matches!(
+                    inner.try_type_variables_probe_ref(ty_var),
+                    Some(TypeVariableValue::Unknown { .. })
+                )
             }
             _ => false,
         };
@@ -1754,56 +1664,6 @@ impl<'cx, 'tcx> Drop for CanonicalizationCtxtGuard<'cx, 'tcx> {
 }
 
 impl<'tcx> TypeErrCtxt<'_, 'tcx> {
-    /// Processes registered region obliations and resolves regions, reporting
-    /// any errors if any were raised. Prefer using this function over manually
-    /// calling `resolve_regions_and_report_errors`.
-    pub fn check_region_obligations_and_report_errors(
-        &self,
-        generic_param_scope: LocalDefId,
-        outlives_env: &OutlivesEnvironment<'tcx>,
-    ) -> Result<(), ErrorGuaranteed> {
-        self.process_registered_region_obligations(
-            outlives_env.region_bound_pairs(),
-            outlives_env.param_env,
-        );
-
-        self.resolve_regions_and_report_errors(generic_param_scope, outlives_env)
-    }
-
-    /// Process the region constraints and report any errors that
-    /// result. After this, no more unification operations should be
-    /// done -- or the compiler will panic -- but it is legal to use
-    /// `resolve_vars_if_possible` as well as `fully_resolve`.
-    ///
-    /// Make sure to call [`InferCtxt::process_registered_region_obligations`]
-    /// first, or preferably use [`TypeErrCtxt::check_region_obligations_and_report_errors`]
-    /// to do both of these operations together.
-    pub fn resolve_regions_and_report_errors(
-        &self,
-        generic_param_scope: LocalDefId,
-        outlives_env: &OutlivesEnvironment<'tcx>,
-    ) -> Result<(), ErrorGuaranteed> {
-        let errors = self.resolve_regions(outlives_env);
-
-        if let None = self.tainted_by_errors() {
-            // As a heuristic, just skip reporting region errors
-            // altogether if other errors have been reported while
-            // this infcx was in use. This is totally hokey but
-            // otherwise we have a hard time separating legit region
-            // errors from silly ones.
-            self.report_region_errors(generic_param_scope, &errors);
-        }
-
-        if errors.is_empty() {
-            Ok(())
-        } else {
-            Err(self
-                .tcx
-                .sess
-                .delay_span_bug(rustc_span::DUMMY_SP, "error should have been emitted"))
-        }
-    }
-
     // [Note-Type-error-reporting]
     // An invariant is that anytime the expected or actual type is Error (the special
     // error type, meaning that an error occurred when typechecking this expression),

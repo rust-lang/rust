@@ -2,7 +2,7 @@ use crate::rmeta::*;
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_hir::def::{CtorKind, CtorOf};
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 use rustc_middle::ty::{ParameterizedOverTcx, UnusedGenericParams};
 use rustc_serialize::opaque::FileEncoder;
 use rustc_serialize::Encoder as _;
@@ -413,8 +413,8 @@ impl<I: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>> TableBui
             // > Space requirements could perhaps be optimized by using the HAMT `popcnt`
             // > trick (i.e. divide things into buckets of 32 or 64 items and then
             // > store bit-masks of which item in each bucket is actually serialized).
-            self.blocks.ensure_contains_elem(i, || [0; N]);
-            value.write_to_bytes(&mut self.blocks[i]);
+            let block = self.blocks.ensure_contains_elem(i, || [0; N]);
+            value.write_to_bytes(block);
         }
     }
 

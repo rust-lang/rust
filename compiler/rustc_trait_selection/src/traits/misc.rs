@@ -14,7 +14,7 @@ use rustc_span::DUMMY_SP;
 use super::outlives_bounds::InferCtxtExt;
 
 pub enum CopyImplementationError<'tcx> {
-    InfrigingFields(Vec<(&'tcx ty::FieldDef, Ty<'tcx>, InfringingFieldsReason<'tcx>)>),
+    InfringingFields(Vec<(&'tcx ty::FieldDef, Ty<'tcx>, InfringingFieldsReason<'tcx>)>),
     NotAnAdt,
     HasDestructor,
 }
@@ -117,10 +117,6 @@ pub fn type_allowed_to_implement_copy<'tcx>(
                     FxIndexSet::from_iter([self_type]),
                 ),
             );
-            infcx.process_registered_region_obligations(
-                outlives_env.region_bound_pairs(),
-                param_env,
-            );
             let errors = infcx.resolve_regions(&outlives_env);
             if !errors.is_empty() {
                 infringing.push((field, ty, InfringingFieldsReason::Regions(errors)));
@@ -129,7 +125,7 @@ pub fn type_allowed_to_implement_copy<'tcx>(
     }
 
     if !infringing.is_empty() {
-        return Err(CopyImplementationError::InfrigingFields(infringing));
+        return Err(CopyImplementationError::InfringingFields(infringing));
     }
 
     if adt.has_dtor(tcx) {

@@ -4,11 +4,6 @@
 
 "use strict";
 
-// WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY
-// If you update this line, then you also need to update the media query with the same
-// warning in rustdoc.css
-window.RUSTDOC_MOBILE_BREAKPOINT = 700;
-
 // Given a basename (e.g. "storage") and an extension (e.g. ".js"), return a URL
 // for a resource under the root-path, with the resource-suffix.
 function resourcePath(basename, extension) {
@@ -280,8 +275,7 @@ function preLoadCss(cssUrl) {
             document.title = searchState.titleBeforeSearch;
             // We also remove the query parameter from the URL.
             if (browserSupportsHistoryApi()) {
-                history.replaceState(null, window.currentCrate + " - Rust",
-                    getNakedUrl() + window.location.hash);
+                history.replaceState(null, "", getNakedUrl() + window.location.hash);
             }
         },
         getQueryStringParams: () => {
@@ -331,10 +325,6 @@ function preLoadCss(cssUrl) {
         },
     };
 
-    function getPageId() {
-        return window.location.hash.replace(/^#/, "");
-    }
-
     const toggleAllDocsId = "toggle-all-docs";
     let savedHash = "";
 
@@ -355,12 +345,12 @@ function preLoadCss(cssUrl) {
             }
         }
         // This part is used in case an element is not visible.
-        if (savedHash !== window.location.hash) {
-            savedHash = window.location.hash;
-            if (savedHash.length === 0) {
-                return;
+        const pageId = window.location.hash.replace(/^#/, "");
+        if (savedHash !== pageId) {
+            savedHash = pageId;
+            if (pageId !== "") {
+                expandSection(pageId);
             }
-            expandSection(savedHash.slice(1)); // we remove the '#'
         }
     }
 
@@ -385,11 +375,7 @@ function preLoadCss(cssUrl) {
 
     function handleEscape(ev) {
         searchState.clearInputTimeout();
-        switchDisplayedElement(null);
-        if (browserSupportsHistoryApi()) {
-            history.replaceState(null, window.currentCrate + " - Rust",
-                getNakedUrl() + window.location.hash);
-        }
+        searchState.hideResults();
         ev.preventDefault();
         searchState.defocus();
         window.hideAllModals(true); // true = reset focus for tooltips
@@ -544,9 +530,11 @@ function preLoadCss(cssUrl) {
         // ignored are included in the attribute `data-ignore-extern-crates`.
         const script = document
             .querySelector("script[data-ignore-extern-crates]");
-        const ignoreExternCrates = script ? script.getAttribute("data-ignore-extern-crates") : "";
+        const ignoreExternCrates = new Set(
+            (script ? script.getAttribute("data-ignore-extern-crates") : "").split(",")
+        );
         for (const lib of libs) {
-            if (lib === window.currentCrate || ignoreExternCrates.indexOf(lib) !== -1) {
+            if (lib === window.currentCrate || ignoreExternCrates.has(lib)) {
                 continue;
             }
             const structs = imp[lib];
@@ -699,11 +687,6 @@ function preLoadCss(cssUrl) {
             }
 
         });
-
-        const pageId = getPageId();
-        if (pageId !== "") {
-            expandSection(pageId);
-        }
     }());
 
     window.rustdoc_add_line_numbers_to_examples = () => {
@@ -739,65 +722,18 @@ function preLoadCss(cssUrl) {
         window.rustdoc_add_line_numbers_to_examples();
     }
 
-    let oldSidebarScrollPosition = null;
-
-    // Scroll locking used both here and in source-script.js
-
-    window.rustdocMobileScrollLock = function() {
-        const mobile_topbar = document.querySelector(".mobile-topbar");
-        if (window.innerWidth <= window.RUSTDOC_MOBILE_BREAKPOINT) {
-            // This is to keep the scroll position on mobile.
-            oldSidebarScrollPosition = window.scrollY;
-            document.body.style.width = `${document.body.offsetWidth}px`;
-            document.body.style.position = "fixed";
-            document.body.style.top = `-${oldSidebarScrollPosition}px`;
-            if (mobile_topbar) {
-                mobile_topbar.style.top = `${oldSidebarScrollPosition}px`;
-                mobile_topbar.style.position = "relative";
-            }
-        } else {
-            oldSidebarScrollPosition = null;
-        }
-    };
-
-    window.rustdocMobileScrollUnlock = function() {
-        const mobile_topbar = document.querySelector(".mobile-topbar");
-        if (oldSidebarScrollPosition !== null) {
-            // This is to keep the scroll position on mobile.
-            document.body.style.width = "";
-            document.body.style.position = "";
-            document.body.style.top = "";
-            if (mobile_topbar) {
-                mobile_topbar.style.top = "";
-                mobile_topbar.style.position = "";
-            }
-            // The scroll position is lost when resetting the style, hence why we store it in
-            // `oldSidebarScrollPosition`.
-            window.scrollTo(0, oldSidebarScrollPosition);
-            oldSidebarScrollPosition = null;
-        }
-    };
-
     function showSidebar() {
         window.hideAllModals(false);
-        window.rustdocMobileScrollLock();
         const sidebar = document.getElementsByClassName("sidebar")[0];
         addClass(sidebar, "shown");
     }
 
     function hideSidebar() {
-        window.rustdocMobileScrollUnlock();
         const sidebar = document.getElementsByClassName("sidebar")[0];
         removeClass(sidebar, "shown");
     }
 
     window.addEventListener("resize", () => {
-        if (window.innerWidth > window.RUSTDOC_MOBILE_BREAKPOINT &&
-            oldSidebarScrollPosition !== null) {
-            // If the user opens the sidebar in "mobile" mode, and then grows the browser window,
-            // we need to switch away from mobile mode and make the main content area scrollable.
-            hideSidebar();
-        }
         if (window.CURRENT_TOOLTIP_ELEMENT) {
             // As a workaround to the behavior of `contains: layout` used in doc togglers,
             // tooltip popovers are positioned using javascript.

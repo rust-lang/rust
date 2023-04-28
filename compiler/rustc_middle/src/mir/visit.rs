@@ -832,6 +832,7 @@ macro_rules! make_mir_visitor {
                     name: _,
                     source_info,
                     value,
+                    argument_index: _,
                 } = var_debug_info;
 
                 self.visit_source_info(source_info);

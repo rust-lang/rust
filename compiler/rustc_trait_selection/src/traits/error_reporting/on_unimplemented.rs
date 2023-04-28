@@ -327,7 +327,7 @@ pub struct OnUnimplementedDirective {
     pub label: Option<OnUnimplementedFormatString>,
     pub note: Option<OnUnimplementedFormatString>,
     pub parent_label: Option<OnUnimplementedFormatString>,
-    pub append_const_msg: Option<Option<Symbol>>,
+    pub append_const_msg: Option<AppendConstMessage>,
 }
 
 /// For the `#[rustc_on_unimplemented]` attribute
@@ -337,11 +337,21 @@ pub struct OnUnimplementedNote {
     pub label: Option<String>,
     pub note: Option<String>,
     pub parent_label: Option<String>,
-    /// Append a message for `~const Trait` errors. `None` means not requested and
-    /// should fallback to a generic message, `Some(None)` suggests using the default
-    /// appended message, `Some(Some(s))` suggests use the `s` message instead of the
-    /// default one..
-    pub append_const_msg: Option<Option<Symbol>>,
+    // If none, should fall back to a generic message
+    pub append_const_msg: Option<AppendConstMessage>,
+}
+
+/// Append a message for `~const Trait` errors.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum AppendConstMessage {
+    Default,
+    Custom(Symbol),
+}
+
+impl Default for AppendConstMessage {
+    fn default() -> Self {
+        AppendConstMessage::Default
+    }
 }
 
 impl<'tcx> OnUnimplementedDirective {
@@ -419,10 +429,10 @@ impl<'tcx> OnUnimplementedDirective {
                 }
             } else if item.has_name(sym::append_const_msg) && append_const_msg.is_none() {
                 if let Some(msg) = item.value_str() {
-                    append_const_msg = Some(Some(msg));
+                    append_const_msg = Some(AppendConstMessage::Custom(msg));
                     continue;
                 } else if item.is_word() {
-                    append_const_msg = Some(None);
+                    append_const_msg = Some(AppendConstMessage::Default);
                     continue;
                 }
             }

@@ -40,7 +40,7 @@
 
 use crate::framework::BitSetExt;
 use rustc_index::bit_set::{BitSet, ChunkedBitSet, HybridBitSet};
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{Idx, IndexVec};
 use std::iter;
 
 /// A [partially ordered set][poset] that has a [least upper bound][lub] for any pair of elements

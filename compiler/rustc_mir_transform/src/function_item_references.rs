@@ -3,7 +3,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, EarlyBinder, GenericArgKind, PredicateKind, SubstsRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, EarlyBinder, PredicateKind, SubstsRef, Ty, TyCtxt};
 use rustc_session::lint::builtin::FUNCTION_ITEM_REFERENCES;
 use rustc_span::{symbol::sym, Span};
 use rustc_target::spec::abi::Abi;
@@ -45,14 +45,12 @@ impl<'tcx> Visitor<'tcx> for FunctionItemRefChecker<'_, 'tcx> {
                 // Handle calls to `transmute`
                 if self.tcx.is_diagnostic_item(sym::transmute, def_id) {
                     let arg_ty = args[0].ty(self.body, self.tcx);
-                    for generic_inner_ty in arg_ty.walk() {
-                        if let GenericArgKind::Type(inner_ty) = generic_inner_ty.unpack() {
-                            if let Some((fn_id, fn_substs)) =
-                                FunctionItemRefChecker::is_fn_ref(inner_ty)
-                            {
-                                let span = self.nth_arg_span(&args, 0);
-                                self.emit_lint(fn_id, fn_substs, source_info, span);
-                            }
+                    for inner_ty in arg_ty.walk().filter_map(|arg| arg.as_type()) {
+                        if let Some((fn_id, fn_substs)) =
+                            FunctionItemRefChecker::is_fn_ref(inner_ty)
+                        {
+                            let span = self.nth_arg_span(&args, 0);
+                            self.emit_lint(fn_id, fn_substs, source_info, span);
                         }
                     }
                 } else {
@@ -82,24 +80,22 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
                 let arg_defs = self.tcx.fn_sig(def_id).subst_identity().skip_binder().inputs();
                 for (arg_num, arg_def) in arg_defs.iter().enumerate() {
                     // For all types reachable from the argument type in the fn sig
-                    for generic_inner_ty in arg_def.walk() {
-                        if let GenericArgKind::Type(inner_ty) = generic_inner_ty.unpack() {
-                            // If the inner type matches the type bound by `Pointer`
-                            if inner_ty == bound_ty {
-                                // Do a substitution using the parameters from the callsite
-                                let subst_ty = EarlyBinder(inner_ty).subst(self.tcx, substs_ref);
-                                if let Some((fn_id, fn_substs)) =
-                                    FunctionItemRefChecker::is_fn_ref(subst_ty)
-                                {
-                                    let mut span = self.nth_arg_span(args, arg_num);
-                                    if span.from_expansion() {
-                                        // The operand's ctxt wouldn't display the lint since it's inside a macro so
-                                        // we have to use the callsite's ctxt.
-                                        let callsite_ctxt = span.source_callsite().ctxt();
-                                        span = span.with_ctxt(callsite_ctxt);
-                                    }
-                                    self.emit_lint(fn_id, fn_substs, source_info, span);
+                    for inner_ty in arg_def.walk().filter_map(|arg| arg.as_type()) {
+                        // If the inner type matches the type bound by `Pointer`
+                        if inner_ty == bound_ty {
+                            // Do a substitution using the parameters from the callsite
+                            let subst_ty = EarlyBinder(inner_ty).subst(self.tcx, substs_ref);
+                            if let Some((fn_id, fn_substs)) =
+                                FunctionItemRefChecker::is_fn_ref(subst_ty)
+                            {
+                                let mut span = self.nth_arg_span(args, arg_num);
+                                if span.from_expansion() {
+                                    // The operand's ctxt wouldn't display the lint since it's inside a macro so
+                                    // we have to use the callsite's ctxt.
+                                    let callsite_ctxt = span.source_callsite().ctxt();
+                                    span = span.with_ctxt(callsite_ctxt);
                                 }
+                                self.emit_lint(fn_id, fn_substs, source_info, span);
                             }
                         }
                     }

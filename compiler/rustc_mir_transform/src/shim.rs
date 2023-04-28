@@ -7,7 +7,7 @@ use rustc_middle::ty::InternalSubsts;
 use rustc_middle::ty::{self, EarlyBinder, GeneratorSubsts, Ty, TyCtxt};
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{Idx, IndexVec};
 
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
@@ -95,7 +95,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
             &add_moves_for_packed_drops::AddMovesForPackedDrops,
             &deref_separator::Derefer,
             &remove_noop_landing_pads::RemoveNoopLandingPads,
-            &simplify::SimplifyCfg::new("make_shim"),
+            &simplify::SimplifyCfg::MakeShim,
             &add_call_guards::CriticalCallEdges,
             &abort_unwinding_calls::AbortUnwindingCalls,
         ],
@@ -355,7 +355,7 @@ fn build_thread_local_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'t
 fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -> Body<'tcx> {
     debug!("build_clone_shim(def_id={:?})", def_id);
 
-    let param_env = tcx.param_env(def_id);
+    let param_env = tcx.param_env_reveal_all_normalized(def_id);
 
     let mut builder = CloneShimBuilder::new(tcx, def_id, self_ty);
     let is_copy = self_ty.is_copy_modulo_regions(tcx, param_env);
@@ -836,7 +836,7 @@ fn build_call_shim<'tcx>(
 pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     debug_assert!(tcx.is_constructor(ctor_id));
 
-    let param_env = tcx.param_env(ctor_id);
+    let param_env = tcx.param_env_reveal_all_normalized(ctor_id);
 
     // Normalize the sig.
     let sig = tcx

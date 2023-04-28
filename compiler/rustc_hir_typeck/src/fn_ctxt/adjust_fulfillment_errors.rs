@@ -78,7 +78,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Finally, for ambiguity-related errors, we actually want to look
         // for a parameter that is the source of the inference type left
         // over in this predicate.
-        if let traits::FulfillmentErrorCode::CodeAmbiguity = error.code {
+        if let traits::FulfillmentErrorCode::CodeAmbiguity { .. } = error.code {
             fallback_param_to_point_at = None;
             self_param_to_point_at = None;
             param_to_point_at =
@@ -164,24 +164,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     for param in
                         [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
+                            .into_iter()
+                            .flatten()
                     {
-                        if let Some(param) = param {
-                            let refined_expr = self.point_at_field_if_possible(
-                                def_id,
-                                param,
-                                variant_def_id,
-                                fields,
-                            );
+                        let refined_expr =
+                            self.point_at_field_if_possible(def_id, param, variant_def_id, fields);
 
-                            match refined_expr {
-                                None => {}
-                                Some((refined_expr, _)) => {
-                                    error.obligation.cause.span = refined_expr
-                                        .span
-                                        .find_ancestor_in_same_ctxt(error.obligation.cause.span)
-                                        .unwrap_or(refined_expr.span);
-                                    return true;
-                                }
+                        match refined_expr {
+                            None => {}
+                            Some((refined_expr, _)) => {
+                                error.obligation.cause.span = refined_expr
+                                    .span
+                                    .find_ancestor_in_same_ctxt(error.obligation.cause.span)
+                                    .unwrap_or(refined_expr.span);
+                                return true;
                             }
                         }
                     }
@@ -334,7 +330,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// expression mentioned.
     ///
     /// `blame_specific_arg_if_possible` will find the most-specific expression anywhere inside
-    /// the provided function call expression, and mark it as responsible for the fullfillment
+    /// the provided function call expression, and mark it as responsible for the fulfillment
     /// error.
     fn blame_specific_arg_if_possible(
         &self,
@@ -466,7 +462,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// obligation. Hence we refine the `expr` "outwards-in" and bail at the first kind of expression/impl we don't recognize.
     ///
     /// This function returns a `Result<&Expr, &Expr>` - either way, it returns the `Expr` whose span should be
-    /// reported as an error. If it is `Ok`, then it means it refined successfull. If it is `Err`, then it may be
+    /// reported as an error. If it is `Ok`, then it means it refined successful. If it is `Err`, then it may be
     /// only a partial success - but it cannot be refined even further.
     fn blame_specific_expr_if_possible_for_derived_predicate_obligation(
         &self,
@@ -534,7 +530,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// - in_ty: `(Option<Vec<T>, bool)`
     /// we would drill until we arrive at `vec![1, 2, 3]`.
     ///
-    /// If successful, we return `Ok(refined_expr)`. If unsuccesful, we return `Err(partially_refined_expr`),
+    /// If successful, we return `Ok(refined_expr)`. If unsuccessful, we return `Err(partially_refined_expr`),
     /// which will go as far as possible. For example, given `(foo(), false)` instead, we would drill to
     /// `foo()` and then return `Err("foo()")`.
     ///

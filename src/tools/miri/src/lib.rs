@@ -7,7 +7,6 @@
 #![feature(yeet_expr)]
 #![feature(nonzero_ops)]
 #![feature(local_key_cell_methods)]
-#![feature(is_terminal)]
 #![feature(round_ties_even)]
 // Configure clippy and other lints
 #![allow(
@@ -131,6 +130,7 @@ pub const MIRI_DEFAULT_ARGS: &[&str] = &[
     "-Zalways-encode-mir",
     "-Zextra-const-ub-checks",
     "-Zmir-emit-retag",
+    "-Zmir-keep-place-mention",
     "-Zmir-opt-level=0",
     "-Zmir-enable-passes=-CheckAlignment",
 ];

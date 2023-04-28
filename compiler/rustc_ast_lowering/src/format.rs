@@ -220,19 +220,19 @@ fn make_argument<'hir>(
 /// Generates:
 ///
 /// ```text
-///     <core::fmt::rt::v1::Count>::Is(…)
+///     <core::fmt::rt::Count>::Is(…)
 /// ```
 ///
 /// or
 ///
 /// ```text
-///     <core::fmt::rt::v1::Count>::Param(…)
+///     <core::fmt::rt::Count>::Param(…)
 /// ```
 ///
 /// or
 ///
 /// ```text
-///     <core::fmt::rt::v1::Count>::Implied
+///     <core::fmt::rt::Count>::Implied
 /// ```
 fn make_count<'hir>(
     ctx: &mut LoweringContext<'_, 'hir>,
@@ -278,13 +278,13 @@ fn make_count<'hir>(
 /// Generates
 ///
 /// ```text
-///     <core::fmt::rt::v1::Argument::new(
+///     <core::fmt::rt::Placeholder::new(
 ///         …usize, // position
 ///         '…', // fill
-///         <core::fmt::rt::v1::Alignment>::…, // alignment
+///         <core::fmt::rt::Alignment>::…, // alignment
 ///         …u32, // flags
-///         <core::fmt::rt::v1::Count::…>, // width
-///         <core::fmt::rt::v1::Count::…>, // precision
+///         <core::fmt::rt::Count::…>, // width
+///         <core::fmt::rt::Count::…>, // precision
 ///     )
 /// ```
 fn make_format_spec<'hir>(

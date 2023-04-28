@@ -6,11 +6,11 @@ LL |         Result {
    |
 help: consider importing one of these items instead
    |
-LL | use std::fmt::Result;
+LL + use std::fmt::Result;
    |
-LL | use std::io::Result;
+LL + use std::io::Result;
    |
-LL | use std::thread::Result;
+LL + use std::thread::Result;
    |
 
 error: aborting due to previous error

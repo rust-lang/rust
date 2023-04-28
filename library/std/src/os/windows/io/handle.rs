@@ -389,7 +389,7 @@ macro_rules! impl_is_terminal {
         #[unstable(feature = "sealed", issue = "none")]
         impl crate::sealed::Sealed for $t {}
 
-        #[unstable(feature = "is_terminal", issue = "98070")]
+        #[stable(feature = "is_terminal", since = "CURRENT_RUSTC_VERSION")]
         impl crate::io::IsTerminal for $t {
             #[inline]
             fn is_terminal(&self) -> bool {
@@ -450,7 +450,7 @@ impl AsHandle for OwnedHandle {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
         // Safety: `OwnedHandle` and `BorrowedHandle` have the same validity
-        // invariants, and the `BorrowdHandle` is bounded by the lifetime
+        // invariants, and the `BorrowedHandle` is bounded by the lifetime
         // of `&self`.
         unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }

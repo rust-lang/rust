@@ -232,6 +232,7 @@
 //!  - `&`, `&mut`, `addr_of!`, and `addr_of_mut!` all work to create their associated rvalue.
 //!  - [`Discriminant`] and [`Len`] have associated functions.
 //!  - Unary and binary operations use their normal Rust syntax - `a * b`, `!c`, etc.
+//!  - The binary operation `Offset` can be created via [`Offset`].
 //!  - Checked binary operations are represented by wrapping the associated binop in [`Checked`].
 //!  - Array repetition syntax (`[foo; 10]`) creates the associated rvalue.
 //!
@@ -246,7 +247,7 @@
 //!     - The exception is the last arm, which must be `_ => basic_block` and corresponds to the
 //!       otherwise branch.
 //!  - [`Call`] has an associated function as well. The third argument of this function is a normal
-//!    function call expresion, for example `my_other_function(a, 5)`.
+//!    function call expression, for example `my_other_function(a, 5)`.
 //!
 
 #![unstable(
@@ -289,6 +290,7 @@ define!(
     fn Discriminant<T>(place: T) -> <T as ::core::marker::DiscriminantKind>::Discriminant
 );
 define!("mir_set_discriminant", fn SetDiscriminant<T>(place: T, index: u32));
+define!("mir_offset", fn Offset<T, U>(ptr: T, count: U) -> T);
 define!(
     "mir_field",
     /// Access the field with the given index of some place.

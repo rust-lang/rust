@@ -123,7 +123,7 @@ pub enum Lld {
 /// target properties, in accordance with the first design goal.
 ///
 /// The first component of the flavor is tightly coupled with the compilation target,
-/// while the `Cc` and `Lld` flags can vary withing the same target.
+/// while the `Cc` and `Lld` flags can vary within the same target.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum LinkerFlavor {
     /// Unix-like linker with GNU extensions (both naked and compiler-wrapped forms).
@@ -1021,6 +1021,7 @@ supported_targets! {
     ("x86_64-unknown-linux-gnux32", x86_64_unknown_linux_gnux32),
     ("i686-unknown-linux-gnu", i686_unknown_linux_gnu),
     ("i586-unknown-linux-gnu", i586_unknown_linux_gnu),
+    ("loongarch64-unknown-linux-gnu", loongarch64_unknown_linux_gnu),
     ("m68k-unknown-linux-gnu", m68k_unknown_linux_gnu),
     ("mips-unknown-linux-gnu", mips_unknown_linux_gnu),
     ("mips64-unknown-linux-gnuabi64", mips64_unknown_linux_gnuabi64),
@@ -1111,6 +1112,7 @@ supported_targets! {
 
     ("aarch64-apple-darwin", aarch64_apple_darwin),
     ("x86_64-apple-darwin", x86_64_apple_darwin),
+    ("x86_64h-apple-darwin", x86_64h_apple_darwin),
     ("i686-apple-darwin", i686_apple_darwin),
 
     // FIXME(#106649): Remove aarch64-fuchsia in favor of aarch64-unknown-fuchsia
@@ -2284,13 +2286,13 @@ impl Target {
                     }
                 }
             } );
-            ($key_name:ident, falliable_list) => ( {
+            ($key_name:ident, fallible_list) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.remove(&name).and_then(|j| {
                     if let Some(v) = j.as_array() {
                         match v.iter().map(|a| FromStr::from_str(a.as_str().unwrap())).collect() {
                             Ok(l) => { base.$key_name = l },
-                            // FIXME: `falliable_list` can't re-use the `key!` macro for list
+                            // FIXME: `fallible_list` can't re-use the `key!` macro for list
                             // elements and the error messages from that macro, so it has a bad
                             // generic message instead
                             Err(_) => return Some(Err(
@@ -2609,7 +2611,7 @@ impl Target {
         key!(has_thumb_interworking, bool);
         key!(debuginfo_kind, DebuginfoKind)?;
         key!(split_debuginfo, SplitDebuginfo)?;
-        key!(supported_split_debuginfo, falliable_list)?;
+        key!(supported_split_debuginfo, fallible_list)?;
         key!(supported_sanitizers, SanitizerSet)?;
         key!(default_adjusted_cabi, Option<Abi>)?;
         key!(generate_arange_section, bool);

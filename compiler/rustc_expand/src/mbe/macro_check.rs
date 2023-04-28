@@ -104,6 +104,7 @@
 //! Kleene operators under which a meta-variable is repeating is the concatenation of the stacks
 //! stored when entering a macro definition starting from the state in which the meta-variable is
 //! bound.
+use crate::errors;
 use crate::mbe::{KleeneToken, TokenTree};
 
 use rustc_ast::token::{Delimiter, Token, TokenKind};
@@ -281,10 +282,7 @@ fn check_binders(
                 // Duplicate binders at the top-level macro definition are errors. The lint is only
                 // for nested macro definitions.
                 sess.span_diagnostic
-                    .struct_span_err(span, "duplicate matcher binding")
-                    .span_label(span, "duplicate binding")
-                    .span_label(prev_info.span, "previous binding")
-                    .emit();
+                    .emit_err(errors::DuplicateMatcherBinding { span, prev: prev_info.span });
                 *valid = false;
             } else {
                 binders.insert(name, BinderInfo { span, ops: ops.into() });

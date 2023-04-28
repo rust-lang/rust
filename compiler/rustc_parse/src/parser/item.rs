@@ -2577,14 +2577,12 @@ impl<'a> Parser<'a> {
     }
 
     fn recover_self_param(&mut self) -> bool {
-        match self
-            .parse_outer_attributes()
-            .and_then(|_| self.parse_self_param())
-            .map_err(|e| e.cancel())
-        {
-            Ok(Some(_)) => true,
-            _ => false,
-        }
+        matches!(
+            self.parse_outer_attributes()
+                .and_then(|_| self.parse_self_param())
+                .map_err(|e| e.cancel()),
+            Ok(Some(_))
+        )
     }
 }
 

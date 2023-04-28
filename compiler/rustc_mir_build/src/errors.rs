@@ -384,13 +384,8 @@ impl<'a> IntoDiagnostic<'a> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
             diag.span_note(span, fluent::mir_build_def_note);
         }
 
-        let is_variant_list_non_exhaustive = match self.ty.kind() {
-            ty::Adt(def, _) if def.is_variant_list_non_exhaustive() && !def.did().is_local() => {
-                true
-            }
-            _ => false,
-        };
-
+        let is_variant_list_non_exhaustive = matches!(self.ty.kind(),
+            ty::Adt(def, _) if def.is_variant_list_non_exhaustive() && !def.did().is_local());
         if is_variant_list_non_exhaustive {
             diag.note(fluent::mir_build_non_exhaustive_type_note);
         } else {
@@ -593,7 +588,7 @@ pub struct MultipleMutBorrows {
     #[primary_span]
     pub span: Span,
     #[subdiagnostic]
-    pub occurences: Vec<Conflict>,
+    pub occurrences: Vec<Conflict>,
 }
 
 #[derive(Diagnostic)]
@@ -602,7 +597,7 @@ pub struct AlreadyBorrowed {
     #[primary_span]
     pub span: Span,
     #[subdiagnostic]
-    pub occurences: Vec<Conflict>,
+    pub occurrences: Vec<Conflict>,
 }
 
 #[derive(Diagnostic)]
@@ -611,7 +606,7 @@ pub struct AlreadyMutBorrowed {
     #[primary_span]
     pub span: Span,
     #[subdiagnostic]
-    pub occurences: Vec<Conflict>,
+    pub occurrences: Vec<Conflict>,
 }
 
 #[derive(Diagnostic)]
@@ -620,7 +615,7 @@ pub struct MovedWhileBorrowed {
     #[primary_span]
     pub span: Span,
     #[subdiagnostic]
-    pub occurences: Vec<Conflict>,
+    pub occurrences: Vec<Conflict>,
 }
 
 #[derive(Subdiagnostic)]

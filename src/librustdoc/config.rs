@@ -1,12 +1,10 @@
 use std::collections::BTreeMap;
-use std::convert::TryFrom;
 use std::ffi::OsStr;
 use std::fmt;
 use std::path::PathBuf;
 use std::str::FromStr;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_driver::print_flag_list;
 use rustc_session::config::{
     self, parse_crate_types_from_list, parse_externs, parse_target_triple, CrateType,
 };
@@ -230,7 +228,7 @@ pub(crate) struct RenderOptions {
     pub(crate) extension_css: Option<PathBuf>,
     /// A map of crate names to the URL to use instead of querying the crate's `html_root_url`.
     pub(crate) extern_html_root_urls: BTreeMap<String, String>,
-    /// Whether to give precedence to `html_root_url` or `--exten-html-root-url`.
+    /// Whether to give precedence to `html_root_url` or `--extern-html-root-url`.
     pub(crate) extern_html_root_takes_precedence: bool,
     /// A map of the default settings (values are as for DOM storage API). Keys should lack the
     /// `rustdoc-` prefix.
@@ -328,14 +326,7 @@ impl Options {
             return Err(0);
         }
 
-        let z_flags = matches.opt_strs("Z");
-        if z_flags.iter().any(|x| *x == "help") {
-            print_flag_list("-Z", config::Z_OPTIONS);
-            return Err(0);
-        }
-        let c_flags = matches.opt_strs("C");
-        if c_flags.iter().any(|x| *x == "help") {
-            print_flag_list("-C", config::CG_OPTIONS);
+        if rustc_driver::describe_flag_categories(&matches) {
             return Err(0);
         }
 
@@ -500,7 +491,7 @@ impl Options {
                 //   https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/dataset
                 //
                 // The original key values we have are the same as the DOM storage API keys and the
-                // command line options, so contain `-`.  Our Javascript needs to be able to look
+                // command line options, so contain `-`.  Our JavaScript needs to be able to look
                 // these values up both in `dataset` and in the storage API, so it needs to be able
                 // to convert the names back and forth.  Despite doing this kebab-case to
                 // StudlyCaps transformation automatically, the JS DOM API does not provide a

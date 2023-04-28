@@ -747,7 +747,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(emit_thin_lto, false);
     tracked!(export_executable_symbols, true);
     tracked!(fewer_names, Some(true));
-    tracked!(flatten_format_args, true);
+    tracked!(flatten_format_args, false);
     tracked!(force_unstable_if_unmarked, true);
     tracked!(fuel, Some(("abc".to_string(), 99)));
     tracked!(function_sections, Some(false));
@@ -768,6 +768,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(merge_functions, Some(MergeFunctions::Disabled));
     tracked!(mir_emit_retag, true);
     tracked!(mir_enable_passes, vec![("DestProp".to_string(), false)]);
+    tracked!(mir_keep_place_mention, true);
     tracked!(mir_opt_level, Some(4));
     tracked!(move_size_limit, Some(4096));
     tracked!(mutable_noalias, false);

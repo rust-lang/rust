@@ -127,6 +127,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         "msp430" => Architecture::Msp430,
         "hexagon" => Architecture::Hexagon,
         "bpf" => Architecture::Bpf,
+        "loongarch64" => Architecture::LoongArch64,
         // Unsupported architecture.
         _ => return None,
     };
@@ -189,6 +190,10 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
                 e_flags |= elf::EF_RISCV_FLOAT_ABI_SOFT;
             }
             e_flags
+        }
+        Architecture::LoongArch64 => {
+            // Source: https://loongson.github.io/LoongArch-Documentation/LoongArch-ELF-ABI-EN.html#_e_flags_identifies_abi_type_and_version
+            elf::EF_LARCH_OBJABI_V1 | elf::EF_LARCH_ABI_DOUBLE_FLOAT
         }
         _ => 0,
     };

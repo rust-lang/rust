@@ -1,4 +1,4 @@
-//@error-pattern: the evaluated program leaked memory
+//@error-pattern: memory leaked
 //@stderr-per-bitwidth
 //@normalize-stderr-test: ".*│.*" -> "$$stripped$$"
 

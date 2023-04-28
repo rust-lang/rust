@@ -42,7 +42,7 @@ resolve_try_adding_local_generic_param_on_method =
     try adding a local generic parameter in this method instead
 
 resolve_help_try_using_local_generic_param =
-    try using a local generic paramter instead
+    try using a local generic parameter instead
 
 resolve_name_is_already_used_as_generic_parameter =
     the name `{$name}` is already used for a generic parameter in this item's generic parameters
@@ -223,3 +223,13 @@ resolve_remove_surrounding_derive =
 resolve_add_as_non_derive =
     add as non-Derive macro
     `#[{$macro_path}]`
+
+resolve_proc_macro_same_crate = can't use a procedural macro from the same crate that defines it
+    .help = you can define integration tests in a directory named `tests`
+
+resolve_imported_crate = `$crate` may not be imported
+
+resolve_macro_use_extern_crate_self = `#[macro_use]` is not supported on `extern crate self`
+
+resolve_accessible_unsure = not sure whether the path is accessible or not
+    .note = the type may have associated items, but we are currently not checking them

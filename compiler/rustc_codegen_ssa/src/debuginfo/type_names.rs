@@ -12,7 +12,7 @@
 // * `"` is treated as the start of a string.
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Mutability};
@@ -675,8 +675,7 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
                     hcx.while_hashing_spans(false, |hcx| {
                         ct.to_valtree().hash_stable(hcx, &mut hasher)
                     });
-                    let hash: u64 = hasher.finish();
-                    hash
+                    hasher.finish::<Hash64>()
                 });
 
                 if cpp_like_debuginfo(tcx) {

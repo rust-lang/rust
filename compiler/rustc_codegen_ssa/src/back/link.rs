@@ -923,7 +923,7 @@ fn link_natively<'a>(
             if sess.target.is_like_msvc && linker_not_found {
                 sess.emit_note(errors::MsvcMissingLinker);
                 sess.emit_note(errors::CheckInstalledVisualStudio);
-                sess.emit_note(errors::UnsufficientVSCodeProduct);
+                sess.emit_note(errors::InsufficientVSCodeProduct);
             }
             sess.abort_if_errors();
         }

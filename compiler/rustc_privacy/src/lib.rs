@@ -17,12 +17,12 @@ use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
+use rustc_fluent_macro::fluent_messages;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{AssocItemKind, HirIdSet, ItemId, Node, PatKind};
-use rustc_macros::fluent_messages;
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::privacy::{EffectiveVisibilities, Level};
@@ -269,7 +269,7 @@ where
                     // and are visited by shallow visitors.
                     self.visit_predicates(ty::GenericPredicates {
                         parent: None,
-                        predicates: tcx.explicit_item_bounds(def_id),
+                        predicates: tcx.explicit_item_bounds(def_id).skip_binder(),
                     })?;
                 }
             }
@@ -515,7 +515,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             let vis = self.tcx.local_visibility(item_id.owner_id.def_id);
             self.update_macro_reachable_def(item_id.owner_id.def_id, def_kind, vis, defining_mod);
         }
-        for export in self.tcx.module_reexports(module_def_id) {
+        for export in self.tcx.module_children_reexports(module_def_id) {
             if export.vis.is_accessible_from(defining_mod, self.tcx)
                 && let Res::Def(def_kind, def_id) = export.res
                 && let Some(def_id) = def_id.as_local() {
@@ -1784,7 +1784,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
     fn bounds(&mut self) -> &mut Self {
         self.visit_predicates(ty::GenericPredicates {
             parent: None,
-            predicates: self.tcx.explicit_item_bounds(self.item_def_id),
+            predicates: self.tcx.explicit_item_bounds(self.item_def_id).skip_binder(),
         });
         self
     }

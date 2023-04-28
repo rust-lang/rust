@@ -20,7 +20,7 @@ use token_stream::TokenStreamBuilder;
 mod symbol;
 pub use symbol::*;
 
-use std::ops::Bound;
+use std::ops::{Bound, Range};
 
 use crate::tt;
 
@@ -297,6 +297,10 @@ impl server::Span for RustAnalyzer {
     fn source(&mut self, span: Self::Span) -> Self::Span {
         // FIXME handle span
         span
+    }
+    fn byte_range(&mut self, _span: Self::Span) -> Range<usize> {
+        // FIXME handle span
+        Range { start: 0, end: 0 }
     }
     fn start(&mut self, _span: Self::Span) -> LineColumn {
         // FIXME handle span

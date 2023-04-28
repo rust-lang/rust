@@ -1,4 +1,5 @@
 use crate::mir::interpret::{AllocRange, GlobalAlloc, Pointer, Provenance, Scalar};
+use crate::ty::query::IntoQueryParam;
 use crate::ty::{
     self, ConstInt, ParamConst, ScalarInt, Term, TermKind, Ty, TyCtxt, TypeFoldable,
     TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
@@ -738,7 +739,9 @@ pub trait PrettyPrinter<'tcx>:
                 }
             }
             ty::Placeholder(placeholder) => match placeholder.bound.kind {
-                ty::BoundTyKind::Anon => p!(write("Placeholder({:?})", placeholder)),
+                ty::BoundTyKind::Anon => {
+                    self.pretty_print_placeholder_var(placeholder.universe, placeholder.bound.var)?
+                }
                 ty::BoundTyKind::Param(_, name) => p!(write("{}", name)),
             },
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
@@ -911,7 +914,7 @@ pub trait PrettyPrinter<'tcx>:
 
         // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
         // by looking up the projections associated with the def_id.
-        let bounds = tcx.bound_explicit_item_bounds(def_id);
+        let bounds = tcx.explicit_item_bounds(def_id);
 
         let mut traits = FxIndexMap::default();
         let mut fn_traits = FxIndexMap::default();
@@ -1172,6 +1175,18 @@ pub trait PrettyPrinter<'tcx>:
         }
     }
 
+    fn pretty_print_placeholder_var(
+        &mut self,
+        ui: ty::UniverseIndex,
+        var: ty::BoundVar,
+    ) -> Result<(), Self::Error> {
+        if ui == ty::UniverseIndex::ROOT {
+            write!(self, "!{}", var.index())
+        } else {
+            write!(self, "!{}_{}", ui.index(), var.index())
+        }
+    }
+
     fn ty_infer_name(&self, _: ty::TyVid) -> Option<Symbol> {
         None
     }
@@ -1328,13 +1343,13 @@ pub trait PrettyPrinter<'tcx>:
 
         match ct.kind() {
             ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, substs }) => {
-                match self.tcx().def_kind(def.did) {
+                match self.tcx().def_kind(def) {
                     DefKind::Const | DefKind::AssocConst => {
-                        p!(print_value_path(def.did, substs))
+                        p!(print_value_path(def, substs))
                     }
                     DefKind::AnonConst => {
                         if def.is_local()
-                            && let span = self.tcx().def_span(def.did)
+                            && let span = self.tcx().def_span(def)
                             && let Ok(snip) = self.tcx().sess.source_map().span_to_snippet(span)
                         {
                             p!(write("{}", snip))
@@ -1344,10 +1359,10 @@ pub trait PrettyPrinter<'tcx>:
                             // cause printing to enter an infinite recursion if the anon const is in the self type i.e.
                             // `impl<T: Default> Default for [T; 32 - 1 - 1 - 1] {`
                             // where we would try to print `<[T; /* print `constant#0` again */] as Default>::{constant#0}`
-                            p!(write("{}::{}", self.tcx().crate_name(def.did.krate), self.tcx().def_path(def.did).to_string_no_crate_verbose()))
+                            p!(write("{}::{}", self.tcx().crate_name(def.krate), self.tcx().def_path(def).to_string_no_crate_verbose()))
                         }
                     }
-                    defkind => bug!("`{:?}` has unexpcted defkind {:?}", ct, defkind),
+                    defkind => bug!("`{:?}` has unexpected defkind {:?}", ct, defkind),
                 }
             }
             ty::ConstKind::Infer(infer_ct) => {
@@ -1787,17 +1802,27 @@ fn guess_def_namespace(tcx: TyCtxt<'_>, def_id: DefId) -> Namespace {
 impl<'t> TyCtxt<'t> {
     /// Returns a string identifying this `DefId`. This string is
     /// suitable for user output.
-    pub fn def_path_str(self, def_id: DefId) -> String {
+    pub fn def_path_str(self, def_id: impl IntoQueryParam<DefId>) -> String {
         self.def_path_str_with_substs(def_id, &[])
     }
 
-    pub fn def_path_str_with_substs(self, def_id: DefId, substs: &'t [GenericArg<'t>]) -> String {
+    pub fn def_path_str_with_substs(
+        self,
+        def_id: impl IntoQueryParam<DefId>,
+        substs: &'t [GenericArg<'t>],
+    ) -> String {
+        let def_id = def_id.into_query_param();
         let ns = guess_def_namespace(self, def_id);
         debug!("def_path_str: def_id={:?}, ns={:?}", def_id, ns);
         FmtPrinter::new(self, ns).print_def_path(def_id, substs).unwrap().into_buffer()
     }
 
-    pub fn value_path_str_with_substs(self, def_id: DefId, substs: &'t [GenericArg<'t>]) -> String {
+    pub fn value_path_str_with_substs(
+        self,
+        def_id: impl IntoQueryParam<DefId>,
+        substs: &'t [GenericArg<'t>],
+    ) -> String {
+        let def_id = def_id.into_query_param();
         let ns = guess_def_namespace(self, def_id);
         debug!("value_path_str: def_id={:?}, ns={:?}", def_id, ns);
         FmtPrinter::new(self, ns).print_value_path(def_id, substs).unwrap().into_buffer()
@@ -2518,7 +2543,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                     self.used_region_names.insert(name);
                 }
 
-                r.super_visit_with(self)
+                ControlFlow::Continue(())
             }
 
             // We collect types in order to prevent really large types from compiling for
@@ -2665,7 +2690,7 @@ impl<'tcx> ty::PolyTraitPredicate<'tcx> {
     }
 }
 
-#[derive(Debug, Copy, Clone, TypeFoldable, TypeVisitable, Lift)]
+#[derive(Debug, Copy, Clone, Lift)]
 pub struct PrintClosureAsImpl<'tcx> {
     pub closure: ty::ClosureSubsts<'tcx>,
 }

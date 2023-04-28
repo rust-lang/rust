@@ -2470,7 +2470,7 @@ fn test_vec_dedup_panicking() {
 
 // Regression test for issue #82533
 #[test]
-fn test_extend_from_within_panicing_clone() {
+fn test_extend_from_within_panicking_clone() {
     struct Panic<'dc> {
         drop_count: &'dc AtomicU32,
         aaaaa: bool,

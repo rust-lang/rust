@@ -5,7 +5,7 @@ use crate::ty::{self, ReprOptions, Ty, TyCtxt, TypeVisitableExt};
 use rustc_errors::{DiagnosticBuilder, Handler, IntoDiagnostic};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_session::config::OptLevel;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -235,7 +235,7 @@ impl IntoDiagnostic<'_, !> for LayoutError<'_> {
     }
 }
 
-// FIXME: Once the other errors that embed this error have been converted to translateable
+// FIXME: Once the other errors that embed this error have been converted to translatable
 // diagnostics, this Display impl should be removed.
 impl<'tcx> fmt::Display for LayoutError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -458,10 +458,10 @@ impl<'tcx> SizeSkeleton<'tcx> {
     }
 }
 
-/// When creating the layout for types with abstract conts in their size (i.e. [usize; 4 * N]),
+/// When creating the layout for types with abstract consts in their size (i.e. [usize; 4 * N]),
 /// to ensure that they have a canonical order and can be compared directly we combine all
 /// constants, and sort the other terms. This allows comparison of expressions of sizes,
-/// allowing for things like transmutating between types that depend on generic consts.
+/// allowing for things like transmuting between types that depend on generic consts.
 /// This returns `None` if multiplication of constants overflows.
 fn mul_sorted_consts<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -1226,10 +1226,11 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: SpecAbi) ->
         | AvrNonBlockingInterrupt
         | CCmseNonSecureCall
         | Wasm
-        | RustIntrinsic
         | PlatformIntrinsic
         | Unadjusted => false,
-        Rust | RustCall | RustCold => tcx.sess.panic_strategy() == PanicStrategy::Unwind,
+        Rust | RustCall | RustCold | RustIntrinsic => {
+            tcx.sess.panic_strategy() == PanicStrategy::Unwind
+        }
     }
 }
 

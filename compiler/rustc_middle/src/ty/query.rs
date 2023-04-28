@@ -57,7 +57,7 @@ use rustc_hir::def_id::{
 use rustc_hir::hir_id::OwnerId;
 use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{Crate, ItemLocalId, TraitCandidate};
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 pub(crate) use rustc_query_system::query::QueryJobId;
 use rustc_query_system::query::*;
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
@@ -75,6 +75,9 @@ use std::mem;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
+
+use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_query_system::ich::StableHashingContext;
 
 #[derive(Default)]
 pub struct QuerySystem<'tcx> {
@@ -199,16 +202,6 @@ macro_rules! separate_provide_extern_default {
     };
     ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
         separate_provide_extern_default!([$($modifiers)*][$($args)*])
-    };
-}
-
-macro_rules! opt_remap_env_constness {
-    ([][$name:ident]) => {};
-    ([(remap_env_constness) $($rest:tt)*][$name:ident]) => {
-        let $name = $name.without_const();
-    };
-    ([$other:tt $($modifiers:tt)*][$name:ident]) => {
-        opt_remap_env_constness!([$($modifiers)*][$name])
     };
 }
 
@@ -353,7 +346,6 @@ macro_rules! define_callbacks {
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
                 let key = key.into_query_param();
-                opt_remap_env_constness!([$($modifiers)*][key]);
 
                 match try_get_cached(self.tcx, &self.tcx.query_system.caches.$name, &key) {
                     Some(_) => return,
@@ -372,7 +364,6 @@ macro_rules! define_callbacks {
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
                 let key = key.into_query_param();
-                opt_remap_env_constness!([$($modifiers)*][key]);
 
                 match try_get_cached(self.tcx, &self.tcx.query_system.caches.$name, &key) {
                     Some(_) => return,
@@ -402,7 +393,6 @@ macro_rules! define_callbacks {
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V
             {
                 let key = key.into_query_param();
-                opt_remap_env_constness!([$($modifiers)*][key]);
 
                 restore::<$V>(match try_get_cached(self.tcx, &self.tcx.query_system.caches.$name, &key) {
                     Some(value) => value,
@@ -490,22 +480,33 @@ macro_rules! define_feedable {
         $(impl<'tcx, K: IntoQueryParam<$($K)*> + Copy> TyCtxtFeed<'tcx, K> {
             $(#[$attr])*
             #[inline(always)]
-            pub fn $name(self, value: query_provided::$name<'tcx>) -> $V {
+            pub fn $name(self, value: query_provided::$name<'tcx>) {
                 let key = self.key().into_query_param();
-                opt_remap_env_constness!([$($modifiers)*][key]);
 
                 let tcx = self.tcx;
                 let erased = query_provided_to_value::$name(tcx, value);
                 let value = restore::<$V>(erased);
                 let cache = &tcx.query_system.caches.$name;
 
+                let hasher: Option<fn(&mut StableHashingContext<'_>, &_) -> _> = hash_result!([$($modifiers)*]);
                 match try_get_cached(tcx, cache, &key) {
                     Some(old) => {
                         let old = restore::<$V>(old);
-                        bug!(
-                            "Trying to feed an already recorded value for query {} key={key:?}:\nold value: {old:?}\nnew value: {value:?}",
-                            stringify!($name),
-                        )
+                        if let Some(hasher) = hasher {
+                            let (value_hash, old_hash): (Fingerprint, Fingerprint) = tcx.with_stable_hashing_context(|mut hcx|
+                                (hasher(&mut hcx, &value), hasher(&mut hcx, &old))
+                            );
+                            assert_eq!(
+                                old_hash, value_hash,
+                                "Trying to feed an already recorded value for query {} key={key:?}:\nold value: {old:?}\nnew value: {value:?}",
+                                stringify!($name),
+                            )
+                        } else {
+                            bug!(
+                                "Trying to feed an already recorded value for query {} key={key:?}:\nold value: {old:?}\nnew value: {value:?}",
+                                stringify!($name),
+                            )
+                        }
                     }
                     None => {
                         let dep_node = dep_graph::DepNode::construct(tcx, dep_graph::DepKind::$name, &key);
@@ -517,7 +518,6 @@ macro_rules! define_feedable {
                             hash_result!([$($modifiers)*]),
                         );
                         cache.complete(key, erased, dep_node_index);
-                        value
                     }
                 }
             }
@@ -587,7 +587,7 @@ mod sealed {
     }
 }
 
-use sealed::IntoQueryParam;
+pub use sealed::IntoQueryParam;
 
 impl<'tcx> TyCtxt<'tcx> {
     pub fn def_kind(self, def_id: impl IntoQueryParam<DefId>) -> DefKind {

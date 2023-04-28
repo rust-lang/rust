@@ -3,7 +3,7 @@ use crate::{
     fluent_generated as fluent,
     late::unerased_lint_store,
     lints::{
-        DeprecatedLintName, IgnoredUnlessCrateSpecified, OverruledAtributeLint,
+        DeprecatedLintName, IgnoredUnlessCrateSpecified, OverruledAttributeLint,
         RenamedOrRemovedLint, RenamedOrRemovedLintSuggestion, UnknownLint, UnknownLintSuggestion,
     },
 };
@@ -14,7 +14,7 @@ use rustc_errors::{DecorateLint, DiagnosticBuilder, DiagnosticMessage, MultiSpan
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::HirId;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::{
     reveal_actual_level, struct_lint_level, LevelAndSource, LintExpectation, LintLevelSource,
@@ -612,7 +612,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                     self.emit_spanned_lint(
                         FORBIDDEN_LINT_GROUPS,
                         src.span().into(),
-                        OverruledAtributeLint {
+                        OverruledAttributeLint {
                             overruled: src.span(),
                             lint_level: level.as_str(),
                             lint_source: src.name(),

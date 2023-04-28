@@ -1,5 +1,5 @@
 use crate::traits::*;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir;
 use rustc_middle::ty;
@@ -442,11 +442,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let (var_ty, var_kind) = match var.value {
                     mir::VarDebugInfoContents::Place(place) => {
                         let var_ty = self.monomorphized_place_ty(place.as_ref());
-                        let var_kind = if self.mir.local_kind(place.local) == mir::LocalKind::Arg
+                        let var_kind = if let Some(arg_index) = var.argument_index
                             && place.projection.is_empty()
-                            && var.source_info.scope == mir::OUTERMOST_SOURCE_SCOPE
                         {
-                            let arg_index = place.local.index() - 1;
+                            let arg_index = arg_index as usize;
                             if target_is_msvc {
                                 // ScalarPair parameters are spilled to the stack so they need to
                                 // be marked as a `LocalVariable` for MSVC debuggers to visualize
@@ -455,13 +454,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 if let Abi::ScalarPair(_, _) = var_ty_layout.abi {
                                     VariableKind::LocalVariable
                                 } else {
-                                    VariableKind::ArgumentVariable(arg_index + 1)
+                                    VariableKind::ArgumentVariable(arg_index)
                                 }
                             } else {
                                 // FIXME(eddyb) shouldn't `ArgumentVariable` indices be
                                 // offset in closures to account for the hidden environment?
-                                // Also, is this `+ 1` needed at all?
-                                VariableKind::ArgumentVariable(arg_index + 1)
+                                VariableKind::ArgumentVariable(arg_index)
                             }
                         } else {
                             VariableKind::LocalVariable
@@ -496,6 +494,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let Some(dbg_loc) = self.dbg_loc(var.source_info) else { continue };
 
                         if let Ok(operand) = self.eval_mir_constant_to_operand(bx, &c) {
+                            self.set_debug_loc(bx, var.source_info);
                             let base = Self::spill_operand_to_stack(
                                 &operand,
                                 Some(var.name.to_string()),

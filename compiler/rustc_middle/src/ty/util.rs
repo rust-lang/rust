@@ -2,7 +2,6 @@
 
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir;
-use crate::ty::fast_reject::TreatProjections;
 use crate::ty::layout::IntegerExt;
 use crate::ty::{
     self, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
@@ -11,13 +10,13 @@ use crate::ty::{
 use crate::ty::{GenericArgKind, SubstsRef};
 use rustc_apfloat::Float as _;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::GrowableBitSet;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{Idx, IndexVec};
 use rustc_macros::HashStable;
 use rustc_session::Limit;
 use rustc_span::sym;
@@ -124,7 +123,7 @@ impl IntTypeExt for IntegerType {
 impl<'tcx> TyCtxt<'tcx> {
     /// Creates a hash of the type `Ty` which will be the same no matter what crate
     /// context it's calculated within. This is used by the `type_id` intrinsic.
-    pub fn type_id_hash(self, ty: Ty<'tcx>) -> u64 {
+    pub fn type_id_hash(self, ty: Ty<'tcx>) -> Hash64 {
         // We want the type_id be independent of the types free regions, so we
         // erase them. The erase_regions() call will also anonymize bound
         // regions, which is desirable too.
@@ -359,21 +358,29 @@ impl<'tcx> TyCtxt<'tcx> {
         self.ensure().coherent_trait(drop_trait);
 
         let ty = self.type_of(adt_did).subst_identity();
-        let (did, constness) = self.find_map_relevant_impl(
-            drop_trait,
-            ty,
-            // FIXME: This could also be some other mode, like "unexpected"
-            TreatProjections::ForLookup,
-            |impl_did| {
-                if let Some(item_id) = self.associated_item_def_ids(impl_did).first() {
-                    if validate(self, impl_did).is_ok() {
-                        return Some((*item_id, self.constness(impl_did)));
-                    }
-                }
-                None
-            },
-        )?;
+        let mut dtor_candidate = None;
+        self.for_each_relevant_impl(drop_trait, ty, |impl_did| {
+            let Some(item_id) = self.associated_item_def_ids(impl_did).first() else {
+                self.sess.delay_span_bug(self.def_span(impl_did), "Drop impl without drop function");
+                return;
+            };
 
+            if validate(self, impl_did).is_err() {
+                // Already `ErrorGuaranteed`, no need to delay a span bug here.
+                return;
+            }
+
+            if let Some((old_item_id, _)) = dtor_candidate {
+                self.sess
+                    .struct_span_err(self.def_span(item_id), "multiple drop impls found")
+                    .span_note(self.def_span(old_item_id), "other impl here")
+                    .delay_as_bug();
+            }
+
+            dtor_candidate = Some((*item_id, self.constness(impl_did)));
+        });
+
+        let (did, constness) = dtor_candidate?;
         Some(ty::Destructor { did, constness })
     }
 
@@ -642,7 +649,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// Return the set of types that should be taken into accound when checking
+    /// Return the set of types that should be taken into account when checking
     /// trait bounds on a generator's internal state.
     pub fn generator_hidden_types(
         self,
@@ -692,24 +699,6 @@ impl<'tcx> TyCtxt<'tcx> {
 
         let expanded_type = visitor.expand_opaque_ty(def_id, substs).unwrap();
         if visitor.found_recursion { Err(expanded_type) } else { Ok(expanded_type) }
-    }
-
-    pub fn bound_return_position_impl_trait_in_trait_tys(
-        self,
-        def_id: DefId,
-    ) -> ty::EarlyBinder<Result<&'tcx FxHashMap<DefId, Ty<'tcx>>, ErrorGuaranteed>> {
-        ty::EarlyBinder(self.collect_return_position_impl_trait_in_trait_tys(def_id))
-    }
-
-    pub fn bound_explicit_item_bounds(
-        self,
-        def_id: DefId,
-    ) -> ty::EarlyBinder<&'tcx [(ty::Predicate<'tcx>, rustc_span::Span)]> {
-        ty::EarlyBinder(self.explicit_item_bounds(def_id))
-    }
-
-    pub fn bound_impl_subject(self, def_id: DefId) -> ty::EarlyBinder<ty::ImplSubject<'tcx>> {
-        ty::EarlyBinder(self.impl_subject(def_id))
     }
 
     /// Returns names of captured upvars for closures and generators.
@@ -1162,7 +1151,7 @@ impl<'tcx> Ty<'tcx> {
                 // context, or *something* like that, but for now just avoid passing inference
                 // variables to queries that can't cope with them. Instead, conservatively
                 // return "true" (may change drop order).
-                if query_ty.needs_infer() {
+                if query_ty.has_infer() {
                     return true;
                 }
 
@@ -1406,7 +1395,7 @@ pub fn is_trivially_const_drop(ty: Ty<'_>) -> bool {
 }
 
 /// Does the equivalent of
-/// ```ignore (ilustrative)
+/// ```ignore (illustrative)
 /// let v = self.iter().map(|p| p.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
 /// folder.tcx().intern_*(&v)
 /// ```

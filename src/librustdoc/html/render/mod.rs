@@ -32,13 +32,13 @@ mod context;
 mod print_item;
 mod sidebar;
 mod span_map;
+mod type_layout;
 mod write_shared;
 
 pub(crate) use self::context::*;
 pub(crate) use self::span_map::{collect_spans_and_sources, LinkFromSrc};
 
 use std::collections::VecDeque;
-use std::default::Default;
 use std::fmt::{self, Write};
 use std::fs;
 use std::iter::Peekable;

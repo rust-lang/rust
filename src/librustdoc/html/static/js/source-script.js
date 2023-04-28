@@ -15,8 +15,13 @@ const NAME_OFFSET = 0;
 const DIRS_OFFSET = 1;
 const FILES_OFFSET = 2;
 
+// WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY
+// If you update this line, then you also need to update the media query with the same
+// warning in rustdoc.css
+const RUSTDOC_MOBILE_BREAKPOINT = 700;
+
 function closeSidebarIfMobile() {
-    if (window.innerWidth < window.RUSTDOC_MOBILE_BREAKPOINT) {
+    if (window.innerWidth < RUSTDOC_MOBILE_BREAKPOINT) {
         updateLocalStorage("source-sidebar-show", "false");
     }
 }
@@ -47,12 +52,12 @@ function createDirEntry(elem, parent, fullPath, hasFoundFile) {
     const files = document.createElement("div");
     files.className = "files";
     if (elem[FILES_OFFSET]) {
+        const w = window.location.href.split("#")[0];
         for (const file_text of elem[FILES_OFFSET]) {
             const file = document.createElement("a");
             file.innerText = file_text;
             file.href = rootPath + "src/" + fullPath + file_text + ".html";
             file.addEventListener("click", closeSidebarIfMobile);
-            const w = window.location.href.split("#")[0];
             if (!hasFoundFile && w === file.href) {
                 file.className = "selected";
                 dirEntry.open = true;
@@ -69,12 +74,10 @@ function createDirEntry(elem, parent, fullPath, hasFoundFile) {
 function toggleSidebar() {
     const child = this.parentNode.children[0];
     if (child.innerText === ">") {
-        window.rustdocMobileScrollLock();
         addClass(document.documentElement, "source-sidebar-expanded");
         child.innerText = "<";
         updateLocalStorage("source-sidebar-show", "true");
     } else {
-        window.rustdocMobileScrollUnlock();
         removeClass(document.documentElement, "source-sidebar-expanded");
         child.innerText = ">";
         updateLocalStorage("source-sidebar-show", "false");

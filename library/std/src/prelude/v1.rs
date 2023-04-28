@@ -91,10 +91,10 @@ pub use core::prelude::v1::cfg_eval;
 )]
 pub use core::prelude::v1::type_ascribe;
 
-// The file so far is equivalent to src/libcore/prelude/v1.rs,
-// and below to src/liballoc/prelude.rs.
-// Those files are duplicated rather than using glob imports
-// because we want docs to show these re-exports as pointing to within `std`.
+// The file so far is equivalent to core/src/prelude/v1.rs. It is duplicated
+// rather than glob imported because we want docs to show these re-exports as
+// pointing to within `std`.
+// Below are the items from the alloc crate.
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]

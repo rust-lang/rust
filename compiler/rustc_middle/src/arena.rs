@@ -17,13 +17,13 @@ macro_rules! arena_types {
             [decode] mir: rustc_middle::mir::Body<'tcx>,
             [] steal_promoted:
                 rustc_data_structures::steal::Steal<
-                    rustc_index::vec::IndexVec<
+                    rustc_index::IndexVec<
                         rustc_middle::mir::Promoted,
                         rustc_middle::mir::Body<'tcx>
                     >
                 >,
             [decode] promoted:
-                rustc_index::vec::IndexVec<
+                rustc_index::IndexVec<
                     rustc_middle::mir::Promoted,
                     rustc_middle::mir::Body<'tcx>
                 >,
@@ -114,7 +114,11 @@ macro_rules! arena_types {
 
             [] dep_kind: rustc_middle::dep_graph::DepKindStruct<'tcx>,
 
-            [decode] trait_impl_trait_tys: rustc_data_structures::fx::FxHashMap<rustc_hir::def_id::DefId, rustc_middle::ty::Ty<'tcx>>,
+            [decode] trait_impl_trait_tys:
+                rustc_data_structures::fx::FxHashMap<
+                    rustc_hir::def_id::DefId,
+                    rustc_middle::ty::EarlyBinder<rustc_middle::ty::Ty<'tcx>>
+                >,
             [] bit_set_u32: rustc_index::bit_set::BitSet<u32>,
             [] external_constraints: rustc_middle::traits::solve::ExternalConstraintsData<'tcx>,
             [decode] doc_link_resolutions: rustc_hir::def::DocLinkResMap,

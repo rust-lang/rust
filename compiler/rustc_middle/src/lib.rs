@@ -59,6 +59,8 @@
 #![feature(result_option_inspect)]
 #![feature(const_option)]
 #![feature(trait_alias)]
+#![feature(ptr_alignment_type)]
+#![feature(macro_metavar_expr)]
 #![recursion_limit = "512"]
 #![allow(rustc::potential_query_instability)]
 
@@ -74,7 +76,7 @@ extern crate tracing;
 extern crate smallvec;
 
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
-use rustc_macros::fluent_messages;
+use rustc_fluent_macro::fluent_messages;
 
 #[cfg(test)]
 mod tests;
@@ -99,12 +101,8 @@ pub mod mir;
 pub mod thir;
 pub mod traits;
 pub mod ty;
+pub mod util;
 mod values;
-
-pub mod util {
-    pub mod bug;
-    pub mod common;
-}
 
 // Allows macros to refer to this crate as `::rustc_middle`
 extern crate self as rustc_middle;

@@ -11,7 +11,8 @@ LL | fn equal<T>(a: &T, b: &T) -> bool where T : Eq { a == b }
    |                                             ^^ required by this bound in `equal`
 help: consider annotating `Struct` with `#[derive(Eq)]`
    |
-LL | #[derive(Eq)]
+LL + #[derive(Eq)]
+LL | struct Struct;
    |
 
 error: aborting due to previous error

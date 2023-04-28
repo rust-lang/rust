@@ -1,0 +1,79 @@
+error[E0658]: use of unstable library feature 'unstable_test_feature'
+  --> $DIR/offset-of-unstable.rs:14:9
+   |
+LL |         Unstable,
+   |         ^^^^^^^^
+   |
+   = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'unstable_test_feature'
+  --> $DIR/offset-of-unstable.rs:23:9
+   |
+LL |         UnstableWithStableFieldType,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'unstable_test_feature'
+  --> $DIR/offset-of-unstable.rs:28:9
+   |
+LL |         UnstableWithStableFieldType,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'unstable_test_feature'
+  --> $DIR/offset-of-unstable.rs:12:5
+   |
+LL | /     offset_of!(
+LL | |
+LL | |         Unstable,
+LL | |         unstable
+LL | |     );
+   | |_____^
+   |
+   = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'unstable_test_feature'
+  --> $DIR/offset-of-unstable.rs:18:5
+   |
+LL |     offset_of!(StableWithUnstableField, unstable);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'unstable_test_feature'
+  --> $DIR/offset-of-unstable.rs:20:5
+   |
+LL |     offset_of!(StableWithUnstableFieldType, stable.unstable);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'unstable_test_feature'
+  --> $DIR/offset-of-unstable.rs:21:5
+   |
+LL | /     offset_of!(
+LL | |
+LL | |         UnstableWithStableFieldType,
+LL | |         unstable
+LL | |     );
+   | |_____^
+   |
+   = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'unstable_test_feature'
+  --> $DIR/offset-of-unstable.rs:26:5
+   |
+LL | /     offset_of!(
+LL | |
+LL | |         UnstableWithStableFieldType,
+LL | |         unstable.stable
+LL | |     );
+   | |_____^
+   |
+   = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

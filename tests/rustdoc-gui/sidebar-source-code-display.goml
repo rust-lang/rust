@@ -183,22 +183,12 @@ wait-for-css: (".sidebar", {"left": "-1000px"})
 // The "scrollTop" property should be the same.
 assert-window-property: {"pageYOffset": "2542"}
 
-// We now check that the scroll position is restored if the window is resized.
-set-window-size: (500, 700)
-click: "#src-sidebar-toggle"
-wait-for-css: ("#source-sidebar", {"visibility": "visible"})
-assert-window-property: {"pageYOffset": "0"}
-set-window-size: (900, 900)
-assert-window-property: {"pageYOffset": "2542"}
-set-window-size: (500, 700)
-click: "#src-sidebar-toggle"
-wait-for-css: ("#source-sidebar", {"visibility": "hidden"})
-
 // We now check that opening the sidebar and clicking a link will close it.
 // The behavior here on mobile is different than the behavior on desktop,
 // but common sense dictates that if you have a list of files that fills the entire screen, and
 // you click one of them, you probably want to actually see the file's contents, and not just
 // make it the current selection.
+set-window-size: (500, 700)
 click: "#src-sidebar-toggle"
 wait-for-css: ("#source-sidebar", {"visibility": "visible"})
 assert-local-storage: {"rustdoc-source-sidebar-show": "true"}

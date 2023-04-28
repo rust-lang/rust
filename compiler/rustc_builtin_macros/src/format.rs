@@ -42,7 +42,7 @@ struct MacroInput {
     fmtstr: P<Expr>,
     args: FormatArguments,
     /// Whether the first argument was a string literal or a result from eager macro expansion.
-    /// If it's not a string literal, we disallow implicit arugment capturing.
+    /// If it's not a string literal, we disallow implicit argument capturing.
     ///
     /// This does not correspond to whether we can treat spans to the literal normally, as the whole
     /// invocation might be the result of another macro expansion, in which case this flag may still be true.
@@ -141,13 +141,7 @@ fn parse_args<'a>(ecx: &mut ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<
                         args: args
                             .named_args()
                             .iter()
-                            .filter_map(|a| {
-                                if let Some(ident) = a.kind.ident() {
-                                    Some((a, ident))
-                                } else {
-                                    None
-                                }
-                            })
+                            .filter_map(|a| a.kind.ident().map(|ident| (a, ident)))
                             .map(|(arg, n)| n.span.to(arg.expr.span))
                             .collect(),
                     });

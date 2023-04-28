@@ -21,7 +21,7 @@ use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, List, TyCtxt, TypeVisitableExt};
 use rustc_span::Span;
 
-use rustc_index::vec::{Idx, IndexSlice, IndexVec};
+use rustc_index::{Idx, IndexSlice, IndexVec};
 
 use std::cell::Cell;
 use std::{cmp, iter, mem};
@@ -514,6 +514,7 @@ impl<'tcx> Validator<'_, 'tcx> {
             Rvalue::NullaryOp(op, _) => match op {
                 NullOp::SizeOf => {}
                 NullOp::AlignOf => {}
+                NullOp::OffsetOf(_) => {}
             },
 
             Rvalue::ShallowInitBox(_, _) => return Err(Unpromotable),
@@ -828,7 +829,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
     }
 
     fn promote_candidate(mut self, candidate: Candidate, next_promoted_id: usize) -> Body<'tcx> {
-        let def = self.source.source.with_opt_param();
+        let def = self.source.source.def_id();
         let mut rvalue = {
             let promoted = &mut self.promoted;
             let promoted_id = Promoted::new(next_promoted_id);
@@ -836,7 +837,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             let mut promoted_operand = |ty, span| {
                 promoted.span = span;
                 promoted.local_decls[RETURN_PLACE] = LocalDecl::new(ty, span);
-                let substs = tcx.erase_regions(InternalSubsts::identity_for_item(tcx, def.did));
+                let substs = tcx.erase_regions(InternalSubsts::identity_for_item(tcx, def));
                 let uneval = mir::UnevaluatedConst { def, substs, promoted: Some(promoted_id) };
 
                 Operand::Constant(Box::new(Constant {

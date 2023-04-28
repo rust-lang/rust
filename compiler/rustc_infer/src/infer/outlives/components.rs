@@ -143,7 +143,7 @@ fn compute_components<'tcx>(
                     // through and constrain Pi.
                     let mut subcomponents = smallvec![];
                     let mut subvisited = SsoHashSet::new();
-                    compute_components_recursive(tcx, ty.into(), &mut subcomponents, &mut subvisited);
+                    compute_alias_components_recursive(tcx, ty, &mut subcomponents, &mut subvisited);
                     out.push(Component::EscapingAlias(subcomponents.into_iter().collect()));
                 }
             }
@@ -193,7 +193,43 @@ fn compute_components<'tcx>(
 ///
 /// This should not be used to get the components of `parent` itself.
 /// Use [push_outlives_components] instead.
-pub(super) fn compute_components_recursive<'tcx>(
+pub(super) fn compute_alias_components_recursive<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    alias_ty: Ty<'tcx>,
+    out: &mut SmallVec<[Component<'tcx>; 4]>,
+    visited: &mut SsoHashSet<GenericArg<'tcx>>,
+) {
+    let ty::Alias(kind, alias_ty) = alias_ty.kind() else { bug!() };
+    let opt_variances = if *kind == ty::Opaque { tcx.variances_of(alias_ty.def_id) } else { &[] };
+    for (index, child) in alias_ty.substs.iter().enumerate() {
+        if opt_variances.get(index) == Some(&ty::Bivariant) {
+            continue;
+        }
+        if !visited.insert(child) {
+            continue;
+        }
+        match child.unpack() {
+            GenericArgKind::Type(ty) => {
+                compute_components(tcx, ty, out, visited);
+            }
+            GenericArgKind::Lifetime(lt) => {
+                // Ignore late-bound regions.
+                if !lt.is_late_bound() {
+                    out.push(Component::Region(lt));
+                }
+            }
+            GenericArgKind::Const(_) => {
+                compute_components_recursive(tcx, child, out, visited);
+            }
+        }
+    }
+}
+
+/// Collect [Component]s for *all* the substs of `parent`.
+///
+/// This should not be used to get the components of `parent` itself.
+/// Use [push_outlives_components] instead.
+fn compute_components_recursive<'tcx>(
     tcx: TyCtxt<'tcx>,
     parent: GenericArg<'tcx>,
     out: &mut SmallVec<[Component<'tcx>; 4]>,

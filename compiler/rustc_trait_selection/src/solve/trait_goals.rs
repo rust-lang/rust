@@ -3,7 +3,7 @@
 use super::assembly::{self, structural_traits};
 use super::{EvalCtxt, SolverMode};
 use rustc_hir::def_id::DefId;
-use rustc_hir::LangItem;
+use rustc_hir::{LangItem, Movability};
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::util::supertraits;
 use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, QueryResult};
@@ -86,8 +86,9 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
     ) -> QueryResult<'tcx> {
         if let Some(poly_trait_pred) = assumption.to_opt_poly_trait_pred()
             && poly_trait_pred.def_id() == goal.predicate.def_id()
+            && poly_trait_pred.polarity() == goal.predicate.polarity
         {
-            // FIXME: Constness and polarity
+            // FIXME: Constness
             ecx.probe(|ecx| {
                 let assumption_trait_pred =
                     ecx.instantiate_binder_with_infer(poly_trait_pred);
@@ -111,6 +112,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
     ) -> QueryResult<'tcx> {
         if let Some(poly_trait_pred) = assumption.to_opt_poly_trait_pred()
             && poly_trait_pred.def_id() == goal.predicate.def_id()
+            && poly_trait_pred.polarity() == goal.predicate.polarity
         {
             // FIXME: Constness and polarity
             ecx.probe(|ecx| {
@@ -147,66 +149,12 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
-        let self_ty = goal.predicate.self_ty();
-        match *self_ty.kind() {
-            // Stall int and float vars until they are resolved to a concrete
-            // numerical type. That's because the check for impls below treats
-            // int vars as matching any impl. Even if we filtered such impls,
-            // we probably don't want to treat an `impl !AutoTrait for i32` as
-            // disqualifying the built-in auto impl for `i64: AutoTrait` either.
-            ty::Infer(ty::IntVar(_) | ty::FloatVar(_)) => {
-                return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
-            }
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
 
-            // These types cannot be structurally decomposed into constitutent
-            // types, and therefore have no builtin impl.
-            ty::Dynamic(..)
-            | ty::Param(..)
-            | ty::Foreign(..)
-            | ty::Alias(ty::Projection, ..)
-            | ty::Placeholder(..) => return Err(NoSolution),
-
-            ty::Infer(_) | ty::Bound(_, _) => bug!("unexpected type `{self_ty}`"),
-
-            // For rigid types, we only register a builtin auto implementation
-            // if there is no implementation that could ever apply to the self
-            // type.
-            //
-            // This differs from the current stable behavior and fixes #84857.
-            // Due to breakage found via crater, we currently instead lint
-            // patterns which can be used to exploit this unsoundness on stable,
-            // see #93367 for more details.
-            ty::Bool
-            | ty::Char
-            | ty::Int(_)
-            | ty::Uint(_)
-            | ty::Float(_)
-            | ty::Str
-            | ty::Array(_, _)
-            | ty::Slice(_)
-            | ty::RawPtr(_)
-            | ty::Ref(_, _, _)
-            | ty::FnDef(_, _)
-            | ty::FnPtr(_)
-            | ty::Closure(_, _)
-            | ty::Generator(_, _, _)
-            | ty::GeneratorWitness(_)
-            | ty::GeneratorWitnessMIR(_, _)
-            | ty::Never
-            | ty::Tuple(_)
-            | ty::Error(_)
-            | ty::Adt(_, _)
-            | ty::Alias(ty::Opaque, _) => {
-                if let Some(def_id) = ecx.tcx().find_map_relevant_impl(
-                    goal.predicate.def_id(),
-                    goal.predicate.self_ty(),
-                    TreatProjections::NextSolverLookup,
-                    Some,
-                ) {
-                    debug!(?def_id, ?goal, "disqualified auto-trait implementation");
-                    return Err(NoSolution);
-                }
-            }
+        if let Some(result) = ecx.disqualify_auto_trait_candidate_due_to_possible_impl(goal) {
+            return result;
         }
 
         ecx.probe_and_evaluate_goal_for_constituent_tys(
@@ -219,6 +167,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
         let tcx = ecx.tcx();
 
         ecx.probe(|ecx| {
@@ -234,6 +186,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
         ecx.probe_and_evaluate_goal_for_constituent_tys(
             goal,
             structural_traits::instantiate_constituent_tys_for_sized_trait,
@@ -244,6 +200,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
         ecx.probe_and_evaluate_goal_for_constituent_tys(
             goal,
             structural_traits::instantiate_constituent_tys_for_copy_clone_trait,
@@ -254,6 +214,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
         if goal.predicate.self_ty().has_non_region_infer() {
             return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
         }
@@ -275,6 +239,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
         if let ty::FnPtr(..) = goal.predicate.self_ty().kind() {
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         } else {
@@ -287,6 +255,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         goal: Goal<'tcx, Self>,
         goal_kind: ty::ClosureKind,
     ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
         let tcx = ecx.tcx();
         let tupled_inputs_and_output =
             match structural_traits::extract_tupled_inputs_and_output_from_callable(
@@ -317,6 +289,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
         if let ty::Tuple(..) = goal.predicate.self_ty().kind() {
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         } else {
@@ -326,8 +302,12 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
     fn consider_builtin_pointee_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
-        _goal: Goal<'tcx, Self>,
+        goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
         ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 
@@ -335,6 +315,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
         let ty::Generator(def_id, _, _) = *goal.predicate.self_ty().kind() else {
             return Err(NoSolution);
         };
@@ -355,6 +339,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
         let self_ty = goal.predicate.self_ty();
         let ty::Generator(def_id, substs, _) = *self_ty.kind() else {
             return Err(NoSolution);
@@ -384,6 +372,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
         let tcx = ecx.tcx();
         let a_ty = goal.predicate.self_ty();
         let b_ty = goal.predicate.trait_ref.substs.type_at(1);
@@ -505,6 +497,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> Vec<CanonicalResponse<'tcx>> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return vec![];
+        }
+
         let tcx = ecx.tcx();
 
         let a_ty = goal.predicate.self_ty();
@@ -579,8 +575,12 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
     fn consider_builtin_discriminant_kind_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
-        _goal: Goal<'tcx, Self>,
+        goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
         // `DiscriminantKind` is automatically implemented for every type.
         ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
@@ -589,6 +589,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
         if !goal.param_env.is_const() {
             // `Destruct` is automatically implemented for every type in
             // non-const environments.
@@ -598,9 +602,137 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             Err(NoSolution)
         }
     }
+
+    fn consider_builtin_transmute_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
+        // `rustc_transmute` does not have support for type or const params
+        if goal.has_non_region_placeholders() {
+            return Err(NoSolution);
+        }
+
+        // Erase regions because we compute layouts in `rustc_transmute`,
+        // which will ICE for region vars.
+        let substs = ecx.tcx().erase_regions(goal.predicate.trait_ref.substs);
+
+        let Some(assume) = rustc_transmute::Assume::from_const(
+            ecx.tcx(),
+            goal.param_env,
+            substs.const_at(3),
+        ) else {
+            return Err(NoSolution);
+        };
+
+        let certainty = ecx.is_transmutable(
+            rustc_transmute::Types { dst: substs.type_at(0), src: substs.type_at(1) },
+            substs.type_at(2),
+            assume,
+        )?;
+        ecx.evaluate_added_goals_and_make_canonical_response(certainty)
+    }
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
+    // Return `Some` if there is an impl (built-in or user provided) that may
+    // hold for the self type of the goal, which for coherence and soundness
+    // purposes must disqualify the built-in auto impl assembled by considering
+    // the type's constituent types.
+    fn disqualify_auto_trait_candidate_due_to_possible_impl(
+        &mut self,
+        goal: Goal<'tcx, TraitPredicate<'tcx>>,
+    ) -> Option<QueryResult<'tcx>> {
+        let self_ty = goal.predicate.self_ty();
+        match *self_ty.kind() {
+            // Stall int and float vars until they are resolved to a concrete
+            // numerical type. That's because the check for impls below treats
+            // int vars as matching any impl. Even if we filtered such impls,
+            // we probably don't want to treat an `impl !AutoTrait for i32` as
+            // disqualifying the built-in auto impl for `i64: AutoTrait` either.
+            ty::Infer(ty::IntVar(_) | ty::FloatVar(_)) => {
+                Some(self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS))
+            }
+
+            // These types cannot be structurally decomposed into constituent
+            // types, and therefore have no built-in auto impl.
+            ty::Dynamic(..)
+            | ty::Param(..)
+            | ty::Foreign(..)
+            | ty::Alias(ty::Projection, ..)
+            | ty::Placeholder(..) => Some(Err(NoSolution)),
+
+            ty::Infer(_) | ty::Bound(_, _) => bug!("unexpected type `{self_ty}`"),
+
+            // Generators have one special built-in candidate, `Unpin`, which
+            // takes precedence over the structural auto trait candidate being
+            // assembled.
+            ty::Generator(_, _, movability)
+                if Some(goal.predicate.def_id()) == self.tcx().lang_items().unpin_trait() =>
+            {
+                match movability {
+                    Movability::Static => Some(Err(NoSolution)),
+                    Movability::Movable => {
+                        Some(self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
+                    }
+                }
+            }
+
+            // For rigid types, any possible implementation that could apply to
+            // the type (even if after unification and processing nested goals
+            // it does not hold) will disqualify the built-in auto impl.
+            //
+            // This differs from the current stable behavior and fixes #84857.
+            // Due to breakage found via crater, we currently instead lint
+            // patterns which can be used to exploit this unsoundness on stable,
+            // see #93367 for more details.
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Str
+            | ty::Array(_, _)
+            | ty::Slice(_)
+            | ty::RawPtr(_)
+            | ty::Ref(_, _, _)
+            | ty::FnDef(_, _)
+            | ty::FnPtr(_)
+            | ty::Closure(_, _)
+            | ty::Generator(_, _, _)
+            | ty::GeneratorWitness(_)
+            | ty::GeneratorWitnessMIR(_, _)
+            | ty::Never
+            | ty::Tuple(_)
+            | ty::Adt(_, _)
+            // FIXME: Handling opaques here is kinda sus. Especially because we
+            // simplify them to PlaceholderSimplifiedType.
+            | ty::Alias(ty::Opaque, _) => {
+                let mut disqualifying_impl = None;
+                self.tcx().for_each_relevant_impl_treating_projections(
+                    goal.predicate.def_id(),
+                    goal.predicate.self_ty(),
+                    TreatProjections::NextSolverLookup,
+                    |impl_def_id| {
+                        disqualifying_impl = Some(impl_def_id);
+                    },
+                );
+                if let Some(def_id) = disqualifying_impl {
+                    debug!(?def_id, ?goal, "disqualified auto-trait implementation");
+                    // No need to actually consider the candidate here,
+                    // since we do that in `consider_impl_candidate`.
+                    return Some(Err(NoSolution));
+                } else {
+                    None
+                }
+            }
+            ty::Error(_) => None,
+        }
+    }
+
     /// Convenience function for traits that are structural, i.e. that only
     /// have nested subgoals that only change the self type. Unlike other
     /// evaluate-like helpers, this does a probe, so it doesn't need to be

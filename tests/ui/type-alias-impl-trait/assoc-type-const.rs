@@ -2,7 +2,7 @@
 // const generics in an associated opaque type
 // check-pass
 
-#![feature(type_alias_impl_trait)]
+#![feature(impl_trait_in_assoc_type)]
 
 trait UnwrapItemsExt<'a, const C: usize> {
     type Iter;

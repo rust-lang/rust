@@ -227,28 +227,29 @@ pub fn get_or_default_sysroot() -> Result<PathBuf, String> {
         ))?;
 
         // if `dir` points target's dir, move up to the sysroot
-        if dir.ends_with(crate::config::host_triple()) {
+        let mut sysroot_dir = if dir.ends_with(crate::config::host_triple()) {
             dir.parent() // chop off `$target`
                 .and_then(|p| p.parent()) // chop off `rustlib`
-                .and_then(|p| {
-                    // chop off `lib` (this could be also $arch dir if the host sysroot uses a
-                    // multi-arch layout like Debian or Ubuntu)
-                    match p.parent() {
-                        Some(p) => match p.file_name() {
-                            Some(f) if f == "lib" => p.parent(), // first chop went for $arch, so chop again for `lib`
-                            _ => Some(p),
-                        },
-                        None => None,
-                    }
-                })
+                .and_then(|p| p.parent()) // chop off `lib`
                 .map(|s| s.to_owned())
-                .ok_or(format!(
-                    "Could not move 3 levels upper using `parent()` on {}",
-                    dir.display()
-                ))
+                .ok_or_else(|| {
+                    format!("Could not move 3 levels upper using `parent()` on {}", dir.display())
+                })?
         } else {
-            Ok(dir.to_owned())
+            dir.to_owned()
+        };
+
+        // On multiarch linux systems, there will be multiarch directory named
+        // with the architecture(e.g `x86_64-linux-gnu`) under the `lib` directory.
+        // Which cause us to mistakenly end up in the lib directory instead of the sysroot directory.
+        if sysroot_dir.ends_with("lib") {
+            sysroot_dir =
+                sysroot_dir.parent().map(|real_sysroot| real_sysroot.to_owned()).ok_or_else(
+                    || format!("Could not move to parent path of {}", sysroot_dir.display()),
+                )?
         }
+
+        Ok(sysroot_dir)
     }
 
     // Use env::args().next() to get the path of the executable without

@@ -72,6 +72,8 @@ use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Region, SubstsRef, Ty, TyCtxt, TypeVisitableExt};
 use smallvec::smallvec;
 
+use super::env::OutlivesEnvironment;
+
 impl<'tcx> InferCtxt<'tcx> {
     /// Registers that the given region obligation must be resolved
     /// from within the scope of `body_id`. These regions are enqueued
@@ -112,39 +114,17 @@ impl<'tcx> InferCtxt<'tcx> {
         std::mem::take(&mut self.inner.borrow_mut().region_obligations)
     }
 
-    /// NOTE: Prefer using `TypeErrCtxt::check_region_obligations_and_report_errors`
-    /// instead of calling this directly.
-    ///
     /// Process the region obligations that must be proven (during
     /// `regionck`) for the given `body_id`, given information about
-    /// the region bounds in scope and so forth. This function must be
-    /// invoked for all relevant body-ids before region inference is
-    /// done (or else an assert will fire).
+    /// the region bounds in scope and so forth.
     ///
     /// See the `region_obligations` field of `InferCtxt` for some
     /// comments about how this function fits into the overall expected
     /// flow of the inferencer. The key point is that it is
     /// invoked after all type-inference variables have been bound --
-    /// towards the end of regionck. This also ensures that the
-    /// region-bound-pairs are available (see comments above regarding
-    /// closures).
-    ///
-    /// # Parameters
-    ///
-    /// - `region_bound_pairs_map`: the set of region bounds implied by
-    ///   the parameters and where-clauses. In particular, each pair
-    ///   `('a, K)` in this list tells us that the bounds in scope
-    ///   indicate that `K: 'a`, where `K` is either a generic
-    ///   parameter like `T` or a projection like `T::Item`.
-    /// - `param_env` is the parameter environment for the enclosing function.
-    /// - `body_id` is the body-id whose region obligations are being
-    ///   processed.
-    #[instrument(level = "debug", skip(self, region_bound_pairs))]
-    pub fn process_registered_region_obligations(
-        &self,
-        region_bound_pairs: &RegionBoundPairs<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) {
+    /// right before lexical region resolution.
+    #[instrument(level = "debug", skip(self, outlives_env))]
+    pub fn process_registered_region_obligations(&self, outlives_env: &OutlivesEnvironment<'tcx>) {
         assert!(
             !self.in_snapshot.get(),
             "cannot process registered region obligations in a snapshot"
@@ -153,15 +133,16 @@ impl<'tcx> InferCtxt<'tcx> {
         let my_region_obligations = self.take_registered_region_obligations();
 
         for RegionObligation { sup_type, sub_region, origin } in my_region_obligations {
-            debug!(
-                "process_registered_region_obligations: sup_type={:?} sub_region={:?} origin={:?}",
-                sup_type, sub_region, origin
-            );
-
+            debug!(?sup_type, ?sub_region, ?origin);
             let sup_type = self.resolve_vars_if_possible(sup_type);
 
-            let outlives =
-                &mut TypeOutlives::new(self, self.tcx, &region_bound_pairs, None, param_env);
+            let outlives = &mut TypeOutlives::new(
+                self,
+                self.tcx,
+                &outlives_env.region_bound_pairs(),
+                None,
+                outlives_env.param_env,
+            );
             let category = origin.to_constraint_category();
             outlives.type_must_outlive(origin, sup_type, sub_region, category);
         }
@@ -363,12 +344,14 @@ where
         // the problem is to add `T: 'r`, which isn't true. So, if there are no
         // inference variables, we use a verify constraint instead of adding
         // edges, which winds up enforcing the same condition.
+        let is_opaque = alias_ty.kind(self.tcx) == ty::Opaque;
         if approx_env_bounds.is_empty()
             && trait_bounds.is_empty()
-            && (alias_ty.needs_infer() || alias_ty.kind(self.tcx) == ty::Opaque)
+            && (alias_ty.has_infer() || is_opaque)
         {
             debug!("no declared bounds");
-            self.substs_must_outlive(alias_ty.substs, origin, region);
+            let opt_variances = is_opaque.then(|| self.tcx.variances_of(alias_ty.def_id));
+            self.substs_must_outlive(alias_ty.substs, origin, region, opt_variances);
             return;
         }
 
@@ -414,22 +397,31 @@ where
         self.delegate.push_verify(origin, GenericKind::Alias(alias_ty), region, verify_bound);
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn substs_must_outlive(
         &mut self,
         substs: SubstsRef<'tcx>,
         origin: infer::SubregionOrigin<'tcx>,
         region: ty::Region<'tcx>,
+        opt_variances: Option<&[ty::Variance]>,
     ) {
         let constraint = origin.to_constraint_category();
-        for k in substs {
+        for (index, k) in substs.iter().enumerate() {
             match k.unpack() {
                 GenericArgKind::Lifetime(lt) => {
-                    self.delegate.push_sub_region_constraint(
-                        origin.clone(),
-                        region,
-                        lt,
-                        constraint,
-                    );
+                    let variance = if let Some(variances) = opt_variances {
+                        variances[index]
+                    } else {
+                        ty::Invariant
+                    };
+                    if variance == ty::Invariant {
+                        self.delegate.push_sub_region_constraint(
+                            origin.clone(),
+                            region,
+                            lt,
+                            constraint,
+                        );
+                    }
                 }
                 GenericArgKind::Type(ty) => {
                     self.type_must_outlive(origin.clone(), ty, region, constraint);

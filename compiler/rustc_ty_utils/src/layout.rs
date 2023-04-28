@@ -1,7 +1,7 @@
 use hir::def_id::DefId;
 use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::{IndexSlice, IndexVec};
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::{GeneratorLayout, GeneratorSavedLocal};
 use rustc_middle::ty::layout::{
     IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, MAX_SIMD_LANES,
@@ -322,7 +322,7 @@ fn layout_of_uncached<'tcx>(
                 if fi.ty(tcx, substs) != f0_ty {
                     tcx.sess.delay_span_bug(
                         DUMMY_SP,
-                        "#[repr(simd)] was applied to an ADT with hetrogeneous field type",
+                        "#[repr(simd)] was applied to an ADT with heterogeneous field type",
                     );
                     return Err(LayoutError::Unknown(ty));
                 }

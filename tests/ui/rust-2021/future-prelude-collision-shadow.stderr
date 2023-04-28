@@ -8,9 +8,9 @@ LL |         let _: u32 = 3u8.try_into().unwrap();
    = note: 'std::convert::TryInto' is included in the prelude starting in Edition 2021
 help: the following traits are implemented but not in scope; perhaps add a `use` for one of them:
    |
-LL |     use crate::m::TryIntoU32;
+LL +     use crate::m::TryIntoU32;
    |
-LL |     use std::convert::TryInto;
+LL +     use std::convert::TryInto;
    |
 
 error: aborting due to previous error

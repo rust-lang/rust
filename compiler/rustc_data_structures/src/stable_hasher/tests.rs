@@ -72,7 +72,7 @@ fn test_hash_isize() {
     assert_eq!(h.finalize(), expected);
 }
 
-fn hash<T: HashStable<()>>(t: &T) -> u128 {
+fn hash<T: HashStable<()>>(t: &T) -> Hash128 {
     let mut h = StableHasher::new();
     let ctx = &mut ();
     t.hash_stable(ctx, &mut h);

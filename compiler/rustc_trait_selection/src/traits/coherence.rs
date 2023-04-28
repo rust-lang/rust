@@ -306,7 +306,7 @@ fn negative_impl(tcx: TyCtxt<'_>, impl1_def_id: DefId, impl2_def_id: DefId) -> b
         &infcx,
         ObligationCause::dummy(),
         impl_env,
-        tcx.impl_subject(impl1_def_id),
+        tcx.impl_subject(impl1_def_id).subst_identity(),
     ) {
         Ok(s) => s,
         Err(err) => {
@@ -405,9 +405,6 @@ fn resolve_negative_obligation<'tcx>(
         param_env,
         infcx.implied_bounds_tys(param_env, body_def_id, wf_tys),
     );
-
-    infcx.process_registered_region_obligations(outlives_env.region_bound_pairs(), param_env);
-
     infcx.resolve_regions(&outlives_env).is_empty()
 }
 
@@ -585,7 +582,7 @@ fn orphan_check_trait_ref<'tcx>(
     trait_ref: ty::TraitRef<'tcx>,
     in_crate: InCrate,
 ) -> Result<(), OrphanCheckErr<'tcx>> {
-    if trait_ref.needs_infer() && trait_ref.needs_subst() {
+    if trait_ref.has_infer() && trait_ref.has_param() {
         bug!(
             "can't orphan check a trait ref with both params and inference variables {:?}",
             trait_ref

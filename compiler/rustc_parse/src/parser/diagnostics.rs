@@ -570,15 +570,13 @@ impl<'a> Parser<'a> {
         let expect = tokens_to_string(&expected);
         let actual = super::token_descr(&self.token);
         let (msg_exp, (label_sp, label_exp)) = if expected.len() > 1 {
+            let fmt = format!("expected one of {expect}, found {actual}");
             let short_expect = if expected.len() > 6 {
                 format!("{} possible tokens", expected.len())
             } else {
-                expect.clone()
+                expect
             };
-            (
-                format!("expected one of {expect}, found {actual}"),
-                (self.prev_token.span.shrink_to_hi(), format!("expected one of {short_expect}")),
-            )
+            (fmt, (self.prev_token.span.shrink_to_hi(), format!("expected one of {short_expect}")))
         } else if expected.is_empty() {
             (
                 format!("unexpected token: {actual}"),

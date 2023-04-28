@@ -27,7 +27,7 @@ use rustc_span::hygiene::DesugaringKind;
 use rustc_span::Span;
 
 pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    let Ok((thir, expr)) = tcx.thir_body(ty::WithOptConstParam::unknown(def_id)) else { return };
+    let Ok((thir, expr)) = tcx.thir_body(def_id) else { return };
     let thir = thir.borrow();
     let pattern_arena = TypedArena::default();
     let mut visitor = MatchVisitor {
@@ -671,10 +671,8 @@ fn non_exhaustive_match<'p, 'tcx>(
         };
     };
 
-    let is_variant_list_non_exhaustive = match scrut_ty.kind() {
-        ty::Adt(def, _) if def.is_variant_list_non_exhaustive() && !def.did().is_local() => true,
-        _ => false,
-    };
+    let is_variant_list_non_exhaustive = matches!(scrut_ty.kind(),
+        ty::Adt(def, _) if def.is_variant_list_non_exhaustive() && !def.did().is_local());
 
     adt_defined_here(cx, &mut err, scrut_ty, &witnesses);
     err.note(&format!(
@@ -966,30 +964,30 @@ fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, '_, 'tcx>, 
     let report_mut_ref = !conflicts_mut_ref.is_empty();
     let report_move_conflict = !conflicts_move.is_empty();
 
-    let mut occurences = match mut_outer {
+    let mut occurrences = match mut_outer {
         Mutability::Mut => vec![Conflict::Mut { span: pat.span, name }],
         Mutability::Not => vec![Conflict::Ref { span: pat.span, name }],
     };
-    occurences.extend(conflicts_mut_mut);
-    occurences.extend(conflicts_mut_ref);
-    occurences.extend(conflicts_move);
+    occurrences.extend(conflicts_mut_mut);
+    occurrences.extend(conflicts_mut_ref);
+    occurrences.extend(conflicts_move);
 
     // Report errors if any.
     if report_mut_mut {
         // Report mutability conflicts for e.g. `ref mut x @ Some(ref mut y)`.
-        sess.emit_err(MultipleMutBorrows { span: pat.span, occurences });
+        sess.emit_err(MultipleMutBorrows { span: pat.span, occurrences });
     } else if report_mut_ref {
         // Report mutability conflicts for e.g. `ref x @ Some(ref mut y)` or the converse.
         match mut_outer {
             Mutability::Mut => {
-                sess.emit_err(AlreadyMutBorrowed { span: pat.span, occurences });
+                sess.emit_err(AlreadyMutBorrowed { span: pat.span, occurrences });
             }
             Mutability::Not => {
-                sess.emit_err(AlreadyBorrowed { span: pat.span, occurences });
+                sess.emit_err(AlreadyBorrowed { span: pat.span, occurrences });
             }
         };
     } else if report_move_conflict {
         // Report by-ref and by-move conflicts, e.g. `ref x @ y`.
-        sess.emit_err(MovedWhileBorrowed { span: pat.span, occurences });
+        sess.emit_err(MovedWhileBorrowed { span: pat.span, occurrences });
     }
 }

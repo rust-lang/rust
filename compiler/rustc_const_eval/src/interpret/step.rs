@@ -113,8 +113,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Intrinsic(box intrinsic) => self.emulate_nondiverging_intrinsic(intrinsic)?,
 
-            // Statements we do not track.
-            PlaceMention(..) | AscribeUserType(..) => {}
+            // Evaluate the place expression, without reading from it.
+            PlaceMention(box place) => {
+                let _ = self.eval_place(*place)?;
+            }
+
+            // This exists purely to guide borrowck lifetime inference, and does not have
+            // an operational effect.
+            AscribeUserType(..) => {}
 
             // Currently, Miri discards Coverage statements. Coverage statements are only injected
             // via an optional compile time MIR pass and have no side effects. Since Coverage
@@ -280,20 +286,23 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_immediate(*val, &dest)?;
             }
 
-            NullaryOp(null_op, ty) => {
+            NullaryOp(ref null_op, ty) => {
                 let ty = self.subst_from_current_frame_and_normalize_erasing_regions(ty)?;
                 let layout = self.layout_of(ty)?;
-                if layout.is_unsized() {
+                if let mir::NullOp::SizeOf | mir::NullOp::AlignOf = null_op && layout.is_unsized() {
                     // FIXME: This should be a span_bug (#80742)
                     self.tcx.sess.delay_span_bug(
                         self.frame().current_span(),
-                        &format!("Nullary MIR operator called for unsized type {}", ty),
+                        &format!("{null_op:?} MIR operator called for unsized type {ty}"),
                     );
                     throw_inval!(SizeOfUnsizedType(ty));
                 }
                 let val = match null_op {
                     mir::NullOp::SizeOf => layout.size.bytes(),
                     mir::NullOp::AlignOf => layout.align.abi.bytes(),
+                    mir::NullOp::OffsetOf(fields) => {
+                        layout.offset_of_subfield(self, fields.iter().map(|f| f.index())).bytes()
+                    }
                 };
                 self.write_scalar(Scalar::from_target_usize(val, self), &dest)?;
             }

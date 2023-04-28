@@ -10,7 +10,7 @@ use super::spanview::write_mir_fn_spanview;
 use either::Either;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 use rustc_middle::mir::interpret::{
     alloc_range, read_target_uint, AllocBytes, AllocId, Allocation, ConstAllocation, ConstValue,
     GlobalAlloc, Pointer, Provenance,
@@ -298,8 +298,7 @@ pub fn write_mir_pretty<'tcx>(
             // are shared between mir_for_ctfe and optimized_mir
             write_mir_fn(tcx, tcx.mir_for_ctfe(def_id), &mut |_, _| Ok(()), w)?;
         } else {
-            let instance_mir =
-                tcx.instance_mir(ty::InstanceDef::Item(ty::WithOptConstParam::unknown(def_id)));
+            let instance_mir = tcx.instance_mir(ty::InstanceDef::Item(def_id));
             render_body(w, instance_mir)?;
         }
     }
@@ -464,11 +463,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                 ConstantKind::Ty(ct) => match ct.kind() {
                     ty::ConstKind::Param(p) => format!("Param({})", p),
                     ty::ConstKind::Unevaluated(uv) => {
-                        format!(
-                            "Unevaluated({}, {:?})",
-                            self.tcx.def_path_str(uv.def.did),
-                            uv.substs,
-                        )
+                        format!("Unevaluated({}, {:?})", self.tcx.def_path_str(uv.def), uv.substs,)
                     }
                     ty::ConstKind::Value(val) => format!("Value({})", fmt_valtree(&val)),
                     ty::ConstKind::Error(_) => "Error".to_string(),
@@ -481,7 +476,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                 ConstantKind::Unevaluated(uv, _) => {
                     format!(
                         "Unevaluated({}, {:?}, {:?})",
-                        self.tcx.def_path_str(uv.def.did),
+                        self.tcx.def_path_str(uv.def),
                         uv.substs,
                         uv.promoted,
                     )

@@ -1021,7 +1021,7 @@ declare_lint! {
 
 declare_lint! {
     /// The `invalid_alignment` lint detects dereferences of misaligned pointers during
-    /// constant evluation.
+    /// constant evaluation.
     ///
     /// ### Example
     ///
@@ -1854,7 +1854,7 @@ declare_lint! {
     /// When new methods are added to traits in the standard library, they are
     /// usually added in an "unstable" form which is only available on the
     /// [nightly channel] with a [`feature` attribute]. If there is any
-    /// pre-existing code which extends a trait to have a method with the same
+    /// preexisting code which extends a trait to have a method with the same
     /// name, then the names will collide. In the future, when the method is
     /// stabilized, this will cause an error due to the ambiguity. This lint
     /// is an early-warning to let you know that there may be a collision in

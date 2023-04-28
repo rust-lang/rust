@@ -1,24 +1,24 @@
-use super::either_iter::EitherIter;
 use crate::fx::FxHashMap;
 use arrayvec::ArrayVec;
+use itertools::Either;
 use std::fmt;
 use std::hash::Hash;
 use std::ops::Index;
 
-// For pointer-sized arguments arrays
-// are faster than set/map for up to 64
-// arguments.
-//
-// On the other hand such a big array
-// hurts cache performance, makes passing
-// sso structures around very expensive.
-//
-// Biggest performance benefit is gained
-// for reasonably small arrays that stay
-// small in vast majority of cases.
-//
-// '8' is chosen as a sane default, to be
-// reevaluated later.
+/// For pointer-sized arguments arrays
+/// are faster than set/map for up to 64
+/// arguments.
+///
+/// On the other hand such a big array
+/// hurts cache performance, makes passing
+/// sso structures around very expensive.
+///
+/// Biggest performance benefit is gained
+/// for reasonably small arrays that stay
+/// small in vast majority of cases.
+///
+/// '8' is chosen as a sane default, to be
+/// reevaluated later.
 const SSO_ARRAY_SIZE: usize = 8;
 
 /// Small-storage-optimized implementation of a map.
@@ -138,8 +138,8 @@ impl<K, V> SsoHashMap<K, V> {
     /// The iterator element type is `&'a K`.
     pub fn keys(&self) -> impl Iterator<Item = &'_ K> {
         match self {
-            SsoHashMap::Array(array) => EitherIter::Left(array.iter().map(|(k, _v)| k)),
-            SsoHashMap::Map(map) => EitherIter::Right(map.keys()),
+            SsoHashMap::Array(array) => Either::Left(array.iter().map(|(k, _v)| k)),
+            SsoHashMap::Map(map) => Either::Right(map.keys()),
         }
     }
 
@@ -147,8 +147,8 @@ impl<K, V> SsoHashMap<K, V> {
     /// The iterator element type is `&'a V`.
     pub fn values(&self) -> impl Iterator<Item = &'_ V> {
         match self {
-            SsoHashMap::Array(array) => EitherIter::Left(array.iter().map(|(_k, v)| v)),
-            SsoHashMap::Map(map) => EitherIter::Right(map.values()),
+            SsoHashMap::Array(array) => Either::Left(array.iter().map(|(_k, v)| v)),
+            SsoHashMap::Map(map) => Either::Right(map.values()),
         }
     }
 
@@ -156,8 +156,8 @@ impl<K, V> SsoHashMap<K, V> {
     /// The iterator element type is `&'a mut V`.
     pub fn values_mut(&mut self) -> impl Iterator<Item = &'_ mut V> {
         match self {
-            SsoHashMap::Array(array) => EitherIter::Left(array.iter_mut().map(|(_k, v)| v)),
-            SsoHashMap::Map(map) => EitherIter::Right(map.values_mut()),
+            SsoHashMap::Array(array) => Either::Left(array.iter_mut().map(|(_k, v)| v)),
+            SsoHashMap::Map(map) => Either::Right(map.values_mut()),
         }
     }
 
@@ -165,8 +165,8 @@ impl<K, V> SsoHashMap<K, V> {
     /// allocated memory for reuse.
     pub fn drain(&mut self) -> impl Iterator<Item = (K, V)> + '_ {
         match self {
-            SsoHashMap::Array(array) => EitherIter::Left(array.drain(..)),
-            SsoHashMap::Map(map) => EitherIter::Right(map.drain()),
+            SsoHashMap::Array(array) => Either::Left(array.drain(..)),
+            SsoHashMap::Map(map) => Either::Right(map.drain()),
         }
     }
 }
@@ -256,12 +256,9 @@ impl<K: Eq + Hash, V> SsoHashMap<K, V> {
     pub fn remove(&mut self, key: &K) -> Option<V> {
         match self {
             SsoHashMap::Array(array) => {
-                if let Some(index) = array.iter().position(|(k, _v)| k == key) {
-                    Some(array.swap_remove(index).1)
-                } else {
-                    None
-                }
+                array.iter().position(|(k, _v)| k == key).map(|index| array.swap_remove(index).1)
             }
+
             SsoHashMap::Map(map) => map.remove(key),
         }
     }
@@ -406,16 +403,16 @@ where
 }
 
 impl<K, V> IntoIterator for SsoHashMap<K, V> {
-    type IntoIter = EitherIter<
-        <ArrayVec<(K, V), 8> as IntoIterator>::IntoIter,
+    type IntoIter = Either<
+        <ArrayVec<(K, V), SSO_ARRAY_SIZE> as IntoIterator>::IntoIter,
         <FxHashMap<K, V> as IntoIterator>::IntoIter,
     >;
     type Item = <Self::IntoIter as Iterator>::Item;
 
     fn into_iter(self) -> Self::IntoIter {
         match self {
-            SsoHashMap::Array(array) => EitherIter::Left(array.into_iter()),
-            SsoHashMap::Map(map) => EitherIter::Right(map.into_iter()),
+            SsoHashMap::Array(array) => Either::Left(array.into_iter()),
+            SsoHashMap::Map(map) => Either::Right(map.into_iter()),
         }
     }
 }
@@ -435,9 +432,9 @@ fn adapt_array_mut_it<K, V>(pair: &mut (K, V)) -> (&K, &mut V) {
 }
 
 impl<'a, K, V> IntoIterator for &'a SsoHashMap<K, V> {
-    type IntoIter = EitherIter<
+    type IntoIter = Either<
         std::iter::Map<
-            <&'a ArrayVec<(K, V), 8> as IntoIterator>::IntoIter,
+            <&'a ArrayVec<(K, V), SSO_ARRAY_SIZE> as IntoIterator>::IntoIter,
             fn(&'a (K, V)) -> (&'a K, &'a V),
         >,
         <&'a FxHashMap<K, V> as IntoIterator>::IntoIter,
@@ -446,16 +443,16 @@ impl<'a, K, V> IntoIterator for &'a SsoHashMap<K, V> {
 
     fn into_iter(self) -> Self::IntoIter {
         match self {
-            SsoHashMap::Array(array) => EitherIter::Left(array.into_iter().map(adapt_array_ref_it)),
-            SsoHashMap::Map(map) => EitherIter::Right(map.iter()),
+            SsoHashMap::Array(array) => Either::Left(array.into_iter().map(adapt_array_ref_it)),
+            SsoHashMap::Map(map) => Either::Right(map.iter()),
         }
     }
 }
 
 impl<'a, K, V> IntoIterator for &'a mut SsoHashMap<K, V> {
-    type IntoIter = EitherIter<
+    type IntoIter = Either<
         std::iter::Map<
-            <&'a mut ArrayVec<(K, V), 8> as IntoIterator>::IntoIter,
+            <&'a mut ArrayVec<(K, V), SSO_ARRAY_SIZE> as IntoIterator>::IntoIter,
             fn(&'a mut (K, V)) -> (&'a K, &'a mut V),
         >,
         <&'a mut FxHashMap<K, V> as IntoIterator>::IntoIter,
@@ -464,8 +461,8 @@ impl<'a, K, V> IntoIterator for &'a mut SsoHashMap<K, V> {
 
     fn into_iter(self) -> Self::IntoIter {
         match self {
-            SsoHashMap::Array(array) => EitherIter::Left(array.into_iter().map(adapt_array_mut_it)),
-            SsoHashMap::Map(map) => EitherIter::Right(map.iter_mut()),
+            SsoHashMap::Array(array) => Either::Left(array.into_iter().map(adapt_array_mut_it)),
+            SsoHashMap::Map(map) => Either::Right(map.iter_mut()),
         }
     }
 }

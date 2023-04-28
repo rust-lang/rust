@@ -785,7 +785,7 @@ macro_rules! int_impl {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_shl`.
             // Any legal shift amount is losslessly representable in the self type.
-            unsafe { intrinsics::unchecked_shl(self, rhs.try_into().ok().unwrap_unchecked()) }
+            unsafe { intrinsics::unchecked_shl(self, conv_rhs_for_unchecked_shift!($SelfT, rhs)) }
         }
 
         /// Checked shift right. Computes `self >> rhs`, returning `None` if `rhs` is
@@ -833,7 +833,7 @@ macro_rules! int_impl {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_shr`.
             // Any legal shift amount is losslessly representable in the self type.
-            unsafe { intrinsics::unchecked_shr(self, rhs.try_into().ok().unwrap_unchecked()) }
+            unsafe { intrinsics::unchecked_shr(self, conv_rhs_for_unchecked_shift!($SelfT, rhs)) }
         }
 
         /// Checked absolute value. Computes `self.abs()`, returning `None` if
@@ -2603,13 +2603,16 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
-        #[rustc_allow_const_fn_unstable(const_cmp)]
         pub const fn signum(self) -> Self {
             // Picking the right way to phrase this is complicated
             // (<https://graphics.stanford.edu/~seander/bithacks.html#CopyIntegerSign>)
             // so delegate it to `Ord` which is already producing -1/0/+1
             // exactly like we need and can be the place to deal with the complexity.
-            self.cmp(&0) as _
+
+            // FIXME(const-hack): replace with cmp
+            if self < 0 { -1 }
+            else if self == 0 { 0 }
+            else { 1 }
         }
 
         /// Returns `true` if `self` is positive and `false` if the number is zero or

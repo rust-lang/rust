@@ -447,14 +447,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         handle_ty_args(has_default, &inf.to_ty())
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
-                        ty::Const::from_opt_const_arg_anon_const(
-                            tcx,
-                            ty::WithOptConstParam {
-                                did: ct.value.def_id,
-                                const_param_did: Some(param.def_id),
-                            },
-                        )
-                        .into()
+                        let did = ct.value.def_id;
+                        tcx.feed_anon_const_type(did, tcx.type_of(param.def_id));
+                        ty::Const::from_anon_const(tcx, did).into()
                     }
                     (&GenericParamDefKind::Const { .. }, hir::GenericArg::Infer(inf)) => {
                         let ty = tcx
@@ -1663,39 +1658,45 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             })
         });
 
-        let existential_projections = projection_bounds.iter().map(|(bound, _)| {
-            bound.map_bound(|mut b| {
-                assert_eq!(b.projection_ty.self_ty(), dummy_self);
+        let existential_projections = projection_bounds
+            .iter()
+            // We filter out traits that don't have `Self` as their self type above,
+            // we need to do the same for projections.
+            .filter(|(bound, _)| bound.skip_binder().self_ty() == dummy_self)
+            .map(|(bound, _)| {
+                bound.map_bound(|mut b| {
+                    assert_eq!(b.projection_ty.self_ty(), dummy_self);
 
-                // Like for trait refs, verify that `dummy_self` did not leak inside default type
-                // parameters.
-                let references_self = b.projection_ty.substs.iter().skip(1).any(|arg| {
-                    if arg.walk().any(|arg| arg == dummy_self.into()) {
-                        return true;
+                    // Like for trait refs, verify that `dummy_self` did not leak inside default type
+                    // parameters.
+                    let references_self = b.projection_ty.substs.iter().skip(1).any(|arg| {
+                        if arg.walk().any(|arg| arg == dummy_self.into()) {
+                            return true;
+                        }
+                        false
+                    });
+                    if references_self {
+                        let guar = tcx.sess.delay_span_bug(
+                            span,
+                            "trait object projection bounds reference `Self`",
+                        );
+                        let substs: Vec<_> = b
+                            .projection_ty
+                            .substs
+                            .iter()
+                            .map(|arg| {
+                                if arg.walk().any(|arg| arg == dummy_self.into()) {
+                                    return tcx.ty_error(guar).into();
+                                }
+                                arg
+                            })
+                            .collect();
+                        b.projection_ty.substs = tcx.mk_substs(&substs);
                     }
-                    false
-                });
-                if references_self {
-                    let guar = tcx
-                        .sess
-                        .delay_span_bug(span, "trait object projection bounds reference `Self`");
-                    let substs: Vec<_> = b
-                        .projection_ty
-                        .substs
-                        .iter()
-                        .map(|arg| {
-                            if arg.walk().any(|arg| arg == dummy_self.into()) {
-                                return tcx.ty_error(guar).into();
-                            }
-                            arg
-                        })
-                        .collect();
-                    b.projection_ty.substs = tcx.mk_substs(&substs);
-                }
 
-                ty::ExistentialProjection::erase_self_ty(tcx, b)
-            })
-        });
+                    ty::ExistentialProjection::erase_self_ty(tcx, b)
+                })
+            });
 
         let regular_trait_predicates = existential_trait_refs
             .map(|trait_ref| trait_ref.map_bound(ty::ExistentialPredicate::Trait));
@@ -2055,7 +2056,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             err.note("enum variants can't have type parameters");
                             let type_name = tcx.item_name(adt_def.did());
                             let msg = format!(
-                                "you might have meant to specity type parameters on enum \
+                                "you might have meant to specify type parameters on enum \
                                  `{type_name}`"
                             );
                             let Some(args) = assoc_segment.args else { return; };
@@ -2317,7 +2318,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let infcx = match self.infcx() {
             Some(infcx) => infcx,
             None => {
-                assert!(!self_ty.needs_infer());
+                assert!(!self_ty.has_infer());
                 infcx_ = tcx.infer_ctxt().ignoring_regions().build();
                 &infcx_
             }
@@ -2488,7 +2489,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let infcx = if let Some(infcx) = self.infcx() {
             infcx
         } else {
-            assert!(!qself_ty.needs_infer());
+            assert!(!qself_ty.has_infer());
             infcx_ = tcx.infer_ctxt().build();
             &infcx_
         };
@@ -2514,24 +2515,16 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                     tcx,
                                     infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id),
                                 );
-                                // I guess we don't need to make a universe unless we need it,
-                                // but also we're on the error path, so it doesn't matter here.
-                                let universe = infcx.create_next_universe();
+                                let value = tcx.fold_regions(qself_ty, |_, _| tcx.lifetimes.re_erased);
+                                // FIXME: Don't bother dealing with non-lifetime binders here...
+                                if value.has_escaping_bound_vars() {
+                                    return false;
+                                }
                                 infcx
                                     .can_eq(
                                         ty::ParamEnv::empty(),
                                         impl_.self_ty(),
-                                        tcx.replace_escaping_bound_vars_uncached(qself_ty, ty::fold::FnMutDelegate {
-                                            regions: &mut |_| tcx.lifetimes.re_erased,
-                                            types: &mut |bv| tcx.mk_placeholder(ty::PlaceholderType {
-                                                universe,
-                                                bound: bv,
-                                            }),
-                                            consts: &mut |bv, ty| tcx.mk_const(ty::PlaceholderConst {
-                                                universe,
-                                                bound: bv,
-                                            }, ty),
-                                        })
+                                        value,
                                     )
                             })
                             && tcx.impl_polarity(impl_def_id) != ty::ImplPolarity::Negative
@@ -3046,7 +3039,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // the anon const, which is empty. This is why the
                 // `AlwaysApplicable` impl needs a `T: ?Sized` bound for
                 // this to compile if we were to normalize here.
-                if forbid_generic && ty.needs_subst() {
+                if forbid_generic && ty.has_param() {
                     let mut err = tcx.sess.struct_span_err(
                         path.span,
                         "generic `Self` types are currently not permitted in anonymous constants",

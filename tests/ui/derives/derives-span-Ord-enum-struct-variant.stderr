@@ -10,7 +10,8 @@ LL |      x: Error
    = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider annotating `Error` with `#[derive(Ord)]`
    |
-LL | #[derive(Ord)]
+LL + #[derive(Ord)]
+LL | struct Error;
    |
 
 error: aborting due to previous error

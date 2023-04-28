@@ -5,7 +5,7 @@ Subject: [PATCH] Remove stime() function calls
 
 stime() has been deprecated in glibc 2.31 and replaced with
 clock_settime(). Let's replace the stime() function calls with
-clock_settime() in preperation.
+clock_settime() in preparation.
 
 function                                             old     new   delta
 rdate_main                                           197     224     +27

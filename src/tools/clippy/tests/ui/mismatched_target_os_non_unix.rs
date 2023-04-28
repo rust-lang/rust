@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![warn(clippy::mismatched_target_os)]
 #![allow(unused)]

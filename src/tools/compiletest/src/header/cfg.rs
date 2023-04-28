@@ -1,7 +1,42 @@
 use crate::common::{CompareMode, Config, Debugger};
+use crate::header::IgnoreDecision;
 use std::collections::HashSet;
 
 const EXTRA_ARCHS: &[&str] = &["spirv"];
+
+pub(super) fn handle_ignore(config: &Config, line: &str) -> IgnoreDecision {
+    let parsed = parse_cfg_name_directive(config, line, "ignore");
+    match parsed.outcome {
+        MatchOutcome::NoMatch => IgnoreDecision::Continue,
+        MatchOutcome::Match => IgnoreDecision::Ignore {
+            reason: match parsed.comment {
+                Some(comment) => format!("ignored {} ({comment})", parsed.pretty_reason.unwrap()),
+                None => format!("ignored {}", parsed.pretty_reason.unwrap()),
+            },
+        },
+        MatchOutcome::Invalid => IgnoreDecision::Error { message: format!("invalid line: {line}") },
+        MatchOutcome::External => IgnoreDecision::Continue,
+        MatchOutcome::NotADirective => IgnoreDecision::Continue,
+    }
+}
+
+pub(super) fn handle_only(config: &Config, line: &str) -> IgnoreDecision {
+    let parsed = parse_cfg_name_directive(config, line, "only");
+    match parsed.outcome {
+        MatchOutcome::Match => IgnoreDecision::Continue,
+        MatchOutcome::NoMatch => IgnoreDecision::Ignore {
+            reason: match parsed.comment {
+                Some(comment) => {
+                    format!("only executed {} ({comment})", parsed.pretty_reason.unwrap())
+                }
+                None => format!("only executed {}", parsed.pretty_reason.unwrap()),
+            },
+        },
+        MatchOutcome::Invalid => IgnoreDecision::Error { message: format!("invalid line: {line}") },
+        MatchOutcome::External => IgnoreDecision::Continue,
+        MatchOutcome::NotADirective => IgnoreDecision::Continue,
+    }
+}
 
 /// Parses a name-value directive which contains config-specific information, e.g., `ignore-x86`
 /// or `normalize-stderr-32bit`.
@@ -11,10 +46,10 @@ pub(super) fn parse_cfg_name_directive<'a>(
     prefix: &str,
 ) -> ParsedNameDirective<'a> {
     if !line.as_bytes().starts_with(prefix.as_bytes()) {
-        return ParsedNameDirective::invalid();
+        return ParsedNameDirective::not_a_directive();
     }
     if line.as_bytes().get(prefix.len()) != Some(&b'-') {
-        return ParsedNameDirective::invalid();
+        return ParsedNameDirective::not_a_directive();
     }
     let line = &line[prefix.len() + 1..];
 
@@ -24,7 +59,7 @@ pub(super) fn parse_cfg_name_directive<'a>(
     // Some of the matchers might be "" depending on what the target information is. To avoid
     // problems we outright reject empty directives.
     if name == "" {
-        return ParsedNameDirective::invalid();
+        return ParsedNameDirective::not_a_directive();
     }
 
     let mut outcome = MatchOutcome::Invalid;
@@ -218,8 +253,13 @@ pub(super) struct ParsedNameDirective<'a> {
 }
 
 impl ParsedNameDirective<'_> {
-    fn invalid() -> Self {
-        Self { name: None, pretty_reason: None, comment: None, outcome: MatchOutcome::NoMatch }
+    fn not_a_directive() -> Self {
+        Self {
+            name: None,
+            pretty_reason: None,
+            comment: None,
+            outcome: MatchOutcome::NotADirective,
+        }
     }
 }
 
@@ -233,6 +273,8 @@ pub(super) enum MatchOutcome {
     Invalid,
     /// The directive is handled by other parts of our tooling.
     External,
+    /// The line is not actually a directive.
+    NotADirective,
 }
 
 trait CustomContains {

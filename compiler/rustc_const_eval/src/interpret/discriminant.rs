@@ -211,18 +211,19 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             let variant_index_relative = u32::try_from(variant_index_relative)
                                 .expect("we checked that this fits into a u32");
                             // Then computing the absolute variant idx should not overflow any more.
-                            let variant_index = variants_start
-                                .checked_add(variant_index_relative)
-                                .expect("overflow computing absolute variant idx");
-                            let variants_len = op
+                            let variant_index = VariantIdx::from_u32(
+                                variants_start
+                                    .checked_add(variant_index_relative)
+                                    .expect("overflow computing absolute variant idx"),
+                            );
+                            let variants = op
                                 .layout
                                 .ty
                                 .ty_adt_def()
                                 .expect("tagged layout for non adt")
-                                .variants()
-                                .len();
-                            assert!(usize::try_from(variant_index).unwrap() < variants_len);
-                            VariantIdx::from_u32(variant_index)
+                                .variants();
+                            assert!(variant_index < variants.next_index());
+                            variant_index
                         } else {
                             untagged_variant
                         }

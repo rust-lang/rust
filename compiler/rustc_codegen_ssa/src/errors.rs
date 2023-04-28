@@ -405,8 +405,8 @@ pub struct MsvcMissingLinker;
 pub struct CheckInstalledVisualStudio;
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_unsufficient_vs_code_product)]
-pub struct UnsufficientVSCodeProduct;
+#[diag(codegen_ssa_insufficient_vs_code_product)]
+pub struct InsufficientVSCodeProduct;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_processing_dymutil_failed)]
@@ -424,7 +424,7 @@ pub struct UnableToRunDsymutil {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_stripping_debu_info_failed)]
+#[diag(codegen_ssa_stripping_debug_info_failed)]
 #[note]
 pub struct StrippingDebugInfoFailed<'a> {
     pub util: &'a str,
@@ -980,4 +980,38 @@ impl IntoDiagnosticArg for ExpectedPointerMutability {
             ExpectedPointerMutability::Not => DiagnosticArgValue::Str(Cow::Borrowed("*_")),
         }
     }
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_invalid_no_sanitize)]
+#[note]
+pub struct InvalidNoSanitize {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_invalid_link_ordinal_nargs)]
+#[note]
+pub struct InvalidLinkOrdinalNargs {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_illegal_link_ordinal_format)]
+#[note]
+pub struct InvalidLinkOrdinalFormat {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_target_feature_safe_trait)]
+pub struct TargetFeatureSafeTrait {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(codegen_ssa_label_def)]
+    pub def: Span,
 }

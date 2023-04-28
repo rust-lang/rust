@@ -8,7 +8,7 @@ trait Trait {
     async fn method() {}
 }
 
-fn bar<T: Trait<methid(..): Send>>() {}
+fn bar<T: Trait<methid(): Send>>() {}
 //~^ ERROR cannot find associated function `methid` in trait `Trait`
 
 fn main() {}

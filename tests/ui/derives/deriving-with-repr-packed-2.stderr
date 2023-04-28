@@ -25,7 +25,8 @@ LL | #[derive(Copy, Clone, Default, PartialEq, Eq)]
    |                ^^^^^ unsatisfied trait bound introduced in this `derive` macro
 help: consider annotating `NonCopy` with `#[derive(Clone, Copy)]`
    |
-LL | #[derive(Clone, Copy)]
+LL + #[derive(Clone, Copy)]
+LL | struct NonCopy;
    |
 
 error: aborting due to previous error

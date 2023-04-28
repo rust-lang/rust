@@ -304,6 +304,7 @@ def default_build_triple(verbose):
         'i486': 'i686',
         'i686': 'i686',
         'i786': 'i686',
+        'loongarch64': 'loongarch64',
         'm68k': 'm68k',
         'powerpc': 'powerpc',
         'powerpc64': 'powerpc64',
@@ -574,7 +575,7 @@ class RustBuild(object):
         ]
         patchelf_args = ["--set-rpath", ":".join(rpath_entries)]
         if not fname.endswith(".so"):
-            # Finally, set the corret .interp for binaries
+            # Finally, set the correct .interp for binaries
             with open("{}/nix-support/dynamic-linker".format(nix_deps_dir)) as dynamic_linker:
                 patchelf_args += ["--set-interpreter", dynamic_linker.read().rstrip()]
 
@@ -721,11 +722,14 @@ class RustBuild(object):
 
     def build_bootstrap(self, color, verbose_count):
         """Build bootstrap"""
-        print("Building bootstrap")
+        env = os.environ.copy()
+        if "GITHUB_ACTIONS" in env:
+            print("::group::Building bootstrap")
+        else:
+            print("Building bootstrap")
         build_dir = os.path.join(self.build_dir, "bootstrap")
         if self.clean and os.path.exists(build_dir):
             shutil.rmtree(build_dir)
-        env = os.environ.copy()
         # `CARGO_BUILD_TARGET` breaks bootstrap build.
         # See also: <https://github.com/rust-lang/rust/issues/70208>.
         if "CARGO_BUILD_TARGET" in env:
@@ -797,6 +801,9 @@ class RustBuild(object):
         # Run this from the source directory so cargo finds .cargo/config
         run(args, env=env, verbose=self.verbose, cwd=self.rust_root)
 
+        if "GITHUB_ACTIONS" in env:
+            print("::endgroup::")
+
     def build_triple(self):
         """Build triple as in LLVM
 
@@ -821,7 +828,8 @@ class RustBuild(object):
         if self.use_vendored_sources:
             vendor_dir = os.path.join(self.rust_root, 'vendor')
             if not os.path.exists(vendor_dir):
-                sync_dirs = "--sync ./src/tools/rust-analyzer/Cargo.toml " \
+                sync_dirs = "--sync ./src/tools/cargo/Cargo.toml " \
+                            "--sync ./src/tools/rust-analyzer/Cargo.toml " \
                             "--sync ./compiler/rustc_codegen_cranelift/Cargo.toml " \
                             "--sync ./src/bootstrap/Cargo.toml "
                 print('error: vendoring required, but vendor directory does not exist.')

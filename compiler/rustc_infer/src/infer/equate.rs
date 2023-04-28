@@ -178,7 +178,7 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
     where
         T: Relate<'tcx>,
     {
-        // A binder is equal to itself if it's structually equal to itself
+        // A binder is equal to itself if it's structurally equal to itself
         if a == b {
             return Ok(a);
         }

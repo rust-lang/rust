@@ -52,7 +52,7 @@ use smallvec::{smallvec, SmallVec};
 
 use rustc_data_structures::captures::Captures;
 use rustc_hir::{HirId, RangeEnd};
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 use rustc_middle::mir;
 use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange};
 use rustc_middle::ty::layout::IntegerExt;

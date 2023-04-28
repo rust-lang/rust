@@ -12,7 +12,7 @@ use rustc_data_structures::sync::{MappedReadGuard, MappedWriteGuard, ReadGuard, 
 use rustc_expand::base::SyntaxExtension;
 use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, StableCrateIdMap, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, CrateType, ExternLocation};
 use rustc_session::cstore::ExternCrateSource;

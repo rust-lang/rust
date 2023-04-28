@@ -27,7 +27,8 @@ note: required by a bound in `Copy`
    = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider annotating `Test1` with `#[derive(Clone)]`
    |
-LL | #[derive(Clone)]
+LL + #[derive(Clone)]
+LL | struct Test1;
    |
 
 error[E0277]: the trait bound `Test2: Clone` is not satisfied
@@ -41,7 +42,8 @@ note: required by a bound in `Copy`
    = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider annotating `Test2` with `#[derive(Clone)]`
    |
-LL | #[derive(Clone)]
+LL + #[derive(Clone)]
+LL | struct Test2;
    |
 
 error: aborting due to 5 previous errors

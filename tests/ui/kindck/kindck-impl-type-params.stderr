@@ -107,7 +107,8 @@ LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
    = note: required for the cast from `S<Foo>` to the object type `dyn Gettable<Foo>`
 help: consider annotating `Foo` with `#[derive(Copy)]`
    |
-LL |     #[derive(Copy)]
+LL +     #[derive(Copy)]
+LL |     struct Foo; // does not impl Copy
    |
 
 error: aborting due to 6 previous errors

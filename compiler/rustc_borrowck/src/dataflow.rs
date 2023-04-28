@@ -11,9 +11,7 @@ use rustc_mir_dataflow::{self, fmt::DebugWithContext, CallReturnPlaces, GenKill}
 use rustc_mir_dataflow::{Analysis, Direction, Results};
 use std::fmt;
 
-use crate::{
-    places_conflict, BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext, ToRegionVid,
-};
+use crate::{places_conflict, BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext};
 
 /// A tuple with named fields that can hold either the results or the transient state of the
 /// dataflow analyses used by the borrow checker.
@@ -242,7 +240,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     ) -> Self {
         let mut prec = OutOfScopePrecomputer::new(body, nonlexical_regioncx);
         for (borrow_index, borrow_data) in borrow_set.iter_enumerated() {
-            let borrow_region = borrow_data.region.to_region_vid();
+            let borrow_region = borrow_data.region;
             let location = borrow_data.reserve_location;
 
             prec.precompute_borrows_out_of_scope(borrow_index, borrow_region, location);

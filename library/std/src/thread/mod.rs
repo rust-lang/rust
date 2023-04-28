@@ -131,7 +131,8 @@
 //!
 //! * Build the thread with [`Builder`] and pass the desired stack size to [`Builder::stack_size`].
 //! * Set the `RUST_MIN_STACK` environment variable to an integer representing the desired stack
-//!   size (in bytes). Note that setting [`Builder::stack_size`] will override this.
+//!   size (in bytes). Note that setting [`Builder::stack_size`] will override this. Be aware that
+//!   changes to `RUST_MIN_STACK` may be ignored after program start.
 //!
 //! Note that the stack size of the main thread is *not* determined by Rust.
 //!
@@ -203,9 +204,12 @@ pub use self::local::{AccessError, LocalKey};
 // by the elf linker. "static" is for single-threaded platforms where a global
 // static is sufficient.
 
+// Implementation details used by the thread_local!{} macro.
 #[doc(hidden)]
-#[unstable(feature = "libstd_thread_internals", issue = "none")]
-pub use crate::sys::common::thread_local::Key as __LocalKeyInner;
+#[unstable(feature = "thread_local_internals", issue = "none")]
+pub mod local_impl {
+    pub use crate::sys::common::thread_local::{thread_local_inner, Key};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Builder
@@ -493,7 +497,7 @@ impl Builder {
                 MaybeDangling(mem::MaybeUninit::new(x))
             }
             fn into_inner(self) -> T {
-                // SAFETY: we are always initiailized.
+                // SAFETY: we are always initialized.
                 let ret = unsafe { self.0.assume_init_read() };
                 // Make sure we don't drop.
                 mem::forget(self);
@@ -502,7 +506,7 @@ impl Builder {
         }
         impl<T> Drop for MaybeDangling<T> {
             fn drop(&mut self) {
-                // SAFETY: we are always initiailized.
+                // SAFETY: we are always initialized.
                 unsafe { self.0.assume_init_drop() };
             }
         }

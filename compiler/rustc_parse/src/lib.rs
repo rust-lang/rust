@@ -20,7 +20,7 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diagnostic, FatalError, Level, PResult};
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
-use rustc_macros::fluent_messages;
+use rustc_fluent_macro::fluent_messages;
 use rustc_session::parse::ParseSess;
 use rustc_span::{FileName, SourceFile, Span};
 

@@ -105,7 +105,7 @@ pub enum NonHaltingDiagnostic {
 }
 
 /// Level of Miri specific diagnostics
-enum DiagLevel {
+pub enum DiagLevel {
     Error,
     Warning,
     Note,
@@ -114,7 +114,7 @@ enum DiagLevel {
 /// Attempts to prune a stacktrace to omit the Rust runtime, and returns a bool indicating if any
 /// frames were pruned. If the stacktrace does not have any local frames, we conclude that it must
 /// be pointing to a problem in the Rust runtime itself, and do not prune it at all.
-fn prune_stacktrace<'tcx>(
+pub fn prune_stacktrace<'tcx>(
     mut stacktrace: Vec<FrameInfo<'tcx>>,
     machine: &MiriMachine<'_, 'tcx>,
 ) -> (Vec<FrameInfo<'tcx>>, bool) {
@@ -338,12 +338,45 @@ pub fn report_error<'tcx, 'mir>(
     None
 }
 
+pub fn report_leaks<'mir, 'tcx>(
+    ecx: &InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
+    leaks: Vec<(AllocId, MemoryKind<MiriMemoryKind>, Allocation<Provenance, AllocExtra<'tcx>>)>,
+) {
+    let mut any_pruned = false;
+    for (id, kind, mut alloc) in leaks {
+        let Some(backtrace) = alloc.extra.backtrace.take() else {
+            continue;
+        };
+        let (backtrace, pruned) = prune_stacktrace(backtrace, &ecx.machine);
+        any_pruned |= pruned;
+        report_msg(
+            DiagLevel::Error,
+            &format!(
+                "memory leaked: {id:?} ({}, size: {:?}, align: {:?}), allocated here:",
+                kind,
+                alloc.size().bytes(),
+                alloc.align.bytes()
+            ),
+            vec![],
+            vec![],
+            vec![],
+            &backtrace,
+            &ecx.machine,
+        );
+    }
+    if any_pruned {
+        ecx.tcx.sess.diagnostic().note_without_error(
+            "some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace",
+        );
+    }
+}
+
 /// Report an error or note (depending on the `error` argument) with the given stacktrace.
 /// Also emits a full stacktrace of the interpreter stack.
 /// We want to present a multi-line span message for some errors. Diagnostics do not support this
 /// directly, so we pass the lines as a `Vec<String>` and display each line after the first with an
 /// additional `span_label` or `note` call.
-fn report_msg<'tcx>(
+pub fn report_msg<'tcx>(
     diag_level: DiagLevel,
     title: &str,
     span_msg: Vec<String>,

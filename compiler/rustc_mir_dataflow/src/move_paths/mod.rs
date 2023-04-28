@@ -1,6 +1,6 @@
 use crate::move_paths::builder::MoveDat;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_index::vec::{IndexSlice, IndexVec};
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_span::Span;
@@ -20,7 +20,7 @@ rustc_index::newtype_index! {
 
 impl polonius_engine::Atom for MovePathIndex {
     fn index(self) -> usize {
-        rustc_index::vec::Idx::index(self)
+        rustc_index::Idx::index(self)
     }
 }
 

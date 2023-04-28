@@ -46,7 +46,7 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let def_id = body.source.def_id();
-        let param_env = tcx.param_env(def_id);
+        let param_env = tcx.param_env_reveal_all_normalized(def_id);
 
         let bbs = body.basic_blocks.as_mut();
         let mut should_cleanup = false;

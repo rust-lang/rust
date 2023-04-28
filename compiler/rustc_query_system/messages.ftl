@@ -1,4 +1,4 @@
-query_system_reentrant = internal compiler error: re-entrant incremental verify failure, suppressing message
+query_system_reentrant = internal compiler error: reentrant incremental verify failure, suppressing message
 
 query_system_increment_compilation = internal compiler error: encountered incremental compilation error with {$dep_node}
     .help = This is a known issue with the compiler. Run {$run_cmd} to allow your project to compile

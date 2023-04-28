@@ -65,8 +65,8 @@
 //! cause use after frees with purely safe code in the same way as specializing
 //! on traits with methods can.
 
-use crate::constrained_generic_params as cgp;
 use crate::errors::SubstsOnOverriddenImpl;
+use crate::{constrained_generic_params as cgp, errors};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
@@ -137,9 +137,7 @@ fn check_constness(tcx: TyCtxt<'_>, impl1_def_id: LocalDefId, impl2_node: Node, 
 
     if let hir::Constness::Const = impl2_constness {
         if let hir::Constness::NotConst = impl1_constness {
-            tcx.sess
-                .struct_span_err(span, "cannot specialize on const impl with non-const impl")
-                .emit();
+            tcx.sess.emit_err(errors::ConstSpecialize { span });
         }
     }
 }
@@ -180,8 +178,7 @@ fn get_impl_substs(
 
     let implied_bounds = infcx.implied_bounds_tys(param_env, impl1_def_id, assumed_wf_types);
     let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
-    let _ =
-        infcx.err_ctxt().check_region_obligations_and_report_errors(impl1_def_id, &outlives_env);
+    let _ = ocx.resolve_regions_and_report_errors(impl1_def_id, &outlives_env);
     let Ok(impl2_substs) = infcx.fully_resolve(impl2_substs) else {
         let span = tcx.def_span(impl1_def_id);
         tcx.sess.emit_err(SubstsOnOverriddenImpl { span });
@@ -294,7 +291,7 @@ fn check_static_lifetimes<'tcx>(
     span: Span,
 ) {
     if tcx.any_free_region_meets(parent_substs, |r| r.is_static()) {
-        tcx.sess.struct_span_err(span, "cannot specialize on `'static` lifetime").emit();
+        tcx.sess.emit_err(errors::StaticSpecialize { span });
     }
 }
 
@@ -369,7 +366,7 @@ fn check_predicates<'tcx>(
             wf::obligations(infcx, tcx.param_env(impl1_def_id), impl1_def_id, 0, arg, span)
                 .unwrap();
 
-        assert!(!obligations.needs_infer());
+        assert!(!obligations.has_infer());
         impl2_predicates
             .extend(traits::elaborate(tcx, obligations).map(|obligation| obligation.predicate))
     }
@@ -439,7 +436,7 @@ fn trait_predicates_eq<'tcx>(
     // the one on the base.
     match (trait_pred2.constness, trait_pred1.constness) {
         (ty::BoundConstness::ConstIfConst, ty::BoundConstness::NotConst) => {
-            tcx.sess.struct_span_err(span, "missing `~const` qualifier for specialization").emit();
+            tcx.sess.emit_err(errors::MissingTildeConst { span });
         }
         _ => {}
     }

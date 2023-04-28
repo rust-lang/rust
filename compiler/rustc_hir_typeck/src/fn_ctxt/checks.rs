@@ -2,8 +2,8 @@ use crate::coercion::CoerceMany;
 use crate::fn_ctxt::arg_matrix::{ArgMatrix, Compatibility, Error, ExpectedIdx, ProvidedIdx};
 use crate::gather_locals::Declaration;
 use crate::method::MethodCallee;
-use crate::Expectation::*;
 use crate::TupleArgumentsFlag::*;
+use crate::{errors, Expectation::*};
 use crate::{
     struct_span_err, BreakableCtxt, Diverges, Expectation, FnCtxt, LocalTy, Needs, RawTy,
     TupleArgumentsFlag,
@@ -21,7 +21,7 @@ use rustc_hir_analysis::astconv::AstConv;
 use rustc_hir_analysis::check::intrinsicck::InlineAsmCtxt;
 use rustc_hir_analysis::check::potentially_plural_count;
 use rustc_hir_analysis::structured_errors::StructuredDiagnostic;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_infer::infer::error_reporting::{FailureCode, ObligationCauseExt};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::TypeTrace;
@@ -283,19 +283,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if idx == 1 && !self.tcx.is_const_fn_raw(*def_id) {
                         self.tcx
                             .sess
-                            .struct_span_err(provided_arg.span, "this argument must be a `const fn`")
-                            .help("consult the documentation on `const_eval_select` for more information")
-                            .emit();
+                            .emit_err(errors::ConstSelectMustBeConst { span: provided_arg.span });
                     }
                 } else {
-                    self.tcx
-                        .sess
-                        .struct_span_err(provided_arg.span, "this argument must be a function item")
-                        .note(format!("expected a function item, found {checked_ty}"))
-                        .help(
-                            "consult the documentation on `const_eval_select` for more information",
-                        )
-                        .emit();
+                    self.tcx.sess.emit_err(errors::ConstSelectMustBeFn {
+                        span: provided_arg.span,
+                        ty: checked_ty,
+                    });
                 }
             }
 
@@ -472,7 +466,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err_code: &str,
         fn_def_id: Option<DefId>,
         call_span: Span,
-        call_expr: &hir::Expr<'tcx>,
+        call_expr: &'tcx hir::Expr<'tcx>,
     ) {
         // Next, let's construct the error
         let (error_span, full_call_span, call_name, is_method) = match &call_expr.kind {
@@ -744,17 +738,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if cfg!(debug_assertions) {
                 span_bug!(error_span, "expected errors from argument matrix");
             } else {
-                tcx.sess
-                    .struct_span_err(
-                        error_span,
-                        "argument type mismatch was detected, \
-                        but rustc had trouble determining where",
-                    )
-                    .note(
-                        "we would appreciate a bug report: \
-                        https://github.com/rust-lang/rust/issues/new",
-                    )
-                    .emit();
+                tcx.sess.emit_err(errors::ArgMismatchIndeterminate { span: error_span });
             }
             return;
         }
@@ -807,24 +791,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 full_call_span,
                 format!("arguments to this {} are incorrect", call_name),
             );
-            if let (Some(callee_ty), hir::ExprKind::MethodCall(_, rcvr, _, _)) =
-                (callee_ty, &call_expr.kind)
+
+            if let hir::ExprKind::MethodCall(_, rcvr, _, _) = call_expr.kind
+                && provided_idx.as_usize() == expected_idx.as_usize()
             {
-                // Type that would have accepted this argument if it hadn't been inferred earlier.
-                // FIXME: We leave an inference variable for now, but it'd be nice to get a more
-                // specific type to increase the accuracy of the diagnostic.
-                let expected = self.infcx.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::MiscVariable,
-                    span: full_call_span,
-                });
-                self.point_at_expr_source_of_inferred_type(
+                self.note_source_of_type_mismatch_constraint(
                     &mut err,
                     rcvr,
-                    expected,
-                    callee_ty,
-                    provided_arg_span,
+                    crate::demand::TypeMismatchSource::Arg {
+                        call_expr,
+                        incompatible_arg: provided_idx.as_usize(),
+                    },
                 );
             }
+
             // Call out where the function is defined
             self.label_fn_like(
                 &mut err,
@@ -1413,7 +1393,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.demand_eqtype(init.span, local_ty, init_ty);
             init_ty
         } else {
-            self.check_expr_coercable_to_type(init, local_ty, None)
+            self.check_expr_coercible_to_type(init, local_ty, None)
         }
     }
 

@@ -1,4 +1,4 @@
-// aux-build: proc_macros.rs
+//@aux-build: proc_macros.rs
 #![warn(clippy::unit_arg)]
 #![allow(unused_must_use, unused_variables)]
 #![allow(

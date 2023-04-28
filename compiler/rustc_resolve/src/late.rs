@@ -598,7 +598,7 @@ struct LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     /// The current set of local scopes for types and values.
     ribs: PerNS<Vec<Rib<'a>>>,
 
-    /// Previous poped `rib`, only used for diagnostic.
+    /// Previous popped `rib`, only used for diagnostic.
     last_block_rib: Option<Rib<'a>>,
 
     /// The current set of local scopes, for labels.
@@ -1079,7 +1079,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                     for rib in self.lifetime_ribs.iter().rev() {
                         match rib.kind {
                             // We are inside a `PolyTraitRef`. The lifetimes are
-                            // to be intoduced in that (maybe implicit) `for<>` binder.
+                            // to be introduced in that (maybe implicit) `for<>` binder.
                             LifetimeRibKind::Generics {
                                 binder,
                                 kind: LifetimeBinderKind::PolyTrait,
@@ -1116,7 +1116,6 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                         }
                     }
                 }
-                GenericArgs::ReturnTypeNotation(_span) => {}
             }
         }
     }
@@ -3804,7 +3803,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             // use std::u8; // bring module u8 in scope
             // fn f() -> u8 { // OK, resolves to primitive u8, not to std::u8
             //     u8::max_value() // OK, resolves to associated function <u8>::max_value,
-            //                     // not to non-existent std::u8::max_value
+            //                     // not to nonexistent std::u8::max_value
             // }
             //
             // Such behavior is required for backward compatibility.

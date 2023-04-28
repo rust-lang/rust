@@ -239,8 +239,7 @@ pub fn resolve_interior<'a, 'tcx>(
             // typeck had previously found constraints that would cause them to be related.
 
             let mut counter = 0;
-            let mut mk_bound_region = |span| {
-                let kind = ty::BrAnon(span);
+            let mut mk_bound_region = |kind| {
                 let var = ty::BoundVar::from_u32(counter);
                 counter += 1;
                 ty::BoundRegion { var, kind }
@@ -252,24 +251,23 @@ pub fn resolve_interior<'a, 'tcx>(
                         let origin = fcx.region_var_origin(vid);
                         match origin {
                             RegionVariableOrigin::EarlyBoundRegion(span, _) => {
-                                mk_bound_region(Some(span))
+                                mk_bound_region(ty::BrAnon(Some(span)))
                             }
-                            _ => mk_bound_region(None),
+                            _ => mk_bound_region(ty::BrAnon(None)),
                         }
                     }
-                    // FIXME: these should use `BrNamed`
                     ty::ReEarlyBound(region) => {
-                        mk_bound_region(Some(fcx.tcx.def_span(region.def_id)))
+                        mk_bound_region(ty::BrNamed(region.def_id, region.name))
                     }
                     ty::ReLateBound(_, ty::BoundRegion { kind, .. })
                     | ty::ReFree(ty::FreeRegion { bound_region: kind, .. }) => match kind {
-                        ty::BoundRegionKind::BrAnon(span) => mk_bound_region(span),
-                        ty::BoundRegionKind::BrNamed(def_id, _) => {
-                            mk_bound_region(Some(fcx.tcx.def_span(def_id)))
+                        ty::BoundRegionKind::BrAnon(span) => mk_bound_region(ty::BrAnon(span)),
+                        ty::BoundRegionKind::BrNamed(def_id, sym) => {
+                            mk_bound_region(ty::BrNamed(def_id, sym))
                         }
-                        ty::BoundRegionKind::BrEnv => mk_bound_region(None),
+                        ty::BoundRegionKind::BrEnv => mk_bound_region(ty::BrAnon(None)),
                     },
-                    _ => mk_bound_region(None),
+                    _ => mk_bound_region(ty::BrAnon(None)),
                 };
                 let r = fcx.tcx.mk_re_late_bound(current_depth, br);
                 r
@@ -293,10 +291,7 @@ pub fn resolve_interior<'a, 'tcx>(
             type_causes,
             FnMutDelegate {
                 regions: &mut |br| {
-                    let kind = match br.kind {
-                        ty::BrAnon(span) => ty::BrAnon(span),
-                        _ => br.kind,
-                    };
+                    let kind = br.kind;
                     let var = ty::BoundVar::from_usize(bound_vars.len());
                     bound_vars.push(ty::BoundVariableKind::Region(kind));
                     counter += 1;
@@ -465,7 +460,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                 // Avoid ICEs in needs_drop.
                 let ty = self.fcx.resolve_vars_if_possible(ty);
                 let ty = self.fcx.tcx.erase_regions(ty);
-                if ty.needs_infer() {
+                if ty.has_infer() {
                     self.fcx
                         .tcx
                         .sess
@@ -576,7 +571,7 @@ fn check_must_not_suspend_ty<'tcx>(
         // FIXME: support adding the attribute to TAITs
         ty::Alias(ty::Opaque, ty::AliasTy { def_id: def, .. }) => {
             let mut has_emitted = false;
-            for &(predicate, _) in fcx.tcx.explicit_item_bounds(def) {
+            for &(predicate, _) in fcx.tcx.explicit_item_bounds(def).skip_binder() {
                 // We only look at the `DefId`, so it is safe to skip the binder here.
                 if let ty::PredicateKind::Clause(ty::Clause::Trait(ref poly_trait_predicate)) =
                     predicate.kind().skip_binder()
@@ -655,7 +650,7 @@ fn check_must_not_suspend_ty<'tcx>(
                 },
             )
         }
-        // If drop tracking is enabled, we want to look through references, since the referrent
+        // If drop tracking is enabled, we want to look through references, since the referent
         // may not be considered live across the await point.
         ty::Ref(_region, ty, _mutability) if fcx.sess().opts.unstable_opts.drop_tracking => {
             let descr_pre = &format!("{}reference{} to ", data.descr_pre, plural_suffix);

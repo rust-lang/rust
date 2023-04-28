@@ -153,23 +153,23 @@ macro_rules! thread_local {
     () => {};
 
     ($(#[$attr:meta])* $vis:vis static $name:ident: $t:ty = const { $init:expr }; $($rest:tt)*) => (
-        $crate::__thread_local_inner!($(#[$attr])* $vis $name, $t, const $init);
+        $crate::thread::local_impl::thread_local_inner!($(#[$attr])* $vis $name, $t, const $init);
         $crate::thread_local!($($rest)*);
     );
 
     ($(#[$attr:meta])* $vis:vis static $name:ident: $t:ty = const { $init:expr }) => (
-        $crate::__thread_local_inner!($(#[$attr])* $vis $name, $t, const $init);
+        $crate::thread::local_impl::thread_local_inner!($(#[$attr])* $vis $name, $t, const $init);
     );
 
     // process multiple declarations
     ($(#[$attr:meta])* $vis:vis static $name:ident: $t:ty = $init:expr; $($rest:tt)*) => (
-        $crate::__thread_local_inner!($(#[$attr])* $vis $name, $t, $init);
+        $crate::thread::local_impl::thread_local_inner!($(#[$attr])* $vis $name, $t, $init);
         $crate::thread_local!($($rest)*);
     );
 
     // handle a single declaration
     ($(#[$attr:meta])* $vis:vis static $name:ident: $t:ty = $init:expr) => (
-        $crate::__thread_local_inner!($(#[$attr])* $vis $name, $t, $init);
+        $crate::thread::local_impl::thread_local_inner!($(#[$attr])* $vis $name, $t, $init);
     );
 }
 

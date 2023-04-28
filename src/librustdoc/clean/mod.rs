@@ -35,7 +35,6 @@ use rustc_span::{self, ExpnKind};
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::collections::BTreeMap;
-use std::default::Default;
 use std::hash::Hash;
 use std::mem;
 use thin_vec::ThinVec;
@@ -423,8 +422,8 @@ fn clean_projection<'tcx>(
         let bounds = cx
             .tcx
             .explicit_item_bounds(ty.skip_binder().def_id)
-            .iter()
-            .map(|(bound, _)| EarlyBinder(*bound).subst(cx.tcx, ty.skip_binder().substs))
+            .subst_iter_copied(cx.tcx, ty.skip_binder().substs)
+            .map(|(pred, _)| pred)
             .collect::<Vec<_>>();
         return clean_middle_opaque_bounds(cx, bounds);
     }
@@ -909,6 +908,38 @@ fn clean_ty_generics<'tcx>(
     }
 }
 
+fn clean_proc_macro<'tcx>(
+    item: &hir::Item<'tcx>,
+    name: &mut Symbol,
+    kind: MacroKind,
+    cx: &mut DocContext<'tcx>,
+) -> ItemKind {
+    let attrs = cx.tcx.hir().attrs(item.hir_id());
+    if kind == MacroKind::Derive &&
+        let Some(derive_name) = attrs
+            .lists(sym::proc_macro_derive)
+            .find_map(|mi| mi.ident())
+    {
+        *name = derive_name.name;
+    }
+
+    let mut helpers = Vec::new();
+    for mi in attrs.lists(sym::proc_macro_derive) {
+        if !mi.has_name(sym::attributes) {
+            continue;
+        }
+
+        if let Some(list) = mi.meta_item_list() {
+            for inner_mi in list {
+                if let Some(ident) = inner_mi.ident() {
+                    helpers.push(ident.name);
+                }
+            }
+        }
+    }
+    ProcMacroItem(ProcMacro { kind, helpers })
+}
+
 fn clean_fn_or_proc_macro<'tcx>(
     item: &hir::Item<'tcx>,
     sig: &hir::FnSig<'tcx>,
@@ -930,31 +961,7 @@ fn clean_fn_or_proc_macro<'tcx>(
         }
     });
     match macro_kind {
-        Some(kind) => {
-            if kind == MacroKind::Derive {
-                *name = attrs
-                    .lists(sym::proc_macro_derive)
-                    .find_map(|mi| mi.ident())
-                    .expect("proc-macro derives require a name")
-                    .name;
-            }
-
-            let mut helpers = Vec::new();
-            for mi in attrs.lists(sym::proc_macro_derive) {
-                if !mi.has_name(sym::attributes) {
-                    continue;
-                }
-
-                if let Some(list) = mi.meta_item_list() {
-                    for inner_mi in list {
-                        if let Some(ident) = inner_mi.ident() {
-                            helpers.push(ident.name);
-                        }
-                    }
-                }
-            }
-            ProcMacroItem(ProcMacro { kind, helpers })
-        }
+        Some(kind) => clean_proc_macro(item, name, kind, cx),
         None => {
             let mut func = clean_function(cx, sig, generics, FunctionArgs::Body(body_id));
             clean_fn_decl_legacy_const_generics(&mut func, attrs);
@@ -1308,10 +1315,11 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
             }
 
             if let ty::TraitContainer = assoc_item.container {
-                let bounds = tcx.explicit_item_bounds(assoc_item.def_id);
+                let bounds =
+                    tcx.explicit_item_bounds(assoc_item.def_id).subst_identity_iter_copied();
                 let predicates = tcx.explicit_predicates_of(assoc_item.def_id).predicates;
                 let predicates =
-                    tcx.arena.alloc_from_iter(bounds.into_iter().chain(predicates).copied());
+                    tcx.arena.alloc_from_iter(bounds.chain(predicates.iter().copied()));
                 let mut generics = clean_ty_generics(
                     cx,
                     tcx.generics_of(assoc_item.def_id),
@@ -1838,8 +1846,8 @@ pub(crate) fn clean_middle_ty<'tcx>(
             let bounds = cx
                 .tcx
                 .explicit_item_bounds(def_id)
-                .iter()
-                .map(|(bound, _)| EarlyBinder(*bound).subst(cx.tcx, substs))
+                .subst_iter_copied(cx.tcx, substs)
+                .map(|(bound, _)| bound)
                 .collect::<Vec<_>>();
             clean_middle_opaque_bounds(cx, bounds)
         }
@@ -2062,7 +2070,7 @@ pub(crate) fn reexport_chain<'tcx>(
     import_def_id: LocalDefId,
     target_def_id: LocalDefId,
 ) -> &'tcx [Reexport] {
-    for child in tcx.module_reexports(tcx.local_parent(import_def_id)) {
+    for child in tcx.module_children_reexports(tcx.local_parent(import_def_id)) {
         if child.res.opt_def_id() == Some(target_def_id.to_def_id())
             && child.reexport_chain[0].id() == Some(import_def_id.to_def_id())
         {
@@ -2247,15 +2255,16 @@ fn clean_maybe_renamed_item<'tcx>(
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),
             }),
             ItemKind::Impl(impl_) => return clean_impl(impl_, item.owner_id.def_id, cx),
-            // proc macros can have a name set by attributes
-            ItemKind::Fn(ref sig, generics, body_id) => {
-                clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
-            }
-            ItemKind::Macro(ref macro_def, _) => {
+            ItemKind::Macro(ref macro_def, MacroKind::Bang) => {
                 let ty_vis = cx.tcx.visibility(def_id);
                 MacroItem(Macro {
                     source: display_macro_source(cx, name, macro_def, def_id, ty_vis),
                 })
+            }
+            ItemKind::Macro(_, macro_kind) => clean_proc_macro(item, &mut name, macro_kind, cx),
+            // proc macros can have a name set by attributes
+            ItemKind::Fn(ref sig, generics, body_id) => {
+                clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
             }
             ItemKind::Trait(_, _, generics, bounds, item_ids) => {
                 let items = item_ids
@@ -2348,7 +2357,7 @@ fn clean_impl<'tcx>(
             items,
             polarity: tcx.impl_polarity(def_id),
             kind: if utils::has_doc_flag(tcx, def_id.to_def_id(), sym::fake_variadic) {
-                ImplKind::FakeVaradic
+                ImplKind::FakeVariadic
             } else {
                 ImplKind::Normal
             },

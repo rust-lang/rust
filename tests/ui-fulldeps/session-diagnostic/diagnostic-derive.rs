@@ -6,6 +6,7 @@
 // The proc_macro2 crate handles spans differently when on beta/stable release rather than nightly,
 // changing the output of this test. Since Diagnostic is strictly internal to the compiler
 // the test is just ignored on stable and beta:
+// ignore-stage1
 // ignore-beta
 // ignore-stable
 
@@ -16,8 +17,10 @@ extern crate rustc_span;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
+extern crate rustc_fluent_macro;
 extern crate rustc_macros;
-use rustc_macros::{fluent_messages, Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_fluent_macro::fluent_messages;
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 
 extern crate rustc_middle;
 use rustc_middle::ty::Ty;

@@ -1,4 +1,4 @@
-// aux-build:option_helpers.rs
+//@aux-build:option_helpers.rs
 #![warn(clippy::search_is_some)]
 #![allow(dead_code)]
 extern crate option_helpers;

@@ -1,10 +1,9 @@
-error[E0277]: `Superset` cannot be safely transmuted into `Subset` in the defining scope of `assert::Context`.
+error[E0277]: `Superset` cannot be safely transmuted into `Subset` in the defining scope of `assert::Context`
   --> $DIR/should_reject_contraction.rs:35:41
    |
 LL |     assert::is_transmutable::<Superset, Subset>();
-   |                                         ^^^^^^ `Superset` cannot be safely transmuted into `Subset` in the defining scope of `assert::Context`.
+   |                                         ^^^^^^ At least one value of `Superset` isn't a bit-valid value of `Subset`
    |
-   = help: the trait `BikeshedIntrinsicFrom<Superset, assert::Context, Assume { alignment: false, lifetimes: false, safety: true, validity: false }>` is not implemented for `Subset`
 note: required by a bound in `is_transmutable`
   --> $DIR/should_reject_contraction.rs:13:14
    |

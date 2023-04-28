@@ -80,7 +80,7 @@ infer_subtype = ...so that the {$requirement ->
     [no_else] `if` missing an `else` returns `()`
     [fn_main_correct_type] `main` function has the correct type
     [fn_start_correct_type] `#[start]` function has the correct type
-    [intristic_correct_type] intrinsic has the correct type
+    [intrinsic_correct_type] intrinsic has the correct type
     [method_correct_type] method receiver has the correct type
     *[other] types are compatible
 }
@@ -93,7 +93,7 @@ infer_subtype_2 = ...so that {$requirement ->
     [no_else] `if` missing an `else` returns `()`
     [fn_main_correct_type] `main` function has the correct type
     [fn_start_correct_type] `#[start]` function has the correct type
-    [intristic_correct_type] intrinsic has the correct type
+    [intrinsic_correct_type] intrinsic has the correct type
     [method_correct_type] method receiver has the correct type
     *[other] types are compatible
 }
@@ -163,7 +163,6 @@ infer_region_explanation = {$pref_kind ->
     [as_defined] the lifetime `{$desc_arg}` as defined here
     [as_defined_anon] the anonymous lifetime as defined here
     [defined_here] the anonymous lifetime defined here
-    [anon_num_here] the anonymous lifetime #{$desc_num_arg} defined here
     [defined_here_reg] the lifetime `{$desc_arg}` as defined here
 }{$suff_kind ->
     *[should_not_happen] [{$suff_kind}]
@@ -174,7 +173,7 @@ infer_region_explanation = {$pref_kind ->
 
 infer_outlives_content = lifetime of reference outlives lifetime of borrowed content...
 infer_outlives_bound = lifetime of the source pointer does not outlive lifetime bound of the object type
-infer_fullfill_req_lifetime = the type `{$ty}` does not fulfill the required lifetime
+infer_fulfill_req_lifetime = the type `{$ty}` does not fulfill the required lifetime
 infer_lf_bound_not_satisfied = lifetime bound not satisfied
 infer_borrowed_too_long = a value of type `{$ty}` is borrowed for too long
 infer_ref_longer_than_data = in type `{$ty}`, reference has a longer lifetime than the data it references
@@ -342,8 +341,8 @@ infer_await_note = calling an async function returns a future
 
 infer_prlf_defined_with_sub = the lifetime `{$sub_symbol}` defined here...
 infer_prlf_defined_without_sub = the lifetime defined here...
-infer_prlf_must_oultive_with_sup = ...must outlive the lifetime `{$sup_symbol}` defined here
-infer_prlf_must_oultive_without_sup = ...must outlive the lifetime defined here
+infer_prlf_must_outlive_with_sup = ...must outlive the lifetime `{$sup_symbol}` defined here
+infer_prlf_must_outlive_without_sup = ...must outlive the lifetime defined here
 infer_prlf_known_limitation = this is a known limitation that will be removed in the future (see issue #100013 <https://github.com/rust-lang/rust/issues/100013> for more information)
 
 infer_opaque_captures_lifetime = hidden type for `{$opaque_ty}` captures lifetime that does not appear in bounds
@@ -381,7 +380,7 @@ infer_oc_no_else = `if` may be missing an `else` clause
 infer_oc_no_diverge = `else` clause of `let...else` does not diverge
 infer_oc_fn_main_correct_type = `main` function has wrong type
 infer_oc_fn_start_correct_type = `#[start]` function has wrong type
-infer_oc_intristic_correct_type = intrinsic has wrong type
+infer_oc_intrinsic_correct_type = intrinsic has wrong type
 infer_oc_method_correct_type = mismatched `self` parameter type
 infer_oc_closure_selfref = closure/generator type that references itself
 infer_oc_cant_coerce = cannot coerce intrinsics to function pointers

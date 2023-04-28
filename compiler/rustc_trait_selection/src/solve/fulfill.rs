@@ -1,6 +1,7 @@
 use std::mem;
 
 use rustc_infer::infer::InferCtxt;
+use rustc_infer::traits::solve::MaybeCause;
 use rustc_infer::traits::Obligation;
 use rustc_infer::traits::{
     query::NoSolution, FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes,
@@ -41,13 +42,31 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
         self.obligations.push(obligation);
     }
 
-    fn collect_remaining_errors(&mut self) -> Vec<FulfillmentError<'tcx>> {
+    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
         self.obligations
             .drain(..)
-            .map(|obligation| FulfillmentError {
-                obligation: obligation.clone(),
-                code: FulfillmentErrorCode::CodeAmbiguity,
-                root_obligation: obligation,
+            .map(|obligation| {
+                let code =
+                    infcx.probe(|_| match infcx.evaluate_root_goal(obligation.clone().into()) {
+                        Ok((_, Certainty::Maybe(MaybeCause::Ambiguity), _)) => {
+                            FulfillmentErrorCode::CodeAmbiguity { overflow: false }
+                        }
+                        Ok((_, Certainty::Maybe(MaybeCause::Overflow), _)) => {
+                            FulfillmentErrorCode::CodeAmbiguity { overflow: true }
+                        }
+                        Ok((_, Certainty::Yes, _)) => {
+                            bug!("did not expect successful goal when collecting ambiguity errors")
+                        }
+                        Err(_) => {
+                            bug!("did not expect selection error when collecting ambiguity errors")
+                        }
+                    });
+
+                FulfillmentError {
+                    obligation: obligation.clone(),
+                    code,
+                    root_obligation: obligation,
+                }
             })
             .collect()
     }

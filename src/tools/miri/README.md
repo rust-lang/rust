@@ -301,6 +301,15 @@ environment variable. We first document the most relevant and most commonly used
 * `-Zmiri-disable-isolation` disables host isolation.  As a consequence,
   the program has access to host resources such as environment variables, file
   systems, and randomness.
+* `-Zmiri-disable-leak-backtraces` disables backtraces reports for memory leaks. By default, a
+  backtrace is captured for every allocation when it is created, just in case it leaks. This incurs
+  some memory overhead to store data that is almost never used. This flag is implied by
+  `-Zmiri-ignore-leaks`.
+* `-Zmiri-env-forward=<var>` forwards the `var` environment variable to the interpreted program. Can
+  be used multiple times to forward several variables. Execution will still be deterministic if the
+  value of forwarded variables stays the same. Has no effect if `-Zmiri-disable-isolation` is set.
+* `-Zmiri-ignore-leaks` disables the memory leak checker, and also allows some
+  remaining threads to exist when the main thread exits.
 * `-Zmiri-isolation-error=<action>` configures Miri's response to operations
   requiring host access while isolation is enabled. `abort`, `hide`, `warn`,
   and `warn-nobacktrace` are the supported actions. The default is to `abort`,
@@ -308,11 +317,6 @@ environment variable. We first document the most relevant and most commonly used
   execution with a "permission denied" error being returned to the program.
   `warn` prints a full backtrace when that happens; `warn-nobacktrace` is less
   verbose. `hide` hides the warning entirely.
-* `-Zmiri-env-forward=<var>` forwards the `var` environment variable to the interpreted program. Can
-  be used multiple times to forward several variables. Execution will still be deterministic if the
-  value of forwarded variables stays the same. Has no effect if `-Zmiri-disable-isolation` is set.
-* `-Zmiri-ignore-leaks` disables the memory leak checker, and also allows some
-  remaining threads to exist when the main thread exits.
 * `-Zmiri-num-cpus` states the number of available CPUs to be reported by miri. By default, the
   number of available CPUs is `1`. Note that this flag does not affect how miri handles threads in
   any way.

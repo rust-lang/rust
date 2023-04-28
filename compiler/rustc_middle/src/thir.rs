@@ -14,13 +14,13 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::RangeEnd;
 use rustc_index::newtype_index;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::{self, BinOp, BorrowKind, FakeReadCause, Mutability, UnOp};
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, AdtDef, FnSig, Ty, UpvarSubsts};
+use rustc_middle::ty::{self, AdtDef, FnSig, List, Ty, UpvarSubsts};
 use rustc_middle::ty::{CanonicalUserType, CanonicalUserTypeAnnotation};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
@@ -234,7 +234,6 @@ pub enum StmtKind<'tcx> {
 }
 
 #[derive(Clone, Debug, Copy, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
-#[derive(TypeFoldable, TypeVisitable)]
 pub struct LocalVarId(pub hir::HirId);
 
 /// A THIR expression.
@@ -481,6 +480,11 @@ pub enum ExprKind<'tcx> {
     },
     /// Inline assembly, i.e. `asm!()`.
     InlineAsm(Box<InlineAsmExpr<'tcx>>),
+    /// Field offset (`offset_of!`)
+    OffsetOf {
+        container: Ty<'tcx>,
+        fields: &'tcx List<FieldIdx>,
+    },
     /// An expression taking a reference to a thread local.
     ThreadLocalRef(DefId),
     /// A `yield` expression.
@@ -929,8 +933,8 @@ mod size_asserts {
     static_assert_size!(Block, 56);
     static_assert_size!(Expr<'_>, 64);
     static_assert_size!(ExprKind<'_>, 40);
-    static_assert_size!(Pat<'_>, 72);
-    static_assert_size!(PatKind<'_>, 56);
+    static_assert_size!(Pat<'_>, 64);
+    static_assert_size!(PatKind<'_>, 48);
     static_assert_size!(Stmt<'_>, 56);
     static_assert_size!(StmtKind<'_>, 48);
     // tidy-alphabetical-end

@@ -33,6 +33,14 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
     }
 
     fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        // N.B. Even though this uses a visitor, the visitor does not actually
+        //      recurse through the whole `TypeVisitable` implementor type.
+        //
+        //      Instead it stops on the first "level", visiting types, regions,
+        //      consts and predicates just fetches their type flags.
+        //
+        //      Thus this is a lot faster than it might seem and should be
+        //      optimized to a simple field access.
         let res =
             self.visit_with(&mut HasTypeFlagsVisitor { flags }).break_value() == Some(FoundFlags);
         trace!(?self, ?flags, ?res, "has_type_flags");
@@ -62,7 +70,7 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
         }
     }
     fn has_non_region_param(&self) -> bool {
-        self.has_type_flags(TypeFlags::NEEDS_SUBST - TypeFlags::HAS_RE_PARAM)
+        self.has_type_flags(TypeFlags::HAS_PARAM - TypeFlags::HAS_RE_PARAM)
     }
     fn has_infer_regions(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_RE_INFER)
@@ -71,10 +79,10 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
         self.has_type_flags(TypeFlags::HAS_TY_INFER)
     }
     fn has_non_region_infer(&self) -> bool {
-        self.has_type_flags(TypeFlags::NEEDS_INFER - TypeFlags::HAS_RE_INFER)
+        self.has_type_flags(TypeFlags::HAS_INFER - TypeFlags::HAS_RE_INFER)
     }
-    fn needs_infer(&self) -> bool {
-        self.has_type_flags(TypeFlags::NEEDS_INFER)
+    fn has_infer(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_INFER)
     }
     fn has_placeholders(&self) -> bool {
         self.has_type_flags(
@@ -83,8 +91,11 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
                 | TypeFlags::HAS_CT_PLACEHOLDER,
         )
     }
-    fn needs_subst(&self) -> bool {
-        self.has_type_flags(TypeFlags::NEEDS_SUBST)
+    fn has_non_region_placeholders(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_TY_PLACEHOLDER | TypeFlags::HAS_CT_PLACEHOLDER)
+    }
+    fn has_param(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_PARAM)
     }
     /// "Free" regions in this context means that it has any region
     /// that is not (a) erased or (b) late-bound.
@@ -361,7 +372,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ValidateBoundVars<'tcx> {
             _ => (),
         };
 
-        r.super_visit_with(self)
+        ControlFlow::Continue(())
     }
 }
 

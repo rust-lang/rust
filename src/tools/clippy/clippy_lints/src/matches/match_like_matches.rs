@@ -162,7 +162,7 @@ fn find_bool_lit(ex: &ExprKind<'_>) -> Option<bool> {
                 node: LitKind::Bool(b), ..
             }) = exp.kind
             {
-                Some(b)
+                Some(*b)
             } else {
                 None
             }

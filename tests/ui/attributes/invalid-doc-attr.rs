@@ -5,7 +5,7 @@
 //~^ ERROR can only be applied at the crate level
 //~| WARN is being phased out
 //~| HELP to apply to the crate, use an inner attribute
-//~| SUGGESTION #![doc(test(no_crate_inject))]
+//~| SUGGESTION !
 #[doc(inline)]
 //~^ ERROR can only be applied to a `use` item
 //~| WARN is being phased out

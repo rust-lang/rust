@@ -45,6 +45,13 @@ impl CrateItem {
     }
 }
 
+/// Return the function where execution starts if the current
+/// crate defines that. This is usually `main`, but could be
+/// `start` if the crate is a no-std crate.
+pub fn entry_fn() -> Option<CrateItem> {
+    crate::rustc_smir::entry_fn()
+}
+
 /// Access to the local crate.
 pub fn local_crate() -> Crate {
     crate::rustc_smir::local_crate()

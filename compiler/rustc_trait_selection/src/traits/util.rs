@@ -115,7 +115,7 @@ impl<'tcx> TraitAliasExpander<'tcx> {
         }
 
         // Get components of trait alias.
-        let predicates = tcx.super_predicates_of(trait_ref.def_id());
+        let predicates = tcx.implied_predicates_of(trait_ref.def_id());
         debug!(?predicates);
 
         let items = predicates.predicates.iter().rev().filter_map(|(pred, span)| {
@@ -198,7 +198,7 @@ pub fn impl_subject_and_oblig<'a, 'tcx>(
     impl_def_id: DefId,
     impl_substs: SubstsRef<'tcx>,
 ) -> (ImplSubject<'tcx>, impl Iterator<Item = PredicateObligation<'tcx>>) {
-    let subject = selcx.tcx().bound_impl_subject(impl_def_id);
+    let subject = selcx.tcx().impl_subject(impl_def_id);
     let subject = subject.subst(selcx.tcx(), impl_substs);
 
     let InferOk { value: subject, obligations: normalization_obligations1 } =
@@ -243,16 +243,11 @@ pub fn get_vtable_index_of_object_method<'tcx, N>(
 ) -> Option<usize> {
     // Count number of methods preceding the one we are selecting and
     // add them to the total offset.
-    if let Some(index) = tcx
-        .own_existential_vtable_entries(object.upcast_trait_ref.def_id())
+    tcx.own_existential_vtable_entries(object.upcast_trait_ref.def_id())
         .iter()
         .copied()
         .position(|def_id| def_id == method_def_id)
-    {
-        Some(object.vtable_base + index)
-    } else {
-        None
-    }
+        .map(|index| object.vtable_base + index)
 }
 
 pub fn closure_trait_ref_and_return_type<'tcx>(

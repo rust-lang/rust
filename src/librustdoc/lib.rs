@@ -7,7 +7,6 @@
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(drain_filter)]
-#![feature(is_terminal)]
 #![feature(let_chains)]
 #![feature(test)]
 #![feature(never_type)]
@@ -15,6 +14,7 @@
 #![feature(type_ascription)]
 #![feature(iter_intersperse)]
 #![feature(type_alias_impl_trait)]
+#![cfg_attr(not(bootstrap), feature(impl_trait_in_assoc_type))]
 #![recursion_limit = "256"]
 #![warn(rustc::internal)]
 #![allow(clippy::collapsible_if, clippy::collapsible_else_if)]
@@ -69,7 +69,6 @@ extern crate test;
 #[cfg(feature = "jemalloc")]
 extern crate jemalloc_sys;
 
-use std::default::Default;
 use std::env::{self, VarError};
 use std::io::{self, IsTerminal};
 use std::process;
@@ -284,7 +283,7 @@ fn opts() -> Vec<RustcOptGroup> {
         stable("test-args", |o| {
             o.optmulti("", "test-args", "arguments to pass to the test runner", "ARGS")
         }),
-        unstable("test-run-directory", |o| {
+        stable("test-run-directory", |o| {
             o.optopt(
                 "",
                 "test-run-directory",

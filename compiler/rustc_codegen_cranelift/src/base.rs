@@ -1,7 +1,7 @@
 //! Codegen of a single function
 
 use rustc_ast::InlineAsmOptions;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -28,7 +28,7 @@ pub(crate) fn codegen_fn<'tcx>(
     module: &mut dyn Module,
     instance: Instance<'tcx>,
 ) -> CodegenedFunction {
-    debug_assert!(!instance.substs.needs_infer());
+    debug_assert!(!instance.substs.has_infer());
 
     let symbol_name = tcx.symbol_name(instance).name.to_string();
     let _timer = tcx.prof.generic_activity_with_arg("codegen fn", &*symbol_name);
@@ -781,12 +781,15 @@ fn codegen_stmt<'tcx>(
                     let operand = operand.load_scalar(fx);
                     lval.write_cvalue(fx, CValue::by_val(operand, box_layout));
                 }
-                Rvalue::NullaryOp(null_op, ty) => {
+                Rvalue::NullaryOp(ref null_op, ty) => {
                     assert!(lval.layout().ty.is_sized(fx.tcx, ParamEnv::reveal_all()));
                     let layout = fx.layout_of(fx.monomorphize(ty));
                     let val = match null_op {
                         NullOp::SizeOf => layout.size.bytes(),
                         NullOp::AlignOf => layout.align.abi.bytes(),
+                        NullOp::OffsetOf(fields) => {
+                            layout.offset_of_subfield(fx, fields.iter().map(|f| f.index())).bytes()
+                        }
                     };
                     let val = CValue::const_val(fx, fx.layout_of(fx.tcx.types.usize), val.into());
                     lval.write_cvalue(fx, val);

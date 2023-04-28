@@ -203,7 +203,7 @@ fn do_normalize_predicates<'tcx>(
         }
     };
 
-    debug!("do_normalize_predictes: normalized predicates = {:?}", predicates);
+    debug!("do_normalize_predicates: normalized predicates = {:?}", predicates);
 
     // We can use the `elaborated_env` here; the region code only
     // cares about declarations like `'a: 'b`.
@@ -414,7 +414,7 @@ fn subst_and_check_impossible_predicates<'tcx>(
         predicates.push(ty::Binder::dummy(trait_ref).to_predicate(tcx));
     }
 
-    predicates.retain(|predicate| !predicate.needs_subst());
+    predicates.retain(|predicate| !predicate.has_param());
     let result = impossible_predicates(tcx, predicates);
 
     debug!("subst_and_check_impossible_predicates(key={:?}) = {:?}", key, result);
@@ -450,7 +450,7 @@ fn is_impossible_method(tcx: TyCtxt<'_>, (impl_def_id, trait_item_def_id): (DefI
             {
                 return ControlFlow::Break(());
             }
-            r.super_visit_with(self)
+            ControlFlow::Continue(())
         }
         fn visit_const(&mut self, ct: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
             if let ty::ConstKind::Param(param) = ct.kind()

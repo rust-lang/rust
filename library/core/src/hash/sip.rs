@@ -118,7 +118,7 @@ macro_rules! load_int_le {
 /// Safety: this performs unchecked indexing of `buf` at `start..start+len`, so
 /// that must be in-bounds.
 #[inline]
-const unsafe fn u8to64_le(buf: &[u8], start: usize, len: usize) -> u64 {
+unsafe fn u8to64_le(buf: &[u8], start: usize, len: usize) -> u64 {
     debug_assert!(len < 8);
     let mut i = 0; // current byte index (from LSB) in the output u64
     let mut out = 0;
@@ -225,8 +225,7 @@ impl<S: Sip> Hasher<S> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_hash", issue = "104061")]
-impl const super::Hasher for SipHasher {
+impl super::Hasher for SipHasher {
     #[inline]
     fn write(&mut self, msg: &[u8]) {
         self.0.hasher.write(msg)
@@ -244,8 +243,7 @@ impl const super::Hasher for SipHasher {
 }
 
 #[unstable(feature = "hashmap_internals", issue = "none")]
-#[rustc_const_unstable(feature = "const_hash", issue = "104061")]
-impl const super::Hasher for SipHasher13 {
+impl super::Hasher for SipHasher13 {
     #[inline]
     fn write(&mut self, msg: &[u8]) {
         self.hasher.write(msg)
@@ -262,7 +260,7 @@ impl const super::Hasher for SipHasher13 {
     }
 }
 
-impl<S: ~const Sip> const super::Hasher for Hasher<S> {
+impl<S: Sip> super::Hasher for Hasher<S> {
     // Note: no integer hashing methods (`write_u*`, `write_i*`) are defined
     // for this type. We could add them, copy the `short_write` implementation
     // in librustc_data_structures/sip128.rs, and add `write_u*`/`write_i*`
@@ -342,7 +340,7 @@ impl<S: ~const Sip> const super::Hasher for Hasher<S> {
     }
 }
 
-impl<S: Sip> const Clone for Hasher<S> {
+impl<S: Sip> Clone for Hasher<S> {
     #[inline]
     fn clone(&self) -> Hasher<S> {
         Hasher {
@@ -366,7 +364,6 @@ impl<S: Sip> Default for Hasher<S> {
 }
 
 #[doc(hidden)]
-#[const_trait]
 trait Sip {
     fn c_rounds(_: &mut State);
     fn d_rounds(_: &mut State);
@@ -375,7 +372,7 @@ trait Sip {
 #[derive(Debug, Clone, Default)]
 struct Sip13Rounds;
 
-impl const Sip for Sip13Rounds {
+impl Sip for Sip13Rounds {
     #[inline]
     fn c_rounds(state: &mut State) {
         compress!(state);
@@ -392,7 +389,7 @@ impl const Sip for Sip13Rounds {
 #[derive(Debug, Clone, Default)]
 struct Sip24Rounds;
 
-impl const Sip for Sip24Rounds {
+impl Sip for Sip24Rounds {
     #[inline]
     fn c_rounds(state: &mut State) {
         compress!(state);

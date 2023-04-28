@@ -332,10 +332,6 @@ fn compare_method_predicate_entailment<'tcx>(
         param_env,
         infcx.implied_bounds_tys(param_env, impl_m_def_id, wf_tys.clone()),
     );
-    infcx.process_registered_region_obligations(
-        outlives_env.region_bound_pairs(),
-        outlives_env.param_env,
-    );
     let errors = infcx.resolve_regions(&outlives_env);
     if !errors.is_empty() {
         // FIXME(compiler-errors): This can be simplified when IMPLIED_BOUNDS_ENTAILMENT
@@ -583,7 +579,7 @@ fn compare_asyncness<'tcx>(
 pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_m_def_id: LocalDefId,
-) -> Result<&'tcx FxHashMap<DefId, Ty<'tcx>>, ErrorGuaranteed> {
+) -> Result<&'tcx FxHashMap<DefId, ty::EarlyBinder<Ty<'tcx>>>, ErrorGuaranteed> {
     let impl_m = tcx.opt_associated_item(impl_m_def_id.to_def_id()).unwrap();
     let trait_m = tcx.opt_associated_item(impl_m.trait_item_def_id.unwrap()).unwrap();
     let impl_trait_ref =
@@ -722,18 +718,18 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         return Err(reported);
     }
 
+    let collected_types = collector.types;
+
     // Finally, resolve all regions. This catches wily misuses of
     // lifetime parameters.
-    let outlives_environment = OutlivesEnvironment::with_bounds(
+    let outlives_env = OutlivesEnvironment::with_bounds(
         param_env,
         infcx.implied_bounds_tys(param_env, impl_m_def_id, wf_tys),
     );
-    infcx
-        .err_ctxt()
-        .check_region_obligations_and_report_errors(impl_m_def_id, &outlives_environment)?;
+    ocx.resolve_regions_and_report_errors(impl_m_def_id, &outlives_env)?;
 
     let mut collected_tys = FxHashMap::default();
-    for (def_id, (ty, substs)) in collector.types {
+    for (def_id, (ty, substs)) in collected_types {
         match infcx.fully_resolve(ty) {
             Ok(ty) => {
                 // `ty` contains free regions that we created earlier while liberating the
@@ -786,14 +782,14 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                     })
                 });
                 debug!(%ty);
-                collected_tys.insert(def_id, ty);
+                collected_tys.insert(def_id, ty::EarlyBinder(ty));
             }
             Err(err) => {
                 let reported = tcx.sess.delay_span_bug(
                     return_span,
                     format!("could not fully resolve: {ty} => {err:?}"),
                 );
-                collected_tys.insert(def_id, tcx.ty_error(reported));
+                collected_tys.insert(def_id, ty::EarlyBinder(tcx.ty_error(reported)));
             }
         }
     }
@@ -843,7 +839,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'_, 'tcx> {
             });
             self.types.insert(proj.def_id, (infer_ty, proj.substs));
             // Recurse into bounds
-            for (pred, pred_span) in self.interner().bound_explicit_item_bounds(proj.def_id).subst_iter_copied(self.interner(), proj.substs) {
+            for (pred, pred_span) in self.interner().explicit_item_bounds(proj.def_id).subst_iter_copied(self.interner(), proj.substs) {
                 let pred = pred.fold_with(self);
                 let pred = self.ocx.normalize(
                     &ObligationCause::misc(self.span, self.body_id),
@@ -1321,7 +1317,7 @@ fn compare_number_of_generics<'tcx>(
                         impl_count,
                         kind,
                         pluralize!(impl_count),
-                        suffix.unwrap_or_else(String::new),
+                        suffix.unwrap_or_default(),
                     ),
                 );
             }
@@ -1742,11 +1738,8 @@ pub(super) fn compare_impl_const_raw(
         return Err(infcx.err_ctxt().report_fulfillment_errors(&errors));
     }
 
-    let outlives_environment = OutlivesEnvironment::new(param_env);
-    infcx
-        .err_ctxt()
-        .check_region_obligations_and_report_errors(impl_const_item_def, &outlives_environment)?;
-    Ok(())
+    let outlives_env = OutlivesEnvironment::new(param_env);
+    ocx.resolve_regions_and_report_errors(impl_const_item_def, &outlives_env)
 }
 
 pub(super) fn compare_impl_ty<'tcx>(
@@ -1845,13 +1838,8 @@ fn compare_type_predicate_entailment<'tcx>(
 
     // Finally, resolve all regions. This catches wily misuses of
     // lifetime parameters.
-    let outlives_environment = OutlivesEnvironment::new(param_env);
-    infcx.err_ctxt().check_region_obligations_and_report_errors(
-        impl_ty.def_id.expect_local(),
-        &outlives_environment,
-    )?;
-
-    Ok(())
+    let outlives_env = OutlivesEnvironment::new(param_env);
+    ocx.resolve_regions_and_report_errors(impl_ty_def_id, &outlives_env)
 }
 
 /// Validate that `ProjectionCandidate`s created for this associated type will
@@ -2035,7 +2023,7 @@ pub(super) fn check_type_bounds<'tcx>(
     };
 
     let obligations: Vec<_> = tcx
-        .bound_explicit_item_bounds(trait_ty.def_id)
+        .explicit_item_bounds(trait_ty.def_id)
         .subst_iter_copied(tcx, rebased_substs)
         .map(|(concrete_ty_bound, span)| {
             debug!("check_type_bounds: concrete_ty_bound = {:?}", concrete_ty_bound);
@@ -2063,14 +2051,8 @@ pub(super) fn check_type_bounds<'tcx>(
     // Finally, resolve all regions. This catches wily misuses of
     // lifetime parameters.
     let implied_bounds = infcx.implied_bounds_tys(param_env, impl_ty_def_id, assumed_wf_types);
-    let outlives_environment = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
-
-    infcx.err_ctxt().check_region_obligations_and_report_errors(
-        impl_ty.def_id.expect_local(),
-        &outlives_environment,
-    )?;
-
-    Ok(())
+    let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
+    ocx.resolve_regions_and_report_errors(impl_ty_def_id, &outlives_env)
 }
 
 fn assoc_item_kind_str(impl_item: &ty::AssocItem) -> &'static str {

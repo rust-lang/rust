@@ -204,6 +204,7 @@ symbols! {
         HashSet,
         Hasher,
         Implied,
+        IndexOutput,
         Input,
         Into,
         IntoDiagnostic,
@@ -357,6 +358,7 @@ symbols! {
         always,
         and,
         and_then,
+        anon,
         anonymous_lifetime_in_impl_trait,
         any,
         append_const_msg,
@@ -649,6 +651,7 @@ symbols! {
         edition_panic,
         eh_catch_typeinfo,
         eh_personality,
+        emit,
         emit_enum,
         emit_enum_variant,
         emit_enum_variant_arg,
@@ -800,6 +803,7 @@ symbols! {
         ignore,
         impl_header_lifetime_elision,
         impl_lint_pass,
+        impl_trait_in_assoc_type,
         impl_trait_in_bindings,
         impl_trait_in_fn_trait_return,
         impl_trait_projections,
@@ -1034,6 +1038,7 @@ symbols! {
         object_safe_for_dispatch,
         of,
         offset,
+        offset_of,
         omit_gdb_pretty_printer_section,
         on,
         on_unimplemented,
@@ -1173,7 +1178,9 @@ symbols! {
         reg32,
         reg64,
         reg_abcd,
+        reg_addr,
         reg_byte,
+        reg_data,
         reg_iw,
         reg_nonzero,
         reg_pair,
@@ -1499,6 +1506,7 @@ symbols! {
         transmute_generic_consts,
         transmute_opts,
         transmute_trait,
+        transmute_unchecked,
         transparent,
         transparent_enums,
         transparent_unions,
@@ -1982,8 +1990,9 @@ impl Interner {
         name
     }
 
-    // Get the symbol as a string. `Symbol::as_str()` should be used in
-    // preference to this function.
+    /// Get the symbol as a string.
+    ///
+    /// [`Symbol::as_str()`] should be used in preference to this function.
     fn get(&self, symbol: Symbol) -> &str {
         self.0.lock().strings[symbol.0.as_usize()]
     }

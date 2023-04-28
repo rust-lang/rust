@@ -18,6 +18,7 @@ mod float;
 #[cfg(no_fp_fmt_parse)]
 mod nofloat;
 mod num;
+mod rt;
 
 #[stable(feature = "fmt_flags_align", since = "1.28.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Alignment")]
@@ -37,12 +38,6 @@ pub enum Alignment {
 
 #[stable(feature = "debug_builders", since = "1.2.0")]
 pub use self::builders::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
-
-#[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
-#[doc(hidden)]
-pub mod rt {
-    pub mod v1;
-}
 
 /// The type returned by formatter methods.
 ///
@@ -227,7 +222,7 @@ impl<W: Write + ?Sized> Write for &mut W {
 pub struct Formatter<'a> {
     flags: u32,
     fill: char,
-    align: rt::v1::Alignment,
+    align: rt::Alignment,
     width: Option<usize>,
     precision: Option<usize>,
 
@@ -248,7 +243,7 @@ impl<'a> Formatter<'a> {
         Formatter {
             flags: 0,
             fill: ' ',
-            align: rt::v1::Alignment::Unknown,
+            align: rt::Alignment::Unknown,
             width: None,
             precision: None,
             buf,
@@ -433,17 +428,15 @@ impl<'a> Arguments<'a> {
     /// An `UnsafeArg` is required because the following invariants must be held
     /// in order for this function to be safe:
     /// 1. The `pieces` slice must be at least as long as `fmt`.
-    /// 2. Every [`rt::v1::Argument::position`] value within `fmt` must be a
-    ///    valid index of `args`.
-    /// 3. Every [`rt::v1::Count::Param`] within `fmt` must contain a valid index of
-    ///    `args`.
+    /// 2. Every `rt::Placeholder::position` value within `fmt` must be a valid index of `args`.
+    /// 3. Every `rt::Count::Param` within `fmt` must contain a valid index of `args`.
     #[doc(hidden)]
     #[inline]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     pub fn new_v1_formatted(
         pieces: &'a [&'static str],
         args: &'a [ArgumentV1<'a>],
-        fmt: &'a [rt::v1::Argument],
+        fmt: &'a [rt::Placeholder],
         _unsafe_arg: UnsafeArg,
     ) -> Arguments<'a> {
         Arguments { pieces, fmt: Some(fmt), args }
@@ -505,7 +498,7 @@ pub struct Arguments<'a> {
     pieces: &'a [&'static str],
 
     // Placeholder specs, or `None` if all specs are default (as in "{}{}").
-    fmt: Option<&'a [rt::v1::Argument]>,
+    fmt: Option<&'a [rt::Placeholder]>,
 
     // Dynamic arguments for interpolation, to be interleaved with string
     // pieces. (Every argument is preceded by a string piece.)
@@ -1281,15 +1274,15 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
     Ok(())
 }
 
-unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::v1::Argument, args: &[ArgumentV1<'_>]) -> Result {
-    fmt.fill = arg.format.fill;
-    fmt.align = arg.format.align;
-    fmt.flags = arg.format.flags;
+unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::Placeholder, args: &[ArgumentV1<'_>]) -> Result {
+    fmt.fill = arg.fill;
+    fmt.align = arg.align;
+    fmt.flags = arg.flags;
     // SAFETY: arg and args come from the same Arguments,
     // which guarantees the indexes are always within bounds.
     unsafe {
-        fmt.width = getcount(args, &arg.format.width);
-        fmt.precision = getcount(args, &arg.format.precision);
+        fmt.width = getcount(args, &arg.width);
+        fmt.precision = getcount(args, &arg.precision);
     }
 
     // Extract the correct argument
@@ -1302,11 +1295,11 @@ unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::v1::Argument, args: &[ArgumentV
     (value.formatter)(value.value, fmt)
 }
 
-unsafe fn getcount(args: &[ArgumentV1<'_>], cnt: &rt::v1::Count) -> Option<usize> {
+unsafe fn getcount(args: &[ArgumentV1<'_>], cnt: &rt::Count) -> Option<usize> {
     match *cnt {
-        rt::v1::Count::Is(n) => Some(n),
-        rt::v1::Count::Implied => None,
-        rt::v1::Count::Param(i) => {
+        rt::Count::Is(n) => Some(n),
+        rt::Count::Implied => None,
+        rt::Count::Param(i) => {
             debug_assert!(i < args.len());
             // SAFETY: cnt and args come from the same Arguments,
             // which guarantees this index is always within bounds.
@@ -1449,9 +1442,9 @@ impl<'a> Formatter<'a> {
             // is zero
             Some(min) if self.sign_aware_zero_pad() => {
                 let old_fill = crate::mem::replace(&mut self.fill, '0');
-                let old_align = crate::mem::replace(&mut self.align, rt::v1::Alignment::Right);
+                let old_align = crate::mem::replace(&mut self.align, rt::Alignment::Right);
                 write_prefix(self, sign, prefix)?;
-                let post_padding = self.padding(min - width, rt::v1::Alignment::Right)?;
+                let post_padding = self.padding(min - width, Alignment::Right)?;
                 self.buf.write_str(buf)?;
                 post_padding.write(self)?;
                 self.fill = old_fill;
@@ -1460,7 +1453,7 @@ impl<'a> Formatter<'a> {
             }
             // Otherwise, the sign and prefix goes after the padding
             Some(min) => {
-                let post_padding = self.padding(min - width, rt::v1::Alignment::Right)?;
+                let post_padding = self.padding(min - width, Alignment::Right)?;
                 write_prefix(self, sign, prefix)?;
                 self.buf.write_str(buf)?;
                 post_padding.write(self)
@@ -1535,7 +1528,7 @@ impl<'a> Formatter<'a> {
                 // If we're under both the maximum and the minimum width, then fill
                 // up the minimum width with the specified string + some alignment.
                 else {
-                    let align = rt::v1::Alignment::Left;
+                    let align = Alignment::Left;
                     let post_padding = self.padding(width - chars_count, align)?;
                     self.buf.write_str(s)?;
                     post_padding.write(self)
@@ -1550,17 +1543,19 @@ impl<'a> Formatter<'a> {
     pub(crate) fn padding(
         &mut self,
         padding: usize,
-        default: rt::v1::Alignment,
+        default: Alignment,
     ) -> result::Result<PostPadding, Error> {
         let align = match self.align {
-            rt::v1::Alignment::Unknown => default,
-            _ => self.align,
+            rt::Alignment::Unknown => default,
+            rt::Alignment::Left => Alignment::Left,
+            rt::Alignment::Right => Alignment::Right,
+            rt::Alignment::Center => Alignment::Center,
         };
 
         let (pre_pad, post_pad) = match align {
-            rt::v1::Alignment::Left => (0, padding),
-            rt::v1::Alignment::Right | rt::v1::Alignment::Unknown => (padding, 0),
-            rt::v1::Alignment::Center => (padding / 2, (padding + 1) / 2),
+            Alignment::Left => (0, padding),
+            Alignment::Right => (padding, 0),
+            Alignment::Center => (padding / 2, (padding + 1) / 2),
         };
 
         for _ in 0..pre_pad {
@@ -1580,7 +1575,6 @@ impl<'a> Formatter<'a> {
             let mut formatted = formatted.clone();
             let old_fill = self.fill;
             let old_align = self.align;
-            let mut align = old_align;
             if self.sign_aware_zero_pad() {
                 // a sign always goes first
                 let sign = formatted.sign;
@@ -1589,9 +1583,8 @@ impl<'a> Formatter<'a> {
                 // remove the sign from the formatted parts
                 formatted.sign = "";
                 width = width.saturating_sub(sign.len());
-                align = rt::v1::Alignment::Right;
                 self.fill = '0';
-                self.align = rt::v1::Alignment::Right;
+                self.align = rt::Alignment::Right;
             }
 
             // remaining parts go through the ordinary padding process.
@@ -1600,7 +1593,7 @@ impl<'a> Formatter<'a> {
                 // no padding
                 self.write_formatted_parts(&formatted)
             } else {
-                let post_padding = self.padding(width - len, align)?;
+                let post_padding = self.padding(width - len, Alignment::Right)?;
                 self.write_formatted_parts(&formatted)?;
                 post_padding.write(self)
             };
@@ -1788,10 +1781,10 @@ impl<'a> Formatter<'a> {
     #[stable(feature = "fmt_flags_align", since = "1.28.0")]
     pub fn align(&self) -> Option<Alignment> {
         match self.align {
-            rt::v1::Alignment::Left => Some(Alignment::Left),
-            rt::v1::Alignment::Right => Some(Alignment::Right),
-            rt::v1::Alignment::Center => Some(Alignment::Center),
-            rt::v1::Alignment::Unknown => None,
+            rt::Alignment::Left => Some(Alignment::Left),
+            rt::Alignment::Right => Some(Alignment::Right),
+            rt::Alignment::Center => Some(Alignment::Center),
+            rt::Alignment::Unknown => None,
         }
     }
 

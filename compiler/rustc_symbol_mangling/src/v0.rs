@@ -731,7 +731,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
     fn path_crate(self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {
         self.push("C");
         let stable_crate_id = self.tcx.def_path_hash(cnum.as_def_id()).stable_crate_id();
-        self.push_disambiguator(stable_crate_id.to_u64());
+        self.push_disambiguator(stable_crate_id.as_u64());
         let name = self.tcx.crate_name(cnum);
         self.push_ident(name.as_str());
         Ok(self)

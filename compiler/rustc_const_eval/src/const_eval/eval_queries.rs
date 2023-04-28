@@ -205,7 +205,7 @@ pub(crate) fn turn_into_const_value<'tcx>(
     let cid = key.value;
     let def_id = cid.instance.def.def_id();
     let is_static = tcx.is_static(def_id);
-    // This is just accessing an already computed constant, so no need to check alginment here.
+    // This is just accessing an already computed constant, so no need to check alignment here.
     let ecx = mk_eval_cx(
         tcx,
         tcx.def_span(key.value.instance.def_id()),
@@ -296,12 +296,12 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
     }
 
     let cid = key.value;
-    let def = cid.instance.def.with_opt_param();
-    let is_static = tcx.is_static(def.did);
+    let def = cid.instance.def.def_id();
+    let is_static = tcx.is_static(def);
 
     let mut ecx = InterpCx::new(
         tcx,
-        tcx.def_span(def.did),
+        tcx.def_span(def),
         key.param_env,
         // Statics (and promoteds inside statics) may access other statics, because unlike consts
         // they do not have to behave "as if" they were evaluated at runtime.

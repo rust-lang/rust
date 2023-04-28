@@ -50,12 +50,11 @@ impl<'tcx> RustIrDatabase<'tcx> {
     where
         ty::Predicate<'tcx>: LowerInto<'tcx, std::option::Option<T>>,
     {
-        let bounds = self.interner.tcx.bound_explicit_item_bounds(def_id);
-        bounds
-            .0
-            .iter()
-            .map(|(bound, _)| bounds.rebind(*bound).subst(self.interner.tcx, &bound_vars))
-            .filter_map(|bound| LowerInto::<Option<_>>::lower_into(bound, self.interner))
+        self.interner
+            .tcx
+            .explicit_item_bounds(def_id)
+            .subst_iter_copied(self.interner.tcx, &bound_vars)
+            .filter_map(|(bound, _)| LowerInto::<Option<_>>::lower_into(bound, self.interner))
             .collect()
     }
 }
@@ -506,15 +505,11 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
 
         let identity_substs = InternalSubsts::identity_for_item(self.interner.tcx, opaque_ty_id.0);
 
-        let explicit_item_bounds = self.interner.tcx.bound_explicit_item_bounds(opaque_ty_id.0);
+        let explicit_item_bounds = self.interner.tcx.explicit_item_bounds(opaque_ty_id.0);
         let bounds =
             explicit_item_bounds
-                .0
-                .iter()
+                .subst_iter_copied(self.interner.tcx, &bound_vars)
                 .map(|(bound, _)| {
-                    explicit_item_bounds.rebind(*bound).subst(self.interner.tcx, &bound_vars)
-                })
-                .map(|bound| {
                     bound.fold_with(&mut ReplaceOpaqueTyFolder {
                         tcx: self.interner.tcx,
                         opaque_ty_id,

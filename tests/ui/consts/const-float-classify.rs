@@ -8,11 +8,33 @@
 // Don't promote
 const fn nop<T>(x: T) -> T { x }
 
+// FIXME(const-hack): replace with PartialEq
+#[const_trait]
+trait MyEq<T> {
+    fn eq(self, b: T) -> bool;
+}
+
+impl const MyEq<bool> for bool {
+    fn eq(self, b: bool) -> bool {
+        self == b
+    }
+}
+
+impl const MyEq<NonDet> for bool {
+    fn eq(self, _: NonDet) -> bool {
+        true
+    }
+}
+
+const fn eq<A: ~const MyEq<B>, B>(x: A, y: B) -> bool {
+    x.eq(y)
+}
+
 macro_rules! const_assert {
     ($a:expr, $b:expr) => {
         {
-            const _: () = assert!($a == $b);
-            assert_eq!(nop($a), nop($b));
+            const _: () = assert!(eq($a, $b));
+            assert!(eq(nop($a), nop($b)));
         }
     };
 }
@@ -46,15 +68,6 @@ macro_rules! suite_inner {
 
 #[derive(Debug)]
 struct NonDet;
-
-impl const PartialEq<NonDet> for bool {
-    fn eq(&self, _: &NonDet) -> bool {
-        true
-    }
-    fn ne(&self, _: &NonDet) -> bool {
-        false
-    }
-}
 
 // The result of the `is_sign` methods are not checked for correctness, since LLVM does not
 // guarantee anything about the signedness of NaNs. See

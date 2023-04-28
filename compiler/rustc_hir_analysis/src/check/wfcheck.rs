@@ -114,11 +114,9 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
         return;
     }
 
-    let outlives_environment = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
+    let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
 
-    let _ = infcx
-        .err_ctxt()
-        .check_region_obligations_and_report_errors(body_def_id, &outlives_environment);
+    let _ = wfcx.ocx.resolve_regions_and_report_errors(body_def_id, &outlives_env);
 }
 
 fn check_well_formed(tcx: TyCtxt<'_>, def_id: hir::OwnerId) {
@@ -157,7 +155,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
 
     debug!(
         ?item.owner_id,
-        item.name = ? tcx.def_path_str(def_id.to_def_id())
+        item.name = ? tcx.def_path_str(def_id)
     );
 
     match item.kind {
@@ -253,7 +251,7 @@ fn check_foreign_item(tcx: TyCtxt<'_>, item: &hir::ForeignItem<'_>) {
 
     debug!(
         ?item.owner_id,
-        item.name = ? tcx.def_path_str(def_id.to_def_id())
+        item.name = ? tcx.def_path_str(def_id)
     );
 
     match item.kind {
@@ -362,7 +360,9 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
                             tcx,
                             param_env,
                             item_def_id,
-                            tcx.explicit_item_bounds(item_def_id).to_vec(),
+                            tcx.explicit_item_bounds(item_def_id)
+                                .subst_identity_iter_copied()
+                                .collect::<Vec<_>>(),
                             &FxIndexSet::default(),
                             gat_def_id.def_id,
                             gat_generics,
@@ -680,12 +680,7 @@ fn resolve_regions_with_wf_tys<'tcx>(
 
     add_constraints(&infcx, region_bound_pairs);
 
-    infcx.process_registered_region_obligations(
-        outlives_environment.region_bound_pairs(),
-        param_env,
-    );
     let errors = infcx.resolve_regions(&outlives_environment);
-
     debug!(?errors, "errors");
 
     // If we were able to prove that the type outlives the region without
@@ -1032,7 +1027,7 @@ fn check_type_defn<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'tcx>, all_sized: b
                 packed && {
                     let ty = tcx.type_of(variant.fields.raw.last().unwrap().did).subst_identity();
                     let ty = tcx.erase_regions(ty);
-                    if ty.needs_infer() {
+                    if ty.has_infer() {
                         tcx.sess
                             .delay_span_bug(item.span, &format!("inference variables in {:?}", ty));
                         // Just treat unresolved type expression as if it needs drop.
@@ -1132,7 +1127,7 @@ fn check_associated_type_bounds(wfcx: &WfCheckingCtxt<'_, '_>, item: ty::AssocIt
     let bounds = wfcx.tcx().explicit_item_bounds(item.def_id);
 
     debug!("check_associated_type_bounds: bounds={:?}", bounds);
-    let wf_obligations = bounds.iter().flat_map(|&(bound, bound_span)| {
+    let wf_obligations = bounds.subst_identity_iter_copied().flat_map(|(bound, bound_span)| {
         let normalized_bound = wfcx.normalize(span, None, bound);
         traits::wf::predicate_obligations(
             wfcx.infcx,
@@ -1297,7 +1292,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                     // Ignore dependent defaults -- that is, where the default of one type
                     // parameter includes another (e.g., `<T, U = T>`). In those cases, we can't
                     // be sure if it will error or not as user might always specify the other.
-                    if !ty.needs_subst() {
+                    if !ty.has_param() {
                         wfcx.register_wf_obligation(
                             tcx.def_span(param.def_id),
                             Some(WellFormedLoc::Ty(param.def_id.expect_local())),
@@ -1313,7 +1308,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                     // for `struct Foo<const N: usize, const M: usize = { 1 - 2 }>`
                     // we should eagerly error.
                     let default_ct = tcx.const_param_default(param.def_id).subst_identity();
-                    if !default_ct.needs_subst() {
+                    if !default_ct.has_param() {
                         wfcx.register_wf_obligation(
                             tcx.def_span(param.def_id),
                             None,
@@ -1347,7 +1342,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                 if is_our_default(param) {
                     let default_ty = tcx.type_of(param.def_id).subst_identity();
                     // ... and it's not a dependent default, ...
-                    if !default_ty.needs_subst() {
+                    if !default_ty.has_param() {
                         // ... then substitute it with the default.
                         return default_ty.into();
                     }
@@ -1360,7 +1355,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                 if is_our_default(param) {
                     let default_ct = tcx.const_param_default(param.def_id).subst_identity();
                     // ... and it's not a dependent default, ...
-                    if !default_ct.needs_subst() {
+                    if !default_ct.has_param() {
                         // ... then substitute it with the default.
                         return default_ct.into();
                     }
@@ -1581,21 +1576,14 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
             && let hir::OpaqueTyOrigin::FnReturn(source) | hir::OpaqueTyOrigin::AsyncFn(source) = opaque.origin
             && source == self.fn_def_id
         {
-            let opaque_ty = tcx.fold_regions(unshifted_opaque_ty, |re, depth| {
-                if let ty::ReLateBound(index, bv) = re.kind() {
-                    if depth != ty::INNERMOST {
-                        return tcx.mk_re_error_with_message(
-                            DUMMY_SP,
-                            "we shouldn't walk non-predicate binders with `impl Trait`...",
-                        );
-                    }
-                    tcx.mk_re_late_bound(index.shifted_out_to_binder(self.depth), bv)
-                } else {
-                    re
+            let opaque_ty = tcx.fold_regions(unshifted_opaque_ty, |re, _depth| {
+                match re.kind() {
+                    ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReError(_) => re,
+                    r => bug!("unexpected region: {r:?}"),
                 }
             });
             for (bound, bound_span) in tcx
-                .bound_explicit_item_bounds(opaque_ty.def_id)
+                .explicit_item_bounds(opaque_ty.def_id)
                 .subst_iter_copied(tcx, opaque_ty.substs)
             {
                 let bound = self.wfcx.normalize(bound_span, None, bound);

@@ -3,7 +3,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::LocalDefId;
 use std::fmt::{self, Write};
 
-pub(crate) fn thir_tree(tcx: TyCtxt<'_>, owner_def: ty::WithOptConstParam<LocalDefId>) -> String {
+pub(crate) fn thir_tree(tcx: TyCtxt<'_>, owner_def: LocalDefId) -> String {
     match super::cx::thir_body(tcx, owner_def) {
         Ok((thir, _)) => {
             let thir = thir.steal();
@@ -15,7 +15,7 @@ pub(crate) fn thir_tree(tcx: TyCtxt<'_>, owner_def: ty::WithOptConstParam<LocalD
     }
 }
 
-pub(crate) fn thir_flat(tcx: TyCtxt<'_>, owner_def: ty::WithOptConstParam<LocalDefId>) -> String {
+pub(crate) fn thir_flat(tcx: TyCtxt<'_>, owner_def: LocalDefId) -> String {
     match super::cx::thir_body(tcx, owner_def) {
         Ok((thir, _)) => format!("{:#?}", thir.steal()),
         Err(_) => "error".into(),
@@ -517,6 +517,19 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 print_indented!(self, "InlineAsm {", depth_lvl);
                 print_indented!(self, "expr:", depth_lvl + 1);
                 self.print_inline_asm_expr(&**expr, depth_lvl + 2);
+                print_indented!(self, "}", depth_lvl);
+            }
+            OffsetOf { container, fields } => {
+                print_indented!(self, "OffsetOf {", depth_lvl);
+                print_indented!(self, format!("container: {:?}", container), depth_lvl + 1);
+                print_indented!(self, "fields: [", depth_lvl + 1);
+
+                for field in fields.iter() {
+                    print_indented!(self, format!("{:?}", field), depth_lvl + 2);
+                    print_indented!(self, ",", depth_lvl + 1);
+                }
+
+                print_indented!(self, "]", depth_lvl + 1);
                 print_indented!(self, "}", depth_lvl);
             }
             ThreadLocalRef(def_id) => {

@@ -67,10 +67,10 @@ impl<'a, 'tcx> VirtualIndex {
 /// ref of the type.
 fn expect_dyn_trait_in_self(ty: Ty<'_>) -> ty::PolyExistentialTraitRef<'_> {
     for arg in ty.peel_refs().walk() {
-        if let GenericArgKind::Type(ty) = arg.unpack() {
-            if let ty::Dynamic(data, _, _) = ty.kind() {
-                return data.principal().expect("expected principal trait object");
-            }
+        if let GenericArgKind::Type(ty) = arg.unpack()
+            && let ty::Dynamic(data, _, _) = ty.kind()
+        {
+            return data.principal().expect("expected principal trait object");
         }
     }
 

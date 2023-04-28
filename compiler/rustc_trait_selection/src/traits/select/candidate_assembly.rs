@@ -11,7 +11,7 @@ use hir::LangItem;
 use rustc_hir as hir;
 use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::{Obligation, SelectionError, TraitObligation};
-use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, TreatProjections};
+use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 
 use crate::traits;
@@ -294,7 +294,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
-        // Keep this funtion in sync with extract_tupled_inputs_and_output_from_callable
+        // Keep this function in sync with extract_tupled_inputs_and_output_from_callable
         // until the old solver (and thus this function) is removed.
 
         // Okay to skip binder because what we are inspecting doesn't involve bound regions.
@@ -406,7 +406,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             match obligation.self_ty().skip_binder().kind() {
-                // Fast path to avoid evaluating an obligation that trivally holds.
+                // Fast path to avoid evaluating an obligation that trivially holds.
                 // There may be more bounds, but these are checked by the regular path.
                 ty::FnPtr(..) => return false,
                 // These may potentially implement `FnPtr`
@@ -775,7 +775,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        if obligation.has_non_region_param() {
+        if obligation.predicate.has_non_region_param() {
             return;
         }
 
@@ -875,12 +875,24 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ty::Adt(..) => {
-                // Find a custom `impl Drop` impl, if it exists
-                let relevant_impl = self.tcx().find_map_relevant_impl(
+                let mut relevant_impl = None;
+                self.tcx().for_each_relevant_impl(
                     self.tcx().require_lang_item(LangItem::Drop, None),
                     obligation.predicate.skip_binder().trait_ref.self_ty(),
-                    TreatProjections::ForLookup,
-                    Some,
+                    |impl_def_id| {
+                        if let Some(old_impl_def_id) = relevant_impl {
+                            self.tcx()
+                                .sess
+                                .struct_span_err(
+                                    self.tcx().def_span(impl_def_id),
+                                    "multiple drop impls found",
+                                )
+                                .span_note(self.tcx().def_span(old_impl_def_id), "other impl here")
+                                .delay_as_bug();
+                        }
+
+                        relevant_impl = Some(impl_def_id);
+                    },
                 );
 
                 if let Some(impl_def_id) = relevant_impl {

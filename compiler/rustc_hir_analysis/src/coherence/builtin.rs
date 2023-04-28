@@ -74,16 +74,15 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
 
     debug!("visit_implementation_of_copy: self_type={:?} (free)", self_type);
 
-    let span = match tcx.hir().expect_item(impl_did).kind {
-        ItemKind::Impl(hir::Impl { polarity: hir::ImplPolarity::Negative(_), .. }) => return,
-        ItemKind::Impl(impl_) => impl_.self_ty.span,
-        _ => bug!("expected Copy impl item"),
+    let span = match tcx.hir().expect_item(impl_did).expect_impl() {
+        hir::Impl { polarity: hir::ImplPolarity::Negative(_), .. } => return,
+        hir::Impl { self_ty, .. } => self_ty.span,
     };
 
     let cause = traits::ObligationCause::misc(span, impl_did);
     match type_allowed_to_implement_copy(tcx, param_env, self_type, cause) {
         Ok(()) => {}
-        Err(CopyImplementationError::InfrigingFields(fields)) => {
+        Err(CopyImplementationError::InfringingFields(fields)) => {
             let mut err = struct_span_err!(
                 tcx.sess,
                 span,
@@ -354,9 +353,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
 
                 // Finally, resolve all regions.
                 let outlives_env = OutlivesEnvironment::new(param_env);
-                let _ = infcx
-                    .err_ctxt()
-                    .check_region_obligations_and_report_errors(impl_did, &outlives_env);
+                let _ = ocx.resolve_regions_and_report_errors(impl_did, &outlives_env);
             }
         }
         _ => {
@@ -592,7 +589,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) -> Coe
 
     // Finally, resolve all regions.
     let outlives_env = OutlivesEnvironment::new(param_env);
-    let _ = infcx.err_ctxt().check_region_obligations_and_report_errors(impl_did, &outlives_env);
+    let _ = ocx.resolve_regions_and_report_errors(impl_did, &outlives_env);
 
     CoerceUnsizedInfo { custom_kind: kind }
 }
