@@ -30,11 +30,11 @@ LL |     let _ = |A | B: E| ();
    |                  |
    |                  E
    |
-note: an implementation of `BitOr<_>` might be missing for `E`
+note: an implementation of `BitOr<()>` might be missing for `E`
   --> $DIR/or-patterns-syntactic-fail.rs:6:1
    |
 LL | enum E { A, B }
-   | ^^^^^^ must implement `BitOr<_>`
+   | ^^^^^^ must implement `BitOr<()>`
 note: the trait `BitOr` must be implemented
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 
