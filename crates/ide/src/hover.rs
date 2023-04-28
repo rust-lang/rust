@@ -30,7 +30,6 @@ pub struct HoverConfig {
     pub documentation: bool,
     pub keywords: bool,
     pub format: HoverDocFormat,
-    pub interpret_tests: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

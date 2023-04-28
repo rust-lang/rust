@@ -17,7 +17,7 @@ use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use syntax::{
     ast::{
-        self, ArrayExprKind, AstChildren, BlockExpr, HasArgList, HasLoopBody, HasName,
+        self, ArrayExprKind, AstChildren, BlockExpr, HasArgList, HasAttrs, HasLoopBody, HasName,
         SlicePatComponents,
     },
     AstNode, AstPtr, SyntaxNodePtr,
@@ -302,16 +302,29 @@ impl ExprCollector<'_> {
                 self.alloc_expr(Expr::For { iterable, pat, body, label }, syntax_ptr)
             }
             ast::Expr::CallExpr(e) => {
-                let callee = self.collect_expr_opt(e.expr());
-                let args = if let Some(arg_list) = e.arg_list() {
-                    arg_list.args().filter_map(|e| self.maybe_collect_expr(e)).collect()
-                } else {
-                    Box::default()
+                let is_rustc_box = {
+                    let attrs = e.attrs();
+                    attrs.filter_map(|x| x.as_simple_atom()).any(|x| x == "rustc_box")
                 };
-                self.alloc_expr(
-                    Expr::Call { callee, args, is_assignee_expr: self.is_lowering_assignee_expr },
-                    syntax_ptr,
-                )
+                if is_rustc_box {
+                    let expr = self.collect_expr_opt(e.arg_list().and_then(|x| x.args().next()));
+                    self.alloc_expr(Expr::Box { expr }, syntax_ptr)
+                } else {
+                    let callee = self.collect_expr_opt(e.expr());
+                    let args = if let Some(arg_list) = e.arg_list() {
+                        arg_list.args().filter_map(|e| self.maybe_collect_expr(e)).collect()
+                    } else {
+                        Box::default()
+                    };
+                    self.alloc_expr(
+                        Expr::Call {
+                            callee,
+                            args,
+                            is_assignee_expr: self.is_lowering_assignee_expr,
+                        },
+                        syntax_ptr,
+                    )
+                }
             }
             ast::Expr::MethodCallExpr(e) => {
                 let receiver = self.collect_expr_opt(e.receiver());

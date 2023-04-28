@@ -219,6 +219,22 @@ fn generic() {
 }
 
 #[test]
+fn associated_types() {
+    size_and_align! {
+        trait Tr {
+            type Ty;
+        }
+
+        impl Tr for i32 {
+            type Ty = i64;
+        }
+
+        struct Foo<A: Tr>(<A as Tr>::Ty);
+        struct Goal(Foo<i32>);
+    }
+}
+
+#[test]
 fn return_position_impl_trait() {
     size_and_align_expr! {
         trait T {}

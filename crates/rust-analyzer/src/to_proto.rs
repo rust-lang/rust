@@ -1215,6 +1215,14 @@ pub(crate) fn code_lens(
                     data: None,
                 })
             }
+            if lens_config.interpret {
+                let command = command::interpret_single(&r);
+                acc.push(lsp_types::CodeLens {
+                    range: annotation_range,
+                    command: Some(command),
+                    data: None,
+                })
+            }
         }
         AnnotationKind::HasImpls { pos: file_range, data } => {
             if !client_commands_config.show_reference {
@@ -1356,6 +1364,15 @@ pub(crate) mod command {
             title: "Debug".into(),
             command: "rust-analyzer.debugSingle".into(),
             arguments: Some(vec![to_value(runnable).unwrap()]),
+        }
+    }
+
+    pub(crate) fn interpret_single(_runnable: &lsp_ext::Runnable) -> lsp_types::Command {
+        lsp_types::Command {
+            title: "Interpret".into(),
+            command: "rust-analyzer.interpretFunction".into(),
+            // FIXME: use the `_runnable` here.
+            arguments: Some(vec![]),
         }
     }
 

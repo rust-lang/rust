@@ -3,13 +3,14 @@
 use std::{fmt::Display, iter};
 
 use crate::{
-    db::HirDatabase, display::HirDisplay, infer::PointerCast, lang_items::is_box, ClosureId, Const,
-    ConstScalar, InferenceResult, Interner, MemoryMap, Substitution, Ty, TyKind,
+    db::HirDatabase, display::HirDisplay, infer::PointerCast, lang_items::is_box, mapping::ToChalk,
+    CallableDefId, ClosureId, Const, ConstScalar, InferenceResult, Interner, MemoryMap,
+    Substitution, Ty, TyKind,
 };
 use chalk_ir::Mutability;
 use hir_def::{
     hir::{BindingId, Expr, ExprId, Ordering, PatId},
-    DefWithBodyId, FieldId, UnionId, VariantId,
+    DefWithBodyId, FieldId, StaticId, UnionId, VariantId,
 };
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
 
@@ -19,7 +20,7 @@ mod borrowck;
 mod pretty;
 
 pub use borrowck::{borrowck_query, BorrowckResult, MutabilityReason};
-pub use eval::{interpret_mir, pad16, Evaluator, MirEvalError};
+pub use eval::{interpret_mir, pad16, Evaluator, MirEvalError, VTableMap};
 pub use lower::{
     lower_to_mir, mir_body_for_closure_query, mir_body_query, mir_body_recover, MirLowerError,
 };
@@ -76,6 +77,9 @@ pub enum Operand {
     Move(Place),
     /// Constants are already semantically values, and remain unchanged.
     Constant(Const),
+    /// NON STANDARD: This kind of operand returns an immutable reference to that static memory. Rustc
+    /// handles it with the `Constant` variant somehow.
+    Static(StaticId),
 }
 
 impl Operand {
@@ -89,6 +93,17 @@ impl Operand {
 
     fn const_zst(ty: Ty) -> Operand {
         Self::from_bytes(vec![], ty)
+    }
+
+    fn from_fn(
+        db: &dyn HirDatabase,
+        func_id: hir_def::FunctionId,
+        generic_args: Substitution,
+    ) -> Operand {
+        let ty =
+            chalk_ir::TyKind::FnDef(CallableDefId::FunctionId(func_id).to_chalk(db), generic_args)
+                .intern(Interner);
+        Operand::from_bytes(vec![], ty)
     }
 }
 
@@ -110,7 +125,7 @@ impl<V, T> ProjectionElem<V, T> {
         &self,
         base: Ty,
         db: &dyn HirDatabase,
-        closure_field: impl FnOnce(ClosureId, usize) -> Ty,
+        closure_field: impl FnOnce(ClosureId, &Substitution, usize) -> Ty,
     ) -> Ty {
         match self {
             ProjectionElem::Deref => match &base.data(Interner).kind {
@@ -142,7 +157,7 @@ impl<V, T> ProjectionElem<V, T> {
                         never!("Out of bound tuple field");
                         TyKind::Error.intern(Interner)
                     }),
-                TyKind::Closure(id, _) => closure_field(*id, *f),
+                TyKind::Closure(id, subst) => closure_field(*id, subst, *f),
                 _ => {
                     never!("Only tuple or closure has tuple or closure field");
                     return TyKind::Error.intern(Interner);
@@ -261,7 +276,13 @@ impl SwitchTargets {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub enum Terminator {
+pub struct Terminator {
+    span: MirSpan,
+    kind: TerminatorKind,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum TerminatorKind {
     /// Block has one successor; we continue execution there.
     Goto { target: BasicBlockId },
 
@@ -836,6 +857,9 @@ pub enum Rvalue {
     /// affects alias analysis.
     ShallowInitBox(Operand, Ty),
 
+    /// NON STANDARD: allocates memory with the type's layout, and shallow init the box with the resulting pointer.
+    ShallowInitBoxWithAlloc(Ty),
+
     /// A CopyForDeref is equivalent to a read from a place at the
     /// codegen level, but is treated specially by drop elaboration. When such a read happens, it
     /// is guaranteed (via nature of the mir_opt `Derefer` in rustc_mir_transform/src/deref_separator)
@@ -918,7 +942,7 @@ impl MirBody {
                 Operand::Copy(p) | Operand::Move(p) => {
                     f(p);
                 }
-                Operand::Constant(_) => (),
+                Operand::Constant(_) | Operand::Static(_) => (),
             }
         }
         for (_, block) in self.basic_blocks.iter_mut() {
@@ -927,6 +951,7 @@ impl MirBody {
                     StatementKind::Assign(p, r) => {
                         f(p);
                         match r {
+                            Rvalue::ShallowInitBoxWithAlloc(_) => (),
                             Rvalue::ShallowInitBox(o, _)
                             | Rvalue::UnaryOp(_, o)
                             | Rvalue::Cast(_, o, _)
@@ -954,32 +979,32 @@ impl MirBody {
                 }
             }
             match &mut block.terminator {
-                Some(x) => match x {
-                    Terminator::SwitchInt { discr, .. } => for_operand(discr, &mut f),
-                    Terminator::FalseEdge { .. }
-                    | Terminator::FalseUnwind { .. }
-                    | Terminator::Goto { .. }
-                    | Terminator::Resume
-                    | Terminator::GeneratorDrop
-                    | Terminator::Abort
-                    | Terminator::Return
-                    | Terminator::Unreachable => (),
-                    Terminator::Drop { place, .. } => {
+                Some(x) => match &mut x.kind {
+                    TerminatorKind::SwitchInt { discr, .. } => for_operand(discr, &mut f),
+                    TerminatorKind::FalseEdge { .. }
+                    | TerminatorKind::FalseUnwind { .. }
+                    | TerminatorKind::Goto { .. }
+                    | TerminatorKind::Resume
+                    | TerminatorKind::GeneratorDrop
+                    | TerminatorKind::Abort
+                    | TerminatorKind::Return
+                    | TerminatorKind::Unreachable => (),
+                    TerminatorKind::Drop { place, .. } => {
                         f(place);
                     }
-                    Terminator::DropAndReplace { place, value, .. } => {
+                    TerminatorKind::DropAndReplace { place, value, .. } => {
                         f(place);
                         for_operand(value, &mut f);
                     }
-                    Terminator::Call { func, args, destination, .. } => {
+                    TerminatorKind::Call { func, args, destination, .. } => {
                         for_operand(func, &mut f);
                         args.iter_mut().for_each(|x| for_operand(x, &mut f));
                         f(destination);
                     }
-                    Terminator::Assert { cond, .. } => {
+                    TerminatorKind::Assert { cond, .. } => {
                         for_operand(cond, &mut f);
                     }
-                    Terminator::Yield { value, resume_arg, .. } => {
+                    TerminatorKind::Yield { value, resume_arg, .. } => {
                         for_operand(value, &mut f);
                         f(resume_arg);
                     }

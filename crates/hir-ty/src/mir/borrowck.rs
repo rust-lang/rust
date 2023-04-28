@@ -13,7 +13,7 @@ use crate::{db::HirDatabase, ClosureId};
 
 use super::{
     BasicBlockId, BorrowKind, LocalId, MirBody, MirLowerError, MirSpan, Place, ProjectionElem,
-    Rvalue, StatementKind, Terminator,
+    Rvalue, StatementKind, TerminatorKind,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -141,26 +141,26 @@ fn ever_initialized_map(body: &MirBody) -> ArenaMap<BasicBlockId, ArenaMap<Local
             never!("Terminator should be none only in construction");
             return;
         };
-        let targets = match terminator {
-            Terminator::Goto { target } => vec![*target],
-            Terminator::SwitchInt { targets, .. } => targets.all_targets().to_vec(),
-            Terminator::Resume
-            | Terminator::Abort
-            | Terminator::Return
-            | Terminator::Unreachable => vec![],
-            Terminator::Call { target, cleanup, destination, .. } => {
+        let targets = match &terminator.kind {
+            TerminatorKind::Goto { target } => vec![*target],
+            TerminatorKind::SwitchInt { targets, .. } => targets.all_targets().to_vec(),
+            TerminatorKind::Resume
+            | TerminatorKind::Abort
+            | TerminatorKind::Return
+            | TerminatorKind::Unreachable => vec![],
+            TerminatorKind::Call { target, cleanup, destination, .. } => {
                 if destination.projection.len() == 0 && destination.local == l {
                     is_ever_initialized = true;
                 }
                 target.into_iter().chain(cleanup.into_iter()).copied().collect()
             }
-            Terminator::Drop { .. }
-            | Terminator::DropAndReplace { .. }
-            | Terminator::Assert { .. }
-            | Terminator::Yield { .. }
-            | Terminator::GeneratorDrop
-            | Terminator::FalseEdge { .. }
-            | Terminator::FalseUnwind { .. } => {
+            TerminatorKind::Drop { .. }
+            | TerminatorKind::DropAndReplace { .. }
+            | TerminatorKind::Assert { .. }
+            | TerminatorKind::Yield { .. }
+            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::FalseEdge { .. }
+            | TerminatorKind::FalseUnwind { .. } => {
                 never!("We don't emit these MIR terminators yet");
                 vec![]
             }
@@ -228,21 +228,21 @@ fn mutability_of_locals(body: &MirBody) -> ArenaMap<LocalId, MutabilityReason> {
             never!("Terminator should be none only in construction");
             continue;
         };
-        match terminator {
-            Terminator::Goto { .. }
-            | Terminator::Resume
-            | Terminator::Abort
-            | Terminator::Return
-            | Terminator::Unreachable
-            | Terminator::FalseEdge { .. }
-            | Terminator::FalseUnwind { .. }
-            | Terminator::GeneratorDrop
-            | Terminator::SwitchInt { .. }
-            | Terminator::Drop { .. }
-            | Terminator::DropAndReplace { .. }
-            | Terminator::Assert { .. }
-            | Terminator::Yield { .. } => (),
-            Terminator::Call { destination, .. } => {
+        match &terminator.kind {
+            TerminatorKind::Goto { .. }
+            | TerminatorKind::Resume
+            | TerminatorKind::Abort
+            | TerminatorKind::Return
+            | TerminatorKind::Unreachable
+            | TerminatorKind::FalseEdge { .. }
+            | TerminatorKind::FalseUnwind { .. }
+            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::SwitchInt { .. }
+            | TerminatorKind::Drop { .. }
+            | TerminatorKind::DropAndReplace { .. }
+            | TerminatorKind::Assert { .. }
+            | TerminatorKind::Yield { .. } => (),
+            TerminatorKind::Call { destination, .. } => {
                 if destination.projection.len() == 0 {
                     if ever_init_map.get(destination.local).copied().unwrap_or_default() {
                         push_mut_span(destination.local, MirSpan::Unknown);

@@ -34,7 +34,7 @@ impl fmt::Debug for Change {
 }
 
 impl Change {
-    pub fn new() -> Change {
+    pub fn new() -> Self {
         Change::default()
     }
 

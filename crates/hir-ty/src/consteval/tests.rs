@@ -1,4 +1,4 @@
-use base_db::fixture::WithFixture;
+use base_db::{fixture::WithFixture, FileId};
 use chalk_ir::Substitution;
 use hir_def::db::DefDatabase;
 
@@ -16,7 +16,7 @@ mod intrinsics;
 
 fn simplify(e: ConstEvalError) -> ConstEvalError {
     match e {
-        ConstEvalError::MirEvalError(MirEvalError::InFunction(_, e)) => {
+        ConstEvalError::MirEvalError(MirEvalError::InFunction(_, e, _, _)) => {
             simplify(ConstEvalError::MirEvalError(*e))
         }
         _ => e,
@@ -24,13 +24,30 @@ fn simplify(e: ConstEvalError) -> ConstEvalError {
 }
 
 #[track_caller]
-fn check_fail(ra_fixture: &str, error: ConstEvalError) {
-    assert_eq!(eval_goal(ra_fixture).map_err(simplify), Err(error));
+fn check_fail(ra_fixture: &str, error: impl FnOnce(ConstEvalError) -> bool) {
+    let (db, file_id) = TestDB::with_single_file(ra_fixture);
+    match eval_goal(&db, file_id).map_err(simplify) {
+        Ok(_) => panic!("Expected fail, but it succeeded"),
+        Err(e) => assert!(error(e)),
+    }
 }
 
 #[track_caller]
 fn check_number(ra_fixture: &str, answer: i128) {
-    let r = eval_goal(ra_fixture).unwrap();
+    let (db, file_id) = TestDB::with_single_file(ra_fixture);
+    let r = match eval_goal(&db, file_id) {
+        Ok(t) => t,
+        Err(e) => {
+            let mut err = String::new();
+            let span_formatter = |file, range| format!("{:?} {:?}", file, range);
+            match e {
+                ConstEvalError::MirLowerError(e) => e.pretty_print(&mut err, &db, span_formatter),
+                ConstEvalError::MirEvalError(e) => e.pretty_print(&mut err, &db, span_formatter),
+            }
+            .unwrap();
+            panic!("Error in evaluating goal: {}", err);
+        }
+    };
     match &r.data(Interner).value {
         chalk_ir::ConstValue::Concrete(c) => match &c.interned {
             ConstScalar::Bytes(b, _) => {
@@ -47,10 +64,9 @@ fn check_number(ra_fixture: &str, answer: i128) {
     }
 }
 
-fn eval_goal(ra_fixture: &str) -> Result<Const, ConstEvalError> {
-    let (db, file_id) = TestDB::with_single_file(ra_fixture);
+fn eval_goal(db: &TestDB, file_id: FileId) -> Result<Const, ConstEvalError> {
     let module_id = db.module_for_file(file_id);
-    let def_map = module_id.def_map(&db);
+    let def_map = module_id.def_map(db);
     let scope = &def_map[module_id.local_id].scope;
     let const_id = scope
         .declarations()
@@ -65,7 +81,7 @@ fn eval_goal(ra_fixture: &str) -> Result<Const, ConstEvalError> {
             _ => None,
         })
         .unwrap();
-    db.const_eval(const_id, Substitution::empty(Interner))
+    db.const_eval(const_id.into(), Substitution::empty(Interner))
 }
 
 #[test]
@@ -304,6 +320,81 @@ fn overloaded_index() {
 }
 
 #[test]
+fn overloaded_binop() {
+    check_number(
+        r#"
+    //- minicore: add
+    enum Color {
+        Red,
+        Green,
+        Yellow,
+    }
+
+    use Color::*;
+
+    impl core::ops::Add for Color {
+        type Output = Color;
+        fn add(self, rhs: Color) -> Self::Output {
+            Yellow
+        }
+    }
+
+    impl core::ops::AddAssign for Color {
+        fn add_assign(&mut self, rhs: Color) {
+            *self = Red;
+        }
+    }
+
+    const GOAL: bool = {
+        let x = Red + Green;
+        let mut y = Green;
+        y += x;
+        x == Yellow && y == Red && Red + Green == Yellow && Red + Red == Yellow && Yellow + Green == Yellow
+    };
+    "#,
+        1,
+    );
+    check_number(
+        r#"
+    //- minicore: add
+    impl core::ops::Add for usize {
+        type Output = usize;
+        fn add(self, rhs: usize) -> Self::Output {
+            self + rhs
+        }
+    }
+
+    impl core::ops::AddAssign for usize {
+        fn add_assign(&mut self, rhs: usize) {
+            *self += rhs;
+        }
+    }
+
+    #[lang = "shl"]
+    pub trait Shl<Rhs = Self> {
+        type Output;
+
+        fn shl(self, rhs: Rhs) -> Self::Output;
+    }
+
+    impl Shl<u8> for usize {
+        type Output = usize;
+
+        fn shl(self, rhs: u8) -> Self::Output {
+            self << rhs
+        }
+    }
+
+    const GOAL: usize = {
+        let mut x = 10;
+        x += 20;
+        2 + 2 + (x << 1u8)
+    };"#,
+        64,
+    );
+}
+
+#[test]
 fn function_call() {
     check_number(
         r#"
@@ -425,6 +516,16 @@ fn generic_fn() {
         const GOAL: u8 = bar("hello", 12);
         "#,
         12,
+    );
+    check_number(
+        r#"
+        const fn y<T>(b: T) -> (T, ) {
+            let alloc = b;
+            (alloc, )
+        }
+        const GOAL: u8 = y(2).0;
+        "#,
+        2,
     );
     check_number(
         r#"
@@ -589,6 +690,30 @@ fn loops() {
     };
         "#,
         8,
+    );
+    check_number(
+        r#"
+    //- minicore: add
+    const GOAL: u8 = {
+        let mut x = 0;
+        'a: loop {
+            'b: loop {
+                'c: while x < 20 {
+                    'd: while x < 5 {
+                        'e: loop {
+                            x += 1;
+                            continue 'c;
+                        };
+                    };
+                    x += 1;
+                };
+                break 'a;
+            };
+        }
+        x
+    };
+        "#,
+        20,
     );
 }
 
@@ -790,10 +915,12 @@ fn path_pattern_matching() {
 
     use Season::*;
 
+    const MY_SEASON: Season = Summer;
+
     const fn f(x: Season) -> i32 {
         match x {
             Spring => 1,
-            Summer => 2,
+            MY_SEASON => 2,
             Fall => 3,
             Winter => 4,
         }
@@ -944,19 +1071,10 @@ fn function_param_patterns() {
 fn match_guards() {
     check_number(
         r#"
-    //- minicore: option, eq
-    impl<T: PartialEq> PartialEq for Option<T> {
-        fn eq(&self, other: &Rhs) -> bool {
-            match (self, other) {
-                (Some(x), Some(y)) => x == y,
-                (None, None) => true,
-                _ => false,
-            }
-        }
-    }
+    //- minicore: option
     fn f(x: Option<i32>) -> i32 {
         match x {
-            y if y == Some(42) => 42000,
+            y if let Some(42) = y => 42000,
             Some(y) => y,
             None => 10
         }
@@ -964,6 +1082,59 @@ fn match_guards() {
     const GOAL: i32 = f(Some(42)) + f(Some(2)) + f(None);
         "#,
         42012,
+    );
+}
+
+#[test]
+fn result_layout_niche_optimization() {
+    check_number(
+        r#"
+    //- minicore: option, result
+    const GOAL: i32 = match Some(2).ok_or(Some(2)) {
+        Ok(x) => x,
+        Err(_) => 1000,
+    };
+        "#,
+        2,
+    );
+    check_number(
+        r#"
+    //- minicore: result
+    pub enum AlignmentEnum64 {
+        _Align1Shl0 = 1 << 0,
+        _Align1Shl1 = 1 << 1,
+        _Align1Shl2 = 1 << 2,
+        _Align1Shl3 = 1 << 3,
+        _Align1Shl4 = 1 << 4,
+        _Align1Shl5 = 1 << 5,
+    }
+    const GOAL: Result<AlignmentEnum64, ()> = {
+        let align = Err(());
+        align
+    };
+    "#,
+        0, // It is 0 since result is niche encoded and 1 is valid for `AlignmentEnum64`
+    );
+    check_number(
+        r#"
+    //- minicore: result
+    pub enum AlignmentEnum64 {
+        _Align1Shl0 = 1 << 0,
+        _Align1Shl1 = 1 << 1,
+        _Align1Shl2 = 1 << 2,
+        _Align1Shl3 = 1 << 3,
+        _Align1Shl4 = 1 << 4,
+        _Align1Shl5 = 1 << 5,
+    }
+    const GOAL: i32 = {
+        let align = Ok::<_, ()>(AlignmentEnum64::_Align1Shl0);
+        match align {
+            Ok(_) => 2,
+            Err(_) => 1,
+        }
+    };
+    "#,
+        2,
     );
 }
 
@@ -1147,6 +1318,16 @@ fn closures() {
     check_number(
         r#"
     //- minicore: fn, copy
+    const GOAL: i32 = {
+        let c: fn(i32) -> i32 = |x| 2 * x;
+        c(2) + c(10)
+    };
+        "#,
+        24,
+    );
+    check_number(
+        r#"
+    //- minicore: fn, copy
     struct X(i32);
     impl X {
         fn mult(&mut self, n: i32) {
@@ -1177,6 +1358,36 @@ fn closures() {
     };
         "#,
         24 * 24 * 2,
+    );
+}
+
+#[test]
+fn closure_and_impl_fn() {
+    check_number(
+        r#"
+    //- minicore: fn, copy
+    fn closure_wrapper<F: FnOnce() -> i32>(c: F) -> impl FnOnce() -> F {
+        || c
+    }
+
+    const GOAL: i32 = {
+        let y = 5;
+        let c = closure_wrapper(|| y);
+        c()()
+    };
+        "#,
+        5,
+    );
+    check_number(
+        r#"
+    //- minicore: fn, copy
+    fn f<T, F: Fn() -> T>(t: F) -> impl Fn() -> T {
+        move || t()
+    }
+
+    const GOAL: i32 = f(|| 2)();
+        "#,
+        2,
     );
 }
 
@@ -1215,6 +1426,23 @@ fn or_pattern() {
     const GOAL: i32 = f(Some(10), Some(20)) + f(Some(30), None) + f(None, Some(40)) + f(None, None);
         "#,
         280,
+    );
+}
+
+#[test]
+fn function_pointer_in_constants() {
+    check_number(
+        r#"
+    struct Foo {
+        f: fn(u8) -> u8,
+    }
+    const FOO: Foo = Foo { f: add2 };
+    fn add2(x: u8) -> u8 {
+        x + 2
+    }
+    const GOAL: u8 = (FOO.f)(3);
+        "#,
+        5,
     );
 }
 
@@ -1433,6 +1661,51 @@ fn dyn_trait() {
 }
 
 #[test]
+fn boxes() {
+    check_number(
+        r#"
+//- minicore: coerce_unsized, deref_mut, slice
+use core::ops::{Deref, DerefMut};
+use core::{marker::Unsize, ops::CoerceUnsized};
+
+#[lang = "owned_box"]
+pub struct Box<T: ?Sized> {
+    inner: *mut T,
+}
+impl<T> Box<T> {
+    fn new(t: T) -> Self {
+        #[rustc_box]
+        Box::new(t)
+    }
+}
+
+impl<T: ?Sized> Deref for Box<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &**self
+    }
+}
+
+impl<T: ?Sized> DerefMut for Box<T> {
+    fn deref_mut(&mut self) -> &mut T {
+        &mut **self
+    }
+}
+
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
+
+const GOAL: usize = {
+    let x = Box::new(5);
+    let y: Box<[i32]> = Box::new([1, 2, 3]);
+    *x + y.len()
+};
+"#,
+        8,
+    );
+}
+
+#[test]
 fn array_and_index() {
     check_number(
         r#"
@@ -1505,6 +1778,37 @@ fn consts() {
 }
 
 #[test]
+fn statics() {
+    check_number(
+        r#"
+    //- minicore: cell
+    use core::cell::Cell;
+    fn f() -> i32 {
+        static S: Cell<i32> = Cell::new(10);
+        S.set(S.get() + 1);
+        S.get()
+    }
+    const GOAL: i32 = f() + f() + f();
+    "#,
+        36,
+    );
+}
+
+#[test]
+fn extern_weak_statics() {
+    check_number(
+        r#"
+    extern "C" {
+        #[linkage = "extern_weak"]
+        static __dso_handle: *mut u8;
+    }
+    const GOAL: usize = __dso_handle as usize;
+    "#,
+        0,
+    );
+}
+
+#[test]
 fn enums() {
     check_number(
         r#"
@@ -1531,13 +1835,13 @@ fn enums() {
     "#,
         0,
     );
-    let r = eval_goal(
+    let (db, file_id) = TestDB::with_single_file(
         r#"
         enum E { A = 1, B }
         const GOAL: E = E::A;
         "#,
-    )
-    .unwrap();
+    );
+    let r = eval_goal(&db, file_id).unwrap();
     assert_eq!(try_const_usize(&r), Some(1));
 }
 
@@ -1550,7 +1854,7 @@ fn const_loop() {
     const F2: i32 = 2 * F1;
     const GOAL: i32 = F3;
     "#,
-        ConstEvalError::MirLowerError(MirLowerError::Loop),
+        |e| e == ConstEvalError::MirLowerError(MirLowerError::Loop),
     );
 }
 
@@ -1609,8 +1913,7 @@ fn const_generic_subst_assoc_const_impl() {
 
 #[test]
 fn const_trait_assoc() {
-    // FIXME: this should evaluate to 0
-    check_fail(
+    check_number(
         r#"
     struct U0;
     trait ToConst {
@@ -1619,9 +1922,35 @@ fn const_trait_assoc() {
     impl ToConst for U0 {
         const VAL: usize = 0;
     }
-    const GOAL: usize = U0::VAL;
+    impl ToConst for i32 {
+        const VAL: usize = 32;
+    }
+    const GOAL: usize = U0::VAL + i32::VAL;
     "#,
-        ConstEvalError::MirLowerError(MirLowerError::IncompleteExpr),
+        32,
+    );
+    check_number(
+        r#"
+    struct S<T>(*mut T);
+
+    trait MySized: Sized {
+        const SIZE: S<Self> = S(1 as *mut Self);
+    }
+
+    impl MySized for i32 {
+        const SIZE: S<i32> = S(10 as *mut i32);
+    }
+
+    impl MySized for i64 {
+    }
+
+    const fn f<T: MySized>() -> usize {
+        T::SIZE.0 as usize
+    }
+
+    const GOAL: usize = f::<i32>() + f::<i64>() * 2;
+    "#,
+        12,
     );
 }
 
@@ -1631,7 +1960,7 @@ fn exec_limits() {
         r#"
     const GOAL: usize = loop {};
     "#,
-        ConstEvalError::MirEvalError(MirEvalError::ExecutionLimitExceeded),
+        |e| e == ConstEvalError::MirEvalError(MirEvalError::ExecutionLimitExceeded),
     );
     check_fail(
         r#"
@@ -1640,7 +1969,7 @@ fn exec_limits() {
     }
     const GOAL: i32 = f(0);
     "#,
-        ConstEvalError::MirEvalError(MirEvalError::StackOverflow),
+        |e| e == ConstEvalError::MirEvalError(MirEvalError::StackOverflow),
     );
     // Reasonable code should still work
     check_number(
@@ -1665,7 +1994,7 @@ fn exec_limits() {
 
 #[test]
 fn type_error() {
-    let e = eval_goal(
+    check_fail(
         r#"
     const GOAL: u8 = {
         let x: u16 = 2;
@@ -1673,6 +2002,6 @@ fn type_error() {
         y.0
     };
     "#,
+        |e| matches!(e, ConstEvalError::MirLowerError(MirLowerError::TypeMismatch(_))),
     );
-    assert!(matches!(e, Err(ConstEvalError::MirLowerError(MirLowerError::TypeMismatch(_)))));
 }

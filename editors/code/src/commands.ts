@@ -422,8 +422,20 @@ export function syntaxTree(ctx: CtxInit): Cmd {
 function viewHirOrMir(ctx: CtxInit, xir: "hir" | "mir"): Cmd {
     const viewXir = xir === "hir" ? "viewHir" : "viewMir";
     const requestType = xir === "hir" ? ra.viewHir : ra.viewMir;
+    const uri = `rust-analyzer-${xir}://${viewXir}/${xir}.rs`;
+    const scheme = `rust-analyzer-${xir}`;
+    return viewFileUsingTextDocumentContentProvider(ctx, requestType, uri, scheme, true);
+}
+
+function viewFileUsingTextDocumentContentProvider(
+    ctx: CtxInit,
+    requestType: lc.RequestType<lc.TextDocumentPositionParams, string, void>,
+    uri: string,
+    scheme: string,
+    shouldUpdate: boolean
+): Cmd {
     const tdcp = new (class implements vscode.TextDocumentContentProvider {
-        readonly uri = vscode.Uri.parse(`rust-analyzer-${xir}://${viewXir}/${xir}.rs`);
+        readonly uri = vscode.Uri.parse(uri);
         readonly eventEmitter = new vscode.EventEmitter<vscode.Uri>();
         constructor() {
             vscode.workspace.onDidChangeTextDocument(
@@ -439,14 +451,14 @@ function viewHirOrMir(ctx: CtxInit, xir: "hir" | "mir"): Cmd {
         }
 
         private onDidChangeTextDocument(event: vscode.TextDocumentChangeEvent) {
-            if (isRustDocument(event.document)) {
+            if (isRustDocument(event.document) && shouldUpdate) {
                 // We need to order this after language server updates, but there's no API for that.
                 // Hence, good old sleep().
                 void sleep(10).then(() => this.eventEmitter.fire(this.uri));
             }
         }
         private onDidChangeActiveTextEditor(editor: vscode.TextEditor | undefined) {
-            if (editor && isRustEditor(editor)) {
+            if (editor && isRustEditor(editor) && shouldUpdate) {
                 this.eventEmitter.fire(this.uri);
             }
         }
@@ -473,9 +485,7 @@ function viewHirOrMir(ctx: CtxInit, xir: "hir" | "mir"): Cmd {
         }
     })();
 
-    ctx.pushExtCleanup(
-        vscode.workspace.registerTextDocumentContentProvider(`rust-analyzer-${xir}`, tdcp)
-    );
+    ctx.pushExtCleanup(vscode.workspace.registerTextDocumentContentProvider(scheme, tdcp));
 
     return async () => {
         const document = await vscode.workspace.openTextDocument(tdcp.uri);
@@ -499,6 +509,20 @@ export function viewHir(ctx: CtxInit): Cmd {
 // The contents of the file come from the `TextDocumentContentProvider`
 export function viewMir(ctx: CtxInit): Cmd {
     return viewHirOrMir(ctx, "mir");
+}
+
+// Opens the virtual file that will show the MIR of the function containing the cursor position
+//
+// The contents of the file come from the `TextDocumentContentProvider`
+export function interpretFunction(ctx: CtxInit): Cmd {
+    const uri = `rust-analyzer-interpret-function://interpretFunction/result.log`;
+    return viewFileUsingTextDocumentContentProvider(
+        ctx,
+        ra.interpretFunction,
+        uri,
+        `rust-analyzer-interpret-function`,
+        false
+    );
 }
 
 export function viewFileText(ctx: CtxInit): Cmd {

@@ -32,7 +32,7 @@ use crate::{
     mapping::from_chalk,
     mir::pad16,
     primitive, to_assoc_type_id,
-    utils::{self, generics},
+    utils::{self, generics, ClosureSubst},
     AdtId, AliasEq, AliasTy, Binders, CallableDefId, CallableSig, Const, ConstScalar, ConstValue,
     DomainGoal, GenericArg, ImplTraitId, Interner, Lifetime, LifetimeData, LifetimeOutlives,
     MemoryMap, Mutability, OpaqueTy, ProjectionTy, ProjectionTyExt, QuantifiedWhereClause, Scalar,
@@ -419,6 +419,16 @@ impl HirDisplay for Const {
             }
             ConstValue::Concrete(c) => match &c.interned {
                 ConstScalar::Bytes(b, m) => render_const_scalar(f, &b, m, &data.ty),
+                ConstScalar::UnevaluatedConst(c, parameters) => {
+                    let const_data = f.db.const_data(*c);
+                    write!(
+                        f,
+                        "{}",
+                        const_data.name.as_ref().and_then(|x| x.as_str()).unwrap_or("_")
+                    )?;
+                    hir_fmt_generics(f, parameters, Some((*c).into()))?;
+                    Ok(())
+                }
                 ConstScalar::Unknown => f.write_char('_'),
             },
         }
@@ -485,7 +495,7 @@ fn render_const_scalar(
         chalk_ir::TyKind::Ref(_, _, t) => match t.kind(Interner) {
             chalk_ir::TyKind::Str => {
                 let addr = usize::from_le_bytes(b[0..b.len() / 2].try_into().unwrap());
-                let bytes = memory_map.0.get(&addr).map(|x| &**x).unwrap_or(&[]);
+                let bytes = memory_map.memory.get(&addr).map(|x| &**x).unwrap_or(&[]);
                 let s = std::str::from_utf8(bytes).unwrap_or("<utf8-error>");
                 write!(f, "{s:?}")
             }
@@ -574,6 +584,11 @@ fn render_const_scalar(
             hir_def::AdtId::EnumId(_) => f.write_str("<enum-not-supported>"),
         },
         chalk_ir::TyKind::FnDef(..) => ty.hir_fmt(f),
+        chalk_ir::TyKind::Raw(_, _) => {
+            let x = u128::from_le_bytes(pad16(b, false));
+            write!(f, "{:#X} as ", x)?;
+            ty.hir_fmt(f)
+        }
         _ => f.write_str("<not-supported>"),
     }
 }
@@ -794,82 +809,9 @@ impl HirDisplay for Ty {
                 }
                 f.end_location_link();
 
-                if parameters.len(Interner) > 0 {
-                    let parameters_to_write = if f.display_target.is_source_code()
-                        || f.omit_verbose_types()
-                    {
-                        match self
-                            .as_generic_def(db)
-                            .map(|generic_def_id| db.generic_defaults(generic_def_id))
-                            .filter(|defaults| !defaults.is_empty())
-                        {
-                            None => parameters.as_slice(Interner),
-                            Some(default_parameters) => {
-                                fn should_show(
-                                    parameter: &GenericArg,
-                                    default_parameters: &[Binders<GenericArg>],
-                                    i: usize,
-                                    parameters: &Substitution,
-                                ) -> bool {
-                                    if parameter.ty(Interner).map(|x| x.kind(Interner))
-                                        == Some(&TyKind::Error)
-                                    {
-                                        return true;
-                                    }
-                                    if let Some(ConstValue::Concrete(c)) = parameter
-                                        .constant(Interner)
-                                        .map(|x| &x.data(Interner).value)
-                                    {
-                                        if c.interned == ConstScalar::Unknown {
-                                            return true;
-                                        }
-                                    }
-                                    let default_parameter = match default_parameters.get(i) {
-                                        Some(x) => x,
-                                        None => return true,
-                                    };
-                                    let actual_default =
-                                        default_parameter.clone().substitute(Interner, &parameters);
-                                    parameter != &actual_default
-                                }
-                                let mut default_from = 0;
-                                for (i, parameter) in parameters.iter(Interner).enumerate() {
-                                    if should_show(parameter, &default_parameters, i, parameters) {
-                                        default_from = i + 1;
-                                    }
-                                }
-                                &parameters.as_slice(Interner)[0..default_from]
-                            }
-                        }
-                    } else {
-                        parameters.as_slice(Interner)
-                    };
-                    if !parameters_to_write.is_empty() {
-                        write!(f, "<")?;
+                let generic_def = self.as_generic_def(db);
 
-                        if f.display_target.is_source_code() {
-                            let mut first = true;
-                            for generic_arg in parameters_to_write {
-                                if !first {
-                                    write!(f, ", ")?;
-                                }
-                                first = false;
-
-                                if generic_arg.ty(Interner).map(|ty| ty.kind(Interner))
-                                    == Some(&TyKind::Error)
-                                {
-                                    write!(f, "_")?;
-                                } else {
-                                    generic_arg.hir_fmt(f)?;
-                                }
-                            }
-                        } else {
-                            f.write_joined(parameters_to_write, ", ")?;
-                        }
-
-                        write!(f, ">")?;
-                    }
-                }
+                hir_fmt_generics(f, parameters, generic_def)?;
             }
             TyKind::AssociatedType(assoc_type_id, parameters) => {
                 let type_alias = from_assoc_type_id(*assoc_type_id);
@@ -983,7 +925,7 @@ impl HirDisplay for Ty {
                     }
                     _ => (),
                 }
-                let sig = substs.at(Interner, 0).assert_ty_ref(Interner).callable_sig(db);
+                let sig = ClosureSubst(substs).sig_ty().callable_sig(db);
                 if let Some(sig) = sig {
                     let (def, _) = db.lookup_intern_closure((*id).into());
                     let infer = db.infer(def);
@@ -1139,6 +1081,85 @@ impl HirDisplay for Ty {
         }
         Ok(())
     }
+}
+
+fn hir_fmt_generics(
+    f: &mut HirFormatter<'_>,
+    parameters: &Substitution,
+    generic_def: Option<hir_def::GenericDefId>,
+) -> Result<(), HirDisplayError> {
+    let db = f.db;
+    if parameters.len(Interner) > 0 {
+        let parameters_to_write = if f.display_target.is_source_code() || f.omit_verbose_types() {
+            match generic_def
+                .map(|generic_def_id| db.generic_defaults(generic_def_id))
+                .filter(|defaults| !defaults.is_empty())
+            {
+                None => parameters.as_slice(Interner),
+                Some(default_parameters) => {
+                    fn should_show(
+                        parameter: &GenericArg,
+                        default_parameters: &[Binders<GenericArg>],
+                        i: usize,
+                        parameters: &Substitution,
+                    ) -> bool {
+                        if parameter.ty(Interner).map(|x| x.kind(Interner)) == Some(&TyKind::Error)
+                        {
+                            return true;
+                        }
+                        if let Some(ConstValue::Concrete(c)) =
+                            parameter.constant(Interner).map(|x| &x.data(Interner).value)
+                        {
+                            if c.interned == ConstScalar::Unknown {
+                                return true;
+                            }
+                        }
+                        let default_parameter = match default_parameters.get(i) {
+                            Some(x) => x,
+                            None => return true,
+                        };
+                        let actual_default =
+                            default_parameter.clone().substitute(Interner, &parameters);
+                        parameter != &actual_default
+                    }
+                    let mut default_from = 0;
+                    for (i, parameter) in parameters.iter(Interner).enumerate() {
+                        if should_show(parameter, &default_parameters, i, parameters) {
+                            default_from = i + 1;
+                        }
+                    }
+                    &parameters.as_slice(Interner)[0..default_from]
+                }
+            }
+        } else {
+            parameters.as_slice(Interner)
+        };
+        if !parameters_to_write.is_empty() {
+            write!(f, "<")?;
+
+            if f.display_target.is_source_code() {
+                let mut first = true;
+                for generic_arg in parameters_to_write {
+                    if !first {
+                        write!(f, ", ")?;
+                    }
+                    first = false;
+
+                    if generic_arg.ty(Interner).map(|ty| ty.kind(Interner)) == Some(&TyKind::Error)
+                    {
+                        write!(f, "_")?;
+                    } else {
+                        generic_arg.hir_fmt(f)?;
+                    }
+                }
+            } else {
+                f.write_joined(parameters_to_write, ", ")?;
+            }
+
+            write!(f, ">")?;
+        }
+    }
+    Ok(())
 }
 
 impl HirDisplay for CallableSig {

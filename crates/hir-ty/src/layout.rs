@@ -1,5 +1,7 @@
 //! Compute the binary representation of a type
 
+use std::sync::Arc;
+
 use base_db::CrateId;
 use chalk_ir::{AdtId, TyKind};
 use hir_def::{
@@ -13,8 +15,8 @@ use la_arena::{Idx, RawIdx};
 use stdx::never;
 
 use crate::{
-    consteval::try_const_usize, db::HirDatabase, layout::adt::struct_variant_idx, Interner,
-    Substitution, Ty,
+    consteval::try_const_usize, db::HirDatabase, infer::normalize, layout::adt::struct_variant_idx,
+    utils::ClosureSubst, Interner, Substitution, TraitEnvironment, Ty,
 };
 
 pub use self::{
@@ -80,6 +82,8 @@ pub fn layout_of_ty(db: &dyn HirDatabase, ty: &Ty, krate: CrateId) -> Result<Lay
     let Some(target) = db.target_data_layout(krate) else { return Err(LayoutError::TargetLayoutNotAvailable) };
     let cx = LayoutCx { krate, target: &target };
     let dl = &*cx.current_data_layout();
+    let trait_env = Arc::new(TraitEnvironment::empty(krate));
+    let ty = normalize(db, trait_env, ty.clone());
     Ok(match ty.kind(Interner) {
         TyKind::Adt(AdtId(def), subst) => db.layout_of_adt(*def, subst.clone())?,
         TyKind::Scalar(s) => match s {
@@ -146,7 +150,7 @@ pub fn layout_of_ty(db: &dyn HirDatabase, ty: &Ty, krate: CrateId) -> Result<Lay
         }
         TyKind::Array(element, count) => {
             let count = try_const_usize(&count).ok_or(LayoutError::UserError(
-                "mismatched type of const generic parameter".to_string(),
+                "unevaluated or mistyped const generic parameter".to_string(),
             ))? as u64;
             let element = layout_of_ty(db, element, krate)?;
             let size = element.size.checked_mul(count, dl).ok_or(LayoutError::SizeOverflow)?;
@@ -252,13 +256,19 @@ pub fn layout_of_ty(db: &dyn HirDatabase, ty: &Ty, krate: CrateId) -> Result<Lay
                 }
             }
         }
-        TyKind::Closure(c, _) => {
+        TyKind::Closure(c, subst) => {
             let (def, _) = db.lookup_intern_closure((*c).into());
             let infer = db.infer(def);
             let (captures, _) = infer.closure_info(c);
             let fields = captures
                 .iter()
-                .map(|x| layout_of_ty(db, &x.ty, krate))
+                .map(|x| {
+                    layout_of_ty(
+                        db,
+                        &x.ty.clone().substitute(Interner, ClosureSubst(subst).parent_subst()),
+                        krate,
+                    )
+                })
                 .collect::<Result<Vec<_>, _>>()?;
             let fields = fields.iter().collect::<Vec<_>>();
             let fields = fields.iter().collect::<Vec<_>>();

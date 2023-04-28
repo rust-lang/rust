@@ -1856,11 +1856,21 @@ impl Function {
         def_map.fn_as_proc_macro(self.id).map(|id| Macro { id: id.into() })
     }
 
-    pub fn eval(self, db: &dyn HirDatabase) -> Result<(), MirEvalError> {
+    pub fn eval(
+        self,
+        db: &dyn HirDatabase,
+        span_formatter: impl Fn(FileId, TextRange) -> String,
+    ) -> Result<(), String> {
+        let converter = |e: MirEvalError| {
+            let mut r = String::new();
+            _ = e.pretty_print(&mut r, db, &span_formatter);
+            r
+        };
         let body = db
             .mir_body(self.id.into())
-            .map_err(|e| MirEvalError::MirLowerError(self.id.into(), e))?;
-        interpret_mir(db, &body, Substitution::empty(Interner), false)?;
+            .map_err(|e| MirEvalError::MirLowerError(self.id.into(), e))
+            .map_err(converter)?;
+        interpret_mir(db, &body, Substitution::empty(Interner), false).map_err(converter)?;
         Ok(())
     }
 }
@@ -2006,7 +2016,7 @@ impl Const {
     }
 
     pub fn render_eval(self, db: &dyn HirDatabase) -> Result<String, ConstEvalError> {
-        let c = db.const_eval(self.id, Substitution::empty(Interner))?;
+        let c = db.const_eval(self.id.into(), Substitution::empty(Interner))?;
         let r = format!("{}", HexifiedConst(c).display(db));
         // We want to see things like `<utf8-error>` and `<layout-error>` as they are probably bug in our
         // implementation, but there is no need to show things like `<enum-not-supported>` or `<ref-not-supported>` to

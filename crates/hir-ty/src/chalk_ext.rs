@@ -1,20 +1,22 @@
 //! Various extensions traits for Chalk types.
 
-use chalk_ir::{FloatTy, IntTy, Mutability, Scalar, TyVariableKind, UintTy};
+use chalk_ir::{cast::Cast, FloatTy, IntTy, Mutability, Scalar, TyVariableKind, UintTy};
 use hir_def::{
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinType, BuiltinUint},
     generics::TypeOrConstParamData,
     lang_item::LangItem,
     type_ref::Rawness,
-    FunctionId, GenericDefId, HasModule, ItemContainerId, Lookup, TraitId,
+    DefWithBodyId, FunctionId, GenericDefId, HasModule, ItemContainerId, Lookup, TraitId,
 };
 
 use crate::{
-    db::HirDatabase, from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id,
-    from_placeholder_idx, to_chalk_trait_id, utils::generics, AdtId, AliasEq, AliasTy, Binders,
-    CallableDefId, CallableSig, ClosureId, DynTy, FnPointer, ImplTraitId, Interner, Lifetime,
-    ProjectionTy, QuantifiedWhereClause, Substitution, TraitRef, Ty, TyBuilder, TyKind, TypeFlags,
-    WhereClause,
+    db::HirDatabase,
+    from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id, from_placeholder_idx,
+    to_chalk_trait_id,
+    utils::{generics, ClosureSubst},
+    AdtId, AliasEq, AliasTy, Binders, CallableDefId, CallableSig, Canonical, CanonicalVarKinds,
+    ClosureId, DynTy, FnPointer, ImplTraitId, InEnvironment, Interner, Lifetime, ProjectionTy,
+    QuantifiedWhereClause, Substitution, TraitRef, Ty, TyBuilder, TyKind, TypeFlags, WhereClause,
 };
 
 pub trait TyExt {
@@ -46,6 +48,7 @@ pub trait TyExt {
 
     fn impl_trait_bounds(&self, db: &dyn HirDatabase) -> Option<Vec<QuantifiedWhereClause>>;
     fn associated_type_parent_trait(&self, db: &dyn HirDatabase) -> Option<TraitId>;
+    fn is_copy(self, db: &dyn HirDatabase, owner: DefWithBodyId) -> bool;
 
     /// FIXME: Get rid of this, it's not a good abstraction
     fn equals_ctor(&self, other: &Ty) -> bool;
@@ -185,10 +188,7 @@ impl TyExt for Ty {
                 let sig = db.callable_item_signature(callable_def);
                 Some(sig.substitute(Interner, parameters))
             }
-            TyKind::Closure(.., substs) => {
-                let sig_param = substs.at(Interner, 0).assert_ty_ref(Interner);
-                sig_param.callable_sig(db)
-            }
+            TyKind::Closure(.., substs) => ClosureSubst(substs).sig_ty().callable_sig(db),
             _ => None,
         }
     }
@@ -325,6 +325,20 @@ impl TyExt for Ty {
             }
             _ => None,
         }
+    }
+
+    fn is_copy(self, db: &dyn HirDatabase, owner: DefWithBodyId) -> bool {
+        let crate_id = owner.module(db.upcast()).krate();
+        let Some(copy_trait) = db.lang_item(crate_id, LangItem::Copy).and_then(|x| x.as_trait()) else {
+            return false;
+        };
+        let trait_ref = TyBuilder::trait_ref(db, copy_trait).push(self).build();
+        let env = db.trait_environment_for_body(owner);
+        let goal = Canonical {
+            value: InEnvironment::new(&env.env, trait_ref.cast(Interner)),
+            binders: CanonicalVarKinds::empty(Interner),
+        };
+        db.trait_solve(crate_id, None, goal).is_some()
     }
 
     fn equals_ctor(&self, other: &Ty) -> bool {

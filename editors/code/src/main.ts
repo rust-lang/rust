@@ -159,6 +159,7 @@ function createCommands(): Record<string, CommandFactory> {
         syntaxTree: { enabled: commands.syntaxTree },
         viewHir: { enabled: commands.viewHir },
         viewMir: { enabled: commands.viewMir },
+        interpretFunction: { enabled: commands.interpretFunction },
         viewFileText: { enabled: commands.viewFileText },
         viewItemTree: { enabled: commands.viewItemTree },
         viewCrateGraph: { enabled: commands.viewCrateGraph },

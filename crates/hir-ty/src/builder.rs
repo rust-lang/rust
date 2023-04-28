@@ -232,6 +232,25 @@ impl TyBuilder<()> {
         TyBuilder::new((), params, parent_subst)
     }
 
+    pub fn subst_for_closure(
+        db: &dyn HirDatabase,
+        parent: DefWithBodyId,
+        sig_ty: Ty,
+    ) -> Substitution {
+        let sig_ty = sig_ty.cast(Interner);
+        let self_subst = iter::once(&sig_ty);
+        let Some(parent) = parent.as_generic_def_id() else {
+            return Substitution::from_iter(Interner, self_subst);
+        };
+        Substitution::from_iter(
+            Interner,
+            self_subst
+                .chain(generics(db.upcast(), parent).placeholder_subst(db).iter(Interner))
+                .cloned()
+                .collect::<Vec<_>>(),
+        )
+    }
+
     pub fn build(self) -> Substitution {
         let ((), subst) = self.build_internal();
         subst

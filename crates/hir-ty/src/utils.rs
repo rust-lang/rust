@@ -23,10 +23,11 @@ use hir_expand::name::Name;
 use intern::Interned;
 use rustc_hash::FxHashSet;
 use smallvec::{smallvec, SmallVec};
+use stdx::never;
 
 use crate::{
-    db::HirDatabase, ChalkTraitId, Interner, Substitution, TraitRef, TraitRefExt, Ty, TyExt,
-    WhereClause,
+    db::HirDatabase, ChalkTraitId, GenericArg, Interner, Substitution, TraitRef, TraitRefExt, Ty,
+    TyExt, WhereClause,
 };
 
 pub(crate) fn fn_traits(
@@ -174,6 +175,37 @@ pub(super) fn associated_type_by_name_including_super_traits(
 pub(crate) fn generics(db: &dyn DefDatabase, def: GenericDefId) -> Generics {
     let parent_generics = parent_generic_def(db, def).map(|def| Box::new(generics(db, def)));
     Generics { def, params: db.generic_params(def), parent_generics }
+}
+
+/// It is a bit different from the rustc equivalent. Currently it stores:
+/// - 0: the function signature, encoded as a function pointer type
+/// - 1..n: generics of the parent
+///
+/// and it doesn't store the closure types and fields.
+///
+/// Codes should not assume this ordering, and should always use methods available
+/// on this struct for retriving, and `TyBuilder::substs_for_closure` for creating.
+pub(crate) struct ClosureSubst<'a>(pub(crate) &'a Substitution);
+
+impl<'a> ClosureSubst<'a> {
+    pub(crate) fn parent_subst(&self) -> &'a [GenericArg] {
+        match self.0.as_slice(Interner) {
+            [_, x @ ..] => x,
+            _ => {
+                never!("Closure missing parameter");
+                &[]
+            }
+        }
+    }
+
+    pub(crate) fn sig_ty(&self) -> &'a Ty {
+        match self.0.as_slice(Interner) {
+            [x, ..] => x.assert_ty_ref(Interner),
+            _ => {
+                unreachable!("Closure missing sig_ty parameter");
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
