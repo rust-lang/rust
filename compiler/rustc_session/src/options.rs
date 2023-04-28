@@ -917,7 +917,7 @@ mod parse {
             }
         }
 
-        let mut options = slot.get_or_insert_default();
+        let options = slot.get_or_insert_default();
         let mut seen_always = false;
         let mut seen_never = false;
         let mut seen_ignore_loops = false;

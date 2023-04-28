@@ -51,13 +51,6 @@ macro_rules! write_leb128 {
     }};
 }
 
-/// A byte that [cannot occur in UTF8 sequences][utf8]. Used to mark the end of a string.
-/// This way we can skip validation and still be relatively sure that deserialization
-/// did not desynchronize.
-///
-/// [utf8]: https://en.wikipedia.org/w/index.php?title=UTF-8&oldid=1058865525#Codepage_layout
-const STR_SENTINEL: u8 = 0xC1;
-
 impl Encoder for MemEncoder {
     #[inline]
     fn emit_usize(&mut self, v: usize) {
@@ -112,28 +105,6 @@ impl Encoder for MemEncoder {
     #[inline]
     fn emit_i16(&mut self, v: i16) {
         self.data.extend_from_slice(&v.to_le_bytes());
-    }
-
-    #[inline]
-    fn emit_i8(&mut self, v: i8) {
-        self.emit_u8(v as u8);
-    }
-
-    #[inline]
-    fn emit_bool(&mut self, v: bool) {
-        self.emit_u8(if v { 1 } else { 0 });
-    }
-
-    #[inline]
-    fn emit_char(&mut self, v: char) {
-        self.emit_u32(v as u32);
-    }
-
-    #[inline]
-    fn emit_str(&mut self, v: &str) {
-        self.emit_usize(v.len());
-        self.emit_raw_bytes(v.as_bytes());
-        self.emit_u8(STR_SENTINEL);
     }
 
     #[inline]
@@ -481,28 +452,6 @@ impl Encoder for FileEncoder {
     }
 
     #[inline]
-    fn emit_i8(&mut self, v: i8) {
-        self.emit_u8(v as u8);
-    }
-
-    #[inline]
-    fn emit_bool(&mut self, v: bool) {
-        self.emit_u8(if v { 1 } else { 0 });
-    }
-
-    #[inline]
-    fn emit_char(&mut self, v: char) {
-        self.emit_u32(v as u32);
-    }
-
-    #[inline]
-    fn emit_str(&mut self, v: &str) {
-        self.emit_usize(v.len());
-        self.emit_raw_bytes(v.as_bytes());
-        self.emit_u8(STR_SENTINEL);
-    }
-
-    #[inline]
     fn emit_raw_bytes(&mut self, s: &[u8]) {
         self.write_all(s);
     }
@@ -556,37 +505,8 @@ impl<'a> MemDecoder<'a> {
     }
 
     #[inline]
-    fn read_byte(&mut self) -> u8 {
-        if self.current == self.end {
-            Self::decoder_exhausted();
-        }
-        // SAFETY: This type guarantees current <= end, and we just checked current == end.
-        unsafe {
-            let byte = *self.current;
-            self.current = self.current.add(1);
-            byte
-        }
-    }
-
-    #[inline]
     fn read_array<const N: usize>(&mut self) -> [u8; N] {
         self.read_raw_bytes(N).try_into().unwrap()
-    }
-
-    // The trait method doesn't have a lifetime parameter, and we need a version of this
-    // that definitely returns a slice based on the underlying storage as opposed to
-    // the Decoder itself in order to implement read_str efficiently.
-    #[inline]
-    fn read_raw_bytes_inherent(&mut self, bytes: usize) -> &'a [u8] {
-        if bytes > self.remaining() {
-            Self::decoder_exhausted();
-        }
-        // SAFETY: We just checked if this range is in-bounds above.
-        unsafe {
-            let slice = std::slice::from_raw_parts(self.current, bytes);
-            self.current = self.current.add(bytes);
-            slice
-        }
     }
 
     /// While we could manually expose manipulation of the decoder position,
@@ -653,7 +573,15 @@ impl<'a> Decoder for MemDecoder<'a> {
 
     #[inline]
     fn read_u8(&mut self) -> u8 {
-        self.read_byte()
+        if self.current == self.end {
+            Self::decoder_exhausted();
+        }
+        // SAFETY: This type guarantees current <= end, and we just checked current == end.
+        unsafe {
+            let byte = *self.current;
+            self.current = self.current.add(1);
+            byte
+        }
     }
 
     #[inline]
@@ -682,38 +610,21 @@ impl<'a> Decoder for MemDecoder<'a> {
     }
 
     #[inline]
-    fn read_i8(&mut self) -> i8 {
-        self.read_byte() as i8
-    }
-
-    #[inline]
     fn read_isize(&mut self) -> isize {
         read_leb128!(self, read_isize_leb128)
     }
 
     #[inline]
-    fn read_bool(&mut self) -> bool {
-        let value = self.read_u8();
-        value != 0
-    }
-
-    #[inline]
-    fn read_char(&mut self) -> char {
-        let bits = self.read_u32();
-        std::char::from_u32(bits).unwrap()
-    }
-
-    #[inline]
-    fn read_str(&mut self) -> &str {
-        let len = self.read_usize();
-        let bytes = self.read_raw_bytes_inherent(len + 1);
-        assert!(bytes[len] == STR_SENTINEL);
-        unsafe { std::str::from_utf8_unchecked(&bytes[..len]) }
-    }
-
-    #[inline]
-    fn read_raw_bytes(&mut self, bytes: usize) -> &[u8] {
-        self.read_raw_bytes_inherent(bytes)
+    fn read_raw_bytes(&mut self, bytes: usize) -> &'a [u8] {
+        if bytes > self.remaining() {
+            Self::decoder_exhausted();
+        }
+        // SAFETY: We just checked if this range is in-bounds above.
+        unsafe {
+            let slice = std::slice::from_raw_parts(self.current, bytes);
+            self.current = self.current.add(bytes);
+            slice
+        }
     }
 
     #[inline]
@@ -787,12 +698,7 @@ impl Encodable<FileEncoder> for IntEncodedWithFixedSize {
 impl<'a> Decodable<MemDecoder<'a>> for IntEncodedWithFixedSize {
     #[inline]
     fn decode(decoder: &mut MemDecoder<'a>) -> IntEncodedWithFixedSize {
-        let _start_pos = decoder.position();
-        let bytes = decoder.read_raw_bytes(IntEncodedWithFixedSize::ENCODED_SIZE);
-        let value = u64::from_le_bytes(bytes.try_into().unwrap());
-        let _end_pos = decoder.position();
-        debug_assert_eq!((_end_pos - _start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
-
-        IntEncodedWithFixedSize(value)
+        let bytes = decoder.read_array::<{ IntEncodedWithFixedSize::ENCODED_SIZE }>();
+        IntEncodedWithFixedSize(u64::from_le_bytes(bytes))
     }
 }

@@ -935,6 +935,7 @@ enum InitializationRequiringAction {
     PartialAssignment,
 }
 
+#[derive(Debug)]
 struct RootPlace<'tcx> {
     place_local: Local,
     place_projection: &'tcx [PlaceElem<'tcx>],
@@ -1848,11 +1849,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         // is allowed, remove this match arm.
                         ty::Adt(..) | ty::Tuple(..) => {
                             check_parent_of_field(self, location, place_base, span, flow_state);
-
-                            // rust-lang/rust#21232, #54499, #54986: during period where we reject
-                            // partial initialization, do not complain about unnecessary `mut` on
-                            // an attempt to do a partial initialization.
-                            self.used_mut.insert(place.local);
                         }
 
                         _ => {}
@@ -1940,6 +1936,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     (prefix, base, span),
                     mpi,
                 );
+
+                // rust-lang/rust#21232, #54499, #54986: during period where we reject
+                // partial initialization, do not complain about unnecessary `mut` on
+                // an attempt to do a partial initialization.
+                this.used_mut.insert(base.local);
             }
         }
     }
