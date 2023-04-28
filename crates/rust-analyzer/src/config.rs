@@ -1036,6 +1036,10 @@ impl Config {
         self.experimental("codeActionGroup")
     }
 
+    pub fn local_docs(&self) -> bool {
+        self.experimental("localDocs")
+    }
+
     pub fn open_server_logs(&self) -> bool {
         self.experimental("openServerLogs")
     }
