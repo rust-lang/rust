@@ -153,8 +153,7 @@ v("experimental-targets", "llvm.experimental-targets",
   "experimental LLVM targets to build")
 v("release-channel", "rust.channel", "the name of the release channel to build")
 v("release-description", "rust.description", "optional descriptive string for version output")
-v("dist-compression-formats", None,
-  "comma-separated list of compression formats to use")
+v("dist-compression-formats", None, "List of compression formats to use")
 
 # Used on systems where "cc" is unavailable
 v("default-linker", "rust.default-linker", "the default linker")
@@ -168,8 +167,8 @@ o("extended", "build.extended", "build an extended rust tool set")
 v("tools", None, "List of extended tools will be installed")
 v("codegen-backends", None, "List of codegen backends to build")
 v("build", "build.build", "GNUs ./configure syntax LLVM build triple")
-v("host", None, "GNUs ./configure syntax LLVM host triples")
-v("target", None, "GNUs ./configure syntax LLVM target triples")
+v("host", None, "List of GNUs ./configure syntax LLVM host triples")
+v("target", None, "List of GNUs ./configure syntax LLVM target triples")
 
 v("set", None, "set arbitrary key/value pairs in TOML configuration")
 
@@ -182,6 +181,11 @@ def err(msg):
     print("configure: error: " + msg)
     sys.exit(1)
 
+def is_value_list(key):
+    for option in options:
+        if option.name == key and option.desc.startswith('List of'):
+            return True
+    return False
 
 if '--help' in sys.argv or '-h' in sys.argv:
     print('Usage: ./configure [options]')
@@ -295,6 +299,8 @@ def set(key, value, config):
     parts = key.split('.')
     for i, part in enumerate(parts):
         if i == len(parts) - 1:
+            if is_value_list(part) and isinstance(value, str):
+                value = value.split(',')
             arr[part] = value
         else:
             if part not in arr:

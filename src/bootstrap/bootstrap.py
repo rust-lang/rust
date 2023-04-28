@@ -209,19 +209,25 @@ def default_build_triple(verbose):
     # install, use their preference. This fixes most issues with Windows builds
     # being detected as GNU instead of MSVC.
     default_encoding = sys.getdefaultencoding()
-    try:
-        version = subprocess.check_output(["rustc", "--version", "--verbose"],
-                stderr=subprocess.DEVNULL)
-        version = version.decode(default_encoding)
-        host = next(x for x in version.split('\n') if x.startswith("host: "))
-        triple = host.split("host: ")[1]
+
+    if sys.platform == 'darwin':
         if verbose:
-            print("detected default triple {} from pre-installed rustc".format(triple))
-        return triple
-    except Exception as e:
-        if verbose:
-            print("pre-installed rustc not detected: {}".format(e))
+            print("not using rustc detection as it is unreliable on macOS")
             print("falling back to auto-detect")
+    else:
+        try:
+            version = subprocess.check_output(["rustc", "--version", "--verbose"],
+                    stderr=subprocess.DEVNULL)
+            version = version.decode(default_encoding)
+            host = next(x for x in version.split('\n') if x.startswith("host: "))
+            triple = host.split("host: ")[1]
+            if verbose:
+                print("detected default triple {} from pre-installed rustc".format(triple))
+            return triple
+        except Exception as e:
+            if verbose:
+                print("pre-installed rustc not detected: {}".format(e))
+                print("falling back to auto-detect")
 
     required = sys.platform != 'win32'
     ostype = require(["uname", "-s"], exit=required)

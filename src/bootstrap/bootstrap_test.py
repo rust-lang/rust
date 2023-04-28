@@ -112,6 +112,14 @@ class GenerateAndParseConfig(unittest.TestCase):
         build = self.serialize_and_parse(["--set", "profile=compiler"])
         self.assertEqual(build.get_toml("profile"), 'compiler')
 
+    def test_set_codegen_backends(self):
+        build = self.serialize_and_parse(["--set", "rust.codegen-backends=cranelift"])
+        self.assertNotEqual(build.config_toml.find("codegen-backends = ['cranelift']"), -1)
+        build = self.serialize_and_parse(["--set", "rust.codegen-backends=cranelift,llvm"])
+        self.assertNotEqual(build.config_toml.find("codegen-backends = ['cranelift', 'llvm']"), -1)
+        build = self.serialize_and_parse(["--enable-full-tools"])
+        self.assertNotEqual(build.config_toml.find("codegen-backends = ['llvm']"), -1)
+
 if __name__ == '__main__':
     SUITE = unittest.TestSuite()
     TEST_LOADER = unittest.TestLoader()
