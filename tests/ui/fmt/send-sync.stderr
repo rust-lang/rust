@@ -1,16 +1,16 @@
-error[E0277]: `core::fmt::Opaque` cannot be shared between threads safely
+error[E0277]: `core::fmt::rt::Opaque` cannot be shared between threads safely
   --> $DIR/send-sync.rs:8:10
    |
 LL |     send(format_args!("{:?}", c));
-   |     ---- ^^^^^^^^^^^^^^^^^^^^^^^ `core::fmt::Opaque` cannot be shared between threads safely
+   |     ---- ^^^^^^^^^^^^^^^^^^^^^^^ `core::fmt::rt::Opaque` cannot be shared between threads safely
    |     |
    |     required by a bound introduced by this call
    |
-   = help: within `[core::fmt::ArgumentV1<'_>]`, the trait `Sync` is not implemented for `core::fmt::Opaque`
-   = note: required because it appears within the type `&core::fmt::Opaque`
-   = note: required because it appears within the type `ArgumentV1<'_>`
-   = note: required because it appears within the type `[ArgumentV1<'_>]`
-   = note: required for `&[core::fmt::ArgumentV1<'_>]` to implement `Send`
+   = help: within `[core::fmt::rt::Argument<'_>]`, the trait `Sync` is not implemented for `core::fmt::rt::Opaque`
+   = note: required because it appears within the type `&core::fmt::rt::Opaque`
+   = note: required because it appears within the type `Argument<'_>`
+   = note: required because it appears within the type `[Argument<'_>]`
+   = note: required for `&[core::fmt::rt::Argument<'_>]` to implement `Send`
    = note: required because it appears within the type `Arguments<'_>`
 note: required by a bound in `send`
   --> $DIR/send-sync.rs:1:12
@@ -18,19 +18,19 @@ note: required by a bound in `send`
 LL | fn send<T: Send>(_: T) {}
    |            ^^^^ required by this bound in `send`
 
-error[E0277]: `core::fmt::Opaque` cannot be shared between threads safely
+error[E0277]: `core::fmt::rt::Opaque` cannot be shared between threads safely
   --> $DIR/send-sync.rs:9:10
    |
 LL |     sync(format_args!("{:?}", c));
-   |     ---- ^^^^^^^^^^^^^^^^^^^^^^^ `core::fmt::Opaque` cannot be shared between threads safely
+   |     ---- ^^^^^^^^^^^^^^^^^^^^^^^ `core::fmt::rt::Opaque` cannot be shared between threads safely
    |     |
    |     required by a bound introduced by this call
    |
-   = help: within `Arguments<'_>`, the trait `Sync` is not implemented for `core::fmt::Opaque`
-   = note: required because it appears within the type `&core::fmt::Opaque`
-   = note: required because it appears within the type `ArgumentV1<'_>`
-   = note: required because it appears within the type `[ArgumentV1<'_>]`
-   = note: required because it appears within the type `&[ArgumentV1<'_>]`
+   = help: within `Arguments<'_>`, the trait `Sync` is not implemented for `core::fmt::rt::Opaque`
+   = note: required because it appears within the type `&core::fmt::rt::Opaque`
+   = note: required because it appears within the type `Argument<'_>`
+   = note: required because it appears within the type `[Argument<'_>]`
+   = note: required because it appears within the type `&[Argument<'_>]`
    = note: required because it appears within the type `Arguments<'_>`
 note: required by a bound in `sync`
   --> $DIR/send-sync.rs:2:12

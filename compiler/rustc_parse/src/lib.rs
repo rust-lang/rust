@@ -18,7 +18,7 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrItem, Attribute, MetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Applicability, Diagnostic, FatalError, Level, PResult};
+use rustc_errors::{Diagnostic, FatalError, Level, PResult};
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;
 use rustc_session::parse::ParseSess;
@@ -243,8 +243,7 @@ pub fn parse_cfg_attr(
         ast::AttrArgs::Delimited(ast::DelimArgs { dspan, delim, ref tokens })
             if !tokens.is_empty() =>
         {
-            let msg = "wrong `cfg_attr` delimiters";
-            crate::validate_attr::check_meta_bad_delim(parse_sess, dspan, delim, msg);
+            crate::validate_attr::check_cfg_attr_bad_delim(parse_sess, dspan, delim);
             match parse_in(parse_sess, tokens.clone(), "`cfg_attr` input", |p| p.parse_cfg_attr()) {
                 Ok(r) => return Some(r),
                 Err(mut e) => {
@@ -265,15 +264,5 @@ const CFG_ATTR_NOTE_REF: &str = "for more information, visit \
     #the-cfg_attr-attribute>";
 
 fn error_malformed_cfg_attr_missing(span: Span, parse_sess: &ParseSess) {
-    parse_sess
-        .span_diagnostic
-        .struct_span_err(span, "malformed `cfg_attr` attribute input")
-        .span_suggestion(
-            span,
-            "missing condition and attribute",
-            CFG_ATTR_GRAMMAR_HELP,
-            Applicability::HasPlaceholders,
-        )
-        .note(CFG_ATTR_NOTE_REF)
-        .emit();
+    parse_sess.emit_err(errors::MalformedCfgAttr { span, sugg: CFG_ATTR_GRAMMAR_HELP });
 }

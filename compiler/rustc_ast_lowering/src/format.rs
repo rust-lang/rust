@@ -186,7 +186,7 @@ enum ArgumentType {
 /// Generates:
 ///
 /// ```text
-///     <core::fmt::ArgumentV1>::new_…(arg)
+///     <core::fmt::Argument>::new_…(arg)
 /// ```
 fn make_argument<'hir>(
     ctx: &mut LoweringContext<'_, 'hir>,
@@ -327,7 +327,7 @@ fn make_format_spec<'hir>(
             None => sym::Unknown,
         },
     );
-    // This needs to match `FlagV1` in library/core/src/fmt/mod.rs.
+    // This needs to match `Flag` in library/core/src/fmt/rt.rs.
     let flags: u32 = ((sign == Some(FormatSign::Plus)) as u32)
         | ((sign == Some(FormatSign::Minus)) as u32) << 1
         | (alternate as u32) << 2
@@ -438,7 +438,7 @@ fn expand_format_args<'hir>(
     // If the args array contains exactly all the original arguments once,
     // in order, we can use a simple array instead of a `match` construction.
     // However, if there's a yield point in any argument except the first one,
-    // we don't do this, because an ArgumentV1 cannot be kept across yield points.
+    // we don't do this, because an Argument cannot be kept across yield points.
     //
     // This is an optimization, speeding up compilation about 1-2% in some cases.
     // See https://github.com/rust-lang/rust/pull/106770#issuecomment-1380790609
@@ -449,9 +449,9 @@ fn expand_format_args<'hir>(
     let args = if use_simple_array {
         // Generate:
         //     &[
-        //         <core::fmt::ArgumentV1>::new_display(&arg0),
-        //         <core::fmt::ArgumentV1>::new_lower_hex(&arg1),
-        //         <core::fmt::ArgumentV1>::new_debug(&arg2),
+        //         <core::fmt::Argument>::new_display(&arg0),
+        //         <core::fmt::Argument>::new_lower_hex(&arg1),
+        //         <core::fmt::Argument>::new_debug(&arg2),
         //         …
         //     ]
         let elements: Vec<_> = arguments
@@ -477,9 +477,9 @@ fn expand_format_args<'hir>(
         // Generate:
         //     &match (&arg0, &arg1, &…) {
         //         args => [
-        //             <core::fmt::ArgumentV1>::new_display(args.0),
-        //             <core::fmt::ArgumentV1>::new_lower_hex(args.1),
-        //             <core::fmt::ArgumentV1>::new_debug(args.0),
+        //             <core::fmt::Argument>::new_display(args.0),
+        //             <core::fmt::Argument>::new_lower_hex(args.1),
+        //             <core::fmt::Argument>::new_debug(args.0),
         //             …
         //         ]
         //     }

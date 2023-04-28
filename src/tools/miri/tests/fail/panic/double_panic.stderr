@@ -12,57 +12,59 @@ stack backtrace:
  at RUSTLIB/std/src/sys_common/backtrace.rs:LL:CC
    4: <std::sys_common::backtrace::_print::DisplayBacktrace as std::fmt::Display>::fmt
  at RUSTLIB/std/src/sys_common/backtrace.rs:LL:CC
-   5: std::fmt::write
+   5: core::fmt::rt::Argument::fmt
+ at RUSTLIB/core/src/fmt/rt.rs:LL:CC
+   6: std::fmt::write
  at RUSTLIB/core/src/fmt/mod.rs:LL:CC
-   6: <std::sys::PLATFORM::stdio::Stderr as std::io::Write>::write_fmt
+   7: <std::sys::PLATFORM::stdio::Stderr as std::io::Write>::write_fmt
  at RUSTLIB/std/src/io/mod.rs:LL:CC
-   7: std::sys_common::backtrace::_print
+   8: std::sys_common::backtrace::_print
  at RUSTLIB/std/src/sys_common/backtrace.rs:LL:CC
-   8: std::sys_common::backtrace::print
+   9: std::sys_common::backtrace::print
  at RUSTLIB/std/src/sys_common/backtrace.rs:LL:CC
-   9: std::panicking::default_hook::{closure#1}
+  10: std::panicking::default_hook::{closure#1}
  at RUSTLIB/std/src/panicking.rs:LL:CC
-  10: std::panicking::default_hook
+  11: std::panicking::default_hook
  at RUSTLIB/std/src/panicking.rs:LL:CC
-  11: std::panicking::rust_panic_with_hook
+  12: std::panicking::rust_panic_with_hook
  at RUSTLIB/std/src/panicking.rs:LL:CC
-  12: std::rt::begin_panic::{closure#0}
+  13: std::rt::begin_panic::{closure#0}
  at RUSTLIB/std/src/panicking.rs:LL:CC
-  13: std::sys_common::backtrace::__rust_end_short_backtrace
+  14: std::sys_common::backtrace::__rust_end_short_backtrace
  at RUSTLIB/std/src/sys_common/backtrace.rs:LL:CC
-  14: std::rt::begin_panic
+  15: std::rt::begin_panic
  at RUSTLIB/std/src/panicking.rs:LL:CC
-  15: <Foo as std::ops::Drop>::drop
+  16: <Foo as std::ops::Drop>::drop
  at $DIR/double_panic.rs:LL:CC
-  16: std::ptr::drop_in_place - shim(Some(Foo))
+  17: std::ptr::drop_in_place - shim(Some(Foo))
  at RUSTLIB/core/src/ptr/mod.rs:LL:CC
-  17: main
+  18: main
  at $DIR/double_panic.rs:LL:CC
-  18: <fn() as std::ops::FnOnce<()>>::call_once - shim(fn())
+  19: <fn() as std::ops::FnOnce<()>>::call_once - shim(fn())
  at RUSTLIB/core/src/ops/function.rs:LL:CC
-  19: std::sys_common::backtrace::__rust_begin_short_backtrace
+  20: std::sys_common::backtrace::__rust_begin_short_backtrace
  at RUSTLIB/std/src/sys_common/backtrace.rs:LL:CC
-  20: std::rt::lang_start::{closure#0}
+  21: std::rt::lang_start::{closure#0}
  at RUSTLIB/std/src/rt.rs:LL:CC
-  21: std::ops::function::impls::call_once
+  22: std::ops::function::impls::call_once
  at RUSTLIB/core/src/ops/function.rs:LL:CC
-  22: std::panicking::r#try::do_call
+  23: std::panicking::r#try::do_call
  at RUSTLIB/std/src/panicking.rs:LL:CC
-  23: std::panicking::r#try
+  24: std::panicking::r#try
  at RUSTLIB/std/src/panicking.rs:LL:CC
-  24: std::panic::catch_unwind
+  25: std::panic::catch_unwind
  at RUSTLIB/std/src/panic.rs:LL:CC
-  25: std::rt::lang_start_internal::{closure#2}
+  26: std::rt::lang_start_internal::{closure#2}
  at RUSTLIB/std/src/rt.rs:LL:CC
-  26: std::panicking::r#try::do_call
+  27: std::panicking::r#try::do_call
  at RUSTLIB/std/src/panicking.rs:LL:CC
-  27: std::panicking::r#try
+  28: std::panicking::r#try
  at RUSTLIB/std/src/panicking.rs:LL:CC
-  28: std::panic::catch_unwind
+  29: std::panic::catch_unwind
  at RUSTLIB/std/src/panic.rs:LL:CC
-  29: std::rt::lang_start_internal
+  30: std::rt::lang_start_internal
  at RUSTLIB/std/src/rt.rs:LL:CC
-  30: std::rt::lang_start
+  31: std::rt::lang_start
  at RUSTLIB/std/src/rt.rs:LL:CC
 thread panicked while panicking. aborting.
 error: abnormal termination: the program aborted execution
