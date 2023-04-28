@@ -1168,7 +1168,7 @@ pub struct RedundantSemicolonsDiag {
     pub suggestion: Span,
 }
 
-// redundant_semicolon.rs
+// lint_useless_send_constraint.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_useless_send_constraint)]
 pub struct UselessSendConstraintDiag {

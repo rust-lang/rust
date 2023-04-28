@@ -2246,6 +2246,7 @@ impl<T: CoerceUnsized<U>, U> CoerceUnsized<SyncUnsafeCell<U>> for SyncUnsafeCell
 impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<SyncUnsafeCell<U>> for SyncUnsafeCell<T> {}
 
 #[allow(unused)]
+#[allow(useless_send_constraint)]
 fn assert_coerce_unsized(
     a: UnsafeCell<&i32>,
     b: SyncUnsafeCell<&i32>,
