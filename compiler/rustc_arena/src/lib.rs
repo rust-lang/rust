@@ -74,7 +74,7 @@ impl<T> ArenaChunk<T> {
     #[inline]
     unsafe fn new(capacity: usize) -> ArenaChunk<T> {
         ArenaChunk {
-            storage: NonNull::new(Box::into_raw(Box::new_uninit_slice(capacity))).unwrap(),
+            storage: NonNull::new_unchecked(Box::into_raw(Box::new_uninit_slice(capacity))),
             entries: 0,
         }
     }
@@ -85,7 +85,7 @@ impl<T> ArenaChunk<T> {
         // The branch on needs_drop() is an -O1 performance optimization.
         // Without the branch, dropping TypedArena<u8> takes linear time.
         if mem::needs_drop::<T>() {
-            let slice = &mut *(self.storage.as_mut());
+            let slice = self.storage.as_mut();
             ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(&mut slice[..len]));
         }
     }
@@ -104,7 +104,7 @@ impl<T> ArenaChunk<T> {
                 // A pointer as large as possible for zero-sized elements.
                 ptr::invalid_mut(!0)
             } else {
-                self.start().add((*self.storage.as_ptr()).len())
+                self.start().add(self.storage.len())
             }
         }
     }
@@ -288,7 +288,7 @@ impl<T> TypedArena<T> {
                 // If the previous chunk's len is less than HUGE_PAGE
                 // bytes, then this chunk will be least double the previous
                 // chunk's size.
-                new_cap = (*last_chunk.storage.as_ptr()).len().min(HUGE_PAGE / elem_size / 2);
+                new_cap = last_chunk.storage.len().min(HUGE_PAGE / elem_size / 2);
                 new_cap *= 2;
             } else {
                 new_cap = PAGE / elem_size;
@@ -396,7 +396,7 @@ impl DroplessArena {
                 // If the previous chunk's len is less than HUGE_PAGE
                 // bytes, then this chunk will be least double the previous
                 // chunk's size.
-                new_cap = (*last_chunk.storage.as_ptr()).len().min(HUGE_PAGE / 2);
+                new_cap = last_chunk.storage.len().min(HUGE_PAGE / 2);
                 new_cap *= 2;
             } else {
                 new_cap = PAGE;
