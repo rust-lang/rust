@@ -589,7 +589,7 @@ Try **rust-analyzer: Show RA Version** in VS Code (using **Command Palette** fea
 If the date is more than a week ago, it's better to update rust-analyzer version.
 
 The next thing to check would be panic messages in rust-analyzer's log.
-Log messages are printed to stderr, in VS Code you can see then in the `Output > Rust Analyzer Language Server` tab of the panel.
+Log messages are printed to stderr, in VS Code you can see them in the `Output > Rust Analyzer Language Server` tab of the panel.
 To see more logs, set the `RA_LOG=info` environment variable, this can be done either by setting the environment variable manually or by using `rust-analyzer.server.extraEnv`, note that both of these approaches require the server to be restarted.
 
 To fully capture LSP messages between the editor and the server, set `"rust-analyzer.trace.server": "verbose"` config and check
