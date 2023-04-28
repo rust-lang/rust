@@ -211,7 +211,7 @@
                 "category": "rust-analyzer"
             },
             {
-                "command": "rust-analyzer.reload",
+                "command": "rust-analyzer.restartServer",
                 "title": "Restart server",
                 "category": "rust-analyzer"
             },
@@ -1909,7 +1909,7 @@
                     "when": "inRustProject"
                 },
                 {
-                    "command": "rust-analyzer.reload",
+                    "command": "rust-analyzer.restartServer",
                     "when": "inRustProject"
                 },
                 {
