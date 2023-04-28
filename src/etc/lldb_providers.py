@@ -31,7 +31,7 @@ from lldb import SBValue, SBData, SBError, eBasicTypeLong, eBasicTypeUnsignedLon
 #
 # You can find more information and examples here:
 #   1. https://lldb.llvm.org/varformats.html
-#   2. https://lldb.llvm.org/python-reference.html
+#   2. https://lldb.llvm.org/use/python-reference.html
 #   3. https://lldb.llvm.org/python_reference/lldb.formatters.cpp.libcxx-pysrc.html
 #   4. https://github.com/llvm-mirror/lldb/tree/master/examples/summaries/cocoa
 ####################################################################################################
