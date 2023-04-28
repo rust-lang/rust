@@ -1,16 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_ast::{
-    node_id::NodeId,
-    ptr::P,
-    visit::{FnKind, Visitor},
-    Arm, AssocItemKind, Block, Expr, ExprKind, Inline, Item, ItemKind, Local, LocalKind, ModKind, ModSpans, Pat,
-    PatKind, Stmt, StmtKind,
+    visit::{walk_block, walk_item, Visitor},
+    Block, Crate, Inline, Item, ItemKind, ModKind,
 };
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
-use thin_vec::ThinVec;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -21,11 +17,6 @@ declare_clippy_lint! {
     ///
     /// It can severely hinder readability. The default is very generous; if you
     /// exceed this, it's a sign you should refactor.
-    ///
-    /// ### Known issues
-    ///
-    /// Nested inline modules will all be linted, rather than just the outermost one
-    /// that applies. This makes the output a bit verbose.
     ///
     /// ### Example
     /// An example clippy.toml configuration:
@@ -74,14 +65,17 @@ pub struct ExcessiveNesting {
 }
 
 impl EarlyLintPass for ExcessiveNesting {
-    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
+    fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &Crate) {
         let conf = self;
-        NestingVisitor {
+        let mut visitor = NestingVisitor {
             conf,
             cx,
             nest_level: 0,
+        };
+
+        for item in &krate.items {
+            visitor.visit_item(item);
         }
-        .visit_item(item);
     }
 }
 
@@ -91,239 +85,52 @@ struct NestingVisitor<'conf, 'cx> {
     nest_level: u64,
 }
 
-impl<'conf, 'cx> Visitor<'_> for NestingVisitor<'conf, 'cx> {
-    fn visit_local(&mut self, local: &Local) {
-        self.visit_pat(&local.pat);
+impl NestingVisitor<'_, '_> {
+    fn check_indent(&self, span: Span) -> bool {
+        if self.nest_level > self.conf.excessive_nesting_threshold && !in_external_macro(self.cx.sess(), span) {
+            span_lint_and_help(
+                self.cx,
+                EXCESSIVE_NESTING,
+                span,
+                "this block is too nested",
+                None,
+                "try refactoring your code to minimize nesting",
+            );
 
-        match &local.kind {
-            LocalKind::Init(expr) => self.visit_expr(expr),
-            LocalKind::InitElse(expr, block) => {
-                self.visit_expr(expr);
-                self.visit_block(block);
-            },
-            LocalKind::Decl => (),
+            return true;
         }
-    }
 
+        false
+    }
+}
+
+impl<'conf, 'cx> Visitor<'_> for NestingVisitor<'conf, 'cx> {
     fn visit_block(&mut self, block: &Block) {
-        // TODO: Can we use some RAII guard instead? Borrow checker seems to hate that
-        // idea but it would be a lot cleaner.
         self.nest_level += 1;
 
-        if !check_indent(self, block.span) {
-            for stmt in &block.stmts {
-                self.visit_stmt(stmt);
-            }
+        if !self.check_indent(block.span) {
+            walk_block(self, block);
         }
 
         self.nest_level -= 1;
     }
 
-    fn visit_stmt(&mut self, stmt: &Stmt) {
-        match &stmt.kind {
-            StmtKind::Local(local) => self.visit_local(local),
-            StmtKind::Item(item) => self.visit_item(item),
-            StmtKind::Expr(expr) | StmtKind::Semi(expr) => self.visit_expr(expr),
-            _ => (),
-        }
-    }
-
-    fn visit_arm(&mut self, arm: &Arm) {
-        self.visit_pat(&arm.pat);
-        if let Some(expr) = &arm.guard {
-            self.visit_expr(expr);
-        }
-        self.visit_expr(&arm.body);
-    }
-
-    // TODO: Is this necessary?
-    fn visit_pat(&mut self, pat: &Pat) {
-        match &pat.kind {
-            PatKind::Box(pat) | PatKind::Ref(pat, ..) | PatKind::Paren(pat) => self.visit_pat(pat),
-            PatKind::Lit(expr) => self.visit_expr(expr),
-            PatKind::Range(start, end, ..) => {
-                if let Some(expr) = start {
-                    self.visit_expr(expr);
-                }
-                if let Some(expr) = end {
-                    self.visit_expr(expr);
-                }
-            },
-            PatKind::Ident(.., pat) if let Some(pat) = pat => {
-                self.visit_pat(pat);
-            },
-            PatKind::Struct(.., pat_fields, _) => {
-                for pat_field in pat_fields {
-                    self.visit_pat(&pat_field.pat);
-                }
-            },
-            PatKind::TupleStruct(.., pats) | PatKind::Or(pats) | PatKind::Tuple(pats) | PatKind::Slice(pats) => {
-                for pat in pats {
-                    self.visit_pat(pat);
-                }
-            },
-            _ => (),
-        }
-    }
-
-    fn visit_expr(&mut self, expr: &Expr) {
-        // This is a mess, but really all it does is extract every expression from every applicable variant
-        // of ExprKind until it finds a Block.
-        // TODO: clippy_utils has the two functions for_each_expr and for_each_expr_with_closures, can those
-        // be used here or are they not applicable for this case?
-        match &expr.kind {
-            ExprKind::ConstBlock(anon_const) => self.visit_expr(&anon_const.value),
-            ExprKind::Call(.., args) => {
-                for expr in args {
-                    self.visit_expr(expr);
-                }
-            },
-            ExprKind::MethodCall(method_call) => {
-                for expr in &method_call.args {
-                    self.visit_expr(expr);
-                }
-            },
-            ExprKind::Tup(exprs) | ExprKind::Array(exprs) => {
-                for expr in exprs {
-                    self.visit_expr(expr);
-                }
-            },
-            ExprKind::Binary(.., left, right)
-            | ExprKind::Assign(left, right, ..)
-            | ExprKind::AssignOp(.., left, right)
-            | ExprKind::Index(left, right) => {
-                self.visit_expr(left);
-                self.visit_expr(right);
-            },
-            ExprKind::Let(pat, expr, ..) => {
-                self.visit_pat(pat);
-                self.visit_expr(expr);
-            },
-            ExprKind::Unary(.., expr)
-            | ExprKind::Await(expr)
-            | ExprKind::Field(expr, ..)
-            | ExprKind::AddrOf(.., expr)
-            | ExprKind::Try(expr) => {
-                self.visit_expr(expr);
-            },
-            ExprKind::Repeat(expr, anon_const) => {
-                self.visit_expr(expr);
-                self.visit_expr(&anon_const.value);
-            },
-            ExprKind::If(expr, block, else_expr) => {
-                self.visit_expr(expr);
-                self.visit_block(block);
-
-                if let Some(expr) = else_expr {
-                    self.visit_expr(expr);
-                }
-            },
-            ExprKind::While(expr, block, ..) => {
-                self.visit_expr(expr);
-                self.visit_block(block);
-            },
-            ExprKind::ForLoop(pat, expr, block, ..) => {
-                self.visit_pat(pat);
-                self.visit_expr(expr);
-                self.visit_block(block);
-            },
-            ExprKind::Loop(block, ..)
-            | ExprKind::Block(block, ..)
-            | ExprKind::Async(.., block)
-            | ExprKind::TryBlock(block) => {
-                self.visit_block(block);
-            },
-            ExprKind::Match(expr, arms) => {
-                self.visit_expr(expr);
-
-                for arm in arms {
-                    self.visit_arm(arm);
-                }
-            },
-            ExprKind::Closure(closure) => self.visit_expr(&closure.body),
-            ExprKind::Range(start, end, ..) => {
-                if let Some(expr) = start {
-                    self.visit_expr(expr);
-                }
-                if let Some(expr) = end {
-                    self.visit_expr(expr);
-                }
-            },
-            ExprKind::Break(.., expr) | ExprKind::Ret(expr) | ExprKind::Yield(expr) | ExprKind::Yeet(expr) => {
-                if let Some(expr) = expr {
-                    self.visit_expr(expr);
-                }
-            },
-            ExprKind::Struct(struct_expr) => {
-                for field in &struct_expr.fields {
-                    self.visit_expr(&field.expr);
-                }
-            },
-            _ => (),
-        }
-    }
-
-    fn visit_fn(&mut self, fk: FnKind<'_>, _: Span, _: NodeId) {
-        match fk {
-            FnKind::Fn(.., block) if let Some(block) = block => self.visit_block(block),
-            FnKind::Closure(.., expr) => self.visit_expr(expr),
-            // :/
-            FnKind::Fn(..) => (),
-        }
-    }
-
     fn visit_item(&mut self, item: &Item) {
         match &item.kind {
-            ItemKind::Static(static_item) if let Some(expr) = static_item.expr.as_ref() => self.visit_expr(expr),
-            ItemKind::Const(const_item) if let Some(expr) = const_item.expr.as_ref() => self.visit_expr(expr),
-            ItemKind::Fn(fk) if let Some(block) = fk.body.as_ref() => self.visit_block(block),
-            ItemKind::Mod(.., mod_kind)
-                if let ModKind::Loaded(items, Inline::Yes, ModSpans { inner_span, ..}) = mod_kind =>
-            {
+            ItemKind::Trait(_) | ItemKind::Impl(_) | ItemKind::Mod(.., ModKind::Loaded(_, Inline::Yes, _)) => {
                 self.nest_level += 1;
 
-                check_indent(self, *inner_span);
+                if !self.check_indent(item.span) {
+                    walk_item(self, item);
+                }
 
                 self.nest_level -= 1;
-            }
-            ItemKind::Trait(trit) => check_trait_and_impl(self, item, &trit.items),
-            ItemKind::Impl(imp) => check_trait_and_impl(self, item, &imp.items),
-            _ => (),
+            },
+            // Mod: Don't visit non-inline modules
+            // ForeignMod: I don't think this is necessary, but just incase let's not take any chances (don't want to
+            // cause any false positives)
+            ItemKind::Mod(..) | ItemKind::ForeignMod(..) => {},
+            _ => walk_item(self, item),
         }
     }
-}
-
-fn check_trait_and_impl(visitor: &mut NestingVisitor<'_, '_>, item: &Item, items: &ThinVec<P<Item<AssocItemKind>>>) {
-    visitor.nest_level += 1;
-
-    if !check_indent(visitor, item.span) {
-        for item in items {
-            match &item.kind {
-                AssocItemKind::Const(const_item) if let Some(expr) = const_item.expr.as_ref() => {
-                    visitor.visit_expr(expr);
-                },
-                AssocItemKind::Fn(fk) if let Some(block) = fk.body.as_ref() => visitor.visit_block(block),
-                _ => (),
-            }
-        }
-    }
-
-    visitor.nest_level -= 1;
-}
-
-fn check_indent(visitor: &NestingVisitor<'_, '_>, span: Span) -> bool {
-    if visitor.nest_level > visitor.conf.excessive_nesting_threshold && !in_external_macro(visitor.cx.sess(), span) {
-        span_lint_and_help(
-            visitor.cx,
-            EXCESSIVE_NESTING,
-            span,
-            "this block is too nested",
-            None,
-            "try refactoring your code, extraction is often both easier to read and less nested",
-        );
-
-        return true;
-    }
-
-    false
 }

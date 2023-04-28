@@ -77,7 +77,7 @@ trait Lol {
     fn lmao() {
         fn bb() {
             fn cc() {
-                let x = { 1 }; // not a warning
+                let x = { 1 }; // not a warning, but cc is
             }
 
             let x = { 1 }; // warning
@@ -93,8 +93,8 @@ pub mod a {
             pub mod d {
                 pub mod e {
                     pub mod f {}
-                }
-            }
+                } // not here
+            } // only warning should be here
         }
     }
 }
@@ -139,6 +139,7 @@ fn main() {
     let boo = true;
     !{boo as u32 + !{boo as u32 + !{boo as u32}}};
 
+    // this is a mess, but that's intentional
     let mut y = 1;
     y += {{{{{5}}}}};
     let z = y + {{{{{{{{{5}}}}}}}}};

@@ -158,6 +158,16 @@ The maximum cognitive complexity a function can have
 * [`cognitive_complexity`](https://rust-lang.github.io/rust-clippy/master/index.html#cognitive_complexity)
 
 
+## `excessive-nesting-threshold`
+The maximum amount of nesting a block can reside in
+
+**Default Value:** `10` (`u64`)
+
+---
+**Affected lints:**
+* [`excessive_nesting`](https://rust-lang.github.io/rust-clippy/master/index.html#excessive_nesting)
+
+
 ## `disallowed-names`
 The list of disallowed names to lint about. NB: `bar` is not here since it has legitimate uses. The value
 `".."` can be used as part of the list to indicate, that the configured values should be appended to the
