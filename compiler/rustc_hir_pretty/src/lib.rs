@@ -370,6 +370,16 @@ impl<'a> State<'a> {
         self.end()
     }
 
+    pub fn print_const_arg(&mut self, const_arg: &hir::ConstArg<'_>) {
+        self.maybe_print_comment(const_arg.span().lo());
+        self.ibox(0);
+        match &const_arg.kind {
+            hir::ConstArgKind::AnonConst(_, ct) => self.print_anon_const(ct),
+            hir::ConstArgKind::Param(_, path) => self.print_qpath(path, false),
+        }
+        self.end();
+    }
+
     pub fn print_foreign_item(&mut self, item: &hir::ForeignItem<'_>) {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
@@ -1708,7 +1718,7 @@ impl<'a> State<'a> {
                             GenericArg::Lifetime(lt) if !elide_lifetimes => s.print_lifetime(lt),
                             GenericArg::Lifetime(_) => {}
                             GenericArg::Type(ty) => s.print_type(ty),
-                            GenericArg::Const(ct) => s.print_anon_const(&ct.value),
+                            GenericArg::Const(ct) => s.print_const_arg(ct),
                             GenericArg::Infer(_inf) => s.word("_"),
                         }
                     });

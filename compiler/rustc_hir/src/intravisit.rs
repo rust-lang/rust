@@ -347,6 +347,9 @@ pub trait Visitor<'v>: Sized {
     fn visit_ty(&mut self, t: &'v Ty<'v>) {
         walk_ty(self, t)
     }
+    fn visit_const_arg(&mut self, c: &'v ConstArg<'v>) {
+        walk_const_arg(self, c)
+    }
     fn visit_generic_param(&mut self, p: &'v GenericParam<'v>) {
         walk_generic_param(self, p)
     }
@@ -851,6 +854,18 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) {
     }
 }
 
+pub fn walk_const_arg<'v, V: Visitor<'v>>(visitor: &mut V, ct: &'v ConstArg<'v>) {
+    match &ct.kind {
+        ConstArgKind::AnonConst(_, ct) => {
+            visitor.visit_anon_const(ct);
+        }
+        ConstArgKind::Param(hir_id, qpath) => {
+            visitor.visit_id(*hir_id);
+            visitor.visit_qpath(qpath, *hir_id, qpath.span())
+        }
+    }
+}
+
 pub fn walk_generic_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v GenericParam<'v>) {
     visitor.visit_id(param.hir_id);
     match param.name {
@@ -1116,7 +1131,7 @@ pub fn walk_generic_arg<'v, V: Visitor<'v>>(visitor: &mut V, generic_arg: &'v Ge
     match generic_arg {
         GenericArg::Lifetime(lt) => visitor.visit_lifetime(lt),
         GenericArg::Type(ty) => visitor.visit_ty(ty),
-        GenericArg::Const(ct) => visitor.visit_anon_const(&ct.value),
+        GenericArg::Const(ct) => visitor.visit_const_arg(ct),
         GenericArg::Infer(inf) => visitor.visit_infer(inf),
     }
 }

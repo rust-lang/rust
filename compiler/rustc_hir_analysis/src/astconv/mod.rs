@@ -449,11 +449,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     (&GenericParamDefKind::Type { has_default, .. }, GenericArg::Infer(inf)) => {
                         handle_ty_args(has_default, &inf.to_ty())
                     }
-                    (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
-                        let did = ct.value.def_id;
-                        tcx.feed_anon_const_type(did, tcx.type_of(param.def_id));
-                        ty::Const::from_anon_const(tcx, did).into()
-                    }
+                    (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => match ct.kind {
+                        // FIXME(const_arg_kind)
+                        hir::ConstArgKind::AnonConst(_, ct) => {
+                            let did = ct.def_id;
+                            tcx.feed_anon_const_type(did, tcx.type_of(param.def_id));
+                            ty::Const::from_anon_const(tcx, did).into()
+                        }
+                        hir::ConstArgKind::Param(_, _) => todo!(),
+                    },
                     (&GenericParamDefKind::Const { .. }, hir::GenericArg::Infer(inf)) => {
                         let ty = tcx
                             .at(self.span)

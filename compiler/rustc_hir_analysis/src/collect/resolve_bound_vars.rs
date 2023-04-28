@@ -1588,7 +1588,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     i += 1;
                 }
                 GenericArg::Const(ct) => {
-                    self.visit_anon_const(&ct.value);
+                    self.visit_const_arg(ct);
                     i += 1;
                 }
                 GenericArg::Infer(inf) => {

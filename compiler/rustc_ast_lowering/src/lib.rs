@@ -42,6 +42,7 @@ extern crate tracing;
 
 use crate::errors::{AssocTyParentheses, AssocTyParenthesesSub, MisplacedImplTrait, TraitFnAsync};
 
+use hir::ConstArgKind;
 use rustc_ast::ptr::P;
 use rustc_ast::visit;
 use rustc_ast::{self as ast, *};
@@ -1231,7 +1232,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     hir_id: this.lower_node_id(node_id),
                                     body: this.lower_const_body(path_expr.span, Some(&path_expr)),
                                 });
-                                return GenericArg::Const(ConstArg { value: ct, span });
+                                // FIXME(const_arg_kind)
+                                return GenericArg::Const(
+                                    self.arena.alloc(ConstArg {
+                                        kind: ConstArgKind::AnonConst(span, ct),
+                                    }),
+                                );
                             }
                         }
                     }
@@ -1239,10 +1245,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
                 GenericArg::Type(self.lower_ty(&ty, itctx))
             }
-            ast::GenericArg::Const(ct) => GenericArg::Const(ConstArg {
-                value: self.lower_anon_const(&ct),
-                span: self.lower_span(ct.value.span),
-            }),
+            ast::GenericArg::Const(ct) => GenericArg::Const(self.arena.alloc(ConstArg {
+                // FIXME(const_arg_kind)
+                kind: ConstArgKind::AnonConst(
+                    self.lower_span(ct.value.span),
+                    self.lower_anon_const(&ct),
+                ),
+            })),
         }
     }
 

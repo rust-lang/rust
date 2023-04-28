@@ -417,18 +417,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn const_arg_to_const(
         &self,
-        ast_c: &hir::AnonConst,
+        ast_c: &hir::ConstArg<'_>,
         param_def_id: DefId,
     ) -> ty::Const<'tcx> {
-        let did = ast_c.def_id;
-        self.tcx.feed_anon_const_type(did, self.tcx.type_of(param_def_id));
-        let c = ty::Const::from_anon_const(self.tcx, did);
-        self.register_wf_obligation(
-            c.into(),
-            self.tcx.hir().span(ast_c.hir_id),
-            ObligationCauseCode::WellFormed(None),
-        );
-        c
+        // FIXME(const_arg_kind)
+        match ast_c.kind {
+            hir::ConstArgKind::AnonConst(_, ast_c) => {
+                let did = ast_c.def_id;
+                self.tcx.feed_anon_const_type(did, self.tcx.type_of(param_def_id));
+                let c = ty::Const::from_anon_const(self.tcx, did);
+                self.register_wf_obligation(
+                    c.into(),
+                    self.tcx.hir().span(ast_c.hir_id),
+                    ObligationCauseCode::WellFormed(None),
+                );
+                c
+            }
+            hir::ConstArgKind::Param(_, _) => todo!(),
+        }
     }
 
     // If the type given by the user has free regions, save it for later, since
@@ -1271,7 +1277,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.fcx.to_ty(ty).raw.into()
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
-                        self.fcx.const_arg_to_const(&ct.value, param.def_id).into()
+                        self.fcx.const_arg_to_const(ct, param.def_id).into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Infer(inf)) => {
                         self.fcx.ty_infer(Some(param), inf.span).into()

@@ -107,8 +107,15 @@ fn generic_arg_mismatch_err(
                 );
             }
         }
-        (GenericArg::Const(cnst), GenericParamDefKind::Type { .. }) => {
-            let body = tcx.hir().body(cnst.value.body);
+        (GenericArg::Const(cnst), GenericParamDefKind::Type { .. })
+            if matches!(cnst.kind, hir::ConstArgKind::AnonConst(_, _)) =>
+        {
+            // FIXME(const_arg_kind)
+            let body = match cnst.kind {
+                hir::ConstArgKind::AnonConst(_, cnst) => tcx.hir().body(cnst.body),
+                _ => unreachable!(),
+            };
+
             if let rustc_hir::ExprKind::Path(rustc_hir::QPath::Resolved(_, path)) = body.value.kind
             {
                 if let Res::Def(DefKind::Fn { .. }, id) = path.res {

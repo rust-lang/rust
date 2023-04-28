@@ -242,9 +242,23 @@ impl<'hir> PathSegment<'hir> {
 }
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
-pub struct ConstArg {
-    pub value: AnonConst,
-    pub span: Span,
+pub struct ConstArg<'hir> {
+    pub kind: ConstArgKind<'hir>,
+}
+
+#[derive(Clone, Copy, Debug, HashStable_Generic)]
+pub enum ConstArgKind<'hir> {
+    AnonConst(Span, AnonConst),
+    Param(HirId, QPath<'hir>),
+}
+
+impl<'hir> ConstArg<'hir> {
+    pub fn span(&self) -> Span {
+        match self.kind {
+            ConstArgKind::AnonConst(span, _) => span,
+            ConstArgKind::Param(_, qpath) => qpath.span(),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
@@ -263,7 +277,7 @@ impl InferArg {
 pub enum GenericArg<'hir> {
     Lifetime(&'hir Lifetime),
     Type(&'hir Ty<'hir>),
-    Const(ConstArg),
+    Const(&'hir ConstArg<'hir>),
     Infer(InferArg),
 }
 
@@ -272,7 +286,7 @@ impl GenericArg<'_> {
         match self {
             GenericArg::Lifetime(l) => l.ident.span,
             GenericArg::Type(t) => t.span,
-            GenericArg::Const(c) => c.span,
+            GenericArg::Const(c) => c.span(),
             GenericArg::Infer(i) => i.span,
         }
     }
@@ -281,7 +295,10 @@ impl GenericArg<'_> {
         match self {
             GenericArg::Lifetime(l) => l.hir_id,
             GenericArg::Type(t) => t.hir_id,
-            GenericArg::Const(c) => c.value.hir_id,
+            GenericArg::Const(c) => match c.kind {
+                ConstArgKind::AnonConst(_, ct) => ct.hir_id,
+                ConstArgKind::Param(id, _) => id,
+            },
             GenericArg::Infer(i) => i.hir_id,
         }
     }
@@ -4011,7 +4028,7 @@ mod size_asserts {
     static_assert_size!(FnDecl<'_>, 40);
     static_assert_size!(ForeignItem<'_>, 72);
     static_assert_size!(ForeignItemKind<'_>, 40);
-    static_assert_size!(GenericArg<'_>, 32);
+    static_assert_size!(GenericArg<'_>, 16);
     static_assert_size!(GenericBound<'_>, 48);
     static_assert_size!(Generics<'_>, 56);
     static_assert_size!(Impl<'_>, 80);
