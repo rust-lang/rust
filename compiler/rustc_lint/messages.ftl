@@ -192,6 +192,10 @@ lint_redundant_semicolons =
         *[false] this semicolon
     }
 
+lint_duplicate_trait =
+    trait `{$trait_name}` was already specified
+    .suggestion = remove duplicate trait
+
 lint_drop_trait_constraints =
     bounds on `{$predicate}` are most likely incorrect, consider instead using `{$needs_drop}` to detect whether a type can be trivially dropped
 

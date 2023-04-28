@@ -1168,6 +1168,15 @@ pub struct RedundantSemicolonsDiag {
     pub suggestion: Span,
 }
 
+// duplicate_trait.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_duplicate_trait)]
+pub struct DuplicateTraitDiag {
+    pub trait_name: Symbol,
+    #[suggestion(code = "", applicability = "maybe-incorrect")]
+    pub suggestion: Span,
+}
+
 // traits.rs
 pub struct DropTraitConstraintsDiag<'a> {
     pub predicate: Predicate<'a>,
