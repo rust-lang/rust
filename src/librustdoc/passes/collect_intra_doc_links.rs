@@ -1295,7 +1295,8 @@ impl LinkCollector<'_, '_> {
                                 }
                             }
                         }
-                        resolution_failure(self, diag, path_str, disambiguator, smallvec![err])
+                        resolution_failure(self, diag, path_str, disambiguator, smallvec![err]);
+                        return vec![];
                     }
                 }
             }
@@ -1331,13 +1332,14 @@ impl LinkCollector<'_, '_> {
                     .fold(0, |acc, res| if let Ok(res) = res { acc + res.len() } else { acc });
 
                 if len == 0 {
-                    return resolution_failure(
+                    resolution_failure(
                         self,
                         diag,
                         path_str,
                         disambiguator,
                         candidates.into_iter().filter_map(|res| res.err()).collect(),
                     );
+                    return vec![];
                 } else if len == 1 {
                     candidates.into_iter().filter_map(|res| res.ok()).flatten().collect::<Vec<_>>()
                 } else {
@@ -1642,9 +1644,8 @@ fn resolution_failure(
     path_str: &str,
     disambiguator: Option<Disambiguator>,
     kinds: SmallVec<[ResolutionFailure<'_>; 3]>,
-) -> Vec<(Res, Option<DefId>)> {
+) {
     let tcx = collector.cx.tcx;
-    let mut recovered_res = None;
     report_diagnostic(
         tcx,
         BROKEN_INTRA_DOC_LINKS,
@@ -1736,19 +1737,25 @@ fn resolution_failure(
 
                         if !path_str.contains("::") {
                             if disambiguator.map_or(true, |d| d.ns() == MacroNS)
-                                && let Some(&res) = collector.cx.tcx.resolutions(()).all_macro_rules
-                                                             .get(&Symbol::intern(path_str))
+                                && collector
+                                    .cx
+                                    .tcx
+                                    .resolutions(())
+                                    .all_macro_rules
+                                    .get(&Symbol::intern(path_str))
+                                    .is_some()
                             {
                                 diag.note(format!(
                                     "`macro_rules` named `{path_str}` exists in this crate, \
                                      but it is not in scope at this link's location"
                                 ));
-                                recovered_res = res.try_into().ok().map(|res| (res, None));
                             } else {
                                 // If the link has `::` in it, assume it was meant to be an
                                 // intra-doc link. Otherwise, the `[]` might be unrelated.
-                                diag.help("to escape `[` and `]` characters, \
-                                           add '\\' before them like `\\[` or `\\]`");
+                                diag.help(
+                                    "to escape `[` and `]` characters, \
+                                           add '\\' before them like `\\[` or `\\]`",
+                                );
                             }
                         }
 
@@ -1854,11 +1861,6 @@ fn resolution_failure(
             }
         },
     );
-
-    match recovered_res {
-        Some(r) => vec![r],
-        None => Vec::new(),
-    }
 }
 
 fn report_multiple_anchors(cx: &DocContext<'_>, diag_info: DiagnosticInfo<'_>) {
