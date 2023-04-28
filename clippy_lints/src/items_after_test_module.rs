@@ -74,7 +74,7 @@ impl LateLintPass<'_> for ItemsAfterTestModule {
                         if mitem.has_name(sym::test);
                         then {
 							was_test_mod_visited = true;
-                            test_mod_span = Some(module.spans.inner_span.with_lo(item.span.lo()));
+                            test_mod_span = Some(item.span);
                         }
                     }
                 }
