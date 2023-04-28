@@ -645,7 +645,7 @@ impl<'a> Parser<'a> {
 
                             if self.recover_colon_as_semi() {
                                 // recover_colon_as_semi has already emitted a nicer error.
-                                e.cancel();
+                                e.delay_as_bug();
                                 add_semi_to_stmt = true;
                                 eat_semi = false;
 
@@ -672,7 +672,7 @@ impl<'a> Parser<'a> {
                                         };
                                         match self.parse_expr_labeled(label, false) {
                                             Ok(labeled_expr) => {
-                                                e.cancel();
+                                                e.delay_as_bug();
                                                 self.sess.emit_err(MalformedLoopLabel {
                                                     span: label.ident.span,
                                                     correct_label: label.ident,

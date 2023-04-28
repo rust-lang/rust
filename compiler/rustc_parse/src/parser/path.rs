@@ -9,7 +9,7 @@ use rustc_ast::{
     AssocConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, ParenthesizedArgs,
     Path, PathSegment, QSelf,
 };
-use rustc_errors::{pluralize, Applicability, IntoDiagnostic, PResult};
+use rustc_errors::{Applicability, IntoDiagnostic, PResult};
 use rustc_span::source_map::{BytePos, Span};
 use rustc_span::symbol::{kw, sym, Ident};
 use std::mem;

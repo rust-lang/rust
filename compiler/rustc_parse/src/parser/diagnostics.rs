@@ -1569,14 +1569,9 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn expect_semi(&mut self) -> PResult<'a, ()> {
-        if self.eat(&token::Semi) {
+        if self.eat(&token::Semi) || self.recover_colon_as_semi() {
             return Ok(());
         }
-
-        if self.recover_colon_as_semi() {
-            return Ok(());
-        }
-
         self.expect(&token::Semi).map(drop) // Error unconditionally
     }
 
@@ -1597,9 +1592,7 @@ impl<'a> Parser<'a> {
                 span: self.token.span,
                 type_ascription: self.sess.unstable_features.is_nightly_build().then_some(()),
             });
-
             self.bump();
-
             return true;
         }
 
