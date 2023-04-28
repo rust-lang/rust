@@ -620,6 +620,7 @@ symbols! {
         destruct,
         destructuring_assignment,
         diagnostic,
+        diagnostic_namespace,
         direct,
         discriminant_kind,
         discriminant_type,

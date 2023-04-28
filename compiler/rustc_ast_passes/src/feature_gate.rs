@@ -218,6 +218,19 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
         }
+        if !attr.is_doc_comment()
+            && attr.get_normal_item().path.segments.len() == 2
+            && attr.get_normal_item().path.segments[0].ident.name == sym::diagnostic
+            && !self.features.diagnostic_namespace
+        {
+            let msg = "`#[diagnostic]` attribute name space is experimental";
+            gate_feature_post!(
+                self,
+                diagnostic_namespace,
+                attr.get_normal_item().path.segments[0].ident.span,
+                msg
+            );
+        }
 
         // Emit errors for non-staged-api crates.
         if !self.features.staged_api {
