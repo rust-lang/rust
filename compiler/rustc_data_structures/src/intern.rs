@@ -112,10 +112,12 @@ where
 unsafe impl<'a, T: 'a> Pointer for Interned<'a, T> {
     const BITS: u32 = <&'a T>::BITS;
 
+    #[inline]
     fn into_ptr(self) -> ptr::NonNull<Self::Target> {
         <&'a T>::into_ptr(self.0)
     }
 
+    #[inline]
     unsafe fn from_ptr(ptr: ptr::NonNull<Self::Target>) -> Self {
         // Safety:
         // `Self::into_ptr` uses `<&T>::into_ptr`,
