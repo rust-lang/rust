@@ -559,20 +559,11 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     fn binary_ptr_op(
-        ecx: &InterpCx<'mir, 'tcx, Self>,
-        bin_op: mir::BinOp,
-        left: &ImmTy<'tcx>,
-        right: &ImmTy<'tcx>,
+        _ecx: &InterpCx<'mir, 'tcx, Self>,
+        _bin_op: mir::BinOp,
+        _left: &ImmTy<'tcx>,
+        _right: &ImmTy<'tcx>,
     ) -> InterpResult<'tcx, (Scalar, bool, Ty<'tcx>)> {
-        if bin_op == mir::BinOp::Offset {
-            let ptr = left.to_scalar().to_pointer(ecx)?;
-            let offset_count = right.to_scalar().to_target_isize(ecx)?;
-            let pointee_ty = left.layout.ty.builtin_deref(true).unwrap().ty;
-
-            let offset_ptr = ecx.ptr_offset_inbounds(ptr, pointee_ty, offset_count)?;
-            return Ok((Scalar::from_maybe_pointer(offset_ptr, ecx), false, left.layout.ty));
-        }
-
         throw_unsup_format!("pointer arithmetic or comparison is not supported at compile-time");
     }
 
