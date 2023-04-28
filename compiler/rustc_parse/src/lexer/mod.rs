@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use crate::errors;
 use crate::lexer::unicode_chars::UNICODE_ARRAY;
 use crate::make_unclosed_delims_error;
@@ -6,7 +8,7 @@ use rustc_ast::token::{self, CommentKind, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::unicode::contains_text_flow_control_chars;
 use rustc_errors::{error_code, Applicability, Diagnostic, DiagnosticBuilder, StashKey};
-use rustc_lexer::unescape::{self, Mode};
+use rustc_lexer::unescape::{self, EscapeError, Mode};
 use rustc_lexer::Cursor;
 use rustc_lexer::{Base, DocStyle, RawStrError};
 use rustc_session::lint::builtin::{
@@ -670,7 +672,7 @@ impl<'a> StringReader<'a> {
         self.sess.emit_fatal(errors::TooManyHashes { span: self.mk_sp(start, self.pos), num });
     }
 
-    fn cook_quoted(
+    fn cook_common(
         &self,
         kind: token::LitKind,
         mode: Mode,
@@ -678,12 +680,13 @@ impl<'a> StringReader<'a> {
         end: BytePos,
         prefix_len: u32,
         postfix_len: u32,
+        unescape: fn(&str, Mode, &mut dyn FnMut(Range<usize>, Result<(), EscapeError>)),
     ) -> (token::LitKind, Symbol) {
         let mut has_fatal_err = false;
         let content_start = start + BytePos(prefix_len);
         let content_end = end - BytePos(postfix_len);
         let lit_content = self.str_from_to(content_start, content_end);
-        unescape::unescape_literal(lit_content, mode, &mut |range, result| {
+        unescape(lit_content, mode, &mut |range, result| {
             // Here we only check for errors. The actual unescaping is done later.
             if let Err(err) = result {
                 let span_with_quotes = self.mk_sp(start, end);
@@ -715,6 +718,22 @@ impl<'a> StringReader<'a> {
         }
     }
 
+    fn cook_quoted(
+        &self,
+        kind: token::LitKind,
+        mode: Mode,
+        start: BytePos,
+        end: BytePos,
+        prefix_len: u32,
+        postfix_len: u32,
+    ) -> (token::LitKind, Symbol) {
+        self.cook_common(kind, mode, start, end, prefix_len, postfix_len, |src, mode, callback| {
+            unescape::unescape_literal(src, mode, &mut |span, result| {
+                callback(span, result.map(drop))
+            })
+        })
+    }
+
     fn cook_c_string(
         &self,
         kind: token::LitKind,
@@ -724,40 +743,11 @@ impl<'a> StringReader<'a> {
         prefix_len: u32,
         postfix_len: u32,
     ) -> (token::LitKind, Symbol) {
-        let mut has_fatal_err = false;
-        let content_start = start + BytePos(prefix_len);
-        let content_end = end - BytePos(postfix_len);
-        let lit_content = self.str_from_to(content_start, content_end);
-        unescape::unescape_c_string(lit_content, mode, &mut |range, result| {
-            // Here we only check for errors. The actual unescaping is done later.
-            if let Err(err) = result {
-                let span_with_quotes = self.mk_sp(start, end);
-                let (start, end) = (range.start as u32, range.end as u32);
-                let lo = content_start + BytePos(start);
-                let hi = lo + BytePos(end - start);
-                let span = self.mk_sp(lo, hi);
-                if err.is_fatal() {
-                    has_fatal_err = true;
-                }
-                emit_unescape_error(
-                    &self.sess.span_diagnostic,
-                    lit_content,
-                    span_with_quotes,
-                    span,
-                    mode,
-                    range,
-                    err,
-                );
-            }
-        });
-
-        // We normally exclude the quotes for the symbol, but for errors we
-        // include it because it results in clearer error messages.
-        if !has_fatal_err {
-            (kind, Symbol::intern(lit_content))
-        } else {
-            (token::Err, self.symbol_from_to(start, end))
-        }
+        self.cook_common(kind, mode, start, end, prefix_len, postfix_len, |src, mode, callback| {
+            unescape::unescape_c_string(src, mode, &mut |span, result| {
+                callback(span, result.map(drop))
+            })
+        })
     }
 }
 
