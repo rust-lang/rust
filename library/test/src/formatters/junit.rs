@@ -31,7 +31,7 @@ fn str_to_cdata(s: &str) -> String {
     // `<?'` in a CDATA block, so the escaping gets a little weird.
     let escaped_output = s.replace("]]>", "]]]]><![CDATA[>");
     let escaped_output = escaped_output.replace("<?", "<]]><![CDATA[?");
-    // We also smuggle newlines as &#xa so as to keep all the output on line line
+    // We also smuggle newlines as &#xa so as to keep all the output on one line
     let escaped_output = escaped_output.replace("\n", "]]>&#xA;<![CDATA[");
     // Prune empty CDATA blocks resulting from any escaping
     let escaped_output = escaped_output.replace("<![CDATA[]]>", "");
@@ -163,7 +163,7 @@ impl<T: Write> OutputFormatter for JunitFormatter<T> {
                         test_name,
                         duration.as_secs_f64()
                     ))?;
-                    if stdout.is_empty() {
+                    if stdout.is_empty() || !state.options.display_output {
                         self.write_message("/>")?;
                     } else {
                         self.write_message("><system-out>")?;
