@@ -2,14 +2,13 @@
 
 use hir::CRATE_HIR_ID;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::sync::Lrc;
 use rustc_expand::base::resolve_path;
 use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::{query::LocalCrate, ty::query::Providers};
 use rustc_span::{sym, DebuggerVisualizerFile, DebuggerVisualizerType};
-
-use std::sync::Arc;
 
 use crate::errors::DebugVisualizerUnreadable;
 
@@ -52,7 +51,7 @@ fn check_for_debugger_visualizer(
             match std::fs::read(&file) {
                 Ok(contents) => {
                     debugger_visualizers
-                        .insert(DebuggerVisualizerFile::new(Arc::from(contents), visualizer_type));
+                        .insert(DebuggerVisualizerFile::new(Lrc::from(contents), visualizer_type));
                 }
                 Err(error) => {
                     tcx.sess.emit_err(DebugVisualizerUnreadable {
