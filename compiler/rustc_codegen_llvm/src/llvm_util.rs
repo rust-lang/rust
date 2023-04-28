@@ -330,11 +330,9 @@ pub(crate) fn print(req: PrintRequest, sess: &Session) {
     let tm = create_informational_target_machine(sess);
     match req {
         PrintRequest::TargetCPUs => {
-            println!(
-                "Default CPU for this target:\n    {}",
-                handle_native(sess.target.cpu.as_ref())
-            );
-            unsafe { llvm::LLVMRustPrintTargetCPUs(tm, handle_native(sess.target.cpu.as_ref())) };
+            let cpu_cstring = CString::new(handle_native(sess.target.cpu.as_ref()))
+                .expect("failed to convert to cstring");
+            unsafe { llvm::LLVMRustPrintTargetCPUs(tm, cpu_cstring.as_ptr()) };
         }
         PrintRequest::TargetFeatures => print_target_features(sess, tm),
         _ => bug!("rustc_codegen_llvm can't handle print request: {:?}", req),
