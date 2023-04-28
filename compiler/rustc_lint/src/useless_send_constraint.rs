@@ -37,7 +37,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessSendConstraint {
             cx.emit_spanned_lint(
                 USELESS_SEND_CONSTRAINT,
                 send_bound.span,
-                UselessSendConstraintDiag { only_trait, suggestion: send_bound.span }
+                UselessSendConstraintDiag { only_trait, suggestion: send_bound.span },
             )
         }
     }
