@@ -74,6 +74,7 @@ mod opaque_hidden_inferred_bound;
 mod pass_by_value;
 mod passes;
 mod redundant_semicolon;
+mod useless_send_constraint;
 mod traits;
 mod types;
 mod unused;
@@ -125,6 +126,7 @@ pub use passes::{EarlyLintPass, LateLintPass};
 pub use rustc_session::lint::Level::{self, *};
 pub use rustc_session::lint::{BufferedEarlyLint, FutureIncompatibleInfo, Lint, LintId};
 pub use rustc_session::lint::{LintArray, LintPass};
+use useless_send_constraint::UselessSendConstraint;
 
 fluent_messages! { "../messages.ftl" }
 

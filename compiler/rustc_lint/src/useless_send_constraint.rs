@@ -1,3 +1,9 @@
+use rustc_span::sym;
+
+use crate::hir;
+
+use crate::{lints::UselessSendConstraintDiag, LateContext, LateLintPass};
+
 declare_lint! {
     /// The `lint_useless_send_constraint` lints useless constraint of references to `Send`.
     ///
@@ -39,8 +45,9 @@ impl<'tcx> LateLintPass<'tcx> for UselessSendConstraint {
         if let Some(send_bound) = send_bound {
             let only_trait = bounds.len() == 1;
 
-            cx.emit_spanned_lint(
+            cx.tcx.emit_spanned_lint(
                 USELESS_SEND_CONSTRAINT,
+                send_bound.trait_ref.hir_ref_id, // is this correct?
                 send_bound.span,
                 UselessSendConstraintDiag { only_trait, suggestion: send_bound.span },
             )
