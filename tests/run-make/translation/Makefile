@@ -46,6 +46,8 @@ sysroot: test.rs working.ftl
 	rm -f $(FAKEROOT)/lib/rustlib/src
 	mkdir $(FAKEROOT)/lib/rustlib/src
 	ln -s $(SYSROOT)/lib/rustlib/src/* $(FAKEROOT)/lib/rustlib/src
+	# When download-rustc is enabled, `$(SYSROOT)` will have a share directory. Delete the link to it.
+	rm -f $(FAKEROOT)/share
 	mkdir -p $(FAKEROOT)/share/locale/zh-CN/
 	ln -s $(CURDIR)/working.ftl $(FAKEROOT)/share/locale/zh-CN/basic-translation.ftl
 	$(RUSTC) $< --sysroot $(FAKEROOT) -Ztranslate-lang=zh-CN 2>&1 | $(CGREP) "this is a test message"

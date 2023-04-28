@@ -303,6 +303,9 @@ pub struct Config {
     /// The current Rust channel
     pub channel: String,
 
+    /// Whether adding git commit information such as the commit hash has been enabled for building
+    pub git_hash: bool,
+
     /// The default Rust edition
     pub edition: Option<String>,
 
@@ -419,7 +422,9 @@ pub struct TargetCfgs {
 
 impl TargetCfgs {
     fn new(config: &Config) -> TargetCfgs {
-        let targets: HashMap<String, TargetCfg> = if config.stage_id.starts_with("stage0-") {
+        let targets: HashMap<String, TargetCfg> = if config.stage_id.starts_with("stage0-")
+            || (config.suite == "ui-fulldeps" && config.stage_id.starts_with("stage1-"))
+        {
             // #[cfg(bootstrap)]
             // Needed only for one cycle, remove during the bootstrap bump.
             Self::collect_all_slow(config)

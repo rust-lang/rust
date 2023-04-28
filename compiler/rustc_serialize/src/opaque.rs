@@ -2,7 +2,9 @@ use crate::leb128::{self, largest_max_leb128_len};
 use crate::serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::fs::File;
 use std::io::{self, Write};
+use std::marker::PhantomData;
 use std::mem::MaybeUninit;
+use std::ops::Range;
 use std::path::Path;
 use std::ptr;
 
@@ -510,38 +512,125 @@ impl Encoder for FileEncoder {
 // Decoder
 // -----------------------------------------------------------------------------
 
+// Conceptually, `MemDecoder` wraps a `&[u8]` with a cursor into it that is always valid.
+// This is implemented with three pointers, two which represent the original slice and a
+// third that is our cursor.
+// It is an invariant of this type that start <= current <= end.
+// Additionally, the implementation of this type never modifies start and end.
 pub struct MemDecoder<'a> {
-    pub data: &'a [u8],
-    position: usize,
+    start: *const u8,
+    current: *const u8,
+    end: *const u8,
+    _marker: PhantomData<&'a u8>,
 }
 
 impl<'a> MemDecoder<'a> {
     #[inline]
     pub fn new(data: &'a [u8], position: usize) -> MemDecoder<'a> {
-        MemDecoder { data, position }
+        let Range { start, end } = data.as_ptr_range();
+        MemDecoder { start, current: data[position..].as_ptr(), end, _marker: PhantomData }
     }
 
     #[inline]
-    pub fn position(&self) -> usize {
-        self.position
+    pub fn data(&self) -> &'a [u8] {
+        // SAFETY: This recovers the original slice, only using members we never modify.
+        unsafe { std::slice::from_raw_parts(self.start, self.len()) }
     }
 
     #[inline]
-    pub fn set_position(&mut self, pos: usize) {
-        self.position = pos
+    pub fn len(&self) -> usize {
+        // SAFETY: This recovers the length of the original slice, only using members we never modify.
+        unsafe { self.end.sub_ptr(self.start) }
     }
 
     #[inline]
-    pub fn advance(&mut self, bytes: usize) {
-        self.position += bytes;
+    pub fn remaining(&self) -> usize {
+        // SAFETY: This type guarantees current <= end.
+        unsafe { self.end.sub_ptr(self.current) }
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn decoder_exhausted() -> ! {
+        panic!("MemDecoder exhausted")
+    }
+
+    #[inline]
+    fn read_byte(&mut self) -> u8 {
+        if self.current == self.end {
+            Self::decoder_exhausted();
+        }
+        // SAFETY: This type guarantees current <= end, and we just checked current == end.
+        unsafe {
+            let byte = *self.current;
+            self.current = self.current.add(1);
+            byte
+        }
+    }
+
+    #[inline]
+    fn read_array<const N: usize>(&mut self) -> [u8; N] {
+        self.read_raw_bytes(N).try_into().unwrap()
+    }
+
+    // The trait method doesn't have a lifetime parameter, and we need a version of this
+    // that definitely returns a slice based on the underlying storage as opposed to
+    // the Decoder itself in order to implement read_str efficiently.
+    #[inline]
+    fn read_raw_bytes_inherent(&mut self, bytes: usize) -> &'a [u8] {
+        if bytes > self.remaining() {
+            Self::decoder_exhausted();
+        }
+        // SAFETY: We just checked if this range is in-bounds above.
+        unsafe {
+            let slice = std::slice::from_raw_parts(self.current, bytes);
+            self.current = self.current.add(bytes);
+            slice
+        }
+    }
+
+    /// While we could manually expose manipulation of the decoder position,
+    /// all current users of that method would need to reset the position later,
+    /// incurring the bounds check of set_position twice.
+    #[inline]
+    pub fn with_position<F, T>(&mut self, pos: usize, func: F) -> T
+    where
+        F: Fn(&mut MemDecoder<'a>) -> T,
+    {
+        struct SetOnDrop<'a, 'guarded> {
+            decoder: &'guarded mut MemDecoder<'a>,
+            current: *const u8,
+        }
+        impl Drop for SetOnDrop<'_, '_> {
+            fn drop(&mut self) {
+                self.decoder.current = self.current;
+            }
+        }
+
+        if pos >= self.len() {
+            Self::decoder_exhausted();
+        }
+        let previous = self.current;
+        // SAFETY: We just checked if this add is in-bounds above.
+        unsafe {
+            self.current = self.start.add(pos);
+        }
+        let guard = SetOnDrop { current: previous, decoder: self };
+        func(guard.decoder)
     }
 }
 
 macro_rules! read_leb128 {
-    ($dec:expr, $fun:ident) => {{ leb128::$fun($dec.data, &mut $dec.position) }};
+    ($dec:expr, $fun:ident) => {{ leb128::$fun($dec) }};
 }
 
 impl<'a> Decoder for MemDecoder<'a> {
+    #[inline]
+    fn position(&self) -> usize {
+        // SAFETY: This type guarantees start <= current
+        unsafe { self.current.sub_ptr(self.start) }
+    }
+
     #[inline]
     fn read_u128(&mut self) -> u128 {
         read_leb128!(self, read_u128_leb128)
@@ -559,17 +648,12 @@ impl<'a> Decoder for MemDecoder<'a> {
 
     #[inline]
     fn read_u16(&mut self) -> u16 {
-        let bytes = [self.data[self.position], self.data[self.position + 1]];
-        let value = u16::from_le_bytes(bytes);
-        self.position += 2;
-        value
+        u16::from_le_bytes(self.read_array())
     }
 
     #[inline]
     fn read_u8(&mut self) -> u8 {
-        let value = self.data[self.position];
-        self.position += 1;
-        value
+        self.read_byte()
     }
 
     #[inline]
@@ -594,17 +678,12 @@ impl<'a> Decoder for MemDecoder<'a> {
 
     #[inline]
     fn read_i16(&mut self) -> i16 {
-        let bytes = [self.data[self.position], self.data[self.position + 1]];
-        let value = i16::from_le_bytes(bytes);
-        self.position += 2;
-        value
+        i16::from_le_bytes(self.read_array())
     }
 
     #[inline]
     fn read_i8(&mut self) -> i8 {
-        let value = self.data[self.position];
-        self.position += 1;
-        value as i8
+        self.read_byte() as i8
     }
 
     #[inline]
@@ -625,22 +704,26 @@ impl<'a> Decoder for MemDecoder<'a> {
     }
 
     #[inline]
-    fn read_str(&mut self) -> &'a str {
+    fn read_str(&mut self) -> &str {
         let len = self.read_usize();
-        let sentinel = self.data[self.position + len];
-        assert!(sentinel == STR_SENTINEL);
-        let s = unsafe {
-            std::str::from_utf8_unchecked(&self.data[self.position..self.position + len])
-        };
-        self.position += len + 1;
-        s
+        let bytes = self.read_raw_bytes_inherent(len + 1);
+        assert!(bytes[len] == STR_SENTINEL);
+        unsafe { std::str::from_utf8_unchecked(&bytes[..len]) }
     }
 
     #[inline]
-    fn read_raw_bytes(&mut self, bytes: usize) -> &'a [u8] {
-        let start = self.position;
-        self.position += bytes;
-        &self.data[start..self.position]
+    fn read_raw_bytes(&mut self, bytes: usize) -> &[u8] {
+        self.read_raw_bytes_inherent(bytes)
+    }
+
+    #[inline]
+    fn peek_byte(&self) -> u8 {
+        if self.current == self.end {
+            Self::decoder_exhausted();
+        }
+        // SAFETY: This type guarantees current is inbounds or one-past-the-end, which is end.
+        // Since we just checked current == end, the current pointer must be inbounds.
+        unsafe { *self.current }
     }
 }
 

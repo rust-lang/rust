@@ -1,3 +1,5 @@
+// known-bug: #110395
+
 #![feature(const_slice_index)]
 
 const A: [(); 5] = [(), (), (), (), ()];

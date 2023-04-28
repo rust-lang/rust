@@ -91,14 +91,15 @@ pub(in crate::solve) fn replace_erased_lifetimes_with_bound_vars<'tcx>(
 ) -> ty::Binder<'tcx, Ty<'tcx>> {
     debug_assert!(!ty.has_late_bound_regions());
     let mut counter = 0;
-    let ty = tcx.fold_regions(ty, |mut r, current_depth| {
-        if let ty::ReErased = r.kind() {
+    let ty = tcx.fold_regions(ty, |r, current_depth| match r.kind() {
+        ty::ReErased => {
             let br =
                 ty::BoundRegion { var: ty::BoundVar::from_u32(counter), kind: ty::BrAnon(None) };
             counter += 1;
-            r = tcx.mk_re_late_bound(current_depth, br);
+            tcx.mk_re_late_bound(current_depth, br)
         }
-        r
+        // All free regions should be erased here.
+        r => bug!("unexpected region: {r:?}"),
     });
     let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
         (0..counter).map(|_| ty::BoundVariableKind::Region(ty::BrAnon(None))),

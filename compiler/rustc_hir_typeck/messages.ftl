@@ -3,21 +3,6 @@ hir_typeck_field_multiply_specified_in_initializer =
     .label = used more than once
     .previous_use_label = first use of `{$ident}`
 
-hir_typeck_copy_impl_on_type_with_dtor =
-    the trait `Copy` cannot be implemented for this type; the type has a destructor
-    .label = `Copy` not allowed on types with destructors
-
-hir_typeck_multiple_relaxed_default_bounds =
-    type parameter has more than one relaxed default bound, only one is supported
-
-hir_typeck_copy_impl_on_non_adt =
-    the trait `Copy` cannot be implemented for this type
-    .label = type is not a structure or enumeration
-
-hir_typeck_trait_object_declared_with_no_traits =
-    at least one trait is required for an object type
-    .alias_span = this alias does not contain a trait
-
 hir_typeck_functional_record_update_on_non_struct =
     functional record update syntax requires a struct
 
@@ -77,3 +62,16 @@ hir_typeck_fru_suggestion =
         [NONE]{""}
         *[other] {" "}from `{$expr}`
     }, separate the last named field with a comma
+
+hir_typeck_const_select_must_be_const = this argument must be a `const fn`
+    .help = consult the documentation on `const_eval_select` for more information
+
+hir_typeck_const_select_must_be_fn = this argument must be a function item
+    .note = expected a function item, found {$ty}
+    .help = consult the documentation on `const_eval_select` for more information
+
+hir_typeck_union_pat_multiple_fields = union patterns should have exactly one field
+hir_typeck_union_pat_dotdot = `..` cannot be used in union patterns
+
+hir_typeck_arg_mismatch_indeterminate = argument type mismatch was detected, but rustc had trouble determining where
+    .note = we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new

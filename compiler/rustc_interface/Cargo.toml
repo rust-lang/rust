@@ -10,12 +10,12 @@ libloading = "0.7.1"
 tracing = "0.1"
 rustc-rayon-core = { version = "0.5.0", optional = true }
 rustc-rayon = { version = "0.5.0", optional = true }
-smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 rustc_ast = { path = "../rustc_ast" }
 rustc_attr = { path = "../rustc_attr" }
 rustc_borrowck = { path = "../rustc_borrowck" }
 rustc_builtin_macros = { path = "../rustc_builtin_macros" }
 rustc_expand = { path = "../rustc_expand" }
+rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_fs_util = { path = "../rustc_fs_util" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_parse = { path = "../rustc_parse" }

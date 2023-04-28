@@ -45,6 +45,9 @@ use std::hash::{BuildHasher, Hash};
 use std::ops::{Deref, DerefMut};
 use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
 
+mod worker_local;
+pub use worker_local::{Registry, WorkerLocal};
+
 pub use std::sync::atomic::Ordering;
 pub use std::sync::atomic::Ordering::SeqCst;
 
@@ -205,33 +208,6 @@ cfg_if! {
 
         use std::cell::Cell;
 
-        #[derive(Debug)]
-        pub struct WorkerLocal<T>(OneThread<T>);
-
-        impl<T> WorkerLocal<T> {
-            /// Creates a new worker local where the `initial` closure computes the
-            /// value this worker local should take for each thread in the thread pool.
-            #[inline]
-            pub fn new<F: FnMut(usize) -> T>(mut f: F) -> WorkerLocal<T> {
-                WorkerLocal(OneThread::new(f(0)))
-            }
-
-            /// Returns the worker-local value for each thread
-            #[inline]
-            pub fn into_inner(self) -> Vec<T> {
-                vec![OneThread::into_inner(self.0)]
-            }
-        }
-
-        impl<T> Deref for WorkerLocal<T> {
-            type Target = T;
-
-            #[inline(always)]
-            fn deref(&self) -> &T {
-                &self.0
-            }
-        }
-
         pub type MTLockRef<'a, T> = &'a mut MTLock<T>;
 
         #[derive(Debug, Default)]
@@ -351,8 +327,6 @@ cfg_if! {
             };
         }
 
-        pub use rayon_core::WorkerLocal;
-
         pub use rayon::iter::ParallelIterator;
         use rayon::iter::IntoParallelIterator;
 
@@ -382,6 +356,10 @@ pub fn assert_sync<T: ?Sized + Sync>() {}
 pub fn assert_send<T: ?Sized + Send>() {}
 pub fn assert_send_val<T: ?Sized + Send>(_t: &T) {}
 pub fn assert_send_sync_val<T: ?Sized + Sync + Send>(_t: &T) {}
+
+#[derive(Default)]
+#[cfg_attr(parallel_compiler, repr(align(64)))]
+pub struct CacheAligned<T>(pub T);
 
 pub trait HashMapExt<K, V> {
     /// Same as HashMap::insert, but it may panic if there's already an

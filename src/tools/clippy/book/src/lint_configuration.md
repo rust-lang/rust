@@ -55,6 +55,7 @@ Please use that command to update the file and do not edit it by hand.
 | [suppress-restriction-lint-in-const](#suppress-restriction-lint-in-const) | `false` |
 | [missing-docs-in-crate-items](#missing-docs-in-crate-items) | `false` |
 | [future-size-threshold](#future-size-threshold) | `16384` |
+| [unnecessary-box-size](#unnecessary-box-size) | `128` |
 
 ### arithmetic-side-effects-allowed
 Suppress checking of the passed type names in all types of operations.
@@ -559,6 +560,14 @@ The maximum byte size a `Future` can have, before it triggers the `clippy::large
 **Default Value:** `16384` (`u64`)
 
 * [large_futures](https://rust-lang.github.io/rust-clippy/master/index.html#large_futures)
+
+
+### unnecessary-box-size
+The byte size a `T` in `Box<T>` can have, below which it triggers the `clippy::unnecessary_box` lint
+
+**Default Value:** `128` (`u64`)
+
+* [unnecessary_box_returns](https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_box_returns)
 
 
 

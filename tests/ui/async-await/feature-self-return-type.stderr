@@ -4,6 +4,7 @@ error[E0597]: `bar` does not live long enough
 LL |     let x = {
    |         - borrow later stored here
 LL |         let bar = 22;
+   |             --- binding `bar` declared here
 LL |         Foo::new(&bar).await
    |                  ^^^^ borrowed value does not live long enough
 LL |

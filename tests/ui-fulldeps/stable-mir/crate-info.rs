@@ -29,9 +29,10 @@ fn test_stable_mir(tcx: TyCtxt<'_>) {
     let local = stable_mir::local_crate();
     assert_eq!(&local.name, CRATE_NAME);
 
+    assert_eq!(stable_mir::entry_fn(), None);
+
     // Find items in the local crate.
     let items = stable_mir::all_local_items();
-    assert!(get_item(tcx, &items, (DefKind::Fn, "foo_bar")).is_some());
     assert!(get_item(tcx, &items, (DefKind::Fn, "foo::bar")).is_some());
 
     // Find the `std` crate.
@@ -48,6 +49,15 @@ fn test_stable_mir(tcx: TyCtxt<'_>) {
     }
     match &block.terminator {
         stable_mir::mir::Terminator::Return => {}
+        other => panic!("{other:?}"),
+    }
+
+    let foo_bar = get_item(tcx, &items, (DefKind::Fn, "foo_bar")).unwrap();
+    let body = foo_bar.body();
+    assert_eq!(body.blocks.len(), 4);
+    let block = &body.blocks[0];
+    match &block.terminator {
+        stable_mir::mir::Terminator::Call { .. } => {}
         other => panic!("{other:?}"),
     }
 }

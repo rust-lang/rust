@@ -91,7 +91,7 @@ pub(crate) fn eval_mir_constant<'tcx>(
             ),
         },
         ConstantKind::Unevaluated(mir::UnevaluatedConst { def, .. }, _)
-            if fx.tcx.is_static(def.did) =>
+            if fx.tcx.is_static(def) =>
         {
             span_bug!(constant.span, "MIR constant refers to static");
         }

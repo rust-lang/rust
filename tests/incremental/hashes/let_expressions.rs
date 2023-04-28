@@ -91,7 +91,7 @@ pub fn change_mutability_of_slot() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,typeck,optimized_mir")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,typeck")]
 #[rustc_clean(cfg="cfail3")]
 #[rustc_clean(cfg="cfail5", except="hir_owner_nodes,typeck,optimized_mir")]
 #[rustc_clean(cfg="cfail6")]
@@ -176,7 +176,7 @@ pub fn change_mutability_of_binding_in_pattern() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,typeck,optimized_mir")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,typeck")]
 #[rustc_clean(cfg="cfail3")]
 #[rustc_clean(cfg="cfail5", except="hir_owner_nodes,typeck,optimized_mir")]
 #[rustc_clean(cfg="cfail6")]
@@ -193,9 +193,9 @@ pub fn add_initializer() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,typeck")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,typeck,optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,typeck")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,typeck,optimized_mir")]
 #[rustc_clean(cfg="cfail6")]
 pub fn add_initializer() {
     let _x: i16 = 3i16;
@@ -210,9 +210,9 @@ pub fn change_initializer() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes, optimized_mir")]
 #[rustc_clean(cfg="cfail6")]
 pub fn change_initializer() {
     let _x = 5u16;

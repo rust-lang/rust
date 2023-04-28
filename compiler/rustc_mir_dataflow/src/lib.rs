@@ -16,8 +16,8 @@ extern crate rustc_middle;
 
 use rustc_ast::MetaItem;
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
+use rustc_fluent_macro::fluent_messages;
 use rustc_hir::def_id::DefId;
-use rustc_macros::fluent_messages;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
 

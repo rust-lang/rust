@@ -7,7 +7,6 @@
 	margin-right: 0.3em;
 	height: 1.2rem;
 	width: 1.2rem;
-	color: inherit;
 	border: 2px solid var(--settings-input-border-color);
 	outline: none;
 	-webkit-appearance: none;

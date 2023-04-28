@@ -1,0 +1,20 @@
+error: ~const can only be applied to `#[const_trait]` traits
+  --> $DIR/const_trait_impl.rs:34:16
+   |
+LL | impl<T: ~const Default> const A for T {
+   |                ^^^^^^^
+
+error: ~const can only be applied to `#[const_trait]` traits
+  --> $DIR/const_trait_impl.rs:40:16
+   |
+LL | impl<T: ~const Default + ~const Sup> const A for T {
+   |                ^^^^^^^
+
+error: ~const can only be applied to `#[const_trait]` traits
+  --> $DIR/const_trait_impl.rs:46:16
+   |
+LL | impl<T: ~const Default + ~const Sub> const A for T {
+   |                ^^^^^^^
+
+error: aborting due to 3 previous errors
+

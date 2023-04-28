@@ -209,19 +209,25 @@ def default_build_triple(verbose):
     # install, use their preference. This fixes most issues with Windows builds
     # being detected as GNU instead of MSVC.
     default_encoding = sys.getdefaultencoding()
-    try:
-        version = subprocess.check_output(["rustc", "--version", "--verbose"],
-                stderr=subprocess.DEVNULL)
-        version = version.decode(default_encoding)
-        host = next(x for x in version.split('\n') if x.startswith("host: "))
-        triple = host.split("host: ")[1]
+
+    if sys.platform == 'darwin':
         if verbose:
-            print("detected default triple {} from pre-installed rustc".format(triple))
-        return triple
-    except Exception as e:
-        if verbose:
-            print("pre-installed rustc not detected: {}".format(e))
+            print("not using rustc detection as it is unreliable on macOS")
             print("falling back to auto-detect")
+    else:
+        try:
+            version = subprocess.check_output(["rustc", "--version", "--verbose"],
+                    stderr=subprocess.DEVNULL)
+            version = version.decode(default_encoding)
+            host = next(x for x in version.split('\n') if x.startswith("host: "))
+            triple = host.split("host: ")[1]
+            if verbose:
+                print("detected default triple {} from pre-installed rustc".format(triple))
+            return triple
+        except Exception as e:
+            if verbose:
+                print("pre-installed rustc not detected: {}".format(e))
+                print("falling back to auto-detect")
 
     required = sys.platform != 'win32'
     ostype = require(["uname", "-s"], exit=required)
@@ -575,7 +581,7 @@ class RustBuild(object):
         ]
         patchelf_args = ["--set-rpath", ":".join(rpath_entries)]
         if not fname.endswith(".so"):
-            # Finally, set the corret .interp for binaries
+            # Finally, set the correct .interp for binaries
             with open("{}/nix-support/dynamic-linker".format(nix_deps_dir)) as dynamic_linker:
                 patchelf_args += ["--set-interpreter", dynamic_linker.read().rstrip()]
 
@@ -722,11 +728,14 @@ class RustBuild(object):
 
     def build_bootstrap(self, color, verbose_count):
         """Build bootstrap"""
-        print("Building bootstrap")
+        env = os.environ.copy()
+        if "GITHUB_ACTIONS" in env:
+            print("::group::Building bootstrap")
+        else:
+            print("Building bootstrap")
         build_dir = os.path.join(self.build_dir, "bootstrap")
         if self.clean and os.path.exists(build_dir):
             shutil.rmtree(build_dir)
-        env = os.environ.copy()
         # `CARGO_BUILD_TARGET` breaks bootstrap build.
         # See also: <https://github.com/rust-lang/rust/issues/70208>.
         if "CARGO_BUILD_TARGET" in env:
@@ -798,6 +807,9 @@ class RustBuild(object):
         # Run this from the source directory so cargo finds .cargo/config
         run(args, env=env, verbose=self.verbose, cwd=self.rust_root)
 
+        if "GITHUB_ACTIONS" in env:
+            print("::endgroup::")
+
     def build_triple(self):
         """Build triple as in LLVM
 
@@ -822,7 +834,8 @@ class RustBuild(object):
         if self.use_vendored_sources:
             vendor_dir = os.path.join(self.rust_root, 'vendor')
             if not os.path.exists(vendor_dir):
-                sync_dirs = "--sync ./src/tools/rust-analyzer/Cargo.toml " \
+                sync_dirs = "--sync ./src/tools/cargo/Cargo.toml " \
+                            "--sync ./src/tools/rust-analyzer/Cargo.toml " \
                             "--sync ./compiler/rustc_codegen_cranelift/Cargo.toml " \
                             "--sync ./src/bootstrap/Cargo.toml "
                 print('error: vendoring required, but vendor directory does not exist.')

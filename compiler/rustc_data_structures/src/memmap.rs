@@ -13,7 +13,8 @@ pub struct Mmap(Vec<u8>);
 impl Mmap {
     #[inline]
     pub unsafe fn map(file: File) -> io::Result<Self> {
-        memmap2::Mmap::map(&file).map(Mmap)
+        // Safety: this is in fact not safe.
+        unsafe { memmap2::Mmap::map(&file).map(Mmap) }
     }
 }
 

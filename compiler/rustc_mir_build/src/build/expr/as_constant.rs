@@ -78,7 +78,7 @@ pub fn as_constant_inner<'tcx>(
         ExprKind::NamedConst { def_id, substs, ref user_ty } => {
             let user_ty = user_ty.as_ref().and_then(push_cuta);
 
-            let uneval = mir::UnevaluatedConst::new(ty::WithOptConstParam::unknown(def_id), substs);
+            let uneval = mir::UnevaluatedConst::new(def_id, substs);
             let literal = ConstantKind::Unevaluated(uneval, ty);
 
             Constant { user_ty, span, literal }
@@ -90,7 +90,7 @@ pub fn as_constant_inner<'tcx>(
             Constant { user_ty: None, span, literal }
         }
         ExprKind::ConstBlock { did: def_id, substs } => {
-            let uneval = mir::UnevaluatedConst::new(ty::WithOptConstParam::unknown(def_id), substs);
+            let uneval = mir::UnevaluatedConst::new(def_id, substs);
             let literal = ConstantKind::Unevaluated(uneval, ty);
 
             Constant { user_ty: None, span, literal }

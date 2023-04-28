@@ -27,7 +27,7 @@ use rustc_span::hygiene::DesugaringKind;
 use rustc_span::Span;
 
 pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    let Ok((thir, expr)) = tcx.thir_body(ty::WithOptConstParam::unknown(def_id)) else { return };
+    let Ok((thir, expr)) = tcx.thir_body(def_id) else { return };
     let thir = thir.borrow();
     let pattern_arena = TypedArena::default();
     let mut visitor = MatchVisitor {
@@ -671,10 +671,8 @@ fn non_exhaustive_match<'p, 'tcx>(
         };
     };
 
-    let is_variant_list_non_exhaustive = match scrut_ty.kind() {
-        ty::Adt(def, _) if def.is_variant_list_non_exhaustive() && !def.did().is_local() => true,
-        _ => false,
-    };
+    let is_variant_list_non_exhaustive = matches!(scrut_ty.kind(),
+        ty::Adt(def, _) if def.is_variant_list_non_exhaustive() && !def.did().is_local());
 
     adt_defined_here(cx, &mut err, scrut_ty, &witnesses);
     err.note(&format!(

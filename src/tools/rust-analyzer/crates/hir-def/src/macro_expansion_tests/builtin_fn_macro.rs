@@ -201,7 +201,7 @@ macro_rules! format_args {
 }
 
 fn main() {
-    $crate::fmt::Arguments::new_v1(&[], &[$crate::fmt::ArgumentV1::new(&(arg1(a, b, c)), $crate::fmt::Display::fmt), $crate::fmt::ArgumentV1::new(&(arg2), $crate::fmt::Display::fmt), ]);
+    $crate::fmt::Arguments::new_v1(&[], &[$crate::fmt::Argument::new(&(arg1(a, b, c)), $crate::fmt::Display::fmt), $crate::fmt::Argument::new(&(arg2), $crate::fmt::Display::fmt), ]);
 }
 "#]],
     );
@@ -229,7 +229,7 @@ macro_rules! format_args {
 }
 
 fn main() {
-    $crate::fmt::Arguments::new_v1(&[], &[$crate::fmt::ArgumentV1::new(&(a::<A, B>()), $crate::fmt::Display::fmt), $crate::fmt::ArgumentV1::new(&(b), $crate::fmt::Display::fmt), ]);
+    $crate::fmt::Arguments::new_v1(&[], &[$crate::fmt::Argument::new(&(a::<A, B>()), $crate::fmt::Display::fmt), $crate::fmt::Argument::new(&(b), $crate::fmt::Display::fmt), ]);
 }
 "#]],
     );
@@ -260,7 +260,7 @@ macro_rules! format_args {
 fn main() {
     let _ =
         /* parse error: expected field name or number */
-$crate::fmt::Arguments::new_v1(&[], &[$crate::fmt::ArgumentV1::new(&(a.), $crate::fmt::Display::fmt), ]);
+$crate::fmt::Arguments::new_v1(&[], &[$crate::fmt::Argument::new(&(a.), $crate::fmt::Display::fmt), ]);
 }
 "#]],
     );

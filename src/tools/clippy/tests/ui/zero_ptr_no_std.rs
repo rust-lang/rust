@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![feature(lang_items, start, libc)]
 #![no_std]

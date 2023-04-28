@@ -1,4 +1,4 @@
-use crate::infer::outlives::components::{compute_components_recursive, Component};
+use crate::infer::outlives::components::{compute_alias_components_recursive, Component};
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::region_constraints::VerifyIfEq;
 use crate::infer::VerifyBound;
@@ -130,7 +130,12 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         // see the extensive comment in projection_must_outlive
         let recursive_bound = {
             let mut components = smallvec![];
-            compute_components_recursive(self.tcx, alias_ty_as_ty.into(), &mut components, visited);
+            compute_alias_components_recursive(
+                self.tcx,
+                alias_ty_as_ty.into(),
+                &mut components,
+                visited,
+            );
             self.bound_from_components(&components, visited)
         };
 

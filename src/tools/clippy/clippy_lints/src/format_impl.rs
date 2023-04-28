@@ -51,7 +51,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for use of `println`, `print`, `eprintln` or `eprint` in an
+    /// Checks for usage of `println`, `print`, `eprintln` or `eprint` in an
     /// implementation of a formatting trait.
     ///
     /// ### Why is this bad?

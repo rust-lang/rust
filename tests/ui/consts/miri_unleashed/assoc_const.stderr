@@ -25,12 +25,6 @@ note: erroneous constant used
 LL |     let y = <String as Bar<Vec<u32>, String>>::F;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-note: erroneous constant used
-  --> $DIR/assoc_const.rs:29:13
-   |
-LL |     let y = <String as Bar<Vec<u32>, String>>::F;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 warning: skipping const checks
    |
 help: skipping check that does not even have a feature gate

@@ -36,7 +36,7 @@ use std::fmt::{Debug, Formatter};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::{IndexSlice, IndexVec};
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -366,7 +366,7 @@ where
 rustc_index::newtype_index!(
     /// This index uniquely identifies a place.
     ///
-    /// Not every place has a `PlaceIndex`, and not every `PlaceIndex` correspondends to a tracked
+    /// Not every place has a `PlaceIndex`, and not every `PlaceIndex` corresponds to a tracked
     /// place. However, every tracked place and all places along its projection have a `PlaceIndex`.
     pub struct PlaceIndex {}
 );

@@ -10,7 +10,8 @@
 //! <https://www.cs.princeton.edu/courses/archive/spr03/cs423/download/dominators.pdf>
 
 use super::ControlFlowGraph;
-use rustc_index::vec::{Idx, IndexSlice, IndexVec};
+use rustc_index::{Idx, IndexSlice, IndexVec};
+
 use std::cmp::Ordering;
 
 #[cfg(test)]

@@ -1,3 +1,4 @@
+use crate::errors;
 /// The expansion from a test function to the appropriate test struct for libtest
 /// Ideally, this code would be in libtest but for efficiency and error messages it lives here.
 use crate::util::{check_builtin_macro_attribute, warn_on_duplicate_attribute};
@@ -40,12 +41,7 @@ pub fn expand_test_case(
             unreachable!()
         },
         _ => {
-            ecx.struct_span_err(
-                anno_item.span(),
-                "`#[test_case]` attribute is only allowed on items",
-            )
-            .emit();
-
+            ecx.emit_err(errors::TestCaseNonItem { span: anno_item.span() });
             return vec![];
         }
     };
@@ -533,15 +529,11 @@ fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
     match &i.kind {
         ast::ItemKind::Fn(box ast::Fn { sig, generics, .. }) => {
             if let ast::Unsafe::Yes(span) = sig.header.unsafety {
-                sd.struct_span_err(i.span, "unsafe functions cannot be used for tests")
-                    .span_label(span, "`unsafe` because of this")
-                    .emit();
+                sd.emit_err(errors::TestBadFn { span: i.span, cause: span, kind: "unsafe" });
                 return false;
             }
             if let ast::Async::Yes { span, .. } = sig.header.asyncness {
-                sd.struct_span_err(i.span, "async functions cannot be used for tests")
-                    .span_label(span, "`async` because of this")
-                    .emit();
+                sd.emit_err(errors::TestBadFn { span: i.span, cause: span, kind: "async" });
                 return false;
             }
 

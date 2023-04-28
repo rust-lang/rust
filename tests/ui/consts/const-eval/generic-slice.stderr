@@ -4,6 +4,8 @@ error[E0597]: `x` does not live long enough
 LL | impl<'a, T: 'static> Generic<'a, T> {
    |      -- lifetime `'a` defined here
 ...
+LL |         let x: &'static [T] = &[];
+   |             - binding `x` declared here
 LL |         &x
    |         ^^
    |         |
@@ -16,6 +18,8 @@ LL |     };
 error[E0597]: `x` does not live long enough
   --> $DIR/generic-slice.rs:27:5
    |
+LL |     let x: &[_] = &[];
+   |         - binding `x` declared here
 LL |     &x
    |     ^^
    |     |

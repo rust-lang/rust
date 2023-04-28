@@ -174,14 +174,6 @@ impl AsLocalKey for DefId {
     }
 }
 
-impl Key for ty::WithOptConstParam<LocalDefId> {
-    type CacheSelector = DefaultCacheSelector<Self>;
-
-    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
-        self.did.default_span(tcx)
-    }
-}
-
 impl Key for SimplifiedType {
     type CacheSelector = DefaultCacheSelector<Self>;
 
@@ -313,7 +305,7 @@ impl<'tcx> Key for (ty::UnevaluatedConst<'tcx>, ty::UnevaluatedConst<'tcx>) {
     type CacheSelector = DefaultCacheSelector<Self>;
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
-        (self.0).def.did.default_span(tcx)
+        (self.0).def.default_span(tcx)
     }
 }
 

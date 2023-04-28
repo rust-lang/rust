@@ -1,4 +1,4 @@
-//! A subset of a mir body used for const evaluatability checking.
+//! A subset of a mir body used for const evaluability checking.
 use crate::ty::{
     self, Const, EarlyBinder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeVisitableExt,
@@ -36,15 +36,8 @@ pub type BoundAbstractConst<'tcx> = Result<Option<EarlyBinder<ty::Const<'tcx>>>,
 
 impl<'tcx> TyCtxt<'tcx> {
     /// Returns a const without substs applied
-    pub fn bound_abstract_const(
-        self,
-        uv: ty::WithOptConstParam<DefId>,
-    ) -> BoundAbstractConst<'tcx> {
-        let ac = if let Some((did, param_did)) = uv.as_const_arg() {
-            self.thir_abstract_const_of_const_arg((did, param_did))
-        } else {
-            self.thir_abstract_const(uv.did)
-        };
+    pub fn bound_abstract_const(self, uv: DefId) -> BoundAbstractConst<'tcx> {
+        let ac = self.thir_abstract_const(uv);
         Ok(ac?.map(|ac| EarlyBinder(ac)))
     }
 

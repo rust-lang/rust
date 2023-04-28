@@ -13,57 +13,57 @@ use std::marker::Destruct;
 pub struct S<T>(T);
 
 // @!has foo/trait.Tr.html '//pre[@class="rust item-decl"]/code/a[@class="trait"]' '~const'
-// @has - '//pre[@class="rust item-decl"]/code/a[@class="trait"]' 'Clone'
+// @has - '//pre[@class="rust item-decl"]/code/a[@class="trait"]' 'Fn'
 // @!has - '//pre[@class="rust item-decl"]/code/span[@class="where"]' '~const'
-// @has - '//pre[@class="rust item-decl"]/code/span[@class="where"]' ': Clone'
+// @has - '//pre[@class="rust item-decl"]/code/span[@class="where"]' ': Fn'
 #[const_trait]
 pub trait Tr<T> {
     // @!has - '//section[@id="method.a"]/h4[@class="code-header"]' '~const'
-    // @has - '//section[@id="method.a"]/h4[@class="code-header"]/a[@class="trait"]' 'Clone'
+    // @has - '//section[@id="method.a"]/h4[@class="code-header"]/a[@class="trait"]' 'Fn'
     // @!has - '//section[@id="method.a"]/h4[@class="code-header"]/span[@class="where"]' '~const'
-    // @has - '//section[@id="method.a"]/h4[@class="code-header"]/span[@class="where fmt-newline"]' ': Clone'
-    fn a<A: ~const Clone + ~const Destruct>()
+    // @has - '//section[@id="method.a"]/h4[@class="code-header"]/span[@class="where fmt-newline"]' ': Fn'
+    fn a<A: ~const Fn() + ~const Destruct>()
     where
-        Option<A>: ~const Clone + ~const Destruct,
+        Option<A>: ~const Fn() + ~const Destruct,
     {
     }
 }
 
 // @has - '//section[@id="impl-Tr%3CT%3E-for-T"]' ''
 // @!has - '//section[@id="impl-Tr%3CT%3E-for-T"]/h3[@class="code-header"]' '~const'
-// @has - '//section[@id="impl-Tr%3CT%3E-for-T"]/h3[@class="code-header"]/a[@class="trait"]' 'Clone'
+// @has - '//section[@id="impl-Tr%3CT%3E-for-T"]/h3[@class="code-header"]/a[@class="trait"]' 'Fn'
 // @!has - '//section[@id="impl-Tr%3CT%3E-for-T"]/h3[@class="code-header"]/span[@class="where"]' '~const'
-// @has - '//section[@id="impl-Tr%3CT%3E-for-T"]/h3[@class="code-header"]/span[@class="where fmt-newline"]' ': Clone'
-impl<T: ~const Clone + ~const Destruct> const Tr<T> for T
+// @has - '//section[@id="impl-Tr%3CT%3E-for-T"]/h3[@class="code-header"]/span[@class="where fmt-newline"]' ': Fn'
+impl<T: ~const Fn() + ~const Destruct> const Tr<T> for T
 where
-    Option<T>: ~const Clone + ~const Destruct,
+    Option<T>: ~const Fn() + ~const Destruct,
 {
-    fn a<A: ~const Clone + ~const Destruct>()
+    fn a<A: ~const Fn() + ~const Destruct>()
     where
-        Option<A>: ~const Clone + ~const Destruct,
+        Option<A>: ~const Fn() + ~const Destruct,
     {
     }
 }
 
 // @!has foo/fn.foo.html '//pre[@class="rust item-decl"]/code/a[@class="trait"]' '~const'
-// @has - '//pre[@class="rust item-decl"]/code/a[@class="trait"]' 'Clone'
+// @has - '//pre[@class="rust item-decl"]/code/a[@class="trait"]' 'Fn'
 // @!has - '//pre[@class="rust item-decl"]/code/span[@class="where fmt-newline"]' '~const'
-// @has - '//pre[@class="rust item-decl"]/code/span[@class="where fmt-newline"]' ': Clone'
-pub const fn foo<F: ~const Clone + ~const Destruct>()
+// @has - '//pre[@class="rust item-decl"]/code/span[@class="where fmt-newline"]' ': Fn'
+pub const fn foo<F: ~const Fn() + ~const Destruct>()
 where
-    Option<F>: ~const Clone + ~const Destruct,
+    Option<F>: ~const Fn() + ~const Destruct,
 {
     F::a()
 }
 
 impl<T> S<T> {
     // @!has foo/struct.S.html '//section[@id="method.foo"]/h4[@class="code-header"]' '~const'
-    // @has - '//section[@id="method.foo"]/h4[@class="code-header"]/a[@class="trait"]' 'Clone'
+    // @has - '//section[@id="method.foo"]/h4[@class="code-header"]/a[@class="trait"]' 'Fn'
     // @!has - '//section[@id="method.foo"]/h4[@class="code-header"]/span[@class="where"]' '~const'
-    // @has - '//section[@id="method.foo"]/h4[@class="code-header"]/span[@class="where fmt-newline"]' ': Clone'
-    pub const fn foo<B, C: ~const Clone + ~const Destruct>()
+    // @has - '//section[@id="method.foo"]/h4[@class="code-header"]/span[@class="where fmt-newline"]' ': Fn'
+    pub const fn foo<B, C: ~const Fn() + ~const Destruct>()
     where
-        B: ~const Clone + ~const Destruct,
+        B: ~const Fn() + ~const Destruct,
     {
         B::a()
     }

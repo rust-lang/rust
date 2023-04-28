@@ -24,14 +24,14 @@ Then this code snippet will be included in the documentation for `a_func`. This 
 This feature is unstable, so you can enable it by calling Rustdoc with the unstable `rustdoc-scrape-examples` flag:
 
 ```bash
-cargo doc -Zunstable-options -Zrustdoc-scrape-examples=examples
+cargo doc -Zunstable-options -Zrustdoc-scrape-examples
 ```
 
 To enable this feature on [docs.rs](https://docs.rs), add this to your Cargo.toml:
 
 ```toml
 [package.metadata.docs.rs]
-cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples=examples"]
+cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]
 ```
 
 

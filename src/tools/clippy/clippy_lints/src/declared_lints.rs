@@ -215,6 +215,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::invalid_upcast_comparisons::INVALID_UPCAST_COMPARISONS_INFO,
     crate::invalid_utf8_in_unchecked::INVALID_UTF8_IN_UNCHECKED_INFO,
     crate::items_after_statements::ITEMS_AFTER_STATEMENTS_INFO,
+    crate::items_after_test_module::ITEMS_AFTER_TEST_MODULE_INFO,
     crate::iter_not_returning_iterator::ITER_NOT_RETURNING_ITERATOR_INFO,
     crate::large_const_arrays::LARGE_CONST_ARRAYS_INFO,
     crate::large_enum_variant::LARGE_ENUM_VARIANT_INFO,

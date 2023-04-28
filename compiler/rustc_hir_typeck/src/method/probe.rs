@@ -2032,7 +2032,7 @@ impl<'tcx> Candidate<'tcx> {
                     // means they are safe to put into the
                     // `WhereClausePick`.
                     assert!(
-                        !trait_ref.skip_binder().substs.needs_infer()
+                        !trait_ref.skip_binder().substs.has_infer()
                             && !trait_ref.skip_binder().substs.has_placeholders()
                     );
 

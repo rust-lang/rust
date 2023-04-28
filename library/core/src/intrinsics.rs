@@ -1376,6 +1376,20 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn transmute<Src, Dst>(src: Src) -> Dst;
 
+    /// Like [`transmute`], but even less checked at compile-time: rather than
+    /// giving an error for `size_of::<Src>() != size_of::<Dst>()`, it's
+    /// **Undefined Behaviour** at runtime.
+    ///
+    /// Prefer normal `transmute` where possible, for the extra checking, since
+    /// both do exactly the same thing at runtime, if they both compile.
+    ///
+    /// This is not expected to ever be exposed directly to users, rather it
+    /// may eventually be exposed through some more-constrained API.
+    #[cfg(not(bootstrap))]
+    #[rustc_const_stable(feature = "const_transmute", since = "1.56.0")]
+    #[rustc_nounwind]
+    pub fn transmute_unchecked<Src, Dst>(src: Src) -> Dst;
+
     /// Returns `true` if the actual type given as `T` requires drop
     /// glue; returns `false` if the actual type provided for `T`
     /// implements `Copy`.
@@ -1399,6 +1413,10 @@ extern "rust-intrinsic" {
     /// This is implemented as an intrinsic to avoid converting to and from an
     /// integer, since the conversion would throw away aliasing information.
     ///
+    /// This can only be used with `Ptr` as a raw pointer type (`*mut` or `*const`)
+    /// to a `Sized` pointee and with `Delta` as `usize` or `isize`.  Any other
+    /// instantiations may arbitrarily misbehave, and that's *not* a compiler bug.
+    ///
     /// # Safety
     ///
     /// Both the starting and resulting pointer must be either in bounds or one
@@ -1407,6 +1425,14 @@ extern "rust-intrinsic" {
     /// returned value will result in undefined behavior.
     ///
     /// The stabilized version of this intrinsic is [`pointer::offset`].
+    #[cfg(not(bootstrap))]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
+    #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
+    #[rustc_nounwind]
+    pub fn offset<Ptr, Delta>(dst: Ptr, offset: Delta) -> Ptr;
+
+    /// The bootstrap version of this is more restricted.
+    #[cfg(bootstrap)]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[rustc_nounwind]
@@ -2460,7 +2486,7 @@ extern "rust-intrinsic" {
 /// This macro should be called as `assert_unsafe_precondition!([Generics](name: Type) => Expression)`
 /// where the names specified will be moved into the macro as captured variables, and defines an item
 /// to call `const_eval_select` on. The tokens inside the square brackets are used to denote generics
-/// for the function declaractions and can be omitted if there is no generics.
+/// for the function declarations and can be omitted if there is no generics.
 ///
 /// # Safety
 ///
@@ -2519,7 +2545,9 @@ pub(crate) fn is_valid_allocation_size<T>(len: usize) -> bool {
 pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -> bool {
     let src_usize = src.addr();
     let dst_usize = dst.addr();
-    let size = mem::size_of::<T>().checked_mul(count).unwrap();
+    let size = mem::size_of::<T>()
+        .checked_mul(count)
+        .expect("is_nonoverlapping: `size_of::<T>() * count` overflows a usize");
     let diff = if src_usize > dst_usize { src_usize - dst_usize } else { dst_usize - src_usize };
     // If the absolute distance between the ptrs is at least as big as the size of the buffer,
     // they do not overlap.
@@ -2717,7 +2745,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     // SAFETY: the safety contract for `copy` must be upheld by the caller.
     unsafe {
         assert_unsafe_precondition!(
-            "ptr::copy requires that both pointer arguments are aligned aligned and non-null",
+            "ptr::copy requires that both pointer arguments are aligned and non-null",
             [T](src: *const T, dst: *mut T) =>
             is_aligned_and_not_null(src) && is_aligned_and_not_null(dst)
         );
@@ -2795,4 +2823,12 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
         );
         write_bytes(dst, val, count)
     }
+}
+
+/// Polyfill for bootstrap
+#[cfg(bootstrap)]
+pub const unsafe fn transmute_unchecked<Src, Dst>(src: Src) -> Dst {
+    use crate::mem::*;
+    // SAFETY: It's a transmute -- the caller promised it's fine.
+    unsafe { transmute_copy(&ManuallyDrop::new(src)) }
 }

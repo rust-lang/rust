@@ -91,7 +91,7 @@ fn import_candidate_to_enum_paths(suggestion: &ImportSuggestion) -> (String, Str
 /// Description of an elided lifetime.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub(super) struct MissingLifetime {
-    /// Used to overwrite the resolution with the suggestion, to avoid cascasing errors.
+    /// Used to overwrite the resolution with the suggestion, to avoid cascading errors.
     pub id: NodeId,
     /// Where to suggest adding the lifetime.
     pub span: Span,
@@ -408,7 +408,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         }
         let Some(path_last_segment) = path.last() else { return };
         let item_str = path_last_segment.ident;
-        // Emit help message for fake-self from other languages (e.g., `this` in Javascript).
+        // Emit help message for fake-self from other languages (e.g., `this` in JavaScript).
         if ["this", "my"].contains(&item_str.as_str()) {
             err.span_suggestion_short(
                 span,

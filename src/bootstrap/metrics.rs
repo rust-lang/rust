@@ -4,7 +4,7 @@
 //! As this module requires additional dependencies not present during local builds, it's cfg'd
 //! away whenever the `build.metrics` config option is not set to `true`.
 
-use crate::builder::Step;
+use crate::builder::{Builder, Step};
 use crate::util::t;
 use crate::Build;
 use serde_derive::{Deserialize, Serialize};
@@ -33,7 +33,12 @@ impl BuildMetrics {
         BuildMetrics { state }
     }
 
-    pub(crate) fn enter_step<S: Step>(&self, step: &S) {
+    pub(crate) fn enter_step<S: Step>(&self, step: &S, builder: &Builder<'_>) {
+        // Do not record dry runs, as they'd be duplicates of the actual steps.
+        if builder.config.dry_run() {
+            return;
+        }
+
         let mut state = self.state.borrow_mut();
 
         // Consider all the stats gathered so far as the parent's.
@@ -56,7 +61,12 @@ impl BuildMetrics {
         });
     }
 
-    pub(crate) fn exit_step(&self) {
+    pub(crate) fn exit_step(&self, builder: &Builder<'_>) {
+        // Do not record dry runs, as they'd be duplicates of the actual steps.
+        if builder.config.dry_run() {
+            return;
+        }
+
         let mut state = self.state.borrow_mut();
 
         self.collect_stats(&mut *state);
@@ -74,7 +84,12 @@ impl BuildMetrics {
         }
     }
 
-    pub(crate) fn record_test(&self, name: &str, outcome: TestOutcome) {
+    pub(crate) fn record_test(&self, name: &str, outcome: TestOutcome, builder: &Builder<'_>) {
+        // Do not record dry runs, as they'd be duplicates of the actual steps.
+        if builder.config.dry_run() {
+            return;
+        }
+
         let mut state = self.state.borrow_mut();
         state
             .running_steps

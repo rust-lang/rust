@@ -996,11 +996,14 @@ impl Step for PlainSourceTarball {
         // If we're building from git sources, we need to vendor a complete distribution.
         if builder.rust_info().is_managed_git_subrepository() {
             // Ensure we have the submodules checked out.
+            builder.update_submodule(Path::new("src/tools/cargo"));
             builder.update_submodule(Path::new("src/tools/rust-analyzer"));
 
             // Vendor all Cargo dependencies
             let mut cmd = Command::new(&builder.initial_cargo);
             cmd.arg("vendor")
+                .arg("--sync")
+                .arg(builder.src.join("./src/tools/cargo/Cargo.toml"))
                 .arg("--sync")
                 .arg(builder.src.join("./src/tools/rust-analyzer/Cargo.toml"))
                 .arg("--sync")

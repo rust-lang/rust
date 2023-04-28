@@ -2,7 +2,9 @@ error[E0308]: mismatched types
   --> $DIR/point-at-inference.rs:12:9
    |
 LL |         foo.push(i);
-   |                  - this is of type `&{integer}`, which causes `foo` to be inferred as `Vec<&{integer}>`
+   |         ---      - this argument has type `&{integer}`...
+   |         |
+   |         ... which causes `foo` to have type `Vec<&{integer}>`
 ...
 LL |     bar(foo);
    |     --- ^^^ expected `Vec<i32>`, found `Vec<&{integer}>`

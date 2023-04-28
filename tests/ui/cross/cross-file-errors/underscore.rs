@@ -1,6 +1,4 @@
-// We want this file only so we can test cross-file error
-// messages, but we don't want it in an external crate.
-// ignore-test
+// ignore-test (auxiliary, used by other tests)
 #![crate_type = "lib"]
 
 macro_rules! underscore {

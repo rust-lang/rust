@@ -43,23 +43,15 @@ macro_rules! span_bug {
 
 #[macro_export]
 macro_rules! CloneLiftImpls {
-    (for <$tcx:lifetime> { $($ty:ty,)+ }) => {
+    ($($ty:ty,)+) => {
         $(
-            impl<$tcx> $crate::ty::Lift<$tcx> for $ty {
+            impl<'tcx> $crate::ty::Lift<'tcx> for $ty {
                 type Lifted = Self;
-                fn lift_to_tcx(self, _: $crate::ty::TyCtxt<$tcx>) -> Option<Self> {
+                fn lift_to_tcx(self, _: $crate::ty::TyCtxt<'tcx>) -> Option<Self> {
                     Some(self)
                 }
             }
         )+
-    };
-
-    ($($ty:ty,)+) => {
-        CloneLiftImpls! {
-            for <'tcx> {
-                $($ty,)+
-            }
-        }
     };
 }
 
@@ -67,10 +59,10 @@ macro_rules! CloneLiftImpls {
 /// allocated data** (i.e., don't need to be folded).
 #[macro_export]
 macro_rules! TrivialTypeTraversalImpls {
-    (for <$tcx:lifetime> { $($ty:ty,)+ }) => {
+    ($($ty:ty,)+) => {
         $(
-            impl<$tcx> $crate::ty::fold::TypeFoldable<$crate::ty::TyCtxt<$tcx>> for $ty {
-                fn try_fold_with<F: $crate::ty::fold::FallibleTypeFolder<$crate::ty::TyCtxt<$tcx>>>(
+            impl<'tcx> $crate::ty::fold::TypeFoldable<$crate::ty::TyCtxt<'tcx>> for $ty {
+                fn try_fold_with<F: $crate::ty::fold::FallibleTypeFolder<$crate::ty::TyCtxt<'tcx>>>(
                     self,
                     _: &mut F,
                 ) -> ::std::result::Result<Self, F::Error> {
@@ -78,7 +70,7 @@ macro_rules! TrivialTypeTraversalImpls {
                 }
 
                 #[inline]
-                fn fold_with<F: $crate::ty::fold::TypeFolder<$crate::ty::TyCtxt<$tcx>>>(
+                fn fold_with<F: $crate::ty::fold::TypeFolder<$crate::ty::TyCtxt<'tcx>>>(
                     self,
                     _: &mut F,
                 ) -> Self {
@@ -86,9 +78,9 @@ macro_rules! TrivialTypeTraversalImpls {
                 }
             }
 
-            impl<$tcx> $crate::ty::visit::TypeVisitable<$crate::ty::TyCtxt<$tcx>> for $ty {
+            impl<'tcx> $crate::ty::visit::TypeVisitable<$crate::ty::TyCtxt<'tcx>> for $ty {
                 #[inline]
-                fn visit_with<F: $crate::ty::visit::TypeVisitor<$crate::ty::TyCtxt<$tcx>>>(
+                fn visit_with<F: $crate::ty::visit::TypeVisitor<$crate::ty::TyCtxt<'tcx>>>(
                     &self,
                     _: &mut F)
                     -> ::std::ops::ControlFlow<F::BreakTy>
@@ -97,14 +89,6 @@ macro_rules! TrivialTypeTraversalImpls {
                 }
             }
         )+
-    };
-
-    ($($ty:ty,)+) => {
-        TrivialTypeTraversalImpls! {
-            for<'tcx> {
-                $($ty,)+
-            }
-        }
     };
 }
 

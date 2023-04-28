@@ -399,7 +399,9 @@ pub(crate) fn format_expr(
             }
         }
         ast::ExprKind::Underscore => Some("_".to_owned()),
-        ast::ExprKind::FormatArgs(..) | ast::ExprKind::IncludedBytes(..) => {
+        ast::ExprKind::FormatArgs(..)
+        | ast::ExprKind::IncludedBytes(..)
+        | ast::ExprKind::OffsetOf(..) => {
             // These do not occur in the AST because macros aren't expanded.
             unreachable!()
         }

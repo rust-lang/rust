@@ -1,6 +1,6 @@
-// edition:2015
-// run-rustfix
-// aux-build:wildcard_imports_helper.rs
+//@edition:2015
+//@run-rustfix
+//@aux-build:wildcard_imports_helper.rs
 
 // the 2015 edition here is needed because edition 2018 changed the module system
 // (see https://doc.rust-lang.org/edition-guide/rust-2018/path-changes.html) which means the lint

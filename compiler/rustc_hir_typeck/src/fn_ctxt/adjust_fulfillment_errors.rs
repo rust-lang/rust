@@ -164,24 +164,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     for param in
                         [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
+                            .into_iter()
+                            .flatten()
                     {
-                        if let Some(param) = param {
-                            let refined_expr = self.point_at_field_if_possible(
-                                def_id,
-                                param,
-                                variant_def_id,
-                                fields,
-                            );
+                        let refined_expr =
+                            self.point_at_field_if_possible(def_id, param, variant_def_id, fields);
 
-                            match refined_expr {
-                                None => {}
-                                Some((refined_expr, _)) => {
-                                    error.obligation.cause.span = refined_expr
-                                        .span
-                                        .find_ancestor_in_same_ctxt(error.obligation.cause.span)
-                                        .unwrap_or(refined_expr.span);
-                                    return true;
-                                }
+                        match refined_expr {
+                            None => {}
+                            Some((refined_expr, _)) => {
+                                error.obligation.cause.span = refined_expr
+                                    .span
+                                    .find_ancestor_in_same_ctxt(error.obligation.cause.span)
+                                    .unwrap_or(refined_expr.span);
+                                return true;
                             }
                         }
                     }
@@ -334,7 +330,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// expression mentioned.
     ///
     /// `blame_specific_arg_if_possible` will find the most-specific expression anywhere inside
-    /// the provided function call expression, and mark it as responsible for the fullfillment
+    /// the provided function call expression, and mark it as responsible for the fulfillment
     /// error.
     fn blame_specific_arg_if_possible(
         &self,

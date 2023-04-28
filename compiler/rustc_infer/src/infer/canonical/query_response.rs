@@ -19,8 +19,8 @@ use crate::traits::query::{Fallible, NoSolution};
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
 use crate::traits::{PredicateObligations, TraitEngine, TraitEngineExt};
 use rustc_data_structures::captures::Captures;
-use rustc_index::vec::Idx;
-use rustc_index::vec::IndexVec;
+use rustc_index::Idx;
+use rustc_index::IndexVec;
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::fold::TypeFoldable;
@@ -467,11 +467,11 @@ impl<'tcx> InferCtxt<'tcx> {
                     }
                 }
                 GenericArgKind::Const(result_value) => {
-                    if let ty::ConstKind::Bound(debrujin, b) = result_value.kind() {
+                    if let ty::ConstKind::Bound(debruijn, b) = result_value.kind() {
                         // ...in which case we would set `canonical_vars[0]` to `Some(const X)`.
 
                         // We only allow a `ty::INNERMOST` index in substitutions.
-                        assert_eq!(debrujin, ty::INNERMOST);
+                        assert_eq!(debruijn, ty::INNERMOST);
                         opt_values[b] = Some(*original_value);
                     }
                 }

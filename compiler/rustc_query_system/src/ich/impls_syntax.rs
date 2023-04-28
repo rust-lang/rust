@@ -75,7 +75,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
             ref normalized_pos,
         } = *self;
 
-        (name_hash as u64).hash_stable(hcx, hasher);
+        name_hash.hash_stable(hcx, hasher);
 
         src_hash.hash_stable(hcx, hasher);
 

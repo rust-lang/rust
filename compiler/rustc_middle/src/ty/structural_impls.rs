@@ -4,13 +4,12 @@
 //! to help with the tedium.
 
 use crate::mir::interpret;
-use crate::mir::ProjectionKind;
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
 use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use crate::ty::{self, AliasTy, InferConst, Lift, Term, TermKind, Ty, TyCtxt};
 use rustc_hir::def::Namespace;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{Idx, IndexVec};
 use rustc_target::abi::TyAndLayout;
 
 use std::fmt;
@@ -95,7 +94,7 @@ impl<'tcx> fmt::Debug for ty::FnSig<'tcx> {
 
 impl<'tcx> fmt::Debug for ty::ConstVid<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "_#{}c", self.index)
+        write!(f, "?{}c", self.index)
     }
 }
 
@@ -197,7 +196,7 @@ impl<'tcx> fmt::Debug for AliasTy<'tcx> {
 // Atomic structs
 //
 // For things that don't carry any arena-allocated data (and are
-// copy...), just add them to one of these lists as appropriat.
+// copy...), just add them to one of these lists as appropriate.
 
 // For things for which the type library provides traversal implementations
 // for all Interners, we only need to provide a Lift implementation:
@@ -276,9 +275,7 @@ TrivialTypeTraversalAndLiftImpls! {
 }
 
 TrivialTypeTraversalAndLiftImpls! {
-    for<'tcx> {
-        ty::ValTree<'tcx>,
-    }
+    ty::ValTree<'tcx>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -375,16 +372,6 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ParamEnv<'a> {
 ///////////////////////////////////////////////////////////////////////////
 // Traversal implementations.
 
-/// AdtDefs are basically the same as a DefId.
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::AdtDef<'tcx> {
-    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        _folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        Ok(self)
-    }
-}
-
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::AdtDef<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(
         &self,
@@ -444,15 +431,6 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<ty::Const<'tcx>> {
         folder: &mut F,
     ) -> Result<Self, F::Error> {
         ty::util::fold_list(self, folder, |tcx, v| tcx.mk_const_list(v))
-    }
-}
-
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<ProjectionKind> {
-    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        ty::util::fold_list(self, folder, |tcx, v| tcx.mk_projs(v))
     }
 }
 
@@ -580,24 +558,6 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Region<'tcx> {
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::Region<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         visitor.visit_region(*self)
-    }
-}
-
-impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Region<'tcx> {
-    fn try_super_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        _folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        Ok(self)
-    }
-}
-
-impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Region<'tcx> {
-    fn super_visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(
-        &self,
-        _visitor: &mut V,
-    ) -> ControlFlow<V::BreakTy> {
-        ControlFlow::Continue(())
     }
 }
 

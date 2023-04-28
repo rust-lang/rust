@@ -333,7 +333,7 @@ fn exported_symbols_provider_local(
             match *mono_item {
                 MonoItem::Fn(Instance { def: InstanceDef::Item(def), substs }) => {
                     if substs.non_erasable_generics().next().is_some() {
-                        let symbol = ExportedSymbol::Generic(def.did, substs);
+                        let symbol = ExportedSymbol::Generic(def, substs);
                         symbols.push((
                             symbol,
                             SymbolExportInfo {

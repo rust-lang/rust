@@ -1336,6 +1336,7 @@ impl EmitterWriter {
         //                see?
         for (text, style) in msg.iter() {
             let text = self.translate_message(text, args).map_err(Report::new).unwrap();
+            let text = &normalize_whitespace(&text);
             let lines = text.split('\n').collect::<Vec<_>>();
             if lines.len() > 1 {
                 for (i, line) in lines.iter().enumerate() {
@@ -1980,7 +1981,7 @@ impl EmitterWriter {
             }
             if let DisplaySuggestion::Add = show_code_change && is_item_attribute {
                 // The suggestion adds an entire line of code, ending on a newline, so we'll also
-                // print the *following* line, to provide context of what we're advicing people to
+                // print the *following* line, to provide context of what we're advising people to
                 // do. Otherwise you would only see contextless code that can be confused for
                 // already existing code, despite the colors and UI elements.
                 // We special case `#[derive(_)]\n` and other attribute suggestions, because those

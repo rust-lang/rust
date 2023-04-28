@@ -375,9 +375,9 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
         match instance {
             ty::InstanceDef::Item(def) => {
-                if ecx.tcx.is_ctfe_mir_available(def.did) {
-                    Ok(ecx.tcx.mir_for_ctfe_opt_const_arg(def))
-                } else if ecx.tcx.def_kind(def.did) == DefKind::AssocConst {
+                if ecx.tcx.is_ctfe_mir_available(def) {
+                    Ok(ecx.tcx.mir_for_ctfe(def))
+                } else if ecx.tcx.def_kind(def) == DefKind::AssocConst {
                     let guar = ecx.tcx.sess.delay_span_bug(
                         rustc_span::DUMMY_SP,
                         "This is likely a const item that is missing from its impl",
@@ -386,7 +386,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 } else {
                     // `find_mir_or_eval_fn` checks that this is a const fn before even calling us,
                     // so this should be unreachable.
-                    let path = ecx.tcx.def_path_str(def.did);
+                    let path = ecx.tcx.def_path_str(def);
                     bug!("trying to call extern function `{path}` at compile-time");
                 }
             }
@@ -410,9 +410,9 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             // Execution might have wandered off into other crates, so we cannot do a stability-
             // sensitive check here. But we can at least rule out functions that are not const
             // at all.
-            if !ecx.tcx.is_const_fn_raw(def.did) {
+            if !ecx.tcx.is_const_fn_raw(def) {
                 // allow calling functions inside a trait marked with #[const_trait].
-                if !ecx.tcx.is_const_default_method(def.did) {
+                if !ecx.tcx.is_const_default_method(def) {
                     // We certainly do *not* want to actually call the fn
                     // though, so be sure we return here.
                     throw_unsup_format!("calling non-const function `{}`", instance)
@@ -559,11 +559,20 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     fn binary_ptr_op(
-        _ecx: &InterpCx<'mir, 'tcx, Self>,
-        _bin_op: mir::BinOp,
-        _left: &ImmTy<'tcx>,
-        _right: &ImmTy<'tcx>,
+        ecx: &InterpCx<'mir, 'tcx, Self>,
+        bin_op: mir::BinOp,
+        left: &ImmTy<'tcx>,
+        right: &ImmTy<'tcx>,
     ) -> InterpResult<'tcx, (Scalar, bool, Ty<'tcx>)> {
+        if bin_op == mir::BinOp::Offset {
+            let ptr = left.to_scalar().to_pointer(ecx)?;
+            let offset_count = right.to_scalar().to_target_isize(ecx)?;
+            let pointee_ty = left.layout.ty.builtin_deref(true).unwrap().ty;
+
+            let offset_ptr = ecx.ptr_offset_inbounds(ptr, pointee_ty, offset_count)?;
+            return Ok((Scalar::from_maybe_pointer(offset_ptr, ecx), false, left.layout.ty));
+        }
+
         throw_unsup_format!("pointer arithmetic or comparison is not supported at compile-time");
     }
 

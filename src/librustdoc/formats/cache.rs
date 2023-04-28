@@ -300,14 +300,13 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                             ParentStackItem::Impl { for_, .. } => for_.def_id(&self.cache),
                             ParentStackItem::Type(item_id) => item_id.as_def_id(),
                         };
-                        let path = match did.and_then(|did| self.cache.paths.get(&did)) {
+                        let path = did
+                            .and_then(|did| self.cache.paths.get(&did))
                             // The current stack not necessarily has correlation
                             // for where the type was defined. On the other
                             // hand, `paths` always has the right
                             // information if present.
-                            Some((fqp, _)) => Some(&fqp[..fqp.len() - 1]),
-                            None => None,
-                        };
+                            .map(|(fqp, _)| &fqp[..fqp.len() - 1]);
                         ((did, path), true)
                     }
                 }
