@@ -39,8 +39,6 @@ impl<'tcx> LateLintPass<'tcx> for UselessSendConstraint {
         if let Some(send_bound) = send_bound {
             let only_trait = bounds.len() == 1;
 
-            // We have multiple bounds. one is `Send`
-            // Suggest removing it
             cx.emit_spanned_lint(
                 USELESS_SEND_CONSTRAINT,
                 send_bound.span,
