@@ -21,7 +21,6 @@
 //! `late_lint_methods!` invocation in `lib.rs`.
 
 use crate::fluent_generated as fluent;
-use crate::lints::UselessSendConstraintDiag;
 use crate::{
     errors::BuiltinEllipsisInclusiveRangePatterns,
     lints::{
