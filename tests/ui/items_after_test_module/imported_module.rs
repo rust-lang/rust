@@ -6,6 +6,7 @@ fn main() {}
 
 fn should_not_lint() {}
 
+#[path = "auxiliary/tests.rs"]
 #[cfg(test)]
 mod tests; // Should not lint
 
