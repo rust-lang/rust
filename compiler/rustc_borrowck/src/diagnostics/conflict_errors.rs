@@ -1359,7 +1359,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
 
         // Get closure's arguments
-        let ty::Closure(_, substs) = typeck_results.expr_ty(closure_expr).kind() else { unreachable!() };
+        let ty::Closure(_, substs) = typeck_results.expr_ty(closure_expr).kind() else { /* hir::Closure can be a generator too */ return };
         let sig = substs.as_closure().sig();
         let tupled_params =
             tcx.erase_late_bound_regions(sig.inputs().iter().next().unwrap().map_bound(|&b| b));
