@@ -15,11 +15,14 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagnosticMessage;
 use rustc_hir as hir;
 use rustc_hir::{is_range_literal, Expr, ExprKind, Node};
-use rustc_middle::ty::layout::{IntegerExt, LayoutOf, SizeSkeleton};
-use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{
     self, AdtKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
 };
+use rustc_middle::ty::{
+    layout::{IntegerExt, LayoutOf, SizeSkeleton},
+    VariantDef,
+};
+use rustc_middle::ty::{subst::SubstsRef, FieldDef};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
@@ -770,8 +773,26 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
     debug!("is_repr_nullable_ptr(cx, ty = {:?})", ty);
     if let ty::Adt(ty_def, substs) = ty.kind() {
         let field_ty = match &ty_def.variants().raw[..] {
-            [var_one, var_two] => match (&var_one.fields.raw[..], &var_two.fields.raw[..]) {
+            [variant1, variant2] => match (&variant1.fields.raw[..], &variant2.fields.raw[..]) {
+                // If one variant is empty and the other is a single field (e.g. Option<T>)
                 ([], [field]) | ([field], []) => field.ty(cx.tcx, substs),
+                // If one variant has a ZST and the other has a single field (e.g. Result<T, ()> or Result<(), T>)
+                ([field1], [field2]) => {
+                    let is_zst = |field: &FieldDef, variant: &VariantDef| {
+                        let param_env = cx.tcx.param_env(variant.def_id);
+                        let field_ty = field.ty(cx.tcx, substs);
+                        cx.tcx
+                            .layout_of(param_env.and(field_ty))
+                            .map_or(false, |layout| layout.is_zst())
+                    };
+                    if is_zst(field1, variant1) {
+                        field2.ty(cx.tcx, substs)
+                    } else if is_zst(field2, variant2) {
+                        field1.ty(cx.tcx, substs)
+                    } else {
+                        return None;
+                    }
+                }
                 _ => return None,
             },
             _ => return None,
@@ -832,9 +853,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         cache: &mut FxHashSet<Ty<'tcx>>,
         field: &ty::FieldDef,
         substs: SubstsRef<'tcx>,
+        allow_unit_type: bool,
     ) -> FfiResult<'tcx> {
         let field_ty = field.ty(self.cx.tcx, substs);
-        if field_ty.has_opaque_types() {
+        if field_ty.is_unit() && allow_unit_type {
+            FfiResult::FfiSafe
+        } else if field_ty.has_opaque_types() {
             self.check_type_for_ffi(cache, field_ty)
         } else {
             let field_ty = self.cx.tcx.normalize_erasing_regions(self.cx.param_env, field_ty);
@@ -850,6 +874,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         def: ty::AdtDef<'tcx>,
         variant: &ty::VariantDef,
         substs: SubstsRef<'tcx>,
+        allow_unit_type: bool,
     ) -> FfiResult<'tcx> {
         use FfiResult::*;
 
@@ -857,7 +882,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             // Can assume that at most one field is not a ZST, so only check
             // that field's type for FFI-safety.
             if let Some(field) = transparent_newtype_field(self.cx.tcx, variant) {
-                return self.check_field_type_for_ffi(cache, field, substs);
+                return self.check_field_type_for_ffi(cache, field, substs, allow_unit_type);
             } else {
                 // All fields are ZSTs; this means that the type should behave
                 // like (), which is FFI-unsafe... except if all fields are PhantomData,
@@ -869,7 +894,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         // actually safe.
         let mut all_phantom = !variant.fields.is_empty();
         for field in &variant.fields {
-            match self.check_field_type_for_ffi(cache, &field, substs) {
+            match self.check_field_type_for_ffi(cache, &field, substs, allow_unit_type) {
                 FfiSafe => {
                     all_phantom = false;
                 }
@@ -967,7 +992,14 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             };
                         }
 
-                        self.check_variant_for_ffi(cache, ty, def, def.non_enum_variant(), substs)
+                        self.check_variant_for_ffi(
+                            cache,
+                            ty,
+                            def,
+                            def.non_enum_variant(),
+                            substs,
+                            false,
+                        )
                     }
                     AdtKind::Enum => {
                         if def.variants().is_empty() {
@@ -975,17 +1007,24 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             return FfiSafe;
                         }
 
+                        // We need to keep track if this enum is a represented as a nullable
+                        // pointer (or nonzero integer). This is because when we have an enum
+                        // such as Result<(), NonZeroU32>, we allow this to compile since the FFI
+                        // representation of this is as a u32
+                        let mut is_repr_nullable_ptr = false;
                         // Check for a repr() attribute to specify the size of the
                         // discriminant.
                         if !def.repr().c() && !def.repr().transparent() && def.repr().int.is_none()
                         {
-                            // Special-case types like `Option<extern fn()>`.
+                            // Special-case types like `Option<extern fn()>` and `Result<(), NonZeroU32>`.
                             if repr_nullable_ptr(self.cx, ty, self.mode).is_none() {
                                 return FfiUnsafe {
                                     ty,
                                     reason: fluent::lint_improper_ctypes_enum_repr_reason,
                                     help: Some(fluent::lint_improper_ctypes_enum_repr_help),
                                 };
+                            } else {
+                                is_repr_nullable_ptr = true;
                             }
                         }
 
@@ -1008,7 +1047,14 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                                 };
                             }
 
-                            match self.check_variant_for_ffi(cache, ty, def, variant, substs) {
+                            match self.check_variant_for_ffi(
+                                cache,
+                                ty,
+                                def,
+                                variant,
+                                substs,
+                                is_repr_nullable_ptr,
+                            ) {
                                 FfiSafe => (),
                                 r => return r,
                             }
