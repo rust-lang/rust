@@ -714,13 +714,22 @@ impl CanConstProp {
     }
 }
 
-impl Visitor<'_> for CanConstProp {
+impl<'tcx> Visitor<'tcx> for CanConstProp {
+    fn visit_place(&mut self, place: &Place<'tcx>, mut context: PlaceContext, loc: Location) {
+        use rustc_middle::mir::visit::PlaceContext::*;
+
+        // Dereferencing just read the addess of `place.local`.
+        if place.projection.first() == Some(&PlaceElem::Deref) {
+            context = NonMutatingUse(NonMutatingUseContext::Copy);
+        }
+
+        self.visit_local(place.local, context, loc);
+        self.visit_projection(place.as_ref(), context, loc);
+    }
+
     fn visit_local(&mut self, local: Local, context: PlaceContext, _: Location) {
         use rustc_middle::mir::visit::PlaceContext::*;
         match context {
-            // Projections are fine, because `&mut foo.x` will be caught by
-            // `MutatingUseContext::Borrow` elsewhere.
-            MutatingUse(MutatingUseContext::Projection)
             // These are just stores, where the storing is not propagatable, but there may be later
             // mutations of the same local via `Store`
             | MutatingUse(MutatingUseContext::Call)
@@ -751,7 +760,6 @@ impl Visitor<'_> for CanConstProp {
             NonMutatingUse(NonMutatingUseContext::Copy)
             | NonMutatingUse(NonMutatingUseContext::Move)
             | NonMutatingUse(NonMutatingUseContext::Inspect)
-            | NonMutatingUse(NonMutatingUseContext::Projection)
             | NonMutatingUse(NonMutatingUseContext::PlaceMention)
             | NonUse(_) => {}
 
@@ -771,6 +779,8 @@ impl Visitor<'_> for CanConstProp {
                 trace!("local {:?} can't be propagated because it's used: {:?}", local, context);
                 self.can_const_prop[local] = ConstPropMode::NoPropagation;
             }
+            MutatingUse(MutatingUseContext::Projection)
+            | NonMutatingUse(NonMutatingUseContext::Projection) => bug!("visit_place should not pass {context:?} for {local:?}"),
         }
     }
 }
