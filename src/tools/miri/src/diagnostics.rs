@@ -25,8 +25,7 @@ pub enum TerminationInfo {
     },
     TreeBorrowsUb {
         title: String,
-        relation: Option<String>,
-        problem: String,
+        details: Vec<String>,
         history: tree_diagnostics::HistoryData,
     },
     Int2PtrWithStrictProvenance,
@@ -222,13 +221,13 @@ pub fn report_error<'tcx, 'mir>(
                 }
                 helps
             },
-            TreeBorrowsUb { title: _, relation, problem, history } => {
-                let mut helps = Vec::new();
-                if let Some(relation) = relation {
-                    helps.push((None, relation.clone()));
+            TreeBorrowsUb { title: _, details, history } => {
+                let mut helps = vec![
+                    (None, format!("this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental"))
+                ];
+                for m in details {
+                    helps.push((None, m.clone()));
                 }
-                helps.push((None, problem.clone()));
-                helps.push((None, format!("this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental")));
                 for event in history.events.clone() {
                     helps.push(event);
                 }

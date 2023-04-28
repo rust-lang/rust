@@ -70,7 +70,7 @@ impl HistoryData {
         let this = format!("the {tag_name} tag {tag:?}");
         let msg_initial_state = format!(", in the initial state {}", created.1);
         let msg_creation = format!(
-            "{this} was created here{maybe_msg_initial_state}.",
+            "{this} was created here{maybe_msg_initial_state}",
             maybe_msg_initial_state = if show_initial_state { &msg_initial_state } else { "" },
         );
 
@@ -79,8 +79,8 @@ impl HistoryData {
         {
             // NOTE: `offset` is explicitly absent from the error message, it has no significance
             // to the user. The meaningful one is `access_range`.
-            self.events.push((Some(span.data()), format!("{this} then transitioned {transition} due to a {rel} {access_kind} at offsets {access_range:?}.", rel = if is_foreign { "foreign" } else { "child" })));
-            self.events.push((None, format!("this corresponds to {}.", transition.summary())));
+            self.events.push((Some(span.data()), format!("{this} then transitioned {transition} due to a {rel} {access_kind} at offsets {access_range:?}", rel = if is_foreign { "foreign" } else { "child" })));
+            self.events.push((None, format!("this corresponds to {}", transition.summary())));
         }
     }
 }
@@ -266,50 +266,49 @@ impl TbError<'_> {
         let accessed = self.accessed_info;
         let conflicting = self.conflicting_info;
         let accessed_is_conflicting = accessed.tag == conflicting.tag;
-        let (pre_error, title, relation, problem, conflicting_tag_name) = match self.error_kind {
+        let (pre_error, title, details, conflicting_tag_name) = match self.error_kind {
             ChildAccessForbidden(perm) => {
                 let conflicting_tag_name =
                     if accessed_is_conflicting { "accessed" } else { "conflicting" };
-                (
-                    perm,
-                    format!("{kind} through {accessed} is forbidden."),
-                    (!accessed_is_conflicting).then_some(format!(
-                        "the accessed tag {accessed} is a child of the conflicting tag {conflicting}."
-                    )),
-                    format!(
-                        "the {conflicting_tag_name} tag {conflicting} has state {perm} which forbids child {kind}es."
-                    ),
-                    conflicting_tag_name,
-                )
+                let title = format!("{kind} through {accessed} is forbidden");
+                let mut details = Vec::new();
+                if !accessed_is_conflicting {
+                    details.push(format!(
+                        "the accessed tag {accessed} is a child of the conflicting tag {conflicting}"
+                    ));
+                }
+                details.push(format!(
+                    "the {conflicting_tag_name} tag {conflicting} has state {perm} which forbids child {kind}es"
+                ));
+                (perm, title, details, conflicting_tag_name)
             }
             ProtectedTransition(transition) => {
                 let conflicting_tag_name = "protected";
-                (
-                    transition.started(),
-                    format!("{kind} through {accessed} is forbidden."),
-                    Some(format!(
-                        "the accessed tag {accessed} is a foreign tag for the {conflicting_tag_name} tag {conflicting}."
-                    )),
+                let title = format!("{kind} through {accessed} is forbidden");
+                let details = vec![
                     format!(
-                        "the access would cause the {conflicting_tag_name} tag {conflicting} to transition {transition}. This is {loss}, which is not allowed for protected tags.",
+                        "the accessed tag {accessed} is foreign to the {conflicting_tag_name} tag {conflicting} (i.e., it is not a child)"
+                    ),
+                    format!(
+                        "the access would cause the {conflicting_tag_name} tag {conflicting} to transition {transition}"
+                    ),
+                    format!(
+                        "this is {loss}, which is not allowed for protected tags",
                         loss = transition.summary(),
                     ),
-                    conflicting_tag_name,
-                )
+                ];
+                (transition.started(), title, details, conflicting_tag_name)
             }
             ProtectedDealloc => {
                 let conflicting_tag_name = "strongly protected";
-                (
-                    started_as,
-                    format!("deallocation through {accessed} is forbidden."),
-                    Some(format!(
-                        "the allocation of the accessed tag {accessed} also contains the {conflicting_tag_name} tag {conflicting}."
-                    )),
+                let title = format!("deallocation through {accessed} is forbidden");
+                let details = vec![
                     format!(
-                        "the {conflicting_tag_name} tag {conflicting} disallows deallocations."
+                        "the allocation of the accessed tag {accessed} also contains the {conflicting_tag_name} tag {conflicting}"
                     ),
-                    conflicting_tag_name,
-                )
+                    format!("the {conflicting_tag_name} tag {conflicting} disallows deallocations"),
+                ];
+                (started_as, title, details, conflicting_tag_name)
             }
         };
         let pre_transition = PermTransition::from(started_as, pre_error).unwrap();
@@ -322,7 +321,7 @@ impl TbError<'_> {
             conflicting_tag_name,
             true,
         );
-        err_machine_stop!(TerminationInfo::TreeBorrowsUb { title, relation, problem, history })
+        err_machine_stop!(TerminationInfo::TreeBorrowsUb { title, details, history })
     }
 }
 
