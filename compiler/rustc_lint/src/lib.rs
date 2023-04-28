@@ -242,6 +242,7 @@ late_lint_methods!(
             OpaqueHiddenInferredBound: OpaqueHiddenInferredBound,
             MultipleSupertraitUpcastable: MultipleSupertraitUpcastable,
             MapUnitFn: MapUnitFn,
+            UselessSendConstraint: UselessSendConstraint,
         ]
     ]
 );

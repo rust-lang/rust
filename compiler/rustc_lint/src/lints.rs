@@ -1172,6 +1172,7 @@ pub struct RedundantSemicolonsDiag {
 #[derive(LintDiagnostic)]
 #[diag(lint_useless_send_constraint)]
 pub struct UselessSendConstraintDiag {
+    pub only_trait: bool,
     #[suggestion(code = "", applicability = "maybe-incorrect")]
     pub suggestion: Span,
 }

@@ -3351,24 +3351,18 @@ impl<'tcx> LateLintPass<'tcx> for UselessSendConstraint {
 
         let send = cx.tcx.get_diagnostic_item(sym::Send);
 
-        if bounds.iter().any(|b| b.trait_ref.trait_def_id() == send) {
-            if bounds.len() == 1 {
-                // We have a single bound, and it's `Send`.
-                // Suggest changing it to Any
-                cx.emit_spanned_lint(
-                    USELESS_SEND_CONSTRAINT,
-                    ty.span,
-                    UselessSendConstraintDiag { suggestion: ty.span }
-                )
-            } else {
-                // We have multiple bounds. one is `Send`
-                // Suggest removing it
-                cx.emit_spanned_lint(
-                    USELESS_SEND_CONSTRAINT,
-                    ty.span,
-                    UselessSendConstraintDiag { suggestion: ty.span }
-                )
-            }
+        let send_bound = bounds.iter().find(|b| b.trait_ref.trait_def_id() == send);
+
+        if let Some(send_bound) = send_bound {
+            let only_trait = bounds.len() == 1;
+
+            // We have multiple bounds. one is `Send`
+            // Suggest removing it
+            cx.emit_spanned_lint(
+                USELESS_SEND_CONSTRAINT,
+                send_bound.span,
+                UselessSendConstraintDiag { only_trait, suggestion: send_bound.span }
+            )
         }
     }
 }
