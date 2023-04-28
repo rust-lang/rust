@@ -27,8 +27,8 @@ use rustc_middle::traits::util::supertraits;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::print::{with_crate_prefix, with_forced_trimmed_paths};
+use rustc_middle::ty::IsSuggestable;
 use rustc_middle::ty::{self, GenericArgKind, Ty, TyCtxt, TypeVisitableExt};
-use rustc_middle::ty::{IsSuggestable, ToPolyTraitRef};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Symbol;
 use rustc_span::{edit_distance, source_map, ExpnKind, FileName, MacroKind, Span};
@@ -2068,7 +2068,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut derives = Vec::<(String, Span, Symbol)>::new();
         let mut traits = Vec::new();
         for (pred, _, _) in unsatisfied_predicates {
-            let ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) = pred.kind().skip_binder() else { continue };
+            let Some(ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred))) =
+                pred.kind().no_bound_vars()
+            else {
+                continue
+            };
             let adt = match trait_pred.self_ty().ty_adt_def() {
                 Some(adt) if adt.did().is_local() => adt,
                 _ => continue,
@@ -2085,22 +2089,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     | sym::Hash
                     | sym::Debug => true,
                     _ => false,
+                } && match trait_pred.trait_ref.substs.as_slice() {
+                    // Only suggest deriving if lhs == rhs...
+                    [lhs, rhs] => {
+                        if let Some(lhs) = lhs.as_type()
+                            && let Some(rhs) = rhs.as_type()
+                        {
+                            self.can_eq(self.param_env, lhs, rhs)
+                        } else {
+                            false
+                        }
+                    },
+                    // Unary ops can always be derived
+                    [_] => true,
+                    _ => false,
                 };
                 if can_derive {
                     let self_name = trait_pred.self_ty().to_string();
                     let self_span = self.tcx.def_span(adt.did());
-                    if let Some(poly_trait_ref) = pred.to_opt_poly_trait_pred() {
-                        for super_trait in supertraits(self.tcx, poly_trait_ref.to_poly_trait_ref())
+                    for super_trait in
+                        supertraits(self.tcx, ty::Binder::dummy(trait_pred.trait_ref))
+                    {
+                        if let Some(parent_diagnostic_name) =
+                            self.tcx.get_diagnostic_name(super_trait.def_id())
                         {
-                            if let Some(parent_diagnostic_name) =
-                                self.tcx.get_diagnostic_name(super_trait.def_id())
-                            {
-                                derives.push((
-                                    self_name.clone(),
-                                    self_span,
-                                    parent_diagnostic_name,
-                                ));
-                            }
+                            derives.push((self_name.clone(), self_span, parent_diagnostic_name));
                         }
                     }
                     derives.push((self_name, self_span, diagnostic_name));
