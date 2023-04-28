@@ -360,7 +360,7 @@ impl Printer {
 
     fn check_stack(&mut self, mut depth: usize) {
         while let Some(&index) = self.scan_stack.back() {
-            let mut entry = &mut self.buf[index];
+            let entry = &mut self.buf[index];
             match entry.token {
                 Token::Begin(_) => {
                     if depth == 0 {

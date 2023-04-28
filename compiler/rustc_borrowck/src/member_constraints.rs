@@ -221,7 +221,7 @@ fn append_list(
 ) {
     let mut p = target_list;
     loop {
-        let mut r = &mut constraints[p];
+        let r = &mut constraints[p];
         match r.next_constraint {
             Some(q) => p = q,
             None => {
