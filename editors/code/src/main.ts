@@ -120,13 +120,11 @@ function createCommands(): Record<string, CommandFactory> {
             enabled: commands.onEnter,
             disabled: (_) => () => vscode.commands.executeCommand("default:type", { text: "\n" }),
         },
-        reload: {
+        restartServer: {
             enabled: (ctx) => async () => {
-                void vscode.window.showInformationMessage("Reloading rust-analyzer...");
                 await ctx.restart();
             },
             disabled: (ctx) => async () => {
-                void vscode.window.showInformationMessage("Reloading rust-analyzer...");
                 await ctx.start();
             },
         },

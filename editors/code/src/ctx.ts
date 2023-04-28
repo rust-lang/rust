@@ -390,7 +390,9 @@ export class Ctx {
         statusBar.tooltip.appendMarkdown(
             "\n\n[Rebuild Proc Macros](command:rust-analyzer.rebuildProcMacros)"
         );
-        statusBar.tooltip.appendMarkdown("\n\n[Restart server](command:rust-analyzer.startServer)");
+        statusBar.tooltip.appendMarkdown(
+            "\n\n[Restart server](command:rust-analyzer.restartServer)"
+        );
         statusBar.tooltip.appendMarkdown("\n\n[Stop server](command:rust-analyzer.stopServer)");
         if (!status.quiescent) icon = "$(sync~spin) ";
         statusBar.text = `${icon}rust-analyzer`;

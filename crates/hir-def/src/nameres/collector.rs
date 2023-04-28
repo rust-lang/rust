@@ -1874,7 +1874,6 @@ impl ModCollector<'_, '_> {
         let vis = def_map
             .resolve_visibility(self.def_collector.db, self.module_id, visibility, false)
             .unwrap_or(Visibility::Public);
-        let modules = &mut def_map.modules;
         let origin = match definition {
             None => ModuleOrigin::Inline {
                 definition: declaration,
@@ -1888,6 +1887,7 @@ impl ModCollector<'_, '_> {
             },
         };
 
+        let modules = &mut def_map.modules;
         let res = modules.alloc(ModuleData::new(origin, vis));
         modules[res].parent = Some(self.module_id);
         for (name, mac) in modules[self.module_id].scope.collect_legacy_macros() {
