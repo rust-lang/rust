@@ -3,7 +3,8 @@ use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::canonical::CanonicalVarValues;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{
-    DefineOpaqueTypes, InferCtxt, InferOk, LateBoundRegionConversionTime, TyCtxtInferExt,
+    DefineOpaqueTypes, InferCtxt, InferOk, LateBoundRegionConversionTime, RegionVariableOrigin,
+    TyCtxtInferExt,
 };
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::ObligationCause;
@@ -223,18 +224,20 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         {
             debug!("rerunning goal to check result is stable");
             let (_orig_values, canonical_goal) = self.canonicalize_goal(goal);
-            let canonical_response =
+            let new_canonical_response =
                 EvalCtxt::evaluate_canonical_goal(self.tcx(), self.search_graph, canonical_goal)?;
-            if !canonical_response.value.var_values.is_identity() {
+            if !new_canonical_response.value.var_values.is_identity() {
                 bug!(
                     "unstable result: re-canonicalized goal={canonical_goal:#?} \
-                     response={canonical_response:#?}"
+                    first_response={canonical_response:#?} \
+                    second_response={new_canonical_response:#?}"
                 );
             }
-            if certainty != canonical_response.value.certainty {
+            if certainty != new_canonical_response.value.certainty {
                 bug!(
                     "unstable certainty: {certainty:#?} re-canonicalized goal={canonical_goal:#?} \
-                     response={canonical_response:#?}"
+                     first_response={canonical_response:#?} \
+                     second_response={new_canonical_response:#?}"
                 );
             }
         }
@@ -432,6 +435,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             kind: TypeVariableOriginKind::MiscVariable,
             span: DUMMY_SP,
         })
+    }
+
+    pub(super) fn next_region_infer(&self) -> ty::Region<'tcx> {
+        self.infcx.next_region_var(RegionVariableOrigin::MiscVariable(DUMMY_SP))
     }
 
     pub(super) fn next_const_infer(&self, ty: Ty<'tcx>) -> ty::Const<'tcx> {
