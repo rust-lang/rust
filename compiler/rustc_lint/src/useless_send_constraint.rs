@@ -25,7 +25,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessSendConstraint {
             _,
             hir::MutTy {
                 ty: hir::Ty {
-                    kind: hir::TyKind::TraitObject(bounds, ..)
+                    kind: hir::TyKind::TraitObject(bounds, ..),
                     ..
                 },
                 ..
