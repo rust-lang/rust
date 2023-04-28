@@ -794,7 +794,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         };
 
-        // get all where BoundPredicates here, because they are used in to cases below
+        // get all where BoundPredicates here, because they are used in two cases below
         let where_predicates = predicates
             .iter()
             .filter_map(|p| match p {
@@ -1252,7 +1252,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 node: rustc_ast::LitKind::Int(lit, rustc_ast::LitIntType::Unsuffixed),
                 span,
             }) => {
-                let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) else { return false; };
+                let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(*span) else { return false; };
                 if !(snippet.starts_with("0x") || snippet.starts_with("0X")) {
                     return false;
                 }
@@ -1311,7 +1311,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // We have satisfied all requirements to provide a suggestion. Emit it.
         err.span_suggestion(
-            span,
+            *span,
             format!("if you meant to create a null pointer, use `{null_path_str}()`"),
             null_path_str + "()",
             Applicability::MachineApplicable,
@@ -1384,7 +1384,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         let item_ty = self.tcx.type_of(item.def_id).subst_identity();
         // FIXME(compiler-errors): This check is *so* rudimentary
-        if item_ty.needs_subst() {
+        if item_ty.has_param() {
             return false;
         }
         if self.can_coerce(item_ty, expected_ty) {

@@ -24,7 +24,7 @@ use crate::deriving::*;
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_expand::base::{MacroExpanderFn, ResolverExpand, SyntaxExtensionKind};
 use rustc_expand::proc_macro::BangProcMacro;
-use rustc_macros::fluent_messages;
+use rustc_fluent_macro::fluent_messages;
 use rustc_span::symbol::sym;
 
 mod alloc_error_handler;
@@ -45,6 +45,7 @@ mod format;
 mod format_foreign;
 mod global_allocator;
 mod log_syntax;
+mod offset_of;
 mod source_util;
 mod test;
 mod trace_macros;
@@ -92,6 +93,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         line: source_util::expand_line,
         log_syntax: log_syntax::expand_log_syntax,
         module_path: source_util::expand_mod,
+        offset_of: offset_of::expand_offset_of,
         option_env: env::expand_option_env,
         core_panic: edition_panic::expand_panic,
         std_panic: edition_panic::expand_panic,

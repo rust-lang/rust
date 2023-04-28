@@ -15,6 +15,8 @@ While the integer base ABI is implied by the machine field, the floating po
 |          f32           | The base ABI uses 32-bit FPRs for parameter passing. (lp64f)|
 |          sf            | The base ABI uses no FPR for parameter passing. (lp64s)     |
 
+<br>
+
 |`ABI type(Base ABI/ABI extension)`| `C library` | `kernel` |          `target tuple`          |
 |----------------------------------|-------------|----------|----------------------------------|
 |           lp64d/base             |   glibc     |  linux   | loongarch64-unknown-linux-gnu |

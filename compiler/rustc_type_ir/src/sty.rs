@@ -203,6 +203,10 @@ pub enum TyKind<I: Interner> {
     /// `for<'a, T> &'a (): Trait<T>` and then convert the introduced bound variables
     /// back to inference variables in a new inference context when inside of the query.
     ///
+    /// It is conventional to render anonymous bound types like `^N` or `^D_N`,
+    /// where `N` is the bound variable's anonymous index into the binder, and
+    /// `D` is the debruijn index, or totally omitted if the debruijn index is zero.
+    ///
     /// See the `rustc-dev-guide` for more details about
     /// [higher-ranked trait bounds][1] and [canonical queries][2].
     ///
@@ -212,6 +216,12 @@ pub enum TyKind<I: Interner> {
 
     /// A placeholder type, used during higher ranked subtyping to instantiate
     /// bound variables.
+    ///
+    /// It is conventional to render anonymous placeholer types like `!N` or `!U_N`,
+    /// where `N` is the placeholder variable's anonymous index (which corresponds
+    /// to the bound variable's index from the binder from which it was instantiated),
+    /// and `U` is the universe index in which it is instantiated, or totally omitted
+    /// if the universe index is zero.
     Placeholder(I::PlaceholderType),
 
     /// A type variable used during type checking.

@@ -5,7 +5,7 @@ use rustc_data_structures::sharded;
 #[cfg(parallel_compiler)]
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::Lock;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{Idx, IndexVec};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;

@@ -11,13 +11,16 @@ pub trait A {
     fn a() -> u32;
 }
 
-impl<T: ~const Default> const A for T {
+#[const_trait]
+pub trait Spec {}
+
+impl<T: ~const Spec> const A for T {
     default fn a() -> u32 {
         2
     }
 }
 
-impl<T: Default + Sup> A for T {
+impl<T: Spec + Sup> A for T {
 //~^ ERROR: cannot specialize
 //~| ERROR: missing `~const` qualifier
     fn a() -> u32 {

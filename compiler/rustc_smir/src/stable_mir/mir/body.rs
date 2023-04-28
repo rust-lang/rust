@@ -33,7 +33,7 @@ pub enum Terminator {
         args: Vec<Operand>,
         destination: Place,
         target: Option<usize>,
-        cleanup: Option<usize>,
+        unwind: UnwindAction,
     },
     Assert {
         cond: Operand,
@@ -42,6 +42,14 @@ pub enum Terminator {
         target: usize,
         cleanup: Option<usize>,
     },
+}
+
+#[derive(Clone, Debug)]
+pub enum UnwindAction {
+    Continue,
+    Unreachable,
+    Terminate,
+    Cleanup(usize),
 }
 
 #[derive(Clone, Debug)]

@@ -1,4 +1,4 @@
-// ignore-macos
+//@ignore-macos
 
 #![feature(no_core, lang_items, start)]
 #![no_core]

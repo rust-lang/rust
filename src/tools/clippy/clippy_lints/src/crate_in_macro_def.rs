@@ -9,7 +9,7 @@ use rustc_span::{symbol::sym, Span};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for use of `crate` as opposed to `$crate` in a macro definition.
+    /// Checks for usage of `crate` as opposed to `$crate` in a macro definition.
     ///
     /// ### Why is this bad?
     /// `crate` refers to the macro call's crate, whereas `$crate` refers to the macro definition's

@@ -4,13 +4,13 @@ note: external requirements
 LL |     establish_relationships(value, |value| {
    |                                    ^^^^^^^
    |
-   = note: defining type: supply::<'_#1r, T>::{closure#0} with closure substs [
+   = note: defining type: supply::<'?1, T>::{closure#0} with closure substs [
                i32,
                extern "rust-call" fn((T,)),
                (),
            ]
    = note: number of external vids: 2
-   = note: where T: '_#1r
+   = note: where T: '?1
 
 note: no external requirements
   --> $DIR/propagate-from-trait-match.rs:28:1
@@ -20,7 +20,7 @@ LL | | where
 LL | |     T: Trait<'a>,
    | |_________________^
    |
-   = note: defining type: supply::<'_#1r, T>
+   = note: defining type: supply::<'?1, T>
 
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/propagate-from-trait-match.rs:43:9

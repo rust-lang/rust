@@ -9,6 +9,7 @@
 use std::borrow::Cow;
 use std::collections::HashSet;
 use std::env;
+use std::ffi::OsStr;
 use std::fs;
 use std::io::prelude::*;
 use std::io::BufReader;
@@ -142,23 +143,13 @@ impl Step for Std {
             cargo.arg("-p").arg(krate);
         }
 
-        let msg = if compiler.host == target {
-            format!(
-                "Building{} stage{} library artifacts ({}) ",
-                crate_description(&self.crates),
-                compiler.stage,
-                compiler.host
-            )
-        } else {
-            format!(
-                "Building{} stage{} library artifacts ({} -> {})",
-                crate_description(&self.crates),
-                compiler.stage,
-                compiler.host,
-                target,
-            )
-        };
-        builder.info(&msg);
+        let _guard = builder.msg(
+            Kind::Build,
+            compiler.stage,
+            format_args!("library artifacts{}", crate_description(&self.crates)),
+            compiler.host,
+            target,
+        );
         run_cargo(
             builder,
             cargo,
@@ -652,8 +643,19 @@ impl Step for Rustc {
         // so its artifacts can't be reused.
         if builder.download_rustc() && compiler.stage != 0 {
             // Copy the existing artifacts instead of rebuilding them.
-            // NOTE: this path is only taken for tools linking to rustc-dev.
-            builder.ensure(Sysroot { compiler });
+            // NOTE: this path is only taken for tools linking to rustc-dev (including ui-fulldeps tests).
+            let sysroot = builder.ensure(Sysroot { compiler });
+
+            let ci_rustc_dir = builder.out.join(&*builder.build.build.triple).join("ci-rustc");
+            for file in builder.config.rustc_dev_contents() {
+                let src = ci_rustc_dir.join(&file);
+                let dst = sysroot.join(file);
+                if src.is_dir() {
+                    t!(fs::create_dir_all(dst));
+                } else {
+                    builder.copy(&src, &dst);
+                }
+            }
             return;
         }
 
@@ -778,24 +780,13 @@ impl Step for Rustc {
             cargo.arg("-p").arg(krate);
         }
 
-        let msg = if compiler.host == target {
-            format!(
-                "Building{} compiler artifacts (stage{} -> stage{})",
-                crate_description(&self.crates),
-                compiler.stage,
-                compiler.stage + 1
-            )
-        } else {
-            format!(
-                "Building{} compiler artifacts (stage{}:{} -> stage{}:{})",
-                crate_description(&self.crates),
-                compiler.stage,
-                compiler.host,
-                compiler.stage + 1,
-                target,
-            )
-        };
-        builder.info(&msg);
+        let _guard = builder.msg_sysroot_tool(
+            Kind::Build,
+            compiler.stage,
+            format_args!("compiler artifacts{}", crate_description(&self.crates)),
+            compiler.host,
+            target,
+        );
         run_cargo(
             builder,
             cargo,
@@ -1102,15 +1093,7 @@ impl Step for CodegenBackend {
 
         let tmp_stamp = out_dir.join(".tmp.stamp");
 
-        let msg = if compiler.host == target {
-            format!("Building stage{} codegen backend {}", compiler.stage, backend)
-        } else {
-            format!(
-                "Building stage{} codegen backend {} ({} -> {})",
-                compiler.stage, backend, compiler.host, target
-            )
-        };
-        builder.info(&msg);
+        let _guard = builder.msg_build(compiler, format_args!("codegen backend {backend}"), target);
         let files = run_cargo(builder, cargo, vec![], &tmp_stamp, vec![], false, false);
         if builder.config.dry_run() {
             return;
@@ -1260,6 +1243,7 @@ impl Step for Sysroot {
         };
         let sysroot = sysroot_dir(compiler.stage);
 
+        builder.verbose(&format!("Removing sysroot {} to avoid caching bugs", sysroot.display()));
         let _ = fs::remove_dir_all(&sysroot);
         t!(fs::create_dir_all(&sysroot));
 
@@ -1281,10 +1265,40 @@ impl Step for Sysroot {
             }
 
             // Copy the compiler into the correct sysroot.
-            let ci_rustc_dir =
-                builder.config.out.join(&*builder.config.build.triple).join("ci-rustc");
-            builder.cp_r(&ci_rustc_dir, &sysroot);
-            return INTERNER.intern_path(sysroot);
+            // NOTE(#108767): We intentionally don't copy `rustc-dev` artifacts until they're requested with `builder.ensure(Rustc)`.
+            // This fixes an issue where we'd have multiple copies of libc in the sysroot with no way to tell which to load.
+            // There are a few quirks of bootstrap that interact to make this reliable:
+            // 1. The order `Step`s are run is hard-coded in `builder.rs` and not configurable. This
+            //    avoids e.g. reordering `test::UiFulldeps` before `test::Ui` and causing the latter to
+            //    fail because of duplicate metadata.
+            // 2. The sysroot is deleted and recreated between each invocation, so running `x test
+            //    ui-fulldeps && x test ui` can't cause failures.
+            let mut filtered_files = Vec::new();
+            // Don't trim directories or files that aren't loaded per-target; they can't cause conflicts.
+            let suffix = format!("lib/rustlib/{}/lib", compiler.host);
+            for path in builder.config.rustc_dev_contents() {
+                let path = Path::new(&path);
+                if path.parent().map_or(false, |parent| parent.ends_with(&suffix)) {
+                    filtered_files.push(path.file_name().unwrap().to_owned());
+                }
+            }
+
+            let filtered_extensions = [OsStr::new("rmeta"), OsStr::new("rlib"), OsStr::new("so")];
+            let ci_rustc_dir = builder.ci_rustc_dir(builder.config.build);
+            builder.cp_filtered(&ci_rustc_dir, &sysroot, &|path| {
+                if path.extension().map_or(true, |ext| !filtered_extensions.contains(&ext)) {
+                    return true;
+                }
+                if !path.parent().map_or(true, |p| p.ends_with(&suffix)) {
+                    return true;
+                }
+                if !filtered_files.iter().all(|f| f != path.file_name().unwrap()) {
+                    builder.verbose_than(1, &format!("ignoring {}", path.display()));
+                    false
+                } else {
+                    true
+                }
+            });
         }
 
         // Symlink the source root into the same location inside the sysroot,
@@ -1385,7 +1399,10 @@ impl Step for Assemble {
 
         // If we're downloading a compiler from CI, we can use the same compiler for all stages other than 0.
         if builder.download_rustc() {
-            builder.ensure(Sysroot { compiler: target_compiler });
+            let sysroot = builder.ensure(Sysroot { compiler: target_compiler });
+            // Ensure that `libLLVM.so` ends up in the newly created target directory,
+            // so that tools using `rustc_private` can use it.
+            dist::maybe_install_llvm_target(builder, target_compiler.host, &sysroot);
             return target_compiler;
         }
 

@@ -1,13 +1,9 @@
 use crate::fx::{FxHashMap, FxHasher};
-use crate::sync::{Lock, LockGuard};
+use crate::sync::{CacheAligned, Lock, LockGuard};
 use std::borrow::Borrow;
 use std::collections::hash_map::RawEntryMut;
 use std::hash::{Hash, Hasher};
 use std::mem;
-
-#[derive(Default)]
-#[cfg_attr(parallel_compiler, repr(align(64)))]
-struct CacheAligned<T>(T);
 
 #[cfg(parallel_compiler)]
 // 32 shards is sufficient to reduce contention on an 8-core Ryzen 7 1700,

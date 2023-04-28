@@ -46,6 +46,7 @@ error: error reading Clippy's configuration file `$DIR/clippy.toml`: unknown fie
            too-many-lines-threshold
            trivial-copy-size-limit
            type-complexity-threshold
+           unnecessary-box-size
            unreadable-literal-lint-fractions
            upper-case-acronyms-aggressive
            vec-box-size-threshold

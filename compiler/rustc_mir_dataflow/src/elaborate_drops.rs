@@ -1,6 +1,6 @@
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::traits::Reveal;

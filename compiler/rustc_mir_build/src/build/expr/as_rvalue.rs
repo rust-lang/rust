@@ -1,6 +1,6 @@
 //! See docs in `build/expr/mod.rs`.
 
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{Idx, IndexVec};
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_target::abi::{Abi, FieldIdx, Primitive};
 
@@ -479,6 +479,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     user_ty: None,
                     literal: ConstantKind::zero_sized(this.tcx.types.unit),
                 }))))
+            }
+
+            ExprKind::OffsetOf { container, fields } => {
+                block.and(Rvalue::NullaryOp(NullOp::OffsetOf(fields), container))
             }
 
             ExprKind::Literal { .. }

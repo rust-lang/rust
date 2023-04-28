@@ -12,6 +12,7 @@ use rustc_middle::mir::Operand;
 use rustc_middle::ty::cast::{CastTy, IntTy};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, adjustment::PointerCast, Instance, Ty, TyCtxt};
+use rustc_session::config::OptLevel;
 use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_target::abi::{self, FIRST_VARIANT};
 
@@ -231,10 +232,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         (ScalarOrZst::Scalar(in_scalar), ScalarOrZst::Scalar(out_scalar))
                             if in_scalar.size(self.cx) == out_scalar.size(self.cx) =>
                         {
+                            let operand_bty = bx.backend_type(operand.layout);
                             let cast_bty = bx.backend_type(cast);
-                            Some(OperandValue::Immediate(
-                                self.transmute_immediate(bx, imm, in_scalar, out_scalar, cast_bty),
-                            ))
+                            Some(OperandValue::Immediate(self.transmute_immediate(
+                                bx,
+                                imm,
+                                in_scalar,
+                                operand_bty,
+                                out_scalar,
+                                cast_bty,
+                            )))
                         }
                         _ => None,
                     }
@@ -250,11 +257,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     && in_a.size(self.cx) == out_a.size(self.cx)
                     && in_b.size(self.cx) == out_b.size(self.cx)
                 {
+                    let in_a_ibty = bx.scalar_pair_element_backend_type(operand.layout, 0, false);
+                    let in_b_ibty = bx.scalar_pair_element_backend_type(operand.layout, 1, false);
                     let out_a_ibty = bx.scalar_pair_element_backend_type(cast, 0, false);
                     let out_b_ibty = bx.scalar_pair_element_backend_type(cast, 1, false);
                     Some(OperandValue::Pair(
-                        self.transmute_immediate(bx, imm_a, in_a, out_a, out_a_ibty),
-                        self.transmute_immediate(bx, imm_b, in_b, out_b, out_b_ibty),
+                        self.transmute_immediate(bx, imm_a, in_a, in_a_ibty, out_a, out_a_ibty),
+                        self.transmute_immediate(bx, imm_b, in_b, in_b_ibty, out_b, out_b_ibty),
                     ))
                 } else {
                     None
@@ -273,6 +282,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &mut Bx,
         mut imm: Bx::Value,
         from_scalar: abi::Scalar,
+        from_backend_ty: Bx::Type,
         to_scalar: abi::Scalar,
         to_backend_ty: Bx::Type,
     ) -> Bx::Value {
@@ -280,6 +290,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         use abi::Primitive::*;
         imm = bx.from_immediate(imm);
+
+        // When scalars are passed by value, there's no metadata recording their
+        // valid ranges. For example, `char`s are passed as just `i32`, with no
+        // way for LLVM to know that they're 0x10FFFF at most. Thus we assume
+        // the range of the input value too, not just the output range.
+        self.assume_scalar_range(bx, imm, from_scalar, from_backend_ty);
+
         imm = match (from_scalar.primitive(), to_scalar.primitive()) {
             (Int(..) | F32 | F64, Int(..) | F32 | F64) => bx.bitcast(imm, to_backend_ty),
             (Pointer(..), Pointer(..)) => bx.pointercast(imm, to_backend_ty),
@@ -294,8 +311,53 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.bitcast(int_imm, to_backend_ty)
             }
         };
+        self.assume_scalar_range(bx, imm, to_scalar, to_backend_ty);
         imm = bx.to_immediate_scalar(imm, to_scalar);
         imm
+    }
+
+    fn assume_scalar_range(
+        &self,
+        bx: &mut Bx,
+        imm: Bx::Value,
+        scalar: abi::Scalar,
+        backend_ty: Bx::Type,
+    ) {
+        if matches!(self.cx.sess().opts.optimize, OptLevel::No | OptLevel::Less)
+            // For now, the critical niches are all over `Int`eger values.
+            // Should floating-point values or pointers ever get more complex
+            // niches, then this code will probably want to handle them too.
+            || !matches!(scalar.primitive(), abi::Primitive::Int(..))
+            || scalar.is_always_valid(self.cx)
+        {
+            return;
+        }
+
+        let abi::WrappingRange { start, end } = scalar.valid_range(self.cx);
+
+        if start <= end {
+            if start > 0 {
+                let low = bx.const_uint_big(backend_ty, start);
+                let cmp = bx.icmp(IntPredicate::IntUGE, imm, low);
+                bx.assume(cmp);
+            }
+
+            let type_max = scalar.size(self.cx).unsigned_int_max();
+            if end < type_max {
+                let high = bx.const_uint_big(backend_ty, end);
+                let cmp = bx.icmp(IntPredicate::IntULE, imm, high);
+                bx.assume(cmp);
+            }
+        } else {
+            let low = bx.const_uint_big(backend_ty, start);
+            let cmp_low = bx.icmp(IntPredicate::IntUGE, imm, low);
+
+            let high = bx.const_uint_big(backend_ty, end);
+            let cmp_high = bx.icmp(IntPredicate::IntULE, imm, high);
+
+            let or = bx.or(cmp_low, cmp_high);
+            bx.assume(or);
+        }
     }
 
     pub fn codegen_rvalue_unsized(
@@ -604,13 +666,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
 
-            mir::Rvalue::NullaryOp(null_op, ty) => {
+            mir::Rvalue::NullaryOp(ref null_op, ty) => {
                 let ty = self.monomorphize(ty);
                 assert!(bx.cx().type_is_sized(ty));
                 let layout = bx.cx().layout_of(ty);
                 let val = match null_op {
                     mir::NullOp::SizeOf => layout.size.bytes(),
                     mir::NullOp::AlignOf => layout.align.abi.bytes(),
+                    mir::NullOp::OffsetOf(fields) => {
+                        layout.offset_of_subfield(bx.cx(), fields.iter().map(|f| f.index())).bytes()
+                    }
                 };
                 let val = bx.cx().const_usize(val);
                 let tcx = self.cx.tcx();
@@ -754,8 +819,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     .builtin_deref(true)
                     .unwrap_or_else(|| bug!("deref of non-pointer {:?}", input_ty))
                     .ty;
-                let llty = bx.cx().backend_type(bx.cx().layout_of(pointee_type));
-                bx.inbounds_gep(llty, lhs, &[rhs])
+                let pointee_layout = bx.cx().layout_of(pointee_type);
+                if pointee_layout.is_zst() {
+                    // `Offset` works in terms of the size of pointee,
+                    // so offsetting a pointer to ZST is a noop.
+                    lhs
+                } else {
+                    let llty = bx.cx().backend_type(pointee_layout);
+                    bx.inbounds_gep(llty, lhs, &[rhs])
+                }
             }
             mir::BinOp::Shl => common::build_unchecked_lshift(bx, lhs, rhs),
             mir::BinOp::Shr => common::build_unchecked_rshift(bx, input_ty, lhs, rhs),

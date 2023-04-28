@@ -1,0 +1,27 @@
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/offset-of-dst-field.rs:30:5
+   |
+LL |     offset_of!(Alpha, z);
+   |     ^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+
+error[E0277]: the size for values of type `(dyn Trait + 'static)` cannot be known at compilation time
+  --> $DIR/offset-of-dst-field.rs:31:5
+   |
+LL |     offset_of!(Beta, z);
+   |     ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Trait + 'static)`
+
+error[E0277]: the size for values of type `Extern` cannot be known at compilation time
+  --> $DIR/offset-of-dst-field.rs:32:5
+   |
+LL |     offset_of!(Gamma, z);
+   |     ^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `Extern`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

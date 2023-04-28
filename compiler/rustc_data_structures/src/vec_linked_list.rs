@@ -1,4 +1,4 @@
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{Idx, IndexVec};
 
 pub fn iter<Ls>(
     first: Option<Ls::LinkIndex>,

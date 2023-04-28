@@ -284,8 +284,7 @@ impl<T: PartialEq> PartialEq for OnceCell<T> {
 impl<T: Eq> Eq for OnceCell<T> {}
 
 #[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl<T> const From<T> for OnceCell<T> {
+impl<T> From<T> for OnceCell<T> {
     /// Creates a new `OnceCell<T>` which already contains the given `value`.
     #[inline]
     fn from(value: T) -> Self {

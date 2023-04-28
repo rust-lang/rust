@@ -761,27 +761,6 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
     // passes are timed inside typeck
     rustc_hir_analysis::check_crate(tcx)?;
 
-    sess.time("misc_checking_2", || {
-        parallel!(
-            {
-                sess.time("match_checking", || {
-                    tcx.hir().par_body_owners(|def_id| tcx.ensure().check_match(def_id))
-                });
-            },
-            {
-                sess.time("liveness_checking", || {
-                    tcx.hir().par_body_owners(|def_id| {
-                        // this must run before MIR dump, because
-                        // "not all control paths return a value" is reported here.
-                        //
-                        // maybe move the check to a MIR pass?
-                        tcx.ensure().check_liveness(def_id.to_def_id());
-                    });
-                });
-            }
-        );
-    });
-
     sess.time("MIR_borrow_checking", || {
         tcx.hir().par_body_owners(|def_id| tcx.ensure().mir_borrowck(def_id));
     });
@@ -794,9 +773,14 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
             }
             tcx.ensure().has_ffi_unwind_calls(def_id);
 
-            if tcx.hir().body_const_context(def_id).is_some() {
-                tcx.ensure()
-                    .mir_drops_elaborated_and_const_checked(ty::WithOptConstParam::unknown(def_id));
+            // If we need to codegen, ensure that we emit all errors from
+            // `mir_drops_elaborated_and_const_checked` now, to avoid discovering
+            // them later during codegen.
+            if tcx.sess.opts.output_types.should_codegen()
+                || tcx.hir().body_const_context(def_id).is_some()
+            {
+                tcx.ensure().mir_drops_elaborated_and_const_checked(def_id);
+                tcx.ensure().unused_generic_params(ty::InstanceDef::Item(def_id.to_def_id()));
             }
         }
     });

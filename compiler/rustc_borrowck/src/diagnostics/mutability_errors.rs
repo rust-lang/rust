@@ -15,8 +15,8 @@ use rustc_span::{sym, BytePos, Span};
 use rustc_target::abi::FieldIdx;
 
 use crate::diagnostics::BorrowedContentSource;
+use crate::util::FindAssignments;
 use crate::MirBorrowckCtxt;
-use rustc_const_eval::util::collect_writes::FindAssignments;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(crate) enum AccessKind {
@@ -231,14 +231,18 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     }
                 }
                 if suggest {
-                    borrow_spans.var_span_label(
-                        &mut err,
-                        format!(
-                            "mutable borrow occurs due to use of {} in closure",
-                            self.describe_any_place(access_place.as_ref()),
-                        ),
-                        "mutable",
-                    );
+                    borrow_spans.var_subdiag(
+                    None,
+                    &mut err,
+                    Some(mir::BorrowKind::Mut { allow_two_phase_borrow: false }),
+                    |_kind, var_span| {
+                        let place = self.describe_any_place(access_place.as_ref());
+                        crate::session_diagnostics::CaptureVarCause::MutableBorrowUsePlaceClosure {
+                            place,
+                            var_span,
+                        }
+                    },
+                );
                 }
                 borrow_span
             }
@@ -1143,7 +1147,7 @@ pub fn mut_borrow_of_mutable_ref(local_decl: &LocalDecl<'_>, local_name: Option<
             // suggest removing the `&mut`.
             //
             // Deliberately fall into this case for all implicit self types,
-            // so that we don't fall in to the next case with them.
+            // so that we don't fall into the next case with them.
             kind == hir::ImplicitSelfKind::MutRef
         }
         _ if Some(kw::SelfLower) == local_name => {
@@ -1231,7 +1235,7 @@ fn suggest_ampmut<'tcx>(
         }
     }
 
-    let (suggestability, highlight_span) = match opt_ty_info {
+    let (suggestibility, highlight_span) = match opt_ty_info {
         // if this is a variable binding with an explicit type,
         // try to highlight that for the suggestion.
         Some(ty_span) => (true, ty_span),
@@ -1252,7 +1256,7 @@ fn suggest_ampmut<'tcx>(
     let ty_mut = local_decl.ty.builtin_deref(true).unwrap();
     assert_eq!(ty_mut.mutbl, hir::Mutability::Not);
     (
-        suggestability,
+        suggestibility,
         highlight_span,
         if local_decl.ty.is_ref() {
             format!("&mut {}", ty_mut.ty)

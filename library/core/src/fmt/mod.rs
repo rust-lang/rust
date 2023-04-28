@@ -18,6 +18,7 @@ mod float;
 #[cfg(no_fp_fmt_parse)]
 mod nofloat;
 mod num;
+mod rt;
 
 #[stable(feature = "fmt_flags_align", since = "1.28.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Alignment")]
@@ -37,12 +38,6 @@ pub enum Alignment {
 
 #[stable(feature = "debug_builders", since = "1.2.0")]
 pub use self::builders::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
-
-#[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
-#[doc(hidden)]
-pub mod rt {
-    pub mod v1;
-}
 
 /// The type returned by formatter methods.
 ///
@@ -227,7 +222,7 @@ impl<W: Write + ?Sized> Write for &mut W {
 pub struct Formatter<'a> {
     flags: u32,
     fill: char,
-    align: rt::v1::Alignment,
+    align: rt::Alignment,
     width: Option<usize>,
     precision: Option<usize>,
 
@@ -248,229 +243,10 @@ impl<'a> Formatter<'a> {
         Formatter {
             flags: 0,
             fill: ' ',
-            align: rt::v1::Alignment::Unknown,
+            align: rt::Alignment::Unknown,
             width: None,
             precision: None,
             buf,
-        }
-    }
-}
-
-// NB. Argument is essentially an optimized partially applied formatting function,
-// equivalent to `exists T.(&T, fn(&T, &mut Formatter<'_>) -> Result`.
-
-extern "C" {
-    type Opaque;
-}
-
-/// This struct represents the generic "argument" which is taken by the Xprintf
-/// family of functions. It contains a function to format the given value. At
-/// compile time it is ensured that the function and the value have the correct
-/// types, and then this struct is used to canonicalize arguments to one type.
-#[lang = "format_argument"]
-#[derive(Copy, Clone)]
-#[allow(missing_debug_implementations)]
-#[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
-#[doc(hidden)]
-pub struct ArgumentV1<'a> {
-    value: &'a Opaque,
-    formatter: fn(&Opaque, &mut Formatter<'_>) -> Result,
-}
-
-/// This struct represents the unsafety of constructing an `Arguments`.
-/// It exists, rather than an unsafe function, in order to simplify the expansion
-/// of `format_args!(..)` and reduce the scope of the `unsafe` block.
-#[lang = "format_unsafe_arg"]
-#[allow(missing_debug_implementations)]
-#[doc(hidden)]
-#[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
-pub struct UnsafeArg {
-    _private: (),
-}
-
-impl UnsafeArg {
-    /// See documentation where `UnsafeArg` is required to know when it is safe to
-    /// create and use `UnsafeArg`.
-    #[doc(hidden)]
-    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
-    #[inline(always)]
-    pub unsafe fn new() -> Self {
-        Self { _private: () }
-    }
-}
-
-// This guarantees a single stable value for the function pointer associated with
-// indices/counts in the formatting infrastructure.
-//
-// Note that a function defined as such would not be correct as functions are
-// always tagged unnamed_addr with the current lowering to LLVM IR, so their
-// address is not considered important to LLVM and as such the as_usize cast
-// could have been miscompiled. In practice, we never call as_usize on non-usize
-// containing data (as a matter of static generation of the formatting
-// arguments), so this is merely an additional check.
-//
-// We primarily want to ensure that the function pointer at `USIZE_MARKER` has
-// an address corresponding *only* to functions that also take `&usize` as their
-// first argument. The read_volatile here ensures that we can safely ready out a
-// usize from the passed reference and that this address does not point at a
-// non-usize taking function.
-#[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
-static USIZE_MARKER: fn(&usize, &mut Formatter<'_>) -> Result = |ptr, _| {
-    // SAFETY: ptr is a reference
-    let _v: usize = unsafe { crate::ptr::read_volatile(ptr) };
-    loop {}
-};
-
-macro_rules! arg_new {
-    ($f: ident, $t: ident) => {
-        #[doc(hidden)]
-        #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
-        #[inline]
-        pub fn $f<'b, T: $t>(x: &'b T) -> ArgumentV1<'_> {
-            Self::new(x, $t::fmt)
-        }
-    };
-}
-
-#[rustc_diagnostic_item = "ArgumentV1Methods"]
-impl<'a> ArgumentV1<'a> {
-    #[doc(hidden)]
-    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
-    #[inline]
-    pub fn new<'b, T>(x: &'b T, f: fn(&T, &mut Formatter<'_>) -> Result) -> ArgumentV1<'b> {
-        // SAFETY: `mem::transmute(x)` is safe because
-        //     1. `&'b T` keeps the lifetime it originated with `'b`
-        //              (so as to not have an unbounded lifetime)
-        //     2. `&'b T` and `&'b Opaque` have the same memory layout
-        //              (when `T` is `Sized`, as it is here)
-        // `mem::transmute(f)` is safe since `fn(&T, &mut Formatter<'_>) -> Result`
-        // and `fn(&Opaque, &mut Formatter<'_>) -> Result` have the same ABI
-        // (as long as `T` is `Sized`)
-        unsafe { ArgumentV1 { formatter: mem::transmute(f), value: mem::transmute(x) } }
-    }
-
-    arg_new!(new_display, Display);
-    arg_new!(new_debug, Debug);
-    arg_new!(new_octal, Octal);
-    arg_new!(new_lower_hex, LowerHex);
-    arg_new!(new_upper_hex, UpperHex);
-    arg_new!(new_pointer, Pointer);
-    arg_new!(new_binary, Binary);
-    arg_new!(new_lower_exp, LowerExp);
-    arg_new!(new_upper_exp, UpperExp);
-
-    #[doc(hidden)]
-    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
-    pub fn from_usize(x: &usize) -> ArgumentV1<'_> {
-        ArgumentV1::new(x, USIZE_MARKER)
-    }
-
-    fn as_usize(&self) -> Option<usize> {
-        // We are type punning a bit here: USIZE_MARKER only takes an &usize but
-        // formatter takes an &Opaque. Rust understandably doesn't think we should compare
-        // the function pointers if they don't have the same signature, so we cast to
-        // usizes to tell it that we just want to compare addresses.
-        if self.formatter as usize == USIZE_MARKER as usize {
-            // SAFETY: The `formatter` field is only set to USIZE_MARKER if
-            // the value is a usize, so this is safe
-            Some(unsafe { *(self.value as *const _ as *const usize) })
-        } else {
-            None
-        }
-    }
-}
-
-// flags available in the v1 format of format_args
-#[derive(Copy, Clone)]
-enum FlagV1 {
-    SignPlus,
-    SignMinus,
-    Alternate,
-    SignAwareZeroPad,
-    DebugLowerHex,
-    DebugUpperHex,
-}
-
-impl<'a> Arguments<'a> {
-    #[doc(hidden)]
-    #[inline]
-    #[unstable(feature = "fmt_internals", issue = "none")]
-    #[rustc_const_unstable(feature = "const_fmt_arguments_new", issue = "none")]
-    pub const fn new_const(pieces: &'a [&'static str]) -> Self {
-        if pieces.len() > 1 {
-            panic!("invalid args");
-        }
-        Arguments { pieces, fmt: None, args: &[] }
-    }
-
-    /// When using the format_args!() macro, this function is used to generate the
-    /// Arguments structure.
-    #[cfg(not(bootstrap))]
-    #[doc(hidden)]
-    #[inline]
-    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
-    pub fn new_v1(pieces: &'a [&'static str], args: &'a [ArgumentV1<'a>]) -> Arguments<'a> {
-        if pieces.len() < args.len() || pieces.len() > args.len() + 1 {
-            panic!("invalid args");
-        }
-        Arguments { pieces, fmt: None, args }
-    }
-
-    #[cfg(bootstrap)]
-    #[doc(hidden)]
-    #[inline]
-    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
-    #[rustc_const_unstable(feature = "const_fmt_arguments_new", issue = "none")]
-    pub const fn new_v1(pieces: &'a [&'static str], args: &'a [ArgumentV1<'a>]) -> Arguments<'a> {
-        if pieces.len() < args.len() || pieces.len() > args.len() + 1 {
-            panic!("invalid args");
-        }
-        Arguments { pieces, fmt: None, args }
-    }
-
-    /// This function is used to specify nonstandard formatting parameters.
-    ///
-    /// An `UnsafeArg` is required because the following invariants must be held
-    /// in order for this function to be safe:
-    /// 1. The `pieces` slice must be at least as long as `fmt`.
-    /// 2. Every [`rt::v1::Argument::position`] value within `fmt` must be a
-    ///    valid index of `args`.
-    /// 3. Every [`rt::v1::Count::Param`] within `fmt` must contain a valid index of
-    ///    `args`.
-    #[doc(hidden)]
-    #[inline]
-    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
-    pub fn new_v1_formatted(
-        pieces: &'a [&'static str],
-        args: &'a [ArgumentV1<'a>],
-        fmt: &'a [rt::v1::Argument],
-        _unsafe_arg: UnsafeArg,
-    ) -> Arguments<'a> {
-        Arguments { pieces, fmt: Some(fmt), args }
-    }
-
-    /// Estimates the length of the formatted text.
-    ///
-    /// This is intended to be used for setting initial `String` capacity
-    /// when using `format!`. Note: this is neither the lower nor upper bound.
-    #[doc(hidden)]
-    #[inline]
-    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
-    pub fn estimated_capacity(&self) -> usize {
-        let pieces_length: usize = self.pieces.iter().map(|x| x.len()).sum();
-
-        if self.args.is_empty() {
-            pieces_length
-        } else if !self.pieces.is_empty() && self.pieces[0].is_empty() && pieces_length < 16 {
-            // If the format string starts with an argument,
-            // don't preallocate anything, unless length
-            // of pieces is significant.
-            0
-        } else {
-            // There are some arguments, so any additional push
-            // will reallocate the string. To avoid that,
-            // we're "pre-doubling" the capacity here.
-            pieces_length.checked_mul(2).unwrap_or(0)
         }
     }
 }
@@ -505,11 +281,86 @@ pub struct Arguments<'a> {
     pieces: &'a [&'static str],
 
     // Placeholder specs, or `None` if all specs are default (as in "{}{}").
-    fmt: Option<&'a [rt::v1::Argument]>,
+    fmt: Option<&'a [rt::Placeholder]>,
 
     // Dynamic arguments for interpolation, to be interleaved with string
     // pieces. (Every argument is preceded by a string piece.)
-    args: &'a [ArgumentV1<'a>],
+    args: &'a [rt::Argument<'a>],
+}
+
+/// Used by the format_args!() macro to create a fmt::Arguments object.
+#[doc(hidden)]
+#[unstable(feature = "fmt_internals", issue = "none")]
+impl<'a> Arguments<'a> {
+    #[inline]
+    #[rustc_const_unstable(feature = "const_fmt_arguments_new", issue = "none")]
+    pub const fn new_const(pieces: &'a [&'static str]) -> Self {
+        if pieces.len() > 1 {
+            panic!("invalid args");
+        }
+        Arguments { pieces, fmt: None, args: &[] }
+    }
+
+    /// When using the format_args!() macro, this function is used to generate the
+    /// Arguments structure.
+    #[cfg(not(bootstrap))]
+    #[inline]
+    pub fn new_v1(pieces: &'a [&'static str], args: &'a [rt::Argument<'a>]) -> Arguments<'a> {
+        if pieces.len() < args.len() || pieces.len() > args.len() + 1 {
+            panic!("invalid args");
+        }
+        Arguments { pieces, fmt: None, args }
+    }
+
+    #[cfg(bootstrap)]
+    #[inline]
+    #[rustc_const_unstable(feature = "const_fmt_arguments_new", issue = "none")]
+    pub const fn new_v1(pieces: &'a [&'static str], args: &'a [rt::Argument<'a>]) -> Arguments<'a> {
+        if pieces.len() < args.len() || pieces.len() > args.len() + 1 {
+            panic!("invalid args");
+        }
+        Arguments { pieces, fmt: None, args }
+    }
+
+    /// This function is used to specify nonstandard formatting parameters.
+    ///
+    /// An `rt::UnsafeArg` is required because the following invariants must be held
+    /// in order for this function to be safe:
+    /// 1. The `pieces` slice must be at least as long as `fmt`.
+    /// 2. Every `rt::Placeholder::position` value within `fmt` must be a valid index of `args`.
+    /// 3. Every `rt::Count::Param` within `fmt` must contain a valid index of `args`.
+    #[inline]
+    pub fn new_v1_formatted(
+        pieces: &'a [&'static str],
+        args: &'a [rt::Argument<'a>],
+        fmt: &'a [rt::Placeholder],
+        _unsafe_arg: rt::UnsafeArg,
+    ) -> Arguments<'a> {
+        Arguments { pieces, fmt: Some(fmt), args }
+    }
+
+    /// Estimates the length of the formatted text.
+    ///
+    /// This is intended to be used for setting initial `String` capacity
+    /// when using `format!`. Note: this is neither the lower nor upper bound.
+    #[inline]
+    pub fn estimated_capacity(&self) -> usize {
+        let pieces_length: usize = self.pieces.iter().map(|x| x.len()).sum();
+
+        if self.args.is_empty() {
+            pieces_length
+        } else if !self.pieces.is_empty() && self.pieces[0].is_empty() && pieces_length < 16 {
+            // If the format string starts with an argument,
+            // don't preallocate anything, unless length
+            // of pieces is significant.
+            0
+        } else {
+            // There are some arguments, so any additional push
+            // will reallocate the string. To avoid that,
+            // we're "pre-doubling" the capacity here.
+            pieces_length.checked_mul(2).unwrap_or(0)
+        }
+    }
 }
 
 impl<'a> Arguments<'a> {
@@ -1251,7 +1102,7 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
                 if !piece.is_empty() {
                     formatter.buf.write_str(*piece)?;
                 }
-                (arg.formatter)(arg.value, &mut formatter)?;
+                arg.fmt(&mut formatter)?;
                 idx += 1;
             }
         }
@@ -1281,15 +1132,15 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
     Ok(())
 }
 
-unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::v1::Argument, args: &[ArgumentV1<'_>]) -> Result {
-    fmt.fill = arg.format.fill;
-    fmt.align = arg.format.align;
-    fmt.flags = arg.format.flags;
+unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::Placeholder, args: &[rt::Argument<'_>]) -> Result {
+    fmt.fill = arg.fill;
+    fmt.align = arg.align;
+    fmt.flags = arg.flags;
     // SAFETY: arg and args come from the same Arguments,
     // which guarantees the indexes are always within bounds.
     unsafe {
-        fmt.width = getcount(args, &arg.format.width);
-        fmt.precision = getcount(args, &arg.format.precision);
+        fmt.width = getcount(args, &arg.width);
+        fmt.precision = getcount(args, &arg.precision);
     }
 
     // Extract the correct argument
@@ -1299,14 +1150,14 @@ unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::v1::Argument, args: &[ArgumentV
     let value = unsafe { args.get_unchecked(arg.position) };
 
     // Then actually do some printing
-    (value.formatter)(value.value, fmt)
+    value.fmt(fmt)
 }
 
-unsafe fn getcount(args: &[ArgumentV1<'_>], cnt: &rt::v1::Count) -> Option<usize> {
+unsafe fn getcount(args: &[rt::Argument<'_>], cnt: &rt::Count) -> Option<usize> {
     match *cnt {
-        rt::v1::Count::Is(n) => Some(n),
-        rt::v1::Count::Implied => None,
-        rt::v1::Count::Param(i) => {
+        rt::Count::Is(n) => Some(n),
+        rt::Count::Implied => None,
+        rt::Count::Param(i) => {
             debug_assert!(i < args.len());
             // SAFETY: cnt and args come from the same Arguments,
             // which guarantees this index is always within bounds.
@@ -1449,9 +1300,9 @@ impl<'a> Formatter<'a> {
             // is zero
             Some(min) if self.sign_aware_zero_pad() => {
                 let old_fill = crate::mem::replace(&mut self.fill, '0');
-                let old_align = crate::mem::replace(&mut self.align, rt::v1::Alignment::Right);
+                let old_align = crate::mem::replace(&mut self.align, rt::Alignment::Right);
                 write_prefix(self, sign, prefix)?;
-                let post_padding = self.padding(min - width, rt::v1::Alignment::Right)?;
+                let post_padding = self.padding(min - width, Alignment::Right)?;
                 self.buf.write_str(buf)?;
                 post_padding.write(self)?;
                 self.fill = old_fill;
@@ -1460,7 +1311,7 @@ impl<'a> Formatter<'a> {
             }
             // Otherwise, the sign and prefix goes after the padding
             Some(min) => {
-                let post_padding = self.padding(min - width, rt::v1::Alignment::Right)?;
+                let post_padding = self.padding(min - width, Alignment::Right)?;
                 write_prefix(self, sign, prefix)?;
                 self.buf.write_str(buf)?;
                 post_padding.write(self)
@@ -1535,7 +1386,7 @@ impl<'a> Formatter<'a> {
                 // If we're under both the maximum and the minimum width, then fill
                 // up the minimum width with the specified string + some alignment.
                 else {
-                    let align = rt::v1::Alignment::Left;
+                    let align = Alignment::Left;
                     let post_padding = self.padding(width - chars_count, align)?;
                     self.buf.write_str(s)?;
                     post_padding.write(self)
@@ -1550,17 +1401,19 @@ impl<'a> Formatter<'a> {
     pub(crate) fn padding(
         &mut self,
         padding: usize,
-        default: rt::v1::Alignment,
+        default: Alignment,
     ) -> result::Result<PostPadding, Error> {
         let align = match self.align {
-            rt::v1::Alignment::Unknown => default,
-            _ => self.align,
+            rt::Alignment::Unknown => default,
+            rt::Alignment::Left => Alignment::Left,
+            rt::Alignment::Right => Alignment::Right,
+            rt::Alignment::Center => Alignment::Center,
         };
 
         let (pre_pad, post_pad) = match align {
-            rt::v1::Alignment::Left => (0, padding),
-            rt::v1::Alignment::Right | rt::v1::Alignment::Unknown => (padding, 0),
-            rt::v1::Alignment::Center => (padding / 2, (padding + 1) / 2),
+            Alignment::Left => (0, padding),
+            Alignment::Right => (padding, 0),
+            Alignment::Center => (padding / 2, (padding + 1) / 2),
         };
 
         for _ in 0..pre_pad {
@@ -1580,7 +1433,6 @@ impl<'a> Formatter<'a> {
             let mut formatted = formatted.clone();
             let old_fill = self.fill;
             let old_align = self.align;
-            let mut align = old_align;
             if self.sign_aware_zero_pad() {
                 // a sign always goes first
                 let sign = formatted.sign;
@@ -1589,9 +1441,8 @@ impl<'a> Formatter<'a> {
                 // remove the sign from the formatted parts
                 formatted.sign = "";
                 width = width.saturating_sub(sign.len());
-                align = rt::v1::Alignment::Right;
                 self.fill = '0';
-                self.align = rt::v1::Alignment::Right;
+                self.align = rt::Alignment::Right;
             }
 
             // remaining parts go through the ordinary padding process.
@@ -1600,7 +1451,7 @@ impl<'a> Formatter<'a> {
                 // no padding
                 self.write_formatted_parts(&formatted)
             } else {
-                let post_padding = self.padding(width - len, align)?;
+                let post_padding = self.padding(width - len, Alignment::Right)?;
                 self.write_formatted_parts(&formatted)?;
                 post_padding.write(self)
             };
@@ -1788,10 +1639,10 @@ impl<'a> Formatter<'a> {
     #[stable(feature = "fmt_flags_align", since = "1.28.0")]
     pub fn align(&self) -> Option<Alignment> {
         match self.align {
-            rt::v1::Alignment::Left => Some(Alignment::Left),
-            rt::v1::Alignment::Right => Some(Alignment::Right),
-            rt::v1::Alignment::Center => Some(Alignment::Center),
-            rt::v1::Alignment::Unknown => None,
+            rt::Alignment::Left => Some(Alignment::Left),
+            rt::Alignment::Right => Some(Alignment::Right),
+            rt::Alignment::Center => Some(Alignment::Center),
+            rt::Alignment::Unknown => None,
         }
     }
 
@@ -1885,7 +1736,7 @@ impl<'a> Formatter<'a> {
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn sign_plus(&self) -> bool {
-        self.flags & (1 << FlagV1::SignPlus as u32) != 0
+        self.flags & (1 << rt::Flag::SignPlus as u32) != 0
     }
 
     /// Determines if the `-` flag was specified.
@@ -1914,7 +1765,7 @@ impl<'a> Formatter<'a> {
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn sign_minus(&self) -> bool {
-        self.flags & (1 << FlagV1::SignMinus as u32) != 0
+        self.flags & (1 << rt::Flag::SignMinus as u32) != 0
     }
 
     /// Determines if the `#` flag was specified.
@@ -1942,7 +1793,7 @@ impl<'a> Formatter<'a> {
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn alternate(&self) -> bool {
-        self.flags & (1 << FlagV1::Alternate as u32) != 0
+        self.flags & (1 << rt::Flag::Alternate as u32) != 0
     }
 
     /// Determines if the `0` flag was specified.
@@ -1968,17 +1819,17 @@ impl<'a> Formatter<'a> {
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn sign_aware_zero_pad(&self) -> bool {
-        self.flags & (1 << FlagV1::SignAwareZeroPad as u32) != 0
+        self.flags & (1 << rt::Flag::SignAwareZeroPad as u32) != 0
     }
 
     // FIXME: Decide what public API we want for these two flags.
     // https://github.com/rust-lang/rust/issues/48584
     fn debug_lower_hex(&self) -> bool {
-        self.flags & (1 << FlagV1::DebugLowerHex as u32) != 0
+        self.flags & (1 << rt::Flag::DebugLowerHex as u32) != 0
     }
 
     fn debug_upper_hex(&self) -> bool {
-        self.flags & (1 << FlagV1::DebugUpperHex as u32) != 0
+        self.flags & (1 << rt::Flag::DebugUpperHex as u32) != 0
     }
 
     /// Creates a [`DebugStruct`] builder designed to assist with creation of
@@ -2538,13 +2389,13 @@ pub(crate) fn pointer_fmt_inner(ptr_addr: usize, f: &mut Formatter<'_>) -> Resul
     // or not to zero extend, and then unconditionally set it to get the
     // prefix.
     if f.alternate() {
-        f.flags |= 1 << (FlagV1::SignAwareZeroPad as u32);
+        f.flags |= 1 << (rt::Flag::SignAwareZeroPad as u32);
 
         if f.width.is_none() {
             f.width = Some((usize::BITS / 4) as usize + 2);
         }
     }
-    f.flags |= 1 << (FlagV1::Alternate as u32);
+    f.flags |= 1 << (rt::Flag::Alternate as u32);
 
     let ret = LowerHex::fmt(&ptr_addr, f);
 

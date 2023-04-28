@@ -34,7 +34,10 @@ error[E0597]: `c` does not live long enough
    |
 LL | fn annot_reference_named_lifetime_in_closure<'a>(_: &'a u32) {
    |                                              -- lifetime `'a` defined here
-...
+LL |     let _closure = || {
+LL |         let c = 66;
+   |             - binding `c` declared here
+LL |         combine(
 LL |             SomeEnum::SomeVariant(Cell::new(&c)),
    |                                   ----------^^-
    |                                   |         |

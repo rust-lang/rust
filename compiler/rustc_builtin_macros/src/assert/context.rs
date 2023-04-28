@@ -301,6 +301,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
             | ExprKind::If(_, _, _)
             | ExprKind::IncludedBytes(..)
             | ExprKind::InlineAsm(_)
+            | ExprKind::OffsetOf(_, _)
             | ExprKind::Let(_, _, _)
             | ExprKind::Lit(_)
             | ExprKind::Loop(_, _, _)

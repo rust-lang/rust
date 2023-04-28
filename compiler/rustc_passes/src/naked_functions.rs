@@ -203,6 +203,7 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
             | ExprKind::Break(..)
             | ExprKind::Continue(..)
             | ExprKind::Ret(..)
+            | ExprKind::OffsetOf(..)
             | ExprKind::Struct(..)
             | ExprKind::Repeat(..)
             | ExprKind::Yield(..) => {

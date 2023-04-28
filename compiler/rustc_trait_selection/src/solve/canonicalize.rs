@@ -69,7 +69,7 @@ impl<'a, 'tcx> Canonicalizer<'a, 'tcx> {
         };
 
         let value = value.fold_with(&mut canonicalizer);
-        assert!(!value.needs_infer());
+        assert!(!value.has_infer());
         assert!(!value.has_placeholders());
 
         let (max_universe, variables) = canonicalizer.finalize();

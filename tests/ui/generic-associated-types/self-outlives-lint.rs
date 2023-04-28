@@ -189,7 +189,7 @@ trait MultipleMethods {
 }
 
 // We would normally require `Self: 'a`, but we can prove that `Self: 'static`
-// because of the the bounds on the trait, so the bound is proven
+// because of the bounds on the trait, so the bound is proven
 trait Trait: 'static {
     type Assoc<'a>;
     fn make_assoc(_: &u32) -> Self::Assoc<'_>;

@@ -179,7 +179,7 @@ bitflags! {
         /// Does this have `ConstKind::Param`?
         const HAS_CT_PARAM                = 1 << 2;
 
-        const NEEDS_SUBST                 = TypeFlags::HAS_TY_PARAM.bits
+        const HAS_PARAM                 = TypeFlags::HAS_TY_PARAM.bits
                                           | TypeFlags::HAS_RE_PARAM.bits
                                           | TypeFlags::HAS_CT_PARAM.bits;
 
@@ -192,7 +192,7 @@ bitflags! {
 
         /// Does this have inference variables? Used to determine whether
         /// inference is required.
-        const NEEDS_INFER                 = TypeFlags::HAS_TY_INFER.bits
+        const HAS_INFER                 = TypeFlags::HAS_TY_INFER.bits
                                           | TypeFlags::HAS_RE_INFER.bits
                                           | TypeFlags::HAS_CT_INFER.bits;
 
@@ -537,7 +537,7 @@ pub struct FloatVarValue(pub FloatTy);
 
 rustc_index::newtype_index! {
     /// A **ty**pe **v**ariable **ID**.
-    #[debug_format = "_#{}t"]
+    #[debug_format = "?{}t"]
     pub struct TyVid {}
 }
 
@@ -739,13 +739,13 @@ impl fmt::Debug for FloatVarValue {
 
 impl fmt::Debug for IntVid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "_#{}i", self.index)
+        write!(f, "?{}i", self.index)
     }
 }
 
 impl fmt::Debug for FloatVid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "_#{}f", self.index)
+        write!(f, "?{}f", self.index)
     }
 }
 

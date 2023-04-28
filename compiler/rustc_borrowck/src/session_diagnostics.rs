@@ -184,7 +184,7 @@ pub(crate) enum CaptureVarPathUseCause {
 #[derive(Subdiagnostic)]
 pub(crate) enum CaptureVarKind {
     #[label(borrowck_capture_immute)]
-    Immute {
+    Immut {
         #[primary_span]
         kind_span: Span,
     },
@@ -204,15 +204,79 @@ pub(crate) enum CaptureVarKind {
 pub(crate) enum CaptureVarCause {
     #[label(borrowck_var_borrow_by_use_place_in_generator)]
     BorrowUsePlaceGenerator {
+        is_single_var: bool,
         place: String,
         #[primary_span]
         var_span: Span,
     },
     #[label(borrowck_var_borrow_by_use_place_in_closure)]
     BorrowUsePlaceClosure {
+        is_single_var: bool,
         place: String,
         #[primary_span]
         var_span: Span,
+    },
+    #[label(borrowck_var_borrow_by_use_in_generator)]
+    BorrowUseInGenerator {
+        #[primary_span]
+        var_span: Span,
+    },
+    #[label(borrowck_var_borrow_by_use_in_closure)]
+    BorrowUseInClosure {
+        #[primary_span]
+        var_span: Span,
+    },
+    #[label(borrowck_var_move_by_use_in_generator)]
+    MoveUseInGenerator {
+        #[primary_span]
+        var_span: Span,
+    },
+    #[label(borrowck_var_move_by_use_in_closure)]
+    MoveUseInClosure {
+        #[primary_span]
+        var_span: Span,
+    },
+    #[label(borrowck_var_first_borrow_by_use_place_in_generator)]
+    FirstBorrowUsePlaceGenerator {
+        place: String,
+        #[primary_span]
+        var_span: Span,
+    },
+    #[label(borrowck_var_first_borrow_by_use_place_in_closure)]
+    FirstBorrowUsePlaceClosure {
+        place: String,
+        #[primary_span]
+        var_span: Span,
+    },
+    #[label(borrowck_var_second_borrow_by_use_place_in_generator)]
+    SecondBorrowUsePlaceGenerator {
+        place: String,
+        #[primary_span]
+        var_span: Span,
+    },
+    #[label(borrowck_var_second_borrow_by_use_place_in_closure)]
+    SecondBorrowUsePlaceClosure {
+        place: String,
+        #[primary_span]
+        var_span: Span,
+    },
+    #[label(borrowck_var_mutable_borrow_by_use_place_in_closure)]
+    MutableBorrowUsePlaceClosure {
+        place: String,
+        #[primary_span]
+        var_span: Span,
+    },
+    #[label(borrowck_partial_var_move_by_use_in_generator)]
+    PartialMoveUseInGenerator {
+        #[primary_span]
+        var_span: Span,
+        is_partial: bool,
+    },
+    #[label(borrowck_partial_var_move_by_use_in_closure)]
+    PartialMoveUseInClosure {
+        #[primary_span]
+        var_span: Span,
+        is_partial: bool,
     },
 }
 
@@ -238,4 +302,145 @@ pub(crate) struct NonGenericOpaqueTypeParam<'a, 'tcx> {
     pub span: Span,
     #[label]
     pub param_span: Span,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum CaptureReasonLabel<'a> {
+    #[label(borrowck_moved_due_to_call)]
+    Call {
+        #[primary_span]
+        fn_call_span: Span,
+        place_name: &'a str,
+        is_partial: bool,
+        is_loop_message: bool,
+    },
+    #[label(borrowck_moved_due_to_usage_in_operator)]
+    OperatorUse {
+        #[primary_span]
+        fn_call_span: Span,
+        place_name: &'a str,
+        is_partial: bool,
+        is_loop_message: bool,
+    },
+    #[label(borrowck_moved_due_to_implicit_into_iter_call)]
+    ImplicitCall {
+        #[primary_span]
+        fn_call_span: Span,
+        place_name: &'a str,
+        is_partial: bool,
+        is_loop_message: bool,
+    },
+    #[label(borrowck_moved_due_to_method_call)]
+    MethodCall {
+        #[primary_span]
+        fn_call_span: Span,
+        place_name: &'a str,
+        is_partial: bool,
+        is_loop_message: bool,
+    },
+    #[label(borrowck_value_moved_here)]
+    MovedHere {
+        #[primary_span]
+        move_span: Span,
+        is_partial: bool,
+        is_move_msg: bool,
+        is_loop_message: bool,
+    },
+    #[label(borrowck_consider_borrow_type_contents)]
+    BorrowContent {
+        #[primary_span]
+        var_span: Span,
+    },
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum CaptureReasonNote {
+    #[note(borrowck_moved_a_fn_once_in_call)]
+    FnOnceMoveInCall {
+        #[primary_span]
+        var_span: Span,
+    },
+    #[note(borrowck_calling_operator_moves_lhs)]
+    LhsMoveByOperator {
+        #[primary_span]
+        span: Span,
+    },
+    #[note(borrowck_func_take_self_moved_place)]
+    FuncTakeSelf {
+        func: String,
+        place_name: String,
+        #[primary_span]
+        span: Span,
+    },
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum CaptureReasonSuggest<'tcx> {
+    #[suggestion(
+        borrowck_suggest_iterate_over_slice,
+        applicability = "maybe-incorrect",
+        code = "&",
+        style = "verbose"
+    )]
+    IterateSlice {
+        ty: Ty<'tcx>,
+        #[primary_span]
+        span: Span,
+    },
+    #[suggestion(
+        borrowck_suggest_create_freash_reborrow,
+        applicability = "maybe-incorrect",
+        code = "as_mut().",
+        style = "verbose"
+    )]
+    FreshReborrow {
+        #[primary_span]
+        span: Span,
+    },
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum CaptureArgLabel {
+    #[label(borrowck_value_capture_here)]
+    Capture {
+        is_within: bool,
+        #[primary_span]
+        args_span: Span,
+    },
+    #[label(borrowck_move_out_place_here)]
+    MoveOutPlace {
+        place: String,
+        #[primary_span]
+        args_span: Span,
+    },
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum OnClosureNote<'a> {
+    #[note(borrowck_closure_invoked_twice)]
+    InvokedTwice {
+        place_name: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+    #[note(borrowck_closure_moved_twice)]
+    MovedTwice {
+        place_name: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum TypeNoCopy<'a, 'tcx> {
+    #[label(borrowck_ty_no_impl_copy)]
+    Label {
+        is_partial_move: bool,
+        ty: Ty<'tcx>,
+        place: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+    #[note(borrowck_ty_no_impl_copy)]
+    Note { is_partial_move: bool, ty: Ty<'tcx>, place: &'a str },
 }

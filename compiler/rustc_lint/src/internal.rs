@@ -4,6 +4,7 @@
 use crate::lints::{
     BadOptAccessDiag, DefaultHashTypesDiag, DiagOutOfImpl, LintPassByHand, NonExistentDocKeyword,
     QueryInstability, TyQualified, TykindDiag, TykindKind, UntranslatableDiag,
+    UntranslatableDiagnosticTrivial,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
@@ -366,7 +367,15 @@ declare_tool_lint! {
     report_in_external_macro: true
 }
 
-declare_lint_pass!(Diagnostics => [ UNTRANSLATABLE_DIAGNOSTIC, DIAGNOSTIC_OUTSIDE_OF_IMPL ]);
+declare_tool_lint! {
+    /// The `untranslatable_diagnostic_trivial` lint detects diagnostics created using only static strings.
+    pub rustc::UNTRANSLATABLE_DIAGNOSTIC_TRIVIAL,
+    Deny,
+    "prevent creation of diagnostics which cannot be translated, which use only static strings",
+    report_in_external_macro: true
+}
+
+declare_lint_pass!(Diagnostics => [ UNTRANSLATABLE_DIAGNOSTIC, DIAGNOSTIC_OUTSIDE_OF_IMPL, UNTRANSLATABLE_DIAGNOSTIC_TRIVIAL ]);
 
 impl LateLintPass<'_> for Diagnostics {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
@@ -420,6 +429,75 @@ impl LateLintPass<'_> for Diagnostics {
         if !found_parent_with_attr && !found_diagnostic_message {
             cx.emit_spanned_lint(UNTRANSLATABLE_DIAGNOSTIC, span, UntranslatableDiag);
         }
+    }
+}
+
+impl EarlyLintPass for Diagnostics {
+    #[allow(unused_must_use)]
+    fn check_stmt(&mut self, cx: &EarlyContext<'_>, stmt: &ast::Stmt) {
+        // Looking for a straight chain of method calls from 'struct_span_err' to 'emit'.
+        let ast::StmtKind::Semi(expr) = &stmt.kind else {
+            return;
+        };
+        let ast::ExprKind::MethodCall(meth) = &expr.kind else {
+            return;
+        };
+        if meth.seg.ident.name != sym::emit || !meth.args.is_empty() {
+            return;
+        }
+        let mut segments = vec![];
+        let mut cur = &meth.receiver;
+        let fake = &[].into();
+        loop {
+            match &cur.kind {
+                ast::ExprKind::Call(func, args) => {
+                    if let ast::ExprKind::Path(_, path) = &func.kind {
+                        segments.push((path.segments.last().unwrap().ident.name, args))
+                    }
+                    break;
+                }
+                ast::ExprKind::MethodCall(method) => {
+                    segments.push((method.seg.ident.name, &method.args));
+                    cur = &method.receiver;
+                }
+                ast::ExprKind::MacCall(mac) => {
+                    segments.push((mac.path.segments.last().unwrap().ident.name, fake));
+                    break;
+                }
+                _ => {
+                    break;
+                }
+            }
+        }
+        segments.reverse();
+        if segments.is_empty() {
+            return;
+        }
+        if segments[0].0.as_str() != "struct_span_err" {
+            return;
+        }
+        if !segments.iter().all(|(name, args)| {
+            let arg = match name.as_str() {
+                "struct_span_err" | "span_note" | "span_label" | "span_help" => &args[1],
+                "note" | "help" => &args[0],
+                _ => {
+                    return false;
+                }
+            };
+            if let ast::ExprKind::Lit(lit) = arg.kind
+                && let ast::token::LitKind::Str = lit.kind {
+                    true
+            } else {
+                false
+            }
+        }) {
+            return;
+        }
+        cx.emit_spanned_lint(
+            UNTRANSLATABLE_DIAGNOSTIC_TRIVIAL,
+            stmt.span,
+            UntranslatableDiagnosticTrivial,
+        );
     }
 }
 

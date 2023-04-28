@@ -123,7 +123,7 @@ There are 3 common ways to compile native C code for UEFI targets:
   targets. Be wary of any includes that are not specifically suitable for UEFI
   targets (especially the C standard library includes are not always
   compatible). Freestanding compilations are recommended to avoid
-  incompatibilites.
+  incompatibilities.
 
 ## Ecosystem
 

@@ -81,8 +81,7 @@ impl Assume {
 // FIXME(jswrenn): This const op is not actually usable. Why?
 // https://github.com/rust-lang/rust/pull/100726#issuecomment-1219928926
 #[unstable(feature = "transmutability", issue = "99571")]
-#[rustc_const_unstable(feature = "transmutability", issue = "99571")]
-impl const core::ops::Add for Assume {
+impl core::ops::Add for Assume {
     type Output = Assume;
 
     fn add(self, other_assumptions: Assume) -> Assume {
@@ -93,8 +92,7 @@ impl const core::ops::Add for Assume {
 // FIXME(jswrenn): This const op is not actually usable. Why?
 // https://github.com/rust-lang/rust/pull/100726#issuecomment-1219928926
 #[unstable(feature = "transmutability", issue = "99571")]
-#[rustc_const_unstable(feature = "transmutability", issue = "99571")]
-impl const core::ops::Sub for Assume {
+impl core::ops::Sub for Assume {
     type Output = Assume;
 
     fn sub(self, other_assumptions: Assume) -> Assume {

@@ -59,6 +59,7 @@ use rustc_errors::{
     struct_span_err, DiagnosticId, DiagnosticMessage, ErrorGuaranteed, MultiSpan,
     SubdiagnosticMessage,
 };
+use rustc_fluent_macro::fluent_messages;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::Visitor;
@@ -66,7 +67,6 @@ use rustc_hir::{HirIdMap, Node};
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_hir_analysis::check::check_abi;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_macros::fluent_messages;
 use rustc_middle::traits;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -152,25 +152,9 @@ fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &UnordSet<LocalDef
     &*tcx.typeck(def_id).used_trait_imports
 }
 
-fn typeck_item_bodies(tcx: TyCtxt<'_>, (): ()) {
-    tcx.hir().par_body_owners(|body_owner_def_id| tcx.ensure().typeck(body_owner_def_id));
-}
-
-fn typeck_const_arg<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    (did, param_did): (LocalDefId, DefId),
-) -> &ty::TypeckResults<'tcx> {
-    let fallback = move || tcx.type_of(param_did).subst_identity();
-    typeck_with_fallback(tcx, did, fallback)
-}
-
 fn typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::TypeckResults<'tcx> {
-    if let Some(param_did) = tcx.opt_const_param_of(def_id) {
-        tcx.typeck_const_arg((def_id, param_did))
-    } else {
-        let fallback = move || tcx.type_of(def_id.to_def_id()).subst_identity();
-        typeck_with_fallback(tcx, def_id, fallback)
-    }
+    let fallback = move || tcx.type_of(def_id.to_def_id()).subst_identity();
+    typeck_with_fallback(tcx, def_id, fallback)
 }
 
 /// Used only to get `TypeckResults` for type inference during error recovery.
@@ -237,12 +221,6 @@ fn typeck_with_fallback<'tcx>(
             }))
         } else if let Node::AnonConst(_) = node {
             match tcx.hir().get(tcx.hir().parent_id(id)) {
-                Node::Expr(&hir::Expr {
-                    kind: hir::ExprKind::ConstBlock(ref anon_const), ..
-                }) if anon_const.hir_id == id => Some(fcx.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::TypeInference,
-                    span,
-                })),
                 Node::Ty(&hir::Ty { kind: hir::TyKind::Typeof(ref anon_const), .. })
                     if anon_const.hir_id == id =>
                 {
@@ -491,8 +469,6 @@ fn has_expected_num_generic_args(
 pub fn provide(providers: &mut Providers) {
     method::provide(providers);
     *providers = Providers {
-        typeck_item_bodies,
-        typeck_const_arg,
         typeck,
         diagnostic_only_typeck,
         has_typeck_results,

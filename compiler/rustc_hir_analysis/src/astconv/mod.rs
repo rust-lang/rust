@@ -447,14 +447,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         handle_ty_args(has_default, &inf.to_ty())
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
-                        ty::Const::from_opt_const_arg_anon_const(
-                            tcx,
-                            ty::WithOptConstParam {
-                                did: ct.value.def_id,
-                                const_param_did: Some(param.def_id),
-                            },
-                        )
-                        .into()
+                        let did = ct.value.def_id;
+                        tcx.feed_anon_const_type(did, tcx.type_of(param.def_id));
+                        ty::Const::from_anon_const(tcx, did).into()
                     }
                     (&GenericParamDefKind::Const { .. }, hir::GenericArg::Infer(inf)) => {
                         let ty = tcx
@@ -2061,7 +2056,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             err.note("enum variants can't have type parameters");
                             let type_name = tcx.item_name(adt_def.did());
                             let msg = format!(
-                                "you might have meant to specity type parameters on enum \
+                                "you might have meant to specify type parameters on enum \
                                  `{type_name}`"
                             );
                             let Some(args) = assoc_segment.args else { return; };
@@ -2323,7 +2318,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let infcx = match self.infcx() {
             Some(infcx) => infcx,
             None => {
-                assert!(!self_ty.needs_infer());
+                assert!(!self_ty.has_infer());
                 infcx_ = tcx.infer_ctxt().ignoring_regions().build();
                 &infcx_
             }
@@ -2494,7 +2489,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let infcx = if let Some(infcx) = self.infcx() {
             infcx
         } else {
-            assert!(!qself_ty.needs_infer());
+            assert!(!qself_ty.has_infer());
             infcx_ = tcx.infer_ctxt().build();
             &infcx_
         };
@@ -3044,7 +3039,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // the anon const, which is empty. This is why the
                 // `AlwaysApplicable` impl needs a `T: ?Sized` bound for
                 // this to compile if we were to normalize here.
-                if forbid_generic && ty.needs_subst() {
+                if forbid_generic && ty.has_param() {
                     let mut err = tcx.sess.struct_span_err(
                         path.span,
                         "generic `Self` types are currently not permitted in anonymous constants",

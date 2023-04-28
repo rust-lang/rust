@@ -121,7 +121,7 @@ use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usages of `cloned()` on an `Iterator` or `Option` where
+    /// Checks for usage of `cloned()` on an `Iterator` or `Option` where
     /// `copied()` could be used instead.
     ///
     /// ### Why is this bad?
@@ -201,7 +201,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usages of `Iterator::flat_map()` where `filter_map()` could be
+    /// Checks for usage of `Iterator::flat_map()` where `filter_map()` could be
     /// used instead.
     ///
     /// ### Why is this bad?
@@ -441,7 +441,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usages of `_.unwrap_or_else(Default::default)` on `Option` and
+    /// Checks for usage of `_.unwrap_or_else(Default::default)` on `Option` and
     /// `Result` values.
     ///
     /// ### Why is this bad?
@@ -1194,7 +1194,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for use of `.iter().nth()` (and the related
+    /// Checks for usage of `.iter().nth()` (and the related
     /// `.iter_mut().nth()`) on standard library types with *O*(1) element access.
     ///
     /// ### Why is this bad?
@@ -1221,7 +1221,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for use of `.skip(x).next()` on iterators.
+    /// Checks for usage of `.skip(x).next()` on iterators.
     ///
     /// ### Why is this bad?
     /// `.nth(x)` is cleaner
@@ -1246,7 +1246,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for use of `.drain(..)` on `Vec` and `VecDeque` for iteration.
+    /// Checks for usage of `.drain(..)` on `Vec` and `VecDeque` for iteration.
     ///
     /// ### Why is this bad?
     /// `.into_iter()` is simpler with better performance.
@@ -1271,7 +1271,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for using `x.get(x.len() - 1)` instead of
+    /// Checks for usage of `x.get(x.len() - 1)` instead of
     /// `x.last()`.
     ///
     /// ### Why is this bad?
@@ -1304,7 +1304,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for use of `.get().unwrap()` (or
+    /// Checks for usage of `.get().unwrap()` (or
     /// `.get_mut().unwrap`) on a standard library type which implements `Index`
     ///
     /// ### Why is this bad?
@@ -1475,7 +1475,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for using `fold` when a more succinct alternative exists.
+    /// Checks for usage of `fold` when a more succinct alternative exists.
     /// Specifically, this checks for `fold`s which could be replaced by `any`, `all`,
     /// `sum` or `product`.
     ///
@@ -2161,7 +2161,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usages of `str::splitn(2, _)`
+    /// Checks for usage of `str::splitn(2, _)`
     ///
     /// ### Why is this bad?
     /// `split_once` is both clearer in intent and slightly more efficient.
@@ -2197,7 +2197,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usages of `str::splitn` (or `str::rsplitn`) where using `str::split` would be the same.
+    /// Checks for usage of `str::splitn` (or `str::rsplitn`) where using `str::split` would be the same.
     /// ### Why is this bad?
     /// The function `split` is simpler and there is no performance difference in these cases, considering
     /// that both functions return a lazy iterator.
@@ -2251,7 +2251,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for use of `.collect::<Vec<String>>().join("")` on iterators.
+    /// Checks for usage of `.collect::<Vec<String>>().join("")` on iterators.
     ///
     /// ### Why is this bad?
     /// `.collect::<String>()` is more concise and might be more performant
@@ -2377,7 +2377,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usages of `.then_some(..).unwrap_or(..)`
+    /// Checks for usage of `.then_some(..).unwrap_or(..)`
     ///
     /// ### Why is this bad?
     /// This can be written more clearly with `if .. else ..`
@@ -2553,7 +2553,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for using `x.get(0)` instead of
+    /// Checks for usage of `x.get(0)` instead of
     /// `x.first()`.
     ///
     /// ### Why is this bad?
@@ -2957,7 +2957,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Detects uses of `Vec::sort_by` passing in a closure
+    /// Checks for usage of `Vec::sort_by` passing in a closure
     /// which compares the two arguments, either directly or indirectly.
     ///
     /// ### Why is this bad?
@@ -3013,7 +3013,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for use of File::read_to_end and File::read_to_string.
+    /// Checks for usage of File::read_to_end and File::read_to_string.
     ///
     /// ### Why is this bad?
     /// `fs::{read, read_to_string}` provide the same functionality when `buf` is empty with fewer imports and no intermediate values.
@@ -3185,7 +3185,7 @@ declare_clippy_lint! {
     /// ```rust
     /// std::process::Command::new("echo").args(["-n", "hello"]).spawn().unwrap();
     /// ```
-    #[clippy::version = "1.67.0"]
+    #[clippy::version = "1.69.0"]
     pub SUSPICIOUS_COMMAND_ARG_SPACE,
     suspicious,
     "single command line argument that looks like it should be multiple arguments"

@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![allow(unused)]
 #![warn(clippy::suspicious_doc_comments)]
 

@@ -579,7 +579,7 @@ fn compare_asyncness<'tcx>(
 pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_m_def_id: LocalDefId,
-) -> Result<&'tcx FxHashMap<DefId, Ty<'tcx>>, ErrorGuaranteed> {
+) -> Result<&'tcx FxHashMap<DefId, ty::EarlyBinder<Ty<'tcx>>>, ErrorGuaranteed> {
     let impl_m = tcx.opt_associated_item(impl_m_def_id.to_def_id()).unwrap();
     let trait_m = tcx.opt_associated_item(impl_m.trait_item_def_id.unwrap()).unwrap();
     let impl_trait_ref =
@@ -782,14 +782,14 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                     })
                 });
                 debug!(%ty);
-                collected_tys.insert(def_id, ty);
+                collected_tys.insert(def_id, ty::EarlyBinder(ty));
             }
             Err(err) => {
                 let reported = tcx.sess.delay_span_bug(
                     return_span,
                     format!("could not fully resolve: {ty} => {err:?}"),
                 );
-                collected_tys.insert(def_id, tcx.ty_error(reported));
+                collected_tys.insert(def_id, ty::EarlyBinder(tcx.ty_error(reported)));
             }
         }
     }
@@ -839,7 +839,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'_, 'tcx> {
             });
             self.types.insert(proj.def_id, (infer_ty, proj.substs));
             // Recurse into bounds
-            for (pred, pred_span) in self.interner().bound_explicit_item_bounds(proj.def_id).subst_iter_copied(self.interner(), proj.substs) {
+            for (pred, pred_span) in self.interner().explicit_item_bounds(proj.def_id).subst_iter_copied(self.interner(), proj.substs) {
                 let pred = pred.fold_with(self);
                 let pred = self.ocx.normalize(
                     &ObligationCause::misc(self.span, self.body_id),
@@ -1317,7 +1317,7 @@ fn compare_number_of_generics<'tcx>(
                         impl_count,
                         kind,
                         pluralize!(impl_count),
-                        suffix.unwrap_or_else(String::new),
+                        suffix.unwrap_or_default(),
                     ),
                 );
             }
@@ -2023,7 +2023,7 @@ pub(super) fn check_type_bounds<'tcx>(
     };
 
     let obligations: Vec<_> = tcx
-        .bound_explicit_item_bounds(trait_ty.def_id)
+        .explicit_item_bounds(trait_ty.def_id)
         .subst_iter_copied(tcx, rebased_substs)
         .map(|(concrete_ty_bound, span)| {
             debug!("check_type_bounds: concrete_ty_bound = {:?}", concrete_ty_bound);

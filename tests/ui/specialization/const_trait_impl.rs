@@ -1,4 +1,5 @@
-// check-pass
+// known-bug: #110395
+
 #![feature(const_trait_impl, min_specialization, rustc_attrs)]
 
 #[rustc_specialization_trait]

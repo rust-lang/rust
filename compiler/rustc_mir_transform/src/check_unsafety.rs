@@ -148,7 +148,7 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
 
             if let Some(uv) = maybe_uneval {
                 if uv.promoted.is_none() {
-                    let def_id = uv.def.def_id_for_type_of();
+                    let def_id = uv.def;
                     if self.tcx.def_kind(def_id) == DefKind::InlineConst {
                         let local_def_id = def_id.expect_local();
                         let UnsafetyCheckResult { violations, used_unsafe_blocks, .. } =
@@ -375,22 +375,7 @@ impl<'tcx> UnsafetyChecker<'_, 'tcx> {
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers {
-        unsafety_check_result: |tcx, def_id| {
-            if let Some(def) = ty::WithOptConstParam::try_lookup(def_id, tcx) {
-                tcx.unsafety_check_result_for_const_arg(def)
-            } else {
-                unsafety_check_result(tcx, ty::WithOptConstParam::unknown(def_id))
-            }
-        },
-        unsafety_check_result_for_const_arg: |tcx, (did, param_did)| {
-            unsafety_check_result(
-                tcx,
-                ty::WithOptConstParam { did, const_param_did: Some(param_did) },
-            )
-        },
-        ..*providers
-    };
+    *providers = Providers { unsafety_check_result, ..*providers };
 }
 
 /// Context information for [`UnusedUnsafeVisitor`] traversal,
@@ -492,10 +477,7 @@ fn check_unused_unsafe(
     unused_unsafes
 }
 
-fn unsafety_check_result(
-    tcx: TyCtxt<'_>,
-    def: ty::WithOptConstParam<LocalDefId>,
-) -> &UnsafetyCheckResult {
+fn unsafety_check_result(tcx: TyCtxt<'_>, def: LocalDefId) -> &UnsafetyCheckResult {
     debug!("unsafety_violations({:?})", def);
 
     // N.B., this borrow is valid because all the consumers of
@@ -510,13 +492,13 @@ fn unsafety_check_result(
         });
     }
 
-    let param_env = tcx.param_env(def.did);
+    let param_env = tcx.param_env(def);
 
-    let mut checker = UnsafetyChecker::new(body, def.did, tcx, param_env);
+    let mut checker = UnsafetyChecker::new(body, def, tcx, param_env);
     checker.visit_body(&body);
 
-    let unused_unsafes = (!tcx.is_typeck_child(def.did.to_def_id()))
-        .then(|| check_unused_unsafe(tcx, def.did, &checker.used_unsafe_blocks));
+    let unused_unsafes = (!tcx.is_typeck_child(def.to_def_id()))
+        .then(|| check_unused_unsafe(tcx, def, &checker.used_unsafe_blocks));
 
     tcx.arena.alloc(UnsafetyCheckResult {
         violations: checker.violations,

@@ -122,9 +122,9 @@ pub(crate) struct SharedContext<'tcx> {
     /// the crate.
     redirections: Option<RefCell<FxHashMap<String, String>>>,
 
-    /// Correspondance map used to link types used in the source code pages to allow to click on
+    /// Correspondence map used to link types used in the source code pages to allow to click on
     /// links to jump to the type's definition.
-    pub(crate) span_correspondance_map: FxHashMap<rustc_span::Span, LinkFromSrc>,
+    pub(crate) span_correspondence_map: FxHashMap<rustc_span::Span, LinkFromSrc>,
     /// The [`Cache`] used during rendering.
     pub(crate) cache: Cache,
 
@@ -531,7 +531,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             errors: receiver,
             redirections: if generate_redirect_map { Some(Default::default()) } else { None },
             show_type_layout,
-            span_correspondance_map: matches,
+            span_correspondence_map: matches,
             cache,
             call_locations,
         };
@@ -647,7 +647,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                      </div>\
                      <noscript>\
                         <section>\
-                            You need to enable Javascript be able to update your settings.\
+                            You need to enable JavaScript be able to update your settings.\
                         </section>\
                      </noscript>\
                      <link rel=\"stylesheet\" \
@@ -709,7 +709,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                      </div>\
                      <noscript>\
                         <section>\
-                            <p>You need to enable Javascript to use keyboard commands or search.</p>\
+                            <p>You need to enable JavaScript to use keyboard commands or search.</p>\
                             <p>For more information, browse the <a href=\"https://doc.rust-lang.org/rustdoc/\">rustdoc handbook</a>.</p>\
                         </section>\
                      </noscript>",

@@ -4,7 +4,6 @@ use core::alloc::LayoutError;
 use core::cmp;
 use core::intrinsics;
 use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
-use core::ops::Drop;
 use core::ptr::{self, NonNull, Unique};
 use core::slice;
 

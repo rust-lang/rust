@@ -1,4 +1,5 @@
 use crate::definitions::{DefKey, DefPathData, DisambiguatedDefPathData};
+use rustc_data_structures::stable_hasher::Hash64;
 use rustc_span::def_id::{DefPathHash, StableCrateId};
 use rustc_span::edition::Edition;
 use rustc_span::{create_session_if_not_set_then, Symbol};
@@ -24,7 +25,7 @@ fn def_path_hash_depends_on_crate_id() {
         assert_ne!(h0.local_hash(), h1.local_hash());
 
         fn mk_test_hash(stable_crate_id: StableCrateId) -> DefPathHash {
-            let parent_hash = DefPathHash::new(stable_crate_id, 0);
+            let parent_hash = DefPathHash::new(stable_crate_id, Hash64::ZERO);
 
             let key = DefKey {
                 parent: None,

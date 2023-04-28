@@ -13,7 +13,7 @@ pub use crate::hygiene::{ExpnData, ExpnKind};
 pub use crate::*;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_hasher::StableHasher;
+use rustc_data_structures::stable_hasher::{Hash128, Hash64, StableHasher};
 use rustc_data_structures::sync::{AtomicU32, Lrc, MappedReadGuard, ReadGuard, RwLock};
 use std::cmp;
 use std::hash::Hash;
@@ -138,7 +138,7 @@ impl FileLoader for RealFileLoader {
 pub struct StableSourceFileId {
     /// A hash of the source file's [`FileName`]. This is hash so that it's size
     /// is more predictable than if we included the actual [`FileName`] value.
-    pub file_name_hash: u64,
+    pub file_name_hash: Hash64,
 
     /// The [`CrateNum`] of the crate this source file was originally parsed for.
     /// We cannot include this information in the hash because at the time
@@ -331,7 +331,7 @@ impl SourceMap {
         &self,
         filename: FileName,
         src_hash: SourceFileHash,
-        name_hash: u128,
+        name_hash: Hash128,
         source_len: usize,
         cnum: CrateNum,
         file_local_lines: Lock<SourceFileLines>,
@@ -483,7 +483,7 @@ impl SourceMap {
         self.span_to_string(sp, FileNameDisplayPreference::Remapped)
     }
 
-    /// Format the span location suitable for pretty printing anotations with relative line numbers
+    /// Format the span location suitable for pretty printing annotations with relative line numbers
     pub fn span_to_relative_line_string(&self, sp: Span, relative_to: Span) -> String {
         if self.files.borrow().source_files.is_empty() || sp.is_dummy() || relative_to.is_dummy() {
             return "no-location".to_string();
@@ -777,7 +777,7 @@ impl SourceMap {
 
     /// Given a 'Span', tries to tell if it's wrapped by "<>" or "()"
     /// the algorithm searches if the next character is '>' or ')' after skipping white space
-    /// then searches the previous charactoer to match '<' or '(' after skipping white space
+    /// then searches the previous character to match '<' or '(' after skipping white space
     /// return true if wrapped by '<>' or '()'
     pub fn span_wrapped_by_angle_or_parentheses(&self, span: Span) -> bool {
         self.span_to_source(span, |src, start_index, end_index| {
@@ -906,10 +906,8 @@ impl SourceMap {
 
             let snippet = if let Some(ref src) = local_begin.sf.src {
                 Some(&src[start_index..])
-            } else if let Some(src) = src.get_source() {
-                Some(&src[start_index..])
             } else {
-                None
+                src.get_source().map(|src| &src[start_index..])
             };
 
             match snippet {

@@ -54,11 +54,10 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, borrowed: &BitS
                 | StatementKind::Coverage(_)
                 | StatementKind::Intrinsic(_)
                 | StatementKind::ConstEvalCounter
+                | StatementKind::PlaceMention(_)
                 | StatementKind::Nop => (),
 
-                StatementKind::FakeRead(_)
-                | StatementKind::PlaceMention(_)
-                | StatementKind::AscribeUserType(_, _) => {
+                StatementKind::FakeRead(_) | StatementKind::AscribeUserType(_, _) => {
                     bug!("{:?} not found in this MIR phase!", &statement.kind)
                 }
             }

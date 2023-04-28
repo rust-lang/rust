@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![feature(stmt_expr_attributes)]
 #![deny(clippy::unneeded_wildcard_pattern)]
 

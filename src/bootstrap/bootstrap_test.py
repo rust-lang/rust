@@ -97,6 +97,7 @@ class GenerateAndParseConfig(unittest.TestCase):
     def test_no_args(self):
         build = self.serialize_and_parse([])
         self.assertEqual(build.get_toml("changelog-seen"), '2')
+        self.assertEqual(build.get_toml("profile"), 'user')
         self.assertIsNone(build.get_toml("llvm.download-ci-llvm"))
 
     def test_set_section(self):
@@ -107,10 +108,17 @@ class GenerateAndParseConfig(unittest.TestCase):
         build = self.serialize_and_parse(["--set", "target.x86_64-unknown-linux-gnu.cc=gcc"])
         self.assertEqual(build.get_toml("cc", section="target.x86_64-unknown-linux-gnu"), 'gcc')
 
-    # Uncomment when #108928 is fixed.
-    # def test_set_top_level(self):
-    #     build = self.serialize_and_parse(["--set", "profile=compiler"])
-    #     self.assertEqual(build.get_toml("profile"), 'compiler')
+    def test_set_top_level(self):
+        build = self.serialize_and_parse(["--set", "profile=compiler"])
+        self.assertEqual(build.get_toml("profile"), 'compiler')
+
+    def test_set_codegen_backends(self):
+        build = self.serialize_and_parse(["--set", "rust.codegen-backends=cranelift"])
+        self.assertNotEqual(build.config_toml.find("codegen-backends = ['cranelift']"), -1)
+        build = self.serialize_and_parse(["--set", "rust.codegen-backends=cranelift,llvm"])
+        self.assertNotEqual(build.config_toml.find("codegen-backends = ['cranelift', 'llvm']"), -1)
+        build = self.serialize_and_parse(["--enable-full-tools"])
+        self.assertNotEqual(build.config_toml.find("codegen-backends = ['llvm']"), -1)
 
 if __name__ == '__main__':
     SUITE = unittest.TestSuite()

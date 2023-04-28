@@ -31,7 +31,7 @@ from lldb import SBValue, SBData, SBError, eBasicTypeLong, eBasicTypeUnsignedLon
 #
 # You can find more information and examples here:
 #   1. https://lldb.llvm.org/varformats.html
-#   2. https://lldb.llvm.org/python-reference.html
+#   2. https://lldb.llvm.org/use/python-reference.html
 #   3. https://lldb.llvm.org/python_reference/lldb.formatters.cpp.libcxx-pysrc.html
 #   4. https://github.com/llvm-mirror/lldb/tree/master/examples/summaries/cocoa
 ####################################################################################################
@@ -69,9 +69,9 @@ def unwrap_unique_or_non_null(unique_or_nonnull):
     return ptr if ptr.TypeIsPointerType() else ptr.GetChildAtIndex(0)
 
 
-class DefaultSynthteticProvider:
+class DefaultSyntheticProvider:
     def __init__(self, valobj, dict):
-        # type: (SBValue, dict) -> DefaultSynthteticProvider
+        # type: (SBValue, dict) -> DefaultSyntheticProvider
         # logger = Logger.Logger()
         # logger >> "Default synthetic provider for " + str(valobj.GetName())
         self.valobj = valobj

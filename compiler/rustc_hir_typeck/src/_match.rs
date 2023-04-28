@@ -530,7 +530,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 for ty in [first_ty, second_ty] {
                     for (pred, _) in self
                         .tcx
-                        .bound_explicit_item_bounds(rpit_def_id)
+                        .explicit_item_bounds(rpit_def_id)
                         .subst_iter_copied(self.tcx, substs)
                     {
                         let pred = pred.kind().rebind(match pred.kind().skip_binder() {

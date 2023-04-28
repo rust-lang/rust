@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![allow(clippy::assertions_on_constants, clippy::equatable_if_let)]
 
 #[rustfmt::skip]

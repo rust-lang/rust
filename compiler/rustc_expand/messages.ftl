@@ -136,3 +136,7 @@ expand_proc_macro_panicked =
 
 expand_proc_macro_derive_tokens =
     proc-macro derive produced unparsable tokens
+
+expand_duplicate_matcher_binding = duplicate matcher binding
+    .label = duplicate binding
+    .label2 = previous binding

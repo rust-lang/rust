@@ -397,3 +397,13 @@ pub struct ProcMacroDeriveTokens {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(expand_duplicate_matcher_binding)]
+pub struct DuplicateMatcherBinding {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(expand_label2)]
+    pub prev: Span,
+}

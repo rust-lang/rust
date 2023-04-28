@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 
 #[derive(Default)]
 pub struct AppendOnlyIndexVec<I: Idx, T: Copy> {

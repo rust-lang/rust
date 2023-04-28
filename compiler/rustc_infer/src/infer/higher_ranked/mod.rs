@@ -42,7 +42,7 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
 
         // Next, we instantiate each bound region in the subtype
         // with a fresh region variable. These region variables --
-        // but no other pre-existing region variables -- can name
+        // but no other preexisting region variables -- can name
         // the placeholders.
         let sub_prime = self.infcx.instantiate_binder_with_fresh_vars(span, HigherRankedType, sub);
 

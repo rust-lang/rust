@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![allow(dead_code)]
 #![warn(clippy::manual_find_map)]
 #![allow(clippy::redundant_closure)] // FIXME suggestion may have redundant closure

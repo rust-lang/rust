@@ -83,8 +83,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         (fn_val, self.fn_abi_of_fn_ptr(fn_sig_binder, extra_args)?, false)
                     }
                     ty::FnDef(def_id, substs) => {
-                        let instance =
-                            self.resolve(ty::WithOptConstParam::unknown(def_id), substs)?;
+                        let instance = self.resolve(def_id, substs)?;
                         (
                             FnVal::Instance(instance),
                             self.fn_abi_of_instance(instance, extra_args)?,
