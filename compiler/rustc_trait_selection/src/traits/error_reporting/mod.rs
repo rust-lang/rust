@@ -2751,7 +2751,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             rustc_transmute::Assume::from_const(self.infcx.tcx, obligation.param_env, trait_ref.substs.const_at(3)) else {
                 span_bug!(span, "Unable to construct rustc_transmute::Assume where it was previously possible");
             };
-        // FIXME(bryangarza): Need to flatten here too
+        // FIXME(bryangarza): Is this enough, or should we resolve all nested
+        // obligations like we do for `confirm_transmutability_candidate(...)?`
         match rustc_transmute::TransmuteTypeEnv::new(self.infcx).is_transmutable(
             obligation.cause,
             src_and_dst,
@@ -2780,7 +2781,6 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     rustc_transmute::Reason::DstIsPrivate => format!(
                         "`{dst}` is or contains a type or field that is not visible in that scope"
                     ),
-                    // FIXME(bryangarza): Include the number of bytes of src and dst
                     rustc_transmute::Reason::DstIsTooBig => {
                         format!("The size of `{src}` is smaller than the size of `{dst}`")
                     }

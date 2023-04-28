@@ -329,7 +329,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         )
                     };
 
-                    // // FIXME(bryangarza): Check src.mutability or dst.mutability to know whether dst -> src obligation is needed
+                    // FIXME(bryangarza): Check src.mutability or dst.mutability to know whether dst -> src obligation is needed
                     Ok(vec![make_obl(src.ty, dst.ty), make_obl(dst.ty, src.ty)])
                 }
             }

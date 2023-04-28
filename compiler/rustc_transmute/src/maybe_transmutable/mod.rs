@@ -78,11 +78,12 @@ mod rustc {
                 match (src, dst) {
                     // Answer `Ok(None)` here, because 'unknown layout' and type errors will already
                     // be reported by rustc. No need to spam the user with more errors.
-                    (Err(Err::TypeError(_)), _) | (_, Err(Err::TypeError(_))) => Err(Ok(None)),
-                    (Err(Err::Unknown), _) | (_, Err(Err::Unknown)) => Err(Ok(None)),
-                    (Err(Err::Unspecified), _) | (_, Err(Err::Unspecified)) => {
-                        Err(Err(Reason::SrcIsUnspecified))
-                    }
+                    (Err(Err::TypeError(_)), _)
+                    | (_, Err(Err::TypeError(_)))
+                    | (Err(Err::Unknown), _)
+                    | (_, Err(Err::Unknown)) => Err(Ok(None)),
+                    (Err(Err::Unspecified), _) => Err(Err(Reason::SrcIsUnspecified)),
+                    (_, Err(Err::Unspecified)) => Err(Err(Reason::DstIsUnspecified)),
                     (Ok(src), Ok(dst)) => Ok((src, dst)),
                 }
             });
@@ -316,12 +317,19 @@ where
     }
 }
 
-fn and<R>(lhs: Answer<R>, rhs: Answer<R>) -> Answer<R> {
-    // Should propagate errors on the right side, because the initial value
-    // used in `apply` is on the left side.
-    let rhs = rhs?;
-    let lhs = lhs?;
-    Ok(match (lhs, rhs) {
+fn and<R>(lhs: Answer<R>, rhs: Answer<R>) -> Answer<R>
+where
+    R: PartialEq,
+{
+    // If both are errors, then we should return the more specific one
+    if lhs.is_err() && rhs.is_err() {
+        if lhs == Err(Reason::DstIsBitIncompatible) {
+            return rhs;
+        } else {
+            return lhs;
+        }
+    }
+    Ok(match (lhs?, rhs?) {
         // If only one side has a condition, pass it along
         (None, other) | (other, None) => other,
         // If both sides have IfAll conditions, merge them
@@ -340,10 +348,17 @@ fn and<R>(lhs: Answer<R>, rhs: Answer<R>) -> Answer<R> {
     })
 }
 
-fn or<R>(lhs: Answer<R>, rhs: Answer<R>) -> Answer<R> {
-    // If both are errors, then we should return the one on the right
+fn or<R>(lhs: Answer<R>, rhs: Answer<R>) -> Answer<R>
+where
+    R: PartialEq,
+{
+    // If both are errors, then we should return the more specific one
     if lhs.is_err() && rhs.is_err() {
-        return rhs;
+        if lhs == Err(Reason::DstIsBitIncompatible) {
+            return rhs;
+        } else {
+            return lhs;
+        }
     }
     // Otherwise, errors can be ignored for the rest of the pattern matching
     let lhs = lhs.unwrap_or(None);
