@@ -134,10 +134,28 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 /// thread_local! {
 ///     pub static FOO: RefCell<u32> = RefCell::new(1);
 ///
-///     #[allow(unused)]
 ///     static BAR: RefCell<f32> = RefCell::new(1.0);
 /// }
-/// # fn main() {}
+///
+/// FOO.with(|foo| assert_eq!(*foo.borrow(), 1));
+/// BAR.with(|bar| assert_eq!(*bar.borrow(), 1.0));
+/// ```
+///
+/// This macro supports a special `const {}` syntax that can be used
+/// when the initialization expression can be evaluated as a constant.
+/// This can enable a more efficient thread local implementation that
+/// can avoid lazy initialization. For types that do not
+/// [need to be dropped][crate::mem::needs_drop], this can enable an
+/// even more efficient implementation that does not need to
+/// track any additional state.
+///
+/// ```
+/// use std::cell::Cell;
+/// thread_local! {
+///     pub static FOO: Cell<u32> = const { Cell::new(1) };
+/// }
+///
+/// FOO.with(|foo| assert_eq!(foo.get(), 1));
 /// ```
 ///
 /// See [`LocalKey` documentation][`std::thread::LocalKey`] for more
