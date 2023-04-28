@@ -220,7 +220,7 @@ pub fn take_hook() -> Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send> {
 #[unstable(feature = "panic_update_hook", issue = "92649")]
 pub fn update_hook<F>(hook_fn: F)
 where
-    F: Fn(&(dyn Fn(&PanicInfo<'_>) + Send + Sync + 'static), &PanicInfo<'_>)
+    F: Fn(&(dyn Fn(&PanicInfo<'_>) + Sync + 'static), &PanicInfo<'_>)
         + Sync
         + Send
         + 'static,
@@ -556,7 +556,7 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
             Box::into_raw(Box::new(contents))
         }
 
-        fn get(&mut self) -> &(dyn Any + Send) {
+        fn get(&mut self) -> &dyn Any {
             self.fill()
         }
     }
@@ -568,7 +568,7 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
             Box::into_raw(Box::new(self.0))
         }
 
-        fn get(&mut self) -> &(dyn Any + Send) {
+        fn get(&mut self) -> &dyn Any {
             &self.0
         }
     }
@@ -635,7 +635,7 @@ pub const fn begin_panic<M: Any + Send>(msg: M) -> ! {
             Box::into_raw(data)
         }
 
-        fn get(&mut self) -> &(dyn Any + Send) {
+        fn get(&mut self) -> &dyn Any {
             match self.inner {
                 Some(ref a) => a,
                 None => process::abort(),
@@ -725,7 +725,7 @@ pub fn rust_panic_without_hook(payload: Box<dyn Any + Send>) -> ! {
             Box::into_raw(mem::replace(&mut self.0, Box::new(())))
         }
 
-        fn get(&mut self) -> &(dyn Any + Send) {
+        fn get(&mut self) -> &dyn Any {
             &*self.0
         }
     }

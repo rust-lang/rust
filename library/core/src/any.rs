@@ -398,7 +398,7 @@ impl dyn Any + Send {
     /// ```
     /// use std::any::Any;
     ///
-    /// fn is_string(s: &(dyn Any + Send)) {
+    /// fn is_string(s: &dyn Any) {
     ///     if s.is::<String>() {
     ///         println!("It's a string!");
     ///     } else {
@@ -422,7 +422,7 @@ impl dyn Any + Send {
     /// ```
     /// use std::any::Any;
     ///
-    /// fn print_if_string(s: &(dyn Any + Send)) {
+    /// fn print_if_string(s: &dyn Any) {
     ///     if let Some(string) = s.downcast_ref::<String>() {
     ///         println!("It's a string({}): '{}'", string.len(), string);
     ///     } else {

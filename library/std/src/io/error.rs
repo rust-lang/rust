@@ -695,7 +695,7 @@ impl Error {
     #[stable(feature = "io_error_inner", since = "1.3.0")]
     #[must_use]
     #[inline]
-    pub fn get_ref(&self) -> Option<&(dyn error::Error + Send + Sync + 'static)> {
+    pub fn get_ref(&self) -> Option<&(dyn error::Error + Sync + 'static)> {
         match self.repr.data() {
             ErrorData::Os(..) => None,
             ErrorData::Simple(..) => None,
