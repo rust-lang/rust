@@ -849,10 +849,10 @@ fn assoc_method(
     let (indent, indent_str, end_newline) = if parent == ItemType::Trait {
         header_len += 4;
         let indent_str = "    ";
-        write!(w, "{}", render_attributes_in_pre(meth, indent_str));
+        write!(w, "{}", render_attributes_in_pre(meth, indent_str, tcx));
         (4, indent_str, Ending::NoNewline)
     } else {
-        render_attributes_in_code(w, meth);
+        render_attributes_in_code(w, meth, tcx);
         (0, "", Ending::Newline)
     };
     w.reserve(header_len + "<a href=\"\" class=\"fn\">{".len() + "</a>".len());
@@ -1024,8 +1024,12 @@ fn render_assoc_item(
 const ALLOWED_ATTRIBUTES: &[Symbol] =
     &[sym::export_name, sym::link_section, sym::no_mangle, sym::repr, sym::non_exhaustive];
 
-fn attributes(it: &clean::Item) -> Vec<String> {
-    it.attrs
+fn attributes(it: &clean::Item, tcx: TyCtxt<'_>) -> Vec<String> {
+    use rustc_abi::IntegerType;
+    use rustc_middle::ty::ReprFlags;
+
+    let mut attrs: Vec<String> = it
+        .attrs
         .other_attrs
         .iter()
         .filter_map(|attr| {
@@ -1040,17 +1044,62 @@ fn attributes(it: &clean::Item) -> Vec<String> {
                 None
             }
         })
-        .collect()
+        .collect();
+    if let Some(def_id) = it.item_id.as_def_id() &&
+        !def_id.is_local() &&
+        // This check is needed because `adt_def` will panic if not a compatible type otherwise...
+        matches!(it.type_(), ItemType::Struct | ItemType::Enum | ItemType::Union)
+    {
+        let repr = tcx.adt_def(def_id).repr();
+        let mut out = Vec::new();
+        if repr.flags.contains(ReprFlags::IS_C) {
+            out.push("C");
+        }
+        if repr.flags.contains(ReprFlags::IS_TRANSPARENT) {
+            out.push("transparent");
+        }
+        if repr.flags.contains(ReprFlags::IS_SIMD) {
+            out.push("simd");
+        }
+        let pack_s;
+        if let Some(pack) = repr.pack {
+            pack_s = format!("packed({})", pack.bytes());
+            out.push(&pack_s);
+        }
+        let align_s;
+        if let Some(align) = repr.align {
+            align_s = format!("align({})", align.bytes());
+            out.push(&align_s);
+        }
+        let int_s;
+        if let Some(int) = repr.int {
+            int_s = match int {
+                IntegerType::Pointer(is_signed) => {
+                    format!("{}size", if is_signed { 'i' } else { 'u' })
+                }
+                IntegerType::Fixed(size, is_signed) => {
+                    format!("{}{}", if is_signed { 'i' } else { 'u' }, size.size().bytes() * 8)
+                }
+            };
+            out.push(&int_s);
+        }
+        if out.is_empty() {
+            return Vec::new();
+        }
+        attrs.push(format!("#[repr({})]", out.join(", ")));
+    }
+    attrs
 }
 
 // When an attribute is rendered inside a `<pre>` tag, it is formatted using
 // a whitespace prefix and newline.
-fn render_attributes_in_pre<'a>(
+fn render_attributes_in_pre<'a, 'b: 'a>(
     it: &'a clean::Item,
     prefix: &'a str,
-) -> impl fmt::Display + Captures<'a> {
+    tcx: TyCtxt<'b>,
+) -> impl fmt::Display + Captures<'a> + Captures<'b> {
     crate::html::format::display_fn(move |f| {
-        for a in attributes(it) {
+        for a in attributes(it, tcx) {
             writeln!(f, "{}{}", prefix, a)?;
         }
         Ok(())
@@ -1059,8 +1108,8 @@ fn render_attributes_in_pre<'a>(
 
 // When an attribute is rendered inside a <code> tag, it is formatted using
 // a div to produce a newline after it.
-fn render_attributes_in_code(w: &mut Buffer, it: &clean::Item) {
-    for a in attributes(it) {
+fn render_attributes_in_code(w: &mut Buffer, it: &clean::Item, tcx: TyCtxt<'_>) {
+    for a in attributes(it, tcx) {
         write!(w, "<div class=\"code-attribute\">{}</div>", a);
     }
 }
