@@ -107,5 +107,5 @@ pub unsafe trait BoxMeUp {
     fn take_box(&mut self) -> *mut (dyn Any + Send);
 
     /// Just borrow the contents.
-    fn get(&mut self) -> &(dyn Any + Send);
+    fn get(&mut self) -> &dyn Any;
 }

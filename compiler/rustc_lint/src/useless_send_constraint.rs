@@ -34,7 +34,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessSendConstraint {
                     kind: hir::TyKind::TraitObject(bounds, ..),
                     ..
                 },
-                ..
+                mutbl: hir::Mutability::Not, // only immutable references
             }
         ) = ty.kind else { return; };
 
