@@ -10,15 +10,14 @@
 #
 # Before compressing please make sure all the wheels end with `-none-any.whl`.
 # If that's not the case you'll need to remove the non-cross-platform ones and
-# replace them with the .tar.gz downloaded from https://pypi.org. Also make
-# sure it's possible to call this script with both Python 2 and Python 3.
+# replace them with the .tar.gz downloaded from https://pypi.org.
 
 set -euo pipefail
 IFS=$'\n\t'
 
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
-MIRROR="${MIRRORS_BASE}/2019-07-27-awscli.tar"
+MIRROR="${MIRRORS_BASE}/2023-04-28-awscli.tar"
 DEPS_DIR="/tmp/awscli-deps"
 
 pip="pip"
@@ -29,6 +28,8 @@ if isLinux; then
 
     sudo apt-get install -y python3-setuptools python3-wheel
     ciCommandAddPath "${HOME}/.local/bin"
+elif isMacOS; then
+    pip="pip3"
 fi
 
 mkdir -p "${DEPS_DIR}"
