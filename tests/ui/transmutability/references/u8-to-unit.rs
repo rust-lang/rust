@@ -1,4 +1,4 @@
-// check-fail
+// check-pass
 #![feature(transmutability)]
 
 mod assert {
@@ -9,10 +9,10 @@ mod assert {
     where
         Dst: BikeshedIntrinsicFrom<Src, Context, {
             Assume {
-                alignment: true,
+                alignment: false,
                 lifetimes: true,
                 safety: true,
-                validity: true,
+                validity: false,
             }
         }>
     {}
@@ -20,5 +20,5 @@ mod assert {
 
 fn main() {
     #[repr(C)] struct Unit;
-    assert::is_maybe_transmutable::<&'static u8, &'static Unit>(); //~ ERROR `Unit` cannot be safely transmuted into `u8`
+    assert::is_maybe_transmutable::<&'static u8, &'static Unit>();
 }

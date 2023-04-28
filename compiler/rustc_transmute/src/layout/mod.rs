@@ -31,17 +31,20 @@ impl fmt::Debug for Byte {
 
 pub(crate) trait Def: Debug + Hash + Eq + PartialEq + Copy + Clone {}
 pub trait Ref: Debug + Hash + Eq + PartialEq + Copy + Clone {
-    fn min_align(&self) -> usize {
-        1
-    }
+    fn min_align(&self) -> usize;
 
-    fn is_mutable(&self) -> bool {
-        false
-    }
+    fn is_mutable(&self) -> bool;
 }
 
 impl Def for ! {}
-impl Ref for ! {}
+impl Ref for ! {
+    fn min_align(&self) -> usize {
+        unreachable!()
+    }
+    fn is_mutable(&self) -> bool {
+        unreachable!()
+    }
+}
 
 #[cfg(feature = "rustc")]
 pub mod rustc {

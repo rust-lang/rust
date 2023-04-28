@@ -1,4 +1,4 @@
-// check-pass
+// check-fail
 #![feature(transmutability)]
 
 mod assert {
@@ -21,5 +21,5 @@ mod assert {
 fn main() {
     #[repr(C)] struct A(bool, &'static A);
     #[repr(C)] struct B(u8, &'static B);
-    assert::is_maybe_transmutable::<&'static A, &'static B>();
+    assert::is_maybe_transmutable::<&'static A, &'static mut B>(); //~ ERROR cannot be safely transmuted
 }

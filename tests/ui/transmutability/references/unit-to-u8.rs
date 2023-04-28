@@ -12,7 +12,7 @@ mod assert {
                 alignment: true,
                 lifetimes: true,
                 safety: true,
-                validity: true,
+                validity: false,
             }
         }>
     {}
@@ -20,5 +20,5 @@ mod assert {
 
 fn main() {
     #[repr(C)] struct Unit;
-    assert::is_maybe_transmutable::<&'static Unit, &'static u8>(); //~ ERROR `Unit` cannot be safely transmuted into `u8`
+    assert::is_maybe_transmutable::<&'static Unit, &'static u8>(); //~ ERROR cannot be safely transmuted
 }

@@ -2784,9 +2784,10 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     rustc_transmute::Reason::DstIsTooBig => {
                         format!("The size of `{src}` is smaller than the size of `{dst}`")
                     }
+                    // FIXME(bryangarza): Say exactly what the minimum alignments of src and dst are
                     rustc_transmute::Reason::DstHasStricterAlignment => {
                         format!(
-                            "The alignment of `{src}` should be stricter than that of `{dst}`, but it is not"
+                            "The minimum alignment of `{src}` should be greater than that of `{dst}`, but it is not"
                         )
                     }
                     rustc_transmute::Reason::DstIsMoreUnique => {

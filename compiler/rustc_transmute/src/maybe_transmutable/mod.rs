@@ -203,8 +203,29 @@ where
         if let Some(answer) = cache.get(&(src_state, dst_state)) {
             answer.clone()
         } else {
+            debug!(?src_state, ?dst_state);
+            debug!(src = ?self.src);
+            debug!(dst = ?self.dst);
+            debug!(
+                src_transitions_len = self.src.transitions.len(),
+                dst_transitions_len = self.dst.transitions.len()
+            );
             let answer = if dst_state == self.dst.accepting {
                 // truncation: `size_of(Src) >= size_of(Dst)`
+                //
+                // Why is truncation OK to do? Because even though the Src is bigger, all we care about
+                // is whether we have enough data for the Dst to be valid in accordance with what its
+                // type dictates.
+                // For example, in a u8 to `()` transmutation, we have enough data available from the u8
+                // to transmute it to a `()` (though in this case does `()` really need any data to
+                // begin with? It doesn't). Same thing with u8 to fieldless struct.
+                // Now then, why is something like u8 to bool not allowed? That is not because the bool
+                // is smaller in size, but rather because those 2 bits that we are re-interpreting from
+                // the u8 could introduce invalid states for the bool type.
+                //
+                // So, if it's possible to transmute to a smaller Dst by truncating, and we can guarantee
+                // that none of the actually-used data can introduce an invalid state for Dst's type, we
+                // are able to safely transmute, even with truncation.
                 Ok(None)
             } else if src_state == self.src.accepting {
                 // extension: `size_of(Src) >= size_of(Dst)`
@@ -259,6 +280,7 @@ where
                 // ...if `refs_answer` was computed lazily. The below early
                 // returns can be deleted without impacting the correctness of
                 // the algoritm; only its performance.
+                debug!(?bytes_answer);
                 match bytes_answer {
                     Err(_) if !self.assume.validity => return bytes_answer,
                     Ok(None) if self.assume.validity => return bytes_answer,

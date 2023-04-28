@@ -21,5 +21,5 @@ mod assert {
 fn main() {
     #[repr(C)] struct A(bool, &'static A);
     #[repr(C)] struct B(u8, &'static B);
-    assert::is_maybe_transmutable::<&'static B, &'static A>(); //~ ERROR `B` cannot be safely transmuted into `A`
+    assert::is_maybe_transmutable::<&'static B, &'static A>(); //~ ERROR cannot be safely transmuted
 }

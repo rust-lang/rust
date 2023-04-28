@@ -6,6 +6,7 @@
 //!
 //! [rustc dev guide]:
 //! https://rustc-dev-guide.rust-lang.org/traits/resolution.html#confirmation
+use rustc_ast::Mutability;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
@@ -295,6 +296,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Ok(None) => Ok(vec![]),
                 Err(_) => Err(Unimplemented),
                 // FIXME(bryangarza): Add separate `IfAny` case, instead of treating as `IfAll`
+                // Not possible until the trait solver supports disjunctions of obligations
                 Ok(Some(rustc_transmute::Condition::IfAll(answers)))
                 | Ok(Some(rustc_transmute::Condition::IfAny(answers))) => {
                     let mut nested = vec![];
@@ -311,7 +313,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let scope = predicate.trait_ref.substs.type_at(2);
                     let assume_const = predicate.trait_ref.substs.const_at(3);
                     let make_obl = |from_ty, to_ty| {
-                        let trait_ref1 = tcx.mk_trait_ref(
+                        let trait_ref1 = ty::TraitRef::new(
+                            tcx,
                             trait_def_id,
                             [
                                 ty::GenericArg::from(to_ty),
@@ -329,8 +332,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         )
                     };
 
-                    // FIXME(bryangarza): Check src.mutability or dst.mutability to know whether dst -> src obligation is needed
-                    Ok(vec![make_obl(src.ty, dst.ty), make_obl(dst.ty, src.ty)])
+                    // If Dst is mutable, check bidirectionally.
+                    // For example, transmuting bool -> u8 is OK as long as you can't update that u8
+                    // to be > 1, because you could later transmute the u8 back to a bool and get UB.
+                    let mut obligations = vec![make_obl(src.ty, dst.ty)];
+                    if dst.mutability == Mutability::Mut {
+                        obligations.push(make_obl(dst.ty, src.ty));
+                    }
+                    Ok(obligations)
                 }
             }
         }
@@ -353,6 +362,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let dst = predicate.trait_ref.substs.type_at(0);
         let src = predicate.trait_ref.substs.type_at(1);
+        debug!(?src, ?dst);
         let mut transmute_env = rustc_transmute::TransmuteTypeEnv::new(self.infcx);
         let maybe_transmutable = transmute_env.is_transmutable(
             obligation.cause.clone(),
@@ -361,7 +371,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             assume,
         );
 
-        debug!(?src, ?dst);
         let fully_flattened =
             flatten_answer_tree(self.tcx(), obligation, predicate, maybe_transmutable)?;
         debug!(?fully_flattened);
