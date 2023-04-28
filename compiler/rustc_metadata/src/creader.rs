@@ -27,6 +27,7 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 
 use proc_macro::bridge::client::ProcMacro;
+use std::error::Error;
 use std::ops::Fn;
 use std::path::Path;
 use std::time::Duration;
@@ -1094,5 +1095,12 @@ fn load_dylib(path: &Path, max_attempts: usize) -> Result<libloading::Library, S
     }
 
     debug!("Failed to load proc-macro `{}` even after {} attempts.", path.display(), max_attempts);
-    Err(format!("{} (retried {} times)", last_error.unwrap(), max_attempts))
+
+    let last_error = last_error.unwrap();
+    let message = if let Some(src) = last_error.source() {
+        format!("{last_error} ({src}) (retried {max_attempts} times)")
+    } else {
+        format!("{last_error} (retried {max_attempts} times)")
+    };
+    Err(message)
 }
