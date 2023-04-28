@@ -588,20 +588,14 @@ impl<'a> Parser<'a> {
         // Always parse bounds greedily for better error recovery.
         if self.token.is_lifetime() {
             self.look_ahead(1, |t| {
-                if let token::Ident(symname, _) = t.kind {
+                if let token::Ident(sym, _) = t.kind {
                     // parse pattern with "'a Sized" we're supposed to give suggestion like
                     // "'a + Sized"
-                    self.struct_span_err(
-                        self.token.span,
-                        &format!("expected `+` between lifetime and {}", symname),
-                    )
-                    .span_suggestion_verbose(
-                        self.token.span.shrink_to_hi(),
-                        "add `+`",
-                        " +",
-                        Applicability::MaybeIncorrect,
-                    )
-                    .emit();
+                    self.sess.emit_err(errors::MissingPlusBounds {
+                        span: self.token.span,
+                        hi: self.token.span.shrink_to_hi(),
+                        sym,
+                    });
                 }
             })
         }
@@ -926,14 +920,10 @@ impl<'a> Parser<'a> {
                 self.parse_remaining_bounds(bounds, true)?;
                 self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
                 let sp = vec![lo, self.prev_token.span];
-                let sugg = vec![(lo, String::from(" ")), (self.prev_token.span, String::new())];
-                self.struct_span_err(sp, "incorrect braces around trait bounds")
-                    .multipart_suggestion(
-                        "remove the parentheses",
-                        sugg,
-                        Applicability::MachineApplicable,
-                    )
-                    .emit();
+                self.sess.emit_err(errors::IncorrectBracesTraitBounds {
+                    span: sp,
+                    sugg: errors::IncorrectBracesTraitBoundsSugg { l: lo, r: self.prev_token.span },
+                });
             } else {
                 self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
             }
