@@ -48,7 +48,6 @@ use std::str;
 use std::string::ToString;
 
 use askama::Template;
-use rustc_ast_pretty::pprust;
 use rustc_attr::{ConstStability, Deprecation, StabilityLevel};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -1021,76 +1020,6 @@ fn render_assoc_item(
     }
 }
 
-const ALLOWED_ATTRIBUTES: &[Symbol] =
-    &[sym::export_name, sym::link_section, sym::no_mangle, sym::repr, sym::non_exhaustive];
-
-fn attributes(it: &clean::Item, tcx: TyCtxt<'_>) -> Vec<String> {
-    use rustc_abi::IntegerType;
-    use rustc_middle::ty::ReprFlags;
-
-    let mut attrs: Vec<String> = it
-        .attrs
-        .other_attrs
-        .iter()
-        .filter_map(|attr| {
-            if ALLOWED_ATTRIBUTES.contains(&attr.name_or_empty()) {
-                Some(
-                    pprust::attribute_to_string(attr)
-                        .replace("\\\n", "")
-                        .replace('\n', "")
-                        .replace("  ", " "),
-                )
-            } else {
-                None
-            }
-        })
-        .collect();
-    if let Some(def_id) = it.item_id.as_def_id() &&
-        !def_id.is_local() &&
-        // This check is needed because `adt_def` will panic if not a compatible type otherwise...
-        matches!(it.type_(), ItemType::Struct | ItemType::Enum | ItemType::Union)
-    {
-        let repr = tcx.adt_def(def_id).repr();
-        let mut out = Vec::new();
-        if repr.flags.contains(ReprFlags::IS_C) {
-            out.push("C");
-        }
-        if repr.flags.contains(ReprFlags::IS_TRANSPARENT) {
-            out.push("transparent");
-        }
-        if repr.flags.contains(ReprFlags::IS_SIMD) {
-            out.push("simd");
-        }
-        let pack_s;
-        if let Some(pack) = repr.pack {
-            pack_s = format!("packed({})", pack.bytes());
-            out.push(&pack_s);
-        }
-        let align_s;
-        if let Some(align) = repr.align {
-            align_s = format!("align({})", align.bytes());
-            out.push(&align_s);
-        }
-        let int_s;
-        if let Some(int) = repr.int {
-            int_s = match int {
-                IntegerType::Pointer(is_signed) => {
-                    format!("{}size", if is_signed { 'i' } else { 'u' })
-                }
-                IntegerType::Fixed(size, is_signed) => {
-                    format!("{}{}", if is_signed { 'i' } else { 'u' }, size.size().bytes() * 8)
-                }
-            };
-            out.push(&int_s);
-        }
-        if out.is_empty() {
-            return Vec::new();
-        }
-        attrs.push(format!("#[repr({})]", out.join(", ")));
-    }
-    attrs
-}
-
 // When an attribute is rendered inside a `<pre>` tag, it is formatted using
 // a whitespace prefix and newline.
 fn render_attributes_in_pre<'a, 'b: 'a>(
@@ -1099,7 +1028,7 @@ fn render_attributes_in_pre<'a, 'b: 'a>(
     tcx: TyCtxt<'b>,
 ) -> impl fmt::Display + Captures<'a> + Captures<'b> {
     crate::html::format::display_fn(move |f| {
-        for a in attributes(it, tcx) {
+        for a in it.attributes(tcx, false) {
             writeln!(f, "{}{}", prefix, a)?;
         }
         Ok(())
@@ -1109,7 +1038,7 @@ fn render_attributes_in_pre<'a, 'b: 'a>(
 // When an attribute is rendered inside a <code> tag, it is formatted using
 // a div to produce a newline after it.
 fn render_attributes_in_code(w: &mut Buffer, it: &clean::Item, tcx: TyCtxt<'_>) {
-    for a in attributes(it, tcx) {
+    for a in it.attributes(tcx, false) {
         write!(w, "<div class=\"code-attribute\">{}</div>", a);
     }
 }

@@ -41,12 +41,7 @@ impl JsonRenderer<'_> {
             })
             .collect();
         let docs = item.attrs.collapsed_doc_value();
-        let attrs = item
-            .attrs
-            .other_attrs
-            .iter()
-            .map(rustc_ast_pretty::pprust::attribute_to_string)
-            .collect();
+        let attrs = item.attributes(self.tcx, true);
         let span = item.span(self.tcx);
         let visibility = item.visibility(self.tcx);
         let clean::Item { name, item_id, .. } = item;
