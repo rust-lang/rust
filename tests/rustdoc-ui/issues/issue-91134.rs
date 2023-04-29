@@ -1,7 +1,7 @@
 // compile-flags: --test --crate-name=empty_fn --extern=empty_fn --test-args=--test-threads=1
 // aux-build:empty-fn.rs
 // check-pass
-// normalize-stdout-test: "tests/rustdoc-ui" -> "$$DIR"
+// normalize-stdout-test: "tests/rustdoc-ui/issues" -> "$$DIR"
 // normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
 // edition:2021
 

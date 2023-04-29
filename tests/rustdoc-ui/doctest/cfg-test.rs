@@ -1,6 +1,6 @@
 // check-pass
 // compile-flags:--test --test-args --test-threads=1
-// normalize-stdout-test: "tests/rustdoc-ui" -> "$$DIR"
+// normalize-stdout-test: "tests/rustdoc-ui/doctest" -> "$$DIR"
 // normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
 
 // Crates like core have doctests gated on `cfg(not(test))` so we need to make
