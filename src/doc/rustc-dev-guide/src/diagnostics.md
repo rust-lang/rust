@@ -507,6 +507,83 @@ module.
 
 [rlint]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/lint/index.html
 
+### When do lints run?
+
+Different lints will run at different times based on what information the lint
+needs to do its job. Some lints get grouped into *passes* where the lints
+within a pass are processed together via a single visitor. Some of the passes
+are:
+
+- Pre-expansion pass: Works on [AST nodes] before [macro expansion]. This
+  should generally be avoided.
+  - Example: [`keyword_idents`] checks for identifiers that will become
+    keywords in future editions, but is sensitive to identifiers used in
+    macros.
+
+- Early lint pass: Works on [AST nodes] after [macro expansion] and name
+  resolution, just before [HIR lowering]. These lints are for purely
+  syntactical lints.
+  - Example: The [`unsued_parens`] lint checks for parenthesized-expressions
+    in situations where they are not needed, like an `if` condition.
+
+- Late lint pass: Works on [HIR nodes], towards the end of [analysis] (after
+  borrow checking, etc.). These lints have full type information available.
+  Most lints are late.
+  - Example: The [`invalid_value`] lint (which checks for obviously invalid
+    uninitialized values) is a late lint because it needs type information to
+    figure out whether a type allows being left uninitialized.
+
+- MIR pass: Works on [MIR nodes]. This isn't quite the same as other passes;
+  lints that work on MIR nodes have their own methods for running.
+  - Example: The [`arithmetic_overflow`] lint is emitted when it detects a
+    constant value that may overflow.
+
+Most lints work well via the pass systems, and they have a fairly
+straightforward interface and easy way to integrate (mostly just implementing
+a specific `check` function). However, some lints are easier to write when
+they live on a specific code path anywhere in the compiler. For example, the
+[`unused_mut`] lint is implemented in the borrow checker as it requires some
+information and state in the borrow checker.
+
+Some of these inline lints fire before the linting system is ready. Those
+lints will be *buffered* where they are held until later phases of the
+compiler when the linting system is ready. See [Linting early in the
+compiler](#linting-early-in-the-compiler).
+
+
+[AST nodes]: the-parser.md
+[HIR lowering]: lowering.md
+[HIR nodes]: hir.md
+[MIR nodes]: mir/index.md
+[macro expansion]: macro-expansion.md
+[analysis]: part-4-intro.md
+[`keyword_idents`]: https://doc.rust-lang.org/rustc/lints/listing/allowed-by-default.html#keyword-idents
+[`unsued_parens`]: https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#unused-parens
+[`invalid_value`]: https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#invalid-value
+[`arithmetic_overflow`]: https://doc.rust-lang.org/rustc/lints/listing/deny-by-default.html#arithmetic-overflow
+[`unused_mut`]: https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#unused-mut
+
+### Lint definition terms
+
+Lints are managed via the [`LintStore`][LintStore] and get registered in
+various ways. The following terms refer to the different classes of lints
+generally based on how they are registered.
+
+- *Built-in* lints are defined inside the compiler source.
+- *Driver-registered* lints are registered when the compiler driver is created
+  by an external driver. This is the mechanism used by Clippy, for example.
+- *Plugin* lints are registered by the [deprecated plugin system].
+- *Tool* lints are lints with a path prefix like `clippy::` or `rustdoc::`.
+- *Internal* lints are the `rustc::` scoped tool lints that only run on the
+  rustc source tree itself and are defined in the compiler source like a
+  regular built-in lint.
+
+More information about lint registration can be found in the [LintStore]
+chapter.
+
+[deprecated plugin system]: https://doc.rust-lang.org/nightly/unstable-book/language-features/plugin.html
+[LintStore]: lintstore.md
+
 ### Declaring a lint
 
 The built-in compiler lints are defined in the [`rustc_lint`][builtin]
