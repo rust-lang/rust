@@ -350,7 +350,7 @@ impl<'a> State<'a> {
                 self.word("[");
                 self.print_type(ty);
                 self.word("; ");
-                self.print_array_length(length);
+                self.print_const_arg(length);
                 self.word("]");
             }
             hir::TyKind::Typeof(ref e) => {
@@ -376,6 +376,7 @@ impl<'a> State<'a> {
         match &const_arg.kind {
             hir::ConstArgKind::AnonConst(_, ct) => self.print_anon_const(ct),
             hir::ConstArgKind::Param(_, path) => self.print_qpath(path, false),
+            hir::ConstArgKind::Infer(_, _) => self.word("_"),
         }
         self.end();
     }
@@ -1028,13 +1029,6 @@ impl<'a> State<'a> {
         self.print_else(elseopt)
     }
 
-    pub fn print_array_length(&mut self, len: &hir::ArrayLen) {
-        match len {
-            hir::ArrayLen::Infer(_, _) => self.word("_"),
-            hir::ArrayLen::Body(ct) => self.print_anon_const(ct),
-        }
-    }
-
     pub fn print_anon_const(&mut self, constant: &hir::AnonConst) {
         self.ann.nested(self, Nested::Body(constant.body))
     }
@@ -1112,12 +1106,12 @@ impl<'a> State<'a> {
         self.end()
     }
 
-    fn print_expr_repeat(&mut self, element: &hir::Expr<'_>, count: &hir::ArrayLen) {
+    fn print_expr_repeat(&mut self, element: &hir::Expr<'_>, count: &hir::ConstArg<'_>) {
         self.ibox(INDENT_UNIT);
         self.word("[");
         self.print_expr(element);
         self.word_space(";");
-        self.print_array_length(count);
+        self.print_const_arg(count);
         self.word("]");
         self.end()
     }

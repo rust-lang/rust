@@ -329,9 +329,6 @@ pub trait Visitor<'v>: Sized {
     fn visit_pat_field(&mut self, f: &'v PatField<'v>) {
         walk_pat_field(self, f)
     }
-    fn visit_array_length(&mut self, len: &'v ArrayLen) {
-        walk_array_len(self, len)
-    }
     fn visit_anon_const(&mut self, c: &'v AnonConst) {
         walk_anon_const(self, c)
     }
@@ -670,13 +667,6 @@ pub fn walk_pat_field<'v, V: Visitor<'v>>(visitor: &mut V, field: &'v PatField<'
     visitor.visit_pat(field.pat)
 }
 
-pub fn walk_array_len<'v, V: Visitor<'v>>(visitor: &mut V, len: &'v ArrayLen) {
-    match len {
-        &ArrayLen::Infer(hir_id, _span) => visitor.visit_id(hir_id),
-        ArrayLen::Body(c) => visitor.visit_anon_const(c),
-    }
-}
-
 pub fn walk_anon_const<'v, V: Visitor<'v>>(visitor: &mut V, constant: &'v AnonConst) {
     visitor.visit_id(constant.hir_id);
     visitor.visit_nested_body(constant.body);
@@ -691,7 +681,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
         ExprKind::ConstBlock(ref anon_const) => visitor.visit_anon_const(anon_const),
         ExprKind::Repeat(ref element, ref count) => {
             visitor.visit_expr(element);
-            visitor.visit_array_length(count)
+            visitor.visit_const_arg(count);
         }
         ExprKind::Struct(ref qpath, fields, ref optional_base) => {
             visitor.visit_qpath(qpath, expression.hir_id, expression.span);
@@ -841,7 +831,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) {
         }
         TyKind::Array(ref ty, ref length) => {
             visitor.visit_ty(ty);
-            visitor.visit_array_length(length)
+            visitor.visit_const_arg(length);
         }
         TyKind::TraitObject(bounds, ref lifetime, _syntax) => {
             for bound in bounds {
@@ -862,6 +852,9 @@ pub fn walk_const_arg<'v, V: Visitor<'v>>(visitor: &mut V, ct: &'v ConstArg<'v>)
         ConstArgKind::Param(hir_id, qpath) => {
             visitor.visit_id(*hir_id);
             visitor.visit_qpath(qpath, *hir_id, qpath.span())
+        }
+        ConstArgKind::Infer(hir_id, _) => {
+            visitor.visit_id(*hir_id);
         }
     }
 }

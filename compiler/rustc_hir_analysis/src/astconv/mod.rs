@@ -62,6 +62,27 @@ pub struct PathSeg(pub DefId, pub usize);
 #[derive(Copy, Clone, Debug)]
 pub struct OnlySelfBounds(pub bool);
 
+#[derive(Debug, Copy, Clone)]
+pub enum ConstArgsParam {
+    Param(DefId),
+    ArrayLen,
+}
+
+impl From<DefId> for ConstArgsParam {
+    fn from(value: DefId) -> Self {
+        Self::Param(value)
+    }
+}
+
+impl ConstArgsParam {
+    pub fn to_ty<'tcx>(self, tcx: TyCtxt<'tcx>) -> ty::EarlyBinder<Ty<'tcx>> {
+        match self {
+            ConstArgsParam::Param(param_def_id) => tcx.type_of(param_def_id),
+            ConstArgsParam::ArrayLen => ty::EarlyBinder(tcx.types.usize),
+        }
+    }
+}
+
 pub trait AstConv<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx>;
 
@@ -3327,12 +3348,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 tcx.at(span).type_of(def_id).subst(tcx, substs)
             }
             hir::TyKind::Array(ty, length) => {
-                let length = match length {
-                    &hir::ArrayLen::Infer(_, span) => self.ct_infer(tcx.types.usize, None, span),
-                    hir::ArrayLen::Body(constant) => {
-                        ty::Const::from_anon_const(tcx, constant.def_id)
-                    }
-                };
+                let length = self.ast_const_to_const(length, ConstArgsParam::ArrayLen);
 
                 tcx.mk_array_with_const_len(self.ast_ty_to_ty(ty), length)
             }
@@ -3755,17 +3771,28 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
     }
 
-    #[instrument(level = "debug", skip(self), ret)]
     pub fn ast_const_to_const(
         &self,
         ast_ct: &hir::ConstArg<'_>,
-        param_def_id: DefId,
+        arg_param: impl Into<ConstArgsParam>,
+    ) -> Const<'tcx> {
+        self.ast_const_to_const_inner(ast_ct, arg_param.into())
+    }
+
+    #[instrument(level = "debug", skip(self), ret)]
+    fn ast_const_to_const_inner(
+        &self,
+        ast_ct: &hir::ConstArg<'_>,
+        arg_param: ConstArgsParam,
     ) -> Const<'tcx> {
         let tcx = self.tcx();
 
         match ast_ct.kind {
+            hir::ConstArgKind::Infer(_, _) => {
+                self.ct_infer(arg_param.to_ty(tcx).subst_identity(), None, ast_ct.span())
+            }
             hir::ConstArgKind::AnonConst(_, ct) => {
-                tcx.feed_anon_const_type(ct.def_id, tcx.type_of(param_def_id));
+                tcx.feed_anon_const_type(ct.def_id, arg_param.to_ty(tcx));
                 Const::from_anon_const(tcx, ct.def_id)
             }
             hir::ConstArgKind::Param(_, path) => match path {

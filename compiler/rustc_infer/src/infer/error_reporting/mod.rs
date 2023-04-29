@@ -2058,7 +2058,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         };
         if let Some(tykind) = tykind
             && let hir::TyKind::Array(_, length) = tykind
-            && let hir::ArrayLen::Body(hir::AnonConst { hir_id, .. }) = length
+            && let hir::ConstArg { kind: hir::ConstArgKind::AnonConst(_, hir::AnonConst { hir_id, ..})} = length
             && let Some(span) = self.tcx.hir().opt_span(*hir_id)
         {
             Some(TypeErrorAdditionalDiags::ConsiderSpecifyingLength { span, length: sz.found })

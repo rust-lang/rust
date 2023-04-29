@@ -257,6 +257,7 @@ enum ImplTraitContext {
 /// Position in which `impl Trait` is disallowed.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum ImplTraitPosition {
+    RepeatExprs,
     Path,
     Variable,
     Trait,
@@ -288,6 +289,7 @@ enum ImplTraitPosition {
 impl std::fmt::Display for ImplTraitPosition {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let name = match self {
+            ImplTraitPosition::RepeatExprs => "repeat expr lengths",
             ImplTraitPosition::Path => "paths",
             ImplTraitPosition::Variable => "variable bindings",
             ImplTraitPosition::Trait => "traits",
@@ -1363,7 +1365,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 ))
             }
             TyKind::Array(ty, length) => {
-                hir::TyKind::Array(self.lower_ty(ty, itctx), self.lower_array_length(length))
+                hir::TyKind::Array(self.lower_ty(ty, itctx), self.lower_array_length(length, itctx))
             }
             TyKind::Typeof(expr) => hir::TyKind::Typeof(self.lower_anon_const(expr)),
             TyKind::TraitObject(bounds, kind) => {
@@ -2392,12 +2394,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.expr_block(block)
     }
 
-    fn lower_array_length(&mut self, c: &AnonConst) -> hir::ArrayLen {
-        // FIXME(const_arg_kind)
-        match c.value.kind {
+    fn lower_array_length(
+        &mut self,
+        c: &AnonConst,
+        itctx: &ImplTraitContext,
+    ) -> &'hir hir::ConstArg<'hir> {
+        let const_arg = match c.value.kind {
             ExprKind::Underscore => {
                 if self.tcx.features().generic_arg_infer {
-                    hir::ArrayLen::Infer(self.lower_node_id(c.id), c.value.span)
+                    hir::ConstArg {
+                        kind: hir::ConstArgKind::Infer(self.lower_node_id(c.id), c.value.span),
+                    }
                 } else {
                     feature_err(
                         &self.tcx.sess.parse_sess,
@@ -2406,11 +2413,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         "using `_` for array lengths is unstable",
                     )
                     .stash(c.value.span, StashKey::UnderscoreForArrayLengths);
-                    hir::ArrayLen::Body(self.lower_anon_const(c))
+                    hir::ConstArg {
+                        kind: hir::ConstArgKind::AnonConst(c.value.span, self.lower_anon_const(c)),
+                    }
                 }
             }
-            _ => hir::ArrayLen::Body(self.lower_anon_const(c)),
-        }
+            _ => return self.lower_const_arg(c, itctx),
+        };
+        self.arena.alloc(const_arg)
     }
 
     fn lower_anon_const(&mut self, c: &AnonConst) -> hir::AnonConst {

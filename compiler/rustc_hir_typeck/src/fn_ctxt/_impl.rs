@@ -14,8 +14,8 @@ use rustc_hir_analysis::astconv::generics::{
     check_generic_arg_count_for_call, create_substs_for_generic_args,
 };
 use rustc_hir_analysis::astconv::{
-    AstConv, CreateSubstsForGenericArgsCtxt, ExplicitLateBound, GenericArgCountMismatch,
-    GenericArgCountResult, IsMethodCall, PathSeg,
+    AstConv, ConstArgsParam, CreateSubstsForGenericArgsCtxt, ExplicitLateBound,
+    GenericArgCountMismatch, GenericArgCountResult, IsMethodCall, PathSeg,
 };
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
@@ -403,25 +403,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn array_length_to_const(&self, length: &hir::ArrayLen) -> ty::Const<'tcx> {
-        // FIXME(const_arg_kind)
-        match length {
-            &hir::ArrayLen::Infer(_, span) => self.ct_infer(self.tcx.types.usize, None, span),
-            hir::ArrayLen::Body(anon_const) => {
-                let span = self.tcx.def_span(anon_const.def_id);
-                let c = ty::Const::from_anon_const(self.tcx, anon_const.def_id);
-                self.register_wf_obligation(c.into(), span, ObligationCauseCode::WellFormed(None));
-                self.normalize(span, c)
-            }
-        }
-    }
-
     pub fn const_arg_to_const(
         &self,
         ast_c: &hir::ConstArg<'_>,
-        param_def_id: DefId,
+        args_param: impl Into<ConstArgsParam>,
     ) -> ty::Const<'tcx> {
-        let ct = self.astconv().ast_const_to_const(ast_c, param_def_id);
+        let ct = self.astconv().ast_const_to_const(ast_c, args_param);
         self.register_wf_obligation(ct.into(), ast_c.span(), ObligationCauseCode::WellFormed(None));
         ct
     }

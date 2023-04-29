@@ -250,6 +250,7 @@ pub struct ConstArg<'hir> {
 pub enum ConstArgKind<'hir> {
     AnonConst(Span, AnonConst),
     Param(HirId, QPath<'hir>),
+    Infer(HirId, Span),
 }
 
 impl<'hir> ConstArg<'hir> {
@@ -257,6 +258,7 @@ impl<'hir> ConstArg<'hir> {
         match self.kind {
             ConstArgKind::AnonConst(span, _) => span,
             ConstArgKind::Param(_, qpath) => qpath.span(),
+            ConstArgKind::Infer(_, span) => span,
         }
     }
 
@@ -264,6 +266,7 @@ impl<'hir> ConstArg<'hir> {
         match self.kind {
             ConstArgKind::AnonConst(_, ct) => ct.hir_id,
             ConstArgKind::Param(id, _) => id,
+            ConstArgKind::Infer(id, _) => id,
         }
     }
 }
@@ -1667,20 +1670,6 @@ impl fmt::Display for ConstContext {
 /// A literal.
 pub type Lit = Spanned<LitKind>;
 
-#[derive(Copy, Clone, Debug, HashStable_Generic)]
-pub enum ArrayLen {
-    Infer(HirId, Span),
-    Body(AnonConst),
-}
-
-impl ArrayLen {
-    pub fn hir_id(&self) -> HirId {
-        match self {
-            &ArrayLen::Infer(hir_id, _) | &ArrayLen::Body(AnonConst { hir_id, .. }) => hir_id,
-        }
-    }
-}
-
 /// A constant (expression) that's not an item or associated item,
 /// but needs its own `DefId` for type-checking, const-eval, etc.
 /// These are usually found nested inside types (e.g., array lengths)
@@ -2055,7 +2044,7 @@ pub enum ExprKind<'hir> {
     ///
     /// E.g., `[1; 5]`. The first expression is the element
     /// to be repeated; the second is the number of times to repeat it.
-    Repeat(&'hir Expr<'hir>, ArrayLen),
+    Repeat(&'hir Expr<'hir>, &'hir ConstArg<'hir>),
 
     /// A suspension point for generators (i.e., `yield <expr>`).
     Yield(&'hir Expr<'hir>, YieldSource),
@@ -2692,7 +2681,7 @@ pub enum TyKind<'hir> {
     /// A variable length slice (i.e., `[T]`).
     Slice(&'hir Ty<'hir>),
     /// A fixed length array (i.e., `[T; n]`).
-    Array(&'hir Ty<'hir>, ArrayLen),
+    Array(&'hir Ty<'hir>, &'hir ConstArg<'hir>),
     /// A raw pointer (i.e., `*const T` or `*mut T`).
     Ptr(MutTy<'hir>),
     /// A reference (i.e., `&'a T` or `&'a mut T`).
@@ -3778,7 +3767,10 @@ impl<'hir> Node<'hir> {
                 kind:
                     ExprKind::ConstBlock(AnonConst { body, .. })
                     | ExprKind::Closure(Closure { body, .. })
-                    | ExprKind::Repeat(_, ArrayLen::Body(AnonConst { body, .. })),
+                    | ExprKind::Repeat(
+                        _,
+                        ConstArg { kind: ConstArgKind::AnonConst(_, AnonConst { body, .. }) },
+                    ),
                 ..
             }) => Some(*body),
             _ => None,

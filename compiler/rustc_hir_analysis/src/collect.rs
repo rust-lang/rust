@@ -128,6 +128,12 @@ impl<'v> Visitor<'v> for HirPlaceholderCollector {
         }
         intravisit::walk_ty(self, t)
     }
+    fn visit_const_arg(&mut self, c: &'v hir::ConstArg<'v>) {
+        if let hir::ConstArgKind::Infer(_, span) = c.kind {
+            self.0.push(span)
+        }
+        intravisit::walk_const_arg(self, c)
+    }
     fn visit_generic_arg(&mut self, generic_arg: &'v hir::GenericArg<'v>) {
         match generic_arg {
             hir::GenericArg::Infer(inf) => {
@@ -137,12 +143,6 @@ impl<'v> Visitor<'v> for HirPlaceholderCollector {
             hir::GenericArg::Type(t) => self.visit_ty(t),
             _ => {}
         }
-    }
-    fn visit_array_length(&mut self, length: &'v hir::ArrayLen) {
-        if let &hir::ArrayLen::Infer(_, span) = length {
-            self.0.push(span);
-        }
-        intravisit::walk_array_len(self, length)
     }
 }
 
@@ -1017,7 +1017,7 @@ fn is_suggestable_infer_ty(ty: &hir::Ty<'_>) -> bool {
         Infer => true,
         Slice(ty) => is_suggestable_infer_ty(ty),
         Array(ty, length) => {
-            is_suggestable_infer_ty(ty) || matches!(length, hir::ArrayLen::Infer(_, _))
+            is_suggestable_infer_ty(ty) || matches!(length.kind, hir::ConstArgKind::Infer(_, _))
         }
         Tup(tys) => tys.iter().any(is_suggestable_infer_ty),
         Ptr(mut_ty) | Ref(_, mut_ty) => is_suggestable_infer_ty(mut_ty.ty),

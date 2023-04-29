@@ -608,8 +608,23 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     self.require_sized(subty, traits::SliceOrArrayElem);
                 }
 
-                ty::Array(subty, _) => {
+                ty::Array(subty, length) => {
                     self.require_sized(subty, traits::SliceOrArrayElem);
+
+                    if !length.has_escaping_bound_vars() {
+                        let predicate = ty::Binder::dummy(ty::PredicateKind::Clause(
+                            ty::Clause::ConstArgHasType(length, self.tcx().types.usize),
+                        ));
+                        let cause = self.cause(traits::WellFormed(None));
+                        self.out.push(traits::Obligation::with_depth(
+                            self.tcx(),
+                            cause,
+                            self.recursion_depth,
+                            self.param_env,
+                            predicate,
+                        ));
+                    }
+
                     // Note that we handle the len is implicitly checked while walking `arg`.
                 }
 

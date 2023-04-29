@@ -33,6 +33,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, HirId, QPath};
 use rustc_hir_analysis::astconv::AstConv as _;
+use rustc_hir_analysis::astconv::ConstArgsParam;
 use rustc_hir_analysis::check::ty_kind_suggestion;
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -1347,7 +1348,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return
         };
         if let hir::TyKind::Array(_, length) = ty.peel_refs().kind
-            && let hir::ArrayLen::Body(hir::AnonConst { hir_id, .. }) = length
+            && let hir::ConstArgKind::AnonConst(_, hir::AnonConst { hir_id, .. }) = length.kind
             && let Some(span) = self.tcx.hir().opt_span(hir_id)
         {
             match self.tcx.sess.diagnostic().steal_diagnostic(span, StashKey::UnderscoreForArrayLengths) {
@@ -1387,12 +1388,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_expr_repeat(
         &self,
         element: &'tcx hir::Expr<'tcx>,
-        count: &'tcx hir::ArrayLen,
+        count: &'tcx hir::ConstArg<'_>,
         expected: Expectation<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
-        let count = self.array_length_to_const(count);
+        let count = self.const_arg_to_const(count, ConstArgsParam::ArrayLen);
         if let Some(count) = count.try_eval_target_usize(tcx, self.param_env) {
             self.suggest_array_len(expr, count);
         }
