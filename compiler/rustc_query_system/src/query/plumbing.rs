@@ -433,16 +433,22 @@ where
                 (hasher(&mut hcx, &cached_result), hasher(&mut hcx, &result))
             });
             let formatter = query.format_value();
-            debug_assert_eq!(
-                old_hash,
-                new_hash,
-                "Computed query value for {:?}({:?}) is inconsistent with fed value,\n\
-                computed={:#?}\nfed={:#?}",
-                query.dep_kind(),
-                key,
-                formatter(&result),
-                formatter(&cached_result),
-            );
+            if old_hash != new_hash {
+                // We have an inconsistency. This can happen if one of the two
+                // results is tainted by errors. In this case, delay a bug to
+                // ensure compilation is doomed.
+                qcx.dep_context().sess().delay_span_bug(
+                    DUMMY_SP,
+                    format!(
+                        "Computed query value for {:?}({:?}) is inconsistent with fed value,\n\
+                        computed={:#?}\nfed={:#?}",
+                        query.dep_kind(),
+                        key,
+                        formatter(&result),
+                        formatter(&cached_result),
+                    ),
+                );
+            }
         }
     }
     job_owner.complete(cache, result, dep_node_index);

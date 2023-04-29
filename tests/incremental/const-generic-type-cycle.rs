@@ -3,6 +3,7 @@
 //
 // compile-flags: -Zincremental-ignore-spans
 // revisions: cpass cfail
+// error-pattern: cycle detected when computing type of `Bar::N`
 
 #![feature(trait_alias)]
 #![crate_type="lib"]
