@@ -52,8 +52,8 @@
 //! Otherwise the input capacity (and thus layout) in bytes may not be representable by the output
 //! `Vec<U>`. In that case `alloc.shrink()` is used to update the allocation's layout.
 //!
-//! Currently alignments of `T` and `U` must be the same. In principle smaller output alignments
-//! could be supported but that would require always calling `alloc.shrink` for those transformations.
+//! Alignments of `T` must be the same or larger than `U`. Since alignments are always a power
+//! of two _larger_ implies _is a multiple of_.
 //!
 //! See `in_place_collectible()` for the current conditions.
 //!
@@ -168,7 +168,7 @@ const fn in_place_collectible<DEST, SRC>(
     step_merge: Option<NonZeroUsize>,
     step_expand: Option<NonZeroUsize>,
 ) -> bool {
-    if DEST::IS_ZST || mem::align_of::<SRC>() != mem::align_of::<DEST>() {
+    if DEST::IS_ZST || mem::align_of::<SRC>() < mem::align_of::<DEST>() {
         return false;
     }
 
@@ -178,7 +178,7 @@ const fn in_place_collectible<DEST, SRC>(
             // e.g.
             // - 1 x [u8; 4] -> 4x u8, via flatten
             // - 4 x u8 -> 1x [u8; 4], via array_chunks
-            mem::size_of::<SRC>() * step_merge.get() == mem::size_of::<DEST>() * step_expand.get()
+            mem::size_of::<SRC>() * step_merge.get() >= mem::size_of::<DEST>() * step_expand.get()
         }
         // Fall back to other from_iter impls if an overflow occurred in the step merge/expansion
         // tracking.
@@ -255,12 +255,15 @@ where
         let dst_guard = InPlaceDstBufDrop { ptr: dst_buf, len, cap: dst_cap };
         src.forget_allocation_drop_remaining();
 
-        // Adjust the allocation size if the source had a capacity in bytes that wasn't a multiple
-        // of the destination type size.
+        // Adjust the allocation if the alignment didn't match or the source had a capacity in bytes
+        // that wasn't a multiple of the destination type size.
         // Since the discrepancy should generally be small this should only result in some
         // bookkeeping updates and no memmove.
-        if const { mem::size_of::<T>() > mem::size_of::<I::Src>() }
-            && src_cap * mem::size_of::<I::Src>() != dst_cap * mem::size_of::<T>()
+        if (const {
+            let src_sz = mem::size_of::<I::Src>();
+            src_sz > 0 && mem::size_of::<T>() % src_sz != 0
+        } && src_cap * mem::size_of::<I::Src>() != dst_cap * mem::size_of::<T>())
+            || const { mem::align_of::<T>() != mem::align_of::<I::Src>() }
         {
             let alloc = Global;
             unsafe {
