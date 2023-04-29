@@ -2815,7 +2815,7 @@ impl<'a, T: 'a + Copy, A: Allocator> Extend<&'a T> for VecDeque<T, A> {
     }
 
     #[inline]
-    fn extend_one(&mut self, &elem: &T) {
+    fn extend_one(&mut self, &elem: &'a T) {
         self.push_back(elem);
     }
 

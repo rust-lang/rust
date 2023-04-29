@@ -732,12 +732,18 @@ impl<A: Step> Iterator for ops::Range<A> {
     }
 
     #[inline]
-    fn min(mut self) -> Option<A> {
+    fn min(mut self) -> Option<A>
+    where
+        A: Ord,
+    {
         self.next()
     }
 
     #[inline]
-    fn max(mut self) -> Option<A> {
+    fn max(mut self) -> Option<A>
+    where
+        A: Ord,
+    {
         self.next_back()
     }
 
@@ -1158,12 +1164,18 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
     }
 
     #[inline]
-    fn min(mut self) -> Option<A> {
+    fn min(mut self) -> Option<A>
+    where
+        A: Ord,
+    {
         self.next()
     }
 
     #[inline]
-    fn max(mut self) -> Option<A> {
+    fn max(mut self) -> Option<A>
+    where
+        A: Ord,
+    {
         self.next_back()
     }
 
