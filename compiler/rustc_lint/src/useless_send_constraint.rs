@@ -17,7 +17,7 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// References cannot be sent across threads unless thay have a `Sync` bound, so constraining them to `Send` without `Sync` is useless.
+    /// References cannot be sent across threads unless they have a `Sync` bound, so constraining them to `Send` without `Sync` is useless.
     pub USELESS_SEND_CONSTRAINT,
     Warn,
     "constraining a reference to `Send` without `Sync` is useless, consider removing it"
