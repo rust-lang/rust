@@ -20,6 +20,7 @@
 #![feature(rustc_attrs)]
 #![cfg_attr(test, feature(test))]
 #![feature(strict_provenance)]
+#![deny(unsafe_op_in_unsafe_fn)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 #![allow(clippy::mut_from_ref)] // Arena allocators are one of the places where this pattern is fine.
@@ -74,19 +75,27 @@ impl<T> ArenaChunk<T> {
     #[inline]
     unsafe fn new(capacity: usize) -> ArenaChunk<T> {
         ArenaChunk {
-            storage: NonNull::new_unchecked(Box::into_raw(Box::new_uninit_slice(capacity))),
+            storage: NonNull::from(Box::leak(Box::new_uninit_slice(capacity))),
             entries: 0,
         }
     }
 
     /// Destroys this arena chunk.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that `len` elements of this chunk have been initialized.
     #[inline]
     unsafe fn destroy(&mut self, len: usize) {
         // The branch on needs_drop() is an -O1 performance optimization.
-        // Without the branch, dropping TypedArena<u8> takes linear time.
+        // Without the branch, dropping TypedArena<T> takes linear time.
         if mem::needs_drop::<T>() {
-            let slice = self.storage.as_mut();
-            ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(&mut slice[..len]));
+            // SAFETY: The caller must ensure that `len` elements of this chunk have
+            // been initialized.
+            unsafe {
+                let slice = self.storage.as_mut();
+                ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(&mut slice[..len]));
+            }
         }
     }
 
@@ -255,7 +264,9 @@ impl<T> TypedArena<T> {
         self.ensure_capacity(len);
 
         let start_ptr = self.ptr.get();
-        self.ptr.set(start_ptr.add(len));
+        // SAFETY: `self.ensure_capacity` makes sure that there is enough space
+        // for `len` elements.
+        unsafe { self.ptr.set(start_ptr.add(len)) };
         start_ptr
     }
 
@@ -483,6 +494,10 @@ impl DroplessArena {
         }
     }
 
+    /// # Safety
+    ///
+    /// The caller must ensure that `mem` is valid for writes up to
+    /// `size_of::<T>() * len`.
     #[inline]
     unsafe fn write_from_iter<T, I: Iterator<Item = T>>(
         &self,
@@ -494,13 +509,18 @@ impl DroplessArena {
         // Use a manual loop since LLVM manages to optimize it better for
         // slice iterators
         loop {
-            let value = iter.next();
-            if i >= len || value.is_none() {
-                // We only return as many items as the iterator gave us, even
-                // though it was supposed to give us `len`
-                return slice::from_raw_parts_mut(mem, i);
+            // SAFETY: The caller must ensure that `mem` is valid for writes up to
+            // `size_of::<T>() * len`.
+            unsafe {
+                match iter.next() {
+                    Some(value) if i < len => mem.add(i).write(value),
+                    Some(_) | None => {
+                        // We only return as many items as the iterator gave us, even
+                        // though it was supposed to give us `len`
+                        return slice::from_raw_parts_mut(mem, i);
+                    }
+                }
             }
-            ptr::write(mem.add(i), value.unwrap());
             i += 1;
         }
     }

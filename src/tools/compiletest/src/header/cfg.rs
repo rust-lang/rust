@@ -165,11 +165,15 @@ pub(super) fn parse_cfg_name_directive<'a>(
         message: "when the architecture is part of the Thumb family"
     }
 
+    // Technically the locally built compiler uses the "dev" channel rather than the "nightly"
+    // channel, even though most people don't know or won't care about it. To avoid confusion, we
+    // treat the "dev" channel as the "nightly" channel when processing the directive.
     condition! {
-        name: &config.channel,
+        name: if config.channel == "dev" { "nightly" } else { &config.channel },
         allowed_names: &["stable", "beta", "nightly"],
         message: "when the release channel is {name}",
     }
+
     condition! {
         name: "cross-compile",
         condition: config.target != config.host,
