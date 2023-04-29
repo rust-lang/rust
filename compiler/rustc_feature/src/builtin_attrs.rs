@@ -344,7 +344,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     ungated!(link_name, Normal, template!(NameValueStr: "name"), FutureWarnPreceding),
     ungated!(no_link, Normal, template!(Word), WarnFollowing),
-    ungated!(repr, Normal, template!(List: "C"), DuplicatesOk),
+    ungated!(repr, Normal, template!(List: "C"), DuplicatesOk, @only_local: true),
     ungated!(export_name, Normal, template!(NameValueStr: "name"), FutureWarnPreceding),
     ungated!(link_section, Normal, template!(NameValueStr: "name"), FutureWarnPreceding),
     ungated!(no_mangle, Normal, template!(Word), WarnFollowing, @only_local: true),
