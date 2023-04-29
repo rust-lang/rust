@@ -17,10 +17,10 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// References cannot be sent across threads, so constraining them to `Send` is useless.
+    /// References cannot be sent across threads unless thay have a `Sync` bound, so constraining them to `Send` without `Sync` is useless.
     pub USELESS_SEND_CONSTRAINT,
     Warn,
-    "constraining a reference to `Send` is useless, consider removing it"
+    "constraining a reference to `Send` without `Sync` is useless, consider removing it"
 }
 
 declare_lint_pass!(UselessSendConstraint => [USELESS_SEND_CONSTRAINT]);
@@ -39,10 +39,11 @@ impl<'tcx> LateLintPass<'tcx> for UselessSendConstraint {
         ) = ty.kind else { return; };
 
         let send = cx.tcx.get_diagnostic_item(sym::Send);
+        let sync = cx.tcx.get_diagnostic_item(sym::Sync);
 
         let send_bound = bounds.iter().find(|b| b.trait_ref.trait_def_id() == send);
 
-        if let Some(send_bound) = send_bound {
+        if let Some(send_bound) = send_bound && sync.is_none() {
             let only_trait = bounds.len() == 1;
 
             cx.tcx.emit_spanned_lint(

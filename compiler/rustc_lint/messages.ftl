@@ -193,7 +193,7 @@ lint_redundant_semicolons =
     }
 
 lint_useless_send_constraint =
-    constraining a reference to `Send` is useless, consider {$only_trait ->
+    constraining a reference to `Send` without `Sync` is useless, consider {$only_trait ->
         [true] replacing it with `Any`
         *[false] removing it
     }

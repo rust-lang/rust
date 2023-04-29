@@ -11,7 +11,7 @@
 //! ```
 //!
 //! This definition allows for panicking with any general message, but it does not
-//! allow for failing with a `Box<Any>` value. (`PanicInfo` just contains a `&(dyn Any + Send)`,
+//! allow for failing with a `Box<Any>` value. (`PanicInfo` just contains a `&dyn Any`,
 //! for which we fill in a dummy value in `PanicInfo::internal_constructor`.)
 //! The reason for this is that core is not allowed to allocate.
 //!
