@@ -283,7 +283,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
 const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "ahash",
     "anyhow",
-    "arrayvec",
     "autocfg",
     "bumpalo",
     "bitflags",
@@ -303,7 +302,6 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "crc32fast",
     "fallible-iterator",
     "fxhash",
-    "getrandom",
     "gimli",
     "hashbrown",
     "indexmap",
@@ -321,19 +319,11 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "stable_deref_trait",
     "target-lexicon",
     "version_check",
-    "wasi",
     "wasmtime-jit-icache-coherence",
     "winapi",
     "winapi-i686-pc-windows-gnu",
     "winapi-x86_64-pc-windows-gnu",
     "windows-sys",
-    "windows_aarch64_gnullvm",
-    "windows_aarch64_msvc",
-    "windows_i686_gnu",
-    "windows_i686_msvc",
-    "windows_x86_64_gnu",
-    "windows_x86_64_gnullvm",
-    "windows_x86_64_msvc",
 ];
 
 /// Dependency checks.

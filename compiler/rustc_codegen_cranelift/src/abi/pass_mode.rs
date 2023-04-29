@@ -84,7 +84,7 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                     attrs
                 )],
                 Abi::Vector { .. } => {
-                    let vector_ty = crate::intrinsics::clif_vector_type(tcx, self.layout).unwrap();
+                    let vector_ty = crate::intrinsics::clif_vector_type(tcx, self.layout);
                     smallvec![AbiParam::new(vector_ty)]
                 }
                 _ => unreachable!("{:?}", self.layout.abi),
@@ -135,7 +135,7 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                     (None, vec![AbiParam::new(scalar_to_clif_type(tcx, scalar))])
                 }
                 Abi::Vector { .. } => {
-                    let vector_ty = crate::intrinsics::clif_vector_type(tcx, self.layout).unwrap();
+                    let vector_ty = crate::intrinsics::clif_vector_type(tcx, self.layout);
                     (None, vec![AbiParam::new(vector_ty)])
                 }
                 _ => unreachable!("{:?}", self.layout.abi),

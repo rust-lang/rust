@@ -141,16 +141,6 @@ pub(crate) fn compile_fn(
     context.clear();
     context.func = codegened_func.func;
 
-    // If the return block is not reachable, then the SSA builder may have inserted an `iconst.i128`
-    // instruction, which doesn't have an encoding.
-    context.compute_cfg();
-    context.compute_domtree();
-    context.eliminate_unreachable_code(module.isa()).unwrap();
-    context.dce(module.isa()).unwrap();
-    // Some Cranelift optimizations expect the domtree to not yet be computed and as such don't
-    // invalidate it when it would change.
-    context.domtree.clear();
-
     #[cfg(any())] // This is never true
     let _clif_guard = {
         use std::fmt::Write;
@@ -182,27 +172,6 @@ pub(crate) fn compile_fn(
     cx.profiler.generic_activity("define function").run(|| {
         context.want_disasm = cx.should_write_ir;
         module.define_function(codegened_func.func_id, context).unwrap();
-
-        if cx.profiler.enabled() {
-            let mut recording_args = false;
-            cx.profiler
-                .generic_activity_with_arg_recorder(
-                    "define function (clif pass timings)",
-                    |recorder| {
-                        let pass_times = cranelift_codegen::timing::take_current();
-                        // Replace newlines with | as measureme doesn't allow control characters like
-                        // newlines inside strings.
-                        recorder.record_arg(format!("{}", pass_times).replace('\n', " | "));
-                        recording_args = true;
-                    },
-                )
-                .run(|| {
-                    if recording_args {
-                        // Wait a tiny bit to ensure chrome's profiler doesn't hide the event
-                        std::thread::sleep(std::time::Duration::from_nanos(2))
-                    }
-                });
-        }
     });
 
     if cx.should_write_ir {
@@ -216,7 +185,7 @@ pub(crate) fn compile_fn(
             &clif_comments,
         );
 
-        if let Some(disasm) = &context.compiled_code().unwrap().disasm {
+        if let Some(disasm) = &context.compiled_code().unwrap().vcode {
             crate::pretty_clif::write_ir_file(
                 &cx.output_filenames,
                 &format!("{}.vcode", codegened_func.symbol_name),
@@ -524,13 +493,14 @@ fn codegen_stmt<'tcx>(
 
     fx.set_debug_loc(stmt.source_info);
 
-    #[cfg(any())] // This is never true
     match &stmt.kind {
         StatementKind::StorageLive(..) | StatementKind::StorageDead(..) => {} // Those are not very useful
         _ => {
             if fx.clif_comments.enabled() {
                 let inst = fx.bcx.func.layout.last_inst(cur_block).unwrap();
-                fx.add_comment(inst, format!("{:?}", stmt));
+                with_no_trimmed_paths!({
+                    fx.add_comment(inst, format!("{:?}", stmt));
+                });
             }
         }
     }
@@ -715,11 +685,11 @@ fn codegen_stmt<'tcx>(
                 }
                 Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), ref operand, _to_ty) => {
                     let operand = codegen_operand(fx, operand);
-                    operand.unsize_value(fx, lval);
+                    crate::unsize::coerce_unsized_into(fx, operand, lval);
                 }
                 Rvalue::Cast(CastKind::DynStar, ref operand, _) => {
                     let operand = codegen_operand(fx, operand);
-                    operand.coerce_dyn_star(fx, lval);
+                    crate::unsize::coerce_dyn_star(fx, operand, lval);
                 }
                 Rvalue::Cast(CastKind::Transmute, ref operand, _to_ty) => {
                     let operand = codegen_operand(fx, operand);
@@ -791,7 +761,10 @@ fn codegen_stmt<'tcx>(
                             layout.offset_of_subfield(fx, fields.iter().map(|f| f.index())).bytes()
                         }
                     };
-                    let val = CValue::const_val(fx, fx.layout_of(fx.tcx.types.usize), val.into());
+                    let val = CValue::by_val(
+                        fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(val).unwrap()),
+                        fx.layout_of(fx.tcx.types.usize),
+                    );
                     lval.write_cvalue(fx, val);
                 }
                 Rvalue::Aggregate(ref kind, ref operands) => {
@@ -866,9 +839,7 @@ fn codegen_array_len<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, place: CPlace<'tcx
             let len = fx.monomorphize(len).eval_target_usize(fx.tcx, ParamEnv::reveal_all()) as i64;
             fx.bcx.ins().iconst(fx.pointer_type, len)
         }
-        ty::Slice(_elem_ty) => {
-            place.to_ptr_maybe_unsized().1.expect("Length metadata for slice place")
-        }
+        ty::Slice(_elem_ty) => place.to_ptr_unsized().1,
         _ => bug!("Rvalue::Len({:?})", place),
     }
 }
@@ -922,8 +893,7 @@ pub(crate) fn codegen_place<'tcx>(
                     ty::Slice(elem_ty) => {
                         assert!(from_end, "slice subslices should be `from_end`");
                         let elem_layout = fx.layout_of(*elem_ty);
-                        let (ptr, len) = cplace.to_ptr_maybe_unsized();
-                        let len = len.unwrap();
+                        let (ptr, len) = cplace.to_ptr_unsized();
                         cplace = CPlace::for_ptr_with_extra(
                             ptr.offset_i64(fx, elem_layout.size.bytes() as i64 * (from as i64)),
                             fx.bcx.ins().iadd_imm(len, -(from as i64 + to as i64)),

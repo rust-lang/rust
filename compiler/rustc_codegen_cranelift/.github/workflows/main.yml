@@ -20,6 +20,7 @@ jobs:
       run: |
         cargo fmt --check
         rustfmt --check build_system/mod.rs
+        rustfmt --check example/*
 
 
   test:
@@ -89,13 +90,6 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y gcc-s390x-linux-gnu qemu-user
 
-    - name: Use sparse cargo registry
-      run: |
-        cat >> ~/.cargo/config.toml <<EOF
-        [unstable]
-        sparse-registry = true
-        EOF
-
     - name: Prepare dependencies
       run: ./y.rs prepare
 
@@ -136,13 +130,6 @@ jobs:
       with:
         path: ~/.cargo/bin
         key: ${{ runner.os }}-${{ matrix.env.TARGET_TRIPLE }}-cargo-bin-dir-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
-
-    - name: Use sparse cargo registry
-      run: |
-        cat >> ~/.cargo/config.toml <<EOF
-        [unstable]
-        sparse-registry = true
-        EOF
 
     - name: Install hyperfine
       run: cargo install hyperfine || true
@@ -206,13 +193,6 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y gcc-mingw-w64-x86-64 wine-stable
 
-    - name: Use sparse cargo registry
-      run: |
-        cat >> ~/.cargo/config.toml <<EOF
-        [unstable]
-        sparse-registry = true
-        EOF
-
     - name: Prepare dependencies
       run: ./y.rs prepare
 
@@ -238,3 +218,43 @@ jobs:
       with:
         name: cg_clif-${{ runner.os }}-cross-x86_64-mingw
         path: cg_clif.tar.xz
+
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: ${{ github.ref == 'refs/heads/master' }}
+    needs: [rustfmt, test, bench, dist]
+
+    concurrency:
+      group: release-dev
+      cancel-in-progress: true
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Download all built artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts/
+
+      - run: |
+          ls -R artifacts/
+          mkdir release/
+          pushd artifacts/
+          for dir in *; do
+            mv $dir/cg_clif.tar.xz ../release/$dir.tar.xz
+            rmdir $dir/ # verify $dir is empty
+          done
+          popd
+          rmdir artifacts/ # verify all artifacts are represented in release/
+          ls -R release/
+
+      - run: npm install --production
+        working-directory: .github/actions/github-release
+
+      - name: Publish Release
+        uses: ./.github/actions/github-release
+        with:
+          files: "release/*"
+          token: ${{ github.token }}
+        continue-on-error: true

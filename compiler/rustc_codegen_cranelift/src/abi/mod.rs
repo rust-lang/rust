@@ -605,9 +605,9 @@ pub(crate) fn codegen_drop<'tcx>(
                 //                | ...   |
                 //                \-------/
                 //
-                let (ptr, vtable) = drop_place.to_ptr_maybe_unsized();
+                let (ptr, vtable) = drop_place.to_ptr_unsized();
                 let ptr = ptr.get_addr(fx);
-                let drop_fn = crate::vtable::drop_fn_of_obj(fx, vtable.unwrap());
+                let drop_fn = crate::vtable::drop_fn_of_obj(fx, vtable);
 
                 // FIXME(eddyb) perhaps move some of this logic into
                 // `Instance::resolve_drop_in_place`?
