@@ -596,7 +596,7 @@ impl<T> Option<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_option_basics", since = "1.48.0")]
     pub const fn is_some(&self) -> bool {
-        matches!(*self, Some(_))
+        matches!(self, Some(_))
     }
 
     /// Returns `true` if the option is a [`Some`] and the value inside of it matches a predicate.
@@ -640,7 +640,7 @@ impl<T> Option<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_option_basics", since = "1.48.0")]
     pub const fn is_none(&self) -> bool {
-        !self.is_some()
+        matches!(self, None)
     }
 
     /////////////////////////////////////////////////////////////////////////
@@ -671,8 +671,8 @@ impl<T> Option<T> {
     #[rustc_const_stable(feature = "const_option_basics", since = "1.48.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn as_ref(&self) -> Option<&T> {
-        match *self {
-            Some(ref x) => Some(x),
+        match self {
+            Some(x) => Some(x),
             None => None,
         }
     }
@@ -693,8 +693,8 @@ impl<T> Option<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_option", issue = "67441")]
     pub const fn as_mut(&mut self) -> Option<&mut T> {
-        match *self {
-            Some(ref mut x) => Some(x),
+        match self {
+            Some(x) => Some(x),
             None => None,
         }
     }
@@ -707,7 +707,7 @@ impl<T> Option<T> {
     #[stable(feature = "pin", since = "1.33.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn as_pin_ref(self: Pin<&Self>) -> Option<Pin<&T>> {
-        match Pin::get_ref(self).as_ref() {
+        match Pin::get_ref(self) {
             // SAFETY: `x` is guaranteed to be pinned because it comes from `self`
             // which is pinned.
             Some(x) => unsafe { Some(Pin::new_unchecked(x)) },
@@ -726,7 +726,7 @@ impl<T> Option<T> {
         // SAFETY: `get_unchecked_mut` is never used to move the `Option` inside `self`.
         // `x` is guaranteed to be pinned because it comes from `self` which is pinned.
         unsafe {
-            match Pin::get_unchecked_mut(self).as_mut() {
+            match Pin::get_unchecked_mut(self) {
                 Some(x) => Some(Pin::new_unchecked(x)),
                 None => None,
             }
@@ -1007,7 +1007,7 @@ impl<T> Option<T> {
     {
         match self {
             Some(x) => x,
-            None => Default::default(),
+            None => T::default(),
         }
     }
 
@@ -1240,8 +1240,8 @@ impl<T> Option<T> {
     where
         T: Deref,
     {
-        match self.as_ref() {
-            Some(t) => Some(t.deref()),
+        match self {
+            Some(t) => Some(&*t),
             None => None,
         }
     }
@@ -1266,8 +1266,8 @@ impl<T> Option<T> {
     where
         T: DerefMut,
     {
-        match self.as_mut() {
-            Some(t) => Some(t.deref_mut()),
+        match self {
+            Some(t) => Some(&mut *t),
             None => None,
         }
     }
@@ -1581,13 +1581,10 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "option_entry", since = "1.20.0")]
     pub fn get_or_insert(&mut self, value: T) -> &mut T {
-        if let None = *self {
-            *self = Some(value);
+        match self {
+            Some(v) => v,
+            opt => opt.insert(value),
         }
-
-        // SAFETY: a `None` variant for `self` would have been replaced by a `Some`
-        // variant in the code above.
-        unsafe { self.as_mut().unwrap_unchecked() }
     }
 
     /// Inserts the default value into the option if it is [`None`], then
@@ -1615,11 +1612,7 @@ impl<T> Option<T> {
     where
         T: Default,
     {
-        fn default<T: Default>() -> T {
-            T::default()
-        }
-
-        self.get_or_insert_with(default)
+        self.get_or_insert_with(T::default)
     }
 
     /// Inserts a value computed from `f` into the option if it is [`None`],
@@ -1645,15 +1638,10 @@ impl<T> Option<T> {
     where
         F: FnOnce() -> T,
     {
-        if let None = *self {
-            // the compiler isn't smart enough to know that we are not dropping a `T`
-            // here and wants us to ensure `T` can be dropped at compile time.
-            mem::forget(mem::replace(self, Some(f())))
+        match self {
+            Some(v) => v,
+            opt => opt.insert(f()),
         }
-
-        // SAFETY: a `None` variant for `self` would have been replaced by a `Some`
-        // variant in the code above.
-        unsafe { self.as_mut().unwrap_unchecked() }
     }
 
     /////////////////////////////////////////////////////////////////////////
