@@ -74,10 +74,10 @@ mod opaque_hidden_inferred_bound;
 mod pass_by_value;
 mod passes;
 mod redundant_semicolon;
-mod useless_send_constraint;
 mod traits;
 mod types;
 mod unused;
+mod useless_send_constraint;
 
 pub use array_into_iter::ARRAY_INTO_ITER;
 

@@ -220,10 +220,7 @@ pub fn take_hook() -> Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send> {
 #[unstable(feature = "panic_update_hook", issue = "92649")]
 pub fn update_hook<F>(hook_fn: F)
 where
-    F: Fn(&(dyn Fn(&PanicInfo<'_>) + Sync + 'static), &PanicInfo<'_>)
-        + Sync
-        + Send
-        + 'static,
+    F: Fn(&(dyn Fn(&PanicInfo<'_>) + Sync + 'static), &PanicInfo<'_>) + Sync + Send + 'static,
 {
     if thread::panicking() {
         panic!("cannot modify the panic hook from a panicking thread");
