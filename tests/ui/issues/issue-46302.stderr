@@ -2,10 +2,12 @@ error[E0308]: mismatched types
   --> $DIR/issue-46302.rs:3:27
    |
 LL |   let u: &str = if true { s[..2] } else { s };
-   |                           ^^^^^^
-   |                           |
-   |                           expected `&str`, found `str`
-   |                           help: consider borrowing here: `&s[..2]`
+   |                           ^^^^^^ expected `&str`, found `str`
+   |
+help: consider borrowing here
+   |
+LL |   let u: &str = if true { &s[..2] } else { s };
+   |                           +
 
 error: aborting due to previous error
 
