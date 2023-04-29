@@ -1,3 +1,5 @@
+use rustc_data_structures::fx::FxHashSet;
+
 use crate::hir;
 
 use crate::{lints::DuplicateTraitDiag, LateContext, LateLintPass};
@@ -36,18 +38,18 @@ impl<'tcx> LateLintPass<'tcx> for DuplicateTrait {
             }
         ) = ty.kind else { return; };
 
-        let mut bounds = (*bounds).to_owned();
-
-        bounds.sort_unstable_by_key(|b| b.trait_ref.trait_def_id());
-
         if bounds.len() < 2 {
             return;
         }
 
-        let mut last_bound = &bounds[0];
-        for bound in bounds.iter().skip(1) {
-            if last_bound.trait_ref.trait_def_id() == bound.trait_ref.trait_def_id()
-                && let Some(def_id) = bound.trait_ref.trait_def_id() {
+        let mut seen_def_ids = FxHashSet::default();
+
+        for bound in bounds.iter() {
+            let Some(def_id) = bound.trait_ref.trait_def_id() else { continue; };
+
+            let already_seen = !seen_def_ids.insert(def_id);
+
+            if already_seen {
                 cx.tcx.emit_spanned_lint(
                     DUPLICATE_TRAIT,
                     bound.trait_ref.hir_ref_id, // is this correct?
@@ -58,8 +60,6 @@ impl<'tcx> LateLintPass<'tcx> for DuplicateTrait {
                     },
                 )
             }
-
-            last_bound = bound;
         }
     }
 }
