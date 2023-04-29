@@ -578,7 +578,6 @@ mod dist {
                 compiler: Compiler { host, stage: 0 },
                 target: host,
                 mode: Mode::Std,
-                test_kind: test::TestKind::Test,
                 crates: vec![INTERNER.intern_str("std")],
             },]
         );

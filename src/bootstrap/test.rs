@@ -13,6 +13,7 @@ use std::process::{Command, Stdio};
 use crate::builder::crate_description;
 use crate::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::Interned;
+use crate::cache::INTERNER;
 use crate::compile;
 use crate::config::TargetSelection;
 use crate::dist;
@@ -26,44 +27,6 @@ use crate::util::{self, add_link_lib_path, dylib_path, dylib_path_var, output, t
 use crate::{envify, CLang, DocTests, GitRepo, Mode};
 
 const ADB_TEST_DIR: &str = "/data/local/tmp/work";
-
-/// The two modes of the test runner; tests or benchmarks.
-#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone, PartialOrd, Ord)]
-pub enum TestKind {
-    /// Run `cargo test`.
-    Test,
-    /// Run `cargo bench`.
-    Bench,
-}
-
-impl From<Kind> for TestKind {
-    fn from(kind: Kind) -> Self {
-        match kind {
-            Kind::Test => TestKind::Test,
-            Kind::Bench => TestKind::Bench,
-            _ => panic!("unexpected kind in crate: {:?}", kind),
-        }
-    }
-}
-
-impl TestKind {
-    // Return the cargo subcommand for this test kind
-    fn subcommand(self) -> &'static str {
-        match self {
-            TestKind::Test => "test",
-            TestKind::Bench => "bench",
-        }
-    }
-}
-
-impl Into<Kind> for TestKind {
-    fn into(self) -> Kind {
-        match self {
-            TestKind::Test => Kind::Test,
-            TestKind::Bench => Kind::Bench,
-        }
-    }
-}
 
 fn try_run(builder: &Builder<'_>, cmd: &mut Command) -> bool {
     if !builder.fail_fast {
@@ -92,26 +55,37 @@ fn try_run_quiet(builder: &Builder<'_>, cmd: &mut Command) -> bool {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct CrateJsonDocLint {
+pub struct CrateBootstrap {
+    path: Interned<PathBuf>,
     host: TargetSelection,
 }
 
-impl Step for CrateJsonDocLint {
+impl Step for CrateBootstrap {
     type Output = ();
     const ONLY_HOSTS: bool = true;
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/jsondoclint")
+            .path("src/tools/suggest-tests")
+            .path("src/tools/replace-version-placeholder")
+            .alias("tidyselftest")
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(CrateJsonDocLint { host: run.target });
+        for path in run.paths {
+            let path = INTERNER.intern_path(path.assert_single_path().path.clone());
+            run.builder.ensure(CrateBootstrap { host: run.target, path });
+        }
     }
 
     fn run(self, builder: &Builder<'_>) {
         let bootstrap_host = builder.config.build;
         let compiler = builder.compiler(0, bootstrap_host);
+        let mut path = self.path.to_str().unwrap();
+        if path == "tidyselftest" {
+            path = "src/tools/tidy";
+        }
 
         let cargo = tool::prepare_tool_cargo(
             builder,
@@ -119,47 +93,18 @@ impl Step for CrateJsonDocLint {
             Mode::ToolBootstrap,
             bootstrap_host,
             "test",
-            "src/tools/jsondoclint",
+            path,
             SourceType::InTree,
             &[],
         );
-        add_flags_and_try_run_tests(builder, &mut cargo.into());
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct SuggestTestsCrate {
-    host: TargetSelection,
-}
-
-impl Step for SuggestTestsCrate {
-    type Output = ();
-    const ONLY_HOSTS: bool = true;
-    const DEFAULT: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/suggest-tests")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(SuggestTestsCrate { host: run.target });
-    }
-
-    fn run(self, builder: &Builder<'_>) {
-        let bootstrap_host = builder.config.build;
-        let compiler = builder.compiler(0, bootstrap_host);
-
-        let suggest_tests = tool::prepare_tool_cargo(
-            builder,
-            compiler,
-            Mode::ToolBootstrap,
+        builder.info(&format!(
+            "{} {} stage0 ({})",
+            builder.kind.test_description(),
+            path,
             bootstrap_host,
-            "test",
-            "src/tools/suggest-tests",
-            SourceType::InTree,
-            &[],
-        );
-        add_flags_and_try_run_tests(builder, &mut suggest_tests.into());
+        ));
+        let crate_name = path.rsplit_once('/').unwrap().1;
+        run_cargo_test(cargo, &[], &[], crate_name, compiler, bootstrap_host, builder);
     }
 }
 
@@ -208,7 +153,11 @@ You can skip linkcheck with --exclude src/tools/linkchecker"
             SourceType::InTree,
             &[],
         );
-        add_flags_and_try_run_tests(builder, &mut cargo.into());
+        run_cargo_test(cargo, &[], &[], "linkchecker", compiler, bootstrap_host, builder);
+
+        if builder.doc_tests == DocTests::No {
+            return;
+        }
 
         // Build all the default documentation.
         builder.default_doc(&[]);
@@ -344,7 +293,7 @@ impl Step for Cargo {
         let compiler = builder.compiler(self.stage, self.host);
 
         builder.ensure(tool::Cargo { compiler, target: self.host });
-        let mut cargo = tool::prepare_tool_cargo(
+        let cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
             Mode::ToolRustc,
@@ -355,10 +304,8 @@ impl Step for Cargo {
             &[],
         );
 
-        if !builder.fail_fast {
-            cargo.arg("--no-fail-fast");
-        }
-        cargo.arg("--").args(builder.config.cmd.test_args());
+        // NOTE: can't use `run_cargo_test` because we need to overwrite `PATH`
+        let mut cargo = prepare_cargo_test(cargo, &[], &[], "cargo", compiler, self.host, builder);
 
         // Don't run cross-compile tests, we may not have cross-compiled libstd libs
         // available.
@@ -366,10 +313,10 @@ impl Step for Cargo {
         // Forcibly disable tests using nightly features since any changes to
         // those features won't be able to land.
         cargo.env("CARGO_TEST_DISABLE_NIGHTLY", "1");
-
         cargo.env("PATH", &path_for_cargo(builder, compiler));
 
-        add_flags_and_try_run_tests(builder, &mut cargo.into());
+        let _time = util::timeit(&builder);
+        add_flags_and_try_run_tests(builder, &mut cargo);
     }
 }
 
@@ -426,9 +373,7 @@ impl Step for RustAnalyzer {
         cargo.env("SKIP_SLOW_TESTS", "1");
 
         cargo.add_rustc_lib_path(builder, compiler);
-        cargo.arg("--").args(builder.config.cmd.test_args());
-
-        add_flags_and_try_run_tests(builder, &mut cargo.into());
+        run_cargo_test(cargo, &[], &[], "rust-analyzer", compiler, host, builder);
     }
 }
 
@@ -471,17 +416,13 @@ impl Step for Rustfmt {
             &[],
         );
 
-        if !builder.fail_fast {
-            cargo.arg("--no-fail-fast");
-        }
-
         let dir = testdir(builder, compiler.host);
         t!(fs::create_dir_all(&dir));
         cargo.env("RUSTFMT_TEST_DIR", dir);
 
         cargo.add_rustc_lib_path(builder, compiler);
 
-        add_flags_and_try_run_tests(builder, &mut cargo.into());
+        run_cargo_test(cargo, &[], &[], "rustfmt", compiler, host, builder);
     }
 }
 
@@ -527,12 +468,9 @@ impl Step for RustDemangler {
         t!(fs::create_dir_all(&dir));
 
         cargo.env("RUST_DEMANGLER_DRIVER_PATH", rust_demangler);
-
-        cargo.arg("--").args(builder.config.cmd.test_args());
-
         cargo.add_rustc_lib_path(builder, compiler);
 
-        add_flags_and_try_run_tests(builder, &mut cargo.into());
+        run_cargo_test(cargo, &[], &[], "rust-demangler", compiler, host, builder);
     }
 }
 
@@ -655,10 +593,6 @@ impl Step for Miri {
         );
         cargo.add_rustc_lib_path(builder, compiler);
 
-        if !builder.fail_fast {
-            cargo.arg("--no-fail-fast");
-        }
-
         // miri tests need to know about the stage sysroot
         cargo.env("MIRI_SYSROOT", &miri_sysroot);
         cargo.env("MIRI_HOST_SYSROOT", sysroot);
@@ -670,13 +604,14 @@ impl Step for Miri {
 
         // Set the target.
         cargo.env("MIRI_TEST_TARGET", target.rustc_target_arg());
-        // Forward test filters.
-        cargo.arg("--").args(builder.config.cmd.test_args());
 
-        // This can NOT be `add_flags_and_try_run_tests` since the Miri test runner
-        // does not understand those flags!
-        let mut cargo = Command::from(cargo);
-        builder.run(&mut cargo);
+        // This can NOT be `run_cargo_test` since the Miri test runner
+        // does not understand the flags added by `add_flags_and_try_run_test`.
+        let mut cargo = prepare_cargo_test(cargo, &[], &[], "miri", compiler, target, builder);
+        {
+            let _time = util::timeit(&builder);
+            builder.run(&mut cargo);
+        }
 
         // # Run `cargo miri test`.
         // This is just a smoke test (Miri's own CI invokes this in a bunch of different ways and ensures
@@ -709,6 +644,7 @@ impl Step for Miri {
         cargo.env("RUST_BACKTRACE", "1");
 
         let mut cargo = Command::from(cargo);
+        let _time = util::timeit(&builder);
         builder.run(&mut cargo);
     }
 }
@@ -748,8 +684,7 @@ impl Step for CompiletestTest {
             &[],
         );
         cargo.allow_features("test");
-
-        add_flags_and_try_run_tests(builder, &mut cargo.into());
+        run_cargo_test(cargo, &[], &[], "compiletest", compiler, host, builder);
     }
 }
 
@@ -792,20 +727,15 @@ impl Step for Clippy {
             &[],
         );
 
-        if !builder.fail_fast {
-            cargo.arg("--no-fail-fast");
-        }
-
         cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
         cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
         let host_libs = builder.stage_out(compiler, Mode::ToolRustc).join(builder.cargo_dir());
         cargo.env("HOST_LIBS", host_libs);
 
-        cargo.arg("--").args(builder.config.cmd.test_args());
-
         cargo.add_rustc_lib_path(builder, compiler);
+        let mut cargo = prepare_cargo_test(cargo, &[], &[], "clippy", compiler, host, builder);
 
-        if builder.try_run(&mut cargo.into()) {
+        if builder.try_run(&mut cargo) {
             // The tests succeeded; nothing to do.
             return;
         }
@@ -1200,40 +1130,6 @@ help: to skip test's attempt to check tidiness, pass `--exclude src/tools/tidy` 
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Tidy);
-    }
-}
-
-/// Runs tidy's own tests.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct TidySelfTest;
-
-impl Step for TidySelfTest {
-    type Output = ();
-    const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.alias("tidyselftest")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(TidySelfTest);
-    }
-
-    fn run(self, builder: &Builder<'_>) {
-        let bootstrap_host = builder.config.build;
-        let compiler = builder.compiler(0, bootstrap_host);
-        let cargo = tool::prepare_tool_cargo(
-            builder,
-            compiler,
-            Mode::ToolBootstrap,
-            bootstrap_host,
-            "test",
-            "src/tools/tidy",
-            SourceType::InTree,
-            &[],
-        );
-        add_flags_and_try_run_tests(builder, &mut cargo.into());
     }
 }
 
@@ -2111,7 +2007,6 @@ impl Step for RustcGuide {
 pub struct CrateLibrustc {
     compiler: Compiler,
     target: TargetSelection,
-    test_kind: TestKind,
     crates: Vec<Interned<String>>,
 }
 
@@ -2133,9 +2028,8 @@ impl Step for CrateLibrustc {
             .iter()
             .map(|p| builder.crate_paths[&p.assert_single_path().path].clone())
             .collect();
-        let test_kind = builder.kind.into();
 
-        builder.ensure(CrateLibrustc { compiler, target: run.target, test_kind, crates });
+        builder.ensure(CrateLibrustc { compiler, target: run.target, crates });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -2143,10 +2037,99 @@ impl Step for CrateLibrustc {
             compiler: self.compiler,
             target: self.target,
             mode: Mode::Rustc,
-            test_kind: self.test_kind,
             crates: self.crates,
         });
     }
+}
+
+/// Given a `cargo test` subcommand, add the appropriate flags and run it.
+///
+/// Returns whether the test succeeded.
+fn run_cargo_test(
+    cargo: impl Into<Command>,
+    libtest_args: &[&str],
+    crates: &[Interned<String>],
+    primary_crate: &str,
+    compiler: Compiler,
+    target: TargetSelection,
+    builder: &Builder<'_>,
+) -> bool {
+    let mut cargo =
+        prepare_cargo_test(cargo, libtest_args, crates, primary_crate, compiler, target, builder);
+    let _time = util::timeit(&builder);
+    add_flags_and_try_run_tests(builder, &mut cargo)
+}
+
+/// Given a `cargo test` subcommand, pass it the appropriate test flags given a `builder`.
+fn prepare_cargo_test(
+    cargo: impl Into<Command>,
+    libtest_args: &[&str],
+    crates: &[Interned<String>],
+    primary_crate: &str,
+    compiler: Compiler,
+    target: TargetSelection,
+    builder: &Builder<'_>,
+) -> Command {
+    let mut cargo = cargo.into();
+
+    // Pass in some standard flags then iterate over the graph we've discovered
+    // in `cargo metadata` with the maps above and figure out what `-p`
+    // arguments need to get passed.
+    if builder.kind == Kind::Test && !builder.fail_fast {
+        cargo.arg("--no-fail-fast");
+    }
+    match builder.doc_tests {
+        DocTests::Only => {
+            cargo.arg("--doc");
+        }
+        DocTests::No => {
+            let krate = &builder
+                .crates
+                .get(&INTERNER.intern_str(primary_crate))
+                .unwrap_or_else(|| panic!("missing crate {primary_crate}"));
+            if krate.has_lib {
+                cargo.arg("--lib");
+            }
+            cargo.args(&["--bins", "--examples", "--tests", "--benches"]);
+        }
+        DocTests::Yes => {}
+    }
+
+    for &krate in crates {
+        cargo.arg("-p").arg(krate);
+    }
+
+    cargo.arg("--").args(&builder.config.cmd.test_args()).args(libtest_args);
+    if !builder.config.verbose_tests {
+        cargo.arg("--quiet");
+    }
+
+    // The tests are going to run with the *target* libraries, so we need to
+    // ensure that those libraries show up in the LD_LIBRARY_PATH equivalent.
+    //
+    // Note that to run the compiler we need to run with the *host* libraries,
+    // but our wrapper scripts arrange for that to be the case anyway.
+    let mut dylib_path = dylib_path();
+    dylib_path.insert(0, PathBuf::from(&*builder.sysroot_libdir(compiler, target)));
+    cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
+
+    if target.contains("emscripten") {
+        cargo.env(
+            format!("CARGO_TARGET_{}_RUNNER", envify(&target.triple)),
+            builder.config.nodejs.as_ref().expect("nodejs not configured"),
+        );
+    } else if target.starts_with("wasm32") {
+        let node = builder.config.nodejs.as_ref().expect("nodejs not configured");
+        let runner = format!("{} {}/src/etc/wasm32-shim.js", node.display(), builder.src.display());
+        cargo.env(format!("CARGO_TARGET_{}_RUNNER", envify(&target.triple)), &runner);
+    } else if builder.remote_tested(target) {
+        cargo.env(
+            format!("CARGO_TARGET_{}_RUNNER", envify(&target.triple)),
+            format!("{} run 0", builder.tool_exe(Tool::RemoteTestClient).display()),
+        );
+    }
+
+    cargo
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -2154,7 +2137,6 @@ pub struct Crate {
     pub compiler: Compiler,
     pub target: TargetSelection,
     pub mode: Mode,
-    pub test_kind: TestKind,
     pub crates: Vec<Interned<String>>,
 }
 
@@ -2170,14 +2152,13 @@ impl Step for Crate {
         let builder = run.builder;
         let host = run.build_triple();
         let compiler = builder.compiler_for(builder.top_stage, host, host);
-        let test_kind = builder.kind.into();
         let crates = run
             .paths
             .iter()
             .map(|p| builder.crate_paths[&p.assert_single_path().path].clone())
             .collect();
 
-        builder.ensure(Crate { compiler, target: run.target, mode: Mode::Std, test_kind, crates });
+        builder.ensure(Crate { compiler, target: run.target, mode: Mode::Std, crates });
     }
 
     /// Runs all unit tests plus documentation tests for a given crate defined
@@ -2192,7 +2173,6 @@ impl Step for Crate {
         let compiler = self.compiler;
         let target = self.target;
         let mode = self.mode;
-        let test_kind = self.test_kind;
 
         builder.ensure(compile::Std::new(compiler, target));
         builder.ensure(RemoteCopyLibs { compiler, target });
@@ -2204,7 +2184,7 @@ impl Step for Crate {
         let compiler = builder.compiler_for(compiler.stage, compiler.host, target);
 
         let mut cargo =
-            builder.cargo(compiler, mode, SourceType::InTree, target, test_kind.subcommand());
+            builder.cargo(compiler, mode, SourceType::InTree, target, builder.kind.as_str());
         match mode {
             Mode::Std => {
                 compile::std_cargo(builder, target, compiler.stage, &mut cargo);
@@ -2215,69 +2195,14 @@ impl Step for Crate {
             _ => panic!("can only test libraries"),
         };
 
-        // Build up the base `cargo test` command.
-        //
-        // Pass in some standard flags then iterate over the graph we've discovered
-        // in `cargo metadata` with the maps above and figure out what `-p`
-        // arguments need to get passed.
-        if test_kind.subcommand() == "test" && !builder.fail_fast {
-            cargo.arg("--no-fail-fast");
-        }
-        match builder.doc_tests {
-            DocTests::Only => {
-                cargo.arg("--doc");
-            }
-            DocTests::No => {
-                cargo.args(&["--lib", "--bins", "--examples", "--tests", "--benches"]);
-            }
-            DocTests::Yes => {}
-        }
-
-        for krate in &self.crates {
-            cargo.arg("-p").arg(krate);
-        }
-
-        // The tests are going to run with the *target* libraries, so we need to
-        // ensure that those libraries show up in the LD_LIBRARY_PATH equivalent.
-        //
-        // Note that to run the compiler we need to run with the *host* libraries,
-        // but our wrapper scripts arrange for that to be the case anyway.
-        let mut dylib_path = dylib_path();
-        dylib_path.insert(0, PathBuf::from(&*builder.sysroot_libdir(compiler, target)));
-        cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
-
-        cargo.arg("--");
-        cargo.args(&builder.config.cmd.test_args());
-
-        cargo.arg("-Z").arg("unstable-options");
-        cargo.arg("--format").arg("json");
-
-        if target.contains("emscripten") {
-            cargo.env(
-                format!("CARGO_TARGET_{}_RUNNER", envify(&target.triple)),
-                builder.config.nodejs.as_ref().expect("nodejs not configured"),
-            );
-        } else if target.starts_with("wasm32") {
-            let node = builder.config.nodejs.as_ref().expect("nodejs not configured");
-            let runner =
-                format!("{} {}/src/etc/wasm32-shim.js", node.display(), builder.src.display());
-            cargo.env(format!("CARGO_TARGET_{}_RUNNER", envify(&target.triple)), &runner);
-        } else if builder.remote_tested(target) {
-            cargo.env(
-                format!("CARGO_TARGET_{}_RUNNER", envify(&target.triple)),
-                format!("{} run 0", builder.tool_exe(Tool::RemoteTestClient).display()),
-            );
-        }
-
         let _guard = builder.msg(
-            test_kind,
+            builder.kind,
             compiler.stage,
             crate_description(&self.crates),
             compiler.host,
             target,
         );
-        let _time = util::timeit(&builder);
-        crate::render_tests::try_run_tests(builder, &mut cargo.into());
+        run_cargo_test(cargo, &[], &self.crates, &self.crates[0], compiler, target, builder);
     }
 }
 
@@ -2285,7 +2210,6 @@ impl Step for Crate {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct CrateRustdoc {
     host: TargetSelection,
-    test_kind: TestKind,
 }
 
 impl Step for CrateRustdoc {
@@ -2300,13 +2224,10 @@ impl Step for CrateRustdoc {
     fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
 
-        let test_kind = builder.kind.into();
-
-        builder.ensure(CrateRustdoc { host: run.target, test_kind });
+        builder.ensure(CrateRustdoc { host: run.target });
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let test_kind = self.test_kind;
         let target = self.host;
 
         let compiler = if builder.download_rustc() {
@@ -2325,29 +2246,11 @@ impl Step for CrateRustdoc {
             compiler,
             Mode::ToolRustc,
             target,
-            test_kind.subcommand(),
+            builder.kind.as_str(),
             "src/tools/rustdoc",
             SourceType::InTree,
             &[],
         );
-        if test_kind.subcommand() == "test" && !builder.fail_fast {
-            cargo.arg("--no-fail-fast");
-        }
-        match builder.doc_tests {
-            DocTests::Only => {
-                cargo.arg("--doc");
-            }
-            DocTests::No => {
-                cargo.args(&["--lib", "--bins", "--examples", "--tests", "--benches"]);
-            }
-            DocTests::Yes => {}
-        }
-
-        cargo.arg("-p").arg("rustdoc:0.0.0");
-
-        cargo.arg("--");
-        cargo.args(&builder.config.cmd.test_args());
-
         if self.host.contains("musl") {
             cargo.arg("'-Ctarget-feature=-crt-static'");
         }
@@ -2387,22 +2290,22 @@ impl Step for CrateRustdoc {
         dylib_path.insert(0, PathBuf::from(&*libdir));
         cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
-        if !builder.config.verbose_tests {
-            cargo.arg("--quiet");
-        }
-
-        let _guard = builder.msg(test_kind, compiler.stage, "rustdoc", compiler.host, target);
-
-        let _time = util::timeit(&builder);
-
-        add_flags_and_try_run_tests(builder, &mut cargo.into());
+        let _guard = builder.msg(builder.kind, compiler.stage, "rustdoc", compiler.host, target);
+        run_cargo_test(
+            cargo,
+            &[],
+            &[INTERNER.intern_str("rustdoc:0.0.0")],
+            "rustdoc",
+            compiler,
+            target,
+            builder,
+        );
     }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct CrateRustdocJsonTypes {
     host: TargetSelection,
-    test_kind: TestKind,
 }
 
 impl Step for CrateRustdocJsonTypes {
@@ -2417,13 +2320,10 @@ impl Step for CrateRustdocJsonTypes {
     fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
 
-        let test_kind = builder.kind.into();
-
-        builder.ensure(CrateRustdocJsonTypes { host: run.target, test_kind });
+        builder.ensure(CrateRustdocJsonTypes { host: run.target });
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let test_kind = self.test_kind;
         let target = self.host;
 
         // Use the previous stage compiler to reuse the artifacts that are
@@ -2433,34 +2333,35 @@ impl Step for CrateRustdocJsonTypes {
         let compiler = builder.compiler_for(builder.top_stage, target, target);
         builder.ensure(compile::Rustc::new(compiler, target));
 
-        let mut cargo = tool::prepare_tool_cargo(
+        let cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
             Mode::ToolRustc,
             target,
-            test_kind.subcommand(),
+            builder.kind.as_str(),
             "src/rustdoc-json-types",
             SourceType::InTree,
             &[],
         );
-        if test_kind.subcommand() == "test" && !builder.fail_fast {
-            cargo.arg("--no-fail-fast");
-        }
 
-        cargo.arg("-p").arg("rustdoc-json-types");
-
-        cargo.arg("--");
-        cargo.args(&builder.config.cmd.test_args());
-
-        if self.host.contains("musl") {
-            cargo.arg("'-Ctarget-feature=-crt-static'");
-        }
+        // FIXME: this looks very wrong, libtest doesn't accept `-C` arguments and the quotes are fishy.
+        let libtest_args = if self.host.contains("musl") {
+            ["'-Ctarget-feature=-crt-static'"].as_slice()
+        } else {
+            &[]
+        };
 
         let _guard =
-            builder.msg(test_kind, compiler.stage, "rustdoc-json-types", compiler.host, target);
-        let _time = util::timeit(&builder);
-
-        add_flags_and_try_run_tests(builder, &mut cargo.into());
+            builder.msg(builder.kind, compiler.stage, "rustdoc-json-types", compiler.host, target);
+        run_cargo_test(
+            cargo,
+            libtest_args,
+            &[INTERNER.intern_str("rustdoc-json-types")],
+            "rustdoc-json-types",
+            compiler,
+            target,
+            builder,
+        );
     }
 }
 
@@ -2598,13 +2499,15 @@ impl Step for Bootstrap {
         check_bootstrap.arg("bootstrap_test.py").current_dir(builder.src.join("src/bootstrap/"));
         try_run(builder, &mut check_bootstrap);
 
+        let host = builder.config.build;
+        let compiler = builder.compiler(0, host);
         let mut cmd = Command::new(&builder.initial_cargo);
         cmd.arg("test")
             .current_dir(builder.src.join("src/bootstrap"))
             .env("RUSTFLAGS", "-Cdebuginfo=2")
             .env("CARGO_TARGET_DIR", builder.out.join("bootstrap"))
             .env("RUSTC_BOOTSTRAP", "1")
-            .env("RUSTDOC", builder.rustdoc(builder.compiler(0, builder.build.build)))
+            .env("RUSTDOC", builder.rustdoc(compiler))
             .env("RUSTC", &builder.initial_rustc);
         if let Some(flags) = option_env!("RUSTFLAGS") {
             // Use the same rustc flags for testing as for "normal" compilation,
@@ -2612,24 +2515,9 @@ impl Step for Bootstrap {
             // https://github.com/rust-lang/rust/issues/49215
             cmd.env("RUSTFLAGS", flags);
         }
-        if !builder.fail_fast {
-            cmd.arg("--no-fail-fast");
-        }
-        match builder.doc_tests {
-            DocTests::Only => {
-                cmd.arg("--doc");
-            }
-            DocTests::No => {
-                cmd.args(&["--lib", "--bins", "--examples", "--tests", "--benches"]);
-            }
-            DocTests::Yes => {}
-        }
-
-        cmd.arg("--").args(&builder.config.cmd.test_args());
         // rustbuild tests are racy on directory creation so just run them one at a time.
         // Since there's not many this shouldn't be a problem.
-        cmd.arg("--test-threads=1");
-        add_flags_and_try_run_tests(builder, &mut cmd);
+        run_cargo_test(cmd, &["--test-threads=1"], &[], "bootstrap", compiler, host, builder);
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -2682,43 +2570,6 @@ impl Step for TierCheck {
 
         builder.info("platform support check");
         try_run(builder, &mut cargo.into());
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct ReplacePlaceholderTest;
-
-impl Step for ReplacePlaceholderTest {
-    type Output = ();
-    const ONLY_HOSTS: bool = true;
-    const DEFAULT: bool = true;
-
-    /// Ensure the version placeholder replacement tool builds
-    fn run(self, builder: &Builder<'_>) {
-        builder.info("build check for version replacement placeholder");
-
-        // Test the version placeholder replacement tool itself.
-        let bootstrap_host = builder.config.build;
-        let compiler = builder.compiler(0, bootstrap_host);
-        let cargo = tool::prepare_tool_cargo(
-            builder,
-            compiler,
-            Mode::ToolBootstrap,
-            bootstrap_host,
-            "test",
-            "src/tools/replace-version-placeholder",
-            SourceType::InTree,
-            &[],
-        );
-        add_flags_and_try_run_tests(builder, &mut cargo.into());
-    }
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/replace-version-placeholder")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Self);
     }
 }
 
@@ -2779,7 +2630,7 @@ impl Step for RustInstaller {
             SourceType::InTree,
             &[],
         );
-        try_run(builder, &mut cargo.into());
+        run_cargo_test(cargo, &[], &[], "installer", compiler, bootstrap_host, builder);
 
         // We currently don't support running the test.sh script outside linux(?) environments.
         // Eventually this should likely migrate to #[test]s in rust-installer proper rather than a
