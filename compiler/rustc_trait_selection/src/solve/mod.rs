@@ -340,17 +340,17 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         if responses.is_empty() {
             return Err(NoSolution);
         }
-        let certainty = responses.iter().fold(Certainty::AMBIGUOUS, |certainty, response| {
-            certainty.unify_with(response.value.certainty)
-        });
 
-        let response = self.evaluate_added_goals_and_make_canonical_response(certainty);
-        if let Ok(response) = response {
-            assert!(response.has_no_inference_or_external_constraints());
-            Ok(response)
-        } else {
-            bug!("failed to make floundered response: {responses:?}");
-        }
+        let Certainty::Maybe(maybe_cause) = responses.iter().fold(
+            Certainty::AMBIGUOUS,
+            |certainty, response| {
+                certainty.unify_with(response.value.certainty)
+            },
+        ) else {
+            bug!("expected flounder response to be ambiguous")
+        };
+
+        Ok(self.make_ambiguous_response_no_constraints(maybe_cause))
     }
 }
 
