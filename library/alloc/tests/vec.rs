@@ -1212,6 +1212,17 @@ fn test_in_place_specialization_step_up_down() {
     let sink_bytes = sink.capacity() * 4;
     assert_ne!(src_bytes, sink_bytes);
     assert_eq!(sink.len(), 2);
+
+    let src = vec![[0u8; 4]; 256];
+    let srcptr = src.as_ptr();
+    let iter = src
+        .into_iter()
+        .flat_map(|a| {
+            a.into_iter().map(|b| b.wrapping_add(1))
+        });
+    assert_in_place_trait(&iter);
+    let sink = iter.collect::<Vec<_>>();
+    assert_eq!(srcptr as *const u8, sink.as_ptr());
 }
 
 #[test]
