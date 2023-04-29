@@ -404,6 +404,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn array_length_to_const(&self, length: &hir::ArrayLen) -> ty::Const<'tcx> {
+        // FIXME(const_arg_kind)
         match length {
             &hir::ArrayLen::Infer(_, span) => self.ct_infer(self.tcx.types.usize, None, span),
             hir::ArrayLen::Body(anon_const) => {
@@ -420,21 +421,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ast_c: &hir::ConstArg<'_>,
         param_def_id: DefId,
     ) -> ty::Const<'tcx> {
-        // FIXME(const_arg_kind)
-        match ast_c.kind {
-            hir::ConstArgKind::AnonConst(_, ast_c) => {
-                let did = ast_c.def_id;
-                self.tcx.feed_anon_const_type(did, self.tcx.type_of(param_def_id));
-                let c = ty::Const::from_anon_const(self.tcx, did);
-                self.register_wf_obligation(
-                    c.into(),
-                    self.tcx.hir().span(ast_c.hir_id),
-                    ObligationCauseCode::WellFormed(None),
-                );
-                c
-            }
-            hir::ConstArgKind::Param(_, _) => todo!(),
-        }
+        let ct = self.astconv().ast_const_to_const(ast_c, param_def_id);
+        self.register_wf_obligation(ct.into(), ast_c.span(), ObligationCauseCode::WellFormed(None));
+        ct
     }
 
     // If the type given by the user has free regions, save it for later, since

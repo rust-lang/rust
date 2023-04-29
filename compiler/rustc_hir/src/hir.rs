@@ -259,6 +259,13 @@ impl<'hir> ConstArg<'hir> {
             ConstArgKind::Param(_, qpath) => qpath.span(),
         }
     }
+
+    pub fn hir_id(&self) -> HirId {
+        match self.kind {
+            ConstArgKind::AnonConst(_, ct) => ct.hir_id,
+            ConstArgKind::Param(id, _) => id,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
@@ -295,10 +302,7 @@ impl GenericArg<'_> {
         match self {
             GenericArg::Lifetime(l) => l.hir_id,
             GenericArg::Type(t) => t.hir_id,
-            GenericArg::Const(c) => match c.kind {
-                ConstArgKind::AnonConst(_, ct) => ct.hir_id,
-                ConstArgKind::Param(id, _) => id,
-            },
+            GenericArg::Const(c) => c.hir_id(),
             GenericArg::Infer(i) => i.hir_id,
         }
     }

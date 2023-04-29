@@ -2393,6 +2393,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_array_length(&mut self, c: &AnonConst) -> hir::ArrayLen {
+        // FIXME(const_arg_kind)
         match c.value.kind {
             ExprKind::Underscore => {
                 if self.tcx.features().generic_arg_infer {

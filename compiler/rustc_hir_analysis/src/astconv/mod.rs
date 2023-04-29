@@ -15,6 +15,7 @@ use crate::errors::{
 };
 use crate::middle::resolve_bound_vars as rbv;
 use crate::require_c_abi_if_c_variadic;
+use hir::def::CtorKind;
 use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{
@@ -34,7 +35,9 @@ use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::fold::FnMutDelegate;
 use rustc_middle::ty::subst::{self, GenericArgKind, InternalSubsts, SubstsRef};
 use rustc_middle::ty::GenericParamDefKind;
-use rustc_middle::ty::{self, Const, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{
+    self, Const, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, UnevaluatedConst,
+};
 use rustc_middle::ty::{DynKind, ToPredicate};
 use rustc_session::lint::builtin::{AMBIGUOUS_ASSOCIATED_ITEMS, BARE_TRAIT_OBJECTS};
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -449,15 +452,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     (&GenericParamDefKind::Type { has_default, .. }, GenericArg::Infer(inf)) => {
                         handle_ty_args(has_default, &inf.to_ty())
                     }
-                    (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => match ct.kind {
-                        // FIXME(const_arg_kind)
-                        hir::ConstArgKind::AnonConst(_, ct) => {
-                            let did = ct.def_id;
-                            tcx.feed_anon_const_type(did, tcx.type_of(param.def_id));
-                            ty::Const::from_anon_const(tcx, did).into()
-                        }
-                        hir::ConstArgKind::Param(_, _) => todo!(),
-                    },
+                    (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
+                        self.astconv.ast_const_to_const(ct, param.def_id).into()
+                    }
                     (&GenericParamDefKind::Const { .. }, hir::GenericArg::Infer(inf)) => {
                         let ty = tcx
                             .at(self.span)
@@ -3755,6 +3752,129 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     },
                 );
             }
+        }
+    }
+
+    #[instrument(level = "debug", skip(self), ret)]
+    pub fn ast_const_to_const(
+        &self,
+        ast_ct: &hir::ConstArg<'_>,
+        param_def_id: DefId,
+    ) -> Const<'tcx> {
+        let tcx = self.tcx();
+
+        match ast_ct.kind {
+            hir::ConstArgKind::AnonConst(_, ct) => {
+                tcx.feed_anon_const_type(ct.def_id, tcx.type_of(param_def_id));
+                Const::from_anon_const(tcx, ct.def_id)
+            }
+            hir::ConstArgKind::Param(_, path) => match path {
+                hir::QPath::Resolved(_, path) => match path.res {
+                    Res::Def(def_kind, def_id) => match def_kind {
+                        DefKind::ConstParam => {
+                            self.prohibit_generics(path.segments.iter(), |_| {});
+                            let param_ty = tcx.type_of(def_id).subst_identity();
+
+                            match tcx.named_bound_var(ast_ct.hir_id()) {
+                                Some(rbv::ResolvedArg::EarlyBound(_)) => {
+                                    // Find the name and index of the const parameter by indexing the generics of
+                                    // the parent item and construct a `ParamConst`.
+                                    let item_def_id = tcx.parent(def_id);
+                                    let generics = tcx.generics_of(item_def_id);
+                                    let index = generics.param_def_id_to_index[&def_id];
+                                    let name = tcx.item_name(def_id);
+                                    tcx.mk_const(ty::ParamConst::new(index, name), param_ty)
+                                }
+                                Some(rbv::ResolvedArg::LateBound(debruijn, index, _)) => tcx
+                                    .mk_const(
+                                        ty::ConstKind::Bound(
+                                            debruijn,
+                                            ty::BoundVar::from_u32(index),
+                                        ),
+                                        param_ty,
+                                    ),
+                                Some(rbv::ResolvedArg::Error(guar)) => {
+                                    tcx.const_error_with_guaranteed(param_ty, guar)
+                                }
+                                arg => bug!(
+                                    "unexpected bound var resolution for {:?}: {arg:?}",
+                                    ast_ct.hir_id()
+                                ),
+                            }
+                        }
+                        DefKind::Const => {
+                            let (last, prev) = path.segments.split_last().unwrap();
+                            self.prohibit_generics(prev.iter(), |_| {});
+                            let substs = self.ast_path_substs_for_ty(ast_ct.span(), def_id, last);
+                            tcx.mk_const(
+                                UnevaluatedConst { def: def_id, substs },
+                                tcx.type_of(def_id).subst(tcx, substs),
+                            )
+                        }
+
+                        DefKind::Ctor(_, _) => todo!(),
+                        DefKind::Fn => todo!(),
+
+                        DefKind::AssocFn | DefKind::AssocConst => {
+                            unimplemented!("multi segment paths are not supported")
+                        }
+
+                        // FIXME(const_arg_kind): somewhere else should be emitting this
+                        DefKind::Static(_) => {
+                            let e = tcx
+                                .sess
+                                .span_err(ast_ct.span(), "no static access in consts allowed");
+                            tcx.const_error_with_guaranteed(tcx.ty_error(e), e)
+                        }
+
+                        DefKind::OpaqueTy
+                        | DefKind::InlineConst
+                        | DefKind::ForeignMod
+                        | DefKind::AnonConst
+                        | DefKind::Macro(_)
+                        | DefKind::ExternCrate
+                        | DefKind::Use
+                        | DefKind::LifetimeParam
+                        | DefKind::Struct
+                        | DefKind::Union
+                        | DefKind::Enum
+                        | DefKind::Variant
+                        | DefKind::Trait
+                        | DefKind::TyAlias
+                        | DefKind::ForeignTy
+                        | DefKind::TraitAlias
+                        | DefKind::AssocTy
+                        | DefKind::TyParam
+                        | DefKind::ImplTraitPlaceholder
+                        | DefKind::Field
+                        | DefKind::GlobalAsm
+                        | DefKind::Impl { .. }
+                        | DefKind::Closure
+                        | DefKind::Mod
+                        | DefKind::Generator => bug!("unexpected path res of const arg"),
+                    },
+
+                    Res::SelfCtor(_) => todo!(),
+
+                    Res::Err
+                    | Res::Local(_)
+                    | Res::ToolMod
+                    | Res::NonMacroAttr(_)
+                    | Res::PrimTy(_)
+                    | Res::SelfTyParam { .. }
+                    | Res::SelfTyAlias { .. } => {
+                        let e = tcx.sess.delay_span_bug(
+                            ast_ct.span(),
+                            format!("unexpected path res {:?} of const arg {:?}", path.res, ast_ct),
+                        );
+                        tcx.const_error_with_guaranteed(tcx.ty_error(e), e)
+                    }
+                },
+                hir::QPath::TypeRelative(_, _) => {
+                    bug!("multi-segment path consts are not yet supported")
+                }
+                hir::QPath::LangItem(_, _, _) => unimplemented!(),
+            },
         }
     }
 }

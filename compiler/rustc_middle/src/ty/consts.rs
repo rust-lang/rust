@@ -1,9 +1,7 @@
-use crate::middle::resolve_bound_vars as rbv;
 use crate::mir::interpret::LitToConstInput;
 use crate::ty::{self, InternalSubsts, ParamEnv, ParamEnvAnd, Ty, TyCtxt};
 use rustc_data_structures::intern::Interned;
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_macros::HashStable;
 use std::fmt;
@@ -51,7 +49,7 @@ impl<'tcx> Const<'tcx> {
         self.0.kind
     }
 
-    /// Literals and const generic parameters are eagerly converted to a constant, everything else
+    /// Literals are eagerly converted to a constant, everything else
     /// becomes `Unevaluated`.
     #[instrument(skip(tcx), level = "debug")]
     pub fn from_anon_const(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Self {
@@ -68,7 +66,7 @@ impl<'tcx> Const<'tcx> {
 
         let ty = tcx.type_of(def).no_bound_vars().expect("const parameter types cannot be generic");
 
-        match Self::try_eval_lit_or_param(tcx, ty, expr) {
+        match Self::try_eval_lit(tcx, ty, expr) {
             Some(v) => v,
             None => tcx.mk_const(
                 ty::UnevaluatedConst {
@@ -81,12 +79,8 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[instrument(skip(tcx), level = "debug")]
-    fn try_eval_lit_or_param(
-        tcx: TyCtxt<'tcx>,
-        ty: Ty<'tcx>,
-        expr: &'tcx hir::Expr<'tcx>,
-    ) -> Option<Self> {
-        // Unwrap a block, so that e.g. `{ P }` is recognised as a parameter. Const arguments
+    fn try_eval_lit(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, expr: &'tcx hir::Expr<'tcx>) -> Option<Self> {
+        // Unwrap a block, so that e.g. `{ 1 }` is recognised as a literal. Const arguments
         // currently have to be wrapped in curly brackets, so it's necessary to special-case.
         let expr = match &expr.kind {
             hir::ExprKind::Block(block, _) if block.stmts.is_empty() && block.expr.is_some() => {
@@ -119,37 +113,7 @@ impl<'tcx> Const<'tcx> {
                 }
             }
         }
-
-        match expr.kind {
-            hir::ExprKind::Path(hir::QPath::Resolved(
-                _,
-                &hir::Path { res: Res::Def(DefKind::ConstParam, def_id), .. },
-            )) => {
-                // Use the type from the param's definition, since we can resolve it,
-                // not the expected parameter type from WithOptConstParam.
-                let param_ty = tcx.type_of(def_id).subst_identity();
-                match tcx.named_bound_var(expr.hir_id) {
-                    Some(rbv::ResolvedArg::EarlyBound(_)) => {
-                        // Find the name and index of the const parameter by indexing the generics of
-                        // the parent item and construct a `ParamConst`.
-                        let item_def_id = tcx.parent(def_id);
-                        let generics = tcx.generics_of(item_def_id);
-                        let index = generics.param_def_id_to_index[&def_id];
-                        let name = tcx.item_name(def_id);
-                        Some(tcx.mk_const(ty::ParamConst::new(index, name), param_ty))
-                    }
-                    Some(rbv::ResolvedArg::LateBound(debruijn, index, _)) => Some(tcx.mk_const(
-                        ty::ConstKind::Bound(debruijn, ty::BoundVar::from_u32(index)),
-                        param_ty,
-                    )),
-                    Some(rbv::ResolvedArg::Error(guar)) => {
-                        Some(tcx.const_error_with_guaranteed(param_ty, guar))
-                    }
-                    arg => bug!("unexpected bound var resolution for {:?}: {arg:?}", expr.hir_id),
-                }
-            }
-            _ => None,
-        }
+        None
     }
 
     /// Panics if self.kind != ty::ConstKind::Value
