@@ -159,6 +159,8 @@ pub(crate) fn codegen_const_value<'tcx>(
                         _ => unreachable!(),
                     };
 
+                    // FIXME avoid this extra copy to the stack and directly write to the final
+                    // destination
                     let place = CPlace::new_stack_slot(fx, layout);
                     place.to_ptr().store(fx, val, MemFlags::trusted());
                     place.to_cvalue(fx)

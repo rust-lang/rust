@@ -72,19 +72,6 @@ fn clif_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<types::Typ
                 pointer_ty(tcx)
             }
         }
-        ty::Adt(adt_def, _) if adt_def.repr().simd() => {
-            let (element, count) = match &tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap().abi
-            {
-                Abi::Vector { element, count } => (*element, *count),
-                _ => unreachable!(),
-            };
-
-            match scalar_to_clif_type(tcx, element).by(u32::try_from(count).unwrap()) {
-                // Cranelift currently only implements icmp for 128bit vectors.
-                Some(vector_ty) if vector_ty.bits() == 128 => vector_ty,
-                _ => return None,
-            }
-        }
         ty::Param(_) => bug!("ty param {:?}", ty),
         _ => return None,
     })
@@ -96,12 +83,7 @@ fn clif_pair_type_from_ty<'tcx>(
 ) -> Option<(types::Type, types::Type)> {
     Some(match ty.kind() {
         ty::Tuple(types) if types.len() == 2 => {
-            let a = clif_type_from_ty(tcx, types[0])?;
-            let b = clif_type_from_ty(tcx, types[1])?;
-            if a.is_vector() || b.is_vector() {
-                return None;
-            }
-            (a, b)
+            (clif_type_from_ty(tcx, types[0])?, clif_type_from_ty(tcx, types[1])?)
         }
         ty::RawPtr(TypeAndMut { ty: pointee_ty, mutbl: _ }) | ty::Ref(_, pointee_ty, _) => {
             if has_ptr_meta(tcx, *pointee_ty) {
@@ -431,7 +413,11 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
 
     // Note: must be kept in sync with get_caller_location from cg_ssa
     pub(crate) fn get_caller_location(&mut self, mut source_info: mir::SourceInfo) -> CValue<'tcx> {
-        let span_to_caller_location = |fx: &mut FunctionCx<'_, '_, 'tcx>, span: Span| {
+        let span_to_caller_location = |fx: &mut FunctionCx<'_, '_, 'tcx>, mut span: Span| {
+            // Remove `Inlined` marks as they pollute `expansion_cause`.
+            while span.is_inlined() {
+                span.remove_mark();
+            }
             let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
             let caller = fx.tcx.sess.source_map().lookup_char_pos(topmost.lo());
             let const_loc = fx.tcx.const_caller_location((
