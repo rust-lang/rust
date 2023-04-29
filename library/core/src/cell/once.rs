@@ -29,7 +29,7 @@ use crate::mem;
 /// assert_eq!(value, "Hello, World!");
 /// assert!(cell.get().is_some());
 /// ```
-#[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "once_cell", since = "1.70.0")]
 pub struct OnceCell<T> {
     // Invariant: written to at most once.
     inner: UnsafeCell<Option<T>>,
@@ -39,8 +39,8 @@ impl<T> OnceCell<T> {
     /// Creates a new empty cell.
     #[inline]
     #[must_use]
-    #[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "once_cell", since = "1.70.0")]
+    #[rustc_const_stable(feature = "once_cell", since = "1.70.0")]
     pub const fn new() -> OnceCell<T> {
         OnceCell { inner: UnsafeCell::new(None) }
     }
@@ -49,7 +49,7 @@ impl<T> OnceCell<T> {
     ///
     /// Returns `None` if the cell is empty.
     #[inline]
-    #[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "once_cell", since = "1.70.0")]
     pub fn get(&self) -> Option<&T> {
         // SAFETY: Safe due to `inner`'s invariant
         unsafe { &*self.inner.get() }.as_ref()
@@ -59,7 +59,7 @@ impl<T> OnceCell<T> {
     ///
     /// Returns `None` if the cell is empty.
     #[inline]
-    #[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "once_cell", since = "1.70.0")]
     pub fn get_mut(&mut self) -> Option<&mut T> {
         self.inner.get_mut().as_mut()
     }
@@ -85,7 +85,7 @@ impl<T> OnceCell<T> {
     /// assert!(cell.get().is_some());
     /// ```
     #[inline]
-    #[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "once_cell", since = "1.70.0")]
     pub fn set(&self, value: T) -> Result<(), T> {
         // SAFETY: Safe because we cannot have overlapping mutable borrows
         let slot = unsafe { &*self.inner.get() };
@@ -125,7 +125,7 @@ impl<T> OnceCell<T> {
     /// assert_eq!(value, &92);
     /// ```
     #[inline]
-    #[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "once_cell", since = "1.70.0")]
     pub fn get_or_init<F>(&self, f: F) -> &T
     where
         F: FnOnce() -> T,
@@ -206,7 +206,7 @@ impl<T> OnceCell<T> {
     /// assert_eq!(cell.into_inner(), Some("hello".to_string()));
     /// ```
     #[inline]
-    #[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "once_cell", since = "1.70.0")]
     pub fn into_inner(self) -> Option<T> {
         // Because `into_inner` takes `self` by value, the compiler statically verifies
         // that it is not currently borrowed. So it is safe to move out `Option<T>`.
@@ -233,13 +233,13 @@ impl<T> OnceCell<T> {
     /// assert_eq!(cell.get(), None);
     /// ```
     #[inline]
-    #[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "once_cell", since = "1.70.0")]
     pub fn take(&mut self) -> Option<T> {
         mem::take(self).into_inner()
     }
 }
 
-#[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "once_cell", since = "1.70.0")]
 impl<T> Default for OnceCell<T> {
     #[inline]
     fn default() -> Self {
@@ -247,7 +247,7 @@ impl<T> Default for OnceCell<T> {
     }
 }
 
-#[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "once_cell", since = "1.70.0")]
 impl<T: fmt::Debug> fmt::Debug for OnceCell<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.get() {
@@ -257,7 +257,7 @@ impl<T: fmt::Debug> fmt::Debug for OnceCell<T> {
     }
 }
 
-#[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "once_cell", since = "1.70.0")]
 impl<T: Clone> Clone for OnceCell<T> {
     #[inline]
     fn clone(&self) -> OnceCell<T> {
@@ -272,7 +272,7 @@ impl<T: Clone> Clone for OnceCell<T> {
     }
 }
 
-#[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "once_cell", since = "1.70.0")]
 impl<T: PartialEq> PartialEq for OnceCell<T> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
@@ -280,10 +280,10 @@ impl<T: PartialEq> PartialEq for OnceCell<T> {
     }
 }
 
-#[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "once_cell", since = "1.70.0")]
 impl<T: Eq> Eq for OnceCell<T> {}
 
-#[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "once_cell", since = "1.70.0")]
 impl<T> From<T> for OnceCell<T> {
     /// Creates a new `OnceCell<T>` which already contains the given `value`.
     #[inline]
@@ -293,5 +293,5 @@ impl<T> From<T> for OnceCell<T> {
 }
 
 // Just like for `Cell<T>` this isn't needed, but results in nicer error messages.
-#[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "once_cell", since = "1.70.0")]
 impl<T> !Sync for OnceCell<T> {}

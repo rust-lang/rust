@@ -558,7 +558,7 @@ use crate::{
 /// The `Option` type. See [the module level documentation](self) for more.
 #[derive(Copy, PartialOrd, Eq, Ord, Debug, Hash)]
 #[rustc_diagnostic_item = "Option"]
-#[cfg_attr(not(bootstrap), lang = "Option")]
+#[lang = "Option"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Option<T> {
     /// No value.
@@ -615,7 +615,7 @@ impl<T> Option<T> {
     /// ```
     #[must_use]
     #[inline]
-    #[stable(feature = "is_some_and", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "is_some_and", since = "1.70.0")]
     pub fn is_some_and(self, f: impl FnOnce(T) -> bool) -> bool {
         match self {
             None => false,
@@ -765,13 +765,6 @@ impl<T> Option<T> {
     #[must_use]
     #[unstable(feature = "option_as_slice", issue = "108545")]
     pub fn as_slice(&self) -> &[T] {
-        #[cfg(bootstrap)]
-        match self {
-            Some(value) => slice::from_ref(value),
-            None => &[],
-        }
-
-        #[cfg(not(bootstrap))]
         // SAFETY: When the `Option` is `Some`, we're using the actual pointer
         // to the payload, with a length of 1, so this is equivalent to
         // `slice::from_ref`, and thus is safe.
@@ -832,13 +825,6 @@ impl<T> Option<T> {
     #[must_use]
     #[unstable(feature = "option_as_slice", issue = "108545")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
-        #[cfg(bootstrap)]
-        match self {
-            Some(value) => slice::from_mut(value),
-            None => &mut [],
-        }
-
-        #[cfg(not(bootstrap))]
         // SAFETY: When the `Option` is `Some`, we're using the actual pointer
         // to the payload, with a length of 1, so this is equivalent to
         // `slice::from_mut`, and thus is safe.

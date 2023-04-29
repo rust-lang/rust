@@ -11,7 +11,7 @@ use crate::{fmt, mem, panic};
 pub macro thread_local_inner {
     // used to generate the `LocalKey` value for const-initialized thread locals
     (@key $t:ty, const $init:expr) => {{
-        #[cfg_attr(not(bootstrap), inline)]
+        #[inline]
         #[deny(unsafe_op_in_unsafe_fn)]
         unsafe fn __getit(
             _init: $crate::option::Option<&mut $crate::option::Option<$t>>,
@@ -78,7 +78,7 @@ pub macro thread_local_inner {
             #[inline]
             fn __init() -> $t { $init }
 
-            #[cfg_attr(not(bootstrap), inline)]
+            #[inline]
             unsafe fn __getit(
                 init: $crate::option::Option<&mut $crate::option::Option<$t>>,
             ) -> $crate::option::Option<&'static $t> {

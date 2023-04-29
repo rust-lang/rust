@@ -929,7 +929,6 @@ mod copy_impls {
     reason = "internal trait for implementing various traits for all function pointers"
 )]
 #[lang = "fn_ptr_trait"]
-#[cfg(not(bootstrap))]
 #[rustc_deny_explicit_impl]
 pub trait FnPtr: Copy + Clone {
     /// Returns the address of the function pointer.

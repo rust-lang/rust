@@ -14,7 +14,7 @@
 #![feature(type_ascription)]
 #![feature(iter_intersperse)]
 #![feature(type_alias_impl_trait)]
-#![cfg_attr(not(bootstrap), feature(impl_trait_in_assoc_type))]
+#![feature(impl_trait_in_assoc_type)]
 #![recursion_limit = "256"]
 #![warn(rustc::internal)]
 #![allow(clippy::collapsible_if, clippy::collapsible_else_if)]

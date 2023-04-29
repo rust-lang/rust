@@ -1823,14 +1823,12 @@ extern "rust-intrinsic" {
     /// with an even least significant digit.
     ///
     /// This intrinsic does not have a stable counterpart.
-    #[cfg(not(bootstrap))]
     #[rustc_nounwind]
     pub fn roundevenf32(x: f32) -> f32;
     /// Returns the nearest integer to an `f64`. Rounds half-way cases to the number
     /// with an even least significant digit.
     ///
     /// This intrinsic does not have a stable counterpart.
-    #[cfg(not(bootstrap))]
     #[rustc_nounwind]
     pub fn roundevenf64(x: f64) -> f64;
 
@@ -2262,7 +2260,6 @@ extern "rust-intrinsic" {
     /// This intrinsic can *only* be called where the argument is a local without
     /// projections (`read_via_copy(p)`, not `read_via_copy(*p)`) so that it
     /// trivially obeys runtime-MIR rules about derefs in operands.
-    #[cfg(not(bootstrap))]
     #[rustc_const_unstable(feature = "const_ptr_read", issue = "80377")]
     #[rustc_nounwind]
     pub fn read_via_copy<T>(p: *const T) -> T;
@@ -2470,7 +2467,6 @@ extern "rust-intrinsic" {
     /// This method creates a pointer to any `Some` value. If the argument is
     /// `None`, an invalid within-bounds pointer (that is still acceptable for
     /// constructing an empty slice) is returned.
-    #[cfg(not(bootstrap))]
     #[rustc_nounwind]
     pub fn option_payload_ptr<T>(arg: *const Option<T>) -> *const T;
 }
