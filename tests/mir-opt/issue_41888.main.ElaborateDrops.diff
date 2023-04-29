@@ -22,9 +22,9 @@
       }
   
       bb0: {
-+         _9 = const false;                // scope 0 at $DIR/issue_41888.rs:+1:9: +1:10
 +         _7 = const false;                // scope 0 at $DIR/issue_41888.rs:+1:9: +1:10
 +         _8 = const false;                // scope 0 at $DIR/issue_41888.rs:+1:9: +1:10
++         _9 = const false;                // scope 0 at $DIR/issue_41888.rs:+1:9: +1:10
           StorageLive(_1);                 // scope 0 at $DIR/issue_41888.rs:+1:9: +1:10
           StorageLive(_2);                 // scope 1 at $DIR/issue_41888.rs:+2:8: +2:14
           _2 = cond() -> [return: bb1, unwind: bb11]; // scope 1 at $DIR/issue_41888.rs:+2:8: +2:14

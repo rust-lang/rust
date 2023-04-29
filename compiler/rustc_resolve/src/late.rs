@@ -859,13 +859,9 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                             sig.decl.inputs.iter().map(|Param { ty, .. }| (None, &**ty)),
                             &sig.decl.output,
                         );
-
-                        this.record_lifetime_params_for_async(
-                            fn_id,
-                            sig.header.asyncness.opt_return_id(),
-                        );
                     },
                 );
+                self.record_lifetime_params_for_async(fn_id, sig.header.asyncness.opt_return_id());
                 return;
             }
             FnKind::Fn(..) => {

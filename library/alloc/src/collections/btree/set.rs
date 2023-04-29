@@ -1501,11 +1501,17 @@ impl<'a, T> Iterator for Iter<'a, T> {
         self.next_back()
     }
 
-    fn min(mut self) -> Option<&'a T> {
+    fn min(mut self) -> Option<&'a T>
+    where
+        &'a T: Ord,
+    {
         self.next()
     }
 
-    fn max(mut self) -> Option<&'a T> {
+    fn max(mut self) -> Option<&'a T>
+    where
+        &'a T: Ord,
+    {
         self.next_back()
     }
 }
@@ -1604,11 +1610,17 @@ impl<'a, T> Iterator for Range<'a, T> {
         self.next_back()
     }
 
-    fn min(mut self) -> Option<&'a T> {
+    fn min(mut self) -> Option<&'a T>
+    where
+        &'a T: Ord,
+    {
         self.next()
     }
 
-    fn max(mut self) -> Option<&'a T> {
+    fn max(mut self) -> Option<&'a T>
+    where
+        &'a T: Ord,
+    {
         self.next_back()
     }
 }
