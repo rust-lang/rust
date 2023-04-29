@@ -41,7 +41,7 @@ impl ReverseSccGraph {
 impl RegionInferenceContext<'_> {
     /// Compute the reverse SCC-based constraint graph (lazily).
     pub(super) fn compute_reverse_scc_graph(&mut self) {
-        if matches!(self.rev_scc_graph, Some(_)) {
+        if self.rev_scc_graph.is_some() {
             return;
         }
 
