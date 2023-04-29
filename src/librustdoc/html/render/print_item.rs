@@ -1245,13 +1245,13 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
     let tcx = cx.tcx();
     let count_variants = e.variants().count();
     wrap_item(w, |mut w| {
+        render_attributes_in_code(w, it, tcx);
         write!(
             w,
-            "{attrs}{}enum {}{}",
+            "{}enum {}{}",
             visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
             it.name.unwrap(),
             e.generics.print(cx),
-            attrs = render_attributes_in_pre(it, "", tcx),
         );
         if !print_where_clause_and_check(w, &e.generics, cx) {
             // If there wasn't a `where` clause, we add a whitespace.
