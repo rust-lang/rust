@@ -313,6 +313,8 @@ declare_features! (
     (active, async_closure, "1.37.0", Some(62290), None),
     /// Allows async functions to be declared, implemented, and used in traits.
     (active, async_fn_in_trait, "1.66.0", Some(91611), None),
+    /// Allows builtin # foo() syntax
+    (active, builtin_syntax, "CURRENT_RUSTC_VERSION", Some(110680), None),
     /// Allows `c"foo"` literals.
     (active, c_str_literals, "CURRENT_RUSTC_VERSION", Some(105723), None),
     /// Treat `extern "C"` function as nounwind.

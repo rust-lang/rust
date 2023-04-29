@@ -1,8 +1,8 @@
+#![feature(builtin_syntax)]
+
 // For the exposed macro we already test these errors in the other files,
 // but this test helps to make sure the builtin construct also errors.
 // This has the same examples as offset-of-arg-count.rs
-
-
 
 fn main() {
     builtin # offset_of(NotEnoughArguments); //~ ERROR expected one of

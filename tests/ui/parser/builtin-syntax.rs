@@ -1,3 +1,5 @@
+#![feature(builtin_syntax)]
+
 fn main() {
     builtin # foobar(); //~ ERROR unknown `builtin #` construct
 }

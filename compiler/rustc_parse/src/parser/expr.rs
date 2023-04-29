@@ -1782,6 +1782,7 @@ impl<'a> Parser<'a> {
                 .into_diagnostic(&self.sess.span_diagnostic);
             return Err(err);
         };
+        self.sess.gated_spans.gate(sym::builtin_syntax, ident.span);
         self.bump();
 
         self.expect(&TokenKind::OpenDelim(Delimiter::Parenthesis))?;
