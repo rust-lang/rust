@@ -56,7 +56,7 @@ impl<'tcx> LateLintPass<'tcx> for DuplicateTrait {
                     bound.span,
                     DuplicateTraitDiag {
                         trait_name: cx.tcx.item_name(def_id),
-                        suggestion: bound.span
+                        suggestion: bound.span,
                     },
                 )
             }
