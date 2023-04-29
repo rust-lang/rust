@@ -74,6 +74,7 @@ found in [`header.rs`] from the compiletest source.
 * [Environment variable headers](#environment-variable-headers)
     * `rustc-env`
     * `exec-env`
+    * `unset-exec-env`
     * `unset-rustc-env`
 * [Miscellaneous headers](#miscellaneous-headers)
     * `compile-flags` — adds compiler flags
@@ -179,6 +180,8 @@ The following headers affect environment variables.
   form `KEY=VALUE`.
 * `exec-env` is an environment variable to set when executing a test of the
   form `KEY=VALUE`.
+* `unset-exec-env` specifies an environment variable to unset when executing a
+  test.
 * `unset-rustc-env` specifies an environment variable to unset when running
   `rustc`.
 
