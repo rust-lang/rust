@@ -28,7 +28,6 @@ declare_lint_pass!(UselessSendConstraint => [USELESS_SEND_CONSTRAINT]);
 impl<'tcx> LateLintPass<'tcx> for UselessSendConstraint {
     fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx hir::Ty<'tcx>) {
         let hir::TyKind::Ref(
-            _,
             hir::MutTy {
                 ty: hir::Ty {
                     kind: hir::TyKind::TraitObject(bounds, ..),
@@ -36,6 +35,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessSendConstraint {
                 },
                 mutbl: hir::Mutability::Not, // only immutable references
             }
+            ..,
         ) = ty.kind else { return; };
 
         let send = cx.tcx.get_diagnostic_item(sym::Send);
