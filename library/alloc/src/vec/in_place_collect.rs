@@ -6,11 +6,11 @@
 //! The specialization in this module applies to iterators in the shape of
 //! `source.adapter().adapter().adapter().collect::<Vec<U>>()`
 //! where `source` is an owning iterator obtained from [`Vec<T>`], [`Box<[T]>`][box] (by conversion to `Vec`)
-//! or [`BinaryHeap<T>`], the adapters each consume one or more items per step
-//! (represented by [`InPlaceIterable`]), provide transitive access to `source` (via [`SourceIter`])
-//! and thus the underlying allocation. And finally the layouts of `T` and `U` must
-//! have the same size and alignment, this is currently ensured via const eval instead of trait bounds
-//! in the specialized [`SpecFromIter`] implementation.
+//! or [`BinaryHeap<T>`], the adapters guarantee to consume enough items per step to make room
+//! for the results (represented by [`InPlaceIterable`]), provide transitive access to `source`
+//! (via [`SourceIter`]) and thus the underlying allocation.
+//! And finally there are alignment and size constriants to consider, this is currently ensured via
+//! const eval instead of trait bounds in the specialized [`SpecFromIter`] implementation.
 //!
 //! [`BinaryHeap<T>`]: crate::collections::BinaryHeap
 //! [box]: crate::boxed::Box
@@ -35,11 +35,28 @@
 //! the step of reading a value and getting a reference to write to. Instead raw pointers must be
 //! used on the reader and writer side.
 //!
-//! That writes never clobber a yet-to-be-read item is ensured by the [`InPlaceIterable`] requirements.
+//! That writes never clobber a yet-to-be-read items is ensured by the [`InPlaceIterable`] requirements.
 //!
 //! # Layout constraints
 //!
-//! [`Allocator`] requires that `allocate()` and `deallocate()` have matching alignment and size.
+//! When recycling an allocation between different types we must uphold the [`Allocator`] contract
+//! which means that the input and output Layouts have to "fit".
+//!
+//! To complicate things further `InPlaceIterable` supports splitting or merging items into smaller/
+//! larger ones to enable (de)aggregation of arrays.
+//!
+//! Ultimately each step of the iterator must free up enough *bytes* in the source to make room
+//! for the next output item.
+//! If `T` and `U` have the same size no fixup is needed.
+//! If `T`'s size is a multiple of `U`'s we can compensate by multiplying the capacity accordingly.
+//! Otherwise the input capacity (and thus layout) in bytes may not be representable by the output
+//! `Vec<U>`. In that case `alloc.shrink()` is used to update the allocation's layout.
+//!
+//! Currently alignments of `T` and `U` must be the same. In principle smaller output alignments
+//! could be supported but that would require always calling `alloc.shrink` for those transformations.
+//!
+//! See `in_place_collectible()` for the current conditions.
+//!
 //! Additionally this specialization doesn't make sense for ZSTs as there is no reallocation to
 //! avoid and it would make pointer arithmetic more difficult.
 //!
@@ -163,7 +180,7 @@ const fn in_place_collectible<DEST, SRC>(
             // - 4 x u8 -> 1x [u8; 4], via array_chunks
             mem::size_of::<SRC>() * step_merge.get() == mem::size_of::<DEST>() * step_expand.get()
         }
-        // Fall back to other from_iter impls if an overflow occured in the step merge/expansion
+        // Fall back to other from_iter impls if an overflow occurred in the step merge/expansion
         // tracking.
         _ => false,
     }
