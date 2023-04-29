@@ -154,7 +154,11 @@ pub fn main() {
         }
     }
 
-    rustc_driver::install_ice_hook();
+    rustc_driver::install_ice_hook(
+        "https://github.com/rust-lang/rust/issues/new\
+    ?labels=C-bug%2C+I-ICE%2C+T-rustdoc&template=ice.md",
+        |_| (),
+    );
 
     // When using CI artifacts with `download-rustc`, tracing is unconditionally built
     // with `--features=static_max_level_info`, which disables almost all rustdoc logging. To avoid

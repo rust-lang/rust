@@ -286,11 +286,10 @@ fn main() {
     // (`install_ice_hook` might change `RUST_BACKTRACE`.)
     let env_snapshot = env::vars_os().collect::<Vec<_>>();
 
-    // Earliest rustc setup.
-    rustc_driver::install_ice_hook();
-
     // If the environment asks us to actually be rustc, then do that.
     if let Some(crate_kind) = env::var_os("MIRI_BE_RUSTC") {
+        // Earliest rustc setup.
+        rustc_driver::install_ice_hook(rustc_driver::DEFAULT_BUG_REPORT_URL, |_| ());
         rustc_driver::init_rustc_env_logger();
 
         let target_crate = if crate_kind == "target" {
@@ -308,6 +307,9 @@ fn main() {
             &mut MiriBeRustCompilerCalls { target_crate },
         )
     }
+
+    // Add an ICE bug report hook.
+    rustc_driver::install_ice_hook("https://github.com/rust-lang/miri/issues/new", |_| ());
 
     // Init loggers the Miri way.
     init_early_loggers();
