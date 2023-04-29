@@ -70,7 +70,7 @@ pub(crate) fn get_function_sig<'tcx>(
     default_call_conv: CallConv,
     inst: Instance<'tcx>,
 ) -> Signature {
-    assert!(!inst.substs.needs_infer());
+    assert!(!inst.substs.has_infer());
     clif_sig_from_fn_abi(
         tcx,
         default_call_conv,
