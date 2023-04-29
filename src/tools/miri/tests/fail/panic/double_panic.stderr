@@ -2,30 +2,17 @@ thread 'main' panicked at 'first', $DIR/double_panic.rs:LL:CC
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 thread 'main' panicked at 'second', $DIR/double_panic.rs:LL:CC
 stack backtrace:
-thread panicked while panicking. aborting.
-error: abnormal termination: the program aborted execution
-  --> RUSTLIB/std/src/sys/PLATFORM/mod.rs:LL:CC
-   |
-LL |     ABORT();
-   | ^ the program aborted execution
-   |
-   = note: inside `std::sys::PLATFORM::abort_internal` at RUSTLIB/std/src/sys/PLATFORM/mod.rs:LL:CC
-   = note: inside `std::panicking::rust_panic_with_hook` at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside closure at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside `std::sys_common::backtrace::__rust_end_short_backtrace::<[closure@std::panicking::begin_panic_handler::{closure#0}], !>` at RUSTLIB/std/src/sys_common/backtrace.rs:LL:CC
-   = note: inside `std::panicking::begin_panic_handler` at RUSTLIB/std/src/panicking.rs:LL:CC
-note: inside `<Foo as std::ops::Drop>::drop`
+error: abnormal termination: panic in a function that cannot unwind
   --> $DIR/double_panic.rs:LL:CC
    |
-LL |         panic!("second");
-   | ^
-   = note: inside `std::ptr::drop_in_place::<Foo> - shim(Some(Foo))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
-note: inside `main`
-  --> $DIR/double_panic.rs:LL:CC
+LL | / fn main() {
+LL | |
+LL | |     let _foo = Foo;
+LL | |     panic!("first");
+LL | | }
+   | |_^ panic in a function that cannot unwind
    |
-LL | }
-   | ^
-   = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: inside `main` at $DIR/double_panic.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
