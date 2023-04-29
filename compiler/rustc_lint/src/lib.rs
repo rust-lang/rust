@@ -52,6 +52,7 @@ mod array_into_iter;
 pub mod builtin;
 mod context;
 mod deref_into_dyn_supertrait;
+mod duplicate_trait;
 mod early;
 mod enum_intrinsics_non_enums;
 mod errors;
@@ -77,7 +78,6 @@ mod redundant_semicolon;
 mod traits;
 mod types;
 mod unused;
-mod duplicate_trait;
 
 pub use array_into_iter::ARRAY_INTO_ITER;
 
@@ -120,13 +120,13 @@ use unused::*;
 pub use builtin::SoftLints;
 pub use context::{CheckLintNameResult, FindLintError, LintStore};
 pub use context::{EarlyContext, LateContext, LintContext};
+use duplicate_trait::DuplicateTrait;
 pub use early::{check_ast_node, EarlyCheckNode};
 pub use late::{check_crate, unerased_lint_store};
 pub use passes::{EarlyLintPass, LateLintPass};
 pub use rustc_session::lint::Level::{self, *};
 pub use rustc_session::lint::{BufferedEarlyLint, FutureIncompatibleInfo, Lint, LintId};
 pub use rustc_session::lint::{LintArray, LintPass};
-use duplicate_trait::DuplicateTrait;
 
 fluent_messages! { "../messages.ftl" }
 
