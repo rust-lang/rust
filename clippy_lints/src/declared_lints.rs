@@ -249,6 +249,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::loops::MANUAL_FIND_INFO,
     crate::loops::MANUAL_FLATTEN_INFO,
     crate::loops::MANUAL_MEMCPY_INFO,
+    crate::loops::MANUAL_WHILE_LET_SOME_INFO,
     crate::loops::MISSING_SPIN_LOOP_INFO,
     crate::loops::MUT_RANGE_BOUND_INFO,
     crate::loops::NEEDLESS_RANGE_LOOP_INFO,

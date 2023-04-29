@@ -333,7 +333,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
 
     #[allow(clippy::too_many_lines)]
     fn expr(&self, expr: &Binding<&hir::Expr<'_>>) {
-        if let Some(higher::While { condition, body }) = higher::While::hir(expr.value) {
+        if let Some(higher::While { condition, body, .. }) = higher::While::hir(expr.value) {
             bind!(self, condition, body);
             chain!(
                 self,
