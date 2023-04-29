@@ -19,7 +19,10 @@ try:
 except ImportError:
     lzma = None
 
-if sys.platform == 'win32':
+def platform_is_win32():
+    return sys.platform == 'win32'
+
+if platform_is_win32():
     EXE_SUFFIX = ".exe"
 else:
     EXE_SUFFIX = ""
@@ -78,7 +81,6 @@ def _download(path, url, probably_big, verbose, exception):
     if probably_big or verbose:
         print("downloading {}".format(url))
 
-    platform_is_win32 = sys.platform == 'win32'
     try:
         if probably_big or verbose:
             option = "-#"
@@ -86,7 +88,7 @@ def _download(path, url, probably_big, verbose, exception):
             option = "-s"
         # If curl is not present on Win32, we should not sys.exit
         #   but raise `CalledProcessError` or `OSError` instead
-        require(["curl", "--version"], exception=platform_is_win32)
+        require(["curl", "--version"], exception=platform_is_win32())
         with open(path, "wb") as outfile:
             run(["curl", option,
                 "-L", # Follow redirect.
@@ -99,8 +101,8 @@ def _download(path, url, probably_big, verbose, exception):
             )
     except (subprocess.CalledProcessError, OSError, RuntimeError):
         # see http://serverfault.com/questions/301128/how-to-download
-        if platform_is_win32:
-            run(["PowerShell.exe", "/nologo", "-Command",
+        if platform_is_win32():
+            run_powershell([
                  "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;",
                  "(New-Object System.Net.WebClient).DownloadFile('{}', '{}')".format(url, path)],
                 verbose=verbose,
@@ -174,6 +176,10 @@ def run(args, verbose=False, exception=False, is_bootstrap=False, **kwargs):
         else:
             sys.exit(err)
 
+def run_powershell(script, *args, **kwargs):
+    """Run a powershell script"""
+    run(["PowerShell.exe", "/nologo", "-Command"] + script, *args, **kwargs)
+
 
 def require(cmd, exit=True, exception=False):
     '''Run a command, returning its output.
@@ -229,7 +235,7 @@ def default_build_triple(verbose):
                 print("pre-installed rustc not detected: {}".format(e))
                 print("falling back to auto-detect")
 
-    required = sys.platform != 'win32'
+    required = not platform_is_win32()
     ostype = require(["uname", "-s"], exit=required)
     cputype = require(['uname', '-m'], exit=required)
 
@@ -434,6 +440,23 @@ class RustBuild(object):
                 (not os.path.exists(self.rustc()) or
                  self.program_out_of_date(self.rustc_stamp(), key)):
             if os.path.exists(bin_root):
+                # HACK: On Windows, we can't delete rust-analyzer-proc-macro-server while it's
+                # running. Kill it.
+                if platform_is_win32():
+                    print("Killing rust-analyzer-proc-macro-srv before deleting stage0 toolchain")
+                    regex =  '{}\\\\(host|{})\\\\stage0\\\\libexec'.format(
+                        os.path.basename(self.build_dir),
+                        self.build
+                    )
+                    script = (
+                        # NOTE: can't use `taskkill` or `Get-Process -Name` because they error if
+                        # the server isn't running.
+                        'Get-Process | ' +
+                        'Where-Object {$_.Name -eq "rust-analyzer-proc-macro-srv"} |' +
+                        'Where-Object {{$_.Path -match "{}"}} |'.format(regex) +
+                        'Stop-Process'
+                    )
+                    run_powershell([script])
                 shutil.rmtree(bin_root)
             tarball_suffix = '.tar.gz' if lzma is None else '.tar.xz'
             filename = "rust-std-{}-{}{}".format(
