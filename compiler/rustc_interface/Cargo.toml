@@ -44,6 +44,7 @@ rustc_lint = { path = "../rustc_lint" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_plugin_impl = { path = "../rustc_plugin_impl" }
 rustc_privacy = { path = "../rustc_privacy" }
+rustc_query_system = { path = "../rustc_query_system" }
 rustc_query_impl = { path = "../rustc_query_impl" }
 rustc_resolve = { path = "../rustc_resolve" }
 rustc_target = { path = "../rustc_target" }

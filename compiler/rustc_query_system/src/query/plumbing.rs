@@ -236,7 +236,7 @@ pub(crate) struct CycleError<D: DepKind> {
 /// It returns the shard index and a lock guard to the shard,
 /// which will be used if the query is not in the cache and we need
 /// to compute it.
-#[inline]
+#[inline(always)]
 pub fn try_get_cached<Tcx, C>(tcx: Tcx, cache: &C, key: &C::Key) -> Option<C::Value>
 where
     C: QueryCache,

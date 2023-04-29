@@ -1190,6 +1190,7 @@ impl Session {
 
     /// Returns the number of query threads that should be used for this
     /// compilation
+    #[inline]
     pub fn threads(&self) -> usize {
         self.opts.unstable_opts.threads
     }

@@ -11,6 +11,7 @@ chalk-ir = "0.87.0"
 derive_more = "0.99.17"
 either = "1.5.0"
 gsgdt = "0.1.2"
+measureme = "10.0.0"
 polonius-engine = "0.13.0"
 rustc_apfloat = { path = "../rustc_apfloat" }
 rustc_arena = { path = "../rustc_arena" }

@@ -9,6 +9,7 @@ use rustc_span::def_id::LOCAL_CRATE;
 
 pub mod erase;
 mod keys;
+pub mod on_disk_cache;
 pub use keys::{AsLocalKey, Key, LocalCrate};
 
 // Each of these queries corresponds to a function pointer field in the

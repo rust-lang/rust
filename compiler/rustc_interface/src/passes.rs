@@ -23,7 +23,6 @@ use rustc_mir_build as mir_build;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str, validate_attr};
 use rustc_passes::{self, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
-use rustc_query_impl::{OnDiskCache, Queries as TcxQueries};
 use rustc_resolve::Resolver;
 use rustc_session::config::{CrateType, Input, OutputFilenames, OutputType};
 use rustc_session::cstore::{MetadataLoader, Untracked};
@@ -669,7 +668,6 @@ pub fn create_global_ctxt<'tcx>(
     lint_store: Lrc<LintStore>,
     dep_graph: DepGraph,
     untracked: Untracked,
-    queries: &'tcx OnceCell<TcxQueries<'tcx>>,
     gcx_cell: &'tcx OnceCell<GlobalCtxt<'tcx>>,
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
     hir_arena: &'tcx WorkerLocal<rustc_hir::Arena<'tcx>>,
@@ -693,10 +691,6 @@ pub fn create_global_ctxt<'tcx>(
         callback(sess, &mut local_providers, &mut extern_providers);
     }
 
-    let queries = queries.get_or_init(|| {
-        TcxQueries::new(local_providers, extern_providers, query_result_on_disk_cache)
-    });
-
     sess.time("setup_global_ctxt", || {
         gcx_cell.get_or_init(move || {
             TyCtxt::create_global_ctxt(
@@ -706,9 +700,9 @@ pub fn create_global_ctxt<'tcx>(
                 hir_arena,
                 untracked,
                 dep_graph,
-                queries.on_disk_cache.as_ref().map(OnDiskCache::as_dyn),
-                queries.as_dyn(),
+                query_result_on_disk_cache,
                 rustc_query_impl::query_callbacks(arena),
+                rustc_query_impl::query_system_fns(local_providers, extern_providers),
             )
         })
     })

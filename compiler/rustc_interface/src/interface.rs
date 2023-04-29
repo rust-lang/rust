@@ -12,6 +12,7 @@ use rustc_lint::LintStore;
 use rustc_middle::ty;
 use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_query_impl::QueryCtxt;
+use rustc_query_system::query::print_query_stack;
 use rustc_session::config::{self, CheckCfg, ErrorOutputType, Input, OutputFilenames};
 use rustc_session::lint;
 use rustc_session::parse::{CrateConfig, ParseSess};
@@ -317,7 +318,7 @@ pub fn try_print_query_stack(handler: &Handler, num_frames: Option<usize>) {
     // state if it was responsible for triggering the panic.
     let i = ty::tls::with_context_opt(|icx| {
         if let Some(icx) = icx {
-            QueryCtxt::from_tcx(icx.tcx).try_print_query_stack(icx.query, handler, num_frames)
+            print_query_stack(QueryCtxt { tcx: icx.tcx }, icx.query, handler, num_frames)
         } else {
             0
         }

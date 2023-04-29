@@ -1,4 +1,3 @@
-use crate::QueryCtxt;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::stable_hasher::Hash64;
@@ -13,8 +12,7 @@ use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::mir::{self, interpret};
 use rustc_middle::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_query_system::dep_graph::DepContext;
-use rustc_query_system::query::{QueryCache, QuerySideEffects};
+use rustc_query_system::query::QuerySideEffects;
 use rustc_serialize::{
     opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder},
     Decodable, Decoder, Encodable, Encoder,
@@ -123,10 +121,12 @@ struct SourceFileIndex(u32);
 pub struct AbsoluteBytePos(u64);
 
 impl AbsoluteBytePos {
-    fn new(pos: usize) -> AbsoluteBytePos {
+    #[inline]
+    pub fn new(pos: usize) -> AbsoluteBytePos {
         AbsoluteBytePos(pos.try_into().expect("Incremental cache file size overflowed u64."))
     }
 
+    #[inline]
     fn to_usize(self) -> usize {
         self.0 as usize
     }
@@ -144,11 +144,13 @@ struct EncodedSourceFileId {
 }
 
 impl EncodedSourceFileId {
+    #[inline]
     fn translate(&self, tcx: TyCtxt<'_>) -> StableSourceFileId {
         let cnum = tcx.stable_crate_id_to_crate_num(self.stable_crate_id);
         StableSourceFileId { file_name_hash: self.file_name_hash, cnum }
     }
 
+    #[inline]
     fn new(tcx: TyCtxt<'_>, file: &SourceFile) -> EncodedSourceFileId {
         let source_file_id = StableSourceFileId::new(file);
         EncodedSourceFileId {
@@ -158,9 +160,9 @@ impl EncodedSourceFileId {
     }
 }
 
-impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
+impl<'sess> OnDiskCache<'sess> {
     /// Creates a new `OnDiskCache` instance from the serialized data in `data`.
-    fn new(sess: &'sess Session, data: Mmap, start_pos: usize) -> Self {
+    pub fn new(sess: &'sess Session, data: Mmap, start_pos: usize) -> Self {
         debug_assert!(sess.opts.incremental.is_some());
 
         // Wrap in a scope so we can borrow `data`.
@@ -193,7 +195,7 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
         }
     }
 
-    fn new_empty(source_map: &'sess SourceMap) -> Self {
+    pub fn new_empty(source_map: &'sess SourceMap) -> Self {
         Self {
             serialized_data: RwLock::new(None),
             file_index_to_stable_id: Default::default(),
@@ -215,7 +217,7 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
     /// Cache promotions require invoking queries, which needs to read the serialized data.
     /// In order to serialize the new on-disk cache, the former on-disk cache file needs to be
     /// deleted, hence we won't be able to refer to its memmapped data.
-    fn drop_serialized_data(&self, tcx: TyCtxt<'_>) {
+    pub fn drop_serialized_data(&self, tcx: TyCtxt<'_>) {
         // Load everything into memory so we can write it out to the on-disk
         // cache. The vast majority of cacheable query results should already
         // be in memory, so this should be a cheap operation.
@@ -227,7 +229,7 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
         *self.serialized_data.write() = None;
     }
 
-    fn serialize(&self, tcx: TyCtxt<'_>, encoder: FileEncoder) -> FileEncodeResult {
+    pub fn serialize(&self, tcx: TyCtxt<'_>, encoder: FileEncoder) -> FileEncodeResult {
         // Serializing the `DepGraph` should not modify it.
         tcx.dep_graph.with_ignore(|| {
             // Allocate `SourceFileIndex`es.
@@ -269,7 +271,7 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
             tcx.sess.time("encode_query_results", || {
                 let enc = &mut encoder;
                 let qri = &mut query_result_index;
-                QueryCtxt::from_tcx(tcx).encode_query_results(enc, qri);
+                (tcx.query_system.fns.encode_query_results)(tcx, enc, qri);
             });
 
             // Encode side effects.
@@ -358,12 +360,6 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
             encoder.finish()
         })
     }
-}
-
-impl<'sess> OnDiskCache<'sess> {
-    pub fn as_dyn(&self) -> &dyn rustc_middle::ty::OnDiskCache<'sess> {
-        self as _
-    }
 
     /// Loads a `QuerySideEffects` created during the previous compilation session.
     pub fn load_side_effects(
@@ -380,8 +376,6 @@ impl<'sess> OnDiskCache<'sess> {
     /// Stores a `QuerySideEffects` emitted during the current compilation session.
     /// Anything stored like this will be available via `load_side_effects` in
     /// the next compilation session.
-    #[inline(never)]
-    #[cold]
     pub fn store_side_effects(&self, dep_node_index: DepNodeIndex, side_effects: QuerySideEffects) {
         let mut current_side_effects = self.current_side_effects.borrow_mut();
         let prev = current_side_effects.insert(dep_node_index, side_effects);
@@ -389,6 +383,7 @@ impl<'sess> OnDiskCache<'sess> {
     }
 
     /// Return whether the cached query result can be decoded.
+    #[inline]
     pub fn loadable_from_disk(&self, dep_node_index: SerializedDepNodeIndex) -> bool {
         self.query_result_index.contains_key(&dep_node_index)
         // with_decoder is infallible, so we can stop here
@@ -413,8 +408,6 @@ impl<'sess> OnDiskCache<'sess> {
     /// Since many anonymous queries can share the same `DepNode`, we aggregate
     /// them -- as opposed to regular queries where we assume that there is a
     /// 1:1 relationship between query-key and `DepNode`.
-    #[inline(never)]
-    #[cold]
     pub fn store_side_effects_for_anon_node(
         &self,
         dep_node_index: DepNodeIndex,
@@ -485,6 +478,7 @@ pub struct CacheDecoder<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> CacheDecoder<'a, 'tcx> {
+    #[inline]
     fn file_index_to_file(&self, index: SourceFileIndex) -> Lrc<SourceFile> {
         let CacheDecoder {
             tcx,
@@ -705,6 +699,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Span {
 
 // copy&paste impl from rustc_metadata
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Symbol {
+    #[inline]
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         let tag = d.read_u8();
 
@@ -733,6 +728,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Symbol {
 }
 
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for CrateNum {
+    #[inline]
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         let stable_id = StableCrateId::decode(d);
         let cnum = d.tcx.stable_crate_id_to_crate_num(stable_id);
@@ -754,6 +750,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for DefIndex {
 // compilation sessions. We use the `DefPathHash`, which is stable across
 // sessions, to map the old `DefId` to the new one.
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for DefId {
+    #[inline]
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         // Load the `DefPathHash` which is was we encoded the `DefId` as.
         let def_path_hash = DefPathHash::decode(d);
@@ -770,6 +767,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for DefId {
 }
 
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx UnordSet<LocalDefId> {
+    #[inline]
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         RefDecodable::decode(d)
     }
@@ -778,6 +776,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx UnordSet<LocalDefId> 
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
     for &'tcx FxHashMap<DefId, ty::EarlyBinder<Ty<'tcx>>>
 {
+    #[inline]
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         RefDecodable::decode(d)
     }
@@ -786,24 +785,28 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
     for &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>>
 {
+    #[inline]
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         RefDecodable::decode(d)
     }
 }
 
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [(ty::Predicate<'tcx>, Span)] {
+    #[inline]
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         RefDecodable::decode(d)
     }
 }
 
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [(ty::Clause<'tcx>, Span)] {
+    #[inline]
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         RefDecodable::decode(d)
     }
 }
 
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [rustc_ast::InlineAsmTemplatePiece] {
+    #[inline]
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         RefDecodable::decode(d)
     }
@@ -812,6 +815,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [rustc_ast::InlineAsm
 macro_rules! impl_ref_decoder {
     (<$tcx:tt> $($ty:ty,)*) => {
         $(impl<'a, $tcx> Decodable<CacheDecoder<'a, $tcx>> for &$tcx [$ty] {
+            #[inline]
             fn decode(d: &mut CacheDecoder<'a, $tcx>) -> Self {
                 RefDecodable::decode(d)
             }
@@ -846,6 +850,7 @@ pub struct CacheEncoder<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> CacheEncoder<'a, 'tcx> {
+    #[inline]
     fn source_file_index(&mut self, source_file: Lrc<SourceFile>) -> SourceFileIndex {
         self.file_to_file_index[&(&*source_file as *const SourceFile)]
     }
@@ -855,7 +860,7 @@ impl<'a, 'tcx> CacheEncoder<'a, 'tcx> {
     /// encode the specified tag, then the given value, then the number of
     /// bytes taken up by tag and value. On decoding, we can then verify that
     /// we get the expected tag and read the expected number of bytes.
-    fn encode_tagged<T: Encodable<Self>, V: Encodable<Self>>(&mut self, tag: T, value: &V) {
+    pub fn encode_tagged<T: Encodable<Self>, V: Encodable<Self>>(&mut self, tag: T, value: &V) {
         let start_pos = self.position();
 
         tag.encode(self);
@@ -865,6 +870,7 @@ impl<'a, 'tcx> CacheEncoder<'a, 'tcx> {
         ((end_pos - start_pos) as u64).encode(self);
     }
 
+    #[inline]
     fn finish(self) -> Result<usize, io::Error> {
         self.encoder.finish()
     }
@@ -957,15 +963,19 @@ impl<'a, 'tcx> TyEncoder for CacheEncoder<'a, 'tcx> {
     type I = TyCtxt<'tcx>;
     const CLEAR_CROSS_CRATE: bool = false;
 
+    #[inline]
     fn position(&self) -> usize {
         self.encoder.position()
     }
+    #[inline]
     fn type_shorthands(&mut self) -> &mut FxHashMap<Ty<'tcx>, usize> {
         &mut self.type_shorthands
     }
+    #[inline]
     fn predicate_shorthands(&mut self) -> &mut FxHashMap<ty::PredicateKind<'tcx>, usize> {
         &mut self.predicate_shorthands
     }
+    #[inline]
     fn encode_alloc_id(&mut self, alloc_id: &interpret::AllocId) {
         let (index, _) = self.interpret_allocs.insert_full(*alloc_id);
 
@@ -974,12 +984,14 @@ impl<'a, 'tcx> TyEncoder for CacheEncoder<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for CrateNum {
+    #[inline]
     fn encode(&self, s: &mut CacheEncoder<'a, 'tcx>) {
         s.tcx.stable_crate_id(*self).encode(s);
     }
 }
 
 impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for DefId {
+    #[inline]
     fn encode(&self, s: &mut CacheEncoder<'a, 'tcx>) {
         s.tcx.def_path_hash(*self).encode(s);
     }
@@ -1031,34 +1043,4 @@ impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for [u8] {
     fn encode(&self, e: &mut CacheEncoder<'a, 'tcx>) {
         self.encode(&mut e.encoder);
     }
-}
-
-pub(crate) fn encode_query_results<'a, 'tcx, Q>(
-    query: Q,
-    qcx: QueryCtxt<'tcx>,
-    encoder: &mut CacheEncoder<'a, 'tcx>,
-    query_result_index: &mut EncodedDepNodeIndex,
-) where
-    Q: super::QueryConfigRestored<'tcx>,
-    Q::RestoredValue: Encodable<CacheEncoder<'a, 'tcx>>,
-{
-    let _timer = qcx
-        .tcx
-        .profiler()
-        .verbose_generic_activity_with_arg("encode_query_results_for", query.name());
-
-    assert!(query.query_state(qcx).all_inactive());
-    let cache = query.query_cache(qcx);
-    cache.iter(&mut |key, value, dep_node| {
-        if query.cache_on_disk(qcx.tcx, &key) {
-            let dep_node = SerializedDepNodeIndex::new(dep_node.index());
-
-            // Record position of the cache entry.
-            query_result_index.push((dep_node, AbsoluteBytePos::new(encoder.encoder.position())));
-
-            // Encode the type check tables with the `SerializedDepNodeIndex`
-            // as tag.
-            encoder.encode_tagged(dep_node, &Q::restore(*value));
-        }
-    });
 }
