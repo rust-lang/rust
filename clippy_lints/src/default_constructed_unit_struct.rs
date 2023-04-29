@@ -55,7 +55,7 @@ impl LateLintPass<'_> for DefaultConstructedUnitStruct {
                     cx,
                     DEFAULT_CONSTRUCTED_UNIT_STRUCT,
                     qpath.last_segment_span(),
-                    "Use of `default` to create a unit struct.",
+                    "use of `default` to create a unit struct",
                     "remove this call to `default`",
                     String::new(),
                     Applicability::MachineApplicable,
