@@ -1155,10 +1155,10 @@ fn render_assoc_items_inner(
     let (non_trait, traits): (Vec<_>, _) = v.iter().partition(|i| i.inner_impl().trait_.is_none());
     if !non_trait.is_empty() {
         let mut tmp_buf = Buffer::html();
-        let (render_mode, id) = match what {
+        let (render_mode, id, class_html) = match what {
             AssocItemRender::All => {
                 write_impl_section_heading(&mut tmp_buf, "Implementations", "implementations");
-                (RenderMode::Normal, "implementations-list".to_owned())
+                (RenderMode::Normal, "implementations-list".to_owned(), "")
             }
             AssocItemRender::DerefFor { trait_, type_, deref_mut_ } => {
                 let id =
@@ -1175,7 +1175,11 @@ fn render_assoc_items_inner(
                     ),
                     &id,
                 );
-                (RenderMode::ForDeref { mut_: deref_mut_ }, cx.derive_id(id))
+                (
+                    RenderMode::ForDeref { mut_: deref_mut_ },
+                    cx.derive_id(id),
+                    r#" class="impl-items""#,
+                )
             }
         };
         let mut impls_buf = Buffer::html();
@@ -1199,7 +1203,7 @@ fn render_assoc_items_inner(
         }
         if !impls_buf.is_empty() {
             write!(w, "{}", tmp_buf.into_inner()).unwrap();
-            write!(w, "<div id=\"{}\">", id).unwrap();
+            write!(w, "<div id=\"{id}\"{class_html}>").unwrap();
             write!(w, "{}", impls_buf.into_inner()).unwrap();
             w.write_str("</div>").unwrap();
         }
@@ -1788,12 +1792,14 @@ fn render_impl(
                 .into_string()
             );
         }
+        if !default_impl_items.is_empty() || !impl_items.is_empty() {
+            w.write_str("<div class=\"impl-items\">");
+            close_tags.insert_str(0, "</div>");
+        }
     }
     if !default_impl_items.is_empty() || !impl_items.is_empty() {
-        w.write_str("<div class=\"impl-items\">");
         w.push_buffer(default_impl_items);
         w.push_buffer(impl_items);
-        close_tags.insert_str(0, "</div>");
     }
     w.write_str(&close_tags);
 }
