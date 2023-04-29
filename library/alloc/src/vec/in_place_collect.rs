@@ -225,16 +225,18 @@ where
         }
 
         // The ownership of the allocation and the new `T` values is temporarily moved into `dst_guard`.
-        // This is safe because `forget_allocation_drop_remaining` immediately forgets the allocation
+        // This is safe because
+        // * `forget_allocation_drop_remaining` immediately forgets the allocation
         // before any panic can occur in order to avoid any double free, and then proceeds to drop
         // any remaining values at the tail of the source.
+        // * the shrink either panics without invalidating the allocation, aborts or
+        //   succeeds. In the last case we disarm the guard.
         //
         // Note: This access to the source wouldn't be allowed by the TrustedRandomIteratorNoCoerce
         // contract (used by SpecInPlaceCollect below). But see the "O(1) collect" section in the
         // module documentation why this is ok anyway.
         let dst_guard = InPlaceDstBufDrop { ptr: dst_buf, len, cap: dst_cap };
         src.forget_allocation_drop_remaining();
-        mem::forget(dst_guard);
 
         // Adjust the allocation size if the source had a capacity in bytes that wasn't a multiple
         // of the destination type size.
@@ -255,6 +257,8 @@ where
                 dst_buf = reallocated.as_ptr() as *mut T;
             }
         }
+
+        mem::forget(dst_guard);
 
         let vec = unsafe { Vec::from_raw_parts(dst_buf, len, dst_cap) };
 
