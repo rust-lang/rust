@@ -19,4 +19,5 @@ pub fn outer_function(x: S, y: S) -> usize {
 // CHECK-NOT: [[ptr_tmp:%.*]] = getelementptr inbounds %"[closure@{{.*.rs}}:9:23: 9:25]", ptr [[spill]]
 // CHECK-NOT: [[load:%.*]] = load ptr, ptr
 // CHECK: call void @llvm.lifetime.start{{.*}}({{.*}}, ptr [[spill]])
-// CHECK: call void @llvm.memcpy{{.*}}(ptr {{align .*}} [[spill]], ptr {{align .*}} %x
+// CHECK: [[inner:%.*]] = getelementptr inbounds %"{{.*}}", ptr [[spill]]
+// CHECK: call void @llvm.memcpy{{.*}}(ptr {{align .*}} [[inner]], ptr {{align .*}} %x

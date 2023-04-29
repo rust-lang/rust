@@ -465,7 +465,7 @@ LL | const LAYOUT_INVALID_ZERO: Layout = unsafe { Layout::from_size_align_unchec
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {
-               00 10 00 00 00 00 00 00                         │ ........
+               00 00 00 00 00 10 00 00                         │ ........
            }
 
 error[E0080]: it is undefined behavior to use this value
@@ -476,7 +476,7 @@ LL | const LAYOUT_INVALID_THREE: Layout = unsafe { Layout::from_size_align_unche
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {
-               09 00 00 00 03 00 00 00                         │ ........
+               03 00 00 00 09 00 00 00                         │ ........
            }
 
 error[E0080]: it is undefined behavior to use this value

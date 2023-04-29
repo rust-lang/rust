@@ -370,12 +370,6 @@ error: layout_of(NicheFirst) = Layout {
                pref: $PREF_ALIGN,
            },
            abi: ScalarPair(
-               Union {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-               },
                Initialized {
                    value: Int(
                        I8,
@@ -383,10 +377,16 @@ error: layout_of(NicheFirst) = Layout {
                    ),
                    valid_range: 0..=4,
                },
+               Union {
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+               },
            ),
            fields: Arbitrary {
                offsets: [
-                   Size(1 bytes),
+                   Size(0 bytes),
                ],
                memory_index: [
                    0,
@@ -394,7 +394,7 @@ error: layout_of(NicheFirst) = Layout {
            },
            largest_niche: Some(
                Niche {
-                   offset: Size(1 bytes),
+                   offset: Size(0 bytes),
                    value: Int(
                        I8,
                        false,
@@ -429,29 +429,29 @@ error: layout_of(NicheFirst) = Layout {
                                    I8,
                                    false,
                                ),
-                               valid_range: 0..=255,
+                               valid_range: 0..=2,
                            },
                            Initialized {
                                value: Int(
                                    I8,
                                    false,
                                ),
-                               valid_range: 0..=2,
+                               valid_range: 0..=255,
                            },
                        ),
                        fields: Arbitrary {
                            offsets: [
-                               Size(1 bytes),
                                Size(0 bytes),
+                               Size(1 bytes),
                            ],
                            memory_index: [
-                               1,
                                0,
+                               1,
                            ],
                        },
                        largest_niche: Some(
                            Niche {
-                               offset: Size(1 bytes),
+                               offset: Size(0 bytes),
                                value: Int(
                                    I8,
                                    false,
@@ -514,12 +514,6 @@ error: layout_of(NicheSecond) = Layout {
                pref: $PREF_ALIGN,
            },
            abi: ScalarPair(
-               Union {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-               },
                Initialized {
                    value: Int(
                        I8,
@@ -527,10 +521,16 @@ error: layout_of(NicheSecond) = Layout {
                    ),
                    valid_range: 0..=4,
                },
+               Union {
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+               },
            ),
            fields: Arbitrary {
                offsets: [
-                   Size(1 bytes),
+                   Size(0 bytes),
                ],
                memory_index: [
                    0,
@@ -538,7 +538,7 @@ error: layout_of(NicheSecond) = Layout {
            },
            largest_niche: Some(
                Niche {
-                   offset: Size(1 bytes),
+                   offset: Size(0 bytes),
                    value: Int(
                        I8,
                        false,
@@ -573,29 +573,29 @@ error: layout_of(NicheSecond) = Layout {
                                    I8,
                                    false,
                                ),
-                               valid_range: 0..=255,
+                               valid_range: 0..=2,
                            },
                            Initialized {
                                value: Int(
                                    I8,
                                    false,
                                ),
-                               valid_range: 0..=2,
+                               valid_range: 0..=255,
                            },
                        ),
                        fields: Arbitrary {
                            offsets: [
-                               Size(0 bytes),
                                Size(1 bytes),
+                               Size(0 bytes),
                            ],
                            memory_index: [
-                               0,
                                1,
+                               0,
                            ],
                        },
                        largest_niche: Some(
                            Niche {
-                               offset: Size(1 bytes),
+                               offset: Size(0 bytes),
                                value: Int(
                                    I8,
                                    false,
