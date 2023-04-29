@@ -51,7 +51,12 @@ lint_renamed_or_removed_lint = {$msg}
     .suggestion = use the new name
 
 lint_suspicious_double_ref_op =
-    using `.{$call}()` on a double reference, which returns `{$ty}` instead of {$op} the inner type
+    using `.{$call}()` on a double reference, which returns `{$ty}` instead of {$op ->
+        *[should_not_happen] [{$op}]
+        [deref] dereferencing
+        [borrow] borrowing
+        [clone] cloning
+    } the inner type
 
 lint_unknown_lint =
     unknown lint: `{$name}`

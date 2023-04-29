@@ -103,9 +103,9 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
         let Some(name) = cx.tcx.get_diagnostic_name(i.def_id()) else { return };
 
         let op = match name {
-            sym::noop_method_borrow => "borrowing",
-            sym::noop_method_clone => "cloning",
-            sym::noop_method_deref => "dereferencing",
+            sym::noop_method_borrow => "borrow",
+            sym::noop_method_clone => "clone",
+            sym::noop_method_deref => "deref",
             _ => return,
         };
 
