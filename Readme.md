@@ -22,7 +22,12 @@ $ ./test.sh
 
 For more docs on how to build and test see [build_system/usage.txt](build_system/usage.txt) or the help message of `./y.rs`.
 
+## Precompiled builds
+
 Alternatively you can download a pre built version from the [releases] page.
+Extract the `dist` directory in the archive anywhere you want.
+If you want to use `cargo clif build` instead of having to specify the full path to the `cargo-clif` executable, you can add the `bin` subdirectory of the extracted `dist` directory to your `PATH`.
+(tutorial [for Windows](https://stackoverflow.com/a/44272417), and [for Linux/MacOS](https://unix.stackexchange.com/questions/26047/how-to-correctly-add-a-path-to-path/26059#26059)).
 
 [releases]: https://github.com/bjorn3/rustc_codegen_cranelift/releases/tag/dev
 
