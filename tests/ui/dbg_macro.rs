@@ -4,6 +4,7 @@
 fn foo(n: u32) -> u32 {
     if let Some(n) = dbg!(n.checked_sub(4)) { n } else { n }
 }
+fn bar(_: ()) {}
 
 fn factorial(n: u32) -> u32 {
     if dbg!(n <= 1) {
@@ -19,6 +20,13 @@ fn main() {
     foo(3) + dbg!(factorial(4));
     dbg!(1, 2, dbg!(3, 4));
     dbg!(1, 2, 3, 4, 5);
+}
+
+fn issue9914() {
+    dbg!();
+    #[allow(clippy::let_unit_value)]
+    let _ = dbg!();
+    bar(dbg!());
 }
 
 mod issue7274 {

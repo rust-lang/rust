@@ -3,10 +3,10 @@ use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{is_in_cfg_test, is_in_test_function};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_hir::{Expr, ExprKind, Node, Stmt, StmtKind};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::sym;
+use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -29,6 +29,11 @@ declare_clippy_lint! {
     pub DBG_MACRO,
     restriction,
     "`dbg!` macro is intended as a debugging tool"
+}
+
+fn span_including_semi(cx: &LateContext<'_>, span: Span) -> Span {
+    let span = cx.sess().source_map().span_extend_to_next_char(span, ';', true);
+    span.with_hi(span.hi() + rustc_span::BytePos(1))
 }
 
 #[derive(Copy, Clone)]
@@ -55,13 +60,24 @@ impl LateLintPass<'_> for DbgMacro {
                 return;
             }
             let mut applicability = Applicability::MachineApplicable;
-            let suggestion = match expr.peel_drop_temps().kind {
-                // dbg!()
-                ExprKind::Block(_, _) => String::new(),
-                // dbg!(1)
-                ExprKind::Match(val, ..) => {
-                    snippet_with_applicability(cx, val.span.source_callsite(), "..", &mut applicability).to_string()
+
+            let (sugg_span, suggestion) = match expr.peel_drop_temps().kind {
+                ExprKind::Block(..) => match cx.tcx.hir().find_parent(expr.hir_id) {
+                    // dbg!() as a standalone statement, suggest removing the whole statement entirely
+                    Some(Node::Stmt(
+                        stmt @ Stmt {
+                            kind: StmtKind::Semi(_),
+                            ..
+                        },
+                    )) => (span_including_semi(cx, stmt.span.source_callsite()), String::new()),
+                    // empty dbg!() in arbitrary position (e.g. `foo(dbg!())`), suggest replacing with `foo(())`
+                    _ => (macro_call.span, String::from("()")),
                 },
+                // dbg!(1)
+                ExprKind::Match(val, ..) => (
+                    macro_call.span,
+                    snippet_with_applicability(cx, val.span.source_callsite(), "..", &mut applicability).to_string(),
+                ),
                 // dbg!(2, 3)
                 ExprKind::Tup(
                     [
@@ -82,7 +98,7 @@ impl LateLintPass<'_> for DbgMacro {
                         "..",
                         &mut applicability,
                     );
-                    format!("({snippet})")
+                    (macro_call.span, format!("({snippet})"))
                 },
                 _ => return,
             };
@@ -90,7 +106,7 @@ impl LateLintPass<'_> for DbgMacro {
             span_lint_and_sugg(
                 cx,
                 DBG_MACRO,
-                macro_call.span,
+                sugg_span,
                 "the `dbg!` macro is intended as a debugging tool",
                 "remove the invocation before committing it to a version control system",
                 suggestion,
