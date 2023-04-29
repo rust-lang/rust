@@ -1,0 +1,7 @@
+error: linking with `link.exe` failed: exit code: 1181
+   |
+   = note: LINK : fatal error LNK1181: cannot open input file 'märchenhaft.obj'
+           
+
+error: aborting due to previous error
+
