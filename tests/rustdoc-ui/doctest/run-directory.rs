@@ -4,12 +4,12 @@
 // check-pass
 // [correct]compile-flags:--test --test-run-directory={{src-base}}
 // [incorrect]compile-flags:--test --test-run-directory={{src-base}}/coverage
-// normalize-stdout-test: "tests/rustdoc-ui" -> "$$DIR"
+// normalize-stdout-test: "tests/rustdoc-ui/doctest" -> "$$DIR"
 // normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
 
 /// ```
 /// assert_eq!(
-///     std::fs::read_to_string("run-directory.rs").unwrap(),
+///     std::fs::read_to_string("doctest/run-directory.rs").unwrap(),
 ///     include_str!("run-directory.rs"),
 /// );
 /// ```
@@ -17,7 +17,7 @@
 pub fn foo() {}
 
 /// ```
-/// assert!(std::fs::read_to_string("run-directory.rs").is_err());
+/// assert!(std::fs::read_to_string("doctest/run-directory.rs").is_err());
 /// ```
 #[cfg(incorrect)]
 pub fn foo() {}

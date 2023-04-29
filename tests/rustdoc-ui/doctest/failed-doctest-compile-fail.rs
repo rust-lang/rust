@@ -2,11 +2,11 @@
 // adapted to use that, and that normalize line can go away
 
 // compile-flags:--test
-// normalize-stdout-test: "tests/rustdoc-ui" -> "$$DIR"
+// normalize-stdout-test: "tests/rustdoc-ui/doctest" -> "$$DIR"
 // normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
 // failure-status: 101
 
-/// ```compile_fail,E0004
-/// let x: () = 5i32;
+/// ```compile_fail
+/// println!("Hello");
 /// ```
 pub struct Foo;
