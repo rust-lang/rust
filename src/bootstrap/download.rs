@@ -112,7 +112,7 @@ impl Config {
             is_nixos && !Path::new("/lib").exists()
         });
         if val {
-            println!("info: You seem to be using Nix.");
+            eprintln!("info: You seem to be using Nix.");
         }
         val
     }
@@ -226,7 +226,7 @@ impl Config {
         curl.stdout(Stdio::from(f));
         if !self.check_run(&mut curl) {
             if self.build.contains("windows-msvc") {
-                println!("Fallback to PowerShell");
+                eprintln!("Fallback to PowerShell");
                 for _ in 0..3 {
                     if self.try_run(Command::new("PowerShell.exe").args(&[
                         "/nologo",
@@ -239,7 +239,7 @@ impl Config {
                     ])) {
                         return;
                     }
-                    println!("\nspurious failure, trying again");
+                    eprintln!("\nspurious failure, trying again");
                 }
             }
             if !help_on_error.is_empty() {
@@ -250,7 +250,7 @@ impl Config {
     }
 
     fn unpack(&self, tarball: &Path, dst: &Path, pattern: &str) {
-        println!("extracting {} to {}", tarball.display(), dst.display());
+        eprintln!("extracting {} to {}", tarball.display(), dst.display());
         if !dst.exists() {
             t!(fs::create_dir_all(dst));
         }
