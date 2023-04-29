@@ -98,9 +98,6 @@ jobs:
       - name: show the current environment
         run: src/ci/scripts/dump-environment.sh
         if: success() && !env.SKIP_JOB
-      - name: install awscli
-        run: src/ci/scripts/install-awscli.sh
-        if: success() && !env.SKIP_JOB
       - name: install sccache
         run: src/ci/scripts/install-sccache.sh
         if: success() && !env.SKIP_JOB
@@ -521,9 +518,6 @@ jobs:
       - name: show the current environment
         run: src/ci/scripts/dump-environment.sh
         if: success() && !env.SKIP_JOB
-      - name: install awscli
-        run: src/ci/scripts/install-awscli.sh
-        if: success() && !env.SKIP_JOB
       - name: install sccache
         run: src/ci/scripts/install-sccache.sh
         if: success() && !env.SKIP_JOB
@@ -636,9 +630,6 @@ jobs:
         if: success() && !env.SKIP_JOB
       - name: show the current environment
         run: src/ci/scripts/dump-environment.sh
-        if: success() && !env.SKIP_JOB
-      - name: install awscli
-        run: src/ci/scripts/install-awscli.sh
         if: success() && !env.SKIP_JOB
       - name: install sccache
         run: src/ci/scripts/install-sccache.sh

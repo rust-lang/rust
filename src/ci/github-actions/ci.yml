@@ -154,10 +154,6 @@ x--expand-yaml-anchors--remove:
         run: src/ci/scripts/dump-environment.sh
         <<: *step
 
-      - name: install awscli
-        run: src/ci/scripts/install-awscli.sh
-        <<: *step
-
       - name: install sccache
         run: src/ci/scripts/install-sccache.sh
         <<: *step
