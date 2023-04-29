@@ -319,7 +319,7 @@ fn main() {
 
     from_decimal_string();
 
-    #[cfg(not(any(jit, windows)))]
+    #[cfg(all(not(jit), not(all(windows, target_env = "gnu"))))]
     test_tls();
 
     #[cfg(all(not(jit), target_arch = "x86_64", any(target_os = "linux", target_os = "darwin")))]
@@ -524,6 +524,7 @@ pub enum E1 {
 // Computing the discriminant used to be done using the niche type (here `u8`,
 // from the `bool` field of `V1`), overflowing for variants with large enough
 // indices (`V3` and `V4`), causing them to be interpreted as other variants.
+#[rustfmt::skip]
 pub enum E2<X> {
     V1 { f: bool },
 

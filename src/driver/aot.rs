@@ -324,6 +324,10 @@ fn module_codegen(
     OngoingModuleCodegen::Async(std::thread::spawn(move || {
         cx.profiler.clone().verbose_generic_activity_with_arg("compile functions", &*cgu_name).run(
             || {
+                cranelift_codegen::timing::set_thread_profiler(Box::new(super::MeasuremeProfiler(
+                    cx.profiler.clone(),
+                )));
+
                 let mut cached_context = Context::new();
                 for codegened_func in codegened_functions {
                     crate::base::compile_fn(
@@ -407,7 +411,7 @@ pub(crate) fn run_aot(
                                     backend_config.clone(),
                                     global_asm_config.clone(),
                                     cgu.name(),
-                                    concurrency_limiter.acquire(),
+                                    concurrency_limiter.acquire(tcx.sess.diagnostic()),
                                 ),
                                 module_codegen,
                                 Some(rustc_middle::dep_graph::hash_result),
