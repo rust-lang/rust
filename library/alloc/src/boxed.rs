@@ -1456,6 +1456,7 @@ where
 }
 
 /// Specialization trait used for `From<&[T]>`.
+#[cfg(not(no_global_oom_handling))]
 trait BoxFromSlice<T> {
     fn from_slice(slice: &[T]) -> Self;
 }
