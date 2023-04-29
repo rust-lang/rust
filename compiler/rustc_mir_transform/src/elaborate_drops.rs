@@ -1,7 +1,7 @@
 use crate::deref_separator::deref_finder;
 use crate::MirPass;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_index::bit_set::BitSet;
+use rustc_index::IndexVec;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
@@ -84,12 +84,13 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
 
             let reachable = traversal::reachable_as_bitset(body);
 
+            let drop_flags = IndexVec::from_elem(None, &env.move_data.move_paths);
             ElaborateDropsCtxt {
                 tcx,
                 body,
                 env: &env,
                 init_data: InitializationData { inits, uninits },
-                drop_flags: Default::default(),
+                drop_flags,
                 patch: MirPatch::new(body),
                 un_derefer: un_derefer,
                 reachable,
@@ -293,7 +294,7 @@ struct ElaborateDropsCtxt<'a, 'tcx> {
     body: &'a Body<'tcx>,
     env: &'a MoveDataParamEnv<'tcx>,
     init_data: InitializationData<'a, 'tcx>,
-    drop_flags: FxHashMap<MovePathIndex, Local>,
+    drop_flags: IndexVec<MovePathIndex, Option<Local>>,
     patch: MirPatch<'tcx>,
     un_derefer: UnDerefer<'tcx>,
     reachable: BitSet<BasicBlock>,
@@ -312,11 +313,11 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         let tcx = self.tcx;
         let patch = &mut self.patch;
         debug!("create_drop_flag({:?})", self.body.span);
-        self.drop_flags.entry(index).or_insert_with(|| patch.new_internal(tcx.types.bool, span));
+        self.drop_flags[index].get_or_insert_with(|| patch.new_internal(tcx.types.bool, span));
     }
 
     fn drop_flag(&mut self, index: MovePathIndex) -> Option<Place<'tcx>> {
-        self.drop_flags.get(&index).map(|t| Place::from(*t))
+        self.drop_flags[index].map(Place::from)
     }
 
     /// create a patch that elaborates all drops in the input
@@ -463,7 +464,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     }
 
     fn set_drop_flag(&mut self, loc: Location, path: MovePathIndex, val: DropFlagState) {
-        if let Some(&flag) = self.drop_flags.get(&path) {
+        if let Some(flag) = self.drop_flags[path] {
             let span = self.patch.source_info_for_location(self.body, loc).span;
             let val = self.constant_bool(span, val.value());
             self.patch.add_assign(loc, Place::from(flag), val);
@@ -474,7 +475,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         let loc = Location::START;
         let span = self.patch.source_info_for_location(self.body, loc).span;
         let false_ = self.constant_bool(span, false);
-        for flag in self.drop_flags.values() {
+        for flag in self.drop_flags.iter().flatten() {
             self.patch.add_assign(loc, Place::from(*flag), false_.clone());
         }
     }
