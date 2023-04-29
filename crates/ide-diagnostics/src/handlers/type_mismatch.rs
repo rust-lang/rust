@@ -1,7 +1,6 @@
 use either::Either;
 use hir::{db::ExpandDatabase, ClosureStyle, HirDisplay, InFile, Type};
 use ide_db::{famous_defs::FamousDefs, source_change::SourceChange};
-use stdx::never;
 use syntax::{
     ast::{self, BlockExpr, ExprStmt},
     AstNode, AstPtr,
@@ -18,10 +17,6 @@ pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch)
     let display_range = match &d.expr_or_pat {
         Either::Left(expr) => {
             adjusted_display_range::<ast::Expr>(ctx, expr.clone().map(|it| it.into()), &|expr| {
-                if !expr.is_block_like() {
-                    return None;
-                }
-
                 let salient_token_range = match expr {
                     ast::Expr::IfExpr(it) => it.if_token()?.text_range(),
                     ast::Expr::LoopExpr(it) => it.loop_token()?.text_range(),
@@ -29,13 +24,13 @@ pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch)
                     ast::Expr::WhileExpr(it) => it.while_token()?.text_range(),
                     ast::Expr::BlockExpr(it) => it.stmt_list()?.r_curly_token()?.text_range(),
                     ast::Expr::MatchExpr(it) => it.match_token()?.text_range(),
-                    _ => {
-                        never!();
-                        return None;
-                    }
+                    ast::Expr::MethodCallExpr(it) => it.name_ref()?.ident_token()?.text_range(),
+                    ast::Expr::FieldExpr(it) => it.name_ref()?.ident_token()?.text_range(),
+                    ast::Expr::AwaitExpr(it) => it.await_token()?.text_range(),
+                    _ => return None,
                 };
 
-                cov_mark::hit!(type_mismatch_on_block);
+                cov_mark::hit!(type_mismatch_range_adjustment);
                 Some(salient_token_range)
             })
         }
@@ -625,8 +620,8 @@ fn f() {
     }
 
     #[test]
-    fn type_mismatch_on_block() {
-        cov_mark::check!(type_mismatch_on_block);
+    fn type_mismatch_range_adjustment() {
+        cov_mark::check!(type_mismatch_range_adjustment);
         check_diagnostics(
             r#"
 fn f() -> i32 {
@@ -636,9 +631,15 @@ fn f() -> i32 {
   }
 //^ error: expected i32, found ()
 
-fn h() -> i32 {
+fn g() -> i32 {
     while true {}
 } //^^^^^ error: expected i32, found ()
+
+struct S;
+impl S { fn foo(&self) -> &S { self } }
+fn h() {
+    let _: i32 = S.foo().foo().foo();
+}                            //^^^ error: expected i32, found &S
 "#,
         );
     }
