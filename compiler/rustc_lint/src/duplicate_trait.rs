@@ -47,7 +47,7 @@ impl<'tcx> LateLintPass<'tcx> for DuplicateTrait {
         let mut last_bound = &bounds[0];
         for bound in bounds.iter().skip(1) {
             if last_bound.trait_ref.trait_def_id() == bound.trait_ref.trait_def_id()
-                && let Some(def_id) = last_bound.trait_ref.trait_def_id() {
+                && let Some(def_id) = bound.trait_ref.trait_def_id() {
                 cx.tcx.emit_spanned_lint(
                     DUPLICATE_TRAIT,
                     bound.trait_ref.hir_ref_id, // is this correct?
