@@ -9,16 +9,56 @@ use rustc_middle::mir::Body;
 use rustc_middle::ty::TyCtxt;
 
 pub use super::{
+    dataflow::{calculate_borrows_out_of_scope_at_location, BorrowIndex, Borrows},
     facts::{AllFacts as PoloniusInput, RustcFacts},
     location::{LocationTable, RichLocation},
     nll::PoloniusOutput,
+    region_infer::RegionInferenceContext,
     BodyWithBorrowckFacts,
 };
 
-/// This function computes Polonius facts for the given body. It makes a copy of
-/// the body because it needs to regenerate the region identifiers. This function
-/// should never be invoked during a typical compilation session due to performance
-/// issues with Polonius.
+/// Options determining the output behavior of [`get_body_with_borrowck_facts`].
+///
+/// If executing under `-Z polonius` the choice here has no effect, and everything as if
+/// [`PoloniusOutputFacts`](ConsumerOptions::PoloniusOutputFacts) had been selected
+/// will be retrieved.
+#[derive(Debug, Copy, Clone)]
+pub enum ConsumerOptions {
+    /// Retrieve the [`Body`] along with the [`BorrowSet`](super::borrow_set::BorrowSet)
+    /// and [`RegionInferenceContext`]. If you would like the body only, use
+    /// [`TyCtxt::mir_promoted`].
+    ///
+    /// These can be used in conjunction with [`calculate_borrows_out_of_scope_at_location`].
+    RegionInferenceContext,
+    /// The recommended option. Retrieves the maximal amount of information
+    /// without significant slowdowns.
+    ///
+    /// Implies [`RegionInferenceContext`](ConsumerOptions::RegionInferenceContext),
+    /// and additionally retrieve the [`LocationTable`] and [`PoloniusInput`] that
+    /// would be given to Polonius. Critically, this does not run Polonius, which
+    /// one may want to avoid due to performance issues on large bodies.
+    PoloniusInputFacts,
+    /// Implies [`PoloniusInputFacts`](ConsumerOptions::PoloniusInputFacts),
+    /// and additionally runs Polonius to calculate the [`PoloniusOutput`].
+    PoloniusOutputFacts,
+}
+
+impl ConsumerOptions {
+    /// Should the Polonius input facts be computed?
+    pub(crate) fn polonius_input(&self) -> bool {
+        matches!(self, Self::PoloniusInputFacts | Self::PoloniusOutputFacts)
+    }
+    /// Should we run Polonius and collect the output facts?
+    pub(crate) fn polonius_output(&self) -> bool {
+        matches!(self, Self::PoloniusOutputFacts)
+    }
+}
+
+/// This function computes borrowck facts for the given body. The [`ConsumerOptions`]
+/// determine which facts are returned. This function makes a copy of the body because
+/// it needs to regenerate the region identifiers. It should never be invoked during a
+/// typical compilation session due to the unnecessary overhead of returning
+/// [`BodyWithBorrowckFacts`].
 ///
 /// Note:
 /// *   This function will panic if the required body was already stolen. This
@@ -28,10 +68,14 @@ pub use super::{
 ///     that shows how to do this at `tests/run-make/obtain-borrowck/`.
 ///
 /// *   Polonius is highly unstable, so expect regular changes in its signature or other details.
-pub fn get_body_with_borrowck_facts(tcx: TyCtxt<'_>, def: LocalDefId) -> BodyWithBorrowckFacts<'_> {
+pub fn get_body_with_borrowck_facts(
+    tcx: TyCtxt<'_>,
+    def: LocalDefId,
+    options: ConsumerOptions,
+) -> BodyWithBorrowckFacts<'_> {
     let (input_body, promoted) = tcx.mir_promoted(def);
     let infcx = tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bind(def)).build();
     let input_body: &Body<'_> = &input_body.borrow();
     let promoted: &IndexSlice<_, _> = &promoted.borrow();
-    *super::do_mir_borrowck(&infcx, input_body, promoted, true).1.unwrap()
+    *super::do_mir_borrowck(&infcx, input_body, promoted, Some(options)).1.unwrap()
 }

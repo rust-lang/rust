@@ -62,6 +62,7 @@ use crate::session_diagnostics::VarNeedNotMut;
 use self::diagnostics::{AccessKind, RegionName};
 use self::location::LocationTable;
 use self::prefixes::PrefixSet;
+use consumers::ConsumerOptions;
 use facts::AllFacts;
 
 use self::path_utils::*;
@@ -144,7 +145,7 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def: LocalDefId) -> &BorrowCheckResult<'_> {
         tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bind(hir_owner.def_id)).build();
     let input_body: &Body<'_> = &input_body.borrow();
     let promoted: &IndexSlice<_, _> = &promoted.borrow();
-    let opt_closure_req = do_mir_borrowck(&infcx, input_body, promoted, false).0;
+    let opt_closure_req = do_mir_borrowck(&infcx, input_body, promoted, None).0;
     debug!("mir_borrowck done");
 
     tcx.arena.alloc(opt_closure_req)
@@ -152,15 +153,15 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def: LocalDefId) -> &BorrowCheckResult<'_> {
 
 /// Perform the actual borrow checking.
 ///
-/// If `return_body_with_facts` is true, then return the body with non-erased
-/// region ids on which the borrow checking was performed together with Polonius
-/// facts.
+/// Use `consumer_options: None` for the default behavior of returning
+/// [`BorrowCheckResult`] only. Otherwise, return [`BodyWithBorrowckFacts`] according
+/// to the given [`ConsumerOptions`].
 #[instrument(skip(infcx, input_body, input_promoted), fields(id=?input_body.source.def_id()), level = "debug")]
 fn do_mir_borrowck<'tcx>(
     infcx: &InferCtxt<'tcx>,
     input_body: &Body<'tcx>,
     input_promoted: &IndexSlice<Promoted, Body<'tcx>>,
-    return_body_with_facts: bool,
+    consumer_options: Option<ConsumerOptions>,
 ) -> (BorrowCheckResult<'tcx>, Option<Box<BodyWithBorrowckFacts<'tcx>>>) {
     let def = input_body.source.def_id().expect_local();
     debug!(?def);
@@ -241,8 +242,6 @@ fn do_mir_borrowck<'tcx>(
     let borrow_set =
         Rc::new(BorrowSet::build(tcx, body, locals_are_invalidated_at_exit, &mdpe.move_data));
 
-    let use_polonius = return_body_with_facts || infcx.tcx.sess.opts.unstable_opts.polonius;
-
     // Compute non-lexical lifetimes.
     let nll::NllOutput {
         regioncx,
@@ -262,7 +261,7 @@ fn do_mir_borrowck<'tcx>(
         &mdpe.move_data,
         &borrow_set,
         &upvars,
-        use_polonius,
+        consumer_options,
     );
 
     // Dump MIR results into a file, if that is enabled. This let us
@@ -444,13 +443,15 @@ fn do_mir_borrowck<'tcx>(
         tainted_by_errors,
     };
 
-    let body_with_facts = if return_body_with_facts {
-        let output_facts = mbcx.polonius_output.expect("Polonius output was not computed");
+    let body_with_facts = if consumer_options.is_some() {
+        let output_facts = mbcx.polonius_output;
         Some(Box::new(BodyWithBorrowckFacts {
             body: body_owned,
-            input_facts: *polonius_input.expect("Polonius input facts were not generated"),
+            borrow_set,
+            region_inference_context: regioncx,
+            location_table: polonius_input.as_ref().map(|_| location_table_owned),
+            input_facts: polonius_input,
             output_facts,
-            location_table: location_table_owned,
         }))
     } else {
         None
@@ -469,12 +470,20 @@ fn do_mir_borrowck<'tcx>(
 pub struct BodyWithBorrowckFacts<'tcx> {
     /// A mir body that contains region identifiers.
     pub body: Body<'tcx>,
-    /// Polonius input facts.
-    pub input_facts: AllFacts,
-    /// Polonius output facts.
-    pub output_facts: Rc<self::nll::PoloniusOutput>,
-    /// The table that maps Polonius points to locations in the table.
-    pub location_table: LocationTable,
+    /// The set of borrows occurring in `body` with data about them.
+    pub borrow_set: Rc<BorrowSet<'tcx>>,
+    /// Context generated during borrowck, intended to be passed to
+    /// [`OutOfScopePrecomputer`](dataflow::OutOfScopePrecomputer).
+    pub region_inference_context: Rc<RegionInferenceContext<'tcx>>,
+    /// The table that maps Polonius points to locations in the table. Populated
+    /// when using [`ConsumerOptions::PoloniusInputFacts`] or above.
+    pub location_table: Option<LocationTable>,
+    /// Polonius input facts. Populated when using
+    /// [`ConsumerOptions::PoloniusInputFacts`] or above.
+    pub input_facts: Option<Box<AllFacts>>,
+    /// Polonius output facts. Populated when using
+    /// [`ConsumerOptions::PoloniusOutputFacts`] or above.
+    pub output_facts: Option<Rc<self::nll::PoloniusOutput>>,
 }
 
 pub struct BorrowckInferCtxt<'cx, 'tcx> {
