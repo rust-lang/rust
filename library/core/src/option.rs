@@ -1007,7 +1007,7 @@ impl<T> Option<T> {
     {
         match self {
             Some(x) => x,
-            None => Default::default(),
+            None => T::default(),
         }
     }
 
@@ -1615,11 +1615,7 @@ impl<T> Option<T> {
     where
         T: Default,
     {
-        fn default<T: Default>() -> T {
-            T::default()
-        }
-
-        self.get_or_insert_with(default)
+        self.get_or_insert_with(T::default)
     }
 
     /// Inserts a value computed from `f` into the option if it is [`None`],
