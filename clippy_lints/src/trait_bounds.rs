@@ -177,6 +177,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
                         bounds,
                         ..
                     ),
+                    span,
                     ..
                 },
                 ..
@@ -189,6 +190,12 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
 
         let mut seen_def_ids = FxHashSet::default();
 
+        let traits = bounds
+            .iter()
+            .filter_map(|b| snippet_opt(cx, b.span))
+            .collect::<Vec<_>>();
+        let traits = traits.join(" + ");
+
         for bound in bounds.iter() {
             let Some(def_id) = bound.trait_ref.trait_def_id() else { continue; };
 
@@ -198,10 +205,10 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
                 span_lint_and_sugg(
                     cx,
                     TRAIT_DUPLICATION_IN_BOUNDS,
-                    bound.span,
+                    *span,
                     "this trait bound is already specified in trait declaration",
                     "consider removing this trait bound",
-                    "".to_string(),
+                    traits.clone(),
                     Applicability::MaybeIncorrect,
                 );
             }
