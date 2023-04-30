@@ -875,7 +875,7 @@ rustc_queries! {
 
     query typeck(key: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
         desc { |tcx| "type-checking `{}`", tcx.def_path_str(key) }
-        cache_on_disk_if { true }
+        cache_on_disk_if(tcx) { !tcx.is_typeck_child(key.to_def_id()) }
     }
     query diagnostic_only_typeck(key: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
         desc { |tcx| "type-checking `{}`", tcx.def_path_str(key) }
