@@ -195,13 +195,14 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
             let already_seen = !seen_def_ids.insert(def_id);
 
             if already_seen {
-                span_lint_and_help(
+                span_lint_and_sugg(
                     cx,
                     TRAIT_DUPLICATION_IN_BOUNDS,
                     bound.span,
                     "this trait bound is already specified in trait declaration",
-                    None,
                     "consider removing this trait bound",
+                    "".to_string(),
+                    Applicability::MaybeIncorrect,
                 );
             }
         }

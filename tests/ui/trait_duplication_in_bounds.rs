@@ -2,6 +2,8 @@
 #![deny(clippy::trait_duplication_in_bounds)]
 #![allow(unused)]
 
+use std::any::Any;
+
 fn bad_foo<T: Clone + Clone + Clone + Copy, U: Clone + Copy>(arg0: T, argo1: U) {
     unimplemented!();
 }
