@@ -1,5 +1,4 @@
 use itertools::Itertools;
-use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
@@ -8,7 +7,7 @@ use rustc_session::lint::builtin::FUNCTION_ITEM_REFERENCES;
 use rustc_span::{symbol::sym, Span};
 use rustc_target::spec::abi::Abi;
 
-use crate::MirLint;
+use crate::{errors, MirLint};
 
 pub struct FunctionItemReferences;
 
@@ -174,27 +173,21 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
         let num_args = fn_sig.inputs().map_bound(|inputs| inputs.len()).skip_binder();
         let variadic = if fn_sig.c_variadic() { ", ..." } else { "" };
         let ret = if fn_sig.output().skip_binder().is_unit() { "" } else { " -> _" };
-        self.tcx.struct_span_lint_hir(
+        let sugg = format!(
+            "{} as {}{}fn({}{}){}",
+            if params.is_empty() { ident.clone() } else { format!("{}::<{}>", ident, params) },
+            unsafety,
+            abi,
+            vec!["_"; num_args].join(", "),
+            variadic,
+            ret,
+        );
+
+        self.tcx.emit_spanned_lint(
             FUNCTION_ITEM_REFERENCES,
             lint_root,
             span,
-            "taking a reference to a function item does not give a function pointer",
-            |lint| {
-                lint.span_suggestion(
-                    span,
-                    format!("cast `{}` to obtain a function pointer", ident),
-                    format!(
-                        "{} as {}{}fn({}{}){}",
-                        if params.is_empty() { ident } else { format!("{}::<{}>", ident, params) },
-                        unsafety,
-                        abi,
-                        vec!["_"; num_args].join(", "),
-                        variadic,
-                        ret,
-                    ),
-                    Applicability::Unspecified,
-                )
-            },
+            errors::FnItemRef { span, sugg, ident },
         );
     }
 }

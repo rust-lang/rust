@@ -8,6 +8,8 @@ use rustc_session::lint::builtin::FFI_UNWIND_CALLS;
 use rustc_target::spec::abi::Abi;
 use rustc_target::spec::PanicStrategy;
 
+use crate::errors;
+
 fn abi_can_unwind(abi: Abi) -> bool {
     use Abi::*;
     match abi {
@@ -107,13 +109,13 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
                 .lint_root;
             let span = terminator.source_info.span;
 
-            let msg = match fn_def_id {
-                Some(_) => "call to foreign function with FFI-unwind ABI",
-                None => "call to function pointer with FFI-unwind ABI",
-            };
-            tcx.struct_span_lint_hir(FFI_UNWIND_CALLS, lint_root, span, msg, |lint| {
-                lint.span_label(span, msg)
-            });
+            let foreign = fn_def_id.is_some();
+            tcx.emit_spanned_lint(
+                FFI_UNWIND_CALLS,
+                lint_root,
+                span,
+                errors::FfiUnwindCall { span, foreign },
+            );
 
             tainted = true;
         }

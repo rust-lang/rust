@@ -99,6 +99,7 @@ pub static DEFAULT_LOCALE_RESOURCES: &[&str] = &[
     rustc_middle::DEFAULT_LOCALE_RESOURCE,
     rustc_mir_build::DEFAULT_LOCALE_RESOURCE,
     rustc_mir_dataflow::DEFAULT_LOCALE_RESOURCE,
+    rustc_mir_transform::DEFAULT_LOCALE_RESOURCE,
     rustc_monomorphize::DEFAULT_LOCALE_RESOURCE,
     rustc_parse::DEFAULT_LOCALE_RESOURCE,
     rustc_passes::DEFAULT_LOCALE_RESOURCE,
