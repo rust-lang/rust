@@ -331,7 +331,7 @@ pub(crate) fn print(req: PrintRequest, sess: &Session) {
     match req {
         PrintRequest::TargetCPUs => {
             let cpu_cstring = CString::new(handle_native(sess.target.cpu.as_ref()))
-                .expect("failed to convert to cstring");
+                .unwrap_or_else(|e| bug!("failed to convert to cstring: {}", e));
             unsafe { llvm::LLVMRustPrintTargetCPUs(tm, cpu_cstring.as_ptr()) };
         }
         PrintRequest::TargetFeatures => print_target_features(sess, tm),

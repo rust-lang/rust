@@ -324,10 +324,14 @@ extern "C" void LLVMRustPrintTargetCPUs(LLVMTargetMachineRef TM, const char* Tar
       MaxCPULen, "native", (int)HostCPU.size(), HostCPU.data());
   }
   for (auto &CPU : CPUTable) {
-    printf("    %-*s", MaxCPULen, CPU.Key);
     // Compare cpu against current target to label the default
     if (strcmp(CPU.Key, TargetCPU) == 0) {
-      printf("   - this is the default target cpu for the current target");
+      printf("    %-*s - This is the default target CPU"
+      " for the current build target (currently %s).",
+        MaxCPULen, CPU.Key, Target->getTargetTriple().str().c_str());
+    }
+    else {
+      printf("    %-*s", MaxCPULen, CPU.Key);
     }
     printf("\n");
   }
