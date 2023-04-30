@@ -5,6 +5,7 @@ use rustc_ast::{Attribute, LitKind, MetaItem, MetaItemKind, MetaItemLit, NestedM
 use rustc_ast_pretty::pprust;
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
 use rustc_macros::HashStable_Generic;
+use rustc_session::config::ExpectedValues;
 use rustc_session::lint::builtin::UNEXPECTED_CFGS;
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::{feature_err, ParseSess};
@@ -581,8 +582,20 @@ pub fn cfg_matches(
 ) -> bool {
     eval_condition(cfg, sess, features, &mut |cfg| {
         try_gate_cfg(cfg.name, cfg.span, sess, features);
-        if let Some(names_valid) = &sess.check_config.names_valid {
-            if !names_valid.contains(&cfg.name) {
+        match sess.check_config.expecteds.get(&cfg.name) {
+            Some(ExpectedValues::Some(values)) if !values.contains(&cfg.value) => {
+                sess.buffer_lint_with_diagnostic(
+                    UNEXPECTED_CFGS,
+                    cfg.span,
+                    lint_node_id,
+                    "unexpected `cfg` condition value",
+                    BuiltinLintDiagnostics::UnexpectedCfg(
+                        (cfg.name, cfg.name_span),
+                        cfg.value_span.map(|vs| (cfg.value.unwrap(), vs)),
+                    ),
+                );
+            }
+            None if sess.check_config.exhaustive_names => {
                 sess.buffer_lint_with_diagnostic(
                     UNEXPECTED_CFGS,
                     cfg.span,
@@ -591,22 +604,7 @@ pub fn cfg_matches(
                     BuiltinLintDiagnostics::UnexpectedCfg((cfg.name, cfg.name_span), None),
                 );
             }
-        }
-        if let Some(value) = cfg.value {
-            if let Some(values) = &sess.check_config.values_valid.get(&cfg.name) {
-                if !values.contains(&value) {
-                    sess.buffer_lint_with_diagnostic(
-                        UNEXPECTED_CFGS,
-                        cfg.span,
-                        lint_node_id,
-                        "unexpected `cfg` condition value",
-                        BuiltinLintDiagnostics::UnexpectedCfg(
-                            (cfg.name, cfg.name_span),
-                            cfg.value_span.map(|vs| (value, vs)),
-                        ),
-                    );
-                }
-            }
+            _ => { /* not unexpected */ }
         }
         sess.config.contains(&(cfg.name, cfg.value))
     })

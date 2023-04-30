@@ -769,10 +769,7 @@ pub trait LintContext: Sized {
                     db.note("see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information");
                 },
                 BuiltinLintDiagnostics::UnexpectedCfg((name, name_span), None) => {
-                    let Some(names_valid) = &sess.parse_sess.check_config.names_valid else {
-                        bug!("it shouldn't be possible to have a diagnostic on a name if name checking is not enabled");
-                    };
-                    let possibilities: Vec<Symbol> = names_valid.iter().map(|s| *s).collect();
+                    let possibilities: Vec<Symbol> = sess.parse_sess.check_config.expecteds.keys().map(|s| *s).collect();
 
                     // Suggest the most probable if we found one
                     if let Some(best_match) = find_best_match_for_name(&possibilities, name, None) {
@@ -780,10 +777,15 @@ pub trait LintContext: Sized {
                     }
                 },
                 BuiltinLintDiagnostics::UnexpectedCfg((name, name_span), Some((value, value_span))) => {
-                    let Some(values) = &sess.parse_sess.check_config.values_valid.get(&name) else {
+                    let Some(rustc_session::config::ExpectedValues::Some(values)) = &sess.parse_sess.check_config.expecteds.get(&name) else {
                         bug!("it shouldn't be possible to have a diagnostic on a value whose name is not in values");
                     };
-                    let possibilities: Vec<Symbol> = values.iter().map(|&s| s).collect();
+                    let mut have_none_possibility = false;
+                    let possibilities: Vec<Symbol> = values.iter()
+                        .inspect(|a| have_none_possibility |= a.is_none())
+                        .copied()
+                        .filter_map(std::convert::identity)
+                        .collect();
 
                     // Show the full list if all possible values for a given name, but don't do it
                     // for names as the possibilities could be very long

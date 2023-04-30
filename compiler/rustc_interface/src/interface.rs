@@ -9,7 +9,7 @@ use rustc_data_structures::OnDrop;
 use rustc_errors::registry::Registry;
 use rustc_errors::{ErrorGuaranteed, Handler};
 use rustc_lint::LintStore;
-use rustc_middle::ty;
+use rustc_middle::{bug, ty};
 use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_query_impl::QueryCtxt;
 use rustc_query_system::query::print_query_stack;
@@ -154,12 +154,14 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
                     Ok(meta_item) if parser.token == token::Eof => {
                         if let Some(args) = meta_item.meta_item_list() {
                             if meta_item.has_name(sym::names) {
-                                let names_valid =
-                                    check_cfg.names_valid.get_or_insert_with(|| FxHashSet::default());
+                                check_cfg.exhaustive_names = true;
                                 for arg in args {
                                     if arg.is_word() && arg.ident().is_some() {
                                         let ident = arg.ident().expect("multi-segment cfg key");
-                                        names_valid.insert(ident.name.to_string());
+                                        check_cfg
+                                            .expecteds
+                                            .entry(ident.name.to_string())
+                                            .or_insert(ExpectedValues::Any);
                                     } else {
                                         error!("`names()` arguments must be simple identifiers");
                                     }
@@ -168,8 +170,8 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
                                 if let Some((name, values)) = args.split_first() {
                                     if name.is_word() && name.ident().is_some() {
                                         let ident = name.ident().expect("multi-segment cfg key");
-                                        let ident_values = check_cfg
-                                            .values_valid
+                                        let expected_values = check_cfg
+                                            .expecteds
                                             .entry(ident.name.to_string())
                                             .or_insert_with(|| {
                                                 ExpectedValues::Some(FxHashSet::default())
@@ -183,12 +185,16 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
                                             if let Some(LitKind::Str(s, _)) =
                                                 val.lit().map(|lit| &lit.kind)
                                             {
-                                                ident_values.insert(s.to_string());
+                                                expected_values.insert(Some(s.to_string()));
                                             } else {
                                                 error!(
                                                     "`values()` arguments must be string literals"
                                                 );
                                             }
+                                        }
+
+                                        if values.is_empty() {
+                                            expected_values.insert(None);
                                         }
                                     } else {
                                         error!(
@@ -196,7 +202,7 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
                                         );
                                     }
                                 } else if args.is_empty() {
-                                    check_cfg.well_known_values = true;
+                                    check_cfg.exhaustive_values = true;
                                 } else {
                                     expected_error();
                                 }
@@ -220,9 +226,6 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
             }
         }
 
-        if let Some(names_valid) = &mut check_cfg.names_valid {
-            names_valid.extend(check_cfg.values_valid.keys().cloned());
-        }
         check_cfg
     })
 }
