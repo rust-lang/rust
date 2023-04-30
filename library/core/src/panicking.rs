@@ -277,17 +277,17 @@ fn assert_failed_inner(
 
     match args {
         Some(args) => panic!(
-            r#"assertion failed: `({left_name} {} {right_name})`
-  left: `{:?}`,
- right: `{:?}`: 
-    at: {}"#,
-            op, left_val, right_val, args
+            r#"assertion failed: `({left_name} {op} {right_name})`
+ error: {args},
+  left: `{left_val:?}`,
+ right: `{right_val:?}`
+    at: "#
         ),
         None => panic!(
-            r#"assertion failed: `({left_name} {} {right_name})`
-  left: `{:?}`,
- right: `{:?}`"#,
-            op, left_val, right_val,
+            r#"assertion failed: `({left_name} {op} {right_name})`
+  left: `{left_val:?}`,
+ right: `{right_val:?}`
+    at: "#
         ),
     }
 }
