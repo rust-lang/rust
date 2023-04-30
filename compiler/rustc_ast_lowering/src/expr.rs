@@ -185,21 +185,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::AsyncGeneratorKind::Block,
                     |this| this.with_new_scopes(|this| this.lower_block_expr(block)),
                 ),
-                ExprKind::Await(expr) => {
-                    let dot_await_span = if expr.span.hi() < e.span.hi() {
-                        let span_with_whitespace = self
-                            .tcx
-                            .sess
-                            .source_map()
-                            .span_extend_while(expr.span, char::is_whitespace)
-                            .unwrap_or(expr.span);
-                        span_with_whitespace.shrink_to_hi().with_hi(e.span.hi())
-                    } else {
-                        // this is a recovered `await expr`
-                        e.span
-                    };
-                    self.lower_expr_await(dot_await_span, expr)
-                }
+                ExprKind::Await(expr, await_kw_span) => self.lower_expr_await(*await_kw_span, expr),
                 ExprKind::Closure(box Closure {
                     binder,
                     capture_clause,
@@ -710,18 +696,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ///     }
     /// }
     /// ```
-    fn lower_expr_await(&mut self, dot_await_span: Span, expr: &Expr) -> hir::ExprKind<'hir> {
-        let full_span = expr.span.to(dot_await_span);
+    fn lower_expr_await(&mut self, await_kw_span: Span, expr: &Expr) -> hir::ExprKind<'hir> {
+        let full_span = expr.span.to(await_kw_span);
         match self.generator_kind {
             Some(hir::GeneratorKind::Async(_)) => {}
             Some(hir::GeneratorKind::Gen) | None => {
                 self.tcx.sess.emit_err(AwaitOnlyInAsyncFnAndBlocks {
-                    dot_await_span,
+                    await_kw_span,
                     item_span: self.current_item,
                 });
             }
         }
-        let span = self.mark_span_with_reason(DesugaringKind::Await, dot_await_span, None);
+        let span = self.mark_span_with_reason(DesugaringKind::Await, await_kw_span, None);
         let gen_future_span = self.mark_span_with_reason(
             DesugaringKind::Await,
             full_span,

@@ -1415,7 +1415,10 @@ pub fn noop_visit_expr<T: MutVisitor>(
         ExprKind::Async(_capture_by, body) => {
             vis.visit_block(body);
         }
-        ExprKind::Await(expr) => vis.visit_expr(expr),
+        ExprKind::Await(expr, await_kw_span) => {
+            vis.visit_expr(expr);
+            vis.visit_span(await_kw_span);
+        }
         ExprKind::Assign(el, er, _) => {
             vis.visit_expr(el);
             vis.visit_expr(er);

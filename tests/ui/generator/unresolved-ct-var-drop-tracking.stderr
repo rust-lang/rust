@@ -1,10 +1,10 @@
 error[E0277]: `[(); _]` is not a future
-  --> $DIR/unresolved-ct-var-drop-tracking.rs:7:44
+  --> $DIR/unresolved-ct-var-drop-tracking.rs:7:45
    |
 LL |         let s = std::array::from_fn(|_| ()).await;
-   |                 ---------------------------^^^^^^
-   |                 |                          |
-   |                 |                          `[(); _]` is not a future
+   |                 ----------------------------^^^^^
+   |                 |                          ||
+   |                 |                          |`[(); _]` is not a future
    |                 |                          help: remove the `.await`
    |                 this call returns `[(); _]`
    |
@@ -19,10 +19,10 @@ LL |         let s = std::array::from_fn(|_| ()).await;
    |                 ^^^^^^^^^^^^^^^^^^^ cannot infer the value of const parameter `N` declared on the function `from_fn`
    |
 note: the type is part of the `async` block because of this `await`
-  --> $DIR/unresolved-ct-var-drop-tracking.rs:7:44
+  --> $DIR/unresolved-ct-var-drop-tracking.rs:7:45
    |
 LL |         let s = std::array::from_fn(|_| ()).await;
-   |                                            ^^^^^^
+   |                                             ^^^^^
 
 error[E0698]: type inside `async` block must be known in this context
   --> $DIR/unresolved-ct-var-drop-tracking.rs:7:17
@@ -31,10 +31,10 @@ LL |         let s = std::array::from_fn(|_| ()).await;
    |                 ^^^^^^^^^^^^^^^^^^^ cannot infer the value of const parameter `N` declared on the function `from_fn`
    |
 note: the type is part of the `async` block because of this `await`
-  --> $DIR/unresolved-ct-var-drop-tracking.rs:7:44
+  --> $DIR/unresolved-ct-var-drop-tracking.rs:7:45
    |
 LL |         let s = std::array::from_fn(|_| ()).await;
-   |                                            ^^^^^^
+   |                                             ^^^^^
 
 error[E0698]: type inside `async` block must be known in this context
   --> $DIR/unresolved-ct-var-drop-tracking.rs:7:17
@@ -43,10 +43,10 @@ LL |         let s = std::array::from_fn(|_| ()).await;
    |                 ^^^^^^^^^^^^^^^^^^^ cannot infer the value of const parameter `N` declared on the function `from_fn`
    |
 note: the type is part of the `async` block because of this `await`
-  --> $DIR/unresolved-ct-var-drop-tracking.rs:7:44
+  --> $DIR/unresolved-ct-var-drop-tracking.rs:7:45
    |
 LL |         let s = std::array::from_fn(|_| ()).await;
-   |                                            ^^^^^^
+   |                                             ^^^^^
 
 error[E0698]: type inside `async` block must be known in this context
   --> $DIR/unresolved-ct-var-drop-tracking.rs:7:17
@@ -55,10 +55,10 @@ LL |         let s = std::array::from_fn(|_| ()).await;
    |                 ^^^^^^^^^^^^^^^^^^^ cannot infer the value of const parameter `N` declared on the function `from_fn`
    |
 note: the type is part of the `async` block because of this `await`
-  --> $DIR/unresolved-ct-var-drop-tracking.rs:7:44
+  --> $DIR/unresolved-ct-var-drop-tracking.rs:7:45
    |
 LL |         let s = std::array::from_fn(|_| ()).await;
-   |                                            ^^^^^^
+   |                                             ^^^^^
 
 error[E0698]: type inside `async` block must be known in this context
   --> $DIR/unresolved-ct-var-drop-tracking.rs:7:17
@@ -67,10 +67,10 @@ LL |         let s = std::array::from_fn(|_| ()).await;
    |                 ^^^^^^^^^^^^^^^^^^^ cannot infer the value of const parameter `N` declared on the function `from_fn`
    |
 note: the type is part of the `async` block because of this `await`
-  --> $DIR/unresolved-ct-var-drop-tracking.rs:7:44
+  --> $DIR/unresolved-ct-var-drop-tracking.rs:7:45
    |
 LL |         let s = std::array::from_fn(|_| ()).await;
-   |                                            ^^^^^^
+   |                                             ^^^^^
 
 error: aborting due to 6 previous errors
 

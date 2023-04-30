@@ -859,7 +859,7 @@ impl<'a> Parser<'a> {
                     ExprKind::Field(_, _) => "a field access",
                     ExprKind::MethodCall(_) => "a method call",
                     ExprKind::Call(_, _) => "a function call",
-                    ExprKind::Await(_) => "`.await`",
+                    ExprKind::Await(_, _) => "`.await`",
                     ExprKind::Err => return Ok(with_postfix),
                     _ => unreachable!("parse_dot_or_call_expr_with_ shouldn't produce this"),
                 }
@@ -3252,7 +3252,7 @@ impl<'a> Parser<'a> {
 
     fn mk_await_expr(&mut self, self_arg: P<Expr>, lo: Span) -> P<Expr> {
         let span = lo.to(self.prev_token.span);
-        let await_expr = self.mk_expr(span, ExprKind::Await(self_arg));
+        let await_expr = self.mk_expr(span, ExprKind::Await(self_arg, self.prev_token.span));
         self.recover_from_await_method_call();
         await_expr
     }
