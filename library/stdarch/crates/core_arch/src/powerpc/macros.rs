@@ -58,6 +58,16 @@ macro_rules! impl_vec_trait {
             }
         }
     };
+    ([$Trait:ident $m:ident]+ $fun:ident ($a:ty, $b:ty) -> $r:ty) => {
+        impl $Trait<$b> for $a {
+            type Result = $r;
+            #[inline]
+            #[target_feature(enable = "altivec")]
+            unsafe fn $m(self, b: $b) -> Self::Result {
+                transmute($fun(transmute(self), transmute(b)))
+            }
+        }
+    };
     ([$Trait:ident $m:ident] $fun:ident ($a:ty, ~$b:ty) -> $r:ty) => {
         impl_vec_trait!{ [$Trait $m] $fun ($a, $a) -> $r }
         impl_vec_trait!{ [$Trait $m] $fun ($a, $b) -> $r }
@@ -84,5 +94,16 @@ macro_rules! impl_vec_trait {
     };
     ([$Trait:ident $m:ident] 2 ($fn:ident)) => {
         impl_vec_trait!{ [$Trait $m] ($fn, $fn, $fn, $fn, $fn, $fn) }
+    };
+    ([$Trait:ident $m:ident]+ 2b ($b:ident, $h:ident, $w:ident)) => {
+        impl_vec_trait!{ [$Trait $m]+ $b (vector_bool_char, vector_bool_char) -> vector_bool_char }
+        impl_vec_trait!{ [$Trait $m]+ $b (vector_unsigned_char, vector_unsigned_char) -> vector_unsigned_char }
+        impl_vec_trait!{ [$Trait $m]+ $b (vector_signed_char, vector_signed_char) -> vector_signed_char }
+        impl_vec_trait!{ [$Trait $m]+ $h (vector_bool_short, vector_bool_short) -> vector_bool_short }
+        impl_vec_trait!{ [$Trait $m]+ $h (vector_unsigned_short, vector_unsigned_short) -> vector_unsigned_short }
+        impl_vec_trait!{ [$Trait $m]+ $h (vector_signed_short, vector_signed_short) -> vector_signed_short }
+        impl_vec_trait!{ [$Trait $m]+ $w (vector_bool_int, vector_bool_int) -> vector_bool_int }
+        impl_vec_trait!{ [$Trait $m]+ $w (vector_unsigned_int, vector_unsigned_int) -> vector_unsigned_int }
+        impl_vec_trait!{ [$Trait $m]+ $w (vector_signed_int, vector_signed_int) -> vector_signed_int }
     }
 }

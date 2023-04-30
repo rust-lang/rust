@@ -2002,6 +2002,142 @@ mod sealed {
             vec_ctf_u32::<IMM5>(self)
         }
     }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(all(test, target_endian = "little"), assert_instr(vmrghb))]
+    #[cfg_attr(all(test, target_endian = "big"), assert_instr(vmrglb))]
+    unsafe fn vec_vmrglb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char {
+        let mergel_perm = transmute(u8x16::new(
+            0x08, 0x18, 0x09, 0x19, 0x0A, 0x1A, 0x0B, 0x1B, 0x0C, 0x1C, 0x0D, 0x1D, 0x0E, 0x1E,
+            0x0F, 0x1F,
+        ));
+        vec_perm(a, b, mergel_perm)
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(all(test, target_endian = "little"), assert_instr(vmrghh))]
+    #[cfg_attr(all(test, target_endian = "big"), assert_instr(vmrglh))]
+    unsafe fn vec_vmrglh(a: vector_signed_short, b: vector_signed_short) -> vector_signed_short {
+        let mergel_perm = transmute(u8x16::new(
+            0x08, 0x09, 0x18, 0x19, 0x0A, 0x0B, 0x1A, 0x1B, 0x0C, 0x0D, 0x1C, 0x1D, 0x0E, 0x0F,
+            0x1E, 0x1F,
+        ));
+        vec_perm(a, b, mergel_perm)
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(
+        all(test, target_endian = "little", not(target_feature = "vsx")),
+        assert_instr(vmrghw)
+    )]
+    #[cfg_attr(
+        all(test, target_endian = "little", target_feature = "vsx"),
+        assert_instr(xxmrghw)
+    )]
+    #[cfg_attr(
+        all(test, target_endian = "big", not(target_feature = "vsx")),
+        assert_instr(vmrglw)
+    )]
+    #[cfg_attr(
+        all(test, target_endian = "big", target_feature = "vsx"),
+        assert_instr(xxmrglw)
+    )]
+    unsafe fn vec_vmrglw(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int {
+        let mergel_perm = transmute(u8x16::new(
+            0x08, 0x09, 0x0A, 0x0B, 0x18, 0x19, 0x1A, 0x1B, 0x0C, 0x0D, 0x0E, 0x0F, 0x1C, 0x1D,
+            0x1E, 0x1F,
+        ));
+        vec_perm(a, b, mergel_perm)
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(all(test, target_endian = "little"), assert_instr(vmrglb))]
+    #[cfg_attr(all(test, target_endian = "big"), assert_instr(vmrghb))]
+    unsafe fn vec_vmrghb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char {
+        let mergel_perm = transmute(u8x16::new(
+            0x00, 0x10, 0x01, 0x11, 0x02, 0x12, 0x03, 0x13, 0x04, 0x14, 0x05, 0x15, 0x06, 0x16,
+            0x07, 0x17,
+        ));
+        vec_perm(a, b, mergel_perm)
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(all(test, target_endian = "little"), assert_instr(vmrglh))]
+    #[cfg_attr(all(test, target_endian = "big"), assert_instr(vmrghh))]
+    unsafe fn vec_vmrghh(a: vector_signed_short, b: vector_signed_short) -> vector_signed_short {
+        let mergel_perm = transmute(u8x16::new(
+            0x00, 0x01, 0x10, 0x11, 0x02, 0x03, 0x12, 0x13, 0x04, 0x05, 0x14, 0x15, 0x06, 0x07,
+            0x16, 0x17,
+        ));
+        vec_perm(a, b, mergel_perm)
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(
+        all(test, target_endian = "little", not(target_feature = "vsx")),
+        assert_instr(vmrglw)
+    )]
+    #[cfg_attr(
+        all(test, target_endian = "little", target_feature = "vsx"),
+        assert_instr(xxmrglw)
+    )]
+    #[cfg_attr(
+        all(test, target_endian = "big", not(target_feature = "vsx")),
+        assert_instr(vmrghw)
+    )]
+    #[cfg_attr(
+        all(test, target_endian = "big", target_feature = "vsx"),
+        assert_instr(xxmrghw)
+    )]
+    unsafe fn vec_vmrghw(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int {
+        let mergel_perm = transmute(u8x16::new(
+            0x00, 0x01, 0x02, 0x03, 0x10, 0x11, 0x12, 0x13, 0x04, 0x05, 0x06, 0x07, 0x14, 0x15,
+            0x16, 0x17,
+        ));
+        vec_perm(a, b, mergel_perm)
+    }
+
+    pub trait VectorMergeh<Other> {
+        type Result;
+        unsafe fn vec_mergeh(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_trait! { [VectorMergeh vec_mergeh]+ 2b (vec_vmrghb, vec_vmrghh, vec_vmrghw) }
+    impl_vec_trait! { [VectorMergeh vec_mergeh]+ vec_vmrghw (vector_float, vector_float) -> vector_float }
+
+    pub trait VectorMergel<Other> {
+        type Result;
+        unsafe fn vec_mergel(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_trait! { [VectorMergel vec_mergel]+ 2b (vec_vmrglb, vec_vmrglh, vec_vmrglw) }
+    impl_vec_trait! { [VectorMergel vec_mergel]+ vec_vmrglw (vector_float, vector_float) -> vector_float }
+}
+
+/// Vector Merge Low
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_mergel<T, U>(a: T, b: U) -> <T as sealed::VectorMergel<U>>::Result
+where
+    T: sealed::VectorMergel<U>,
+{
+    a.vec_mergel(b)
+}
+
+/// Vector Merge High
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_mergeh<T, U>(a: T, b: U) -> <T as sealed::VectorMergeh<U>>::Result
+where
+    T: sealed::VectorMergeh<U>,
+{
+    a.vec_mergeh(b)
 }
 
 /// Vector Load Indexed.
