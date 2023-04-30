@@ -367,6 +367,10 @@ cc = ["@lcnr", "@compiler-errors"]
 message = "Some changes occurred in diagnostic error codes"
 cc = ["@GuillaumeGomez"]
 
+[mentions."compiler/rustc_mir_build/src/thir/pattern"]
+message = "Some changes might have occurred in exhaustiveness checking"
+cc = ["@Nadrieril"]
+
 [mentions."library"]
 message = """
 Hey! It looks like you've submitted a new PR for the library teams!
