@@ -566,7 +566,7 @@ impl<'a> State<'a> {
                         self.print_ident(field);
                     }
                 }
-
+                self.pclose();
                 self.end();
             }
             ast::ExprKind::MacCall(m) => self.print_mac(m),
