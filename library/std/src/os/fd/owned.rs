@@ -201,7 +201,7 @@ macro_rules! impl_is_terminal {
         #[unstable(feature = "sealed", issue = "none")]
         impl crate::sealed::Sealed for $t {}
 
-        #[stable(feature = "is_terminal", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "is_terminal", since = "1.70.0")]
         impl crate::io::IsTerminal for $t {
             #[inline]
             fn is_terminal(&self) -> bool {

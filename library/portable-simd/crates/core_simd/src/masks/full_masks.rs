@@ -257,7 +257,7 @@ where
     }
 }
 
-impl<T, const LANES: usize> core::convert::From<Mask<T, LANES>> for Simd<T, LANES>
+impl<T, const LANES: usize> From<Mask<T, LANES>> for Simd<T, LANES>
 where
     T: MaskElement,
     LaneCount<LANES>: SupportedLaneCount,

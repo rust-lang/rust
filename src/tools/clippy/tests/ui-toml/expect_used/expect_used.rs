@@ -1,4 +1,4 @@
-// compile-flags: --test
+//@compile-flags: --test
 #![warn(clippy::expect_used)]
 
 fn expect_option() {

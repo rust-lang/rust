@@ -364,9 +364,8 @@ where
         assert!(promoted.is_none() || Q::ALLOW_PROMOTED);
 
         // Don't peek inside trait associated constants.
-        if promoted.is_none() && cx.tcx.trait_of_item(def.did).is_none() {
-            assert_eq!(def.const_param_did, None, "expected associated const: {def:?}");
-            let qualifs = cx.tcx.at(constant.span).mir_const_qualif(def.did);
+        if promoted.is_none() && cx.tcx.trait_of_item(def).is_none() {
+            let qualifs = cx.tcx.at(constant.span).mir_const_qualif(def);
 
             if !Q::in_qualifs(&qualifs) {
                 return false;

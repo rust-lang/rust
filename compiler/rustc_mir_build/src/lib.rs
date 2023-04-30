@@ -25,7 +25,7 @@ pub mod thir;
 use rustc_middle::ty::query::Providers;
 
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
-use rustc_macros::fluent_messages;
+use rustc_fluent_macro::fluent_messages;
 
 fluent_messages! { "../messages.ftl" }
 
@@ -35,7 +35,6 @@ pub fn provide(providers: &mut Providers) {
     providers.lit_to_mir_constant = build::lit_to_mir_constant;
     providers.mir_built = build::mir_built;
     providers.thir_check_unsafety = check_unsafety::thir_check_unsafety;
-    providers.thir_check_unsafety_for_const_arg = check_unsafety::thir_check_unsafety_for_const_arg;
     providers.thir_body = thir::cx::thir_body;
     providers.thir_tree = thir::print::thir_tree;
     providers.thir_flat = thir::print::thir_flat;

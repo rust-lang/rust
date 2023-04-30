@@ -558,7 +558,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
             Rvalue::Cast(_, _, _) => {}
 
-            Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _) => {}
+            Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(_), _) => {}
             Rvalue::ShallowInitBox(_, _) => {}
 
             Rvalue::UnaryOp(_, operand) => {
@@ -874,7 +874,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     debug!("Resolving ({:?}) -> {:?}", callee, instance);
                     if let Ok(Some(func)) = instance {
                         if let InstanceDef::Item(def) = func.def {
-                            callee = def.did;
+                            callee = def;
                         }
                     }
                 }

@@ -685,7 +685,7 @@ where
             None
         } else {
             self.finished = true;
-            Some(mem::replace(&mut self.v, &mut []))
+            Some(mem::take(&mut self.v))
         }
     }
 }
@@ -749,7 +749,7 @@ where
         match idx_opt {
             None => self.finish(),
             Some(idx) => {
-                let tmp = mem::replace(&mut self.v, &mut []);
+                let tmp = mem::take(&mut self.v);
                 let (head, tail) = tmp.split_at_mut(idx);
                 self.v = head;
                 Some(&mut tail[1..])
@@ -830,7 +830,7 @@ where
         if idx == self.v.len() {
             self.finished = true;
         }
-        let tmp = mem::replace(&mut self.v, &mut []);
+        let tmp = mem::take(&mut self.v);
         let (head, tail) = tmp.split_at_mut(idx);
         self.v = tail;
         Some(head)
@@ -876,7 +876,7 @@ where
         if idx == 0 {
             self.finished = true;
         }
-        let tmp = mem::replace(&mut self.v, &mut []);
+        let tmp = mem::take(&mut self.v);
         let (head, tail) = tmp.split_at_mut(idx);
         self.v = head;
         Some(tail)

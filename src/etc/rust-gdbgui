@@ -43,7 +43,7 @@ fi
 RUSTC_SYSROOT="$("$RUSTC" --print=sysroot)"
 GDB_PYTHON_MODULE_DIRECTORY="$RUSTC_SYSROOT/lib/rustlib/etc"
 # Get the commit hash for path remapping
-RUSTC_COMMIT_HASH="$("$RUSTC" -vV | sed -n 's/commit-hash: \(\w*\)/\1/p')"
+RUSTC_COMMIT_HASH="$("$RUSTC" -vV | sed -n 's/commit-hash: \([a-zA-Z0-9_]*\)/\1/p')"
 
 # Set the environment variable `RUST_GDB` to overwrite the call to a
 # different/specific command (defaults to `gdb`).

@@ -1,5 +1,5 @@
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 use std::collections::VecDeque;
 
 /// A work queue is a handy data structure for tracking work left to

@@ -11,7 +11,7 @@ use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::*;
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 use rustc_middle::hir::nested_filter;
 use rustc_span::def_id::StableCrateId;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -1199,7 +1199,7 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
         stable_hasher.finish()
     });
 
-    Svh::new(crate_hash.to_smaller_hash())
+    Svh::new(crate_hash)
 }
 
 fn upstream_crates(tcx: TyCtxt<'_>) -> Vec<(StableCrateId, Svh)> {
@@ -1217,7 +1217,7 @@ fn upstream_crates(tcx: TyCtxt<'_>) -> Vec<(StableCrateId, Svh)> {
 }
 
 fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
-    let path_str = |def_id: LocalDefId| map.tcx.def_path_str(def_id.to_def_id());
+    let path_str = |def_id: LocalDefId| map.tcx.def_path_str(def_id);
 
     let span_str = || map.tcx.sess.source_map().span_to_snippet(map.span(id)).unwrap_or_default();
     let node_str = |prefix| format!("{id} ({prefix} `{}`)", span_str());

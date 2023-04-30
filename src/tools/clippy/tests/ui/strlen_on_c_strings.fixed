@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![warn(clippy::strlen_on_c_strings)]
 #![allow(dead_code)]

@@ -1,6 +1,3 @@
-use crate::vec::{Idx, IndexVec};
-use arrayvec::ArrayVec;
-use smallvec::{smallvec, SmallVec};
 use std::fmt;
 use std::iter;
 use std::marker::PhantomData;
@@ -9,7 +6,12 @@ use std::ops::{BitAnd, BitAndAssign, BitOrAssign, Bound, Not, Range, RangeBounds
 use std::rc::Rc;
 use std::slice;
 
+use arrayvec::ArrayVec;
+use smallvec::{smallvec, SmallVec};
+
 use rustc_macros::{Decodable, Encodable};
+
+use crate::{Idx, IndexVec};
 
 use Chunk::*;
 

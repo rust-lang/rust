@@ -223,7 +223,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let closure_hir_id = self.tcx.hir().local_def_id_to_hir_id(closure_def_id);
 
         if should_do_rust_2021_incompatible_closure_captures_analysis(self.tcx, closure_hir_id) {
-            self.perform_2229_migration_anaysis(closure_def_id, body_id, capture_clause, span);
+            self.perform_2229_migration_analysis(closure_def_id, body_id, capture_clause, span);
         }
 
         let after_feature_tys = self.final_upvar_tys(closure_def_id);
@@ -731,7 +731,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Perform the migration analysis for RFC 2229, and emit lint
     /// `disjoint_capture_drop_reorder` if needed.
-    fn perform_2229_migration_anaysis(
+    fn perform_2229_migration_analysis(
         &self,
         closure_def_id: LocalDefId,
         body_id: hir::BodyId,

@@ -4,7 +4,6 @@ use rustc_hir::def::Res;
 use rustc_macros::HashStable;
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::Ident;
-use rustc_span::Span;
 use smallvec::SmallVec;
 
 /// A simplified version of `ImportKind` from resolve.
@@ -41,8 +40,6 @@ pub struct ModChild {
     pub res: Res<!>,
     /// Visibility of the item.
     pub vis: ty::Visibility<DefId>,
-    /// Span of the item.
-    pub span: Span,
     /// Reexport chain linking this module child to its original reexported item.
     /// Empty if the module child is a proper item.
     pub reexport_chain: SmallVec<[Reexport; 2]>,

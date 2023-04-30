@@ -292,7 +292,9 @@ pub(crate) fn adt_dtorck_constraint(
     let span = tcx.def_span(def_id);
     debug!("dtorck_constraint: {:?}", def);
 
-    if def.is_phantom_data() {
+    if def.is_manually_drop() {
+        bug!("`ManuallyDrop` should have been handled by `trivial_dropck_outlives`");
+    } else if def.is_phantom_data() {
         // The first generic parameter here is guaranteed to be a type because it's
         // `PhantomData`.
         let substs = InternalSubsts::identity_for_item(tcx, def_id);

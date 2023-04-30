@@ -19,7 +19,10 @@ try:
 except ImportError:
     lzma = None
 
-if sys.platform == 'win32':
+def platform_is_win32():
+    return sys.platform == 'win32'
+
+if platform_is_win32():
     EXE_SUFFIX = ".exe"
 else:
     EXE_SUFFIX = ""
@@ -78,7 +81,6 @@ def _download(path, url, probably_big, verbose, exception):
     if probably_big or verbose:
         print("downloading {}".format(url))
 
-    platform_is_win32 = sys.platform == 'win32'
     try:
         if probably_big or verbose:
             option = "-#"
@@ -86,7 +88,7 @@ def _download(path, url, probably_big, verbose, exception):
             option = "-s"
         # If curl is not present on Win32, we should not sys.exit
         #   but raise `CalledProcessError` or `OSError` instead
-        require(["curl", "--version"], exception=platform_is_win32)
+        require(["curl", "--version"], exception=platform_is_win32())
         with open(path, "wb") as outfile:
             run(["curl", option,
                 "-L", # Follow redirect.
@@ -99,8 +101,8 @@ def _download(path, url, probably_big, verbose, exception):
             )
     except (subprocess.CalledProcessError, OSError, RuntimeError):
         # see http://serverfault.com/questions/301128/how-to-download
-        if platform_is_win32:
-            run(["PowerShell.exe", "/nologo", "-Command",
+        if platform_is_win32():
+            run_powershell([
                  "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;",
                  "(New-Object System.Net.WebClient).DownloadFile('{}', '{}')".format(url, path)],
                 verbose=verbose,
@@ -174,6 +176,10 @@ def run(args, verbose=False, exception=False, is_bootstrap=False, **kwargs):
         else:
             sys.exit(err)
 
+def run_powershell(script, *args, **kwargs):
+    """Run a powershell script"""
+    run(["PowerShell.exe", "/nologo", "-Command"] + script, *args, **kwargs)
+
 
 def require(cmd, exit=True, exception=False):
     '''Run a command, returning its output.
@@ -209,21 +215,27 @@ def default_build_triple(verbose):
     # install, use their preference. This fixes most issues with Windows builds
     # being detected as GNU instead of MSVC.
     default_encoding = sys.getdefaultencoding()
-    try:
-        version = subprocess.check_output(["rustc", "--version", "--verbose"],
-                stderr=subprocess.DEVNULL)
-        version = version.decode(default_encoding)
-        host = next(x for x in version.split('\n') if x.startswith("host: "))
-        triple = host.split("host: ")[1]
-        if verbose:
-            print("detected default triple {} from pre-installed rustc".format(triple))
-        return triple
-    except Exception as e:
-        if verbose:
-            print("pre-installed rustc not detected: {}".format(e))
-            print("falling back to auto-detect")
 
-    required = sys.platform != 'win32'
+    if sys.platform == 'darwin':
+        if verbose:
+            print("not using rustc detection as it is unreliable on macOS")
+            print("falling back to auto-detect")
+    else:
+        try:
+            version = subprocess.check_output(["rustc", "--version", "--verbose"],
+                    stderr=subprocess.DEVNULL)
+            version = version.decode(default_encoding)
+            host = next(x for x in version.split('\n') if x.startswith("host: "))
+            triple = host.split("host: ")[1]
+            if verbose:
+                print("detected default triple {} from pre-installed rustc".format(triple))
+            return triple
+        except Exception as e:
+            if verbose:
+                print("pre-installed rustc not detected: {}".format(e))
+                print("falling back to auto-detect")
+
+    required = not platform_is_win32()
     ostype = require(["uname", "-s"], exit=required)
     cputype = require(['uname', '-m'], exit=required)
 
@@ -428,6 +440,23 @@ class RustBuild(object):
                 (not os.path.exists(self.rustc()) or
                  self.program_out_of_date(self.rustc_stamp(), key)):
             if os.path.exists(bin_root):
+                # HACK: On Windows, we can't delete rust-analyzer-proc-macro-server while it's
+                # running. Kill it.
+                if platform_is_win32():
+                    print("Killing rust-analyzer-proc-macro-srv before deleting stage0 toolchain")
+                    regex =  '{}\\\\(host|{})\\\\stage0\\\\libexec'.format(
+                        os.path.basename(self.build_dir),
+                        self.build
+                    )
+                    script = (
+                        # NOTE: can't use `taskkill` or `Get-Process -Name` because they error if
+                        # the server isn't running.
+                        'Get-Process | ' +
+                        'Where-Object {$_.Name -eq "rust-analyzer-proc-macro-srv"} |' +
+                        'Where-Object {{$_.Path -match "{}"}} |'.format(regex) +
+                        'Stop-Process'
+                    )
+                    run_powershell([script])
                 shutil.rmtree(bin_root)
             tarball_suffix = '.tar.gz' if lzma is None else '.tar.xz'
             filename = "rust-std-{}-{}{}".format(
@@ -575,7 +604,7 @@ class RustBuild(object):
         ]
         patchelf_args = ["--set-rpath", ":".join(rpath_entries)]
         if not fname.endswith(".so"):
-            # Finally, set the corret .interp for binaries
+            # Finally, set the correct .interp for binaries
             with open("{}/nix-support/dynamic-linker".format(nix_deps_dir)) as dynamic_linker:
                 patchelf_args += ["--set-interpreter", dynamic_linker.read().rstrip()]
 
@@ -722,11 +751,14 @@ class RustBuild(object):
 
     def build_bootstrap(self, color, verbose_count):
         """Build bootstrap"""
-        print("Building bootstrap")
+        env = os.environ.copy()
+        if "GITHUB_ACTIONS" in env:
+            print("::group::Building bootstrap")
+        else:
+            print("Building bootstrap")
         build_dir = os.path.join(self.build_dir, "bootstrap")
         if self.clean and os.path.exists(build_dir):
             shutil.rmtree(build_dir)
-        env = os.environ.copy()
         # `CARGO_BUILD_TARGET` breaks bootstrap build.
         # See also: <https://github.com/rust-lang/rust/issues/70208>.
         if "CARGO_BUILD_TARGET" in env:
@@ -798,6 +830,9 @@ class RustBuild(object):
         # Run this from the source directory so cargo finds .cargo/config
         run(args, env=env, verbose=self.verbose, cwd=self.rust_root)
 
+        if "GITHUB_ACTIONS" in env:
+            print("::endgroup::")
+
     def build_triple(self):
         """Build triple as in LLVM
 
@@ -822,7 +857,8 @@ class RustBuild(object):
         if self.use_vendored_sources:
             vendor_dir = os.path.join(self.rust_root, 'vendor')
             if not os.path.exists(vendor_dir):
-                sync_dirs = "--sync ./src/tools/rust-analyzer/Cargo.toml " \
+                sync_dirs = "--sync ./src/tools/cargo/Cargo.toml " \
+                            "--sync ./src/tools/rust-analyzer/Cargo.toml " \
                             "--sync ./compiler/rustc_codegen_cranelift/Cargo.toml " \
                             "--sync ./src/bootstrap/Cargo.toml "
                 print('error: vendoring required, but vendor directory does not exist.')

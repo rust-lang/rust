@@ -5,7 +5,7 @@ use std::mem;
 use either::{Either, Left, Right};
 
 use rustc_hir::{self as hir, def_id::DefId, definitions::DefPathData};
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{ErrorHandled, InterpError};
 use rustc_middle::ty::layout::{
@@ -132,11 +132,10 @@ pub struct Frame<'mir, 'tcx, Prov: Provenance = AllocId, Extra = ()> {
 }
 
 /// What we store about a frame in an interpreter backtrace.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct FrameInfo<'tcx> {
     pub instance: ty::Instance<'tcx>,
     pub span: Span,
-    pub lint_root: Option<hir::HirId>,
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, Debug)] // Miri debug-prints these
@@ -462,10 +461,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         instance: ty::InstanceDef<'tcx>,
         promoted: Option<mir::Promoted>,
     ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
-        let def = instance.with_opt_param();
         trace!("load mir(instance={:?}, promoted={:?})", instance, promoted);
         let body = if let Some(promoted) = promoted {
-            &self.tcx.promoted_mir_opt_const_arg(def)[promoted]
+            let def = instance.def_id();
+            &self.tcx.promoted_mir(def)[promoted]
         } else {
             M::load_mir(self, instance)?
         };
@@ -503,13 +502,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// The `substs` are assumed to already be in our interpreter "universe" (param_env).
     pub(super) fn resolve(
         &self,
-        def: ty::WithOptConstParam<DefId>,
+        def: DefId,
         substs: SubstsRef<'tcx>,
     ) -> InterpResult<'tcx, ty::Instance<'tcx>> {
         trace!("resolve: {:?}, {:#?}", def, substs);
         trace!("param_env: {:#?}", self.param_env);
         trace!("substs: {:#?}", substs);
-        match ty::Instance::resolve_opt_const_arg(*self.tcx, self.param_env, def, substs) {
+        match ty::Instance::resolve(*self.tcx, self.param_env, def, substs) {
             Ok(Some(instance)) => Ok(instance),
             Ok(None) => throw_inval!(TooGeneric),
 
@@ -947,10 +946,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // This deliberately does *not* honor `requires_caller_location` since it is used for much
         // more than just panics.
         for frame in stack.iter().rev() {
-            let lint_root = frame.lint_root();
             let span = frame.current_span();
-
-            frames.push(FrameInfo { span, instance: frame.instance, lint_root });
+            frames.push(FrameInfo { span, instance: frame.instance });
         }
         trace!("generate stacktrace: {:#?}", frames);
         frames

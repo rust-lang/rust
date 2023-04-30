@@ -1,4 +1,11 @@
-const QUERY = ['A<B<C<D>,  E>', 'p<> u8', '"p"<a>'];
+const QUERY = [
+    'A<B<C<D>,  E>',
+    'p<> u8',
+    '"p"<a>',
+    'p<u<x>>',
+    'p<u<x>, r>',
+    'p<u<x, r>>',
+];
 
 const PARSED = [
     {
@@ -7,7 +14,7 @@ const PARSED = [
         original: 'A<B<C<D>,  E>',
         returned: [],
         userQuery: 'a<b<c<d>,  e>',
-        error: 'Unexpected `<` after `<`',
+        error: 'Unclosed `<`',
     },
     {
         elems: [
@@ -57,6 +64,119 @@ const PARSED = [
         original: '"p"<a>',
         returned: [],
         userQuery: '"p"<a>',
+        error: null,
+    },
+    {
+        elems: [
+            {
+                name: "p",
+                fullPath: ["p"],
+                pathWithoutLast: [],
+                pathLast: "p",
+                generics: [
+                    {
+                        name: "u",
+                        fullPath: ["u"],
+                        pathWithoutLast: [],
+                        pathLast: "u",
+                        generics: [
+                            {
+                                name: "x",
+                                fullPath: ["x"],
+                                pathWithoutLast: [],
+                                pathLast: "x",
+                                generics: [],
+                            },
+                        ],
+                    },
+                ],
+                typeFilter: -1,
+            },
+        ],
+        foundElems: 1,
+        original: 'p<u<x>>',
+        returned: [],
+        userQuery: 'p<u<x>>',
+        error: null,
+    },
+    {
+        elems: [
+            {
+                name: "p",
+                fullPath: ["p"],
+                pathWithoutLast: [],
+                pathLast: "p",
+                generics: [
+                    {
+                        name: "u",
+                        fullPath: ["u"],
+                        pathWithoutLast: [],
+                        pathLast: "u",
+                        generics: [
+                            {
+                                name: "x",
+                                fullPath: ["x"],
+                                pathWithoutLast: [],
+                                pathLast: "x",
+                                generics: [],
+                            },
+                        ],
+                    },
+                    {
+                        name: "r",
+                        fullPath: ["r"],
+                        pathWithoutLast: [],
+                        pathLast: "r",
+                        generics: [],
+                    },
+                ],
+                typeFilter: -1,
+            },
+        ],
+        foundElems: 1,
+        original: 'p<u<x>, r>',
+        returned: [],
+        userQuery: 'p<u<x>, r>',
+        error: null,
+    },
+    {
+        elems: [
+            {
+                name: "p",
+                fullPath: ["p"],
+                pathWithoutLast: [],
+                pathLast: "p",
+                generics: [
+                    {
+                        name: "u",
+                        fullPath: ["u"],
+                        pathWithoutLast: [],
+                        pathLast: "u",
+                        generics: [
+                            {
+                                name: "x",
+                                fullPath: ["x"],
+                                pathWithoutLast: [],
+                                pathLast: "x",
+                                generics: [],
+                            },
+                            {
+                                name: "r",
+                                fullPath: ["r"],
+                                pathWithoutLast: [],
+                                pathLast: "r",
+                                generics: [],
+                            },
+                        ],
+                    },
+                ],
+                typeFilter: -1,
+            },
+        ],
+        foundElems: 1,
+        original: 'p<u<x, r>>',
+        returned: [],
+        userQuery: 'p<u<x, r>>',
         error: null,
     },
 ];

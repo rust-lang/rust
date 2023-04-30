@@ -22,9 +22,9 @@ pub fn insert_reference_to_gdb_debug_scripts_section_global(bx: &mut Builder<'_,
             bx.const_bitcast(get_or_insert_gdb_debug_scripts_section_global(bx), bx.type_i8p());
         // Load just the first byte as that's all that's necessary to force
         // LLVM to keep around the reference to the global.
-        let volative_load_instruction = bx.volatile_load(bx.type_i8(), gdb_debug_scripts_section);
+        let volatile_load_instruction = bx.volatile_load(bx.type_i8(), gdb_debug_scripts_section);
         unsafe {
-            llvm::LLVMSetAlignment(volative_load_instruction, 1);
+            llvm::LLVMSetAlignment(volatile_load_instruction, 1);
         }
     }
 }

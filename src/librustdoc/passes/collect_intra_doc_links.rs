@@ -13,7 +13,7 @@ use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{DefKind, Namespace, PerNS};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::Mutability;
-use rustc_middle::ty::{fast_reject::TreatProjections, Ty, TyCtxt};
+use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::{bug, ty};
 use rustc_resolve::rustdoc::{has_primitive_or_keyword_docs, prepare_to_doc_link_resolution};
 use rustc_resolve::rustdoc::{strip_generics_from_path, MalformedGenerics};
@@ -772,11 +772,10 @@ fn trait_impls_for<'a>(
     module: DefId,
 ) -> FxHashSet<(DefId, DefId)> {
     let tcx = cx.tcx;
-    let iter = tcx.doc_link_traits_in_scope(module).iter().flat_map(|&trait_| {
-        trace!("considering explicit impl for trait {:?}", trait_);
+    let mut impls = FxHashSet::default();
 
-        // Look at each trait implementation to see if it's an impl for `did`
-        tcx.find_map_relevant_impl(trait_, ty, TreatProjections::ForLookup, |impl_| {
+    for &trait_ in tcx.doc_link_traits_in_scope(module) {
+        tcx.for_each_relevant_impl(trait_, ty, |impl_| {
             let trait_ref = tcx.impl_trait_ref(impl_).expect("this is not an inherent impl");
             // Check if these are the same type.
             let impl_type = trait_ref.skip_binder().self_ty();
@@ -800,10 +799,13 @@ fn trait_impls_for<'a>(
                     _ => false,
                 };
 
-            if saw_impl { Some((impl_, trait_)) } else { None }
-        })
-    });
-    iter.collect()
+            if saw_impl {
+                impls.insert((impl_, trait_));
+            }
+        });
+    }
+
+    impls
 }
 
 /// Check for resolve collisions between a trait and its derive.
@@ -1293,7 +1295,8 @@ impl LinkCollector<'_, '_> {
                                 }
                             }
                         }
-                        resolution_failure(self, diag, path_str, disambiguator, smallvec![err])
+                        resolution_failure(self, diag, path_str, disambiguator, smallvec![err]);
+                        return vec![];
                     }
                 }
             }
@@ -1329,13 +1332,14 @@ impl LinkCollector<'_, '_> {
                     .fold(0, |acc, res| if let Ok(res) = res { acc + res.len() } else { acc });
 
                 if len == 0 {
-                    return resolution_failure(
+                    resolution_failure(
                         self,
                         diag,
                         path_str,
                         disambiguator,
                         candidates.into_iter().filter_map(|res| res.err()).collect(),
                     );
+                    return vec![];
                 } else if len == 1 {
                     candidates.into_iter().filter_map(|res| res.ok()).flatten().collect::<Vec<_>>()
                 } else {
@@ -1349,7 +1353,7 @@ impl LinkCollector<'_, '_> {
                         if has_derive_trait_collision {
                             candidates.macro_ns = None;
                         }
-                        candidates.into_iter().filter_map(|res| res).flatten().collect::<Vec<_>>()
+                        candidates.into_iter().flatten().flatten().collect::<Vec<_>>()
                     }
                 }
             }
@@ -1419,6 +1423,7 @@ impl Disambiguator {
         if let Some(idx) = link.find('@') {
             let (prefix, rest) = link.split_at(idx);
             let d = match prefix {
+                // If you update this list, please also update the relevant rustdoc book section!
                 "struct" => Kind(DefKind::Struct),
                 "enum" => Kind(DefKind::Enum),
                 "trait" => Kind(DefKind::Trait),
@@ -1437,6 +1442,7 @@ impl Disambiguator {
             Ok(Some((d, &rest[1..], &rest[1..])))
         } else {
             let suffixes = [
+                // If you update this list, please also update the relevant rustdoc book section!
                 ("!()", DefKind::Macro(MacroKind::Bang)),
                 ("!{}", DefKind::Macro(MacroKind::Bang)),
                 ("![]", DefKind::Macro(MacroKind::Bang)),
@@ -1638,9 +1644,8 @@ fn resolution_failure(
     path_str: &str,
     disambiguator: Option<Disambiguator>,
     kinds: SmallVec<[ResolutionFailure<'_>; 3]>,
-) -> Vec<(Res, Option<DefId>)> {
+) {
     let tcx = collector.cx.tcx;
-    let mut recovered_res = None;
     report_diagnostic(
         tcx,
         BROKEN_INTRA_DOC_LINKS,
@@ -1732,19 +1737,25 @@ fn resolution_failure(
 
                         if !path_str.contains("::") {
                             if disambiguator.map_or(true, |d| d.ns() == MacroNS)
-                                && let Some(&res) = collector.cx.tcx.resolutions(()).all_macro_rules
-                                                             .get(&Symbol::intern(path_str))
+                                && collector
+                                    .cx
+                                    .tcx
+                                    .resolutions(())
+                                    .all_macro_rules
+                                    .get(&Symbol::intern(path_str))
+                                    .is_some()
                             {
                                 diag.note(format!(
                                     "`macro_rules` named `{path_str}` exists in this crate, \
                                      but it is not in scope at this link's location"
                                 ));
-                                recovered_res = res.try_into().ok().map(|res| (res, None));
                             } else {
                                 // If the link has `::` in it, assume it was meant to be an
                                 // intra-doc link. Otherwise, the `[]` might be unrelated.
-                                diag.help("to escape `[` and `]` characters, \
-                                           add '\\' before them like `\\[` or `\\]`");
+                                diag.help(
+                                    "to escape `[` and `]` characters, \
+                                           add '\\' before them like `\\[` or `\\]`",
+                                );
                             }
                         }
 
@@ -1850,11 +1861,6 @@ fn resolution_failure(
             }
         },
     );
-
-    match recovered_res {
-        Some(r) => vec![r],
-        None => Vec::new(),
-    }
 }
 
 fn report_multiple_anchors(cx: &DocContext<'_>, diag_info: DiagnosticInfo<'_>) {

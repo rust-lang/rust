@@ -165,7 +165,7 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
 #[cold]
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
 #[track_caller]
-#[cfg_attr(not(bootstrap), lang = "panic_misaligned_pointer_dereference")] // needed by codegen for panic on misaligned pointer deref
+#[lang = "panic_misaligned_pointer_dereference"] // needed by codegen for panic on misaligned pointer deref
 fn panic_misaligned_pointer_dereference(required: usize, found: usize) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         super::intrinsics::abort()

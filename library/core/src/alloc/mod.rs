@@ -105,7 +105,6 @@ impl fmt::Display for AllocError {
 ///
 /// [*currently allocated*]: #currently-allocated-memory
 #[unstable(feature = "allocator_api", issue = "32838")]
-#[const_trait]
 pub unsafe trait Allocator {
     /// Attempts to allocate a block of memory.
     ///

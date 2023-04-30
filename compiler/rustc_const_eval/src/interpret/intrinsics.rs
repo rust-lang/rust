@@ -75,7 +75,7 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
         }
         sym::type_id => {
             ensure_monomorphic_enough(tcx, tp_ty)?;
-            ConstValue::from_u64(tcx.type_id_hash(tp_ty))
+            ConstValue::from_u64(tcx.type_id_hash(tp_ty).as_u64())
         }
         sym::variant_count => match tp_ty.kind() {
             // Correctly handles non-monomorphic calls, so there is no need for ensure_monomorphic_enough.
@@ -285,14 +285,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             sym::write_bytes => {
                 self.write_bytes_intrinsic(&args[0], &args[1], &args[2])?;
-            }
-            sym::offset => {
-                let ptr = self.read_pointer(&args[0])?;
-                let offset_count = self.read_target_isize(&args[1])?;
-                let pointee_ty = substs.type_at(0);
-
-                let offset_ptr = self.ptr_offset_inbounds(ptr, pointee_ty, offset_count)?;
-                self.write_pointer(offset_ptr, dest)?;
             }
             sym::arith_offset => {
                 let ptr = self.read_pointer(&args[0])?;

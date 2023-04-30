@@ -17,12 +17,12 @@ use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
+use rustc_fluent_macro::fluent_messages;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{AssocItemKind, HirIdSet, ItemId, Node, PatKind};
-use rustc_macros::fluent_messages;
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::privacy::{EffectiveVisibilities, Level};
@@ -269,7 +269,7 @@ where
                     // and are visited by shallow visitors.
                     self.visit_predicates(ty::GenericPredicates {
                         parent: None,
-                        predicates: tcx.explicit_item_bounds(def_id),
+                        predicates: tcx.explicit_item_bounds(def_id).skip_binder(),
                     })?;
                 }
             }
@@ -1784,7 +1784,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
     fn bounds(&mut self) -> &mut Self {
         self.visit_predicates(ty::GenericPredicates {
             parent: None,
-            predicates: self.tcx.explicit_item_bounds(self.item_def_id),
+            predicates: self.tcx.explicit_item_bounds(self.item_def_id).skip_binder(),
         });
         self
     }

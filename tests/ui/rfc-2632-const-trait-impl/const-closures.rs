@@ -1,4 +1,4 @@
-// run-pass
+// check-pass
 
 #![feature(const_trait_impl)]
 

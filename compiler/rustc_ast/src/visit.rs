@@ -909,6 +909,12 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         ExprKind::Paren(subexpression) => visitor.visit_expr(subexpression),
         ExprKind::InlineAsm(asm) => visitor.visit_inline_asm(asm),
         ExprKind::FormatArgs(f) => visitor.visit_format_args(f),
+        ExprKind::OffsetOf(container, fields) => {
+            visitor.visit_ty(container);
+            for &field in fields {
+                visitor.visit_ident(field);
+            }
+        }
         ExprKind::Yield(optional_expression) => {
             walk_list!(visitor, visit_expr, optional_expression);
         }

@@ -15,13 +15,13 @@ help: Unicode character '−' (Minus Sign) looks like '-' (Minus/Hyphen), but it
 LL | const UNIVERSAL_GRAVITATIONAL_CONSTANT: f64 = 6.674e-11; // m³⋅kg⁻¹⋅s⁻²
    |                                                     ~
 
-error[E0277]: cannot subtract `{integer}` from `{float}` in const contexts
+error[E0277]: cannot subtract `{integer}` from `{float}`
   --> $DIR/issue-49746-unicode-confusable-in-float-literal-expt.rs:1:53
    |
 LL | const UNIVERSAL_GRAVITATIONAL_CONSTANT: f64 = 6.674e−11; // m³⋅kg⁻¹⋅s⁻²
    |                                                     ^ no implementation for `{float} - {integer}`
    |
-   = help: the trait `~const Sub<{integer}>` is not implemented for `{float}`
+   = help: the trait `Sub<{integer}>` is not implemented for `{float}`
    = help: the following other types implement trait `Sub<Rhs>`:
              <&'a f32 as Sub<f32>>
              <&'a f64 as Sub<f64>>

@@ -12,7 +12,7 @@ pub const ERROR_RESOURCE_CALL_TIMED_OUT: DWORD = 5910;
 pub const FRS_ERR_SYSVOL_POPULATE_TIMEOUT: DWORD = 8014;
 pub const DNS_ERROR_RECORD_TIMED_OUT: DWORD = 9705;
 
-// The followiung list was obtained from
+// The following list was obtained from
 //   `/usr/x86_64-w64-mingw32/include/winerror.h`
 // in the Debian package
 //   mingw-w64_6.0.0-3_all.deb

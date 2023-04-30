@@ -57,8 +57,8 @@ mod os_impl {
             match fs::File::create(&path) {
                 Ok(file) => {
                     let exec = is_executable(&path).unwrap_or(false);
-                    std::mem::drop(file);
-                    std::fs::remove_file(&path).expect("Deleted temp file");
+                    drop(file);
+                    fs::remove_file(&path).expect("Deleted temp file");
                     // If the file is executable, then we assume that this
                     // filesystem does not track executability, so skip this check.
                     return if exec { Unsupported } else { Supported };

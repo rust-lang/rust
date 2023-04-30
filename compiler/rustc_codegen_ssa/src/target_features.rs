@@ -1,3 +1,4 @@
+use crate::errors;
 use rustc_ast::ast;
 use rustc_attr::InstructionSetAttr;
 use rustc_data_structures::fx::FxHashMap;
@@ -443,14 +444,10 @@ pub fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId, attr_s
     if let DefKind::AssocFn = tcx.def_kind(id) {
         let parent_id = tcx.local_parent(id);
         if let DefKind::Trait | DefKind::Impl { of_trait: true } = tcx.def_kind(parent_id) {
-            tcx.sess
-                .struct_span_err(
-                    attr_span,
-                    "`#[target_feature(..)]` cannot be applied to safe trait method",
-                )
-                .span_label(attr_span, "cannot be applied to safe trait method")
-                .span_label(tcx.def_span(id), "not an `unsafe` function")
-                .emit();
+            tcx.sess.emit_err(errors::TargetFeatureSafeTrait {
+                span: attr_span,
+                def: tcx.def_span(id),
+            });
         }
     }
 }

@@ -386,7 +386,7 @@ pub trait TypeErrCtxtExt<'tcx> {
     fn maybe_suggest_convert_to_slice(
         &self,
         err: &mut Diagnostic,
-        trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
+        trait_ref: ty::PolyTraitRef<'tcx>,
         candidate_impls: &[ImplCandidate<'tcx>],
         span: Span,
     );
@@ -1381,7 +1381,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             }
                         }
 
-                        // Issue #104961, we need to add parentheses properly for compond expressions
+                        // Issue #104961, we need to add parentheses properly for compound expressions
                         // for example, `x.starts_with("hi".to_string() + "you")`
                         // should be `x.starts_with(&("hi".to_string() + "you"))`
                         let Some(body_id) = self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id) else { return false; };
@@ -3848,7 +3848,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     fn maybe_suggest_convert_to_slice(
         &self,
         err: &mut Diagnostic,
-        trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
+        trait_ref: ty::PolyTraitRef<'tcx>,
         candidate_impls: &[ImplCandidate<'tcx>],
         span: Span,
     ) {

@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![feature(lint_reasons)]
 #![warn(clippy::let_unit_value)]

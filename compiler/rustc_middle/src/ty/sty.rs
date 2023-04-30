@@ -19,7 +19,7 @@ use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 use rustc_macros::HashStable;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
@@ -631,7 +631,7 @@ impl<'tcx> UpvarSubsts<'tcx> {
 /// type of the constant. The reason that `R` is represented as an extra type parameter
 /// is the same reason that [`ClosureSubsts`] have `CS` and `U` as type parameters:
 /// inline const can reference lifetimes that are internal to the creating function.
-#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable)]
+#[derive(Copy, Clone, Debug)]
 pub struct InlineConstSubsts<'tcx> {
     /// Generic parameters from the enclosing item,
     /// concatenated with the inferred type of the constant.
@@ -1436,7 +1436,7 @@ pub struct ConstVid<'tcx> {
 rustc_index::newtype_index! {
     /// A **region** (lifetime) **v**ariable **ID**.
     #[derive(HashStable)]
-    #[debug_format = "'_#{}r"]
+    #[debug_format = "'?{}"]
     pub struct RegionVid {}
 }
 

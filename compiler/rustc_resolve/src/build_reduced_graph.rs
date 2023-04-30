@@ -9,7 +9,9 @@ use crate::def_collector::collect_definitions;
 use crate::imports::{Import, ImportKind};
 use crate::macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
 use crate::Namespace::{self, MacroNS, TypeNS, ValueNS};
-use crate::{Determinacy, ExternPreludeEntry, Finalize, Module, ModuleKind, ModuleOrUniformRoot};
+use crate::{
+    errors, Determinacy, ExternPreludeEntry, Finalize, Module, ModuleKind, ModuleOrUniformRoot,
+};
 use crate::{
     MacroData, NameBinding, NameBindingKind, ParentScope, PathResult, PerNS, ResolutionError,
 };
@@ -197,10 +199,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     pub(crate) fn build_reduced_graph_external(&mut self, module: Module<'a>) {
-        // Query `module_children` is not used because hashing spans in its result is expensive.
-        let children =
-            Vec::from_iter(self.cstore().module_children_untracked(module.def_id(), self.tcx.sess));
-        for child in children {
+        for child in self.tcx.module_children(module.def_id()) {
             let parent_scope = ParentScope::module(module, self);
             BuildReducedGraphVisitor { r: self, parent_scope }
                 .build_reduced_graph_for_external_crate_res(child);
@@ -526,11 +525,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                             ident.name = crate_name;
                         }
 
-                        self.r
-                            .tcx
-                            .sess
-                            .struct_span_err(item.span, "`$crate` may not be imported")
-                            .emit();
+                        self.r.tcx.sess.emit_err(errors::CrateImported { span: item.span });
                     }
                 }
 
@@ -929,9 +924,15 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
     }
 
     /// Builds the reduced graph for a single item in an external crate.
-    fn build_reduced_graph_for_external_crate_res(&mut self, child: ModChild) {
+    fn build_reduced_graph_for_external_crate_res(&mut self, child: &ModChild) {
         let parent = self.parent_scope.module;
-        let ModChild { ident, res, vis, span, .. } = child;
+        let ModChild { ident, res, vis, ref reexport_chain } = *child;
+        let span = self.r.def_span(
+            reexport_chain
+                .first()
+                .and_then(|reexport| reexport.id())
+                .unwrap_or_else(|| res.def_id()),
+        );
         let res = res.expect_non_local();
         let expansion = self.parent_scope.expansion;
         // Record primary definitions.
@@ -1025,11 +1026,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                         self.r
                             .tcx
                             .sess
-                            .struct_span_err(
-                                attr.span,
-                                "`#[macro_use]` is not supported on `extern crate self`",
-                            )
-                            .emit();
+                            .emit_err(errors::MacroUseExternCrateSelf { span: attr.span });
                     }
                 }
                 let ill_formed = |span| {

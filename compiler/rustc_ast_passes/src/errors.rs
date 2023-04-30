@@ -677,7 +677,7 @@ impl AddToDiagnostic for StableFeature {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_incompatbile_features)]
+#[diag(ast_passes_incompatible_features)]
 #[help]
 pub struct IncompatibleFeatures {
     #[primary_span]

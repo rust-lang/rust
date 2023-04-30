@@ -3,9 +3,10 @@ use std::marker::PhantomData;
 use std::ops::RangeBounds;
 use std::ops::{Bound, Range};
 
-use crate::vec::Idx;
-use crate::vec::IndexVec;
 use smallvec::SmallVec;
+
+use crate::idx::Idx;
+use crate::vec::IndexVec;
 
 #[cfg(test)]
 mod tests;
@@ -261,8 +262,7 @@ impl<R: Idx, C: Step + Idx> SparseIntervalMatrix<R, C> {
     }
 
     fn ensure_row(&mut self, row: R) -> &mut IntervalSet<C> {
-        self.rows.ensure_contains_elem(row, || IntervalSet::new(self.column_size));
-        &mut self.rows[row]
+        self.rows.ensure_contains_elem(row, || IntervalSet::new(self.column_size))
     }
 
     pub fn union_row(&mut self, row: R, from: &IntervalSet<C>) -> bool

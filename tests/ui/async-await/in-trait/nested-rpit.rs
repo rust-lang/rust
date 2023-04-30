@@ -1,7 +1,5 @@
 // edition: 2021
-// known-bug: #105197
-// failure-status:101
-// dont-check-compiler-stderr
+// check-pass
 
 #![feature(async_fn_in_trait)]
 #![feature(return_position_impl_trait_in_trait)]

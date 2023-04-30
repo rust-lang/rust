@@ -55,7 +55,6 @@ fn collect_mod_item_types(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
 pub fn provide(providers: &mut Providers) {
     resolve_bound_vars::provide(providers);
     *providers = Providers {
-        opt_const_param_of: type_of::opt_const_param_of,
         type_of: type_of::type_of,
         item_bounds: item_bounds::item_bounds,
         explicit_item_bounds: item_bounds::explicit_item_bounds,
@@ -387,8 +386,10 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
 
     fn ct_infer(&self, ty: Ty<'tcx>, _: Option<&ty::GenericParamDef>, span: Span) -> Const<'tcx> {
         let ty = self.tcx.fold_regions(ty, |r, _| match *r {
-            ty::ReErased => self.tcx.lifetimes.re_static,
-            _ => r,
+            // This is never reached in practice. If it ever is reached,
+            // `ReErased` should be changed to `ReStatic`, and any other region
+            // left alone.
+            r => bug!("unexpected region: {r:?}"),
         });
         self.tcx().const_error_with_message(ty, span, "bad placeholder constant")
     }
@@ -1147,8 +1148,14 @@ fn infer_return_ty_for_fn_sig<'tcx>(
 
             let mut visitor = HirPlaceholderCollector::default();
             visitor.visit_ty(ty);
+
             let mut diag = bad_placeholder(tcx, visitor.0, "return type");
             let ret_ty = fn_sig.output();
+            // Don't leak types into signatures unless they're nameable!
+            // For example, if a function returns itself, we don't want that
+            // recursive function definition to leak out into the fn sig.
+            let mut should_recover = false;
+
             if let Some(ret_ty) = ret_ty.make_suggestable(tcx, false) {
                 diag.span_suggestion(
                     ty.span,
@@ -1156,15 +1163,7 @@ fn infer_return_ty_for_fn_sig<'tcx>(
                     ret_ty,
                     Applicability::MachineApplicable,
                 );
-            } else if matches!(ret_ty.kind(), ty::FnDef(..))
-                && let Some(fn_sig) = ret_ty.fn_sig(tcx).make_suggestable(tcx, false)
-            {
-                diag.span_suggestion(
-                    ty.span,
-                    "replace with the correct return type",
-                    fn_sig,
-                    Applicability::MachineApplicable,
-                );
+                should_recover = true;
             } else if let Some(sugg) = suggest_impl_trait(tcx, ret_ty, ty.span, def_id) {
                 diag.span_suggestion(
                     ty.span,
@@ -1182,9 +1181,20 @@ fn infer_return_ty_for_fn_sig<'tcx>(
                      https://doc.rust-lang.org/book/ch13-01-closures.html",
                 );
             }
-            diag.emit();
 
-            ty::Binder::dummy(fn_sig)
+            let guar = diag.emit();
+
+            if should_recover {
+                ty::Binder::dummy(fn_sig)
+            } else {
+                ty::Binder::dummy(tcx.mk_fn_sig(
+                    fn_sig.inputs().iter().copied(),
+                    tcx.ty_error(guar),
+                    fn_sig.c_variadic,
+                    fn_sig.unsafety,
+                    fn_sig.abi,
+                ))
+            }
         }
         None => icx.astconv().ty_of_fn(
             hir_id,
@@ -1457,10 +1467,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
 }
 
 fn is_foreign_item(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-    match tcx.hir().get_by_def_id(def_id) {
-        Node::ForeignItem(..) => true,
-        _ => false,
-    }
+    matches!(tcx.hir().get_by_def_id(def_id), Node::ForeignItem(..))
 }
 
 fn generator_kind(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<hir::GeneratorKind> {

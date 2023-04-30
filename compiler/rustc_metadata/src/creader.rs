@@ -12,7 +12,7 @@ use rustc_data_structures::sync::{MappedReadGuard, MappedWriteGuard, ReadGuard, 
 use rustc_expand::base::SyntaxExtension;
 use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, StableCrateIdMap, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, CrateType, ExternLocation};
 use rustc_session::cstore::ExternCrateSource;
@@ -27,6 +27,7 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 
 use proc_macro::bridge::client::ProcMacro;
+use std::error::Error;
 use std::ops::Fn;
 use std::path::Path;
 use std::time::Duration;
@@ -1094,5 +1095,12 @@ fn load_dylib(path: &Path, max_attempts: usize) -> Result<libloading::Library, S
     }
 
     debug!("Failed to load proc-macro `{}` even after {} attempts.", path.display(), max_attempts);
-    Err(format!("{} (retried {} times)", last_error.unwrap(), max_attempts))
+
+    let last_error = last_error.unwrap();
+    let message = if let Some(src) = last_error.source() {
+        format!("{last_error} ({src}) (retried {max_attempts} times)")
+    } else {
+        format!("{last_error} (retried {max_attempts} times)")
+    };
+    Err(message)
 }

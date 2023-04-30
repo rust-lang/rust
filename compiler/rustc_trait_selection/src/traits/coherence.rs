@@ -582,7 +582,7 @@ fn orphan_check_trait_ref<'tcx>(
     trait_ref: ty::TraitRef<'tcx>,
     in_crate: InCrate,
 ) -> Result<(), OrphanCheckErr<'tcx>> {
-    if trait_ref.needs_infer() && trait_ref.needs_subst() {
+    if trait_ref.has_infer() && trait_ref.has_param() {
         bug!(
             "can't orphan check a trait ref with both params and inference variables {:?}",
             trait_ref

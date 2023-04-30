@@ -2,7 +2,9 @@ use crate::leb128::{self, largest_max_leb128_len};
 use crate::serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::fs::File;
 use std::io::{self, Write};
+use std::marker::PhantomData;
 use std::mem::MaybeUninit;
+use std::ops::Range;
 use std::path::Path;
 use std::ptr;
 
@@ -48,13 +50,6 @@ macro_rules! write_leb128 {
         }
     }};
 }
-
-/// A byte that [cannot occur in UTF8 sequences][utf8]. Used to mark the end of a string.
-/// This way we can skip validation and still be relatively sure that deserialization
-/// did not desynchronize.
-///
-/// [utf8]: https://en.wikipedia.org/w/index.php?title=UTF-8&oldid=1058865525#Codepage_layout
-const STR_SENTINEL: u8 = 0xC1;
 
 impl Encoder for MemEncoder {
     #[inline]
@@ -110,28 +105,6 @@ impl Encoder for MemEncoder {
     #[inline]
     fn emit_i16(&mut self, v: i16) {
         self.data.extend_from_slice(&v.to_le_bytes());
-    }
-
-    #[inline]
-    fn emit_i8(&mut self, v: i8) {
-        self.emit_u8(v as u8);
-    }
-
-    #[inline]
-    fn emit_bool(&mut self, v: bool) {
-        self.emit_u8(if v { 1 } else { 0 });
-    }
-
-    #[inline]
-    fn emit_char(&mut self, v: char) {
-        self.emit_u32(v as u32);
-    }
-
-    #[inline]
-    fn emit_str(&mut self, v: &str) {
-        self.emit_usize(v.len());
-        self.emit_raw_bytes(v.as_bytes());
-        self.emit_u8(STR_SENTINEL);
     }
 
     #[inline]
@@ -479,28 +452,6 @@ impl Encoder for FileEncoder {
     }
 
     #[inline]
-    fn emit_i8(&mut self, v: i8) {
-        self.emit_u8(v as u8);
-    }
-
-    #[inline]
-    fn emit_bool(&mut self, v: bool) {
-        self.emit_u8(if v { 1 } else { 0 });
-    }
-
-    #[inline]
-    fn emit_char(&mut self, v: char) {
-        self.emit_u32(v as u32);
-    }
-
-    #[inline]
-    fn emit_str(&mut self, v: &str) {
-        self.emit_usize(v.len());
-        self.emit_raw_bytes(v.as_bytes());
-        self.emit_u8(STR_SENTINEL);
-    }
-
-    #[inline]
     fn emit_raw_bytes(&mut self, s: &[u8]) {
         self.write_all(s);
     }
@@ -510,38 +461,96 @@ impl Encoder for FileEncoder {
 // Decoder
 // -----------------------------------------------------------------------------
 
+// Conceptually, `MemDecoder` wraps a `&[u8]` with a cursor into it that is always valid.
+// This is implemented with three pointers, two which represent the original slice and a
+// third that is our cursor.
+// It is an invariant of this type that start <= current <= end.
+// Additionally, the implementation of this type never modifies start and end.
 pub struct MemDecoder<'a> {
-    pub data: &'a [u8],
-    position: usize,
+    start: *const u8,
+    current: *const u8,
+    end: *const u8,
+    _marker: PhantomData<&'a u8>,
 }
 
 impl<'a> MemDecoder<'a> {
     #[inline]
     pub fn new(data: &'a [u8], position: usize) -> MemDecoder<'a> {
-        MemDecoder { data, position }
+        let Range { start, end } = data.as_ptr_range();
+        MemDecoder { start, current: data[position..].as_ptr(), end, _marker: PhantomData }
     }
 
     #[inline]
-    pub fn position(&self) -> usize {
-        self.position
+    pub fn data(&self) -> &'a [u8] {
+        // SAFETY: This recovers the original slice, only using members we never modify.
+        unsafe { std::slice::from_raw_parts(self.start, self.len()) }
     }
 
     #[inline]
-    pub fn set_position(&mut self, pos: usize) {
-        self.position = pos
+    pub fn len(&self) -> usize {
+        // SAFETY: This recovers the length of the original slice, only using members we never modify.
+        unsafe { self.end.sub_ptr(self.start) }
     }
 
     #[inline]
-    pub fn advance(&mut self, bytes: usize) {
-        self.position += bytes;
+    pub fn remaining(&self) -> usize {
+        // SAFETY: This type guarantees current <= end.
+        unsafe { self.end.sub_ptr(self.current) }
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn decoder_exhausted() -> ! {
+        panic!("MemDecoder exhausted")
+    }
+
+    #[inline]
+    fn read_array<const N: usize>(&mut self) -> [u8; N] {
+        self.read_raw_bytes(N).try_into().unwrap()
+    }
+
+    /// While we could manually expose manipulation of the decoder position,
+    /// all current users of that method would need to reset the position later,
+    /// incurring the bounds check of set_position twice.
+    #[inline]
+    pub fn with_position<F, T>(&mut self, pos: usize, func: F) -> T
+    where
+        F: Fn(&mut MemDecoder<'a>) -> T,
+    {
+        struct SetOnDrop<'a, 'guarded> {
+            decoder: &'guarded mut MemDecoder<'a>,
+            current: *const u8,
+        }
+        impl Drop for SetOnDrop<'_, '_> {
+            fn drop(&mut self) {
+                self.decoder.current = self.current;
+            }
+        }
+
+        if pos >= self.len() {
+            Self::decoder_exhausted();
+        }
+        let previous = self.current;
+        // SAFETY: We just checked if this add is in-bounds above.
+        unsafe {
+            self.current = self.start.add(pos);
+        }
+        let guard = SetOnDrop { current: previous, decoder: self };
+        func(guard.decoder)
     }
 }
 
 macro_rules! read_leb128 {
-    ($dec:expr, $fun:ident) => {{ leb128::$fun($dec.data, &mut $dec.position) }};
+    ($dec:expr, $fun:ident) => {{ leb128::$fun($dec) }};
 }
 
 impl<'a> Decoder for MemDecoder<'a> {
+    #[inline]
+    fn position(&self) -> usize {
+        // SAFETY: This type guarantees start <= current
+        unsafe { self.current.sub_ptr(self.start) }
+    }
+
     #[inline]
     fn read_u128(&mut self) -> u128 {
         read_leb128!(self, read_u128_leb128)
@@ -559,17 +568,20 @@ impl<'a> Decoder for MemDecoder<'a> {
 
     #[inline]
     fn read_u16(&mut self) -> u16 {
-        let bytes = [self.data[self.position], self.data[self.position + 1]];
-        let value = u16::from_le_bytes(bytes);
-        self.position += 2;
-        value
+        u16::from_le_bytes(self.read_array())
     }
 
     #[inline]
     fn read_u8(&mut self) -> u8 {
-        let value = self.data[self.position];
-        self.position += 1;
-        value
+        if self.current == self.end {
+            Self::decoder_exhausted();
+        }
+        // SAFETY: This type guarantees current <= end, and we just checked current == end.
+        unsafe {
+            let byte = *self.current;
+            self.current = self.current.add(1);
+            byte
+        }
     }
 
     #[inline]
@@ -594,17 +606,7 @@ impl<'a> Decoder for MemDecoder<'a> {
 
     #[inline]
     fn read_i16(&mut self) -> i16 {
-        let bytes = [self.data[self.position], self.data[self.position + 1]];
-        let value = i16::from_le_bytes(bytes);
-        self.position += 2;
-        value
-    }
-
-    #[inline]
-    fn read_i8(&mut self) -> i8 {
-        let value = self.data[self.position];
-        self.position += 1;
-        value as i8
+        i16::from_le_bytes(self.read_array())
     }
 
     #[inline]
@@ -613,34 +615,26 @@ impl<'a> Decoder for MemDecoder<'a> {
     }
 
     #[inline]
-    fn read_bool(&mut self) -> bool {
-        let value = self.read_u8();
-        value != 0
-    }
-
-    #[inline]
-    fn read_char(&mut self) -> char {
-        let bits = self.read_u32();
-        std::char::from_u32(bits).unwrap()
-    }
-
-    #[inline]
-    fn read_str(&mut self) -> &'a str {
-        let len = self.read_usize();
-        let sentinel = self.data[self.position + len];
-        assert!(sentinel == STR_SENTINEL);
-        let s = unsafe {
-            std::str::from_utf8_unchecked(&self.data[self.position..self.position + len])
-        };
-        self.position += len + 1;
-        s
-    }
-
-    #[inline]
     fn read_raw_bytes(&mut self, bytes: usize) -> &'a [u8] {
-        let start = self.position;
-        self.position += bytes;
-        &self.data[start..self.position]
+        if bytes > self.remaining() {
+            Self::decoder_exhausted();
+        }
+        // SAFETY: We just checked if this range is in-bounds above.
+        unsafe {
+            let slice = std::slice::from_raw_parts(self.current, bytes);
+            self.current = self.current.add(bytes);
+            slice
+        }
+    }
+
+    #[inline]
+    fn peek_byte(&self) -> u8 {
+        if self.current == self.end {
+            Self::decoder_exhausted();
+        }
+        // SAFETY: This type guarantees current is inbounds or one-past-the-end, which is end.
+        // Since we just checked current == end, the current pointer must be inbounds.
+        unsafe { *self.current }
     }
 }
 
@@ -704,12 +698,7 @@ impl Encodable<FileEncoder> for IntEncodedWithFixedSize {
 impl<'a> Decodable<MemDecoder<'a>> for IntEncodedWithFixedSize {
     #[inline]
     fn decode(decoder: &mut MemDecoder<'a>) -> IntEncodedWithFixedSize {
-        let _start_pos = decoder.position();
-        let bytes = decoder.read_raw_bytes(IntEncodedWithFixedSize::ENCODED_SIZE);
-        let value = u64::from_le_bytes(bytes.try_into().unwrap());
-        let _end_pos = decoder.position();
-        debug_assert_eq!((_end_pos - _start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
-
-        IntEncodedWithFixedSize(value)
+        let bytes = decoder.read_array::<{ IntEncodedWithFixedSize::ENCODED_SIZE }>();
+        IntEncodedWithFixedSize(u64::from_le_bytes(bytes))
     }
 }

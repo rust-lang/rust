@@ -170,7 +170,7 @@ fn test_can_not_overflow() {
         for base in 2..=36 {
             let num = (<$t>::MAX as u128) + 1;
 
-           // Calcutate the string length for the smallest overflowing number:
+           // Calculate the string length for the smallest overflowing number:
            let max_len_string = format_radix(num, base as u128);
            // Ensure that string length is deemed to potentially overflow:
            assert!(can_overflow::<$t>(base, &max_len_string));

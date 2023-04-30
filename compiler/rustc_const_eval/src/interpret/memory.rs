@@ -215,7 +215,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.allocate_raw_ptr(alloc, kind)
     }
 
-    /// This can fail only of `alloc` contains provenance.
+    /// This can fail only if `alloc` contains provenance.
     pub fn allocate_raw_ptr(
         &mut self,
         alloc: Allocation,
@@ -807,9 +807,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         DumpAllocs { ecx: self, allocs }
     }
 
-    /// Print leaked memory. Allocations reachable from `static_roots` or a `Global` allocation
-    /// are not considered leaked. Leaks whose kind `may_leak()` returns true are not reported.
-    pub fn leak_report(&self, static_roots: &[AllocId]) -> usize {
+    /// Find leaked allocations. Allocations reachable from `static_roots` or a `Global` allocation
+    /// are not considered leaked, as well as leaks whose kind's `may_leak()` returns true.
+    pub fn find_leaked_allocations(
+        &self,
+        static_roots: &[AllocId],
+    ) -> Vec<(AllocId, MemoryKind<M::MemoryKind>, Allocation<M::Provenance, M::AllocExtra, M::Bytes>)>
+    {
         // Collect the set of allocations that are *reachable* from `Global` allocations.
         let reachable = {
             let mut reachable = FxHashSet::default();
@@ -833,14 +837,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
 
         // All allocations that are *not* `reachable` and *not* `may_leak` are considered leaking.
-        let leaks: Vec<_> = self.memory.alloc_map.filter_map_collect(|&id, &(kind, _)| {
-            if kind.may_leak() || reachable.contains(&id) { None } else { Some(id) }
-        });
-        let n = leaks.len();
-        if n > 0 {
-            eprintln!("The following memory was leaked: {:?}", self.dump_allocs(leaks));
-        }
-        n
+        self.memory.alloc_map.filter_map_collect(|id, (kind, alloc)| {
+            if kind.may_leak() || reachable.contains(id) {
+                None
+            } else {
+                Some((*id, *kind, alloc.clone()))
+            }
+        })
     }
 }
 

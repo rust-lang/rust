@@ -1,4 +1,4 @@
-// aux-build:proc_macro_suspicious_else_formatting.rs
+//@aux-build:proc_macro_suspicious_else_formatting.rs
 
 #![warn(clippy::suspicious_else_formatting)]
 #![allow(clippy::if_same_then_else, clippy::let_unit_value)]

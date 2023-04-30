@@ -200,9 +200,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
         debug!("try_overloaded_place_op({:?},{:?},{:?})", span, base_ty, op);
 
-        let (imm_tr, imm_op) = match op {
+        let (Some(imm_tr), imm_op) = (match op {
             PlaceOp::Deref => (self.tcx.lang_items().deref_trait(), sym::deref),
             PlaceOp::Index => (self.tcx.lang_items().index_trait(), sym::index),
+        }) else {
+            // Bail if `Deref` or `Index` isn't defined.
+            return None;
         };
 
         // If the lang item was declared incorrectly, stop here so that we don't
@@ -219,15 +222,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         }
 
-        imm_tr.and_then(|trait_did| {
-            self.lookup_method_in_trait(
-                self.misc(span),
-                Ident::with_dummy_span(imm_op),
-                trait_did,
-                base_ty,
-                Some(arg_tys),
-            )
-        })
+        self.lookup_method_in_trait(
+            self.misc(span),
+            Ident::with_dummy_span(imm_op),
+            imm_tr,
+            base_ty,
+            Some(arg_tys),
+        )
     }
 
     fn try_mutable_overloaded_place_op(
@@ -239,9 +240,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
         debug!("try_mutable_overloaded_place_op({:?},{:?},{:?})", span, base_ty, op);
 
-        let (mut_tr, mut_op) = match op {
+        let (Some(mut_tr), mut_op) = (match op {
             PlaceOp::Deref => (self.tcx.lang_items().deref_mut_trait(), sym::deref_mut),
             PlaceOp::Index => (self.tcx.lang_items().index_mut_trait(), sym::index_mut),
+        }) else {
+            // Bail if `DerefMut` or `IndexMut` isn't defined.
+            return None;
         };
 
         // If the lang item was declared incorrectly, stop here so that we don't
@@ -258,15 +262,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         }
 
-        mut_tr.and_then(|trait_did| {
-            self.lookup_method_in_trait(
-                self.misc(span),
-                Ident::with_dummy_span(mut_op),
-                trait_did,
-                base_ty,
-                Some(arg_tys),
-            )
-        })
+        self.lookup_method_in_trait(
+            self.misc(span),
+            Ident::with_dummy_span(mut_op),
+            mut_tr,
+            base_ty,
+            Some(arg_tys),
+        )
     }
 
     /// Convert auto-derefs, indices, etc of an expression from `Deref` and `Index`

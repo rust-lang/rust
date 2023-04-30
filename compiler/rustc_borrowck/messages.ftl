@@ -56,18 +56,6 @@ borrowck_returned_lifetime_short =
 borrowck_used_impl_require_static =
     the used `impl` has a `'static` requirement
 
-borrowck_capture_kind_label =
-    capture is {$kind_desc} because of use here
-
-borrowck_var_borrow_by_use_place_in_generator =
-    borrow occurs due to use of {$place} in closure in generator
-
-borrowck_var_borrow_by_use_place_in_closure =
-    borrow occurs due to use of {$place} in closure
-
-borrowck_var_borrow_by_use_place =
-    borrow occurs due to use of {$place}
-
 borrowck_borrow_due_to_use_generator =
     borrow occurs due to use in generator
 
@@ -101,11 +89,62 @@ borrowck_capture_mut =
 borrowck_capture_move =
     capture is moved because of use here
 
+borrowck_var_borrow_by_use_place_in_generator =
+    {$is_single_var ->
+        *[true] borrow occurs
+        [false] borrows occur
+    } due to use of {$place} in generator
+
+borrowck_var_borrow_by_use_place_in_closure =
+    {$is_single_var ->
+        *[true] borrow occurs
+        [false] borrows occur
+    } due to use of {$place} in closure
+
+borrowck_var_borrow_by_use_in_generator =
+    borrow occurs due to use in generator
+
+borrowck_var_borrow_by_use_in_closure =
+    borrow occurs due to use in closure
+
 borrowck_var_move_by_use_place_in_generator =
     move occurs due to use of {$place} in generator
 
 borrowck_var_move_by_use_place_in_closure =
     move occurs due to use of {$place} in closure
+
+borrowck_var_move_by_use_in_generator =
+    move occurs due to use in generator
+
+borrowck_var_move_by_use_in_closure =
+    move occurs due to use in closure
+
+borrowck_partial_var_move_by_use_in_generator =
+    variable {$is_partial ->
+        [true] partially moved
+        *[false] moved
+    } due to use in generator
+
+borrowck_partial_var_move_by_use_in_closure =
+    variable {$is_partial ->
+        [true] partially moved
+        *[false] moved
+    } due to use in closure
+
+borrowck_var_first_borrow_by_use_place_in_generator =
+    first borrow occurs due to use of {$place} in generator
+
+borrowck_var_first_borrow_by_use_place_in_closure =
+    first borrow occurs due to use of {$place} in closure
+
+borrowck_var_second_borrow_by_use_place_in_generator =
+    second borrow occurs due to use of {$place} in generator
+
+borrowck_var_second_borrow_by_use_place_in_closure =
+    second borrow occurs due to use of {$place} in closure
+
+borrowck_var_mutable_borrow_by_use_place_in_closure =
+    mutable borrow occurs due to use of {$place} in closure
 
 borrowck_cannot_move_when_borrowed =
     cannot move out of {$place ->
@@ -127,3 +166,90 @@ borrowck_opaque_type_non_generic_param =
         [true] cannot use static lifetime; use a bound lifetime instead or remove the lifetime parameter from the opaque type
         *[other] this generic parameter must be used with a generic {$kind} parameter
     }
+
+borrowck_moved_due_to_call =
+    {$place_name} {$is_partial ->
+        [true] partially moved
+        *[false] moved
+    } due to this {$is_loop_message ->
+        [true] call, in previous iteration of loop
+        *[false] call
+    }
+
+borrowck_moved_due_to_usage_in_operator =
+    {$place_name} {$is_partial ->
+        [true] partially moved
+        *[false] moved
+    } due to usage in {$is_loop_message ->
+        [true] operator, in previous iteration of loop
+        *[false] operator
+    }
+
+borrowck_moved_due_to_implicit_into_iter_call =
+    {$place_name} {$is_partial ->
+        [true] partially moved
+        *[false] moved
+    } due to this implicit call to {$is_loop_message ->
+        [true] `.into_iter()`, in previous iteration of loop
+        *[false] `.into_iter()`
+    }
+
+borrowck_moved_due_to_method_call =
+    {$place_name} {$is_partial ->
+        [true] partially moved
+        *[false] moved
+    } due to this method {$is_loop_message ->
+        [true] call, in previous iteration of loop
+        *[false] call
+    }
+
+borrowck_value_moved_here =
+    value {$is_partial ->
+        [true] partially moved
+        *[false] moved
+    } {$is_move_msg ->
+        [true] into closure here
+        *[false] here
+    }{$is_loop_message ->
+        [true] , in previous iteration of loop
+        *[false] {""}
+    }
+
+borrowck_consider_borrow_type_contents =
+    help: consider calling `.as_ref()` or `.as_mut()` to borrow the type's contents
+
+borrowck_moved_a_fn_once_in_call =
+    this value implements `FnOnce`, which causes it to be moved when called
+
+borrowck_calling_operator_moves_lhs =
+    calling this operator moves the left-hand side
+
+borrowck_func_take_self_moved_place =
+    `{$func}` takes ownership of the receiver `self`, which moves {$place_name}
+
+borrowck_suggest_iterate_over_slice =
+    consider iterating over a slice of the `{$ty}`'s content to avoid moving into the `for` loop
+
+borrowck_suggest_create_freash_reborrow =
+    consider reborrowing the `Pin` instead of moving it
+
+borrowck_value_capture_here =
+    value captured {$is_within ->
+        [true] here by generator
+        *[false] here
+    }
+
+borrowck_move_out_place_here =
+    {$place} is moved here
+
+borrowck_closure_invoked_twice =
+    closure cannot be invoked more than once because it moves the variable `{$place_name}` out of its environment
+
+borrowck_closure_moved_twice =
+    closure cannot be moved more than once as it is not `Copy` due to moving the variable `{$place_name}` out of its environment
+
+borrowck_ty_no_impl_copy =
+    {$is_partial_move ->
+        [true] partial move
+        *[false] move
+    } occurs because {$place} has type `{$ty}`, which does not implement the `Copy` trait

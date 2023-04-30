@@ -392,12 +392,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// defining scope.
     #[instrument(skip(self), level = "trace", ret)]
     fn opaque_type_origin_unchecked(&self, def_id: LocalDefId) -> OpaqueTyOrigin {
-        match self.tcx.hir().expect_item(def_id).kind {
-            hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => origin,
-            ref itemkind => {
-                bug!("weird opaque type: {:?}, {:#?}", def_id, itemkind)
-            }
-        }
+        self.tcx.hir().expect_item(def_id).expect_opaque_ty().origin
     }
 }
 
@@ -545,7 +540,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 .obligations;
         }
 
-        let item_bounds = tcx.bound_explicit_item_bounds(def_id.to_def_id());
+        let item_bounds = tcx.explicit_item_bounds(def_id);
 
         for (predicate, _) in item_bounds.subst_iter_copied(tcx, substs) {
             let predicate = predicate.fold_with(&mut BottomUpFolder {

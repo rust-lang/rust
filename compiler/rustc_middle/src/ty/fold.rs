@@ -37,7 +37,8 @@ where
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        let r = r.super_fold_with(self);
+        // This one is a little different, because `super_fold_with` is not
+        // implemented on non-recursive `Region`.
         (self.lt_op)(r)
     }
 

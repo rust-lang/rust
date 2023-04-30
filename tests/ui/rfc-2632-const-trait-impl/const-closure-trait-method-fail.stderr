@@ -1,11 +1,11 @@
 error[E0277]: the trait bound `(): ~const Tr` is not satisfied in `fn(()) -> i32 {<() as Tr>::a}`
-  --> $DIR/const-closure-trait-method-fail.rs:16:23
+  --> $DIR/const-closure-trait-method-fail.rs:18:23
    |
 LL | const _: () = assert!(need_const_closure(Tr::a) == 42);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^ within `fn(()) -> i32 {<() as Tr>::a}`, the trait `~const Tr` is not implemented for `()`
    |
 note: the trait `Tr` is implemented for `()`, but that implementation is not `const`
-  --> $DIR/const-closure-trait-method-fail.rs:16:23
+  --> $DIR/const-closure-trait-method-fail.rs:18:23
    |
 LL | const _: () = assert!(need_const_closure(Tr::a) == 42);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^

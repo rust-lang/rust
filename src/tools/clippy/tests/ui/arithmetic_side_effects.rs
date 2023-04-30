@@ -1,3 +1,5 @@
+//@aux-build:proc_macro_derive.rs
+
 #![allow(
     clippy::assign_op_pattern,
     clippy::erasing_op,
@@ -11,6 +13,8 @@
 #![feature(const_mut_refs, inline_const, saturating_int_impl)]
 #![warn(clippy::arithmetic_side_effects)]
 
+extern crate proc_macro_derive;
+
 use core::num::{Saturating, Wrapping};
 
 const ONE: i32 = 1;
@@ -18,6 +22,9 @@ const ZERO: i32 = 0;
 
 #[derive(Clone, Copy)]
 pub struct Custom;
+
+#[derive(proc_macro_derive::ShadowDerive)]
+pub struct Nothing;
 
 macro_rules! impl_arith {
     ( $( $_trait:ident, $lhs:ty, $rhs:ty, $method:ident; )* ) => {
@@ -269,6 +276,17 @@ pub fn non_overflowing_ops_or_ops_already_handled_by_the_compiler_should_not_tri
     _n = &1 * _n;
     _n = 23 + 85;
 
+    // Method
+    _n.saturating_div(1);
+    _n.wrapping_div(1);
+    _n.wrapping_rem(1);
+    _n.wrapping_rem_euclid(1);
+
+    _n.saturating_div(1);
+    _n.checked_div(1);
+    _n.checked_rem(1);
+    _n.checked_rem_euclid(1);
+
     // Unary
     _n = -2147483647;
     _n = -i32::MAX;
@@ -375,6 +393,17 @@ pub fn unknown_ops_or_runtime_ops_that_can_overflow() {
     _custom = _custom >> &_custom;
     _custom = Custom << _custom;
     _custom = &Custom << _custom;
+
+    // Method
+    _n.saturating_div(0);
+    _n.wrapping_div(0);
+    _n.wrapping_rem(0);
+    _n.wrapping_rem_euclid(0);
+
+    _n.saturating_div(_n);
+    _n.wrapping_div(_n);
+    _n.wrapping_rem(_n);
+    _n.wrapping_rem_euclid(_n);
 
     // Unary
     _n = -_n;

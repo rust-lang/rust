@@ -17,7 +17,7 @@ use super::ScalarInt;
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Lift)]
 #[derive(Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct UnevaluatedConst<'tcx> {
-    pub def: ty::WithOptConstParam<DefId>,
+    pub def: DefId,
     pub substs: SubstsRef<'tcx>,
 }
 
@@ -36,10 +36,7 @@ impl<'tcx> UnevaluatedConst<'tcx> {
 
 impl<'tcx> UnevaluatedConst<'tcx> {
     #[inline]
-    pub fn new(
-        def: ty::WithOptConstParam<DefId>,
-        substs: SubstsRef<'tcx>,
-    ) -> UnevaluatedConst<'tcx> {
+    pub fn new(def: DefId, substs: SubstsRef<'tcx>) -> UnevaluatedConst<'tcx> {
         UnevaluatedConst { def, substs }
     }
 }
@@ -224,9 +221,9 @@ impl<'tcx> ConstKind<'tcx> {
             // FIXME(eddyb, skinny121) pass `InferCtxt` into here when it's available, so that
             // we can call `infcx.const_eval_resolve` which handles inference variables.
             let param_env_and = if (param_env, unevaluated).has_non_region_infer() {
-                tcx.param_env(unevaluated.def.did).and(ty::UnevaluatedConst {
+                tcx.param_env(unevaluated.def).and(ty::UnevaluatedConst {
                     def: unevaluated.def,
-                    substs: InternalSubsts::identity_for_item(tcx, unevaluated.def.did),
+                    substs: InternalSubsts::identity_for_item(tcx, unevaluated.def),
                 })
             } else {
                 tcx.erase_regions(param_env)

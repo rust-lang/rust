@@ -786,6 +786,10 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
         ExprKind::InlineAsm(ref asm) => {
             visitor.visit_inline_asm(asm, expression.hir_id);
         }
+        ExprKind::OffsetOf(ref container, ref fields) => {
+            visitor.visit_ty(container);
+            walk_list!(visitor, visit_ident, fields.iter().copied());
+        }
         ExprKind::Yield(ref subexpression, _) => {
             visitor.visit_expr(subexpression);
         }

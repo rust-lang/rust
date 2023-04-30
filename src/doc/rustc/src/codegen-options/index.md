@@ -84,8 +84,8 @@ Note: The [`-g` flag][option-g-debug] is an alias for `-C debuginfo=2`.
 This flag controls whether or not the linker includes its default libraries.
 It takes one of the following values:
 
-* `y`, `yes`, `on`, `true` or no value: include default libraries (the default).
-* `n`, `no`, `off` or `false`: exclude default libraries.
+* `y`, `yes`, `on`, `true`: include default libraries.
+* `n`, `no`, `off` or `false` or no value: exclude default libraries (the default).
 
 For example, for gcc flavor linkers, this issues the `-nodefaultlibs` flag to
 the linker.

@@ -327,5 +327,6 @@ target | std | host | notes
 `x86_64-uwp-windows-gnu` | ✓ |  |
 `x86_64-uwp-windows-msvc` | ✓ |  |
 `x86_64-wrs-vxworks` | ? |  |
+`x86_64h-apple-darwin` | ✓ | ✓ | macOS with late-gen Intel (at least Haswell)
 
 [runs on NVIDIA GPUs]: https://github.com/japaric-archived/nvptx#targets

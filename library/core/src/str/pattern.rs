@@ -1891,7 +1891,7 @@ unsafe fn small_slice_eq(x: &[u8], y: &[u8]) -> bool {
 
     // SAFETY: Via the conditional above, we know that both `px` and `py`
     // have the same length, so `px < pxend` implies that `py < pyend`.
-    // Thus, derefencing both `px` and `py` in the loop below is safe.
+    // Thus, dereferencing both `px` and `py` in the loop below is safe.
     //
     // Moreover, we set `pxend` and `pyend` to be 4 bytes before the actual
     // end of `px` and `py`. Thus, the final dereference outside of the

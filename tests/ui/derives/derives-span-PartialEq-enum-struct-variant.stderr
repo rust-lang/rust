@@ -7,11 +7,11 @@ LL | #[derive(PartialEq)]
 LL |      x: Error
    |      ^^^^^^^^
    |
-note: an implementation of `PartialEq<_>` might be missing for `Error`
+note: an implementation of `PartialEq` might be missing for `Error`
   --> $DIR/derives-span-PartialEq-enum-struct-variant.rs:4:1
    |
 LL | struct Error;
-   | ^^^^^^^^^^^^ must implement `PartialEq<_>`
+   | ^^^^^^^^^^^^ must implement `PartialEq`
    = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider annotating `Error` with `#[derive(PartialEq)]`
    |

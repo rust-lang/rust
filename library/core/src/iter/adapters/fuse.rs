@@ -181,7 +181,7 @@ where
     }
 }
 
-#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters", since = "1.70.0")]
 impl<I: Default> Default for Fuse<I> {
     /// Creates a `Fuse` iterator from the default value of `I`.
     ///

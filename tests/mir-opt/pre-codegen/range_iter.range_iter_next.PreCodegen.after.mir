@@ -1,0 +1,20 @@
+// MIR for `range_iter_next` after PreCodegen
+
+fn range_iter_next(_1: &mut std::ops::Range<u32>) -> Option<u32> {
+    debug it => _1;                      // in scope 0 at $DIR/range_iter.rs:+0:24: +0:26
+    let mut _0: std::option::Option<u32>; // return place in scope 0 at $DIR/range_iter.rs:+0:48: +0:59
+    scope 1 (inlined iter::range::<impl Iterator for std::ops::Range<u32>>::next) { // at $DIR/range_iter.rs:11:8: 11:14
+        debug self => _1;                // in scope 1 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+    }
+
+    bb0: {
+        _0 = <std::ops::Range<u32> as iter::range::RangeIteratorImpl>::spec_next(_1) -> bb1; // scope 1 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+                                         // mir::Constant
+                                         // + span: $SRC_DIR/core/src/iter/range.rs:LL:COL
+                                         // + literal: Const { ty: for<'a> fn(&'a mut std::ops::Range<u32>) -> Option<<std::ops::Range<u32> as iter::range::RangeIteratorImpl>::Item> {<std::ops::Range<u32> as iter::range::RangeIteratorImpl>::spec_next}, val: Value(<ZST>) }
+    }
+
+    bb1: {
+        return;                          // scope 0 at $DIR/range_iter.rs:+2:2: +2:2
+    }
+}

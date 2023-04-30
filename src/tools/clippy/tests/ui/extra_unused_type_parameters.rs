@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![allow(unused, clippy::needless_lifetimes)]
 #![warn(clippy::extra_unused_type_parameters)]

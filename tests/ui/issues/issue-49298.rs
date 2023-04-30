@@ -6,7 +6,7 @@
 // where #54986 is implemented and #54987 is *not* implemented. For
 // now: just ignore it
 //
-// ignore-test
+// ignore-test (#54987)
 
 // This test is checking that the space allocated for `x.1` does not
 // overlap with `y`. (The reason why such a thing happened at one

@@ -27,7 +27,7 @@ pub fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) ->
 
     debug!("get_fn(instance={:?})", instance);
 
-    assert!(!instance.substs.needs_infer());
+    assert!(!instance.substs.has_infer());
     assert!(!instance.substs.has_escaping_bound_vars());
 
     if let Some(&llfn) = cx.instances.borrow().get(&instance) {

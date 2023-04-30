@@ -16,7 +16,7 @@ LL | #![deny(warnings)]
 help: to apply to the crate, use an inner attribute
    |
 LL | #![doc(cfg_hide(doc))]
-   | ~~~~~~~~~~~~~~~~~~~~~~
+   |  +
 
 error: `#[doc(cfg_hide(...)]` takes a list of attributes
   --> $DIR/doc_cfg_hide.rs:4:8

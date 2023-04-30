@@ -1,5 +1,5 @@
 use crate::alloc::{Allocator, Global};
-use core::mem::{self, ManuallyDrop};
+use core::mem::{ManuallyDrop, SizedTypeProperties};
 use core::ptr;
 use core::slice;
 
@@ -96,9 +96,7 @@ where
 
         unsafe {
             // ZSTs have no identity, so we don't need to move them around.
-            let needs_move = mem::size_of::<T>() != 0;
-
-            if needs_move && this.idx < this.old_len && this.del > 0 {
+            if !T::IS_ZST && this.idx < this.old_len && this.del > 0 {
                 let ptr = this.vec.as_mut_ptr();
                 let src = ptr.add(this.idx);
                 let dst = src.sub(this.del);

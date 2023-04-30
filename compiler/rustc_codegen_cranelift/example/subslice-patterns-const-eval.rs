@@ -19,7 +19,9 @@ macro_rules! n {
 // This macro has an unused variable so that it can be repeated base on the
 // number of times a repeated variable (`$e` in `z`) occurs.
 macro_rules! zed {
-    ($e:expr) => { Z }
+    ($e:expr) => {
+        Z
+    };
 }
 
 macro_rules! z {
@@ -32,12 +34,14 @@ macro_rules! z {
 macro_rules! compare_evaluation {
     ($e:expr, $t:ty $(,)?) => {{
         const CONST_EVAL: $t = $e;
-        const fn const_eval() -> $t { $e }
+        const fn const_eval() -> $t {
+            $e
+        }
         static CONST_EVAL2: $t = const_eval();
         let runtime_eval = $e;
         assert_eq!(CONST_EVAL, runtime_eval);
         assert_eq!(CONST_EVAL2, runtime_eval);
-    }}
+    }};
 }
 
 // Repeat `$test`, substituting the given macro variables with the given
@@ -65,6 +69,7 @@ macro_rules! repeat {
     }
 }
 
+#[rustfmt::skip]
 fn main() {
     repeat! {
         ($arr $Ty); n, N; z, Z:

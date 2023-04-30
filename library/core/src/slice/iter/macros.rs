@@ -73,7 +73,7 @@ macro_rules! iterator {
             // Unsafe because the offset must not exceed `self.len()`.
             #[inline(always)]
             unsafe fn post_inc_start(&mut self, offset: usize) -> * $raw_mut T {
-                if mem::size_of::<T>() == 0 {
+                if T::IS_ZST {
                     zst_shrink!(self, offset);
                     self.ptr.as_ptr()
                 } else {
@@ -394,7 +394,7 @@ macro_rules! iterator {
             }
         }
 
-        #[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "default_iters", since = "1.70.0")]
         impl<T> Default for $name<'_, T> {
             /// Creates an empty slice iterator.
             ///

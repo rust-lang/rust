@@ -3,7 +3,7 @@ use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::fmt::{self, Debug};
 use core::hash::{Hash, Hasher};
-use core::iter::{FromIterator, FusedIterator};
+use core::iter::FusedIterator;
 use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop};
 use core::ops::{Bound, Index, RangeBounds};
@@ -362,7 +362,7 @@ impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for Iter<'_, K, V> {
     }
 }
 
-#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters", since = "1.70.0")]
 impl<'a, K: 'a, V: 'a> Default for Iter<'a, K, V> {
     /// Creates an empty `btree_map::Iter`.
     ///
@@ -400,7 +400,7 @@ impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for IterMut<'_, K, V> {
     }
 }
 
-#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters", since = "1.70.0")]
 impl<'a, K: 'a, V: 'a> Default for IterMut<'a, K, V> {
     /// Creates an empty `btree_map::IterMut`.
     ///
@@ -420,7 +420,6 @@ impl<'a, K: 'a, V: 'a> Default for IterMut<'a, K, V> {
 /// (provided by the [`IntoIterator`] trait). See its documentation for more.
 ///
 /// [`into_iter`]: IntoIterator::into_iter
-/// [`IntoIterator`]: core::iter::IntoIterator
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_insignificant_dtor]
 pub struct IntoIter<
@@ -449,7 +448,7 @@ impl<K: Debug, V: Debug, A: Allocator + Clone> Debug for IntoIter<K, V, A> {
     }
 }
 
-#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters", since = "1.70.0")]
 impl<K, V, A> Default for IntoIter<K, V, A>
 where
     A: Allocator + Default + Clone,
@@ -650,7 +649,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn clear(&mut self) {
         // avoid moving the allocator
-        mem::drop(BTreeMap {
+        drop(BTreeMap {
             root: mem::replace(&mut self.root, None),
             length: mem::replace(&mut self.length, 0),
             alloc: self.alloc.clone(),
@@ -1544,11 +1543,17 @@ impl<'a, K: 'a, V: 'a> Iterator for Iter<'a, K, V> {
         self.next_back()
     }
 
-    fn min(mut self) -> Option<(&'a K, &'a V)> {
+    fn min(mut self) -> Option<(&'a K, &'a V)>
+    where
+        (&'a K, &'a V): Ord,
+    {
         self.next()
     }
 
-    fn max(mut self) -> Option<(&'a K, &'a V)> {
+    fn max(mut self) -> Option<(&'a K, &'a V)>
+    where
+        (&'a K, &'a V): Ord,
+    {
         self.next_back()
     }
 }
@@ -1613,11 +1618,17 @@ impl<'a, K, V> Iterator for IterMut<'a, K, V> {
         self.next_back()
     }
 
-    fn min(mut self) -> Option<(&'a K, &'a mut V)> {
+    fn min(mut self) -> Option<(&'a K, &'a mut V)>
+    where
+        (&'a K, &'a mut V): Ord,
+    {
         self.next()
     }
 
-    fn max(mut self) -> Option<(&'a K, &'a mut V)> {
+    fn max(mut self) -> Option<(&'a K, &'a mut V)>
+    where
+        (&'a K, &'a mut V): Ord,
+    {
         self.next_back()
     }
 }
@@ -1780,11 +1791,17 @@ impl<'a, K, V> Iterator for Keys<'a, K, V> {
         self.next_back()
     }
 
-    fn min(mut self) -> Option<&'a K> {
+    fn min(mut self) -> Option<&'a K>
+    where
+        &'a K: Ord,
+    {
         self.next()
     }
 
-    fn max(mut self) -> Option<&'a K> {
+    fn max(mut self) -> Option<&'a K>
+    where
+        &'a K: Ord,
+    {
         self.next_back()
     }
 }
@@ -1813,7 +1830,7 @@ impl<K, V> Clone for Keys<'_, K, V> {
     }
 }
 
-#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters", since = "1.70.0")]
 impl<K, V> Default for Keys<'_, K, V> {
     /// Creates an empty `btree_map::Keys`.
     ///
@@ -1868,7 +1885,7 @@ impl<K, V> Clone for Values<'_, K, V> {
     }
 }
 
-#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters", since = "1.70.0")]
 impl<K, V> Default for Values<'_, K, V> {
     /// Creates an empty `btree_map::Values`.
     ///
@@ -2009,16 +2026,22 @@ impl<'a, K, V> Iterator for Range<'a, K, V> {
         self.next_back()
     }
 
-    fn min(mut self) -> Option<(&'a K, &'a V)> {
+    fn min(mut self) -> Option<(&'a K, &'a V)>
+    where
+        (&'a K, &'a V): Ord,
+    {
         self.next()
     }
 
-    fn max(mut self) -> Option<(&'a K, &'a V)> {
+    fn max(mut self) -> Option<(&'a K, &'a V)>
+    where
+        (&'a K, &'a V): Ord,
+    {
         self.next_back()
     }
 }
 
-#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters", since = "1.70.0")]
 impl<K, V> Default for Range<'_, K, V> {
     /// Creates an empty `btree_map::Range`.
     ///
@@ -2082,11 +2105,17 @@ impl<K, V, A: Allocator + Clone> Iterator for IntoKeys<K, V, A> {
         self.next_back()
     }
 
-    fn min(mut self) -> Option<K> {
+    fn min(mut self) -> Option<K>
+    where
+        K: Ord,
+    {
         self.next()
     }
 
-    fn max(mut self) -> Option<K> {
+    fn max(mut self) -> Option<K>
+    where
+        K: Ord,
+    {
         self.next_back()
     }
 }
@@ -2108,7 +2137,7 @@ impl<K, V, A: Allocator + Clone> ExactSizeIterator for IntoKeys<K, V, A> {
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V, A: Allocator + Clone> FusedIterator for IntoKeys<K, V, A> {}
 
-#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters", since = "1.70.0")]
 impl<K, V, A> Default for IntoKeys<K, V, A>
 where
     A: Allocator + Default + Clone,
@@ -2159,7 +2188,7 @@ impl<K, V, A: Allocator + Clone> ExactSizeIterator for IntoValues<K, V, A> {
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V, A: Allocator + Clone> FusedIterator for IntoValues<K, V, A> {}
 
-#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters", since = "1.70.0")]
 impl<K, V, A> Default for IntoValues<K, V, A>
 where
     A: Allocator + Default + Clone,
@@ -2205,11 +2234,17 @@ impl<'a, K, V> Iterator for RangeMut<'a, K, V> {
         self.next_back()
     }
 
-    fn min(mut self) -> Option<(&'a K, &'a mut V)> {
+    fn min(mut self) -> Option<(&'a K, &'a mut V)>
+    where
+        (&'a K, &'a mut V): Ord,
+    {
         self.next()
     }
 
-    fn max(mut self) -> Option<(&'a K, &'a mut V)> {
+    fn max(mut self) -> Option<(&'a K, &'a mut V)>
+    where
+        (&'a K, &'a mut V): Ord,
+    {
         self.next_back()
     }
 }
