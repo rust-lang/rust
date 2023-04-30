@@ -167,6 +167,7 @@ jobs:
       TOOLSTATE_PUBLISH: 1
       CACHES_AWS_ACCESS_KEY_ID: AKIA46X5W6CZI5DHEBFL
       ARTIFACTS_AWS_ACCESS_KEY_ID: AKIA46X5W6CZN24CBO55
+      AWS_REGION: us-west-1
       CACHE_DOMAIN: ci-caches.rust-lang.org
     if: "github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
     strategy:
@@ -587,6 +588,7 @@ jobs:
       TOOLSTATE_PUBLISH: 1
       CACHES_AWS_ACCESS_KEY_ID: AKIA46X5W6CZI5DHEBFL
       ARTIFACTS_AWS_ACCESS_KEY_ID: AKIA46X5W6CZN24CBO55
+      AWS_REGION: us-west-1
       CACHE_DOMAIN: ci-caches.rust-lang.org
     if: "github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'"
     strategy:
@@ -697,6 +699,7 @@ jobs:
       TOOLSTATE_PUBLISH: 1
       CACHES_AWS_ACCESS_KEY_ID: AKIA46X5W6CZI5DHEBFL
       ARTIFACTS_AWS_ACCESS_KEY_ID: AKIA46X5W6CZN24CBO55
+      AWS_REGION: us-west-1
       CACHE_DOMAIN: ci-caches.rust-lang.org
     if: "github.event_name == 'push' && github.ref == 'refs/heads/master' && github.repository == 'rust-lang-ci/rust'"
     steps:
