@@ -11,11 +11,7 @@ pub fn abc(a: u8) -> u8 {
 }
 
 pub fn bcd(b: bool, a: u8) -> u8 {
-    if b {
-        a * 2
-    } else {
-        a * 3
-    }
+    if b { a * 2 } else { a * 3 }
 }
 
 pub fn call() {

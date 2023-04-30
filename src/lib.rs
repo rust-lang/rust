@@ -90,7 +90,7 @@ mod prelude {
 
     pub(crate) use rustc_data_structures::fx::FxHashMap;
 
-    pub(crate) use rustc_index::vec::Idx;
+    pub(crate) use rustc_index::Idx;
 
     pub(crate) use cranelift_codegen::ir::condcodes::{FloatCC, IntCC};
     pub(crate) use cranelift_codegen::ir::function::Function;
@@ -110,7 +110,7 @@ mod prelude {
     pub(crate) use crate::common::*;
     pub(crate) use crate::debuginfo::{DebugContext, UnwindContext};
     pub(crate) use crate::pointer::Pointer;
-    pub(crate) use crate::value_and_place::{CPlace, CPlaceInner, CValue};
+    pub(crate) use crate::value_and_place::{CPlace, CValue};
 }
 
 struct PrintOnPanic<F: Fn() -> String>(F);
