@@ -16,7 +16,8 @@
 +         let mut _4: usize;               // in scope 3 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
 +         let mut _5: usize;               // in scope 3 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
 +         let mut _6: *mut u8;             // in scope 3 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
-+         let mut _7: *const std::vec::Vec<u32>; // in scope 3 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
++         let mut _7: std::boxed::Box<std::vec::Vec<u32>>; // in scope 3 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
++         let mut _8: *const std::vec::Vec<u32>; // in scope 3 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
 +         scope 4 {
 +         }
 +     }
@@ -65,9 +66,12 @@
       bb3: {
 -         StorageDead(_1);                 // scope 0 at $DIR/inline_into_box_place.rs:+2:1: +2:2
 -         return;                          // scope 0 at $DIR/inline_into_box_place.rs:+2:2: +2:2
-+         _1 = ShallowInitBox(move _6, std::vec::Vec<u32>); // scope 3 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
-+         _7 = (((_1.0: std::ptr::Unique<std::vec::Vec<u32>>).0: std::ptr::NonNull<std::vec::Vec<u32>>).0: *const std::vec::Vec<u32>); // scope 3 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
-+         (*_7) = move _2;                 // scope 3 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
++         StorageLive(_7);                 // scope 3 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
++         _7 = ShallowInitBox(move _6, std::vec::Vec<u32>); // scope 3 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
++         _8 = (((_7.0: std::ptr::Unique<std::vec::Vec<u32>>).0: std::ptr::NonNull<std::vec::Vec<u32>>).0: *const std::vec::Vec<u32>); // scope 3 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
++         (*_8) = move _2;                 // scope 3 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
++         _1 = move _7;                    // scope 3 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
++         StorageDead(_7);                 // scope 3 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
 +         StorageDead(_2);                 // scope 0 at $DIR/inline_into_box_place.rs:+1:48: +1:49
 +         _0 = const ();                   // scope 0 at $DIR/inline_into_box_place.rs:+0:11: +2:2
 +         drop(_1) -> [return: bb1, unwind: bb2]; // scope 0 at $DIR/inline_into_box_place.rs:+2:1: +2:2
