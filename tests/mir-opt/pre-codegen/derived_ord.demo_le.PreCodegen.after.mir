@@ -5,8 +5,9 @@ fn demo_le(_1: &MultiField, _2: &MultiField) -> bool {
     debug b => _2;
     let mut _0: bool;
     scope 1 (inlined <MultiField as PartialOrd>::le) {
-        let mut _11: std::option::Option<std::cmp::Ordering>;
+        let mut _6: std::option::Option<std::cmp::Ordering>;
         scope 2 (inlined Option::<std::cmp::Ordering>::is_some_and::<fn(std::cmp::Ordering) -> bool {std::cmp::Ordering::is_le}>) {
+            let mut _11: isize;
             let _12: std::cmp::Ordering;
             scope 3 {
                 scope 4 (inlined <fn(std::cmp::Ordering) -> bool {std::cmp::Ordering::is_le} as FnOnce<(std::cmp::Ordering,)>>::call_once - shim(fn(std::cmp::Ordering) -> bool {std::cmp::Ordering::is_le})) {
@@ -19,7 +20,6 @@ fn demo_le(_1: &MultiField, _2: &MultiField) -> bool {
             }
         }
         scope 7 (inlined <MultiField as PartialOrd>::partial_cmp) {
-            let mut _6: std::option::Option<std::cmp::Ordering>;
             let mut _7: i8;
             scope 8 {
             }
@@ -38,9 +38,8 @@ fn demo_le(_1: &MultiField, _2: &MultiField) -> bool {
 
     bb0: {
         StorageLive(_12);
-        StorageLive(_11);
-        StorageLive(_5);
         StorageLive(_6);
+        StorageLive(_5);
         StorageLive(_7);
         StorageLive(_3);
         _3 = copy ((*_1).0: char);
@@ -63,30 +62,44 @@ fn demo_le(_1: &MultiField, _2: &MultiField) -> bool {
         _10 = Cmp(move _8, move _9);
         StorageDead(_9);
         StorageDead(_8);
-        _11 = Option::<std::cmp::Ordering>::Some(move _10);
+        _6 = Option::<std::cmp::Ordering>::Some(move _10);
         StorageDead(_10);
         StorageDead(_7);
-        StorageDead(_6);
         StorageDead(_5);
-        goto -> bb3;
+        StorageLive(_11);
+        goto -> bb4;
     }
 
     bb2: {
-        _11 = copy _6;
         StorageDead(_7);
-        StorageDead(_6);
         StorageDead(_5);
-        goto -> bb3;
+        StorageLive(_11);
+        _11 = discriminant(_6);
+        switchInt(move _11) -> [0: bb3, 1: bb4, otherwise: bb6];
     }
 
     bb3: {
-        _12 = move ((_11 as Some).0: std::cmp::Ordering);
+        _0 = const false;
+        goto -> bb5;
+    }
+
+    bb4: {
+        _12 = move ((_6 as Some).0: std::cmp::Ordering);
         StorageLive(_13);
         _13 = discriminant(_12);
         _0 = Le(move _13, const 0_i8);
         StorageDead(_13);
+        goto -> bb5;
+    }
+
+    bb5: {
         StorageDead(_11);
+        StorageDead(_6);
         StorageDead(_12);
         return;
+    }
+
+    bb6: {
+        unreachable;
     }
 }
