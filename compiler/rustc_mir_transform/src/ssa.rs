@@ -7,7 +7,7 @@
 //!
 //! We say a local has a stable address if its address has SSA-like properties:
 //! 1/ It has a single `StorageLive` statement, or none at all (always-live);
-//! 2/ All its uses dominate this `StorageLive` statement.
+//! 2/ This `StorageLive` statement dominates all statements that take this local's address.
 //!
 //! We do not discard borrowed locals from this analysis, as we cannot take their address' address.
 
@@ -247,7 +247,6 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor {
                     // Only record if SSA-like, to avoid growing the vector needlessly.
                     self.assignment_order.push(local);
                 }
-                self.dominators.check_dominates(&mut self.storage_live[local], loc);
             }
             // Anything can happen with raw pointers, so remove them.
             // We do not verify that all uses of the borrow dominate the assignment to `local`,
@@ -264,7 +263,6 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor {
             }
             PlaceContext::NonMutatingUse(_) => {
                 self.dominators.check_dominates(&mut self.assignments[local], loc);
-                self.dominators.check_dominates(&mut self.storage_live[local], loc);
                 self.direct_uses[local] += 1;
             }
             PlaceContext::NonUse(NonUseContext::StorageLive) => {
@@ -283,7 +281,6 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor {
 
                 self.visit_projection(place.as_ref(), new_ctxt, loc);
                 self.dominators.check_dominates(&mut self.assignments[place.local], loc);
-                self.dominators.check_dominates(&mut self.storage_live[place.local], loc);
             }
             return;
         } else {
