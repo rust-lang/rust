@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![allow(dead_code, unused_mut)]
 #![warn(clippy::mut_mutex_lock)]
 

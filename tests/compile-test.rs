@@ -126,6 +126,7 @@ fn base_config(test_dir: &str) -> compiletest::Config {
     let mut config = compiletest::Config {
         edition: Some("2021".into()),
         mode: TestMode::Ui,
+        strict_headers: true,
         ..Default::default()
     };
 
@@ -424,7 +425,7 @@ fn check_rustfix_coverage() {
                     .binary_search_by_key(&filename, Path::new)
                     .is_ok(),
                 "`{rs_file}` runs `MachineApplicable` diagnostics but is missing a `run-rustfix` annotation. \
-                Please either add `// run-rustfix` at the top of the file or add the file to \
+                Please either add `//@run-rustfix` at the top of the file or add the file to \
                 `RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS` in `tests/compile-test.rs`.",
             );
         }

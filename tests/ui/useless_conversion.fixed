@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![deny(clippy::useless_conversion)]
 #![allow(clippy::unnecessary_wraps)]

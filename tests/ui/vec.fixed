@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::useless_vec)]
 #![allow(clippy::nonstandard_macro_braces, clippy::uninlined_format_args)]
 

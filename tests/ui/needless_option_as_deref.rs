@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![allow(unused)]
 #![warn(clippy::needless_option_as_deref)]

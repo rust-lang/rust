@@ -226,7 +226,8 @@ fn never_loop_expr(expr: &Expr<'_>, ignore_ids: &mut Vec<HirId>, main_loop_id: H
                 | InlineAsmOperand::SymStatic { .. } => NeverLoopResult::Otherwise,
             })
             .fold(NeverLoopResult::Otherwise, combine_seq),
-        ExprKind::Yield(_, _)
+        ExprKind::OffsetOf(_, _)
+        | ExprKind::Yield(_, _)
         | ExprKind::Closure { .. }
         | ExprKind::Path(_)
         | ExprKind::ConstBlock(_)

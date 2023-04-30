@@ -1,4 +1,4 @@
-//! Checks for uses of mutex where an atomic value could be used
+//! Checks for usage of mutex where an atomic value could be used
 //!
 //! This lint is **allow** by default
 
@@ -12,7 +12,7 @@ use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usages of `Mutex<X>` where an atomic will do.
+    /// Checks for usage of `Mutex<X>` where an atomic will do.
     ///
     /// ### Why is this bad?
     /// Using a mutex just to make access to a plain bool or
@@ -49,7 +49,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usages of `Mutex<X>` where `X` is an integral
+    /// Checks for usage of `Mutex<X>` where `X` is an integral
     /// type.
     ///
     /// ### Why is this bad?

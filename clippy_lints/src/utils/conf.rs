@@ -463,6 +463,10 @@ define_Conf! {
     ///
     /// The maximum byte size a `Future` can have, before it triggers the `clippy::large_futures` lint
     (future_size_threshold: u64 = 16 * 1024),
+    /// Lint: UNNECESSARY_BOX_RETURNS.
+    ///
+    /// The byte size a `T` in `Box<T>` can have, below which it triggers the `clippy::unnecessary_box` lint
+    (unnecessary_box_size: u64 = 128),
 }
 
 /// Search for the configuration file.

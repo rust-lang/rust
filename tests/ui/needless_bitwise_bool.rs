@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![warn(clippy::needless_bitwise_bool)]
 

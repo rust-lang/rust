@@ -6,7 +6,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// Detects uses of the `#[allow]` attribute and suggests replacing it with
+    /// Checks for usage of the `#[allow]` attribute and suggests replacing it with
     /// the `#[expect]` (See [RFC 2383](https://rust-lang.github.io/rfcs/2383-lint-reasons.html))
     ///
     /// The expect attribute is still unstable and requires the `lint_reasons`
