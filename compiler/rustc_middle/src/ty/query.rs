@@ -202,7 +202,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-#[inline]
+#[inline(always)]
 fn query_get_at<'tcx, Cache>(
     tcx: TyCtxt<'tcx>,
     execute_query: fn(TyCtxt<'tcx>, Span, Cache::Key, QueryMode) -> Option<Cache::Value>,
@@ -220,7 +220,7 @@ where
     }
 }
 
-#[inline]
+#[inline(always)]
 fn query_ensure<'tcx, Cache>(
     tcx: TyCtxt<'tcx>,
     execute_query: fn(TyCtxt<'tcx>, Span, Cache::Key, QueryMode) -> Option<Cache::Value>,
