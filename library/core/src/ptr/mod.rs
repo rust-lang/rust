@@ -1349,13 +1349,13 @@ pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
 #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub const unsafe fn write<T>(dst: *mut T, src: T) {
-    // We are calling the intrinsics directly to avoid function calls in the generated code
-    // as `intrinsics::copy_nonoverlapping` is a wrapper function.
-    extern "rust-intrinsic" {
-        #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
-        #[rustc_nounwind]
-        fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
-    }
+    // Semantically, it would be fine for this to be implemented as a
+    // `copy_nonoverlapping` and appropriate drop suppression of `src`.
+
+    // However, implementing via that currently produces more MIR than is ideal.
+    // Using an intrinsic keeps it down to just the simple `*dst = move src` in
+    // MIR (11 statements shorter, at the time of writing), and also allows
+    // `src` to stay an SSA value in codegen_ssa, rather than a memory one.
 
     // SAFETY: the caller must guarantee that `dst` is valid for writes.
     // `dst` cannot overlap `src` because the caller has mutable access
@@ -1365,8 +1365,7 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
             "ptr::write requires that the pointer argument is aligned and non-null",
             [T](dst: *mut T) => is_aligned_and_not_null(dst)
         );
-        copy_nonoverlapping(&src as *const T, dst, 1);
-        intrinsics::forget(src);
+        intrinsics::write_via_move(dst, src)
     }
 }
 
