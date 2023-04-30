@@ -158,7 +158,7 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
         //  2. Despite being an overall perf improvement, this still causes a 30% regression in
         //     keccak. We can temporarily fix this by bounding function size, but in the long term
         //     we should fix this by being smarter about invalidating analysis results.
-        sess.mir_opt_level() >= 3
+        sess.mir_opt_level() >= 2
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
