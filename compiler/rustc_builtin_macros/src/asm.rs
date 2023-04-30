@@ -2,7 +2,7 @@ use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_errors::PResult;
 use rustc_expand::base::{self, *};
 use rustc_parse::parser::Parser;
@@ -20,8 +20,8 @@ use crate::errors;
 pub struct AsmArgs {
     pub templates: Vec<P<ast::Expr>>,
     pub operands: Vec<(ast::InlineAsmOperand, Span)>,
-    named_args: FxHashMap<Symbol, usize>,
-    reg_args: FxHashSet<usize>,
+    named_args: FxIndexMap<Symbol, usize>,
+    reg_args: FxIndexSet<usize>,
     pub clobber_abis: Vec<(Symbol, Span)>,
     options: ast::InlineAsmOptions,
     pub options_spans: Vec<Span>,
@@ -56,8 +56,8 @@ pub fn parse_asm_args<'a>(
     let mut args = AsmArgs {
         templates: vec![first_template],
         operands: vec![],
-        named_args: FxHashMap::default(),
-        reg_args: FxHashSet::default(),
+        named_args: Default::default(),
+        reg_args: Default::default(),
         clobber_abis: Vec::new(),
         options: ast::InlineAsmOptions::empty(),
         options_spans: vec![],
