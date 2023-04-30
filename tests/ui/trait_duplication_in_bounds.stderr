@@ -53,11 +53,10 @@ LL | fn qualified_path<T: std::clone::Clone + Clone + foo::Clone>(arg0: T) {
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::clone::Clone + foo::Clone`
 
 error: this trait bound is already specified in trait declaration
-  --> $DIR/trait_duplication_in_bounds.rs:118:46
+  --> $DIR/trait_duplication_in_bounds.rs:118:33
    |
 LL | fn bad_trait_object(arg0: &(dyn Any + Send + Send)) {
-   |                                              ^^^^ help: consider removing this trait bound
-   |
+   |                                 ^^^^^^^^^^^^^^^^^ help: try: `Any + Send`
 
 error: aborting due to 9 previous errors
 

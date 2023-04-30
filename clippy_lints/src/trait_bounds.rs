@@ -187,36 +187,41 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
             return;
         }
 
-        let mut bounds_span = Span::default();
+        let mut bounds_span = bounds[0].span;
 
-        for bound in bounds.iter() {
+        for bound in bounds.iter().skip(1) {
             bounds_span = bounds_span.to(bound.span);
         }
 
         let mut seen_def_ids = FxHashSet::default();
-
-        let traits = bounds
-            .iter()
-            .filter_map(|b| snippet_opt(cx, b.span))
-            .collect::<Vec<_>>();
-        let traits = traits.join(" + ");
+        let mut fixed_traits = Vec::new();
 
         for bound in bounds.iter() {
             let Some(def_id) = bound.trait_ref.trait_def_id() else { continue; };
 
-            let already_seen = !seen_def_ids.insert(def_id);
+            let new_trait = seen_def_ids.insert(def_id);
 
-            if already_seen {
-                span_lint_and_sugg(
-                    cx,
-                    TRAIT_DUPLICATION_IN_BOUNDS,
-                    bounds_span,
-                    "this trait bound is already specified in trait declaration",
-                    "consider removing this trait bound",
-                    traits.clone(),
-                    Applicability::MaybeIncorrect,
-                );
+            if new_trait {
+                fixed_traits.push(bound);
             }
+        }
+
+        let fixed_trait_snippet = fixed_traits
+            .iter()
+            .filter_map(|b| snippet_opt(cx, b.span))
+            .collect::<Vec<_>>()
+            .join(" + ");
+
+        if bounds.len() != fixed_traits.len() {
+            span_lint_and_sugg(
+                cx,
+                TRAIT_DUPLICATION_IN_BOUNDS,
+                bounds_span,
+                "this trait bound is already specified in trait declaration",
+                "try",
+                fixed_trait_snippet,
+                Applicability::MaybeIncorrect,
+            );
         }
     }
 }
