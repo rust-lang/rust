@@ -773,7 +773,7 @@ pub trait LintContext: Sized {
 
                     // Suggest the most probable if we found one
                     if let Some(best_match) = find_best_match_for_name(&possibilities, name, None) {
-                        db.span_suggestion(name_span, "did you mean", best_match, Applicability::MaybeIncorrect);
+                        db.span_suggestion(name_span, "there is an config with a similar name", best_match, Applicability::MaybeIncorrect);
                     }
                 },
                 BuiltinLintDiagnostics::UnexpectedCfg((name, name_span), Some((value, value_span))) => {
@@ -794,19 +794,19 @@ pub trait LintContext: Sized {
                             let mut possibilities = possibilities.iter().map(Symbol::as_str).collect::<Vec<_>>();
                             possibilities.sort();
 
-                            let possibilities = possibilities.join(", ");
-                            db.note(format!("expected values for `{name}` are: {possibilities}"));
+                            let possibilities = possibilities.join("`, `");
+                            let none = if have_none_possibility { "(none), " } else { "" };
+
+                            db.note(format!("expected values for `{name}` are: {none}`{possibilities}`"));
                         }
 
                         // Suggest the most probable if we found one
                         if let Some(best_match) = find_best_match_for_name(&possibilities, value, None) {
-                            db.span_suggestion(value_span, "did you mean", format!("\"{best_match}\""), Applicability::MaybeIncorrect);
+                            db.span_suggestion(value_span, "there is an expected value with a similar name", format!("\"{best_match}\""), Applicability::MaybeIncorrect);
                         }
-                    } else {
+                    } else if have_none_possibility {
                         db.note(format!("no expected value for `{name}`"));
-                        if name != sym::feature {
-                            db.span_suggestion(name_span.shrink_to_hi().to(value_span), "remove the value", "", Applicability::MaybeIncorrect);
-                        }
+                        db.span_suggestion(name_span.shrink_to_hi().to(value_span), "remove the value", "", Applicability::MaybeIncorrect);
                     }
                 },
                 BuiltinLintDiagnostics::DeprecatedWhereclauseLocation(new_span, suggestion) => {

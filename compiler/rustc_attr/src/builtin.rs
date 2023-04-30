@@ -591,7 +591,7 @@ pub fn cfg_matches(
                     "unexpected `cfg` condition value",
                     BuiltinLintDiagnostics::UnexpectedCfg(
                         (cfg.name, cfg.name_span),
-                        cfg.value_span.map(|vs| (cfg.value.unwrap(), vs)),
+                        cfg.value.map(|v| (v, cfg.value_span.unwrap())),
                     ),
                 );
             }
