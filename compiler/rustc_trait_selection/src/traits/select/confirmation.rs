@@ -10,6 +10,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
+use rustc_middle::traits::SelectionOutputTypeParameterMismatch;
 use rustc_middle::ty::{
     self, Binder, GenericParamDefKind, InternalSubsts, SubstsRef, ToPolyTraitRef, ToPredicate,
     TraitRef, Ty, TyCtxt, TypeVisitableExt,
@@ -834,7 +835,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 obligations.extend(nested);
                 obligations
             })
-            .map_err(|e| OutputTypeParameterMismatch(expected_trait_ref, obligation_trait_ref, e))
+            .map_err(|terr| {
+                OutputTypeParameterMismatch(Box::new(SelectionOutputTypeParameterMismatch {
+                    expected_trait_ref: obligation_trait_ref,
+                    found_trait_ref: expected_trait_ref,
+                    terr,
+                }))
+            })
     }
 
     fn confirm_trait_upcasting_unsize_candidate(
