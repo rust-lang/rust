@@ -769,7 +769,7 @@ impl Error {
     #[stable(feature = "io_error_inner", since = "1.3.0")]
     #[must_use]
     #[inline]
-    pub fn get_mut(&mut self) -> Option<&mut (dyn error::Error + Send + Sync + 'static)> {
+    pub fn get_mut(&mut self) -> Option<&mut (dyn error::Error + Sync + 'static)> {
         match self.repr.data_mut() {
             ErrorData::Os(..) => None,
             ErrorData::Simple(..) => None,

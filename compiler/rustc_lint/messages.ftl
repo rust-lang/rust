@@ -192,13 +192,9 @@ lint_redundant_semicolons =
         *[false] this semicolon
     }
 
-lint_useless_send_constraint =
-    constraining a reference to `Send` without `Sync` is useless, consider {$only_trait ->
-        [true] replacing it with `Any`
-        *[false] removing it
-    }
+lint_useless_send_constraint = constraining a reference to `Send` is meaningless
     .suggestion = {$only_trait ->
-        [true] replace this with `Any`
+        [true] replace this with `std::any::Any`
         *[false] remove this
     }
 
