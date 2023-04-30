@@ -91,7 +91,6 @@ mod lower_slice_len;
 mod match_branches;
 mod multiple_return_terminators;
 mod normalize_array_len;
-mod nrvo;
 mod prettify;
 mod ref_prop;
 mod remove_noop_landing_pads;
@@ -596,11 +595,10 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &early_otherwise_branch::EarlyOtherwiseBranch,
             &simplify_comparison_integral::SimplifyComparisonIntegral,
             &dead_store_elimination::DeadStoreElimination,
-            &dest_prop::DestinationPropagation,
             &o1(simplify_branches::SimplifyConstCondition::Final),
             &o1(remove_noop_landing_pads::RemoveNoopLandingPads),
             &o1(simplify::SimplifyCfg::Final),
-            &nrvo::RenameReturnPlace,
+            &dest_prop::DestinationPropagation,
             &simplify::SimplifyLocals::Final,
             &multiple_return_terminators::MultipleReturnTerminators,
             &deduplicate_blocks::DeduplicateBlocks,
