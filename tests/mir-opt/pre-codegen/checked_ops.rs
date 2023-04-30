@@ -44,8 +44,7 @@ pub fn saturating_sub_at_home(lhs: u32, rhs: u32) -> u32 {
     // CHECK-LABEL: fn saturating_sub_at_home
     // CHECK: [[DELTA:_[0-9]+]] = SubUnchecked(copy _1, copy _2)
     // CHECK: [[TEMP1:_.+]] = Option::<u32>::Some({{move|copy}} [[DELTA]]);
-    // CHECK: [[TEMP2:_.+]] = {{move|copy}} (([[TEMP1]] as Some).0: u32);
-    // CHECK: _0 = {{move|copy}} [[TEMP2]];
+    // CHECK: _0 = {{move|copy}} (([[TEMP1]] as Some).0: u32);
     u32::checked_sub(lhs, rhs).unwrap_or(0)
 }
 
