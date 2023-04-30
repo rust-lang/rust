@@ -431,8 +431,8 @@ pub fn noop_visit_use_tree<T: MutVisitor>(use_tree: &mut UseTree, vis: &mut T) {
     vis.visit_path(prefix);
     match kind {
         UseTreeKind::Simple(rename) => visit_opt(rename, |rename| vis.visit_ident(rename)),
-        UseTreeKind::Nested(items) => {
-            for (tree, id) in items {
+        UseTreeKind::Nested(nested) => {
+            for (tree, id) in nested.items.iter_mut() {
                 vis.visit_use_tree(tree);
                 vis.visit_id(id);
             }

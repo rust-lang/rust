@@ -985,12 +985,14 @@ impl<'a> Parser<'a> {
     /// ```text
     /// USE_TREE_LIST = Ø | (USE_TREE `,`)* USE_TREE [`,`]
     /// ```
-    fn parse_use_tree_list(&mut self) -> PResult<'a, ThinVec<(UseTree, ast::NodeId)>> {
-        self.parse_delim_comma_seq(Delimiter::Brace, |p| {
-            p.recover_diff_marker();
-            Ok((p.parse_use_tree()?, DUMMY_NODE_ID))
+    fn parse_use_tree_list(&mut self) -> PResult<'a, ast::UseTreeNested> {
+        Ok(ast::UseTreeNested {
+            items: self.parse_delim_comma_seq(Delimiter::Brace, |p| {
+                p.recover_diff_marker();
+                Ok((p.parse_use_tree()?, DUMMY_NODE_ID))
+            }).map(|(r, _)| r)?,
+            span: self.prev_token.span, // TODO
         })
-        .map(|(r, _)| r)
     }
 
     fn parse_rename(&mut self) -> PResult<'a, Option<Ident>> {

@@ -180,8 +180,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_item_id_use_tree(&mut self, tree: &UseTree, vec: &mut SmallVec<[hir::ItemId; 1]>) {
         match &tree.kind {
-            UseTreeKind::Nested(nested_vec) => {
-                for &(ref nested, id) in nested_vec {
+            UseTreeKind::Nested(nested) => {
+                for &(ref nested, id) in nested.items.iter() {
                     vec.push(hir::ItemId {
                         owner_id: hir::OwnerId { def_id: self.local_def_id(id) },
                     });
@@ -503,7 +503,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let path = self.lower_use_path(res, &path, ParamMode::Explicit);
                 hir::ItemKind::Use(path, hir::UseKind::Glob)
             }
-            UseTreeKind::Nested(ref trees) => {
+            UseTreeKind::Nested(ref nested) => {
                 // Nested imports are desugared into simple imports.
                 // So, if we start with
                 //
@@ -531,7 +531,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let prefix = Path { segments, span: prefix.span.to(path.span), tokens: None };
 
                 // Add all the nested `PathListItem`s to the HIR.
-                for &(ref use_tree, id) in trees {
+                for &(ref use_tree, id) in nested.items.iter() {
                     let new_hir_id = self.local_def_id(id);
 
                     let mut prefix = prefix.clone();

@@ -49,8 +49,8 @@ fn check_use_tree(use_tree: &UseTree, cx: &EarlyContext<'_>, span: Span) {
             unsafe_to_safe_check(old_name, new_name, cx, span);
         },
         UseTreeKind::Simple(None) | UseTreeKind::Glob => {},
-        UseTreeKind::Nested(ref nested_use_tree) => {
-            for (use_tree, _) in nested_use_tree {
+        UseTreeKind::Nested(ref nested) => {
+            for (use_tree, _) in nested.items.iter() {
                 check_use_tree(use_tree, cx, span);
             }
         },

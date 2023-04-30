@@ -38,8 +38,8 @@ impl EarlyLintPass for UnnecessarySelfImports {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
         if_chain! {
             if let ItemKind::Use(use_tree) = &item.kind;
-            if let UseTreeKind::Nested(nodes) = &use_tree.kind;
-            if let [(self_tree, _)] = &**nodes;
+            if let UseTreeKind::Nested(nested) = &use_tree.kind;
+            if let [(self_tree, _)] = &*nested.items;
             if let [self_seg] = &*self_tree.prefix.segments;
             if self_seg.ident.name == kw::SelfLower;
             if let Some(last_segment) = use_tree.prefix.segments.last();

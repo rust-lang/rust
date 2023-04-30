@@ -2220,8 +2220,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     None => {}
                 }
             }
-        } else if let UseTreeKind::Nested(use_trees) = &use_tree.kind {
-            for (use_tree, _) in use_trees {
+        } else if let UseTreeKind::Nested(nested) = &use_tree.kind {
+            for (use_tree, _) in nested.items.iter() {
                 self.future_proof_import(use_tree);
             }
         }

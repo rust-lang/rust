@@ -458,12 +458,12 @@ impl UseTree {
                     version,
                 });
             }
-            UseTreeKind::Nested(ref list) => {
+            UseTreeKind::Nested(ref nested) => {
                 // Extract comments between nested use items.
                 // This needs to be done before sorting use items.
                 let items = itemize_list(
                     context.snippet_provider,
-                    list.iter().map(|(tree, _)| tree),
+                    nested.items.iter().map(|(tree, _)| tree),
                     "}",
                     ",",
                     |tree| tree.span.lo(),
@@ -481,7 +481,8 @@ impl UseTree {
                     result.path.push(UseSegment { kind, version });
                 }
                 let kind = UseSegmentKind::List(
-                    list.iter()
+                    nested.items
+                        .iter()
                         .zip(items)
                         .map(|(t, list_item)| {
                             Self::from_ast(context, &t.0, Some(list_item), None, None, None)

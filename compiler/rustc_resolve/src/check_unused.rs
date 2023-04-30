@@ -131,7 +131,7 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
                     self.unused_import(self.base_id).add(id);
                 }
             }
-            ast::UseTreeKind::Nested(ref items) => self.check_imports_as_underscore(items),
+            ast::UseTreeKind::Nested(ref nested) => self.check_imports_as_underscore(&nested.items),
             _ => {}
         }
     }
@@ -183,8 +183,8 @@ impl<'a, 'b, 'tcx> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
             return;
         }
 
-        if let ast::UseTreeKind::Nested(ref items) = use_tree.kind {
-            if items.is_empty() {
+        if let ast::UseTreeKind::Nested(ref nested) = use_tree.kind {
+            if nested.items.is_empty() {
                 self.unused_import(self.base_id).add(id);
             }
         } else {
@@ -223,7 +223,7 @@ fn calc_unused_spans(
             }
         }
         ast::UseTreeKind::Nested(ref nested) => {
-            if nested.is_empty() {
+            if nested.items.is_empty() {
                 return UnusedSpanResult::FlatUnused(use_tree.span, full_span);
             }
 
@@ -231,7 +231,7 @@ fn calc_unused_spans(
             let mut to_remove = Vec::new();
             let mut all_nested_unused = true;
             let mut previous_unused = false;
-            for (pos, (use_tree, use_tree_id)) in nested.iter().enumerate() {
+            for (pos, (use_tree, use_tree_id)) in nested.items.iter().enumerate() {
                 let remove = match calc_unused_spans(unused_import, use_tree, *use_tree_id) {
                     UnusedSpanResult::Used => {
                         all_nested_unused = false;
@@ -249,19 +249,20 @@ fn calc_unused_spans(
                         all_nested_unused = false;
                         unused_spans.append(&mut spans);
                         to_remove.append(&mut to_remove_extra);
+
                         None
                     }
                 };
                 if let Some(remove) = remove {
-                    let remove_span = if nested.len() == 1 {
+                    let remove_span = if nested.items.len() == 1 {
                         remove
-                    } else if pos == nested.len() - 1 || !all_nested_unused {
+                    } else if pos == nested.items.len() - 1 || !all_nested_unused {
                         // Delete everything from the end of the last import, to delete the
                         // previous comma
-                        nested[pos - 1].0.span.shrink_to_hi().to(use_tree.span)
+                        nested.items[pos - 1].0.span.shrink_to_hi().to(use_tree.span)
                     } else {
                         // Delete everything until the next import, to delete the trailing commas
-                        use_tree.span.to(nested[pos + 1].0.span.shrink_to_lo())
+                        use_tree.span.to(nested.items[pos + 1].0.span.shrink_to_lo())
                     };
 
                     // Try to collapse adjacent spans into a single one. This prevents all cases of

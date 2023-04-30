@@ -2537,9 +2537,18 @@ pub enum UseTreeKind {
     /// `use prefix` or `use prefix as rename`
     Simple(Option<Ident>),
     /// `use prefix::{...}`
-    Nested(ThinVec<(UseTree, NodeId)>),
+    Nested(UseTreeNested),
     /// `use prefix::*`
     Glob,
+}
+
+/// The `use` trees inside of a nested import, including the surrounding braces. The span of the
+/// braces are used to improve diagnostic messages that suggest removing all but one import from a
+/// group.
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct UseTreeNested {
+    pub items: ThinVec<(UseTree, NodeId)>,
+    pub span: Span,
 }
 
 /// A tree of paths sharing common prefixes.

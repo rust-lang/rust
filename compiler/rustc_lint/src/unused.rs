@@ -1302,21 +1302,21 @@ declare_lint_pass!(UnusedImportBraces => [UNUSED_IMPORT_BRACES]);
 
 impl UnusedImportBraces {
     fn check_use_tree(&self, cx: &EarlyContext<'_>, use_tree: &ast::UseTree, item: &ast::Item) {
-        if let ast::UseTreeKind::Nested(ref items) = use_tree.kind {
+        if let ast::UseTreeKind::Nested(ref nested) = use_tree.kind {
             // Recursively check nested UseTrees
-            for (tree, _) in items {
+            for (tree, _) in nested.items.iter() {
                 self.check_use_tree(cx, tree, item);
             }
 
             // Trigger the lint only if there is one nested item
-            if items.len() != 1 {
+            if nested.items.len() != 1 {
                 return;
             }
 
             // Trigger the lint if the nested item is a non-self single item
-            let node_name = match items[0].0.kind {
+            let node_name = match nested.items[0].0.kind {
                 ast::UseTreeKind::Simple(rename) => {
-                    let orig_ident = items[0].0.prefix.segments.last().unwrap().ident;
+                    let orig_ident = nested.items[0].0.prefix.segments.last().unwrap().ident;
                     if orig_ident.name == kw::SelfLower {
                         return;
                     }

@@ -675,21 +675,21 @@ impl<'a> State<'a> {
                 }
                 self.word("*");
             }
-            ast::UseTreeKind::Nested(items) => {
+            ast::UseTreeKind::Nested(nested) => {
                 if !tree.prefix.segments.is_empty() {
                     self.print_path(&tree.prefix, false, 0);
                     self.word("::");
                 }
-                if items.is_empty() {
+                if nested.items.is_empty() {
                     self.word("{}");
-                } else if items.len() == 1 {
-                    self.print_use_tree(&items[0].0);
+                } else if nested.items.len() == 1 {
+                    self.print_use_tree(&nested.items[0].0);
                 } else {
                     self.cbox(INDENT_UNIT);
                     self.word("{");
                     self.zerobreak();
                     self.ibox(0);
-                    for use_tree in items.iter().delimited() {
+                    for use_tree in nested.items.iter().delimited() {
                         self.print_use_tree(&use_tree.0);
                         if !use_tree.is_last {
                             self.word(",");

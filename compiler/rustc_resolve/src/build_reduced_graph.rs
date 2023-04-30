@@ -566,9 +566,10 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 self.r.visibilities.insert(self.r.local_def_id(id), vis);
                 self.add_import(prefix, kind, use_tree.span, item, root_span, item.id, vis);
             }
-            ast::UseTreeKind::Nested(ref items) => {
+            ast::UseTreeKind::Nested(ref nested) => {
                 // Ensure there is at most one `self` in the list
-                let self_spans = items
+                let self_spans = nested
+                    .items
                     .iter()
                     .filter_map(|(use_tree, _)| {
                         if let ast::UseTreeKind::Simple(..) = use_tree.kind {
@@ -593,7 +594,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     e.emit();
                 }
 
-                for &(ref tree, id) in items {
+                for &(ref tree, id) in nested.items.iter() {
                     self.build_reduced_graph_for_use_tree(
                         // This particular use tree
                         tree, id, &prefix, true, // The whole `use` item
@@ -604,7 +605,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 // Empty groups `a::b::{}` are turned into synthetic `self` imports
                 // `a::b::c::{self as _}`, so that their prefixes are correctly
                 // resolved and checked for privacy/stability/etc.
-                if items.is_empty() && !empty_for_self(&prefix) {
+                if nested.items.is_empty() && !empty_for_self(&prefix) {
                     let new_span = prefix[prefix.len() - 1].ident.span;
                     let tree = ast::UseTree {
                         prefix: ast::Path::from_ident(Ident::new(kw::SelfLower, new_span)),

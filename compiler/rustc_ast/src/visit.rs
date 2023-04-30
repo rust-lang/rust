@@ -450,8 +450,8 @@ pub fn walk_use_tree<'a, V: Visitor<'a>>(visitor: &mut V, use_tree: &'a UseTree,
             }
         }
         UseTreeKind::Glob => {}
-        UseTreeKind::Nested(use_trees) => {
-            for &(ref nested_tree, nested_id) in use_trees {
+        UseTreeKind::Nested(nested) => {
+            for &(ref nested_tree, nested_id) in nested.items.iter() {
                 visitor.visit_use_tree(nested_tree, nested_id, true);
             }
         }
