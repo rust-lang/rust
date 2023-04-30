@@ -2118,6 +2118,56 @@ mod sealed {
 
     impl_vec_trait! { [VectorMergel vec_mergel]+ 2b (vec_vmrglb, vec_vmrglh, vec_vmrglw) }
     impl_vec_trait! { [VectorMergel vec_mergel]+ vec_vmrglw (vector_float, vector_float) -> vector_float }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vpkuhum))]
+    unsafe fn vec_vpkuhum(a: vector_signed_short, b: vector_signed_short) -> vector_signed_char {
+        let pack_perm = if cfg!(target_endian = "little") {
+            transmute(u8x16::new(
+                0x00, 0x02, 0x04, 0x06, 0x08, 0x0A, 0x0C, 0x0E, 0x10, 0x12, 0x14, 0x16, 0x18, 0x1A,
+                0x1C, 0x1E,
+            ))
+        } else {
+            transmute(u8x16::new(
+                0x01, 0x03, 0x05, 0x07, 0x09, 0x0B, 0x0D, 0x0F, 0x11, 0x13, 0x15, 0x17, 0x19, 0x1B,
+                0x1D, 0x1F,
+            ))
+        };
+
+        transmute(vec_perm(a, b, pack_perm))
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vpkuwum))]
+    unsafe fn vec_vpkuwum(a: vector_signed_int, b: vector_signed_int) -> vector_signed_short {
+        let pack_perm = if cfg!(target_endian = "little") {
+            transmute(u8x16::new(
+                0x00, 0x01, 0x04, 0x05, 0x08, 0x09, 0x0C, 0x0D, 0x10, 0x11, 0x14, 0x15, 0x18, 0x19,
+                0x1C, 0x1D,
+            ))
+        } else {
+            transmute(u8x16::new(
+                0x02, 0x03, 0x06, 0x07, 0x0A, 0x0B, 0x0E, 0x0F, 0x12, 0x13, 0x16, 0x17, 0x1A, 0x1B,
+                0x1E, 0x1F,
+            ))
+        };
+
+        transmute(vec_perm(a, b, pack_perm))
+    }
+
+    pub trait VectorPack<Other> {
+        type Result;
+        unsafe fn vec_pack(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_trait! { [VectorPack vec_pack]+ vec_vpkuhum (vector_signed_short, vector_signed_short) -> vector_signed_char }
+    impl_vec_trait! { [VectorPack vec_pack]+ vec_vpkuhum (vector_unsigned_short, vector_unsigned_short) -> vector_unsigned_char }
+    impl_vec_trait! { [VectorPack vec_pack]+ vec_vpkuhum (vector_bool_short, vector_bool_short) -> vector_bool_char }
+    impl_vec_trait! { [VectorPack vec_pack]+ vec_vpkuwum (vector_signed_int, vector_signed_int) -> vector_signed_short }
+    impl_vec_trait! { [VectorPack vec_pack]+ vec_vpkuwum (vector_unsigned_int, vector_unsigned_int) -> vector_unsigned_short }
+    impl_vec_trait! { [VectorPack vec_pack]+ vec_vpkuwum (vector_bool_int, vector_bool_int) -> vector_bool_short }
 }
 
 /// Vector Merge Low
@@ -2138,6 +2188,16 @@ where
     T: sealed::VectorMergeh<U>,
 {
     a.vec_mergeh(b)
+}
+
+/// Vector Pack
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_pack<T, U>(a: T, b: U) -> <T as sealed::VectorPack<U>>::Result
+where
+    T: sealed::VectorPack<U>,
+{
+    a.vec_pack(b)
 }
 
 /// Vector Load Indexed.
