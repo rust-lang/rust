@@ -1,10 +1,12 @@
 pub mod debug;
 mod dep_node;
+mod edges;
 mod graph;
 mod query;
 mod serialized;
 
 pub use dep_node::{DepKindStruct, DepNode, DepNodeParams, WorkProductId};
+pub use edges::EdgesVec;
 pub use graph::{
     hash_result, DepGraph, DepGraphData, DepNodeColor, DepNodeIndex, TaskDeps, TaskDepsRef,
     WorkProduct, WorkProductMap,
@@ -157,4 +159,10 @@ pub trait DepKind: Copy + fmt::Debug + Eq + Hash + Send + Encodable<FileEncoder>
     fn read_deps<OP>(op: OP)
     where
         OP: for<'a> FnOnce(TaskDepsRef<'a, Self>);
+
+    fn from_u16(u: u16) -> Self;
+
+    fn to_u16(self) -> u16;
+
+    const MAX: u16;
 }
