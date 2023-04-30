@@ -293,6 +293,10 @@ impl fmt::Display for EscapeDefault {
 pub struct EscapeDebug(EscapeDebugInner);
 
 #[derive(Clone, Debug)]
+// Note: It’s possible to manually encode the EscapeDebugInner inside of
+// EscapeIterInner (e.g. with alive=254..255 indicating that data[0..4] holds
+// a char) which would likely result in a more optimised code.  For now we use
+// the option easier to implement.
 enum EscapeDebugInner {
     Bytes(escape::EscapeIterInner<10>),
     Char(char),
@@ -300,10 +304,6 @@ enum EscapeDebugInner {
 
 impl EscapeDebug {
     fn printable(chr: char) -> Self {
-        // Note: It’s possible to manually encode the EscapeDebugInner inside of
-        // EscapeIterInner (e.g. with alive=254..255 indicating that data[0..4]
-        // holds a char) which would likely result in a more optimised code.
-        // For now we use the option easier to implement.
         Self(EscapeDebugInner::Char(chr))
     }
 

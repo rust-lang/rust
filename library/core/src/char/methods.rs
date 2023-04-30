@@ -395,9 +395,9 @@ impl char {
             '\t' => EscapeDebug::backslash(b't'),
             '\r' => EscapeDebug::backslash(b'r'),
             '\n' => EscapeDebug::backslash(b'n'),
-            '\\' => EscapeDebug::backslash(self as u8),
-            '"' if args.escape_double_quote => EscapeDebug::backslash(self as u8),
-            '\'' if args.escape_single_quote => EscapeDebug::backslash(self as u8),
+            '\\' => EscapeDebug::backslash(b'\\'),
+            '"' if args.escape_double_quote => EscapeDebug::backslash(b'"'),
+            '\'' if args.escape_single_quote => EscapeDebug::backslash(b'\''),
             _ if args.escape_grapheme_extended && self.is_grapheme_extended() => {
                 EscapeDebug::from_unicode(self.escape_unicode())
             }

@@ -7,7 +7,7 @@ const HEX_DIGITS: [u8; 16] = *b"0123456789abcdef";
 
 /// Escapes a byte into provided buffer; returns length of escaped
 /// representation.
-pub(super) fn escape_ascii_into(output: &mut [u8; 4], byte: u8) -> Range<u8> {
+pub(crate) fn escape_ascii_into(output: &mut [u8; 4], byte: u8) -> Range<u8> {
     let (data, len) = match byte {
         b'\t' => ([b'\\', b't', 0, 0], 2),
         b'\r' => ([b'\\', b'r', 0, 0], 2),
@@ -25,11 +25,10 @@ pub(super) fn escape_ascii_into(output: &mut [u8; 4], byte: u8) -> Range<u8> {
 }
 
 /// Escapes a character into provided buffer using `\u{NNNN}` representation.
-pub(super) fn escape_unicode_into(output: &mut [u8; 10], ch: char) -> Range<u8> {
-    let ch = (ch as u32) & 0x1f_ffff;
-
+pub(crate) fn escape_unicode_into(output: &mut [u8; 10], ch: char) -> Range<u8> {
     output[9] = b'}';
 
+    let ch = ch as u32;
     output[3] = HEX_DIGITS[((ch >> 20) & 15) as usize];
     output[4] = HEX_DIGITS[((ch >> 16) & 15) as usize];
     output[5] = HEX_DIGITS[((ch >> 12) & 15) as usize];
@@ -50,16 +49,17 @@ pub(super) fn escape_unicode_into(output: &mut [u8; 10], ch: char) -> Range<u8> 
 /// This is essentially equivalent to array’s IntoIter except that indexes are
 /// limited to u8 to reduce size of the structure.
 #[derive(Clone, Debug)]
-pub(super) struct EscapeIterInner<const N: usize> {
+pub(crate) struct EscapeIterInner<const N: usize> {
     // Invariant: data[alive] is all ASCII.
-    pub(super) data: [u8; N],
+    pub(crate) data: [u8; N],
 
     // Invariant: alive.start <= alive.end <= N.
-    pub(super) alive: Range<u8>,
+    pub(crate) alive: Range<u8>,
 }
 
 impl<const N: usize> EscapeIterInner<N> {
     pub fn new(data: [u8; N], alive: Range<u8>) -> Self {
+        const { assert!(N < 256) };
         debug_assert!(alive.start <= alive.end && usize::from(alive.end) <= N, "{alive:?}");
         let this = Self { data, alive };
         debug_assert!(this.as_bytes().is_ascii(), "Expected ASCII, got {:?}", this.as_bytes());
@@ -67,7 +67,7 @@ impl<const N: usize> EscapeIterInner<N> {
     }
 
     fn as_bytes(&self) -> &[u8] {
-        &self.data[(self.alive.start as usize)..(self.alive.end as usize)]
+        &self.data[usize::from(self.alive.start)..usize::from(self.alive.end)]
     }
 
     pub fn as_str(&self) -> &str {
