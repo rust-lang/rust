@@ -64,6 +64,11 @@ impl Fingerprint {
         )
     }
 
+    #[inline]
+    pub(crate) fn as_u128(self) -> u128 {
+        u128::from(self.1) << 64 | u128::from(self.0)
+    }
+
     // Combines two hashes in an order independent way. Make sure this is what
     // you want.
     #[inline]
