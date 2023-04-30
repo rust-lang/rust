@@ -21,7 +21,7 @@ pub fn check_validity_requirement<'tcx>(
     tcx: TyCtxt<'tcx>,
     kind: ValidityRequirement,
     param_env_and_ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
-) -> Result<bool, LayoutError<'tcx>> {
+) -> Result<bool, &'tcx LayoutError<'tcx>> {
     let layout = tcx.layout_of(param_env_and_ty)?;
 
     // There is nothing strict or lax about inhabitedness.
@@ -43,7 +43,7 @@ fn might_permit_raw_init_strict<'tcx>(
     ty: TyAndLayout<'tcx>,
     tcx: TyCtxt<'tcx>,
     kind: ValidityRequirement,
-) -> Result<bool, LayoutError<'tcx>> {
+) -> Result<bool, &'tcx LayoutError<'tcx>> {
     let machine = CompileTimeInterpreter::new(CanAccessStatics::No, CheckAlignment::Error);
 
     let mut cx = InterpCx::new(tcx, rustc_span::DUMMY_SP, ParamEnv::reveal_all(), machine);
@@ -75,7 +75,7 @@ fn might_permit_raw_init_lax<'tcx>(
     this: TyAndLayout<'tcx>,
     cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
     init_kind: ValidityRequirement,
-) -> Result<bool, LayoutError<'tcx>> {
+) -> Result<bool, &'tcx LayoutError<'tcx>> {
     let scalar_allows_raw_init = move |s: Scalar| -> bool {
         match init_kind {
             ValidityRequirement::Inhabited => {

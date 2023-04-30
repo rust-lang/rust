@@ -1383,7 +1383,7 @@ rustc_queries! {
     /// executes in "reveal all" mode, and will normalize the input type.
     query layout_of(
         key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>
-    ) -> Result<ty::layout::TyAndLayout<'tcx>, ty::layout::LayoutError<'tcx>> {
+    ) -> Result<ty::layout::TyAndLayout<'tcx>, &'tcx ty::layout::LayoutError<'tcx>> {
         depth_limit
         desc { "computing layout of `{}`", key.value }
     }
@@ -2164,7 +2164,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query check_validity_requirement(key: (ValidityRequirement, ty::ParamEnvAnd<'tcx, Ty<'tcx>>)) -> Result<bool, ty::layout::LayoutError<'tcx>> {
+    query check_validity_requirement(key: (ValidityRequirement, ty::ParamEnvAnd<'tcx, Ty<'tcx>>)) -> Result<bool, &'tcx ty::layout::LayoutError<'tcx>> {
         desc { "checking validity requirement for `{}`: {}", key.1.value, key.0 }
     }
 

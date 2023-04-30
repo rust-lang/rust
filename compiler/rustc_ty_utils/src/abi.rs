@@ -386,7 +386,7 @@ fn fn_abi_new_uncached<'tcx>(
             _ => bug!("argument to drop_in_place is not a raw ptr: {:?}", ty),
         });
 
-        let layout = cx.layout_of(ty)?;
+        let layout = cx.layout_of(ty).map_err(|err| *err)?;
         let layout = if force_thin_self_ptr && arg_idx == Some(0) {
             // Don't pass the vtable, it's not an argument of the virtual fn.
             // Instead, pass just the data pointer, but give it the type `*const/mut dyn Trait`
