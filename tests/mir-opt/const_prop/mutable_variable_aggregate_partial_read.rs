@@ -1,6 +1,5 @@
 // ignore-wasm32 compiled with panic=abort by default
-// unit-test
-// compile-flags: -O
+// unit-test: ConstProp
 
 // EMIT_MIR mutable_variable_aggregate_partial_read.main.ConstProp.diff
 fn main() {
