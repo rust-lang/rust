@@ -15,7 +15,7 @@ static_suggestions! {
 
     "compiler/*" => [
         sug!("check"),
-        sug!("test", 1, ["src/test/ui", "src/test/run-make"])
+        sug!("test", 1, ["tests/ui", "tests/run-make"])
     ],
 
     "src/librustdoc/*" => [
