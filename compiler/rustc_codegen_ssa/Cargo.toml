@@ -49,3 +49,7 @@ libc = "0.2.50"
 version = "0.30.1"
 default-features = false
 features = ["read_core", "elf", "macho", "pe", "unaligned", "archive", "write"]
+
+[target.'cfg(windows)'.dependencies.windows]
+version = "0.46.0"
+features = ["Win32_Globalization"]

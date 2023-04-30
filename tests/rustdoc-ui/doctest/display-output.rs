@@ -3,7 +3,7 @@
 // check-pass
 // edition:2018
 // compile-flags:--test --test-args=--show-output
-// normalize-stdout-test: "tests/rustdoc-ui" -> "$$DIR"
+// normalize-stdout-test: "tests/rustdoc-ui/doctest" -> "$$DIR"
 // normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
 
 /// ```

@@ -1,5 +1,5 @@
 // compile-flags:--test --error-format=short
-// normalize-stdout-test: "tests/rustdoc-ui" -> "$$DIR"
+// normalize-stdout-test: "tests/rustdoc-ui/issues" -> "$$DIR"
 // normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
 // failure-status: 101
 

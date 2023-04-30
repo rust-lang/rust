@@ -1,8 +1,6 @@
-// test the behavior of the --no-run flag
-
+// compile-flags: --test --test-args=--test-threads=1
 // check-pass
-// compile-flags:-Z unstable-options --test --no-run --test-args=--test-threads=1
-// normalize-stdout-test: "tests/rustdoc-ui" -> "$$DIR"
+// normalize-stdout-test: "tests/rustdoc-ui/doctest" -> "$$DIR"
 // normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
 
 /// ```
@@ -24,15 +22,5 @@
 /// let x = 5;
 /// x += 2; // shouldn't compile!
 /// ```
-/// Ok the test does not run
-/// ```
-/// panic!()
-/// ```
-/// Ok the test does not run
-/// ```should_panic
-/// loop {
-///     println!("Hello, world");
-/// panic!()
-/// }
-/// ```
+
 pub fn f() {}
