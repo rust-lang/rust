@@ -9,7 +9,7 @@ use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{
-    GenericArg, GenericBound, Generics, Item, ItemKind, Node, Path, PathSegment, PredicateOrigin, QPath,
+    GenericArg, GenericBound, Generics, Item, ItemKind, MutTy, Node, Path, PathSegment, PredicateOrigin, QPath,
     TraitBoundModifier, TraitItem, TraitRef, Ty, TyKind, WherePredicate,
 };
 use rustc_lint::{LateContext, LateLintPass};
@@ -37,12 +37,12 @@ declare_clippy_lint! {
     #[clippy::version = "1.38.0"]
     pub TYPE_REPETITION_IN_BOUNDS,
     nursery,
-    "types are repeated unnecessary in trait bounds use `+` instead of using `T: _, T: _`"
+    "types are repeated unnecessarily in trait bounds, use `+` instead of using `T: _, T: _`"
 }
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for cases where generics are being used and multiple
+    /// Checks for cases where generics or trait objects are being used and multiple
     /// syntax specifications for trait bounds are used simultaneously.
     ///
     /// ### Why is this bad?
@@ -164,6 +164,45 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
                             }
                         });
                 }
+            }
+        }
+    }
+
+    fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx Ty<'tcx>) {
+        let TyKind::Ref(
+            ..,
+            MutTy {
+                ty: Ty {
+                    kind: TyKind::TraitObject(
+                        bounds,
+                        ..
+                    ),
+                    ..
+                },
+                ..
+            }
+        ) = ty.kind else { return; };
+
+        if bounds.len() < 2 {
+            return;
+        }
+
+        let mut seen_def_ids = FxHashSet::default();
+
+        for bound in bounds.iter() {
+            let Some(def_id) = bound.trait_ref.trait_def_id() else { continue; };
+
+            let already_seen = !seen_def_ids.insert(def_id);
+
+            if already_seen {
+                span_lint_and_help(
+                    cx,
+                    TRAIT_DUPLICATION_IN_BOUNDS,
+                    bound.span,
+                    "this trait bound is already specified in trait declaration",
+                    None,
+                    "consider removing this trait bound",
+                );
             }
         }
     }

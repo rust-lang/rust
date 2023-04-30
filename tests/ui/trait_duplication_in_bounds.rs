@@ -109,4 +109,12 @@ fn qualified_path<T: std::clone::Clone + Clone + foo::Clone>(arg0: T) {
     unimplemented!();
 }
 
+fn good_trait_object(arg0: &(dyn Any + Send)) {
+    unimplemented!();
+}
+
+fn bad_trait_object(arg0: &(dyn Any + Send + Send)) {
+    unimplemented!();
+}
+
 fn main() {}
