@@ -62,7 +62,7 @@ mod path;
 mod expr;
 mod pat;
 mod coerce;
-mod closure;
+pub(crate) mod closure;
 mod mutability;
 
 /// The entry point of type inference.
@@ -426,7 +426,7 @@ impl InferenceResult {
             _ => None,
         })
     }
-    pub(crate) fn closure_info(&self, closure: &ClosureId) -> &(Vec<CapturedItem>, FnTrait) {
+    pub fn closure_info(&self, closure: &ClosureId) -> &(Vec<CapturedItem>, FnTrait) {
         self.closure_info.get(closure).unwrap()
     }
 }

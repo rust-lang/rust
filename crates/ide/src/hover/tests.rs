@@ -199,6 +199,85 @@ fn main() {
 }
 
 #[test]
+fn hover_closure() {
+    check(
+        r#"
+//- minicore: copy
+fn main() {
+    let x = 2;
+    let y = $0|z| x + z;
+}
+"#,
+        expect![[r#"
+            *|*
+            ```rust
+            {closure#0} // size = 8, align = 8
+            impl Fn(i32) -> i32
+            ```
+
+            ## Captures
+            * `x` by immutable borrow
+        "#]],
+    );
+
+    check(
+        r#"
+//- minicore: copy
+fn foo(x: impl Fn(i32) -> i32) {
+
+}
+fn main() {
+    foo($0|x: i32| x)
+}
+"#,
+        expect![[r#"
+            *|*
+            ```rust
+            {closure#0} // size = 0, align = 1
+            impl Fn(i32) -> i32
+            ```
+
+            ## Captures
+            This closure captures nothing
+        "#]],
+    );
+
+    check(
+        r#"
+//- minicore: copy
+
+struct Z { f: i32 }
+
+struct Y(&'static mut Z)
+
+struct X {
+    f1: Y,
+    f2: (Y, Y),
+}
+
+fn main() {
+    let x: X;
+    let y = $0|| {
+        x.f1;
+        &mut x.f2.0 .0.f;
+    };
+}
+"#,
+        expect![[r#"
+            *|*
+            ```rust
+            {closure#0} // size = 16, align = 8
+            impl FnOnce()
+            ```
+
+            ## Captures
+            * `x.f1` by move
+            * `(*x.f2.0.0).f` by mutable borrow
+        "#]],
+    );
+}
+
+#[test]
 fn hover_shows_long_type_of_an_expression() {
     check(
         r#"
