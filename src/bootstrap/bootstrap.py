@@ -42,23 +42,23 @@ def get(base, url, path, checksums, verbose=False):
         if os.path.exists(path):
             if verify(path, sha256, False):
                 if verbose:
-                    print("using already-download file", path)
+                    print("using already-download file", path, file=sys.stderr)
                 return
             else:
                 if verbose:
                     print("ignoring already-download file",
-                        path, "due to failed verification")
+                        path, "due to failed verification", file=sys.stderr)
                 os.unlink(path)
         download(temp_path, "{}/{}".format(base, url), True, verbose)
         if not verify(temp_path, sha256, verbose):
             raise RuntimeError("failed verification")
         if verbose:
-            print("moving {} to {}".format(temp_path, path))
+            print("moving {} to {}".format(temp_path, path), file=sys.stderr)
         shutil.move(temp_path, path)
     finally:
         if os.path.isfile(temp_path):
             if verbose:
-                print("removing", temp_path)
+                print("removing", temp_path, file=sys.stderr)
             os.unlink(temp_path)
 
 
@@ -68,7 +68,7 @@ def download(path, url, probably_big, verbose):
             _download(path, url, probably_big, verbose, True)
             return
         except RuntimeError:
-            print("\nspurious failure, trying again")
+            print("\nspurious failure, trying again", file=sys.stderr)
     _download(path, url, probably_big, verbose, False)
 
 
@@ -79,7 +79,7 @@ def _download(path, url, probably_big, verbose, exception):
     #  - If we are on win32 fallback to powershell
     #  - Otherwise raise the error if appropriate
     if probably_big or verbose:
-        print("downloading {}".format(url))
+        print("downloading {}".format(url), file=sys.stderr)
 
     try:
         if probably_big or verbose:
@@ -115,20 +115,20 @@ def _download(path, url, probably_big, verbose, exception):
 def verify(path, expected, verbose):
     """Check if the sha256 sum of the given path is valid"""
     if verbose:
-        print("verifying", path)
+        print("verifying", path, file=sys.stderr)
     with open(path, "rb") as source:
         found = hashlib.sha256(source.read()).hexdigest()
     verified = found == expected
     if not verified:
         print("invalid checksum:\n"
               "    found:    {}\n"
-              "    expected: {}".format(found, expected))
+              "    expected: {}".format(found, expected), file=sys.stderr)
     return verified
 
 
 def unpack(tarball, tarball_suffix, dst, verbose=False, match=None):
     """Unpack the given tarball file"""
-    print("extracting", tarball)
+    print("extracting", tarball, file=sys.stderr)
     fname = os.path.basename(tarball).replace(tarball_suffix, "")
     with contextlib.closing(tarfile.open(tarball)) as tar:
         for member in tar.getnames():
@@ -141,7 +141,7 @@ def unpack(tarball, tarball_suffix, dst, verbose=False, match=None):
 
             dst_path = os.path.join(dst, name)
             if verbose:
-                print("  extracting", member)
+                print("  extracting", member, file=sys.stderr)
             tar.extract(member, dst)
             src_path = os.path.join(dst, member)
             if os.path.isdir(src_path) and os.path.exists(dst_path):
@@ -153,7 +153,7 @@ def unpack(tarball, tarball_suffix, dst, verbose=False, match=None):
 def run(args, verbose=False, exception=False, is_bootstrap=False, **kwargs):
     """Run a child program in a new process"""
     if verbose:
-        print("running: " + ' '.join(args))
+        print("running: " + ' '.join(args), file=sys.stderr)
     sys.stdout.flush()
     # Ensure that the .exe is used on Windows just in case a Linux ELF has been
     # compiled in the same directory.
@@ -193,8 +193,8 @@ def require(cmd, exit=True, exception=False):
         if exception:
             raise
         elif exit:
-            print("error: unable to run `{}`: {}".format(' '.join(cmd), exc))
-            print("Please make sure it's installed and in the path.")
+            print("error: unable to run `{}`: {}".format(' '.join(cmd), exc), file=sys.stderr)
+            print("Please make sure it's installed and in the path.", file=sys.stderr)
             sys.exit(1)
         return None
 
@@ -218,8 +218,8 @@ def default_build_triple(verbose):
 
     if sys.platform == 'darwin':
         if verbose:
-            print("not using rustc detection as it is unreliable on macOS")
-            print("falling back to auto-detect")
+            print("not using rustc detection as it is unreliable on macOS", file=sys.stderr)
+            print("falling back to auto-detect", file=sys.stderr)
     else:
         try:
             version = subprocess.check_output(["rustc", "--version", "--verbose"],
@@ -228,12 +228,14 @@ def default_build_triple(verbose):
             host = next(x for x in version.split('\n') if x.startswith("host: "))
             triple = host.split("host: ")[1]
             if verbose:
-                print("detected default triple {} from pre-installed rustc".format(triple))
+                print("detected default triple {} from pre-installed rustc".format(triple),
+                    file=sys.stderr)
             return triple
         except Exception as e:
             if verbose:
-                print("pre-installed rustc not detected: {}".format(e))
-                print("falling back to auto-detect")
+                print("pre-installed rustc not detected: {}".format(e),
+                    file=sys.stderr)
+                print("falling back to auto-detect", file=sys.stderr)
 
     required = not platform_is_win32()
     ostype = require(["uname", "-s"], exit=required)
@@ -545,7 +547,7 @@ class RustBuild(object):
 
         answer = self._should_fix_bins_and_dylibs = get_answer()
         if answer:
-            print("info: You seem to be using Nix.")
+            print("info: You seem to be using Nix.", file=sys.stderr)
         return answer
 
     def fix_bin_or_dylib(self, fname):
@@ -558,7 +560,7 @@ class RustBuild(object):
         Please see https://nixos.org/patchelf.html for more information
         """
         assert self._should_fix_bins_and_dylibs is True
-        print("attempting to patch", fname)
+        print("attempting to patch", fname, file=sys.stderr)
 
         # Only build `.nix-deps` once.
         nix_deps_dir = self.nix_deps_dir
@@ -591,7 +593,7 @@ class RustBuild(object):
                     "nix-build", "-E", nix_expr, "-o", nix_deps_dir,
                 ])
             except subprocess.CalledProcessError as reason:
-                print("warning: failed to call nix-build:", reason)
+                print("warning: failed to call nix-build:", reason, file=sys.stderr)
                 return
             self.nix_deps_dir = nix_deps_dir
 
@@ -611,7 +613,7 @@ class RustBuild(object):
         try:
             subprocess.check_output([patchelf] + patchelf_args + [fname])
         except subprocess.CalledProcessError as reason:
-            print("warning: failed to call patchelf:", reason)
+            print("warning: failed to call patchelf:", reason, file=sys.stderr)
             return
 
     def rustc_stamp(self):
@@ -755,7 +757,7 @@ class RustBuild(object):
         if "GITHUB_ACTIONS" in env:
             print("::group::Building bootstrap")
         else:
-            print("Building bootstrap")
+            print("Building bootstrap", file=sys.stderr)
         build_dir = os.path.join(self.build_dir, "bootstrap")
         if self.clean and os.path.exists(build_dir):
             shutil.rmtree(build_dir)
@@ -849,9 +851,12 @@ class RustBuild(object):
         if 'SUDO_USER' in os.environ and not self.use_vendored_sources:
             if os.getuid() == 0:
                 self.use_vendored_sources = True
-                print('info: looks like you\'re trying to run this command as root')
-                print('      and so in order to preserve your $HOME this will now')
-                print('      use vendored sources by default.')
+                print('info: looks like you\'re trying to run this command as root',
+                    file=sys.stderr)
+                print('      and so in order to preserve your $HOME this will now',
+                    file=sys.stderr)
+                print('      use vendored sources by default.',
+                    file=sys.stderr)
 
         cargo_dir = os.path.join(self.rust_root, '.cargo')
         if self.use_vendored_sources:
@@ -861,14 +866,18 @@ class RustBuild(object):
                             "--sync ./src/tools/rust-analyzer/Cargo.toml " \
                             "--sync ./compiler/rustc_codegen_cranelift/Cargo.toml " \
                             "--sync ./src/bootstrap/Cargo.toml "
-                print('error: vendoring required, but vendor directory does not exist.')
+                print('error: vendoring required, but vendor directory does not exist.',
+                    file=sys.stderr)
                 print('       Run `cargo vendor {}` to initialize the '
-                      'vendor directory.'.format(sync_dirs))
-                print('Alternatively, use the pre-vendored `rustc-src` dist component.')
+                      'vendor directory.'.format(sync_dirs),
+                      file=sys.stderr)
+                print('Alternatively, use the pre-vendored `rustc-src` dist component.',
+                    file=sys.stderr)
                 raise Exception("{} not found".format(vendor_dir))
 
             if not os.path.exists(cargo_dir):
-                print('error: vendoring required, but .cargo/config does not exist.')
+                print('error: vendoring required, but .cargo/config does not exist.',
+                    file=sys.stderr)
                 raise Exception("{} not found".format(cargo_dir))
         else:
             if os.path.exists(cargo_dir):
@@ -978,7 +987,7 @@ def main():
         print(
             "info: Downloading and building bootstrap before processing --help command.\n"
             "      See src/bootstrap/README.md for help with common commands."
-        )
+        , file=sys.stderr)
 
     exit_code = 0
     success_word = "successfully"
@@ -989,11 +998,12 @@ def main():
             exit_code = error.code
         else:
             exit_code = 1
-            print(error)
+            print(error, file=sys.stderr)
         success_word = "unsuccessfully"
 
     if not help_triggered:
-        print("Build completed", success_word, "in", format_build_time(time() - start_time))
+        print("Build completed", success_word, "in", format_build_time(time() - start_time),
+            file=sys.stderr)
     sys.exit(exit_code)
 
 
