@@ -17,7 +17,9 @@ pub(crate) fn escape_ascii_into(output: &mut [u8; 4], byte: u8) -> Range<u8> {
         b'"' => ([b'\\', b'"', 0, 0], 2),
         b'\x20'..=b'\x7e' => ([byte, 0, 0, 0], 1),
         _ => {
-            ([b'\\', b'x', HEX_DIGITS[(byte >> 4) as usize], HEX_DIGITS[(byte & 0xf) as usize]], 4)
+            let hi = HEX_DIGITS[usize::from(byte >> 4)];
+            let lo = HEX_DIGITS[usize::from(byte & 0xf)];
+            ([b'\\', b'x', hi, lo], 4)
         }
     };
     *output = data;
