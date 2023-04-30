@@ -5,8 +5,6 @@
 //! on the `rustc_hash` crate.
 
 use std::collections::HashMap;
-use std::convert::TryInto;
-use std::default::Default;
 use std::hash::BuildHasherDefault;
 use std::hash::Hasher;
 use std::mem::size_of;

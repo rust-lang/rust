@@ -1,17 +1,3 @@
-error[E0004]: non-exhaustive patterns: type `u8` is non-empty
-  --> $DIR/pattern-matching-should-fail.rs:67:23
-   |
-LL |     let c1 = || match x { };
-   |                       ^
-   |
-   = note: the matched value is of type `u8`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
-   |
-LL ~     let c1 = || match x {
-LL +         _ => todo!(),
-LL ~     };
-   |
-
 error[E0381]: used binding `x` isn't initialized
   --> $DIR/pattern-matching-should-fail.rs:8:23
    |
@@ -68,6 +54,20 @@ LL |     let t: !;
 ...
 LL |             match t { };
    |                   ^ `t` used here but it isn't initialized
+
+error[E0004]: non-exhaustive patterns: type `u8` is non-empty
+  --> $DIR/pattern-matching-should-fail.rs:67:23
+   |
+LL |     let c1 = || match x { };
+   |                       ^
+   |
+   = note: the matched value is of type `u8`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
+   |
+LL ~     let c1 = || match x {
+LL +         _ => todo!(),
+LL ~     };
+   |
 
 error[E0381]: used binding `x` isn't initialized
   --> $DIR/pattern-matching-should-fail.rs:67:23

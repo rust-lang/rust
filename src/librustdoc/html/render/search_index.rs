@@ -59,7 +59,7 @@ pub(crate) fn build_index<'tcx>(
         // `sort_unstable_by_key` produces lifetime errors
         let k1 = (&k1.path, k1.name.as_str(), &k1.ty, &k1.parent);
         let k2 = (&k2.path, k2.name.as_str(), &k2.ty, &k2.parent);
-        std::cmp::Ord::cmp(&k1, &k2)
+        Ord::cmp(&k1, &k2)
     });
 
     // Set up alias indexes.

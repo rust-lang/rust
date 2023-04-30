@@ -69,7 +69,7 @@
 //!   of this is that such liveness analysis can report more accurate results about whole locals at
 //!   a time. For example, consider:
 //!
-//!   ```ignore (syntax-highliting-only)
+//!   ```ignore (syntax-highlighting-only)
 //!   _1 = u;
 //!   // unrelated code
 //!   _1.f1 = v;
@@ -360,7 +360,7 @@ struct FilterInformation<'a, 'body, 'alloc, 'tcx> {
 }
 
 // We first implement some utility functions which we will expose removing candidates according to
-// different needs. Throughout the livenss filtering, the `candidates` are only ever accessed
+// different needs. Throughout the liveness filtering, the `candidates` are only ever accessed
 // through these methods, and not directly.
 impl<'alloc> Candidates<'alloc> {
     /// Just `Vec::retain`, but the condition is inverted and we add debugging output
@@ -582,10 +582,9 @@ impl WriteInfo {
             | StatementKind::Nop
             | StatementKind::Coverage(_)
             | StatementKind::StorageLive(_)
-            | StatementKind::StorageDead(_) => (),
-            StatementKind::FakeRead(_)
-            | StatementKind::AscribeUserType(_, _)
-            | StatementKind::PlaceMention(_) => {
+            | StatementKind::StorageDead(_)
+            | StatementKind::PlaceMention(_) => (),
+            StatementKind::FakeRead(_) | StatementKind::AscribeUserType(_, _) => {
                 bug!("{:?} not found in this MIR phase", statement)
             }
         }

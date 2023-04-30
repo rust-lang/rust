@@ -859,13 +859,9 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                             sig.decl.inputs.iter().map(|Param { ty, .. }| (None, &**ty)),
                             &sig.decl.output,
                         );
-
-                        this.record_lifetime_params_for_async(
-                            fn_id,
-                            sig.header.asyncness.opt_return_id(),
-                        );
                     },
                 );
+                self.record_lifetime_params_for_async(fn_id, sig.header.asyncness.opt_return_id());
                 return;
             }
             FnKind::Fn(..) => {
@@ -1079,7 +1075,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                     for rib in self.lifetime_ribs.iter().rev() {
                         match rib.kind {
                             // We are inside a `PolyTraitRef`. The lifetimes are
-                            // to be intoduced in that (maybe implicit) `for<>` binder.
+                            // to be introduced in that (maybe implicit) `for<>` binder.
                             LifetimeRibKind::Generics {
                                 binder,
                                 kind: LifetimeBinderKind::PolyTrait,
@@ -3803,7 +3799,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             // use std::u8; // bring module u8 in scope
             // fn f() -> u8 { // OK, resolves to primitive u8, not to std::u8
             //     u8::max_value() // OK, resolves to associated function <u8>::max_value,
-            //                     // not to non-existent std::u8::max_value
+            //                     // not to nonexistent std::u8::max_value
             // }
             //
             // Such behavior is required for backward compatibility.

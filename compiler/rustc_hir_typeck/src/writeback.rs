@@ -70,6 +70,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         wbcx.visit_user_provided_tys();
         wbcx.visit_user_provided_sigs();
         wbcx.visit_generator_interior_types();
+        wbcx.visit_offset_of_container_types();
 
         wbcx.typeck_results.rvalue_scopes =
             mem::take(&mut self.typeck_results.borrow_mut().rvalue_scopes);
@@ -132,7 +133,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
     fn write_ty_to_typeck_results(&mut self, hir_id: hir::HirId, ty: Ty<'tcx>) {
         debug!("write_ty_to_typeck_results({:?}, {:?})", hir_id, ty);
-        assert!(!ty.needs_infer() && !ty.has_placeholders() && !ty.has_free_regions());
+        assert!(!ty.has_infer() && !ty.has_placeholders() && !ty.has_free_regions());
         self.typeck_results.node_types_mut().insert(hir_id, ty);
     }
 
@@ -295,7 +296,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
                     self.visit_field_id(field.hir_id);
                 }
             }
-            hir::ExprKind::Field(..) => {
+            hir::ExprKind::Field(..) | hir::ExprKind::OffsetOf(..) => {
                 self.visit_field_id(e.hir_id);
             }
             hir::ExprKind::ConstBlock(anon_const) => {
@@ -507,7 +508,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             fcx_typeck_results.user_provided_types().items().map(|(local_id, c_ty)| {
                 let hir_id = hir::HirId { owner: common_hir_owner, local_id };
 
-                if cfg!(debug_assertions) && c_ty.needs_infer() {
+                if cfg!(debug_assertions) && c_ty.has_infer() {
                     span_bug!(
                         hir_id.to_span(self.fcx.tcx),
                         "writeback: `{:?}` has inference variables",
@@ -526,7 +527,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
         self.typeck_results.user_provided_sigs.extend(
             fcx_typeck_results.user_provided_sigs.items().map(|(&def_id, c_sig)| {
-                if cfg!(debug_assertions) && c_sig.needs_infer() {
+                if cfg!(debug_assertions) && c_sig.has_infer() {
                     span_bug!(
                         self.fcx.tcx.def_span(def_id),
                         "writeback: `{:?}` has inference variables",
@@ -617,7 +618,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         if let Some(substs) = self.fcx.typeck_results.borrow().node_substs_opt(hir_id) {
             let substs = self.resolve(substs, &span);
             debug!("write_substs_to_tcx({:?}, {:?})", hir_id, substs);
-            assert!(!substs.needs_infer() && !substs.has_placeholders());
+            assert!(!substs.has_infer() && !substs.has_placeholders());
             self.typeck_results.node_substs_mut().insert(hir_id, substs);
         }
     }
@@ -682,13 +683,35 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
+    fn visit_offset_of_container_types(&mut self) {
+        let fcx_typeck_results = self.fcx.typeck_results.borrow();
+        assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
+        let common_hir_owner = fcx_typeck_results.hir_owner;
+
+        for (local_id, &(container, ref indices)) in
+            fcx_typeck_results.offset_of_data().items_in_stable_order()
+        {
+            let hir_id = hir::HirId { owner: common_hir_owner, local_id };
+
+            if cfg!(debug_assertions) && container.has_infer() {
+                span_bug!(
+                    hir_id.to_span(self.fcx.tcx),
+                    "writeback: `{:?}` has inference variables",
+                    container
+                );
+            };
+
+            self.typeck_results.offset_of_data_mut().insert(hir_id, (container, indices.clone()));
+        }
+    }
+
     fn resolve<T>(&mut self, x: T, span: &dyn Locatable) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         let mut resolver = Resolver::new(self.fcx, span, self.body);
         let x = x.fold_with(&mut resolver);
-        if cfg!(debug_assertions) && x.needs_infer() {
+        if cfg!(debug_assertions) && x.has_infer() {
             span_bug!(span.to_span(self.fcx.tcx), "writeback: `{:?}` has inference variables", x);
         }
 

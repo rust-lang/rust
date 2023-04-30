@@ -12,7 +12,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Arm, Block, Expr, Local, Pat, PatKind, Stmt};
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 use rustc_middle::middle::region::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::source_map;
@@ -421,7 +421,7 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
             let target_scopes = visitor.fixup_scopes.drain(start_point..);
 
             for scope in target_scopes {
-                let mut yield_data =
+                let yield_data =
                     visitor.scope_tree.yield_in_scope.get_mut(&scope).unwrap().last_mut().unwrap();
                 let count = yield_data.expr_and_pat_count;
                 let span = yield_data.span;

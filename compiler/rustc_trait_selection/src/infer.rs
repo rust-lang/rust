@@ -41,7 +41,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     fn type_is_copy_modulo_regions(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
         let ty = self.resolve_vars_if_possible(ty);
 
-        if !(param_env, ty).needs_infer() {
+        if !(param_env, ty).has_infer() {
             return ty.is_copy_modulo_regions(self.tcx, param_env);
         }
 

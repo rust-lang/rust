@@ -78,7 +78,7 @@ use crate::fmt;
 use crate::fs;
 use crate::hash::{Hash, Hasher};
 use crate::io;
-use crate::iter::{self, FusedIterator};
+use crate::iter::FusedIterator;
 use crate::ops::{self, Deref};
 use crate::rc::Rc;
 use crate::str::FromStr;
@@ -450,26 +450,26 @@ impl<'a> PrefixComponent<'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> cmp::PartialEq for PrefixComponent<'a> {
+impl<'a> PartialEq for PrefixComponent<'a> {
     #[inline]
     fn eq(&self, other: &PrefixComponent<'a>) -> bool {
-        cmp::PartialEq::eq(&self.parsed, &other.parsed)
+        self.parsed == other.parsed
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> cmp::PartialOrd for PrefixComponent<'a> {
+impl<'a> PartialOrd for PrefixComponent<'a> {
     #[inline]
     fn partial_cmp(&self, other: &PrefixComponent<'a>) -> Option<cmp::Ordering> {
-        cmp::PartialOrd::partial_cmp(&self.parsed, &other.parsed)
+        PartialOrd::partial_cmp(&self.parsed, &other.parsed)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl cmp::Ord for PrefixComponent<'_> {
+impl Ord for PrefixComponent<'_> {
     #[inline]
     fn cmp(&self, other: &Self) -> cmp::Ordering {
-        cmp::Ord::cmp(&self.parsed, &other.parsed)
+        Ord::cmp(&self.parsed, &other.parsed)
     }
 }
 
@@ -988,7 +988,7 @@ impl<'a> DoubleEndedIterator for Components<'a> {
 impl FusedIterator for Components<'_> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> cmp::PartialEq for Components<'a> {
+impl<'a> PartialEq for Components<'a> {
     #[inline]
     fn eq(&self, other: &Components<'a>) -> bool {
         let Components { path: _, front: _, back: _, has_physical_root: _, prefix: _ } = self;
@@ -1015,10 +1015,10 @@ impl<'a> cmp::PartialEq for Components<'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl cmp::Eq for Components<'_> {}
+impl Eq for Components<'_> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> cmp::PartialOrd for Components<'a> {
+impl<'a> PartialOrd for Components<'a> {
     #[inline]
     fn partial_cmp(&self, other: &Components<'a>) -> Option<cmp::Ordering> {
         Some(compare_components(self.clone(), other.clone()))
@@ -1026,7 +1026,7 @@ impl<'a> cmp::PartialOrd for Components<'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl cmp::Ord for Components<'_> {
+impl Ord for Components<'_> {
     #[inline]
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         compare_components(self.clone(), other.clone())
@@ -1509,7 +1509,7 @@ impl PathBuf {
     /// path.as_mut_os_string().push("baz");
     /// assert_eq!(path, Path::new("/foo/barbaz"));
     /// ```
-    #[stable(feature = "path_as_mut_os_str", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "path_as_mut_os_str", since = "1.70.0")]
     #[must_use]
     #[inline]
     pub fn as_mut_os_string(&mut self) -> &mut OsString {
@@ -1741,7 +1741,7 @@ impl FromStr for PathBuf {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<P: AsRef<Path>> iter::FromIterator<P> for PathBuf {
+impl<P: AsRef<Path>> FromIterator<P> for PathBuf {
     fn from_iter<I: IntoIterator<Item = P>>(iter: I) -> PathBuf {
         let mut buf = PathBuf::new();
         buf.extend(iter);
@@ -1750,7 +1750,7 @@ impl<P: AsRef<Path>> iter::FromIterator<P> for PathBuf {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<P: AsRef<Path>> iter::Extend<P> for PathBuf {
+impl<P: AsRef<Path>> Extend<P> for PathBuf {
     fn extend<I: IntoIterator<Item = P>>(&mut self, iter: I) {
         iter.into_iter().for_each(move |p| self.push(p.as_ref()));
     }
@@ -1904,7 +1904,7 @@ impl ToOwned for Path {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl cmp::PartialEq for PathBuf {
+impl PartialEq for PathBuf {
     #[inline]
     fn eq(&self, other: &PathBuf) -> bool {
         self.components() == other.components()
@@ -1919,10 +1919,10 @@ impl Hash for PathBuf {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl cmp::Eq for PathBuf {}
+impl Eq for PathBuf {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl cmp::PartialOrd for PathBuf {
+impl PartialOrd for PathBuf {
     #[inline]
     fn partial_cmp(&self, other: &PathBuf) -> Option<cmp::Ordering> {
         Some(compare_components(self.components(), other.components()))
@@ -1930,7 +1930,7 @@ impl cmp::PartialOrd for PathBuf {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl cmp::Ord for PathBuf {
+impl Ord for PathBuf {
     #[inline]
     fn cmp(&self, other: &PathBuf) -> cmp::Ordering {
         compare_components(self.components(), other.components())
@@ -2074,7 +2074,7 @@ impl Path {
     /// path.as_mut_os_str().make_ascii_lowercase();
     /// assert_eq!(path, Path::new("foo.txt"));
     /// ```
-    #[stable(feature = "path_as_mut_os_str", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "path_as_mut_os_str", since = "1.70.0")]
     #[must_use]
     #[inline]
     pub fn as_mut_os_str(&mut self) -> &mut OsStr {
@@ -2844,9 +2844,11 @@ impl Path {
     /// This function will traverse symbolic links to query information about the
     /// destination file. In case of broken symbolic links this will return `Ok(false)`.
     ///
-    /// As opposed to the [`exists()`] method, this one doesn't silently ignore errors
-    /// unrelated to the path not existing. (E.g. it will return `Err(_)` in case of permission
-    /// denied on some of the parent directories.)
+    /// [`Path::exists()`] only checks whether or not a path was both found and readable. By
+    /// contrast, `try_exists` will return `Ok(true)` or `Ok(false)`, respectively, if the path
+    /// was _verified_ to exist or not exist. If its existence can neither be confirmed nor
+    /// denied, it will propagate an `Err(_)` instead. This can be the case if e.g. listing
+    /// permission is denied on one of the parent directories.
     ///
     /// Note that while this avoids some pitfalls of the `exists()` method, it still can not
     /// prevent time-of-check to time-of-use (TOCTOU) bugs. You should only use it in scenarios
@@ -3025,7 +3027,7 @@ impl fmt::Display for Display<'_> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl cmp::PartialEq for Path {
+impl PartialEq for Path {
     #[inline]
     fn eq(&self, other: &Path) -> bool {
         self.components() == other.components()
@@ -3084,10 +3086,10 @@ impl Hash for Path {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl cmp::Eq for Path {}
+impl Eq for Path {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl cmp::PartialOrd for Path {
+impl PartialOrd for Path {
     #[inline]
     fn partial_cmp(&self, other: &Path) -> Option<cmp::Ordering> {
         Some(compare_components(self.components(), other.components()))
@@ -3095,7 +3097,7 @@ impl cmp::PartialOrd for Path {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl cmp::Ord for Path {
+impl Ord for Path {
     #[inline]
     fn cmp(&self, other: &Path) -> cmp::Ordering {
         compare_components(self.components(), other.components())

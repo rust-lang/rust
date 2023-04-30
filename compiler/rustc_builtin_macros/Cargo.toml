@@ -17,6 +17,7 @@ rustc_feature = { path = "../rustc_feature" }
 rustc_lexer = { path = "../rustc_lexer" }
 rustc_lint_defs = { path = "../rustc_lint_defs" }
 rustc_macros = { path = "../rustc_macros" }
+rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_parse_format = { path = "../rustc_parse_format" }
 rustc_parse = { path = "../rustc_parse" }
 rustc_session = { path = "../rustc_session" }

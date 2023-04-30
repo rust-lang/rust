@@ -22,7 +22,7 @@ pub(crate) struct UnderscoreLifetimeNameCannotBeUsedHere(#[primary_span] pub(cra
 
 #[derive(Diagnostic)]
 #[diag(resolve_crate_may_not_be_imported)]
-pub(crate) struct CrateMayNotBeImprted(#[primary_span] pub(crate) Span);
+pub(crate) struct CrateMayNotBeImported(#[primary_span] pub(crate) Span);
 
 #[derive(Diagnostic)]
 #[diag(resolve_crate_root_imports_must_be_named_explicitly)]
@@ -507,4 +507,35 @@ pub(crate) struct RemoveSurroundingDerive {
 #[help(resolve_add_as_non_derive)]
 pub(crate) struct AddAsNonDerive<'a> {
     pub(crate) macro_path: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_proc_macro_same_crate)]
+pub(crate) struct ProcMacroSameCrate {
+    #[primary_span]
+    pub(crate) span: Span,
+    #[help]
+    pub(crate) is_test: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_imported_crate)]
+pub(crate) struct CrateImported {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_macro_use_extern_crate_self)]
+pub(crate) struct MacroUseExternCrateSelf {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_accessible_unsure)]
+#[note]
+pub(crate) struct CfgAccessibleUnsure {
+    #[primary_span]
+    pub(crate) span: Span,
 }

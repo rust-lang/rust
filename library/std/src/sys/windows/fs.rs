@@ -1132,26 +1132,29 @@ fn remove_dir_all_iterative(f: &File, delete: fn(&File) -> io::Result<()>) -> io
                     &dir,
                     &name,
                     c::SYNCHRONIZE | c::DELETE | c::FILE_LIST_DIRECTORY,
-                )?;
-                dirlist.push(child_dir);
-            } else {
-                for i in 1..=MAX_RETRIES {
-                    let result = open_link_no_reparse(&dir, &name, c::SYNCHRONIZE | c::DELETE);
-                    match result {
-                        Ok(f) => delete(&f)?,
-                        // Already deleted, so skip.
-                        Err(e) if e.kind() == io::ErrorKind::NotFound => break,
-                        // Retry a few times if the file is locked or a delete is already in progress.
-                        Err(e)
-                            if i < MAX_RETRIES
-                                && (e.raw_os_error() == Some(c::ERROR_DELETE_PENDING as _)
-                                    || e.raw_os_error()
-                                        == Some(c::ERROR_SHARING_VIOLATION as _)) => {}
-                        // Otherwise return the error.
-                        Err(e) => return Err(e),
-                    }
-                    thread::yield_now();
+                );
+                // On success, add the handle to the queue.
+                // If opening the directory fails we treat it the same as a file
+                if let Ok(child_dir) = child_dir {
+                    dirlist.push(child_dir);
+                    continue;
                 }
+            }
+            for i in 1..=MAX_RETRIES {
+                let result = open_link_no_reparse(&dir, &name, c::SYNCHRONIZE | c::DELETE);
+                match result {
+                    Ok(f) => delete(&f)?,
+                    // Already deleted, so skip.
+                    Err(e) if e.kind() == io::ErrorKind::NotFound => break,
+                    // Retry a few times if the file is locked or a delete is already in progress.
+                    Err(e)
+                        if i < MAX_RETRIES
+                            && (e.raw_os_error() == Some(c::ERROR_DELETE_PENDING as _)
+                                || e.raw_os_error() == Some(c::ERROR_SHARING_VIOLATION as _)) => {}
+                    // Otherwise return the error.
+                    Err(e) => return Err(e),
+                }
+                thread::yield_now();
             }
         }
         // If there were no more files then delete the directory.

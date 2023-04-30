@@ -1,7 +1,7 @@
 use super::{Parser, PathStyle, TokenType};
 
 use crate::errors::{
-    DynAfterMut, ExpectedFnPathFoundFnKeyword, ExpectedMutOrConstInRawPointerType,
+    self, DynAfterMut, ExpectedFnPathFoundFnKeyword, ExpectedMutOrConstInRawPointerType,
     FnPointerCannotBeAsync, FnPointerCannotBeConst, FnPtrWithGenerics, FnPtrWithGenericsSugg,
     InvalidDynKeyword, LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime,
     NegativeBoundsNotSupported, NegativeBoundsNotSupportedSugg, NestedCVariadicType,
@@ -588,20 +588,14 @@ impl<'a> Parser<'a> {
         // Always parse bounds greedily for better error recovery.
         if self.token.is_lifetime() {
             self.look_ahead(1, |t| {
-                if let token::Ident(symname, _) = t.kind {
+                if let token::Ident(sym, _) = t.kind {
                     // parse pattern with "'a Sized" we're supposed to give suggestion like
                     // "'a + Sized"
-                    self.struct_span_err(
-                        self.token.span,
-                        &format!("expected `+` between lifetime and {}", symname),
-                    )
-                    .span_suggestion_verbose(
-                        self.token.span.shrink_to_hi(),
-                        "add `+`",
-                        " +",
-                        Applicability::MaybeIncorrect,
-                    )
-                    .emit();
+                    self.sess.emit_err(errors::MissingPlusBounds {
+                        span: self.token.span,
+                        hi: self.token.span.shrink_to_hi(),
+                        sym,
+                    });
                 }
             })
         }
@@ -807,16 +801,11 @@ impl<'a> Parser<'a> {
     /// Emits an error if any trait bound modifiers were present.
     fn error_lt_bound_with_modifiers(&self, modifiers: BoundModifiers) {
         if let Some(span) = modifiers.maybe_const {
-            self.struct_span_err(
-                span,
-                "`~const` may only modify trait bounds, not lifetime bounds",
-            )
-            .emit();
+            self.sess.emit_err(errors::TildeConstLifetime { span });
         }
 
         if let Some(span) = modifiers.maybe {
-            self.struct_span_err(span, "`?` may only modify trait bounds, not lifetime bounds")
-                .emit();
+            self.sess.emit_err(errors::MaybeLifetime { span });
         }
     }
 
@@ -824,19 +813,14 @@ impl<'a> Parser<'a> {
     fn recover_paren_lifetime(&mut self, lo: Span, inner_lo: Span) -> PResult<'a, ()> {
         let inner_span = inner_lo.to(self.prev_token.span);
         self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
-        let mut err = self.struct_span_err(
-            lo.to(self.prev_token.span),
-            "parenthesized lifetime bounds are not supported",
-        );
-        if let Ok(snippet) = self.span_to_snippet(inner_span) {
-            err.span_suggestion_short(
-                lo.to(self.prev_token.span),
-                "remove the parentheses",
-                snippet,
-                Applicability::MachineApplicable,
-            );
-        }
-        err.emit();
+        let span = lo.to(self.prev_token.span);
+        let (sugg, snippet) = if let Ok(snippet) = self.span_to_snippet(inner_span) {
+            (Some(span), snippet)
+        } else {
+            (None, String::new())
+        };
+
+        self.sess.emit_err(errors::ParenthesizedLifetime { span, sugg, snippet });
         Ok(())
     }
 
@@ -857,15 +841,7 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(kw::Const) {
             let span = self.prev_token.span;
             self.sess.gated_spans.gate(sym::const_trait_impl, span);
-
-            self.struct_span_err(span, "const bounds must start with `~`")
-                .span_suggestion(
-                    span.shrink_to_lo(),
-                    "add `~`",
-                    "~",
-                    Applicability::MachineApplicable,
-                )
-                .emit();
+            self.sess.emit_err(errors::ConstMissingTilde { span, start: span.shrink_to_lo() });
 
             Some(span)
         } else {
@@ -944,14 +920,10 @@ impl<'a> Parser<'a> {
                 self.parse_remaining_bounds(bounds, true)?;
                 self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
                 let sp = vec![lo, self.prev_token.span];
-                let sugg = vec![(lo, String::from(" ")), (self.prev_token.span, String::new())];
-                self.struct_span_err(sp, "incorrect braces around trait bounds")
-                    .multipart_suggestion(
-                        "remove the parentheses",
-                        sugg,
-                        Applicability::MachineApplicable,
-                    )
-                    .emit();
+                self.sess.emit_err(errors::IncorrectBracesTraitBounds {
+                    span: sp,
+                    sugg: errors::IncorrectBracesTraitBoundsSugg { l: lo, r: self.prev_token.span },
+                });
             } else {
                 self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
             }

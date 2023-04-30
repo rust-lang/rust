@@ -1,4 +1,4 @@
-// run-pass
+// known-bug: #110395
 #![feature(const_type_id)]
 #![feature(const_trait_impl)]
 

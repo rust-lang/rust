@@ -158,8 +158,8 @@ pub fn recursive_type_error(
     }
     let items_list = {
         let mut s = String::new();
-        for (i, (item_id, _)) in item_and_field_ids.iter().enumerate() {
-            let path = tcx.def_path_str(item_id.to_def_id());
+        for (i, &(item_id, _)) in item_and_field_ids.iter().enumerate() {
+            let path = tcx.def_path_str(item_id);
             write!(&mut s, "`{path}`").unwrap();
             if i == (ITEM_LIMIT - 1) && cycle_len > ITEM_LIMIT {
                 write!(&mut s, " and {} more", cycle_len - 5).unwrap();

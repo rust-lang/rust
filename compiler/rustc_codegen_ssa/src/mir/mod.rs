@@ -9,7 +9,7 @@ use rustc_target::abi::call::{FnAbi, PassMode};
 use std::iter;
 
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 
 use self::debuginfo::{FunctionDebugContext, PerLocalVarDebugInfo};
 use self::place::PlaceRef;
@@ -152,7 +152,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
     instance: Instance<'tcx>,
 ) {
-    assert!(!instance.substs.needs_infer());
+    assert!(!instance.substs.has_infer());
 
     let llfn = cx.get_fn(instance);
 
@@ -304,7 +304,17 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                     bug!("spread argument isn't a tuple?!");
                 };
 
-                let place = PlaceRef::alloca(bx, bx.layout_of(arg_ty));
+                let layout = bx.layout_of(arg_ty);
+
+                // FIXME: support unsized params in "rust-call" ABI
+                if layout.is_unsized() {
+                    span_bug!(
+                        arg_decl.source_info.span,
+                        "\"rust-call\" ABI does not support unsized params",
+                    );
+                }
+
+                let place = PlaceRef::alloca(bx, layout);
                 for i in 0..tupled_arg_tys.len() {
                     let arg = &fx.fn_abi.args[idx];
                     idx += 1;

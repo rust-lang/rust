@@ -591,7 +591,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     fn evaluate_nested_obligations(
         &self,
         ty: Ty<'_>,
-        nested: impl Iterator<Item = Obligation<'tcx, ty::Predicate<'tcx>>>,
+        nested: impl Iterator<Item = PredicateObligation<'tcx>>,
         computed_preds: &mut FxIndexSet<ty::Predicate<'tcx>>,
         fresh_preds: &mut FxHashSet<ty::Predicate<'tcx>>,
         predicates: &mut VecDeque<ty::PolyTraitPredicate<'tcx>>,
@@ -796,10 +796,9 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                                 Ok(Some(valtree)) => Ok(selcx.tcx().mk_const(valtree, c.ty())),
                                 Ok(None) => {
                                     let tcx = self.tcx;
-                                    let def_id = unevaluated.def.did;
                                     let reported =
                                         tcx.sess.emit_err(UnableToConstructConstantValue {
-                                            span: tcx.def_span(def_id),
+                                            span: tcx.def_span(unevaluated.def),
                                             unevaluated: unevaluated,
                                         });
                                     Err(ErrorHandled::Reported(reported))

@@ -129,8 +129,7 @@ symbols! {
         Any,
         Arc,
         Argument,
-        ArgumentV1,
-        ArgumentV1Methods,
+        ArgumentMethods,
         Arguments,
         AsMut,
         AsRef,
@@ -204,6 +203,7 @@ symbols! {
         HashSet,
         Hasher,
         Implied,
+        IndexOutput,
         Input,
         Into,
         IntoDiagnostic,
@@ -650,6 +650,7 @@ symbols! {
         edition_panic,
         eh_catch_typeinfo,
         eh_personality,
+        emit,
         emit_enum,
         emit_enum_variant,
         emit_enum_variant_arg,
@@ -1036,6 +1037,7 @@ symbols! {
         object_safe_for_dispatch,
         of,
         offset,
+        offset_of,
         omit_gdb_pretty_printer_section,
         on,
         on_unimplemented,
@@ -1503,6 +1505,7 @@ symbols! {
         transmute_generic_consts,
         transmute_opts,
         transmute_trait,
+        transmute_unchecked,
         transparent,
         transparent_enums,
         transparent_unions,
@@ -1986,8 +1989,9 @@ impl Interner {
         name
     }
 
-    // Get the symbol as a string. `Symbol::as_str()` should be used in
-    // preference to this function.
+    /// Get the symbol as a string.
+    ///
+    /// [`Symbol::as_str()`] should be used in preference to this function.
     fn get(&self, symbol: Symbol) -> &str {
         self.0.lock().strings[symbol.0.as_usize()]
     }

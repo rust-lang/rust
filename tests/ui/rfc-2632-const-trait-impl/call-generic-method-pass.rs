@@ -1,6 +1,6 @@
 //! Basic test for calling methods on generic type parameters in `const fn`.
 
-// check-pass
+// known-bug: #110395
 
 #![feature(const_trait_impl)]
 

@@ -7,7 +7,6 @@ mod tests;
 
 use crate::os::unix::prelude::*;
 
-use crate::convert::TryFrom;
 use crate::error::Error as StdError;
 use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;

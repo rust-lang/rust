@@ -18,6 +18,7 @@ rustc_const_eval = { path = "../rustc_const_eval" }
 rustc_error_messages = { path = "../rustc_error_messages" }
 rustc_expand = { path = "../rustc_expand" }
 rustc_hir_typeck = { path = "../rustc_hir_typeck" }
+rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_incremental = { path = "../rustc_incremental" }
 rustc_infer = { path = "../rustc_infer" }
 rustc_mir_build = { path = "../rustc_mir_build" }

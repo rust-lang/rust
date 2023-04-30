@@ -33,14 +33,14 @@ use rustc_errors::{
     Applicability, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed, SubdiagnosticMessage,
 };
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
+use rustc_fluent_macro::fluent_messages;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, PartialRes, PerNS};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap, LocalDefIdSet};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::TraitCandidate;
-use rustc_index::vec::IndexVec;
-use rustc_macros::fluent_messages;
+use rustc_index::IndexVec;
 use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::privacy::EffectiveVisibilities;

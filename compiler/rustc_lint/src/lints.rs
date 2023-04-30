@@ -821,6 +821,10 @@ pub struct DiagOutOfImpl;
 pub struct UntranslatableDiag;
 
 #[derive(LintDiagnostic)]
+#[diag(lint_trivial_untranslatable_diag)]
+pub struct UntranslatableDiagnosticTrivial;
+
+#[derive(LintDiagnostic)]
 #[diag(lint_bad_opt_access)]
 pub struct BadOptAccessDiag<'a> {
     pub msg: &'a str,

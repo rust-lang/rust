@@ -53,7 +53,7 @@ declare_features! (
     (removed, await_macro, "1.38.0", Some(50547), None,
      Some("subsumed by `.await` syntax")),
     /// Allows using the `box $expr` syntax.
-    (removed, box_syntax, "CURRENT_RUSTC_VERSION", Some(49733), None, Some("replaced with `#[rustc_box]`")),
+    (removed, box_syntax, "1.70.0", Some(49733), None, Some("replaced with `#[rustc_box]`")),
     /// Allows capturing disjoint fields in a closure/generator (RFC 2229).
     (removed, capture_disjoint_fields, "1.49.0", Some(53488), None, Some("stabilized in Rust 2021")),
     /// Allows comparing raw pointers during const eval.
@@ -139,7 +139,7 @@ declare_features! (
     /// Allows using `#[on_unimplemented(..)]` on traits.
     /// (Moved to `rustc_attrs`.)
     (removed, on_unimplemented, "1.40.0", None, None, None),
-    /// A way to temporarily opt out of opt in copy. This will *never* be accepted.
+    /// A way to temporarily opt out of opt-in copy. This will *never* be accepted.
     (removed, opt_out_copy, "1.0.0", None, None, None),
     /// Allows features specific to OIBIT (now called auto traits).
     /// Renamed to `auto_traits`.

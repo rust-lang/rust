@@ -6,20 +6,20 @@ LL |         |_outlives1, _outlives2, _outlives3, x, y| {
    |
    = note: defining type: supply::{closure#0} with closure substs [
                i16,
-               for<Region(BrAnon(None)), Region(BrAnon(None))> extern "rust-call" fn((std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(None) }) u32>, std::cell::Cell<&'_#2r &ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(None) }) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(None) }) &'_#3r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(None) }) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(None) }) u32>)),
+               for<Region(BrAnon(None)), Region(BrAnon(None))> extern "rust-call" fn((std::cell::Cell<&'?1 &ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(None) }) u32>, std::cell::Cell<&'?2 &ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(None) }) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(None) }) &'?3 u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(None) }) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(None) }) u32>)),
                (),
            ]
-   = note: late-bound region is '_#4r
-   = note: late-bound region is '_#5r
-   = note: late-bound region is '_#6r
+   = note: late-bound region is '?4
+   = note: late-bound region is '?5
+   = note: late-bound region is '?6
 
 error: lifetime may not live long enough
   --> $DIR/propagate-approximated-fail-no-postdom.rs:46:13
    |
 LL |         |_outlives1, _outlives2, _outlives3, x, y| {
-   |          ----------              ---------- has type `Cell<&'2 &'_#3r u32>`
+   |          ----------              ---------- has type `Cell<&'2 &'?3 u32>`
    |          |
-   |          has type `Cell<&'_#1r &'1 u32>`
+   |          has type `Cell<&'?1 &'1 u32>`
 ...
 LL |             demand_y(x, y, p)
    |             ^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`

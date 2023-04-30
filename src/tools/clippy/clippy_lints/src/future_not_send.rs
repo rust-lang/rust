@@ -4,7 +4,7 @@ use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, AliasTy, Clause, EarlyBinder, PredicateKind};
+use rustc_middle::ty::{self, AliasTy, Clause, PredicateKind};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{sym, Span};
@@ -66,8 +66,7 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
         if let ty::Alias(ty::Opaque, AliasTy { def_id, substs, .. }) = *ret_ty.kind() {
             let preds = cx.tcx.explicit_item_bounds(def_id);
             let mut is_future = false;
-            for &(p, _span) in preds {
-                let p = EarlyBinder(p).subst(cx.tcx, substs);
+            for (p, _span) in preds.subst_iter_copied(cx.tcx, substs) {
                 if let Some(trait_pred) = p.to_opt_poly_trait_pred() {
                     if Some(trait_pred.skip_binder().trait_ref.def_id) == cx.tcx.lang_items().future_trait() {
                         is_future = true;

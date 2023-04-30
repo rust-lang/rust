@@ -3,6 +3,7 @@
 // run-flags: --list --format json -Zunstable-options
 // run-pass
 // check-run-results
+// only-nightly
 // normalize-stdout-test: "fake-test-src-base/test-attrs/" -> "$$DIR/"
 // normalize-stdout-test: "fake-test-src-base\\test-attrs\\" -> "$$DIR/"
 

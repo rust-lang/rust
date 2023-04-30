@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::imprecise_flops)]
 #![allow(clippy::unnecessary_cast)]
 

@@ -158,6 +158,7 @@ mod int_plus_one;
 mod invalid_upcast_comparisons;
 mod invalid_utf8_in_unchecked;
 mod items_after_statements;
+mod items_after_test_module;
 mod iter_not_returning_iterator;
 mod large_const_arrays;
 mod large_enum_variant;
@@ -950,15 +951,18 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(allow_attributes::AllowAttribute));
     store.register_late_pass(move |_| Box::new(manual_main_separator_str::ManualMainSeparatorStr::new(msrv())));
     store.register_late_pass(|_| Box::new(unnecessary_struct_initialization::UnnecessaryStruct));
+    let unnecessary_box_size = conf.unnecessary_box_size;
     store.register_late_pass(move |_| {
         Box::new(unnecessary_box_returns::UnnecessaryBoxReturns::new(
             avoid_breaking_exported_api,
+            unnecessary_box_size,
         ))
     });
     store.register_late_pass(|_| Box::new(lines_filter_map_ok::LinesFilterMapOk));
     store.register_late_pass(|_| Box::new(tests_outside_test_module::TestsOutsideTestModule));
     store.register_late_pass(|_| Box::new(manual_slice_size_calculation::ManualSliceSizeCalculation));
     store.register_early_pass(|| Box::new(suspicious_doc_comments::SuspiciousDocComments));
+    store.register_late_pass(|_| Box::new(items_after_test_module::ItemsAfterTestModule));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

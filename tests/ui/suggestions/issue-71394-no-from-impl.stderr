@@ -1,10 +1,11 @@
 error[E0277]: the trait bound `&[i8]: From<&[u8]>` is not satisfied
-  --> $DIR/issue-71394-no-from-impl.rs:3:25
+  --> $DIR/issue-71394-no-from-impl.rs:8:25
    |
 LL |     let _: &[i8] = data.into();
    |                         ^^^^ the trait `From<&[u8]>` is not implemented for `&[i8]`
    |
    = help: the following other types implement trait `From<T>`:
+             <&'input [u8] as From<gimli::read::endian_slice::EndianSlice<'input, Endian>>>
              <[T; LANES] as From<Simd<T, LANES>>>
              <[bool; LANES] as From<Mask<T, LANES>>>
    = note: required for `&[u8]` to implement `Into<&[i8]>`

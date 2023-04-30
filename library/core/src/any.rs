@@ -662,8 +662,7 @@ impl dyn Any + Send + Sync {
 /// While `TypeId` implements `Hash`, `PartialOrd`, and `Ord`, it is worth
 /// noting that the hashes and ordering will vary between Rust releases. Beware
 /// of relying on them inside of your code!
-#[derive(Clone, Copy, Debug, Hash, Eq)]
-#[derive_const(PartialEq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct TypeId {
     t: u64,

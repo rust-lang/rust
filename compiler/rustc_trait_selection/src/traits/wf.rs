@@ -170,29 +170,20 @@ pub fn predicate_obligations<'tcx>(
         ty::PredicateKind::WellFormed(arg) => {
             wf.compute(arg);
         }
-        ty::PredicateKind::ObjectSafe(_) => {}
-        ty::PredicateKind::ClosureKind(..) => {}
-        ty::PredicateKind::Subtype(ty::SubtypePredicate { a, b, a_is_expected: _ }) => {
-            wf.compute(a.into());
-            wf.compute(b.into());
-        }
-        ty::PredicateKind::Coerce(ty::CoercePredicate { a, b }) => {
-            wf.compute(a.into());
-            wf.compute(b.into());
-        }
+
         ty::PredicateKind::ConstEvaluatable(ct) => {
             wf.compute(ct.into());
         }
-        ty::PredicateKind::ConstEquate(c1, c2) => {
-            wf.compute(c1.into());
-            wf.compute(c2.into());
-        }
-        ty::PredicateKind::Ambiguous => {}
-        ty::PredicateKind::TypeWellFormedFromEnv(..) => {
-            bug!("TypeWellFormedFromEnv is only used for Chalk")
-        }
-        ty::PredicateKind::AliasRelate(..) => {
-            bug!("We should only wf check where clauses and `AliasRelate` is not a `Clause`")
+
+        ty::PredicateKind::ObjectSafe(_)
+        | ty::PredicateKind::ClosureKind(..)
+        | ty::PredicateKind::Subtype(..)
+        | ty::PredicateKind::Coerce(..)
+        | ty::PredicateKind::ConstEquate(..)
+        | ty::PredicateKind::Ambiguous
+        | ty::PredicateKind::AliasRelate(..)
+        | ty::PredicateKind::TypeWellFormedFromEnv(..) => {
+            bug!("We should only wf check where clauses, unexpected predicate: {predicate:?}")
         }
     }
 
@@ -487,7 +478,7 @@ impl<'tcx> WfPredicates<'tcx> {
                     match ct.kind() {
                         ty::ConstKind::Unevaluated(uv) => {
                             if !ct.has_escaping_bound_vars() {
-                                let obligations = self.nominal_obligations(uv.def.did, uv.substs);
+                                let obligations = self.nominal_obligations(uv.def, uv.substs);
                                 self.out.extend(obligations);
 
                                 let predicate =

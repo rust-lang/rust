@@ -169,22 +169,35 @@ fn function_argument() {
     foo(&x);
 }
 
-fn string() {
-    // Do lint (write without read)
-    let mut s = String::new();
-    s.push_str("Hello, World!");
+fn supported_types() {
+    let mut x = std::collections::BTreeMap::new(); // WARNING
+    x.insert(true, 1);
 
-    // Do not lint (read without write)
-    let mut s = String::from("Hello, World!");
-    let _ = s.len();
+    let mut x = std::collections::BTreeSet::new(); // WARNING
+    x.insert(1);
 
-    // Do not lint (write and read)
-    let mut s = String::from("Hello, World!");
-    s.push_str("foo, bar");
-    let _ = s.len();
+    let mut x = std::collections::BinaryHeap::new(); // WARNING
+    x.push(1);
 
-    // Do lint the first line, but not the second
-    let mut s = String::from("Hello, World!");
-    let t = String::from("foo, bar");
-    s = t;
+    let mut x = std::collections::HashMap::new(); // WARNING
+    x.insert(1, 2);
+
+    let mut x = std::collections::HashSet::new(); // WARNING
+    x.insert(1);
+
+    let mut x = std::collections::LinkedList::new(); // WARNING
+    x.push_front(1);
+
+    let mut x = Some(true); // WARNING
+    x.insert(false);
+
+    let mut x = String::from("hello"); // WARNING
+    x.push('!');
+
+    let mut x = Vec::new(); // WARNING
+    x.clear();
+    x.push(1);
+
+    let mut x = std::collections::VecDeque::new(); // WARNING
+    x.push_front(1);
 }

@@ -872,7 +872,7 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
     let load_from_incr_comp_dir = |output_path: PathBuf, saved_path: &str| {
         let source_file = in_incr_comp_dir(&incr_comp_session_dir, saved_path);
         debug!(
-            "copying pre-existing module `{}` from {:?} to {}",
+            "copying preexisting module `{}` from {:?} to {}",
             module.name,
             source_file,
             output_path.display()

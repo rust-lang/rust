@@ -7,7 +7,7 @@
 use crate::ty::error::{ExpectedFound, TypeError};
 use crate::ty::{self, Expr, ImplSubject, Term, TermKind, Ty, TyCtxt, TypeFoldable};
 use crate::ty::{GenericArg, GenericArgKind, SubstsRef};
-use rustc_hir as ast;
+use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_target::spec::abi;
 use std::iter;
@@ -123,8 +123,8 @@ pub fn relate_type_and_mut<'tcx, R: TypeRelation<'tcx>>(
     } else {
         let mutbl = a.mutbl;
         let (variance, info) = match mutbl {
-            ast::Mutability::Not => (ty::Covariant, ty::VarianceDiagInfo::None),
-            ast::Mutability::Mut => {
+            hir::Mutability::Not => (ty::Covariant, ty::VarianceDiagInfo::None),
+            hir::Mutability::Mut => {
                 (ty::Invariant, ty::VarianceDiagInfo::Invariant { ty: base_ty, param_index: 0 })
             }
         };
@@ -239,12 +239,12 @@ impl<'tcx> Relate<'tcx> for ty::BoundConstness {
     }
 }
 
-impl<'tcx> Relate<'tcx> for ast::Unsafety {
+impl<'tcx> Relate<'tcx> for hir::Unsafety {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
-        a: ast::Unsafety,
-        b: ast::Unsafety,
-    ) -> RelateResult<'tcx, ast::Unsafety> {
+        a: hir::Unsafety,
+        b: hir::Unsafety,
+    ) -> RelateResult<'tcx, hir::Unsafety> {
         if a != b {
             Err(TypeError::UnsafetyMismatch(expected_found(relation, a, b)))
         } else {

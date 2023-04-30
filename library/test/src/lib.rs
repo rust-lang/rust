@@ -219,14 +219,14 @@ pub fn assert_test_result<T: Termination>(result: T) -> Result<(), String> {
 
 struct FilteredTests {
     tests: Vec<(TestId, TestDescAndFn)>,
-    benchs: Vec<(TestId, TestDescAndFn)>,
+    benches: Vec<(TestId, TestDescAndFn)>,
     next_id: usize,
 }
 
 impl FilteredTests {
     fn add_bench(&mut self, desc: TestDesc, testfn: TestFn) {
         let test = TestDescAndFn { desc, testfn };
-        self.benchs.push((TestId(self.next_id), test));
+        self.benches.push((TestId(self.next_id), test));
         self.next_id += 1;
     }
     fn add_test(&mut self, desc: TestDesc, testfn: TestFn) {
@@ -245,7 +245,7 @@ impl FilteredTests {
         self.add_test(desc, testfn);
     }
     fn total_len(&self) -> usize {
-        self.tests.len() + self.benchs.len()
+        self.tests.len() + self.benches.len()
     }
 }
 
@@ -290,7 +290,7 @@ where
 
     let tests_len = tests.len();
 
-    let mut filtered = FilteredTests { tests: Vec::new(), benchs: Vec::new(), next_id: 0 };
+    let mut filtered = FilteredTests { tests: Vec::new(), benches: Vec::new(), next_id: 0 };
 
     for test in filter_tests(opts, tests) {
         let mut desc = test.desc;
@@ -457,7 +457,7 @@ where
 
     if opts.bench_benchmarks {
         // All benchmarks run at the end, in serial.
-        for (id, b) in filtered.benchs {
+        for (id, b) in filtered.benches {
             let event = TestEvent::TeWait(b.desc.clone());
             notify_about_test_event(event)?;
             let join_handle = run_test(opts, false, id, b, run_strategy, tx.clone());

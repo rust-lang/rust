@@ -7,7 +7,6 @@
 //! `RETURN_PLACE` the MIR arguments) are always fully normalized (and
 //! contain revealed `impl Trait` values).
 
-use rustc_index::vec::Idx;
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty};
@@ -83,7 +82,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
 
             // In MIR, argument N is stored in local N+1.
-            let local = Local::new(argument_index + 1);
+            let local = Local::from_usize(argument_index + 1);
 
             let mir_input_ty = body.local_decls[local].ty;
 

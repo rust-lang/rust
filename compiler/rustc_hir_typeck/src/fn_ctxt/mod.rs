@@ -17,7 +17,6 @@ use rustc_infer::infer;
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
-use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
@@ -169,7 +168,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ocx.normalize(&ObligationCause::dummy(), self.param_env, fn_sig);
                     if ocx.select_all_or_error().is_empty() {
                         let normalized_fn_sig = self.resolve_vars_if_possible(normalized_fn_sig);
-                        if !normalized_fn_sig.needs_infer() {
+                        if !normalized_fn_sig.has_infer() {
                             return normalized_fn_sig;
                         }
                     }
@@ -250,16 +249,12 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     }
 
     fn ty_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
-        if let Some(param) = param {
-            if let GenericArgKind::Type(ty) = self.var_for_def(span, param).unpack() {
-                return ty;
-            }
-            unreachable!()
-        } else {
-            self.next_ty_var(TypeVariableOrigin {
+        match param {
+            Some(param) => self.var_for_def(span, param).as_type().unwrap(),
+            None => self.next_ty_var(TypeVariableOrigin {
                 kind: TypeVariableOriginKind::TypeInference,
                 span,
-            })
+            }),
         }
     }
 
@@ -269,16 +264,12 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         param: Option<&ty::GenericParamDef>,
         span: Span,
     ) -> Const<'tcx> {
-        if let Some(param) = param {
-            if let GenericArgKind::Const(ct) = self.var_for_def(span, param).unpack() {
-                return ct;
-            }
-            unreachable!()
-        } else {
-            self.next_const_var(
+        match param {
+            Some(param) => self.var_for_def(span, param).as_const().unwrap(),
+            None => self.next_const_var(
                 ty,
                 ConstVariableOrigin { kind: ConstVariableOriginKind::ConstInference, span },
-            )
+            ),
         }
     }
 

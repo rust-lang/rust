@@ -1,6 +1,6 @@
 use super::{ForceCollect, Parser, PathStyle, TrailingToken};
 use crate::errors::{
-    AmbiguousRangePattern, DotDotDotForRemainingFields, DotDotDotRangeToPatternNotAllowed,
+    self, AmbiguousRangePattern, DotDotDotForRemainingFields, DotDotDotRangeToPatternNotAllowed,
     DotDotDotRestPattern, EnumPatternInsteadOfIdentifier, ExpectedBindingLeftOfAt,
     ExpectedCommaAfterPatternField, InclusiveRangeExtraEquals, InclusiveRangeMatchArrow,
     InclusiveRangeNoEnd, InvalidMutInPattern, PatternOnWrongSideOfAt, RefMutOrderIncorrect,
@@ -908,18 +908,13 @@ impl<'a> Parser<'a> {
         let box_span = self.prev_token.span;
 
         if self.isnt_pattern_start() {
-            self.struct_span_err(
-                self.token.span,
-                format!("expected pattern, found {}", super::token_descr(&self.token)),
-            )
-            .span_note(box_span, "`box` is a reserved keyword")
-            .span_suggestion_verbose(
-                box_span.shrink_to_lo(),
-                "escape `box` to use it as an identifier",
-                "r#",
-                Applicability::MaybeIncorrect,
-            )
-            .emit();
+            let descr = super::token_descr(&self.token);
+            self.sess.emit_err(errors::BoxNotPat {
+                span: self.token.span,
+                kw: box_span,
+                lo: box_span.shrink_to_lo(),
+                descr,
+            });
 
             // We cannot use `parse_pat_ident()` since it will complain `box`
             // is not an identifier.

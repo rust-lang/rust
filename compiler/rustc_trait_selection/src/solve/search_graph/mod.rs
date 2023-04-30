@@ -6,7 +6,7 @@ pub(super) use overflow::OverflowHandler;
 use self::cache::ProvisionalEntry;
 use cache::ProvisionalCache;
 use overflow::OverflowData;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::dep_graph::DepKind;
 use rustc_middle::traits::solve::{CanonicalGoal, Certainty, MaybeCause, QueryResult};
 use rustc_middle::ty::TyCtxt;

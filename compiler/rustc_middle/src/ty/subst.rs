@@ -21,7 +21,6 @@ use std::marker::PhantomData;
 use std::mem;
 use std::num::NonZeroUsize;
 use std::ops::{ControlFlow, Deref};
-use std::slice;
 
 /// An entity in the Rust type system, which can be one of
 /// several kinds (types, lifetimes, and consts).
@@ -48,36 +47,11 @@ const TYPE_TAG: usize = 0b00;
 const REGION_TAG: usize = 0b01;
 const CONST_TAG: usize = 0b10;
 
-#[derive(Debug, TyEncodable, TyDecodable, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, TyEncodable, TyDecodable, PartialEq, Eq, PartialOrd, Ord, HashStable)]
 pub enum GenericArgKind<'tcx> {
     Lifetime(ty::Region<'tcx>),
     Type(Ty<'tcx>),
     Const(ty::Const<'tcx>),
-}
-
-/// This function goes from `&'a [Ty<'tcx>]` to `&'a [GenericArg<'tcx>]`
-///
-/// This is sound as, for types, `GenericArg` is just
-/// `NonZeroUsize::new_unchecked(ty as *const _ as usize)` as
-/// long as we use `0` for the `TYPE_TAG`.
-pub fn ty_slice_as_generic_args<'a, 'tcx>(ts: &'a [Ty<'tcx>]) -> &'a [GenericArg<'tcx>] {
-    assert_eq!(TYPE_TAG, 0);
-    // SAFETY: the whole slice is valid and immutable.
-    // `Ty` and `GenericArg` is explained above.
-    unsafe { slice::from_raw_parts(ts.as_ptr().cast(), ts.len()) }
-}
-
-impl<'tcx> List<Ty<'tcx>> {
-    /// Allows to freely switch between `List<Ty<'tcx>>` and `List<GenericArg<'tcx>>`.
-    ///
-    /// As lists are interned, `List<Ty<'tcx>>` and `List<GenericArg<'tcx>>` have
-    /// be interned together, see `mk_type_list` for more details.
-    #[inline]
-    pub fn as_substs(&'tcx self) -> SubstsRef<'tcx> {
-        assert_eq!(TYPE_TAG, 0);
-        // SAFETY: `List<T>` is `#[repr(C)]`. `Ty` and `GenericArg` is explained above.
-        unsafe { &*(self as *const List<Ty<'tcx>> as *const List<GenericArg<'tcx>>) }
-    }
 }
 
 impl<'tcx> GenericArgKind<'tcx> {
@@ -180,30 +154,45 @@ impl<'tcx> GenericArg<'tcx> {
         }
     }
 
+    #[inline]
+    pub fn as_type(self) -> Option<Ty<'tcx>> {
+        match self.unpack() {
+            GenericArgKind::Type(ty) => Some(ty),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    pub fn as_region(self) -> Option<ty::Region<'tcx>> {
+        match self.unpack() {
+            GenericArgKind::Lifetime(re) => Some(re),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    pub fn as_const(self) -> Option<ty::Const<'tcx>> {
+        match self.unpack() {
+            GenericArgKind::Const(ct) => Some(ct),
+            _ => None,
+        }
+    }
+
     /// Unpack the `GenericArg` as a region when it is known certainly to be a region.
     pub fn expect_region(self) -> ty::Region<'tcx> {
-        match self.unpack() {
-            GenericArgKind::Lifetime(lt) => lt,
-            _ => bug!("expected a region, but found another kind"),
-        }
+        self.as_region().unwrap_or_else(|| bug!("expected a region, but found another kind"))
     }
 
     /// Unpack the `GenericArg` as a type when it is known certainly to be a type.
     /// This is true in cases where `Substs` is used in places where the kinds are known
     /// to be limited (e.g. in tuples, where the only parameters are type parameters).
     pub fn expect_ty(self) -> Ty<'tcx> {
-        match self.unpack() {
-            GenericArgKind::Type(ty) => ty,
-            _ => bug!("expected a type, but found another kind"),
-        }
+        self.as_type().unwrap_or_else(|| bug!("expected a type, but found another kind"))
     }
 
     /// Unpack the `GenericArg` as a const when it is known certainly to be a const.
     pub fn expect_const(self) -> ty::Const<'tcx> {
-        match self.unpack() {
-            GenericArgKind::Const(c) => c,
-            _ => bug!("expected a const, but found another kind"),
-        }
+        self.as_const().unwrap_or_else(|| bug!("expected a const, but found another kind"))
     }
 
     pub fn is_non_region_infer(self) -> bool {
@@ -268,13 +257,16 @@ pub type InternalSubsts<'tcx> = List<GenericArg<'tcx>>;
 pub type SubstsRef<'tcx> = &'tcx InternalSubsts<'tcx>;
 
 impl<'tcx> InternalSubsts<'tcx> {
-    /// Checks whether all elements of this list are types, if so, transmute.
-    pub fn try_as_type_list(&'tcx self) -> Option<&'tcx List<Ty<'tcx>>> {
-        self.iter().all(|arg| matches!(arg.unpack(), GenericArgKind::Type(_))).then(|| {
-            assert_eq!(TYPE_TAG, 0);
-            // SAFETY: All elements are types, see `List<Ty<'tcx>>::as_substs`.
-            unsafe { &*(self as *const List<GenericArg<'tcx>> as *const List<Ty<'tcx>>) }
-        })
+    /// Converts substs to a type list.
+    ///
+    /// # Panics
+    ///
+    /// If any of the generic arguments are not types.
+    pub fn into_type_list(&self, tcx: TyCtxt<'tcx>) -> &'tcx List<Ty<'tcx>> {
+        tcx.mk_type_list_from_iter(self.iter().map(|arg| match arg.unpack() {
+            GenericArgKind::Type(ty) => ty,
+            _ => bug!("`into_type_list` called on substs with non-types"),
+        }))
     }
 
     /// Interpret these substitutions as the substitutions of a closure type.
@@ -379,22 +371,17 @@ impl<'tcx> InternalSubsts<'tcx> {
 
     #[inline]
     pub fn types(&'tcx self) -> impl DoubleEndedIterator<Item = Ty<'tcx>> + 'tcx {
-        self.iter()
-            .filter_map(|k| if let GenericArgKind::Type(ty) = k.unpack() { Some(ty) } else { None })
+        self.iter().filter_map(|k| k.as_type())
     }
 
     #[inline]
     pub fn regions(&'tcx self) -> impl DoubleEndedIterator<Item = ty::Region<'tcx>> + 'tcx {
-        self.iter().filter_map(|k| {
-            if let GenericArgKind::Lifetime(lt) = k.unpack() { Some(lt) } else { None }
-        })
+        self.iter().filter_map(|k| k.as_region())
     }
 
     #[inline]
     pub fn consts(&'tcx self) -> impl DoubleEndedIterator<Item = ty::Const<'tcx>> + 'tcx {
-        self.iter().filter_map(|k| {
-            if let GenericArgKind::Const(ct) = k.unpack() { Some(ct) } else { None }
-        })
+        self.iter().filter_map(|k| k.as_const())
     }
 
     #[inline]
@@ -410,31 +397,21 @@ impl<'tcx> InternalSubsts<'tcx> {
     #[inline]
     #[track_caller]
     pub fn type_at(&self, i: usize) -> Ty<'tcx> {
-        if let GenericArgKind::Type(ty) = self[i].unpack() {
-            ty
-        } else {
-            bug!("expected type for param #{} in {:?}", i, self);
-        }
+        self[i].as_type().unwrap_or_else(|| bug!("expected type for param #{} in {:?}", i, self))
     }
 
     #[inline]
     #[track_caller]
     pub fn region_at(&self, i: usize) -> ty::Region<'tcx> {
-        if let GenericArgKind::Lifetime(lt) = self[i].unpack() {
-            lt
-        } else {
-            bug!("expected region for param #{} in {:?}", i, self);
-        }
+        self[i]
+            .as_region()
+            .unwrap_or_else(|| bug!("expected region for param #{} in {:?}", i, self))
     }
 
     #[inline]
     #[track_caller]
     pub fn const_at(&self, i: usize) -> ty::Const<'tcx> {
-        if let GenericArgKind::Const(ct) = self[i].unpack() {
-            ct
-        } else {
-            bug!("expected const for param #{} in {:?}", i, self);
-        }
+        self[i].as_const().unwrap_or_else(|| bug!("expected const for param #{} in {:?}", i, self))
     }
 
     #[inline]
@@ -635,6 +612,12 @@ where
     ) -> SubstIter<'s, 'tcx, I> {
         SubstIter { it: self.0.into_iter(), tcx, substs }
     }
+
+    /// Similar to [`subst_identity`](EarlyBinder::subst_identity),
+    /// but on an iterator of `TypeFoldable` values.
+    pub fn subst_identity_iter(self) -> I::IntoIter {
+        self.0.into_iter()
+    }
 }
 
 pub struct SubstIter<'s, 'tcx, I: IntoIterator> {
@@ -686,6 +669,12 @@ where
         substs: &'s [GenericArg<'tcx>],
     ) -> SubstIterCopied<'s, 'tcx, I> {
         SubstIterCopied { it: self.0.into_iter(), tcx, substs }
+    }
+
+    /// Similar to [`subst_identity`](EarlyBinder::subst_identity),
+    /// but on an iterator of values that deref to a `TypeFoldable`.
+    pub fn subst_identity_iter_copied(self) -> impl Iterator<Item = <I::Item as Deref>::Target> {
+        self.0.into_iter().map(|v| *v)
     }
 }
 
@@ -772,7 +761,7 @@ impl<'tcx, T: TypeFoldable<TyCtxt<'tcx>>> ty::EarlyBinder<T> {
 
     /// Returns the inner value, but only if it contains no bound vars.
     pub fn no_bound_vars(self) -> Option<T> {
-        if !self.0.needs_subst() { Some(self.0) } else { None }
+        if !self.0.has_param() { Some(self.0) } else { None }
     }
 }
 
@@ -840,12 +829,18 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for SubstFolder<'a, 'tcx> {
                     None => region_param_out_of_range(data, self.substs),
                 }
             }
-            _ => r,
+            ty::ReLateBound(..)
+            | ty::ReFree(_)
+            | ty::ReStatic
+            | ty::RePlaceholder(_)
+            | ty::ReErased
+            | ty::ReError(_) => r,
+            ty::ReVar(_) => bug!("unexpected region: {r:?}"),
         }
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if !t.needs_subst() {
+        if !t.has_param() {
             return t;
         }
 

@@ -406,7 +406,7 @@ fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
 
     // Crate disambiguator and name
     s.push('C');
-    s.push_str(&to_disambiguator(tcx.stable_crate_id(def_path.krate).to_u64()));
+    s.push_str(&to_disambiguator(tcx.stable_crate_id(def_path.krate).as_u64()));
     let crate_name = tcx.crate_name(def_path.krate).to_string();
     let _ = write!(s, "{}{}", crate_name.len(), &crate_name);
 
@@ -814,16 +814,10 @@ fn transform_substs<'tcx>(
     substs: SubstsRef<'tcx>,
     options: TransformTyOptions,
 ) -> SubstsRef<'tcx> {
-    let substs = substs.iter().map(|subst| {
-        if let GenericArgKind::Type(ty) = subst.unpack() {
-            if is_c_void_ty(tcx, ty) {
-                tcx.mk_unit().into()
-            } else {
-                transform_ty(tcx, ty, options).into()
-            }
-        } else {
-            subst
-        }
+    let substs = substs.iter().map(|subst| match subst.unpack() {
+        GenericArgKind::Type(ty) if is_c_void_ty(tcx, ty) => tcx.mk_unit().into(),
+        GenericArgKind::Type(ty) => transform_ty(tcx, ty, options).into(),
+        _ => subst,
     });
     tcx.mk_substs_from_iter(substs)
 }

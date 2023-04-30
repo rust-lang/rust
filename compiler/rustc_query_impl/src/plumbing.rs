@@ -5,7 +5,7 @@
 use crate::on_disk_cache::{CacheDecoder, CacheEncoder, EncodedDepNodeIndex};
 use crate::profiling_support::QueryKeyStringCache;
 use crate::{on_disk_cache, Queries};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_data_structures::sync::{AtomicU64, Lock};
 use rustc_errors::{Diagnostic, Handler};
 use rustc_middle::dep_graph::{
@@ -342,7 +342,7 @@ pub(crate) fn create_query_frame<
             let mut hasher = StableHasher::new();
             std::mem::discriminant(&kind).hash_stable(&mut hcx, &mut hasher);
             key.hash_stable(&mut hcx, &mut hasher);
-            hasher.finish::<u64>()
+            hasher.finish::<Hash64>()
         })
     };
     let ty_adt_id = key.ty_adt_id();

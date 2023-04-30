@@ -1,7 +1,7 @@
 //! A bunch of methods and structures more or less related to resolving macros and
 //! interface provided by `Resolver` to macro expander.
 
-use crate::errors::{AddAsNonDerive, MacroExpectedFound, RemoveSurroundingDerive};
+use crate::errors::{self, AddAsNonDerive, MacroExpectedFound, RemoveSurroundingDerive};
 use crate::Namespace::*;
 use crate::{BuiltinMacroState, Determinacy};
 use crate::{DeriveData, Finalize, ParentScope, ResolutionError, Resolver, ScopeSet};
@@ -436,9 +436,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
                 // HACK(Urgau): This shouldn't be necessary
                 PathResult::Failed { is_error_from_last_segment: false, .. } => {
                     self.tcx.sess
-                        .struct_span_err(span, "not sure whether the path is accessible or not")
-                        .note("the type may have associated items, but we are currently not checking them")
-                        .emit();
+                        .emit_err(errors::CfgAccessibleUnsure { span });
 
                     // If we get a partially resolved NonModule in one namespace, we should get the
                     // same result in any other namespaces, so we can return early.
@@ -513,10 +511,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 if let Some(def_id) = def_id.as_local() {
                     self.unused_macros.remove(&def_id);
                     if self.proc_macro_stubs.contains(&def_id) {
-                        self.tcx.sess.span_err(
-                            path.span,
-                            "can't use a procedural macro from the same crate that defines it",
-                        );
+                        self.tcx.sess.emit_err(errors::ProcMacroSameCrate {
+                            span: path.span,
+                            is_test: self.tcx.sess.is_test_crate(),
+                        });
                     }
                 }
             }

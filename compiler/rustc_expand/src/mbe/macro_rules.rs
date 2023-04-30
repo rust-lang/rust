@@ -341,7 +341,7 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
             Success(named_matches) => {
                 debug!("Parsed arm successfully");
                 // The matcher was `Success(..)`ful.
-                // Merge the gated spans from parsing the matcher with the pre-existing ones.
+                // Merge the gated spans from parsing the matcher with the preexisting ones.
                 sess.gated_spans.merge(gated_spans_snapshot);
 
                 return Ok((i, named_matches));
@@ -873,7 +873,7 @@ impl<'tt> FirstSets<'tt> {
     }
 }
 
-// Most `mbe::TokenTree`s are pre-existing in the matcher, but some are defined
+// Most `mbe::TokenTree`s are preexisting in the matcher, but some are defined
 // implicitly, such as opening/closing delimiters and sequence repetition ops.
 // This type encapsulates both kinds. It implements `Clone` while avoiding the
 // need for `mbe::TokenTree` to implement `Clone`.

@@ -3,7 +3,7 @@
 //! zero-sized structure.
 
 use rustc_index::bit_set::{BitSet, ChunkedBitSet};
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 use rustc_middle::mir::visit::{MirVisitable, Visitor};
 use rustc_middle::mir::{self, Body, Location};
 use rustc_middle::ty::{self, TyCtxt};

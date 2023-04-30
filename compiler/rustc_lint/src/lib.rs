@@ -82,9 +82,9 @@ pub use array_into_iter::ARRAY_INTO_ITER;
 
 use rustc_ast as ast;
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
+use rustc_fluent_macro::fluent_messages;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
-use rustc_macros::fluent_messages;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::{
@@ -518,6 +518,7 @@ fn register_internals(store: &mut LintStore) {
     store.register_lints(&TyTyKind::get_lints());
     store.register_late_pass(|_| Box::new(TyTyKind));
     store.register_lints(&Diagnostics::get_lints());
+    store.register_early_pass(|| Box::new(Diagnostics));
     store.register_late_pass(|_| Box::new(Diagnostics));
     store.register_lints(&BadOptAccess::get_lints());
     store.register_late_pass(|_| Box::new(BadOptAccess));

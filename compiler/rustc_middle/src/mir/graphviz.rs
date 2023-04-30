@@ -16,19 +16,16 @@ where
 {
     let def_ids = dump_mir_def_ids(tcx, single);
 
-    let mirs =
-        def_ids
-            .iter()
-            .flat_map(|def_id| {
-                if tcx.is_const_fn_raw(*def_id) {
-                    vec![tcx.optimized_mir(*def_id), tcx.mir_for_ctfe(*def_id)]
-                } else {
-                    vec![tcx.instance_mir(ty::InstanceDef::Item(ty::WithOptConstParam::unknown(
-                        *def_id,
-                    )))]
-                }
-            })
-            .collect::<Vec<_>>();
+    let mirs = def_ids
+        .iter()
+        .flat_map(|def_id| {
+            if tcx.is_const_fn_raw(*def_id) {
+                vec![tcx.optimized_mir(*def_id), tcx.mir_for_ctfe(*def_id)]
+            } else {
+                vec![tcx.instance_mir(ty::InstanceDef::Item(*def_id))]
+            }
+        })
+        .collect::<Vec<_>>();
 
     let use_subgraphs = mirs.len() > 1;
     if use_subgraphs {

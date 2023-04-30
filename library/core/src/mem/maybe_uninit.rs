@@ -945,14 +945,10 @@ impl<T> MaybeUninit<T> {
         // * `MaybeUninit<T>` and T are guaranteed to have the same layout
         // * `MaybeUninit` does not drop, so there are no double-frees
         // And thus the conversion is safe
-        let ret = unsafe {
+        unsafe {
             intrinsics::assert_inhabited::<[T; N]>();
-            (&array as *const _ as *const [T; N]).read()
-        };
-
-        // FIXME: required to avoid `~const Destruct` bound
-        super::forget(array);
-        ret
+            intrinsics::transmute_unchecked(array)
+        }
     }
 
     /// Assuming all the elements are initialized, get a slice to them.

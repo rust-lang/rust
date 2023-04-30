@@ -203,7 +203,7 @@ impl Scope {
 pub type ScopeDepth = u32;
 
 /// The region scope tree encodes information about region relationships.
-#[derive(TyEncodable, TyDecodable, Default, Debug)]
+#[derive(Default, Debug)]
 pub struct ScopeTree {
     /// If not empty, this body is the root of this region hierarchy.
     pub root_body: Option<hir::HirId>,
@@ -317,13 +317,13 @@ pub struct ScopeTree {
 /// candidates in general). In constants, the `lifetime` field is None
 /// to indicate that certain expressions escape into 'static and
 /// should have no local cleanup scope.
-#[derive(Debug, Copy, Clone, TyEncodable, TyDecodable, HashStable)]
+#[derive(Debug, Copy, Clone, HashStable)]
 pub enum RvalueCandidateType {
     Borrow { target: hir::ItemLocalId, lifetime: Option<Scope> },
     Pattern { target: hir::ItemLocalId, lifetime: Option<Scope> },
 }
 
-#[derive(Debug, Copy, Clone, TyEncodable, TyDecodable, HashStable)]
+#[derive(Debug, Copy, Clone, HashStable)]
 pub struct YieldData {
     /// The `Span` of the yield.
     pub span: Span,

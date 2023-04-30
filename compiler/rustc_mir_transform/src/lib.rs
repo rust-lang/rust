@@ -23,18 +23,19 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::steal::Steal;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::mir::visit::Visitor as _;
 use rustc_middle::mir::{
     traversal, AnalysisPhase, Body, ClearCrossCrate, ConstQualifs, Constant, LocalDecl, MirPass,
     MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, SourceInfo,
-    Statement, StatementKind, TerminatorKind,
+    Statement, StatementKind, TerminatorKind, START_BLOCK,
 };
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_span::sym;
+use rustc_trait_selection::traits;
 
 #[macro_use]
 mod pass_manager;
@@ -48,6 +49,7 @@ mod add_retag;
 mod check_const_item_mutation;
 mod check_packed_ref;
 pub mod check_unsafety;
+mod remove_place_mention;
 // This pass is public to allow external drivers to perform MIR cleanup
 pub mod cleanup_post_borrowck;
 mod const_debuginfo;
@@ -111,36 +113,17 @@ pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         mir_keys,
         mir_const,
-        mir_const_qualif: |tcx, def_id| {
-            if let Some(def) = ty::WithOptConstParam::try_lookup(def_id, tcx) {
-                tcx.mir_const_qualif_const_arg(def)
-            } else {
-                mir_const_qualif(tcx, ty::WithOptConstParam::unknown(def_id))
-            }
-        },
-        mir_const_qualif_const_arg: |tcx, (did, param_did)| {
-            mir_const_qualif(tcx, ty::WithOptConstParam { did, const_param_did: Some(param_did) })
-        },
+        mir_const_qualif,
         mir_promoted,
         mir_drops_elaborated_and_const_checked,
         mir_for_ctfe,
-        mir_for_ctfe_of_const_arg,
         mir_generator_witnesses: generator::mir_generator_witnesses,
         optimized_mir,
         is_mir_available,
         is_ctfe_mir_available: |tcx, did| is_mir_available(tcx, did),
         mir_callgraph_reachable: inline::cycle::mir_callgraph_reachable,
         mir_inliner_callees: inline::cycle::mir_inliner_callees,
-        promoted_mir: |tcx, def_id| {
-            if let Some(def) = ty::WithOptConstParam::try_lookup(def_id, tcx) {
-                tcx.promoted_mir_of_const_arg(def)
-            } else {
-                promoted_mir(tcx, ty::WithOptConstParam::unknown(def_id))
-            }
-        },
-        promoted_mir_of_const_arg: |tcx, (did, param_did)| {
-            promoted_mir(tcx, ty::WithOptConstParam { did, const_param_did: Some(param_did) })
-        },
+        promoted_mir,
         deduced_param_attrs: deduce_param_attrs::deduced_param_attrs,
         ..*providers
     };
@@ -234,8 +217,8 @@ fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
     set
 }
 
-fn mir_const_qualif(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> ConstQualifs {
-    let const_kind = tcx.hir().body_const_context(def.did);
+fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {
+    let const_kind = tcx.hir().body_const_context(def);
 
     // No need to const-check a non-const `fn`.
     if const_kind.is_none() {
@@ -253,7 +236,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> 
         return Default::default();
     }
 
-    let ccx = check_consts::ConstCx { body, tcx, const_kind, param_env: tcx.param_env(def.did) };
+    let ccx = check_consts::ConstCx { body, tcx, const_kind, param_env: tcx.param_env(def) };
 
     let mut validator = check_consts::check::Checker::new(&ccx);
     validator.check_body();
@@ -266,22 +249,14 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> 
 /// Make MIR ready for const evaluation. This is run on all MIR, not just on consts!
 /// FIXME(oli-obk): it's unclear whether we still need this phase (and its corresponding query).
 /// We used to have this for pre-miri MIR based const eval.
-fn mir_const(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> &Steal<Body<'_>> {
-    if let Some(def) = def.try_upgrade(tcx) {
-        return tcx.mir_const(def);
-    }
-
+fn mir_const(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
     // Unsafety check uses the raw mir, so make sure it is run.
     if !tcx.sess.opts.unstable_opts.thir_unsafeck {
-        if let Some(param_did) = def.const_param_did {
-            tcx.ensure_with_value().unsafety_check_result_for_const_arg((def.did, param_did));
-        } else {
-            tcx.ensure_with_value().unsafety_check_result(def.did);
-        }
+        tcx.ensure_with_value().unsafety_check_result(def);
     }
 
     // has_ffi_unwind_calls query uses the raw mir, so make sure it is run.
-    tcx.ensure_with_value().has_ffi_unwind_calls(def.did);
+    tcx.ensure_with_value().has_ffi_unwind_calls(def);
 
     let mut body = tcx.mir_built(def).steal();
 
@@ -296,7 +271,7 @@ fn mir_const(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> &Steal<
             &Lint(check_const_item_mutation::CheckConstItemMutation),
             &Lint(function_item_references::FunctionItemReferences),
             // What we need to do constant evaluation.
-            &simplify::SimplifyCfg::new("initial"),
+            &simplify::SimplifyCfg::Initial,
             &rustc_peek::SanityCheck, // Just a lint
         ],
         None,
@@ -307,16 +282,12 @@ fn mir_const(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> &Steal<
 /// Compute the main MIR body and the list of MIR bodies of the promoteds.
 fn mir_promoted(
     tcx: TyCtxt<'_>,
-    def: ty::WithOptConstParam<LocalDefId>,
+    def: LocalDefId,
 ) -> (&Steal<Body<'_>>, &Steal<IndexVec<Promoted, Body<'_>>>) {
-    if let Some(def) = def.try_upgrade(tcx) {
-        return tcx.mir_promoted(def);
-    }
-
     // Ensure that we compute the `mir_const_qualif` for constants at
     // this point, before we steal the mir-const result.
     // Also this means promotion can rely on all const checks having been done.
-    let const_qualifs = tcx.mir_const_qualif_opt_const_arg(def);
+    let const_qualifs = tcx.mir_const_qualif(def);
     let mut body = tcx.mir_const(def).steal();
     if let Some(error_reported) = const_qualifs.tainted_by_errors {
         body.tainted_by_errors = Some(error_reported);
@@ -334,11 +305,7 @@ fn mir_promoted(
     pm::run_passes(
         tcx,
         &mut body,
-        &[
-            &promote_pass,
-            &simplify::SimplifyCfg::new("promote-consts"),
-            &coverage::InstrumentCoverage,
-        ],
+        &[&promote_pass, &simplify::SimplifyCfg::PromoteConsts, &coverage::InstrumentCoverage],
         Some(MirPhase::Analysis(AnalysisPhase::Initial)),
     );
 
@@ -348,38 +315,22 @@ fn mir_promoted(
 
 /// Compute the MIR that is used during CTFE (and thus has no optimizations run on it)
 fn mir_for_ctfe(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &Body<'_> {
-    if let Some(def) = ty::WithOptConstParam::try_lookup(def_id, tcx) {
-        tcx.mir_for_ctfe_of_const_arg(def)
-    } else {
-        tcx.arena.alloc(inner_mir_for_ctfe(tcx, ty::WithOptConstParam::unknown(def_id)))
-    }
+    tcx.arena.alloc(inner_mir_for_ctfe(tcx, def_id))
 }
 
-/// Same as `mir_for_ctfe`, but used to get the MIR of a const generic parameter.
-/// The docs on `WithOptConstParam` explain this a bit more, but the TLDR is that
-/// we'd get cycle errors with `mir_for_ctfe`, because typeck would need to typeck
-/// the const parameter while type checking the main body, which in turn would try
-/// to type check the main body again.
-fn mir_for_ctfe_of_const_arg(tcx: TyCtxt<'_>, (did, param_did): (LocalDefId, DefId)) -> &Body<'_> {
-    tcx.arena.alloc(inner_mir_for_ctfe(
-        tcx,
-        ty::WithOptConstParam { did, const_param_did: Some(param_did) },
-    ))
-}
-
-fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_> {
+fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
     // FIXME: don't duplicate this between the optimized_mir/mir_for_ctfe queries
-    if tcx.is_constructor(def.did.to_def_id()) {
+    if tcx.is_constructor(def.to_def_id()) {
         // There's no reason to run all of the MIR passes on constructors when
         // we can just output the MIR we want directly. This also saves const
         // qualification and borrow checking the trouble of special casing
         // constructors.
-        return shim::build_adt_ctor(tcx, def.did.to_def_id());
+        return shim::build_adt_ctor(tcx, def.to_def_id());
     }
 
     let context = tcx
         .hir()
-        .body_const_context(def.did)
+        .body_const_context(def)
         .expect("mir_for_ctfe should not be used for runtime functions");
 
     let body = tcx.mir_drops_elaborated_and_const_checked(def).borrow().clone();
@@ -417,29 +368,19 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -
 /// Obtain just the main MIR (no promoteds) and run some cleanups on it. This also runs
 /// mir borrowck *before* doing so in order to ensure that borrowck can be run and doesn't
 /// end up missing the source MIR due to stealing happening.
-fn mir_drops_elaborated_and_const_checked(
-    tcx: TyCtxt<'_>,
-    def: ty::WithOptConstParam<LocalDefId>,
-) -> &Steal<Body<'_>> {
-    if let Some(def) = def.try_upgrade(tcx) {
-        return tcx.mir_drops_elaborated_and_const_checked(def);
-    }
-
+fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
     if tcx.sess.opts.unstable_opts.drop_tracking_mir
-        && let DefKind::Generator = tcx.def_kind(def.did)
+        && let DefKind::Generator = tcx.def_kind(def)
     {
-        tcx.ensure_with_value().mir_generator_witnesses(def.did);
+        tcx.ensure_with_value().mir_generator_witnesses(def);
     }
-    let mir_borrowck = tcx.mir_borrowck_opt_const_arg(def);
+    let mir_borrowck = tcx.mir_borrowck(def);
 
-    let is_fn_like = tcx.def_kind(def.did).is_fn_like();
+    let is_fn_like = tcx.def_kind(def).is_fn_like();
     if is_fn_like {
-        let did = def.did.to_def_id();
-        let def = ty::WithOptConstParam::unknown(did);
-
         // Do not compute the mir call graph without said call graph actually being used.
         if inline::Inline.is_enabled(&tcx.sess) {
-            tcx.ensure_with_value().mir_inliner_callees(ty::InstanceDef::Item(def));
+            tcx.ensure_with_value().mir_inliner_callees(ty::InstanceDef::Item(def.to_def_id()));
         }
     }
 
@@ -447,6 +388,50 @@ fn mir_drops_elaborated_and_const_checked(
     let mut body = body.steal();
     if let Some(error_reported) = mir_borrowck.tainted_by_errors {
         body.tainted_by_errors = Some(error_reported);
+    }
+
+    // Check if it's even possible to satisfy the 'where' clauses
+    // for this item.
+    //
+    // This branch will never be taken for any normal function.
+    // However, it's possible to `#!feature(trivial_bounds)]` to write
+    // a function with impossible to satisfy clauses, e.g.:
+    // `fn foo() where String: Copy {}`
+    //
+    // We don't usually need to worry about this kind of case,
+    // since we would get a compilation error if the user tried
+    // to call it. However, since we optimize even without any
+    // calls to the function, we need to make sure that it even
+    // makes sense to try to evaluate the body.
+    //
+    // If there are unsatisfiable where clauses, then all bets are
+    // off, and we just give up.
+    //
+    // We manually filter the predicates, skipping anything that's not
+    // "global". We are in a potentially generic context
+    // (e.g. we are evaluating a function without substituting generic
+    // parameters, so this filtering serves two purposes:
+    //
+    // 1. We skip evaluating any predicates that we would
+    // never be able prove are unsatisfiable (e.g. `<T as Foo>`
+    // 2. We avoid trying to normalize predicates involving generic
+    // parameters (e.g. `<T as Foo>::MyItem`). This can confuse
+    // the normalization code (leading to cycle errors), since
+    // it's usually never invoked in this way.
+    let predicates = tcx
+        .predicates_of(body.source.def_id())
+        .predicates
+        .iter()
+        .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
+    if traits::impossible_predicates(tcx, traits::elaborate(tcx, predicates).collect()) {
+        trace!("found unsatisfiable predicates for {:?}", body.source);
+        // Clear the body to only contain a single `unreachable` statement.
+        let bbs = body.basic_blocks.as_mut();
+        bbs.raw.truncate(1);
+        bbs[START_BLOCK].statements.clear();
+        bbs[START_BLOCK].terminator_mut().kind = TerminatorKind::Unreachable;
+        body.var_debug_info.clear();
+        body.local_decls.raw.truncate(body.arg_count + 1);
     }
 
     run_analysis_to_runtime_passes(tcx, &mut body);
@@ -467,10 +452,7 @@ fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>
         pm::run_passes(
             tcx,
             body,
-            &[
-                &remove_uninit_drops::RemoveUninitDrops,
-                &simplify::SimplifyCfg::new("remove-false-edges"),
-            ],
+            &[&remove_uninit_drops::RemoveUninitDrops, &simplify::SimplifyCfg::RemoveFalseEdges],
             None,
         );
         check_consts::post_drop_elaboration::check_live_drops(tcx, &body); // FIXME: make this a MIR lint
@@ -492,7 +474,7 @@ fn run_analysis_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let passes: &[&dyn MirPass<'tcx>] = &[
         &cleanup_post_borrowck::CleanupPostBorrowck,
         &remove_noop_landing_pads::RemoveNoopLandingPads,
-        &simplify::SimplifyCfg::new("early-opt"),
+        &simplify::SimplifyCfg::EarlyOpt,
         &deref_separator::Derefer,
     ];
 
@@ -524,8 +506,11 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
 /// Returns the sequence of passes that do the initial cleanup of runtime MIR.
 fn run_runtime_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let passes: &[&dyn MirPass<'tcx>] =
-        &[&lower_intrinsics::LowerIntrinsics, &simplify::SimplifyCfg::new("elaborate-drops")];
+    let passes: &[&dyn MirPass<'tcx>] = &[
+        &lower_intrinsics::LowerIntrinsics,
+        &remove_place_mention::RemovePlaceMention,
+        &simplify::SimplifyCfg::ElaborateDrops,
+    ];
 
     pm::run_passes(tcx, body, passes, Some(MirPhase::Runtime(RuntimePhase::PostCleanup)));
 
@@ -551,7 +536,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &lower_slice_len::LowerSliceLenCalls, // has to be done before inlining, otherwise actual call will be almost always inlined. Also simple, so can just do first
             &unreachable_prop::UnreachablePropagation,
             &uninhabited_enum_branching::UninhabitedEnumBranching,
-            &o1(simplify::SimplifyCfg::new("after-uninhabited-enum-branching")),
+            &o1(simplify::SimplifyCfg::AfterUninhabitedEnumBranching),
             &inline::Inline,
             &remove_storage_markers::RemoveStorageMarkers,
             &remove_zsts::RemoveZsts,
@@ -564,25 +549,23 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &multiple_return_terminators::MultipleReturnTerminators,
             &instcombine::InstCombine,
             &separate_const_switch::SeparateConstSwitch,
-            &simplify::SimplifyLocals::new("before-const-prop"),
+            &simplify::SimplifyLocals::BeforeConstProp,
             &copy_prop::CopyProp,
-            //
-            // FIXME(#70073): This pass is responsible for both optimization as well as some lints.
             &const_prop::ConstProp,
             &dataflow_const_prop::DataflowConstProp,
             //
             // Const-prop runs unconditionally, but doesn't mutate the MIR at mir-opt-level=0.
             &const_debuginfo::ConstDebugInfo,
-            &o1(simplify_branches::SimplifyConstCondition::new("after-const-prop")),
+            &o1(simplify_branches::SimplifyConstCondition::AfterConstProp),
             &early_otherwise_branch::EarlyOtherwiseBranch,
             &simplify_comparison_integral::SimplifyComparisonIntegral,
             &dead_store_elimination::DeadStoreElimination,
             &dest_prop::DestinationPropagation,
-            &o1(simplify_branches::SimplifyConstCondition::new("final")),
+            &o1(simplify_branches::SimplifyConstCondition::Final),
             &o1(remove_noop_landing_pads::RemoveNoopLandingPads),
-            &o1(simplify::SimplifyCfg::new("final")),
+            &o1(simplify::SimplifyCfg::Final),
             &nrvo::RenameReturnPlace,
-            &simplify::SimplifyLocals::new("final"),
+            &simplify::SimplifyLocals::Final,
             &multiple_return_terminators::MultipleReturnTerminators,
             &deduplicate_blocks::DeduplicateBlocks,
             &large_enums::EnumSizeOpt { discrepancy: 128 },
@@ -597,7 +580,6 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
 /// Optimize the MIR and prepare it for codegen.
 fn optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> &Body<'_> {
-    assert_eq!(ty::WithOptConstParam::try_lookup(did, tcx), None);
     tcx.arena.alloc(inner_optimized_mir(tcx, did))
 }
 
@@ -619,8 +601,7 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
         Some(other) => panic!("do not use `optimized_mir` for constants: {:?}", other),
     }
     debug!("about to call mir_drops_elaborated...");
-    let body =
-        tcx.mir_drops_elaborated_and_const_checked(ty::WithOptConstParam::unknown(did)).steal();
+    let body = tcx.mir_drops_elaborated_and_const_checked(did).steal();
     let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::NotConst);
     debug!("body: {:#?}", body);
     run_optimization_passes(tcx, &mut body);
@@ -630,15 +611,12 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
 
 /// Fetch all the promoteds of an item and prepare their MIR bodies to be ready for
 /// constant evaluation once all substitutions become known.
-fn promoted_mir(
-    tcx: TyCtxt<'_>,
-    def: ty::WithOptConstParam<LocalDefId>,
-) -> &IndexVec<Promoted, Body<'_>> {
-    if tcx.is_constructor(def.did.to_def_id()) {
+fn promoted_mir(tcx: TyCtxt<'_>, def: LocalDefId) -> &IndexVec<Promoted, Body<'_>> {
+    if tcx.is_constructor(def.to_def_id()) {
         return tcx.arena.alloc(IndexVec::new());
     }
 
-    let tainted_by_errors = tcx.mir_borrowck_opt_const_arg(def).tainted_by_errors;
+    let tainted_by_errors = tcx.mir_borrowck(def).tainted_by_errors;
     let mut promoted = tcx.mir_promoted(def).1.steal();
 
     for body in &mut promoted {

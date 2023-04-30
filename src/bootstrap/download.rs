@@ -2,7 +2,7 @@ use std::{
     env,
     ffi::{OsStr, OsString},
     fs::{self, File},
-    io::{BufRead, BufReader, ErrorKind},
+    io::{BufRead, BufReader, BufWriter, ErrorKind, Write},
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
@@ -262,10 +262,20 @@ impl Config {
         let directory_prefix = Path::new(Path::new(uncompressed_filename).file_stem().unwrap());
 
         // decompress the file
-        let data = t!(File::open(tarball));
+        let data = t!(File::open(tarball), format!("file {} not found", tarball.display()));
         let decompressor = XzDecoder::new(BufReader::new(data));
 
         let mut tar = tar::Archive::new(decompressor);
+
+        // `compile::Sysroot` needs to know the contents of the `rustc-dev` tarball to avoid adding
+        // it to the sysroot unless it was explicitly requested. But parsing the 100 MB tarball is slow.
+        // Cache the entries when we extract it so we only have to read it once.
+        let mut recorded_entries = if dst.ends_with("ci-rustc") && pattern == "rustc-dev" {
+            Some(BufWriter::new(t!(File::create(dst.join(".rustc-dev-contents")))))
+        } else {
+            None
+        };
+
         for member in t!(tar.entries()) {
             let mut member = t!(member);
             let original_path = t!(member.path()).into_owned();
@@ -283,13 +293,19 @@ impl Config {
             if !t!(member.unpack_in(dst)) {
                 panic!("path traversal attack ??");
             }
+            if let Some(record) = &mut recorded_entries {
+                t!(writeln!(record, "{}", short_path.to_str().unwrap()));
+            }
             let src_path = dst.join(original_path);
             if src_path.is_dir() && dst_path.exists() {
                 continue;
             }
             t!(fs::rename(src_path, dst_path));
         }
-        t!(fs::remove_dir_all(dst.join(directory_prefix)));
+        let dst_dir = dst.join(directory_prefix);
+        if dst_dir.exists() {
+            t!(fs::remove_dir_all(&dst_dir), format!("failed to remove {}", dst_dir.display()));
+        }
     }
 
     /// Returns whether the SHA256 checksum of `path` matches `expected`.
@@ -363,6 +379,13 @@ impl Config {
 
         self.create(&rustfmt_stamp, &channel);
         Some(rustfmt_path)
+    }
+
+    pub(crate) fn rustc_dev_contents(&self) -> Vec<String> {
+        assert!(self.download_rustc());
+        let ci_rustc_dir = self.out.join(&*self.build.triple).join("ci-rustc");
+        let rustc_dev_contents_file = t!(File::open(ci_rustc_dir.join(".rustc-dev-contents")));
+        t!(BufReader::new(rustc_dev_contents_file).lines().collect())
     }
 
     pub(crate) fn download_ci_rustc(&self, commit: &str) {

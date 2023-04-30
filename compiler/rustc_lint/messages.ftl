@@ -99,6 +99,8 @@ lint_diag_out_of_impl =
 
 lint_untranslatable_diag = diagnostics should be created using translatable messages
 
+lint_trivial_untranslatable_diag = diagnostic with static strings only
+
 lint_bad_opt_access = {$msg}
 
 lint_cstring_ptr = getting the inner pointer of a temporary `CString`
@@ -445,7 +447,7 @@ lint_builtin_incomplete_features = the feature `{$name}` is incomplete and may n
     .help = consider using `min_{$name}` instead, which is more stable and complete
 
 lint_builtin_unpermitted_type_init_zeroed = the type `{$ty}` does not permit zero-initialization
-lint_builtin_unpermitted_type_init_unint = the type `{$ty}` does not permit being left uninitialized
+lint_builtin_unpermitted_type_init_uninit = the type `{$ty}` does not permit being left uninitialized
 
 lint_builtin_unpermitted_type_init_label = this code causes undefined behavior when executed
 lint_builtin_unpermitted_type_init_label_suggestion = help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done

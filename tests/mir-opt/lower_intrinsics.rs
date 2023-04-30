@@ -127,10 +127,14 @@ pub fn read_via_copy_uninhabited(r: &Never) -> Never {
 pub enum Never {}
 
 // EMIT_MIR lower_intrinsics.option_payload.LowerIntrinsics.diff
-#[cfg(not(bootstrap))]
 pub fn option_payload(o: &Option<usize>, p: &Option<String>) {
     unsafe {
         let _x = core::intrinsics::option_payload_ptr(o);
         let _y = core::intrinsics::option_payload_ptr(p);
     }
+}
+
+// EMIT_MIR lower_intrinsics.ptr_offset.LowerIntrinsics.diff
+pub unsafe fn ptr_offset(p: *const i32, d: isize) -> *const i32 {
+    core::intrinsics::offset(p, d)
 }

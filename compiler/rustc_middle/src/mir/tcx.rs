@@ -188,7 +188,9 @@ impl<'tcx> Rvalue<'tcx> {
             }
             Rvalue::UnaryOp(UnOp::Not | UnOp::Neg, ref operand) => operand.ty(local_decls, tcx),
             Rvalue::Discriminant(ref place) => place.ty(local_decls, tcx).ty.discriminant_ty(tcx),
-            Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _) => tcx.types.usize,
+            Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(..), _) => {
+                tcx.types.usize
+            }
             Rvalue::Aggregate(ref ak, ref ops) => match **ak {
                 AggregateKind::Array(ty) => tcx.mk_array(ty, ops.len() as u64),
                 AggregateKind::Tuple => {

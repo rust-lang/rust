@@ -7,7 +7,7 @@ use core::fmt::{self, Debug, Display, Formatter};
 use core::marker::PhantomData;
 #[cfg(not(no_global_oom_handling))]
 use core::marker::Unsize;
-use core::mem;
+use core::mem::{self, SizedTypeProperties};
 use core::ops::{Deref, DerefMut};
 use core::ptr::Pointee;
 use core::ptr::{self, NonNull};
@@ -202,9 +202,7 @@ impl<H> WithHeader<H> {
             let ptr = if layout.size() == 0 {
                 // Some paranoia checking, mostly so that the ThinBox tests are
                 // more able to catch issues.
-                debug_assert!(
-                    value_offset == 0 && mem::size_of::<T>() == 0 && mem::size_of::<H>() == 0
-                );
+                debug_assert!(value_offset == 0 && T::IS_ZST && H::IS_ZST);
                 layout.dangling()
             } else {
                 let ptr = alloc::alloc(layout);
@@ -249,9 +247,7 @@ impl<H> WithHeader<H> {
                         alloc::dealloc(self.ptr.as_ptr().sub(value_offset), layout);
                     } else {
                         debug_assert!(
-                            value_offset == 0
-                                && mem::size_of::<H>() == 0
-                                && self.value_layout.size() == 0
+                            value_offset == 0 && H::IS_ZST && self.value_layout.size() == 0
                         );
                     }
                 }

@@ -1,4 +1,4 @@
-use crate::{FnCtxt, RawTy};
+use crate::{errors, FnCtxt, RawTy};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{
@@ -1410,12 +1410,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Report an error if an incorrect number of fields was specified.
         if adt.is_union() {
             if fields.len() != 1 {
-                tcx.sess
-                    .struct_span_err(pat.span, "union patterns should have exactly one field")
-                    .emit();
+                tcx.sess.emit_err(errors::UnionPatMultipleFields { span: pat.span });
             }
             if has_rest_pat {
-                tcx.sess.struct_span_err(pat.span, "`..` cannot be used in union patterns").emit();
+                tcx.sess.emit_err(errors::UnionPatDotDot { span: pat.span });
             }
         } else if !unmentioned_fields.is_empty() {
             let accessible_unmentioned_fields: Vec<_> = unmentioned_fields
@@ -1659,7 +1657,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if tcx.sess.teach(&err.get_code().unwrap()) {
             err.note(
                 "This error indicates that a struct pattern attempted to \
-                 extract a non-existent field from a struct. Struct fields \
+                 extract a nonexistent field from a struct. Struct fields \
                  are identified by the name used before the colon : so struct \
                  patterns should resemble the declaration of the struct type \
                  being matched.\n\n\

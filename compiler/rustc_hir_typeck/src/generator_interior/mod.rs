@@ -460,7 +460,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                 // Avoid ICEs in needs_drop.
                 let ty = self.fcx.resolve_vars_if_possible(ty);
                 let ty = self.fcx.tcx.erase_regions(ty);
-                if ty.needs_infer() {
+                if ty.has_infer() {
                     self.fcx
                         .tcx
                         .sess
@@ -571,7 +571,7 @@ fn check_must_not_suspend_ty<'tcx>(
         // FIXME: support adding the attribute to TAITs
         ty::Alias(ty::Opaque, ty::AliasTy { def_id: def, .. }) => {
             let mut has_emitted = false;
-            for &(predicate, _) in fcx.tcx.explicit_item_bounds(def) {
+            for &(predicate, _) in fcx.tcx.explicit_item_bounds(def).skip_binder() {
                 // We only look at the `DefId`, so it is safe to skip the binder here.
                 if let ty::PredicateKind::Clause(ty::Clause::Trait(ref poly_trait_predicate)) =
                     predicate.kind().skip_binder()
@@ -650,7 +650,7 @@ fn check_must_not_suspend_ty<'tcx>(
                 },
             )
         }
-        // If drop tracking is enabled, we want to look through references, since the referrent
+        // If drop tracking is enabled, we want to look through references, since the referent
         // may not be considered live across the await point.
         ty::Ref(_region, ty, _mutability) if fcx.sess().opts.unstable_opts.drop_tracking => {
             let descr_pre = &format!("{}reference{} to ", data.descr_pre, plural_suffix);

@@ -33,6 +33,6 @@ pub use persist::LoadResult;
 pub use persist::{build_dep_graph, load_dep_graph, DepGraphFuture};
 
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
-use rustc_macros::fluent_messages;
+use rustc_fluent_macro::fluent_messages;
 
 fluent_messages! { "../messages.ftl" }

@@ -1,4 +1,4 @@
-// aux-build:proc_macros.rs
+//@aux-build:proc_macros.rs
 
 #![warn(clippy::as_conversions)]
 #![allow(clippy::borrow_as_ptr)]

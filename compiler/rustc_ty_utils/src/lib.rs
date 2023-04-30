@@ -19,7 +19,7 @@ extern crate rustc_middle;
 extern crate tracing;
 
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
-use rustc_macros::fluent_messages;
+use rustc_fluent_macro::fluent_messages;
 use rustc_middle::ty::query::Providers;
 
 mod abi;

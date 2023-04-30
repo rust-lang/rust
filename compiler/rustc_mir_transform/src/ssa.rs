@@ -1,7 +1,7 @@
 use either::Either;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::{IndexSlice, IndexVec};
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
@@ -21,7 +21,7 @@ pub struct SsaLocals {
 
 /// We often encounter MIR bodies with 1 or 2 basic blocks. In those cases, it's unnecessary to
 /// actually compute dominators, we can just compare block indices because bb0 is always the first
-/// block, and in any body all other blocks are always always dominated by bb0.
+/// block, and in any body all other blocks are always dominated by bb0.
 struct SmallDominators {
     inner: Option<Dominators<BasicBlock>>,
 }

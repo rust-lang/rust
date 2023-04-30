@@ -14,7 +14,7 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIndex, DefPathHash, StableCrateId};
 use rustc_hir::definitions::DefKey;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
@@ -361,7 +361,8 @@ define_tables! {
 
 - optional:
     attributes: Table<DefIndex, LazyArray<ast::Attribute>>,
-    children: Table<DefIndex, LazyArray<DefIndex>>,
+    module_children_non_reexports: Table<DefIndex, LazyArray<DefIndex>>,
+    associated_item_or_field_def_ids: Table<DefIndex, LazyArray<DefIndex>>,
     opt_def_kind: Table<DefIndex, DefKind>,
     visibility: Table<DefIndex, LazyValue<ty::Visibility<DefIndex>>>,
     def_span: Table<DefIndex, LazyValue<Span>>,
@@ -416,7 +417,7 @@ define_tables! {
     macro_definition: Table<DefIndex, LazyValue<ast::DelimArgs>>,
     proc_macro: Table<DefIndex, MacroKind>,
     deduced_param_attrs: Table<DefIndex, LazyArray<DeducedParamAttrs>>,
-    trait_impl_trait_tys: Table<DefIndex, LazyValue<FxHashMap<DefId, Ty<'static>>>>,
+    trait_impl_trait_tys: Table<DefIndex, LazyValue<FxHashMap<DefId, ty::EarlyBinder<Ty<'static>>>>>,
     doc_link_resolutions: Table<DefIndex, LazyValue<DocLinkResMap>>,
     doc_link_traits_in_scope: Table<DefIndex, LazyArray<DefId>>,
 }

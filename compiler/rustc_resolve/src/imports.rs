@@ -1276,13 +1276,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         next_binding = binding;
                     }
 
-                    reexports.push(ModChild {
-                        ident,
-                        res,
-                        vis: binding.vis,
-                        span: binding.span,
-                        reexport_chain,
-                    });
+                    reexports.push(ModChild { ident, res, vis: binding.vis, reexport_chain });
                 }
             });
 

@@ -210,7 +210,7 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
     where
         T: Relate<'tcx>,
     {
-        // A binder is always a subtype of itself if it's structually equal to itself
+        // A binder is always a subtype of itself if it's structurally equal to itself
         if a == b {
             return Ok(a);
         }

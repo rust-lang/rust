@@ -8,7 +8,7 @@ use rustc_ast::{
     AssocConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, ParenthesizedArgs,
     Path, PathSegment, QSelf,
 };
-use rustc_errors::{pluralize, Applicability, PResult};
+use rustc_errors::{Applicability, PResult};
 use rustc_span::source_map::{BytePos, Span};
 use rustc_span::symbol::{kw, sym, Ident};
 use std::mem;
@@ -150,16 +150,13 @@ impl<'a> Parser<'a> {
             //
             if style == PathStyle::Mod && path.segments.iter().any(|segment| segment.args.is_some())
             {
-                parser
-                    .struct_span_err(
-                        path.segments
-                            .iter()
-                            .filter_map(|segment| segment.args.as_ref())
-                            .map(|arg| arg.span())
-                            .collect::<Vec<_>>(),
-                        "unexpected generic arguments in path",
-                    )
-                    .emit();
+                let span = path
+                    .segments
+                    .iter()
+                    .filter_map(|segment| segment.args.as_ref())
+                    .map(|arg| arg.span())
+                    .collect::<Vec<_>>();
+                parser.sess.emit_err(errors::GenericsInPath { span });
             }
         };
 
@@ -467,23 +464,10 @@ impl<'a> Parser<'a> {
                     // i.e. no multibyte characters, in this range.
                     let span =
                         lo.with_hi(lo.lo() + BytePos(snapshot.unmatched_angle_bracket_count));
-                    self.struct_span_err(
+                    self.sess.emit_err(errors::UnmatchedAngle {
                         span,
-                        &format!(
-                            "unmatched angle bracket{}",
-                            pluralize!(snapshot.unmatched_angle_bracket_count)
-                        ),
-                    )
-                    .span_suggestion(
-                        span,
-                        &format!(
-                            "remove extra angle bracket{}",
-                            pluralize!(snapshot.unmatched_angle_bracket_count)
-                        ),
-                        "",
-                        Applicability::MachineApplicable,
-                    )
-                    .emit();
+                        plural: snapshot.unmatched_angle_bracket_count > 1,
+                    });
 
                     // Try again without unmatched angle bracket characters.
                     self.parse_angle_args(ty_generics)
@@ -620,10 +604,7 @@ impl<'a> Parser<'a> {
                 c.into()
             }
             Some(GenericArg::Lifetime(lt)) => {
-                self.struct_span_err(span, "associated lifetimes are not supported")
-                    .span_label(lt.ident.span, "the lifetime is given here")
-                    .help("if you meant to specify a trait object, write `dyn Trait + 'lifetime`")
-                    .emit();
+                self.sess.emit_err(errors::AssocLifetime { span, lifetime: lt.ident.span });
                 self.mk_ty(span, ast::TyKind::Err).into()
             }
             None => {

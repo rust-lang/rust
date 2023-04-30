@@ -18,11 +18,11 @@
 -         StorageLive(_3);                 // scope 0 at $DIR/const_promotion_extern_static.rs:+0:31: +0:46
 -         StorageLive(_4);                 // scope 0 at $DIR/const_promotion_extern_static.rs:+0:32: +0:45
 -         StorageLive(_5);                 // scope 1 at $DIR/const_promotion_extern_static.rs:+0:42: +0:43
--         _5 = const {alloc2: *const i32}; // scope 1 at $DIR/const_promotion_extern_static.rs:+0:42: +0:43
+-         _5 = const {alloc3: *const i32}; // scope 1 at $DIR/const_promotion_extern_static.rs:+0:42: +0:43
 +         _6 = const _;                    // scope 0 at $DIR/const_promotion_extern_static.rs:+0:31: +0:55
                                            // mir::Constant
 -                                          // + span: $DIR/const_promotion_extern_static.rs:13:42: 13:43
--                                          // + literal: Const { ty: *const i32, val: Value(Scalar(alloc2)) }
+-                                          // + literal: Const { ty: *const i32, val: Value(Scalar(alloc3)) }
 -         _4 = &(*_5);                     // scope 1 at $DIR/const_promotion_extern_static.rs:+0:41: +0:43
 -         _3 = [move _4];                  // scope 0 at $DIR/const_promotion_extern_static.rs:+0:31: +0:46
 -         _2 = &_3;                        // scope 0 at $DIR/const_promotion_extern_static.rs:+0:31: +0:55
@@ -50,5 +50,5 @@
       }
   }
 - 
-- alloc2 (extern static: X)
+- alloc3 (extern static: X)
   

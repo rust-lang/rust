@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::reversed_empty_ranges)]
 #![allow(clippy::uninlined_format_args)]
 

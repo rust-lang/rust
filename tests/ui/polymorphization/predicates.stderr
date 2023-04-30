@@ -1,4 +1,10 @@
 error: item has unused generic parameters
+  --> $DIR/predicates.rs:10:4
+   |
+LL | fn bar<I>() {
+   |    ^^^ - generic parameter `I` is unused
+
+error: item has unused generic parameters
   --> $DIR/predicates.rs:15:4
    |
 LL | fn foo<I, T>(_: I)
@@ -34,18 +40,6 @@ error: item has unused generic parameters
    |
 LL | fn foobar<F, G>() -> usize
    |    ^^^^^^ - generic parameter `F` is unused
-
-error: item has unused generic parameters
-  --> $DIR/predicates.rs:10:4
-   |
-LL | fn bar<I>() {
-   |    ^^^ - generic parameter `I` is unused
-
-note: the above error was encountered while instantiating `fn foo::<std::slice::Iter<'_, u32>, T>`
-  --> $DIR/predicates.rs:86:5
-   |
-LL |     foo(x.iter());
-   |     ^^^^^^^^^^^^^
 
 error: aborting due to 6 previous errors
 

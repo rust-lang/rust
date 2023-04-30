@@ -9,7 +9,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{Body, Local, Location, Operand, Terminator, TerminatorKind, RETURN_PLACE};
-use rustc_middle::ty::{self, DeducedParamAttrs, ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{self, DeducedParamAttrs, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 
 /// A visitor that determines which arguments have been mutated. We can't use the mutability field
@@ -198,11 +198,12 @@ pub fn deduced_param_attrs<'tcx>(
     // see [1].
     //
     // [1]: https://github.com/rust-lang/rust/pull/103172#discussion_r999139997
+    let param_env = tcx.param_env_reveal_all_normalized(def_id);
     let mut deduced_param_attrs = tcx.arena.alloc_from_iter(
         body.local_decls.iter().skip(1).take(body.arg_count).enumerate().map(
             |(arg_index, local_decl)| DeducedParamAttrs {
                 read_only: !deduce_read_only.mutable_args.contains(arg_index)
-                    && local_decl.ty.is_freeze(tcx, ParamEnv::reveal_all()),
+                    && local_decl.ty.is_freeze(tcx, param_env),
             },
         ),
     );

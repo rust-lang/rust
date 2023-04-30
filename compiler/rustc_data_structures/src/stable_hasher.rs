@@ -1,13 +1,16 @@
 use crate::sip128::SipHasher128;
-use rustc_index::bit_set;
-use rustc_index::vec;
+use rustc_index::bit_set::{self, BitSet};
+use rustc_index::{Idx, IndexVec};
 use smallvec::SmallVec;
+use std::fmt;
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::marker::PhantomData;
 use std::mem;
 
 #[cfg(test)]
 mod tests;
+
+pub use crate::hashes::{Hash128, Hash64};
 
 /// When hashing something that ends up affecting properties like symbol names,
 /// we want these symbol names to be calculated independently of other factors
@@ -20,8 +23,8 @@ pub struct StableHasher {
     state: SipHasher128,
 }
 
-impl ::std::fmt::Debug for StableHasher {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Debug for StableHasher {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.state)
     }
 }
@@ -39,21 +42,6 @@ impl StableHasher {
     #[inline]
     pub fn finish<W: StableHasherResult>(self) -> W {
         W::finish(self)
-    }
-}
-
-impl StableHasherResult for u128 {
-    #[inline]
-    fn finish(hasher: StableHasher) -> Self {
-        let (_0, _1) = hasher.finalize();
-        u128::from(_0) | (u128::from(_1) << 64)
-    }
-}
-
-impl StableHasherResult for u64 {
-    #[inline]
-    fn finish(hasher: StableHasher) -> Self {
-        hasher.finalize().0
     }
 }
 
@@ -107,7 +95,8 @@ impl Hasher for StableHasher {
 
     #[inline]
     fn write_u128(&mut self, i: u128) {
-        self.state.write(&i.to_le_bytes());
+        self.write_u64(i as u64);
+        self.write_u64((i >> 64) as u64);
     }
 
     #[inline]
@@ -285,6 +274,9 @@ impl_stable_traits_for_trivial_type!(i128);
 
 impl_stable_traits_for_trivial_type!(char);
 impl_stable_traits_for_trivial_type!(());
+
+impl_stable_traits_for_trivial_type!(Hash64);
+impl_stable_traits_for_trivial_type!(Hash128);
 
 impl<CTX> HashStable<CTX> for ! {
     fn hash_stable(&self, _ctx: &mut CTX, _hasher: &mut StableHasher) {
@@ -565,7 +557,7 @@ where
     }
 }
 
-impl<I: vec::Idx, T, CTX> HashStable<CTX> for vec::IndexVec<I, T>
+impl<I: Idx, T, CTX> HashStable<CTX> for IndexVec<I, T>
 where
     T: HashStable<CTX>,
 {
@@ -577,13 +569,13 @@ where
     }
 }
 
-impl<I: vec::Idx, CTX> HashStable<CTX> for bit_set::BitSet<I> {
+impl<I: Idx, CTX> HashStable<CTX> for BitSet<I> {
     fn hash_stable(&self, _ctx: &mut CTX, hasher: &mut StableHasher) {
         ::std::hash::Hash::hash(self, hasher);
     }
 }
 
-impl<R: vec::Idx, C: vec::Idx, CTX> HashStable<CTX> for bit_set::BitMatrix<R, C> {
+impl<R: Idx, C: Idx, CTX> HashStable<CTX> for bit_set::BitMatrix<R, C> {
     fn hash_stable(&self, _ctx: &mut CTX, hasher: &mut StableHasher) {
         ::std::hash::Hash::hash(self, hasher);
     }
@@ -668,7 +660,7 @@ fn stable_hash_reduce<HCX, I, C, F>(
                 .map(|value| {
                     let mut hasher = StableHasher::new();
                     hash_function(&mut hasher, hcx, value);
-                    hasher.finish::<u128>()
+                    hasher.finish::<Hash128>()
                 })
                 .reduce(|accum, value| accum.wrapping_add(value));
             hash.hash_stable(hcx, hasher);

@@ -528,7 +528,7 @@ pub(crate) fn build_impl(
             items: trait_items,
             polarity,
             kind: if utils::has_doc_flag(tcx, did, sym::fake_variadic) {
-                ImplKind::FakeVaradic
+                ImplKind::FakeVariadic
             } else {
                 ImplKind::Normal
             },

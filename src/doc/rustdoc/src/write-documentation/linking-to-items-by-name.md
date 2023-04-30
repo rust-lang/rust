@@ -88,13 +88,16 @@ fn Foo() {}
 ```
 
 These prefixes will be stripped when displayed in the documentation, so `[struct@Foo]` will be
-rendered as `Foo`.
+rendered as `Foo`. The following prefixes are available: `struct`, `enum`, `trait`, `union`,
+`mod`, `module`, `const`, `constant`, `fn`, `function`, `method`, `derive`, `type`, `value`,
+`macro`, `prim` or `primitive`.
 
 You can also disambiguate for functions by adding `()` after the function name,
-or for macros by adding `!` after the macro name:
+or for macros by adding `!` after the macro name. The macro `!` can be followed by `()`, `{}`,
+or `[]`. Example:
 
 ```rust
-/// This is different from [`foo!`]
+/// This is different from [`foo!()`].
 fn foo() {}
 
 /// This is different from [`foo()`]
@@ -102,6 +105,13 @@ macro_rules! foo {
   () => {}
 }
 ```
+
+There is one case where the disambiguation will be performed automatically: if an intra doc
+link is resolved at the same time as a trait and as a derive proc-macro. In this case, it'll
+always generate a link to the trait and not emit a "missing disambiguation" warning. A good
+example of this case is when you link to the `Clone` trait: there is also a `Clone`
+proc-macro but it ignores it in this case. If you want to link to the proc-macro, you can
+use the `macro@` disambiguator.
 
 ## Warnings, re-exports, and scoping
 

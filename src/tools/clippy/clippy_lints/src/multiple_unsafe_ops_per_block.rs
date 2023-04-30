@@ -59,7 +59,7 @@ declare_clippy_lint! {
     ///     unsafe { char::from_u32_unchecked(int_value) }
     /// }
     /// ```
-    #[clippy::version = "1.68.0"]
+    #[clippy::version = "1.69.0"]
     pub MULTIPLE_UNSAFE_OPS_PER_BLOCK,
     restriction,
     "more than one unsafe operation per `unsafe` block"

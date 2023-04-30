@@ -225,6 +225,23 @@ macro_rules! widening_impl {
     };
 }
 
+macro_rules! conv_rhs_for_unchecked_shift {
+    ($SelfT:ty, $x:expr) => {{
+        #[inline]
+        fn conv(x: u32) -> $SelfT {
+            // FIXME(const-hack) replace with `.try_into().ok().unwrap_unchecked()`.
+            // SAFETY: Any legal shift amount must be losslessly representable in the self type.
+            unsafe { x.try_into().ok().unwrap_unchecked() }
+        }
+        #[inline]
+        const fn const_conv(x: u32) -> $SelfT {
+            x as _
+        }
+
+        intrinsics::const_eval_select(($x,), const_conv, conv)
+    }};
+}
+
 impl i8 {
     int_impl! {
         Self = i8,

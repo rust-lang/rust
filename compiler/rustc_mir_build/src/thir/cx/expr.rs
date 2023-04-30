@@ -5,7 +5,7 @@ use crate::thir::util::UserAnnotatedTyHelpers;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 use rustc_middle::hir::place::Place as HirPlace;
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::hir::place::ProjectionKind as HirProjectionKind;
@@ -663,6 +663,14 @@ impl<'tcx> Cx<'tcx> {
                 options: asm.options,
                 line_spans: asm.line_spans,
             })),
+
+            hir::ExprKind::OffsetOf(_, _) => {
+                let data = self.typeck_results.offset_of_data();
+                let &(container, ref indices) = data.get(expr.hir_id).unwrap();
+                let fields = tcx.mk_fields_from_iter(indices.iter().copied());
+
+                ExprKind::OffsetOf { container, fields }
+            }
 
             hir::ExprKind::ConstBlock(ref anon_const) => {
                 let ty = self.typeck_results().node_type(anon_const.hir_id);

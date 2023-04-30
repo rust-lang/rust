@@ -218,5 +218,13 @@ note: the lint level is defined here
 LL | #[deny(unused_mut)]
    |        ^^^^^^^^^^
 
-error: aborting due to previous error; 25 warnings emitted
+warning: variable does not need to be mutable
+  --> $DIR/lint-unused-mut-variables.rs:212:28
+   |
+LL | fn write_through_reference(mut arg: &mut Arg) {
+   |                            ----^^^
+   |                            |
+   |                            help: remove this `mut`
+
+error: aborting due to previous error; 26 warnings emitted
 
