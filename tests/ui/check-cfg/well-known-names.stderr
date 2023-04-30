@@ -4,7 +4,7 @@ warning: unexpected `cfg` condition name
 LL | #[cfg(target_oz = "linux")]
    |       ---------^^^^^^^^^^
    |       |
-   |       help: there is an config with a similar name: `target_os`
+   |       help: there is a config with a similar name: `target_os`
    |
    = note: `#[warn(unexpected_cfgs)]` on by default
 
@@ -14,13 +14,13 @@ warning: unexpected `cfg` condition name
 LL | #[cfg(features = "foo")]
    |       --------^^^^^^^^
    |       |
-   |       help: there is an config with a similar name: `feature`
+   |       help: there is a config with a similar name: `feature`
 
 warning: unexpected `cfg` condition name
   --> $DIR/well-known-names.rs:20:7
    |
 LL | #[cfg(uniw)]
-   |       ^^^^ help: there is an config with a similar name: `unix`
+   |       ^^^^ help: there is a config with a similar name: `unix`
 
 warning: 3 warnings emitted
 

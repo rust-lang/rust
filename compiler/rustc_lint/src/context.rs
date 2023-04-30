@@ -36,6 +36,7 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, print::Printer, subst::GenericArg, RegisteredTools, Ty, TyCtxt};
+use rustc_session::config::ExpectedValues;
 use rustc_session::lint::{BuiltinLintDiagnostics, LintExpectationId};
 use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
 use rustc_session::Session;
@@ -768,23 +769,51 @@ pub trait LintContext: Sized {
                     db.help(help);
                     db.note("see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information");
                 },
-                BuiltinLintDiagnostics::UnexpectedCfg((name, name_span), None) => {
+                BuiltinLintDiagnostics::UnexpectedCfgName((name, name_span), value) => {
                     let possibilities: Vec<Symbol> = sess.parse_sess.check_config.expecteds.keys().map(|s| *s).collect();
 
                     // Suggest the most probable if we found one
                     if let Some(best_match) = find_best_match_for_name(&possibilities, name, None) {
-                        db.span_suggestion(name_span, "there is an config with a similar name", best_match, Applicability::MaybeIncorrect);
+                        if let Some(ExpectedValues::Some(best_match_values)) =
+                            sess.parse_sess.check_config.expecteds.get(&best_match) {
+                            let mut possibilities = best_match_values.iter()
+                                .flatten()
+                                .map(Symbol::as_str)
+                                .collect::<Vec<_>>();
+                            possibilities.sort();
+
+                            if let Some((value, value_span)) = value {
+                                if best_match_values.contains(&Some(value)) {
+                                    db.span_suggestion(name_span, "there is a config with a similar name and value", best_match, Applicability::MaybeIncorrect);
+                                } else if best_match_values.contains(&None) {
+                                    db.span_suggestion(name_span.to(value_span), "there is a config with a similar name and no value", best_match, Applicability::MaybeIncorrect);
+                                } else if let Some(first_value) = possibilities.first() {
+                                    db.span_suggestion(name_span.to(value_span), "there is a config with a similar name and different values", format!("{best_match} = \"{first_value}\""), Applicability::MaybeIncorrect);
+                                } else {
+                                    db.span_suggestion(name_span.to(value_span), "there is a config with a similar name and different values", best_match, Applicability::MaybeIncorrect);
+                                };
+                            } else {
+                                db.span_suggestion(name_span, "there is a config with a similar name", best_match, Applicability::MaybeIncorrect);
+                            }
+
+                            if !possibilities.is_empty() {
+                                let possibilities = possibilities.join("`, `");
+                                db.help(format!("expected values for `{best_match}` are: `{possibilities}`"));
+                            }
+                        } else {
+                            db.span_suggestion(name_span, "there is a config with a similar name", best_match, Applicability::MaybeIncorrect);
+                        }
                     }
                 },
-                BuiltinLintDiagnostics::UnexpectedCfg((name, name_span), Some((value, value_span))) => {
-                    let Some(rustc_session::config::ExpectedValues::Some(values)) = &sess.parse_sess.check_config.expecteds.get(&name) else {
+                BuiltinLintDiagnostics::UnexpectedCfgValue((name, name_span), value) => {
+                    let Some(ExpectedValues::Some(values)) = &sess.parse_sess.check_config.expecteds.get(&name) else {
                         bug!("it shouldn't be possible to have a diagnostic on a value whose name is not in values");
                     };
                     let mut have_none_possibility = false;
                     let possibilities: Vec<Symbol> = values.iter()
                         .inspect(|a| have_none_possibility |= a.is_none())
                         .copied()
-                        .filter_map(std::convert::identity)
+                        .flatten()
                         .collect();
 
                     // Show the full list if all possible values for a given name, but don't do it
@@ -800,13 +829,20 @@ pub trait LintContext: Sized {
                             db.note(format!("expected values for `{name}` are: {none}`{possibilities}`"));
                         }
 
-                        // Suggest the most probable if we found one
-                        if let Some(best_match) = find_best_match_for_name(&possibilities, value, None) {
-                            db.span_suggestion(value_span, "there is an expected value with a similar name", format!("\"{best_match}\""), Applicability::MaybeIncorrect);
+                        if let Some((value, value_span)) = value {
+                            // Suggest the most probable if we found one
+                            if let Some(best_match) = find_best_match_for_name(&possibilities, value, None) {
+                                db.span_suggestion(value_span, "there is a expected value with a similar name", format!("\"{best_match}\""), Applicability::MaybeIncorrect);
+
+                            }
+                        } else if let &[first_possibility] = &possibilities[..] {
+                            db.span_suggestion(name_span.shrink_to_hi(), "specify a config value", format!(" = \"{first_possibility}\""), Applicability::MaybeIncorrect);
                         }
                     } else if have_none_possibility {
                         db.note(format!("no expected value for `{name}`"));
-                        db.span_suggestion(name_span.shrink_to_hi().to(value_span), "remove the value", "", Applicability::MaybeIncorrect);
+                        if let Some((_value, value_span)) = value {
+                            db.span_suggestion(name_span.shrink_to_hi().to(value_span), "remove the value", "", Applicability::MaybeIncorrect);
+                        }
                     }
                 },
                 BuiltinLintDiagnostics::DeprecatedWhereclauseLocation(new_span, suggestion) => {

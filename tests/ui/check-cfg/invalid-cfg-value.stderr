@@ -4,7 +4,7 @@ warning: unexpected `cfg` condition value
 LL | #[cfg(feature = "sedre")]
    |       ^^^^^^^^^^-------
    |                 |
-   |                 help: there is an expected value with a similar name: `"serde"`
+   |                 help: there is a expected value with a similar name: `"serde"`
    |
    = note: expected values for `feature` are: `full`, `serde`
    = note: `#[warn(unexpected_cfgs)]` on by default

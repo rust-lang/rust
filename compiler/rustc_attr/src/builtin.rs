@@ -589,7 +589,7 @@ pub fn cfg_matches(
                     cfg.span,
                     lint_node_id,
                     "unexpected `cfg` condition value",
-                    BuiltinLintDiagnostics::UnexpectedCfg(
+                    BuiltinLintDiagnostics::UnexpectedCfgValue(
                         (cfg.name, cfg.name_span),
                         cfg.value.map(|v| (v, cfg.value_span.unwrap())),
                     ),
@@ -601,7 +601,10 @@ pub fn cfg_matches(
                     cfg.span,
                     lint_node_id,
                     "unexpected `cfg` condition name",
-                    BuiltinLintDiagnostics::UnexpectedCfg((cfg.name, cfg.name_span), None),
+                    BuiltinLintDiagnostics::UnexpectedCfgName(
+                        (cfg.name, cfg.name_span),
+                        cfg.value.map(|v| (v, cfg.value_span.unwrap())),
+                    ),
                 );
             }
             _ => { /* not unexpected */ }
