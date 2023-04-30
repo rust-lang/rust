@@ -71,8 +71,8 @@ impl<T> EraseType for Result<&'_ T, traits::CodegenObligationError> {
     type Result = [u8; size_of::<Result<&'static (), traits::CodegenObligationError>>()];
 }
 
-impl<T> EraseType for Result<&'_ T, ty::layout::FnAbiError<'_>> {
-    type Result = [u8; size_of::<Result<&'static (), ty::layout::FnAbiError<'static>>>()];
+impl<T> EraseType for Result<&'_ T, &'_ ty::layout::FnAbiError<'_>> {
+    type Result = [u8; size_of::<Result<&'static (), &'static ty::layout::FnAbiError<'static>>>()];
 }
 
 impl<T> EraseType for Result<(&'_ T, rustc_middle::thir::ExprId), rustc_errors::ErrorGuaranteed> {

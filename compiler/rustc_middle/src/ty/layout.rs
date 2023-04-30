@@ -1260,18 +1260,6 @@ pub enum FnAbiError<'tcx> {
     AdjustForForeignAbi(call::AdjustForForeignAbiError),
 }
 
-impl<'tcx> From<LayoutError<'tcx>> for FnAbiError<'tcx> {
-    fn from(err: LayoutError<'tcx>) -> Self {
-        Self::Layout(err)
-    }
-}
-
-impl From<call::AdjustForForeignAbiError> for FnAbiError<'_> {
-    fn from(err: call::AdjustForForeignAbiError) -> Self {
-        Self::AdjustForForeignAbi(err)
-    }
-}
-
 impl<'a, 'b> IntoDiagnostic<'a, !> for FnAbiError<'b> {
     fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, !> {
         match self {
@@ -1331,7 +1319,7 @@ pub trait FnAbiOf<'tcx>: FnAbiOfHelpers<'tcx> {
         let tcx = self.tcx().at(span);
 
         MaybeResult::from(tcx.fn_abi_of_fn_ptr(self.param_env().and((sig, extra_args))).map_err(
-            |err| self.handle_fn_abi_err(err, span, FnAbiRequest::OfFnPtr { sig, extra_args }),
+            |err| self.handle_fn_abi_err(*err, span, FnAbiRequest::OfFnPtr { sig, extra_args }),
         ))
     }
 
@@ -1358,7 +1346,11 @@ pub trait FnAbiOf<'tcx>: FnAbiOfHelpers<'tcx> {
                 // However, we don't do this early in order to avoid calling
                 // `def_span` unconditionally (which may have a perf penalty).
                 let span = if !span.is_dummy() { span } else { tcx.def_span(instance.def_id()) };
-                self.handle_fn_abi_err(err, span, FnAbiRequest::OfInstance { instance, extra_args })
+                self.handle_fn_abi_err(
+                    *err,
+                    span,
+                    FnAbiRequest::OfInstance { instance, extra_args },
+                )
             }),
         )
     }

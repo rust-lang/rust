@@ -1394,7 +1394,7 @@ rustc_queries! {
     /// instead, where the instance is an `InstanceDef::Virtual`.
     query fn_abi_of_fn_ptr(
         key: ty::ParamEnvAnd<'tcx, (ty::PolyFnSig<'tcx>, &'tcx ty::List<Ty<'tcx>>)>
-    ) -> Result<&'tcx abi::call::FnAbi<'tcx, Ty<'tcx>>, ty::layout::FnAbiError<'tcx>> {
+    ) -> Result<&'tcx abi::call::FnAbi<'tcx, Ty<'tcx>>, &'tcx ty::layout::FnAbiError<'tcx>> {
         desc { "computing call ABI of `{}` function pointers", key.value.0 }
     }
 
@@ -1405,7 +1405,7 @@ rustc_queries! {
     /// to an `InstanceDef::Virtual` instance (of `<dyn Trait as Trait>::fn`).
     query fn_abi_of_instance(
         key: ty::ParamEnvAnd<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>
-    ) -> Result<&'tcx abi::call::FnAbi<'tcx, Ty<'tcx>>, ty::layout::FnAbiError<'tcx>> {
+    ) -> Result<&'tcx abi::call::FnAbi<'tcx, Ty<'tcx>>, &'tcx ty::layout::FnAbiError<'tcx>> {
         desc { "computing call ABI of `{}`", key.value.0 }
     }
 
