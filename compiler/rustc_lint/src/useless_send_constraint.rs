@@ -49,10 +49,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessSendConstraint {
                 USELESS_SEND_CONSTRAINT,
                 send_bound.trait_ref.hir_ref_id, // is this correct?
                 send_bound.span,
-                UselessSendConstraintDiag {
-                    only_trait,
-                    suggestion: send_bound.span,
-                },
+                UselessSendConstraintDiag { only_trait, suggestion: send_bound.span },
             )
         }
     }
