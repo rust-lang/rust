@@ -3174,6 +3174,46 @@ impl TraitRef {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Closure {
+    id: ClosureId,
+    subst: Substitution,
+}
+
+impl From<Closure> for ClosureId {
+    fn from(value: Closure) -> Self {
+        value.id
+    }
+}
+
+impl Closure {
+    fn as_ty(self) -> Ty {
+        TyKind::Closure(self.id, self.subst).intern(Interner)
+    }
+
+    pub fn display_with_id(&self, db: &dyn HirDatabase) -> String {
+        self.clone().as_ty().display(db).with_closure_style(ClosureStyle::ClosureWithId).to_string()
+    }
+
+    pub fn display_with_impl(&self, db: &dyn HirDatabase) -> String {
+        self.clone().as_ty().display(db).with_closure_style(ClosureStyle::ImplFn).to_string()
+    }
+
+    pub fn captured_items(&self, db: &dyn HirDatabase) -> Vec<hir_ty::CapturedItem> {
+        let owner = db.lookup_intern_closure((self.id).into()).0;
+        let infer = &db.infer(owner);
+        let info = infer.closure_info(&self.id);
+        info.0.clone()
+    }
+
+    pub fn fn_trait(&self, db: &dyn HirDatabase) -> FnTrait {
+        let owner = db.lookup_intern_closure((self.id).into()).0;
+        let infer = &db.infer(owner);
+        let info = infer.closure_info(&self.id);
+        info.1
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Type {
     env: Arc<TraitEnvironment>,
@@ -3461,6 +3501,13 @@ impl Type {
 
     pub fn is_closure(&self) -> bool {
         matches!(self.ty.kind(Interner), TyKind::Closure { .. })
+    }
+
+    pub fn as_closure(&self) -> Option<Closure> {
+        match self.ty.kind(Interner) {
+            TyKind::Closure(id, subst) => Some(Closure { id: *id, subst: subst.clone() }),
+            _ => None,
+        }
     }
 
     pub fn is_fn(&self) -> bool {
@@ -4015,6 +4062,10 @@ impl Type {
             .into_iter()
             .map(|id| TypeOrConstParam { id }.split(db).either_into())
             .collect()
+    }
+
+    pub fn layout(&self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
+        layout_of_ty(db, &self.ty, self.env.krate)
     }
 }
 

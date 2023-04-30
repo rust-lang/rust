@@ -42,6 +42,38 @@ pub(super) fn type_info_of(
     type_info(sema, _config, original, adjusted)
 }
 
+pub(super) fn closure_expr(
+    sema: &Semantics<'_, RootDatabase>,
+    c: ast::ClosureExpr,
+) -> Option<HoverResult> {
+    let ty = &sema.type_of_expr(&c.into())?.original;
+    let layout = ty
+        .layout(sema.db)
+        .map(|x| format!(" // size = {}, align = {}", x.size.bytes(), x.align.abi.bytes()))
+        .unwrap_or_default();
+    let c = ty.as_closure()?;
+    let mut captures = c
+        .captured_items(sema.db)
+        .into_iter()
+        .map(|x| {
+            format!("* `{}` by {}", x.display_place(c.clone().into(), sema.db), x.display_kind())
+        })
+        .join("\n");
+    if captures.trim().is_empty() {
+        captures = "This closure captures nothing".to_string();
+    }
+    let mut res = HoverResult::default();
+    res.markup = format!(
+        "```rust\n{}{}\n{}\n```\n\n## Captures\n{}",
+        c.display_with_id(sema.db),
+        layout,
+        c.display_with_impl(sema.db),
+        captures,
+    )
+    .into();
+    Some(res)
+}
+
 pub(super) fn try_expr(
     sema: &Semantics<'_, RootDatabase>,
     _config: &HoverConfig,

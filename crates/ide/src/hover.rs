@@ -119,8 +119,8 @@ fn hover_simple(
         | T![crate]
         | T![Self]
         | T![_] => 4,
-        // index and prefix ops
-        T!['['] | T![']'] | T![?] | T![*] | T![-] | T![!] => 3,
+        // index and prefix ops and closure pipe
+        T!['['] | T![']'] | T![?] | T![*] | T![-] | T![!] | T![|] => 3,
         kind if kind.is_keyword() => 2,
         T!['('] | T![')'] => 2,
         kind if kind.is_trivia() => 0,
@@ -218,6 +218,16 @@ fn hover_simple(
                     }
                 };
                 render::type_info_of(sema, config, &Either::Left(call_expr))
+            })
+        })
+        // try closure
+        .or_else(|| {
+            descended().find_map(|token| {
+                if token.kind() != T![|] {
+                    return None;
+                }
+                let c = token.parent().and_then(|x| x.parent()).and_then(ast::ClosureExpr::cast)?;
+                render::closure_expr(sema, c)
             })
         });
 
