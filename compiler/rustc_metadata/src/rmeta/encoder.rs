@@ -823,6 +823,8 @@ fn should_encode_span(def_kind: DefKind) -> bool {
         | DefKind::TraitAlias
         | DefKind::AssocTy
         | DefKind::TyParam
+        | DefKind::ConstParam
+        | DefKind::LifetimeParam
         | DefKind::Fn
         | DefKind::Const
         | DefKind::Static(_)
@@ -837,12 +839,10 @@ fn should_encode_span(def_kind: DefKind) -> bool {
         | DefKind::Impl { .. }
         | DefKind::Closure
         | DefKind::Generator => true,
-        DefKind::ConstParam
-        | DefKind::ExternCrate
+        DefKind::ExternCrate
         | DefKind::Use
         | DefKind::ForeignMod
         | DefKind::ImplTraitPlaceholder
-        | DefKind::LifetimeParam
         | DefKind::GlobalAsm => false,
     }
 }
