@@ -131,7 +131,7 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
                     self.unused_import(self.base_id).add(id);
                 }
             }
-            ast::UseTreeKind::Nested(ref nested) => self.check_imports_as_underscore(&nested.items),
+            ast::UseTreeKind::Nested(ref items, _) => self.check_imports_as_underscore(items),
             _ => {}
         }
     }
@@ -183,8 +183,8 @@ impl<'a, 'b, 'tcx> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
             return;
         }
 
-        if let ast::UseTreeKind::Nested(ref nested) = use_tree.kind {
-            if nested.items.is_empty() {
+        if let ast::UseTreeKind::Nested(ref items, _) = use_tree.kind {
+            if items.is_empty() {
                 self.unused_import(self.base_id).add(id);
             }
         } else {
@@ -222,8 +222,8 @@ fn calc_unused_spans(
                 UnusedSpanResult::Used
             }
         }
-        ast::UseTreeKind::Nested(ref nested) => {
-            if nested.items.is_empty() {
+        ast::UseTreeKind::Nested(ref nested, span) => {
+            if nested.is_empty() {
                 return UnusedSpanResult::FlatUnused(use_tree.span, full_span);
             }
 
@@ -237,7 +237,7 @@ fn calc_unused_spans(
             // adjacent imports will have their spans merged.
             let mut num_imports_removed = 0;
 
-            for (pos, (use_tree, use_tree_id)) in nested.items.iter().enumerate() {
+            for (pos, (use_tree, use_tree_id)) in nested.iter().enumerate() {
                 let remove = match calc_unused_spans(unused_import, use_tree, *use_tree_id) {
                     UnusedSpanResult::Used => {
                         all_nested_unused = false;
@@ -255,21 +255,20 @@ fn calc_unused_spans(
                         all_nested_unused = false;
                         unused_spans.append(&mut spans);
                         to_remove.append(&mut to_remove_extra);
-
                         None
                     }
                 };
                 if let Some(remove) = remove {
-                    let remove_span = if nested.items.len() == 1 {
+                    let remove_span = if nested.len() == 1 {
                         remove
-                    } else if pos == nested.items.len() - 1 || !all_nested_unused {
+                    } else if pos == nested.len() - 1 || !all_nested_unused {
                         // Delete everything from the end of the last import, to delete the
                         // previous comma
                         last_nested_import_removed = true;
-                        nested.items[pos - 1].0.span.shrink_to_hi().to(use_tree.span)
+                        nested[pos - 1].0.span.shrink_to_hi().to(use_tree.span)
                     } else {
                         // Delete everything until the next import, to delete the trailing commas
-                        use_tree.span.to(nested.items[pos + 1].0.span.shrink_to_lo())
+                        use_tree.span.to(nested[pos + 1].0.span.shrink_to_lo())
                     };
 
                     // Try to collapse adjacent spans into a single one. This prevents all cases of
@@ -292,40 +291,26 @@ fn calc_unused_spans(
             } else {
                 // If removing the nested imports leaves one import remaining, expand the removal
                 // span to include the braces, so that rustfix can remove them
-                if nested.items.len() - num_imports_removed == 1 {
+                if nested.len() - num_imports_removed == 1 {
                     if last_nested_import_removed {
                         // Expand the last import's span to include the braces, then add the first
                         // brace span
                         let new_span =
-                            to_remove.last().unwrap().shrink_to_lo().to(nested.span.shrink_to_hi());
+                            to_remove.last().unwrap().shrink_to_lo().to(span.shrink_to_hi());
                         *to_remove.last_mut().unwrap() = new_span;
 
                         to_remove.push(
-                            nested.span.shrink_to_lo().to(nested
-                                .items
-                                .first()
-                                .unwrap()
-                                .0
-                                .span
-                                .shrink_to_lo()),
+                            span.shrink_to_lo().to(nested.first().unwrap().0.span.shrink_to_lo()),
                         );
                     } else {
                         // Expand the first import's span to include the braces, then add the last
                         // brace span
-                        let new_span = nested
-                            .span
-                            .shrink_to_lo()
-                            .to(to_remove.first().unwrap().shrink_to_hi());
+                        let new_span =
+                            span.shrink_to_lo().to(to_remove.first().unwrap().shrink_to_hi());
                         *to_remove.first_mut().unwrap() = new_span;
 
                         to_remove.push(
-                            nested.span.shrink_to_hi().to(nested
-                                .items
-                                .last()
-                                .unwrap()
-                                .0
-                                .span
-                                .shrink_to_hi()),
+                            span.shrink_to_hi().to(nested.last().unwrap().0.span.shrink_to_hi()),
                         );
                     }
                 }

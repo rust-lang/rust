@@ -3,8 +3,7 @@ use rustc_ast::{
     token,
     tokenstream::{DelimSpan, TokenStream, TokenTree},
     BinOpKind, BorrowKind, DelimArgs, Expr, ExprKind, ItemKind, MacCall, MacDelimiter, MethodCall,
-    Mutability, Path, PathSegment, Stmt, StructRest, UnOp, UseTree, UseTreeKind, UseTreeNested,
-    DUMMY_NODE_ID,
+    Mutability, Path, PathSegment, Stmt, StructRest, UnOp, UseTree, UseTreeKind, DUMMY_NODE_ID,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -121,13 +120,13 @@ impl<'cx, 'a> Context<'cx, 'a> {
                 thin_vec![self.cx.attr_nested_word(sym::allow, sym::unused_imports, self.span)],
                 ItemKind::Use(UseTree {
                     prefix: self.cx.path(self.span, self.cx.std_path(&[sym::asserting])),
-                    kind: UseTreeKind::Nested(UseTreeNested {
-                        items: thin_vec![
+                    kind: UseTreeKind::Nested(
+                        thin_vec![
                             nested_tree(self, sym::TryCaptureGeneric),
                             nested_tree(self, sym::TryCapturePrintable),
                         ],
-                        span: self.span,
-                    }),
+                        self.span,
+                    ),
                     span: self.span,
                 }),
             ),

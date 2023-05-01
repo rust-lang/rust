@@ -601,7 +601,7 @@ pub fn eq_use_tree_kind(l: &UseTreeKind, r: &UseTreeKind) -> bool {
     match (l, r) {
         (Glob, Glob) => true,
         (Simple(l), Simple(r)) => both(l, r, |l, r| eq_id(*l, *r)),
-        (Nested(l), Nested(r)) => over(&l.items, &r.items, |(l, _), (r, _)| eq_use_tree(l, r)),
+        (Nested(l, _), Nested(r, _)) => over(l, r, |(l, _), (r, _)| eq_use_tree(l, r)),
         _ => false,
     }
 }

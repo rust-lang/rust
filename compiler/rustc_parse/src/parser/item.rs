@@ -976,26 +976,26 @@ impl<'a> Parser<'a> {
         Ok(if self.eat(&token::BinOp(token::Star)) {
             UseTreeKind::Glob
         } else {
-            UseTreeKind::Nested(self.parse_use_tree_list()?)
+            let (nested, span) = self.parse_use_tree_list()?;
+            UseTreeKind::Nested(nested, span)
         })
     }
 
-    /// Parses a `UseTreeKind::Nested(list)`.
+    /// Parses a `UseTreeKind::Nested(list, span)`.
     ///
     /// ```text
     /// USE_TREE_LIST = Ø | (USE_TREE `,`)* USE_TREE [`,`]
     /// ```
-    fn parse_use_tree_list(&mut self) -> PResult<'a, ast::UseTreeNested> {
+    fn parse_use_tree_list(&mut self) -> PResult<'a, (ThinVec<(UseTree, ast::NodeId)>, Span)> {
         let open_brace_span = self.token.span;
-        Ok(ast::UseTreeNested {
-            items: self
-                .parse_delim_comma_seq(Delimiter::Brace, |p| {
-                    p.recover_diff_marker();
-                    Ok((p.parse_use_tree()?, DUMMY_NODE_ID))
-                })
-                .map(|(r, _)| r)?,
-            span: open_brace_span.to(self.prev_token.span),
-        })
+        Ok((
+            self.parse_delim_comma_seq(Delimiter::Brace, |p| {
+                p.recover_diff_marker();
+                Ok((p.parse_use_tree()?, DUMMY_NODE_ID))
+            })
+            .map(|(r, _)| r)?,
+            open_brace_span.to(self.prev_token.span),
+        ))
     }
 
     fn parse_rename(&mut self) -> PResult<'a, Option<Ident>> {
