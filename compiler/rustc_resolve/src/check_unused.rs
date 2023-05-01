@@ -232,6 +232,11 @@ fn calc_unused_spans(
             let mut all_nested_unused = true;
             let mut previous_unused = false;
             let mut last_nested_import_removed = false;
+
+            // We cannot use `to_remove` to count the number of removed imports because
+            // adjacent imports will have their spans merged.
+            let mut num_imports_removed = 0;
+
             for (pos, (use_tree, use_tree_id)) in nested.items.iter().enumerate() {
                 let remove = match calc_unused_spans(unused_import, use_tree, *use_tree_id) {
                     UnusedSpanResult::Used => {
@@ -275,6 +280,8 @@ fn calc_unused_spans(
                     } else {
                         to_remove.push(remove_span);
                     }
+
+                    num_imports_removed += 1;
                 }
                 previous_unused = remove.is_some();
             }
@@ -285,7 +292,7 @@ fn calc_unused_spans(
             } else {
                 // If removing the nested imports leaves one import remaining, expand the removal
                 // span to include the braces, so that rustfix can remove them
-                if nested.items.len() - to_remove.len() == 1 {
+                if nested.items.len() - num_imports_removed == 1 {
                     if last_nested_import_removed {
                         // Expand the last import's span to include the braces, then add the first
                         // brace span
