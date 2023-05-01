@@ -28,7 +28,7 @@ termize = "0.1"
 
 [dev-dependencies]
 compiletest_rs = { version = "0.10", features = ["tmp"] }
-tester = "0.9"
+tester = "0.9.1"
 regex = "1.5"
 toml = "0.5"
 walkdir = "2.3"
