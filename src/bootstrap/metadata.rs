@@ -74,6 +74,7 @@ fn workspace_members(build: &Build) -> impl Iterator<Item = Package> {
     let collect_metadata = |manifest_path| {
         let mut cargo = Command::new(&build.initial_cargo);
         cargo
+            .env("RUSTC_BOOTSTRAP", "1")
             .arg("metadata")
             .arg("--format-version")
             .arg("1")
