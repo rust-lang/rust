@@ -3,5 +3,6 @@
 // ignore-emscripten no processes
 
 fn main() {
-    assert_ne!(14, 14);
+    let var = 1;
+    assert_eq!(var * 2, 3);
 }
