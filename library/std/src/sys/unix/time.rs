@@ -166,6 +166,16 @@ impl Timespec {
         }
         self.to_timespec()
     }
+
+    #[cfg(all(
+        target_os = "linux",
+        target_env = "gnu",
+        target_pointer_width = "32",
+        not(target_arch = "riscv32")
+    ))]
+    pub fn to_timespec64(&self) -> __timespec64 {
+        __timespec64::new(self.tv_sec, self.tv_nsec.0 as _)
+    }
 }
 
 impl From<libc::timespec> for Timespec {
@@ -188,6 +198,18 @@ pub(in crate::sys::unix) struct __timespec64 {
     pub(in crate::sys::unix) tv_nsec: i32,
     #[cfg(target_endian = "little")]
     _padding: i32,
+}
+
+#[cfg(all(
+    target_os = "linux",
+    target_env = "gnu",
+    target_pointer_width = "32",
+    not(target_arch = "riscv32")
+))]
+impl __timespec64 {
+    pub(in crate::sys::unix) fn new(tv_sec: i64, tv_nsec: i32) -> Self {
+        Self { tv_sec, tv_nsec, _padding: 0 }
+    }
 }
 
 #[cfg(all(
