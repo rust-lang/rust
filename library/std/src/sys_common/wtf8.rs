@@ -501,6 +501,7 @@ pub struct Wtf8 {
 }
 
 impl AsInner<[u8]> for Wtf8 {
+    #[inline]
     fn as_inner(&self) -> &[u8] {
         &self.bytes
     }

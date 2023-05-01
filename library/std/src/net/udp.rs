@@ -788,6 +788,7 @@ impl UdpSocket {
 // `AsRawSocket`/`IntoRawSocket`/`FromRawSocket` on Windows.
 
 impl AsInner<net_imp::UdpSocket> for UdpSocket {
+    #[inline]
     fn as_inner(&self) -> &net_imp::UdpSocket {
         &self.0
     }

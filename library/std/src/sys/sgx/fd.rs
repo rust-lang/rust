@@ -62,6 +62,7 @@ impl FileDesc {
 }
 
 impl AsInner<Fd> for FileDesc {
+    #[inline]
     fn as_inner(&self) -> &Fd {
         &self.fd
     }

@@ -89,6 +89,7 @@ impl IntoInner<Vec<u8>> for Buf {
 }
 
 impl AsInner<[u8]> for Buf {
+    #[inline]
     fn as_inner(&self) -> &[u8] {
         &self.inner
     }
