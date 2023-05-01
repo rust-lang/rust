@@ -62,8 +62,10 @@ impl<T> RangeMap<T> {
     /// *not* split items if they overlap with the edges. Do not use this to mutate
     /// through interior mutability.
     ///
-    /// The iterator also provides the offset of the given element.
-    pub fn iter(&self, offset: Size, len: Size) -> impl Iterator<Item = (Size, &T)> {
+    /// The iterator also provides the range of the given element.
+    /// How exactly the ranges are split can differ even for otherwise identical
+    /// maps, so user-visible behavior should never depend on the exact range.
+    pub fn iter(&self, offset: Size, len: Size) -> impl Iterator<Item = (ops::Range<u64>, &T)> {
         let offset = offset.bytes();
         let len = len.bytes();
         // Compute a slice starting with the elements we care about.
@@ -84,13 +86,21 @@ impl<T> RangeMap<T> {
         slice
             .iter()
             .take_while(move |elem| elem.range.start < end)
-            .map(|elem| (Size::from_bytes(elem.range.start), &elem.data))
+            .map(|elem| (elem.range.clone(), &elem.data))
     }
 
-    pub fn iter_mut_all(&mut self) -> impl Iterator<Item = &mut T> {
-        self.v.iter_mut().map(|elem| &mut elem.data)
+    /// Provides mutable iteration over all elements.
+    /// The iterator also provides the range of the given element.
+    /// How exactly the ranges are split can differ even for otherwise identical
+    /// maps, so user-visible behavior should never depend on the exact range.
+    pub fn iter_mut_all(&mut self) -> impl Iterator<Item = (ops::Range<u64>, &mut T)> {
+        self.v.iter_mut().map(|elem| (elem.range.clone(), &mut elem.data))
     }
 
+    /// Provides iteration over all elements.
+    /// The iterator also provides the range of the given element.
+    /// How exactly the ranges are split can differ even for otherwise identical
+    /// maps, so user-visible behavior should never depend on the exact range.
     pub fn iter_all(&self) -> impl Iterator<Item = (ops::Range<u64>, &T)> {
         self.v.iter().map(|elem| (elem.range.clone(), &elem.data))
     }
@@ -126,8 +136,15 @@ impl<T> RangeMap<T> {
     /// to make sure that when they are mutated, the effect is constrained to the given range.
     /// Moreover, this will opportunistically merge neighbouring equal blocks.
     ///
-    /// The iterator also provides the offset of the given element.
-    pub fn iter_mut(&mut self, offset: Size, len: Size) -> impl Iterator<Item = (Size, &mut T)>
+    /// The iterator also provides the range of the given element.
+    /// How exactly the ranges are split (both prior to and resulting from the execution of this
+    /// function) can differ even for otherwise identical maps,
+    /// so user-visible behavior should never depend on the exact range.
+    pub fn iter_mut(
+        &mut self,
+        offset: Size,
+        len: Size,
+    ) -> impl Iterator<Item = (ops::Range<u64>, &mut T)>
     where
         T: Clone + PartialEq,
     {
@@ -208,7 +225,7 @@ impl<T> RangeMap<T> {
             // Now we yield the slice. `end` is inclusive.
             &mut self.v[first_idx..=end_idx]
         };
-        slice.iter_mut().map(|elem| (Size::from_bytes(elem.range.start), &mut elem.data))
+        slice.iter_mut().map(|elem| (elem.range.clone(), &mut elem.data))
     }
 }
 

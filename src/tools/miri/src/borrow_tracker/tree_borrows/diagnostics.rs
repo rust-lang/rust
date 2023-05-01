@@ -3,7 +3,6 @@ use std::ops::Range;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::{Span, SpanData};
-use rustc_target::abi::Size;
 
 use crate::borrow_tracker::tree_borrows::{
     perms::{PermTransition, Permission},
@@ -14,18 +13,30 @@ use crate::borrow_tracker::{AccessKind, ProtectorKind};
 use crate::*;
 
 /// Complete data for an event:
-/// - `kind` is what happened to the permissions
-/// - `access_kind` and `access_range` describe the access that caused the event
-/// - `offset` allows filtering only the relevant events for a given memory location
-/// (see how we perform the filtering in `History::extract_relevant`.
-/// - `span` is the line of code in question
 #[derive(Clone, Debug)]
 pub struct Event {
+    /// Transformation of permissions that occured because of this event
     pub transition: PermTransition,
+    /// Kind of the access that triggered this event
     pub access_kind: AccessKind,
+    /// Relative position of the tag to the one used for the access
     pub is_foreign: bool,
+    /// User-visible range of the access
     pub access_range: AllocRange,
-    pub offset: Size,
+    /// The transition recorded by this event only occured on a subrange of
+    /// `access_range`: a single access on `access_range` triggers several events,
+    /// each with their own mutually disjoint `transition_range`. No-op transitions
+    /// should not be recorded as events, so the union of all `transition_range` is not
+    /// necessarily the entire `access_range`.
+    ///
+    /// No data from any `transition_range` should ever be user-visible, because
+    /// both the start and end of `transition_range` are entirely dependent on the
+    /// internal representation of `RangeMap` which is supposed to be opaque.
+    /// What will be shown in the error message is the first byte `error_offset` of
+    /// the `TbError`, which should satisfy
+    /// `event.transition_range.contains(error.error_offset)`.
+    pub transition_range: Range<u64>,
+    /// Line of code that triggered this event
     pub span: Span,
 }
 
@@ -35,9 +46,9 @@ pub struct Event {
 /// Available filtering methods include `History::forget` and `History::extract_relevant`.
 #[derive(Clone, Debug)]
 pub struct History {
-    pub tag: BorTag,
-    pub created: (Span, Permission),
-    pub events: Vec<Event>,
+    tag: BorTag,
+    created: (Span, Permission),
+    events: Vec<Event>,
 }
 
 /// History formatted for use by `src/diagnostics.rs`.
@@ -60,12 +71,7 @@ impl HistoryData {
     // Format events from `new_history` into those recorded by `self`.
     //
     // NOTE: also converts `Span` to `SpanData`.
-    pub fn extend(
-        &mut self,
-        new_history: History,
-        tag_name: &'static str,
-        show_initial_state: bool,
-    ) {
+    fn extend(&mut self, new_history: History, tag_name: &'static str, show_initial_state: bool) {
         let History { tag, created, events } = new_history;
         let this = format!("the {tag_name} tag {tag:?}");
         let msg_initial_state = format!(", in the initial state {}", created.1);
@@ -75,9 +81,16 @@ impl HistoryData {
         );
 
         self.events.push((Some(created.0.data()), msg_creation));
-        for &Event { transition, access_kind, is_foreign, access_range, span, offset: _ } in &events
+        for &Event {
+            transition,
+            access_kind,
+            is_foreign,
+            access_range,
+            span,
+            transition_range: _,
+        } in &events
         {
-            // NOTE: `offset` is explicitly absent from the error message, it has no significance
+            // NOTE: `transition_range` is explicitly absent from the error message, it has no significance
             // to the user. The meaningful one is `access_range`.
             self.events.push((Some(span.data()), format!("{this} then transitioned {transition} due to a {rel} {access_kind} at offsets {access_range:?}", rel = if is_foreign { "foreign" } else { "child" })));
             self.events.push((None, format!("this corresponds to {}", transition.summary())));
@@ -197,44 +210,19 @@ impl History {
         History { events: Vec::new(), created: self.created, tag: self.tag }
     }
 
-    /// Reconstruct the history relevant to `error_offset` knowing that
-    /// its permission followed `complete_transition`.
-    ///
-    /// Here's how we do this:
-    /// - we know `full := complete_transition` the transition of the permission from
-    /// its initialization to the state just before the error was caused,
-    /// we want to find a chain of events that produces `full`
-    /// - we decompose `full` into `pre o post` where
-    /// `pre` is the best applicable transition from recorded events
-    /// - we select the event that caused `pre` and iterate
-    /// to find the chain of events that produces `full := post`
-    ///
-    /// To find the "best applicable transition" for full:
-    /// - eliminate events that cannot be applied because their offset is too big
-    /// - eliminate events that cannot be applied because their starting point is wrong
-    /// - select the one that happened closest to the range of interest
-    fn extract_relevant(&self, complete_transition: PermTransition, error_offset: Size) -> Self {
-        let mut selected_events: Vec<Event> = Vec::new();
-        let mut full = complete_transition;
-        while !full.is_noop() {
-            let (pre, post) = self
+    /// Reconstruct the history relevant to `error_offset` by filtering
+    /// only events whose range contains the offset we are interested in.
+    fn extract_relevant(&self, error_offset: u64) -> Self {
+        History {
+            events: self
                 .events
                 .iter()
-                .filter(|e| e.offset <= error_offset)
-                .filter_map(|pre_canditate| {
-                    full.apply_start(pre_canditate.transition)
-                        .map(|post_canditate| (pre_canditate, post_canditate))
-                })
-                .max_by_key(|(pre_canditate, _post_candidate)| pre_canditate.offset)
-                .unwrap();
-            // If this occurs we will loop infinitely !
-            // Make sure to only put non-noop transitions in `History`.
-            assert!(!pre.transition.is_noop());
-            full = post;
-            selected_events.push(pre.clone());
+                .filter(|e| e.transition_range.contains(&error_offset))
+                .cloned()
+                .collect::<Vec<_>>(),
+            created: self.created,
+            tag: self.tag,
         }
-
-        History { events: selected_events, created: self.created, tag: self.tag }
     }
 }
 
@@ -242,8 +230,8 @@ impl History {
 pub(super) struct TbError<'node> {
     /// What failure occurred.
     pub error_kind: TransitionError,
-    /// The byte at which the conflict occured.
-    pub error_offset: Size,
+    /// The offset (into the allocation) at which the conflict occurred.
+    pub error_offset: u64,
     /// The tag on which the error was triggered.
     /// On protector violations, this is the tag that was protected.
     /// On accesses rejected due to insufficient permissions, this is the
@@ -261,12 +249,11 @@ impl TbError<'_> {
     /// Produce a UB error.
     pub fn build<'tcx>(self) -> InterpError<'tcx> {
         use TransitionError::*;
-        let started_as = self.conflicting_info.history.created.1;
         let kind = self.access_kind;
         let accessed = self.accessed_info;
         let conflicting = self.conflicting_info;
         let accessed_is_conflicting = accessed.tag == conflicting.tag;
-        let (pre_error, title, details, conflicting_tag_name) = match self.error_kind {
+        let (title, details, conflicting_tag_name) = match self.error_kind {
             ChildAccessForbidden(perm) => {
                 let conflicting_tag_name =
                     if accessed_is_conflicting { "accessed" } else { "conflicting" };
@@ -280,7 +267,7 @@ impl TbError<'_> {
                 details.push(format!(
                     "the {conflicting_tag_name} tag {conflicting} has state {perm} which forbids child {kind}es"
                 ));
-                (perm, title, details, conflicting_tag_name)
+                (title, details, conflicting_tag_name)
             }
             ProtectedTransition(transition) => {
                 let conflicting_tag_name = "protected";
@@ -297,7 +284,7 @@ impl TbError<'_> {
                         loss = transition.summary(),
                     ),
                 ];
-                (transition.started(), title, details, conflicting_tag_name)
+                (title, details, conflicting_tag_name)
             }
             ProtectedDealloc => {
                 let conflicting_tag_name = "strongly protected";
@@ -308,16 +295,15 @@ impl TbError<'_> {
                     ),
                     format!("the {conflicting_tag_name} tag {conflicting} disallows deallocations"),
                 ];
-                (started_as, title, details, conflicting_tag_name)
+                (title, details, conflicting_tag_name)
             }
         };
-        let pre_transition = PermTransition::from(started_as, pre_error).unwrap();
         let mut history = HistoryData::default();
         if !accessed_is_conflicting {
             history.extend(self.accessed_info.history.forget(), "accessed", false);
         }
         history.extend(
-            self.conflicting_info.history.extract_relevant(pre_transition, self.error_offset),
+            self.conflicting_info.history.extract_relevant(self.error_offset),
             conflicting_tag_name,
             true,
         );

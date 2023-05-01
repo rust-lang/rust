@@ -459,7 +459,7 @@ impl<'tcx> Stack {
 impl Stacks {
     pub fn remove_unreachable_tags(&mut self, live_tags: &FxHashSet<BorTag>) {
         if self.modified_since_last_gc {
-            for stack in self.stacks.iter_mut_all() {
+            for (_stack_range, stack) in self.stacks.iter_mut_all() {
                 if stack.len() > 64 {
                     stack.retain(live_tags);
                 }
@@ -511,8 +511,8 @@ impl<'tcx> Stacks {
         ) -> InterpResult<'tcx>,
     ) -> InterpResult<'tcx> {
         self.modified_since_last_gc = true;
-        for (offset, stack) in self.stacks.iter_mut(range.start, range.size) {
-            let mut dcx = dcx_builder.build(&mut self.history, offset);
+        for (stack_range, stack) in self.stacks.iter_mut(range.start, range.size) {
+            let mut dcx = dcx_builder.build(&mut self.history, Size::from_bytes(stack_range.start));
             f(stack, &mut dcx, &mut self.exposed_tags)?;
             dcx_builder = dcx.unbuild();
         }
