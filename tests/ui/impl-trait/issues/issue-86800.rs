@@ -1,14 +1,12 @@
 #![feature(type_alias_impl_trait)]
 
 // edition:2021
-// unset-rustc-env:RUST_BACKTRACE
 // compile-flags:-Z treat-err-as-bug=1
-// error-pattern:stack backtrace:
+// error-pattern: aborting due to `-Z treat-err-as-bug=1`
 // failure-status:101
-// normalize-stderr-test "note: .*" -> ""
-// normalize-stderr-test "thread 'rustc' .*" -> ""
-// normalize-stderr-test " +[0-9]+:.*\n" -> ""
-// normalize-stderr-test " +at .*\n" -> ""
+// normalize-stderr-test ".*note: .*\n\n" -> ""
+// normalize-stderr-test "thread 'rustc' panicked.*\n" -> ""
+// rustc-env:RUST_BACKTRACE=0
 
 use std::future::Future;
 
