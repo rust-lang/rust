@@ -323,7 +323,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
 
             module = match ribs[i].kind {
-                RibKind::ModuleRibKind(module) => module,
+                RibKind::Module(module) => module,
                 RibKind::MacroDefinition(def) if def == self.macro_def(ident.span.ctxt()) => {
                     // If an invocation of this macro created `ident`, give up on `ident`
                     // and switch to `ident`'s source from the macro definition.
@@ -1083,7 +1083,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let ribs = &all_ribs[rib_index + 1..];
 
         // An invalid forward use of a generic parameter from a previous default.
-        if let RibKind::ForwardGenericParamBanRibKind = all_ribs[rib_index].kind {
+        if let RibKind::ForwardGenericParamBan = all_ribs[rib_index].kind {
             if let Some(span) = finalize {
                 let res_error = if rib_ident.name == kw::SelfUpper {
                     ResolutionError::SelfInGenericParamDefault
@@ -1103,14 +1103,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                 for rib in ribs {
                     match rib.kind {
-                        RibKind::NormalRibKind
-                        | RibKind::ClosureOrAsyncRibKind
-                        | RibKind::ModuleRibKind(..)
+                        RibKind::Normal
+                        | RibKind::ClosureOrAsync
+                        | RibKind::Module(..)
                         | RibKind::MacroDefinition(..)
-                        | RibKind::ForwardGenericParamBanRibKind => {
+                        | RibKind::ForwardGenericParamBan => {
                             // Nothing to do. Continue.
                         }
-                        RibKind::ItemRibKind(_) | RibKind::AssocItemRibKind => {
+                        RibKind::Item(_) | RibKind::AssocItem => {
                             // This was an attempt to access an upvar inside a
                             // named function item. This is not allowed, so we
                             // report an error.
@@ -1122,7 +1122,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 res_err = Some((span, CannotCaptureDynamicEnvironmentInFnItem));
                             }
                         }
-                        RibKind::ConstantItemRibKind(_, item) => {
+                        RibKind::ConstantItem(_, item) => {
                             // Still doesn't deal with upvars
                             if let Some(span) = finalize {
                                 let (span, resolution_error) =
@@ -1151,13 +1151,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             }
                             return Res::Err;
                         }
-                        RibKind::ConstParamTyRibKind => {
+                        RibKind::ConstParamTy => {
                             if let Some(span) = finalize {
                                 self.report_error(span, ParamInTyOfConstParam(rib_ident.name));
                             }
                             return Res::Err;
                         }
-                        RibKind::InlineAsmSymRibKind => {
+                        RibKind::InlineAsmSym => {
                             if let Some(span) = finalize {
                                 self.report_error(span, InvalidAsmSym);
                             }
@@ -1173,18 +1173,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             Res::Def(DefKind::TyParam, _) | Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } => {
                 for rib in ribs {
                     let has_generic_params: HasGenericParams = match rib.kind {
-                        RibKind::NormalRibKind
-                        | RibKind::ClosureOrAsyncRibKind
-                        | RibKind::ModuleRibKind(..)
+                        RibKind::Normal
+                        | RibKind::ClosureOrAsync
+                        | RibKind::Module(..)
                         | RibKind::MacroDefinition(..)
-                        | RibKind::InlineAsmSymRibKind
-                        | RibKind::AssocItemRibKind
-                        | RibKind::ForwardGenericParamBanRibKind => {
+                        | RibKind::InlineAsmSym
+                        | RibKind::AssocItem
+                        | RibKind::ForwardGenericParamBan => {
                             // Nothing to do. Continue.
                             continue;
                         }
 
-                        RibKind::ConstantItemRibKind(trivial, _) => {
+                        RibKind::ConstantItem(trivial, _) => {
                             let features = self.tcx.sess.features_untracked();
                             // HACK(min_const_generics): We currently only allow `N` or `{ N }`.
                             if !(trivial == ConstantHasGenerics::Yes
@@ -1225,8 +1225,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         }
 
                         // This was an attempt to use a type parameter outside its scope.
-                        RibKind::ItemRibKind(has_generic_params) => has_generic_params,
-                        RibKind::ConstParamTyRibKind => {
+                        RibKind::Item(has_generic_params) => has_generic_params,
+                        RibKind::ConstParamTy => {
                             if let Some(span) = finalize {
                                 self.report_error(
                                     span,
@@ -1252,15 +1252,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             Res::Def(DefKind::ConstParam, _) => {
                 for rib in ribs {
                     let has_generic_params = match rib.kind {
-                        RibKind::NormalRibKind
-                        | RibKind::ClosureOrAsyncRibKind
-                        | RibKind::ModuleRibKind(..)
+                        RibKind::Normal
+                        | RibKind::ClosureOrAsync
+                        | RibKind::Module(..)
                         | RibKind::MacroDefinition(..)
-                        | RibKind::InlineAsmSymRibKind
-                        | RibKind::AssocItemRibKind
-                        | RibKind::ForwardGenericParamBanRibKind => continue,
+                        | RibKind::InlineAsmSym
+                        | RibKind::AssocItem
+                        | RibKind::ForwardGenericParamBan => continue,
 
-                        RibKind::ConstantItemRibKind(trivial, _) => {
+                        RibKind::ConstantItem(trivial, _) => {
                             let features = self.tcx.sess.features_untracked();
                             // HACK(min_const_generics): We currently only allow `N` or `{ N }`.
                             if !(trivial == ConstantHasGenerics::Yes
@@ -1283,8 +1283,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             continue;
                         }
 
-                        RibKind::ItemRibKind(has_generic_params) => has_generic_params,
-                        RibKind::ConstParamTyRibKind => {
+                        RibKind::Item(has_generic_params) => has_generic_params,
+                        RibKind::ConstParamTy => {
                             if let Some(span) = finalize {
                                 self.report_error(
                                     span,
