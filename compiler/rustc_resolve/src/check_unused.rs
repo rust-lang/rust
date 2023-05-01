@@ -289,29 +289,26 @@ fn calc_unused_spans(
             } else if all_nested_unused {
                 UnusedSpanResult::NestedFullUnused(unused_spans, full_span)
             } else {
-                // If removing the nested imports leaves one import remaining, expand the removal
-                // span to include the braces, so that rustfix can remove them
+                // We have `nested.len()` nested imports, and we are removing `num_imports_removed`
+                // of them. If one remains, there will be braces around it, which we should remove
                 if nested.len() - num_imports_removed == 1 {
                     if last_nested_import_removed {
-                        // Expand the last import's span to include the braces, then add the first
-                        // brace span
-                        let new_span =
-                            to_remove.last().unwrap().shrink_to_lo().to(span.shrink_to_hi());
-                        *to_remove.last_mut().unwrap() = new_span;
+                        // The last nested import will be removed. Extend its span to include the
+                        // closing brace, then add the open brace span
+                        let last_import = to_remove.last_mut().unwrap();
+                        *last_import = last_import.to(span.shrink_to_hi());
 
-                        to_remove.push(
-                            span.shrink_to_lo().to(nested.first().unwrap().0.span.shrink_to_lo()),
-                        );
+                        let open_brace =
+                            span.shrink_to_lo().to(nested.first().unwrap().0.span.shrink_to_lo());
+                        to_remove.push(open_brace);
                     } else {
-                        // Expand the first import's span to include the braces, then add the last
-                        // brace span
-                        let new_span =
-                            span.shrink_to_lo().to(to_remove.first().unwrap().shrink_to_hi());
-                        *to_remove.first_mut().unwrap() = new_span;
+                        // Same as above, but for the first nested import
+                        let first_import = to_remove.first_mut().unwrap();
+                        *first_import = first_import.to(span.shrink_to_lo());
 
-                        to_remove.push(
-                            span.shrink_to_hi().to(nested.last().unwrap().0.span.shrink_to_hi()),
-                        );
+                        let close_brace =
+                            span.shrink_to_hi().to(nested.last().unwrap().0.span.shrink_to_hi());
+                        to_remove.push(close_brace);
                     }
                 }
 
