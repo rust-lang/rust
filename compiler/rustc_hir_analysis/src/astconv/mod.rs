@@ -1215,6 +1215,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         let projection_ty = if return_type_notation {
+            let mut emitted_bad_param_err = false;
             // If we have an method return type bound, then we need to substitute
             // the method's early bound params with suitable late-bound params.
             let mut num_bound_vars = candidate.bound_vars().len();
@@ -1230,16 +1231,35 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             },
                         )
                         .into(),
-                        GenericParamDefKind::Type { .. } => tcx
-                            .mk_bound(
+                        GenericParamDefKind::Type { .. } => {
+                            if !emitted_bad_param_err {
+                                tcx.sess.emit_err(
+                                    crate::errors::ReturnTypeNotationIllegalParam::Type {
+                                        span: path_span,
+                                        param_span: tcx.def_span(param.def_id),
+                                    },
+                                );
+                                emitted_bad_param_err = true;
+                            }
+                            tcx.mk_bound(
                                 ty::INNERMOST,
                                 ty::BoundTy {
                                     var: ty::BoundVar::from_usize(num_bound_vars),
                                     kind: ty::BoundTyKind::Param(param.def_id, param.name),
                                 },
                             )
-                            .into(),
+                            .into()
+                        }
                         GenericParamDefKind::Const { .. } => {
+                            if !emitted_bad_param_err {
+                                tcx.sess.emit_err(
+                                    crate::errors::ReturnTypeNotationIllegalParam::Const {
+                                        span: path_span,
+                                        param_span: tcx.def_span(param.def_id),
+                                    },
+                                );
+                                emitted_bad_param_err = true;
+                            }
                             let ty = tcx
                                 .type_of(param.def_id)
                                 .no_bound_vars()
