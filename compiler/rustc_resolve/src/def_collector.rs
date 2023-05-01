@@ -219,6 +219,14 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
         //
         // In that case, the impl-trait is lowered as an additional generic parameter.
         self.with_impl_trait(ImplTraitContext::Universal(self.parent_def), |this| {
+            if let GenericParamKind::Const { kw_span: _, ty, default: Some(ct) } = &param.kind {
+                this.visit_ty(ty);
+                match ct.value.is_potential_trivial_const_arg() {
+                    Some(_) => visit::walk_anon_const(this, ct),
+                    None => this.visit_anon_const(ct),
+                }
+                return;
+            }
             visit::walk_generic_param(this, param)
         });
     }
@@ -241,15 +249,26 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
         }
     }
 
+    fn visit_generic_arg(&mut self, generic_arg: &'a GenericArg) {
+        if let GenericArg::Const(anon_ct) = generic_arg {
+            if anon_ct.value.is_potential_trivial_const_arg().is_some() {
+                visit::walk_anon_const(self, &anon_ct);
+                return;
+            }
+        }
+        visit::walk_generic_arg(self, generic_arg);
+    }
+
     fn visit_anon_const(&mut self, constant: &'a AnonConst) {
         let def = self.create_def(constant.id, DefPathData::AnonConst, constant.value.span);
+        debug!(?constant, ?def);
         self.with_parent(def, |this| visit::walk_anon_const(this, constant));
     }
 
     fn visit_expr(&mut self, expr: &'a Expr) {
-        let parent_def = match expr.kind {
+        let parent_def = match &expr.kind {
             ExprKind::MacCall(..) => return self.visit_macro_invoc(expr.id),
-            ExprKind::Closure(ref closure) => {
+            ExprKind::Closure(closure) => {
                 // Async closures desugar to closures inside of closures, so
                 // we must create two defs.
                 let closure_def = self.create_def(expr.id, DefPathData::ClosureExpr, expr.span);
@@ -261,6 +280,14 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
                 }
             }
             ExprKind::Async(_, _) => self.create_def(expr.id, DefPathData::ClosureExpr, expr.span),
+            ExprKind::Repeat(expr, length) => match length.value.is_potential_trivial_const_arg() {
+                Some(_) => {
+                    self.visit_expr(expr);
+                    visit::walk_anon_const(self, length);
+                    return;
+                }
+                None => self.parent_def,
+            },
             _ => self.parent_def,
         };
 
@@ -268,8 +295,15 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {
-        match ty.kind {
+        match &ty.kind {
             TyKind::MacCall(..) => self.visit_macro_invoc(ty.id),
+            TyKind::Array(ty, length) => {
+                self.visit_ty(ty);
+                match length.value.is_potential_trivial_const_arg() {
+                    Some(_) => visit::walk_anon_const(self, length),
+                    None => self.visit_anon_const(length),
+                };
+            }
             _ => visit::walk_ty(self, ty),
         }
     }
