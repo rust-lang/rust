@@ -14,7 +14,7 @@ use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::{Idx, IndexVec};
 use rustc_macros::HashStable;
@@ -807,6 +807,27 @@ impl<'tcx> TyCtxt<'tcx> {
             },
             _ => def_kind.article(),
         }
+    }
+
+    /// Return `true` if the supplied `CrateNum` is "user-visible," meaning either a [public]
+    /// dependency, or a [direct] private dependency. This is used to decide whether the crate can
+    /// be shown in `impl` suggestions.
+    ///
+    /// # Panics
+    ///
+    /// This function assumes `key` exists.
+    ///
+    /// [public]: TyCtxt::is_private_dep
+    /// [direct]: rustc_session::cstore::ExternCrate::is_direct
+    pub fn is_user_visible_dep(self, key: CrateNum) -> bool {
+        // | Private | Direct | Visible |                    |
+        // |---------|--------|---------|--------------------|
+        // | Yes     | Yes    | Yes     | !(true && !true)   |
+        // | No      | Yes    | Yes     | !(false && !true)  |
+        // | Yes     | No     | No      | !(true && !false)  |
+        // | No      | No     | Yes     | !(false && !false) |
+        !(self.is_private_dep(key)
+            && !self.extern_crate(key.as_def_id()).expect("crate must exist").is_direct())
     }
 }
 
