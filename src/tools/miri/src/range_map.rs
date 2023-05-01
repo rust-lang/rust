@@ -227,6 +227,24 @@ impl<T> RangeMap<T> {
         };
         slice.iter_mut().map(|elem| (elem.range.clone(), &mut elem.data))
     }
+
+    /// Remove all adjacent duplicates
+    pub fn merge_adjacent_thorough(&mut self)
+    where
+        T: PartialEq,
+    {
+        let clean = Vec::with_capacity(self.v.len());
+        for elem in std::mem::replace(&mut self.v, clean) {
+            if let Some(prev) = self.v.last_mut() {
+                if prev.data == elem.data {
+                    assert_eq!(prev.range.end, elem.range.start);
+                    prev.range.end = elem.range.end;
+                    continue;
+                }
+            }
+            self.v.push(elem);
+        }
+    }
 }
 
 #[cfg(test)]
