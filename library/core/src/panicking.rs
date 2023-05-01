@@ -236,7 +236,7 @@ where
 #[track_caller]
 #[doc(hidden)]
 pub fn assert_matches_failed<T: fmt::Debug + ?Sized>(
-    left: &T,
+    left_val: &T,
     left_name: &'static str,
     right: &'static str,
     args: Option<fmt::Arguments<'_>>,
@@ -248,14 +248,7 @@ pub fn assert_matches_failed<T: fmt::Debug + ?Sized>(
             f.write_str(self.0)
         }
     }
-    assert_failed_inner(
-        AssertKind::Match,
-        &left,
-        &Pattern(right),
-        left_name,
-        right,
-        args,
-    );
+    assert_failed_inner(AssertKind::Match, &left_val, &Pattern(right), left_name, right, args);
 }
 
 /// Non-generic version of the above functions, to avoid code bloat.

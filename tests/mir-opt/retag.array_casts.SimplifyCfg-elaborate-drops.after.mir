@@ -23,13 +23,15 @@ fn array_casts() -> () {
     let mut _24: usize;                  // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     let mut _25: usize;                  // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     let mut _26: !;                      // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let _28: !;                          // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _29: core::panicking::AssertKind; // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _30: &usize;                 // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let _31: &usize;                     // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+    let _30: !;                          // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+    let mut _31: core::panicking::AssertKind; // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     let mut _32: &usize;                 // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     let _33: &usize;                     // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _34: std::option::Option<std::fmt::Arguments<'_>>; // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+    let mut _34: &usize;                 // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+    let _35: &usize;                     // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+    let mut _36: &str;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+    let mut _37: &str;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+    let mut _38: std::option::Option<std::fmt::Arguments<'_>>; // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     scope 1 {
         debug x => _1;                   // in scope 1 at $DIR/retag.rs:+1:9: +1:14
         let _2: *mut usize;              // in scope 1 at $DIR/retag.rs:+2:9: +2:10
@@ -45,7 +47,7 @@ fn array_casts() -> () {
                     debug p => _9;       // in scope 5 at $DIR/retag.rs:+6:9: +6:10
                     let _20: &usize;     // in scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                     let _21: &usize;     // in scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-                    let mut _35: &usize; // in scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+                    let mut _39: &usize; // in scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                     scope 6 {
                     }
                     scope 7 {
@@ -54,6 +56,14 @@ fn array_casts() -> () {
                         let _27: core::panicking::AssertKind; // in scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                         scope 8 {
                             debug kind => _27; // in scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+                            let _28: &str; // in scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+                            scope 9 {
+                                debug left_name => _28; // in scope 9 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+                                let _29: &str; // in scope 9 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+                                scope 10 {
+                                    debug right_name => _29; // in scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+                                }
+                            }
                         }
                     }
                 }
@@ -116,12 +126,12 @@ fn array_casts() -> () {
         _15 = (*_16);                    // scope 6 at $DIR/retag.rs:+7:25: +7:34
         _14 = &_15;                      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_18);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _35 = const _;                   // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _39 = const _;                   // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                          // + literal: Const { ty: &usize, val: Unevaluated(array_casts, [], Some(promoted[0])) }
-        Retag(_35);                      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _18 = &(*_35);                   // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        Retag(_39);                      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _18 = &(*_39);                   // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _13 = (move _14, move _18);      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         Retag(_13);                      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageDead(_18);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -150,23 +160,39 @@ fn array_casts() -> () {
         StorageLive(_27);                // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _27 = core::panicking::AssertKind::Eq; // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_28);                // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_29);                // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _29 = move _27;                  // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_30);                // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_31);                // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _31 = &(*_20);                   // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _30 = &(*_31);                   // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_32);                // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_33);                // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _33 = &(*_21);                   // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _32 = &(*_33);                   // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_34);                // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _34 = Option::<Arguments<'_>>::None; // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        Retag(_34);                      // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _28 = core::panicking::assert_failed::<usize, usize>(move _29, move _30, move _32, move _34); // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _28 = const "unsafe { *p.add(1) }"; // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
-                                         // + literal: Const { ty: for<'a, 'b, 'c> fn(core::panicking::AssertKind, &'a usize, &'b usize, Option<Arguments<'c>>) -> ! {core::panicking::assert_failed::<usize, usize>}, val: Value(<ZST>) }
+                                         // + literal: Const { ty: &str, val: Value(Slice(..)) }
+        Retag(_28);                      // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        StorageLive(_29);                // scope 9 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _29 = const "1";                 // scope 9 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+                                         // mir::Constant
+                                         // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
+                                         // + literal: Const { ty: &str, val: Value(Slice(..)) }
+        Retag(_29);                      // scope 9 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        StorageLive(_30);                // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        StorageLive(_31);                // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _31 = move _27;                  // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        StorageLive(_32);                // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        StorageLive(_33);                // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _33 = &(*_20);                   // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _32 = &(*_33);                   // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        StorageLive(_34);                // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        StorageLive(_35);                // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _35 = &(*_21);                   // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _34 = &(*_35);                   // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        StorageLive(_36);                // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _36 = &(*_28);                   // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        StorageLive(_37);                // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _37 = &(*_29);                   // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        StorageLive(_38);                // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _38 = Option::<Arguments<'_>>::None; // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        Retag(_38);                      // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _30 = core::panicking::assert_failed::<usize, usize>(move _31, move _32, move _34, move _36, move _37, move _38); // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+                                         // mir::Constant
+                                         // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
+                                         // + literal: Const { ty: for<'a, 'b, 'c> fn(core::panicking::AssertKind, &'a usize, &'b usize, &'static str, &'static str, Option<Arguments<'c>>) -> ! {core::panicking::assert_failed::<usize, usize>}, val: Value(<ZST>) }
     }
 
     bb4: {
