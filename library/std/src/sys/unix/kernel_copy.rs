@@ -68,10 +68,7 @@ use libc::{EBADF, EINVAL, ENOSYS, EOPNOTSUPP, EOVERFLOW, EPERM, EXDEV};
 #[cfg(test)]
 mod tests;
 
-pub(crate) fn copy_spec<R: Read + ?Sized, W: Write + ?Sized>(
-    read: &mut R,
-    write: &mut W,
-) -> Result<u64> {
+pub(crate) fn copy_spec<R: Read, W: Write>(read: R, write: W) -> Result<u64> {
     let copier = Copier { read, write };
     SpecCopy::copy(copier)
 }
@@ -160,30 +157,30 @@ fn safe_kernel_copy(source: &FdMeta, sink: &FdMeta) -> bool {
 
 struct CopyParams(FdMeta, Option<RawFd>);
 
-struct Copier<'a, 'b, R: Read + ?Sized, W: Write + ?Sized> {
-    read: &'a mut R,
-    write: &'b mut W,
+struct Copier<R: Read, W: Write> {
+    read: R,
+    write: W,
 }
 
 trait SpecCopy {
     fn copy(self) -> Result<u64>;
 }
 
-impl<R: Read + ?Sized, W: Write + ?Sized> SpecCopy for Copier<'_, '_, R, W> {
+impl<R: Read, W: Write> SpecCopy for Copier<R, W> {
     default fn copy(self) -> Result<u64> {
         generic_copy(self.read, self.write)
     }
 }
 
-impl<R: CopyRead, W: CopyWrite> SpecCopy for Copier<'_, '_, R, W> {
+impl<R: CopyRead, W: CopyWrite> SpecCopy for Copier<R, W> {
     fn copy(self) -> Result<u64> {
-        let (reader, writer) = (self.read, self.write);
+        let Copier { read: mut reader, write: mut writer } = self;
         let r_cfg = reader.properties();
         let w_cfg = writer.properties();
 
         // before direct operations on file descriptors ensure that all source and sink buffers are empty
         let mut flush = || -> crate::io::Result<u64> {
-            let bytes = reader.drain_to(writer, u64::MAX)?;
+            let bytes = reader.drain_to(&mut writer, u64::MAX)?;
             // BufWriter buffered bytes have already been accounted for in earlier write() calls
             writer.flush()?;
             Ok(bytes)
@@ -199,7 +196,7 @@ impl<R: CopyRead, W: CopyWrite> SpecCopy for Copier<'_, '_, R, W> {
 
             if input_meta.copy_file_range_candidate() && output_meta.copy_file_range_candidate() {
                 let result = copy_regular_files(readfd, writefd, max_write);
-                result.update_take(reader);
+                result.update_take(&mut reader);
 
                 match result {
                     CopyResult::Ended(bytes_copied) => return Ok(bytes_copied + written),
@@ -216,7 +213,7 @@ impl<R: CopyRead, W: CopyWrite> SpecCopy for Copier<'_, '_, R, W> {
             if input_meta.potential_sendfile_source() && safe_kernel_copy(&input_meta, &output_meta)
             {
                 let result = sendfile_splice(SpliceMode::Sendfile, readfd, writefd, max_write);
-                result.update_take(reader);
+                result.update_take(&mut reader);
 
                 match result {
                     CopyResult::Ended(bytes_copied) => return Ok(bytes_copied + written),
@@ -229,7 +226,7 @@ impl<R: CopyRead, W: CopyWrite> SpecCopy for Copier<'_, '_, R, W> {
                 && safe_kernel_copy(&input_meta, &output_meta)
             {
                 let result = sendfile_splice(SpliceMode::Splice, readfd, writefd, max_write);
-                result.update_take(reader);
+                result.update_take(&mut reader);
 
                 match result {
                     CopyResult::Ended(bytes_copied) => return Ok(bytes_copied + written),

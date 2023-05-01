@@ -50,7 +50,7 @@ use crate::mem::MaybeUninit;
 ///
 /// [changes]: crate::io#platform-specific-behavior
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn copy<R: ?Sized, W: ?Sized>(reader: &mut R, writer: &mut W) -> Result<u64>
+pub fn copy<R, W>(reader: R, writer: W) -> Result<u64>
 where
     R: Read,
     W: Write,
@@ -66,7 +66,7 @@ where
 
 /// The userspace read-write-loop implementation of `io::copy` that is used when
 /// OS-specific specializations for copy offloading are not available or not applicable.
-pub(crate) fn generic_copy<R: ?Sized, W: ?Sized>(reader: &mut R, writer: &mut W) -> Result<u64>
+pub(crate) fn generic_copy<R, W>(reader: R, writer: W) -> Result<u64>
 where
     R: Read,
     W: Write,
@@ -77,17 +77,23 @@ where
 /// Specialization of the read-write loop that either uses a stack buffer
 /// or reuses the internal buffer of a BufWriter
 trait BufferedCopySpec: Write {
-    fn copy_to<R: Read + ?Sized>(reader: &mut R, writer: &mut Self) -> Result<u64>;
+    fn copy_to<R: Read>(reader: R, writer: Self) -> Result<u64>;
 }
 
-impl<W: Write + ?Sized> BufferedCopySpec for W {
-    default fn copy_to<R: Read + ?Sized>(reader: &mut R, writer: &mut Self) -> Result<u64> {
+impl<W: Write> BufferedCopySpec for W {
+    default fn copy_to<R: Read>(reader: R, writer: Self) -> Result<u64> {
         stack_buffer_copy(reader, writer)
     }
 }
 
 impl<I: Write> BufferedCopySpec for BufWriter<I> {
-    fn copy_to<R: Read + ?Sized>(reader: &mut R, writer: &mut Self) -> Result<u64> {
+    fn copy_to<R: Read>(reader: R, mut writer: Self) -> Result<u64> {
+        BufferedCopySpec::copy_to(reader, &mut writer)
+    }
+}
+
+impl<I: Write> BufferedCopySpec for &mut BufWriter<I> {
+    fn copy_to<R: Read>(mut reader: R, writer: Self) -> Result<u64> {
         if writer.capacity() < DEFAULT_BUF_SIZE {
             return stack_buffer_copy(reader, writer);
         }
@@ -134,10 +140,7 @@ impl<I: Write> BufferedCopySpec for BufWriter<I> {
     }
 }
 
-fn stack_buffer_copy<R: Read + ?Sized, W: Write + ?Sized>(
-    reader: &mut R,
-    writer: &mut W,
-) -> Result<u64> {
+fn stack_buffer_copy<R: Read, W: Write>(mut reader: R, mut writer: W) -> Result<u64> {
     let buf: &mut [_] = &mut [MaybeUninit::uninit(); DEFAULT_BUF_SIZE];
     let mut buf: BorrowedBuf<'_> = buf.into();
 
