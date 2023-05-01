@@ -80,7 +80,6 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let mut any_replacement = false;
     let mut replacer = Replacer {
         tcx,
-        param_env,
         ssa,
         dominators,
         state,
@@ -213,7 +212,13 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
     #[instrument(level = "trace", skip(self))]
     fn assign(&mut self, local: Local, value: VnIndex) {
         self.locals[local] = Some(value);
-        self.rev_locals.entry(value).or_default().push(local);
+
+        // Only register the value if its type is `Sized`, as we will emit copies of it.
+        let is_sized = !self.tcx.features().unsized_locals
+            || self.local_decls[local].ty.is_sized(self.tcx, self.param_env);
+        if is_sized {
+            self.rev_locals.entry(value).or_default().push(local);
+        }
     }
 
     /// Represent the *value* which would be read from `place`.
@@ -341,7 +346,6 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
 struct Replacer<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
     ssa: SsaLocals,
     dominators: Dominators<BasicBlock>,
     state: VnState<'a, 'tcx>,
@@ -370,13 +374,6 @@ impl<'tcx> Replacer<'_, 'tcx> {
             .copied()
             .find(|&other| self.ssa.assignment_dominates(&self.dominators, other, loc))
     }
-
-    fn is_local_copiable(&self, local: Local) -> bool {
-        let ty = self.state.local_decls[local].ty;
-        // We only unify copy types as we only emit copies.
-        // We already simplify mutable reborrows as assignments, so we also allow copying those.
-        ty.is_ref() || ty.is_copy_modulo_regions(self.tcx, self.param_env)
-    }
 }
 
 impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
@@ -393,7 +390,6 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
                 *self.any_replacement = true;
             } else if let Some(local) = self.try_as_local(value, location)
                 && *operand != Operand::Move(local.into())
-                && self.is_local_copiable(local)
             {
                 *operand = Operand::Copy(local.into());
                 self.reused_locals.insert(local);
@@ -412,7 +408,6 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
                 *self.any_replacement = true;
             } else if let Some(local) = self.try_as_local(value, location)
                 && *rvalue != Rvalue::Use(Operand::Move(local.into()))
-                && self.is_local_copiable(local)
             {
                 *rvalue = Rvalue::Use(Operand::Copy(local.into()));
                 self.reused_locals.insert(local);

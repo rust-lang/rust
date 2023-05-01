@@ -34,8 +34,8 @@ fn subexpression_elimination(x: u64, y: u64, mut z: u64) {
     opaque((x ^ y) + z);
     opaque((x << y) + z);
     opaque((x >> y) + z);
-    opaque(S(x)); //< This is not substituted as `S` is not `Copy`.
-    opaque(S(x).0); //<  But this can be.
+    opaque(S(x));
+    opaque(S(x).0);
 
     // We can substitute through an immutable reference too.
     let a = &z;

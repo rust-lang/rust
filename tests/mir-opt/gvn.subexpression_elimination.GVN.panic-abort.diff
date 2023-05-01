@@ -405,17 +405,18 @@
           StorageDead(_50);
           StorageDead(_49);
           StorageLive(_52);
-          StorageLive(_53);
+-         StorageLive(_53);
 -         StorageLive(_54);
 -         _54 = _1;
 -         _53 = S::<u64>(move _54);
 -         StorageDead(_54);
+-         _52 = opaque::<S<u64>>(move _53) -> [return: bb15, unwind unreachable];
 +         _53 = S::<u64>(_1);
-          _52 = opaque::<S<u64>>(move _53) -> [return: bb15, unwind unreachable];
++         _52 = opaque::<S<u64>>(_53) -> [return: bb15, unwind unreachable];
       }
   
       bb15: {
-          StorageDead(_53);
+-         StorageDead(_53);
           StorageDead(_52);
           StorageLive(_55);
 -         StorageLive(_56);
@@ -424,7 +425,7 @@
 -         _58 = _1;
 -         _57 = S::<u64>(move _58);
 -         StorageDead(_58);
-+         _57 = S::<u64>(_1);
++         _57 = _53;
           _56 = (_57.0: u64);
 -         _55 = opaque::<u64>(move _56) -> [return: bb16, unwind unreachable];
 +         _55 = opaque::<u64>(_56) -> [return: bb16, unwind unreachable];
@@ -667,17 +668,17 @@
           StorageDead(_116);
           StorageDead(_115);
           StorageLive(_121);
-          StorageLive(_122);
+-         StorageLive(_122);
 -         StorageLive(_123);
 -         _123 = _1;
 -         _122 = S::<u64>(move _123);
 -         StorageDead(_123);
-+         _122 = S::<u64>(_1);
-          _121 = opaque::<S<u64>>(move _122) -> [return: bb29, unwind unreachable];
+-         _121 = opaque::<S<u64>>(move _122) -> [return: bb29, unwind unreachable];
++         _121 = opaque::<S<u64>>(_53) -> [return: bb29, unwind unreachable];
       }
   
       bb29: {
-          StorageDead(_122);
+-         StorageDead(_122);
           StorageDead(_121);
           StorageLive(_124);
 -         StorageLive(_125);
