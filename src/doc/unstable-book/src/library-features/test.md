@@ -106,14 +106,14 @@ mod tests {
         assert_eq!(4, add_two(2));
     }
 
-    #[cfg(feature = "nightly")]
+    #[cfg(feature = "bench")]
     #[bench]
     fn bench_add_two(b: &mut test::Bencher) {
         b.iter(|| add_two(2));
     }
 }
 ```
-And now to invoke the bechmark, we can use `cargo +nightly bench --features nightly`.
+And now to invoke the bechmark, we can use `cargo +nightly bench --features bench`.
 
 ## Gotcha: optimizations
 
