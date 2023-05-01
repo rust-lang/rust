@@ -662,6 +662,10 @@ impl<'ll> CodegenCx<'ll, '_> {
         let t_f32 = self.type_f32();
         let t_f64 = self.type_f64();
         let t_metadata = self.type_metadata();
+        let t_token = self.type_token();
+
+        ifn!("llvm.wasm.get.exception", fn(t_token) -> i8p);
+        ifn!("llvm.wasm.get.ehselector", fn(t_token) -> t_i32);
 
         ifn!("llvm.wasm.trunc.unsigned.i32.f32", fn(t_f32) -> t_i32);
         ifn!("llvm.wasm.trunc.unsigned.i32.f64", fn(t_f64) -> t_i32);
