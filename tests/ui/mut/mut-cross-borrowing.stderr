@@ -2,10 +2,8 @@ error[E0308]: mismatched types
   --> $DIR/mut-cross-borrowing.rs:7:7
    |
 LL |     f(x)
-   |     - ^
-   |     | |
-   |     | expected `&mut isize`, found `Box<{integer}>`
-   |     | help: consider mutably borrowing here: `&mut x`
+   |     - ^ expected `&mut isize`, found `Box<{integer}>`
+   |     |
    |     arguments to this function are incorrect
    |
    = note: expected mutable reference `&mut isize`
@@ -15,6 +13,10 @@ note: function defined here
    |
 LL | fn f(_: &mut isize) {}
    |    ^ -------------
+help: consider mutably borrowing here
+   |
+LL |     f(&mut x)
+   |       ++++
 
 error: aborting due to previous error
 
