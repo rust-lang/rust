@@ -237,7 +237,8 @@ where
 #[doc(hidden)]
 pub fn assert_matches_failed<T: fmt::Debug + ?Sized>(
     left: &T,
-    right: &str,
+    left_name: &'static str,
+    right: &'static str,
     args: Option<fmt::Arguments<'_>>,
 ) -> ! {
     // The pattern is a string so it can be displayed directly.
@@ -251,8 +252,8 @@ pub fn assert_matches_failed<T: fmt::Debug + ?Sized>(
         AssertKind::Match,
         &left,
         &Pattern(right),
-        stringify!(&left),
-        stringify!(&right),
+        left_name,
+        right,
         args,
     );
 }
@@ -278,13 +279,13 @@ fn assert_failed_inner(
     match args {
         Some(args) => panic!(
             r#"assertion failed: `({left_name} {op} {right_name})`
- error: {args},
-  left: `{left_val:?}`,
+ error: {args}
+  left: `{left_val:?}`
  right: `{right_val:?}`"#
         ),
         None => panic!(
             r#"assertion failed: `({left_name} {op} {right_name})`
-  left: `{left_val:?}`,
+  left: `{left_val:?}`
  right: `{right_val:?}`"#
         ),
     }

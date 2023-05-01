@@ -156,6 +156,7 @@ pub macro assert_matches {
             ref left_val => {
                 $crate::panicking::assert_matches_failed(
                     left_val,
+                    $crate::stringify!($left),
                     $crate::stringify!($($pattern)|+ $(if $guard)?),
                     $crate::option::Option::None
                 );
@@ -168,6 +169,7 @@ pub macro assert_matches {
             ref left_val => {
                 $crate::panicking::assert_matches_failed(
                     left_val,
+                    $crate::stringify!($left),
                     $crate::stringify!($($pattern)|+ $(if $guard)?),
                     $crate::option::Option::Some($crate::format_args!($($arg)+))
                 );

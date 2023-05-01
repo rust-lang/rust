@@ -18,7 +18,7 @@ testing123
 testing321
 thread 'main' panicked at $DIR/test-panic-abort.rs:34:5:
 assertion failed: `(1 + 1 == 5)`
-  left: `2`,
+  left: `2`
  right: `5`
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 
