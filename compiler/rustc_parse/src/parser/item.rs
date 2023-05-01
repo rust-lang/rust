@@ -988,14 +988,11 @@ impl<'a> Parser<'a> {
     /// ```
     fn parse_use_tree_list(&mut self) -> PResult<'a, (ThinVec<(UseTree, ast::NodeId)>, Span)> {
         let open_brace_span = self.token.span;
-        Ok((
-            self.parse_delim_comma_seq(Delimiter::Brace, |p| {
-                p.recover_diff_marker();
-                Ok((p.parse_use_tree()?, DUMMY_NODE_ID))
-            })
-            .map(|(r, _)| r)?,
-            open_brace_span.to(self.prev_token.span),
-        ))
+        self.parse_delim_comma_seq(Delimiter::Brace, |p| {
+            p.recover_diff_marker();
+            Ok((p.parse_use_tree()?, DUMMY_NODE_ID))
+        })
+        .map(|(r, _)| (r, open_brace_span.to(self.prev_token.span)))
     }
 
     fn parse_rename(&mut self) -> PResult<'a, Option<Ident>> {
