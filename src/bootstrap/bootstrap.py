@@ -28,6 +28,20 @@ if platform_is_win32():
 else:
     EXE_SUFFIX = ""
 
+def get_cpus():
+    if hasattr(os, "sched_getaffinity"):
+        return len(os.sched_getaffinity(0))
+    if hasattr(os, "cpu_count"):
+        cpus = os.cpu_count()
+        if cpus is not None:
+            return cpus
+    try:
+        return cpu_count()
+    except NotImplementedError:
+        return 1
+
+
+
 def get(base, url, path, checksums, verbose=False):
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
         temp_path = temp_file.name
@@ -540,11 +554,15 @@ class RustBuild(object):
 
             # Unpack the tarballs in parallle.
             # In Python 2.7, Pool cannot be used as a context manager.
-            p = Pool(min(len(tarballs_download_info), cpu_count()))
+            pool_size = min(len(tarballs_download_info), get_cpus())
+            if self.verbose:
+                print('Choosing a pool size of', pool_size, 'for the unpacking of the tarballs')
+            p = Pool(pool_size)
             try:
                 p.map(unpack_component, tarballs_download_info)
             finally:
                 p.close()
+            p.join()
 
             if self.should_fix_bins_and_dylibs():
                 self.fix_bin_or_dylib("{}/bin/cargo".format(bin_root))
