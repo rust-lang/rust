@@ -231,6 +231,7 @@ fn calc_unused_spans(
             let mut to_remove = Vec::new();
             let mut all_nested_unused = true;
             let mut previous_unused = false;
+            let mut last_nested_import_removed = false;
             for (pos, (use_tree, use_tree_id)) in nested.items.iter().enumerate() {
                 let remove = match calc_unused_spans(unused_import, use_tree, *use_tree_id) {
                     UnusedSpanResult::Used => {
@@ -259,6 +260,7 @@ fn calc_unused_spans(
                     } else if pos == nested.items.len() - 1 || !all_nested_unused {
                         // Delete everything from the end of the last import, to delete the
                         // previous comma
+                        last_nested_import_removed = true;
                         nested.items[pos - 1].0.span.shrink_to_hi().to(use_tree.span)
                     } else {
                         // Delete everything until the next import, to delete the trailing commas
@@ -281,6 +283,46 @@ fn calc_unused_spans(
             } else if all_nested_unused {
                 UnusedSpanResult::NestedFullUnused(unused_spans, full_span)
             } else {
+                // If removing the nested imports leaves one import remaining, expand the removal
+                // span to include the braces, so that rustfix can remove them
+                if nested.items.len() - to_remove.len() == 1 {
+                    if last_nested_import_removed {
+                        // Expand the last import's span to include the braces, then add the first
+                        // brace span
+                        let new_span =
+                            to_remove.last().unwrap().shrink_to_lo().to(nested.span.shrink_to_hi());
+                        *to_remove.last_mut().unwrap() = new_span;
+
+                        to_remove.push(
+                            nested.span.shrink_to_lo().to(nested
+                                .items
+                                .first()
+                                .unwrap()
+                                .0
+                                .span
+                                .shrink_to_lo()),
+                        );
+                    } else {
+                        // Expand the first import's span to include the braces, then add the last
+                        // brace span
+                        let new_span = nested
+                            .span
+                            .shrink_to_lo()
+                            .to(to_remove.first().unwrap().shrink_to_hi());
+                        *to_remove.first_mut().unwrap() = new_span;
+
+                        to_remove.push(
+                            nested.span.shrink_to_hi().to(nested
+                                .items
+                                .last()
+                                .unwrap()
+                                .0
+                                .span
+                                .shrink_to_hi()),
+                        );
+                    }
+                }
+
                 UnusedSpanResult::NestedPartialUnused(unused_spans, to_remove)
             }
         }

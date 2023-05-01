@@ -986,12 +986,15 @@ impl<'a> Parser<'a> {
     /// USE_TREE_LIST = Ø | (USE_TREE `,`)* USE_TREE [`,`]
     /// ```
     fn parse_use_tree_list(&mut self) -> PResult<'a, ast::UseTreeNested> {
+        let open_brace_span = self.token.span;
         Ok(ast::UseTreeNested {
-            items: self.parse_delim_comma_seq(Delimiter::Brace, |p| {
-                p.recover_diff_marker();
-                Ok((p.parse_use_tree()?, DUMMY_NODE_ID))
-            }).map(|(r, _)| r)?,
-            span: self.prev_token.span, // TODO
+            items: self
+                .parse_delim_comma_seq(Delimiter::Brace, |p| {
+                    p.recover_diff_marker();
+                    Ok((p.parse_use_tree()?, DUMMY_NODE_ID))
+                })
+                .map(|(r, _)| r)?,
+            span: open_brace_span.to(self.prev_token.span),
         })
     }
 

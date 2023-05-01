@@ -126,7 +126,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
                             nested_tree(self, sym::TryCaptureGeneric),
                             nested_tree(self, sym::TryCapturePrintable),
                         ],
-                        span: self.span, // TODO
+                        span: self.span,
                     }),
                     span: self.span,
                 }),
