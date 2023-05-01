@@ -1027,6 +1027,10 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     /// Removes all elements from the table without freeing the backing memory.
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn clear(&mut self) {
+        if self.is_empty() {
+            // Special case empty table to avoid surprising O(capacity) time.
+            return;
+        }
         // Ensure that the table is reset even if one of the drops panic
         let mut self_ = guard(self, |self_| self_.clear_no_drop());
         unsafe {
