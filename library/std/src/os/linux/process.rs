@@ -71,6 +71,7 @@ impl IntoInner<FileDesc> for PidFd {
 }
 
 impl AsRawFd for PidFd {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         self.as_inner().as_raw_fd()
     }

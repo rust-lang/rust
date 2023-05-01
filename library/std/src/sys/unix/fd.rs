@@ -506,6 +506,7 @@ impl AsFd for FileDesc {
 }
 
 impl AsRawFd for FileDesc {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         self.0.as_raw_fd()
     }

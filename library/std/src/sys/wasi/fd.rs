@@ -307,6 +307,7 @@ impl AsFd for WasiFd {
 }
 
 impl AsRawFd for WasiFd {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         self.fd.as_raw_fd()
     }

@@ -42,6 +42,7 @@ impl AsFd for Socket {
 }
 
 impl AsRawFd for Socket {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         self.0.as_raw_fd()
     }
