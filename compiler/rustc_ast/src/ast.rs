@@ -1430,8 +1430,8 @@ pub enum ExprKind {
     /// The async block used to have a `NodeId`, which was removed in favor of
     /// using the parent `NodeId` of the parent `Expr`.
     Async(CaptureBy, P<Block>),
-    /// An await expression (`my_future.await`).
-    Await(P<Expr>),
+    /// An await expression (`my_future.await`). Span is of await keyword.
+    Await(P<Expr>, Span),
 
     /// A try block (`try { ... }`).
     TryBlock(P<Block>),

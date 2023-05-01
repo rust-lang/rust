@@ -447,7 +447,7 @@ impl<'a> State<'a> {
                 self.ibox(0);
                 self.print_block_with_attrs(blk, attrs);
             }
-            ast::ExprKind::Await(expr) => {
+            ast::ExprKind::Await(expr, _) => {
                 self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX);
                 self.word(".await");
             }
@@ -566,7 +566,7 @@ impl<'a> State<'a> {
                         self.print_ident(field);
                     }
                 }
-
+                self.pclose();
                 self.end();
             }
             ast::ExprKind::MacCall(m) => self.print_mac(m),

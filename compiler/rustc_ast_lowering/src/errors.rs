@@ -108,7 +108,7 @@ pub struct BaseExpressionDoubleDot {
 pub struct AwaitOnlyInAsyncFnAndBlocks {
     #[primary_span]
     #[label]
-    pub dot_await_span: Span,
+    pub await_kw_span: Span,
     #[label(ast_lowering_this_not_async)]
     pub item_span: Option<Span>,
 }

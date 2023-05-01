@@ -207,6 +207,7 @@ symbols! {
         Input,
         Into,
         IntoDiagnostic,
+        IntoFuture,
         IntoIterator,
         IoRead,
         IoWrite,

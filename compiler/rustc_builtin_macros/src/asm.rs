@@ -3,7 +3,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{Applicability, PResult};
+use rustc_errors::PResult;
 use rustc_expand::base::{self, *};
 use rustc_parse::parser::Parser;
 use rustc_parse_format as parse;
@@ -49,7 +49,7 @@ pub fn parse_asm_args<'a>(
     let diag = &sess.span_diagnostic;
 
     if p.token == token::Eof {
-        return Err(diag.struct_span_err(sp, "requires at least a template string argument"));
+        return Err(diag.create_err(errors::AsmRequiresTemplate { span: sp }));
     }
 
     let first_template = p.parse_expr()?;
@@ -68,8 +68,7 @@ pub fn parse_asm_args<'a>(
         if !p.eat(&token::Comma) {
             if allow_templates {
                 // After a template string, we always expect *only* a comma...
-                let mut err = diag.struct_span_err(p.token.span, "expected token: `,`");
-                err.span_label(p.token.span, "expected `,`");
+                let mut err = diag.create_err(errors::AsmExpectedComma { span: p.token.span });
                 p.maybe_annotate_with_ascription(&mut err, false);
                 return Err(err);
             } else {
@@ -112,7 +111,7 @@ pub fn parse_asm_args<'a>(
         let op = if !is_global_asm && p.eat_keyword(kw::In) {
             let reg = parse_reg(p, &mut explicit_reg)?;
             if p.eat_keyword(kw::Underscore) {
-                let err = diag.struct_span_err(p.token.span, "_ cannot be used for input operands");
+                let err = diag.create_err(errors::AsmUnderscoreInput { span: p.token.span });
                 return Err(err);
             }
             let expr = p.parse_expr()?;
@@ -128,7 +127,7 @@ pub fn parse_asm_args<'a>(
         } else if !is_global_asm && p.eat_keyword(sym::inout) {
             let reg = parse_reg(p, &mut explicit_reg)?;
             if p.eat_keyword(kw::Underscore) {
-                let err = diag.struct_span_err(p.token.span, "_ cannot be used for input operands");
+                let err = diag.create_err(errors::AsmUnderscoreInput { span: p.token.span });
                 return Err(err);
             }
             let expr = p.parse_expr()?;
@@ -142,7 +141,7 @@ pub fn parse_asm_args<'a>(
         } else if !is_global_asm && p.eat_keyword(sym::inlateout) {
             let reg = parse_reg(p, &mut explicit_reg)?;
             if p.eat_keyword(kw::Underscore) {
-                let err = diag.struct_span_err(p.token.span, "_ cannot be used for input operands");
+                let err = diag.create_err(errors::AsmUnderscoreInput { span: p.token.span });
                 return Err(err);
             }
             let expr = p.parse_expr()?;
@@ -160,7 +159,7 @@ pub fn parse_asm_args<'a>(
             let expr = p.parse_expr()?;
             let ast::ExprKind::Path(qself, path) = &expr.kind else {
                 let err = diag
-                    .struct_span_err(expr.span, "expected a path for argument to `sym`");
+                    .create_err(errors::AsmSymNoPath { span: expr.span });
                 return Err(err);
             };
             let sym = ast::InlineAsmSym {
@@ -181,13 +180,10 @@ pub fn parse_asm_args<'a>(
                     ) => {}
                 ast::ExprKind::MacCall(..) => {}
                 _ => {
-                    let errstr = if is_global_asm {
-                        "expected operand, options, or additional template string"
-                    } else {
-                        "expected operand, clobber_abi, options, or additional template string"
-                    };
-                    let mut err = diag.struct_span_err(template.span, errstr);
-                    err.span_label(template.span, errstr);
+                    let err = diag.create_err(errors::AsmExpectedOther {
+                        span: template.span,
+                        is_global_asm,
+                    });
                     return Err(err);
                 }
             }
@@ -212,28 +208,16 @@ pub fn parse_asm_args<'a>(
             args.reg_args.insert(slot);
         } else if let Some(name) = name {
             if let Some(&prev) = args.named_args.get(&name) {
-                diag.struct_span_err(span, &format!("duplicate argument named `{}`", name))
-                    .span_label(args.operands[prev].1, "previously here")
-                    .span_label(span, "duplicate argument")
-                    .emit();
+                diag.emit_err(errors::AsmDuplicateArg { span, name, prev: args.operands[prev].1 });
                 continue;
             }
             args.named_args.insert(name, slot);
         } else {
             if !args.named_args.is_empty() || !args.reg_args.is_empty() {
-                let mut err = diag.struct_span_err(
-                    span,
-                    "positional arguments cannot follow named arguments \
-                     or explicit register arguments",
-                );
-                err.span_label(span, "positional argument");
-                for pos in args.named_args.values() {
-                    err.span_label(args.operands[*pos].1, "named argument");
-                }
-                for pos in &args.reg_args {
-                    err.span_label(args.operands[*pos].1, "explicit register argument");
-                }
-                err.emit();
+                let named = args.named_args.values().map(|p| args.operands[*p].1).collect();
+                let explicit = args.reg_args.iter().map(|p| args.operands[*p].1).collect();
+
+                diag.emit_err(errors::AsmPositionalAfter { span, named, explicit });
             }
         }
     }
@@ -284,34 +268,25 @@ pub fn parse_asm_args<'a>(
         diag.emit_err(errors::AsmPureNoOutput { spans: args.options_spans.clone() });
     }
     if args.options.contains(ast::InlineAsmOptions::NORETURN) && !outputs_sp.is_empty() {
-        let err = diag
-            .struct_span_err(outputs_sp, "asm outputs are not allowed with the `noreturn` option");
-
+        let err = diag.create_err(errors::AsmNoReturn { outputs_sp });
         // Bail out now since this is likely to confuse MIR
         return Err(err);
     }
 
     if args.clobber_abis.len() > 0 {
         if is_global_asm {
-            let err = diag.struct_span_err(
-                args.clobber_abis.iter().map(|(_, span)| *span).collect::<Vec<Span>>(),
-                "`clobber_abi` cannot be used with `global_asm!`",
-            );
+            let err = diag.create_err(errors::GlobalAsmClobberAbi {
+                spans: args.clobber_abis.iter().map(|(_, span)| *span).collect(),
+            });
 
             // Bail out now since this is likely to confuse later stages
             return Err(err);
         }
         if !regclass_outputs.is_empty() {
-            diag.struct_span_err(
-                regclass_outputs.clone(),
-                "asm with `clobber_abi` must specify explicit registers for outputs",
-            )
-            .span_labels(
-                args.clobber_abis.iter().map(|(_, span)| *span).collect::<Vec<Span>>(),
-                "clobber_abi",
-            )
-            .span_labels(regclass_outputs, "generic outputs")
-            .emit();
+            diag.emit_err(errors::AsmClobberNoReg {
+                spans: regclass_outputs,
+                clobbers: args.clobber_abis.iter().map(|(_, span)| *span).collect(),
+            });
         }
     }
 
@@ -323,25 +298,9 @@ pub fn parse_asm_args<'a>(
 /// This function must be called immediately after the option token is parsed.
 /// Otherwise, the suggestion will be incorrect.
 fn err_duplicate_option(p: &mut Parser<'_>, symbol: Symbol, span: Span) {
-    let mut err = p
-        .sess
-        .span_diagnostic
-        .struct_span_err(span, &format!("the `{}` option was already provided", symbol));
-    err.span_label(span, "this option was already provided");
-
     // Tool-only output
-    let mut full_span = span;
-    if p.token.kind == token::Comma {
-        full_span = full_span.to(p.token.span);
-    }
-    err.tool_only_span_suggestion(
-        full_span,
-        "remove this option",
-        "",
-        Applicability::MachineApplicable,
-    );
-
-    err.emit();
+    let full_span = if p.token.kind == token::Comma { span.to(p.token.span) } else { span };
+    p.sess.span_diagnostic.emit_err(errors::AsmOptAlreadyprovided { span, symbol, full_span });
 }
 
 /// Try to set the provided option in the provided `AsmArgs`.

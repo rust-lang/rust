@@ -388,7 +388,7 @@ pub fn contains_exterior_struct_lit(value: &ast::Expr) -> bool {
             // X { y: 1 } + X { y: 2 }
             contains_exterior_struct_lit(lhs) || contains_exterior_struct_lit(rhs)
         }
-        ast::ExprKind::Await(x)
+        ast::ExprKind::Await(x, _)
         | ast::ExprKind::Unary(_, x)
         | ast::ExprKind::Cast(x, _)
         | ast::ExprKind::Type(x, _)

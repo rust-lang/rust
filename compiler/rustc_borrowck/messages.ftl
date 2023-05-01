@@ -203,6 +203,15 @@ borrowck_moved_due_to_method_call =
         *[false] call
     }
 
+borrowck_moved_due_to_await =
+    {$place_name} {$is_partial ->
+        [true] partially moved
+        *[false] moved
+    } due to this {$is_loop_message ->
+        [true] await, in previous iteration of loop
+        *[false] await
+    }
+
 borrowck_value_moved_here =
     value {$is_partial ->
         [true] partially moved

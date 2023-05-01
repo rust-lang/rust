@@ -1,5 +1,6 @@
 use rustc_errors::{
-    AddToDiagnostic, EmissionGuarantee, IntoDiagnostic, MultiSpan, SingleLabelManySpans,
+    AddToDiagnostic, DiagnosticBuilder, EmissionGuarantee, Handler, IntoDiagnostic, MultiSpan,
+    SingleLabelManySpans,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{symbol::Ident, Span, Symbol};
@@ -370,11 +371,12 @@ pub(crate) struct EnvNotDefined {
 // Hand-written implementation to support custom user messages
 impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for EnvNotDefined {
     #[track_caller]
-    fn into_diagnostic(
-        self,
-        handler: &'a rustc_errors::Handler,
-    ) -> rustc_errors::DiagnosticBuilder<'a, G> {
+    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, G> {
         let mut diag = if let Some(msg) = self.msg {
+            #[expect(
+                rustc::untranslatable_diagnostic,
+                reason = "cannot translate user-provided messages"
+            )]
             handler.struct_diagnostic(msg.as_str())
         } else {
             handler.struct_diagnostic(crate::fluent_generated::builtin_macros_env_not_defined)
@@ -604,6 +606,117 @@ pub(crate) struct AsmPureNoOutput {
 pub(crate) struct AsmModifierInvalid {
     #[primary_span]
     pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_asm_requires_template)]
+pub(crate) struct AsmRequiresTemplate {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_asm_expected_comma)]
+pub(crate) struct AsmExpectedComma {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_asm_underscore_input)]
+pub(crate) struct AsmUnderscoreInput {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_asm_sym_no_path)]
+pub(crate) struct AsmSymNoPath {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_asm_expected_other)]
+pub(crate) struct AsmExpectedOther {
+    #[primary_span]
+    #[label(builtin_macros_asm_expected_other)]
+    pub(crate) span: Span,
+    pub(crate) is_global_asm: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_asm_duplicate_arg)]
+pub(crate) struct AsmDuplicateArg {
+    #[primary_span]
+    #[label(builtin_macros_arg)]
+    pub(crate) span: Span,
+    #[label]
+    pub(crate) prev: Span,
+    pub(crate) name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_asm_pos_after)]
+pub(crate) struct AsmPositionalAfter {
+    #[primary_span]
+    #[label(builtin_macros_pos)]
+    pub(crate) span: Span,
+    #[label(builtin_macros_named)]
+    pub(crate) named: Vec<Span>,
+    #[label(builtin_macros_explicit)]
+    pub(crate) explicit: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_asm_noreturn)]
+pub(crate) struct AsmNoReturn {
+    #[primary_span]
+    pub(crate) outputs_sp: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_global_asm_clobber_abi)]
+pub(crate) struct GlobalAsmClobberAbi {
+    #[primary_span]
+    pub(crate) spans: Vec<Span>,
+}
+
+pub(crate) struct AsmClobberNoReg {
+    pub(crate) spans: Vec<Span>,
+    pub(crate) clobbers: Vec<Span>,
+}
+
+impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for AsmClobberNoReg {
+    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, G> {
+        let mut diag =
+            handler.struct_diagnostic(crate::fluent_generated::builtin_macros_asm_clobber_no_reg);
+        diag.set_span(self.spans.clone());
+        // eager translation as `span_labels` takes `AsRef<str>`
+        let lbl1 = handler.eagerly_translate_to_string(
+            crate::fluent_generated::builtin_macros_asm_clobber_abi,
+            [].into_iter(),
+        );
+        diag.span_labels(self.clobbers, &lbl1);
+        let lbl2 = handler.eagerly_translate_to_string(
+            crate::fluent_generated::builtin_macros_asm_clobber_outputs,
+            [].into_iter(),
+        );
+        diag.span_labels(self.spans, &lbl2);
+        diag
+    }
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_asm_opt_already_provided)]
+pub(crate) struct AsmOptAlreadyprovided {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    pub(crate) symbol: Symbol,
+    #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
+    pub(crate) full_span: Span,
 }
 
 #[derive(Diagnostic)]
