@@ -46,10 +46,6 @@ impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
             return;
         };
 
-        if !tcx.consider_optimizing(|| format!("RenameReturnPlace {def_id:?}")) {
-            return;
-        }
-
         debug!(
             "`{:?}` was eligible for NRVO, making {:?} the return place",
             def_id, returned_local
