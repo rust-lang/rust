@@ -518,11 +518,6 @@ macro_rules! implement_ty_decoder {
                     read_i64 -> i64;
                     read_i32 -> i32;
                     read_i16 -> i16;
-                    read_i8 -> i8;
-
-                    read_bool -> bool;
-                    read_char -> char;
-                    read_str -> &str;
                 }
 
                 #[inline]
