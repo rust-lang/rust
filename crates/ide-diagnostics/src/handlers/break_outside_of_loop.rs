@@ -135,4 +135,22 @@ fn test() {
 "#,
         );
     }
+
+    #[test]
+    fn try_block_desugaring_inside_closure() {
+        // regression test for #14701
+        check_diagnostics(
+            r#"
+//- minicore: option, try
+fn test() {
+    try {
+        || {
+            let x = Some(2);
+            Some(x?)
+        };
+    };
+}
+"#,
+        );
+    }
 }
