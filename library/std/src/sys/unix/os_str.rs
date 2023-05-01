@@ -8,6 +8,7 @@ use crate::fmt::Write;
 use crate::mem;
 use crate::rc::Rc;
 use crate::str;
+use crate::str::pattern::{Pattern, SearchStep, Searcher};
 use crate::sync::Arc;
 use crate::sys_common::{AsInner, IntoInner};
 
@@ -304,5 +305,52 @@ impl Slice {
     #[inline]
     pub fn eq_ignore_ascii_case(&self, other: &Self) -> bool {
         self.inner.eq_ignore_ascii_case(&other.inner)
+    }
+
+    #[inline]
+    pub fn starts_with_str(&self, prefix: &str) -> bool {
+        self.inner.starts_with(prefix.as_bytes())
+    }
+
+    pub fn strip_prefix<'a, P: Pattern<'a>>(&'a self, prefix: P) -> Option<&'a Slice> {
+        let (p, _) = self.to_str_split();
+        let prefix_len = match prefix.into_searcher(p).next() {
+            SearchStep::Match(0, prefix_len) => prefix_len,
+            _ => return None,
+        };
+
+        // SAFETY: `p` is guaranteed to be a prefix of `self.inner`,
+        // and `Searcher` is known to return valid indices.
+        unsafe {
+            let suffix = self.inner.get_unchecked(prefix_len..);
+            Some(Slice::from_u8_slice(suffix))
+        }
+    }
+
+    #[inline]
+    pub fn strip_prefix_str(&self, prefix: &str) -> Option<&Slice> {
+        if !self.starts_with_str(prefix) {
+            return None;
+        }
+
+        // SAFETY: `prefix` is a prefix of `self.inner`.
+        unsafe {
+            let suffix = self.inner.get_unchecked(prefix.len()..);
+            Some(Slice::from_u8_slice(suffix))
+        }
+    }
+
+    pub fn split_once<'a, P: Pattern<'a>>(&'a self, delimiter: P) -> Option<(&'a str, &'a Slice)> {
+        let (p, _) = self.to_str_split();
+        let (start, end) = delimiter.into_searcher(p).next_match()?;
+
+        // SAFETY: `p` is guaranteed to be a prefix of `self.inner`,
+        // and `Searcher` is known to return valid indices.
+        unsafe {
+            let before = p.get_unchecked(..start);
+            let after = self.inner.get_unchecked(end..);
+
+            Some((before, Slice::from_u8_slice(after)))
+        }
     }
 }

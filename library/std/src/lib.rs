@@ -264,6 +264,7 @@
 #![feature(needs_panic_runtime)]
 #![feature(negative_impls)]
 #![feature(never_type)]
+#![feature(pattern)]
 #![feature(platform_intrinsics)]
 #![feature(prelude_import)]
 #![feature(rustc_attrs)]

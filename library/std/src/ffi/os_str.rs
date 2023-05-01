@@ -8,6 +8,7 @@ use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::ops;
 use crate::rc::Rc;
+use crate::str::pattern::Pattern;
 use crate::str::FromStr;
 use crate::sync::Arc;
 
@@ -1033,6 +1034,148 @@ impl OsStr {
     #[stable(feature = "osstring_ascii", since = "1.53.0")]
     pub fn eq_ignore_ascii_case<S: AsRef<OsStr>>(&self, other: S) -> bool {
         self.inner.eq_ignore_ascii_case(&other.as_ref().inner)
+    }
+
+    /// Returns `true` if the given pattern matches a prefix of this `OsStr`.
+    ///
+    /// Returns `false` if it does not.
+    ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: prim@char
+    /// [pattern]: crate::str::pattern
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(osstr_str_prefix_ops)]
+    ///
+    /// use std::ffi::OsString;
+    ///
+    /// let bananas = OsString::from("bananas");
+    ///
+    /// assert!(bananas.starts_with("bana"));
+    /// assert!(!bananas.starts_with("nana"));
+    /// ```
+    #[unstable(feature = "osstr_str_prefix_ops", issue = "none")]
+    #[must_use]
+    #[inline]
+    pub fn starts_with<'a, P: Pattern<'a>>(&'a self, pattern: P) -> bool {
+        let (p, _) = self.inner.to_str_split();
+        p.starts_with(pattern)
+    }
+
+    /// Returns `true` if the given `str` matches a prefix of this `OsStr`.
+    ///
+    /// Same as [`OsStr::starts_with`], but is easier to optimize to a
+    /// direct bitwise comparison.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(osstr_str_prefix_ops)]
+    ///
+    /// use std::ffi::OsString;
+    ///
+    /// let bananas = OsString::from("bananas");
+    ///
+    /// assert!(bananas.starts_with_str("bana"));
+    /// assert!(!bananas.starts_with_str("nana"));
+    /// ```
+    #[unstable(feature = "osstr_str_prefix_ops", issue = "none")]
+    #[must_use]
+    #[inline]
+    pub fn starts_with_str(&self, prefix: &str) -> bool {
+        self.inner.starts_with_str(prefix)
+    }
+
+    /// Returns this `OsStr` with the given prefix removed.
+    ///
+    /// If the `OsStr` starts with the pattern `prefix`, returns the substring
+    /// after the prefix, wrapped in `Some`.
+    ///
+    /// If the `OsStr` does not start with `prefix`, returns `None`.
+    ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: prim@char
+    /// [pattern]: crate::str::pattern
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(osstr_str_prefix_ops)]
+    ///
+    /// use std::ffi::{OsStr, OsString};
+    ///
+    /// let foobar = OsString::from("foo:bar");
+    ///
+    /// assert_eq!(foobar.strip_prefix("foo:"), Some(OsStr::new("bar")));
+    /// assert_eq!(foobar.strip_prefix("bar"), None);
+    /// ```
+    #[unstable(feature = "osstr_str_prefix_ops", issue = "none")]
+    #[must_use]
+    #[inline]
+    pub fn strip_prefix<'a, P: Pattern<'a>>(&'a self, prefix: P) -> Option<&'a OsStr> {
+        Some(OsStr::from_inner(self.inner.strip_prefix(prefix)?))
+    }
+
+    /// Returns this `OsStr` with the given prefix removed.
+    ///
+    /// Same as [`OsStr::strip_prefix`], but is easier to optimize to a
+    /// direct bitwise comparison.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(osstr_str_prefix_ops)]
+    ///
+    /// use std::ffi::{OsStr, OsString};
+    ///
+    /// let foobar = OsString::from("foo:bar");
+    ///
+    /// assert_eq!(foobar.strip_prefix("foo:"), Some(OsStr::new("bar")));
+    /// assert_eq!(foobar.strip_prefix_str("bar"), None);
+    /// ```
+    #[unstable(feature = "osstr_str_prefix_ops", issue = "none")]
+    #[must_use]
+    #[inline]
+    pub fn strip_prefix_str(&self, prefix: &str) -> Option<&OsStr> {
+        Some(OsStr::from_inner(self.inner.strip_prefix_str(prefix)?))
+    }
+
+    /// Splits this `OsStr` on the first occurrence of the specified delimiter,
+    /// returning the prefix before delimiter and suffix after delimiter.
+    ///
+    /// The prefix is returned as a `str`, because a successful `Pattern` match
+    /// implies its matching prefix was valid Unicode.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(osstr_str_prefix_ops)]
+    ///
+    /// use std::ffi::{OsStr, OsString};
+    ///
+    /// let foo = OsString::from("foo:");
+    /// let foobar = OsString::from("foo:bar");
+    ///
+    /// assert_eq!(foo.split_once(':'), Some(("foo", OsStr::new(""))));
+    /// assert_eq!(foobar.split_once(':'), Some(("foo", OsStr::new("bar"))));
+    /// assert_eq!(foobar.split_once('='), None);
+    /// ```
+    #[unstable(feature = "osstr_str_prefix_ops", issue = "none")]
+    #[must_use]
+    #[inline]
+    pub fn split_once<'a, P: Pattern<'a>>(&'a self, delimiter: P) -> Option<(&'a str, &'a OsStr)> {
+        let (before, after) = self.inner.split_once(delimiter)?;
+        Some((before, OsStr::from_inner(after)))
     }
 }
 

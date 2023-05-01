@@ -698,3 +698,64 @@ fn wtf8_to_owned() {
     assert_eq!(string.bytes, b"\xED\xA0\x80");
     assert!(!string.is_known_utf8);
 }
+
+#[test]
+fn wtf8_starts_with_str() {
+    let mut string = Wtf8Buf::from_str("héllô=");
+    string.push(CodePoint::from_u32(0xD800).unwrap());
+    string.push_str("wørld");
+    let slice = string.as_slice();
+
+    assert!(slice.starts_with_str("héllô"));
+    assert!(!slice.starts_with_str("héllô=wørld"));
+}
+
+#[test]
+fn wtf8_strip_prefix() {
+    let mut string = Wtf8Buf::from_str("héllô=");
+    string.push(CodePoint::from_u32(0xD800).unwrap());
+    string.push_str("wørld");
+    let slice = string.as_slice();
+
+    assert!(slice.strip_prefix("héllô=wørld").is_none());
+
+    {
+        let suffix = slice.strip_prefix('h');
+        assert!(suffix.is_some());
+        assert_eq!(&suffix.unwrap().bytes, b"\xC3\xA9ll\xC3\xB4=\xED\xA0\x80w\xC3\xB8rld",);
+    }
+
+    {
+        let suffix = slice.strip_prefix("héllô");
+        assert!(suffix.is_some());
+        assert_eq!(&suffix.unwrap().bytes, b"=\xED\xA0\x80w\xC3\xB8rld");
+    }
+}
+
+#[test]
+fn wtf8_strip_prefix_str() {
+    let mut string = Wtf8Buf::from_str("héllô=");
+    string.push(CodePoint::from_u32(0xD800).unwrap());
+    string.push_str("wørld");
+    let slice = string.as_slice();
+
+    assert!(slice.strip_prefix_str("héllô=wørld").is_none());
+
+    let suffix = slice.strip_prefix_str("héllô");
+    assert!(suffix.is_some());
+    assert_eq!(&suffix.unwrap().bytes, b"=\xED\xA0\x80w\xC3\xB8rld");
+}
+
+#[test]
+fn wtf8_split_once() {
+    let mut string = Wtf8Buf::from_str("héllô=");
+    string.push(CodePoint::from_u32(0xD800).unwrap());
+    string.push_str("wørld");
+    let slice = string.as_slice();
+
+    let split = slice.split_once('=');
+    assert!(split.is_some());
+    let (prefix, suffix) = split.unwrap();
+    assert_eq!(prefix, "héllô");
+    assert_eq!(&suffix.bytes, b"\xED\xA0\x80w\xC3\xB8rld");
+}
