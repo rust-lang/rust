@@ -86,7 +86,7 @@ impl<W: Write + ?Sized> BufferedCopySpec for W {
     }
 }
 
-impl<I: Write> BufferedCopySpec for BufWriter<I> {
+impl<I: ?Sized + Write> BufferedCopySpec for BufWriter<I> {
     fn copy_to<R: Read + ?Sized>(reader: &mut R, writer: &mut Self) -> Result<u64> {
         if writer.capacity() < DEFAULT_BUF_SIZE {
             return stack_buffer_copy(reader, writer);

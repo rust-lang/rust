@@ -495,7 +495,7 @@ impl<T: ?Sized + CopyRead> CopyRead for BufReader<T> {
     }
 }
 
-impl<T: CopyWrite> CopyWrite for BufWriter<T> {
+impl<T: ?Sized + CopyWrite> CopyWrite for BufWriter<T> {
     fn properties(&self) -> CopyParams {
         self.get_ref().properties()
     }
