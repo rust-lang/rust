@@ -427,7 +427,6 @@ impl Config {
 
     fn download_toolchain(
         &self,
-        // FIXME(ozkanonur) use CompilerMetadata instead of `version: &str`
         version: &str,
         sysroot: &str,
         stamp_key: &str,
