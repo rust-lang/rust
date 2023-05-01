@@ -216,18 +216,16 @@ pub enum AssertKind {
 #[track_caller]
 #[doc(hidden)]
 pub fn assert_failed<T, U>(
-    kind: AssertKind,
+    assert_msg: &'static str,
     left: &T,
     right: &U,
     args: Option<fmt::Arguments<'_>>,
-    left_name: &'static str,
-    right_name: &'static str,
 ) -> !
 where
     T: fmt::Debug + ?Sized,
     U: fmt::Debug + ?Sized,
 {
-    assert_failed_inner(kind, &left, &right, args, left_name, right_name)
+    assert_failed_inner(assert_msg, &left, &right, args)
 }
 
 /// Internal function for `assert_match!`
@@ -237,9 +235,9 @@ where
 #[doc(hidden)]
 pub fn assert_matches_failed<T: fmt::Debug + ?Sized>(
     left: &T,
-    right: &'static str,
+    right: &str,
     args: Option<fmt::Arguments<'_>>,
-    left_name: &'static str,
+    assert_msg: &'static str,
 ) -> ! {
     // The pattern is a string so it can be displayed directly.
     struct Pattern<'a>(&'a str);
@@ -248,7 +246,7 @@ pub fn assert_matches_failed<T: fmt::Debug + ?Sized>(
             f.write_str(self.0)
         }
     }
-    assert_failed_inner(AssertKind::Match, &left, &Pattern(right), args, left_name, right);
+    assert_failed_inner(assert_msg, &left, &Pattern(right), args);
 }
 
 /// Non-generic version of the above functions, to avoid code bloat.
@@ -256,28 +254,20 @@ pub fn assert_matches_failed<T: fmt::Debug + ?Sized>(
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
 fn assert_failed_inner(
-    kind: AssertKind,
+    assert_msg: &'static str,
     left: &dyn fmt::Debug,
     right: &dyn fmt::Debug,
     args: Option<fmt::Arguments<'_>>,
-    left_name: &'static str,
-    right_name: &'static str,
 ) -> ! {
-    let op = match kind {
-        AssertKind::Eq => "==",
-        AssertKind::Ne => "!=",
-        AssertKind::Match => "matches",
-    };
-
     match args {
         Some(args) => panic!(
-            r#"assertion failed: `{left_name} {op} {right_name}`
+            r#"assertion failed: `{assert_msg}`
  error: {args}
   left: `{left:?}`
  right: `{right:?}`"#
         ),
         None => panic!(
-            r#"assertion failed: `{left_name} {op} {right_name}`
+            r#"assertion failed: `{assert_msg}`
   left: `{left:?}`
  right: `{right:?}`"#
         ),

@@ -38,13 +38,11 @@ macro_rules! assert_eq {
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
-                    let kind = $crate::panicking::AssertKind::Eq;
-                    let left_name = stringify!($left);
-                    let right_name = stringify!($right);
+                    let assert = $crate::concat!($crate::stringify!($left), " == ", $crate::stringify!($right));
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::None, left_name, right_name);
+                    $crate::panicking::assert_failed(assert, &*left_val, &*right_val, $crate::option::Option::None);
                 }
             }
         }
@@ -53,13 +51,11 @@ macro_rules! assert_eq {
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
-                    let kind = $crate::panicking::AssertKind::Eq;
-                    let left_name = stringify!($left);
-                    let right_name = stringify!($right);
+                    let assert = $crate::concat!($crate::stringify!($left), " == ", $crate::stringify!($right));
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::Some($crate::format_args!($($arg)+)), left_name, right_name);
+                    $crate::panicking::assert_failed(assert, &*left_val, &*right_val, $crate::option::Option::Some($crate::format_args!($($arg)+)));
                 }
             }
         }
@@ -92,13 +88,11 @@ macro_rules! assert_ne {
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if *left_val == *right_val {
-                    let kind = $crate::panicking::AssertKind::Ne;
-                    let left_name = stringify!($left);
-                    let right_name = stringify!($right);
+                    let assert = $crate::concat!($crate::stringify!($left), " != ", $crate::stringify!($right));
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::None, left_name, right_name);
+                    $crate::panicking::assert_failed(assert, &*left_val, &*right_val, $crate::option::Option::None);
                 }
             }
         }
@@ -107,13 +101,11 @@ macro_rules! assert_ne {
         match (&($left), &($right)) {
             (left_val, right_val) => {
                 if *left_val == *right_val {
-                    let kind = $crate::panicking::AssertKind::Ne;
-                    let left_name = stringify!($left);
-                    let right_name = stringify!($right);
+                    let assert = $crate::concat!($crate::stringify!($left), " != ", $crate::stringify!($right));
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::Some($crate::format_args!($($arg)+)), left_name, right_name);
+                    $crate::panicking::assert_failed(assert, &*left_val, &*right_val, $crate::option::Option::Some($crate::format_args!($($arg)+)));
                 }
             }
         }
@@ -154,11 +146,12 @@ pub macro assert_matches {
         match $left {
             $( $pattern )|+ $( if $guard )? => {}
             ref left_val => {
+                let assert = $crate::concat!($crate::stringify!($left), " matches ", $crate::stringify!($($pattern)|+ $(if $guard)?));
                 $crate::panicking::assert_matches_failed(
                     left_val,
                     $crate::stringify!($($pattern)|+ $(if $guard)?),
                     $crate::option::Option::None,
-                    $crate::stringify!($left),
+                    assert,
                 );
             }
         }
@@ -167,11 +160,12 @@ pub macro assert_matches {
         match $left {
             $( $pattern )|+ $( if $guard )? => {}
             ref left_val => {
+                let assert = $crate::concat!($crate::stringify!($left), " matches ", $crate::stringify!($($pattern)|+ $(if $guard)?));
                 $crate::panicking::assert_matches_failed(
                     left_val,
                     $crate::stringify!($($pattern)|+ $(if $guard)?),
                     $crate::option::Option::Some($crate::format_args!($($arg)+)),
-                    $crate::stringify!($left),
+                    assert,
                 );
             }
         }
