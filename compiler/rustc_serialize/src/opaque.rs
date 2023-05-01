@@ -442,9 +442,8 @@ macro_rules! read_leb128 {
 
 impl<'a> Decoder for MemDecoder<'a> {
     #[inline]
-    fn position(&self) -> usize {
-        // SAFETY: This type guarantees start <= current
-        unsafe { self.current.sub_ptr(self.start) }
+    fn read_usize(&mut self) -> usize {
+        read_leb128!(self, read_usize_leb128)
     }
 
     #[inline]
@@ -481,8 +480,8 @@ impl<'a> Decoder for MemDecoder<'a> {
     }
 
     #[inline]
-    fn read_usize(&mut self) -> usize {
-        read_leb128!(self, read_usize_leb128)
+    fn read_isize(&mut self) -> isize {
+        read_leb128!(self, read_isize_leb128)
     }
 
     #[inline]
@@ -506,11 +505,6 @@ impl<'a> Decoder for MemDecoder<'a> {
     }
 
     #[inline]
-    fn read_isize(&mut self) -> isize {
-        read_leb128!(self, read_isize_leb128)
-    }
-
-    #[inline]
     fn read_raw_bytes(&mut self, bytes: usize) -> &'a [u8] {
         if bytes > self.remaining() {
             Self::decoder_exhausted();
@@ -531,6 +525,12 @@ impl<'a> Decoder for MemDecoder<'a> {
         // SAFETY: This type guarantees current is inbounds or one-past-the-end, which is end.
         // Since we just checked current == end, the current pointer must be inbounds.
         unsafe { *self.current }
+    }
+
+    #[inline]
+    fn position(&self) -> usize {
+        // SAFETY: This type guarantees start <= current
+        unsafe { self.current.sub_ptr(self.start) }
     }
 }
 
