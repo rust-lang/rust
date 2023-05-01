@@ -1150,7 +1150,7 @@ fn insert_panic_block<'tcx>(
             literal: ConstantKind::from_bool(tcx, false),
         })),
         expected: true,
-        msg: message,
+        msg: Box::new(message),
         target: assert_block,
         unwind: UnwindAction::Continue,
     };
