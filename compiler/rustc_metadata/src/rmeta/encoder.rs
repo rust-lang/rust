@@ -1863,6 +1863,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     host_hash: self.tcx.crate_host_hash(cnum),
                     kind: self.tcx.dep_kind(cnum),
                     extra_filename: self.tcx.extra_filename(cnum).clone(),
+                    is_private: self.tcx.is_private_dep(cnum),
                 };
                 (cnum, dep)
             })

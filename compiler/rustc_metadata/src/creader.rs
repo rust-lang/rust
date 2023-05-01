@@ -361,6 +361,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         lib: Library,
         dep_kind: CrateDepKind,
         name: Symbol,
+        private_dep: bool,
     ) -> Result<CrateNum, CrateError> {
         let _prof_timer = self.sess.prof.generic_activity("metadata_register_crate");
 
@@ -369,7 +370,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         let host_hash = host_lib.as_ref().map(|lib| lib.metadata.get_root().hash());
 
         let private_dep =
-            self.sess.opts.externs.get(name.as_str()).map_or(false, |e| e.is_private_dep);
+            self.sess.opts.externs.get(name.as_str()).map_or(private_dep, |e| e.is_private_dep);
 
         // Claim this crate number and cache it
         let cnum = self.cstore.intern_stable_crate_id(&crate_root)?;
@@ -514,15 +515,16 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         if !name.as_str().is_ascii() {
             return Err(CrateError::NonAsciiName(name));
         }
-        let (root, hash, host_hash, extra_filename, path_kind) = match dep {
+        let (root, hash, host_hash, extra_filename, path_kind, private_dep) = match dep {
             Some((root, dep)) => (
                 Some(root),
                 Some(dep.hash),
                 dep.host_hash,
                 Some(&dep.extra_filename[..]),
                 PathKind::Dependency,
+                dep.is_private,
             ),
-            None => (None, None, None, None, PathKind::Crate),
+            None => (None, None, None, None, PathKind::Crate, false),
         };
         let result = if let Some(cnum) = self.existing_match(name, hash, path_kind) {
             (LoadResult::Previous(cnum), None)
@@ -558,10 +560,11 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                     dep_kind = CrateDepKind::MacrosOnly;
                 }
                 data.update_dep_kind(|data_dep_kind| cmp::max(data_dep_kind, dep_kind));
+                data.update_private_dep(|private_dep| private_dep && private_dep);
                 Ok(cnum)
             }
             (LoadResult::Loaded(library), host_library) => {
-                self.register_crate(host_library, root, library, dep_kind, name)
+                self.register_crate(host_library, root, library, dep_kind, name, private_dep)
             }
             _ => panic!(),
         }

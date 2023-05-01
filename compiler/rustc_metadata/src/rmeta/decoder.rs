@@ -111,7 +111,7 @@ pub(crate) struct CrateMetadata {
     source: Lrc<CrateSource>,
     /// Whether or not this crate should be consider a private dependency
     /// for purposes of the 'exported_private_dependencies' lint
-    private_dep: bool,
+    private_dep: Lock<bool>,
     /// The hash for the host proc macro. Used to support `-Z dual-proc-macro`.
     host_hash: Option<Svh>,
 
@@ -692,12 +692,13 @@ impl MetadataBlob {
         writeln!(out, "=External Dependencies=")?;
 
         for (i, dep) in root.crate_deps.decode(self).enumerate() {
-            let CrateDep { name, extra_filename, hash, host_hash, kind } = dep;
+            let CrateDep { name, extra_filename, hash, host_hash, kind, is_private } = dep;
             let number = i + 1;
 
             writeln!(
                 out,
-                "{number} {name}{extra_filename} hash {hash} host_hash {host_hash:?} kind {kind:?}"
+                "{number} {name}{extra_filename} hash {hash} host_hash {host_hash:?} kind {kind:?} {privacy}",
+                privacy = if is_private { "private" } else { "public" }
             )?;
         }
         write!(out, "\n")?;
@@ -1610,7 +1611,7 @@ impl CrateMetadata {
             dependencies,
             dep_kind: Lock::new(dep_kind),
             source: Lrc::new(source),
-            private_dep,
+            private_dep: Lock::new(private_dep),
             host_hash,
             extern_crate: Lock::new(None),
             hygiene_context: Default::default(),
@@ -1656,6 +1657,10 @@ impl CrateMetadata {
 
     pub(crate) fn update_dep_kind(&self, f: impl FnOnce(CrateDepKind) -> CrateDepKind) {
         self.dep_kind.with_lock(|dep_kind| *dep_kind = f(*dep_kind))
+    }
+
+    pub(crate) fn update_private_dep(&self, f: impl FnOnce(bool) -> bool) {
+        self.private_dep.with_lock(|private_dep| *private_dep = f(*private_dep))
     }
 
     pub(crate) fn required_panic_strategy(&self) -> Option<PanicStrategy> {
