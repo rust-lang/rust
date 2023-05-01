@@ -547,6 +547,7 @@ impl FileAttr {
 }
 
 impl AsInner<stat64> for FileAttr {
+    #[inline]
     fn as_inner(&self) -> &stat64 {
         &self.stat
     }
@@ -1254,12 +1255,14 @@ impl DirBuilder {
 }
 
 impl AsInner<FileDesc> for File {
+    #[inline]
     fn as_inner(&self) -> &FileDesc {
         &self.0
     }
 }
 
 impl AsInnerMut<FileDesc> for File {
+    #[inline]
     fn as_inner_mut(&mut self) -> &mut FileDesc {
         &mut self.0
     }

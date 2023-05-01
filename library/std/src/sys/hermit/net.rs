@@ -340,6 +340,7 @@ impl Socket {
 }
 
 impl AsInner<FileDesc> for Socket {
+    #[inline]
     fn as_inner(&self) -> &FileDesc {
         &self.0
     }

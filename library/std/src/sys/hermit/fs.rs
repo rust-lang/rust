@@ -367,12 +367,14 @@ impl DirBuilder {
 }
 
 impl AsInner<FileDesc> for File {
+    #[inline]
     fn as_inner(&self) -> &FileDesc {
         &self.0
     }
 }
 
 impl AsInnerMut<FileDesc> for File {
+    #[inline]
     fn as_inner_mut(&mut self) -> &mut FileDesc {
         &mut self.0
     }

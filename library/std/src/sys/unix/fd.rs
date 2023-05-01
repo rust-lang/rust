@@ -481,6 +481,7 @@ impl<'a> Read for &'a FileDesc {
 }
 
 impl AsInner<OwnedFd> for FileDesc {
+    #[inline]
     fn as_inner(&self) -> &OwnedFd {
         &self.0
     }

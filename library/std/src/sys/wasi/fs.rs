@@ -498,6 +498,7 @@ impl File {
 }
 
 impl AsInner<WasiFd> for File {
+    #[inline]
     fn as_inner(&self) -> &WasiFd {
         &self.fd
     }

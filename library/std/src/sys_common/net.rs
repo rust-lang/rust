@@ -352,6 +352,7 @@ impl TcpStream {
 }
 
 impl AsInner<Socket> for TcpStream {
+    #[inline]
     fn as_inner(&self) -> &Socket {
         &self.inner
     }

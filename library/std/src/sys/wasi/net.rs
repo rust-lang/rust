@@ -17,6 +17,7 @@ pub struct TcpStream {
 }
 
 impl AsInner<WasiFd> for Socket {
+    #[inline]
     fn as_inner(&self) -> &WasiFd {
         &self.0
     }
@@ -284,6 +285,7 @@ impl TcpListener {
 }
 
 impl AsInner<Socket> for TcpListener {
+    #[inline]
     fn as_inner(&self) -> &Socket {
         &self.inner
     }
@@ -446,6 +448,7 @@ impl UdpSocket {
 }
 
 impl AsInner<Socket> for UdpSocket {
+    #[inline]
     fn as_inner(&self) -> &Socket {
         &self.inner
     }

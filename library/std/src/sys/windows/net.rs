@@ -446,6 +446,7 @@ impl<'a> Read for &'a Socket {
 }
 
 impl AsInner<OwnedSocket> for Socket {
+    #[inline]
     fn as_inner(&self) -> &OwnedSocket {
         &self.0
     }
