@@ -29,9 +29,9 @@ fn array_casts() -> () {
     let _33: &usize;                     // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     let mut _34: &usize;                 // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     let _35: &usize;                     // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _36: &str;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+    let mut _36: std::option::Option<std::fmt::Arguments<'_>>; // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     let mut _37: &str;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _38: std::option::Option<std::fmt::Arguments<'_>>; // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+    let mut _38: &str;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     scope 1 {
         debug x => _1;                   // in scope 1 at $DIR/retag.rs:+1:9: +1:14
         let _2: *mut usize;              // in scope 1 at $DIR/retag.rs:+2:9: +2:10
@@ -183,16 +183,16 @@ fn array_casts() -> () {
         _35 = &(*_21);                   // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _34 = &(*_35);                   // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_36);                // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _36 = &(*_28);                   // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _36 = Option::<Arguments<'_>>::None; // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        Retag(_36);                      // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_37);                // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _37 = &(*_29);                   // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _37 = &(*_28);                   // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_38);                // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _38 = Option::<Arguments<'_>>::None; // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        Retag(_38);                      // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _38 = &(*_29);                   // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _30 = core::panicking::assert_failed::<usize, usize>(move _31, move _32, move _34, move _36, move _37, move _38); // scope 10 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
-                                         // + literal: Const { ty: for<'a, 'b, 'c> fn(core::panicking::AssertKind, &'a usize, &'b usize, &'static str, &'static str, Option<Arguments<'c>>) -> ! {core::panicking::assert_failed::<usize, usize>}, val: Value(<ZST>) }
+                                         // + literal: Const { ty: for<'a, 'b, 'c> fn(core::panicking::AssertKind, &'a usize, &'b usize, Option<Arguments<'c>>, &'static str, &'static str) -> ! {core::panicking::assert_failed::<usize, usize>}, val: Value(<ZST>) }
     }
 
     bb4: {
