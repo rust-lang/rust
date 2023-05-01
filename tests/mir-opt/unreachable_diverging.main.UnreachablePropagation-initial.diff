@@ -1,5 +1,5 @@
-- // MIR for `main` before UnreachablePropagation
-+ // MIR for `main` after UnreachablePropagation
+- // MIR for `main` before UnreachablePropagation-initial
++ // MIR for `main` after UnreachablePropagation-initial
   
   fn main() -> () {
       let mut _0: ();                      // return place in scope 0 at $DIR/unreachable_diverging.rs:+0:11: +0:11
@@ -23,13 +23,14 @@
           StorageLive(_2);                 // scope 2 at $DIR/unreachable_diverging.rs:+2:25: +2:32
           _2 = empty() -> bb1;             // scope 2 at $DIR/unreachable_diverging.rs:+2:25: +2:32
                                            // mir::Constant
-                                           // + span: $DIR/unreachable_diverging.rs:15:25: 15:30
+                                           // + span: $DIR/unreachable_diverging.rs:16:25: 16:30
                                            // + literal: Const { ty: fn() -> Option<Empty> {empty}, val: Value(<ZST>) }
       }
   
       bb1: {
           _3 = discriminant(_2);           // scope 2 at $DIR/unreachable_diverging.rs:+2:12: +2:22
-          switchInt(move _3) -> [1: bb2, otherwise: bb6]; // scope 2 at $DIR/unreachable_diverging.rs:+2:12: +2:22
+-         switchInt(move _3) -> [1: bb2, otherwise: bb6]; // scope 2 at $DIR/unreachable_diverging.rs:+2:12: +2:22
++         switchInt(move _3) -> [1: bb2, otherwise: bb5]; // scope 2 at $DIR/unreachable_diverging.rs:+2:12: +2:22
       }
   
       bb2: {
@@ -42,9 +43,10 @@
       }
   
       bb3: {
-          _5 = loop_forever() -> bb5;      // scope 2 at $DIR/unreachable_diverging.rs:+4:13: +4:27
+-         _5 = loop_forever() -> bb5;      // scope 2 at $DIR/unreachable_diverging.rs:+4:13: +4:27
++         _5 = loop_forever() -> bb4;      // scope 2 at $DIR/unreachable_diverging.rs:+4:13: +4:27
                                            // mir::Constant
-                                           // + span: $DIR/unreachable_diverging.rs:17:13: 17:25
+                                           // + span: $DIR/unreachable_diverging.rs:18:13: 18:25
                                            // + literal: Const { ty: fn() {loop_forever}, val: Value(<ZST>) }
       }
   
@@ -58,10 +60,10 @@
 -         StorageDead(_6);                 // scope 2 at $DIR/unreachable_diverging.rs:+5:9: +5:10
 -         StorageDead(_5);                 // scope 2 at $DIR/unreachable_diverging.rs:+5:9: +5:10
 -         StorageLive(_7);                 // scope 2 at $DIR/unreachable_diverging.rs:+6:9: +6:22
-          unreachable;                     // scope 2 at $DIR/unreachable_diverging.rs:+6:15: +6:19
-      }
-  
-      bb6: {
+-         unreachable;                     // scope 2 at $DIR/unreachable_diverging.rs:+6:15: +6:19
+-     }
+- 
+-     bb6: {
           _0 = const ();                   // scope 1 at $DIR/unreachable_diverging.rs:+7:6: +7:6
           StorageDead(_1);                 // scope 0 at $DIR/unreachable_diverging.rs:+8:1: +8:2
           StorageDead(_2);                 // scope 0 at $DIR/unreachable_diverging.rs:+8:1: +8:2

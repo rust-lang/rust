@@ -534,10 +534,11 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &check_alignment::CheckAlignment,
             &reveal_all::RevealAll, // has to be done before inlining, since inlined code is in RevealAll mode.
             &lower_slice_len::LowerSliceLenCalls, // has to be done before inlining, otherwise actual call will be almost always inlined. Also simple, so can just do first
-            &unreachable_prop::UnreachablePropagation,
+            &unreachable_prop::UnreachablePropagation::Initial,
             &uninhabited_enum_branching::UninhabitedEnumBranching,
             &o1(simplify::SimplifyCfg::AfterUninhabitedEnumBranching),
             &inline::Inline,
+            &unreachable_prop::UnreachablePropagation::AfterInline,
             &remove_storage_markers::RemoveStorageMarkers,
             &remove_zsts::RemoveZsts,
             &normalize_array_len::NormalizeArrayLen, // has to run after `slice::len` lowering
@@ -563,6 +564,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &dest_prop::DestinationPropagation,
             &o1(simplify_branches::SimplifyConstCondition::Final),
             &o1(remove_noop_landing_pads::RemoveNoopLandingPads),
+            &unreachable_prop::UnreachablePropagation::Final,
             &o1(simplify::SimplifyCfg::Final),
             &nrvo::RenameReturnPlace,
             &simplify::SimplifyLocals::Final,

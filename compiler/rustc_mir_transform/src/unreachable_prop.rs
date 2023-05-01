@@ -8,9 +8,21 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
-pub struct UnreachablePropagation;
+pub(crate) enum UnreachablePropagation {
+    Initial,
+    AfterInline,
+    Final,
+}
 
 impl MirPass<'_> for UnreachablePropagation {
+    fn name(&self) -> &'static str {
+        match self {
+            UnreachablePropagation::Initial => "UnreachablePropagation-initial",
+            UnreachablePropagation::AfterInline => "UnreachablePropagation-after-inline",
+            UnreachablePropagation::Final => "UnreachablePropagation-final",
+        }
+    }
+
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         // Enable only under -Zmir-opt-level=2 as this can make programs less debuggable.
         sess.mir_opt_level() >= 2
@@ -61,6 +73,7 @@ impl MirPass<'_> for UnreachablePropagation {
         }
 
         if replaced {
+            simplify::remove_duplicate_unreachable_blocks(tcx, body);
             simplify::remove_dead_blocks(tcx, body);
         }
     }

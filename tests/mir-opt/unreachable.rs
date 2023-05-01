@@ -1,3 +1,4 @@
+// unit-test: UnreachablePropagation-initial
 // ignore-wasm32 compiled with panic=abort by default
 enum Empty {}
 
@@ -5,7 +6,7 @@ fn empty() -> Option<Empty> {
     None
 }
 
-// EMIT_MIR unreachable.main.UnreachablePropagation.diff
+// EMIT_MIR unreachable.main.UnreachablePropagation-initial.diff
 fn main() {
     if let Some(_x) = empty() {
         let mut _y;
