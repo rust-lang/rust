@@ -1,11 +1,11 @@
 error: return type notation uses `()` instead of `(..)` for elided arguments
-  --> $DIR/bad-inputs-and-output.rs:19:24
+  --> $DIR/bad-inputs-and-output.rs:18:24
    |
 LL | fn baz<T: Trait<method(..): Send>>() {}
    |                        ^^ help: remove the `..`
 
 error[E0658]: associated type bounds are unstable
-  --> $DIR/bad-inputs-and-output.rs:11:17
+  --> $DIR/bad-inputs-and-output.rs:10:17
    |
 LL | fn foo<T: Trait<method(i32): Send>>() {}
    |                 ^^^^^^^^^^^^^^^^^
@@ -14,7 +14,7 @@ LL | fn foo<T: Trait<method(i32): Send>>() {}
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
-  --> $DIR/bad-inputs-and-output.rs:15:17
+  --> $DIR/bad-inputs-and-output.rs:14:17
    |
 LL | fn bar<T: Trait<method() -> (): Send>>() {}
    |                 ^^^^^^^^^^^^^^^^^^^^
@@ -31,26 +31,18 @@ LL | #![feature(return_type_notation, async_fn_in_trait)]
    = note: see issue #109417 <https://github.com/rust-lang/rust/issues/109417> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-warning: the feature `async_fn_in_trait` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/bad-inputs-and-output.rs:3:34
-   |
-LL | #![feature(return_type_notation, async_fn_in_trait)]
-   |                                  ^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
-
 error: argument types not allowed with return type notation
-  --> $DIR/bad-inputs-and-output.rs:11:23
+  --> $DIR/bad-inputs-and-output.rs:10:23
    |
 LL | fn foo<T: Trait<method(i32): Send>>() {}
    |                       ^^^^^ help: remove the input types: `()`
 
 error: return type not allowed with return type notation
-  --> $DIR/bad-inputs-and-output.rs:15:25
+  --> $DIR/bad-inputs-and-output.rs:14:25
    |
 LL | fn bar<T: Trait<method() -> (): Send>>() {}
    |                         ^^^^^^ help: remove the return type
 
-error: aborting due to 5 previous errors; 2 warnings emitted
+error: aborting due to 5 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0658`.
