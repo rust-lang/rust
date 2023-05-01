@@ -2356,14 +2356,6 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         early_dcx.early_warn(format!("number of threads was capped at {}", parse::MAX_THREADS_CAP));
     }
 
-    let fuel = unstable_opts.fuel.is_some() || unstable_opts.print_fuel.is_some();
-    if fuel && unstable_opts.threads > 1 {
-        early_dcx.early_fatal("optimization fuel is incompatible with multiple threads");
-    }
-    if fuel && cg.incremental.is_some() {
-        early_dcx.early_fatal("optimization fuel is incompatible with incremental compilation");
-    }
-
     let incremental = cg.incremental.as_ref().map(PathBuf::from);
 
     let assert_incr_state = parse_assert_incr_state(early_dcx, &unstable_opts.assert_incr_state);

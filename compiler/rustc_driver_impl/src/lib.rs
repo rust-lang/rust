@@ -472,10 +472,6 @@ fn run_compiler(
             linker.link(sess, codegen_backend)?
         }
 
-        if let Some(fuel) = sess.opts.unstable_opts.print_fuel.as_deref() {
-            eprintln!("Fuel used by {}: {}", fuel, sess.print_fuel.load(Ordering::SeqCst));
-        }
-
         Ok(())
     })
 }
