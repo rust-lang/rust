@@ -151,7 +151,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         assert_eq!(
             init_once.status,
             InitOnceStatus::Uninitialized,
-            "begining already begun or complete init once"
+            "beginning already begun or complete init once"
         );
         init_once.status = InitOnceStatus::Begun;
     }

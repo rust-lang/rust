@@ -4,7 +4,7 @@ use std::fmt;
 use crate::borrow_tracker::tree_borrows::tree::AccessRelatedness;
 use crate::borrow_tracker::AccessKind;
 
-/// The activation states of a pointer
+/// The activation states of a pointer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PermissionPriv {
     /// represents: a local reference that has not yet been written to;
@@ -112,47 +112,14 @@ mod transition {
     }
 }
 
-impl PermissionPriv {
-    /// Determines whether a transition that occured is compatible with the presence
-    /// of a Protector. This is not included in the `transition` functions because
-    /// it would distract from the few places where the transition is modified
-    /// because of a protector, but not forbidden.
-    fn protector_allows_transition(self, new: Self) -> bool {
-        match (self, new) {
-            _ if self == new => true,
-            // It is always a protector violation to not be readable anymore
-            (_, Disabled) => false,
-            // In the case of a `Reserved` under a protector, both transitions
-            // `Reserved => Active` and `Reserved => Frozen` can legitimately occur.
-            // The first is standard (Child Write), the second is for Foreign Writes
-            // on protected Reserved where we must ensure that the pointer is not
-            // written to in the future.
-            (Reserved { .. }, Active) | (Reserved { .. }, Frozen) => true,
-            // This pointer should have stayed writeable for the whole function
-            (Active, Frozen) => false,
-            _ => unreachable!("Transition from {self:?} to {new:?} should never be possible"),
-        }
-    }
-}
-
 /// Public interface to the state machine that controls read-write permissions.
+/// This is the "private `enum`" pattern.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Permission(PermissionPriv);
 
-impl fmt::Display for Permission {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self.0 {
-                PermissionPriv::Reserved { .. } => "Reserved",
-                PermissionPriv::Active => "Active",
-                PermissionPriv::Frozen => "Frozen",
-                PermissionPriv::Disabled => "Disabled",
-            }
-        )
-    }
-}
+/// Transition from one permission to the next.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PermTransition(PermissionPriv, PermissionPriv);
 
 impl Permission {
     /// Default initial permission of the root of a new tree.
@@ -170,43 +137,148 @@ impl Permission {
         Self(Frozen)
     }
 
-    /// Pretty-printing. Needs to be here and not in diagnostics.rs
-    /// because `Self` is private.
-    pub fn short_name(self) -> &'static str {
-        // Make sure there are all of the same length as each other
-        // and also as `diagnostics::DisplayFmtPermission.uninit` otherwise
-        // alignment will be incorrect.
-        match self.0 {
-            Reserved { ty_is_freeze: true } => "Res",
-            Reserved { ty_is_freeze: false } => "Re*",
-            Active => "Act",
-            Frozen => "Frz",
-            Disabled => "Dis",
-        }
-    }
-
-    /// Check that there are no complaints from a possible protector.
-    ///
-    /// Note: this is not in charge of checking that there *is* a protector,
-    /// it should be used as
-    /// ```
-    /// let no_protector_error = if is_protected(tag) {
-    ///     old_perm.protector_allows_transition(new_perm)
-    /// };
-    /// ```
-    pub fn protector_allows_transition(self, new: Self) -> bool {
-        self.0.protector_allows_transition(new.0)
-    }
-
     /// Apply the transition to the inner PermissionPriv.
     pub fn perform_access(
         kind: AccessKind,
         rel_pos: AccessRelatedness,
         old_perm: Self,
         protected: bool,
-    ) -> Option<Self> {
+    ) -> Option<PermTransition> {
         let old_state = old_perm.0;
-        transition::perform_access(kind, rel_pos, old_state, protected).map(Self)
+        transition::perform_access(kind, rel_pos, old_state, protected)
+            .map(|new_state| PermTransition(old_state, new_state))
+    }
+}
+
+impl PermTransition {
+    /// All transitions created through normal means (using `perform_access`)
+    /// should be possible, but the same is not guaranteed by construction of
+    /// transitions inferred by diagnostics. This checks that a transition
+    /// reconstructed by diagnostics is indeed one that could happen.
+    fn is_possible(old: PermissionPriv, new: PermissionPriv) -> bool {
+        old <= new
+    }
+
+    pub fn from(old: Permission, new: Permission) -> Option<Self> {
+        Self::is_possible(old.0, new.0).then_some(Self(old.0, new.0))
+    }
+
+    pub fn is_noop(self) -> bool {
+        self.0 == self.1
+    }
+
+    /// Extract result of a transition (checks that the starting point matches).
+    pub fn applied(self, starting_point: Permission) -> Option<Permission> {
+        (starting_point.0 == self.0).then_some(Permission(self.1))
+    }
+
+    /// Extract starting point of a transition
+    pub fn started(self) -> Permission {
+        Permission(self.0)
+    }
+
+    /// Determines whether a transition that occured is compatible with the presence
+    /// of a Protector. This is not included in the `transition` functions because
+    /// it would distract from the few places where the transition is modified
+    /// because of a protector, but not forbidden.
+    ///
+    /// Note: this is not in charge of checking that there *is* a protector,
+    /// it should be used as
+    /// ```
+    /// let no_protector_error = if is_protected(tag) {
+    ///     transition.is_allowed_by_protector()
+    /// };
+    /// ```
+    pub fn is_allowed_by_protector(&self) -> bool {
+        let &Self(old, new) = self;
+        assert!(Self::is_possible(old, new));
+        match (old, new) {
+            _ if old == new => true,
+            // It is always a protector violation to not be readable anymore
+            (_, Disabled) => false,
+            // In the case of a `Reserved` under a protector, both transitions
+            // `Reserved => Active` and `Reserved => Frozen` can legitimately occur.
+            // The first is standard (Child Write), the second is for Foreign Writes
+            // on protected Reserved where we must ensure that the pointer is not
+            // written to in the future.
+            (Reserved { .. }, Active) | (Reserved { .. }, Frozen) => true,
+            // This pointer should have stayed writeable for the whole function
+            (Active, Frozen) => false,
+            _ => unreachable!("Transition from {old:?} to {new:?} should never be possible"),
+        }
+    }
+
+    /// Composition function: get the transition that can be added after `app` to
+    /// produce `self`.
+    pub fn apply_start(self, app: Self) -> Option<Self> {
+        let new_start = app.applied(Permission(self.0))?;
+        Self::from(new_start, Permission(self.1))
+    }
+}
+
+pub mod diagnostics {
+    use super::*;
+    impl fmt::Display for PermissionPriv {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(
+                f,
+                "{}",
+                match self {
+                    PermissionPriv::Reserved { .. } => "Reserved",
+                    PermissionPriv::Active => "Active",
+                    PermissionPriv::Frozen => "Frozen",
+                    PermissionPriv::Disabled => "Disabled",
+                }
+            )
+        }
+    }
+
+    impl fmt::Display for PermTransition {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "from {} to {}", self.0, self.1)
+        }
+    }
+
+    impl fmt::Display for Permission {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "{}", self.0)
+        }
+    }
+
+    impl Permission {
+        /// Abbreviated name of the permission (uniformly 3 letters for nice alignment).
+        pub fn short_name(self) -> &'static str {
+            // Make sure there are all of the same length as each other
+            // and also as `diagnostics::DisplayFmtPermission.uninit` otherwise
+            // alignment will be incorrect.
+            match self.0 {
+                Reserved { ty_is_freeze: true } => "Res",
+                Reserved { ty_is_freeze: false } => "Re*",
+                Active => "Act",
+                Frozen => "Frz",
+                Disabled => "Dis",
+            }
+        }
+    }
+
+    impl PermTransition {
+        /// Readable explanation of the consequences of an event.
+        /// Fits in the sentence "This accessed caused {trans.summary()}".
+        ///
+        /// Important: for the purposes of this explanation, `Reserved` is considered
+        /// to have write permissions, because that's what the diagnostics care about
+        /// (otherwise `Reserved -> Frozen` would be considered a noop).
+        pub fn summary(&self) -> &'static str {
+            assert!(Self::is_possible(self.0, self.1));
+            match (self.0, self.1) {
+                (_, Active) => "an activation",
+                (_, Frozen) => "a loss of write permissions",
+                (Frozen, Disabled) => "a loss of read permissions",
+                (_, Disabled) => "a loss of read and write permissions",
+                (old, new) =>
+                    unreachable!("Transition from {old:?} to {new:?} should never be possible"),
+            }
+        }
     }
 }
 

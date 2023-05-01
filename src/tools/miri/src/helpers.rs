@@ -524,7 +524,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 }
             }
 
-            // Make sure we visit aggregrates in increasing offset order.
+            // Make sure we visit aggregates in increasing offset order.
             fn visit_aggregate(
                 &mut self,
                 place: &MPlaceTy<'tcx, Provenance>,

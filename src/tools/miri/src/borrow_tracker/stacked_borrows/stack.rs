@@ -51,7 +51,7 @@ impl Stack {
         // Note that the algorithm below is based on considering the tag at read_idx - 1,
         // so precisely considering the tag at index 0 for removal when we have an unknown
         // bottom would complicate the implementation. The simplification of not considering
-        // it does not have a significant impact on the degree to which the GC mititages
+        // it does not have a significant impact on the degree to which the GC mitigates
         // memory growth.
         let mut read_idx = 1;
         let mut write_idx = read_idx;

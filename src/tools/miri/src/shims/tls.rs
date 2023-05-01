@@ -79,7 +79,7 @@ impl<'tcx> TlsData<'tcx> {
                 trace!("TLS key {} removed", key);
                 Ok(())
             }
-            None => throw_ub_format!("removing a non-existig TLS key: {}", key),
+            None => throw_ub_format!("removing a nonexistent TLS key: {}", key),
         }
     }
 
@@ -175,7 +175,7 @@ impl<'tcx> TlsData<'tcx> {
             Some(key) => Excluded(key),
             None => Unbounded,
         };
-        // We interpret the documentaion above (taken from POSIX) as saying that we need to iterate
+        // We interpret the documentation above (taken from POSIX) as saying that we need to iterate
         // over all keys and run each destructor at least once before running any destructor a 2nd
         // time. That's why we have `key` to indicate how far we got in the current iteration. If we
         // return `None`, `schedule_next_pthread_tls_dtor` will re-try with `ket` set to `None` to

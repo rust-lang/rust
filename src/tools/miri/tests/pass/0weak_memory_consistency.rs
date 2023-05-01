@@ -10,7 +10,7 @@
 // the RNG and never observed in our tests.
 //
 // To mitigate this, each test is ran enough times such that the chance
-// of spurious success is very low. These tests never supriously fail.
+// of spurious success is very low. These tests never spuriously fail.
 
 // Test cases and their consistent outcomes are from
 // http://svr-pes20-cppmem.cl.cam.ac.uk/cppmem/

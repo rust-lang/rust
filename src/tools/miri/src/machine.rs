@@ -32,8 +32,14 @@ use crate::{
     *,
 };
 
-/// The number of the available real-time signal with the lowest priority.
-/// Dummy constant related to epoll, must be between 32 and 64.
+/// First real-time signal.
+/// `signal(7)` says this must be between 32 and 64 and specifies 34 or 35
+/// as typical values.
+pub const SIGRTMIN: i32 = 34;
+
+/// Last real-time signal.
+/// `signal(7)` says it must be between 32 and 64 and specifies
+/// `SIGRTMAX` - `SIGRTMIN` >= 8 (which is the value of `_POSIX_RTSIG_MAX`)
 pub const SIGRTMAX: i32 = 42;
 
 /// Extra data stored with each stack frame
@@ -495,9 +501,9 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             measureme::Profiler::new(out).expect("Couldn't create `measureme` profiler")
         });
         let rng = StdRng::seed_from_u64(config.seed.unwrap_or(0));
-        let borrow_tracker = config.borrow_tracker.map(|bt| bt.instanciate_global_state(config));
+        let borrow_tracker = config.borrow_tracker.map(|bt| bt.instantiate_global_state(config));
         let data_race = config.data_race_detector.then(|| data_race::GlobalState::new(config));
-        // Determinine page size, stack address, and stack size.
+        // Determine page size, stack address, and stack size.
         // These values are mostly meaningless, but the stack address is also where we start
         // allocating physical integer addresses for all allocations.
         let page_size = if let Some(page_size) = config.page_size {

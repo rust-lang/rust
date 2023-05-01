@@ -1,9 +1,14 @@
-//@compile-flags: -Zmiri-retag-fields
+//@compile-flags: -Zmiri-tree-borrows
 #![feature(allocator_api)]
+
+use std::mem;
 use std::ptr;
 
-// Test various stacked-borrows-related things.
 fn main() {
+    aliasing_read_only_mutable_refs();
+    string_as_mut_ptr();
+
+    // Stacked Borrows tests
     read_does_not_invalidate1();
     read_does_not_invalidate2();
     mut_raw_then_mut_shr();
@@ -21,6 +26,41 @@ fn main() {
     wide_raw_ptr_in_tuple();
     not_unpin_not_protected();
 }
+
+// Tree Borrows has no issue with several mutable references existing
+// at the same time, as long as they are used only immutably.
+// I.e. multiple Reserved can coexist.
+pub fn aliasing_read_only_mutable_refs() {
+    unsafe {
+        let base = &mut 42u64;
+        let r1 = &mut *(base as *mut u64);
+        let r2 = &mut *(base as *mut u64);
+        let _l = *r1;
+        let _l = *r2;
+    }
+}
+
+pub fn string_as_mut_ptr() {
+    // This errors in Stacked Borrows since as_mut_ptr restricts the provenance,
+    // but with Tree Borrows it should work.
+    unsafe {
+        let mut s = String::from("hello");
+        s.reserve(1); // make the `str` that `s` derefs to not cover the entire `s`.
+
+        // Prevent automatically dropping the String's data
+        let mut s = mem::ManuallyDrop::new(s);
+
+        let ptr = s.as_mut_ptr();
+        let len = s.len();
+        let capacity = s.capacity();
+
+        let s = String::from_raw_parts(ptr, len, capacity);
+
+        assert_eq!(String::from("hello"), s);
+    }
+}
+
+// ----- The tests below were taken from Stacked Borrows ----
 
 // Make sure that reading from an `&mut` does, like reborrowing to `&`,
 // NOT invalidate other reborrows.
@@ -134,7 +174,6 @@ fn two_raw() {
 // Make sure that creating a *mut does not invalidate existing shared references.
 fn shr_and_raw() {
     unsafe {
-        use std::mem;
         let x = &mut 0;
         let y1: &i32 = mem::transmute(&*x); // launder lifetimes
         let y2 = x as *mut _;
@@ -165,7 +204,7 @@ fn disjoint_mutable_subborrows() {
     let b = unsafe { borrow_field_b(ptr) };
     b.push(4);
     a.push_str(" world");
-    eprintln!("{:?} {:?}", a, b);
+    assert_eq!(format!("{:?} {:?}", a, b), r#""hello world" [0, 1, 2, 4]"#);
 }
 
 fn raw_ref_to_part() {

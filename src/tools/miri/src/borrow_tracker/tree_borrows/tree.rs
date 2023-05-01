@@ -14,10 +14,11 @@ use smallvec::SmallVec;
 
 use rustc_const_eval::interpret::InterpResult;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_span::Span;
 use rustc_target::abi::Size;
 
 use crate::borrow_tracker::tree_borrows::{
-    diagnostics::{NodeDebugInfo, TbError, TransitionError},
+    diagnostics::{self, NodeDebugInfo, TbError, TransitionError},
     unimap::{UniEntry, UniIndex, UniKeyMap, UniValMap},
     Permission,
 };
@@ -34,7 +35,7 @@ pub(super) struct LocationState {
     /// Before initialization we still apply some preemptive transitions on
     /// `permission` to know what to do in case it ever gets initialized,
     /// but these can never cause any immediate UB. There can however be UB
-    /// the moment we attempt to initalize (i.e. child-access) because some
+    /// the moment we attempt to initialize (i.e. child-access) because some
     /// foreign access done between the creation and the initialization is
     /// incompatible with child accesses.
     initialized: bool,
@@ -118,7 +119,7 @@ pub(super) struct Node {
 /// Data given to the transition function
 struct NodeAppArgs<'node> {
     /// Node on which the transition is currently being applied
-    node: &'node Node,
+    node: &'node mut Node,
     /// Mutable access to its permissions
     perm: UniEntry<'node, LocationState>,
     /// Relative position of the access
@@ -131,14 +132,17 @@ struct ErrHandlerArgs<'node, InErr> {
     /// Tag that triggered the error (not the tag that was accessed,
     /// rather the parent tag that had insufficient permissions or the
     /// non-parent tag that had a protector).
-    faulty_tag: &'node NodeDebugInfo,
+    conflicting_info: &'node NodeDebugInfo,
+    /// Information about the tag that was accessed just before the
+    /// error was triggered.
+    accessed_info: &'node NodeDebugInfo,
 }
 /// Internal contents of `Tree` with the minimum of mutable access for
 /// the purposes of the tree traversal functions: the permissions (`perms`) can be
 /// updated but not the tree structure (`tag_mapping` and `nodes`)
 struct TreeVisitor<'tree> {
     tag_mapping: &'tree UniKeyMap<BorTag>,
-    nodes: &'tree UniValMap<Node>,
+    nodes: &'tree mut UniValMap<Node>,
     perms: &'tree mut UniValMap<LocationState>,
 }
 
@@ -167,6 +171,7 @@ impl<'tree> TreeVisitor<'tree> {
     ) -> Result<(), OutErr>
 where {
         struct TreeVisitAux<NodeApp, ErrHandler> {
+            accessed_tag: UniIndex,
             f_propagate: NodeApp,
             err_builder: ErrHandler,
             stack: Vec<(UniIndex, AccessRelatedness)>,
@@ -190,15 +195,21 @@ where {
                 rel_pos: AccessRelatedness,
             ) -> Result<(), OutErr> {
                 // 1. apply the propagation function
-                let node = this.nodes.get(tag).unwrap();
+                let node = this.nodes.get_mut(tag).unwrap();
                 let recurse =
                     (self.f_propagate)(NodeAppArgs { node, perm: this.perms.entry(tag), rel_pos })
                         .map_err(|error_kind| {
                             (self.err_builder)(ErrHandlerArgs {
                                 error_kind,
-                                faulty_tag: &node.debug_info,
+                                conflicting_info: &this.nodes.get(tag).unwrap().debug_info,
+                                accessed_info: &this
+                                    .nodes
+                                    .get(self.accessed_tag)
+                                    .unwrap()
+                                    .debug_info,
                             })
                         })?;
+                let node = this.nodes.get(tag).unwrap();
                 // 2. add the children to the stack for future traversal
                 if matches!(recurse, ContinueTraversal::Recurse) {
                     let child_rel = rel_pos.for_child();
@@ -214,7 +225,8 @@ where {
         }
 
         let start_idx = self.tag_mapping.get(&start).unwrap();
-        let mut stack = TreeVisitAux { f_propagate, err_builder, stack: Vec::new() };
+        let mut stack =
+            TreeVisitAux { accessed_tag: start_idx, f_propagate, err_builder, stack: Vec::new() };
         {
             let mut path_ascend = Vec::new();
             // First climb to the root while recording the path
@@ -262,12 +274,15 @@ where {
 
 impl Tree {
     /// Create a new tree, with only a root pointer.
-    pub fn new(root_tag: BorTag, size: Size) -> Self {
+    pub fn new(root_tag: BorTag, size: Size, span: Span) -> Self {
         let root_perm = Permission::new_root();
         let mut tag_mapping = UniKeyMap::default();
         let root_idx = tag_mapping.insert(root_tag);
         let nodes = {
             let mut nodes = UniValMap::<Node>::default();
+            let mut debug_info = NodeDebugInfo::new(root_tag, root_perm, span);
+            // name the root so that all allocations contain one named pointer
+            debug_info.add_name("root of the allocation");
             nodes.insert(
                 root_idx,
                 Node {
@@ -275,7 +290,7 @@ impl Tree {
                     parent: None,
                     children: SmallVec::default(),
                     default_initial_perm: root_perm,
-                    debug_info: NodeDebugInfo::new(root_tag),
+                    debug_info,
                 },
             );
             nodes
@@ -297,6 +312,7 @@ impl<'tcx> Tree {
         new_tag: BorTag,
         default_initial_perm: Permission,
         range: AllocRange,
+        span: Span,
     ) -> InterpResult<'tcx> {
         assert!(!self.tag_mapping.contains_key(&new_tag));
         let idx = self.tag_mapping.insert(new_tag);
@@ -309,7 +325,7 @@ impl<'tcx> Tree {
                 parent: Some(parent_idx),
                 children: SmallVec::default(),
                 default_initial_perm,
-                debug_info: NodeDebugInfo::new(new_tag),
+                debug_info: NodeDebugInfo::new(new_tag, default_initial_perm, span),
             },
         );
         // Register new_tag as a child of parent_tag
@@ -330,11 +346,11 @@ impl<'tcx> Tree {
         tag: BorTag,
         range: AllocRange,
         global: &GlobalState,
+        span: Span, // diagnostics
     ) -> InterpResult<'tcx> {
-        self.perform_access(AccessKind::Write, tag, range, global)?;
-        let access_info = &self.nodes.get(self.tag_mapping.get(&tag).unwrap()).unwrap().debug_info;
-        for (_range, perms) in self.rperms.iter_mut(range.start, range.size) {
-            TreeVisitor { nodes: &self.nodes, tag_mapping: &self.tag_mapping, perms }
+        self.perform_access(AccessKind::Write, tag, range, global, span)?;
+        for (offset, perms) in self.rperms.iter_mut(range.start, range.size) {
+            TreeVisitor { nodes: &mut self.nodes, tag_mapping: &self.tag_mapping, perms }
                 .traverse_parents_this_children_others(
                     tag,
                     |args: NodeAppArgs<'_>| -> Result<ContinueTraversal, TransitionError> {
@@ -347,13 +363,14 @@ impl<'tcx> Tree {
                             Ok(ContinueTraversal::Recurse)
                         }
                     },
-                    |args: ErrHandlerArgs<'_, TransitionError>| -> InterpErrorInfo<'tcx> {
-                        let ErrHandlerArgs { error_kind, faulty_tag } = args;
+                    |args: ErrHandlerArgs<'_, TransitionError>| -> InterpError<'tcx> {
+                        let ErrHandlerArgs { error_kind, conflicting_info, accessed_info } = args;
                         TbError {
-                            faulty_tag,
+                            conflicting_info,
                             access_kind: AccessKind::Write,
+                            error_offset: offset,
                             error_kind,
-                            tag_of_access: access_info,
+                            accessed_info,
                         }
                         .build()
                     },
@@ -373,10 +390,10 @@ impl<'tcx> Tree {
         tag: BorTag,
         range: AllocRange,
         global: &GlobalState,
+        span: Span, // diagnostics
     ) -> InterpResult<'tcx> {
-        let access_info = &self.nodes.get(self.tag_mapping.get(&tag).unwrap()).unwrap().debug_info;
-        for (_range, perms) in self.rperms.iter_mut(range.start, range.size) {
-            TreeVisitor { nodes: &self.nodes, tag_mapping: &self.tag_mapping, perms }
+        for (offset, perms) in self.rperms.iter_mut(range.start, range.size) {
+            TreeVisitor { nodes: &mut self.nodes, tag_mapping: &self.tag_mapping, perms }
                 .traverse_parents_this_children_others(
                     tag,
                     |args: NodeAppArgs<'_>| -> Result<ContinueTraversal, TransitionError> {
@@ -424,24 +441,42 @@ impl<'tcx> Tree {
 
                         let old_perm = old_state.permission;
                         let protected = global.borrow().protected_tags.contains_key(&node.tag);
-                        let new_perm =
+                        let transition =
                             Permission::perform_access(access_kind, rel_pos, old_perm, protected)
                                 .ok_or(TransitionError::ChildAccessForbidden(old_perm))?;
                         if protected
                             // Can't trigger Protector on uninitialized locations
                             && old_state.initialized
-                            && !old_perm.protector_allows_transition(new_perm)
+                            && !transition.is_allowed_by_protector()
                         {
-                            return Err(TransitionError::ProtectedTransition(old_perm, new_perm));
+                            return Err(TransitionError::ProtectedTransition(transition));
                         }
-                        old_state.permission = new_perm;
+                        // Record the event as part of the history
+                        if !transition.is_noop() {
+                            node.debug_info.history.push(diagnostics::Event {
+                                transition,
+                                access_kind,
+                                access_range: range,
+                                is_foreign: rel_pos.is_foreign(),
+                                offset,
+                                span,
+                            });
+                            old_state.permission =
+                                transition.applied(old_state.permission).unwrap();
+                        }
                         old_state.initialized |= !rel_pos.is_foreign();
                         Ok(ContinueTraversal::Recurse)
                     },
-                    |args: ErrHandlerArgs<'_, TransitionError>| -> InterpErrorInfo<'tcx> {
-                        let ErrHandlerArgs { error_kind, faulty_tag } = args;
-                        TbError { faulty_tag, access_kind, error_kind, tag_of_access: access_info }
-                            .build()
+                    |args: ErrHandlerArgs<'_, TransitionError>| -> InterpError<'tcx> {
+                        let ErrHandlerArgs { error_kind, conflicting_info, accessed_info } = args;
+                        TbError {
+                            conflicting_info,
+                            access_kind,
+                            error_offset: offset,
+                            error_kind,
+                            accessed_info,
+                        }
+                        .build()
                     },
                 )?;
         }

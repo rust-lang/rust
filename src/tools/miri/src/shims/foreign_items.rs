@@ -46,7 +46,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // This list should be kept in sync with the one from libstd.
         let min_align = match this.tcx.sess.target.arch.as_ref() {
             "x86" | "arm" | "mips" | "powerpc" | "powerpc64" | "asmjs" | "wasm32" => 8,
-            "x86_64" | "aarch64" | "mips64" | "s390x" | "sparc64" => 16,
+            "x86_64" | "aarch64" | "mips64" | "s390x" | "sparc64" | "loongarch64" => 16,
             arch => bug!("unsupported target architecture for malloc: `{}`", arch),
         };
         // Windows always aligns, even small allocations.
@@ -743,6 +743,44 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     Scalar::from_target_usize(u64::try_from(n).unwrap(), this),
                     dest,
                 )?;
+            }
+            "memcpy" => {
+                let [ptr_dest, ptr_src, n] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let ptr_dest = this.read_pointer(ptr_dest)?;
+                let ptr_src = this.read_pointer(ptr_src)?;
+                let n = this.read_target_usize(n)?;
+                this.mem_copy(
+                    ptr_src,
+                    Align::ONE,
+                    ptr_dest,
+                    Align::ONE,
+                    Size::from_bytes(n),
+                    true,
+                )?;
+                this.write_pointer(ptr_dest, dest)?;
+            }
+            "strcpy" => {
+                let [ptr_dest, ptr_src] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let ptr_dest = this.read_pointer(ptr_dest)?;
+                let ptr_src = this.read_pointer(ptr_src)?;
+
+                // We use `read_c_str` to determine the amount of data to copy,
+                // and then use `mem_copy` for the actual copy. This means
+                // pointer provenance is preserved by this implementation of `strcpy`.
+                // That is probably overly cautious, but there also is no fundamental
+                // reason to have `strcpy` destroy pointer provenance.
+                let n = this.read_c_str(ptr_src)?.len().checked_add(1).unwrap();
+                this.mem_copy(
+                    ptr_src,
+                    Align::ONE,
+                    ptr_dest,
+                    Align::ONE,
+                    Size::from_bytes(n),
+                    true,
+                )?;
+                this.write_pointer(ptr_dest, dest)?;
             }
 
             // math functions (note that there are also intrinsics for some other functions)

@@ -2,6 +2,7 @@ use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 
 use crate::machine::SIGRTMAX;
+use crate::machine::SIGRTMIN;
 use crate::*;
 use shims::foreign_items::EmulateByNameResult;
 use shims::unix::fs::EvalContextExt as _;
@@ -73,6 +74,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 let result = this.socketpair(domain, type_, protocol, sv)?;
                 this.write_scalar(result, dest)?;
+            }
+            "__libc_current_sigrtmin" => {
+                let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+
+                this.write_scalar(Scalar::from_i32(SIGRTMIN), dest)?;
             }
             "__libc_current_sigrtmax" => {
                 let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -163,7 +169,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             this.linux_statx(&args[1], &args[2], &args[3], &args[4], &args[5])?;
                         this.write_scalar(Scalar::from_target_isize(result.into(), this), dest)?;
                     }
-                    // `futex` is used by some synchonization primitives.
+                    // `futex` is used by some synchronization primitives.
                     id if id == sys_futex => {
                         futex(this, &args[1..], dest)?;
                     }
@@ -174,7 +180,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 }
             }
 
-            // Miscelanneous
+            // Miscellaneous
             "getrandom" => {
                 let [ptr, len, flags] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;

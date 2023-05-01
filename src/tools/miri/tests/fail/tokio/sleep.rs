@@ -1,5 +1,7 @@
 //@compile-flags: -Zmiri-permissive-provenance -Zmiri-backtrace=full
 //@only-target-x86_64-unknown-linux: support for tokio only on linux and x86
+//@error-pattern: returning ready events from epoll_wait is not yet implemented
+//@normalize-stderr-test: " += note:.*\n" -> ""
 
 use tokio::time::{sleep, Duration, Instant};
 

@@ -242,7 +242,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             //
             // To distinguish these two cases in already constructed mutexes, we
             // use the same trick as glibc: for the case when
-            // `pthread_mutexattr_settype` is caled explicitly, we set the
+            // `pthread_mutexattr_settype` is called explicitly, we set the
             // `PTHREAD_MUTEX_NORMAL_FLAG` flag.
             let normal_kind = kind | PTHREAD_MUTEX_NORMAL_FLAG;
             // Check that after setting the flag, the kind is distinguishable

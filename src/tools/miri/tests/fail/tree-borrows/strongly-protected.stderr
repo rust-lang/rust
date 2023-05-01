@@ -1,0 +1,49 @@
+error: Undefined Behavior: deallocation through <TAG> is forbidden
+  --> RUSTLIB/alloc/src/alloc.rs:LL:CC
+   |
+LL |     unsafe { __rust_dealloc(ptr, layout.size(), layout.align()) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ deallocation through <TAG> is forbidden
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: the allocation of the accessed tag <TAG> also contains the strongly protected tag <TAG>
+   = help: the strongly protected tag <TAG> disallows deallocations
+help: the accessed tag <TAG> was created here
+  --> $DIR/strongly-protected.rs:LL:CC
+   |
+LL |         drop(unsafe { Box::from_raw(raw) });
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: the strongly protected tag <TAG> was created here, in the initial state Reserved
+  --> $DIR/strongly-protected.rs:LL:CC
+   |
+LL | fn inner(x: &mut i32, f: fn(&mut i32)) {
+   |          ^
+   = note: BACKTRACE (of the first span):
+   = note: inside `std::alloc::dealloc` at RUSTLIB/alloc/src/alloc.rs:LL:CC
+   = note: inside `<std::alloc::Global as std::alloc::Allocator>::deallocate` at RUSTLIB/alloc/src/alloc.rs:LL:CC
+   = note: inside `alloc::alloc::box_free::<i32, std::alloc::Global>` at RUSTLIB/alloc/src/alloc.rs:LL:CC
+   = note: inside `std::ptr::drop_in_place::<std::boxed::Box<i32>> - shim(Some(std::boxed::Box<i32>))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+   = note: inside `std::mem::drop::<std::boxed::Box<i32>>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
+note: inside closure
+  --> $DIR/strongly-protected.rs:LL:CC
+   |
+LL |         drop(unsafe { Box::from_raw(raw) });
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: inside `<[closure@$DIR/strongly-protected.rs:LL:CC] as std::ops::FnOnce<(&mut i32,)>>::call_once - shim` at RUSTLIB/core/src/ops/function.rs:LL:CC
+note: inside `inner`
+  --> $DIR/strongly-protected.rs:LL:CC
+   |
+LL |     f(x)
+   |     ^^^^
+note: inside `main`
+  --> $DIR/strongly-protected.rs:LL:CC
+   |
+LL | /     inner(Box::leak(Box::new(0)), |x| {
+LL | |         let raw = x as *mut _;
+LL | |         drop(unsafe { Box::from_raw(raw) });
+LL | |     });
+   | |______^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

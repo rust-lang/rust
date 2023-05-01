@@ -585,9 +585,9 @@ fn simd_element_to_bool(elem: ImmTy<'_, Provenance>) -> InterpResult<'_, bool> {
     })
 }
 
-fn simd_bitmask_index(idx: u32, vec_len: u32, endianess: Endian) -> u32 {
+fn simd_bitmask_index(idx: u32, vec_len: u32, endianness: Endian) -> u32 {
     assert!(idx < vec_len);
-    match endianess {
+    match endianness {
         Endian::Little => idx,
         #[allow(clippy::integer_arithmetic)] // idx < vec_len
         Endian::Big => vec_len - 1 - idx, // reverse order of bits

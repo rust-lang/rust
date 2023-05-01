@@ -376,7 +376,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
 
             // Inlining of `DEFAULT` from
             // https://github.com/rust-lang/rust/blob/master/compiler/rustc_session/src/config/sigpipe.rs.
-            // Alaways using DEFAULT is okay since we don't support signals in Miri anyway.
+            // Always using DEFAULT is okay since we don't support signals in Miri anyway.
             let sigpipe = 2;
 
             ecx.call_function(
@@ -460,7 +460,7 @@ pub fn eval_entry<'tcx>(
             return None;
         }
         // Check for memory leaks.
-        info!("Additonal static roots: {:?}", ecx.machine.static_roots);
+        info!("Additional static roots: {:?}", ecx.machine.static_roots);
         let leaks = ecx.find_leaked_allocations(&ecx.machine.static_roots);
         if !leaks.is_empty() {
             report_leaks(&ecx, leaks);

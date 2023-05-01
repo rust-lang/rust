@@ -11,6 +11,7 @@ use std::time::SystemTime;
 use log::trace;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_middle::ty::TyCtxt;
 use rustc_target::abi::{Align, Size};
 
 use crate::shims::os_str::bytes_to_os_str;
@@ -31,6 +32,7 @@ pub trait FileDescriptor: std::fmt::Debug + helpers::AsAny {
         &mut self,
         _communicate_allowed: bool,
         _bytes: &mut [u8],
+        _tcx: TyCtxt<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         throw_unsup_format!("cannot read from {}", self.name());
     }
@@ -39,6 +41,7 @@ pub trait FileDescriptor: std::fmt::Debug + helpers::AsAny {
         &self,
         _communicate_allowed: bool,
         _bytes: &[u8],
+        _tcx: TyCtxt<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         throw_unsup_format!("cannot write to {}", self.name());
     }
@@ -79,6 +82,7 @@ impl FileDescriptor for FileHandle {
         &mut self,
         communicate_allowed: bool,
         bytes: &mut [u8],
+        _tcx: TyCtxt<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         Ok(self.file.read(bytes))
@@ -88,6 +92,7 @@ impl FileDescriptor for FileHandle {
         &self,
         communicate_allowed: bool,
         bytes: &[u8],
+        _tcx: TyCtxt<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         Ok((&mut &self.file).write(bytes))
@@ -153,6 +158,7 @@ impl FileDescriptor for io::Stdin {
         &mut self,
         communicate_allowed: bool,
         bytes: &mut [u8],
+        _tcx: TyCtxt<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         if !communicate_allowed {
             // We want isolation mode to be deterministic, so we have to disallow all reads, even stdin.
@@ -184,6 +190,7 @@ impl FileDescriptor for io::Stdout {
         &self,
         _communicate_allowed: bool,
         bytes: &[u8],
+        _tcx: TyCtxt<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         // We allow writing to stderr even with isolation enabled.
         let result = Write::write(&mut { self }, bytes);
@@ -220,6 +227,7 @@ impl FileDescriptor for io::Stderr {
         &self,
         _communicate_allowed: bool,
         bytes: &[u8],
+        _tcx: TyCtxt<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         // We allow writing to stderr even with isolation enabled.
         // No need to flush, stderr is not buffered.
@@ -252,6 +260,7 @@ impl FileDescriptor for NullOutput {
         &self,
         _communicate_allowed: bool,
         bytes: &[u8],
+        _tcx: TyCtxt<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         // We just don't write anything, but report to the user that we did.
         Ok(Ok(bytes.len()))
@@ -756,8 +765,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             let mut bytes = vec![0; usize::try_from(count).unwrap()];
             // `File::read` never returns a value larger than `count`,
             // so this cannot fail.
-            let result =
-                file_descriptor.read(communicate, &mut bytes)?.map(|c| i64::try_from(c).unwrap());
+            let result = file_descriptor
+                .read(communicate, &mut bytes, *this.tcx)?
+                .map(|c| i64::try_from(c).unwrap());
 
             match result {
                 Ok(read_bytes) => {
@@ -803,8 +813,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
             let bytes = this.read_bytes_ptr_strip_provenance(buf, Size::from_bytes(count))?;
-            let result =
-                file_descriptor.write(communicate, bytes)?.map(|c| i64::try_from(c).unwrap());
+            let result = file_descriptor
+                .write(communicate, bytes, *this.tcx)?
+                .map(|c| i64::try_from(c).unwrap());
             this.try_unwrap_io_result(result)
         } else {
             this.handle_not_found()
@@ -1015,8 +1026,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let path = this.read_path_from_c_str(pathname_ptr)?.into_owned();
         // See <https://github.com/rust-lang/rust/pull/79196> for a discussion of argument sizes.
-        let at_ampty_path = this.eval_libc_i32("AT_EMPTY_PATH");
-        let empty_path_flag = flags & at_ampty_path == at_ampty_path;
+        let at_empty_path = this.eval_libc_i32("AT_EMPTY_PATH");
+        let empty_path_flag = flags & at_empty_path == at_empty_path;
         // We only support:
         // * interpreting `path` as an absolute directory,
         // * interpreting `path` as a path relative to `dirfd` when the latter is `AT_FDCWD`, or
@@ -1053,7 +1064,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             return Ok(-1);
         }
 
-        // the `_mask_op` paramter specifies the file information that the caller requested.
+        // the `_mask_op` parameter specifies the file information that the caller requested.
         // However `statx` is allowed to return information that was not requested or to not
         // return information that was requested. This `mask` represents the information we can
         // actually provide for any target.

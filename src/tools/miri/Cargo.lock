@@ -27,6 +27,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.70"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7de8ce5e0f9f8d88245311066a578d72b7af3e7088f32783804676302df237e4"
+
+[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -292,9 +298,9 @@ dependencies = [
 
 [[package]]
 name = "libffi-sys"
-version = "2.2.1"
+version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc65067b78c0fc069771e8b9a9e02df71e08858bec92c1f101377c67b9dca7c7"
+checksum = "f36115160c57e8529781b4183c2bb51fdc1f6d6d1ed345591d84be7703befb3c"
 dependencies = [
  "cc",
 ]
@@ -571,6 +577,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustfix"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ecd2853d9e26988467753bd9912c3a126f642d05d229a4b53f5752ee36c56481"
+dependencies = [
+ "anyhow",
+ "log",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "ryu"
 version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -744,11 +762,12 @@ dependencies = [
 
 [[package]]
 name = "ui_test"
-version = "0.5.0"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54ddb6f31025943e2f9d59237f433711c461a43d9415974c3eb3a4902edc1c1f"
+checksum = "3e10f5f88ce8c331a388deda1e6e2bd533c73ca89cc5f539a3df02ed35c8efba"
 dependencies = [
  "bstr",
+ "cargo-platform",
  "cargo_metadata",
  "color-eyre",
  "colored",
@@ -757,6 +776,7 @@ dependencies = [
  "lazy_static",
  "regex",
  "rustc_version",
+ "rustfix",
  "serde",
  "serde_json",
  "tempfile",
