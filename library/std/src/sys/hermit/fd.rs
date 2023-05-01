@@ -75,6 +75,7 @@ impl FromRawFd for FileDesc {
 }
 
 impl AsInner<OwnedFd> for FileDesc {
+    #[inline]
     fn as_inner(&self) -> &OwnedFd {
         &self.fd
     }

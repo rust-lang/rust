@@ -498,6 +498,7 @@ impl File {
 }
 
 impl AsInner<WasiFd> for File {
+    #[inline]
     fn as_inner(&self) -> &WasiFd {
         &self.fd
     }
@@ -522,6 +523,7 @@ impl AsFd for File {
 }
 
 impl AsRawFd for File {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         self.fd.as_raw_fd()
     }

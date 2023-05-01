@@ -832,6 +832,7 @@ fn open_link_no_reparse(parent: &File, name: &[u16], access: u32) -> io::Result<
 }
 
 impl AsInner<Handle> for File {
+    #[inline]
     fn as_inner(&self) -> &Handle {
         &self.handle
     }
