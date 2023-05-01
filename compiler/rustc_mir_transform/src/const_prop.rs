@@ -530,9 +530,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         // type whose creation requires no write. E.g. a generator whose initial state
         // consists solely of uninitialized memory (so it doesn't capture any locals).
         let value = self.get_const(place)?;
-        if !self.tcx.consider_optimizing(|| format!("ConstantPropagation - {value:?}")) {
-            return None;
-        }
         trace!("replacing {:?} with {:?}", place, value);
 
         // FIXME: figure out what to do when read_immediate_raw fails

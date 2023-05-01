@@ -51,10 +51,6 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
         let bbs = body.basic_blocks.as_mut();
         let mut should_cleanup = false;
         'outer: for bb_idx in bbs.indices() {
-            if !tcx.consider_optimizing(|| format!("MatchBranchSimplification {def_id:?} ")) {
-                continue;
-            }
-
             let (discr, val, first, second) = match bbs[bb_idx].terminator().kind {
                 TerminatorKind::SwitchInt {
                     discr: ref discr @ (Operand::Copy(_) | Operand::Move(_)),

@@ -7,6 +7,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{self, GenericArgsRef, ParamEnv, Ty, TyCtxt};
 use rustc_span::symbol::Symbol;
+use rustc_span::DUMMY_SP;
 use rustc_target::abi::FieldIdx;
 
 pub struct InstSimplify;
@@ -26,10 +27,10 @@ impl<'tcx> MirPass<'tcx> for InstSimplify {
             for statement in block.statements.iter_mut() {
                 match statement.kind {
                     StatementKind::Assign(box (_place, ref mut rvalue)) => {
-                        ctx.simplify_bool_cmp(&statement.source_info, rvalue);
-                        ctx.simplify_ref_deref(&statement.source_info, rvalue);
-                        ctx.simplify_len(&statement.source_info, rvalue);
-                        ctx.simplify_cast(&statement.source_info, rvalue);
+                        ctx.simplify_bool_cmp(rvalue);
+                        ctx.simplify_ref_deref(rvalue);
+                        ctx.simplify_len(rvalue);
+                        ctx.simplify_cast(rvalue);
                     }
                     _ => {}
                 }
@@ -55,14 +56,8 @@ struct InstSimplifyContext<'tcx, 'a> {
 }
 
 impl<'tcx> InstSimplifyContext<'tcx, '_> {
-    fn should_simplify(&self, source_info: &SourceInfo, rvalue: &Rvalue<'tcx>) -> bool {
-        self.tcx.consider_optimizing(|| {
-            format!("InstSimplify - Rvalue: {rvalue:?} SourceInfo: {source_info:?}")
-        })
-    }
-
     /// Transform boolean comparisons into logical operations.
-    fn simplify_bool_cmp(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
+    fn simplify_bool_cmp(&self, rvalue: &mut Rvalue<'tcx>) {
         match rvalue {
             Rvalue::BinaryOp(op @ (BinOp::Eq | BinOp::Ne), box (a, b)) => {
                 let new = match (op, self.try_eval_bool(a), self.try_eval_bool(b)) {
@@ -93,7 +88,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
                     _ => None,
                 };
 
-                if let Some(new) = new && self.should_simplify(source_info, rvalue) {
+                if let Some(new) = new {
                     *rvalue = new;
                 }
             }
@@ -108,14 +103,10 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
     }
 
     /// Transform "&(*a)" ==> "a".
-    fn simplify_ref_deref(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
+    fn simplify_ref_deref(&self, rvalue: &mut Rvalue<'tcx>) {
         if let Rvalue::Ref(_, _, place) = rvalue {
             if let Some((base, ProjectionElem::Deref)) = place.as_ref().last_projection() {
                 if rvalue.ty(self.local_decls, self.tcx) != base.ty(self.local_decls, self.tcx).ty {
-                    return;
-                }
-
-                if !self.should_simplify(source_info, rvalue) {
                     return;
                 }
 
@@ -128,22 +119,18 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
     }
 
     /// Transform "Len([_; N])" ==> "N".
-    fn simplify_len(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
+    fn simplify_len(&self, rvalue: &mut Rvalue<'tcx>) {
         if let Rvalue::Len(ref place) = *rvalue {
             let place_ty = place.ty(self.local_decls, self.tcx).ty;
             if let ty::Array(_, len) = *place_ty.kind() {
-                if !self.should_simplify(source_info, rvalue) {
-                    return;
-                }
-
                 let const_ = Const::from_ty_const(len, self.tcx);
-                let constant = ConstOperand { span: source_info.span, const_, user_ty: None };
+                let constant = ConstOperand { span: DUMMY_SP, const_, user_ty: None };
                 *rvalue = Rvalue::Use(Operand::Constant(Box::new(constant)));
             }
         }
     }
 
-    fn simplify_cast(&self, _source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
+    fn simplify_cast(&self, rvalue: &mut Rvalue<'tcx>) {
         if let Rvalue::Cast(kind, operand, cast_ty) = rvalue {
             let operand_ty = operand.ty(self.local_decls, self.tcx);
             if operand_ty == *cast_ty {
@@ -220,16 +207,6 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
 
         let trait_def_id = self.tcx.trait_of_item(fn_def_id);
         if trait_def_id.is_none() || trait_def_id != self.tcx.lang_items().clone_trait() {
-            return;
-        }
-
-        if !self.tcx.consider_optimizing(|| {
-            format!(
-                "InstSimplify - Call: {:?} SourceInfo: {:?}",
-                (fn_def_id, fn_args),
-                terminator.source_info
-            )
-        }) {
             return;
         }
 
