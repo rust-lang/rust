@@ -1,10 +1,10 @@
 thread 'main' panicked at $DIR/test-panic-abort-nocapture.rs:33:5:
-assertion failed: `(1 + 1 == 4)`
+assertion failed: `1 + 1 == 4`
   left: `2`
  right: `4`
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 thread 'main' panicked at $DIR/test-panic-abort-nocapture.rs:27:5:
-assertion failed: `(1 + 1 == 4)`
+assertion failed: `1 + 1 == 4`
   left: `2`
  right: `4`
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

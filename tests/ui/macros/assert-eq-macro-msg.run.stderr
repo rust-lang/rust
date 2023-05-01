@@ -1,5 +1,5 @@
 thread 'main' panicked at $DIR/assert-eq-macro-msg.rs:6:5:
-assertion failed: `(1 + 1 == 3)`
+assertion failed: `1 + 1 == 3`
  error: 1 + 1 definitely should be 3
   left: `2`
  right: `3`

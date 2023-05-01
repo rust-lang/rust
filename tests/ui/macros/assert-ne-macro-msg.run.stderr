@@ -1,5 +1,5 @@
 thread 'main' panicked at $DIR/assert-ne-macro-msg.rs:6:5:
-assertion failed: `(1 + 1 != 2)`
+assertion failed: `1 + 1 != 2`
  error: 1 + 1 definitely should not be 2
   left: `2`
  right: `2`
