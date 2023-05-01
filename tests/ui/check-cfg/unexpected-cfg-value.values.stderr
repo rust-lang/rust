@@ -1,0 +1,25 @@
+warning: unexpected `cfg` condition value: `sedre`
+  --> $DIR/unexpected-cfg-value.rs:11:7
+   |
+LL | #[cfg(feature = "sedre")]
+   |       ^^^^^^^^^^-------
+   |                 |
+   |                 help: there is a expected value with a similar name: `"serde"`
+   |
+   = note: expected values for `feature` are: `full`, `serde`
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition value: `rand`
+  --> $DIR/unexpected-cfg-value.rs:18:7
+   |
+LL | #[cfg(feature = "rand")]
+   |       ^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `full`, `serde`
+
+warning: unexpected condition value `rand` for condition name `feature`
+   |
+   = help: was set with `--cfg` but isn't in the `--check-cfg` expected values
+
+warning: 3 warnings emitted
+
