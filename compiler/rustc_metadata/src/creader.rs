@@ -560,7 +560,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                     dep_kind = CrateDepKind::MacrosOnly;
                 }
                 data.update_dep_kind(|data_dep_kind| cmp::max(data_dep_kind, dep_kind));
-                data.update_private_dep(|private_dep| private_dep && private_dep);
+                data.update_private_dep(|p_d| p_d && private_dep);
                 Ok(cnum)
             }
             (LoadResult::Loaded(library), host_library) => {
