@@ -16,6 +16,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::{self, scope, ScopedJoinHandle};
 
 fn main() {
+    // Allow using unstable cargo features in the standard library.
+    // `setenv` might not be thread safe, so run it before using multiple threads.
+    env::set_var("RUSTC_BOOTSTRAP", "1");
+
     let root_path: PathBuf = env::args_os().nth(1).expect("need path to root of repo").into();
     let cargo: PathBuf = env::args_os().nth(2).expect("need path to cargo").into();
     let output_directory: PathBuf =

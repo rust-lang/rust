@@ -1,5 +1,7 @@
 #![allow(unused)]
 
+#![allow(exported_private_dependencies)]
+
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
