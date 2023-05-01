@@ -1,0 +1,20 @@
+warning: unused imports: `HashSet`, `Write`, `self`
+  --> $DIR/unused-partial-nested-import.rs:8:34
+   |
+LL | use std::{collections::{HashMap, HashSet}, io::{Write, self, Read}};
+   |                                  ^^^^^^^        ^^^^^  ^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-partial-nested-import.rs:6:9
+   |
+LL | #![warn(unused_imports)]
+   |         ^^^^^^^^^^^^^^
+
+warning: unused import: `BTreeSet`
+  --> $DIR/unused-partial-nested-import.rs:9:34
+   |
+LL | use std::collections::{BTreeMap, BTreeSet};
+   |                                  ^^^^^^^^
+
+warning: 2 warnings emitted
+
