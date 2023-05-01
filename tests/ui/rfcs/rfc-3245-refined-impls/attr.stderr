@@ -1,0 +1,71 @@
+error: `#[refine]` attribute must be put on an associated function or type in a trait implementation
+  --> $DIR/attr.rs:40:1
+   |
+LL | #[refine]
+   | ^^^^^^^^^
+LL |
+LL | fn foo() {}
+   | ----------- this item
+
+error: `#[refine]` attribute cannot be put on an item in a trait
+  --> $DIR/attr.rs:4:5
+   |
+LL |     #[refine]
+   |     ^^^^^^^^^
+LL |
+LL |     fn assoc();
+   |     ----------- this trait item
+   |
+   = note: the attribute is useless because the item does not refine anything
+
+error: `#[refine]` attribute cannot be put on an item in a trait
+  --> $DIR/attr.rs:8:5
+   |
+LL |     #[refine]
+   |     ^^^^^^^^^
+LL |
+LL |     type Assoc;
+   |     ----------- this trait item
+   |
+   = note: the attribute is useless because the item does not refine anything
+
+error: associated consts cannot be refined
+  --> $DIR/attr.rs:12:5
+   |
+LL |     #[refine]
+   |     ^^^^^^^^^
+LL |
+LL |     const N: u32;
+   |     ------------- this associated const
+
+error: `#[refine]` attribute cannot be put on an item in an inherent impl
+  --> $DIR/attr.rs:19:5
+   |
+LL |     #[refine]
+   |     ^^^^^^^^^
+LL |
+LL |     fn assoc() {}
+   |     ------------- this impl item
+   |
+   = note: the attribute is useless because the item does not refine anything
+
+error: associated consts cannot be refined
+  --> $DIR/attr.rs:23:5
+   |
+LL |     #[refine]
+   |     ^^^^^^^^^
+LL |
+LL |     const M: u32 = 1;
+   |     ----------------- this associated const
+
+error: associated consts cannot be refined
+  --> $DIR/attr.rs:29:5
+   |
+LL |     #[refine]
+   |     ^^^^^^^^^
+LL |
+LL |     const N: u32 = 1;
+   |     ----------------- this associated const
+
+error: aborting due to 7 previous errors
+

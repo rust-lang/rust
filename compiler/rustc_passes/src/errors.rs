@@ -1757,3 +1757,37 @@ pub struct AttrCrateLevelOnlySugg {
     #[primary_span]
     pub attr: Span,
 }
+
+#[derive(Diagnostic)]
+pub enum BadRefineAttr {
+    #[diag(passes_bad_refine_attr_inherent_impl)]
+    #[note]
+    InherentImpl {
+        #[primary_span]
+        attr_span: Span,
+        #[label]
+        span: Span,
+    },
+    #[diag(passes_bad_refine_attr_trait)]
+    #[note]
+    Trait {
+        #[primary_span]
+        attr_span: Span,
+        #[label]
+        span: Span,
+    },
+    #[diag(passes_bad_refine_attr_assoc_const)]
+    AssocConst {
+        #[primary_span]
+        attr_span: Span,
+        #[label]
+        span: Span,
+    },
+    #[diag(passes_bad_refine_attr_other_item)]
+    OtherItem {
+        #[primary_span]
+        attr_span: Span,
+        #[label]
+        span: Span,
+    },
+}

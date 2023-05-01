@@ -52,6 +52,23 @@ passes_attr_only_on_main =
 passes_attr_only_on_root_main =
     `{$attr}` attribute can only be used on root `fn main()`
 
+passes_bad_refine_attr_assoc_const =
+    associated consts cannot be refined
+    .label = this associated const
+
+passes_bad_refine_attr_inherent_impl =
+    `#[refine]` attribute cannot be put on an item in an inherent impl
+    .note = the attribute is useless because the item does not refine anything
+    .label = this impl item
+
+passes_bad_refine_attr_other_item =
+    `#[refine]` attribute must be put on an associated function or type in a trait implementation
+    .label = this item
+passes_bad_refine_attr_trait =
+    `#[refine]` attribute cannot be put on an item in a trait
+    .note = the attribute is useless because the item does not refine anything
+    .label = this trait item
+
 passes_both_ffi_const_and_pure =
     `#[ffi_const]` function cannot be `#[ffi_pure]`
 

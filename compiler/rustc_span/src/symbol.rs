@@ -1201,6 +1201,7 @@ symbols! {
         reexport_test_harness_main,
         ref_unwind_safe_trait,
         reference,
+        refine,
         reflect,
         reg,
         reg16,

@@ -3436,6 +3436,7 @@ declare_lint_pass! {
         TYVAR_BEHIND_RAW_POINTER,
         UNCONDITIONAL_PANIC,
         UNCONDITIONAL_RECURSION,
+        UNDECLARED_REFINE,
         UNDEFINED_NAKED_FUNCTION_ABI,
         UNFULFILLED_LINT_EXPECTATIONS,
         UNINHABITED_STATIC,
@@ -4420,6 +4421,14 @@ declare_lint! {
     Allow,
     "effective visibility of a type is larger than the area in which it can be named",
     @feature_gate = sym::type_privacy_lints;
+}
+
+declare_lint! {
+    /// Refine
+    pub UNDECLARED_REFINE,
+    Warn,
+    "yeet",
+    @feature_gate = sym::refine;
 }
 
 declare_lint! {

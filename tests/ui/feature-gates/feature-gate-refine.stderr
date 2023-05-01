@@ -1,0 +1,12 @@
+error[E0658]: the `#[refine]` attribute is an experimental feature
+  --> $DIR/feature-gate-refine.rs:6:5
+   |
+LL |     #[refine]
+   |     ^^^^^^^^^
+   |
+   = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
+   = help: add `#![feature(refine)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

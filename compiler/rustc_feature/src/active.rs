@@ -529,6 +529,8 @@ declare_features! (
     (active, proc_macro_hygiene, "1.30.0", Some(54727), None),
     /// Allows `&raw const $place_expr` and `&raw mut $place_expr` expressions.
     (active, raw_ref_op, "1.41.0", Some(64490), None),
+    /// Allows use of the `#![refine]` attribute, and checks items for accidental refinements.
+    (incomplete, refine, "CURRENT_RUSTC_VERSION", Some(1), None),
     /// Allows using the `#[register_tool]` attribute.
     (active, register_tool, "1.41.0", Some(66079), None),
     /// Allows the `#[repr(i128)]` attribute for enums.

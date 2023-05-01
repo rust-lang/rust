@@ -183,6 +183,7 @@ impl CheckAttrVisitor<'_> {
                 | sym::rustc_allowed_through_unstable_modules
                 | sym::rustc_promotable => self.check_stability_promotable(&attr, span, target),
                 sym::link_ordinal => self.check_link_ordinal(&attr, span, target),
+                sym::refine => self.check_refine(&attr, span, target, hir_id),
                 sym::rustc_confusables => self.check_confusables(&attr, target),
                 _ => true,
             };
@@ -2302,6 +2303,37 @@ impl CheckAttrVisitor<'_> {
         if !errors.is_empty() {
             infcx.err_ctxt().report_fulfillment_errors(&errors);
             self.abort.set(true);
+        }
+    }
+
+    fn check_refine(&self, attr: &Attribute, span: Span, target: Target, hir_id: HirId) -> bool {
+        let attr_span = attr.span;
+        match target {
+            Target::Method(_) | Target::AssocTy => {
+                let parent_def_id = self.tcx.hir().get_parent_item(hir_id).def_id;
+                match self.tcx.hir().expect_item(parent_def_id).kind {
+                    hir::ItemKind::Impl(impl_) if impl_.of_trait.is_some() => true,
+                    hir::ItemKind::Impl(..) => {
+                        self.tcx
+                            .sess
+                            .emit_err(errors::BadRefineAttr::InherentImpl { span, attr_span });
+                        false
+                    }
+                    hir::ItemKind::Trait(..) => {
+                        self.tcx.sess.emit_err(errors::BadRefineAttr::Trait { span, attr_span });
+                        false
+                    }
+                    _ => unreachable!("only expect assoc ty and method on trait/impl"),
+                }
+            }
+            Target::AssocConst => {
+                self.tcx.sess.emit_err(errors::BadRefineAttr::AssocConst { span, attr_span });
+                false
+            }
+            _ => {
+                self.tcx.sess.emit_err(errors::BadRefineAttr::OtherItem { span, attr_span });
+                false
+            }
         }
     }
 }

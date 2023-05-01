@@ -497,6 +497,9 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         experimental!(cfi_encoding)
     ),
 
+    // RFC 3245
+    gated!(refine, Normal, template!(Word), WarnFollowing, experimental!(refine)),
+
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================
