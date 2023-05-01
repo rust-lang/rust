@@ -277,9 +277,9 @@ marker_impls! {
         bool,
         char,
         str /* Technically requires `[u8]: StructuralEq` */,
-        {T: StructuralEq, const N: usize} [T; N],
-        {T: StructuralEq} [T],
-        {T: ?Sized + StructuralEq} &T,
+        {T, const N: usize} [T; N],
+        {T} [T],
+        {T: ?Sized} &T,
 }
 
 /// Types whose values can be duplicated simply by copying bits.
