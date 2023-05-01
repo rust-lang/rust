@@ -148,17 +148,15 @@ pub(crate) fn external_docs(
     let node = token.parent()?;
     let definition = match_ast! {
         match node {
-            ast::NameRef(name_ref) => match NameRefClass::classify(sema, &name_ref) {
-                Some(NameRefClass::Definition(def)) => def,
-                Some(NameRefClass::FieldShorthand { local_ref: _, field_ref }) => {
+            ast::NameRef(name_ref) => match NameRefClass::classify(sema, &name_ref)? {
+                NameRefClass::Definition(def) => def,
+                NameRefClass::FieldShorthand { local_ref: _, field_ref } => {
                     Definition::Field(field_ref)
                 }
-                None => return None,
             },
-            ast::Name(name) => match NameClass::classify(sema, &name) {
-                Some(NameClass::Definition(it) | NameClass::ConstReference(it)) => it,
-                Some(NameClass::PatFieldShorthand { local_def: _, field_ref }) => Definition::Field(field_ref),
-                None => return None,
+            ast::Name(name) => match NameClass::classify(sema, &name)? {
+                NameClass::Definition(it) | NameClass::ConstReference(it) => it,
+                NameClass::PatFieldShorthand { local_def: _, field_ref } => Definition::Field(field_ref),
             },
             _ => return None
         }
@@ -347,10 +345,10 @@ fn get_doc_links(
     web_url.as_mut().map(|url| url.set_fragment(frag.as_deref()));
     local_url.as_mut().map(|url| url.set_fragment(frag.as_deref()));
 
-    return DocumentationLinks {
+    DocumentationLinks {
         web_url: web_url.map(|it| it.into()),
         local_url: local_url.map(|it| it.into()),
-    };
+    }
 }
 
 fn rewrite_intra_doc_link(

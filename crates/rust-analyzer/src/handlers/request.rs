@@ -1546,7 +1546,7 @@ pub(crate) fn handle_open_docs(
     });
 
     let (cargo, sysroot) = match ws_and_sysroot {
-        Some((ws, Some(sysroot))) => (Some(ws), Some(sysroot)),
+        Some((ws, sysroot)) => (Some(ws), sysroot),
         _ => (None, None),
     };
 
