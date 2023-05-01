@@ -166,7 +166,9 @@ impl CfgEval<'_, '_> {
                     ))
                 },
                 Annotatable::Stmt(_) => |parser| {
-                    Ok(Annotatable::Stmt(P(parser.parse_stmt(ForceCollect::Yes)?.unwrap())))
+                    Ok(Annotatable::Stmt(P(parser
+                        .parse_stmt_without_recovery(false, ForceCollect::Yes)?
+                        .unwrap())))
                 },
                 Annotatable::Expr(_) => {
                     |parser| Ok(Annotatable::Expr(parser.parse_expr_force_collect()?))
