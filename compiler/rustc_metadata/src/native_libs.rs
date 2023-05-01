@@ -161,14 +161,6 @@ impl<'tcx> Collector<'tcx> {
                             "raw-dylib" => {
                                 if !sess.target.is_like_windows {
                                     sess.emit_err(errors::FrameworkOnlyWindows { span });
-                                } else if !features.raw_dylib && sess.target.arch == "x86" {
-                                    feature_err(
-                                        &sess.parse_sess,
-                                        sym::raw_dylib,
-                                        span,
-                                        "link kind `raw-dylib` is unstable on x86",
-                                    )
-                                    .emit();
                                 }
                                 NativeLibKind::RawDylib
                             }
@@ -251,16 +243,6 @@ impl<'tcx> Collector<'tcx> {
                                 continue;
                             }
                         };
-                        if !features.raw_dylib {
-                            let span = item.name_value_literal_span().unwrap();
-                            feature_err(
-                                &sess.parse_sess,
-                                sym::raw_dylib,
-                                span,
-                                "import name type is unstable",
-                            )
-                            .emit();
-                        }
                         import_name_type = Some((link_import_name_type, item.span()));
                     }
                     _ => {

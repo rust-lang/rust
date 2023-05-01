@@ -116,6 +116,11 @@ pub(super) fn handle_needs(
             ignore_reason: "ignored when dlltool for x86_64 is not present",
         },
         Need {
+            name: "needs-dlltool",
+            condition: cache.dlltool,
+            ignore_reason: "ignored when dlltool for the current architecture is not present",
+        },
+        Need {
             name: "needs-git-hash",
             condition: config.git_hash,
             ignore_reason: "ignored when git hashes have been omitted for building",
@@ -183,12 +188,24 @@ pub(super) struct CachedNeedsConditions {
     rust_lld: bool,
     i686_dlltool: bool,
     x86_64_dlltool: bool,
+    dlltool: bool,
 }
 
 impl CachedNeedsConditions {
     pub(super) fn load(config: &Config) -> Self {
         let path = std::env::var_os("PATH").expect("missing PATH environment variable");
         let path = std::env::split_paths(&path).collect::<Vec<_>>();
+
+        // On Windows, dlltool.exe is used for all architectures.
+        #[cfg(windows)]
+        let dlltool = path.iter().any(|dir| dir.join("dlltool.exe").is_file());
+
+        // For non-Windows, there are architecture specific dlltool binaries.
+        #[cfg(not(windows))]
+        let i686_dlltool = path.iter().any(|dir| dir.join("i686-w64-mingw32-dlltool").is_file());
+        #[cfg(not(windows))]
+        let x86_64_dlltool =
+            path.iter().any(|dir| dir.join("x86_64-w64-mingw32-dlltool").is_file());
 
         let target = &&*config.target;
         Self {
@@ -225,17 +242,26 @@ impl CachedNeedsConditions {
                 .join(if config.host.contains("windows") { "rust-lld.exe" } else { "rust-lld" })
                 .exists(),
 
-            // On Windows, dlltool.exe is used for all architectures.
             #[cfg(windows)]
-            i686_dlltool: path.iter().any(|dir| dir.join("dlltool.exe").is_file()),
+            i686_dlltool: dlltool,
             #[cfg(windows)]
-            x86_64_dlltool: path.iter().any(|dir| dir.join("dlltool.exe").is_file()),
+            x86_64_dlltool: dlltool,
+            #[cfg(windows)]
+            dlltool,
 
             // For non-Windows, there are architecture specific dlltool binaries.
             #[cfg(not(windows))]
-            i686_dlltool: path.iter().any(|dir| dir.join("i686-w64-mingw32-dlltool").is_file()),
+            i686_dlltool,
             #[cfg(not(windows))]
-            x86_64_dlltool: path.iter().any(|dir| dir.join("x86_64-w64-mingw32-dlltool").is_file()),
+            x86_64_dlltool,
+            #[cfg(not(windows))]
+            dlltool: if config.matches_arch("x86") {
+                i686_dlltool
+            } else if config.matches_arch("x86_64") {
+                x86_64_dlltool
+            } else {
+                false
+            },
         }
     }
 }
