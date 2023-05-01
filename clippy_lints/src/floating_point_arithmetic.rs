@@ -453,9 +453,6 @@ fn is_float_mul_expr<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(&'
 
 // TODO: Fix rust-lang/rust-clippy#4735
 fn check_mul_add(cx: &LateContext<'_>, expr: &Expr<'_>) {
-    if is_no_std_crate(cx) {
-        return; // The suggested methods are not available in core
-    }
     if let ExprKind::Binary(
         Spanned {
             node: op @ (BinOpKind::Add | BinOpKind::Sub),
@@ -570,9 +567,6 @@ fn are_negated<'a>(cx: &LateContext<'_>, expr1: &'a Expr<'a>, expr2: &'a Expr<'a
 }
 
 fn check_custom_abs(cx: &LateContext<'_>, expr: &Expr<'_>) {
-    if is_no_std_crate(cx) {
-        return; // The suggested methods are not available in core
-    }
     if_chain! {
         if let Some(higher::If { cond, then, r#else: Some(r#else) }) = higher::If::hir(expr);
         let if_body_expr = peel_blocks(then);
@@ -737,8 +731,8 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
 
 impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        // All of these operations are currently not const.
-        if in_constant(cx, expr.hir_id) {
+        // All of these operations are currently not const and are in std.
+        if in_constant(cx, expr.hir_id) || is_no_std_crate(cx) {
             return;
         }
 
