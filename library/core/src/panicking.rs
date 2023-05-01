@@ -202,14 +202,6 @@ pub const fn const_panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     }
 }
 
-#[derive(Debug)]
-#[doc(hidden)]
-pub enum AssertKind {
-    Eq,
-    Ne,
-    Match,
-}
-
 /// Internal function for `assert_eq!` and `assert_ne!` macros
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
