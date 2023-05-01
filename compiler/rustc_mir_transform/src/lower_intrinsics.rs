@@ -179,6 +179,29 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             }
                         }
                     }
+                    sym::write_via_move => {
+                        let target = target.unwrap();
+                        let Ok([ptr, val]) = <[_; 2]>::try_from(std::mem::take(args)) else {
+                            span_bug!(
+                                terminator.source_info.span,
+                                "Wrong number of arguments for write_via_move intrinsic",
+                            );
+                        };
+                        let derefed_place =
+                            if let Some(place) = ptr.place() && let Some(local) = place.as_local() {
+                                tcx.mk_place_deref(local.into())
+                            } else {
+                                span_bug!(terminator.source_info.span, "Only passing a local is supported");
+                            };
+                        block.statements.push(Statement {
+                            source_info: terminator.source_info,
+                            kind: StatementKind::Assign(Box::new((
+                                derefed_place,
+                                Rvalue::Use(val),
+                            ))),
+                        });
+                        terminator.kind = TerminatorKind::Goto { target };
+                    }
                     sym::discriminant_value => {
                         if let (Some(target), Some(arg)) = (*target, args[0].place()) {
                             let arg = tcx.mk_place_deref(arg);

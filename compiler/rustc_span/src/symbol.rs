@@ -1636,6 +1636,7 @@ symbols! {
         write_bytes,
         write_macro,
         write_str,
+        write_via_move,
         writeln_macro,
         x87_reg,
         xer,

@@ -11,7 +11,9 @@
 #[repr(C, align(8))]
 pub struct Big([u64; 7]);
 pub fn replace_big(dst: &mut Big, src: Big) -> Big {
-    // Before the `read_via_copy` intrinsic, this emitted six `memcpy`s.
+    // Back in 1.68, this emitted six `memcpy`s.
+    // `read_via_copy` in 1.69 got that down to three.
+    // `write_via_move` has it down to just the two essential ones.
     std::mem::replace(dst, src)
 }
 
@@ -20,17 +22,13 @@ pub fn replace_big(dst: &mut Big, src: Big) -> Big {
 
 // CHECK-NOT: call void @llvm.memcpy
 
-// For a large type, we expect exactly three `memcpy`s
+// For a large type, we expect exactly two `memcpy`s
 // CHECK-LABEL: define internal void @{{.+}}mem{{.+}}replace{{.+}}sret(%Big)
     // CHECK-NOT: alloca
-    // CHECK: alloca %Big
-    // CHECK-NOT: alloca
     // CHECK-NOT: call void @llvm.memcpy
-    // CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} align 8 %{{.*}}, {{i8\*|ptr}} align 8 %{{.*}}, i{{.*}} 56, i1 false)
+    // CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} align 8 %0, {{i8\*|ptr}} align 8 %dest, i{{.*}} 56, i1 false)
     // CHECK-NOT: call void @llvm.memcpy
-    // CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} align 8 %{{.*}}, {{i8\*|ptr}} align 8 %{{.*}}, i{{.*}} 56, i1 false)
-    // CHECK-NOT: call void @llvm.memcpy
-    // CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} align 8 %{{.*}}, {{i8\*|ptr}} align 8 %{{.*}}, i{{.*}} 56, i1 false)
+    // CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} align 8 %dest, {{i8\*|ptr}} align 8 %src, i{{.*}} 56, i1 false)
     // CHECK-NOT: call void @llvm.memcpy
 
 // CHECK-NOT: call void @llvm.memcpy
