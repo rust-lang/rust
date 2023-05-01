@@ -46,6 +46,7 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
         trace!(?self, ?flags, ?res, "has_type_flags");
         res
     }
+    #[inline]
     fn has_hot_type_flags(&self, flags: ty::HotTypeFlags) -> bool {
         let res = self.visit_with(&mut HasHotTypeFlagsVisitor { flags }).break_value()
             == Some(FoundFlags);
@@ -77,19 +78,7 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
     }
     #[inline]
     fn has_non_region_param(&self) -> bool {
-        let result = self.has_hot_type_flags(ty::HotTypeFlags {
-            has_non_region_infer: false,
-            has_non_region_param: true,
-            has_re_param: false,
-        });
-
-        // Just to be sure hot flags are in sync
-        debug_assert_eq!(
-            result,
-            self.has_type_flags(TypeFlags::HAS_PARAM - TypeFlags::HAS_RE_PARAM)
-        );
-
-        result
+        self.has_type_flags(TypeFlags::HAS_PARAM - TypeFlags::HAS_RE_PARAM)
     }
     fn has_infer_regions(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_RE_INFER)
@@ -104,8 +93,8 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
     fn has_non_region_infer(&self) -> bool {
         let result = self.has_hot_type_flags(ty::HotTypeFlags {
             has_non_region_infer: true,
-            has_non_region_param: false,
-            has_re_param: false,
+            has_infer: false,
+            has_param: false,
         });
 
         // Just to be sure hot flags are in sync
@@ -116,8 +105,18 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
 
         result
     }
+    #[inline]
     fn has_infer(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_INFER)
+        let result = self.has_hot_type_flags(ty::HotTypeFlags {
+            has_non_region_infer: false,
+            has_infer: true,
+            has_param: false,
+        });
+
+        // Just to be sure hot flags are in sync
+        debug_assert_eq!(result, self.has_type_flags(TypeFlags::HAS_INFER));
+
+        result
     }
     fn has_placeholders(&self) -> bool {
         self.has_type_flags(
@@ -129,8 +128,18 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
     fn has_non_region_placeholders(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_PLACEHOLDER | TypeFlags::HAS_CT_PLACEHOLDER)
     }
+    #[inline]
     fn has_param(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_PARAM)
+        let result = self.has_hot_type_flags(ty::HotTypeFlags {
+            has_non_region_infer: false,
+            has_infer: false,
+            has_param: true,
+        });
+
+        // Just to be sure hot flags are in sync
+        debug_assert_eq!(result, self.has_type_flags(TypeFlags::HAS_PARAM));
+
+        result
     }
     /// "Free" regions in this context means that it has any region
     /// that is not (a) erased or (b) late-bound.
