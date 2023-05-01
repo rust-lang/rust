@@ -75,8 +75,21 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
             Ok(())
         }
     }
+    #[inline]
     fn has_non_region_param(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_PARAM - TypeFlags::HAS_RE_PARAM)
+        let result = self.has_hot_type_flags(ty::HotTypeFlags {
+            has_non_region_infer: false,
+            has_non_region_param: true,
+            has_re_param: false,
+        });
+
+        // Just to be sure hot flags are in sync
+        debug_assert_eq!(
+            result,
+            self.has_type_flags(TypeFlags::HAS_PARAM - TypeFlags::HAS_RE_PARAM)
+        );
+
+        result
     }
     fn has_infer_regions(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_RE_INFER)
@@ -87,8 +100,13 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
     fn has_infer_consts(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_CT_INFER)
     }
+    #[inline]
     fn has_non_region_infer(&self) -> bool {
-        let result = self.has_hot_type_flags(ty::HotTypeFlags { has_non_region_infer: true });
+        let result = self.has_hot_type_flags(ty::HotTypeFlags {
+            has_non_region_infer: true,
+            has_non_region_param: false,
+            has_re_param: false,
+        });
 
         // Just to be sure hot flags are in sync
         debug_assert_eq!(

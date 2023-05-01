@@ -465,20 +465,31 @@ impl<'tcx> Ty<'tcx> {
 #[derive(Debug, Copy, Clone)]
 pub struct HotTypeFlags {
     pub has_non_region_infer: bool,
+    pub has_non_region_param: bool,
+    pub has_re_param: bool,
 }
 
 impl HotTypeFlags {
+    #[inline]
     fn from_flags(flags: TypeFlags) -> Self {
         Self {
             has_non_region_infer: flags.intersects(TypeFlags::HAS_INFER - TypeFlags::HAS_RE_INFER),
+            has_non_region_param: flags.intersects(TypeFlags::HAS_PARAM - TypeFlags::HAS_RE_PARAM),
+            has_re_param: flags.intersects(TypeFlags::HAS_RE_PARAM),
         }
     }
 
+    #[inline]
     fn intersects(self, other: Self) -> bool {
-        let Self { has_non_region_infer: self0 } = self;
-        let Self { has_non_region_infer: other0 } = other;
+        let Self { has_non_region_infer: self0, has_non_region_param: self1, has_re_param: self2 } =
+            self;
+        let Self {
+            has_non_region_infer: other0,
+            has_non_region_param: other1,
+            has_re_param: other2,
+        } = other;
 
-        self0 && other0
+        (self0 && other0) || (self1 && other1) || (self2 && other2)
     }
 }
 
@@ -486,16 +497,22 @@ unsafe impl Tag for HotTypeFlags {
     // at most 3
     const BITS: u32 = 1;
 
+    #[inline]
     fn into_usize(self) -> usize {
-        let Self { has_non_region_infer } = self;
-        has_non_region_infer as usize
+        let Self { has_non_region_infer, has_non_region_param, has_re_param } = self;
+        (has_non_region_infer as usize) << 0
+            | (has_non_region_param as usize) << 1
+            | (has_re_param as usize) << 2
     }
 
+    #[inline]
     unsafe fn from_usize(tag: usize) -> Self {
-        debug_assert!(tag <= 0b1);
+        debug_assert!(tag <= 0b111);
 
-        let has_non_region_infer = tag & 0b1 == 1;
-        Self { has_non_region_infer }
+        let has_non_region_infer = tag & 1 << 0 == 1 << 0;
+        let has_non_region_param = tag & 1 << 1 == 1 << 1;
+        let has_re_param = tag & 1 << 2 == 1 << 2;
+        Self { has_non_region_infer, has_non_region_param, has_re_param }
     }
 }
 
