@@ -238,7 +238,8 @@ impl<'a> PanicExpn<'a> {
             "assert_failed" => {
                 // It should have 4 arguments in total (we already matched with the first argument,
                 // so we're just checking for 3)
-                if rest.len() != 3 {
+                // Since Rust 1.70, `assert_failed` has two additional args.
+                if rest.len() != 3 && rest.len() != 5 {
                     return None;
                 }
                 // `msg_arg` is either `None` (no custom message) or `Some(format_args!(..))` (custom message)

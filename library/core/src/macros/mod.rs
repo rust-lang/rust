@@ -44,7 +44,7 @@ macro_rules! assert_eq {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, left_name, right_name, $crate::option::Option::None);
+                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::None, left_name, right_name);
                 }
             }
         }
@@ -59,7 +59,7 @@ macro_rules! assert_eq {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, left_name, right_name, $crate::option::Option::Some($crate::format_args!($($arg)+)));
+                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::Some($crate::format_args!($($arg)+)), left_name, right_name);
                 }
             }
         }
@@ -98,7 +98,7 @@ macro_rules! assert_ne {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, left_name, right_name, $crate::option::Option::None);
+                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::None, left_name, right_name);
                 }
             }
         }
@@ -113,7 +113,7 @@ macro_rules! assert_ne {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, left_name, right_name, $crate::option::Option::Some($crate::format_args!($($arg)+)));
+                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::Some($crate::format_args!($($arg)+)), left_name, right_name);
                 }
             }
         }
@@ -156,9 +156,9 @@ pub macro assert_matches {
             ref left_val => {
                 $crate::panicking::assert_matches_failed(
                     left_val,
-                    $crate::stringify!($left),
                     $crate::stringify!($($pattern)|+ $(if $guard)?),
-                    $crate::option::Option::None
+                    $crate::option::Option::None,
+                    $crate::stringify!($left),
                 );
             }
         }
@@ -169,9 +169,9 @@ pub macro assert_matches {
             ref left_val => {
                 $crate::panicking::assert_matches_failed(
                     left_val,
-                    $crate::stringify!($left),
                     $crate::stringify!($($pattern)|+ $(if $guard)?),
-                    $crate::option::Option::Some($crate::format_args!($($arg)+))
+                    $crate::option::Option::Some($crate::format_args!($($arg)+)),
+                    $crate::stringify!($left),
                 );
             }
         }

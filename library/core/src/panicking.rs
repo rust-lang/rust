@@ -217,17 +217,17 @@ pub enum AssertKind {
 #[doc(hidden)]
 pub fn assert_failed<T, U>(
     kind: AssertKind,
-    left_val: &T,
-    right_val: &U,
+    left: &T,
+    right: &U,
+    args: Option<fmt::Arguments<'_>>,
     left_name: &'static str,
     right_name: &'static str,
-    args: Option<fmt::Arguments<'_>>,
 ) -> !
 where
     T: fmt::Debug + ?Sized,
     U: fmt::Debug + ?Sized,
 {
-    assert_failed_inner(kind, &left_val, &right_val, &left_name, &right_name, args)
+    assert_failed_inner(kind, &left, &right, args, left_name, right_name)
 }
 
 /// Internal function for `assert_match!`
@@ -236,10 +236,10 @@ where
 #[track_caller]
 #[doc(hidden)]
 pub fn assert_matches_failed<T: fmt::Debug + ?Sized>(
-    left_val: &T,
-    left_name: &'static str,
+    left: &T,
     right: &'static str,
     args: Option<fmt::Arguments<'_>>,
+    left_name: &'static str,
 ) -> ! {
     // The pattern is a string so it can be displayed directly.
     struct Pattern<'a>(&'a str);
@@ -248,7 +248,7 @@ pub fn assert_matches_failed<T: fmt::Debug + ?Sized>(
             f.write_str(self.0)
         }
     }
-    assert_failed_inner(AssertKind::Match, &left_val, &Pattern(right), left_name, right, args);
+    assert_failed_inner(AssertKind::Match, &left, &Pattern(right), args, left_name, right);
 }
 
 /// Non-generic version of the above functions, to avoid code bloat.
@@ -257,11 +257,11 @@ pub fn assert_matches_failed<T: fmt::Debug + ?Sized>(
 #[track_caller]
 fn assert_failed_inner(
     kind: AssertKind,
-    left_val: &dyn fmt::Debug,
-    right_val: &dyn fmt::Debug,
+    left: &dyn fmt::Debug,
+    right: &dyn fmt::Debug,
+    args: Option<fmt::Arguments<'_>>,
     left_name: &'static str,
     right_name: &'static str,
-    args: Option<fmt::Arguments<'_>>,
 ) -> ! {
     let op = match kind {
         AssertKind::Eq => "==",
@@ -273,13 +273,13 @@ fn assert_failed_inner(
         Some(args) => panic!(
             r#"assertion failed: `({left_name} {op} {right_name})`
  error: {args}
-  left: `{left_val:?}`
- right: `{right_val:?}`"#
+  left: `{left:?}`
+ right: `{right:?}`"#
         ),
         None => panic!(
             r#"assertion failed: `({left_name} {op} {right_name})`
-  left: `{left_val:?}`
- right: `{right_val:?}`"#
+  left: `{left:?}`
+ right: `{right:?}`"#
         ),
     }
 }
