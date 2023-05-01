@@ -90,6 +90,14 @@ impl Request for ViewMir {
     const METHOD: &'static str = "rust-analyzer/viewMir";
 }
 
+pub enum InterpretFunction {}
+
+impl Request for InterpretFunction {
+    type Params = lsp_types::TextDocumentPositionParams;
+    type Result = String;
+    const METHOD: &'static str = "rust-analyzer/interpretFunction";
+}
+
 pub enum ViewFileText {}
 
 impl Request for ViewFileText {

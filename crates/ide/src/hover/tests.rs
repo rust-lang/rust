@@ -9,7 +9,6 @@ const HOVER_BASE_CONFIG: HoverConfig = HoverConfig {
     documentation: true,
     format: HoverDocFormat::Markdown,
     keywords: true,
-    interpret_tests: false,
 };
 
 fn check_hover_no_result(ra_fixture: &str) {

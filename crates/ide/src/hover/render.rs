@@ -3,8 +3,7 @@ use std::fmt::Display;
 
 use either::Either;
 use hir::{
-    db::DefDatabase, Adt, AsAssocItem, AttributeTemplate, HasAttrs, HasSource, HirDisplay,
-    MirEvalError, Semantics, TypeInfo,
+    Adt, AsAssocItem, AttributeTemplate, HasAttrs, HasSource, HirDisplay, Semantics, TypeInfo,
 };
 use ide_db::{
     base_db::SourceDatabase,
@@ -435,19 +434,7 @@ pub(super) fn definition(
             ))
         }),
         Definition::Module(it) => label_and_docs(db, it),
-        Definition::Function(it) => label_and_layout_info_and_docs(db, it, |_| {
-            if !config.interpret_tests {
-                return None;
-            }
-            match it.eval(db) {
-                Ok(()) => Some("pass".into()),
-                Err(MirEvalError::MirLowerError(f, e)) => {
-                    let name = &db.function_data(f).name;
-                    Some(format!("error: fail to lower {name} due {e:?}"))
-                }
-                Err(e) => Some(format!("error: {e:?}")),
-            }
-        }),
+        Definition::Function(it) => label_and_docs(db, it),
         Definition::Adt(it) => label_and_layout_info_and_docs(db, it, |&it| {
             let layout = it.layout(db).ok()?;
             Some(format!("size = {}, align = {}", layout.size.bytes(), layout.align.abi.bytes()))

@@ -68,6 +68,135 @@ fn wrapping_add() {
 }
 
 #[test]
+fn allocator() {
+    check_number(
+        r#"
+        extern "Rust" {
+            #[rustc_allocator]
+            fn __rust_alloc(size: usize, align: usize) -> *mut u8;
+            #[rustc_deallocator]
+            fn __rust_dealloc(ptr: *mut u8, size: usize, align: usize);
+            #[rustc_reallocator]
+            fn __rust_realloc(ptr: *mut u8, old_size: usize, align: usize, new_size: usize) -> *mut u8;
+            #[rustc_allocator_zeroed]
+            fn __rust_alloc_zeroed(size: usize, align: usize) -> *mut u8;
+        }
+
+        const GOAL: u8 = unsafe {
+            let ptr = __rust_alloc(4, 1);
+            let ptr2 = ((ptr as usize) + 1) as *mut u8;
+            *ptr = 23;
+            *ptr2 = 32;
+            let ptr = __rust_realloc(ptr, 4, 1, 8);
+            let ptr2 = ((ptr as usize) + 1) as *mut u8;
+            *ptr + *ptr2
+        };
+        "#,
+        55,
+    );
+}
+
+#[test]
+fn overflowing_add() {
+    check_number(
+        r#"
+        extern "rust-intrinsic" {
+            pub fn add_with_overflow<T>(x: T, y: T) -> (T, bool);
+        }
+
+        const GOAL: u8 = add_with_overflow(1, 2).0;
+        "#,
+        3,
+    );
+    check_number(
+        r#"
+        extern "rust-intrinsic" {
+            pub fn add_with_overflow<T>(x: T, y: T) -> (T, bool);
+        }
+
+        const GOAL: u8 = add_with_overflow(1, 2).1 as u8;
+        "#,
+        0,
+    );
+}
+
+#[test]
+fn needs_drop() {
+    check_number(
+        r#"
+        //- minicore: copy, sized
+        extern "rust-intrinsic" {
+            pub fn needs_drop<T: ?Sized>() -> bool;
+        }
+        struct X;
+        const GOAL: bool = !needs_drop::<i32>() && needs_drop::<X>();
+        "#,
+        1,
+    );
+}
+
+#[test]
+fn likely() {
+    check_number(
+        r#"
+        extern "rust-intrinsic" {
+            pub fn likely(b: bool) -> bool;
+            pub fn unlikely(b: bool) -> bool;
+        }
+
+        const GOAL: bool = likely(true) && unlikely(true) && !likely(false) && !unlikely(false);
+        "#,
+        1,
+    );
+}
+
+#[test]
+fn atomic() {
+    check_number(
+        r#"
+        //- minicore: copy
+        extern "rust-intrinsic" {
+            pub fn atomic_load_seqcst<T: Copy>(src: *const T) -> T;
+            pub fn atomic_xchg_acquire<T: Copy>(dst: *mut T, src: T) -> T;
+            pub fn atomic_cxchg_release_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+            pub fn atomic_cxchgweak_acquire_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+            pub fn atomic_store_release<T: Copy>(dst: *mut T, val: T);
+            pub fn atomic_xadd_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
+            pub fn atomic_xsub_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
+            pub fn atomic_and_acquire<T: Copy>(dst: *mut T, src: T) -> T;
+            pub fn atomic_nand_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
+            pub fn atomic_or_release<T: Copy>(dst: *mut T, src: T) -> T;
+            pub fn atomic_xor_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
+        }
+
+        fn should_not_reach() {
+            _ // fails the test if executed
+        }
+
+        const GOAL: i32 = {
+            let mut x = 5;
+            atomic_store_release(&mut x, 10);
+            let mut y = atomic_xchg_acquire(&mut x, 100);
+            atomic_xadd_acqrel(&mut y, 20);
+            if (30, true) != atomic_cxchg_release_seqcst(&mut y, 30, 40) {
+                should_not_reach();
+            }
+            if (40, false) != atomic_cxchg_release_seqcst(&mut y, 30, 50) {
+                should_not_reach();
+            }
+            if (40, true) != atomic_cxchgweak_acquire_acquire(&mut y, 40, 30) {
+                should_not_reach();
+            }
+            let mut z = atomic_xsub_seqcst(&mut x, -200);
+            atomic_xor_seqcst(&mut x, 1024);
+            atomic_load_seqcst(&x) + z * 3 + atomic_load_seqcst(&y) * 2
+        };
+        "#,
+        660 + 1024,
+    );
+}
+
+#[test]
 fn offset() {
     check_number(
         r#"

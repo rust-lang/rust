@@ -64,6 +64,9 @@ export const viewHir = new lc.RequestType<lc.TextDocumentPositionParams, string,
 export const viewMir = new lc.RequestType<lc.TextDocumentPositionParams, string, void>(
     "rust-analyzer/viewMir"
 );
+export const interpretFunction = new lc.RequestType<lc.TextDocumentPositionParams, string, void>(
+    "rust-analyzer/interpretFunction"
+);
 export const viewItemTree = new lc.RequestType<ViewItemTreeParams, string, void>(
     "rust-analyzer/viewItemTree"
 );

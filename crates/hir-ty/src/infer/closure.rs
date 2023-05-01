@@ -2,7 +2,11 @@
 
 use std::{cmp, collections::HashMap, convert::Infallible, mem};
 
-use chalk_ir::{cast::Cast, AliasEq, AliasTy, FnSubst, Mutability, TyKind, WhereClause};
+use chalk_ir::{
+    cast::Cast,
+    fold::{FallibleTypeFolder, TypeFoldable},
+    AliasEq, AliasTy, BoundVar, DebruijnIndex, FnSubst, Mutability, TyKind, WhereClause,
+};
 use hir_def::{
     data::adt::VariantData,
     hir::{
@@ -11,7 +15,7 @@ use hir_def::{
     },
     lang_item::LangItem,
     resolver::{resolver_for_expr, ResolveValueResult, ValueNs},
-    FieldId, HasModule, VariantId,
+    DefWithBodyId, FieldId, HasModule, VariantId,
 };
 use hir_expand::name;
 use rustc_hash::FxHashMap;
@@ -20,12 +24,13 @@ use stdx::never;
 
 use crate::{
     db::HirDatabase,
+    from_placeholder_idx, make_binders,
     mir::{BorrowKind, MirSpan, ProjectionElem},
     static_lifetime, to_chalk_trait_id,
     traits::FnTrait,
-    utils::{self, pattern_matching_dereference_count},
-    Adjust, Adjustment, Canonical, CanonicalVarKinds, ChalkTraitId, ClosureId, DynTy, FnPointer,
-    FnSig, InEnvironment, Interner, Substitution, Ty, TyBuilder, TyExt,
+    utils::{self, generics, pattern_matching_dereference_count, Generics},
+    Adjust, Adjustment, Binders, ChalkTraitId, ClosureId, DynTy, FnPointer, FnSig, Interner,
+    Substitution, Ty, TyExt,
 };
 
 use super::{Expectation, InferenceContext};
@@ -117,7 +122,7 @@ impl HirPlace {
     fn ty(&self, ctx: &mut InferenceContext<'_>) -> Ty {
         let mut ty = ctx.table.resolve_completely(ctx.result[self.local].clone());
         for p in &self.projections {
-            ty = p.projected_ty(ty, ctx.db, |_, _| {
+            ty = p.projected_ty(ty, ctx.db, |_, _, _| {
                 unreachable!("Closure field only happens in MIR");
             });
         }
@@ -152,7 +157,7 @@ pub struct CapturedItem {
     pub(crate) place: HirPlace,
     pub(crate) kind: CaptureKind,
     pub(crate) span: MirSpan,
-    pub(crate) ty: Ty,
+    pub(crate) ty: Binders<Ty>,
 }
 
 impl CapturedItem {
@@ -232,6 +237,52 @@ pub(crate) struct CapturedItemWithoutTy {
 
 impl CapturedItemWithoutTy {
     fn with_ty(self, ctx: &mut InferenceContext<'_>) -> CapturedItem {
+        fn replace_placeholder_with_binder(
+            db: &dyn HirDatabase,
+            owner: DefWithBodyId,
+            ty: Ty,
+        ) -> Binders<Ty> {
+            struct Filler<'a> {
+                db: &'a dyn HirDatabase,
+                generics: Generics,
+            }
+            impl FallibleTypeFolder<Interner> for Filler<'_> {
+                type Error = ();
+
+                fn as_dyn(&mut self) -> &mut dyn FallibleTypeFolder<Interner, Error = Self::Error> {
+                    self
+                }
+
+                fn interner(&self) -> Interner {
+                    Interner
+                }
+
+                fn try_fold_free_placeholder_ty(
+                    &mut self,
+                    idx: chalk_ir::PlaceholderIndex,
+                    _outer_binder: DebruijnIndex,
+                ) -> std::result::Result<Ty, Self::Error> {
+                    let x = from_placeholder_idx(self.db, idx);
+                    let Some(idx) = self.generics.param_idx(x) else {
+                        return Err(());
+                    };
+                    Ok(TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, idx))
+                        .intern(Interner))
+                }
+            }
+            let g_def = match owner {
+                DefWithBodyId::FunctionId(f) => Some(f.into()),
+                DefWithBodyId::StaticId(_) => None,
+                DefWithBodyId::ConstId(f) => Some(f.into()),
+                DefWithBodyId::VariantId(f) => Some(f.into()),
+            };
+            let Some(generics) = g_def.map(|g_def| generics(db.upcast(), g_def)) else {
+                return Binders::empty(Interner, ty);
+            };
+            let filler = &mut Filler { db, generics };
+            let result = ty.clone().try_fold_with(filler, DebruijnIndex::INNERMOST).unwrap_or(ty);
+            make_binders(db, &filler.generics, result)
+        }
         let ty = self.place.ty(ctx).clone();
         let ty = match &self.kind {
             CaptureKind::ByValue => ty,
@@ -243,7 +294,12 @@ impl CapturedItemWithoutTy {
                 TyKind::Ref(m, static_lifetime(), ty).intern(Interner)
             }
         };
-        CapturedItem { place: self.place, kind: self.kind, span: self.span, ty }
+        CapturedItem {
+            place: self.place,
+            kind: self.kind,
+            span: self.span,
+            ty: replace_placeholder_with_binder(ctx.db, ctx.owner, ty),
+        }
     }
 }
 
@@ -590,17 +646,7 @@ impl InferenceContext<'_> {
             // without creating query cycles.
             return self.result.closure_info.get(id).map(|x| x.1 == FnTrait::Fn).unwrap_or(true);
         }
-        let crate_id = self.owner.module(self.db.upcast()).krate();
-        let Some(copy_trait) = self.db.lang_item(crate_id, LangItem::Copy).and_then(|x| x.as_trait()) else {
-            return false;
-        };
-        let trait_ref = TyBuilder::trait_ref(self.db, copy_trait).push(ty).build();
-        let env = self.db.trait_environment_for_body(self.owner);
-        let goal = Canonical {
-            value: InEnvironment::new(&env.env, trait_ref.cast(Interner)),
-            binders: CanonicalVarKinds::empty(Interner),
-        };
-        self.db.trait_solve(crate_id, None, goal).is_some()
+        ty.is_copy(self.db, self.owner)
     }
 
     fn select_from_expr(&mut self, expr: ExprId) {

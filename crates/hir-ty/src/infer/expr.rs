@@ -282,7 +282,7 @@ impl<'a> InferenceContext<'a> {
                         let closure_id = self.db.intern_closure((self.owner, tgt_expr)).into();
                         let closure_ty = TyKind::Closure(
                             closure_id,
-                            Substitution::from1(Interner, sig_ty.clone()),
+                            TyBuilder::subst_for_closure(self.db, self.owner, sig_ty.clone()),
                         )
                         .intern(Interner);
                         self.deferred_closures.entry(closure_id).or_default();

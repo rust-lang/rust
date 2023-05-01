@@ -665,6 +665,7 @@ impl GlobalState {
             .on::<lsp_ext::SyntaxTree>(handlers::handle_syntax_tree)
             .on::<lsp_ext::ViewHir>(handlers::handle_view_hir)
             .on::<lsp_ext::ViewMir>(handlers::handle_view_mir)
+            .on::<lsp_ext::InterpretFunction>(handlers::handle_interpret_function)
             .on::<lsp_ext::ViewFileText>(handlers::handle_view_file_text)
             .on::<lsp_ext::ViewCrateGraph>(handlers::handle_view_crate_graph)
             .on::<lsp_ext::ViewItemTree>(handlers::handle_view_item_tree)

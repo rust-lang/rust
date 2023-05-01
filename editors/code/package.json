@@ -121,6 +121,11 @@
                 "category": "rust-analyzer (debug command)"
             },
             {
+                "command": "rust-analyzer.interpretFunction",
+                "title": "Interpret Function",
+                "category": "rust-analyzer (debug command)"
+            },
+            {
                 "command": "rust-analyzer.viewFileText",
                 "title": "View File Text (as seen by the server)",
                 "category": "rust-analyzer (debug command)"

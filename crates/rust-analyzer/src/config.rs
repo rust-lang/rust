@@ -574,6 +574,7 @@ pub struct LensConfig {
     // runnables
     pub run: bool,
     pub debug: bool,
+    pub interpret: bool,
 
     // implementations
     pub implementations: bool,
@@ -1423,6 +1424,9 @@ impl Config {
         LensConfig {
             run: self.data.lens_enable && self.data.lens_run_enable,
             debug: self.data.lens_enable && self.data.lens_debug_enable,
+            interpret: self.data.lens_enable
+                && self.data.lens_run_enable
+                && self.data.interpret_tests,
             implementations: self.data.lens_enable && self.data.lens_implementations_enable,
             method_refs: self.data.lens_enable && self.data.lens_references_method_enable,
             refs_adt: self.data.lens_enable && self.data.lens_references_adt_enable,
@@ -1481,7 +1485,6 @@ impl Config {
                 }
             },
             keywords: self.data.hover_documentation_keywords_enable,
-            interpret_tests: self.data.interpret_tests,
         }
     }
 

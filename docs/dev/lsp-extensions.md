@@ -1,5 +1,5 @@
 <!---
-lsp_ext.rs hash: be2f663a78beb7bd
+lsp_ext.rs hash: 37ac44a0f507e05a
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -547,6 +547,18 @@ For debugging or when working on rust-analyzer itself.
 
 Returns a textual representation of the MIR of the function containing the cursor.
 For debugging or when working on rust-analyzer itself.
+
+## Interpret Function
+
+**Method:** `rust-analyzer/interpretFunction`
+
+**Request:** `TextDocumentPositionParams`
+
+**Response:** `string`
+
+Tries to evaluate the function using internal rust analyzer knowledge, without compiling
+the code. Currently evaluates the function under cursor, but will give a runnable in
+future. Highly experimental.
 
 ## View File Text
 

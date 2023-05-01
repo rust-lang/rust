@@ -3,7 +3,10 @@
 //! let _: u32  = /* <never-to-any> */ loop {};
 //! let _: &u32 = /* &* */ &mut 0;
 //! ```
-use hir::{Adjust, Adjustment, AutoBorrow, HirDisplay, Mutability, PointerCast, Safety, Semantics};
+use hir::{
+    Adjust, Adjustment, AutoBorrow, HirDisplay, Mutability, OverloadedDeref, PointerCast, Safety,
+    Semantics,
+};
 use ide_db::RootDatabase;
 
 use stdx::never;
@@ -88,7 +91,13 @@ pub(super) fn hints(
             Adjust::NeverToAny if config.adjustment_hints == AdjustmentHints::Always => {
                 ("<never-to-any>", "never to any")
             }
-            Adjust::Deref(_) => ("*", "dereference"),
+            Adjust::Deref(None) => ("*", "dereference"),
+            Adjust::Deref(Some(OverloadedDeref(Mutability::Shared))) => {
+                ("*", "`Deref` dereference")
+            }
+            Adjust::Deref(Some(OverloadedDeref(Mutability::Mut))) => {
+                ("*", "`DerefMut` dereference")
+            }
             Adjust::Borrow(AutoBorrow::Ref(Mutability::Shared)) => ("&", "borrow"),
             Adjust::Borrow(AutoBorrow::Ref(Mutability::Mut)) => ("&mut ", "unique borrow"),
             Adjust::Borrow(AutoBorrow::RawPtr(Mutability::Shared)) => {

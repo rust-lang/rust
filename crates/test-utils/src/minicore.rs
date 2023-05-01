@@ -11,6 +11,7 @@
 //!     add:
 //!     as_ref: sized
 //!     bool_impl: option, fn
+//!     cell: copy, drop
 //!     clone: sized
 //!     coerce_unsized: unsize
 //!     copy: clone
@@ -139,6 +140,52 @@ pub mod hash {
 }
 // endregion:hash
 
+// region:cell
+pub mod cell {
+    use crate::mem;
+
+    #[lang = "unsafe_cell"]
+    pub struct UnsafeCell<T: ?Sized> {
+        value: T,
+    }
+
+    impl<T> UnsafeCell<T> {
+        pub const fn new(value: T) -> UnsafeCell<T> {
+            UnsafeCell { value }
+        }
+
+        pub const fn get(&self) -> *mut T {
+            self as *const UnsafeCell<T> as *const T as *mut T
+        }
+    }
+
+    pub struct Cell<T: ?Sized> {
+        value: UnsafeCell<T>,
+    }
+
+    impl<T> Cell<T> {
+        pub const fn new(value: T) -> Cell<T> {
+            Cell { value: UnsafeCell::new(value) }
+        }
+
+        pub fn set(&self, val: T) {
+            let old = self.replace(val);
+            mem::drop(old);
+        }
+
+        pub fn replace(&self, val: T) -> T {
+            mem::replace(unsafe { &mut *self.value.get() }, val)
+        }
+    }
+
+    impl<T: Copy> Cell<T> {
+        pub fn get(&self) -> T {
+            unsafe { *self.value.get() }
+        }
+    }
+}
+// endregion:cell
+
 // region:clone
 pub mod clone {
     #[lang = "clone"]
@@ -220,6 +267,13 @@ pub mod mem {
     // endregion:manually_drop
 
     pub fn drop<T>(_x: T) {}
+    pub const fn replace<T>(dest: &mut T, src: T) -> T {
+        unsafe {
+            let result = *dest;
+            *dest = src;
+            result
+        }
+    }
 }
 // endregion:drop
 
@@ -710,6 +764,14 @@ pub mod option {
                 None => default,
             }
         }
+        // region:result
+        pub const fn ok_or<E>(self, err: E) -> Result<T, E> {
+            match self {
+                Some(v) => Ok(v),
+                None => Err(err),
+            }
+        }
+        // endregion:result
         // region:fn
         pub fn and_then<U, F>(self, f: F) -> Option<U>
         where

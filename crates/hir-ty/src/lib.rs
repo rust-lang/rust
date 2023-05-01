@@ -44,10 +44,10 @@ use chalk_ir::{
     NoSolution, TyData,
 };
 use either::Either;
-use hir_def::{hir::ExprId, type_ref::Rawness, TypeOrConstParamId};
+use hir_def::{hir::ExprId, type_ref::Rawness, ConstId, TypeOrConstParamId};
 use hir_expand::name;
 use la_arena::{Arena, Idx};
-use mir::MirEvalError;
+use mir::{MirEvalError, VTableMap};
 use rustc_hash::FxHashSet;
 use traits::FnTrait;
 use utils::Generics;
@@ -151,11 +151,14 @@ pub type WhereClause = chalk_ir::WhereClause<Interner>;
 /// the necessary bits of memory of the const eval session to keep the constant
 /// meaningful.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct MemoryMap(pub HashMap<usize, Vec<u8>>);
+pub struct MemoryMap {
+    pub memory: HashMap<usize, Vec<u8>>,
+    pub vtable: VTableMap,
+}
 
 impl MemoryMap {
     fn insert(&mut self, addr: usize, x: Vec<u8>) {
-        self.0.insert(addr, x);
+        self.memory.insert(addr, x);
     }
 
     /// This functions convert each address by a function `f` which gets the byte intervals and assign an address
@@ -165,7 +168,7 @@ impl MemoryMap {
         &self,
         mut f: impl FnMut(&[u8]) -> Result<usize, MirEvalError>,
     ) -> Result<HashMap<usize, usize>, MirEvalError> {
-        self.0.iter().map(|x| Ok((*x.0, f(x.1)?))).collect()
+        self.memory.iter().map(|x| Ok((*x.0, f(x.1)?))).collect()
     }
 }
 
@@ -173,6 +176,9 @@ impl MemoryMap {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConstScalar {
     Bytes(Vec<u8>, MemoryMap),
+    // FIXME: this is a hack to get around chalk not being able to represent unevaluatable
+    // constants
+    UnevaluatedConst(ConstId, Substitution),
     /// Case of an unknown value that rustc might know but we don't
     // FIXME: this is a hack to get around chalk not being able to represent unevaluatable
     // constants

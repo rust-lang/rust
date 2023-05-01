@@ -7,7 +7,7 @@ use hir_def::{
     path::Path,
     resolver::{Resolver, ValueNs},
     type_ref::ConstRef,
-    ConstId, EnumVariantId,
+    DefWithBodyId, EnumVariantId,
 };
 use la_arena::{Idx, RawIdx};
 use stdx::never;
@@ -57,7 +57,7 @@ pub enum ConstEvalError {
 impl From<MirLowerError> for ConstEvalError {
     fn from(value: MirLowerError) -> Self {
         match value {
-            MirLowerError::ConstEvalError(e) => *e,
+            MirLowerError::ConstEvalError(_, e) => *e,
             _ => ConstEvalError::MirLowerError(value),
         }
     }
@@ -168,7 +168,7 @@ pub fn try_const_usize(c: &Const) -> Option<u128> {
 pub(crate) fn const_eval_recover(
     _: &dyn HirDatabase,
     _: &[String],
-    _: &ConstId,
+    _: &DefWithBodyId,
     _: &Substitution,
 ) -> Result<Const, ConstEvalError> {
     Err(ConstEvalError::MirLowerError(MirLowerError::Loop))
@@ -184,10 +184,9 @@ pub(crate) fn const_eval_discriminant_recover(
 
 pub(crate) fn const_eval_query(
     db: &dyn HirDatabase,
-    const_id: ConstId,
+    def: DefWithBodyId,
     subst: Substitution,
 ) -> Result<Const, ConstEvalError> {
-    let def = const_id.into();
     let body = db.mir_body(def)?;
     let c = interpret_mir(db, &body, subst, false)?;
     Ok(c)

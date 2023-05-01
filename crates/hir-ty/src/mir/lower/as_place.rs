@@ -1,7 +1,7 @@
 //! MIR lowering for places
 
 use super::*;
-use hir_def::FunctionId;
+use hir_def::{lang_item::lang_attr, FunctionId};
 use hir_expand::name;
 
 macro_rules! not_supported {
@@ -16,7 +16,7 @@ impl MirLowerCtx<'_> {
         expr_id: ExprId,
         prev_block: BasicBlockId,
     ) -> Result<Option<(Place, BasicBlockId)>> {
-        let ty = self.expr_ty(expr_id);
+        let ty = self.expr_ty_without_adjust(expr_id);
         let place = self.temp(ty)?;
         let Some(current) = self.lower_expr_to_place_without_adjust(expr_id, place.into(), prev_block)? else {
             return Ok(None);
@@ -30,8 +30,10 @@ impl MirLowerCtx<'_> {
         prev_block: BasicBlockId,
         adjustments: &[Adjustment],
     ) -> Result<Option<(Place, BasicBlockId)>> {
-        let ty =
-            adjustments.last().map(|x| x.target.clone()).unwrap_or_else(|| self.expr_ty(expr_id));
+        let ty = adjustments
+            .last()
+            .map(|x| x.target.clone())
+            .unwrap_or_else(|| self.expr_ty_without_adjust(expr_id));
         let place = self.temp(ty)?;
         let Some(current) = self.lower_expr_to_place_with_adjust(expr_id, place.into(), prev_block, adjustments)? else {
             return Ok(None);
@@ -80,7 +82,7 @@ impl MirLowerCtx<'_> {
                         r,
                         rest.last()
                             .map(|x| x.target.clone())
-                            .unwrap_or_else(|| self.expr_ty(expr_id)),
+                            .unwrap_or_else(|| self.expr_ty_without_adjust(expr_id)),
                         last.target.clone(),
                         expr_id.into(),
                         match od.0 {
@@ -135,17 +137,39 @@ impl MirLowerCtx<'_> {
                 };
                 match pr {
                     ValueNs::LocalBinding(pat_id) => {
-                        Ok(Some((self.result.binding_locals[pat_id].into(), current)))
+                        Ok(Some((self.binding_local(pat_id)?.into(), current)))
+                    }
+                    ValueNs::StaticId(s) => {
+                        let ty = self.expr_ty_without_adjust(expr_id);
+                        let ref_ty =
+                            TyKind::Ref(Mutability::Not, static_lifetime(), ty).intern(Interner);
+                        let mut temp: Place = self.temp(ref_ty)?.into();
+                        self.push_assignment(
+                            current,
+                            temp.clone(),
+                            Operand::Static(s).into(),
+                            expr_id.into(),
+                        );
+                        temp.projection.push(ProjectionElem::Deref);
+                        Ok(Some((temp, current)))
                     }
                     _ => try_rvalue(self),
                 }
             }
             Expr::UnaryOp { expr, op } => match op {
                 hir_def::hir::UnaryOp::Deref => {
-                    if !matches!(
-                        self.expr_ty(*expr).kind(Interner),
-                        TyKind::Ref(..) | TyKind::Raw(..)
-                    ) {
+                    let is_builtin = match self.expr_ty_without_adjust(*expr).kind(Interner) {
+                        TyKind::Ref(..) | TyKind::Raw(..) => true,
+                        TyKind::Adt(id, _) => {
+                            if let Some(lang_item) = lang_attr(self.db.upcast(), id.0) {
+                                lang_item == LangItem::OwnedBox
+                            } else {
+                                false
+                            }
+                        }
+                        _ => false,
+                    };
+                    if !is_builtin {
                         let Some((p, current)) = self.lower_expr_as_place(current, *expr, true)? else {
                             return Ok(None);
                         };
@@ -153,7 +177,7 @@ impl MirLowerCtx<'_> {
                             current,
                             p,
                             self.expr_ty_after_adjustments(*expr),
-                            self.expr_ty(expr_id),
+                            self.expr_ty_without_adjust(expr_id),
                             expr_id.into(),
                             'b: {
                                 if let Some((f, _)) = self.infer.method_resolution(expr_id) {
@@ -198,7 +222,7 @@ impl MirLowerCtx<'_> {
                     )
                 {
                     let Some(index_fn) = self.infer.method_resolution(expr_id) else {
-                        return Err(MirLowerError::UnresolvedMethod);
+                        return Err(MirLowerError::UnresolvedMethod("[overloaded index]".to_string()));
                     };
                     let Some((base_place, current)) = self.lower_expr_as_place(current, *base, true)? else {
                         return Ok(None);
@@ -210,7 +234,7 @@ impl MirLowerCtx<'_> {
                         current,
                         base_place,
                         base_ty,
-                        self.expr_ty(expr_id),
+                        self.expr_ty_without_adjust(expr_id),
                         index_operand,
                         expr_id.into(),
                         index_fn,
@@ -266,7 +290,7 @@ impl MirLowerCtx<'_> {
             )
             .intern(Interner),
         );
-        let Some(current) = self.lower_call(index_fn_op, vec![Operand::Copy(ref_place), index_operand], result.clone(), current, false)? else {
+        let Some(current) = self.lower_call(index_fn_op, vec![Operand::Copy(ref_place), index_operand], result.clone(), current, false, span)? else {
             return Ok(None);
         };
         result.projection.push(ProjectionElem::Deref);
@@ -313,7 +337,7 @@ impl MirLowerCtx<'_> {
             .intern(Interner),
         );
         let mut result: Place = self.temp(target_ty_ref)?.into();
-        let Some(current) = self.lower_call(deref_fn_op, vec![Operand::Copy(ref_place)], result.clone(), current, false)? else {
+        let Some(current) = self.lower_call(deref_fn_op, vec![Operand::Copy(ref_place)], result.clone(), current, false, span)? else {
             return Ok(None);
         };
         result.projection.push(ProjectionElem::Deref);
