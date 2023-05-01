@@ -54,7 +54,7 @@ impl LateLintPass<'_> for DefaultConstructedUnitStruct {
                 span_lint_and_sugg(
                     cx,
                     DEFAULT_CONSTRUCTED_UNIT_STRUCT,
-                    qpath.last_segment_span(),
+                    expr.span.with_lo(qpath.qself_span().hi()),
                     "use of `default` to create a unit struct",
                     "remove this call to `default`",
                     String::new(),
