@@ -257,7 +257,11 @@ fn default_hook(info: &PanicInfo<'_>) {
     let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
 
     let write = |err: &mut dyn crate::io::Write| {
-        let _ = writeln!(err, "thread '{name}' panicked at '{msg}', {location}");
+        if msg.contains('\n') {
+            let _ = writeln!(err, "thread '{name}' panicked at {location}:\n{msg}");
+        } else {
+            let _ = writeln!(err, "thread '{name}' panicked at '{msg}', {location}");
+        }
 
         static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 

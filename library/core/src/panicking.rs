@@ -280,14 +280,12 @@ fn assert_failed_inner(
             r#"assertion failed: `({left_name} {op} {right_name})`
  error: {args},
   left: `{left_val:?}`,
- right: `{right_val:?}`
-    at: "#
+ right: `{right_val:?}`"#
         ),
         None => panic!(
             r#"assertion failed: `({left_name} {op} {right_name})`
   left: `{left_val:?}`,
- right: `{right_val:?}`
-    at: "#
+ right: `{right_val:?}`"#
         ),
     }
 }
