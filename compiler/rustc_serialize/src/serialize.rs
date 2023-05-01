@@ -1,9 +1,5 @@
 //! Support code for encoding and decoding types.
 
-/*
-Core encoding and decoding interfaces.
-*/
-
 use std::alloc::Allocator;
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
