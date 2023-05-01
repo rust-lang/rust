@@ -8,7 +8,7 @@ use crate::llvm_util;
 use crate::type_::Type;
 use crate::value::Value;
 
-use rustc_codegen_ssa::base::wants_msvc_seh;
+use rustc_codegen_ssa::base::{wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::FxHashMap;
@@ -532,19 +532,24 @@ impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         if let Some(llpersonality) = self.eh_personality.get() {
             return llpersonality;
         }
+
+        let name = if wants_msvc_seh(self.sess()) {
+            Some("__CxxFrameHandler3")
+        } else if wants_wasm_eh(self.sess()) {
+            Some("__gxx_wasm_personality_v0")
+        } else {
+            None
+        };
+
         let tcx = self.tcx;
         let llfn = match tcx.lang_items().eh_personality() {
-            Some(def_id) if !wants_msvc_seh(self.sess()) => self.get_fn_addr(
+            Some(def_id) if name.is_none() => self.get_fn_addr(
                 ty::Instance::resolve(tcx, ty::ParamEnv::reveal_all(), def_id, ty::List::empty())
                     .unwrap()
                     .unwrap(),
             ),
             _ => {
-                let name = if wants_msvc_seh(self.sess()) {
-                    "__CxxFrameHandler3"
-                } else {
-                    "rust_eh_personality"
-                };
+                let name = name.unwrap_or("rust_eh_personality");
                 if let Some(llfn) = self.get_declared_value(name) {
                     llfn
                 } else {

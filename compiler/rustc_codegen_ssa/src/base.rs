@@ -357,6 +357,13 @@ pub fn cast_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
+// Returns `true` if this session's target will use native wasm
+// exceptions. This means that the VM does the unwinding for
+// us
+pub fn wants_wasm_eh(sess: &Session) -> bool {
+    sess.target.is_like_wasm && sess.target.os != "emscripten"
+}
+
 /// Returns `true` if this session's target will use SEH-based unwinding.
 ///
 /// This is only true for MSVC targets, and even then the 64-bit MSVC target
@@ -364,6 +371,13 @@ pub fn cast_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 /// 64-bit MinGW) instead of "full SEH".
 pub fn wants_msvc_seh(sess: &Session) -> bool {
     sess.target.is_like_msvc
+}
+
+/// Returns `true` if this session's target requires the new exception
+/// handling LLVM IR instructions (catchpad / cleanuppad / ... instead
+/// of landingpad)
+pub fn wants_new_eh_instructions(sess: &Session) -> bool {
+    wants_wasm_eh(sess) || wants_msvc_seh(sess)
 }
 
 pub fn memcpy_ty<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
