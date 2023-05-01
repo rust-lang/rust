@@ -239,6 +239,7 @@ impl TcpStream {
         Ok(TcpStream { inner: sock })
     }
 
+    #[inline]
     pub fn socket(&self) -> &Socket {
         &self.inner
     }
@@ -428,6 +429,7 @@ impl TcpListener {
         Ok(TcpListener { inner: sock })
     }
 
+    #[inline]
     pub fn socket(&self) -> &Socket {
         &self.inner
     }
@@ -518,6 +520,7 @@ impl UdpSocket {
         Ok(UdpSocket { inner: sock })
     }
 
+    #[inline]
     pub fn socket(&self) -> &Socket {
         &self.inner
     }

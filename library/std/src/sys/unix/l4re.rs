@@ -184,6 +184,7 @@ pub mod net {
             unimpl!();
         }
 
+        #[inline]
         pub fn socket(&self) -> &Socket {
             &self.inner
         }
@@ -306,6 +307,7 @@ pub mod net {
             unimpl!();
         }
 
+        #[inline]
         pub fn socket(&self) -> &Socket {
             &self.inner
         }
@@ -372,6 +374,7 @@ pub mod net {
             unimpl!();
         }
 
+        #[inline]
         pub fn socket(&self) -> &Socket {
             &self.inner
         }

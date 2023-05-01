@@ -185,6 +185,7 @@ impl TcpStream {
         }
     }
 
+    #[inline]
     pub fn socket(&self) -> &Socket {
         &self.inner
     }
@@ -275,6 +276,7 @@ impl TcpListener {
         }
     }
 
+    #[inline]
     pub fn socket(&self) -> &Socket {
         &self.inner
     }
@@ -438,6 +440,7 @@ impl UdpSocket {
         unsupported()
     }
 
+    #[inline]
     pub fn socket(&self) -> &Socket {
         &self.inner
     }
