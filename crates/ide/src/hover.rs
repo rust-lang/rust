@@ -6,7 +6,7 @@ mod tests;
 use std::iter;
 
 use either::Either;
-use hir::{HasSource, Semantics};
+use hir::{db::DefDatabase, HasSource, LangItem, Semantics};
 use ide_db::{
     base_db::FileRange,
     defs::{Definition, IdentClass, OperatorClass},
@@ -353,7 +353,14 @@ fn goto_type_action_for_def(db: &RootDatabase, def: Definition) -> Option<HoverA
     };
 
     if let Definition::GenericParam(hir::GenericParam::TypeParam(it)) = def {
-        it.trait_bounds(db).into_iter().for_each(|it| push_new_def(it.into()));
+        let krate = it.module(db).krate();
+        let sized_trait =
+            db.lang_item(krate.into(), LangItem::Sized).and_then(|lang_item| lang_item.as_trait());
+
+        it.trait_bounds(db)
+            .into_iter()
+            .filter(|&it| Some(it.into()) != sized_trait)
+            .for_each(|it| push_new_def(it.into()));
     } else {
         let ty = match def {
             Definition::Local(it) => it.ty(db),

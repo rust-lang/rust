@@ -2099,6 +2099,19 @@ fn main() { let s$0t = S{ f1:Arg(0) }; }
 }
 
 #[test]
+fn test_hover_generic_excludes_sized_go_to_action() {
+    check_actions(
+        r#"
+//- minicore: sized
+struct S<T$0>(T);
+    "#,
+        expect![[r#"
+            []
+        "#]],
+    );
+}
+
+#[test]
 fn test_hover_generic_struct_has_flattened_goto_type_actions() {
     check_actions(
         r#"
