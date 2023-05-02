@@ -7,14 +7,6 @@ LL | #![feature(return_type_notation)]
    = note: see issue #109417 <https://github.com/rust-lang/rust/issues/109417> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-warning: the feature `async_fn_in_trait` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/issue-110963-early.rs:5:12
-   |
-LL | #![feature(async_fn_in_trait)]
-   |            ^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
-
 error: higher-ranked lifetime error
   --> $DIR/issue-110963-early.rs:15:5
    |
@@ -41,5 +33,5 @@ LL | |     });
    |
    = note: could not prove `[async block@$DIR/issue-110963-early.rs:15:11: 20:6]: Send`
 
-error: aborting due to 2 previous errors; 2 warnings emitted
+error: aborting due to 2 previous errors; 1 warning emitted
 

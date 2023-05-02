@@ -1150,6 +1150,14 @@ pub struct NoopMethodCallDiag<'a> {
     pub label: Span,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(lint_suspicious_double_ref_op)]
+pub struct SuspiciousDoubleRefDiag<'a> {
+    pub call: Symbol,
+    pub ty: Ty<'a>,
+    pub op: &'static str,
+}
+
 // pass_by_value.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_pass_by_value)]

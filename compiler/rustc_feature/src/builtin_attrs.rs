@@ -403,15 +403,15 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         doc, Normal, template!(List: "hidden|inline|...", NameValueStr: "string"), DuplicatesOk
     ),
 
+    // Debugging
+    ungated!(
+        debugger_visualizer, Normal,
+        template!(List: r#"natvis_file = "...", gdb_script_file = "...""#), DuplicatesOk
+    ),
+
     // ==========================================================================
     // Unstable attributes:
     // ==========================================================================
-
-    // RFC #3191: #[debugger_visualizer] support
-    gated!(
-        debugger_visualizer, Normal, template!(List: r#"natvis_file = "...", gdb_script_file = "...""#),
-        DuplicatesOk, experimental!(debugger_visualizer)
-    ),
 
     // Linking:
     gated!(

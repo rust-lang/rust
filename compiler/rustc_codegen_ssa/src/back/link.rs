@@ -40,7 +40,6 @@ use regex::Regex;
 use tempfile::Builder as TempFileBuilder;
 
 use itertools::Itertools;
-use std::borrow::Borrow;
 use std::cell::OnceCell;
 use std::collections::BTreeSet;
 use std::ffi::OsString;
@@ -576,17 +575,17 @@ fn link_dwarf_object<'a>(
 
     impl<Relocations> ThorinSession<Relocations> {
         fn alloc_mmap(&self, data: Mmap) -> &Mmap {
-            (*self.arena_mmap.alloc(data)).borrow()
+            &*self.arena_mmap.alloc(data)
         }
     }
 
     impl<Relocations> thorin::Session<Relocations> for ThorinSession<Relocations> {
         fn alloc_data(&self, data: Vec<u8>) -> &[u8] {
-            (*self.arena_data.alloc(data)).borrow()
+            &*self.arena_data.alloc(data)
         }
 
         fn alloc_relocation(&self, data: Relocations) -> &Relocations {
-            (*self.arena_relocations.alloc(data)).borrow()
+            &*self.arena_relocations.alloc(data)
         }
 
         fn read_input(&self, path: &Path) -> std::io::Result<&[u8]> {

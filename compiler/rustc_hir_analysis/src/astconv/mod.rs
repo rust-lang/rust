@@ -56,6 +56,9 @@ use std::slice;
 #[derive(Debug)]
 pub struct PathSeg(pub DefId, pub usize);
 
+#[derive(Copy, Clone, Debug)]
+pub struct OnlySelfBounds(pub bool);
+
 pub trait AstConv<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx>;
 
@@ -670,6 +673,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         args: &GenericArgs<'_>,
         infer_args: bool,
         self_ty: Ty<'tcx>,
+        only_self_bounds: OnlySelfBounds,
     ) -> GenericArgCountResult {
         let (substs, arg_count) = self.create_substs_for_ast_path(
             trait_ref_span,
@@ -706,6 +710,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 &mut dup_bindings,
                 binding_span.unwrap_or(binding.span),
                 constness,
+                only_self_bounds,
             );
             // Okay to ignore `Err` because of `ErrorGuaranteed` (see above).
         }
@@ -741,6 +746,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         self_ty: Ty<'tcx>,
         bounds: &mut Bounds<'tcx>,
         speculative: bool,
+        only_self_bounds: OnlySelfBounds,
     ) -> GenericArgCountResult {
         let hir_id = trait_ref.hir_ref_id;
         let binding_span = None;
@@ -766,6 +772,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             args,
             infer_args,
             self_ty,
+            only_self_bounds,
         )
     }
 
@@ -777,6 +784,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         args: &GenericArgs<'_>,
         self_ty: Ty<'tcx>,
         bounds: &mut Bounds<'tcx>,
+        only_self_bounds: OnlySelfBounds,
     ) {
         let binding_span = Some(span);
         let constness = ty::BoundConstness::NotConst;
@@ -799,6 +807,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             args,
             infer_args,
             self_ty,
+            only_self_bounds,
         );
     }
 
@@ -947,6 +956,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         ast_bounds: I,
         bounds: &mut Bounds<'tcx>,
         bound_vars: &'tcx ty::List<ty::BoundVariableKind>,
+        only_self_bounds: OnlySelfBounds,
     ) {
         for ast_bound in ast_bounds {
             match ast_bound {
@@ -964,11 +974,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         param_ty,
                         bounds,
                         false,
+                        only_self_bounds,
                     );
                 }
                 &hir::GenericBound::LangItemTrait(lang_item, span, hir_id, args) => {
                     self.instantiate_lang_item_trait_ref(
-                        lang_item, span, hir_id, args, param_ty, bounds,
+                        lang_item,
+                        span,
+                        hir_id,
+                        args,
+                        param_ty,
+                        bounds,
+                        only_self_bounds,
                     );
                 }
                 hir::GenericBound::Outlives(lifetime) => {
@@ -1006,8 +1023,19 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         param_ty: Ty<'tcx>,
         ast_bounds: &[hir::GenericBound<'_>],
+        only_self_bounds: OnlySelfBounds,
     ) -> Bounds<'tcx> {
-        self.compute_bounds_inner(param_ty, ast_bounds)
+        let mut bounds = Bounds::default();
+        self.add_bounds(
+            param_ty,
+            ast_bounds.iter(),
+            &mut bounds,
+            ty::List::empty(),
+            only_self_bounds,
+        );
+        debug!(?bounds);
+
+        bounds
     }
 
     /// Convert the bounds in `ast_bounds` that refer to traits which define an associated type
@@ -1029,17 +1057,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
-        self.compute_bounds_inner(param_ty, &result)
-    }
-
-    fn compute_bounds_inner(
-        &self,
-        param_ty: Ty<'tcx>,
-        ast_bounds: &[hir::GenericBound<'_>],
-    ) -> Bounds<'tcx> {
         let mut bounds = Bounds::default();
-
-        self.add_bounds(param_ty, ast_bounds.iter(), &mut bounds, ty::List::empty());
+        self.add_bounds(
+            param_ty,
+            result.iter(),
+            &mut bounds,
+            ty::List::empty(),
+            OnlySelfBounds(true),
+        );
         debug!(?bounds);
 
         bounds
@@ -1062,6 +1087,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         dup_bindings: &mut FxHashMap<DefId, Span>,
         path_span: Span,
         constness: ty::BoundConstness,
+        only_self_bounds: OnlySelfBounds,
     ) -> Result<(), ErrorGuaranteed> {
         // Given something like `U: SomeTrait<T = X>`, we want to produce a
         // predicate like `<U as SomeTrait>::T = X`. This is somewhat
@@ -1361,8 +1387,20 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 //
                 // Calling `skip_binder` is okay, because `add_bounds` expects the `param_ty`
                 // parameter to have a skipped binder.
-                let param_ty = tcx.mk_alias(ty::Projection, projection_ty.skip_binder());
-                self.add_bounds(param_ty, ast_bounds.iter(), bounds, projection_ty.bound_vars());
+                //
+                // NOTE: If `only_self_bounds` is true, do NOT expand this associated
+                // type bound into a trait predicate, since we only want to add predicates
+                // for the `Self` type.
+                if !only_self_bounds.0 {
+                    let param_ty = tcx.mk_alias(ty::Projection, projection_ty.skip_binder());
+                    self.add_bounds(
+                        param_ty,
+                        ast_bounds.iter(),
+                        bounds,
+                        projection_ty.bound_vars(),
+                        only_self_bounds,
+                    );
+                }
             }
         }
         Ok(())
@@ -1403,6 +1441,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 dummy_self,
                 &mut bounds,
                 false,
+                // FIXME: This should be `true`, but we don't really handle
+                // associated type bounds or type aliases in objects in a way
+                // that makes this meaningful, I think.
+                OnlySelfBounds(false),
             ) {
                 potential_assoc_types.extend(cur_potential_assoc_types);
             }

@@ -1,9 +1,11 @@
 //! Check properties that are required by built-in traits and set
 //! up data structures required by type-checking/codegen.
 
-use crate::errors::{CopyImplOnNonAdt, CopyImplOnTypeWithDtor, DropImplOnWrongItem};
+use crate::errors::{
+    ConstParamTyImplOnNonAdt, CopyImplOnNonAdt, CopyImplOnTypeWithDtor, DropImplOnWrongItem,
+};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{struct_span_err, MultiSpan};
+use rustc_errors::{struct_span_err, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
@@ -14,9 +16,11 @@ use rustc_infer::infer::{DefineOpaqueTypes, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
 use rustc_middle::ty::{self, suggest_constraining_type_params, Ty, TyCtxt, TypeVisitableExt};
+use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::misc::{
-    type_allowed_to_implement_copy, CopyImplementationError, InfringingFieldsReason,
+    type_allowed_to_implement_const_param_ty, type_allowed_to_implement_copy,
+    ConstParamTyImplementationError, CopyImplementationError, InfringingFieldsReason,
 };
 use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::{self, ObligationCause};
@@ -27,6 +31,7 @@ pub fn check_trait(tcx: TyCtxt<'_>, trait_def_id: DefId) {
     Checker { tcx, trait_def_id }
         .check(lang_items.drop_trait(), visit_implementation_of_drop)
         .check(lang_items.copy_trait(), visit_implementation_of_copy)
+        .check(lang_items.const_param_ty_trait(), visit_implementation_of_const_param_ty)
         .check(lang_items.coerce_unsized_trait(), visit_implementation_of_coerce_unsized)
         .check(lang_items.dispatch_from_dyn_trait(), visit_implementation_of_dispatch_from_dyn);
 }
@@ -83,116 +88,36 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
     match type_allowed_to_implement_copy(tcx, param_env, self_type, cause) {
         Ok(()) => {}
         Err(CopyImplementationError::InfringingFields(fields)) => {
-            let mut err = struct_span_err!(
-                tcx.sess,
-                span,
-                E0204,
-                "the trait `Copy` cannot be implemented for this type"
-            );
-
-            // We'll try to suggest constraining type parameters to fulfill the requirements of
-            // their `Copy` implementation.
-            let mut errors: BTreeMap<_, Vec<_>> = Default::default();
-            let mut bounds = vec![];
-
-            let mut seen_tys = FxHashSet::default();
-
-            for (field, ty, reason) in fields {
-                // Only report an error once per type.
-                if !seen_tys.insert(ty) {
-                    continue;
-                }
-
-                let field_span = tcx.def_span(field.did);
-                err.span_label(field_span, "this field does not implement `Copy`");
-
-                match reason {
-                    InfringingFieldsReason::Fulfill(fulfillment_errors) => {
-                        for error in fulfillment_errors {
-                            let error_predicate = error.obligation.predicate;
-                            // Only note if it's not the root obligation, otherwise it's trivial and
-                            // should be self-explanatory (i.e. a field literally doesn't implement Copy).
-
-                            // FIXME: This error could be more descriptive, especially if the error_predicate
-                            // contains a foreign type or if it's a deeply nested type...
-                            if error_predicate != error.root_obligation.predicate {
-                                errors
-                                    .entry((ty.to_string(), error_predicate.to_string()))
-                                    .or_default()
-                                    .push(error.obligation.cause.span);
-                            }
-                            if let ty::PredicateKind::Clause(ty::Clause::Trait(
-                                ty::TraitPredicate {
-                                    trait_ref,
-                                    polarity: ty::ImplPolarity::Positive,
-                                    ..
-                                },
-                            )) = error_predicate.kind().skip_binder()
-                            {
-                                let ty = trait_ref.self_ty();
-                                if let ty::Param(_) = ty.kind() {
-                                    bounds.push((
-                                        format!("{ty}"),
-                                        trait_ref.print_only_trait_path().to_string(),
-                                        Some(trait_ref.def_id),
-                                    ));
-                                }
-                            }
-                        }
-                    }
-                    InfringingFieldsReason::Regions(region_errors) => {
-                        for error in region_errors {
-                            let ty = ty.to_string();
-                            match error {
-                                RegionResolutionError::ConcreteFailure(origin, a, b) => {
-                                    let predicate = format!("{b}: {a}");
-                                    errors
-                                        .entry((ty.clone(), predicate.clone()))
-                                        .or_default()
-                                        .push(origin.span());
-                                    if let ty::RegionKind::ReEarlyBound(ebr) = *b && ebr.has_name() {
-                                        bounds.push((b.to_string(), a.to_string(), None));
-                                    }
-                                }
-                                RegionResolutionError::GenericBoundFailure(origin, a, b) => {
-                                    let predicate = format!("{a}: {b}");
-                                    errors
-                                        .entry((ty.clone(), predicate.clone()))
-                                        .or_default()
-                                        .push(origin.span());
-                                    if let infer::region_constraints::GenericKind::Param(_) = a {
-                                        bounds.push((a.to_string(), b.to_string(), None));
-                                    }
-                                }
-                                _ => continue,
-                            }
-                        }
-                    }
-                }
-            }
-            for ((ty, error_predicate), spans) in errors {
-                let span: MultiSpan = spans.into();
-                err.span_note(
-                    span,
-                    &format!("the `Copy` impl for `{}` requires that `{}`", ty, error_predicate),
-                );
-            }
-            suggest_constraining_type_params(
-                tcx,
-                tcx.hir().get_generics(impl_did).expect("impls always have generics"),
-                &mut err,
-                bounds.iter().map(|(param, constraint, def_id)| {
-                    (param.as_str(), constraint.as_str(), *def_id)
-                }),
-                None,
-            );
-            err.emit();
+            infringing_fields_error(tcx, fields, LangItem::Copy, impl_did, span);
         }
         Err(CopyImplementationError::NotAnAdt) => {
             tcx.sess.emit_err(CopyImplOnNonAdt { span });
         }
         Err(CopyImplementationError::HasDestructor) => {
             tcx.sess.emit_err(CopyImplOnTypeWithDtor { span });
+        }
+    }
+}
+
+fn visit_implementation_of_const_param_ty(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
+    let self_type = tcx.type_of(impl_did).subst_identity();
+    assert!(!self_type.has_escaping_bound_vars());
+
+    let param_env = tcx.param_env(impl_did);
+
+    let span = match tcx.hir().expect_item(impl_did).expect_impl() {
+        hir::Impl { polarity: hir::ImplPolarity::Negative(_), .. } => return,
+        impl_ => impl_.self_ty.span,
+    };
+
+    let cause = traits::ObligationCause::misc(span, impl_did);
+    match type_allowed_to_implement_const_param_ty(tcx, param_env, self_type, cause) {
+        Ok(()) => {}
+        Err(ConstParamTyImplementationError::InfrigingFields(fields)) => {
+            infringing_fields_error(tcx, fields, LangItem::ConstParamTy, impl_did, span);
+        }
+        Err(ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed) => {
+            tcx.sess.emit_err(ConstParamTyImplOnNonAdt { span });
         }
     }
 }
@@ -592,4 +517,120 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) -> Coe
     let _ = ocx.resolve_regions_and_report_errors(impl_did, &outlives_env);
 
     CoerceUnsizedInfo { custom_kind: kind }
+}
+
+fn infringing_fields_error(
+    tcx: TyCtxt<'_>,
+    fields: Vec<(&ty::FieldDef, Ty<'_>, InfringingFieldsReason<'_>)>,
+    lang_item: LangItem,
+    impl_did: LocalDefId,
+    impl_span: Span,
+) -> ErrorGuaranteed {
+    let trait_did = tcx.require_lang_item(lang_item, Some(impl_span));
+
+    let trait_name = tcx.def_path_str(trait_did);
+
+    let mut err = struct_span_err!(
+        tcx.sess,
+        impl_span,
+        E0204,
+        "the trait `{trait_name}` cannot be implemented for this type"
+    );
+
+    // We'll try to suggest constraining type parameters to fulfill the requirements of
+    // their `Copy` implementation.
+    let mut errors: BTreeMap<_, Vec<_>> = Default::default();
+    let mut bounds = vec![];
+
+    let mut seen_tys = FxHashSet::default();
+
+    for (field, ty, reason) in fields {
+        // Only report an error once per type.
+        if !seen_tys.insert(ty) {
+            continue;
+        }
+
+        let field_span = tcx.def_span(field.did);
+        err.span_label(field_span, format!("this field does not implement `{trait_name}`"));
+
+        match reason {
+            InfringingFieldsReason::Fulfill(fulfillment_errors) => {
+                for error in fulfillment_errors {
+                    let error_predicate = error.obligation.predicate;
+                    // Only note if it's not the root obligation, otherwise it's trivial and
+                    // should be self-explanatory (i.e. a field literally doesn't implement Copy).
+
+                    // FIXME: This error could be more descriptive, especially if the error_predicate
+                    // contains a foreign type or if it's a deeply nested type...
+                    if error_predicate != error.root_obligation.predicate {
+                        errors
+                            .entry((ty.to_string(), error_predicate.to_string()))
+                            .or_default()
+                            .push(error.obligation.cause.span);
+                    }
+                    if let ty::PredicateKind::Clause(ty::Clause::Trait(ty::TraitPredicate {
+                        trait_ref,
+                        polarity: ty::ImplPolarity::Positive,
+                        ..
+                    })) = error_predicate.kind().skip_binder()
+                    {
+                        let ty = trait_ref.self_ty();
+                        if let ty::Param(_) = ty.kind() {
+                            bounds.push((
+                                format!("{ty}"),
+                                trait_ref.print_only_trait_path().to_string(),
+                                Some(trait_ref.def_id),
+                            ));
+                        }
+                    }
+                }
+            }
+            InfringingFieldsReason::Regions(region_errors) => {
+                for error in region_errors {
+                    let ty = ty.to_string();
+                    match error {
+                        RegionResolutionError::ConcreteFailure(origin, a, b) => {
+                            let predicate = format!("{b}: {a}");
+                            errors
+                                .entry((ty.clone(), predicate.clone()))
+                                .or_default()
+                                .push(origin.span());
+                            if let ty::RegionKind::ReEarlyBound(ebr) = *b && ebr.has_name() {
+                                        bounds.push((b.to_string(), a.to_string(), None));
+                                    }
+                        }
+                        RegionResolutionError::GenericBoundFailure(origin, a, b) => {
+                            let predicate = format!("{a}: {b}");
+                            errors
+                                .entry((ty.clone(), predicate.clone()))
+                                .or_default()
+                                .push(origin.span());
+                            if let infer::region_constraints::GenericKind::Param(_) = a {
+                                bounds.push((a.to_string(), b.to_string(), None));
+                            }
+                        }
+                        _ => continue,
+                    }
+                }
+            }
+        }
+    }
+    for ((ty, error_predicate), spans) in errors {
+        let span: MultiSpan = spans.into();
+        err.span_note(
+            span,
+            format!("the `{trait_name}` impl for `{ty}` requires that `{error_predicate}`"),
+        );
+    }
+    suggest_constraining_type_params(
+        tcx,
+        tcx.hir().get_generics(impl_did).expect("impls always have generics"),
+        &mut err,
+        bounds
+            .iter()
+            .map(|(param, constraint, def_id)| (param.as_str(), constraint.as_str(), *def_id)),
+        None,
+    );
+
+    err.emit()
 }

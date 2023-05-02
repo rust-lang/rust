@@ -1,14 +1,5 @@
-warning: the feature `async_fn_in_trait` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/feature-gate-return_type_notation.rs:7:12
-   |
-LL | #![feature(async_fn_in_trait)]
-   |            ^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
 warning: return type notation is experimental
-  --> $DIR/feature-gate-return_type_notation.rs:15:17
+  --> $DIR/feature-gate-return_type_notation.rs:14:17
    |
 LL | fn foo<T: Trait<m(): Send>>() {}
    |                 ^^^^^^^^^
@@ -18,5 +9,5 @@ LL | fn foo<T: Trait<m(): Send>>() {}
    = warning: unstable syntax can change at any point in the future, causing a hard error!
    = note: for more information, see issue #65860 <https://github.com/rust-lang/rust/issues/65860>
 
-warning: 2 warnings emitted
+warning: 1 warning emitted
 

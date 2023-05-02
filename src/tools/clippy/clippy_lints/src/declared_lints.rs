@@ -313,7 +313,6 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::methods::CHARS_NEXT_CMP_INFO,
     crate::methods::CLEAR_WITH_DRAIN_INFO,
     crate::methods::CLONED_INSTEAD_OF_COPIED_INFO,
-    crate::methods::CLONE_DOUBLE_REF_INFO,
     crate::methods::CLONE_ON_COPY_INFO,
     crate::methods::CLONE_ON_REF_PTR_INFO,
     crate::methods::COLLAPSIBLE_STR_REPLACE_INFO,
