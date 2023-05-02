@@ -2,9 +2,10 @@ use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::PResult;
 use rustc_expand::base::{self, *};
+use rustc_index::bit_set::GrowableBitSet;
 use rustc_parse::parser::Parser;
 use rustc_parse_format as parse;
 use rustc_session::lint;
@@ -21,7 +22,7 @@ pub struct AsmArgs {
     pub templates: Vec<P<ast::Expr>>,
     pub operands: Vec<(ast::InlineAsmOperand, Span)>,
     named_args: FxIndexMap<Symbol, usize>,
-    reg_args: FxIndexSet<usize>,
+    reg_args: GrowableBitSet<usize>,
     pub clobber_abis: Vec<(Symbol, Span)>,
     options: ast::InlineAsmOptions,
     pub options_spans: Vec<Span>,
@@ -213,7 +214,7 @@ pub fn parse_asm_args<'a>(
         } else {
             if !args.named_args.is_empty() || !args.reg_args.is_empty() {
                 let named = args.named_args.values().map(|p| args.operands[*p].1).collect();
-                let explicit = args.reg_args.iter().map(|p| args.operands[*p].1).collect();
+                let explicit = args.reg_args.iter().map(|p| args.operands[p].1).collect();
 
                 diag.emit_err(errors::AsmPositionalAfter { span, named, explicit });
             }
@@ -446,8 +447,8 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
     // Register operands are implicitly used since they are not allowed to be
     // referenced in the template string.
     let mut used = vec![false; args.operands.len()];
-    for pos in &args.reg_args {
-        used[*pos] = true;
+    for pos in args.reg_args.iter() {
+        used[pos] = true;
     }
     let named_pos: FxHashMap<usize, Symbol> =
         args.named_args.iter().map(|(&sym, &idx)| (idx, sym)).collect();
@@ -581,7 +582,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                         parse::ArgumentIs(idx) | parse::ArgumentImplicitlyIs(idx) => {
                             if idx >= args.operands.len()
                                 || named_pos.contains_key(&idx)
-                                || args.reg_args.contains(&idx)
+                                || args.reg_args.contains(idx)
                             {
                                 let msg = format!("invalid reference to argument at index {}", idx);
                                 let mut err = ecx.struct_span_err(span, &msg);
@@ -608,7 +609,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                                         args.operands[idx].1,
                                         "named arguments cannot be referenced by position",
                                     );
-                                } else if args.reg_args.contains(&idx) {
+                                } else if args.reg_args.contains(idx) {
                                     err.span_label(
                                         args.operands[idx].1,
                                         "explicit register argument",
