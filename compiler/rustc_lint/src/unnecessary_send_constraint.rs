@@ -2,10 +2,10 @@ use rustc_span::sym;
 
 use crate::hir;
 
-use crate::{lints::UselessSendConstraintDiag, LateContext, LateLintPass};
+use crate::{lints::UnnecessarySendConstraintDiag, LateContext, LateLintPass};
 
 declare_lint! {
-    /// The `lint_useless_send_constraint` lints useless constraint of references to `Send`.
+    /// The `lint_unnecessary_send_constraint` lints unnecessary constraint of references to `Send`.
     ///
     /// ### Example
     ///
@@ -17,15 +17,15 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// References cannot be sent across threads unless they have a `Sync` bound, so constraining them to `Send` without `Sync` is useless.
-    pub USELESS_SEND_CONSTRAINT,
+    /// References cannot be sent across threads unless they have a `Sync` bound, so constraining them to `Send` without `Sync` is unnecessary.
+    pub UNNECESSARY_SEND_CONSTRAINT,
     Warn,
-    "constraining a reference to `Send` without `Sync` is useless, consider removing it"
+    "constraining a reference to `Send` without `Sync` is unnecessary, consider removing it"
 }
 
-declare_lint_pass!(UselessSendConstraint => [USELESS_SEND_CONSTRAINT]);
+declare_lint_pass!(UnnecessarySendConstraint => [UNNECESSARY_SEND_CONSTRAINT]);
 
-impl<'tcx> LateLintPass<'tcx> for UselessSendConstraint {
+impl<'tcx> LateLintPass<'tcx> for UnnecessarySendConstraint {
     fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx hir::Ty<'tcx>) {
         let hir::TyKind::Ref(
             ..,
@@ -46,10 +46,10 @@ impl<'tcx> LateLintPass<'tcx> for UselessSendConstraint {
             let only_trait = bounds.len() == 1;
 
             cx.tcx.emit_spanned_lint(
-                USELESS_SEND_CONSTRAINT,
+                UNNECESSARY_SEND_CONSTRAINT,
                 send_bound.trait_ref.hir_ref_id, // is this correct?
                 send_bound.span,
-                UselessSendConstraintDiag { only_trait, suggestion: send_bound.span },
+                UnnecessarySendConstraintDiag { only_trait, suggestion: send_bound.span },
             )
         }
     }
