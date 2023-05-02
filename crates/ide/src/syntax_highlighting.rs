@@ -422,7 +422,10 @@ fn traverse(
                         continue;
                     }
                     highlight_format_string(hl, &string, &expanded_string, range);
-                    highlight_escape_string(hl, &string, range.start());
+
+                    if !string.is_raw() {
+                        highlight_escape_string(hl, &string, range.start());
+                    }
                 }
             } else if ast::ByteString::can_cast(token.kind())
                 && ast::ByteString::can_cast(descended_token.kind())
