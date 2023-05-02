@@ -420,6 +420,15 @@ parse_maybe_fn_typo_with_impl = you might have meant to write `impl` instead of 
 parse_expected_fn_path_found_fn_keyword = expected identifier, found keyword `fn`
     .suggestion = use `Fn` to refer to the trait
 
+parse_path_single_colon = path separator must be a double colon
+    .suggestion = use a double colon instead
+
+parse_colon_as_semi = statements are terminated with a semicolon
+    .suggestion = use a semicolon instead
+
+parse_type_ascription_removed =
+    if you meant to annotate an expression with a type, the type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
+
 parse_where_clause_before_tuple_struct_body = where clauses are not allowed before tuple struct bodies
     .label = unexpected where clause
     .name_label = while parsing this tuple struct

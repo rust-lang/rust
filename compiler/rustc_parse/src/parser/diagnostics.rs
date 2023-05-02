@@ -4,7 +4,7 @@ use super::{
     TokenExpectType, TokenType,
 };
 use crate::errors::{
-    AmbiguousPlus, AttributeOnParamType, BadQPathStage2, BadTypePlus, BadTypePlusSub,
+    AmbiguousPlus, AttributeOnParamType, BadQPathStage2, BadTypePlus, BadTypePlusSub, ColonAsSemi,
     ComparisonOperatorsCannotBeChained, ComparisonOperatorsCannotBeChainedSugg,
     ConstGenericWithoutBraces, ConstGenericWithoutBracesSugg, DocCommentDoesNotDocumentAnything,
     DocCommentOnParamType, DoubleColonInBound, ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg,
@@ -84,6 +84,7 @@ impl RecoverQPath for Ty {
 }
 
 impl RecoverQPath for Pat {
+    const PATH_STYLE: PathStyle = PathStyle::Pat;
     fn to_ty(&self) -> Option<P<Ty>> {
         self.to_ty()
     }
@@ -663,7 +664,6 @@ impl<'a> Parser<'a> {
             err.span_label(sp, label_exp);
             err.span_label(self.token.span, "unexpected token");
         }
-        self.maybe_annotate_with_ascription(&mut err, false);
         Err(err)
     }
 
@@ -786,59 +786,6 @@ impl<'a> Parser<'a> {
             });
         }
         None
-    }
-
-    pub fn maybe_annotate_with_ascription(
-        &mut self,
-        err: &mut Diagnostic,
-        maybe_expected_semicolon: bool,
-    ) {
-        if let Some((sp, likely_path)) = self.last_type_ascription.take() {
-            let sm = self.sess.source_map();
-            let next_pos = sm.lookup_char_pos(self.token.span.lo());
-            let op_pos = sm.lookup_char_pos(sp.hi());
-
-            let allow_unstable = self.sess.unstable_features.is_nightly_build();
-
-            if likely_path {
-                err.span_suggestion(
-                    sp,
-                    "maybe write a path separator here",
-                    "::",
-                    if allow_unstable {
-                        Applicability::MaybeIncorrect
-                    } else {
-                        Applicability::MachineApplicable
-                    },
-                );
-                self.sess.type_ascription_path_suggestions.borrow_mut().insert(sp);
-            } else if op_pos.line != next_pos.line && maybe_expected_semicolon {
-                err.span_suggestion(
-                    sp,
-                    "try using a semicolon",
-                    ";",
-                    Applicability::MaybeIncorrect,
-                );
-            } else if allow_unstable {
-                err.span_label(sp, "tried to parse a type due to this type ascription");
-            } else {
-                err.span_label(sp, "tried to parse a type due to this");
-            }
-            if allow_unstable {
-                // Give extra information about type ascription only if it's a nightly compiler.
-                err.note(
-                    "`#![feature(type_ascription)]` lets you annotate an expression with a type: \
-                     `<expr>: <type>`",
-                );
-                if !likely_path {
-                    // Avoid giving too much info when it was likely an unrelated typo.
-                    err.note(
-                        "see issue #23416 <https://github.com/rust-lang/rust/issues/23416> \
-                        for more information",
-                    );
-                }
-            }
-        }
     }
 
     /// Eats and discards tokens until one of `kets` is encountered. Respects token trees,
@@ -1622,10 +1569,34 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn expect_semi(&mut self) -> PResult<'a, ()> {
-        if self.eat(&token::Semi) {
+        if self.eat(&token::Semi) || self.recover_colon_as_semi() {
             return Ok(());
         }
         self.expect(&token::Semi).map(drop) // Error unconditionally
+    }
+
+    pub(super) fn recover_colon_as_semi(&mut self) -> bool {
+        let line_idx = |span: Span| {
+            self.sess
+                .source_map()
+                .span_to_lines(span)
+                .ok()
+                .and_then(|lines| Some(lines.lines.get(0)?.line_index))
+        };
+
+        if self.may_recover()
+            && self.token == token::Colon
+            && self.look_ahead(1, |next| line_idx(self.token.span) < line_idx(next.span))
+        {
+            self.sess.emit_err(ColonAsSemi {
+                span: self.token.span,
+                type_ascription: self.sess.unstable_features.is_nightly_build().then_some(()),
+            });
+            self.bump();
+            return true;
+        }
+
+        false
     }
 
     /// Consumes alternative await syntaxes like `await!(<expr>)`, `await <expr>`,
@@ -1790,24 +1761,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn could_ascription_be_path(&self, node: &ast::ExprKind) -> bool {
-        (self.token == token::Lt && // `foo:<bar`, likely a typoed turbofish.
-            self.look_ahead(1, |t| t.is_ident() && !t.is_reserved_ident()))
-            || self.token.is_ident() &&
-            matches!(node, ast::ExprKind::Path(..) | ast::ExprKind::Field(..)) &&
-            !self.token.is_reserved_ident() &&           // v `foo:bar(baz)`
-            self.look_ahead(1, |t| t == &token::OpenDelim(Delimiter::Parenthesis))
-            || self.look_ahead(1, |t| t == &token::OpenDelim(Delimiter::Brace)) // `foo:bar {`
-            || self.look_ahead(1, |t| t == &token::Colon) &&     // `foo:bar::<baz`
-            self.look_ahead(2, |t| t == &token::Lt) &&
-            self.look_ahead(3, |t| t.is_ident())
-            || self.look_ahead(1, |t| t == &token::Colon) &&  // `foo:bar:baz`
-            self.look_ahead(2, |t| t.is_ident())
-            || self.look_ahead(1, |t| t == &token::ModSep)
-                && (self.look_ahead(2, |t| t.is_ident()) ||   // `foo:bar::baz`
-            self.look_ahead(2, |t| t == &token::Lt)) // `foo:bar::<baz>`
-    }
-
     pub(super) fn recover_seq_parse_error(
         &mut self,
         delim: Delimiter,
@@ -1902,7 +1855,6 @@ impl<'a> Parser<'a> {
                         && brace_depth == 0
                         && bracket_depth == 0 =>
                 {
-                    debug!("recover_stmt_ return - Semi");
                     break;
                 }
                 _ => self.bump(),

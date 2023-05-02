@@ -174,10 +174,8 @@ impl<'a> Parser<'a> {
                 self.parse_expr_prefix(attrs)?
             }
         };
-        let last_type_ascription_set = self.last_type_ascription.is_some();
 
         if !self.should_continue_as_assoc_expr(&lhs) {
-            self.last_type_ascription = None;
             return Ok(lhs);
         }
 
@@ -301,9 +299,6 @@ impl<'a> Parser<'a> {
             if op == AssocOp::As {
                 lhs = self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Cast)?;
                 continue;
-            } else if op == AssocOp::Colon {
-                lhs = self.parse_assoc_op_ascribe(lhs, lhs_span)?;
-                continue;
             } else if op == AssocOp::DotDot || op == AssocOp::DotDotEq {
                 // If we didn't have to handle `x..`/`x..=`, it would be pretty easy to
                 // generalise it to the Fixity::None code.
@@ -364,7 +359,7 @@ impl<'a> Parser<'a> {
                     let aopexpr = self.mk_assign_op(source_map::respan(cur_op_span, aop), lhs, rhs);
                     self.mk_expr(span, aopexpr)
                 }
-                AssocOp::As | AssocOp::Colon | AssocOp::DotDot | AssocOp::DotDotEq => {
+                AssocOp::As | AssocOp::DotDot | AssocOp::DotDotEq => {
                     self.span_bug(span, "AssocOp should have been handled by special case")
                 }
             };
@@ -373,9 +368,7 @@ impl<'a> Parser<'a> {
                 break;
             }
         }
-        if last_type_ascription_set {
-            self.last_type_ascription = None;
-        }
+
         Ok(lhs)
     }
 
@@ -743,7 +736,7 @@ impl<'a> Parser<'a> {
                     (
                         // `foo: `
                         ExprKind::Path(None, ast::Path { segments, .. }),
-                        TokenKind::Ident(kw::For | kw::Loop | kw::While, false),
+                        token::Ident(kw::For | kw::Loop | kw::While, false),
                     ) if segments.len() == 1 => {
                         let snapshot = self.create_snapshot_for_diagnostic();
                         let label = Label {
@@ -838,21 +831,19 @@ impl<'a> Parser<'a> {
         &mut self,
         cast_expr: P<Expr>,
     ) -> PResult<'a, P<Expr>> {
+        if let ExprKind::Type(_, _) = cast_expr.kind {
+            panic!("ExprKind::Type must not be parsed");
+        }
+
         let span = cast_expr.span;
-        let (cast_kind, maybe_ascription_span) =
-            if let ExprKind::Type(ascripted_expr, _) = &cast_expr.kind {
-                ("type ascription", Some(ascripted_expr.span.shrink_to_hi().with_hi(span.hi())))
-            } else {
-                ("cast", None)
-            };
 
         let with_postfix = self.parse_expr_dot_or_call_with_(cast_expr, span)?;
 
         // Check if an illegal postfix operator has been added after the cast.
         // If the resulting expression is not a cast, it is an illegal postfix operator.
-        if !matches!(with_postfix.kind, ExprKind::Cast(_, _) | ExprKind::Type(_, _)) {
+        if !matches!(with_postfix.kind, ExprKind::Cast(_, _)) {
             let msg = format!(
-                "{cast_kind} cannot be followed by {}",
+                "cast cannot be followed by {}",
                 match with_postfix.kind {
                     ExprKind::Index(_, _) => "indexing",
                     ExprKind::Try(_) => "`?`",
@@ -878,42 +869,11 @@ impl<'a> Parser<'a> {
                 );
             };
 
-            // If type ascription is "likely an error", the user will already be getting a useful
-            // help message, and doesn't need a second.
-            if self.last_type_ascription.map_or(false, |last_ascription| last_ascription.1) {
-                self.maybe_annotate_with_ascription(&mut err, false);
-            } else if let Some(ascription_span) = maybe_ascription_span {
-                let is_nightly = self.sess.unstable_features.is_nightly_build();
-                if is_nightly {
-                    suggest_parens(&mut err);
-                }
-                err.span_suggestion(
-                    ascription_span,
-                    &format!(
-                        "{}remove the type ascription",
-                        if is_nightly { "alternatively, " } else { "" }
-                    ),
-                    "",
-                    if is_nightly {
-                        Applicability::MaybeIncorrect
-                    } else {
-                        Applicability::MachineApplicable
-                    },
-                );
-            } else {
-                suggest_parens(&mut err);
-            }
+            suggest_parens(&mut err);
+
             err.emit();
         };
         Ok(with_postfix)
-    }
-
-    fn parse_assoc_op_ascribe(&mut self, lhs: P<Expr>, lhs_span: Span) -> PResult<'a, P<Expr>> {
-        let maybe_path = self.could_ascription_be_path(&lhs.kind);
-        self.last_type_ascription = Some((self.prev_token.span, maybe_path));
-        let lhs = self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Type)?;
-        self.sess.gated_spans.gate(sym::type_ascription, lhs.span);
-        Ok(lhs)
     }
 
     /// Parse `& mut? <expr>` or `& raw [ const | mut ] <expr>`.
@@ -1010,7 +970,7 @@ impl<'a> Parser<'a> {
             };
             if has_dot {
                 // expr.f
-                e = self.parse_expr_dot_suffix(lo, e)?;
+                e = self.parse_dot_suffix_expr(lo, e)?;
                 continue;
             }
             if self.expr_is_complete(&e) {
@@ -1024,13 +984,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn look_ahead_type_ascription_as_field(&mut self) -> bool {
-        self.look_ahead(1, |t| t.is_ident())
-            && self.look_ahead(2, |t| t == &token::Colon)
-            && self.look_ahead(3, |t| t.can_begin_expr())
-    }
-
-    fn parse_expr_dot_suffix(&mut self, lo: Span, base: P<Expr>) -> PResult<'a, P<Expr>> {
+    fn parse_dot_suffix_expr(&mut self, lo: Span, base: P<Expr>) -> PResult<'a, P<Expr>> {
         match self.token.uninterpolate().kind {
             token::Ident(..) => self.parse_dot_suffix(base, lo),
             token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) => {
@@ -1183,9 +1137,7 @@ impl<'a> Parser<'a> {
 
     /// Parse a function call expression, `expr(...)`.
     fn parse_expr_fn_call(&mut self, lo: Span, fun: P<Expr>) -> P<Expr> {
-        let snapshot = if self.token.kind == token::OpenDelim(Delimiter::Parenthesis)
-            && self.look_ahead_type_ascription_as_field()
-        {
+        let snapshot = if self.token.kind == token::OpenDelim(Delimiter::Parenthesis) {
             Some((self.create_snapshot_for_diagnostic(), fun.kind.clone()))
         } else {
             None
@@ -1216,7 +1168,6 @@ impl<'a> Parser<'a> {
         if !self.may_recover() {
             return None;
         }
-
         match (seq.as_mut(), snapshot) {
             (Err(err), Some((mut snapshot, ExprKind::Path(None, path)))) => {
                 snapshot.bump(); // `(`
@@ -1260,9 +1211,7 @@ impl<'a> Parser<'a> {
                         return Some(self.mk_expr_err(span));
                     }
                     Ok(_) => {}
-                    Err(mut err) => {
-                        err.emit();
-                    }
+                    Err(err) => err.cancel(),
                 }
             }
             _ => {}
@@ -1516,7 +1465,6 @@ impl<'a> Parser<'a> {
             let mac = P(MacCall {
                 path,
                 args: self.parse_delim_args()?,
-                prior_type_ascription: self.last_type_ascription,
             });
             (lo.to(self.prev_token.span), ExprKind::MacCall(mac))
         } else if self.check(&token::OpenDelim(Delimiter::Brace))
@@ -1535,7 +1483,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse `'label: $expr`. The label is already parsed.
-    fn parse_expr_labeled(
+    pub(super) fn parse_expr_labeled(
         &mut self,
         label_: Label,
         mut consume_colon: bool,
@@ -3013,6 +2961,11 @@ impl<'a> Parser<'a> {
                     } else {
                         e.span_label(pth.span, "while parsing this struct");
                     }
+
+                    if !recover {
+                        return Err(e);
+                    }
+
                     e.emit();
 
                     // If the next token is a comma, then try to parse
@@ -3024,6 +2977,7 @@ impl<'a> Parser<'a> {
                             break;
                         }
                     }
+
                     None
                 }
             };

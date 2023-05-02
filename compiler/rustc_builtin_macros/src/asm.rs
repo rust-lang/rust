@@ -68,9 +68,7 @@ pub fn parse_asm_args<'a>(
         if !p.eat(&token::Comma) {
             if allow_templates {
                 // After a template string, we always expect *only* a comma...
-                let mut err = diag.create_err(errors::AsmExpectedComma { span: p.token.span });
-                p.maybe_annotate_with_ascription(&mut err, false);
-                return Err(err);
+                return Err(diag.create_err(errors::AsmExpectedComma { span: p.token.span }));
             } else {
                 // ...after that delegate to `expect` to also include the other expected tokens.
                 return Err(p.expect(&token::Comma).err().unwrap());

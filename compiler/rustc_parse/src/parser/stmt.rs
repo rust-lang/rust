@@ -10,6 +10,8 @@ use super::{
 use crate::errors;
 use crate::maybe_whole;
 
+use crate::errors::MalformedLoopLabel;
+use ast::Label;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, TokenKind};
@@ -19,7 +21,8 @@ use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, HasAttrs, Local, Stmt};
 use rustc_ast::{StmtKind, DUMMY_NODE_ID};
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
 use rustc_span::source_map::{BytePos, Span};
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::{kw, sym, Ident};
+
 use std::mem;
 use thin_vec::{thin_vec, ThinVec};
 
@@ -186,7 +189,7 @@ impl<'a> Parser<'a> {
             _ => MacStmtStyle::NoBraces,
         };
 
-        let mac = P(MacCall { path, args, prior_type_ascription: self.last_type_ascription });
+        let mac = P(MacCall { path, args });
 
         let kind = if (style == MacStmtStyle::Braces
             && self.token != token::Dot
@@ -546,10 +549,36 @@ impl<'a> Parser<'a> {
             }
             let stmt = match self.parse_full_stmt(recover) {
                 Err(mut err) if recover.yes() => {
-                    self.maybe_annotate_with_ascription(&mut err, false);
                     if let Some(ref mut snapshot) = snapshot {
                         snapshot.recover_diff_marker();
                     }
+                    if self.token == token::Colon {
+                        // if next token is following a colon, it's likely a path
+                        // and we can suggest a path separator
+                        let ident_span = self.prev_token.span;
+                        self.bump();
+                        if self.token.span.lo() == self.prev_token.span.hi() {
+                            err.span_suggestion_verbose(
+                                self.prev_token.span,
+                                "maybe write a path separator here",
+                                "::",
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                        if self.look_ahead(1, |token| token == &token::Eq) {
+                            err.span_suggestion_verbose(
+                                ident_span.shrink_to_lo(),
+                                "you might have meant to introduce a new binding",
+                                "let ",
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                        if self.sess.unstable_features.is_nightly_build() {
+                            // FIXME(Nilstrieb): Remove this again after a few months.
+                            err.note("type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>");
+                        }
+                    }
+
                     err.emit();
                     self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore);
                     Some(self.mk_stmt_err(self.token.span))
@@ -580,19 +609,25 @@ impl<'a> Parser<'a> {
         };
 
         let mut eat_semi = true;
+        let mut add_semi_to_stmt = false;
+
         match &mut stmt.kind {
             // Expression without semicolon.
             StmtKind::Expr(expr)
                 if self.token != token::Eof && classify::expr_requires_semi_to_be_stmt(expr) => {
                 // Just check for errors and recover; do not eat semicolon yet.
                 // `expect_one_of` returns PResult<'a, bool /* recovered */>
-                let replace_with_err =
-                    match self.expect_one_of(&[], &[token::Semi, token::CloseDelim(Delimiter::Brace)]) {
+
+                let expect_result = self.expect_one_of(&[], &[token::Semi, token::CloseDelim(Delimiter::Brace)]);
+
+                let replace_with_err = 'break_recover: {
+                    match expect_result {
                     // Recover from parser, skip type error to avoid extra errors.
-                    Ok(true) => true,
-                    Err(mut e) => {
-                        if let TokenKind::DocComment(..) = self.token.kind &&
-                            let Ok(snippet) = self.span_to_snippet(self.token.span) {
+                        Ok(true) => true,
+                        Err(mut e) => {
+                            if let TokenKind::DocComment(..) = self.token.kind
+                                && let Ok(snippet) = self.span_to_snippet(self.token.span)
+                            {
                                 let sp = self.token.span;
                                 let marker = &snippet[..3];
                                 let (comment_marker, doc_comment_marker) = marker.split_at(2);
@@ -606,21 +641,72 @@ impl<'a> Parser<'a> {
                                     format!("{} {}", comment_marker, doc_comment_marker),
                                     Applicability::MaybeIncorrect,
                                 );
-                        }
-
-                        if let Err(mut e) =
-                            self.check_mistyped_turbofish_with_multiple_type_params(e, expr)
-                        {
-                            if recover.no() {
-                                return Err(e);
                             }
-                            e.emit();
-                            self.recover_stmt();
+
+                            if self.recover_colon_as_semi() {
+                                // recover_colon_as_semi has already emitted a nicer error.
+                                e.delay_as_bug();
+                                add_semi_to_stmt = true;
+                                eat_semi = false;
+
+                                break 'break_recover false;
+                            }
+
+                            match &expr.kind {
+                                ExprKind::Path(None, ast::Path { segments, .. }) if segments.len() == 1 => {
+                                    if self.token == token::Colon
+                                        && self.look_ahead(1, |token| {
+                                            token.is_whole_block() || matches!(
+                                                token.kind,
+                                                token::Ident(kw::For | kw::Loop | kw::While, false)
+                                                    | token::OpenDelim(Delimiter::Brace)
+                                            )
+                                        })
+                                    {
+                                        let snapshot = self.create_snapshot_for_diagnostic();
+                                        let label = Label {
+                                            ident: Ident::from_str_and_span(
+                                                &format!("'{}", segments[0].ident),
+                                                segments[0].ident.span,
+                                            ),
+                                        };
+                                        match self.parse_expr_labeled(label, false) {
+                                            Ok(labeled_expr) => {
+                                                e.delay_as_bug();
+                                                self.sess.emit_err(MalformedLoopLabel {
+                                                    span: label.ident.span,
+                                                    correct_label: label.ident,
+                                                });
+                                                *expr = labeled_expr;
+                                                break 'break_recover false;
+                                            }
+                                            Err(err) => {
+                                                err.cancel();
+                                                self.restore_snapshot(snapshot);
+                                            }
+                                        }
+                                    }
+                                }
+                                _ => {}
+                            }
+
+                            if let Err(mut e) =
+                                self.check_mistyped_turbofish_with_multiple_type_params(e, expr)
+                            {
+                                if recover.no() {
+                                    return Err(e);
+                                }
+                                e.emit();
+                                self.recover_stmt();
+                            }
+
+                            true
+
                         }
-                        true
+                        Ok(false) => false
                     }
-                    _ => false
                 };
+
                 if replace_with_err {
                     // We already emitted an error, so don't emit another type error
                     let sp = expr.span.to(self.prev_token.span);
@@ -643,9 +729,10 @@ impl<'a> Parser<'a> {
             StmtKind::Empty | StmtKind::Item(_) | StmtKind::Local(_) | StmtKind::Semi(_) => eat_semi = false,
         }
 
-        if eat_semi && self.eat(&token::Semi) {
+        if add_semi_to_stmt || (eat_semi && self.eat(&token::Semi)) {
             stmt = stmt.add_trailing_semicolon();
         }
+
         stmt.span = stmt.span.to(self.prev_token.span);
         Ok(Some(stmt))
     }

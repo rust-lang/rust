@@ -992,7 +992,6 @@ pub struct ExpansionData {
     pub depth: usize,
     pub module: Rc<ModuleData>,
     pub dir_ownership: DirOwnership,
-    pub prior_type_ascription: Option<(Span, bool)>,
     /// Some parent node that is close to this macro call
     pub lint_node_id: NodeId,
     pub is_trailing_mac: bool,
@@ -1043,7 +1042,6 @@ impl<'a> ExtCtxt<'a> {
                 depth: 0,
                 module: Default::default(),
                 dir_ownership: DirOwnership::Owned { relative: None },
-                prior_type_ascription: None,
                 lint_node_id: ast::CRATE_NODE_ID,
                 is_trailing_mac: false,
             },

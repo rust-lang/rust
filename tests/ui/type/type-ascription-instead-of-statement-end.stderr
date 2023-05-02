@@ -1,24 +1,16 @@
-error: expected type, found `0`
-  --> $DIR/type-ascription-instead-of-statement-end.rs:5:5
+error: statements are terminated with a semicolon
+  --> $DIR/type-ascription-instead-of-statement-end.rs:2:21
    |
 LL |     println!("test"):
-   |                     - help: try using a semicolon: `;`
-LL |     0;
-   |     ^ expected type
+   |                     ^ help: use a semicolon instead: `;`
    |
-   = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
-   = note: see issue #23416 <https://github.com/rust-lang/rust/issues/23416> for more information
+   = note: if you meant to annotate an expression with a type, the type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
 
-error: expected type, found `0`
-  --> $DIR/type-ascription-instead-of-statement-end.rs:9:23
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `:`
+  --> $DIR/type-ascription-instead-of-statement-end.rs:7:21
    |
 LL |     println!("test"): 0;
-   |                     - ^ expected type
-   |                     |
-   |                     tried to parse a type due to this type ascription
-   |
-   = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
-   = note: see issue #23416 <https://github.com/rust-lang/rust/issues/23416> for more information
+   |                     ^ expected one of `.`, `;`, `?`, `}`, or an operator
 
 error: aborting due to 2 previous errors
 

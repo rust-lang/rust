@@ -685,10 +685,9 @@ enum ArmType {
 /// For example, if we are constructing a witness for the match against
 ///
 /// ```compile_fail,E0004
-/// # #![feature(type_ascription)]
 /// struct Pair(Option<(u32, u32)>, bool);
 /// # fn foo(p: Pair) {
-/// match (p: Pair) {
+/// match p {
 ///    Pair(None, _) => {}
 ///    Pair(_, false) => {}
 /// }

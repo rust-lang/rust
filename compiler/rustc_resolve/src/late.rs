@@ -548,9 +548,6 @@ struct DiagnosticMetadata<'ast> {
     /// they are used (in a `break` or `continue` statement)
     unused_labels: FxHashMap<NodeId, Span>,
 
-    /// Only used for better errors on `fn(): fn()`.
-    current_type_ascription: Vec<Span>,
-
     /// Only used for better errors on `let x = { foo: bar };`.
     /// In the case of a parse error with `let x = { foo: bar, };`, this isn't needed, it's only
     /// needed for cases where this parses as a correct type ascription.
@@ -4064,17 +4061,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     }
                 }
             }
-            ExprKind::Type(ref type_expr, ref ty) => {
-                // `ParseSess::type_ascription_path_suggestions` keeps spans of colon tokens in
-                // type ascription. Here we are trying to retrieve the span of the colon token as
-                // well, but only if it's written without spaces `expr:Ty` and therefore confusable
-                // with `expr::Ty`, only in this case it will match the span from
-                // `type_ascription_path_suggestions`.
-                self.diagnostic_metadata
-                    .current_type_ascription
-                    .push(type_expr.span.between(ty.span));
+            ExprKind::Type(ref _type_expr, ref _ty) => {
                 visit::walk_expr(self, expr);
-                self.diagnostic_metadata.current_type_ascription.pop();
             }
             // `async |x| ...` gets desugared to `|x| async {...}`, so we need to
             // resolve the arguments within the proper scopes so that usages of them inside the
