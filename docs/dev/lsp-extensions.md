@@ -1,5 +1,5 @@
 <!---
-lsp_ext.rs hash: fdf1afd34548abbc
+lsp_ext.rs hash: 2d60bbffe70ae198
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -386,14 +386,26 @@ rust-analyzer supports only one `kind`, `"cargo"`. The `args` for `"cargo"` look
 
 ## Open External Documentation
 
-This request is sent from client to server to get a URL to documentation for the symbol under the cursor, if available.
+This request is sent from the client to the server to obtain web and local URL(s) for documentation related to the symbol under the cursor, if available.
 
-**Method** `experimental/externalDocs`
+**Method:** `experimental/externalDocs`
 
-**Request:**: `TextDocumentPositionParams`
+**Request:** `TextDocumentPositionParams`
 
-**Response** `string | null`
+**Response:** `string | null`
 
+## Local Documentation
+
+**Experimental Client Capability:** `{ "localDocs": boolean }`
+
+If this capability is set, the `Open External Documentation` request returned from the server will have the following structure:
+
+```typescript
+interface ExternalDocsResponse {
+    web?: string;
+    local?: string;
+}
+```
 
 ## Analyzer Status
 
@@ -863,7 +875,7 @@ export interface Diagnostic {
 export interface FetchDependencyListParams {}
 ```
 
-**Response:** 
+**Response:**
 ```typescript
 export interface FetchDependencyListResult {
     crates: {

@@ -40,8 +40,8 @@ use crate::{
     global_state::{GlobalState, GlobalStateSnapshot},
     line_index::LineEndings,
     lsp_ext::{
-        self, CrateInfoResult, FetchDependencyListParams, FetchDependencyListResult,
-        PositionOrRange, ViewCrateGraphParams, WorkspaceSymbolParams,
+        self, CrateInfoResult, ExternalDocsPair, ExternalDocsResponse, FetchDependencyListParams,
+        FetchDependencyListResult, PositionOrRange, ViewCrateGraphParams, WorkspaceSymbolParams,
     },
     lsp_utils::{all_edits_are_disjoint, invalid_params_error},
     to_proto, LspError, Result,
@@ -1535,13 +1535,40 @@ pub(crate) fn handle_semantic_tokens_range(
 pub(crate) fn handle_open_docs(
     snap: GlobalStateSnapshot,
     params: lsp_types::TextDocumentPositionParams,
-) -> Result<Option<lsp_types::Url>> {
+) -> Result<ExternalDocsResponse> {
     let _p = profile::span("handle_open_docs");
     let position = from_proto::file_position(&snap, params)?;
 
-    let remote = snap.analysis.external_docs(position)?;
+    let ws_and_sysroot = snap.workspaces.iter().find_map(|ws| match ws {
+        ProjectWorkspace::Cargo { cargo, sysroot, .. } => Some((cargo, sysroot.as_ref().ok())),
+        ProjectWorkspace::Json { .. } => None,
+        ProjectWorkspace::DetachedFiles { .. } => None,
+    });
 
-    Ok(remote.and_then(|remote| Url::parse(&remote).ok()))
+    let (cargo, sysroot) = match ws_and_sysroot {
+        Some((ws, sysroot)) => (Some(ws), sysroot),
+        _ => (None, None),
+    };
+
+    let sysroot = sysroot.map(|p| p.root().as_os_str());
+    let target_dir = cargo.map(|cargo| cargo.target_directory()).map(|p| p.as_os_str());
+
+    let Ok(remote_urls) = snap.analysis.external_docs(position, target_dir, sysroot) else {
+        return if snap.config.local_docs() {
+            Ok(ExternalDocsResponse::WithLocal(Default::default()))
+            } else {
+            Ok(ExternalDocsResponse::Simple(None))
+            }
+    };
+
+    let web = remote_urls.web_url.and_then(|it| Url::parse(&it).ok());
+    let local = remote_urls.local_url.and_then(|it| Url::parse(&it).ok());
+
+    if snap.config.local_docs() {
+        Ok(ExternalDocsResponse::WithLocal(ExternalDocsPair { web, local }))
+    } else {
+        Ok(ExternalDocsResponse::Simple(web))
+    }
 }
 
 pub(crate) fn handle_open_cargo_toml(

@@ -61,7 +61,7 @@ mod view_item_tree;
 mod shuffle_crate_graph;
 mod fetch_crates;
 
-use std::sync::Arc;
+use std::{ffi::OsStr, sync::Arc};
 
 use cfg::CfgOptions;
 use fetch_crates::CrateInfo;
@@ -467,12 +467,19 @@ impl Analysis {
         self.with_db(|db| moniker::moniker(db, position))
     }
 
-    /// Return URL(s) for the documentation of the symbol under the cursor.
+    /// Returns URL(s) for the documentation of the symbol under the cursor.
+    /// # Arguments
+    /// * `position` - Position in the file.
+    /// * `target_dir` - Directory where the build output is storeda.
     pub fn external_docs(
         &self,
         position: FilePosition,
-    ) -> Cancellable<Option<doc_links::DocumentationLink>> {
-        self.with_db(|db| doc_links::external_docs(db, &position))
+        target_dir: Option<&OsStr>,
+        sysroot: Option<&OsStr>,
+    ) -> Cancellable<doc_links::DocumentationLinks> {
+        self.with_db(|db| {
+            doc_links::external_docs(db, &position, target_dir, sysroot).unwrap_or_default()
+        })
     }
 
     /// Computes parameter information at the given position.

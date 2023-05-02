@@ -508,8 +508,22 @@ pub enum ExternalDocs {}
 
 impl Request for ExternalDocs {
     type Params = lsp_types::TextDocumentPositionParams;
-    type Result = Option<lsp_types::Url>;
+    type Result = ExternalDocsResponse;
     const METHOD: &'static str = "experimental/externalDocs";
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+pub enum ExternalDocsResponse {
+    Simple(Option<lsp_types::Url>),
+    WithLocal(ExternalDocsPair),
+}
+
+#[derive(Debug, Default, PartialEq, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ExternalDocsPair {
+    pub web: Option<lsp_types::Url>,
+    pub local: Option<lsp_types::Url>,
 }
 
 pub enum OpenCargoToml {}
