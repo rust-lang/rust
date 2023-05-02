@@ -310,7 +310,7 @@ declare_features! (
     /// Allows `async || body` closures.
     (active, async_closure, "1.37.0", Some(62290), None),
     /// Allows async functions to be declared, implemented, and used in traits.
-    (incomplete, async_fn_in_trait, "1.66.0", Some(91611), None),
+    (active, async_fn_in_trait, "1.66.0", Some(91611), None),
     /// Treat `extern "C"` function as nounwind.
     (active, c_unwind, "1.52.0", Some(74990), None),
     /// Allows using C-variadics.
@@ -494,7 +494,7 @@ declare_features! (
     /// Allows `repr(simd)` and importing the various simd intrinsics.
     (active, repr_simd, "1.4.0", Some(27731), None),
     /// Allows return-position `impl Trait` in traits.
-    (incomplete, return_position_impl_trait_in_trait, "1.65.0", Some(91611), None),
+    (active, return_position_impl_trait_in_trait, "1.65.0", Some(91611), None),
     /// Allows bounding the return type of AFIT/RPITIT.
     (incomplete, return_type_notation, "1.70.0", Some(109417), None),
     /// Allows `extern "rust-cold"`.

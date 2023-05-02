@@ -5,7 +5,6 @@
 // Since we're not adding new syntax, `cfg`'d out RTN must pass.
 
 #![feature(async_fn_in_trait)]
-//~^ WARN the feature `async_fn_in_trait` is incomplete
 
 trait Trait {
     async fn m();
