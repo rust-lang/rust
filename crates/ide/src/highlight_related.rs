@@ -200,9 +200,16 @@ fn highlight_exit_points(
 ) -> Option<Vec<HighlightedRange>> {
     fn hl(
         sema: &Semantics<'_, RootDatabase>,
+        def_ranges: [Option<TextRange>; 2],
         body: Option<ast::Expr>,
     ) -> Option<Vec<HighlightedRange>> {
         let mut highlights = Vec::new();
+        highlights.extend(
+            def_ranges
+                .into_iter()
+                .flatten()
+                .map(|range| HighlightedRange { category: None, range }),
+        );
         let body = body?;
         walk_expr(&body, &mut |expr| match expr {
             ast::Expr::ReturnExpr(expr) => {
@@ -246,10 +253,21 @@ fn highlight_exit_points(
     for anc in token.parent_ancestors() {
         return match_ast! {
             match anc {
-                ast::Fn(fn_) => hl(sema, fn_.body().map(ast::Expr::BlockExpr)),
-                ast::ClosureExpr(closure) => hl(sema, closure.body()),
+                ast::Fn(fn_) => hl(sema, [fn_.fn_token().map(|it| it.text_range()), None], fn_.body().map(ast::Expr::BlockExpr)),
+                ast::ClosureExpr(closure) => hl(
+                    sema,
+                    closure.param_list().map_or([None; 2], |p| [p.l_paren_token().map(|it| it.text_range()), p.r_paren_token().map(|it| it.text_range())]),
+                    closure.body()
+                ),
                 ast::BlockExpr(block_expr) => if matches!(block_expr.modifier(), Some(ast::BlockModifier::Async(_) | ast::BlockModifier::Try(_)| ast::BlockModifier::Const(_))) {
-                    hl(sema, Some(block_expr.into()))
+                    hl(
+                        sema,
+                        [block_expr.modifier().and_then(|modifier| match modifier {
+                            ast::BlockModifier::Async(t) | ast::BlockModifier::Try(t) | ast::BlockModifier::Const(t) => Some(t.text_range()),
+                            _ => None,
+                        }), None],
+                        Some(block_expr.into())
+                    )
                 } else {
                     continue;
                 },
@@ -663,7 +681,8 @@ async fn foo() {
     fn test_hl_exit_points() {
         check(
             r#"
-fn foo() -> u32 {
+  fn foo() -> u32 {
+//^^
     if true {
         return$0 0;
      // ^^^^^^
@@ -682,7 +701,8 @@ fn foo() -> u32 {
     fn test_hl_exit_points2() {
         check(
             r#"
-fn foo() ->$0 u32 {
+  fn foo() ->$0 u32 {
+//^^
     if true {
         return 0;
      // ^^^^^^
@@ -701,7 +721,8 @@ fn foo() ->$0 u32 {
     fn test_hl_exit_points3() {
         check(
             r#"
-fn$0 foo() -> u32 {
+  fn$0 foo() -> u32 {
+//^^
     if true {
         return 0;
      // ^^^^^^
@@ -747,7 +768,8 @@ macro_rules! never {
     () => { never() }
 }
 fn never() -> ! { loop {} }
-fn foo() ->$0 u32 {
+  fn foo() ->$0 u32 {
+//^^
     never();
  // ^^^^^^^
     never!();
@@ -767,7 +789,8 @@ fn foo() ->$0 u32 {
     fn test_hl_inner_tail_exit_points() {
         check(
             r#"
-fn foo() ->$0 u32 {
+  fn foo() ->$0 u32 {
+//^^
     if true {
         unsafe {
             return 5;
@@ -808,7 +831,8 @@ fn foo() ->$0 u32 {
     fn test_hl_inner_tail_exit_points_labeled_block() {
         check(
             r#"
-fn foo() ->$0 u32 {
+  fn foo() ->$0 u32 {
+//^^
     'foo: {
         break 'foo 0;
      // ^^^^^
@@ -829,7 +853,8 @@ fn foo() ->$0 u32 {
     fn test_hl_inner_tail_exit_points_loops() {
         check(
             r#"
-fn foo() ->$0 u32 {
+  fn foo() ->$0 u32 {
+//^^
     'foo: while { return 0; true } {
                // ^^^^^^
         break 'foo 0;
@@ -1240,7 +1265,8 @@ fn foo() -> i32 {
 
         check_with_config(
             r#"
-fn foo() ->$0 i32 {
+  fn foo() ->$0 i32 {
+//^^
     let x = 5;
     let y = x * 2;
 
