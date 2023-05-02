@@ -211,6 +211,7 @@ pub struct Child {
 impl crate::sealed::Sealed for Child {}
 
 impl AsInner<imp::Process> for Child {
+    #[inline]
     fn as_inner(&self) -> &imp::Process {
         &self.handle
     }
@@ -304,6 +305,7 @@ impl Write for &ChildStdin {
 }
 
 impl AsInner<AnonPipe> for ChildStdin {
+    #[inline]
     fn as_inner(&self) -> &AnonPipe {
         &self.inner
     }
@@ -373,6 +375,7 @@ impl Read for ChildStdout {
 }
 
 impl AsInner<AnonPipe> for ChildStdout {
+    #[inline]
     fn as_inner(&self) -> &AnonPipe {
         &self.inner
     }
@@ -438,6 +441,7 @@ impl Read for ChildStderr {
 }
 
 impl AsInner<AnonPipe> for ChildStderr {
+    #[inline]
     fn as_inner(&self) -> &AnonPipe {
         &self.inner
     }
@@ -1107,12 +1111,14 @@ impl fmt::Debug for Command {
 }
 
 impl AsInner<imp::Command> for Command {
+    #[inline]
     fn as_inner(&self) -> &imp::Command {
         &self.inner
     }
 }
 
 impl AsInnerMut<imp::Command> for Command {
+    #[inline]
     fn as_inner_mut(&mut self) -> &mut imp::Command {
         &mut self.inner
     }
@@ -1605,6 +1611,7 @@ impl ExitStatus {
 }
 
 impl AsInner<imp::ExitStatus> for ExitStatus {
+    #[inline]
     fn as_inner(&self) -> &imp::ExitStatus {
         &self.0
     }
@@ -1884,6 +1891,7 @@ impl From<u8> for ExitCode {
 }
 
 impl AsInner<imp::ExitCode> for ExitCode {
+    #[inline]
     fn as_inner(&self) -> &imp::ExitCode {
         &self.0
     }

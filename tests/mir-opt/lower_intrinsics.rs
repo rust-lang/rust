@@ -124,6 +124,11 @@ pub fn read_via_copy_uninhabited(r: &Never) -> Never {
     unsafe { core::intrinsics::read_via_copy(r) }
 }
 
+// EMIT_MIR lower_intrinsics.write_via_move_string.LowerIntrinsics.diff
+pub fn write_via_move_string(r: &mut String, v: String) {
+    unsafe { core::intrinsics::write_via_move(r, v) }
+}
+
 pub enum Never {}
 
 // EMIT_MIR lower_intrinsics.option_payload.LowerIntrinsics.diff

@@ -218,7 +218,7 @@ pub(crate) fn format_expr(
         ast::ExprKind::Try(..)
         | ast::ExprKind::Field(..)
         | ast::ExprKind::MethodCall(..)
-        | ast::ExprKind::Await(_) => rewrite_chain(expr, context, shape),
+        | ast::ExprKind::Await(_, _) => rewrite_chain(expr, context, shape),
         ast::ExprKind::MacCall(ref mac) => {
             rewrite_macro(mac, None, context, shape, MacroPosition::Expression).or_else(|| {
                 wrap_str(
@@ -1889,7 +1889,7 @@ impl<'ast> RhsAssignKind<'ast> {
                     ast::ExprKind::Try(..)
                         | ast::ExprKind::Field(..)
                         | ast::ExprKind::MethodCall(..)
-                        | ast::ExprKind::Await(_)
+                        | ast::ExprKind::Await(_, _)
                 )
             }
             _ => false,

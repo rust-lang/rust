@@ -24,7 +24,7 @@ use crate::hash::Hasher;
 /// operations. Its cousin [`sync::Arc`][arc] does use atomic operations (incurring
 /// some overhead) and thus is `Send`.
 ///
-/// See [the Nomicon](../../nomicon/send-and-sync.html) for more details.
+/// See [the Nomicon](../../nomicon/send-and-sync.html) and the [`Sync`] trait for more details.
 ///
 /// [`Rc`]: ../../std/rc/struct.Rc.html
 /// [arc]: ../../std/sync/struct.Arc.html
@@ -425,6 +425,11 @@ pub macro Copy($item:item) {
 /// reference behind a shared reference (that is, `& &mut T`)
 /// becomes read-only, as if it were a `& &T`. Hence there is no risk
 /// of a data race.
+///
+/// A shorter overview of how [`Sync`] and [`Send`] relate to referencing:
+/// * `&T` is [`Send`] if and only if `T` is [`Sync`]
+/// * `&mut T` is [`Send`] if and only if `T` is [`Send`]
+/// * `&T` and `&mut T` are [`Sync`] if and only if `T` is [`Sync`]
 ///
 /// Types that are not `Sync` are those that have "interior
 /// mutability" in a non-thread-safe form, such as [`Cell`][cell]

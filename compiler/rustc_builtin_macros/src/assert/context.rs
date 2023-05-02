@@ -288,7 +288,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
             ExprKind::Assign(_, _, _)
             | ExprKind::AssignOp(_, _, _)
             | ExprKind::Async(_, _)
-            | ExprKind::Await(_)
+            | ExprKind::Await(_, _)
             | ExprKind::Block(_, _)
             | ExprKind::Break(_, _)
             | ExprKind::Closure(_)

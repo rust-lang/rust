@@ -1,8 +1,8 @@
 error[E0277]: `()` is not a future
-  --> $DIR/issue-96555.rs:4:12
+  --> $DIR/issue-96555.rs:4:13
    |
 LL |     m::f1().await;
-   |     -------^^^^^^ `()` is not a future
+   |     ------- ^^^^^ `()` is not a future
    |     |
    |     this call returns `()`
    |
@@ -20,10 +20,10 @@ LL |     pub async fn f1() {}
    |         +++++
 
 error[E0277]: `()` is not a future
-  --> $DIR/issue-96555.rs:5:12
+  --> $DIR/issue-96555.rs:5:13
    |
 LL |     m::f2().await;
-   |     -------^^^^^^ `()` is not a future
+   |     ------- ^^^^^ `()` is not a future
    |     |
    |     this call returns `()`
    |
@@ -41,10 +41,10 @@ LL |     pub(crate) async fn f2() {}
    |                +++++
 
 error[E0277]: `()` is not a future
-  --> $DIR/issue-96555.rs:6:12
+  --> $DIR/issue-96555.rs:6:13
    |
 LL |     m::f3().await;
-   |     -------^^^^^^ `()` is not a future
+   |     ------- ^^^^^ `()` is not a future
    |     |
    |     this call returns `()`
    |

@@ -27,6 +27,7 @@ impl FromInner<Wtf8Buf> for Buf {
 }
 
 impl AsInner<Wtf8> for Buf {
+    #[inline]
     fn as_inner(&self) -> &Wtf8 {
         &self.inner
     }

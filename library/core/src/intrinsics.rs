@@ -2257,12 +2257,23 @@ extern "rust-intrinsic" {
     /// This is an implementation detail of [`crate::ptr::read`] and should
     /// not be used anywhere else.  See its comments for why this exists.
     ///
-    /// This intrinsic can *only* be called where the argument is a local without
-    /// projections (`read_via_copy(p)`, not `read_via_copy(*p)`) so that it
+    /// This intrinsic can *only* be called where the pointer is a local without
+    /// projections (`read_via_copy(ptr)`, not `read_via_copy(*ptr)`) so that it
     /// trivially obeys runtime-MIR rules about derefs in operands.
     #[rustc_const_unstable(feature = "const_ptr_read", issue = "80377")]
     #[rustc_nounwind]
-    pub fn read_via_copy<T>(p: *const T) -> T;
+    pub fn read_via_copy<T>(ptr: *const T) -> T;
+
+    /// This is an implementation detail of [`crate::ptr::write`] and should
+    /// not be used anywhere else.  See its comments for why this exists.
+    ///
+    /// This intrinsic can *only* be called where the pointer is a local without
+    /// projections (`write_via_move(ptr, x)`, not `write_via_move(*ptr, x)`) so
+    /// that it trivially obeys runtime-MIR rules about derefs in operands.
+    #[cfg(not(bootstrap))]
+    #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
+    #[rustc_nounwind]
+    pub fn write_via_move<T>(ptr: *mut T, value: T);
 
     /// Returns the value of the discriminant for the variant in 'v';
     /// if `T` has no discriminant, returns `0`.
@@ -2827,4 +2838,17 @@ pub const unsafe fn transmute_unchecked<Src, Dst>(src: Src) -> Dst {
     use crate::mem::*;
     // SAFETY: It's a transmute -- the caller promised it's fine.
     unsafe { transmute_copy(&ManuallyDrop::new(src)) }
+}
+
+/// Polyfill for bootstrap
+#[cfg(bootstrap)]
+pub const unsafe fn write_via_move<T>(ptr: *mut T, value: T) {
+    use crate::mem::*;
+    // SAFETY: the caller must guarantee that `dst` is valid for writes.
+    // `dst` cannot overlap `src` because the caller has mutable access
+    // to `dst` while `src` is owned by this function.
+    unsafe {
+        copy_nonoverlapping::<T>(&value, ptr, 1);
+        forget(value);
+    }
 }

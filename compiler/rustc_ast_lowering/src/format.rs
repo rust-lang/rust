@@ -583,7 +583,7 @@ fn may_contain_yield_point(e: &ast::Expr) -> bool {
 
     impl Visitor<'_> for MayContainYieldPoint {
         fn visit_expr(&mut self, e: &ast::Expr) {
-            if let ast::ExprKind::Await(_) | ast::ExprKind::Yield(_) = e.kind {
+            if let ast::ExprKind::Await(_, _) | ast::ExprKind::Yield(_) = e.kind {
                 self.0 = true;
             } else {
                 visit::walk_expr(self, e);

@@ -338,6 +338,14 @@ pub(crate) enum CaptureReasonLabel<'a> {
         is_partial: bool,
         is_loop_message: bool,
     },
+    #[label(borrowck_moved_due_to_await)]
+    Await {
+        #[primary_span]
+        fn_call_span: Span,
+        place_name: &'a str,
+        is_partial: bool,
+        is_loop_message: bool,
+    },
     #[label(borrowck_value_moved_here)]
     MovedHere {
         #[primary_span]

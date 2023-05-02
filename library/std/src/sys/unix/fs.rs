@@ -547,6 +547,7 @@ impl FileAttr {
 }
 
 impl AsInner<stat64> for FileAttr {
+    #[inline]
     fn as_inner(&self) -> &stat64 {
         &self.stat
     }
@@ -1193,8 +1194,6 @@ impl File {
                 None => Ok(libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT as _ }),
             }
         };
-        #[cfg(not(any(target_os = "redox", target_os = "espidf", target_os = "horizon")))]
-        let times = [to_timespec(times.accessed)?, to_timespec(times.modified)?];
         cfg_if::cfg_if! {
             if #[cfg(any(target_os = "redox", target_os = "espidf", target_os = "horizon"))] {
                 // Redox doesn't appear to support `UTIME_OMIT`.
@@ -1206,6 +1205,7 @@ impl File {
                     "setting file times not supported",
                 ))
             } else if #[cfg(any(target_os = "android", target_os = "macos"))] {
+                let times = [to_timespec(times.accessed)?, to_timespec(times.modified)?];
                 // futimens requires macOS 10.13, and Android API level 19
                 cvt(unsafe {
                     weak!(fn futimens(c_int, *const libc::timespec) -> c_int);
@@ -1232,6 +1232,22 @@ impl File {
                 })?;
                 Ok(())
             } else {
+                #[cfg(all(target_os = "linux", target_env = "gnu", target_pointer_width = "32", not(target_arch = "riscv32")))]
+                {
+                    use crate::sys::{time::__timespec64, weak::weak};
+
+                    // Added in glibc 2.34
+                    weak!(fn __futimens64(libc::c_int, *const __timespec64) -> libc::c_int);
+
+                    if let Some(futimens64) = __futimens64.get() {
+                        let to_timespec = |time: Option<SystemTime>| time.map(|time| time.t.to_timespec64())
+                            .unwrap_or(__timespec64::new(0, libc::UTIME_OMIT as _));
+                        let times = [to_timespec(times.accessed), to_timespec(times.modified)];
+                        cvt(unsafe { futimens64(self.as_raw_fd(), times.as_ptr()) })?;
+                        return Ok(());
+                    }
+                }
+                let times = [to_timespec(times.accessed)?, to_timespec(times.modified)?];
                 cvt(unsafe { libc::futimens(self.as_raw_fd(), times.as_ptr()) })?;
                 Ok(())
             }
@@ -1254,12 +1270,14 @@ impl DirBuilder {
 }
 
 impl AsInner<FileDesc> for File {
+    #[inline]
     fn as_inner(&self) -> &FileDesc {
         &self.0
     }
 }
 
 impl AsInnerMut<FileDesc> for File {
+    #[inline]
     fn as_inner_mut(&mut self) -> &mut FileDesc {
         &mut self.0
     }
@@ -1284,6 +1302,7 @@ impl AsFd for File {
 }
 
 impl AsRawFd for File {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         self.0.as_raw_fd()
     }

@@ -5,10 +5,10 @@ LL |     bar().await;
    |     ^^^ cannot infer type for type parameter `T` declared on the function `bar`
    |
 note: the type is part of the `async fn` body because of this `await`
-  --> $DIR/unresolved_type_param.rs:12:10
+  --> $DIR/unresolved_type_param.rs:12:11
    |
 LL |     bar().await;
-   |          ^^^^^^
+   |           ^^^^^
 
 error[E0698]: type inside `async fn` body must be known in this context
   --> $DIR/unresolved_type_param.rs:12:5
@@ -17,10 +17,10 @@ LL |     bar().await;
    |     ^^^ cannot infer type for type parameter `T` declared on the function `bar`
    |
 note: the type is part of the `async fn` body because of this `await`
-  --> $DIR/unresolved_type_param.rs:12:10
+  --> $DIR/unresolved_type_param.rs:12:11
    |
 LL |     bar().await;
-   |          ^^^^^^
+   |           ^^^^^
 
 error[E0698]: type inside `async fn` body must be known in this context
   --> $DIR/unresolved_type_param.rs:12:5
@@ -29,10 +29,10 @@ LL |     bar().await;
    |     ^^^ cannot infer type for type parameter `T` declared on the function `bar`
    |
 note: the type is part of the `async fn` body because of this `await`
-  --> $DIR/unresolved_type_param.rs:12:10
+  --> $DIR/unresolved_type_param.rs:12:11
    |
 LL |     bar().await;
-   |          ^^^^^^
+   |           ^^^^^
 
 error[E0698]: type inside `async fn` body must be known in this context
   --> $DIR/unresolved_type_param.rs:12:5
@@ -41,10 +41,10 @@ LL |     bar().await;
    |     ^^^ cannot infer type for type parameter `T` declared on the function `bar`
    |
 note: the type is part of the `async fn` body because of this `await`
-  --> $DIR/unresolved_type_param.rs:12:10
+  --> $DIR/unresolved_type_param.rs:12:11
    |
 LL |     bar().await;
-   |          ^^^^^^
+   |           ^^^^^
 
 error[E0698]: type inside `async fn` body must be known in this context
   --> $DIR/unresolved_type_param.rs:12:5
@@ -53,10 +53,10 @@ LL |     bar().await;
    |     ^^^ cannot infer type for type parameter `T` declared on the function `bar`
    |
 note: the type is part of the `async fn` body because of this `await`
-  --> $DIR/unresolved_type_param.rs:12:10
+  --> $DIR/unresolved_type_param.rs:12:11
    |
 LL |     bar().await;
-   |          ^^^^^^
+   |           ^^^^^
 
 error: aborting due to 5 previous errors
 

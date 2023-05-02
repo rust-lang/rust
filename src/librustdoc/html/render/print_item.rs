@@ -548,7 +548,7 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
             w,
             "{attrs}{vis}{constness}{asyncness}{unsafety}{abi}fn \
                 {name}{generics}{decl}{notable_traits}{where_clause}",
-            attrs = render_attributes_in_pre(it, ""),
+            attrs = render_attributes_in_pre(it, "", tcx),
             vis = visibility,
             constness = constness,
             asyncness = asyncness,
@@ -589,7 +589,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             it.name.unwrap(),
             t.generics.print(cx),
             bounds,
-            attrs = render_attributes_in_pre(it, ""),
+            attrs = render_attributes_in_pre(it, "", tcx),
         );
 
         if !t.generics.where_predicates.is_empty() {
@@ -1063,7 +1063,7 @@ fn item_trait_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &
             t.generics.print(cx),
             print_where_clause(&t.generics, cx, 0, Ending::Newline),
             bounds(&t.bounds, true, cx),
-            attrs = render_attributes_in_pre(it, ""),
+            attrs = render_attributes_in_pre(it, "", cx.tcx()),
         );
     });
 
@@ -1085,7 +1085,7 @@ fn item_opaque_ty(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &cl
             t.generics.print(cx),
             where_clause = print_where_clause(&t.generics, cx, 0, Ending::Newline),
             bounds = bounds(&t.bounds, false, cx),
-            attrs = render_attributes_in_pre(it, ""),
+            attrs = render_attributes_in_pre(it, "", cx.tcx()),
         );
     });
 
@@ -1109,7 +1109,7 @@ fn item_typedef(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clea
                 t.generics.print(cx),
                 where_clause = print_where_clause(&t.generics, cx, 0, Ending::Newline),
                 type_ = t.type_.print(cx),
-                attrs = render_attributes_in_pre(it, ""),
+                attrs = render_attributes_in_pre(it, "", cx.tcx()),
             );
         });
     }
@@ -1168,7 +1168,8 @@ fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean:
             &'b self,
         ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
             display_fn(move |f| {
-                let v = render_attributes_in_pre(self.it, "");
+                let tcx = self.cx.borrow().tcx();
+                let v = render_attributes_in_pre(self.it, "", tcx);
                 write!(f, "{v}")
             })
         }
@@ -1244,13 +1245,13 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
     let tcx = cx.tcx();
     let count_variants = e.variants().count();
     wrap_item(w, |mut w| {
+        render_attributes_in_code(w, it, tcx);
         write!(
             w,
-            "{attrs}{}enum {}{}",
+            "{}enum {}{}",
             visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
             it.name.unwrap(),
             e.generics.print(cx),
-            attrs = render_attributes_in_pre(it, ""),
         );
         if !print_where_clause_and_check(w, &e.generics, cx) {
             // If there wasn't a `where` clause, we add a whitespace.
@@ -1445,7 +1446,7 @@ fn item_primitive(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
 fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &clean::Constant) {
     wrap_item(w, |w| {
         let tcx = cx.tcx();
-        render_attributes_in_code(w, it);
+        render_attributes_in_code(w, it, tcx);
 
         write!(
             w,
@@ -1492,7 +1493,7 @@ fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &cle
 
 fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Struct) {
     wrap_item(w, |w| {
-        render_attributes_in_code(w, it);
+        render_attributes_in_code(w, it, cx.tcx());
         render_struct(w, it, Some(&s.generics), s.ctor_kind, &s.fields, "", true, cx);
     });
 
@@ -1542,7 +1543,7 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
 
 fn item_static(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Static) {
     wrap_item(w, |w| {
-        render_attributes_in_code(w, it);
+        render_attributes_in_code(w, it, cx.tcx());
         write!(
             w,
             "{vis}static {mutability}{name}: {typ}",
@@ -1558,7 +1559,7 @@ fn item_static(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
 fn item_foreign_type(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
     wrap_item(w, |w| {
         w.write_str("extern {\n");
-        render_attributes_in_code(w, it);
+        render_attributes_in_code(w, it, cx.tcx());
         write!(
             w,
             "    {}type {};\n}}",

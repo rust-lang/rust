@@ -14,10 +14,10 @@ LL |     let a;
    |         ^ cannot infer type
    |
 note: the type is part of the `async fn` body because of this `await`
-  --> $DIR/async-error-span.rs:19:17
+  --> $DIR/async-error-span.rs:19:18
    |
 LL |     get_future().await;
-   |                 ^^^^^^
+   |                  ^^^^^
 
 error: aborting due to 2 previous errors
 

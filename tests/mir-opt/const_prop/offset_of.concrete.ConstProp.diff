@@ -33,6 +33,7 @@
           StorageLive(_4);                 // scope 3 at $DIR/offset_of.rs:+4:9: +4:11
 -         _4 = OffsetOf(Alpha, [2, 1]);    // scope 3 at $DIR/offset_of.rs:+4:14: +4:36
 +         _4 = const 3_usize;              // scope 3 at $DIR/offset_of.rs:+4:14: +4:36
+          _0 = const ();                   // scope 0 at $DIR/offset_of.rs:+0:15: +5:2
           StorageDead(_4);                 // scope 3 at $DIR/offset_of.rs:+5:1: +5:2
           StorageDead(_3);                 // scope 2 at $DIR/offset_of.rs:+5:1: +5:2
           StorageDead(_2);                 // scope 1 at $DIR/offset_of.rs:+5:1: +5:2

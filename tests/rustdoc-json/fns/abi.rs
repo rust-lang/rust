@@ -1,7 +1,6 @@
 // ignore-tidy-linelength
 
 #![feature(abi_vectorcall)]
-#![feature(c_unwind)]
 
 // @is "$.index[*][?(@.name=='abi_rust')].inner.header.abi" \"Rust\"
 pub fn abi_rust() {}
