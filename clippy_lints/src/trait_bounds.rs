@@ -206,13 +206,13 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
             }
         }
 
-        let fixed_trait_snippet = fixed_traits
-            .iter()
-            .filter_map(|b| snippet_opt(cx, b.span))
-            .collect::<Vec<_>>()
-            .join(" + ");
-
         if bounds.len() != fixed_traits.len() {
+            let fixed_trait_snippet = fixed_traits
+                .iter()
+                .filter_map(|b| snippet_opt(cx, b.span))
+                .collect::<Vec<_>>()
+                .join(" + ");
+
             span_lint_and_sugg(
                 cx,
                 TRAIT_DUPLICATION_IN_BOUNDS,
