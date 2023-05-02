@@ -1172,7 +1172,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             TerminatorKind::Assert {
                 cond,
                 expected,
-                msg,
+                msg: Box::new(msg),
                 target: success_block,
                 unwind: UnwindAction::Continue,
             },
