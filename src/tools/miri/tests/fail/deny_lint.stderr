@@ -1,0 +1,12 @@
+error: struct `Foo` is never constructed
+  --> $DIR/deny_lint.rs:LL:CC
+   |
+LL | struct Foo;
+   |        ^^^
+   |
+   = note: `-D dead-code` implied by `-D unused`
+
+error: miri cannot be run on programs that fail compilation
+
+error: aborting due to 2 previous errors
+
