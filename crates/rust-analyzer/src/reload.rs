@@ -12,7 +12,7 @@
 //! correct. Instead, we try to provide a best-effort service. Even if the
 //! project is currently loading and we don't have a full project model, we
 //! still want to respond to various  requests.
-use std::{collections::hash_map::Entry, iter, mem, sync::Arc};
+use std::{collections::hash_map::Entry, iter, mem, sync};
 
 use flycheck::{FlycheckConfig, FlycheckHandle};
 use hir::db::DefDatabase;
@@ -28,6 +28,7 @@ use itertools::Itertools;
 use proc_macro_api::{MacroDylib, ProcMacroServer};
 use project_model::{PackageRoot, ProjectWorkspace, WorkspaceBuildScripts};
 use syntax::SmolStr;
+use triomphe::Arc;
 use vfs::{file_set::FileSetConfig, AbsPath, AbsPathBuf, ChangeKind};
 
 use crate::{
@@ -415,30 +416,32 @@ impl GlobalState {
             if self.config.expand_proc_macros() {
                 tracing::info!("Spawning proc-macro servers");
 
-                self.proc_macro_clients = self
-                    .workspaces
-                    .iter()
-                    .map(|ws| {
-                        let path = match self.config.proc_macro_srv() {
-                            Some(path) => path,
-                            None => ws.find_sysroot_proc_macro_srv()?,
-                        };
+                // FIXME: use `Arc::from_iter` when it becomes available
+                self.proc_macro_clients = Arc::from(
+                    self.workspaces
+                        .iter()
+                        .map(|ws| {
+                            let path = match self.config.proc_macro_srv() {
+                                Some(path) => path,
+                                None => ws.find_sysroot_proc_macro_srv()?,
+                            };
 
-                        tracing::info!("Using proc-macro server at {}", path.display(),);
-                        ProcMacroServer::spawn(path.clone()).map_err(|err| {
-                            tracing::error!(
-                                "Failed to run proc-macro server from path {}, error: {:?}",
-                                path.display(),
-                                err
-                            );
-                            anyhow::anyhow!(
-                                "Failed to run proc-macro server from path {}, error: {:?}",
-                                path.display(),
-                                err
-                            )
+                            tracing::info!("Using proc-macro server at {}", path.display(),);
+                            ProcMacroServer::spawn(path.clone()).map_err(|err| {
+                                tracing::error!(
+                                    "Failed to run proc-macro server from path {}, error: {:?}",
+                                    path.display(),
+                                    err
+                                );
+                                anyhow::anyhow!(
+                                    "Failed to run proc-macro server from path {}, error: {:?}",
+                                    path.display(),
+                                    err
+                                )
+                            })
                         })
-                    })
-                    .collect()
+                        .collect::<Vec<_>>(),
+                )
             };
         }
 
@@ -773,14 +776,14 @@ pub(crate) fn load_proc_macro(
             proc_macro_api::ProcMacroKind::FuncLike => ProcMacroKind::FuncLike,
             proc_macro_api::ProcMacroKind::Attr => ProcMacroKind::Attr,
         };
-        let expander: Arc<dyn ProcMacroExpander> =
+        let expander: sync::Arc<dyn ProcMacroExpander> =
             if dummy_replace.iter().any(|replace| &**replace == name) {
                 match kind {
-                    ProcMacroKind::Attr => Arc::new(IdentityExpander),
-                    _ => Arc::new(EmptyExpander),
+                    ProcMacroKind::Attr => sync::Arc::new(IdentityExpander),
+                    _ => sync::Arc::new(EmptyExpander),
                 }
             } else {
-                Arc::new(Expander(expander))
+                sync::Arc::new(Expander(expander))
             };
         ProcMacro { name, kind, expander }
     }

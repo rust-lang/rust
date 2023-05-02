@@ -1441,9 +1441,8 @@ pub(crate) fn rename_error(err: RenameError) -> crate::LspError {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use ide::Analysis;
+    use triomphe::Arc;
 
     use super::*;
 

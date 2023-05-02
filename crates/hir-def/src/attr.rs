@@ -5,7 +5,7 @@ pub mod builtin;
 #[cfg(test)]
 mod tests;
 
-use std::{hash::Hash, ops, sync::Arc};
+use std::{hash::Hash, ops};
 
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
@@ -21,6 +21,7 @@ use syntax::{
     ast::{self, HasAttrs, IsString},
     AstPtr, AstToken, SmolStr, TextRange, TextSize,
 };
+use triomphe::Arc;
 
 use crate::{
     db::DefDatabase,

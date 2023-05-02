@@ -40,7 +40,6 @@ use std::{
     hash::{Hash, Hasher},
     marker::PhantomData,
     ops::Index,
-    sync::Arc,
 };
 
 use ast::{AstNode, HasName, StructKind};
@@ -60,6 +59,7 @@ use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use stdx::never;
 use syntax::{ast, match_ast, SyntaxKind};
+use triomphe::Arc;
 
 use crate::{
     attr::Attrs,

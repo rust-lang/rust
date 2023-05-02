@@ -391,7 +391,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
     fn generator_datum(
         &self,
         id: chalk_ir::GeneratorId<Interner>,
-    ) -> std::sync::Arc<chalk_solve::rust_ir::GeneratorDatum<Interner>> {
+    ) -> Arc<chalk_solve::rust_ir::GeneratorDatum<Interner>> {
         let (parent, expr) = self.db.lookup_intern_generator(id.into());
 
         // We fill substitution with unknown type, because we only need to know whether the generic
@@ -432,7 +432,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
     fn generator_witness_datum(
         &self,
         id: chalk_ir::GeneratorId<Interner>,
-    ) -> std::sync::Arc<chalk_solve::rust_ir::GeneratorWitnessDatum<Interner>> {
+    ) -> Arc<chalk_solve::rust_ir::GeneratorWitnessDatum<Interner>> {
         // FIXME: calculate inner types
         let inner_types =
             rust_ir::GeneratorWitnessExistential { types: wrap_empty_binders(vec![]) };

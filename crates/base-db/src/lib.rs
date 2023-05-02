@@ -6,10 +6,11 @@ mod input;
 mod change;
 pub mod fixture;
 
-use std::{panic, sync::Arc};
+use std::panic;
 
 use rustc_hash::FxHashSet;
 use syntax::{ast, Parse, SourceFile, TextRange, TextSize};
+use triomphe::Arc;
 
 pub use crate::{
     change::Change,

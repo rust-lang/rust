@@ -56,8 +56,6 @@ pub(crate) fn ssr_assists(
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use expect_test::expect;
     use ide_assists::{Assist, AssistResolveStrategy};
     use ide_db::{
@@ -65,6 +63,7 @@ mod tests {
         symbol_index::SymbolsDatabase,
         FxHashSet, RootDatabase,
     };
+    use triomphe::Arc;
 
     use super::ssr_assists;
 

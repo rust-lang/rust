@@ -43,13 +43,14 @@ pub mod syntax_helpers {
     pub use parser::LexedStr;
 }
 
-use std::{fmt, mem::ManuallyDrop, sync::Arc};
+use std::{fmt, mem::ManuallyDrop};
 
 use base_db::{
     salsa::{self, Durability},
     AnchoredPath, CrateId, FileId, FileLoader, FileLoaderDelegate, SourceDatabase, Upcast,
 };
 use hir::db::{DefDatabase, ExpandDatabase, HirDatabase};
+use triomphe::Arc;
 
 use crate::{line_index::LineIndex, symbol_index::SymbolsDatabase};
 pub use rustc_hash::{FxHashMap, FxHashSet, FxHasher};

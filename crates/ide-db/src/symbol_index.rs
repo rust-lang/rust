@@ -25,7 +25,6 @@ use std::{
     fmt,
     hash::{Hash, Hasher},
     mem,
-    sync::Arc,
 };
 
 use base_db::{
@@ -40,6 +39,7 @@ use hir::{
 };
 use rayon::prelude::*;
 use rustc_hash::FxHashSet;
+use triomphe::Arc;
 
 use crate::RootDatabase;
 

@@ -22,6 +22,7 @@ hashbrown = { version = "0.12.1", features = [
     "inline-more",
 ], default-features = false }
 smallvec.workspace = true
+triomphe.workspace = true
 
 # local deps
 stdx.workspace = true

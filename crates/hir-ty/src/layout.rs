@@ -1,7 +1,5 @@
 //! Compute the binary representation of a type
 
-use std::sync::Arc;
-
 use base_db::CrateId;
 use chalk_ir::{AdtId, TyKind};
 use hir_def::{
@@ -13,6 +11,7 @@ use hir_def::{
 };
 use la_arena::{Idx, RawIdx};
 use stdx::never;
+use triomphe::Arc;
 
 use crate::{
     consteval::try_const_usize, db::HirDatabase, infer::normalize, layout::adt::struct_variant_idx,

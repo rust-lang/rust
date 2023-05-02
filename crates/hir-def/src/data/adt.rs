@@ -1,7 +1,5 @@
 //! Defines hir-level representation of structs, enums and unions
 
-use std::sync::Arc;
-
 use base_db::CrateId;
 use bitflags::bitflags;
 use cfg::CfgOptions;
@@ -15,6 +13,7 @@ use intern::Interned;
 use la_arena::{Arena, ArenaMap};
 use rustc_abi::{Align, Integer, IntegerType, ReprFlags, ReprOptions};
 use syntax::ast::{self, HasName, HasVisibility};
+use triomphe::Arc;
 
 use crate::{
     builtin_type::{BuiltinInt, BuiltinUint},

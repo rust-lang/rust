@@ -18,3 +18,4 @@ dashmap = { version = "=5.4.0", features = ["raw-api"] }
 hashbrown = { version = "0.12.1", default-features = false }
 once_cell = "1.17.0"
 rustc-hash = "1.1.0"
+triomphe.workspace = true

@@ -33,7 +33,7 @@ pub mod symbols;
 
 mod display;
 
-use std::{iter, ops::ControlFlow, sync::Arc};
+use std::{iter, ops::ControlFlow};
 
 use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateId, CrateOrigin, Edition, FileId, ProcMacroKind};
@@ -80,6 +80,7 @@ use syntax::{
     ast::{self, HasAttrs as _, HasDocComments, HasName},
     AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, TextRange, T,
 };
+use triomphe::Arc;
 
 use crate::db::{DefDatabase, HirDatabase};
 

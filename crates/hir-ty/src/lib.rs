@@ -35,7 +35,7 @@ mod tests;
 #[cfg(test)]
 mod test_db;
 
-use std::{collections::HashMap, hash::Hash, sync::Arc};
+use std::{collections::HashMap, hash::Hash};
 
 use chalk_ir::{
     fold::{Shift, TypeFoldable},
@@ -50,6 +50,7 @@ use la_arena::{Arena, Idx};
 use mir::{MirEvalError, VTableMap};
 use rustc_hash::FxHashSet;
 use traits::FnTrait;
+use triomphe::Arc;
 use utils::Generics;
 
 use crate::{
@@ -289,16 +290,19 @@ impl CallableSig {
     pub fn from_fn_ptr(fn_ptr: &FnPointer) -> CallableSig {
         CallableSig {
             // FIXME: what to do about lifetime params? -> return PolyFnSig
-            params_and_return: fn_ptr
-                .substitution
-                .clone()
-                .shifted_out_to(Interner, DebruijnIndex::ONE)
-                .expect("unexpected lifetime vars in fn ptr")
-                .0
-                .as_slice(Interner)
-                .iter()
-                .map(|arg| arg.assert_ty_ref(Interner).clone())
-                .collect(),
+            // FIXME: use `Arc::from_iter` when it becomes available
+            params_and_return: Arc::from(
+                fn_ptr
+                    .substitution
+                    .clone()
+                    .shifted_out_to(Interner, DebruijnIndex::ONE)
+                    .expect("unexpected lifetime vars in fn ptr")
+                    .0
+                    .as_slice(Interner)
+                    .iter()
+                    .map(|arg| arg.assert_ty_ref(Interner).clone())
+                    .collect::<Vec<_>>(),
+            ),
             is_varargs: fn_ptr.sig.variadic,
             safety: fn_ptr.sig.safety,
         }

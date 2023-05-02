@@ -5,7 +5,6 @@ use std::{
     fs,
     io::Write as _,
     process::{self, Stdio},
-    sync::Arc,
 };
 
 use anyhow::Context;
@@ -30,6 +29,7 @@ use project_model::{ManifestPath, ProjectWorkspace, TargetKind};
 use serde_json::json;
 use stdx::{format_to, never};
 use syntax::{algo, ast, AstNode, TextRange, TextSize};
+use triomphe::Arc;
 use vfs::{AbsPath, AbsPathBuf, VfsPath};
 
 use crate::{
@@ -48,7 +48,8 @@ use crate::{
 };
 
 pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> Result<()> {
-    state.proc_macro_clients = Arc::new([]);
+    // FIXME: use `Arc::from_iter` when it becomes available
+    state.proc_macro_clients = Arc::from(Vec::new());
     state.proc_macro_changed = false;
 
     state.fetch_workspaces_queue.request_op("reload workspace request".to_string(), ());
@@ -56,7 +57,8 @@ pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> Result<
 }
 
 pub(crate) fn handle_proc_macros_rebuild(state: &mut GlobalState, _: ()) -> Result<()> {
-    state.proc_macro_clients = Arc::new([]);
+    // FIXME: use `Arc::from_iter` when it becomes available
+    state.proc_macro_clients = Arc::from(Vec::new());
     state.proc_macro_changed = false;
 
     state.fetch_build_data_queue.request_op("rebuild proc macros request".to_string(), ());

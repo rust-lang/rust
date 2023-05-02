@@ -12,10 +12,8 @@ mod process;
 mod version;
 
 use paths::AbsPathBuf;
-use std::{
-    fmt, io,
-    sync::{Arc, Mutex},
-};
+use std::{fmt, io, sync::Mutex};
+use triomphe::Arc;
 
 use serde::{Deserialize, Serialize};
 

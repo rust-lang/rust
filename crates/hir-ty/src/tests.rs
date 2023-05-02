@@ -10,7 +10,7 @@ mod display_source_code;
 mod incremental;
 mod diagnostics;
 
-use std::{collections::HashMap, env, sync::Arc};
+use std::{collections::HashMap, env};
 
 use base_db::{fixture::WithFixture, FileRange, SourceDatabaseExt};
 use expect_test::Expect;
@@ -32,6 +32,7 @@ use syntax::{
 };
 use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
 use tracing_tree::HierarchicalLayer;
+use triomphe::Arc;
 
 use crate::{
     db::HirDatabase,

@@ -2,7 +2,7 @@
 //! For details about how this works in rustc, see the method lookup page in the
 //! [rustc guide](https://rust-lang.github.io/rustc-guide/method-lookup.html)
 //! and the corresponding code mostly in rustc_hir_analysis/check/method/probe.rs.
-use std::{ops::ControlFlow, sync::Arc};
+use std::ops::ControlFlow;
 
 use base_db::{CrateId, Edition};
 use chalk_ir::{cast::Cast, Mutability, TyKind, UniverseIndex, WhereClause};
@@ -17,6 +17,7 @@ use hir_expand::name::Name;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
 use stdx::never;
+use triomphe::Arc;
 
 use crate::{
     autoderef::{self, AutoderefKind},
@@ -166,7 +167,13 @@ impl TraitImpls {
     ) -> Arc<[Arc<Self>]> {
         let _p = profile::span("trait_impls_in_deps_query").detail(|| format!("{krate:?}"));
         let crate_graph = db.crate_graph();
-        crate_graph.transitive_deps(krate).map(|krate| db.trait_impls_in_crate(krate)).collect()
+        // FIXME: use `Arc::from_iter` when it becomes available
+        Arc::from(
+            crate_graph
+                .transitive_deps(krate)
+                .map(|krate| db.trait_impls_in_crate(krate))
+                .collect::<Vec<_>>(),
+        )
     }
 
     fn shrink_to_fit(&mut self) {

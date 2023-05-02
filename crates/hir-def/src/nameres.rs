@@ -57,7 +57,7 @@ mod path_resolution;
 #[cfg(test)]
 mod tests;
 
-use std::{cmp::Ord, ops::Deref, sync::Arc};
+use std::{cmp::Ord, ops::Deref};
 
 use base_db::{CrateId, Edition, FileId};
 use hir_expand::{name::Name, InFile, MacroCallId, MacroDefId};
@@ -67,6 +67,7 @@ use profile::Count;
 use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::format_to;
 use syntax::{ast, SmolStr};
+use triomphe::Arc;
 
 use crate::{
     db::DefDatabase,

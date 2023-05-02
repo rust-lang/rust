@@ -1,5 +1,5 @@
 //! A set of high-level utility fixture methods to use in tests.
-use std::{mem, str::FromStr, sync::Arc};
+use std::{mem, str::FromStr, sync};
 
 use cfg::CfgOptions;
 use rustc_hash::FxHashMap;
@@ -7,6 +7,7 @@ use test_utils::{
     extract_range_or_offset, Fixture, FixtureWithProjectMeta, RangeOrOffset, CURSOR_MARKER,
     ESCAPED_CURSOR_MARKER,
 };
+use triomphe::Arc;
 use tt::token_id::{Leaf, Subtree, TokenTree};
 use vfs::{file_set::FileSet, VfsPath};
 
@@ -334,7 +335,7 @@ pub fn identity(_attr: TokenStream, item: TokenStream) -> TokenStream {
             ProcMacro {
                 name: "identity".into(),
                 kind: crate::ProcMacroKind::Attr,
-                expander: Arc::new(IdentityProcMacroExpander),
+                expander: sync::Arc::new(IdentityProcMacroExpander),
             },
         ),
         (
@@ -348,7 +349,7 @@ pub fn derive_identity(item: TokenStream) -> TokenStream {
             ProcMacro {
                 name: "DeriveIdentity".into(),
                 kind: crate::ProcMacroKind::CustomDerive,
-                expander: Arc::new(IdentityProcMacroExpander),
+                expander: sync::Arc::new(IdentityProcMacroExpander),
             },
         ),
         (
@@ -362,7 +363,7 @@ pub fn input_replace(attr: TokenStream, _item: TokenStream) -> TokenStream {
             ProcMacro {
                 name: "input_replace".into(),
                 kind: crate::ProcMacroKind::Attr,
-                expander: Arc::new(AttributeInputReplaceProcMacroExpander),
+                expander: sync::Arc::new(AttributeInputReplaceProcMacroExpander),
             },
         ),
         (
@@ -376,7 +377,7 @@ pub fn mirror(input: TokenStream) -> TokenStream {
             ProcMacro {
                 name: "mirror".into(),
                 kind: crate::ProcMacroKind::FuncLike,
-                expander: Arc::new(MirrorProcMacroExpander),
+                expander: sync::Arc::new(MirrorProcMacroExpander),
             },
         ),
         (
@@ -390,7 +391,7 @@ pub fn shorten(input: TokenStream) -> TokenStream {
             ProcMacro {
                 name: "shorten".into(),
                 kind: crate::ProcMacroKind::FuncLike,
-                expander: Arc::new(ShortenProcMacroExpander),
+                expander: sync::Arc::new(ShortenProcMacroExpander),
             },
         ),
     ]

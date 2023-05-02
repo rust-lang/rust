@@ -1,7 +1,5 @@
 //! Defines database & queries for macro expansion.
 
-use std::sync::Arc;
-
 use base_db::{salsa, Edition, SourceDatabase};
 use either::Either;
 use limit::Limit;
@@ -11,6 +9,7 @@ use syntax::{
     ast::{self, HasAttrs, HasDocComments},
     AstNode, GreenNode, Parse, SyntaxError, SyntaxNode, SyntaxToken, T,
 };
+use triomphe::Arc;
 
 use crate::{
     ast_id_map::AstIdMap, builtin_attr_macro::pseudo_derive_attr_expansion,

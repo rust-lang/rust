@@ -3,8 +3,6 @@
 //! generic parameters. See also the `Generics` type and the `generics_of` query
 //! in rustc.
 
-use std::sync::Arc;
-
 use base_db::FileId;
 use either::Either;
 use hir_expand::{
@@ -16,6 +14,7 @@ use la_arena::{Arena, ArenaMap, Idx};
 use once_cell::unsync::Lazy;
 use stdx::impl_from;
 use syntax::ast::{self, HasGenericParams, HasName, HasTypeBounds};
+use triomphe::Arc;
 
 use crate::{
     child_by_source::ChildBySource,

@@ -2,10 +2,9 @@
 //!
 //! This attribute to tell the compiler about semi built-in std library
 //! features, such as Fn family of traits.
-use std::sync::Arc;
-
 use rustc_hash::FxHashMap;
 use syntax::SmolStr;
+use triomphe::Arc;
 
 use crate::{
     db::DefDatabase, path::Path, AdtId, AssocItemId, AttrDefId, CrateId, EnumId, EnumVariantId,

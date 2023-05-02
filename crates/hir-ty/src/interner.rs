@@ -7,7 +7,8 @@ use chalk_ir::{Goal, GoalData};
 use hir_def::TypeAliasId;
 use intern::{impl_internable, Interned};
 use smallvec::SmallVec;
-use std::{fmt, sync::Arc};
+use std::fmt;
+use triomphe::Arc;
 
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Interner;

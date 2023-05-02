@@ -1,9 +1,6 @@
 //! Database used for testing `hir`.
 
-use std::{
-    fmt, panic,
-    sync::{Arc, Mutex},
-};
+use std::{fmt, panic, sync::Mutex};
 
 use base_db::{
     salsa::{self, Durability},
@@ -15,6 +12,7 @@ use rustc_hash::FxHashSet;
 use stdx::hash::NoHashHashMap;
 use syntax::TextRange;
 use test_utils::extract_annotations;
+use triomphe::Arc;
 
 #[salsa::database(
     base_db::SourceDatabaseExtStorage,

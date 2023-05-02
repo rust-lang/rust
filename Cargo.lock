@@ -94,6 +94,7 @@ dependencies = [
  "stdx",
  "syntax",
  "test-utils",
+ "triomphe",
  "tt",
  "vfs",
 ]
@@ -498,6 +499,7 @@ dependencies = [
  "smallvec",
  "stdx",
  "syntax",
+ "triomphe",
  "tt",
 ]
 
@@ -534,6 +536,7 @@ dependencies = [
  "syntax",
  "test-utils",
  "tracing",
+ "triomphe",
  "tt",
 ]
 
@@ -558,6 +561,7 @@ dependencies = [
  "stdx",
  "syntax",
  "tracing",
+ "triomphe",
  "tt",
 ]
 
@@ -595,6 +599,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "tracing-tree",
+ "triomphe",
  "typed-arena",
 ]
 
@@ -656,6 +661,7 @@ dependencies = [
  "text-edit",
  "toolchain",
  "tracing",
+ "triomphe",
  "url",
 ]
 
@@ -724,6 +730,7 @@ dependencies = [
  "test-utils",
  "text-edit",
  "tracing",
+ "triomphe",
  "xshell",
 ]
 
@@ -761,6 +768,7 @@ dependencies = [
  "syntax",
  "test-utils",
  "text-edit",
+ "triomphe",
 ]
 
 [[package]]
@@ -820,6 +828,7 @@ dependencies = [
  "hashbrown",
  "once_cell",
  "rustc-hash",
+ "triomphe",
 ]
 
 [[package]]
@@ -1234,6 +1243,7 @@ dependencies = [
  "snap",
  "stdx",
  "tracing",
+ "triomphe",
  "tt",
 ]
 
@@ -1315,6 +1325,7 @@ dependencies = [
  "stdx",
  "toolchain",
  "tracing",
+ "triomphe",
 ]
 
 [[package]]
@@ -1484,6 +1495,7 @@ dependencies = [
  "tracing-log",
  "tracing-subscriber",
  "tracing-tree",
+ "triomphe",
  "tt",
  "vfs",
  "vfs-notify",
@@ -1730,6 +1742,7 @@ dependencies = [
  "stdx",
  "test-utils",
  "text-edit",
+ "triomphe",
  "ungrammar",
 ]
 
@@ -1938,6 +1951,12 @@ dependencies = [
  "tracing-log",
  "tracing-subscriber",
 ]
+
+[[package]]
+name = "triomphe"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1ee9bd9239c339d714d657fac840c6d2a4f9c45f4f9ec7b0975113458be78db"
 
 [[package]]
 name = "tt"

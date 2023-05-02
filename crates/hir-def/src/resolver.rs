@@ -1,5 +1,5 @@
 //! Name resolution façade.
-use std::{fmt, hash::BuildHasherDefault, sync::Arc};
+use std::{fmt, hash::BuildHasherDefault};
 
 use base_db::CrateId;
 use hir_expand::name::{name, Name};
@@ -7,6 +7,7 @@ use indexmap::IndexMap;
 use intern::Interned;
 use rustc_hash::FxHashSet;
 use smallvec::{smallvec, SmallVec};
+use triomphe::Arc;
 
 use crate::{
     body::scope::{ExprScopes, ScopeId},

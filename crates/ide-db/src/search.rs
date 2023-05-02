@@ -4,7 +4,7 @@
 //! get a super-set of matches. Then, we we confirm each match using precise
 //! name resolution.
 
-use std::{mem, sync::Arc};
+use std::mem;
 
 use base_db::{FileId, FileRange, SourceDatabase, SourceDatabaseExt};
 use hir::{
@@ -15,6 +15,7 @@ use once_cell::unsync::Lazy;
 use parser::SyntaxKind;
 use stdx::hash::NoHashHashMap;
 use syntax::{ast, match_ast, AstNode, TextRange, TextSize};
+use triomphe::Arc;
 
 use crate::{
     defs::{Definition, NameClass, NameRefClass},

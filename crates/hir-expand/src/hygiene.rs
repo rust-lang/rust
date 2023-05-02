@@ -2,8 +2,6 @@
 //!
 //! Specifically, `ast` + `Hygiene` allows you to create a `Name`. Note that, at
 //! this moment, this is horribly incomplete and handles only `$crate`.
-use std::sync::Arc;
-
 use base_db::CrateId;
 use db::TokenExpander;
 use either::Either;
@@ -12,6 +10,7 @@ use syntax::{
     ast::{self, HasDocComments},
     AstNode, SyntaxKind, SyntaxNode, TextRange, TextSize,
 };
+use triomphe::Arc;
 
 use crate::{
     db::{self, ExpandDatabase},

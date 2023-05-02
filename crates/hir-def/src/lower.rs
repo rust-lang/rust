@@ -1,9 +1,8 @@
 //! Context for lowering paths.
-use std::sync::Arc;
-
 use hir_expand::{ast_id_map::AstIdMap, hygiene::Hygiene, AstId, HirFileId, InFile};
 use once_cell::unsync::OnceCell;
 use syntax::ast;
+use triomphe::Arc;
 
 use crate::{db::DefDatabase, path::Path};
 

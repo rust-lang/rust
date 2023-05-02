@@ -2,14 +2,13 @@
 
 pub mod adt;
 
-use std::sync::Arc;
-
 use hir_expand::{
     name::Name, AstId, ExpandResult, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefKind,
 };
 use intern::Interned;
 use smallvec::SmallVec;
 use syntax::{ast, Parse};
+use triomphe::Arc;
 
 use crate::{
     attr::Attrs,

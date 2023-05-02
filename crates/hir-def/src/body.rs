@@ -6,7 +6,7 @@ mod tests;
 pub mod scope;
 mod pretty;
 
-use std::{ops::Index, sync::Arc};
+use std::ops::Index;
 
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
@@ -16,6 +16,7 @@ use la_arena::{Arena, ArenaMap};
 use profile::Count;
 use rustc_hash::FxHashMap;
 use syntax::{ast, AstPtr, SyntaxNodePtr};
+use triomphe::Arc;
 
 use crate::{
     db::DefDatabase,

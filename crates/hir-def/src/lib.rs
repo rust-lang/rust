@@ -49,6 +49,7 @@ pub mod find_path;
 pub mod import_map;
 
 pub use rustc_abi as layout;
+use triomphe::Arc;
 
 #[cfg(test)]
 mod test_db;
@@ -56,10 +57,7 @@ mod test_db;
 mod macro_expansion_tests;
 mod pretty;
 
-use std::{
-    hash::{Hash, Hasher},
-    sync::Arc,
-};
+use std::hash::{Hash, Hasher};
 
 use base_db::{impl_intern_key, salsa, CrateId, ProcMacroKind};
 use hir_expand::{
