@@ -3016,6 +3016,7 @@ fn bind_generator_hidden_types_above<'tcx>(
                         counter += 1;
                         tcx.mk_re_late_bound(current_depth, br)
                     }
+                    ty::RePlaceholder(_) => r,
                     r => bug!("unexpected region: {r:?}"),
                 })
             }
