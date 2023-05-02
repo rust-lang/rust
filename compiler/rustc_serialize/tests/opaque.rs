@@ -251,3 +251,42 @@ fn test_tuples() {
     check_round_trip(vec![(1234567isize, 100000000000000u64, 99999999999999i64)]);
     check_round_trip(vec![(String::new(), "some string".to_string())]);
 }
+
+#[test]
+fn test_unit_like_struct() {
+    #[derive(Encodable, Decodable, PartialEq, Debug)]
+    struct UnitLikeStruct;
+
+    check_round_trip(vec![UnitLikeStruct]);
+}
+
+#[test]
+fn test_box() {
+    #[derive(Encodable, Decodable, PartialEq, Debug)]
+    struct A {
+        foo: Box<[bool]>,
+    }
+
+    let obj = A { foo: Box::new([true, false]) };
+    check_round_trip(vec![obj]);
+}
+
+#[test]
+fn test_cell() {
+    use std::cell::{Cell, RefCell};
+
+    #[derive(Encodable, Decodable, PartialEq, Debug)]
+    struct A {
+        baz: isize,
+    }
+
+    #[derive(Encodable, Decodable, PartialEq, Debug)]
+    struct B {
+        foo: Cell<bool>,
+        bar: RefCell<A>,
+    }
+
+    let obj = B { foo: Cell::new(true), bar: RefCell::new(A { baz: 2 }) };
+    check_round_trip(vec![obj]);
+}
+
