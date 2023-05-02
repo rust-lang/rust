@@ -1,6 +1,6 @@
 use hir::Semantics;
 use ide_db::{
-    base_db::{FileId, FilePosition},
+    base_db::{FileId, FilePosition, FileRange},
     defs::{Definition, IdentClass},
     helpers::pick_best_token,
     search::{FileReference, ReferenceCategory, SearchScope},
@@ -30,6 +30,7 @@ pub struct HighlightRelatedConfig {
     pub references: bool,
     pub exit_points: bool,
     pub break_points: bool,
+    pub closure_captures: bool,
     pub yield_points: bool,
 }
 
@@ -53,11 +54,12 @@ pub(crate) fn highlight_related(
 
     let token = pick_best_token(syntax.token_at_offset(offset), |kind| match kind {
         T![?] => 4, // prefer `?` when the cursor is sandwiched like in `await$0?`
-        T![->] => 3,
+        T![->] | T![|] => 3,
         kind if kind.is_keyword() => 2,
         IDENT | INT_NUMBER => 1,
         _ => 0,
     })?;
+    // most if not all of these should be re-implemented with information seeded from hir
     match token.kind() {
         T![?] if config.exit_points && token.parent().and_then(ast::TryExpr::cast).is_some() => {
             highlight_exit_points(sema, token)
@@ -70,9 +72,55 @@ pub(crate) fn highlight_related(
         T![break] | T![loop] | T![while] | T![continue] if config.break_points => {
             highlight_break_points(token)
         }
+        T![|] if config.closure_captures => highlight_closure_captures(sema, token, file_id),
+        T![move] if config.closure_captures => highlight_closure_captures(sema, token, file_id),
         _ if config.references => highlight_references(sema, &syntax, token, file_id),
         _ => None,
     }
+}
+
+fn highlight_closure_captures(
+    sema: &Semantics<'_, RootDatabase>,
+    token: SyntaxToken,
+    file_id: FileId,
+) -> Option<Vec<HighlightedRange>> {
+    let closure = token.parent_ancestors().take(2).find_map(ast::ClosureExpr::cast)?;
+    let search_range = closure.body()?.syntax().text_range();
+    let ty = &sema.type_of_expr(&closure.into())?.original;
+    let c = ty.as_closure()?;
+    Some(
+        c.captured_items(sema.db)
+            .into_iter()
+            .map(|capture| capture.local())
+            .flat_map(|local| {
+                let usages = Definition::Local(local)
+                    .usages(sema)
+                    .set_scope(Some(SearchScope::file_range(FileRange {
+                        file_id,
+                        range: search_range,
+                    })))
+                    .include_self_refs()
+                    .all()
+                    .references
+                    .remove(&file_id)
+                    .into_iter()
+                    .flatten()
+                    .map(|FileReference { category, range, .. }| HighlightedRange {
+                        range,
+                        category,
+                    });
+                let category = local.is_mut(sema.db).then_some(ReferenceCategory::Write);
+                local
+                    .sources(sema.db)
+                    .into_iter()
+                    .map(|x| x.to_nav(sema.db))
+                    .filter(|decl| decl.file_id == file_id)
+                    .filter_map(|decl| decl.focus_range)
+                    .map(move |range| HighlightedRange { range, category })
+                    .chain(usages)
+            })
+            .collect(),
+    )
 }
 
 fn highlight_references(
@@ -93,10 +141,7 @@ fn highlight_references(
                 .remove(&file_id)
         })
         .flatten()
-        .map(|FileReference { category: access, range, .. }| HighlightedRange {
-            range,
-            category: access,
-        });
+        .map(|FileReference { category, range, .. }| HighlightedRange { range, category });
     let mut res = FxHashSet::default();
     for &def in &defs {
         match def {
@@ -148,9 +193,16 @@ fn highlight_exit_points(
 ) -> Option<Vec<HighlightedRange>> {
     fn hl(
         sema: &Semantics<'_, RootDatabase>,
+        def_ranges: [Option<TextRange>; 2],
         body: Option<ast::Expr>,
     ) -> Option<Vec<HighlightedRange>> {
         let mut highlights = Vec::new();
+        highlights.extend(
+            def_ranges
+                .into_iter()
+                .flatten()
+                .map(|range| HighlightedRange { category: None, range }),
+        );
         let body = body?;
         walk_expr(&body, &mut |expr| match expr {
             ast::Expr::ReturnExpr(expr) => {
@@ -194,10 +246,21 @@ fn highlight_exit_points(
     for anc in token.parent_ancestors() {
         return match_ast! {
             match anc {
-                ast::Fn(fn_) => hl(sema, fn_.body().map(ast::Expr::BlockExpr)),
-                ast::ClosureExpr(closure) => hl(sema, closure.body()),
+                ast::Fn(fn_) => hl(sema, [fn_.fn_token().map(|it| it.text_range()), None], fn_.body().map(ast::Expr::BlockExpr)),
+                ast::ClosureExpr(closure) => hl(
+                    sema,
+                    closure.param_list().map_or([None; 2], |p| [p.l_paren_token().map(|it| it.text_range()), p.r_paren_token().map(|it| it.text_range())]),
+                    closure.body()
+                ),
                 ast::BlockExpr(block_expr) => if matches!(block_expr.modifier(), Some(ast::BlockModifier::Async(_) | ast::BlockModifier::Try(_)| ast::BlockModifier::Const(_))) {
-                    hl(sema, Some(block_expr.into()))
+                    hl(
+                        sema,
+                        [block_expr.modifier().and_then(|modifier| match modifier {
+                            ast::BlockModifier::Async(t) | ast::BlockModifier::Try(t) | ast::BlockModifier::Const(t) => Some(t.text_range()),
+                            _ => None,
+                        }), None],
+                        Some(block_expr.into())
+                    )
                 } else {
                     continue;
                 },
@@ -352,16 +415,17 @@ mod tests {
 
     use super::*;
 
+    const ENABLED_CONFIG: HighlightRelatedConfig = HighlightRelatedConfig {
+        break_points: true,
+        exit_points: true,
+        references: true,
+        closure_captures: true,
+        yield_points: true,
+    };
+
     #[track_caller]
     fn check(ra_fixture: &str) {
-        let config = HighlightRelatedConfig {
-            break_points: true,
-            exit_points: true,
-            references: true,
-            yield_points: true,
-        };
-
-        check_with_config(ra_fixture, config);
+        check_with_config(ra_fixture, ENABLED_CONFIG);
     }
 
     #[track_caller]
@@ -610,7 +674,8 @@ async fn foo() {
     fn test_hl_exit_points() {
         check(
             r#"
-fn foo() -> u32 {
+  fn foo() -> u32 {
+//^^
     if true {
         return$0 0;
      // ^^^^^^
@@ -629,7 +694,8 @@ fn foo() -> u32 {
     fn test_hl_exit_points2() {
         check(
             r#"
-fn foo() ->$0 u32 {
+  fn foo() ->$0 u32 {
+//^^
     if true {
         return 0;
      // ^^^^^^
@@ -648,7 +714,8 @@ fn foo() ->$0 u32 {
     fn test_hl_exit_points3() {
         check(
             r#"
-fn$0 foo() -> u32 {
+  fn$0 foo() -> u32 {
+//^^
     if true {
         return 0;
      // ^^^^^^
@@ -694,7 +761,8 @@ macro_rules! never {
     () => { never() }
 }
 fn never() -> ! { loop {} }
-fn foo() ->$0 u32 {
+  fn foo() ->$0 u32 {
+//^^
     never();
  // ^^^^^^^
     never!();
@@ -714,7 +782,8 @@ fn foo() ->$0 u32 {
     fn test_hl_inner_tail_exit_points() {
         check(
             r#"
-fn foo() ->$0 u32 {
+  fn foo() ->$0 u32 {
+//^^
     if true {
         unsafe {
             return 5;
@@ -755,7 +824,8 @@ fn foo() ->$0 u32 {
     fn test_hl_inner_tail_exit_points_labeled_block() {
         check(
             r#"
-fn foo() ->$0 u32 {
+  fn foo() ->$0 u32 {
+//^^
     'foo: {
         break 'foo 0;
      // ^^^^^
@@ -776,7 +846,8 @@ fn foo() ->$0 u32 {
     fn test_hl_inner_tail_exit_points_loops() {
         check(
             r#"
-fn foo() ->$0 u32 {
+  fn foo() ->$0 u32 {
+//^^
     'foo: while { return 0; true } {
                // ^^^^^^
         break 'foo 0;
@@ -1086,12 +1157,7 @@ fn function(field: u32) {
 
     #[test]
     fn test_hl_disabled_ref_local() {
-        let config = HighlightRelatedConfig {
-            references: false,
-            break_points: true,
-            exit_points: true,
-            yield_points: true,
-        };
+        let config = HighlightRelatedConfig { references: false, ..ENABLED_CONFIG };
 
         check_with_config(
             r#"
@@ -1106,12 +1172,7 @@ fn foo() {
 
     #[test]
     fn test_hl_disabled_ref_local_preserved_break() {
-        let config = HighlightRelatedConfig {
-            references: false,
-            break_points: true,
-            exit_points: true,
-            yield_points: true,
-        };
+        let config = HighlightRelatedConfig { references: false, ..ENABLED_CONFIG };
 
         check_with_config(
             r#"
@@ -1146,12 +1207,7 @@ fn foo() {
 
     #[test]
     fn test_hl_disabled_ref_local_preserved_yield() {
-        let config = HighlightRelatedConfig {
-            references: false,
-            break_points: true,
-            exit_points: true,
-            yield_points: true,
-        };
+        let config = HighlightRelatedConfig { references: false, ..ENABLED_CONFIG };
 
         check_with_config(
             r#"
@@ -1182,12 +1238,7 @@ async fn foo() {
 
     #[test]
     fn test_hl_disabled_ref_local_preserved_exit() {
-        let config = HighlightRelatedConfig {
-            references: false,
-            break_points: true,
-            exit_points: true,
-            yield_points: true,
-        };
+        let config = HighlightRelatedConfig { references: false, ..ENABLED_CONFIG };
 
         check_with_config(
             r#"
@@ -1207,7 +1258,8 @@ fn foo() -> i32 {
 
         check_with_config(
             r#"
-fn foo() ->$0 i32 {
+  fn foo() ->$0 i32 {
+//^^
     let x = 5;
     let y = x * 2;
 
@@ -1225,12 +1277,7 @@ fn foo() ->$0 i32 {
 
     #[test]
     fn test_hl_disabled_break() {
-        let config = HighlightRelatedConfig {
-            references: true,
-            break_points: false,
-            exit_points: true,
-            yield_points: true,
-        };
+        let config = HighlightRelatedConfig { break_points: false, ..ENABLED_CONFIG };
 
         check_with_config(
             r#"
@@ -1246,12 +1293,7 @@ fn foo() {
 
     #[test]
     fn test_hl_disabled_yield() {
-        let config = HighlightRelatedConfig {
-            references: true,
-            break_points: true,
-            exit_points: true,
-            yield_points: false,
-        };
+        let config = HighlightRelatedConfig { yield_points: false, ..ENABLED_CONFIG };
 
         check_with_config(
             r#"
@@ -1265,12 +1307,7 @@ async$0 fn foo() {
 
     #[test]
     fn test_hl_disabled_exit() {
-        let config = HighlightRelatedConfig {
-            references: true,
-            break_points: true,
-            exit_points: false,
-            yield_points: true,
-        };
+        let config = HighlightRelatedConfig { exit_points: false, ..ENABLED_CONFIG };
 
         check_with_config(
             r#"
@@ -1410,6 +1447,34 @@ trait Trait {
 impl Trait for () {
     type Output$0 = ();
       // ^^^^^^
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_closure_capture_pipe() {
+        check(
+            r#"
+fn f() {
+    let x = 1;
+    //  ^
+    let c = $0|y| x + y;
+    //          ^ read
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_closure_capture_move() {
+        check(
+            r#"
+fn f() {
+    let x = 1;
+    //  ^
+    let c = move$0 |y| x + y;
+    //               ^ read
 }
 "#,
         );

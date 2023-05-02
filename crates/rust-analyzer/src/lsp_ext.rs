@@ -434,7 +434,7 @@ pub enum HoverRequest {}
 impl Request for HoverRequest {
     type Params = HoverParams;
     type Result = Option<Hover>;
-    const METHOD: &'static str = "textDocument/hover";
+    const METHOD: &'static str = lsp_types::request::HoverRequest::METHOD;
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]

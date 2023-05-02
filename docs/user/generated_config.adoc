@@ -352,6 +352,11 @@ Controls file watching implementation.
 --
 Enables highlighting of related references while the cursor is on `break`, `loop`, `while`, or `for` keywords.
 --
+[[rust-analyzer.highlightRelated.closureCaptures.enable]]rust-analyzer.highlightRelated.closureCaptures.enable (default: `true`)::
++
+--
+Enables highlighting of all captures of a closure while the cursor is on the `|` or move keyword of a closure.
+--
 [[rust-analyzer.highlightRelated.exitPoints.enable]]rust-analyzer.highlightRelated.exitPoints.enable (default: `true`)::
 +
 --

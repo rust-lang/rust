@@ -118,6 +118,7 @@ pub(crate) struct HirPlace {
     pub(crate) local: BindingId,
     pub(crate) projections: Vec<ProjectionElem<Infallible, Ty>>,
 }
+
 impl HirPlace {
     fn ty(&self, ctx: &mut InferenceContext<'_>) -> Ty {
         let mut ty = ctx.table.resolve_completely(ctx.result[self.local].clone());
@@ -161,6 +162,10 @@ pub struct CapturedItem {
 }
 
 impl CapturedItem {
+    pub fn local(&self) -> BindingId {
+        self.place.local
+    }
+
     pub fn display_kind(&self) -> &'static str {
         match self.kind {
             CaptureKind::ByRef(k) => match k {

@@ -3209,11 +3209,11 @@ impl Closure {
         self.clone().as_ty().display(db).with_closure_style(ClosureStyle::ImplFn).to_string()
     }
 
-    pub fn captured_items(&self, db: &dyn HirDatabase) -> Vec<hir_ty::CapturedItem> {
+    pub fn captured_items(&self, db: &dyn HirDatabase) -> Vec<ClosureCapture> {
         let owner = db.lookup_intern_closure((self.id).into()).0;
         let infer = &db.infer(owner);
         let info = infer.closure_info(&self.id);
-        info.0.clone()
+        info.0.iter().cloned().map(|capture| ClosureCapture { owner, capture }).collect()
     }
 
     pub fn fn_trait(&self, db: &dyn HirDatabase) -> FnTrait {
@@ -3221,6 +3221,26 @@ impl Closure {
         let infer = &db.infer(owner);
         let info = infer.closure_info(&self.id);
         info.1
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ClosureCapture {
+    owner: DefWithBodyId,
+    capture: hir_ty::CapturedItem,
+}
+
+impl ClosureCapture {
+    pub fn local(&self) -> Local {
+        Local { parent: self.owner, binding_id: self.capture.local() }
+    }
+
+    pub fn display_kind(&self) -> &'static str {
+        self.capture.display_kind()
+    }
+
+    pub fn display_place(&self, owner: ClosureId, db: &dyn HirDatabase) -> String {
+        self.capture.display_place(owner, db)
     }
 }
 

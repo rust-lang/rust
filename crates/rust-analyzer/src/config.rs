@@ -281,6 +281,8 @@ config_data! {
 
         /// Enables highlighting of related references while the cursor is on `break`, `loop`, `while`, or `for` keywords.
         highlightRelated_breakPoints_enable: bool = "true",
+        /// Enables highlighting of all captures of a closure while the cursor is on the `|` or move keyword of a closure.
+        highlightRelated_closureCaptures_enable: bool = "true",
         /// Enables highlighting of all exit points while the cursor is on any `return`, `?`, `fn`, or return type arrow (`->`).
         highlightRelated_exitPoints_enable: bool = "true",
         /// Enables highlighting of related references while the cursor is on any identifier.
@@ -1554,6 +1556,7 @@ impl Config {
             break_points: self.data.highlightRelated_breakPoints_enable,
             exit_points: self.data.highlightRelated_exitPoints_enable,
             yield_points: self.data.highlightRelated_yieldPoints_enable,
+            closure_captures: self.data.highlightRelated_closureCaptures_enable,
         }
     }
 
