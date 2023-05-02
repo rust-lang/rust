@@ -1060,6 +1060,9 @@ fn default_configuration(sess: &Session) -> CrateConfig {
     if sess.opts.debug_assertions {
         ret.insert((sym::debug_assertions, None));
     }
+    if sess.overflow_checks() {
+        ret.insert((sym::overflow_checks, None));
+    }
     // JUSTIFICATION: before wrapper fn is available
     #[allow(rustc::bad_opt_access)]
     if sess.opts.crate_types.contains(&CrateType::ProcMacro) {
@@ -1209,6 +1212,7 @@ impl CrateCheckConfig {
             sym::windows,
             sym::proc_macro,
             sym::debug_assertions,
+            sym::overflow_checks,
             sym::target_thread_local,
         ] {
             self.expecteds.entry(name).or_insert_with(no_values);
