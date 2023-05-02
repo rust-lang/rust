@@ -102,6 +102,18 @@ fn bit_op() {
 }
 
 #[test]
+fn floating_point() {
+    check_number(
+        r#"const GOAL: f64 = 2.0 + 3.0 * 5.5 - 8.;"#,
+        i128::from_le_bytes(pad16(&f64::to_le_bytes(10.5), true)),
+    );
+    check_number(
+        r#"const GOAL: f32 = 2.0 + 3.0 * 5.5 - 8.;"#,
+        i128::from_le_bytes(pad16(&f32::to_le_bytes(10.5), true)),
+    );
+}
+
+#[test]
 fn casts() {
     check_number(r#"const GOAL: usize = 12 as *const i32 as usize"#, 12);
     check_number(
