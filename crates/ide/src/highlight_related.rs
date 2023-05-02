@@ -72,16 +72,8 @@ pub(crate) fn highlight_related(
         T![break] | T![loop] | T![while] | T![continue] if config.break_points => {
             highlight_break_points(token)
         }
-        T![|] if config.closure_captures => highlight_closure_captures(
-            sema,
-            token.parent_ancestors().nth(1).and_then(ast::ClosureExpr::cast)?,
-            file_id,
-        ),
-        T![move] if config.closure_captures => highlight_closure_captures(
-            sema,
-            token.parent().and_then(ast::ClosureExpr::cast)?,
-            file_id,
-        ),
+        T![|] if config.closure_captures => highlight_closure_captures(sema, token, file_id),
+        T![move] if config.closure_captures => highlight_closure_captures(sema, token, file_id),
         _ if config.references => highlight_references(sema, &syntax, token, file_id),
         _ => None,
     }
@@ -89,11 +81,12 @@ pub(crate) fn highlight_related(
 
 fn highlight_closure_captures(
     sema: &Semantics<'_, RootDatabase>,
-    node: ast::ClosureExpr,
+    token: SyntaxToken,
     file_id: FileId,
 ) -> Option<Vec<HighlightedRange>> {
-    let search_range = node.body()?.syntax().text_range();
-    let ty = &sema.type_of_expr(&node.into())?.original;
+    let closure = token.parent_ancestors().take(2).find_map(ast::ClosureExpr::cast)?;
+    let search_range = closure.body()?.syntax().text_range();
+    let ty = &sema.type_of_expr(&closure.into())?.original;
     let c = ty.as_closure()?;
     Some(
         c.captured_items(sema.db)

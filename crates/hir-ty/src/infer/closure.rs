@@ -115,7 +115,7 @@ impl InferenceContext<'_> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct HirPlace {
-    pub local: BindingId,
+    pub(crate) local: BindingId,
     pub(crate) projections: Vec<ProjectionElem<Infallible, Ty>>,
 }
 
