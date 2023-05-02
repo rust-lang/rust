@@ -17,8 +17,8 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
 use rustc_mir_dataflow::lattice::FlatSet;
-use rustc_mir_dataflow::value_analysis::{Map, ValueAnalysis};
-use rustc_mir_dataflow::{Analysis, AnalysisDomain};
+use rustc_mir_dataflow::value_analysis::{Map, ValueAnalysis, ValueOrPlace};
+use rustc_mir_dataflow::AnalysisDomain;
 use rustc_span::def_id::DefId;
 use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi as CallAbi;
@@ -105,7 +105,7 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
         let map = Map::from_filter(tcx, body, |local| ssa.is_ssa(local), place_limit);
 
         // Perform the actual dataflow analysis.
-        let mut analysis = ConstAnalysis::new(tcx, body, &map).wrap();
+        let analysis = ConstAnalysis::new(tcx, body, &map).wrap();
         let mut state = analysis.bottom_value(body);
         analysis.initialize_start_block(body, &mut state);
 
@@ -120,23 +120,25 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
                 OperandCollector { state: &state, visitor: &mut collector, map: &map }
                     .visit_statement(statement, location);
 
-                if let Some((place, _)) = statement.kind.as_assign()
-                    && !place.is_indirect_first_projection()
-                    && ssa.is_ssa(place.local)
-                {
-                    analysis.apply_statement_effect(&mut state, statement, location);
-                }
-
-                match statement.kind {
-                    StatementKind::Assign(box (_, Rvalue::Use(Operand::Constant(_)))) => {
-                        // Don't overwrite the assignment if it already uses a constant (to keep the span).
-                    }
-                    StatementKind::Assign(box (place, _)) => {
-                        if let FlatSet::Elem(value) = state.get(place.as_ref(), &map) {
-                            collector.assignments.insert(location, value);
+                if let Some((place, rvalue)) = statement.kind.as_assign() {
+                    let value = if !place.is_indirect_first_projection() && ssa.is_ssa(place.local)
+                    {
+                        // Use `handle_assign` here to handle the case where `place` is not scalar.
+                        analysis.0.handle_assign(*place, rvalue, &mut state);
+                        state.get(place.as_ref(), &map)
+                    } else if place.ty(&body.local_decls, tcx).ty.is_scalar() {
+                        let value = analysis.0.handle_rvalue(rvalue, &mut state);
+                        match value {
+                            ValueOrPlace::Value(value) => value,
+                            ValueOrPlace::Place(place) => state.get_idx(place, &map),
                         }
+                    } else {
+                        FlatSet::Top
+                    };
+
+                    if let FlatSet::Elem(value) = value {
+                        collector.assignments.insert(location, value);
                     }
-                    _ => (),
                 }
             }
 

@@ -530,8 +530,11 @@ impl<'tcx> MutVisitor<'tcx> for CollectAndPatch<'tcx, '_> {
         if let Some(value) = self.assignments.get(&location) {
             match &mut statement.kind {
                 StatementKind::Assign(box (_, rvalue)) => {
-                    let ty = rvalue.ty(self.local_decls, self.tcx);
-                    *rvalue = Rvalue::Use(self.make_operand(*value, ty));
+                    if !matches!(rvalue, Rvalue::Use(Operand::Constant(_))) {
+                        // Don't overwrite the assignment if it already uses a constant (to keep the span).
+                        let ty = rvalue.ty(self.local_decls, self.tcx);
+                        *rvalue = Rvalue::Use(self.make_operand(*value, ty));
+                    }
                 }
                 _ => bug!("found assignment info for non-assign statement"),
             }
