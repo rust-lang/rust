@@ -170,48 +170,25 @@ bitflags! {
     /// whether the type has various kinds of types in it without recursing
     /// over the type itself.
     pub struct TypeFlags: u32 {
-        // This is an attempt at optimizing creation on hot flags...
-        //
-        // The most checked groups of flags that are checked are *groups*,
-        // which means that ideally we'd have bits in hot flags that represent
-        // those entire groups.
-        //
-        // However, then `TypeFlags` -> `HotTypeFlags` is non-trivial, as you
-        // need to check for those groups, set new bits, etc...
-        //
-        // Instead, we add a special "tag" bit to interesting groups, so
-        // `HAS_SOMETHING_SOMETHING` is not `X << N`, but instead is
-        // `X << N | SOMETHING_TAG`.
-        //
-        // By moving those "tag" bits to the start we can trivially create
-        // `HotTypeFlags` with `_ & 0b111`.
-        //
-        // (this is just an idea that probably doesn't actually help perf,
-        // but just in case, yk)
-        // (this only works as long as no one uses these tags directly)
-        const __HAS_NON_RE_INFER_TAG = 1 << 0;
-        const __HAS_INFER_TAG = 1 << 1;
-        const __HAS_PARAM_TAG = 1 << 2;
-
         // Does this have parameters? Used to determine whether substitution is
         // required.
         /// Does this have `Param`?
-        const HAS_TY_PARAM                = 1 << 0+8 | TypeFlags::__HAS_PARAM_TAG.bits;
+        const HAS_TY_PARAM                = 1 << 0;
         /// Does this have `ReEarlyBound`?
-        const HAS_RE_PARAM                = 1 << 1+8 | TypeFlags::__HAS_PARAM_TAG.bits;
+        const HAS_RE_PARAM                = 1 << 1;
         /// Does this have `ConstKind::Param`?
-        const HAS_CT_PARAM                = 1 << 2+8 | TypeFlags::__HAS_PARAM_TAG.bits;
+        const HAS_CT_PARAM                = 1 << 2;
 
         const HAS_PARAM                 = TypeFlags::HAS_TY_PARAM.bits
                                           | TypeFlags::HAS_RE_PARAM.bits
                                           | TypeFlags::HAS_CT_PARAM.bits;
 
         /// Does this have `Infer`?
-        const HAS_TY_INFER                = 1 << 3+8 | TypeFlags::__HAS_INFER_TAG.bits | TypeFlags::__HAS_NON_RE_INFER_TAG.bits;
+        const HAS_TY_INFER                = 1 << 3;
         /// Does this have `ReVar`?
-        const HAS_RE_INFER                = 1 << 4+8 | TypeFlags::__HAS_INFER_TAG.bits;
+        const HAS_RE_INFER                = 1 << 4;
         /// Does this have `ConstKind::Infer`?
-        const HAS_CT_INFER                = 1 << 5+8 | TypeFlags::__HAS_INFER_TAG.bits | TypeFlags::__HAS_NON_RE_INFER_TAG.bits;
+        const HAS_CT_INFER                = 1 << 5;
 
         /// Does this have inference variables? Used to determine whether
         /// inference is required.
@@ -220,15 +197,15 @@ bitflags! {
                                           | TypeFlags::HAS_CT_INFER.bits;
 
         /// Does this have `Placeholder`?
-        const HAS_TY_PLACEHOLDER          = 1 << 6+8;
+        const HAS_TY_PLACEHOLDER          = 1 << 6;
         /// Does this have `RePlaceholder`?
-        const HAS_RE_PLACEHOLDER          = 1 << 7+8;
+        const HAS_RE_PLACEHOLDER          = 1 << 7;
         /// Does this have `ConstKind::Placeholder`?
-        const HAS_CT_PLACEHOLDER          = 1 << 8+8;
+        const HAS_CT_PLACEHOLDER          = 1 << 8;
 
         /// `true` if there are "names" of regions and so forth
         /// that are local to a particular fn/inferctxt
-        const HAS_FREE_LOCAL_REGIONS      = 1 << 9+8;
+        const HAS_FREE_LOCAL_REGIONS      = 1 << 9;
 
         /// `true` if there are "names" of types and regions and so forth
         /// that are local to a particular fn
@@ -251,11 +228,11 @@ bitflags! {
                                           | TypeFlags::HAS_RE_ERASED.bits;
 
         /// Does this have `Projection`?
-        const HAS_TY_PROJECTION           = 1 << 10+8;
+        const HAS_TY_PROJECTION           = 1 << 10;
         /// Does this have `Opaque`?
-        const HAS_TY_OPAQUE               = 1 << 11+8;
+        const HAS_TY_OPAQUE               = 1 << 11;
         /// Does this have `ConstKind::Unevaluated`?
-        const HAS_CT_PROJECTION           = 1 << 12+8;
+        const HAS_CT_PROJECTION           = 1 << 12;
 
         /// Could this type be normalized further?
         const HAS_PROJECTION              = TypeFlags::HAS_TY_PROJECTION.bits
@@ -263,18 +240,18 @@ bitflags! {
                                           | TypeFlags::HAS_CT_PROJECTION.bits;
 
         /// Is an error type/const reachable?
-        const HAS_ERROR                   = 1 << 13+8;
+        const HAS_ERROR                   = 1 << 13;
 
         /// Does this have any region that "appears free" in the type?
         /// Basically anything but `ReLateBound` and `ReErased`.
-        const HAS_FREE_REGIONS            = 1 << 14+8;
+        const HAS_FREE_REGIONS            = 1 << 14;
 
         /// Does this have any `ReLateBound` regions?
-        const HAS_RE_LATE_BOUND           = 1 << 15+8;
+        const HAS_RE_LATE_BOUND           = 1 << 15;
         /// Does this have any `Bound` types?
-        const HAS_TY_LATE_BOUND           = 1 << 16+8;
+        const HAS_TY_LATE_BOUND           = 1 << 16;
         /// Does this have any `ConstKind::Bound` consts?
-        const HAS_CT_LATE_BOUND           = 1 << 17+8;
+        const HAS_CT_LATE_BOUND           = 1 << 17;
         /// Does this have any bound variables?
         /// Used to check if a global bound is safe to evaluate.
         const HAS_LATE_BOUND              = TypeFlags::HAS_RE_LATE_BOUND.bits
@@ -282,20 +259,20 @@ bitflags! {
                                           | TypeFlags::HAS_CT_LATE_BOUND.bits;
 
         /// Does this have any `ReErased` regions?
-        const HAS_RE_ERASED               = 1 << 18+8;
+        const HAS_RE_ERASED               = 1 << 18;
 
         /// Does this value have parameters/placeholders/inference variables which could be
         /// replaced later, in a way that would change the results of `impl` specialization?
-        const STILL_FURTHER_SPECIALIZABLE = 1 << 19+8;
+        const STILL_FURTHER_SPECIALIZABLE = 1 << 19;
 
         /// Does this value have `InferTy::FreshTy/FreshIntTy/FreshFloatTy`?
-        const HAS_TY_FRESH                = 1 << 20+8;
+        const HAS_TY_FRESH                = 1 << 20;
 
         /// Does this value have `InferConst::Fresh`?
-        const HAS_CT_FRESH                = 1 << 21+8;
+        const HAS_CT_FRESH                = 1 << 21;
 
         /// Does this have `Generator` or `GeneratorWitness`?
-        const HAS_TY_GENERATOR            = 1 << 22+8;
+        const HAS_TY_GENERATOR            = 1 << 22;
     }
 }
 

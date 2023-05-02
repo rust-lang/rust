@@ -465,6 +465,9 @@ bitflags::bitflags! {
     /// as such they are faster to access.
     pub struct HotTypeFlags: usize {
         const HAS_NON_RE_INFER = 1 << 0;
+        // This could be `HAS_INFER = HAS_NON_RE_INFER | HAS_RE_INFER`
+        // which could provide us with an additional flag "for free",
+        // but I doubt it matters
         const HAS_INFER = 1 << 1;
         const HAS_PARAM = 1 << 2;
     }
@@ -473,8 +476,21 @@ bitflags::bitflags! {
 impl HotTypeFlags {
     #[inline]
     fn from_flags(flags: TypeFlags) -> Self {
-        // See the comment in `TypeFlags` def, on why this is valid
-        HotTypeFlags::from_bits_truncate(flags.bits() as _)
+        let mut this = HotTypeFlags::empty();
+
+        if flags.intersects(TypeFlags::HAS_INFER - TypeFlags::HAS_RE_INFER) {
+            this |= Self::HAS_NON_RE_INFER;
+        }
+
+        if flags.intersects(TypeFlags::HAS_INFER) {
+            this |= Self::HAS_INFER;
+        }
+
+        if flags.intersects(TypeFlags::HAS_PARAM) {
+            this |= Self::HAS_PARAM;
+        }
+
+        this
     }
 }
 
