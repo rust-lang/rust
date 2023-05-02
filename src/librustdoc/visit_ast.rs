@@ -500,19 +500,14 @@ impl<'a, 'tcx> Visitor<'tcx> for RustdocVisitor<'a, 'tcx> {
 
     fn visit_item(&mut self, i: &'tcx hir::Item<'tcx>) {
         self.visit_item_inner(i, None, None);
-        let new_value = if self.is_importable_from_parent {
-            matches!(
+        let new_value = self.is_importable_from_parent
+            && matches!(
                 i.kind,
                 hir::ItemKind::Mod(..)
                     | hir::ItemKind::ForeignMod { .. }
                     | hir::ItemKind::Impl(..)
                     | hir::ItemKind::Trait(..)
-            )
-        } else {
-            // Whatever the context, if it's an impl block, the items inside it can be used so they
-            // should be visible.
-            matches!(i.kind, hir::ItemKind::Impl(..))
-        };
+            );
         let prev = mem::replace(&mut self.is_importable_from_parent, new_value);
         walk_item(self, i);
         self.is_importable_from_parent = prev;
