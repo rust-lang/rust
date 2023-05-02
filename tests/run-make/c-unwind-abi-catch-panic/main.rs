@@ -1,7 +1,6 @@
 //! A test for calling `C-unwind` functions across foreign function boundaries.
 //!
 //! This test triggers a panic when calling a foreign function that calls *back* into Rust.
-#![feature(c_unwind)]
 
 use std::panic::{catch_unwind, AssertUnwindSafe};
 

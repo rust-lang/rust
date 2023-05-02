@@ -1,7 +1,6 @@
 // ignore-tidy-linelength
 
 #![feature(abi_vectorcall)]
-#![feature(c_unwind)]
 #![feature(no_core)]
 #![no_core]
 
