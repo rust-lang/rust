@@ -1,4 +1,4 @@
-#![warn(useless_send_constraint)]
+#![warn(unnecessary_send_constraint)]
 
 use std::any::Any;
 

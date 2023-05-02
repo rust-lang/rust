@@ -126,7 +126,7 @@ pub use passes::{EarlyLintPass, LateLintPass};
 pub use rustc_session::lint::Level::{self, *};
 pub use rustc_session::lint::{BufferedEarlyLint, FutureIncompatibleInfo, Lint, LintId};
 pub use rustc_session::lint::{LintArray, LintPass};
-use unnecessary_send_constraint::UselessSendConstraint;
+use unnecessary_send_constraint::UnnecessarySendConstraint;
 
 fluent_messages! { "../messages.ftl" }
 
@@ -244,7 +244,7 @@ late_lint_methods!(
             OpaqueHiddenInferredBound: OpaqueHiddenInferredBound,
             MultipleSupertraitUpcastable: MultipleSupertraitUpcastable,
             MapUnitFn: MapUnitFn,
-            UselessSendConstraint: UselessSendConstraint,
+            UnnecessarySendConstraint: UnnecessarySendConstraint,
         ]
     ]
 );
