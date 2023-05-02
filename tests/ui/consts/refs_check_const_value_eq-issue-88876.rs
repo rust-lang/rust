@@ -1,5 +1,3 @@
-// check-pass
-
 #![allow(incomplete_features)]
 #![feature(adt_const_params)]
 
@@ -9,4 +7,5 @@ const FOO_ARR: &[&'static str; 2] = &["Hello", "Friend"];
 
 fn main() {
     let _ = FooConst::<FOO_ARR> {};
+    //~^ ERROR: the constant `&["Hello", "Friend"]` is not of type `&'static [&'static str]`
 }

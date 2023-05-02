@@ -6,7 +6,7 @@ LL | fn foo<const LEN: usize, const DATA: [u8; LEN]>() {}
    |
    = note: const parameters may not be used in the type of const parameters
 
-error: `[u8; LEN]` is forbidden as the type of a const generic parameter
+error: `[u8; [const error]]` is forbidden as the type of a const generic parameter
   --> $DIR/issue-71169.rs:5:38
    |
 LL | fn foo<const LEN: usize, const DATA: [u8; LEN]>() {}

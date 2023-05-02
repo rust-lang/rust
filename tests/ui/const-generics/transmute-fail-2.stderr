@@ -1,0 +1,8 @@
+error: the constant `W` is not of type `usize`
+  --> $DIR/transmute-fail-2.rs:5:42
+   |
+LL | fn bar<const W: bool, const H: usize>(v: [[u32; H]; W]) -> [[u32; W]; H] {
+   |                                          ^^^^^^^^^^^^^ expected `usize`, found `bool`
+
+error: aborting due to previous error
+

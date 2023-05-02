@@ -51,7 +51,7 @@ pub struct OptionUsize<const OU: Option<usize>>;
 //~^ ERROR symbol-name
 //~| ERROR demangling
 //~| ERROR demangling-alt(<c::OptionUsize<{core::option::Option::<usize>::None}>>)
-impl OptionUsize<{None}> {}
+impl OptionUsize<{None::<_>}> {}
 
 // HACK(eddyb) the full mangling is only in `.stderr` because we can normalize
 // the `core` disambiguator hash away there, but not here.

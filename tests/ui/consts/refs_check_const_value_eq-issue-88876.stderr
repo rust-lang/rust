@@ -1,0 +1,14 @@
+error: the constant `&["Hello", "Friend"]` is not of type `&'static [&'static str]`
+  --> $DIR/refs_check_const_value_eq-issue-88876.rs:9:24
+   |
+LL |     let _ = FooConst::<FOO_ARR> {};
+   |                        ^^^^^^^ expected `&'static [&'static str]`, found `&'static [&'static str; 2]`
+   |
+note: required by a bound in `FooConst`
+  --> $DIR/refs_check_const_value_eq-issue-88876.rs:4:17
+   |
+LL | struct FooConst<const ARRAY: &'static [&'static str]> {}
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `FooConst`
+
+error: aborting due to previous error
+

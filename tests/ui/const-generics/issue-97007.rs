@@ -1,4 +1,6 @@
-// check-pass
+// known-bug: unknown
+// this should pass but currently does not because `generic_const_exprs` is very prone
+// to randomly encountering cycle errors on well formed code.
 
 #![feature(adt_const_params, generic_const_exprs)]
 #![allow(incomplete_features)]
