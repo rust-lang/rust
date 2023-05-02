@@ -1,3 +1,6 @@
+//! This module is responsible for implementing handlers for Language Server
+//! Protocol. This module specifically handles requests.
+
 use std::{
     io::Write as _,
     process::{self, Stdio},

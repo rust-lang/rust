@@ -1,3 +1,6 @@
+//! This module is responsible for implementing handlers for Language Server
+//! Protocol. This module specifically handles notifications.
+
 use std::{ops::Deref, sync::Arc};
 
 use itertools::Itertools;
