@@ -1,7 +1,7 @@
 use super::{find_testable_code, plain_text_summary, short_markdown_summary};
 use super::{
-    ErrorCodes, HeadingOffset, IdMap, Ignore, LangString, Markdown, MarkdownItemInfo, TagIterator,
-    TokenKind,
+    ErrorCodes, HeadingOffset, IdMap, Ignore, LangString, LangStringToken, Markdown,
+    MarkdownItemInfo, TagIterator,
 };
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 
@@ -55,12 +55,13 @@ fn test_lang_string_parse() {
     t(Default::default());
     t(LangString { original: "rust".into(), ..Default::default() });
     t(LangString {
-        original: ".rust".into(),
+        original: "rusta".into(),
         rust: false,
-        unknown: vec![".rust".into()],
+        unknown: vec!["rusta".into()],
         ..Default::default()
     });
-    t(LangString { original: "{rust}".into(), rust: false, ..Default::default() });
+    // error
+    t(LangString { original: "{rust}".into(), rust: true, ..Default::default() });
     t(LangString {
         original: "{.rust}".into(),
         rust: false,
@@ -107,9 +108,9 @@ fn test_lang_string_parse() {
         ..Default::default()
     });
     t(LangString {
-        original: "test_harness,.rust".into(),
+        original: "test_harness,rusta".into(),
         test_harness: true,
-        unknown: vec![".rust".into()],
+        unknown: vec!["rusta".into()],
         ..Default::default()
     });
     t(LangString {
@@ -194,65 +195,51 @@ fn test_lang_string_parse() {
         unknown: vec!["unknown".into()],
         ..Default::default()
     });
-    t(LangString {
-        original: "{.first.second}".into(),
-        added_classes: vec!["first.second".into()],
-        rust: false,
-        ..Default::default()
-    });
-    t(LangString {
-        original: "{class=first=second}".into(),
-        added_classes: vec!["first=second".into()],
-        rust: false,
-        ..Default::default()
-    });
-    t(LangString {
-        original: "{class=first.second}".into(),
-        added_classes: vec!["first.second".into()],
-        rust: false,
-        ..Default::default()
-    });
-    t(LangString {
-        original: "{class=.first}".into(),
-        added_classes: vec![".first".into()],
-        rust: false,
-        ..Default::default()
-    });
+    // error
+    t(LangString { original: "{.first.second}".into(), rust: true, ..Default::default() });
+    // error
+    t(LangString { original: "{class=first=second}".into(), rust: true, ..Default::default() });
+    // error
+    t(LangString { original: "{class=first.second}".into(), rust: true, ..Default::default() });
+    // error
+    t(LangString { original: "{class=.first}".into(), rust: true, ..Default::default() });
     t(LangString {
         original: r#"{class="first"}"#.into(),
         added_classes: vec!["first".into()],
         rust: false,
         ..Default::default()
     });
-    t(LangString {
-        original: r#"{class=f"irst"}"#.into(),
-        added_classes: vec!["first".into()],
-        rust: false,
-        ..Default::default()
-    });
+    // error
+    t(LangString { original: r#"{class=f"irst"}"#.into(), rust: true, ..Default::default() });
 }
 
 #[test]
 fn test_lang_string_tokenizer() {
-    fn case(lang_string: &str, want: &[TokenKind<'_>]) {
+    fn case(lang_string: &str, want: &[LangStringToken<'_>]) {
         let have = TagIterator::new(lang_string, None).collect::<Vec<_>>();
         assert_eq!(have, want, "Unexpected lang string split for `{}`", lang_string);
     }
 
     case("", &[]);
-    case("foo", &[TokenKind::Token("foo")]);
-    case("foo,bar", &[TokenKind::Token("foo"), TokenKind::Token("bar")]);
-    case(".foo,.bar", &[TokenKind::Token(".foo"), TokenKind::Token(".bar")]);
-    case("{.foo,.bar}", &[TokenKind::Attribute(".foo"), TokenKind::Attribute(".bar")]);
-    case("  {.foo,.bar}  ", &[TokenKind::Attribute(".foo"), TokenKind::Attribute(".bar")]);
-    case("foo bar", &[TokenKind::Token("foo"), TokenKind::Token("bar")]);
-    case("foo\tbar", &[TokenKind::Token("foo"), TokenKind::Token("bar")]);
-    case("foo\t, bar", &[TokenKind::Token("foo"), TokenKind::Token("bar")]);
-    case(" foo , bar ", &[TokenKind::Token("foo"), TokenKind::Token("bar")]);
-    case(",,foo,,bar,,", &[TokenKind::Token("foo"), TokenKind::Token("bar")]);
-    case("foo=bar", &[TokenKind::Token("foo=bar")]);
-    case("a-b-c", &[TokenKind::Token("a-b-c")]);
-    case("a_b_c", &[TokenKind::Token("a_b_c")]);
+    case("foo", &[LangStringToken::LangToken("foo")]);
+    case("foo,bar", &[LangStringToken::LangToken("foo"), LangStringToken::LangToken("bar")]);
+    case(".foo,.bar", &[]);
+    case(
+        "{.foo,.bar}",
+        &[LangStringToken::ClassAttribute("foo"), LangStringToken::ClassAttribute("bar")],
+    );
+    case(
+        "  {.foo,.bar}  ",
+        &[LangStringToken::ClassAttribute("foo"), LangStringToken::ClassAttribute("bar")],
+    );
+    case("foo bar", &[LangStringToken::LangToken("foo"), LangStringToken::LangToken("bar")]);
+    case("foo\tbar", &[LangStringToken::LangToken("foo"), LangStringToken::LangToken("bar")]);
+    case("foo\t, bar", &[LangStringToken::LangToken("foo"), LangStringToken::LangToken("bar")]);
+    case(" foo , bar ", &[LangStringToken::LangToken("foo"), LangStringToken::LangToken("bar")]);
+    case(",,foo,,bar,,", &[LangStringToken::LangToken("foo"), LangStringToken::LangToken("bar")]);
+    case("foo=bar", &[]);
+    case("a-b-c", &[LangStringToken::LangToken("a-b-c")]);
+    case("a_b_c", &[LangStringToken::LangToken("a_b_c")]);
 }
 
 #[test]

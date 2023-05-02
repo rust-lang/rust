@@ -1,4 +1,4 @@
-error: unclosed quote string: missing `"` at the end
+error: unclosed quote string `"`
   --> $DIR/custom_code_classes_in_docs-warning3.rs:9:1
    |
 LL | / /// ```{class="}
@@ -17,7 +17,7 @@ LL | #![deny(warnings)]
    |         ^^^^^^^^
    = note: `#[deny(rustdoc::invalid_codeblock_attributes)]` implied by `#[deny(warnings)]`
 
-error: unclosed quote string: missing `"` at the end
+error: unclosed quote string `"`
   --> $DIR/custom_code_classes_in_docs-warning3.rs:9:1
    |
 LL | / /// ```{class="}

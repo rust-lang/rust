@@ -862,19 +862,34 @@ pub(crate) struct TagIterator<'a, 'tcx> {
     extra: Option<&'a ExtraInfo<'tcx>>,
 }
 
-#[derive(Debug, PartialEq)]
-pub(crate) enum TokenKind<'a> {
-    Token(&'a str),
-    Attribute(&'a str),
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) enum LangStringToken<'a> {
+    LangToken(&'a str),
+    ClassAttribute(&'a str),
+    KeyValueAttribute(&'a str, &'a str),
 }
 
+fn is_bareword_char(c: char) -> bool {
+    c == '_' || c == '-' || c == ':' || c.is_ascii_alphabetic() || c.is_ascii_digit()
+}
 fn is_separator(c: char) -> bool {
     c == ' ' || c == ',' || c == '\t'
 }
 
+struct Indices {
+    start: usize,
+    end: usize,
+}
+
 impl<'a, 'tcx> TagIterator<'a, 'tcx> {
     pub(crate) fn new(data: &'a str, extra: Option<&'a ExtraInfo<'tcx>>) -> Self {
-        Self { inner: data.char_indices().peekable(), data, extra, is_in_attribute_block: false }
+        Self { inner: data.char_indices().peekable(), data, is_in_attribute_block: false, extra }
+    }
+
+    fn emit_error(&self, err: &str) {
+        if let Some(extra) = self.extra {
+            extra.error_invalid_codeblock_attr(err);
+        }
     }
 
     fn skip_separators(&mut self) -> Option<usize> {
@@ -887,84 +902,183 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
         None
     }
 
-    fn emit_error(&self, err: &str) {
-        if let Some(extra) = self.extra {
-            extra.error_invalid_codeblock_attr(err);
+    fn parse_string(&mut self, start: usize) -> Option<Indices> {
+        while let Some((pos, c)) = self.inner.next() {
+            if c == '"' {
+                return Some(Indices { start: start + 1, end: pos });
+            }
+        }
+        self.emit_error("unclosed quote string `\"`");
+        None
+    }
+
+    fn parse_class(&mut self, start: usize) -> Option<LangStringToken<'a>> {
+        while let Some((pos, c)) = self.inner.peek().copied() {
+            if is_bareword_char(c) {
+                self.inner.next();
+            } else {
+                let class = &self.data[start + 1..pos];
+                if class.is_empty() {
+                    self.emit_error(&format!("unexpected `{c}` character after `.`"));
+                    return None;
+                } else if self.check_after_token() {
+                    return Some(LangStringToken::ClassAttribute(class));
+                } else {
+                    return None;
+                }
+            }
+        }
+        let class = &self.data[start + 1..];
+        if class.is_empty() {
+            self.emit_error("missing character after `.`");
+            None
+        } else if self.check_after_token() {
+            Some(LangStringToken::ClassAttribute(class))
+        } else {
+            None
         }
     }
 
-    /// Returns false if the string is unfinished.
-    fn skip_string(&mut self) -> bool {
+    fn parse_token(&mut self, start: usize) -> Option<Indices> {
+        while let Some((pos, c)) = self.inner.peek() {
+            if !is_bareword_char(*c) {
+                return Some(Indices { start, end: *pos });
+            }
+            self.inner.next();
+        }
+        self.emit_error("unexpected end");
+        None
+    }
+
+    fn parse_key_value(&mut self, c: char, start: usize) -> Option<LangStringToken<'a>> {
+        let key_indices =
+            if c == '"' { self.parse_string(start)? } else { self.parse_token(start)? };
+        if key_indices.start == key_indices.end {
+            self.emit_error("unexpected empty string as key");
+            return None;
+        }
+
+        if let Some((_, c)) = self.inner.next() {
+            if c != '=' {
+                self.emit_error(&format!("expected `=`, found `{}`", c));
+                return None;
+            }
+        } else {
+            self.emit_error("unexpected end");
+            return None;
+        }
+        let value_indices = match self.inner.next() {
+            Some((pos, '"')) => self.parse_string(pos)?,
+            Some((pos, c)) if is_bareword_char(c) => self.parse_token(pos)?,
+            Some((_, c)) => {
+                self.emit_error(&format!("unexpected `{c}` character after `=`"));
+                return None;
+            }
+            None => {
+                self.emit_error("expected value after `=`");
+                return None;
+            }
+        };
+        if value_indices.start == value_indices.end {
+            self.emit_error("unexpected empty string as value");
+            None
+        } else if self.check_after_token() {
+            Some(LangStringToken::KeyValueAttribute(
+                &self.data[key_indices.start..key_indices.end],
+                &self.data[value_indices.start..value_indices.end],
+            ))
+        } else {
+            None
+        }
+    }
+
+    /// Returns `false` if an error was emitted.
+    fn check_after_token(&mut self) -> bool {
+        if let Some((_, c)) = self.inner.peek().copied() {
+            if c == '}' || is_separator(c) || c == '(' {
+                true
+            } else {
+                self.emit_error(&format!("unexpected `{c}` character"));
+                false
+            }
+        } else {
+            // The error will be caught on the next iteration.
+            true
+        }
+    }
+
+    fn parse_in_attribute_block(&mut self) -> Option<LangStringToken<'a>> {
+        while let Some((pos, c)) = self.inner.next() {
+            if c == '}' {
+                self.is_in_attribute_block = false;
+                return self.next();
+            } else if c == '.' {
+                return self.parse_class(pos);
+            } else if c == '"' || is_bareword_char(c) {
+                return self.parse_key_value(c, pos);
+            } else {
+                self.emit_error(&format!("unexpected character `{c}`"));
+                return None;
+            }
+        }
+        self.emit_error("unclosed attribute block (`{}`): missing `}` at the end");
+        None
+    }
+
+    /// Returns `false` if an error was emitted.
+    fn skip_paren_block(&mut self) -> bool {
         while let Some((_, c)) = self.inner.next() {
-            if c == '"' {
+            if c == ')' {
                 return true;
             }
         }
-        self.emit_error("unclosed quote string: missing `\"` at the end");
+        self.emit_error("unclosed comment: missing `)` at the end");
         false
     }
 
-    fn parse_in_attribute_block(&mut self, start: usize) -> Option<TokenKind<'a>> {
+    fn parse_outside_attribute_block(&mut self, start: usize) -> Option<LangStringToken<'a>> {
         while let Some((pos, c)) = self.inner.next() {
-            if is_separator(c) {
-                return Some(TokenKind::Attribute(&self.data[start..pos]));
-            } else if c == '{' {
-                // There shouldn't be a nested block!
-                self.emit_error("unexpected `{` inside attribute block (`{}`)");
-                let attr = &self.data[start..pos];
-                if attr.is_empty() {
-                    return self.next();
+            if c == '"' {
+                if pos != start {
+                    self.emit_error("expected ` `, `{` or `,` found `\"`");
+                    return None;
                 }
-                self.inner.next();
-                return Some(TokenKind::Attribute(attr));
-            } else if c == '}' {
-                self.is_in_attribute_block = false;
-                let attr = &self.data[start..pos];
-                if attr.is_empty() {
-                    return self.next();
+                let indices = self.parse_string(pos)?;
+                if let Some((_, c)) = self.inner.peek().copied() && c != '{' && !is_separator(c) && c != '(' {
+                    self.emit_error(&format!("expected ` `, `{{` or `,` after `\"`, found `{c}`"));
+                    return None;
                 }
-                return Some(TokenKind::Attribute(attr));
-            } else if c == '"' && !self.skip_string() {
-                return None;
-            }
-        }
-        // Unclosed attribute block!
-        self.emit_error("unclosed attribute block (`{}`): missing `}` at the end");
-        let token = &self.data[start..];
-        if token.is_empty() { None } else { Some(TokenKind::Attribute(token)) }
-    }
-
-    fn parse_outside_attribute_block(&mut self, start: usize) -> Option<TokenKind<'a>> {
-        while let Some((pos, c)) = self.inner.next() {
-            if is_separator(c) {
-                return Some(TokenKind::Token(&self.data[start..pos]));
+                return Some(LangStringToken::LangToken(&self.data[indices.start..indices.end]));
             } else if c == '{' {
                 self.is_in_attribute_block = true;
-                let token = &self.data[start..pos];
-                if token.is_empty() {
-                    return self.next();
+                return self.next();
+            } else if is_bareword_char(c) {
+                continue;
+            } else if is_separator(c) {
+                if pos != start {
+                    return Some(LangStringToken::LangToken(&self.data[start..pos]));
                 }
-                return Some(TokenKind::Token(token));
-            } else if c == '}' {
-                // We're not in a block so it shouldn't be there!
-                self.emit_error("unexpected `}` outside attribute block (`{}`)");
-                let token = &self.data[start..pos];
-                if token.is_empty() {
-                    return self.next();
+                return self.next();
+            } else if c == '(' {
+                if !self.skip_paren_block() {
+                    return None;
                 }
-                self.inner.next();
-                return Some(TokenKind::Attribute(token));
-            } else if c == '"' && !self.skip_string() {
+                if pos != start {
+                    return Some(LangStringToken::LangToken(&self.data[start..pos]));
+                }
+                return self.next();
+            } else {
+                self.emit_error(&format!("unexpected character `{c}`"));
                 return None;
             }
         }
         let token = &self.data[start..];
-        if token.is_empty() { None } else { Some(TokenKind::Token(token)) }
+        if token.is_empty() { None } else { Some(LangStringToken::LangToken(&self.data[start..])) }
     }
 }
 
 impl<'a, 'tcx> Iterator for TagIterator<'a, 'tcx> {
-    type Item = TokenKind<'a>;
+    type Item = LangStringToken<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let Some(start) = self.skip_separators() else {
@@ -974,7 +1088,7 @@ impl<'a, 'tcx> Iterator for TagIterator<'a, 'tcx> {
             return None;
         };
         if self.is_in_attribute_block {
-            self.parse_in_attribute_block(start)
+            self.parse_in_attribute_block()
         } else {
             self.parse_outside_attribute_block(start)
         }
@@ -996,16 +1110,6 @@ impl Default for LangString {
             added_classes: Vec::new(),
             unknown: Vec::new(),
         }
-    }
-}
-
-fn handle_class(class: &str, after: &str, data: &mut LangString, extra: Option<&ExtraInfo<'_>>) {
-    if class.is_empty() {
-        if let Some(extra) = extra {
-            extra.error_invalid_codeblock_attr(&format!("missing class name after `{after}`"));
-        }
-    } else {
-        data.added_classes.push(class.replace('"', ""));
     }
 }
 
@@ -1034,41 +1138,41 @@ impl LangString {
 
         for token in TagIterator::new(string, extra) {
             match token {
-                TokenKind::Token("should_panic") => {
+                LangStringToken::LangToken("should_panic") => {
                     data.should_panic = true;
                     seen_rust_tags = !seen_other_tags;
                 }
-                TokenKind::Token("no_run") => {
+                LangStringToken::LangToken("no_run") => {
                     data.no_run = true;
                     seen_rust_tags = !seen_other_tags;
                 }
-                TokenKind::Token("ignore") => {
+                LangStringToken::LangToken("ignore") => {
                     data.ignore = Ignore::All;
                     seen_rust_tags = !seen_other_tags;
                 }
-                TokenKind::Token(x) if x.starts_with("ignore-") => {
+                LangStringToken::LangToken(x) if x.starts_with("ignore-") => {
                     if enable_per_target_ignores {
                         ignores.push(x.trim_start_matches("ignore-").to_owned());
                         seen_rust_tags = !seen_other_tags;
                     }
                 }
-                TokenKind::Token("rust") => {
+                LangStringToken::LangToken("rust") => {
                     data.rust = true;
                     seen_rust_tags = true;
                 }
-                TokenKind::Token("test_harness") => {
+                LangStringToken::LangToken("test_harness") => {
                     data.test_harness = true;
                     seen_rust_tags = !seen_other_tags || seen_rust_tags;
                 }
-                TokenKind::Token("compile_fail") => {
+                LangStringToken::LangToken("compile_fail") => {
                     data.compile_fail = true;
                     seen_rust_tags = !seen_other_tags || seen_rust_tags;
                     data.no_run = true;
                 }
-                TokenKind::Token(x) if x.starts_with("edition") => {
+                LangStringToken::LangToken(x) if x.starts_with("edition") => {
                     data.edition = x[7..].parse::<Edition>().ok();
                 }
-                TokenKind::Token(x)
+                LangStringToken::LangToken(x)
                     if allow_error_code_check && x.starts_with('E') && x.len() == 5 =>
                 {
                     if x[1..].parse::<u32>().is_ok() {
@@ -1078,7 +1182,7 @@ impl LangString {
                         seen_other_tags = true;
                     }
                 }
-                TokenKind::Token(x) if extra.is_some() => {
+                LangStringToken::LangToken(x) if extra.is_some() => {
                     let s = x.to_lowercase();
                     if let Some((flag, help)) = if s == "compile-fail"
                         || s == "compile_fail"
@@ -1120,21 +1224,23 @@ impl LangString {
                     seen_other_tags = true;
                     data.unknown.push(x.to_owned());
                 }
-                TokenKind::Token(x) => {
+                LangStringToken::LangToken(x) => {
                     seen_other_tags = true;
                     data.unknown.push(x.to_owned());
                 }
-                TokenKind::Attribute(attr) => {
+                LangStringToken::KeyValueAttribute(key, value) => {
                     seen_other_tags = true;
-                    if let Some(class) = attr.strip_prefix('.') {
-                        handle_class(class, ".", &mut data, extra);
-                    } else if let Some(class) = attr.strip_prefix("class=") {
-                        handle_class(class, "class=", &mut data, extra);
+                    if key == "class" {
+                        data.added_classes.push(value.to_owned());
                     } else if let Some(extra) = extra {
                         extra.error_invalid_codeblock_attr(&format!(
-                            "unsupported attribute `{attr}`"
+                            "unsupported attribute `{key}`"
                         ));
                     }
+                }
+                LangStringToken::ClassAttribute(class) => {
+                    seen_other_tags = true;
+                    data.added_classes.push(class.to_owned());
                 }
             }
         }

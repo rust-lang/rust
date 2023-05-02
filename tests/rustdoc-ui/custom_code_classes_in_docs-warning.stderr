@@ -1,7 +1,7 @@
-error: missing class name after `.`
+error: unexpected ` ` character after `.`
   --> $DIR/custom_code_classes_in_docs-warning.rs:9:1
    |
-LL | / /// ```{. class= whatever=hehe #id} } {{
+LL | / /// ```{. }
 LL | | /// main;
 LL | | /// ```
    | |_______^
@@ -13,53 +13,101 @@ LL | #![deny(warnings)]
    |         ^^^^^^^^
    = note: `#[deny(rustdoc::invalid_codeblock_attributes)]` implied by `#[deny(warnings)]`
 
-error: missing class name after `class=`
-  --> $DIR/custom_code_classes_in_docs-warning.rs:9:1
+error: unexpected ` ` character after `=`
+  --> $DIR/custom_code_classes_in_docs-warning.rs:15:1
    |
-LL | / /// ```{. class= whatever=hehe #id} } {{
+LL | / /// ```{class= a}
 LL | | /// main;
 LL | | /// ```
    | |_______^
 
-error: unsupported attribute `whatever=hehe`
-  --> $DIR/custom_code_classes_in_docs-warning.rs:9:1
+error: unexpected character `#`
+  --> $DIR/custom_code_classes_in_docs-warning.rs:21:1
    |
-LL | / /// ```{. class= whatever=hehe #id} } {{
+LL | / /// ```{#id}
 LL | | /// main;
 LL | | /// ```
    | |_______^
 
-error: unsupported attribute `#id`
-  --> $DIR/custom_code_classes_in_docs-warning.rs:9:1
+error: unexpected character `{`
+  --> $DIR/custom_code_classes_in_docs-warning.rs:27:1
    |
-LL | / /// ```{. class= whatever=hehe #id} } {{
+LL | / /// ```{{
 LL | | /// main;
 LL | | /// ```
    | |_______^
 
-error: unexpected `}` outside attribute block (`{}`)
-  --> $DIR/custom_code_classes_in_docs-warning.rs:9:1
+error: unexpected character `}`
+  --> $DIR/custom_code_classes_in_docs-warning.rs:33:1
    |
-LL | / /// ```{. class= whatever=hehe #id} } {{
+LL | / /// ```}
 LL | | /// main;
 LL | | /// ```
    | |_______^
 
-error: unexpected `{` inside attribute block (`{}`)
-  --> $DIR/custom_code_classes_in_docs-warning.rs:9:1
+error: unexpected character `)`
+  --> $DIR/custom_code_classes_in_docs-warning.rs:39:1
    |
-LL | / /// ```{. class= whatever=hehe #id} } {{
+LL | / /// ```)
 LL | | /// main;
 LL | | /// ```
    | |_______^
 
-error: unclosed attribute block (`{}`): missing `}` at the end
-  --> $DIR/custom_code_classes_in_docs-warning.rs:9:1
+error: unexpected `}` character after `=`
+  --> $DIR/custom_code_classes_in_docs-warning.rs:45:1
    |
-LL | / /// ```{. class= whatever=hehe #id} } {{
+LL | / /// ```{class=}
 LL | | /// main;
 LL | | /// ```
    | |_______^
 
-error: aborting due to 7 previous errors
+error: unclosed comment: missing `)` at the end
+  --> $DIR/custom_code_classes_in_docs-warning.rs:51:1
+   |
+LL | / /// ```(
+LL | | /// main;
+LL | | /// ```
+   | |_______^
+
+error: unexpected `=` character
+  --> $DIR/custom_code_classes_in_docs-warning.rs:57:1
+   |
+LL | / /// ```{class=one=two}
+LL | | /// main;
+LL | | /// ```
+   | |_______^
+
+error: unexpected `.` character
+  --> $DIR/custom_code_classes_in_docs-warning.rs:63:1
+   |
+LL | / /// ```{.one.two}
+LL | | /// main;
+LL | | /// ```
+   | |_______^
+
+error: unexpected `.` character after `=`
+  --> $DIR/custom_code_classes_in_docs-warning.rs:69:1
+   |
+LL | / /// ```{class=.one}
+LL | | /// main;
+LL | | /// ```
+   | |_______^
+
+error: unexpected `.` character
+  --> $DIR/custom_code_classes_in_docs-warning.rs:75:1
+   |
+LL | / /// ```{class=one.two}
+LL | | /// main;
+LL | | /// ```
+   | |_______^
+
+error: unexpected character `(`
+  --> $DIR/custom_code_classes_in_docs-warning.rs:81:1
+   |
+LL | / /// ```{(comment)}
+LL | | /// main;
+LL | | /// ```
+   | |_______^
+
+error: aborting due to 13 previous errors
 

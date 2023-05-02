@@ -22,7 +22,7 @@
 ///
 /// Testing with multiple "unknown". Only the first should be used.
 ///
-/// ```whatever4{.huhu-c} whatever5
+/// ```whatever4,{.huhu-c} whatever5
 /// main;
 /// ```
 pub struct Bar;
