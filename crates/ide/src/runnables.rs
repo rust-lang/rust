@@ -2579,6 +2579,7 @@ mod r#mod {
                             ),
                             full_range: 47..84,
                             name: "r#for",
+                            container_name: "r#mod",
                         },
                         kind: DocTest {
                             test_id: Path(
@@ -2595,6 +2596,7 @@ mod r#mod {
                             ),
                             full_range: 90..146,
                             name: "r#struct",
+                            container_name: "r#mod",
                         },
                         kind: DocTest {
                             test_id: Path(

@@ -51,7 +51,7 @@ use hir_def::{
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
     src::HasSource as _,
-    AdtId, AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId, DefWithBodyId, EnumId,
+    AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId, DefWithBodyId, EnumId,
     EnumVariantId, FunctionId, GenericDefId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
     LocalEnumVariantId, LocalFieldId, Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId,
     TraitAliasId, TraitId, TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
@@ -118,11 +118,9 @@ pub use {
         path::{ModPath, PathKind},
         type_ref::{Mutability, TypeRef},
         visibility::Visibility,
-        // FIXME: This is here since it is input of a method in `HirWrite`
-        // and things outside of hir need to implement that trait. We probably
-        // should move whole `hir_ty::display` to this crate so we will become
-        // able to use `ModuleDef` or `Definition` instead of `ModuleDefId`.
-        ModuleDefId,
+        // FIXME: This is here since some queries take it as input that are used
+        // outside of hir.
+        {AdtId, ModuleDefId},
     },
     hir_expand::{
         attrs::Attr,
@@ -4407,4 +4405,91 @@ impl HasCrate for Module {
     fn krate(&self, _: &dyn HirDatabase) -> Crate {
         Module::krate(*self)
     }
+}
+
+pub trait HasContainer {
+    fn container(&self, db: &dyn HirDatabase) -> ItemContainer;
+}
+
+impl HasContainer for Module {
+    fn container(&self, db: &dyn HirDatabase) -> ItemContainer {
+        // FIXME: handle block expressions as modules (their parent is in a different DefMap)
+        let def_map = self.id.def_map(db.upcast());
+        match def_map[self.id.local_id].parent {
+            Some(parent_id) => ItemContainer::Module(Module { id: def_map.module_id(parent_id) }),
+            None => ItemContainer::Crate(def_map.krate()),
+        }
+    }
+}
+
+impl HasContainer for Function {
+    fn container(&self, db: &dyn HirDatabase) -> ItemContainer {
+        container_id_to_hir(self.id.lookup(db.upcast()).container)
+    }
+}
+
+impl HasContainer for Struct {
+    fn container(&self, db: &dyn HirDatabase) -> ItemContainer {
+        ItemContainer::Module(Module { id: self.id.lookup(db.upcast()).container })
+    }
+}
+
+impl HasContainer for Union {
+    fn container(&self, db: &dyn HirDatabase) -> ItemContainer {
+        ItemContainer::Module(Module { id: self.id.lookup(db.upcast()).container })
+    }
+}
+
+impl HasContainer for Enum {
+    fn container(&self, db: &dyn HirDatabase) -> ItemContainer {
+        ItemContainer::Module(Module { id: self.id.lookup(db.upcast()).container })
+    }
+}
+
+impl HasContainer for TypeAlias {
+    fn container(&self, db: &dyn HirDatabase) -> ItemContainer {
+        container_id_to_hir(self.id.lookup(db.upcast()).container)
+    }
+}
+
+impl HasContainer for Const {
+    fn container(&self, db: &dyn HirDatabase) -> ItemContainer {
+        container_id_to_hir(self.id.lookup(db.upcast()).container)
+    }
+}
+
+impl HasContainer for Static {
+    fn container(&self, db: &dyn HirDatabase) -> ItemContainer {
+        container_id_to_hir(self.id.lookup(db.upcast()).container)
+    }
+}
+
+impl HasContainer for Trait {
+    fn container(&self, db: &dyn HirDatabase) -> ItemContainer {
+        ItemContainer::Module(Module { id: self.id.lookup(db.upcast()).container })
+    }
+}
+
+impl HasContainer for TraitAlias {
+    fn container(&self, db: &dyn HirDatabase) -> ItemContainer {
+        ItemContainer::Module(Module { id: self.id.lookup(db.upcast()).container })
+    }
+}
+
+fn container_id_to_hir(c: ItemContainerId) -> ItemContainer {
+    match c {
+        ItemContainerId::ExternBlockId(_id) => ItemContainer::ExternBlock(),
+        ItemContainerId::ModuleId(id) => ItemContainer::Module(Module { id }),
+        ItemContainerId::ImplId(id) => ItemContainer::Impl(Impl { id }),
+        ItemContainerId::TraitId(id) => ItemContainer::Trait(Trait { id }),
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ItemContainer {
+    Trait(Trait),
+    Impl(Impl),
+    Module(Module),
+    ExternBlock(),
+    Crate(CrateId),
 }

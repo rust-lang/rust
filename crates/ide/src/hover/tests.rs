@@ -2157,52 +2157,53 @@ mod M {
 fn main() { let s$0t = (A(1), B(2), M::C(3) ); }
 "#,
         expect![[r#"
-                [
-                    GoToType(
-                        [
-                            HoverGotoTypeData {
-                                mod_path: "test::A",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 0..14,
-                                    focus_range: 7..8,
-                                    name: "A",
-                                    kind: Struct,
-                                    description: "struct A",
-                                },
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "test::A",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 0..14,
+                                focus_range: 7..8,
+                                name: "A",
+                                kind: Struct,
+                                description: "struct A",
                             },
-                            HoverGotoTypeData {
-                                mod_path: "test::B",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 15..29,
-                                    focus_range: 22..23,
-                                    name: "B",
-                                    kind: Struct,
-                                    description: "struct B",
-                                },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "test::B",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 15..29,
+                                focus_range: 22..23,
+                                name: "B",
+                                kind: Struct,
+                                description: "struct B",
                             },
-                            HoverGotoTypeData {
-                                mod_path: "test::M::C",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 42..60,
-                                    focus_range: 53..54,
-                                    name: "C",
-                                    kind: Struct,
-                                    description: "pub struct C",
-                                },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "test::M::C",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 42..60,
+                                focus_range: 53..54,
+                                name: "C",
+                                kind: Struct,
+                                container_name: "M",
+                                description: "pub struct C",
                             },
-                        ],
-                    ),
-                ]
-            "#]],
+                        },
+                    ],
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -2531,6 +2532,7 @@ pub mod future {
                                 focus_range: 60..66,
                                 name: "Future",
                                 kind: Trait,
+                                container_name: "future",
                                 description: "pub trait Future",
                             },
                         },

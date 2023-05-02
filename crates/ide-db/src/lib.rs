@@ -49,10 +49,7 @@ use base_db::{
     salsa::{self, Durability},
     AnchoredPath, CrateId, FileId, FileLoader, FileLoaderDelegate, SourceDatabase, Upcast,
 };
-use hir::{
-    db::{DefDatabase, ExpandDatabase, HirDatabase},
-    symbols::FileSymbolKind,
-};
+use hir::db::{DefDatabase, ExpandDatabase, HirDatabase};
 
 use crate::{line_index::LineIndex, symbol_index::SymbolsDatabase};
 pub use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
@@ -378,20 +375,22 @@ impl From<hir::MacroKind> for SymbolKind {
     }
 }
 
-impl From<FileSymbolKind> for SymbolKind {
-    fn from(it: FileSymbolKind) -> Self {
+impl From<hir::ModuleDefId> for SymbolKind {
+    fn from(it: hir::ModuleDefId) -> Self {
         match it {
-            FileSymbolKind::Const => SymbolKind::Const,
-            FileSymbolKind::Enum => SymbolKind::Enum,
-            FileSymbolKind::Function => SymbolKind::Function,
-            FileSymbolKind::Macro => SymbolKind::Macro,
-            FileSymbolKind::Module => SymbolKind::Module,
-            FileSymbolKind::Static => SymbolKind::Static,
-            FileSymbolKind::Struct => SymbolKind::Struct,
-            FileSymbolKind::Trait => SymbolKind::Trait,
-            FileSymbolKind::TraitAlias => SymbolKind::TraitAlias,
-            FileSymbolKind::TypeAlias => SymbolKind::TypeAlias,
-            FileSymbolKind::Union => SymbolKind::Union,
+            hir::ModuleDefId::ConstId(..) => SymbolKind::Const,
+            hir::ModuleDefId::EnumVariantId(..) => SymbolKind::Variant,
+            hir::ModuleDefId::FunctionId(..) => SymbolKind::Function,
+            hir::ModuleDefId::MacroId(..) => SymbolKind::Macro,
+            hir::ModuleDefId::ModuleId(..) => SymbolKind::Module,
+            hir::ModuleDefId::StaticId(..) => SymbolKind::Static,
+            hir::ModuleDefId::AdtId(hir::AdtId::StructId(..)) => SymbolKind::Struct,
+            hir::ModuleDefId::AdtId(hir::AdtId::EnumId(..)) => SymbolKind::Enum,
+            hir::ModuleDefId::AdtId(hir::AdtId::UnionId(..)) => SymbolKind::Union,
+            hir::ModuleDefId::TraitId(..) => SymbolKind::Trait,
+            hir::ModuleDefId::TraitAliasId(..) => SymbolKind::TraitAlias,
+            hir::ModuleDefId::TypeAliasId(..) => SymbolKind::TypeAlias,
+            hir::ModuleDefId::BuiltinType(..) => SymbolKind::TypeAlias,
         }
     }
 }
