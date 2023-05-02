@@ -63,7 +63,8 @@ impl<'tcx> TyCtxt<'tcx> {
                         Err(e) => self.tcx.const_error_with_guaranteed(c.ty(), e),
                         Ok(Some(bac)) => {
                             let substs = self.tcx.erase_regions(uv.substs);
-                            bac.subst(self.tcx, substs)
+                            let bac = bac.subst(self.tcx, substs);
+                            return bac.fold_with(self);
                         }
                         Ok(None) => c,
                     },
