@@ -4,8 +4,8 @@ use std::fmt;
 
 use either::Either;
 use hir::{
-    symbols::FileSymbol, AssocItem, Documentation, FieldSource, HasAttrs, HasSource, HirDisplay,
-    InFile, LocalSource, ModuleSource, Semantics,
+    AssocItem, Documentation, FieldSource, HasAttrs, HasContainer, HasSource, HirDisplay, InFile,
+    LocalSource, ModuleSource,
 };
 use ide_db::{
     base_db::{FileId, FileRange},
@@ -15,7 +15,7 @@ use ide_db::{defs::Definition, RootDatabase};
 use stdx::never;
 use syntax::{
     ast::{self, HasName},
-    match_ast, AstNode, SmolStr, SyntaxNode, TextRange,
+    AstNode, SmolStr, SyntaxNode, TextRange,
 };
 
 /// `NavigationTarget` represents an element in the editor's UI which you can
@@ -158,24 +158,6 @@ impl NavigationTarget {
     }
 }
 
-impl TryToNav for FileSymbol {
-    fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
-        let full_range = self.loc.original_range(db);
-        let name_range = self.loc.original_name_range(db)?;
-
-        Some(NavigationTarget {
-            file_id: full_range.file_id,
-            name: self.name.clone(),
-            kind: Some(self.kind.into()),
-            full_range: full_range.range,
-            focus_range: Some(name_range.range),
-            container_name: self.container_name.clone(),
-            description: description_from_symbol(db, self),
-            docs: None,
-        })
-    }
-}
-
 impl TryToNav for Definition {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
         match self {
@@ -221,38 +203,80 @@ impl TryToNav for hir::ModuleDef {
     }
 }
 
-pub(crate) trait ToNavFromAst {
+pub(crate) trait ToNavFromAst: Sized {
     const KIND: SymbolKind;
+    fn container_name(self, db: &RootDatabase) -> Option<SmolStr> {
+        _ = db;
+        None
+    }
 }
+
+fn container_name(db: &RootDatabase, t: impl HasContainer) -> Option<SmolStr> {
+    match t.container(db) {
+        hir::ItemContainer::Trait(it) => Some(it.name(db).to_smol_str()),
+        // FIXME: Handle owners of blocks correctly here
+        hir::ItemContainer::Module(it) => it.name(db).map(|name| name.to_smol_str()),
+        _ => None,
+    }
+}
+
 impl ToNavFromAst for hir::Function {
     const KIND: SymbolKind = SymbolKind::Function;
+    fn container_name(self, db: &RootDatabase) -> Option<SmolStr> {
+        container_name(db, self)
+    }
 }
+
 impl ToNavFromAst for hir::Const {
     const KIND: SymbolKind = SymbolKind::Const;
+    fn container_name(self, db: &RootDatabase) -> Option<SmolStr> {
+        container_name(db, self)
+    }
 }
 impl ToNavFromAst for hir::Static {
     const KIND: SymbolKind = SymbolKind::Static;
+    fn container_name(self, db: &RootDatabase) -> Option<SmolStr> {
+        container_name(db, self)
+    }
 }
 impl ToNavFromAst for hir::Struct {
     const KIND: SymbolKind = SymbolKind::Struct;
+    fn container_name(self, db: &RootDatabase) -> Option<SmolStr> {
+        container_name(db, self)
+    }
 }
 impl ToNavFromAst for hir::Enum {
     const KIND: SymbolKind = SymbolKind::Enum;
+    fn container_name(self, db: &RootDatabase) -> Option<SmolStr> {
+        container_name(db, self)
+    }
 }
 impl ToNavFromAst for hir::Variant {
     const KIND: SymbolKind = SymbolKind::Variant;
 }
 impl ToNavFromAst for hir::Union {
     const KIND: SymbolKind = SymbolKind::Union;
+    fn container_name(self, db: &RootDatabase) -> Option<SmolStr> {
+        container_name(db, self)
+    }
 }
 impl ToNavFromAst for hir::TypeAlias {
     const KIND: SymbolKind = SymbolKind::TypeAlias;
+    fn container_name(self, db: &RootDatabase) -> Option<SmolStr> {
+        container_name(db, self)
+    }
 }
 impl ToNavFromAst for hir::Trait {
     const KIND: SymbolKind = SymbolKind::Trait;
+    fn container_name(self, db: &RootDatabase) -> Option<SmolStr> {
+        container_name(db, self)
+    }
 }
 impl ToNavFromAst for hir::TraitAlias {
     const KIND: SymbolKind = SymbolKind::TraitAlias;
+    fn container_name(self, db: &RootDatabase) -> Option<SmolStr> {
+        container_name(db, self)
+    }
 }
 
 impl<D> TryToNav for D
@@ -269,6 +293,7 @@ where
         );
         res.docs = self.docs(db);
         res.description = Some(self.display(db).to_string());
+        res.container_name = self.container_name(db);
         Some(res)
     }
 }
@@ -544,32 +569,6 @@ impl TryToNav for hir::ConstParam {
     }
 }
 
-/// Get a description of a symbol.
-///
-/// e.g. `struct Name`, `enum Name`, `fn Name`
-pub(crate) fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option<String> {
-    let sema = Semantics::new(db);
-    let node = symbol.loc.syntax(&sema);
-
-    match_ast! {
-        match node {
-            ast::Fn(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
-            ast::Struct(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
-            ast::Enum(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
-            ast::Trait(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
-            ast::TraitAlias(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
-            ast::Module(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
-            ast::TypeAlias(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
-            ast::Const(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
-            ast::Static(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
-            ast::RecordField(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
-            ast::Variant(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
-            ast::Union(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
-            _ => None,
-        }
-    }
-}
-
 fn orig_focus_range(
     db: &RootDatabase,
     file_id: hir::HirFileId,
@@ -614,7 +613,6 @@ fn foo() { enum FooInner { } }
                     focus_range: 34..42,
                     name: "FooInner",
                     kind: Enum,
-                    container_name: "foo",
                     description: "enum FooInner",
                 },
             ]

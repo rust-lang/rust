@@ -317,7 +317,14 @@ impl Query {
                 let (start, end) = SymbolIndex::map_value_to_range(indexed_value.value);
 
                 for symbol in &symbol_index.symbols[start..end] {
-                    if self.only_types && !symbol.kind.is_type() {
+                    if self.only_types
+                        && !matches!(
+                            symbol.def,
+                            hir::ModuleDef::Adt(..)
+                                | hir::ModuleDef::TypeAlias(..)
+                                | hir::ModuleDef::BuiltinType(..)
+                        )
+                    {
                         continue;
                     }
                     if self.exact {
