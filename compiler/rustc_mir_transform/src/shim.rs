@@ -1,3 +1,4 @@
+use hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
@@ -834,27 +835,40 @@ fn build_call_shim<'tcx>(
 }
 
 pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
-    debug_assert!(tcx.is_constructor(ctor_id));
-
     let param_env = tcx.param_env_reveal_all_normalized(ctor_id);
-
-    // Normalize the sig.
-    let sig = tcx
-        .fn_sig(ctor_id)
-        .subst_identity()
-        .no_bound_vars()
-        .expect("LBR in ADT constructor signature");
-    let sig = tcx.normalize_erasing_regions(param_env, sig);
-
-    let ty::Adt(adt_def, substs) = sig.output().kind() else {
-        bug!("unexpected type for ADT ctor {:?}", sig.output());
-    };
-
-    debug!("build_ctor: ctor_id={:?} sig={:?}", ctor_id, sig);
-
     let span = tcx.def_span(ctor_id);
 
-    let local_decls = local_decls_for_sig(&sig, span);
+    let (local_decls, inputs, adt_ty) = match tcx.def_kind(ctor_id) {
+        DefKind::Ctor(_, CtorKind::Fn) => {
+            // Normalize the sig.
+            let sig = tcx
+                .fn_sig(ctor_id)
+                .subst_identity()
+                .no_bound_vars()
+                .expect("LBR in ADT constructor signature");
+            let sig = tcx.normalize_erasing_regions(param_env, sig);
+            debug!("build_ctor: ctor_id={:?} sig={:?}", ctor_id, sig);
+
+            (local_decls_for_sig(&sig, span), sig.inputs().len(), sig.output())
+        }
+        DefKind::Ctor(of, CtorKind::Const) => {
+            let mut ctor_id = ctor_id;
+            if let CtorOf::Variant = of {
+                ctor_id = tcx.parent(ctor_id);
+            }
+            let adt = tcx.parent(ctor_id);
+            let adt_ty =
+                tcx.normalize_erasing_regions(param_env, tcx.type_of(adt).subst_identity());
+
+            let local_decls = std::iter::once(LocalDecl::new(adt_ty, span)).collect();
+            (local_decls, 0, adt_ty)
+        }
+        def_kind => bug!("ctor_id {:?} was expected to be a `DefKind::Ctor`", def_kind),
+    };
+
+    let ty::Adt(adt_def, substs) = adt_ty.kind() else {
+        bug!("unexpected type for ADT ctor {:?}", adt_ty);
+    };
 
     let source_info = SourceInfo::outermost(span);
 
@@ -891,13 +905,7 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     };
 
     let source = MirSource::item(ctor_id);
-    let body = new_body(
-        source,
-        IndexVec::from_elem_n(start_block, 1),
-        local_decls,
-        sig.inputs().len(),
-        span,
-    );
+    let body = new_body(source, IndexVec::from_elem_n(start_block, 1), local_decls, inputs, span);
 
     crate::pass_manager::dump_mir_for_phase_change(tcx, &body);
 

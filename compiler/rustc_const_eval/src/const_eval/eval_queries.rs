@@ -3,7 +3,7 @@ use std::borrow::Cow;
 
 use either::{Left, Right};
 
-use rustc_hir::def::DefKind;
+use rustc_hir::def::{CtorKind, DefKind};
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::mir::pretty::display_allocation;
@@ -44,6 +44,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
                     | DefKind::AnonConst
                     | DefKind::InlineConst
                     | DefKind::AssocConst
+                    | DefKind::Ctor(_, CtorKind::Const)
             ),
         "Unexpected DefKind: {:?}",
         ecx.tcx.def_kind(cid.instance.def_id())

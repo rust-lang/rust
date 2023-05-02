@@ -3839,8 +3839,44 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             )
                         }
 
-                        DefKind::Ctor(_, _) => todo!(),
-                        DefKind::Fn => todo!(),
+                        DefKind::Fn | DefKind::Ctor(_, _) => {
+                            let path_segs = self.def_ids_for_value_path_segments(
+                                path.segments,
+                                None,
+                                def_kind,
+                                def_id,
+                                ast_ct.span(),
+                            );
+
+                            let generic_segs: FxHashSet<_> =
+                                path_segs.iter().map(|&PathSeg(_, index)| index).collect();
+                            self.prohibit_generics(
+                                path.segments.iter().enumerate().filter_map(|(n, segment)| {
+                                    if generic_segs.contains(&n) { Some(segment) } else { None }
+                                }),
+                                |_| {},
+                            );
+
+                            let seg = path_segs.last().unwrap();
+                            let arg_segment = &path.segments[seg.1];
+
+                            let substs =
+                                self.ast_path_substs_for_ty(ast_ct.span(), seg.0, arg_segment);
+
+                            match def_kind {
+                                DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn) => {
+                                    ty::Const::zero_sized(
+                                        tcx,
+                                        tcx.type_of(def_id).subst(tcx, substs),
+                                    )
+                                }
+                                DefKind::Ctor(_, CtorKind::Const) => tcx.mk_const(
+                                    UnevaluatedConst { def: def_id, substs },
+                                    tcx.type_of(def_id).subst(tcx, substs),
+                                ),
+                                _ => unreachable!(),
+                            }
+                        }
 
                         DefKind::AssocFn | DefKind::AssocConst => {
                             unimplemented!("multi segment paths are not supported")

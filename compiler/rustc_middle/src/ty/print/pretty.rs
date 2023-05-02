@@ -1344,7 +1344,7 @@ pub trait PrettyPrinter<'tcx>:
         match ct.kind() {
             ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, substs }) => {
                 match self.tcx().def_kind(def) {
-                    DefKind::Const | DefKind::AssocConst => {
+                    DefKind::Ctor(_, CtorKind::Const) | DefKind::Const | DefKind::AssocConst => {
                         p!(print_value_path(def, substs))
                     }
                     DefKind::AnonConst => {

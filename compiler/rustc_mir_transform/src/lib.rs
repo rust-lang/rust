@@ -215,7 +215,7 @@ fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
     }
     impl<'tcx> Visitor<'tcx> for GatherCtors<'_> {
         fn visit_variant_data(&mut self, v: &'tcx hir::VariantData<'tcx>) {
-            if let hir::VariantData::Tuple(_, _, def_id) = *v {
+            if let hir::VariantData::Tuple(_, _, def_id) | hir::VariantData::Unit(_, def_id) = *v {
                 self.set.insert(def_id);
             }
             intravisit::walk_struct_def(self, v)
