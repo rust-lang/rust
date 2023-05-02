@@ -294,12 +294,25 @@ impl CargoWorkspace {
         }
         meta.current_dir(current_dir.as_os_str());
 
-        let mut other_options = config.extra_args.clone();
+        let mut other_options = vec![];
+        // cargo metadata only supports a subset of flags of what cargo usually accepts, and usually
+        // the only relevant flags for metadata here are unstable ones, so we pass those along
+        // but nothing else
+        let mut extra_args = config.extra_args.iter();
+        while let Some(arg) = extra_args.next() {
+            if arg == "-Z" {
+                if let Some(arg) = extra_args.next() {
+                    other_options.push("-Z".to_owned());
+                    other_options.push(arg.to_owned());
+                }
+            }
+        }
+
         if !targets.is_empty() {
             other_options.append(
                 &mut targets
                     .into_iter()
-                    .flat_map(|target| ["--filter-platform".to_string(), target])
+                    .flat_map(|target| ["--filter-platform".to_owned().to_string(), target])
                     .collect(),
             );
         }
