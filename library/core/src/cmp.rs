@@ -1321,13 +1321,13 @@ mod impls {
                         (true, true) => Some(Equal),
                     }
                 }
-                #[inline]
+                #[inline(always)]
                 fn lt(&self, other: &$t) -> bool { (*self) < (*other) }
-                #[inline]
+                #[inline(always)]
                 fn le(&self, other: &$t) -> bool { (*self) <= (*other) }
-                #[inline]
+                #[inline(always)]
                 fn ge(&self, other: &$t) -> bool { (*self) >= (*other) }
-                #[inline]
+                #[inline(always)]
                 fn gt(&self, other: &$t) -> bool { (*self) > (*other) }
             }
         )*)
@@ -1359,13 +1359,13 @@ mod impls {
                 fn partial_cmp(&self, other: &$t) -> Option<Ordering> {
                     Some(self.cmp(other))
                 }
-                #[inline]
+                #[inline(always)]
                 fn lt(&self, other: &$t) -> bool { (*self) < (*other) }
-                #[inline]
+                #[inline(always)]
                 fn le(&self, other: &$t) -> bool { (*self) <= (*other) }
-                #[inline]
+                #[inline(always)]
                 fn ge(&self, other: &$t) -> bool { (*self) >= (*other) }
-                #[inline]
+                #[inline(always)]
                 fn gt(&self, other: &$t) -> bool { (*self) > (*other) }
             }
 

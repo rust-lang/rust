@@ -9,6 +9,7 @@ use rustc_span::def_id::LOCAL_CRATE;
 
 pub mod erase;
 mod keys;
+pub mod on_disk_cache;
 pub use keys::{AsLocalKey, Key, LocalCrate};
 
 // Each of these queries corresponds to a function pointer field in the
@@ -874,7 +875,7 @@ rustc_queries! {
 
     query typeck(key: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
         desc { |tcx| "type-checking `{}`", tcx.def_path_str(key) }
-        cache_on_disk_if { true }
+        cache_on_disk_if(tcx) { !tcx.is_typeck_child(key.to_def_id()) }
     }
     query diagnostic_only_typeck(key: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
         desc { |tcx| "type-checking `{}`", tcx.def_path_str(key) }

@@ -1,6 +1,7 @@
 #![allow(unused_parens)]
 
 use crate::dep_graph;
+use crate::dep_graph::DepKind;
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
 use crate::metadata::ModChild;
@@ -17,7 +18,11 @@ use crate::mir::interpret::{
 };
 use crate::mir::interpret::{LitToConstError, LitToConstInput};
 use crate::mir::mono::CodegenUnit;
+
 use crate::query::erase::{erase, restore, Erase};
+use crate::query::on_disk_cache::CacheEncoder;
+use crate::query::on_disk_cache::EncodedDepNodeIndex;
+use crate::query::on_disk_cache::OnDiskCache;
 use crate::query::{AsLocalKey, Key};
 use crate::thir;
 use crate::traits::query::{
@@ -38,13 +43,16 @@ use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::util::AlwaysRequiresDrop;
 use crate::ty::GeneratorDiagnosticData;
 use crate::ty::{self, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt, UnusedGenericParams};
+use measureme::StringId;
 use rustc_arena::TypedArena;
 use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_attr as attr;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
+use rustc_data_structures::sync::AtomicU64;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::sync::WorkerLocal;
 use rustc_data_structures::unord::UnordSet;
@@ -58,6 +66,7 @@ use rustc_hir::hir_id::OwnerId;
 use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{Crate, ItemLocalId, TraitCandidate};
 use rustc_index::IndexVec;
+use rustc_query_system::ich::StableHashingContext;
 pub(crate) use rustc_query_system::query::QueryJobId;
 use rustc_query_system::query::*;
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
@@ -76,15 +85,68 @@ use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_query_system::ich::StableHashingContext;
+pub struct QueryKeyStringCache {
+    pub def_id_cache: FxHashMap<DefId, StringId>,
+}
 
-#[derive(Default)]
+impl QueryKeyStringCache {
+    pub fn new() -> QueryKeyStringCache {
+        QueryKeyStringCache { def_id_cache: Default::default() }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct QueryStruct<'tcx> {
+    pub try_collect_active_jobs: fn(TyCtxt<'tcx>, &mut QueryMap<DepKind>) -> Option<()>,
+    pub alloc_self_profile_query_strings: fn(TyCtxt<'tcx>, &mut QueryKeyStringCache),
+    pub encode_query_results:
+        Option<fn(TyCtxt<'tcx>, &mut CacheEncoder<'_, 'tcx>, &mut EncodedDepNodeIndex)>,
+}
+
+pub struct QuerySystemFns<'tcx> {
+    pub engine: QueryEngine,
+    pub local_providers: Providers,
+    pub extern_providers: ExternProviders,
+    pub query_structs: Vec<QueryStruct<'tcx>>,
+    pub encode_query_results: fn(
+        tcx: TyCtxt<'tcx>,
+        encoder: &mut CacheEncoder<'_, 'tcx>,
+        query_result_index: &mut EncodedDepNodeIndex,
+    ),
+    pub try_mark_green: fn(tcx: TyCtxt<'tcx>, dep_node: &dep_graph::DepNode) -> bool,
+}
+
 pub struct QuerySystem<'tcx> {
+    pub states: QueryStates<'tcx>,
     pub arenas: QueryArenas<'tcx>,
     pub caches: QueryCaches<'tcx>,
+
+    /// This provides access to the incremental compilation on-disk cache for query results.
+    /// Do not access this directly. It is only meant to be used by
+    /// `DepGraph::try_mark_green()` and the query infrastructure.
+    /// This is `None` if we are not incremental compilation mode
+    pub on_disk_cache: Option<OnDiskCache<'tcx>>,
+
+    pub fns: QuerySystemFns<'tcx>,
+
+    pub jobs: AtomicU64,
+
     // Since we erase query value types we tell the typesystem about them with `PhantomData`.
     _phantom_values: QueryPhantomValues<'tcx>,
+}
+
+impl<'tcx> QuerySystem<'tcx> {
+    pub fn new(fns: QuerySystemFns<'tcx>, on_disk_cache: Option<OnDiskCache<'tcx>>) -> Self {
+        QuerySystem {
+            states: Default::default(),
+            arenas: Default::default(),
+            caches: Default::default(),
+            on_disk_cache,
+            fns,
+            jobs: AtomicU64::new(1),
+            _phantom_values: Default::default(),
+        }
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -136,7 +198,41 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn try_mark_green(self, dep_node: &dep_graph::DepNode) -> bool {
-        self.queries.try_mark_green(self, dep_node)
+        (self.query_system.fns.try_mark_green)(self, dep_node)
+    }
+}
+
+#[inline]
+fn query_get_at<'tcx, Cache>(
+    tcx: TyCtxt<'tcx>,
+    execute_query: fn(TyCtxt<'tcx>, Span, Cache::Key, QueryMode) -> Option<Cache::Value>,
+    query_cache: &Cache,
+    span: Span,
+    key: Cache::Key,
+) -> Cache::Value
+where
+    Cache: QueryCache,
+{
+    let key = key.into_query_param();
+    match try_get_cached(tcx, query_cache, &key) {
+        Some(value) => value,
+        None => execute_query(tcx, span, key, QueryMode::Get).unwrap(),
+    }
+}
+
+#[inline]
+fn query_ensure<'tcx, Cache>(
+    tcx: TyCtxt<'tcx>,
+    execute_query: fn(TyCtxt<'tcx>, Span, Cache::Key, QueryMode) -> Option<Cache::Value>,
+    query_cache: &Cache,
+    key: Cache::Key,
+    check_cache: bool,
+) where
+    Cache: QueryCache,
+{
+    let key = key.into_query_param();
+    if try_get_cached(tcx, query_cache, &key).is_none() {
+        execute_query(tcx, DUMMY_SP, key, QueryMode::Ensure { check_cache });
     }
 }
 
@@ -345,17 +441,13 @@ macro_rules! define_callbacks {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
-                let key = key.into_query_param();
-
-                match try_get_cached(self.tcx, &self.tcx.query_system.caches.$name, &key) {
-                    Some(_) => return,
-                    None => self.tcx.queries.$name(
-                        self.tcx,
-                        DUMMY_SP,
-                        key,
-                        QueryMode::Ensure { check_cache: false },
-                    ),
-                };
+                query_ensure(
+                    self.tcx,
+                    self.tcx.query_system.fns.engine.$name,
+                    &self.tcx.query_system.caches.$name,
+                    key.into_query_param(),
+                    false,
+                );
             })*
         }
 
@@ -363,17 +455,13 @@ macro_rules! define_callbacks {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
-                let key = key.into_query_param();
-
-                match try_get_cached(self.tcx, &self.tcx.query_system.caches.$name, &key) {
-                    Some(_) => return,
-                    None => self.tcx.queries.$name(
-                        self.tcx,
-                        DUMMY_SP,
-                        key,
-                        QueryMode::Ensure { check_cache: true },
-                    ),
-                };
+                query_ensure(
+                    self.tcx,
+                    self.tcx.query_system.fns.engine.$name,
+                    &self.tcx.query_system.caches.$name,
+                    key.into_query_param(),
+                    true,
+                );
             })*
         }
 
@@ -392,13 +480,21 @@ macro_rules! define_callbacks {
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V
             {
-                let key = key.into_query_param();
-
-                restore::<$V>(match try_get_cached(self.tcx, &self.tcx.query_system.caches.$name, &key) {
-                    Some(value) => value,
-                    None => self.tcx.queries.$name(self.tcx, self.span, key, QueryMode::Get).unwrap(),
-                })
+                restore::<$V>(query_get_at(
+                    self.tcx,
+                    self.tcx.query_system.fns.engine.$name,
+                    &self.tcx.query_system.caches.$name,
+                    self.span,
+                    key.into_query_param(),
+                ))
             })*
+        }
+
+        #[derive(Default)]
+        pub struct QueryStates<'tcx> {
+            $(
+                pub $name: QueryState<$($K)*, DepKind>,
+            )*
         }
 
         pub struct Providers {
@@ -446,19 +542,13 @@ macro_rules! define_callbacks {
             fn clone(&self) -> Self { *self }
         }
 
-        pub trait QueryEngine<'tcx>: rustc_data_structures::sync::Sync {
-            fn as_any(&'tcx self) -> &'tcx dyn std::any::Any;
-
-            fn try_mark_green(&'tcx self, tcx: TyCtxt<'tcx>, dep_node: &dep_graph::DepNode) -> bool;
-
-            $($(#[$attr])*
-            fn $name(
-                &'tcx self,
-                tcx: TyCtxt<'tcx>,
-                span: Span,
-                key: query_keys::$name<'tcx>,
-                mode: QueryMode,
-            ) -> Option<Erase<$V>>;)*
+        pub struct QueryEngine {
+            $(pub $name: for<'tcx> fn(
+                TyCtxt<'tcx>,
+                Span,
+                query_keys::$name<'tcx>,
+                QueryMode,
+            ) -> Option<Erase<$V>>,)*
         }
     };
 }

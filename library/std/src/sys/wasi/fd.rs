@@ -275,12 +275,14 @@ impl WasiFd {
 }
 
 impl AsInner<OwnedFd> for WasiFd {
+    #[inline]
     fn as_inner(&self) -> &OwnedFd {
         &self.fd
     }
 }
 
 impl AsInnerMut<OwnedFd> for WasiFd {
+    #[inline]
     fn as_inner_mut(&mut self) -> &mut OwnedFd {
         &mut self.fd
     }
@@ -305,6 +307,7 @@ impl AsFd for WasiFd {
 }
 
 impl AsRawFd for WasiFd {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         self.fd.as_raw_fd()
     }

@@ -112,6 +112,7 @@ impl FileDesc {
 }
 
 impl AsInner<c_int> for FileDesc {
+    #[inline]
     fn as_inner(&self) -> &c_int {
         &self.fd
     }
@@ -462,6 +463,7 @@ impl Socket {
 }
 
 impl AsInner<c_int> for Socket {
+    #[inline]
     fn as_inner(&self) -> &c_int {
         self.0.as_inner()
     }

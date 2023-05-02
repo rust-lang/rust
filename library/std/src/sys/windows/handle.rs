@@ -34,6 +34,7 @@ impl Handle {
 }
 
 impl AsInner<OwnedHandle> for Handle {
+    #[inline]
     fn as_inner(&self) -> &OwnedHandle {
         &self.0
     }

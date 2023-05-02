@@ -169,5 +169,40 @@ builtin_macros_asm_pure_no_output = asm with the `pure` option must have at leas
 
 builtin_macros_asm_modifier_invalid = asm template modifier must be a single character
 
+builtin_macros_asm_requires_template = requires at least a template string argument
+
+builtin_macros_asm_expected_comma = expected token: `,`
+    .label = expected `,`
+
+builtin_macros_asm_underscore_input = _ cannot be used for input operands
+
+builtin_macros_asm_sym_no_path = expected a path for argument to `sym`
+
+builtin_macros_asm_expected_other = expected operand, {$is_global_asm ->
+    [true] options
+    *[false] clobber_abi, options
+    }, or additional template string
+
+builtin_macros_asm_duplicate_arg = duplicate argument named `{$name}`
+    .label = previously here
+    .arg = duplicate argument
+
+builtin_macros_asm_pos_after = positional arguments cannot follow named arguments or explicit register arguments
+    .pos = positional argument
+    .named = named argument
+    .explicit = explicit register argument
+
+builtin_macros_asm_noreturn = asm outputs are not allowed with the `noreturn` option
+
+builtin_macros_global_asm_clobber_abi = `clobber_abi` cannot be used with `global_asm!`
+
+builtin_macros_asm_clobber_no_reg = asm with `clobber_abi` must specify explicit registers for outputs
+builtin_macros_asm_clobber_abi = clobber_abi
+builtin_macros_asm_clobber_outputs = generic outputs
+
+builtin_macros_asm_opt_already_provided = the `{$symbol}` option was already provided
+    .label = this option was already provided
+    .suggestion = remove this option
+
 builtin_macros_test_runner_invalid = `test_runner` argument must be a path
 builtin_macros_test_runner_nargs = `#![test_runner(..)]` accepts exactly 1 argument

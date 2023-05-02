@@ -7,13 +7,5 @@ LL | #![feature(return_type_notation, async_fn_in_trait)]
    = note: see issue #109417 <https://github.com/rust-lang/rust/issues/109417> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-warning: the feature `async_fn_in_trait` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/basic.rs:5:34
-   |
-LL | #![feature(return_type_notation, async_fn_in_trait)]
-   |                                  ^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
-
-warning: 2 warnings emitted
+warning: 1 warning emitted
 

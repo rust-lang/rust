@@ -4014,7 +4014,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![feature(c_unwind)]
     /// #![warn(ffi_unwind_calls)]
     ///
     /// extern "C-unwind" {
@@ -4037,8 +4036,7 @@ declare_lint! {
     /// that desire this ability it is therefore necessary to avoid such calls.
     pub FFI_UNWIND_CALLS,
     Allow,
-    "call to foreign functions or function pointers with FFI-unwind ABI",
-    @feature_gate = sym::c_unwind;
+    "call to foreign functions or function pointers with FFI-unwind ABI"
 }
 
 declare_lint! {

@@ -11,6 +11,7 @@ use arrayvec::ArrayVec;
 use thin_vec::ThinVec;
 
 use rustc_ast as ast;
+use rustc_ast_pretty::pprust;
 use rustc_attr::{ConstStability, Deprecation, Stability, StabilityLevel};
 use rustc_const_eval::const_eval::is_unstable_const_fn;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -710,6 +711,78 @@ impl Item {
             None => def_id,
         };
         Some(tcx.visibility(def_id))
+    }
+
+    pub(crate) fn attributes(&self, tcx: TyCtxt<'_>, keep_as_is: bool) -> Vec<String> {
+        const ALLOWED_ATTRIBUTES: &[Symbol] =
+            &[sym::export_name, sym::link_section, sym::no_mangle, sym::repr, sym::non_exhaustive];
+
+        use rustc_abi::IntegerType;
+        use rustc_middle::ty::ReprFlags;
+
+        let mut attrs: Vec<String> = self
+            .attrs
+            .other_attrs
+            .iter()
+            .filter_map(|attr| {
+                if keep_as_is {
+                    Some(pprust::attribute_to_string(attr))
+                } else if ALLOWED_ATTRIBUTES.contains(&attr.name_or_empty()) {
+                    Some(
+                        pprust::attribute_to_string(attr)
+                            .replace("\\\n", "")
+                            .replace('\n', "")
+                            .replace("  ", " "),
+                    )
+                } else {
+                    None
+                }
+            })
+            .collect();
+        if let Some(def_id) = self.item_id.as_def_id() &&
+            !def_id.is_local() &&
+            // This check is needed because `adt_def` will panic if not a compatible type otherwise...
+            matches!(self.type_(), ItemType::Struct | ItemType::Enum | ItemType::Union)
+        {
+            let repr = tcx.adt_def(def_id).repr();
+            let mut out = Vec::new();
+            if repr.flags.contains(ReprFlags::IS_C) {
+                out.push("C");
+            }
+            if repr.flags.contains(ReprFlags::IS_TRANSPARENT) {
+                out.push("transparent");
+            }
+            if repr.flags.contains(ReprFlags::IS_SIMD) {
+                out.push("simd");
+            }
+            let pack_s;
+            if let Some(pack) = repr.pack {
+                pack_s = format!("packed({})", pack.bytes());
+                out.push(&pack_s);
+            }
+            let align_s;
+            if let Some(align) = repr.align {
+                align_s = format!("align({})", align.bytes());
+                out.push(&align_s);
+            }
+            let int_s;
+            if let Some(int) = repr.int {
+                int_s = match int {
+                    IntegerType::Pointer(is_signed) => {
+                        format!("{}size", if is_signed { 'i' } else { 'u' })
+                    }
+                    IntegerType::Fixed(size, is_signed) => {
+                        format!("{}{}", if is_signed { 'i' } else { 'u' }, size.size().bytes() * 8)
+                    }
+                };
+                out.push(&int_s);
+            }
+            if out.is_empty() {
+                return Vec::new();
+            }
+            attrs.push(format!("#[repr({})]", out.join(", ")));
+        }
+        attrs
     }
 }
 

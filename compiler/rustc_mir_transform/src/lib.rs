@@ -616,13 +616,10 @@ fn promoted_mir(tcx: TyCtxt<'_>, def: LocalDefId) -> &IndexVec<Promoted, Body<'_
         return tcx.arena.alloc(IndexVec::new());
     }
 
-    let tainted_by_errors = tcx.mir_borrowck(def).tainted_by_errors;
+    tcx.ensure_with_value().mir_borrowck(def);
     let mut promoted = tcx.mir_promoted(def).1.steal();
 
     for body in &mut promoted {
-        if let Some(error_reported) = tainted_by_errors {
-            body.tainted_by_errors = Some(error_reported);
-        }
         run_analysis_to_runtime_passes(tcx, body);
     }
 

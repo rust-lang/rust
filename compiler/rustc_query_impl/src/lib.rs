@@ -12,11 +12,9 @@
 #![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
-extern crate rustc_macros;
-#[macro_use]
 extern crate rustc_middle;
 
-use rustc_data_structures::sync::AtomicU64;
+use crate::plumbing::{encode_all_query_results, try_mark_green};
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::{self, DepKind, DepKindStruct};
 use rustc_middle::query::erase::{erase, restore, Erase};
@@ -24,7 +22,7 @@ use rustc_middle::query::AsLocalKey;
 use rustc_middle::ty::query::{
     query_keys, query_provided, query_provided_to_value, query_storage, query_values,
 };
-use rustc_middle::ty::query::{ExternProviders, Providers, QueryEngine};
+use rustc_middle::ty::query::{ExternProviders, Providers, QueryEngine, QuerySystemFns};
 use rustc_middle::ty::TyCtxt;
 use rustc_query_system::dep_graph::SerializedDepNodeIndex;
 use rustc_query_system::Value;
@@ -32,15 +30,10 @@ use rustc_span::Span;
 
 #[macro_use]
 mod plumbing;
-pub use plumbing::QueryCtxt;
-use rustc_query_system::query::*;
-#[cfg(parallel_compiler)]
-pub use rustc_query_system::query::{deadlock, QueryContext};
+pub use crate::plumbing::QueryCtxt;
 
 pub use rustc_query_system::query::QueryConfig;
-
-mod on_disk_cache;
-pub use on_disk_cache::OnDiskCache;
+use rustc_query_system::query::*;
 
 mod profiling_support;
 pub use self::profiling_support::alloc_self_profile_query_strings;
@@ -54,9 +47,16 @@ trait QueryConfigRestored<'tcx>: QueryConfig<QueryCtxt<'tcx>> + Default {
 
 rustc_query_append! { define_queries! }
 
-impl<'tcx> Queries<'tcx> {
-    // Force codegen in the dyn-trait transformation in this crate.
-    pub fn as_dyn(&'tcx self) -> &'tcx dyn QueryEngine<'tcx> {
-        self
+pub fn query_system_fns<'tcx>(
+    local_providers: Providers,
+    extern_providers: ExternProviders,
+) -> QuerySystemFns<'tcx> {
+    QuerySystemFns {
+        engine: engine(),
+        local_providers,
+        extern_providers,
+        query_structs: make_dep_kind_array!(query_structs).to_vec(),
+        encode_query_results: encode_all_query_results,
+        try_mark_green: try_mark_green,
     }
 }

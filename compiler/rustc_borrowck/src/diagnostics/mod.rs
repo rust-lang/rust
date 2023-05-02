@@ -1085,12 +1085,21 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             }
                         }
                     } else {
-                        err.subdiagnostic(CaptureReasonLabel::MethodCall {
-                            fn_call_span,
-                            place_name: &place_name,
-                            is_partial,
-                            is_loop_message,
-                        });
+                        if let Some((CallDesugaringKind::Await, _)) = desugaring {
+                            err.subdiagnostic(CaptureReasonLabel::Await {
+                                fn_call_span,
+                                place_name: &place_name,
+                                is_partial,
+                                is_loop_message,
+                            });
+                        } else {
+                            err.subdiagnostic(CaptureReasonLabel::MethodCall {
+                                fn_call_span,
+                                place_name: &place_name,
+                                is_partial,
+                                is_loop_message,
+                            });
+                        }
                         // Erase and shadow everything that could be passed to the new infcx.
                         let ty = moved_place.ty(self.body, tcx).ty;
 

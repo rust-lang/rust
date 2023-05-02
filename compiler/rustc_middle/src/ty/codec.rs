@@ -500,7 +500,6 @@ impl_arena_copy_decoder! {<'tcx>
 macro_rules! implement_ty_decoder {
     ($DecoderName:ident <$($typaram:tt),*>) => {
         mod __ty_decoder_impl {
-            use std::borrow::Cow;
             use rustc_serialize::Decoder;
 
             use super::$DecoderName;

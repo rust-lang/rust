@@ -7,19 +7,11 @@ LL | #![feature(return_type_notation, async_fn_in_trait)]
    = note: see issue #109417 <https://github.com/rust-lang/rust/issues/109417> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-warning: the feature `async_fn_in_trait` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/equality.rs:3:34
-   |
-LL | #![feature(return_type_notation, async_fn_in_trait)]
-   |                                  ^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
-
 error: return type notation is not allowed to use type equality
-  --> $DIR/equality.rs:13:18
+  --> $DIR/equality.rs:12:18
    |
 LL | fn test<T: Trait<method() = Box<dyn Future<Output = ()>>>>() {}
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error; 2 warnings emitted
+error: aborting due to previous error; 1 warning emitted
 

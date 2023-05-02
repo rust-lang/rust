@@ -1309,7 +1309,7 @@ impl Config {
         if config.llvm_from_ci {
             let triple = &config.build.triple;
             let ci_llvm_bin = config.ci_llvm_root().join("bin");
-            let mut build_target = config
+            let build_target = config
                 .target_config
                 .entry(config.build)
                 .or_insert_with(|| Target::from_triple(&triple));

@@ -1,23 +1,12 @@
-use crate::QueryCtxt;
 use measureme::{StringComponent, StringId};
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfiler;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathData;
+use rustc_middle::ty::query::QueryKeyStringCache;
 use rustc_middle::ty::TyCtxt;
 use rustc_query_system::query::QueryCache;
 use std::fmt::Debug;
 use std::io::Write;
-
-pub(crate) struct QueryKeyStringCache {
-    def_id_cache: FxHashMap<DefId, StringId>,
-}
-
-impl QueryKeyStringCache {
-    fn new() -> QueryKeyStringCache {
-        QueryKeyStringCache { def_id_cache: Default::default() }
-    }
-}
 
 struct QueryKeyStringBuilder<'p, 'tcx> {
     profiler: &'p SelfProfiler,
@@ -253,9 +242,8 @@ pub fn alloc_self_profile_query_strings(tcx: TyCtxt<'_>) {
     }
 
     let mut string_cache = QueryKeyStringCache::new();
-    let queries = QueryCtxt::from_tcx(tcx);
 
-    for query in &queries.queries.query_structs {
+    for query in &tcx.query_system.fns.query_structs {
         (query.alloc_self_profile_query_strings)(tcx, &mut string_cache);
     }
 }

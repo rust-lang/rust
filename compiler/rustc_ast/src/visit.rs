@@ -864,7 +864,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         ExprKind::Async(_, body) => {
             visitor.visit_block(body);
         }
-        ExprKind::Await(expr) => visitor.visit_expr(expr),
+        ExprKind::Await(expr, _) => visitor.visit_expr(expr),
         ExprKind::Assign(lhs, rhs, _) => {
             visitor.visit_expr(lhs);
             visitor.visit_expr(rhs);

@@ -60,10 +60,17 @@ impl<'a, T> IntoIterator for &'a mut [T] {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct Iter<'a, T: 'a> {
+    /// The pointer to the next element to return, or the past-the-end location
+    /// if the iterator is empty.
+    ///
+    /// This address will be used for all ZST elements, never changed.
     ptr: NonNull<T>,
-    end: *const T, // If T is a ZST, this is actually ptr+len. This encoding is picked so that
-    // ptr == end is a quick test for the Iterator being empty, that works
-    // for both ZST and non-ZST.
+    /// For non-ZSTs, the non-null pointer to the past-the-end element.
+    ///
+    /// For ZSTs, this is `ptr.wrapping_byte_add(len)`.
+    ///
+    /// For all types, `ptr == end` tests whether the iterator is empty.
+    end: *const T,
     _marker: PhantomData<&'a T>,
 }
 
@@ -179,10 +186,17 @@ impl<T> AsRef<[T]> for Iter<'_, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct IterMut<'a, T: 'a> {
+    /// The pointer to the next element to return, or the past-the-end location
+    /// if the iterator is empty.
+    ///
+    /// This address will be used for all ZST elements, never changed.
     ptr: NonNull<T>,
-    end: *mut T, // If T is a ZST, this is actually ptr+len. This encoding is picked so that
-    // ptr == end is a quick test for the Iterator being empty, that works
-    // for both ZST and non-ZST.
+    /// For non-ZSTs, the non-null pointer to the past-the-end element.
+    ///
+    /// For ZSTs, this is `ptr.wrapping_byte_add(len)`.
+    ///
+    /// For all types, `ptr == end` tests whether the iterator is empty.
+    end: *mut T,
     _marker: PhantomData<&'a mut T>,
 }
 
