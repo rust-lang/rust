@@ -10,12 +10,9 @@ export const hover = new lc.RequestType<
     HoverParams,
     (lc.Hover & { actions: CommandLinkGroup[] }) | null,
     void
->("textDocument/hover");
-export type HoverParams = { position: lc.Position | lc.Range } & Omit<
-    lc.TextDocumentPositionParams,
-    "position"
-> &
-    lc.WorkDoneProgressParams;
+>(lc.HoverRequest.method);
+export type HoverParams = { position: lc.Position | lc.Range } & Omit<lc.HoverParams, "position">;
+
 export type CommandLink = {
     /**
      * A tooltip for the command, when represented in the UI.
