@@ -76,8 +76,8 @@ mod passes;
 mod redundant_semicolon;
 mod traits;
 mod types;
-mod unused;
 mod unnecessary_send_constraint;
+mod unused;
 
 pub use array_into_iter::ARRAY_INTO_ITER;
 
