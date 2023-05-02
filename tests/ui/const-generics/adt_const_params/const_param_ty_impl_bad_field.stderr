@@ -1,0 +1,12 @@
+error[E0204]: the trait `ConstParamTy` cannot be implemented for this type
+  --> $DIR/const_param_ty_impl_bad_field.rs:10:36
+   |
+LL | struct CantParam(NotParam);
+   |                  -------- this field does not implement `ConstParamTy`
+LL |
+LL | impl std::marker::ConstParamTy for CantParam {}
+   |                                    ^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0204`.

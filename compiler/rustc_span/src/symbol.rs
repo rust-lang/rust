@@ -531,6 +531,7 @@ symbols! {
         const_mut_refs,
         const_panic,
         const_panic_fmt,
+        const_param_ty,
         const_precise_live_drops,
         const_raw_ptr_deref,
         const_raw_ptr_to_usize_cast,
