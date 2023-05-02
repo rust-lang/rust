@@ -160,17 +160,13 @@ impl TraitImpls {
         Arc::new(impls)
     }
 
-    pub(crate) fn trait_impls_in_deps_query(db: &dyn HirDatabase, krate: CrateId) -> Arc<Self> {
+    pub(crate) fn trait_impls_in_deps_query(
+        db: &dyn HirDatabase,
+        krate: CrateId,
+    ) -> Arc<[Arc<Self>]> {
         let _p = profile::span("trait_impls_in_deps_query").detail(|| format!("{krate:?}"));
         let crate_graph = db.crate_graph();
-        let mut res = Self { map: FxHashMap::default() };
-
-        for krate in crate_graph.transitive_deps(krate) {
-            res.merge(&db.trait_impls_in_crate(krate));
-        }
-        res.shrink_to_fit();
-
-        Arc::new(res)
+        crate_graph.transitive_deps(krate).map(|krate| db.trait_impls_in_crate(krate)).collect()
     }
 
     fn shrink_to_fit(&mut self) {
@@ -205,15 +201,6 @@ impl TraitImpls {
                 for (_, block_def_map) in body.blocks(db.upcast()) {
                     self.collect_def_map(db, &block_def_map);
                 }
-            }
-        }
-    }
-
-    fn merge(&mut self, other: &Self) {
-        for (trait_, other_map) in &other.map {
-            let map = self.map.entry(*trait_).or_default();
-            for (fp, impls) in other_map {
-                map.entry(*fp).or_default().extend(impls);
             }
         }
     }
@@ -713,10 +700,12 @@ fn lookup_impl_assoc_item_for_trait_ref(
     env: Arc<TraitEnvironment>,
     name: &Name,
 ) -> Option<(AssocItemId, Substitution)> {
+    let hir_trait_id = trait_ref.hir_trait_id();
     let self_ty = trait_ref.self_type_parameter(Interner);
     let self_ty_fp = TyFingerprint::for_trait_impl(&self_ty)?;
     let impls = db.trait_impls_in_deps(env.krate);
-    let impls = impls.for_trait_and_self_ty(trait_ref.hir_trait_id(), self_ty_fp);
+    let impls =
+        impls.iter().flat_map(|impls| impls.for_trait_and_self_ty(hir_trait_id, self_ty_fp));
 
     let table = InferenceTable::new(db, env);
 

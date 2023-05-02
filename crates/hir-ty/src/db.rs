@@ -134,7 +134,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn trait_impls_in_block(&self, block: BlockId) -> Arc<TraitImpls>;
 
     #[salsa::invoke(TraitImpls::trait_impls_in_deps_query)]
-    fn trait_impls_in_deps(&self, krate: CrateId) -> Arc<TraitImpls>;
+    fn trait_impls_in_deps(&self, krate: CrateId) -> Arc<[Arc<TraitImpls>]>;
 
     // Interned IDs for Chalk integration
     #[salsa::interned]
