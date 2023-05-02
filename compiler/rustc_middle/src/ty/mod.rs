@@ -460,31 +460,21 @@ impl<'tcx> Ty<'tcx> {
     }
 }
 
-/// A subset of [`TypeFlags`] which are stored directly in the [`Ty`] pointer,
-/// as such they are faster to access.
-#[derive(Debug, Copy, Clone)]
-pub struct HotTypeFlags {
-    pub has_non_region_infer: bool,
-    pub has_infer: bool,
-    pub has_param: bool,
+bitflags::bitflags! {
+    /// A subset of [`TypeFlags`] which are stored directly in the [`Ty`] pointer,
+    /// as such they are faster to access.
+    pub struct HotTypeFlags: usize {
+        const HAS_NON_RE_INFER = 1 << 0;
+        const HAS_INFER = 1 << 1;
+        const HAS_PARAM = 1 << 2;
+    }
 }
 
 impl HotTypeFlags {
     #[inline]
     fn from_flags(flags: TypeFlags) -> Self {
-        Self {
-            has_non_region_infer: flags.intersects(TypeFlags::HAS_INFER - TypeFlags::HAS_RE_INFER),
-            has_infer: flags.intersects(TypeFlags::HAS_INFER),
-            has_param: flags.intersects(TypeFlags::HAS_PARAM),
-        }
-    }
-
-    #[inline]
-    fn intersects(self, other: Self) -> bool {
-        let Self { has_non_region_infer: self0, has_infer: self1, has_param: self2 } = self;
-        let Self { has_non_region_infer: other0, has_infer: other1, has_param: other2 } = other;
-
-        (self0 && other0) || (self1 && other1) || (self2 && other2)
+        // See the comment in `TypeFlags` def, on why this is valid
+        HotTypeFlags::from_bits_truncate(flags.bits() as _)
     }
 }
 
@@ -494,18 +484,14 @@ unsafe impl Tag for HotTypeFlags {
 
     #[inline]
     fn into_usize(self) -> usize {
-        let Self { has_non_region_infer, has_infer, has_param } = self;
-        (has_non_region_infer as usize) << 0 | (has_infer as usize) << 1 | (has_param as usize) << 2
+        self.bits
     }
 
     #[inline]
     unsafe fn from_usize(tag: usize) -> Self {
         debug_assert!(tag <= 0b111);
 
-        let has_non_region_infer = tag & 1 << 0 == 1 << 0;
-        let has_infer = tag & 1 << 1 == 1 << 1;
-        let has_param = tag & 1 << 2 == 1 << 2;
-        Self { has_non_region_infer, has_infer, has_param }
+        Self::from_bits_unchecked(tag)
     }
 }
 

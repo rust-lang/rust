@@ -50,7 +50,6 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
     fn has_hot_type_flags(&self, flags: ty::HotTypeFlags) -> bool {
         let res = self.visit_with(&mut HasHotTypeFlagsVisitor { flags }).break_value()
             == Some(FoundFlags);
-        trace!(?self, ?flags, ?res, "has_hot_type_flags");
         res
     }
     fn has_projections(&self) -> bool {
@@ -91,11 +90,7 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
     }
     #[inline]
     fn has_non_region_infer(&self) -> bool {
-        let result = self.has_hot_type_flags(ty::HotTypeFlags {
-            has_non_region_infer: true,
-            has_infer: false,
-            has_param: false,
-        });
+        let result = self.has_hot_type_flags(ty::HotTypeFlags::HAS_NON_RE_INFER);
 
         // Just to be sure hot flags are in sync
         debug_assert_eq!(
@@ -107,11 +102,7 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
     }
     #[inline]
     fn has_infer(&self) -> bool {
-        let result = self.has_hot_type_flags(ty::HotTypeFlags {
-            has_non_region_infer: false,
-            has_infer: true,
-            has_param: false,
-        });
+        let result = self.has_hot_type_flags(ty::HotTypeFlags::HAS_INFER);
 
         // Just to be sure hot flags are in sync
         debug_assert_eq!(result, self.has_type_flags(TypeFlags::HAS_INFER));
@@ -130,11 +121,7 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
     }
     #[inline]
     fn has_param(&self) -> bool {
-        let result = self.has_hot_type_flags(ty::HotTypeFlags {
-            has_non_region_infer: false,
-            has_infer: false,
-            has_param: true,
-        });
+        let result = self.has_hot_type_flags(ty::HotTypeFlags::HAS_PARAM);
 
         // Just to be sure hot flags are in sync
         debug_assert_eq!(result, self.has_type_flags(TypeFlags::HAS_PARAM));
