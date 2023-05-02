@@ -489,6 +489,14 @@ message = "This PR changes src/bootstrap/defaults/config.compiler.toml. If appro
 [mentions."src/bootstrap/defaults/config.codegen.toml"]
 message = "This PR changes src/bootstrap/defaults/config.codegen.toml. If appropriate, please also update `config.compiler.toml` so the defaults are in sync."
 
+[mentions."tests/ui/deriving/deriving-all-codegen.stdout"]
+message = "Changes to the code generated for builtin derived traits."
+cc = ["@nnethercote"]
+
+[mentions."tests/ui/stats/hir-stats.stderr"]
+message = "Changes to the size of AST and/or HIR nodes."
+cc = ["@nnethercote"]
+
 [assign]
 warn_non_default_branch = true
 contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
