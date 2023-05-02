@@ -107,10 +107,7 @@ impl VfsPath {
     /// Returns `self`'s base name and file extension.
     pub fn name_and_extension(&self) -> Option<(&str, Option<&str>)> {
         match &self.0 {
-            VfsPathRepr::PathBuf(p) => Some((
-                p.file_stem()?.to_str()?,
-                p.extension().and_then(|extension| extension.to_str()),
-            )),
+            VfsPathRepr::PathBuf(p) => p.name_and_extension(),
             VfsPathRepr::VirtualPath(p) => p.name_and_extension(),
         }
     }

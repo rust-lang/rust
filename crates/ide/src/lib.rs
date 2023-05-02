@@ -59,16 +59,18 @@ mod view_mir;
 mod interpret_function;
 mod view_item_tree;
 mod shuffle_crate_graph;
+mod fetch_crates;
 
 use std::sync::Arc;
 
 use cfg::CfgOptions;
+use fetch_crates::CrateInfo;
 use ide_db::{
     base_db::{
         salsa::{self, ParallelDatabase},
         CrateOrigin, Env, FileLoader, FileSet, SourceDatabase, VfsPath,
     },
-    symbol_index, FxHashMap, LineIndexDatabase,
+    symbol_index, FxHashMap, FxIndexSet, LineIndexDatabase,
 };
 use syntax::SourceFile;
 
@@ -329,6 +331,10 @@ impl Analysis {
     /// Renders the crate graph to GraphViz "dot" syntax.
     pub fn view_crate_graph(&self, full: bool) -> Cancellable<Result<String, String>> {
         self.with_db(|db| view_crate_graph::view_crate_graph(db, full))
+    }
+
+    pub fn fetch_crates(&self) -> Cancellable<FxIndexSet<CrateInfo>> {
+        self.with_db(|db| fetch_crates::fetch_crates(db))
     }
 
     pub fn expand_macro(&self, position: FilePosition) -> Cancellable<Option<ExpandedMacro>> {

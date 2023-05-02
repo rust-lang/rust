@@ -184,6 +184,13 @@ impl AbsPath {
         self.0.ends_with(&suffix.0)
     }
 
+    pub fn name_and_extension(&self) -> Option<(&str, Option<&str>)> {
+        Some((
+            self.file_stem()?.to_str()?,
+            self.extension().and_then(|extension| extension.to_str()),
+        ))
+    }
+
     // region:delegate-methods
 
     // Note that we deliberately don't implement `Deref<Target = Path>` here.

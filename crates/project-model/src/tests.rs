@@ -102,6 +102,18 @@ fn replace_root(s: &mut String, direction: bool) {
     }
 }
 
+fn replace_fake_sys_root(s: &mut String) {
+    let fake_sysroot_path = get_test_path("fake-sysroot");
+    let fake_sysroot_path = if cfg!(windows) {
+        let normalized_path =
+            fake_sysroot_path.to_str().expect("expected str").replace(r#"\"#, r#"\\"#);
+        format!(r#"{}\\"#, normalized_path)
+    } else {
+        format!("{}/", fake_sysroot_path.to_str().expect("expected str"))
+    };
+    *s = s.replace(&fake_sysroot_path, "$FAKESYSROOT$")
+}
+
 fn get_test_path(file: &str) -> PathBuf {
     let base = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     base.join("test_data").join(file)
@@ -140,6 +152,7 @@ fn to_crate_graph(project_workspace: ProjectWorkspace) -> (CrateGraph, ProcMacro
 fn check_crate_graph(crate_graph: CrateGraph, expect: ExpectFile) {
     let mut crate_graph = format!("{crate_graph:#?}");
     replace_root(&mut crate_graph, false);
+    replace_fake_sys_root(&mut crate_graph);
     expect.assert_eq(&crate_graph);
 }
 

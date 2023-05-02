@@ -660,6 +660,7 @@ impl GlobalState {
             .on_sync::<lsp_ext::OnEnter>(handlers::handle_on_enter)
             .on_sync::<lsp_types::request::SelectionRangeRequest>(handlers::handle_selection_range)
             .on_sync::<lsp_ext::MatchingBrace>(handlers::handle_matching_brace)
+            .on::<lsp_ext::FetchDependencyList>(handlers::fetch_dependency_list)
             .on::<lsp_ext::AnalyzerStatus>(handlers::handle_analyzer_status)
             .on::<lsp_ext::SyntaxTree>(handlers::handle_syntax_tree)
             .on::<lsp_ext::ViewHir>(handlers::handle_view_hir)

@@ -4,11 +4,11 @@ use std::{collections::HashMap, path::PathBuf};
 
 use ide_db::line_index::WideEncoding;
 use lsp_types::request::Request;
-use lsp_types::PositionEncodingKind;
 use lsp_types::{
     notification::Notification, CodeActionKind, DocumentOnTypeFormattingParams,
     PartialResultParams, Position, Range, TextDocumentIdentifier, WorkDoneProgressParams,
 };
+use lsp_types::{PositionEncodingKind, Url};
 use serde::{Deserialize, Serialize};
 
 use crate::line_index::PositionEncoding;
@@ -25,6 +25,31 @@ impl Request for AnalyzerStatus {
 #[serde(rename_all = "camelCase")]
 pub struct AnalyzerStatusParams {
     pub text_document: Option<TextDocumentIdentifier>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CrateInfoResult {
+    pub name: Option<String>,
+    pub version: Option<String>,
+    pub path: Url,
+}
+pub enum FetchDependencyList {}
+
+impl Request for FetchDependencyList {
+    type Params = FetchDependencyListParams;
+    type Result = FetchDependencyListResult;
+    const METHOD: &'static str = "rust-analyzer/fetchDependencyList";
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct FetchDependencyListParams {}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct FetchDependencyListResult {
+    pub crates: Vec<CrateInfoResult>,
 }
 
 pub enum MemoryUsage {}
@@ -359,6 +384,7 @@ impl Request for CodeActionRequest {
 }
 
 pub enum CodeActionResolveRequest {}
+
 impl Request for CodeActionResolveRequest {
     type Params = CodeAction;
     type Result = CodeAction;

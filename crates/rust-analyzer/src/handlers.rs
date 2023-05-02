@@ -3,7 +3,8 @@
 //! `ide` crate.
 
 use ide::AssistResolveStrategy;
-use lsp_types::{Diagnostic, DiagnosticTag, NumberOrString};
+use lsp_types::{Diagnostic, DiagnosticTag, NumberOrString, Url};
+
 use vfs::FileId;
 
 use crate::{global_state::GlobalStateSnapshot, to_proto, Result};
@@ -27,7 +28,7 @@ pub(crate) fn publish_diagnostics(
             severity: Some(to_proto::diagnostic_severity(d.severity)),
             code: Some(NumberOrString::String(d.code.as_str().to_string())),
             code_description: Some(lsp_types::CodeDescription {
-                href: lsp_types::Url::parse(&format!(
+                href: Url::parse(&format!(
                     "https://rust-analyzer.github.io/manual.html#{}",
                     d.code.as_str()
                 ))
