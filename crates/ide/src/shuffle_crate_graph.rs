@@ -1,9 +1,8 @@
-use std::sync::Arc;
-
 use ide_db::{
     base_db::{salsa::Durability, CrateGraph, ProcMacros, SourceDatabase},
     FxHashMap, RootDatabase,
 };
+use triomphe::Arc;
 
 // Feature: Shuffle Crate Graph
 //

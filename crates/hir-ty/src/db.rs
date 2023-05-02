@@ -1,7 +1,7 @@
 //! The home of `HirDatabase`, which is the Salsa database containing all the
 //! type inference-related queries.
 
-use std::sync::Arc;
+use std::sync;
 
 use base_db::{impl_intern_key, salsa, CrateId, Upcast};
 use hir_def::{
@@ -11,6 +11,7 @@ use hir_def::{
 };
 use la_arena::ArenaMap;
 use smallvec::SmallVec;
+use triomphe::Arc;
 
 use crate::{
     chalk_db,
@@ -154,24 +155,34 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn intern_generator(&self, id: (DefWithBodyId, ExprId)) -> InternedGeneratorId;
 
     #[salsa::invoke(chalk_db::associated_ty_data_query)]
-    fn associated_ty_data(&self, id: chalk_db::AssocTypeId) -> Arc<chalk_db::AssociatedTyDatum>;
+    fn associated_ty_data(
+        &self,
+        id: chalk_db::AssocTypeId,
+    ) -> sync::Arc<chalk_db::AssociatedTyDatum>;
 
     #[salsa::invoke(chalk_db::trait_datum_query)]
-    fn trait_datum(&self, krate: CrateId, trait_id: chalk_db::TraitId)
-        -> Arc<chalk_db::TraitDatum>;
+    fn trait_datum(
+        &self,
+        krate: CrateId,
+        trait_id: chalk_db::TraitId,
+    ) -> sync::Arc<chalk_db::TraitDatum>;
 
     #[salsa::invoke(chalk_db::struct_datum_query)]
     fn struct_datum(
         &self,
         krate: CrateId,
         struct_id: chalk_db::AdtId,
-    ) -> Arc<chalk_db::StructDatum>;
+    ) -> sync::Arc<chalk_db::StructDatum>;
 
     #[salsa::invoke(chalk_db::impl_datum_query)]
-    fn impl_datum(&self, krate: CrateId, impl_id: chalk_db::ImplId) -> Arc<chalk_db::ImplDatum>;
+    fn impl_datum(
+        &self,
+        krate: CrateId,
+        impl_id: chalk_db::ImplId,
+    ) -> sync::Arc<chalk_db::ImplDatum>;
 
     #[salsa::invoke(chalk_db::fn_def_datum_query)]
-    fn fn_def_datum(&self, krate: CrateId, fn_def_id: FnDefId) -> Arc<chalk_db::FnDefDatum>;
+    fn fn_def_datum(&self, krate: CrateId, fn_def_id: FnDefId) -> sync::Arc<chalk_db::FnDefDatum>;
 
     #[salsa::invoke(chalk_db::fn_def_variance_query)]
     fn fn_def_variance(&self, fn_def_id: FnDefId) -> chalk_db::Variances;
@@ -184,7 +195,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
         &self,
         krate: CrateId,
         id: chalk_db::AssociatedTyValueId,
-    ) -> Arc<chalk_db::AssociatedTyValue>;
+    ) -> sync::Arc<chalk_db::AssociatedTyValue>;
 
     #[salsa::invoke(crate::traits::normalize_projection_query)]
     #[salsa::transparent]

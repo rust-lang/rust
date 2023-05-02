@@ -1,9 +1,6 @@
 //! Database used for testing `hir_def`.
 
-use std::{
-    fmt, panic,
-    sync::{Arc, Mutex},
-};
+use std::{fmt, panic, sync::Mutex};
 
 use base_db::{
     salsa::{self, Durability},
@@ -13,6 +10,7 @@ use base_db::{
 use hir_expand::{db::ExpandDatabase, InFile};
 use rustc_hash::FxHashSet;
 use syntax::{algo, ast, AstNode};
+use triomphe::Arc;
 
 use crate::{
     db::DefDatabase,

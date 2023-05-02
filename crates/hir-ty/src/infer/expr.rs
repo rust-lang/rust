@@ -3,7 +3,6 @@
 use std::{
     iter::{repeat, repeat_with},
     mem,
-    sync::Arc,
 };
 
 use chalk_ir::{
@@ -21,6 +20,7 @@ use hir_def::{
 use hir_expand::name::{name, Name};
 use stdx::always;
 use syntax::ast::RangeOp;
+use triomphe::Arc;
 
 use crate::{
     autoderef::{builtin_deref, deref_by_trait, Autoderef},

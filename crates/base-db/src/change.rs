@@ -1,9 +1,10 @@
 //! Defines a unit of change that can applied to the database to get the next
 //! state. Changes are transactional.
 
-use std::{fmt, sync::Arc};
+use std::fmt;
 
 use salsa::Durability;
+use triomphe::Arc;
 use vfs::FileId;
 
 use crate::{CrateGraph, ProcMacros, SourceDatabaseExt, SourceRoot, SourceRootId};

@@ -3,12 +3,11 @@
 //! reference to a type with the field `bar`. This is an approximation of the
 //! logic in rustc (which lives in rustc_hir_analysis/check/autoderef.rs).
 
-use std::sync::Arc;
-
 use chalk_ir::cast::Cast;
 use hir_def::lang_item::LangItem;
 use hir_expand::name::name;
 use limit::Limit;
+use triomphe::Arc;
 
 use crate::{
     db::HirDatabase, infer::unify::InferenceTable, Canonical, Goal, Interner, ProjectionTyExt,

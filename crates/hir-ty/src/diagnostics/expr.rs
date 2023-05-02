@@ -3,7 +3,6 @@
 //! fields, etc.
 
 use std::fmt;
-use std::sync::Arc;
 
 use either::Either;
 use hir_def::lang_item::LangItem;
@@ -12,6 +11,7 @@ use hir_def::{ItemContainerId, Lookup};
 use hir_expand::name;
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
+use triomphe::Arc;
 use typed_arena::Arena;
 
 use crate::{

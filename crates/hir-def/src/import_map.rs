@@ -1,6 +1,6 @@
 //! A map of all publicly exported items in a crate.
 
-use std::{fmt, hash::BuildHasherDefault, sync::Arc};
+use std::{fmt, hash::BuildHasherDefault};
 
 use base_db::CrateId;
 use fst::{self, Streamer};
@@ -8,6 +8,7 @@ use hir_expand::name::Name;
 use indexmap::{map::Entry, IndexMap};
 use itertools::Itertools;
 use rustc_hash::{FxHashSet, FxHasher};
+use triomphe::Arc;
 
 use crate::{
     db::DefDatabase, item_scope::ItemInNs, visibility::Visibility, AssocItemId, ModuleDefId,

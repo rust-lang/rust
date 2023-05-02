@@ -24,8 +24,9 @@ use mbe::TokenMap;
 pub use mbe::{Origin, ValueResult};
 
 use ::tt::token_id as tt;
+use triomphe::Arc;
 
-use std::{fmt, hash::Hash, iter, sync::Arc};
+use std::{fmt, hash::Hash, iter};
 
 use base_db::{
     impl_intern_key,

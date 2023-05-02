@@ -3,7 +3,7 @@
 //!
 //! Each tick provides an immutable snapshot of the state as `WorldSnapshot`.
 
-use std::{sync::Arc, time::Instant};
+use std::time::Instant;
 
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
@@ -15,6 +15,7 @@ use proc_macro_api::ProcMacroServer;
 use project_model::{CargoWorkspace, ProjectWorkspace, Target, WorkspaceBuildScripts};
 use rustc_hash::FxHashMap;
 use stdx::hash::NoHashHashMap;
+use triomphe::Arc;
 use vfs::AnchoredPathBuf;
 
 use crate::{
@@ -161,9 +162,11 @@ impl GlobalState {
             source_root_config: SourceRootConfig::default(),
 
             proc_macro_changed: false,
-            proc_macro_clients: Arc::new([]),
+            // FIXME: use `Arc::from_iter` when it becomes available
+            proc_macro_clients: Arc::from(Vec::new()),
 
-            flycheck: Arc::new([]),
+            // FIXME: use `Arc::from_iter` when it becomes available
+            flycheck: Arc::from(Vec::new()),
             flycheck_sender,
             flycheck_receiver,
 

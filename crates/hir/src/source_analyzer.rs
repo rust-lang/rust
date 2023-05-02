@@ -5,10 +5,7 @@
 //!
 //! So, this modules should not be used during hir construction, it exists
 //! purely for "IDE needs".
-use std::{
-    iter::{self, once},
-    sync::Arc,
-};
+use std::iter::{self, once};
 
 use either::Either;
 use hir_def::{
@@ -49,6 +46,7 @@ use syntax::{
     ast::{self, AstNode},
     SyntaxKind, SyntaxNode, TextRange, TextSize,
 };
+use triomphe::Arc;
 
 use crate::{
     db::HirDatabase, semantics::PathResolution, Adt, AssocItem, BindingMode, BuiltinAttr,

@@ -1,13 +1,12 @@
 //! Applies changes to the IDE state transactionally.
 
-use std::sync::Arc;
-
 use base_db::{
     salsa::{Database, Durability},
     Change, SourceRootId,
 };
 use profile::{memory_usage, Bytes};
 use rustc_hash::FxHashSet;
+use triomphe::Arc;
 
 use crate::{symbol_index::SymbolsDatabase, RootDatabase};
 

@@ -1,4 +1,4 @@
-use std::{fmt, marker::PhantomData, sync::Arc};
+use std::{fmt, marker::PhantomData};
 
 use hir::{
     db::{AstIdMapQuery, AttrsQuery, ParseMacroExpansionQuery},
@@ -23,6 +23,7 @@ use profile::{memory_usage, Bytes};
 use std::env;
 use stdx::format_to;
 use syntax::{ast, Parse, SyntaxNode};
+use triomphe::Arc;
 
 // Feature: Status
 //

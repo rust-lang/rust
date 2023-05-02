@@ -1,8 +1,9 @@
 //! Utilities for LSP-related boilerplate code.
-use std::{mem, ops::Range, sync::Arc};
+use std::{mem, ops::Range};
 
 use lsp_server::Notification;
 use lsp_types::request::Request;
+use triomphe::Arc;
 
 use crate::{
     from_proto,

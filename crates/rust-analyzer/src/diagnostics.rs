@@ -1,11 +1,12 @@
 //! Book keeping for keeping diagnostics easily in sync with the client.
 pub(crate) mod to_proto;
 
-use std::{mem, sync::Arc};
+use std::mem;
 
 use ide::FileId;
 use ide_db::FxHashMap;
 use stdx::hash::{NoHashHashMap, NoHashHashSet};
+use triomphe::Arc;
 
 use crate::lsp_ext;
 

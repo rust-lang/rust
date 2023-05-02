@@ -13,7 +13,6 @@
 //! to certain types. To record this, we use the union-find implementation from
 //! the `ena` crate, which is extracted from rustc.
 
-use std::sync::Arc;
 use std::{convert::identity, ops::Index};
 
 use chalk_ir::{
@@ -39,6 +38,7 @@ use hir_expand::name::{name, Name};
 use la_arena::{ArenaMap, Entry};
 use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::{always, never};
+use triomphe::Arc;
 
 use crate::{
     db::HirDatabase, fold_tys, infer::coerce::CoerceMany, lower::ImplTraitLoweringMode,

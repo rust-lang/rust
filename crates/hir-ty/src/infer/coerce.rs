@@ -5,7 +5,7 @@
 //! See <https://doc.rust-lang.org/nomicon/coercions.html> and
 //! `rustc_hir_analysis/check/coercion.rs`.
 
-use std::{iter, sync::Arc};
+use std::iter;
 
 use chalk_ir::{cast::Cast, BoundVar, Goal, Mutability, TyKind, TyVariableKind};
 use hir_def::{
@@ -13,6 +13,7 @@ use hir_def::{
     lang_item::{LangItem, LangItemTarget},
 };
 use stdx::always;
+use triomphe::Arc;
 
 use crate::{
     autoderef::{Autoderef, AutoderefKind},

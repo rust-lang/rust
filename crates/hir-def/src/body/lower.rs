@@ -1,7 +1,7 @@
 //! Transforms `ast::Expr` into an equivalent `hir_def::expr::Expr`
 //! representation.
 
-use std::{mem, sync::Arc};
+use std::mem;
 
 use base_db::CrateId;
 use either::Either;
@@ -22,6 +22,7 @@ use syntax::{
     },
     AstNode, AstPtr, SyntaxNodePtr,
 };
+use triomphe::Arc;
 
 use crate::{
     body::{Body, BodyDiagnostic, BodySourceMap, ExprPtr, LabelPtr, PatPtr},

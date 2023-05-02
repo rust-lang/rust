@@ -6,13 +6,13 @@ use std::{
     fmt::{self, Debug, Display},
     hash::{BuildHasherDefault, Hash, Hasher},
     ops::Deref,
-    sync::Arc,
 };
 
 use dashmap::{DashMap, SharedValue};
 use hashbrown::HashMap;
 use once_cell::sync::OnceCell;
 use rustc_hash::FxHasher;
+use triomphe::Arc;
 
 type InternMap<T> = DashMap<Arc<T>, (), BuildHasherDefault<FxHasher>>;
 type Guard<T> = dashmap::RwLockWriteGuard<
@@ -83,7 +83,7 @@ impl<T: Internable + ?Sized> Drop for Interned<T> {
     #[inline]
     fn drop(&mut self) {
         // When the last `Ref` is dropped, remove the object from the global map.
-        if Arc::strong_count(&self.arc) == 2 {
+        if Arc::count(&self.arc) == 2 {
             // Only `self` and the global map point to the object.
 
             self.drop_slow();
@@ -102,7 +102,7 @@ impl<T: Internable + ?Sized> Interned<T> {
         // FIXME: avoid double lookup
         let (arc, _) = shard.get_key_value(&self.arc).expect("interned value removed prematurely");
 
-        if Arc::strong_count(arc) != 2 {
+        if Arc::count(arc) != 2 {
             // Another thread has interned another copy
             return;
         }

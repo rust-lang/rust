@@ -2,7 +2,6 @@
 //! requests/replies and notifications back to the client.
 use std::{
     fmt,
-    sync::Arc,
     time::{Duration, Instant},
 };
 
@@ -12,6 +11,7 @@ use flycheck::FlycheckHandle;
 use ide_db::base_db::{SourceDatabaseExt, VfsPath};
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::notification::Notification as _;
+use triomphe::Arc;
 use vfs::FileId;
 
 use crate::{

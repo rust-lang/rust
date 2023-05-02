@@ -1,6 +1,5 @@
-use std::sync::Arc;
-
 use base_db::{fixture::WithFixture, SourceDatabaseExt};
+use triomphe::Arc;
 
 use crate::{db::HirDatabase, test_db::TestDB};
 

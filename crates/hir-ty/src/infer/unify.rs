@@ -1,6 +1,6 @@
 //! Unification and canonicalization logic.
 
-use std::{fmt, iter, mem, sync::Arc};
+use std::{fmt, iter, mem};
 
 use chalk_ir::{
     cast::Cast, fold::TypeFoldable, interner::HasInterner, zip::Zip, CanonicalVarKind, FloatTy,
@@ -11,6 +11,7 @@ use either::Either;
 use ena::unify::UnifyKey;
 use hir_expand::name;
 use stdx::never;
+use triomphe::Arc;
 
 use super::{InferOk, InferResult, InferenceContext, TypeError};
 use crate::{

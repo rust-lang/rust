@@ -1,6 +1,6 @@
 //! This module provides a MIR interpreter, which is used in const eval.
 
-use std::{borrow::Cow, collections::HashMap, fmt::Write, iter, ops::Range, sync::Arc};
+use std::{borrow::Cow, collections::HashMap, fmt::Write, iter, ops::Range};
 
 use base_db::{CrateId, FileId};
 use chalk_ir::{
@@ -20,6 +20,7 @@ use intern::Interned;
 use la_arena::ArenaMap;
 use rustc_hash::FxHashMap;
 use syntax::{SyntaxNodePtr, TextRange};
+use triomphe::Arc;
 
 use crate::{
     consteval::{intern_const_scalar, ConstEvalError},

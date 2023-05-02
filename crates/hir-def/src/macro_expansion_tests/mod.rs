@@ -14,7 +14,7 @@ mod builtin_fn_macro;
 mod builtin_derive_macro;
 mod proc_macros;
 
-use std::{iter, ops::Range, sync::Arc};
+use std::{iter, ops::Range, sync};
 
 use ::mbe::TokenMap;
 use base_db::{fixture::WithFixture, ProcMacro, SourceDatabase};
@@ -50,7 +50,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         ProcMacro {
             name: "identity_when_valid".into(),
             kind: base_db::ProcMacroKind::Attr,
-            expander: Arc::new(IdentityWhenValidProcMacroExpander),
+            expander: sync::Arc::new(IdentityWhenValidProcMacroExpander),
         },
     )];
     let db = TestDB::with_files_extra_proc_macros(ra_fixture, extra_proc_macros);

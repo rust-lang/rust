@@ -1,10 +1,9 @@
-use std::sync::Arc;
-
 use dot::{Id, LabelText};
 use ide_db::{
     base_db::{CrateGraph, CrateId, Dependency, SourceDatabase, SourceDatabaseExt},
     FxHashSet, RootDatabase,
 };
+use triomphe::Arc;
 
 // Feature: View Crate Graph
 //

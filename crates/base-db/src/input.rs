@@ -6,12 +6,13 @@
 //! actual IO. See `vfs` and `project_model` in the `rust-analyzer` crate for how
 //! actual IO is done and lowered to input.
 
-use std::{fmt, mem, ops, panic::RefUnwindSafe, str::FromStr, sync::Arc};
+use std::{fmt, mem, ops, panic::RefUnwindSafe, str::FromStr, sync};
 
 use cfg::CfgOptions;
 use la_arena::{Arena, Idx};
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::SmolStr;
+use triomphe::Arc;
 use tt::token_id::Subtree;
 use vfs::{file_set::FileSet, AbsPathBuf, AnchoredPath, FileId, VfsPath};
 
@@ -263,7 +264,7 @@ pub type TargetLayoutLoadResult = Result<Arc<str>, Arc<str>>;
 pub struct ProcMacro {
     pub name: SmolStr,
     pub kind: ProcMacroKind,
-    pub expander: Arc<dyn ProcMacroExpander>,
+    pub expander: sync::Arc<dyn ProcMacroExpander>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]

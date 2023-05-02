@@ -18,10 +18,9 @@
 //!
 //!
 //! See the full discussion : <https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/Eager.20expansion.20of.20built-in.20macros>
-use std::sync::Arc;
-
 use base_db::CrateId;
 use syntax::{ted, Parse, SyntaxNode};
+use triomphe::Arc;
 
 use crate::{
     ast::{self, AstNode},

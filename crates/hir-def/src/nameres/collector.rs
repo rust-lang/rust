@@ -26,6 +26,7 @@ use limit::Limit;
 use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::always;
 use syntax::{ast, SmolStr};
+use triomphe::Arc;
 
 use crate::{
     attr::Attrs,
@@ -476,10 +477,7 @@ impl DefCollector<'_> {
                         directive.module_id,
                         MacroCallKind::Attr {
                             ast_id: ast_id.ast_id,
-                            attr_args: std::sync::Arc::new((
-                                tt::Subtree::empty(),
-                                Default::default(),
-                            )),
+                            attr_args: Arc::new((tt::Subtree::empty(), Default::default())),
                             invoc_attr_index: attr.id,
                         },
                         attr.path().clone(),

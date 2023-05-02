@@ -45,6 +45,7 @@ tracing-subscriber = { version = "0.3.16", default-features = false, features = 
 ] }
 tracing-log = "0.1.3"
 tracing-tree = "0.2.1"
+triomphe.workspace = true
 always-assert = "0.1.2"
 
 # These dependencies are unused, but we pin them to a version here to restrict them for our transitive dependencies

@@ -2,7 +2,7 @@
 //! metadata` or `rust-project.json`) into representation stored in the salsa
 //! database -- `CrateGraph`.
 
-use std::{collections::VecDeque, fmt, fs, process::Command, sync::Arc};
+use std::{collections::VecDeque, fmt, fs, process::Command, sync};
 
 use anyhow::{format_err, Context, Result};
 use base_db::{
@@ -14,6 +14,7 @@ use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
 use semver::Version;
 use stdx::always;
+use triomphe::Arc;
 
 use crate::{
     build_scripts::BuildScriptOutput,
@@ -422,7 +423,7 @@ impl ProjectWorkspace {
         let outputs = &mut match WorkspaceBuildScripts::run_once(config, &cargo_ws, progress) {
             Ok(it) => Ok(it.into_iter()),
             // io::Error is not Clone?
-            Err(e) => Err(Arc::new(e)),
+            Err(e) => Err(sync::Arc::new(e)),
         };
 
         workspaces

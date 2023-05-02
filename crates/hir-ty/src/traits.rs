@@ -1,6 +1,6 @@
 //! Trait solving using Chalk.
 
-use std::{env::var, sync::Arc};
+use std::env::var;
 
 use chalk_ir::GoalData;
 use chalk_recursive::Cache;
@@ -13,6 +13,7 @@ use hir_def::{
 };
 use hir_expand::name::{name, Name};
 use stdx::panic_context;
+use triomphe::Arc;
 
 use crate::{
     db::HirDatabase, infer::unify::InferenceTable, AliasEq, AliasTy, Canonical, DomainGoal, Goal,

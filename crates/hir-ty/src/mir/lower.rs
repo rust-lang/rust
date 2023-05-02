@@ -1,6 +1,6 @@
 //! This module generates a polymorphic MIR from a hir body
 
-use std::{fmt::Write, iter, mem, sync::Arc};
+use std::{fmt::Write, iter, mem};
 
 use base_db::FileId;
 use chalk_ir::{BoundVar, ConstData, DebruijnIndex, TyKind};
@@ -20,6 +20,7 @@ use hir_expand::name::Name;
 use la_arena::ArenaMap;
 use rustc_hash::FxHashMap;
 use syntax::TextRange;
+use triomphe::Arc;
 
 use crate::{
     consteval::ConstEvalError,

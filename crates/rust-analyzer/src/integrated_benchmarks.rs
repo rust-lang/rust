@@ -10,8 +10,6 @@
 //! in release mode in VS Code. There's however "rust-analyzer: Copy Run Command Line"
 //! which you can use to paste the command in terminal and add `--release` manually.
 
-use std::sync::Arc;
-
 use ide::{CallableSnippets, Change, CompletionConfig, FilePosition, TextSize};
 use ide_db::{
     imports::insert_use::{ImportGranularity, InsertUseConfig},
@@ -19,6 +17,7 @@ use ide_db::{
 };
 use project_model::CargoConfig;
 use test_utils::project_root;
+use triomphe::Arc;
 use vfs::{AbsPathBuf, VfsPath};
 
 use crate::cli::load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};

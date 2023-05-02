@@ -1,12 +1,11 @@
 //! Defines database & queries for name resolution.
-use std::sync::Arc;
-
 use base_db::{salsa, CrateId, SourceDatabase, Upcast};
 use either::Either;
 use hir_expand::{db::ExpandDatabase, HirFileId};
 use intern::Interned;
 use la_arena::ArenaMap;
 use syntax::{ast, AstPtr};
+use triomphe::Arc;
 
 use crate::{
     attr::{Attrs, AttrsWithOwner},

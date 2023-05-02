@@ -61,7 +61,7 @@ mod view_item_tree;
 mod shuffle_crate_graph;
 mod fetch_crates;
 
-use std::{ffi::OsStr, sync::Arc};
+use std::ffi::OsStr;
 
 use cfg::CfgOptions;
 use fetch_crates::CrateInfo;
@@ -73,6 +73,7 @@ use ide_db::{
     symbol_index, FxHashMap, FxIndexSet, LineIndexDatabase,
 };
 use syntax::SourceFile;
+use triomphe::Arc;
 
 use crate::navigation_target::{ToNav, TryToNav};
 

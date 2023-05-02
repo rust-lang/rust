@@ -1,6 +1,5 @@
-use std::sync::Arc;
-
 use base_db::SourceDatabaseExt;
+use triomphe::Arc;
 
 use crate::{db::DefDatabase, AdtId, ModuleDefId};
 

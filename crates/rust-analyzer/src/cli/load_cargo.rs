@@ -1,6 +1,6 @@
 //! Loads a Cargo project into a static instance of analysis, without support
 //! for incorporating changes.
-use std::{path::Path, sync::Arc};
+use std::path::Path;
 
 use anyhow::{anyhow, Result};
 use crossbeam_channel::{unbounded, Receiver};
@@ -11,6 +11,7 @@ use ide_db::{
 };
 use proc_macro_api::ProcMacroServer;
 use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace};
+use triomphe::Arc;
 use vfs::{loader::Handle, AbsPath, AbsPathBuf};
 
 use crate::reload::{load_proc_macro, ProjectFolders, SourceRootConfig};

@@ -1,7 +1,7 @@
 //! This module is responsible for implementing handlers for Language Server
 //! Protocol. This module specifically handles notifications.
 
-use std::{ops::Deref, sync::Arc};
+use std::ops::Deref;
 
 use itertools::Itertools;
 use lsp_types::{
@@ -9,6 +9,7 @@ use lsp_types::{
     DidChangeWatchedFilesParams, DidChangeWorkspaceFoldersParams, DidCloseTextDocumentParams,
     DidOpenTextDocumentParams, DidSaveTextDocumentParams, WorkDoneProgressCancelParams,
 };
+use triomphe::Arc;
 use vfs::{AbsPathBuf, ChangeKind, VfsPath};
 
 use crate::{
