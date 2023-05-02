@@ -1,5 +1,6 @@
 //! The implementation of `RustIrDatabase` for Chalk, which provides information
 //! about the code that Chalk needs.
+use core::ops;
 use std::{iter, sync::Arc};
 
 use tracing::debug;
@@ -126,7 +127,6 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         let in_deps = self.db.trait_impls_in_deps(self.krate);
         let in_self = self.db.trait_impls_in_crate(self.krate);
 
-        let impl_maps = [in_deps, in_self];
         let block_impls = iter::successors(self.block, |&block_id| {
             cov_mark::hit!(block_local_impls);
             self.db.block_def_map(block_id).parent().and_then(|module| module.containing_block())
@@ -146,29 +146,31 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         match fps {
             [] => {
                 debug!("Unrestricted search for {:?} impls...", trait_);
-                let mut f = |impls: Arc<TraitImpls>| {
+                let mut f = |impls: &TraitImpls| {
                     result.extend(impls.for_trait(trait_).map(id_to_chalk));
                 };
-                impl_maps.into_iter().chain(block_impls).for_each(&mut f);
+                f(&in_self);
+                in_deps.iter().map(ops::Deref::deref).for_each(&mut f);
+                block_impls.for_each(|it| f(&it));
                 def_blocks
                     .into_iter()
                     .flatten()
-                    .map(|it| self.db.trait_impls_in_block(it))
-                    .for_each(f);
+                    .for_each(|it| f(&self.db.trait_impls_in_block(it)));
             }
             fps => {
                 let mut f =
-                    |impls: Arc<TraitImpls>| {
+                    |impls: &TraitImpls| {
                         result.extend(fps.iter().flat_map(|fp| {
                             impls.for_trait_and_self_ty(trait_, *fp).map(id_to_chalk)
                         }));
                     };
-                impl_maps.into_iter().chain(block_impls).for_each(&mut f);
+                f(&in_self);
+                in_deps.iter().map(ops::Deref::deref).for_each(&mut f);
+                block_impls.for_each(|it| f(&it));
                 def_blocks
                     .into_iter()
                     .flatten()
-                    .map(|it| self.db.trait_impls_in_block(it))
-                    .for_each(f);
+                    .for_each(|it| f(&self.db.trait_impls_in_block(it)));
             }
         }
 
