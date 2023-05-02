@@ -104,7 +104,7 @@ impl fmt::Display for ExpandError {
 /// and `$()*` have special meaning (see `Var` and `Repeat` data structures)
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DeclarativeMacro {
-    rules: Vec<Rule>,
+    rules: Box<[Rule]>,
     /// Highest id of the token we have in TokenMap
     shift: Shift,
     // This is used for correctly determining the behavior of the pat fragment
@@ -217,7 +217,7 @@ impl DeclarativeMacro {
             validate(lhs)?;
         }
 
-        Ok(DeclarativeMacro { rules, shift: Shift::new(tt), is_2021 })
+        Ok(DeclarativeMacro { rules: rules.into_boxed_slice(), shift: Shift::new(tt), is_2021 })
     }
 
     /// The new, unstable `macro m {}` flavor.
@@ -250,7 +250,7 @@ impl DeclarativeMacro {
             validate(lhs)?;
         }
 
-        Ok(DeclarativeMacro { rules, shift: Shift::new(tt), is_2021 })
+        Ok(DeclarativeMacro { rules: rules.into_boxed_slice(), shift: Shift::new(tt), is_2021 })
     }
 
     pub fn expand(&self, tt: &tt::Subtree) -> ExpandResult<tt::Subtree> {

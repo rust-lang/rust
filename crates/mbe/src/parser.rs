@@ -20,7 +20,7 @@ use crate::{tt, tt_iter::TtIter, ParseError};
 /// Stuff to the right is a [`MetaTemplate`] template which is used to produce
 /// output.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct MetaTemplate(pub(crate) Vec<Op>);
+pub(crate) struct MetaTemplate(pub(crate) Box<[Op]>);
 
 impl MetaTemplate {
     pub(crate) fn parse_pattern(pattern: &tt::Subtree) -> Result<MetaTemplate, ParseError> {
@@ -44,7 +44,7 @@ impl MetaTemplate {
             res.push(op);
         }
 
-        Ok(MetaTemplate(res))
+        Ok(MetaTemplate(res.into_boxed_slice()))
     }
 }
 
