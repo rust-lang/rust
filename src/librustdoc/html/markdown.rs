@@ -855,6 +855,36 @@ pub(crate) enum Ignore {
     Some(Vec<String>),
 }
 
+/// This is the parser for fenced codeblocks attributes. It implements the following eBNF:
+///
+/// ```eBNF
+/// lang-string = *(token-list / delimited-attribute-list / comment)
+///
+/// bareword = CHAR *(CHAR)
+/// quoted-string = QUOTE *(NONQUOTE) QUOTE
+/// token = bareword / quoted-string
+/// sep = COMMA/WS *(COMMA/WS)
+/// attribute = (DOT token)/(token EQUAL token)
+/// attribute-list = [sep] attribute *(sep attribute) [sep]
+/// delimited-attribute-list = OPEN-CURLY-BRACKET attribute-list CLOSE-CURLY-BRACKET
+/// token-list = [sep] token *(sep token) [sep]
+/// comment = OPEN_PAREN *(all characters) CLOSE_PAREN
+///
+/// OPEN_PAREN = "("
+/// CLOSE_PARENT = ")"
+/// OPEN-CURLY-BRACKET = "{"
+/// CLOSE-CURLY-BRACKET = "}"
+/// CHAR = ALPHA / DIGIT / "_" / "-" / ":"
+/// QUOTE = %x22
+/// NONQUOTE = %x09 / %x20 / %x21 / %x23-7E ; TAB / SPACE / all printable characters except `"`
+/// COMMA = ","
+/// DOT = "."
+/// EQUAL = "="
+///
+/// ALPHA = %x41-5A / %x61-7A ; A-Z / a-z
+/// DIGIT = %x30-39
+/// WS = %x09 / " "
+/// ```
 pub(crate) struct TagIterator<'a, 'tcx> {
     inner: Peekable<CharIndices<'a>>,
     data: &'a str,
