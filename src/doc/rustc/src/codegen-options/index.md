@@ -90,6 +90,14 @@ It takes one of the following values:
 For example, for gcc flavor linkers, this issues the `-nodefaultlibs` flag to
 the linker.
 
+## dlltool
+
+On `windows-gnu` targets, this flag controls which dlltool `rustc` invokes to
+generate import libraries when using the [`raw-dylib` link kind](../../reference/items/external-blocks.md#the-link-attribute).
+It takes a path to [the dlltool executable](https://sourceware.org/binutils/docs/binutils/dlltool.html).
+If this flag is not specified, a dlltool executable will be inferred based on
+the host environment and target.
+
 ## embed-bitcode
 
 This flag controls whether or not the compiler embeds LLVM bitcode into object

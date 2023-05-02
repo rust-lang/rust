@@ -1,11 +1,11 @@
 error: cannot use `#[link_name]` with `#[link_ordinal]`
-  --> $DIR/link-ordinal-and-name.rs:6:5
+  --> $DIR/link-ordinal-and-name.rs:4:5
    |
 LL |     #[link_ordinal(42)]
    |     ^^^^^^^^^^^^^^^^^^^
 
 error: cannot use `#[link_name]` with `#[link_ordinal]`
-  --> $DIR/link-ordinal-and-name.rs:10:5
+  --> $DIR/link-ordinal-and-name.rs:8:5
    |
 LL |     #[link_ordinal(5)]
    |     ^^^^^^^^^^^^^^^^^^

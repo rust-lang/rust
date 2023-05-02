@@ -483,8 +483,6 @@ declare_features! (
     (active, precise_pointer_size_matching, "1.32.0", Some(56354), None),
     /// Allows macro attributes on expressions, statements and non-inline modules.
     (active, proc_macro_hygiene, "1.30.0", Some(54727), None),
-    /// Allows the use of raw-dylibs (RFC 2627).
-    (active, raw_dylib, "1.65.0", Some(58713), None),
     /// Allows `&raw const $place_expr` and `&raw mut $place_expr` expressions.
     (active, raw_ref_op, "1.41.0", Some(64490), None),
     /// Allows using the `#[register_tool]` attribute.
