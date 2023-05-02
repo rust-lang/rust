@@ -97,8 +97,10 @@ fn bit_op() {
     check_number(r#"const GOAL: u8 = !0 & !(!0 >> 1)"#, 128);
     check_number(r#"const GOAL: i8 = !0 & !(!0 >> 1)"#, 0);
     check_number(r#"const GOAL: i8 = 1 << 7"#, (1i8 << 7) as i128);
-    // FIXME: report panic here
-    check_number(r#"const GOAL: i8 = 1 << 8"#, 0);
+    check_number(r#"const GOAL: i8 = -1 << 2"#, (-1i8 << 2) as i128);
+    check_fail(r#"const GOAL: i8 = 1 << 8"#, |e| {
+        e == ConstEvalError::MirEvalError(MirEvalError::Panic("Overflow in Shl".to_string()))
+    });
 }
 
 #[test]

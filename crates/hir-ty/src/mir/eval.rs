@@ -860,6 +860,16 @@ impl Evaluator<'_> {
                     let is_signed = matches!(ty.as_builtin(), Some(BuiltinType::Int(_)));
                     let l128 = i128::from_le_bytes(pad16(lc, is_signed));
                     let r128 = i128::from_le_bytes(pad16(rc, is_signed));
+                    let check_overflow = |r: i128| {
+                        // FIXME: this is not very correct, and only catches the basic cases.
+                        let r = r.to_le_bytes();
+                        for &k in &r[lc.len()..] {
+                            if k != 0 && (k != 255 || !is_signed) {
+                                return Err(MirEvalError::Panic(format!("Overflow in {op:?}")));
+                            }
+                        }
+                        Ok(Owned(r[0..lc.len()].into()))
+                    };
                     match op {
                         BinOp::Ge | BinOp::Gt | BinOp::Le | BinOp::Lt | BinOp::Eq | BinOp::Ne => {
                             let r = op.run_compare(l128, r128) as u8;
@@ -888,28 +898,23 @@ impl Evaluator<'_> {
                                 BinOp::BitXor => l128 ^ r128,
                                 _ => unreachable!(),
                             };
-                            let r = r.to_le_bytes();
-                            for &k in &r[lc.len()..] {
-                                if k != 0 && (k != 255 || !is_signed) {
-                                    return Err(MirEvalError::Panic(format!("Overflow in {op:?}")));
-                                }
-                            }
-                            Owned(r[0..lc.len()].into())
+                            check_overflow(r)?
                         }
                         BinOp::Shl | BinOp::Shr => {
-                            let shift_amount = if r128 < 0 {
+                            let r = 'b: {
+                                if let Ok(shift_amount) = u32::try_from(r128) {
+                                    let r = match op {
+                                        BinOp::Shl => l128.checked_shl(shift_amount),
+                                        BinOp::Shr => l128.checked_shr(shift_amount),
+                                        _ => unreachable!(),
+                                    };
+                                    if let Some(r) = r {
+                                        break 'b r;
+                                    }
+                                };
                                 return Err(MirEvalError::Panic(format!("Overflow in {op:?}")));
-                            } else if r128 > 128 {
-                                return Err(MirEvalError::Panic(format!("Overflow in {op:?}")));
-                            } else {
-                                r128 as u8
                             };
-                            let r = match op {
-                                BinOp::Shl => l128 << shift_amount,
-                                BinOp::Shr => l128 >> shift_amount,
-                                _ => unreachable!(),
-                            };
-                            Owned(r.to_le_bytes()[0..lc.len()].into())
+                            check_overflow(r)?
                         }
                         BinOp::Offset => not_supported!("offset binop"),
                     }
