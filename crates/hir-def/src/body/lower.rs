@@ -505,6 +505,7 @@ impl ExprCollector<'_> {
                     .map(|it| Interned::new(TypeRef::from_ast(&this.ctx(), it)));
 
                 let prev_is_lowering_generator = mem::take(&mut this.is_lowering_generator);
+                let prev_try_block_label = this.current_try_block_label.take();
 
                 let body = this.collect_expr_opt(e.body());
 
@@ -520,11 +521,11 @@ impl ExprCollector<'_> {
                 } else {
                     ClosureKind::Closure
                 };
-                this.is_lowering_generator = prev_is_lowering_generator;
                 let capture_by =
                     if e.move_token().is_some() { CaptureBy::Value } else { CaptureBy::Ref };
                 this.is_lowering_generator = prev_is_lowering_generator;
                 this.current_binding_owner = prev_binding_owner;
+                this.current_try_block_label = prev_try_block_label;
                 this.body.exprs[result_expr_id] = Expr::Closure {
                     args: args.into(),
                     arg_types: arg_types.into(),

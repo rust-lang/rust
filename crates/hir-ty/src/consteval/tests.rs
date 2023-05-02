@@ -97,8 +97,22 @@ fn bit_op() {
     check_number(r#"const GOAL: u8 = !0 & !(!0 >> 1)"#, 128);
     check_number(r#"const GOAL: i8 = !0 & !(!0 >> 1)"#, 0);
     check_number(r#"const GOAL: i8 = 1 << 7"#, (1i8 << 7) as i128);
-    // FIXME: report panic here
-    check_number(r#"const GOAL: i8 = 1 << 8"#, 0);
+    check_number(r#"const GOAL: i8 = -1 << 2"#, (-1i8 << 2) as i128);
+    check_fail(r#"const GOAL: i8 = 1 << 8"#, |e| {
+        e == ConstEvalError::MirEvalError(MirEvalError::Panic("Overflow in Shl".to_string()))
+    });
+}
+
+#[test]
+fn floating_point() {
+    check_number(
+        r#"const GOAL: f64 = 2.0 + 3.0 * 5.5 - 8.;"#,
+        i128::from_le_bytes(pad16(&f64::to_le_bytes(10.5), true)),
+    );
+    check_number(
+        r#"const GOAL: f32 = 2.0 + 3.0 * 5.5 - 8.;"#,
+        i128::from_le_bytes(pad16(&f32::to_le_bytes(10.5), true)),
+    );
 }
 
 #[test]
