@@ -2,6 +2,7 @@
 // detected then -Zincremental-verify-ich will trigger an assertion.
 
 // ignore-wasm32-bare compiled with panic=abort by default
+// needs-unwind
 // revisions:cfail1 cfail2
 // compile-flags: -Z query-dep-graph -Cpanic=unwind
 // build-pass (FIXME(62277): could be check-pass?)

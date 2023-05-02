@@ -1,6 +1,7 @@
 include ../tools.mk
 
 # ignore-cross-compile
+# needs-unwind #[bench] and -Zpanic-abort-tests can't be combined
 
 all:
 	# Smoke-test that `#[bench]` isn't entirely broken.
