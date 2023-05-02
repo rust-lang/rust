@@ -732,14 +732,14 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
 impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // All of these operations are currently not const and are in std.
-        if in_constant(cx, expr.hir_id) || is_no_std_crate(cx) {
+        if in_constant(cx, expr.hir_id) {
             return;
         }
 
         if let ExprKind::MethodCall(path, receiver, args, _) = &expr.kind {
             let recv_ty = cx.typeck_results().expr_ty(receiver);
 
-            if recv_ty.is_floating_point() {
+            if recv_ty.is_floating_point() && !is_no_std_crate(cx) {
                 match path.ident.name.as_str() {
                     "ln" => check_ln1p(cx, expr, receiver),
                     "log" => check_log_base(cx, expr, receiver, args),
@@ -750,10 +750,12 @@ impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
                 }
             }
         } else {
-            check_expm1(cx, expr);
-            check_mul_add(cx, expr);
-            check_custom_abs(cx, expr);
-            check_log_division(cx, expr);
+            if !is_no_std_crate(cx) {
+                check_expm1(cx, expr);
+                check_mul_add(cx, expr);
+                check_custom_abs(cx, expr);
+                check_log_division(cx, expr);
+            }
             check_radians(cx, expr);
         }
     }
