@@ -18,14 +18,10 @@ impl<T: Write> JsonFormatter<T> {
     }
 
     fn writeln_message(&mut self, s: &str) -> io::Result<()> {
-        assert!(!s.contains('\n'));
-
-        self.out.write_all(s.as_ref())?;
-        self.out.write_all(b"\n")
-    }
-
-    fn write_message(&mut self, s: &str) -> io::Result<()> {
-        assert!(!s.contains('\n'));
+        // self.out will take a lock, but that lock is released when write_all returns. This
+        // results in a race condition and json output may not end with a new line. We avoid this
+        // by issuing `write_all` calls line-by-line.
+        assert_eq!(s.chars().last(), Some('\n'));
 
         self.out.write_all(s.as_ref())
     }
@@ -34,34 +30,35 @@ impl<T: Write> JsonFormatter<T> {
         &mut self,
         ty: &str,
         name: &str,
-        evt: &str,
+        event: &str,
         exec_time: Option<&time::TestExecTime>,
         stdout: Option<Cow<'_, str>>,
         extra: Option<&str>,
     ) -> io::Result<()> {
         // A doc test's name includes a filename which must be escaped for correct json.
-        self.write_message(&format!(
-            r#"{{ "type": "{}", "name": "{}", "event": "{}""#,
-            ty,
-            EscapedString(name),
-            evt
-        ))?;
-        if let Some(exec_time) = exec_time {
-            self.write_message(&format!(r#", "exec_time": {}"#, exec_time.0.as_secs_f64()))?;
-        }
-        if let Some(stdout) = stdout {
-            self.write_message(&format!(r#", "stdout": "{}""#, EscapedString(stdout)))?;
-        }
-        if let Some(extra) = extra {
-            self.write_message(&format!(r#", {extra}"#))?;
-        }
-        self.writeln_message(" }")
+        let name = EscapedString(name);
+        let exec_time_json = if let Some(exec_time) = exec_time {
+            format!(r#", "exec_time": {}"#, exec_time.0.as_secs_f64())
+        } else {
+            String::from("")
+        };
+        let stdout_json = if let Some(stdout) = stdout {
+            format!(r#", "stdout": "{}""#, EscapedString(stdout))
+        } else {
+            String::from("")
+        };
+        let extra_json =
+            if let Some(extra) = extra { format!(r#", {extra}"#) } else { String::from("") };
+        let newline = "\n";
+
+        self.writeln_message(&format!(
+                r#"{{ "type": "{ty}", "name": "{name}", "event": "{event}"{exec_time_json}{stdout_json}{extra_json} }}{newline}"#))
     }
 }
 
 impl<T: Write> OutputFormatter for JsonFormatter<T> {
     fn write_discovery_start(&mut self) -> io::Result<()> {
-        self.writeln_message(&format!(r#"{{ "type": "suite", "event": "discovery" }}"#))
+        self.writeln_message(concat!(r#"{ "type": "suite", "event": "discovery" }"#, "\n"))
     }
 
     fn write_test_discovered(&mut self, desc: &TestDesc, test_type: &str) -> io::Result<()> {
@@ -77,11 +74,13 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
             ..
         } = desc;
 
+        let name = EscapedString(name.as_slice());
+        let ignore_message = ignore_message.unwrap_or("");
+        let source_path = EscapedString(source_file);
+        let newline = "\n";
+
         self.writeln_message(&format!(
-            r#"{{ "type": "{test_type}", "event": "discovered", "name": "{}", "ignore": {ignore}, "ignore_message": "{}", "source_path": "{}", "start_line": {start_line}, "start_col": {start_col}, "end_line": {end_line}, "end_col": {end_col} }}"#,
-            EscapedString(name.as_slice()),
-            ignore_message.unwrap_or(""),
-            EscapedString(source_file),
+            r#"{{ "type": "{test_type}", "event": "discovered", "name": "{name}", "ignore": {ignore}, "ignore_message": "{ignore_message}", "source_path": "{source_path}", "start_line": {start_line}, "start_col": {start_col}, "end_line": {end_line}, "end_col": {end_col} }}{newline}"#
         ))
     }
 
@@ -89,9 +88,10 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
         let ConsoleTestDiscoveryState { tests, benchmarks, ignored, .. } = state;
 
         let total = tests + benchmarks;
+        let newline = "\n";
         self.writeln_message(&format!(
-            r#"{{ "type": "suite", "event": "completed", "tests": {tests}, "benchmarks": {benchmarks}, "total": {total}, "ignored": {ignored} }}"#
-        ))
+            r#"{{ "type": "suite", "event": "completed", "tests": {tests}, "benchmarks": {benchmarks}, "total": {total}, "ignored": {ignored} }}{newline}"#
+            ))
     }
 
     fn write_run_start(&mut self, test_count: usize, shuffle_seed: Option<u64>) -> io::Result<()> {
@@ -100,15 +100,17 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
         } else {
             String::new()
         };
+        let newline = "\n";
         self.writeln_message(&format!(
-            r#"{{ "type": "suite", "event": "started", "test_count": {test_count}{shuffle_seed_json} }}"#
-        ))
+            r#"{{ "type": "suite", "event": "started", "test_count": {test_count}{shuffle_seed_json} }}{newline}"#
+            ))
     }
 
     fn write_test_start(&mut self, desc: &TestDesc) -> io::Result<()> {
+        let name = EscapedString(desc.name.as_slice());
+        let newline = "\n";
         self.writeln_message(&format!(
-            r#"{{ "type": "test", "event": "started", "name": "{}" }}"#,
-            EscapedString(desc.name.as_slice())
+            r#"{{ "type": "test", "event": "started", "name": "{name}" }}{newline}"#
         ))
     }
 
@@ -173,53 +175,43 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
                 } else {
                     format!(r#", "mib_per_second": {}"#, bs.mb_s)
                 };
+                let name = EscapedString(desc.name.as_slice());
 
-                let line = format!(
+                self.writeln_message(&format!(
                     "{{ \"type\": \"bench\", \
-                     \"name\": \"{}\", \
-                     \"median\": {}, \
-                     \"deviation\": {}{} }}",
-                    EscapedString(desc.name.as_slice()),
-                    median,
-                    deviation,
-                    mbps
-                );
-
-                self.writeln_message(&line)
+                     \"name\": \"{name}\", \
+                     \"median\": {median}, \
+                     \"deviation\": {deviation}{mbps} }}\n",
+                ))
             }
         }
     }
 
     fn write_timeout(&mut self, desc: &TestDesc) -> io::Result<()> {
+        let name = EscapedString(desc.name.as_slice());
+        let newline = "\n";
         self.writeln_message(&format!(
-            r#"{{ "type": "test", "event": "timeout", "name": "{}" }}"#,
-            EscapedString(desc.name.as_slice())
+            r#"{{ "type": "test", "event": "timeout", "name": "{name}" }}{newline}"#,
         ))
     }
 
     fn write_run_finish(&mut self, state: &ConsoleTestState) -> io::Result<bool> {
-        self.write_message(&format!(
-            "{{ \"type\": \"suite\", \
-             \"event\": \"{}\", \
-             \"passed\": {}, \
-             \"failed\": {}, \
-             \"ignored\": {}, \
-             \"measured\": {}, \
-             \"filtered_out\": {}",
-            if state.failed == 0 { "ok" } else { "failed" },
-            state.passed,
-            state.failed,
-            state.ignored,
-            state.measured,
-            state.filtered_out,
+        let event = if state.failed == 0 { "ok" } else { "failed" };
+        let passed = state.passed;
+        let failed = state.failed;
+        let ignored = state.ignored;
+        let measured = state.measured;
+        let filtered_out = state.filtered_out;
+        let exec_time_json = if let Some(ref exec_time) = state.exec_time {
+            format!(r#", "exec_time": {}"#, exec_time.0.as_secs_f64())
+        } else {
+            String::from("")
+        };
+        let newline = "\n";
+
+        self.writeln_message(&format!(
+            r#"{{ "type": "suite", "event": "{event}", "passed": {passed}, "failed": {failed}, "ignored": {ignored}, "measured": {measured}, "filtered_out": {filtered_out}{exec_time_json} }}{newline}"#
         ))?;
-
-        if let Some(ref exec_time) = state.exec_time {
-            let time_str = format!(", \"exec_time\": {}", exec_time.0.as_secs_f64());
-            self.write_message(&time_str)?;
-        }
-
-        self.writeln_message(" }")?;
 
         Ok(state.failed == 0)
     }
