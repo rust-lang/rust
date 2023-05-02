@@ -86,7 +86,8 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
     for method in methods {
         let adt = ast::Adt::Struct(strukt.clone());
         let name = method.name(ctx.db()).to_string();
-        let impl_def = find_struct_impl(ctx, &adt, &[name]).flatten();
+        // if `find_struct_impl` returns None, that means that a function named `name` already exists.
+        let Some(impl_def) = find_struct_impl(ctx, &adt, &[name]) else { continue; };
         acc.add_group(
             &GroupLabel("Generate delegate methods…".to_owned()),
             AssistId("generate_delegate_methods", AssistKind::Generate),
@@ -379,5 +380,27 @@ struct Person {
     ag$0e: m::Age,
 }"#,
         )
+    }
+
+    #[test]
+    fn test_generate_not_eligible_if_fn_exists() {
+        check_assist_not_applicable(
+            generate_delegate_methods,
+            r#"
+struct Age(u8);
+impl Age {
+    fn age(&self) -> u8 {
+        self.0
+    }
+}
+
+struct Person {
+    ag$0e: Age,
+}
+impl Person {
+    fn age(&self) -> u8 { 0 }
+}
+"#,
+        );
     }
 }
