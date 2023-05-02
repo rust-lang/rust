@@ -1803,6 +1803,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             Rvalue::Repeat(operand, len) => {
                 self.check_operand(operand, location);
 
+                let array_ty = rvalue.ty(body.local_decls(), tcx);
+                self.prove_predicate(
+                    ty::PredicateKind::WellFormed(array_ty.into()),
+                    Locations::Single(location),
+                    ConstraintCategory::Boring,
+                );
+
                 // If the length cannot be evaluated we must assume that the length can be larger
                 // than 1.
                 // If the length is larger than 1, the repeat expression will need to copy the
