@@ -192,10 +192,6 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
             use_polonius,
         );
 
-    if infcx.tcx.trait_solver_next() {
-        assert!(opaque_type_values.is_empty());
-    }
-
     if let Some(all_facts) = &mut all_facts {
         let _prof_timer = infcx.tcx.prof.generic_activity("polonius_fact_generation");
         all_facts.universal_region.extend(universal_regions.universal_regions());
