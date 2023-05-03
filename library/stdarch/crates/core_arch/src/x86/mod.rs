@@ -381,7 +381,6 @@ mod test;
 pub use self::test::*;
 
 #[allow(non_camel_case_types)]
-#[unstable(feature = "stdsimd_internal", issue = "none")]
 pub(crate) trait m128iExt: Sized {
     fn as_m128i(self) -> __m128i;
 
@@ -434,7 +433,6 @@ impl m128iExt for __m128i {
 }
 
 #[allow(non_camel_case_types)]
-#[unstable(feature = "stdsimd_internal", issue = "none")]
 pub(crate) trait m256iExt: Sized {
     fn as_m256i(self) -> __m256i;
 
@@ -487,7 +485,6 @@ impl m256iExt for __m256i {
 }
 
 #[allow(non_camel_case_types)]
-#[unstable(feature = "stdsimd_internal", issue = "none")]
 pub(crate) trait m128Ext: Sized {
     fn as_m128(self) -> __m128;
 
@@ -505,7 +502,6 @@ impl m128Ext for __m128 {
 }
 
 #[allow(non_camel_case_types)]
-#[unstable(feature = "stdsimd_internal", issue = "none")]
 pub(crate) trait m128dExt: Sized {
     fn as_m128d(self) -> __m128d;
 
@@ -523,7 +519,6 @@ impl m128dExt for __m128d {
 }
 
 #[allow(non_camel_case_types)]
-#[unstable(feature = "stdsimd_internal", issue = "none")]
 pub(crate) trait m256Ext: Sized {
     fn as_m256(self) -> __m256;
 
@@ -541,7 +536,6 @@ impl m256Ext for __m256 {
 }
 
 #[allow(non_camel_case_types)]
-#[unstable(feature = "stdsimd_internal", issue = "none")]
 pub(crate) trait m256dExt: Sized {
     fn as_m256d(self) -> __m256d;
 
@@ -559,7 +553,6 @@ impl m256dExt for __m256d {
 }
 
 #[allow(non_camel_case_types)]
-#[unstable(feature = "stdsimd_internal", issue = "none")]
 pub(crate) trait m512iExt: Sized {
     fn as_m512i(self) -> __m512i;
 
@@ -612,7 +605,6 @@ impl m512iExt for __m512i {
 }
 
 #[allow(non_camel_case_types)]
-#[unstable(feature = "stdsimd_internal", issue = "none")]
 pub(crate) trait m512Ext: Sized {
     fn as_m512(self) -> __m512;
 
@@ -630,7 +622,6 @@ impl m512Ext for __m512 {
 }
 
 #[allow(non_camel_case_types)]
-#[unstable(feature = "stdsimd_internal", issue = "none")]
 pub(crate) trait m512dExt: Sized {
     fn as_m512d(self) -> __m512d;
 
@@ -648,7 +639,6 @@ impl m512dExt for __m512d {
 }
 
 #[allow(non_camel_case_types)]
-#[unstable(feature = "stdsimd_internal", issue = "none")]
 pub(crate) trait m128bhExt: Sized {
     fn as_m128bh(self) -> __m128bh;
 
@@ -681,7 +671,6 @@ impl m128bhExt for __m128bh {
 }
 
 #[allow(non_camel_case_types)]
-#[unstable(feature = "stdsimd_internal", issue = "none")]
 pub(crate) trait m256bhExt: Sized {
     fn as_m256bh(self) -> __m256bh;
 
@@ -714,7 +703,6 @@ impl m256bhExt for __m256bh {
 }
 
 #[allow(non_camel_case_types)]
-#[unstable(feature = "stdsimd_internal", issue = "none")]
 pub(crate) trait m512bhExt: Sized {
     fn as_m512bh(self) -> __m512bh;
 
@@ -747,121 +735,162 @@ impl m512bhExt for __m512bh {
 }
 
 mod eflags;
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::eflags::*;
 
 mod fxsr;
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::fxsr::*;
 
 mod bswap;
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::bswap::*;
 
 mod rdtsc;
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::rdtsc::*;
 
 mod cpuid;
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::cpuid::*;
 mod xsave;
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::xsave::*;
 
 mod sse;
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::sse::*;
 mod sse2;
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::sse2::*;
 mod sse3;
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::sse3::*;
 mod ssse3;
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::ssse3::*;
 mod sse41;
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::sse41::*;
 mod sse42;
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::sse42::*;
 mod avx;
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::avx::*;
 mod avx2;
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::avx2::*;
 mod fma;
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::fma::*;
 
 mod abm;
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::abm::*;
 mod bmi1;
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::bmi1::*;
 
 mod bmi2;
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::bmi2::*;
 
 #[cfg(not(stdarch_intel_sde))]
 mod sse4a;
 #[cfg(not(stdarch_intel_sde))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::sse4a::*;
 
 #[cfg(not(stdarch_intel_sde))]
 mod tbm;
 #[cfg(not(stdarch_intel_sde))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::tbm::*;
 
 mod pclmulqdq;
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::pclmulqdq::*;
 
 mod aes;
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::aes::*;
 
 mod rdrand;
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::rdrand::*;
 
 mod sha;
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::sha::*;
 
 mod adx;
+#[stable(feature = "simd_x86_adx", since = "1.33.0")]
 pub use self::adx::*;
 
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
 mod avx512f;
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub use self::avx512f::*;
 
 mod avx512bw;
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub use self::avx512bw::*;
 
 mod avx512cd;
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub use self::avx512cd::*;
 
 mod avx512ifma;
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub use self::avx512ifma::*;
 
 mod avx512vbmi;
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub use self::avx512vbmi::*;
 
 mod avx512vbmi2;
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub use self::avx512vbmi2::*;
 
 mod avx512vnni;
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub use self::avx512vnni::*;
 
 mod avx512bitalg;
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub use self::avx512bitalg::*;
 
 mod gfni;
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub use self::gfni::*;
 
 mod avx512vpopcntdq;
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub use self::avx512vpopcntdq::*;
 
 mod vaes;
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub use self::vaes::*;
 
 mod vpclmulqdq;
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub use self::vpclmulqdq::*;
 
 mod bt;
+#[stable(feature = "simd_x86_bittest", since = "1.55.0")]
 pub use self::bt::*;
 
 mod rtm;
+#[unstable(feature = "stdarch_x86_rtm", issue = "111138")]
 pub use self::rtm::*;
 
 mod f16c;
+#[stable(feature = "x86_f16c_intrinsics", since = "1.68.0")]
 pub use self::f16c::*;
 
 mod avx512bf16;
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub use self::avx512bf16::*;
