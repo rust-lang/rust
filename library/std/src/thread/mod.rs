@@ -193,22 +193,22 @@ pub use scoped::{scope, Scope, ScopedJoinHandle};
 #[macro_use]
 mod local;
 
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use self::local::{AccessError, LocalKey};
+cfg_if::cfg_if! {
+    if #[cfg(test)] {
+        // Avoid duplicating the global state assoicated with thread-locals between this crate and
+        // realstd. Miri relies on this.
+        pub use realstd::thread::{local_impl, AccessError, LocalKey};
+    } else {
+        #[stable(feature = "rust1", since = "1.0.0")]
+        pub use self::local::{AccessError, LocalKey};
 
-// Provide the type used by the thread_local! macro to access TLS keys. This
-// needs to be kept in sync with the macro itself (in `local.rs`).
-// There are three types: "static", "fast", "OS". The "OS" thread local key
-// type is accessed via platform-specific API calls and is slow, while the "fast"
-// key type is accessed via code generated via LLVM, where TLS keys are set up
-// by the elf linker. "static" is for single-threaded platforms where a global
-// static is sufficient.
-
-// Implementation details used by the thread_local!{} macro.
-#[doc(hidden)]
-#[unstable(feature = "thread_local_internals", issue = "none")]
-pub mod local_impl {
-    pub use crate::sys::common::thread_local::{thread_local_inner, Key};
+        // Implementation details used by the thread_local!{} macro.
+        #[doc(hidden)]
+        #[unstable(feature = "thread_local_internals", issue = "none")]
+        pub mod local_impl {
+            pub use crate::sys::common::thread_local::{thread_local_inner, Key};
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
