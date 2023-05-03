@@ -8,7 +8,10 @@ fn main() {}
 
 pub fn f1<T: !'static>() {}
 //~^ ERROR negative bounds are not supported
+//~| ERROR `!` may only modify trait bounds, not lifetime bound
 pub fn f2<'a, T: Ord + !'a>() {}
 //~^ ERROR negative bounds are not supported
+//~| ERROR `!` may only modify trait bounds, not lifetime bound
 pub fn f3<'a, T: !'a + Ord>() {}
 //~^ ERROR negative bounds are not supported
+//~| ERROR `!` may only modify trait bounds, not lifetime bound

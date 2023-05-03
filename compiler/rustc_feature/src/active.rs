@@ -164,6 +164,8 @@ declare_features! (
     (active, link_cfg, "1.14.0", None, None),
     /// Allows the `multiple_supertrait_upcastable` lint.
     (active, multiple_supertrait_upcastable, "1.69.0", None, None),
+    /// Allow negative trait bounds. This is an internal-only feature for testing the trait solver!
+    (incomplete, negative_bounds, "CURRENT_RUSTC_VERSION", None, None),
     /// Allows using `#[omit_gdb_pretty_printer_section]`.
     (active, omit_gdb_pretty_printer_section, "1.5.0", None, None),
     /// Allows using `#[prelude_import]` on glob `use` items.

@@ -57,6 +57,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if obligation.polarity() == ty::ImplPolarity::Negative {
             self.assemble_candidates_for_trait_alias(obligation, &mut candidates);
             self.assemble_candidates_from_impls(obligation, &mut candidates);
+            self.assemble_candidates_from_caller_bounds(stack, &mut candidates)?;
         } else {
             self.assemble_candidates_for_trait_alias(obligation, &mut candidates);
 
@@ -187,6 +188,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // Keep only those bounds which may apply, and propagate overflow if it occurs.
         for bound in matching_bounds {
+            if bound.skip_binder().polarity != stack.obligation.predicate.skip_binder().polarity {
+                continue;
+            }
+
             // FIXME(oli-obk): it is suspicious that we are dropping the constness and
             // polarity here.
             let wc = self.where_clause_may_apply(stack, bound.map_bound(|t| t.trait_ref))?;

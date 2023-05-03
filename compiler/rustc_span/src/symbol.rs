@@ -984,6 +984,7 @@ symbols! {
         needs_panic_runtime,
         neg,
         negate_unsigned,
+        negative_bounds,
         negative_impls,
         neon,
         never,

@@ -439,6 +439,7 @@ impl clean::GenericBound {
                 let modifier_str = match modifier {
                     hir::TraitBoundModifier::None => "",
                     hir::TraitBoundModifier::Maybe => "?",
+                    hir::TraitBoundModifier::Negative => "!",
                     // ~const is experimental; do not display those bounds in rustdoc
                     hir::TraitBoundModifier::MaybeConst => "",
                 };

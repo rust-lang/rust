@@ -567,6 +567,7 @@ pub enum TildeConstReason {
 pub struct OptionalConstExclusive {
     #[primary_span]
     pub span: Span,
+    pub modifier: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -692,4 +693,18 @@ pub struct ShowSpan {
     #[primary_span]
     pub span: Span,
     pub msg: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_negative_bound_not_supported)]
+pub struct NegativeBoundUnsupported {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_constraint_on_negative_bound)]
+pub struct ConstraintOnNegativeBound {
+    #[primary_span]
+    pub span: Span,
 }
