@@ -6,7 +6,8 @@ LL |     assert_send::<Box<*mut u8>>();
    |
    = help: the trait `Send` is not implemented for `*mut u8`
    = note: required for `Unique<*mut u8>` to implement `Send`
-   = note: required because it appears within the type `Box<*mut u8>`
+note: required because it appears within the type `Box<*mut u8>`
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
 note: required by a bound in `assert_send`
   --> $DIR/kindck-send-owned.rs:3:18
    |

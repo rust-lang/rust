@@ -7,7 +7,8 @@ LL | static boxed: Box<RefCell<isize>> = Box::new(RefCell::new(0));
    = help: the trait `Sync` is not implemented for `RefCell<isize>`
    = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead
    = note: required for `Unique<RefCell<isize>>` to implement `Sync`
-   = note: required because it appears within the type `Box<RefCell<isize>>`
+note: required because it appears within the type `Box<RefCell<isize>>`
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
    = note: shared static variables must have a type that implements `Sync`
 
 error: aborting due to previous error
