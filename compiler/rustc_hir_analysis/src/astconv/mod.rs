@@ -2083,8 +2083,16 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         };
 
-        if let Some(_conflicting_candidate) = matching_candidates.next() {
-            todo!()
+        if let Some(conflicting_candidate) = matching_candidates.next() {
+            return Err(self.tcx().sess.emit_err(
+                crate::errors::ReturnTypeNotationConflictingBound {
+                    span,
+                    ty_name: ty_name.to_string(),
+                    assoc_name: assoc_name.name,
+                    first_bound: candidate.print_only_trait_path(),
+                    second_bound: conflicting_candidate.print_only_trait_path(),
+                },
+            ));
         }
 
         Ok(candidate)

@@ -2633,6 +2633,12 @@ macro_rules! define_print_and_forward_display {
 #[derive(Copy, Clone, TypeFoldable, TypeVisitable, Lift)]
 pub struct TraitRefPrintOnlyTraitPath<'tcx>(ty::TraitRef<'tcx>);
 
+impl<'tcx> rustc_errors::IntoDiagnosticArg for TraitRefPrintOnlyTraitPath<'tcx> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+        self.to_string().into_diagnostic_arg()
+    }
+}
+
 impl<'tcx> fmt::Debug for TraitRefPrintOnlyTraitPath<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, f)
