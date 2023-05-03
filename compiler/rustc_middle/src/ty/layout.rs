@@ -210,6 +210,7 @@ pub enum LayoutError<'tcx> {
     Unknown(Ty<'tcx>),
     SizeOverflow(Ty<'tcx>),
     NormalizationFailure(Ty<'tcx>, NormalizationError<'tcx>),
+    Cycle,
 }
 
 impl IntoDiagnostic<'_, !> for LayoutError<'_> {
@@ -229,6 +230,9 @@ impl IntoDiagnostic<'_, !> for LayoutError<'_> {
                 diag.set_arg("ty", ty);
                 diag.set_arg("failure_ty", e.get_type_for_failure());
                 diag.set_primary_message(fluent::middle_cannot_be_normalized);
+            }
+            LayoutError::Cycle => {
+                diag.set_primary_message(fluent::middle_cycle);
             }
         }
         diag
@@ -250,6 +254,7 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
                 t,
                 e.get_type_for_failure()
             ),
+            LayoutError::Cycle => write!(f, "a cycle occurred during layout computation"),
         }
     }
 }
