@@ -165,7 +165,7 @@ pub struct TypeckResults<'tcx> {
     /// reading places that are mentioned in a closure (because of _ patterns). However,
     /// to ensure the places are initialized, we introduce fake reads.
     /// Consider these two examples:
-    /// ``` (discriminant matching with only wildcard arm)
+    /// ```ignore (discriminant matching with only wildcard arm)
     /// let x: u8;
     /// let c = || match x { _ => () };
     /// ```
@@ -173,7 +173,7 @@ pub struct TypeckResults<'tcx> {
     /// want to capture it. However, we do still want an error here, because `x` should have
     /// to be initialized at the point where c is created. Therefore, we add a "fake read"
     /// instead.
-    /// ``` (destructured assignments)
+    /// ```ignore (destructured assignments)
     /// let c = || {
     ///     let (t1, t2) = t;
     /// }
