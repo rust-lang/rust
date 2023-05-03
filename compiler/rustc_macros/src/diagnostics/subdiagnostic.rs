@@ -4,16 +4,15 @@ use crate::diagnostics::error::{
     invalid_attr, span_err, throw_invalid_attr, throw_span_err, DiagnosticDeriveError,
 };
 use crate::diagnostics::utils::{
-    build_field_mapping, is_doc_comment, new_code_ident,
-    report_error_if_not_applied_to_applicability, report_error_if_not_applied_to_span, FieldInfo,
-    FieldInnerTy, FieldMap, HasFieldMap, SetOnce, SpannedOption, SubdiagnosticKind,
+    build_field_mapping, build_suggestion_code, is_doc_comment, new_code_ident,
+    report_error_if_not_applied_to_applicability, report_error_if_not_applied_to_span,
+    should_generate_set_arg, AllowMultipleAlternatives, FieldInfo, FieldInnerTy, FieldMap,
+    HasFieldMap, SetOnce, SpannedOption, SubdiagnosticKind,
 };
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::{spanned::Spanned, Attribute, Meta, MetaList, Path};
 use synstructure::{BindingInfo, Structure, VariantInfo};
-
-use super::utils::{build_suggestion_code, AllowMultipleAlternatives};
 
 /// The central struct for constructing the `add_to_diagnostic` method from an annotated struct.
 pub(crate) struct SubdiagnosticDeriveBuilder {
@@ -212,7 +211,6 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
     /// Generates the code for a field with no attributes.
     fn generate_field_set_arg(&mut self, binding: &BindingInfo<'_>) -> TokenStream {
         let ast = binding.ast();
-        assert_eq!(ast.attrs.len(), 0, "field with attribute used as diagnostic arg");
 
         let diag = &self.parent.diag;
         let ident = ast.ident.as_ref().unwrap();
@@ -580,7 +578,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
             .variant
             .bindings()
             .iter()
-            .filter(|binding| binding.ast().attrs.is_empty())
+            .filter(|binding| should_generate_set_arg(binding.ast()))
             .map(|binding| self.generate_field_set_arg(binding))
             .collect();
 
