@@ -156,9 +156,9 @@ mod visibility;
 pub use bound_constness::BoundConstness;
 pub use impl_polarity::ImplPolarity;
 pub use predicate::{
-    InstantiatedPredicates, OutlivesPredicate, PolyRegionOutlivesPredicate, PolyTraitPredicate,
-    PolyTypeOutlivesPredicate, Predicate, PredicateKind, RegionOutlivesPredicate, TraitPredicate,
-    TypeOutlivesPredicate,
+    InstantiatedPredicates, OutlivesPredicate, PolyRegionOutlivesPredicate, PolySubtypePredicate,
+    PolyTraitPredicate, PolyTypeOutlivesPredicate, Predicate, PredicateKind,
+    RegionOutlivesPredicate, SubtypePredicate, TraitPredicate, TypeOutlivesPredicate,
 };
 pub use visibility::Visibility;
 
@@ -396,17 +396,6 @@ pub struct CratePredicatesMap<'tcx> {
     /// bounds, it will have no entry.
     pub predicates: FxHashMap<DefId, &'tcx [(Clause<'tcx>, Span)]>,
 }
-/// Encodes that `a` must be a subtype of `b`. The `a_is_expected` flag indicates
-/// whether the `a` type is the type that we should label as "expected" when
-/// presenting user diagnostics.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-pub struct SubtypePredicate<'tcx> {
-    pub a_is_expected: bool,
-    pub a: Ty<'tcx>,
-    pub b: Ty<'tcx>,
-}
-pub type PolySubtypePredicate<'tcx> = ty::Binder<'tcx, SubtypePredicate<'tcx>>;
 
 /// Encodes that we have to coerce *from* the `a` type to the `b` type.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
