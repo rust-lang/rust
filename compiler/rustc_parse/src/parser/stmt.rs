@@ -555,21 +555,12 @@ impl<'a> Parser<'a> {
                     if self.token == token::Colon {
                         // if next token is following a colon, it's likely a path
                         // and we can suggest a path separator
-                        let ident_span = self.prev_token.span;
                         self.bump();
                         if self.token.span.lo() == self.prev_token.span.hi() {
                             err.span_suggestion_verbose(
                                 self.prev_token.span,
                                 "maybe write a path separator here",
                                 "::",
-                                Applicability::MaybeIncorrect,
-                            );
-                        }
-                        if self.look_ahead(1, |token| token == &token::Eq) {
-                            err.span_suggestion_verbose(
-                                ident_span.shrink_to_lo(),
-                                "you might have meant to introduce a new binding",
-                                "let ",
                                 Applicability::MaybeIncorrect,
                             );
                         }

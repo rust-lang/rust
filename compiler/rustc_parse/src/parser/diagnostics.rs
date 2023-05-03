@@ -399,6 +399,23 @@ impl<'a> Parser<'a> {
                 }
             }
         }
+        // we suggest add the missing `let` before the identifier
+        // `a: Ty = 1` -> `let a: Ty = 1`
+        if self.token == token::Colon {
+            let prev_span = self.prev_token.span.shrink_to_lo();
+            let snapshot = self.create_snapshot_for_diagnostic();
+            self.bump();
+            let res = self.parse_ty();
+            if res.is_ok() && self.token == token::Eq {
+                err.span_suggestion_verbose(
+                    prev_span,
+                    "you might have meant to introduce a new binding",
+                    "let ".to_string(),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            self.restore_snapshot(snapshot);
+        }
 
         if let Some(recovered_ident) = recovered_ident && recover {
             err.emit();
