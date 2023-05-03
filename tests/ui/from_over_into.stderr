@@ -35,7 +35,7 @@ help: replace the `Into` implementation with `From<X>`
    |
 LL ~ impl From<X> for SelfKeywords {
 LL ~     fn from(val: X) -> Self {
-LL ~         let _ = X::default();
+LL ~         let _ = X;
 LL ~         let _ = X::FOO;
 LL ~         let _: X = val;
    |
