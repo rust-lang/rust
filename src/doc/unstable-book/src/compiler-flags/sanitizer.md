@@ -196,18 +196,18 @@ Shadow byte legend (one shadow byte represents 8 application bytes):
 
 # ControlFlowIntegrity
 
-The LLVM Control Flow Integrity (CFI) support in the Rust compiler initially
-provides forward-edge control flow protection for Rust-compiled code only by
-aggregating function pointers in groups identified by their return and parameter
-types.
+The LLVM Control Flow Integrity (CFI) support in the Rust compiler provides
+forward-edge control flow protection for both Rust-compiled code only and for C
+or C++ and Rust -compiled code mixed-language binaries, also known as “mixed
+binaries” (i.e., for when C or C++ and Rust -compiled code share the same
+virtual address space), by aggregating function pointers in groups identified by
+their return and parameter types.
 
-Forward-edge control flow protection for C or C++ and Rust -compiled code "mixed
-binaries" (i.e., for when C or C++ and Rust -compiled code share the same
-virtual address space) will be provided in later work by defining and using
-compatible type identifiers (see Type metadata in the design document in the
-tracking issue [#89653](https://github.com/rust-lang/rust/issues/89653)).
-
-LLVM CFI can be enabled with -Zsanitizer=cfi and requires LTO (i.e., -Clto).
+LLVM CFI can be enabled with `-Zsanitizer=cfi` and requires LTO (i.e., `-Clto`).
+Cross-language LLVM CFI can be enabled with `-Zsanitizer=cfi`, and requires the
+`-Zsanitizer-cfi-normalize-integers` option to be used with Clang
+`-fsanitize-cfi-icall-normalize-integers` for normalizing integer types, and
+proper (i.e., non-rustc) LTO (i.e., `-Clinker-plugin-lto`).
 
 See the [Clang ControlFlowIntegrity documentation][clang-cfi] for more details.
 
@@ -343,7 +343,7 @@ $
 Fig. 5. Build and execution of the modified example with LLVM CFI disabled.
 
 ```shell
-$ RUSTFLAGS="-Zsanitizer=cfi -Cembed-bitcode=yes -Clto" cargo run --release
+$ RUSTFLAGS="-Cembed-bitcode=yes -Clto -Zsanitizer=cfi" cargo run --release
    Compiling rust-cfi-2 v0.1.0 (/home/rcvalle/rust-cfi-2)
     Finished release [optimized] target(s) in 3.38s
      Running `target/release/rust-cfi-2`
@@ -392,7 +392,7 @@ Closures][rust-book-ch19-05] chapter of the [The Rust Programming
 Language][rust-book] book.
 
 ```shell
- cargo run --release
+$ cargo run --release
    Compiling rust-cfi-3 v0.1.0 (/home/rcvalle/rust-cfi-3)
     Finished release [optimized] target(s) in 0.74s
      Running `target/release/rust-cfi-3`
@@ -404,7 +404,7 @@ $
 Fig. 8. Build and execution of the modified example with LLVM CFI disabled.
 
 ```shell
-$ RUSTFLAGS="-Zsanitizer=cfi -Cembed-bitcode=yes -Clto" cargo run --release
+$ RUSTFLAGS="-Cembed-bitcode=yes -Clto -Zsanitizer=cfi" cargo run --release
    Compiling rust-cfi-3 v0.1.0 (/home/rcvalle/rust-cfi-3)
     Finished release [optimized] target(s) in 3.40s
      Running `target/release/rust-cfi-3`
@@ -420,8 +420,92 @@ flow using an indirect branch/call to a function with different return and
 parameter types than the return type expected and arguments intended/passed in
 the call/branch site, the execution is also terminated (see Fig. 9).
 
-[rust-book-ch19-05]: ../../book/ch19-05-advanced-functions-and-closures.html
-[rust-book]: ../../book/title-page.html
+```ignore (cannot-test-this-because-uses-custom-build)
+int
+do_twice(int (*fn)(int), int arg) {
+    return fn(arg) + fn(arg);
+}
+```
+Fig. 10. Example C library.
+
+```ignore (cannot-test-this-because-uses-custom-build)
+use std::mem;
+
+#[link(name = "foo")]
+extern "C" {
+    fn do_twice(f: unsafe extern "C" fn(i32) -> i32, arg: i32) -> i32;
+}
+
+unsafe extern "C" fn add_one(x: i32) -> i32 {
+    x + 1
+}
+
+unsafe extern "C" fn add_two(x: i64) -> i64 {
+    x + 2
+}
+
+fn main() {
+    let answer = unsafe { do_twice(add_one, 5) };
+
+    println!("The answer is: {}", answer);
+
+    println!("With CFI enabled, you should not see the next answer");
+    let f: unsafe extern "C" fn(i32) -> i32 = unsafe {
+        mem::transmute::<*const u8, unsafe extern "C" fn(i32) -> i32>(add_two as *const u8)
+    };
+    let next_answer = unsafe { do_twice(f, 5) };
+
+    println!("The next answer is: {}", next_answer);
+}
+```
+Fig. 11. Another modified example from the [Advanced Functions and
+Closures][rust-book-ch19-05] chapter of the [The Rust Programming
+Language][rust-book] book.
+
+```shell
+$ make
+mkdir -p target/debug
+clang -I. -Isrc -Wall -flto -fvisibility=hidden -c -emit-llvm src/foo.c -o target/debug/libfoo.bc
+llvm-ar rcs target/debug/libfoo.a target/debug/libfoo.bc
+RUSTFLAGS="-L./target/debug -Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld" cargo build
+   Compiling main v0.1.0 (/home/rcvalle/rust-cross-cfi-1)
+    Finished dev [unoptimized + debuginfo] target(s) in 0.45s
+$ ./target/debug/main
+The answer is: 12
+With CFI enabled, you should not see the next answer
+The next answer is: 14
+$
+```
+Fig. 12. Build and execution of the modified example with LLVM CFI disabled.
+
+```shell
+$ make
+mkdir -p target/debug
+clang -I. -Isrc -Wall -flto -fvisibility=hidden -fsanitize=cfi -fsanitize-cfi-icall-normalize-integers -c -emit-llvm src/foo.c -o target/debug/libfoo.bc
+llvm-ar rcs target/debug/libfoo.a target/debug/libfoo.bc
+RUSTFLAGS="-L./target/debug -Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld -Zsanitizer=cfi -Zsanitizer-cfi-normalize-integers" cargo build
+   Compiling main v0.1.0 (/home/rcvalle/rust-cross-cfi-1)
+    Finished dev [unoptimized + debuginfo] target(s) in 0.45s
+$ ./target/debug/main
+The answer is: 12
+With CFI enabled, you should not see the next answer
+Illegal instruction
+$
+```
+Fig. 13. Build and execution of the modified example with LLVM CFI enabled.
+
+When LLVM CFI is enabled, if there are any attempts to change/hijack control
+flow using an indirect branch/call to a function with different return and
+parameter types than the return type expected and arguments intended/passed in
+the call/branch site, even across the FFI boundary and for extern "C" function
+types indirectly called (i.e., callbacks/function pointers) across the FFI
+boundary, in C or C++ and Rust -compiled code mixed-language binaries, also
+known as “mixed binaries” (i.e., for when C or C++ and Rust -compiled code share
+the same virtual address space), the execution is also terminated (see Fig. 13).
+
+
+[rust-book-ch19-05]: https://doc.rust-lang.org/book/ch19-05-advanced-functions-and-closures.html
+[rust-book]: https://doc.rust-lang.org/book/title-page.html
 
 # HWAddressSanitizer
 
