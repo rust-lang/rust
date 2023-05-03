@@ -16,7 +16,6 @@
     intrinsics,
     no_core,
     rustc_attrs,
-    stdsimd,
     staged_api,
     doc_cfg,
     tbm_target_feature,
@@ -53,7 +52,7 @@
 )]
 #![cfg_attr(test, allow(unused_imports))]
 #![no_std]
-#![unstable(feature = "stdsimd", issue = "27731")]
+#![stable(feature = "stdsimd", since = "1.27.0")]
 #![doc(
     test(attr(deny(warnings))),
     test(attr(allow(dead_code, deprecated, unused_variables, unused_mut)))
@@ -68,8 +67,11 @@ extern crate std_detect;
 #[path = "mod.rs"]
 mod core_arch;
 
+#[stable(feature = "stdsimd", since = "1.27.0")]
 pub mod arch {
+    #[stable(feature = "stdsimd", since = "1.27.0")]
     pub use crate::core_arch::arch::*;
+    #[stable(feature = "stdsimd", since = "1.27.0")]
     pub use core::arch::asm;
 }
 
