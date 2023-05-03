@@ -168,85 +168,17 @@ class TestEnvironment:
     def ffx_isolate_dir(self):
         return os.path.join(self.tmp_dir(), "ffx_isolate")
 
-    def ffx_home_dir(self):
-        return os.path.join(self.ffx_isolate_dir(), "user-home")
+    def home_dir(self):
+        return os.path.join(self.tmp_dir(), "user-home")
 
-    def ffx_tmp_dir(self):
-        return os.path.join(self.ffx_isolate_dir(), "tmp")
-
-    def ffx_log_dir(self):
-        return os.path.join(self.ffx_isolate_dir(), "log")
-
-    def ffx_user_config_dir(self):
-        return os.path.join(self.ffx_xdg_config_home(), "Fuchsia", "ffx", "config")
-
-    def ffx_user_config_path(self):
-        return os.path.join(self.ffx_user_config_dir(), "config.json")
-
-    def ffx_xdg_config_home(self):
-        if platform.system() == "Darwin":
-            return os.path.join(self.ffx_home_dir(), "Library", "Preferences")
-        return os.path.join(self.ffx_home_dir(), ".local", "share")
-
-    def ffx_ascendd_path(self):
-        return os.path.join(self.ffx_tmp_dir(), "ascendd")
 
     def start_ffx_isolation(self):
         # Most of this is translated directly from ffx's isolate library
         os.mkdir(self.ffx_isolate_dir())
-        os.mkdir(self.ffx_home_dir())
-        os.mkdir(self.ffx_tmp_dir())
-        os.mkdir(self.ffx_log_dir())
+        os.mkdir(self.home_dir())
 
-        fuchsia_dir = os.path.join(self.ffx_home_dir(), ".fuchsia")
-        os.mkdir(fuchsia_dir)
-
-        fuchsia_debug_dir = os.path.join(fuchsia_dir, "debug")
-        os.mkdir(fuchsia_debug_dir)
-
-        metrics_dir = os.path.join(fuchsia_dir, "metrics")
-        os.mkdir(metrics_dir)
-
-        analytics_path = os.path.join(metrics_dir, "analytics-status")
-        with open(analytics_path, "w", encoding="utf-8") as analytics_file:
-            print("0", file=analytics_file)
-
-        ffx_path = os.path.join(metrics_dir, "ffx")
-        with open(ffx_path, "w", encoding="utf-8") as ffx_file:
-            print("1", file=ffx_file)
-
-        os.makedirs(self.ffx_user_config_dir())
-
-        with open(
-            self.ffx_user_config_path(), "w", encoding="utf-8"
-        ) as config_json_file:
-            user_config_for_test = {
-                "log": {
-                    "enabled": True,
-                    "dir": self.ffx_log_dir(),
-                },
-                "overnet": {
-                    "socket": self.ffx_ascendd_path(),
-                },
-                "ssh": {
-                    "pub": self.ssh_authfile_path(),
-                    "priv": self.ssh_keyfile_path(),
-                },
-                "test": {
-                    "is_isolated": True,
-                    "experimental_structured_output": True,
-                },
-            }
-            print(json.dumps(user_config_for_test), file=config_json_file)
-
-        ffx_env_path = os.path.join(self.ffx_user_config_dir(), ".ffx_env")
-        with open(ffx_env_path, "w", encoding="utf-8") as ffx_env_file:
-            ffx_env_config_for_test = {
-                "user": self.ffx_user_config_path(),
-                "build": None,
-                "global": None,
-            }
-            print(json.dumps(ffx_env_config_for_test), file=ffx_env_file)
+        ffx_path = self.tool_path("ffx")
+        ffx_env = self.ffx_cmd_env()
 
         # Start ffx daemon
         # We want this to be a long-running process that persists after the script finishes
@@ -256,23 +188,54 @@ class TestEnvironment:
         ) as ffx_daemon_log_file:
             subprocess.Popen(
                 [
-                    self.tool_path("ffx"),
-                    "--config",
-                    self.ffx_user_config_path(),
+                    ffx_path,
                     "daemon",
                     "start",
                 ],
-                env=self.ffx_cmd_env(),
+                env=ffx_env,
                 stdout=ffx_daemon_log_file,
                 stderr=ffx_daemon_log_file,
             )
 
+        # Disable analytics
+        subprocess.check_call(
+            [
+                ffx_path,
+                "config",
+                "analytics",
+                "disable",
+            ],
+            env=ffx_env,
+            stdout=self.subprocess_output(),
+            stderr=self.subprocess_output(),
+        )
+
+        # Set configs
+        configs = {
+            "log.enabled": "true",
+            "ssh.pub": self.ssh_authfile_path(),
+            "ssh.priv": self.ssh_keyfile_path(),
+            "test.is_isolated": "true",
+            "test.experimental_structured_output": "true",
+        }
+        for key, value in configs.items():
+            subprocess.check_call(
+                [
+                    self.tool_path("ffx"),
+                    "config",
+                    "set",
+                    key,
+                    value,
+                ],
+                env=self.ffx_cmd_env(),
+                stdout=self.subprocess_output(),
+                stderr=self.subprocess_output(),
+            )
+
     def ffx_cmd_env(self):
-        result = {
-            "HOME": self.ffx_home_dir(),
-            "XDG_CONFIG_HOME": self.ffx_xdg_config_home(),
-            "ASCENDD": self.ffx_ascendd_path(),
-            "FUCHSIA_SSH_KEY": self.ssh_keyfile_path(),
+        return {
+            "HOME": self.home_dir(),
+            "FFX_ISOLATE_DIR": self.ffx_isolate_dir(),
             # We want to use our own specified temp directory
             "TMP": self.tmp_dir(),
             "TEMP": self.tmp_dir(),
@@ -280,14 +243,10 @@ class TestEnvironment:
             "TEMPDIR": self.tmp_dir(),
         }
 
-        return result
-
     def stop_ffx_isolation(self):
         subprocess.check_call(
             [
                 self.tool_path("ffx"),
-                "--config",
-                self.ffx_user_config_path(),
                 "daemon",
                 "stop",
             ],
@@ -709,8 +668,6 @@ class TestEnvironment:
             subprocess.run(
                 [
                     self.tool_path("ffx"),
-                    "--config",
-                    self.ffx_user_config_path(),
                     "test",
                     "run",
                     f"fuchsia-pkg://{self.TEST_REPO_NAME}/{package_name}#meta/{package_name}.cm",
@@ -849,8 +806,6 @@ class TestEnvironment:
     def debug(self, args):
         command = [
             self.tool_path("ffx"),
-            "--config",
-            self.ffx_user_config_path(),
             "debug",
             "connect",
             "--",
@@ -948,8 +903,6 @@ class TestEnvironment:
         subprocess.run(
             [
                 self.tool_path("ffx"),
-                "--config",
-                self.ffx_user_config_path(),
                 "log",
                 "--since",
                 "now",
