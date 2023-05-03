@@ -1604,6 +1604,7 @@ impl Location {
         false
     }
 
+    #[inline]
     pub fn dominates(&self, other: Location, dominators: &Dominators<BasicBlock>) -> bool {
         if self.block == other.block {
             self.statement_index <= other.statement_index
@@ -1623,6 +1624,7 @@ pub enum DefLocation {
 }
 
 impl DefLocation {
+    #[inline]
     pub fn dominates(self, location: Location, dominators: &Dominators<BasicBlock>) -> bool {
         match self {
             DefLocation::Argument => true,
