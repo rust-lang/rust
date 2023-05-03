@@ -2414,26 +2414,17 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// Named module children from all items except `use` and `extern crate` imports.
-    ///
-    /// In addition to regular items this list also includes struct or variant constructors, and
+    /// Named module children from all kinds of items, including imports.
+    /// In addition to regular items this list also includes struct and variant constructors, and
     /// items inside `extern {}` blocks because all of them introduce names into parent module.
-    /// For non-reexported children every such name is associated with a separate `DefId`.
     ///
     /// Module here is understood in name resolution sense - it can be a `mod` item,
     /// or a crate root, or an enum, or a trait.
-    pub fn module_children_non_reexports(self, def_id: LocalDefId) -> &'tcx [LocalDefId] {
-        self.resolutions(()).module_children_non_reexports.get(&def_id).map_or(&[], |v| &v[..])
-    }
-
-    /// Named module children from `use` and `extern crate` imports.
     ///
-    /// Reexported names are not associated with individual `DefId`s,
-    /// e.g. a glob import can introduce a lot of names, all with the same `DefId`.
-    /// That's why the list needs to contain `ModChild` structures describing all the names
-    /// individually instead of `DefId`s.
-    pub fn module_children_reexports(self, def_id: LocalDefId) -> &'tcx [ModChild] {
-        self.resolutions(()).module_children_reexports.get(&def_id).map_or(&[], |v| &v[..])
+    /// This is not a query, making it a query causes perf regressions
+    /// (probably due to hashing spans in `ModChild`ren).
+    pub fn module_children_local(self, def_id: LocalDefId) -> &'tcx [ModChild] {
+        self.resolutions(()).module_children.get(&def_id).map_or(&[], |v| &v[..])
     }
 }
 
