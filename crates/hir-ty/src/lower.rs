@@ -2023,6 +2023,7 @@ pub(crate) fn const_or_path_to_chalk(
                 mode,
                 args,
                 debruijn,
+                expected_ty.clone(),
             )
             .unwrap_or_else(|| unknown_const(expected_ty))
         }

@@ -76,6 +76,7 @@ pub(crate) fn path_to_const(
     mode: ParamLoweringMode,
     args_lazy: impl FnOnce() -> Generics,
     debruijn: DebruijnIndex,
+    expected_ty: Ty,
 ) -> Option<Const> {
     match resolver.resolve_path_in_value_ns_fully(db.upcast(), path) {
         Some(ValueNs::GenericParam(p)) => {
@@ -100,6 +101,10 @@ pub(crate) fn path_to_const(
             };
             Some(ConstData { ty, value }.intern(Interner))
         }
+        Some(ValueNs::ConstId(c)) => Some(intern_const_scalar(
+            ConstScalar::UnevaluatedConst(c.into(), Substitution::empty(Interner)),
+            expected_ty,
+        )),
         _ => None,
     }
 }
@@ -227,9 +232,10 @@ pub(crate) fn eval_to_const(
     debruijn: DebruijnIndex,
 ) -> Const {
     let db = ctx.db;
+    let infer = ctx.clone().resolve_all();
     if let Expr::Path(p) = &ctx.body.exprs[expr] {
         let resolver = &ctx.resolver;
-        if let Some(c) = path_to_const(db, resolver, p, mode, args, debruijn) {
+        if let Some(c) = path_to_const(db, resolver, p, mode, args, debruijn, infer[expr].clone()) {
             return c;
         }
     }

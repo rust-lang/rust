@@ -17,7 +17,7 @@ use std::{convert::identity, ops::Index};
 
 use chalk_ir::{
     cast::Cast, fold::TypeFoldable, interner::HasInterner, DebruijnIndex, Mutability, Safety,
-    Scalar, TypeFlags,
+    Scalar, TyKind, TypeFlags,
 };
 use either::Either;
 use hir_def::{
@@ -44,7 +44,7 @@ use crate::{
     db::HirDatabase, fold_tys, infer::coerce::CoerceMany, lower::ImplTraitLoweringMode,
     static_lifetime, to_assoc_type_id, traits::FnTrait, AliasEq, AliasTy, ClosureId, DomainGoal,
     GenericArg, Goal, ImplTraitId, InEnvironment, Interner, ProjectionTy, RpitId, Substitution,
-    TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind,
+    TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt,
 };
 
 // This lint has a false positive here. See the link below for details.
@@ -118,7 +118,12 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
 /// This is appropriate to use only after type-check: it assumes
 /// that normalization will succeed, for example.
 pub(crate) fn normalize(db: &dyn HirDatabase, trait_env: Arc<TraitEnvironment>, ty: Ty) -> Ty {
-    if !ty.data(Interner).flags.intersects(TypeFlags::HAS_PROJECTION) {
+    // FIXME: TypeFlags::HAS_CT_PROJECTION is not implemented in chalk, so TypeFlags::HAS_PROJECTION only
+    // works for the type case, so we check array unconditionally. Remove the array part
+    // when the bug in chalk becomes fixed.
+    if !ty.data(Interner).flags.intersects(TypeFlags::HAS_PROJECTION)
+        && !matches!(ty.kind(Interner), TyKind::Array(..))
+    {
         return ty;
     }
     let mut table = unify::InferenceTable::new(db, trait_env);

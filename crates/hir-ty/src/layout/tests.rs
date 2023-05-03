@@ -354,6 +354,14 @@ fn niche_optimization() {
 }
 
 #[test]
+fn const_eval() {
+    size_and_align! {
+        const X: usize = 5;
+        struct Goal([i32; X]);
+    }
+}
+
+#[test]
 fn enums_with_discriminants() {
     size_and_align! {
         enum Goal {
