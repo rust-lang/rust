@@ -610,6 +610,9 @@ mod prim_pointer {}
 /// if the element type allows it. As a stopgap, trait implementations are
 /// statically generated up to size 32.
 ///
+/// Arrays of sizes from 1 to 12 (inclusive) implement [`From<Tuple>`], where `Tuple`
+/// is a homogenous [prim@tuple] of appropriate length.
+///
 /// Arrays coerce to [slices (`[T]`)][slice], so a slice method may be called on
 /// an array. Indeed, this provides most of the API for working with arrays.
 ///
@@ -670,6 +673,13 @@ mod prim_pointer {}
 /// let [john, roa] = ["John".to_string(), "Roa".to_string()];
 /// move_away(john);
 /// move_away(roa);
+/// ```
+///
+/// Arrays can be created from homogenous tuples of appropriate length:
+///
+/// ```
+/// let tuple: (u32, u32, u32) = (1, 2, 3);
+/// let array: [u32; 3] = tuple.into();
 /// ```
 ///
 /// # Editions
@@ -774,6 +784,7 @@ mod prim_pointer {}
 /// [`Borrow`]: borrow::Borrow
 /// [`BorrowMut`]: borrow::BorrowMut
 /// [slice pattern]: ../reference/patterns.html#slice-patterns
+/// [`From<Tuple>`]: convert::From
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_array {}
 
@@ -1000,7 +1011,9 @@ mod prim_str {}
 /// * [`Debug`]
 /// * [`Default`]
 /// * [`Hash`]
+/// * [`From<[T; N]>`][from]
 ///
+/// [from]: convert::From
 /// [`Debug`]: fmt::Debug
 /// [`Hash`]: hash::Hash
 ///
@@ -1049,6 +1062,13 @@ mod prim_str {}
 ///
 /// assert_eq!(x, 4);
 /// assert_eq!(y, 5);
+/// ```
+///
+/// Homogenous tuples can be created from arrays of appropriate length:
+///
+/// ```
+/// let array: [u32; 3] = [1, 2, 3];
+/// let tuple: (u32, u32, u32) = array.into();
 /// ```
 ///
 #[stable(feature = "rust1", since = "1.0.0")]
