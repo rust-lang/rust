@@ -851,7 +851,8 @@ impl quote::IdentFragment for SubdiagnosticKind {
 /// Returns `true` if `field` should generate a `set_arg` call rather than any other diagnostic
 /// call (like `span_label`).
 pub(super) fn should_generate_set_arg(field: &Field) -> bool {
-    field.attrs.is_empty()
+    // Perhaps this should be an exhaustive list...
+    field.attrs.iter().all(|attr| is_doc_comment(attr))
 }
 
 pub(super) fn is_doc_comment(attr: &Attribute) -> bool {
