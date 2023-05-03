@@ -156,9 +156,10 @@ mod visibility;
 pub use bound_constness::BoundConstness;
 pub use impl_polarity::ImplPolarity;
 pub use predicate::{
-    InstantiatedPredicates, OutlivesPredicate, PolyRegionOutlivesPredicate, PolySubtypePredicate,
-    PolyTraitPredicate, PolyTypeOutlivesPredicate, Predicate, PredicateKind,
-    RegionOutlivesPredicate, SubtypePredicate, TraitPredicate, TypeOutlivesPredicate,
+    CoercePredicate, InstantiatedPredicates, OutlivesPredicate, PolyCoercePredicate,
+    PolyRegionOutlivesPredicate, PolySubtypePredicate, PolyTraitPredicate,
+    PolyTypeOutlivesPredicate, Predicate, PredicateKind, RegionOutlivesPredicate, SubtypePredicate,
+    TraitPredicate, TypeOutlivesPredicate,
 };
 pub use visibility::Visibility;
 
@@ -396,15 +397,6 @@ pub struct CratePredicatesMap<'tcx> {
     /// bounds, it will have no entry.
     pub predicates: FxHashMap<DefId, &'tcx [(Clause<'tcx>, Span)]>,
 }
-
-/// Encodes that we have to coerce *from* the `a` type to the `b` type.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-pub struct CoercePredicate<'tcx> {
-    pub a: Ty<'tcx>,
-    pub b: Ty<'tcx>,
-}
-pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Term<'tcx> {
