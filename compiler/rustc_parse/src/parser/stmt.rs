@@ -567,6 +567,22 @@ impl<'a> Parser<'a> {
                         snapshot.recover_diff_marker();
                     }
                     if self.token == token::Colon {
+                        // if a previous and next token of the current one is
+                        // integer literal (e.g. `1:42`), it's likely a range
+                        // expression for Pythonistas and we can suggest so.
+                        if self.prev_token.is_integer_lit()
+                            && self.look_ahead(1, |token| token.is_integer_lit())
+                        {
+                            // TODO(hkmatsumoto): Might be better to trigger
+                            // this only when parsing an index expression.
+                            err.span_suggestion_verbose(
+                                self.token.span,
+                                "you might have meant to make a slice with range index",
+                                "..",
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+
                         // if next token is following a colon, it's likely a path
                         // and we can suggest a path separator
                         self.bump();

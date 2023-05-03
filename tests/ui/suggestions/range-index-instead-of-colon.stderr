@@ -1,0 +1,18 @@
+error: expected one of `.`, `?`, `]`, or an operator, found `:`
+  --> $DIR/range-index-instead-of-colon.rs:4:17
+   |
+LL |     &[1, 2, 3][1:2];
+   |                 ^ expected one of `.`, `?`, `]`, or an operator
+   |
+   = note: type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
+help: you might have meant to make a slice with range index
+   |
+LL |     &[1, 2, 3][1..2];
+   |                 ~~
+help: maybe write a path separator here
+   |
+LL |     &[1, 2, 3][1::2];
+   |                 ~~
+
+error: aborting due to previous error
+
