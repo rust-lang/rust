@@ -42,14 +42,14 @@ impl LateLintPass<'_> for DefaultConstructedUnitStructs {
         if_chain!(
             // make sure we have a call to `Default::default`
             if let hir::ExprKind::Call(fn_expr, &[]) = expr.kind;
-            if let ExprKind::Path(ref qpath) = fn_expr.kind;
+            if let ExprKind::Path(ref qpath@ hir::QPath::TypeRelative(_,_)) = fn_expr.kind;
             if let Res::Def(_, def_id) = cx.qpath_res(qpath, fn_expr.hir_id);
             if match_def_path(cx, def_id, &paths::DEFAULT_TRAIT_METHOD);
             // make sure we have a struct with no fields (unit struct)
             if let ty::Adt(def, ..) = cx.typeck_results().expr_ty(expr).kind();
-            if def.is_struct() && def.is_payloadfree()
-                && !def.non_enum_variant().is_field_list_non_exhaustive()
-                && !is_from_proc_macro(cx, expr);
+            if def.is_struct();
+            if let var @ ty::VariantDef { ctor: Some((hir::def::CtorKind::Const, _)), .. } = def.non_enum_variant();
+            if !var.is_field_list_non_exhaustive() && !is_from_proc_macro(cx, expr);
             then {
                 span_lint_and_sugg(
                     cx,

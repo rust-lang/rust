@@ -5,8 +5,22 @@ use std::marker::PhantomData;
 #[derive(Default)]
 struct UnitStruct;
 
+impl UnitStruct {
+    fn new() -> Self {
+        //should lint
+        Self::default()
+    }
+}
+
 #[derive(Default)]
 struct TupleStruct(usize);
+
+impl TupleStruct {
+    fn new() -> Self {
+        // should not lint
+        Self(Default::default())
+    }
+}
 
 // no lint for derived impl
 #[derive(Default)]
@@ -39,6 +53,13 @@ impl NormalStruct {
             inner: PhantomData::default(),
         }
     }
+
+    fn new2() -> Self {
+        // should not lint
+        Self {
+            inner: Default::default(),
+        }
+    }
 }
 
 #[derive(Default)]
@@ -51,7 +72,28 @@ impl<T: Default> GenericStruct<T> {
         // should not lint
         Self { t: T::default() }
     }
+
+    fn new2() -> Self {
+        // should not lint
+        Self { t: Default::default() }
+    }
 }
+
+struct FakeDefault;
+impl FakeDefault {
+    fn default() -> Self {
+        Self
+    }
+}
+
+impl Default for FakeDefault {
+    fn default() -> Self {
+        Self
+    }
+}
+
+#[derive(Default)]
+struct EmptyStruct {}
 
 #[derive(Default)]
 #[non_exhaustive]
@@ -69,4 +111,7 @@ fn main() {
     let _ = NonExhaustiveStruct::default();
     let _ = SomeEnum::default();
     let _ = NonDefaultStruct::default();
+    let _ = EmptyStruct::default();
+    let _ = FakeDefault::default();
+    let _ = <FakeDefault as Default>::default();
 }
