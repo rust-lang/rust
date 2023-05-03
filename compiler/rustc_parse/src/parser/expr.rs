@@ -855,7 +855,7 @@ impl<'a> Parser<'a> {
                     _ => unreachable!("parse_dot_or_call_expr_with_ shouldn't produce this"),
                 }
             );
-            let mut err = self.struct_span_err(span, &msg);
+            let mut err = self.struct_span_err(span, msg);
 
             let suggest_parens = |err: &mut Diagnostic| {
                 let suggestions = vec![
@@ -1803,7 +1803,7 @@ impl<'a> Parser<'a> {
         let token = self.token.clone();
         let err = |self_: &Self| {
             let msg = format!("unexpected token: {}", super::token_descr(&token));
-            self_.struct_span_err(token.span, &msg)
+            self_.struct_span_err(token.span, msg)
         };
         // On an error path, eagerly consider a lifetime to be an unclosed character lit
         if self.token.is_lifetime() {

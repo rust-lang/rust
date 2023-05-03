@@ -238,7 +238,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             },
         };
 
-        err.note(&format!(
+        err.note(format!(
             "`{}` must be defined only once in the {} namespace of this {}",
             name,
             ns.descr(),
@@ -683,7 +683,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                              making the path in the pattern qualified: `path::to::ModOrType::{}`",
                             name,
                         );
-                        err.span_help(span, &help_msg);
+                        err.span_help(span, help_msg);
                     }
                     show_candidates(
                         self.tcx,
@@ -783,10 +783,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                 if let Some((suggestions, msg, applicability)) = suggestion {
                     if suggestions.is_empty() {
-                        err.help(&msg);
+                        err.help(msg);
                         return err;
                     }
-                    err.multipart_suggestion(&msg, suggestions, applicability);
+                    err.multipart_suggestion(msg, suggestions, applicability);
                 }
 
                 err
@@ -930,7 +930,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             } => {
                 let mut err = self.tcx.sess.struct_span_err_with_code(
                     span,
-                    &format!(
+                    format!(
                         "item `{}` is an associated {}, which doesn't match its trait `{}`",
                         name, kind, trait_path,
                     ),
@@ -1359,7 +1359,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         if macro_kind == MacroKind::Derive && (ident.name == sym::Send || ident.name == sym::Sync) {
             let msg = format!("unsafe traits like `{}` should be implemented explicitly", ident);
-            err.span_note(ident.span, &msg);
+            err.span_note(ident.span, msg);
             return;
         }
         if self.macro_names.contains(&ident.normalize_to_macros_2_0()) {
@@ -1419,7 +1419,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     if !import.span.is_dummy() {
                         err.span_note(
                             import.span,
-                            &format!("`{}` is imported here, but it is {}", ident, desc),
+                            format!("`{}` is imported here, but it is {}", ident, desc),
                         );
                         // Silence the 'unused import' warning we might get,
                         // since this diagnostic already covers that import.
@@ -1427,7 +1427,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         return;
                     }
                 }
-                err.note(&format!("`{}` is in scope, but it is {}", ident, desc));
+                err.note(format!("`{}` is in scope, but it is {}", ident, desc));
                 return;
             }
         }
@@ -1474,7 +1474,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             err.span_label(
                 self.tcx.sess.source_map().guess_head_span(def_span),
-                &format!(
+                format!(
                     "{}{} `{}` defined here",
                     prefix,
                     suggestion.res.descr(),
@@ -1492,7 +1492,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 format!("maybe you meant this {}", suggestion.res.descr())
             }
         };
-        err.span_suggestion(span, &msg, suggestion.candidate, Applicability::MaybeIncorrect);
+        err.span_suggestion(span, msg, suggestion.candidate, Applicability::MaybeIncorrect);
         true
     }
 
@@ -1534,7 +1534,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         let mut err = struct_span_err!(self.tcx.sess, ident.span, E0659, "`{ident}` is ambiguous");
         err.span_label(ident.span, "ambiguous name");
-        err.note(&format!("ambiguous because of {}", kind.descr()));
+        err.note(format!("ambiguous because of {}", kind.descr()));
 
         let mut could_refer_to = |b: &NameBinding<'_>, misc: AmbiguityErrorMisc, also: &str| {
             let what = self.binding_description(b, ident, misc == AmbiguityErrorMisc::FromPrelude);
@@ -1562,10 +1562,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 AmbiguityErrorMisc::FromPrelude | AmbiguityErrorMisc::None => {}
             }
 
-            err.span_note(b.span, &note_msg);
+            err.span_note(b.span, note_msg);
             for (i, help_msg) in help_msgs.iter().enumerate() {
                 let or = if i == 0 { "" } else { "or " };
-                err.help(&format!("{}{}", or, help_msg));
+                err.help(format!("{}{}", or, help_msg));
             }
         };
 
@@ -1608,7 +1608,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let descr = get_descr(binding);
         let mut err =
             struct_span_err!(self.tcx.sess, ident.span, E0603, "{} `{}` is private", descr, ident);
-        err.span_label(ident.span, &format!("private {}", descr));
+        err.span_label(ident.span, format!("private {}", descr));
 
         let mut non_exhaustive = None;
         // If an ADT is foreign and marked as `non_exhaustive`, then that's
@@ -1623,7 +1623,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             err.span_label(span, "a constructor is private if any of the fields is private");
             if let Res::Def(_, d) = res && let Some(fields) = self.field_visibility_spans.get(&d) {
                 err.multipart_suggestion_verbose(
-                    &format!(
+                    format!(
                         "consider making the field{} publicly accessible",
                         pluralize!(fields.len())
                     ),
@@ -1676,7 +1676,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     format!("cannot be constructed because it is `#[non_exhaustive]`"),
                 );
             }
-            err.span_note(note_span, &msg);
+            err.span_note(note_span, msg);
         }
 
         err.emit();
@@ -2444,7 +2444,7 @@ fn show_candidates(
         };
 
         for note in accessible_path_strings.iter().flat_map(|cand| cand.3.as_ref()) {
-            err.note(note);
+            err.note(note.clone());
         }
 
         if let Some(span) = use_placement_span {
@@ -2452,7 +2452,7 @@ fn show_candidates(
                 DiagnosticMode::Pattern => {
                     err.span_suggestions(
                         span,
-                        &msg,
+                        msg,
                         accessible_path_strings.into_iter().map(|a| a.0),
                         Applicability::MaybeIncorrect,
                     );
@@ -2471,7 +2471,7 @@ fn show_candidates(
 
             err.span_suggestions_with_style(
                 span,
-                &msg,
+                msg,
                 accessible_path_strings.into_iter().map(|a| a.0),
                 Applicability::MaybeIncorrect,
                 SuggestionStyle::ShowAlways,
@@ -2481,7 +2481,7 @@ fn show_candidates(
                 if sp.can_be_used_for_suggestions() {
                     err.span_suggestion_verbose(
                         sp,
-                        &format!("if you import `{}`, refer to it directly", last.ident),
+                        format!("if you import `{}`, refer to it directly", last.ident),
                         "",
                         Applicability::Unspecified,
                     );
@@ -2495,7 +2495,7 @@ fn show_candidates(
                 msg.push_str(&candidate.0);
             }
 
-            err.help(&msg);
+            err.help(msg);
         }
     } else if !matches!(mode, DiagnosticMode::Import) {
         assert!(!inaccessible_path_strings.is_empty());
@@ -2520,9 +2520,9 @@ fn show_candidates(
                 let span = tcx.sess.source_map().guess_head_span(span);
                 let mut multi_span = MultiSpan::from_span(span);
                 multi_span.push_span_label(span, "not accessible");
-                err.span_note(multi_span, &msg);
+                err.span_note(multi_span, msg);
             } else {
-                err.note(&msg);
+                err.note(msg);
             }
             if let Some(note) = (*note).as_deref() {
                 err.note(note);
@@ -2566,10 +2566,10 @@ fn show_candidates(
             }
 
             for note in inaccessible_path_strings.iter().flat_map(|cand| cand.3.as_ref()) {
-                err.note(note);
+                err.note(note.clone());
             }
 
-            err.span_note(multi_span, &msg);
+            err.span_note(multi_span, msg);
         }
     }
 }

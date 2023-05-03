@@ -517,7 +517,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn endpoint_has_type(&self, err: &mut Diagnostic, span: Span, ty: Ty<'_>) {
         if !ty.references_error() {
-            err.span_label(span, &format!("this is of type `{}`", ty));
+            err.span_label(span, format!("this is of type `{}`", ty));
         }
     }
 
@@ -544,7 +544,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             format!("this is of type `{}` but it should be `char` or numeric", ty)
         };
         let mut one_side_err = |first_span, first_ty, second: Option<(bool, Ty<'tcx>, Span)>| {
-            err.span_label(first_span, &msg(first_ty));
+            err.span_label(first_span, msg(first_ty));
             if let Some((_, ty, sp)) = second {
                 let ty = self.resolve_vars_if_possible(ty);
                 self.endpoint_has_type(&mut err, sp, ty);
@@ -552,8 +552,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         match (lhs, rhs) {
             (Some((true, lhs_ty, lhs_sp)), Some((true, rhs_ty, rhs_sp))) => {
-                err.span_label(lhs_sp, &msg(lhs_ty));
-                err.span_label(rhs_sp, &msg(rhs_ty));
+                err.span_label(lhs_sp, msg(lhs_ty));
+                err.span_label(rhs_sp, msg(rhs_ty));
             }
             (Some((true, lhs_ty, lhs_sp)), rhs) => one_side_err(lhs_sp, lhs_ty, rhs),
             (lhs, Some((true, rhs_ty, rhs_sp))) => one_side_err(rhs_sp, rhs_ty, lhs),
@@ -651,7 +651,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 )
             });
             let pre = if in_match { "in the same arm, " } else { "" };
-            err.note(&format!("{}a binding must have the same type in all alternatives", pre));
+            err.note(format!("{}a binding must have the same type in all alternatives", pre));
             self.suggest_adding_missing_ref_or_removing_ref(
                 &mut err,
                 span,
@@ -958,11 +958,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let pat_span = pat.span;
         if let Some(span) = self.tcx.hir().res_span(pat_res) {
-            e.span_label(span, &format!("{} defined here", res.descr()));
+            e.span_label(span, format!("{} defined here", res.descr()));
             if let [hir::PathSegment { ident, .. }] = &*segments {
                 e.span_label(
                     pat_span,
-                    &format!(
+                    format!(
                         "`{}` is interpreted as {} {}, not a new binding",
                         ident,
                         res.article(),
@@ -1158,7 +1158,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         err.span_label(
             last_subpat_span,
-            &format!("expected {} field{}, found {}", fields.len(), fields_ending, subpats.len()),
+            format!("expected {} field{}, found {}", fields.len(), fields_ending, subpats.len()),
         );
         if self.tcx.sess.source_map().is_multiline(qpath.span().between(last_subpat_span)) {
             err.span_label(qpath.span(), "");
@@ -1171,7 +1171,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         err.span_label(
             last_field_def_span,
-            &format!("{} has {} field{}", res.descr(), fields.len(), fields_ending),
+            format!("{} has {} field{}", res.descr(), fields.len(), fields_ending),
         );
 
         // Identify the case `Some(x, y)` where the expected type is e.g. `Option<(T, U)>`.
@@ -1641,7 +1641,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let unmentioned_field = unmentioned_fields[0].1.name;
                             err.span_suggestion_short(
                                 pat_field.ident.span,
-                                &format!(
+                                format!(
                                     "`{}` has a field named `{}`",
                                     tcx.def_path_str(variant.def_id),
                                     unmentioned_field
@@ -1831,7 +1831,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         lint.help(
             "ensure that all fields are mentioned explicitly by adding the suggested fields",
         );
-        lint.note(&format!(
+        lint.note(format!(
             "the pattern is of type `{}` and the `non_exhaustive_omitted_patterns` attribute was found",
             ty,
         ));
@@ -1895,7 +1895,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         err.span_suggestion(
             sp,
-            &format!(
+            format!(
                 "include the missing field{} in the pattern{}",
                 pluralize!(len),
                 if have_inaccessible_fields { " and ignore the inaccessible fields" } else { "" }
@@ -1922,7 +1922,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         err.span_suggestion(
             sp,
-            &format!(
+            format!(
                 "if you don't care about {these} missing field{s}, you can explicitly ignore {them}",
                 these = pluralize!("this", len),
                 s = pluralize!(len),

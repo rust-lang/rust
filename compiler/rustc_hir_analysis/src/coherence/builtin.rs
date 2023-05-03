@@ -213,7 +213,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
                                  for structs containing the field being coerced, \
                                  ZST fields with 1 byte alignment, and nothing else",
                             )
-                            .note(&format!(
+                            .note(format!(
                                 "extra field `{}` of type `{}` is not allowed",
                                 field.name, ty_a,
                             ))
@@ -241,7 +241,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
                             for a coercion between structures with a single field \
                             being coerced",
                     )
-                    .note(&format!(
+                    .note(format!(
                         "currently, {} fields need coercions: {}",
                         coerced_fields.len(),
                         coerced_fields
@@ -298,7 +298,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) -> Coe
     let coerce_unsized_trait = tcx.require_lang_item(LangItem::CoerceUnsized, Some(span));
 
     let unsize_trait = tcx.lang_items().require(LangItem::Unsize).unwrap_or_else(|err| {
-        tcx.sess.fatal(&format!("`CoerceUnsized` implementation {}", err.to_string()));
+        tcx.sess.fatal(format!("`CoerceUnsized` implementation {}", err.to_string()));
     });
 
     let source = tcx.type_of(impl_did).subst_identity();
@@ -469,7 +469,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) -> Coe
                     "`CoerceUnsized` may only be implemented for \
                           a coercion between structures with one field being coerced",
                 )
-                .note(&format!(
+                .note(format!(
                     "currently, {} fields need coercions: {}",
                     diff_fields.len(),
                     diff_fields

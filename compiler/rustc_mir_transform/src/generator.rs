@@ -865,7 +865,7 @@ fn sanitize_witness<'tcx>(
         _ => {
             tcx.sess.delay_span_bug(
                 body.span,
-                &format!("unexpected generator witness type {:?}", witness.kind()),
+                format!("unexpected generator witness type {:?}", witness.kind()),
             );
             return;
         }
@@ -1451,8 +1451,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
                 )
             }
             _ => {
-                tcx.sess
-                    .delay_span_bug(body.span, &format!("unexpected generator type {}", gen_ty));
+                tcx.sess.delay_span_bug(body.span, format!("unexpected generator type {}", gen_ty));
                 return;
             }
         };

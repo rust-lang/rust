@@ -399,7 +399,7 @@ pub(super) fn dump_annotation<'tcx>(
 
         regioncx.annotate(tcx, &mut err);
 
-        err.note(&format!(
+        err.note(format!(
             "number of external vids: {}",
             closure_region_requirements.num_external_vids
         ));
@@ -421,7 +421,7 @@ pub(super) fn dump_annotation<'tcx>(
     };
 
     if !opaque_type_values.is_empty() {
-        err.note(&format!("Inferred opaque type values:\n{:#?}", opaque_type_values));
+        err.note(format!("Inferred opaque type values:\n{:#?}", opaque_type_values));
     }
 
     errors.buffer_non_error_diag(err);

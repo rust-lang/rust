@@ -905,7 +905,7 @@ impl<'a> Parser<'a> {
                                 expect_err
                                     .span_suggestion_verbose(
                                         self.prev_token.span.shrink_to_hi().until(self.token.span),
-                                        &msg,
+                                        msg,
                                         " @ ",
                                         Applicability::MaybeIncorrect,
                                     )
@@ -921,7 +921,7 @@ impl<'a> Parser<'a> {
                                     expect_err
                                         .span_suggestion_short(
                                             sp,
-                                            &format!("missing `{}`", token_str),
+                                            format!("missing `{}`", token_str),
                                             token_str,
                                             Applicability::MaybeIncorrect,
                                         )

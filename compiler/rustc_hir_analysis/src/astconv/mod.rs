@@ -1168,9 +1168,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             tcx.sess
                 .struct_span_err(
                     binding.span,
-                    &format!("{} `{}` is private", assoc_item.kind, binding.item_name),
+                    format!("{} `{}` is private", assoc_item.kind, binding.item_name),
                 )
-                .span_label(binding.span, &format!("private {}", assoc_item.kind))
+                .span_label(binding.span, format!("private {}", assoc_item.kind))
                 .emit();
         }
         tcx.check_stability(assoc_item.def_id, Some(hir_ref_id), binding.span, None);
@@ -1342,11 +1342,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         let expected = tcx.def_descr(assoc_item_def_id);
                         let mut err = tcx.sess.struct_span_err(
                             binding.span,
-                            &format!("expected {expected} bound, found {got}"),
+                            format!("expected {expected} bound, found {got}"),
                         );
                         err.span_note(
                             tcx.def_span(assoc_item_def_id),
-                            &format!("{expected} defined here"),
+                            format!("{expected} defined here"),
                         );
 
                         if let hir::def::DefKind::AssocConst = def_kind
@@ -1508,7 +1508,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 "additional use",
             );
             first_trait.label_with_exp_info(&mut err, "first non-auto trait", "first use");
-            err.help(&format!(
+            err.help(format!(
                 "consider creating a new trait with all of these as supertraits and using that \
                  trait here instead: `trait NewTrait: {} {{}}`",
                 regular_traits
@@ -1818,7 +1818,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 ([], []) => {
                     err.span_suggestion_verbose(
                         span,
-                        &format!(
+                        format!(
                             "if there were a type named `Type` that implements a trait named \
                              `Trait` with associated type `{name}`, you could use the \
                              fully-qualified path",
@@ -1830,7 +1830,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 ([], [trait_str]) => {
                     err.span_suggestion_verbose(
                         span,
-                        &format!(
+                        format!(
                             "if there were a type named `Example` that implemented `{trait_str}`, \
                              you could use the fully-qualified path",
                         ),
@@ -1841,7 +1841,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 ([], traits) => {
                     err.span_suggestions(
                         span,
-                        &format!(
+                        format!(
                             "if there were a type named `Example` that implemented one of the \
                              traits with associated type `{name}`, you could use the \
                              fully-qualified path",
@@ -1856,7 +1856,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 ([type_str], []) => {
                     err.span_suggestion_verbose(
                         span,
-                        &format!(
+                        format!(
                             "if there were a trait named `Example` with associated type `{name}` \
                              implemented for `{type_str}`, you could use the fully-qualified path",
                         ),
@@ -1867,7 +1867,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 (types, []) => {
                     err.span_suggestions(
                         span,
-                        &format!(
+                        format!(
                             "if there were a trait named `Example` with associated type `{name}` \
                              implemented for one of the types, you could use the fully-qualified \
                              path",
@@ -2033,7 +2033,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         );
                     }
                 } else {
-                    err.note(&format!(
+                    err.note(format!(
                         "associated type `{}` could derive from `{}`",
                         ty_param_name,
                         bound.print_only_trait_path(),
@@ -2041,7 +2041,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
             }
             if !where_bounds.is_empty() {
-                err.help(&format!(
+                err.help(format!(
                     "consider introducing a new type parameter `T` and adding `where` constraints:\
                      \n    where\n        T: {},\n{}",
                     ty_param_name,
@@ -2109,14 +2109,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 // work for the `enum`, instead of just looking if it takes *any*.
                                 err.span_suggestion_verbose(
                                     args_span,
-                                    &format!("{type_name} doesn't have generic parameters"),
+                                    format!("{type_name} doesn't have generic parameters"),
                                     "",
                                     Applicability::MachineApplicable,
                                 );
                                 return;
                             }
                             let Ok(snippet) = tcx.sess.source_map().span_to_snippet(args_span) else {
-                                err.note(&msg);
+                                err.note(msg);
                                 return;
                             };
                             let (qself_sugg_span, is_self) = if let hir::TyKind::Path(
@@ -2150,12 +2150,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                         kw::SelfUpper == segment.ident.name,
                                     ),
                                     _ => {
-                                        err.note(&msg);
+                                        err.note(msg);
                                         return;
                                     }
                                 }
                             } else {
-                                err.note(&msg);
+                                err.note(msg);
                                 return;
                             };
                             let suggestion = vec![
@@ -2170,7 +2170,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 (args_span, String::new()),
                             ];
                             err.multipart_suggestion_verbose(
-                                &msg,
+                                msg,
                                 suggestion,
                                 Applicability::MaybeIncorrect,
                             );
@@ -2222,7 +2222,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let reported = if variant_resolution.is_some() {
                     // Variant in type position
                     let msg = format!("expected type, found variant `{}`", assoc_ident);
-                    tcx.sess.span_err(span, &msg)
+                    tcx.sess.span_err(span, msg)
                 } else if qself_ty.is_enum() {
                     let mut err = struct_span_err!(
                         tcx.sess,
@@ -2293,7 +2293,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // Assume that if it's not matched, there must be a const defined with the same name
             // but it was used in a type position.
             let msg = format!("found associated const `{assoc_ident}` when type was expected");
-            let guar = tcx.sess.struct_span_err(span, &msg).emit();
+            let guar = tcx.sess.struct_span_err(span, msg).emit();
             return Err(guar);
         };
 
@@ -2313,7 +2313,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             also,
                             tcx.def_kind_descr(kind, def_id)
                         );
-                        lint.span_note(tcx.def_span(def_id), &note_msg);
+                        lint.span_note(tcx.def_span(def_id), note_msg);
                     };
 
                     could_refer_to(DefKind::Variant, variant_def_id, "");
@@ -2510,9 +2510,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let msg = format!("{kind} `{name}` is private");
             let def_span = tcx.def_span(item);
             tcx.sess
-                .struct_span_err_with_code(span, &msg, rustc_errors::error_code!(E0624))
-                .span_label(span, &format!("private {kind}"))
-                .span_label(def_span, &format!("{kind} defined here"))
+                .struct_span_err_with_code(span, msg, rustc_errors::error_code!(E0624))
+                .span_label(span, format!("private {kind}"))
+                .span_label(def_span, format!("{kind} defined here"))
                 .emit();
         }
         tcx.check_stability(item, Some(block), span, None);
@@ -2960,7 +2960,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 self.prohibit_generics(path.segments.iter(), |err| {
                     if let Some(span) = tcx.def_ident_span(def_id) {
                         let name = tcx.item_name(def_id);
-                        err.span_note(span, &format!("type parameter `{name}` defined here"));
+                        err.span_note(span, format!("type parameter `{name}` defined here"));
                     }
                 });
 
@@ -3021,7 +3021,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         let mut span: MultiSpan = vec![t_sp].into();
                         span.push_span_label(
                             i_sp,
-                            &format!("`Self` is on type `{type_name}` in this `impl`"),
+                            format!("`Self` is on type `{type_name}` in this `impl`"),
                         );
                         let mut postfix = "";
                         if generics == 0 {
@@ -3029,11 +3029,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         }
                         span.push_span_label(
                             t_sp,
-                            &format!("`Self` corresponds to this type{postfix}"),
+                            format!("`Self` corresponds to this type{postfix}"),
                         );
-                        err.span_note(span, &msg);
+                        err.span_note(span, msg);
                     } else {
-                        err.note(&msg);
+                        err.note(msg);
                     }
                     for segment in path.segments {
                         if let Some(args) = segment.args && segment.ident.name == kw::SelfUpper {
@@ -3124,7 +3124,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         if let Some(args) = segment.args {
                             err.span_suggestion_verbose(
                                 segment.ident.span.shrink_to_hi().to(args.span_ext),
-                                &format!("primitive type `{name}` doesn't have generic parameters"),
+                                format!("primitive type `{name}` doesn't have generic parameters"),
                                 "",
                                 Applicability::MaybeIncorrect,
                             );
@@ -3415,7 +3415,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             if !infer_replacements.is_empty() {
                 diag.multipart_suggestion(
-                    &format!(
+                    format!(
                     "try replacing `_` with the type{} in the corresponding trait method signature",
                     rustc_errors::pluralize!(infer_replacements.len()),
                 ),

@@ -679,14 +679,14 @@ impl<'a> Parser<'a> {
                     );
                     err.span_suggestion(
                         eq.to(before_next),
-                        &format!("remove the `=` if `{}` is a type", ident),
+                        format!("remove the `=` if `{}` is a type", ident),
                         "",
                         Applicability::MaybeIncorrect,
                     )
                 } else {
                     err.span_label(
                         self.token.span,
-                        &format!("expected type, found {}", super::token_descr(&self.token)),
+                        format!("expected type, found {}", super::token_descr(&self.token)),
                     )
                 };
                 return Err(err);

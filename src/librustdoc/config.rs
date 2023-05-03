@@ -382,7 +382,7 @@ impl Options {
                 match kind.parse() {
                     Ok(kind) => emit.push(kind),
                     Err(()) => {
-                        diag.err(&format!("unrecognized emission type: {}", kind));
+                        diag.err(format!("unrecognized emission type: {}", kind));
                         return Err(1);
                     }
                 }
@@ -559,28 +559,28 @@ impl Options {
                 matches.opt_strs("theme").iter().map(|s| (PathBuf::from(&s), s.to_owned()))
             {
                 if !theme_file.is_file() {
-                    diag.struct_err(&format!("invalid argument: \"{}\"", theme_s))
+                    diag.struct_err(format!("invalid argument: \"{}\"", theme_s))
                         .help("arguments to --theme must be files")
                         .emit();
                     return Err(1);
                 }
                 if theme_file.extension() != Some(OsStr::new("css")) {
-                    diag.struct_err(&format!("invalid argument: \"{}\"", theme_s))
+                    diag.struct_err(format!("invalid argument: \"{}\"", theme_s))
                         .help("arguments to --theme must have a .css extension")
                         .emit();
                     return Err(1);
                 }
                 let (success, ret) = theme::test_theme_against(&theme_file, &paths, &diag);
                 if !success {
-                    diag.struct_err(&format!("error loading theme file: \"{}\"", theme_s)).emit();
+                    diag.struct_err(format!("error loading theme file: \"{}\"", theme_s)).emit();
                     return Err(1);
                 } else if !ret.is_empty() {
-                    diag.struct_warn(&format!(
+                    diag.struct_warn(format!(
                         "theme file \"{}\" is missing CSS rules from the default theme",
                         theme_s
                     ))
                     .warn("the theme may appear incorrect when loaded")
-                    .help(&format!(
+                    .help(format!(
                         "to see what rules are missing, call `rustdoc --check-theme \"{}\"`",
                         theme_s
                     ))
@@ -611,7 +611,7 @@ impl Options {
         match matches.opt_str("r").as_deref() {
             Some("rust") | None => {}
             Some(s) => {
-                diag.struct_err(&format!("unknown input format: {}", s)).emit();
+                diag.struct_err(format!("unknown input format: {}", s)).emit();
                 return Err(1);
             }
         }
@@ -631,7 +631,7 @@ impl Options {
         let crate_types = match parse_crate_types_from_list(matches.opt_strs("crate-type")) {
             Ok(types) => types,
             Err(e) => {
-                diag.struct_err(&format!("unknown crate type: {}", e)).emit();
+                diag.struct_err(format!("unknown crate type: {}", e)).emit();
                 return Err(1);
             }
         };
@@ -649,7 +649,7 @@ impl Options {
                     out_fmt
                 }
                 Err(e) => {
-                    diag.struct_err(&e).emit();
+                    diag.struct_err(e).emit();
                     return Err(1);
                 }
             },
@@ -790,7 +790,7 @@ fn check_deprecated_options(matches: &getopts::Matches, diag: &rustc_errors::Han
 
     for &flag in deprecated_flags.iter() {
         if matches.opt_present(flag) {
-            diag.struct_warn(&format!("the `{}` flag is deprecated", flag))
+            diag.struct_warn(format!("the `{}` flag is deprecated", flag))
                 .note(
                     "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
                     for more information",
@@ -803,7 +803,7 @@ fn check_deprecated_options(matches: &getopts::Matches, diag: &rustc_errors::Han
 
     for &flag in removed_flags.iter() {
         if matches.opt_present(flag) {
-            let mut err = diag.struct_warn(&format!("the `{}` flag no longer functions", flag));
+            let mut err = diag.struct_warn(format!("the `{}` flag no longer functions", flag));
             err.note(
                 "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
                 for more information",

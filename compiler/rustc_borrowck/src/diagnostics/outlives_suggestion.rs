@@ -171,7 +171,7 @@ impl OutlivesSuggestionBuilder {
         if let (Some(fr_name), Some(outlived_fr_name)) = (fr_name, outlived_fr_name)
             && !matches!(outlived_fr_name.source, RegionNameSource::Static)
         {
-            diag.help(&format!(
+            diag.help(format!(
                 "consider adding the following bound: `{fr_name}: {outlived_fr_name}`",
             ));
         }
@@ -207,7 +207,7 @@ impl OutlivesSuggestionBuilder {
         // If there is exactly one suggestable constraints, then just suggest it. Otherwise, emit a
         // list of diagnostics.
         let mut diag = if suggested.len() == 1 {
-            mbcx.infcx.tcx.sess.diagnostic().struct_help(&match suggested.last().unwrap() {
+            mbcx.infcx.tcx.sess.diagnostic().struct_help(match suggested.last().unwrap() {
                 SuggestedConstraint::Outlives(a, bs) => {
                     let bs: SmallVec<[String; 2]> = bs.iter().map(|r| r.to_string()).collect();
                     format!("add bound `{a}: {}`", bs.join(" + "))
@@ -232,15 +232,15 @@ impl OutlivesSuggestionBuilder {
                 match constraint {
                     SuggestedConstraint::Outlives(a, bs) => {
                         let bs: SmallVec<[String; 2]> = bs.iter().map(|r| r.to_string()).collect();
-                        diag.help(&format!("add bound `{a}: {}`", bs.join(" + ")));
+                        diag.help(format!("add bound `{a}: {}`", bs.join(" + ")));
                     }
                     SuggestedConstraint::Equal(a, b) => {
-                        diag.help(&format!(
+                        diag.help(format!(
                             "`{a}` and `{b}` must be the same: replace one with the other",
                         ));
                     }
                     SuggestedConstraint::Static(a) => {
-                        diag.help(&format!("replace `{a}` with `'static`"));
+                        diag.help(format!("replace `{a}` with `'static`"));
                     }
                 }
             }

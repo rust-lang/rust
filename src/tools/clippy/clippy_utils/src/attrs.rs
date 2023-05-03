@@ -133,7 +133,7 @@ pub fn get_unique_attr<'a>(
     let mut unique_attr: Option<&ast::Attribute> = None;
     for attr in get_attr(sess, attrs, name) {
         if let Some(duplicate) = unique_attr {
-            sess.struct_span_err(attr.span, &format!("`{name}` is defined multiple times"))
+            sess.struct_span_err(attr.span, format!("`{name}` is defined multiple times"))
                 .span_note(duplicate.span, "first definition found here")
                 .emit();
         } else {

@@ -177,7 +177,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
                                 .sess
                                 .struct_span_err(
                                     self.span,
-                                    &format!(
+                                    format!(
                                         "type parameter `{}` is part of concrete type but not \
                                           used in parameter list for the `impl Trait` type alias",
                                         ty

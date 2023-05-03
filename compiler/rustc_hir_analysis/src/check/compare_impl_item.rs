@@ -1273,7 +1273,7 @@ fn compare_number_of_generics<'tcx>(
 
             let mut err = tcx.sess.struct_span_err_with_code(
                 spans,
-                &format!(
+                format!(
                     "{} `{}` has {} {kind} parameter{} but its trait \
                      declaration has {} {kind} parameter{}",
                     item_kind,

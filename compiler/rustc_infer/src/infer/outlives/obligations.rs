@@ -256,7 +256,7 @@ where
                     // this point it never will be
                     self.tcx.sess.delay_span_bug(
                         origin.span(),
-                        &format!("unresolved inference variable in outlives: {:?}", v),
+                        format!("unresolved inference variable in outlives: {:?}", v),
                     );
                 }
             }

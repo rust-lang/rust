@@ -746,7 +746,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         // Flush pending errors.
         Rc::get_mut(&mut self.shared).unwrap().fs.close();
         let nb_errors =
-            self.shared.errors.iter().map(|err| self.tcx().sess.struct_err(&err).emit()).count();
+            self.shared.errors.iter().map(|err| self.tcx().sess.struct_err(err).emit()).count();
         if nb_errors > 0 {
             Err(Error::new(io::Error::new(io::ErrorKind::Other, "I/O error"), ""))
         } else {

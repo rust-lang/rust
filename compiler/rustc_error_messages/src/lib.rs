@@ -287,11 +287,19 @@ pub enum SubdiagnosticMessage {
     FluentAttr(FluentId),
 }
 
-/// `From` impl that enables existing diagnostic calls to functions which now take
-/// `impl Into<SubdiagnosticMessage>` to continue to work as before.
-impl<S: Into<String>> From<S> for SubdiagnosticMessage {
-    fn from(s: S) -> Self {
-        SubdiagnosticMessage::Str(s.into())
+impl From<String> for SubdiagnosticMessage {
+    fn from(s: String) -> Self {
+        SubdiagnosticMessage::Str(s)
+    }
+}
+impl<'a> From<&'a str> for SubdiagnosticMessage {
+    fn from(s: &'a str) -> Self {
+        SubdiagnosticMessage::Str(s.to_string())
+    }
+}
+impl From<Cow<'static, str>> for SubdiagnosticMessage {
+    fn from(s: Cow<'static, str>) -> Self {
+        SubdiagnosticMessage::Str(s.to_string())
     }
 }
 
@@ -352,11 +360,19 @@ impl DiagnosticMessage {
     }
 }
 
-/// `From` impl that enables existing diagnostic calls to functions which now take
-/// `impl Into<DiagnosticMessage>` to continue to work as before.
-impl<S: Into<String>> From<S> for DiagnosticMessage {
-    fn from(s: S) -> Self {
-        DiagnosticMessage::Str(s.into())
+impl From<String> for DiagnosticMessage {
+    fn from(s: String) -> Self {
+        DiagnosticMessage::Str(s)
+    }
+}
+impl<'a> From<&'a str> for DiagnosticMessage {
+    fn from(s: &'a str) -> Self {
+        DiagnosticMessage::Str(s.to_string())
+    }
+}
+impl From<Cow<'static, str>> for DiagnosticMessage {
+    fn from(s: Cow<'static, str>) -> Self {
+        DiagnosticMessage::Str(s.to_string())
     }
 }
 

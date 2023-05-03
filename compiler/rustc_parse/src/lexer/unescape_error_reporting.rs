@@ -129,7 +129,7 @@ pub(crate) fn emit_unescape_error(
             let label =
                 if mode.is_byte() { "unknown byte escape" } else { "unknown character escape" };
             let ec = escaped_char(c);
-            let mut diag = handler.struct_span_err(span, &format!("{}: `{}`", label, ec));
+            let mut diag = handler.struct_span_err(span, format!("{}: `{}`", label, ec));
             diag.span_label(span, label);
             if c == '{' || c == '}' && !mode.is_byte() {
                 diag.help(
@@ -180,13 +180,13 @@ pub(crate) fn emit_unescape_error(
             } else {
                 String::new()
             };
-            err.span_label(span, &format!("must be ASCII{}", postfix));
+            err.span_label(span, format!("must be ASCII{}", postfix));
             // Note: the \\xHH suggestions are not given for raw byte string
             // literals, because they are araw and so cannot use any escapes.
             if (c as u32) <= 0xFF && mode != Mode::RawByteStr {
                 err.span_suggestion(
                     span,
-                    &format!(
+                    format!(
                         "if you meant to use the unicode code point for {:?}, use a \\xHH escape",
                         c
                     ),
@@ -200,10 +200,7 @@ pub(crate) fn emit_unescape_error(
                 utf8.push(c);
                 err.span_suggestion(
                     span,
-                    &format!(
-                        "if you meant to use the UTF-8 encoding of {:?}, use \\xHH escapes",
-                        c
-                    ),
+                    format!("if you meant to use the UTF-8 encoding of {:?}, use \\xHH escapes", c),
                     utf8.as_bytes()
                         .iter()
                         .map(|b: &u8| format!("\\x{:X}", *b))

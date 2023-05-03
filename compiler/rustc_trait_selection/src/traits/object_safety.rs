@@ -525,7 +525,7 @@ fn virtual_call_violation_for_method<'tcx>(
                         // #78372
                         tcx.sess.delay_span_bug(
                             tcx.def_span(method.def_id),
-                            &format!("error: {}\n while computing layout for type {:?}", err, ty),
+                            format!("error: {}\n while computing layout for type {:?}", err, ty),
                         );
                         None
                     }
@@ -541,7 +541,7 @@ fn virtual_call_violation_for_method<'tcx>(
                 abi => {
                     tcx.sess.delay_span_bug(
                         tcx.def_span(method.def_id),
-                        &format!(
+                        format!(
                             "receiver when `Self = ()` should have a Scalar ABI; found {:?}",
                             abi
                         ),
@@ -560,7 +560,7 @@ fn virtual_call_violation_for_method<'tcx>(
                 abi => {
                     tcx.sess.delay_span_bug(
                         tcx.def_span(method.def_id),
-                        &format!(
+                        format!(
                             "receiver when `Self = {}` should have a ScalarPair ABI; found {:?}",
                             trait_object_ty, abi
                         ),

@@ -108,7 +108,7 @@ fn check_rust_syntax(
                 // just give a `help` instead.
                 lint.span_help(
                     sp.from_inner(InnerSpan::new(0, 3)),
-                    &format!("{}: ```text", explanation),
+                    format!("{}: ```text", explanation),
                 );
             } else if empty_block {
                 lint.span_suggestion(
@@ -119,12 +119,12 @@ fn check_rust_syntax(
                 );
             }
         } else if empty_block || is_ignore {
-            lint.help(&format!("{}: ```text", explanation));
+            lint.help(format!("{}: ```text", explanation));
         }
 
         // FIXME(#67563): Provide more context for these errors by displaying the spans inline.
         for message in buffer.messages.iter() {
-            lint.note(message);
+            lint.note(message.clone());
         }
 
         lint

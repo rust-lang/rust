@@ -1073,7 +1073,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             if !is_loop_move {
                                 err.span_suggestion_verbose(
                                     move_span.shrink_to_lo(),
-                                    &format!(
+                                    format!(
                                         "consider creating a fresh reborrow of {} here",
                                         self.describe_place(moved_place.as_ref())
                                             .map(|n| format!("`{n}`"))

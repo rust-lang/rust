@@ -88,10 +88,10 @@ pub(crate) fn import_function<'tcx>(
     let sig = get_function_sig(tcx, module.target_config().default_call_conv, inst);
     match module.declare_function(name, Linkage::Import, &sig) {
         Ok(func_id) => func_id,
-        Err(ModuleError::IncompatibleDeclaration(_)) => tcx.sess.fatal(&format!(
+        Err(ModuleError::IncompatibleDeclaration(_)) => tcx.sess.fatal(format!(
             "attempt to declare `{name}` as function, but it was already declared as static"
         )),
-        Err(ModuleError::IncompatibleSignature(_, prev_sig, new_sig)) => tcx.sess.fatal(&format!(
+        Err(ModuleError::IncompatibleSignature(_, prev_sig, new_sig)) => tcx.sess.fatal(format!(
             "attempt to declare `{name}` with signature {new_sig:?}, \
              but it was already declared with signature {prev_sig:?}"
         )),
@@ -548,7 +548,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             if !matches!(fn_sig.abi(), Abi::C { .. }) {
                 fx.tcx.sess.span_fatal(
                     source_info.span,
-                    &format!("Variadic call for non-C abi {:?}", fn_sig.abi()),
+                    format!("Variadic call for non-C abi {:?}", fn_sig.abi()),
                 );
             }
             let sig_ref = fx.bcx.func.dfg.call_signature(call_inst).unwrap();
@@ -560,7 +560,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                         // FIXME set %al to upperbound on float args once floats are supported
                         fx.tcx.sess.span_fatal(
                             source_info.span,
-                            &format!("Non int ty {:?} for variadic call", ty),
+                            format!("Non int ty {:?} for variadic call", ty),
                         );
                     }
                     AbiParam::new(ty)

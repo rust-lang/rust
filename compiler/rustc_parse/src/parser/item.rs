@@ -71,7 +71,7 @@ impl<'a> Parser<'a> {
         if !self.eat(term) {
             let token_str = super::token_descr(&self.token);
             if !self.maybe_consume_incorrect_semicolon(&items) {
-                let msg = &format!("expected item, found {token_str}");
+                let msg = format!("expected item, found {token_str}");
                 let mut err = self.struct_span_err(self.token.span, msg);
                 let label = if self.is_kw_followed_by_ident(kw::Let) {
                     "consider using `const` or `static` instead of `let` for global variables"
@@ -1429,7 +1429,7 @@ impl<'a> Parser<'a> {
             VariantData::Struct(fields, recovered)
         } else {
             let token_str = super::token_descr(&self.token);
-            let msg = &format!("expected `where` or `{{` after union name, found {token_str}");
+            let msg = format!("expected `where` or `{{` after union name, found {token_str}");
             let mut err = self.struct_span_err(self.token.span, msg);
             err.span_label(self.token.span, "expected `where` or `{` after union name");
             return Err(err);
@@ -1465,7 +1465,7 @@ impl<'a> Parser<'a> {
             self.eat(&token::CloseDelim(Delimiter::Brace));
         } else {
             let token_str = super::token_descr(&self.token);
-            let msg = &format!(
+            let msg = format!(
                 "expected {}`{{` after struct name, found {}",
                 if parsed_where { "" } else { "`where`, or " },
                 token_str
@@ -1602,7 +1602,7 @@ impl<'a> Parser<'a> {
                 let sp = self.prev_token.span.shrink_to_hi();
                 let mut err = self.struct_span_err(
                     sp,
-                    &format!("expected `,`, or `}}`, found {}", super::token_descr(&self.token)),
+                    format!("expected `,`, or `}}`, found {}", super::token_descr(&self.token)),
                 );
 
                 // Try to recover extra trailing angle brackets
@@ -1740,7 +1740,7 @@ impl<'a> Parser<'a> {
                     Ok(_) => {
                         let mut err = self.struct_span_err(
                             lo.to(self.prev_token.span),
-                            &format!("functions are not allowed in {adt_ty} definitions"),
+                            format!("functions are not allowed in {adt_ty} definitions"),
                         );
                         err.help(
                             "unlike in C++, Java, and C#, functions are declared in `impl` blocks",
@@ -1759,7 +1759,7 @@ impl<'a> Parser<'a> {
                     Ok((ident, _)) => {
                         let mut err = self.struct_span_err(
                             lo.with_hi(ident.span.hi()),
-                            &format!("structs are not allowed in {adt_ty} definitions"),
+                            format!("structs are not allowed in {adt_ty} definitions"),
                         );
                         err.help("consider creating a new `struct` definition instead of nesting");
                         err
@@ -2228,11 +2228,11 @@ impl<'a> Parser<'a> {
 
                         err.span_suggestion(
                             self.token.uninterpolated_span(),
-                            &format!("`{original_kw}` already used earlier, remove this one"),
+                            format!("`{original_kw}` already used earlier, remove this one"),
                             "",
                             Applicability::MachineApplicable,
                         )
-                        .span_note(original_sp, &format!("`{original_kw}` first seen here"));
+                        .span_note(original_sp, format!("`{original_kw}` first seen here"));
                     }
                     // The keyword has not been seen yet, suggest correct placement in the function front matter
                     else if let Some(WrongKw::Misplaced(correct_pos_sp)) = wrong_kw {
@@ -2243,7 +2243,7 @@ impl<'a> Parser<'a> {
 
                             err.span_suggestion(
                                     correct_pos_sp.to(misplaced_qual_sp),
-                                    &format!("`{misplaced_qual}` must come before `{current_qual}`"),
+                                    format!("`{misplaced_qual}` must come before `{current_qual}`"),
                                     format!("{misplaced_qual} {current_qual}"),
                                     Applicability::MachineApplicable,
                                 ).note("keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`");
@@ -2267,7 +2267,7 @@ impl<'a> Parser<'a> {
                             if matches!(orig_vis.kind, VisibilityKind::Inherited) {
                                 err.span_suggestion(
                                     sp_start.to(self.prev_token.span),
-                                    &format!("visibility `{vs}` must come before `{snippet}`"),
+                                    format!("visibility `{vs}` must come before `{snippet}`"),
                                     format!("{vs} {snippet}"),
                                     Applicability::MachineApplicable,
                                 );

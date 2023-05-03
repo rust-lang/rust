@@ -1833,7 +1833,7 @@ impl SharedEmitterMain {
                     sess.abort_if_errors();
                 }
                 Ok(SharedEmitterMessage::Fatal(msg)) => {
-                    sess.fatal(&msg);
+                    sess.fatal(msg);
                 }
                 Err(_) => {
                     break;

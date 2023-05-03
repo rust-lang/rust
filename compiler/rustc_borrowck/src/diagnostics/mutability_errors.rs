@@ -573,7 +573,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                 if !is_trait_sig {
                                     err.span_suggestion_verbose(
                                         err_help_span,
-                                        &format!(
+                                        format!(
                                             "consider changing this to be a mutable {pointer_desc}"
                                         ),
                                         suggested_code,
@@ -582,7 +582,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                 } else if let Some(x) = local_trait {
                                     err.span_suggestion_verbose(
                                         x,
-                                        &format!(
+                                        format!(
                                             "consider changing that to be a mutable {pointer_desc}"
                                         ),
                                         suggested_code,
@@ -636,14 +636,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                     };
                                     err.span_suggestion_verbose(
                                         span,
-                                        &format!("consider {changing} this binding's type"),
+                                        format!("consider {changing} this binding's type"),
                                         sugg,
                                         Applicability::HasPlaceholders,
                                     );
                                 } else {
                                     err.span_label(
                                         err_label_span,
-                                        &format!(
+                                        format!(
                                             "consider changing this binding's type to be: `{message}`"
                                         ),
                                     );
@@ -679,13 +679,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                 match opt_source {
                     Some(BorrowedContentSource::OverloadedDeref(ty)) => {
-                        err.help(&format!(
+                        err.help(format!(
                             "trait `DerefMut` is required to modify through a dereference, \
                              but it is not implemented for `{ty}`",
                         ));
                     }
                     Some(BorrowedContentSource::OverloadedIndex(ty)) => {
-                        err.help(&format!(
+                        err.help(format!(
                             "trait `IndexMut` is required to modify indexed content, \
                              but it is not implemented for `{ty}`",
                         ));
@@ -736,7 +736,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         // val[index] = rv;
                         // ---------- place
                         self.err.multipart_suggestions(
-                            &format!(
+                            format!(
                                 "to modify a `{}`, use `.get_mut()`, `.insert()` or the entry API",
                                 self.ty,
                             ),
@@ -788,7 +788,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     {
                         // val[index].path(args..);
                         self.err.multipart_suggestion(
-                            &format!("to modify a `{}` use `.get_mut()`", self.ty),
+                            format!("to modify a `{}` use `.get_mut()`", self.ty),
                             vec![
                                 (
                                     val.span.shrink_to_hi().with_hi(index.span.lo()),
@@ -822,7 +822,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             let mut v = V { assign_span, err, ty, suggested: false };
             v.visit_body(body);
             if !v.suggested {
-                err.help(&format!(
+                err.help(format!(
                     "to modify a `{ty}`, use `.get_mut()`, `.insert()` or the entry API",
                 ));
             }

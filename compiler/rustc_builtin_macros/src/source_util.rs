@@ -150,7 +150,7 @@ pub fn expand_include<'cx>(
                         if self.p.token != token::Eof {
                             let token = pprust::token_to_string(&self.p.token);
                             let msg = format!("expected item, found `{}`", token);
-                            self.p.struct_span_err(self.p.token.span, &msg).emit();
+                            self.p.struct_span_err(self.p.token.span, msg).emit();
                         }
 
                         break;

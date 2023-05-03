@@ -797,7 +797,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             &self.cx.sess.parse_sess,
             sym::proc_macro_hygiene,
             span,
-            &format!("custom attributes cannot be applied to {}", kind),
+            format!("custom attributes cannot be applied to {}", kind),
         )
         .emit();
     }

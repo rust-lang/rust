@@ -616,14 +616,14 @@ fn report_missing_placeholders(
                         } else {
                             diag.span_note(
                                 sp,
-                                &format!("format specifiers use curly braces, and {}", trn),
+                                format!("format specifiers use curly braces, and {}", trn),
                             );
                         }
                     } else {
                         if success {
-                            diag.help(&format!("`{}` should be written as `{}`", sub, trn));
+                            diag.help(format!("`{}` should be written as `{}`", sub, trn));
                         } else {
-                            diag.note(&format!("`{}` should use curly braces, and {}", sub, trn));
+                            diag.note(format!("`{}` should use curly braces, and {}", sub, trn));
                         }
                     }
                 }
@@ -777,7 +777,7 @@ fn report_invalid_references(
                 has_precision_star = true;
                 e.span_label(
                     *span,
-                    &format!(
+                    format!(
                         "this precision flag adds an extra required argument at position {}, which is why there {} expected",
                         index,
                         if num_placeholders == 1 {

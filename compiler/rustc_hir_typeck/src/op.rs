@@ -390,7 +390,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         )
                         .is_ok()
                     {
-                        let msg = &format!(
+                        let msg = format!(
                             "`{}{}` can be used on `{}` if you dereference the left-hand side",
                             op.node.as_str(),
                             match is_assign {
@@ -515,7 +515,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         } else {
                             // When we know that a missing bound is responsible, we don't show
                             // this note as it is redundant.
-                            err.note(&format!(
+                            err.note(format!(
                                 "the trait `{missing_trait}` is not implemented for `{lhs_ty}`"
                             ));
                         }
@@ -690,7 +690,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 {
                                     err.span_suggestion(
                                         ex.span,
-                                        &format!(
+                                        format!(
                                             "you may have meant the maximum value of `{actual}`",
                                         ),
                                         format!("{actual}::MAX"),
