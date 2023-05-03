@@ -395,6 +395,10 @@ fn check_opaque_meets_bounds<'tcx>(
     span: Span,
     origin: &hir::OpaqueTyOrigin,
 ) {
+    if tcx.trait_solver_next() {
+        return;
+    }
+
     let defining_use_anchor = match *origin {
         hir::OpaqueTyOrigin::FnReturn(did) | hir::OpaqueTyOrigin::AsyncFn(did) => did,
         hir::OpaqueTyOrigin::TyAlias => def_id,

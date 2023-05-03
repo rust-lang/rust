@@ -73,7 +73,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config;
 use rustc_session::Session;
 use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_span::{sym, Span};
+use rustc_span::Span;
 
 fluent_messages! { "../messages.ftl" }
 
@@ -189,14 +189,10 @@ fn typeck_with_fallback<'tcx>(
         span_bug!(span, "can't type-check body of {:?}", def_id);
     });
     let body = tcx.hir().body(body_id);
-
-    let param_env = tcx.param_env(def_id);
-    let param_env = if tcx.has_attr(def_id, sym::rustc_do_not_const_check) {
-        param_env.without_const()
-    } else {
-        param_env
-    };
     let inh = Inherited::new(tcx, def_id);
+    // `-Ztrait-solver=next` needs the inference context to construct
+    // the `param_env` for typeck.
+    let param_env = inh.typeck_param_env(def_id);
     let mut fcx = FnCtxt::new(&inh, param_env, def_id);
 
     if let Some(hir::FnSig { header, decl, .. }) = fn_sig {

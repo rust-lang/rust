@@ -1236,6 +1236,10 @@ rustc_queries! {
         feedable
     }
 
+    query param_env_body_post_hir_typeck(def_id: LocalDefId) -> ty::ParamEnv<'tcx> {
+        desc { |tcx| "computing the post-typeck predicates of `{}`", tcx.def_path_str(def_id) }
+    }
+
     /// Like `param_env`, but returns the `ParamEnv` in `Reveal::All` mode.
     /// Prefer this over `tcx.param_env(def_id).with_reveal_all_normalized(tcx)`,
     /// as this method is more efficient.

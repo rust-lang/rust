@@ -157,6 +157,8 @@ pub struct TypeckResults<'tcx> {
     /// even if they are only set in dead code (which doesn't show up in MIR).
     pub concrete_opaque_types: FxIndexMap<LocalDefId, ty::OpaqueHiddenType<'tcx>>,
 
+    pub defined_opaque_types: Vec<DefinedOpaqueType<'tcx>>,
+
     /// Tracks the minimum captures required for a closure;
     /// see `MinCaptureInformationMap` for more details.
     pub closure_min_captures: ty::MinCaptureInformationMap<'tcx>,
@@ -211,6 +213,13 @@ pub struct TypeckResults<'tcx> {
 
     /// Container types and field indices of `offset_of!` expressions
     offset_of_data: ItemLocalMap<(Ty<'tcx>, Vec<FieldIdx>)>,
+}
+
+#[derive(TyEncodable, TyDecodable, Clone, Debug, Eq, Hash, PartialEq, HashStable)]
+#[derive(TypeFoldable, TypeVisitable)]
+pub struct DefinedOpaqueType<'tcx> {
+    pub opaque_ty: ty::AliasTy<'tcx>,
+    pub hidden_ty: Ty<'tcx>,
 }
 
 /// Whenever a value may be live across a generator yield, the type of that value winds up in the
@@ -276,6 +285,7 @@ impl<'tcx> TypeckResults<'tcx> {
             used_trait_imports: Lrc::new(Default::default()),
             tainted_by_errors: None,
             concrete_opaque_types: Default::default(),
+            defined_opaque_types: Default::default(),
             closure_min_captures: Default::default(),
             closure_fake_reads: Default::default(),
             rvalue_scopes: Default::default(),

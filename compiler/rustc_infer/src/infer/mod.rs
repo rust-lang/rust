@@ -6,6 +6,7 @@ pub use self::RegionVariableOrigin::*;
 pub use self::SubregionOrigin::*;
 pub use self::ValuePairs::*;
 pub use combine::ObligationEmittingRelation;
+use rustc_middle::ty::tls;
 
 use self::opaque_types::OpaqueTypeStorage;
 pub(crate) use self::undo_log::{InferCtxtUndoLogs, Snapshot, UndoLog};
@@ -204,6 +205,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
 
     #[inline]
     pub fn opaque_types(&mut self) -> opaque_types::OpaqueTypeTable<'_, 'tcx> {
+        tls::with(|tcx| assert!(!tcx.trait_solver_next()));
         self.opaque_type_storage.with_log(&mut self.undo_log)
     }
 

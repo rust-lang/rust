@@ -103,8 +103,8 @@ pub use self::sty::{
 pub use self::trait_def::TraitDef;
 pub use self::typeck_results::{
     CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
-    GeneratorDiagnosticData, GeneratorInteriorTypeCause, TypeckResults, UserType,
-    UserTypeAnnotationIndex,
+    DefinedOpaqueType, GeneratorDiagnosticData, GeneratorInteriorTypeCause, TypeckResults,
+    UserType, UserTypeAnnotationIndex,
 };
 
 pub mod _match;
@@ -1011,13 +1011,10 @@ impl<'tcx> Term<'tcx> {
     ///
     /// FIXME: rename `AliasTy` to `AliasTerm` and make sure we correctly
     /// deal with constants.
-    pub fn to_projection_term(&self, tcx: TyCtxt<'tcx>) -> Option<AliasTy<'tcx>> {
+    pub fn to_alias_ty(&self, tcx: TyCtxt<'tcx>) -> Option<AliasTy<'tcx>> {
         match self.unpack() {
-            TermKind::Ty(ty) => match ty.kind() {
-                ty::Alias(kind, alias_ty) => match kind {
-                    AliasKind::Projection => Some(*alias_ty),
-                    AliasKind::Opaque => None,
-                },
+            TermKind::Ty(ty) => match *ty.kind() {
+                ty::Alias(_kind, alias_ty) => Some(alias_ty),
                 _ => None,
             },
             TermKind::Const(ct) => match ct.kind() {

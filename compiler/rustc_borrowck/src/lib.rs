@@ -167,7 +167,7 @@ fn do_mir_borrowck<'tcx>(
 
     let tcx = infcx.tcx;
     let infcx = BorrowckInferCtxt::new(infcx);
-    let param_env = tcx.param_env(def);
+    let param_env = tcx.param_env_body_post_hir_typeck(def);
 
     let mut local_names = IndexVec::from_elem(None, &input_body.local_decls);
     for var_debug_info in &input_body.var_debug_info {

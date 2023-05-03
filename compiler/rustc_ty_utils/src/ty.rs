@@ -446,6 +446,36 @@ fn well_formed_types_in_env(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::List<Predica
     tcx.mk_predicates_from_iter(clauses.chain(input_clauses))
 }
 
+fn param_env_body_post_hir_typeck<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> ty::ParamEnv<'tcx> {
+    let param_env = tcx.param_env(def_id);
+    let typeck_results = tcx.typeck(def_id);
+    if typeck_results.defined_opaque_types.is_empty() {
+        param_env
+    } else {
+        let define_opaques = typeck_results
+            .defined_opaque_types
+            .iter()
+            .map(|defined_opaque_type| {
+                ty::PredicateKind::DefineOpaque(
+                    defined_opaque_type.opaque_ty,
+                    defined_opaque_type.hidden_ty,
+                )
+            })
+            .map(|kind| kind.to_predicate(tcx));
+
+        let param_env = ty::ParamEnv::new(
+            tcx.mk_predicates_from_iter(param_env.caller_bounds().iter().chain(define_opaques)),
+            param_env.reveal(),
+            param_env.constness(),
+        );
+
+        param_env
+    }
+}
+
 fn param_env_reveal_all_normalized(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     tcx.param_env(def_id).with_reveal_all_normalized(tcx)
 }
@@ -572,6 +602,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         asyncness,
         adt_sized_constraint,
         param_env,
+        param_env_body_post_hir_typeck,
         param_env_reveal_all_normalized,
         instance_def_size_estimate,
         issue33140_self_ty,

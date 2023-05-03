@@ -48,9 +48,15 @@ impl<'tcx> InferCtxt<'tcx> {
         span: Span,
         param_env: ty::ParamEnv<'tcx>,
     ) -> InferOk<'tcx, T> {
+        // We handle opaque types differently in the new solver.
+        if self.tcx.trait_solver_next() {
+            return InferOk { value, obligations: vec![] };
+        }
+
         if !value.has_opaque_types() {
             return InferOk { value, obligations: vec![] };
         }
+
         let mut obligations = vec![];
         let replace_opaque_type = |def_id: DefId| {
             def_id.as_local().map_or(false, |def_id| self.opaque_type_origin(def_id).is_some())

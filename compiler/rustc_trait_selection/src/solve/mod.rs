@@ -24,6 +24,7 @@ mod assembly;
 mod canonicalize;
 mod eval_ctxt;
 mod fulfill;
+mod opaques;
 mod project_goals;
 mod search_graph;
 mod trait_goals;
@@ -212,7 +213,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             );
         }
 
-        match (lhs.to_projection_term(tcx), rhs.to_projection_term(tcx)) {
+        match (lhs.to_alias_ty(tcx), rhs.to_alias_ty(tcx)) {
             (None, None) => bug!("`AliasRelate` goal without an alias on either lhs or rhs"),
 
             // RHS is not a projection, only way this is true is if LHS normalizes-to RHS

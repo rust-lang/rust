@@ -509,16 +509,23 @@ where
 
             (&ty::Infer(ty::TyVar(vid)), _) => self.relate_ty_var((vid, b)),
 
+            (ty::Alias(..), _) | (_, ty::Alias(..)) if infcx.tcx.trait_solver_next() => {
+                infcx.super_combine_tys(self, a, b)
+            }
+
+            // This behavior is only there for the old solver.
             (
                 &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
                 &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
-            ) if a_def_id == b_def_id => infcx.super_combine_tys(self, a, b).or_else(|err| {
-                self.tcx().sess.delay_span_bug(
-                    self.delegate.span(),
-                    "failure to relate an opaque to itself should result in an error later on",
-                );
-                if a_def_id.is_local() { self.relate_opaques(a, b) } else { Err(err) }
-            }),
+            ) if a_def_id == b_def_id || infcx.tcx.trait_solver_next() => {
+                infcx.super_combine_tys(self, a, b).or_else(|err| {
+                    self.tcx().sess.delay_span_bug(
+                        self.delegate.span(),
+                        "failure to relate an opaque to itself should result in an error later on",
+                    );
+                    if a_def_id.is_local() { self.relate_opaques(a, b) } else { Err(err) }
+                })
+            }
             (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
             | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
                 if def_id.is_local() =>

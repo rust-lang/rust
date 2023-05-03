@@ -18,7 +18,7 @@ use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableEx
 use rustc_middle::ty::TypeckResults;
 use rustc_middle::ty::{self, ClosureSizeProfileData, Ty, TyCtxt};
 use rustc_span::symbol::sym;
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 
 use std::mem;
 use std::ops::ControlFlow;
@@ -551,8 +551,37 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
+    fn visit_opaque_types_next(&mut self) {
+        for predicate in self.fcx.param_env.caller_bounds() {
+            let (opaque_ty, hidden_ty) = match predicate.kind().skip_binder() {
+                ty::PredicateKind::DefineOpaque(opaque_ty, hidden_ty) => {
+                    assert!(!opaque_ty.has_escaping_bound_vars());
+                    assert!(!hidden_ty.has_escaping_bound_vars());
+                    (opaque_ty, hidden_ty)
+                }
+                _ => continue,
+            };
+
+            let opaque_ty = self.resolve(opaque_ty, &DUMMY_SP);
+            let hidden_ty = self.resolve(hidden_ty, &DUMMY_SP);
+
+            self.typeck_results
+                .defined_opaque_types
+                .push(ty::DefinedOpaqueType { opaque_ty, hidden_ty });
+        }
+    }
+
     #[instrument(skip(self), level = "debug")]
     fn visit_opaque_types(&mut self) {
+        if self.tcx().trait_solver_next() {
+            let opaque_type_storage = self.fcx.infcx.take_opaque_types();
+            if !opaque_type_storage.is_empty() {
+                bug!("used old opaque type storage in new solver");
+            }
+
+            return self.visit_opaque_types_next();
+        }
+
         let opaque_types = self.fcx.infcx.take_opaque_types();
         for (opaque_type_key, decl) in opaque_types {
             let hidden_type = self.resolve(decl.hidden_type, &decl.hidden_type.span);

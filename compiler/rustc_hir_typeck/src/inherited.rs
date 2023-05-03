@@ -4,13 +4,15 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::HirIdMap;
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{DefiningAnchor, InferCtxt, InferOk, TyCtxtInferExt};
 use rustc_middle::ty::visit::TypeVisitableExt;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefIdMap;
-use rustc_span::{self, Span};
+use rustc_span::{self, sym, Span};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{self, PredicateObligation, TraitEngine, TraitEngineExt as _};
+use rustc_type_ir::AliasKind;
 
 use std::cell::RefCell;
 use std::ops::Deref;
@@ -96,6 +98,55 @@ impl<'tcx> Inherited<'tcx> {
             deferred_generator_interiors: RefCell::new(Vec::new()),
             diverging_type_vars: RefCell::new(Default::default()),
             infer_var_info: RefCell::new(Default::default()),
+        }
+    }
+
+    /// The `param_env` used to typeck this item.
+    ///
+    /// `-Ztrait-solver=next` needs the inference context to construct
+    /// the `param_env` for typeck.
+    pub(super) fn typeck_param_env(&self, def_id: LocalDefId) -> ty::ParamEnv<'tcx> {
+        let tcx = self.tcx;
+        let param_env = tcx.param_env(def_id);
+        let param_env = if tcx.has_attr(def_id, sym::rustc_do_not_const_check) {
+            param_env.without_const()
+        } else {
+            param_env
+        };
+
+        if tcx.trait_solver_next() {
+            let opaques = tcx.opaque_types_defined_by(def_id).subst_identity();
+            if !opaques.is_empty() {
+                let define_opaques = opaques
+                    .iter()
+                    .map(|ty| match *ty.kind() {
+                        ty::Alias(AliasKind::Opaque, alias_ty) => {
+                            let def_id = alias_ty.def_id;
+                            let ty_var = self.infcx.next_ty_var(TypeVariableOrigin {
+                                kind: TypeVariableOriginKind::OpaqueTypeInference(def_id),
+                                span: self.tcx.def_span(def_id),
+                            });
+                            // FIXME(-Ztrait-solver=next): Add item bounds for opaques here.
+                            ty::PredicateKind::DefineOpaque(alias_ty, ty_var)
+                        }
+                        _ => bug!("unexpected defined opaque: {opaques:?}"),
+                    })
+                    .map(|kind| kind.to_predicate(tcx));
+
+                let param_env = ty::ParamEnv::new(
+                    tcx.mk_predicates_from_iter(
+                        param_env.caller_bounds().iter().chain(define_opaques),
+                    ),
+                    param_env.reveal(),
+                    param_env.constness(),
+                );
+
+                param_env
+            } else {
+                param_env
+            }
+        } else {
+            param_env
         }
     }
 
