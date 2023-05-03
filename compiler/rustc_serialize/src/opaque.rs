@@ -12,118 +12,14 @@ use std::ptr;
 // Encoder
 // -----------------------------------------------------------------------------
 
-pub struct MemEncoder {
-    pub data: Vec<u8>,
-}
-
-impl MemEncoder {
-    pub fn new() -> MemEncoder {
-        MemEncoder { data: vec![] }
-    }
-
-    #[inline]
-    pub fn position(&self) -> usize {
-        self.data.len()
-    }
-
-    pub fn finish(self) -> Vec<u8> {
-        self.data
-    }
-}
-
-macro_rules! write_leb128 {
-    ($enc:expr, $value:expr, $int_ty:ty, $fun:ident) => {{
-        const MAX_ENCODED_LEN: usize = $crate::leb128::max_leb128_len::<$int_ty>();
-        let old_len = $enc.data.len();
-
-        if MAX_ENCODED_LEN > $enc.data.capacity() - old_len {
-            $enc.data.reserve(MAX_ENCODED_LEN);
-        }
-
-        // SAFETY: The above check and `reserve` ensures that there is enough
-        // room to write the encoded value to the vector's internal buffer.
-        unsafe {
-            let buf = &mut *($enc.data.as_mut_ptr().add(old_len)
-                as *mut [MaybeUninit<u8>; MAX_ENCODED_LEN]);
-            let encoded = leb128::$fun(buf, $value);
-            $enc.data.set_len(old_len + encoded.len());
-        }
-    }};
-}
-
-impl Encoder for MemEncoder {
-    #[inline]
-    fn emit_usize(&mut self, v: usize) {
-        write_leb128!(self, v, usize, write_usize_leb128)
-    }
-
-    #[inline]
-    fn emit_u128(&mut self, v: u128) {
-        write_leb128!(self, v, u128, write_u128_leb128);
-    }
-
-    #[inline]
-    fn emit_u64(&mut self, v: u64) {
-        write_leb128!(self, v, u64, write_u64_leb128);
-    }
-
-    #[inline]
-    fn emit_u32(&mut self, v: u32) {
-        write_leb128!(self, v, u32, write_u32_leb128);
-    }
-
-    #[inline]
-    fn emit_u16(&mut self, v: u16) {
-        self.data.extend_from_slice(&v.to_le_bytes());
-    }
-
-    #[inline]
-    fn emit_u8(&mut self, v: u8) {
-        self.data.push(v);
-    }
-
-    #[inline]
-    fn emit_isize(&mut self, v: isize) {
-        write_leb128!(self, v, isize, write_isize_leb128)
-    }
-
-    #[inline]
-    fn emit_i128(&mut self, v: i128) {
-        write_leb128!(self, v, i128, write_i128_leb128)
-    }
-
-    #[inline]
-    fn emit_i64(&mut self, v: i64) {
-        write_leb128!(self, v, i64, write_i64_leb128)
-    }
-
-    #[inline]
-    fn emit_i32(&mut self, v: i32) {
-        write_leb128!(self, v, i32, write_i32_leb128)
-    }
-
-    #[inline]
-    fn emit_i16(&mut self, v: i16) {
-        self.data.extend_from_slice(&v.to_le_bytes());
-    }
-
-    #[inline]
-    fn emit_raw_bytes(&mut self, s: &[u8]) {
-        self.data.extend_from_slice(s);
-    }
-}
-
 pub type FileEncodeResult = Result<usize, io::Error>;
 
 /// `FileEncoder` encodes data to file via fixed-size buffer.
 ///
-/// When encoding large amounts of data to a file, using `FileEncoder` may be
-/// preferred over using `MemEncoder` to encode to a `Vec`, and then writing the
-/// `Vec` to file, as the latter uses as much memory as there is encoded data,
-/// while the former uses the fixed amount of memory allocated to the buffer.
-/// `FileEncoder` also has the advantage of not needing to reallocate as data
-/// is appended to it, but the disadvantage of requiring more error handling,
-/// which has some runtime overhead.
+/// There used to be a `MemEncoder` type that encoded all the data into a
+/// `Vec`. `FileEncoder` is better because its memory use is determined by the
+/// size of the buffer, rather than the full length of the encoded data, and
+/// because it doesn't need to reallocate memory along the way.
 pub struct FileEncoder {
     /// The input buffer. For adequate performance, we need more control over
     /// buffering than `BufWriter` offers. If `BufWriter` ever offers a raw
@@ -645,13 +541,6 @@ impl<'a> Decoder for MemDecoder<'a> {
 
 // Specialize encoding byte slices. This specialization also applies to encoding `Vec<u8>`s, etc.,
 // since the default implementations call `encode` on their slices internally.
-impl Encodable<MemEncoder> for [u8] {
-    fn encode(&self, e: &mut MemEncoder) {
-        Encoder::emit_usize(e, self.len());
-        e.emit_raw_bytes(self);
-    }
-}
-
 impl Encodable<FileEncoder> for [u8] {
     fn encode(&self, e: &mut FileEncoder) {
         Encoder::emit_usize(e, self.len());
@@ -673,16 +562,6 @@ pub struct IntEncodedWithFixedSize(pub u64);
 
 impl IntEncodedWithFixedSize {
     pub const ENCODED_SIZE: usize = 8;
-}
-
-impl Encodable<MemEncoder> for IntEncodedWithFixedSize {
-    #[inline]
-    fn encode(&self, e: &mut MemEncoder) {
-        let _start_pos = e.position();
-        e.emit_raw_bytes(&self.0.to_le_bytes());
-        let _end_pos = e.position();
-        debug_assert_eq!((_end_pos - _start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
-    }
 }
 
 impl Encodable<FileEncoder> for IntEncodedWithFixedSize {

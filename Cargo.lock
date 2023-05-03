@@ -4060,6 +4060,7 @@ dependencies = [
  "indexmap",
  "rustc_macros",
  "smallvec",
+ "tempfile",
  "thin-vec",
 ]
 
