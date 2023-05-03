@@ -919,6 +919,7 @@ fn symlink_noexist() {
 
 #[test]
 fn read_link() {
+    let tmpdir = tmpdir();
     if cfg!(windows) {
         // directory symlink
         assert_eq!(check!(fs::read_link(r"C:\Users\All Users")), Path::new(r"C:\ProgramData"));
@@ -933,8 +934,11 @@ fn read_link() {
                 Path::new(r"C:\Users")
             );
         }
+        // Check that readlink works with non-drive paths on Windows.
+        let link = tmpdir.join("link_unc");
+        check!(symlink_dir(r"\\localhost\c$\", &link));
+        assert_eq!(check!(fs::read_link(&link)), Path::new(r"\\localhost\c$\"));
     }
-    let tmpdir = tmpdir();
     let link = tmpdir.join("link");
     if !got_symlink_permission(&tmpdir) {
         return;
