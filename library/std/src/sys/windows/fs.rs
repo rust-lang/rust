@@ -542,8 +542,10 @@ impl File {
                 // Turn `\??\` into `\\?\` (a verbatim path).
                 subst[1] = b'\\' as u16;
                 // Attempt to convert to a more user-friendly path.
-                let user = super::args::to_user_path(subst.iter().copied().chain([0]).collect())?;
-                Ok(PathBuf::from(OsString::from_wide(&user)))
+                let user = super::args::from_wide_to_user_path(
+                    subst.iter().copied().chain([0]).collect(),
+                )?;
+                Ok(PathBuf::from(OsString::from_wide(&user.strip_suffix(&[0]).unwrap_or(&user))))
             } else {
                 Ok(PathBuf::from(OsString::from_wide(subst)))
             }
