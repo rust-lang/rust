@@ -28,7 +28,8 @@ note: required because it appears within the type `Bar`
    |
 LL | pub struct Bar {
    |            ^^^
-   = note: required because it appears within the type `PhantomData<Bar>`
+note: required because it appears within the type `PhantomData<Bar>`
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
 note: required because it appears within the type `Foo`
   --> $DIR/recursive-requirements.rs:5:12
    |
