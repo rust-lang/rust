@@ -6,8 +6,14 @@ LL |     let _: &[i8] = data.into();
    |
    = help: the following other types implement trait `From<T>`:
              <&'input [u8] as From<gimli::read::endian_slice::EndianSlice<'input, Endian>>>
-             <[T; LANES] as From<Simd<T, LANES>>>
-             <[bool; LANES] as From<Mask<T, LANES>>>
+             <[T; 10] as From<(T, T, T, T, T, T, T, T, T, T)>>
+             <[T; 11] as From<(T, T, T, T, T, T, T, T, T, T, T)>>
+             <[T; 12] as From<(T, T, T, T, T, T, T, T, T, T, T, T)>>
+             <[T; 1] as From<(T,)>>
+             <[T; 2] as From<(T, T)>>
+             <[T; 3] as From<(T, T, T)>>
+             <[T; 4] as From<(T, T, T, T)>>
+           and 7 others
    = note: required for `&[u8]` to implement `Into<&[i8]>`
 
 error: aborting due to previous error
