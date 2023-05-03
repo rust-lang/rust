@@ -4257,7 +4257,7 @@ impl<T, const N: usize> [[T; N]] {
     /// assert!(empty_slice_of_arrays.flatten().is_empty());
     /// ```
     #[unstable(feature = "slice_flatten", issue = "95629")]
-    pub fn flatten(&self) -> &[T] {
+    pub const fn flatten(&self) -> &[T] {
         let len = if T::IS_ZST {
             self.len().checked_mul(N).expect("slice len overflow")
         } else {
