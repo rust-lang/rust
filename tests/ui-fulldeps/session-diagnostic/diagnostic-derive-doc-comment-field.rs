@@ -27,21 +27,21 @@ fluent_messages! { "./example.ftl" }
 struct NotIntoDiagnosticArg;
 
 #[derive(Diagnostic)]
-//~^ ERROR the trait bound `NotIntoDiagnosticArg: IntoDiagnosticArg` is not satisfied
 #[diag(no_crate_example)]
 struct Test {
     #[primary_span]
     span: Span,
     /// A doc comment
     arg: NotIntoDiagnosticArg,
+    //~^ ERROR the trait bound `NotIntoDiagnosticArg: IntoDiagnosticArg` is not satisfied
 }
 
 #[derive(Subdiagnostic)]
-//~^ ERROR the trait bound `NotIntoDiagnosticArg: IntoDiagnosticArg` is not satisfied
 #[label(no_crate_example)]
 struct SubTest {
     #[primary_span]
     span: Span,
     /// A doc comment
     arg: NotIntoDiagnosticArg,
+    //~^ ERROR the trait bound `NotIntoDiagnosticArg: IntoDiagnosticArg` is not satisfied
 }
