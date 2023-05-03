@@ -11,6 +11,10 @@ use crate::ty::{
     PolyTypeOutlivesPredicate, SubstsRef, SubtypePredicate, Term, TraitPredicate, Ty, TypeFlags,
 };
 
+mod instantiated_predicates;
+
+pub use instantiated_predicates::InstantiatedPredicates;
+
 /// Use this rather than `PredicateKind`, whenever possible.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable)]
 #[rustc_pass_by_value]
