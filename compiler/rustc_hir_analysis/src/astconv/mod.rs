@@ -1040,7 +1040,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
     /// Convert the bounds in `ast_bounds` that refer to traits which define an associated type
     /// named `assoc_name` into ty::Bounds. Ignore the rest.
-    pub(crate) fn compute_bounds_that_match_assoc_type(
+    pub(crate) fn compute_bounds_that_match_assoc_item(
         &self,
         param_ty: Ty<'tcx>,
         ast_bounds: &[hir::GenericBound<'_>],
@@ -1051,7 +1051,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         for ast_bound in ast_bounds {
             if let Some(trait_ref) = ast_bound.trait_ref()
                 && let Some(trait_did) = trait_ref.trait_def_id()
-                && self.tcx().trait_may_define_assoc_type(trait_did, assoc_name)
+                && self.tcx().trait_may_define_assoc_item(trait_did, assoc_name)
             {
                 result.push(ast_bound.clone());
             }
@@ -1923,7 +1923,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let param_name = tcx.hir().ty_param_name(ty_param_def_id);
         self.one_bound_for_assoc_type(
             || {
-                traits::transitive_bounds_that_define_assoc_type(
+                traits::transitive_bounds_that_define_assoc_item(
                     tcx,
                     predicates.iter().filter_map(|(p, _)| {
                         Some(p.to_opt_poly_trait_pred()?.map_bound(|t| t.trait_ref))

@@ -1728,7 +1728,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         assoc_name: Ident,
         assoc_kind: ty::AssocKind,
     ) -> Option<(Vec<ty::BoundVariableKind>, &'tcx ty::AssocItem)> {
-        let trait_defines_associated_type_named = |trait_def_id: DefId| {
+        let trait_defines_associated_item_named = |trait_def_id: DefId| {
             tcx.associated_items(trait_def_id).find_by_name_and_kind(
                 tcx,
                 assoc_name,
@@ -1752,10 +1752,10 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 _ => break None,
             }
 
-            if let Some(assoc_item) = trait_defines_associated_type_named(def_id) {
+            if let Some(assoc_item) = trait_defines_associated_item_named(def_id) {
                 break Some((bound_vars.into_iter().collect(), assoc_item));
             }
-            let predicates = tcx.super_predicates_that_define_assoc_type((def_id, assoc_name));
+            let predicates = tcx.super_predicates_that_define_assoc_item((def_id, assoc_name));
             let obligations = predicates.predicates.iter().filter_map(|&(pred, _)| {
                 let bound_predicate = pred.kind();
                 match bound_predicate.skip_binder() {
