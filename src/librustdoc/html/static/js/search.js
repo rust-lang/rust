@@ -58,6 +58,7 @@ function printTab(nb) {
         }
         iter += 1;
     });
+    const isTypeSearch = (nb > 0 || iter === 1);
     iter = 0;
     onEachLazy(document.getElementById("results").childNodes, elem => {
         if (nb === iter) {
@@ -70,6 +71,13 @@ function printTab(nb) {
     });
     if (foundCurrentTab && foundCurrentResultSet) {
         searchState.currentTab = nb;
+        // Corrections only kick in on type-based searches.
+        const correctionsElem = document.getElementsByClassName("search-corrections");
+        if (isTypeSearch) {
+            removeClass(correctionsElem[0], "hidden");
+        } else {
+            addClass(correctionsElem[0], "hidden");
+        }
     } else if (nb !== 0) {
         printTab(0);
     }
@@ -191,6 +199,13 @@ function initSearch(rawSearchIndex) {
      */
     let searchIndex;
     let currentResults;
+    /**
+     * Map from normalized type names to integers. Used to make type search
+     * more efficient.
+     *
+     * @type {Map<string, integer>}
+     */
+    let typeNameIdMap;
     const ALIASES = new Map();
 
     function isWhitespace(c) {
@@ -358,6 +373,7 @@ function initSearch(rawSearchIndex) {
         parserState.typeFilter = null;
         return {
             name: name,
+            id: -1,
             fullPath: pathSegments,
             pathWithoutLast: pathSegments.slice(0, pathSegments.length - 1),
             pathLast: pathSegments[pathSegments.length - 1],
@@ -718,6 +734,7 @@ function initSearch(rawSearchIndex) {
             foundElems: 0,
             literalSearch: false,
             error: null,
+            correction: null,
         };
     }
 
@@ -873,7 +890,7 @@ function initSearch(rawSearchIndex) {
      *
      * @param {Array<Result>} results_in_args
      * @param {Array<Result>} results_returned
-     * @param {Array<Result>} results_in_args
+     * @param {Array<Result>} results_others
      * @param {ParsedQuery} parsedQuery
      *
      * @return {ResultsTable}
@@ -1091,48 +1108,50 @@ function initSearch(rawSearchIndex) {
          *
          * @param {Row} row                 - The object to check.
          * @param {QueryElement} elem       - The element from the parsed query.
-         * @param {integer} defaultDistance - This is the value to return in case there are no
-         *                                    generics.
          *
-         * @return {integer}           - Returns the best match (if any) or `maxEditDistance + 1`.
+         * @return {boolean}           - Returns true if a match, false otherwise.
          */
-        function checkGenerics(row, elem, defaultDistance, maxEditDistance) {
-            if (row.generics.length === 0) {
-                return elem.generics.length === 0 ? defaultDistance : maxEditDistance + 1;
-            } else if (row.generics.length > 0 && row.generics[0].name === null) {
-                return checkGenerics(row.generics[0], elem, defaultDistance, maxEditDistance);
+        function checkGenerics(row, elem) {
+            if (row.generics.length === 0 || elem.generics.length === 0) {
+                return false;
             }
-            // The names match, but we need to be sure that all generics kinda
-            // match as well.
+            // This function is called if the names match, but we need to make
+            // sure that all generics match as well.
+            //
+            // This search engine implements order-agnostic unification. There
+            // should be no missing duplicates (generics have "bag semantics"),
+            // and the row is allowed to have extras.
             if (elem.generics.length > 0 && row.generics.length >= elem.generics.length) {
                 const elems = new Map();
-                for (const entry of row.generics) {
-                    if (entry.name === "") {
+                const addEntryToElems = function addEntryToElems(entry) {
+                    if (entry.id === -1) {
                         // Pure generic, needs to check into it.
-                        if (checkGenerics(entry, elem, maxEditDistance + 1, maxEditDistance)
-                            !== 0) {
-                            return maxEditDistance + 1;
+                        for (const inner_entry of entry.generics) {
+                            addEntryToElems(inner_entry);
                         }
-                        continue;
+                        return;
                     }
                     let currentEntryElems;
-                    if (elems.has(entry.name)) {
-                        currentEntryElems = elems.get(entry.name);
+                    if (elems.has(entry.id)) {
+                        currentEntryElems = elems.get(entry.id);
                     } else {
                         currentEntryElems = [];
-                        elems.set(entry.name, currentEntryElems);
+                        elems.set(entry.id, currentEntryElems);
                     }
                     currentEntryElems.push(entry);
+                };
+                for (const entry of row.generics) {
+                    addEntryToElems(entry);
                 }
                 // We need to find the type that matches the most to remove it in order
                 // to move forward.
                 const handleGeneric = generic => {
-                    if (!elems.has(generic.name)) {
+                    if (!elems.has(generic.id)) {
                         return false;
                     }
-                    const matchElems = elems.get(generic.name);
+                    const matchElems = elems.get(generic.id);
                     const matchIdx = matchElems.findIndex(tmp_elem => {
-                        if (checkGenerics(tmp_elem, generic, 0, maxEditDistance) !== 0) {
+                        if (generic.generics.length > 0 && !checkGenerics(tmp_elem, generic)) {
                             return false;
                         }
                         return typePassesFilter(generic.typeFilter, tmp_elem.ty);
@@ -1142,7 +1161,7 @@ function initSearch(rawSearchIndex) {
                     }
                     matchElems.splice(matchIdx, 1);
                     if (matchElems.length === 0) {
-                        elems.delete(generic.name);
+                        elems.delete(generic.id);
                     }
                     return true;
                 };
@@ -1152,17 +1171,17 @@ function initSearch(rawSearchIndex) {
                 // own type.
                 for (const generic of elem.generics) {
                     if (generic.typeFilter !== -1 && !handleGeneric(generic)) {
-                        return maxEditDistance + 1;
+                        return false;
                     }
                 }
                 for (const generic of elem.generics) {
                     if (generic.typeFilter === -1 && !handleGeneric(generic)) {
-                        return maxEditDistance + 1;
+                        return false;
                     }
                 }
-                return 0;
+                return true;
             }
-            return maxEditDistance + 1;
+            return false;
         }
 
         /**
@@ -1172,17 +1191,15 @@ function initSearch(rawSearchIndex) {
           * @param {Row} row
           * @param {QueryElement} elem    - The element from the parsed query.
           *
-          * @return {integer} - Returns an edit distance to the best match.
+          * @return {boolean} - Returns true if found, false otherwise.
           */
-        function checkIfInGenerics(row, elem, maxEditDistance) {
-            let dist = maxEditDistance + 1;
+        function checkIfInGenerics(row, elem) {
             for (const entry of row.generics) {
-                dist = Math.min(checkType(entry, elem, true, maxEditDistance), dist);
-                if (dist === 0) {
-                    break;
+                if (checkType(entry, elem)) {
+                    return true;
                 }
             }
-            return dist;
+            return false;
         }
 
         /**
@@ -1191,75 +1208,26 @@ function initSearch(rawSearchIndex) {
           *
           * @param {Row} row
           * @param {QueryElement} elem      - The element from the parsed query.
-          * @param {boolean} literalSearch
           *
-          * @return {integer} - Returns an edit distance to the best match. If there is
-          *                     no match, returns `maxEditDistance + 1`.
+          * @return {boolean} - Returns true if the type matches, false otherwise.
           */
-        function checkType(row, elem, literalSearch, maxEditDistance) {
-            if (row.name === null) {
+        function checkType(row, elem) {
+            if (row.id === -1) {
                 // This is a pure "generic" search, no need to run other checks.
-                if (row.generics.length > 0) {
-                    return checkIfInGenerics(row, elem, maxEditDistance);
-                }
-                return maxEditDistance + 1;
+                return row.generics.length > 0 ? checkIfInGenerics(row, elem) : false;
             }
 
-            let dist;
-            if (typePassesFilter(elem.typeFilter, row.ty)) {
-                dist = editDistance(row.name, elem.name, maxEditDistance);
-            } else {
-                dist = maxEditDistance + 1;
-            }
-            if (literalSearch) {
-                if (dist !== 0) {
-                    // The name didn't match, let's try to check if the generics do.
-                    if (elem.generics.length === 0) {
-                        const checkGeneric = row.generics.length > 0;
-                        if (checkGeneric && row.generics
-                            .findIndex(tmp_elem => tmp_elem.name === elem.name &&
-                                typePassesFilter(elem.typeFilter, tmp_elem.ty)) !== -1) {
-                            return 0;
-                        }
-                    }
-                    return maxEditDistance + 1;
-                } else if (elem.generics.length > 0) {
-                    return checkGenerics(row, elem, maxEditDistance + 1, maxEditDistance);
+            if (row.id === elem.id && typePassesFilter(elem.typeFilter, row.ty)) {
+                if (elem.generics.length > 0) {
+                    return checkGenerics(row, elem);
                 }
-                return 0;
-            } else if (row.generics.length > 0) {
-                if (elem.generics.length === 0) {
-                    if (dist === 0) {
-                        return 0;
-                    }
-                    // The name didn't match so we now check if the type we're looking for is inside
-                    // the generics!
-                    dist = Math.min(dist, checkIfInGenerics(row, elem, maxEditDistance));
-                    return dist;
-                } else if (dist > maxEditDistance) {
-                    // So our item's name doesn't match at all and has generics.
-                    //
-                    // Maybe it's present in a sub generic? For example "f<A<B<C>>>()", if we're
-                    // looking for "B<C>", we'll need to go down.
-                    return checkIfInGenerics(row, elem, maxEditDistance);
-                } else {
-                    // At this point, the name kinda match and we have generics to check, so
-                    // let's go!
-                    const tmp_dist = checkGenerics(row, elem, dist, maxEditDistance);
-                    if (tmp_dist > maxEditDistance) {
-                        return maxEditDistance + 1;
-                    }
-                    // We compute the median value of both checks and return it.
-                    return (tmp_dist + dist) / 2;
-                }
-            } else if (elem.generics.length > 0) {
-                // In this case, we were expecting generics but there isn't so we simply reject this
-                // one.
-                return maxEditDistance + 1;
+                return true;
             }
-            // No generics on our query or on the target type so we can return without doing
-            // anything else.
-            return dist;
+
+            // If the current item does not match, try [unboxing] the generic.
+            // [unboxing]:
+            //   https://ndmitchell.com/downloads/slides-hoogle_fast_type_searching-09_aug_2008.pdf
+            return checkIfInGenerics(row, elem);
         }
 
         /**
@@ -1267,17 +1235,11 @@ function initSearch(rawSearchIndex) {
          *
          * @param {Row} row
          * @param {QueryElement} elem    - The element from the parsed query.
-         * @param {integer} maxEditDistance
          * @param {Array<integer>} skipPositions - Do not return one of these positions.
          *
-         * @return {dist: integer, position: integer} - Returns an edit distance to the best match.
-         *                                              If there is no match, returns
-         *                                              `maxEditDistance + 1` and position: -1.
+         * @return {integer} - Returns the position of the match, or -1 if none.
          */
-        function findArg(row, elem, maxEditDistance, skipPositions) {
-            let dist = maxEditDistance + 1;
-            let position = -1;
-
+        function findArg(row, elem, skipPositions) {
             if (row && row.type && row.type.inputs && row.type.inputs.length > 0) {
                 let i = 0;
                 for (const input of row.type.inputs) {
@@ -1285,24 +1247,13 @@ function initSearch(rawSearchIndex) {
                         i += 1;
                         continue;
                     }
-                    const typeDist = checkType(
-                        input,
-                        elem,
-                        parsedQuery.literalSearch,
-                        maxEditDistance
-                    );
-                    if (typeDist === 0) {
-                        return {dist: 0, position: i};
-                    }
-                    if (typeDist < dist) {
-                        dist = typeDist;
-                        position = i;
+                    if (checkType(input, elem)) {
+                        return i;
                     }
                     i += 1;
                 }
             }
-            dist = parsedQuery.literalSearch ? maxEditDistance + 1 : dist;
-            return {dist, position};
+            return -1;
         }
 
         /**
@@ -1310,43 +1261,25 @@ function initSearch(rawSearchIndex) {
          *
          * @param {Row} row
          * @param {QueryElement} elem   - The element from the parsed query.
-         * @param {integer} maxEditDistance
          * @param {Array<integer>} skipPositions - Do not return one of these positions.
          *
-         * @return {dist: integer, position: integer} - Returns an edit distance to the best match.
-         *                                              If there is no match, returns
-         *                                              `maxEditDistance + 1` and position: -1.
+         * @return {integer} - Returns the position of the matching item, or -1 if none.
          */
-        function checkReturned(row, elem, maxEditDistance, skipPositions) {
-            let dist = maxEditDistance + 1;
-            let position = -1;
-
+        function checkReturned(row, elem, skipPositions) {
             if (row && row.type && row.type.output.length > 0) {
-                const ret = row.type.output;
                 let i = 0;
-                for (const ret_ty of ret) {
+                for (const ret_ty of row.type.output) {
                     if (skipPositions.indexOf(i) !== -1) {
                         i += 1;
                         continue;
                     }
-                    const typeDist = checkType(
-                        ret_ty,
-                        elem,
-                        parsedQuery.literalSearch,
-                        maxEditDistance
-                    );
-                    if (typeDist === 0) {
-                        return {dist: 0, position: i};
-                    }
-                    if (typeDist < dist) {
-                        dist = typeDist;
-                        position = i;
+                    if (checkType(ret_ty, elem)) {
+                        return i;
                     }
                     i += 1;
                 }
             }
-            dist = parsedQuery.literalSearch ? maxEditDistance + 1 : dist;
-            return {dist, position};
+            return -1;
         }
 
         function checkPath(contains, ty, maxEditDistance) {
@@ -1543,17 +1476,20 @@ function initSearch(rawSearchIndex) {
             if (!row || (filterCrates !== null && row.crate !== filterCrates)) {
                 return;
             }
-            let dist, index = -1, path_dist = 0;
+            let index = -1, path_dist = 0;
             const fullId = row.id;
             const searchWord = searchWords[pos];
 
-            const in_args = findArg(row, elem, maxEditDistance, []);
-            const returned = checkReturned(row, elem, maxEditDistance, []);
-
-            // path_dist is 0 because no parent path information is currently stored
-            // in the search index
-            addIntoResults(results_in_args, fullId, pos, -1, in_args.dist, 0, maxEditDistance);
-            addIntoResults(results_returned, fullId, pos, -1, returned.dist, 0, maxEditDistance);
+            const in_args = findArg(row, elem, []);
+            if (in_args !== -1) {
+                // path_dist is 0 because no parent path information is currently stored
+                // in the search index
+                addIntoResults(results_in_args, fullId, pos, -1, 0, 0, maxEditDistance);
+            }
+            const returned = checkReturned(row, elem, []);
+            if (returned !== -1) {
+                addIntoResults(results_returned, fullId, pos, -1, 0, 0, maxEditDistance);
+            }
 
             if (!typePassesFilter(elem.typeFilter, row.ty)) {
                 return;
@@ -1574,16 +1510,6 @@ function initSearch(rawSearchIndex) {
                 index = row_index;
             }
 
-            // No need to check anything else if it's a "pure" generics search.
-            if (elem.name.length === 0) {
-                if (row.type !== null) {
-                    dist = checkGenerics(row.type, elem, maxEditDistance + 1, maxEditDistance);
-                    // path_dist is 0 because we know it's empty
-                    addIntoResults(results_others, fullId, pos, index, dist, 0, maxEditDistance);
-                }
-                return;
-            }
-
             if (elem.fullPath.length > 1) {
                 path_dist = checkPath(elem.pathWithoutLast, row, maxEditDistance);
                 if (path_dist > maxEditDistance) {
@@ -1598,7 +1524,7 @@ function initSearch(rawSearchIndex) {
                 return;
             }
 
-            dist = editDistance(searchWord, elem.pathLast, maxEditDistance);
+            const dist = editDistance(searchWord, elem.pathLast, maxEditDistance);
 
             if (index === -1 && dist + path_dist > maxEditDistance) {
                 return;
@@ -1616,28 +1542,22 @@ function initSearch(rawSearchIndex) {
          * @param {integer} pos      - Position in the `searchIndex`.
          * @param {Object} results
          */
-        function handleArgs(row, pos, results, maxEditDistance) {
+        function handleArgs(row, pos, results) {
             if (!row || (filterCrates !== null && row.crate !== filterCrates)) {
                 return;
             }
-
-            let totalDist = 0;
-            let nbDist = 0;
 
             // If the result is too "bad", we return false and it ends this search.
             function checkArgs(elems, callback) {
                 const skipPositions = [];
                 for (const elem of elems) {
                     // There is more than one parameter to the query so all checks should be "exact"
-                    const { dist, position } = callback(
+                    const position = callback(
                         row,
                         elem,
-                        maxEditDistance,
                         skipPositions
                     );
-                    if (dist <= 1) {
-                        nbDist += 1;
-                        totalDist += dist;
+                    if (position !== -1) {
                         skipPositions.push(position);
                     } else {
                         return false;
@@ -1652,11 +1572,7 @@ function initSearch(rawSearchIndex) {
                 return;
             }
 
-            if (nbDist === 0) {
-                return;
-            }
-            const dist = Math.round(totalDist / nbDist);
-            addIntoResults(results, row.id, pos, 0, dist, 0, maxEditDistance);
+            addIntoResults(results, row.id, pos, 0, 0, 0, Number.MAX_VALUE);
         }
 
         function innerRunQuery() {
@@ -1670,6 +1586,53 @@ function initSearch(rawSearchIndex) {
                 queryLen += elem.name.length;
             }
             const maxEditDistance = Math.floor(queryLen / 3);
+
+            /**
+             * Convert names to ids in parsed query elements.
+             * This is not used for the "In Names" tab, but is used for the
+             * "In Params", "In Returns", and "In Function Signature" tabs.
+             *
+             * If there is no matching item, but a close-enough match, this
+             * function also that correction.
+             *
+             * See `buildTypeMapIndex` for more information.
+             *
+             * @param {QueryElement} elem
+             */
+            function convertNameToId(elem) {
+                if (typeNameIdMap.has(elem.name)) {
+                    elem.id = typeNameIdMap.get(elem.name);
+                } else if (!parsedQuery.literalSearch) {
+                    let match = -1;
+                    let matchDist = maxEditDistance + 1;
+                    let matchName = "";
+                    for (const [name, id] of typeNameIdMap) {
+                        const dist = editDistance(name, elem.name, maxEditDistance);
+                        if (dist <= matchDist && dist <= maxEditDistance) {
+                            if (dist === matchDist && matchName > name) {
+                                continue;
+                            }
+                            match = id;
+                            matchDist = dist;
+                            matchName = name;
+                        }
+                    }
+                    if (match !== -1) {
+                        parsedQuery.correction = matchName;
+                    }
+                    elem.id = match;
+                }
+                for (const elem2 of elem.generics) {
+                    convertNameToId(elem2);
+                }
+            }
+
+            for (const elem of parsedQuery.elems) {
+                convertNameToId(elem);
+            }
+            for (const elem of parsedQuery.returned) {
+                convertNameToId(elem);
+            }
 
             if (parsedQuery.foundElems === 1) {
                 if (parsedQuery.elems.length === 1) {
@@ -1695,22 +1658,23 @@ function initSearch(rawSearchIndex) {
                         in_returned = checkReturned(
                             row,
                             elem,
-                            maxEditDistance,
                             []
                         );
-                        addIntoResults(
-                            results_others,
-                            row.id,
-                            i,
-                            -1,
-                            in_returned.dist,
-                            maxEditDistance
-                        );
+                        if (in_returned !== -1) {
+                            addIntoResults(
+                                results_others,
+                                row.id,
+                                i,
+                                -1,
+                                0,
+                                Number.MAX_VALUE
+                            );
+                        }
                     }
                 }
             } else if (parsedQuery.foundElems > 0) {
                 for (i = 0, nSearchWords = searchWords.length; i < nSearchWords; ++i) {
-                    handleArgs(searchIndex[i], i, results_others, maxEditDistance);
+                    handleArgs(searchIndex[i], i, results_others);
                 }
             }
         }
@@ -2030,6 +1994,16 @@ function initSearch(rawSearchIndex) {
             currentTab = 0;
         }
 
+        if (results.query.correction !== null) {
+            const orig = results.query.returned.length > 0
+                ? results.query.returned[0].name
+                : results.query.elems[0].name;
+            output += "<h3 class=\"search-corrections\">" +
+                `Type "${orig}" not found. ` +
+                "Showing results for closest type name " +
+                `"${results.query.correction}" instead.</h3>`;
+        }
+
         const resultsElem = document.createElement("div");
         resultsElem.id = "results";
         resultsElem.appendChild(ret_others[0]);
@@ -2109,6 +2083,34 @@ function initSearch(rawSearchIndex) {
     }
 
     /**
+     * Add an item to the type Name->ID map, or, if one already exists, use it.
+     * Returns the number. If name is "" or null, return -1 (pure generic).
+     *
+     * This is effectively string interning, so that function matching can be
+     * done more quickly. Two types with the same name but different item kinds
+     * get the same ID.
+     *
+     * @param {Map<string, integer>} typeNameIdMap
+     * @param {string} name
+     *
+     * @returns {integer}
+     */
+    function buildTypeMapIndex(typeNameIdMap, name) {
+
+        if (name === "" || name === null) {
+            return -1;
+        }
+
+        if (typeNameIdMap.has(name)) {
+            return typeNameIdMap.get(name);
+        } else {
+            const id = typeNameIdMap.size;
+            typeNameIdMap.set(name, id);
+            return id;
+        }
+    }
+
+    /**
      * Convert a list of RawFunctionType / ID to object-based FunctionType.
      *
      * Crates often have lots of functions in them, and it's common to have a large number of
@@ -2126,7 +2128,7 @@ function initSearch(rawSearchIndex) {
      *
      * @return {Array<FunctionSearchType>}
      */
-    function buildItemSearchTypeAll(types, lowercasePaths) {
+    function buildItemSearchTypeAll(types, lowercasePaths, typeNameIdMap) {
         const PATH_INDEX_DATA = 0;
         const GENERICS_DATA = 1;
         return types.map(type => {
@@ -2136,11 +2138,17 @@ function initSearch(rawSearchIndex) {
                 generics = [];
             } else {
                 pathIndex = type[PATH_INDEX_DATA];
-                generics = buildItemSearchTypeAll(type[GENERICS_DATA], lowercasePaths);
+                generics = buildItemSearchTypeAll(
+                    type[GENERICS_DATA],
+                    lowercasePaths,
+                    typeNameIdMap
+                );
             }
             return {
                 // `0` is used as a sentinel because it's fewer bytes than `null`
-                name: pathIndex === 0 ? null : lowercasePaths[pathIndex - 1].name,
+                id: pathIndex === 0
+                    ? -1
+                    : buildTypeMapIndex(typeNameIdMap, lowercasePaths[pathIndex - 1].name),
                 ty: pathIndex === 0 ? null : lowercasePaths[pathIndex - 1].ty,
                 generics: generics,
             };
@@ -2159,10 +2167,11 @@ function initSearch(rawSearchIndex) {
      *
      * @param {RawFunctionSearchType} functionSearchType
      * @param {Array<{name: string, ty: number}>} lowercasePaths
+     * @param {Map<string, integer>}
      *
      * @return {null|FunctionSearchType}
      */
-    function buildFunctionSearchType(functionSearchType, lowercasePaths) {
+    function buildFunctionSearchType(functionSearchType, lowercasePaths, typeNameIdMap) {
         const INPUTS_DATA = 0;
         const OUTPUT_DATA = 1;
         // `0` is used as a sentinel because it's fewer bytes than `null`
@@ -2173,23 +2182,35 @@ function initSearch(rawSearchIndex) {
         if (typeof functionSearchType[INPUTS_DATA] === "number") {
             const pathIndex = functionSearchType[INPUTS_DATA];
             inputs = [{
-                name: pathIndex === 0 ? null : lowercasePaths[pathIndex - 1].name,
+                id: pathIndex === 0
+                    ? -1
+                    : buildTypeMapIndex(typeNameIdMap, lowercasePaths[pathIndex - 1].name),
                 ty: pathIndex === 0 ? null : lowercasePaths[pathIndex - 1].ty,
                 generics: [],
             }];
         } else {
-            inputs = buildItemSearchTypeAll(functionSearchType[INPUTS_DATA], lowercasePaths);
+            inputs = buildItemSearchTypeAll(
+                functionSearchType[INPUTS_DATA],
+                lowercasePaths,
+                typeNameIdMap
+            );
         }
         if (functionSearchType.length > 1) {
             if (typeof functionSearchType[OUTPUT_DATA] === "number") {
                 const pathIndex = functionSearchType[OUTPUT_DATA];
                 output = [{
-                    name: pathIndex === 0 ? null : lowercasePaths[pathIndex - 1].name,
+                    id: pathIndex === 0
+                        ? -1
+                        : buildTypeMapIndex(typeNameIdMap, lowercasePaths[pathIndex - 1].name),
                     ty: pathIndex === 0 ? null : lowercasePaths[pathIndex - 1].ty,
                     generics: [],
                 }];
             } else {
-                output = buildItemSearchTypeAll(functionSearchType[OUTPUT_DATA], lowercasePaths);
+                output = buildItemSearchTypeAll(
+                    functionSearchType[OUTPUT_DATA],
+                    lowercasePaths,
+                    typeNameIdMap
+                );
             }
         } else {
             output = [];
@@ -2202,9 +2223,12 @@ function initSearch(rawSearchIndex) {
     function buildIndex(rawSearchIndex) {
         searchIndex = [];
         /**
+         * List of normalized search words (ASCII lowercased, and undescores removed).
+         *
          * @type {Array<string>}
          */
         const searchWords = [];
+        typeNameIdMap = new Map();
         const charA = "A".charCodeAt(0);
         let currentIndex = 0;
         let id = 0;
@@ -2337,7 +2361,11 @@ function initSearch(rawSearchIndex) {
                     path: itemPaths.has(i) ? itemPaths.get(i) : lastPath,
                     desc: itemDescs[i],
                     parent: itemParentIdxs[i] > 0 ? paths[itemParentIdxs[i] - 1] : undefined,
-                    type: buildFunctionSearchType(itemFunctionSearchTypes[i], lowercasePaths),
+                    type: buildFunctionSearchType(
+                        itemFunctionSearchTypes[i],
+                        lowercasePaths,
+                        typeNameIdMap
+                    ),
                     id: id,
                     normalizedName: word.indexOf("_") === -1 ? word : word.replace(/_/g, ""),
                     deprecated: deprecatedItems.has(i),
