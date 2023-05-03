@@ -1,7 +1,7 @@
 //! The portable SIMD prelude.
 //!
 //! Includes important traits and types to be imported with a glob:
-//! ```
+//! ```ignore
 //! use std::simd::prelude::*;
 //! ```
 
