@@ -2108,10 +2108,9 @@ impl<'tcx> TyCtxt<'tcx> {
     /// See [`item_name`][Self::item_name] for more information.
     pub fn opt_item_ident(self, def_id: DefId) -> Option<Ident> {
         let def = self.opt_item_name(def_id)?;
-        let span = def_id
-            .as_local()
-            .and_then(|id| self.def_ident_span(id))
-            .unwrap_or(rustc_span::DUMMY_SP);
+        let span = self
+            .def_ident_span(def_id)
+            .unwrap_or_else(|| bug!("missing ident span for {def_id:?}"));
         Some(Ident::new(def, span))
     }
 
