@@ -134,6 +134,9 @@ pub enum InvalidProgramInfo<'tcx> {
     FnAbiAdjustForForeignAbi(call::AdjustForForeignAbiError),
     /// SizeOf of unsized type was requested.
     SizeOfUnsizedType(Ty<'tcx>),
+    /// An unsized local was accessed without having been initialized.
+    /// This is not meaningful as we can't even have backing memory for such locals.
+    UninitUnsizedLocal,
 }
 
 impl fmt::Display for InvalidProgramInfo<'_> {
@@ -150,6 +153,7 @@ impl fmt::Display for InvalidProgramInfo<'_> {
             Layout(ref err) => write!(f, "{err}"),
             FnAbiAdjustForForeignAbi(ref err) => write!(f, "{err}"),
             SizeOfUnsizedType(ty) => write!(f, "size_of called on unsized type `{ty}`"),
+            UninitUnsizedLocal => write!(f, "unsized local is used while uninitialized"),
         }
     }
 }
