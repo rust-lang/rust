@@ -32537,7 +32537,6 @@ pub unsafe fn _mm512_loadu_ps(mem_addr: *const f32) -> __m512 {
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vmovups))]
-#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm512_storeu_ps(mem_addr: *mut f32, a: __m512) {
     ptr::write_unaligned(mem_addr as *mut __m512, a);
 }
