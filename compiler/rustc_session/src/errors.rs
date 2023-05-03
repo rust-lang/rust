@@ -111,8 +111,24 @@ pub struct CannotMixAndMatchSanitizers {
 pub struct CannotEnableCrtStaticLinux;
 
 #[derive(Diagnostic)]
-#[diag(session_sanitizer_cfi_enabled)]
-pub struct SanitizerCfiEnabled;
+#[diag(session_sanitizer_cfi_requires_lto)]
+pub struct SanitizerCfiRequiresLto;
+
+#[derive(Diagnostic)]
+#[diag(session_sanitizer_cfi_canonical_jump_tables_requires_cfi)]
+pub struct SanitizerCfiCanonicalJumpTablesRequiresCfi;
+
+#[derive(Diagnostic)]
+#[diag(session_sanitizer_cfi_generalize_pointers_requires_cfi)]
+pub struct SanitizerCfiGeneralizePointersRequiresCfi;
+
+#[derive(Diagnostic)]
+#[diag(session_sanitizer_cfi_normalize_integers_requires_cfi)]
+pub struct SanitizerCfiNormalizeIntegersRequiresCfi;
+
+#[derive(Diagnostic)]
+#[diag(session_split_lto_unit_requires_lto)]
+pub struct SplitLtoUnitRequiresLto;
 
 #[derive(Diagnostic)]
 #[diag(session_unstable_virtual_function_elimination)]
