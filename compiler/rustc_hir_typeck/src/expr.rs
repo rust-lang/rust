@@ -2822,7 +2822,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // but has nested obligations which are unsatisfied.
                     for (base_t, _) in self.autoderef(base.span, base_t).silence_errors() {
                         if let Some((_, index_ty, element_ty)) =
-                            self.find_and_report_unsatisfied_index_impl(expr.hir_id, base, base_t)
+                            self.find_and_report_unsatisfied_index_impl(base, base_t)
                         {
                             self.demand_coerce(idx, idx_t, index_ty, None, AllowTwoPhase::No);
                             return element_ty;
@@ -2881,7 +2881,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// predicates cause this to be, so that the user can add them to fix their code.
     fn find_and_report_unsatisfied_index_impl(
         &self,
-        index_expr_hir_id: HirId,
         base_expr: &hir::Expr<'_>,
         base_ty: Ty<'tcx>,
     ) -> Option<(ErrorGuaranteed, Ty<'tcx>, Ty<'tcx>)> {
@@ -2914,13 +2913,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // in the first place.
             ocx.register_obligations(traits::predicates_for_generics(
                 |idx, span| {
-                    traits::ObligationCause::new(
-                        base_expr.span,
-                        self.body_id,
-                        if span.is_dummy() {
-                            traits::ExprItemObligation(impl_def_id, index_expr_hir_id, idx)
-                        } else {
-                            traits::ExprBindingObligation(impl_def_id, span, index_expr_hir_id, idx)
+                    cause.clone().derived_cause(
+                        ty::Binder::dummy(ty::TraitPredicate {
+                            trait_ref: impl_trait_ref,
+                            polarity: ty::ImplPolarity::Positive,
+                            constness: ty::BoundConstness::NotConst,
+                        }),
+                        |derived| {
+                            traits::ImplDerivedObligation(Box::new(
+                                traits::ImplDerivedObligationCause {
+                                    derived,
+                                    impl_or_alias_def_id: impl_def_id,
+                                    impl_def_predicate_index: Some(idx),
+                                    span,
+                                },
+                            ))
                         },
                     )
                 },
