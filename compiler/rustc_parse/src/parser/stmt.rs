@@ -573,7 +573,7 @@ impl<'a> Parser<'a> {
                         if self.prev_token.is_integer_lit()
                             && self.look_ahead(1, |token| token.is_integer_lit())
                         {
-                            // TODO(hkmatsumoto): Might be better to trigger
+                            // FIXME(hkmatsumoto): Might be better to trigger
                             // this only when parsing an index expression.
                             err.span_suggestion_verbose(
                                 self.token.span,
