@@ -1,5 +1,5 @@
 error: use of `default` to create a unit struct
-  --> $DIR/default_constructed_unit_structs.rs:11:13
+  --> $DIR/default_constructed_unit_structs.rs:13:13
    |
 LL |         Self::default()
    |             ^^^^^^^^^^^ help: remove this call to `default`
@@ -7,25 +7,25 @@ LL |         Self::default()
    = note: `-D clippy::default-constructed-unit-structs` implied by `-D warnings`
 
 error: use of `default` to create a unit struct
-  --> $DIR/default_constructed_unit_structs.rs:53:31
+  --> $DIR/default_constructed_unit_structs.rs:55:31
    |
 LL |             inner: PhantomData::default(),
    |                               ^^^^^^^^^^^ help: remove this call to `default`
 
 error: use of `default` to create a unit struct
-  --> $DIR/default_constructed_unit_structs.rs:104:33
+  --> $DIR/default_constructed_unit_structs.rs:106:33
    |
 LL |     let _ = PhantomData::<usize>::default();
    |                                 ^^^^^^^^^^^ help: remove this call to `default`
 
 error: use of `default` to create a unit struct
-  --> $DIR/default_constructed_unit_structs.rs:105:42
+  --> $DIR/default_constructed_unit_structs.rs:107:42
    |
 LL |     let _: PhantomData<i32> = PhantomData::default();
    |                                          ^^^^^^^^^^^ help: remove this call to `default`
 
 error: use of `default` to create a unit struct
-  --> $DIR/default_constructed_unit_structs.rs:106:23
+  --> $DIR/default_constructed_unit_structs.rs:108:23
    |
 LL |     let _ = UnitStruct::default();
    |                       ^^^^^^^^^^^ help: remove this call to `default`
