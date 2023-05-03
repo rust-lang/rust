@@ -909,8 +909,7 @@ pub struct Resolver<'a, 'tcx> {
 
     /// `CrateNum` resolutions of `extern crate` items.
     extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
-    module_children_non_reexports: LocalDefIdMap<Vec<LocalDefId>>,
-    module_children_reexports: LocalDefIdMap<Vec<ModChild>>,
+    module_children: LocalDefIdMap<Vec<ModChild>>,
     trait_map: NodeMap<Vec<TraitCandidate>>,
 
     /// A map from nodes to anonymous modules.
@@ -1260,8 +1259,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             lifetimes_res_map: Default::default(),
             extra_lifetime_params_map: Default::default(),
             extern_crate_map: Default::default(),
-            module_children_non_reexports: Default::default(),
-            module_children_reexports: Default::default(),
+            module_children: Default::default(),
             trait_map: NodeMap::default(),
             underscore_disambiguator: 0,
             empty_module,
@@ -1399,8 +1397,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             has_pub_restricted,
             effective_visibilities,
             extern_crate_map,
-            module_children_non_reexports: self.module_children_non_reexports,
-            module_children_reexports: self.module_children_reexports,
+            module_children: self.module_children,
             glob_map,
             maybe_unused_trait_imports,
             main_def,
