@@ -7,13 +7,13 @@ use rustc_type_ir::WithCachedTypeInfo;
 
 use crate::ty::{
     self, AliasRelationDirection, Binder, BoundConstness, Clause, ClosureKind, Const,
-    DebruijnIndex, EarlyBinder, GenericArg, PolyProjectionPredicate, SubstsRef, Term, Ty,
-    TypeFlags,
+    DebruijnIndex, EarlyBinder, GenericArg, SubstsRef, Term, Ty, TypeFlags,
 };
 
 mod coerce_predicate;
 mod instantiated_predicates;
 mod outlives_predicate;
+mod projection_predicate;
 mod subtype_predicate;
 mod trait_predicate;
 
@@ -23,6 +23,7 @@ pub use outlives_predicate::{
     OutlivesPredicate, PolyRegionOutlivesPredicate, PolyTypeOutlivesPredicate,
     RegionOutlivesPredicate, TypeOutlivesPredicate,
 };
+pub use projection_predicate::{PolyProjectionPredicate, ProjectionPredicate};
 pub use subtype_predicate::{PolySubtypePredicate, SubtypePredicate};
 pub use trait_predicate::{PolyTraitPredicate, TraitPredicate};
 
