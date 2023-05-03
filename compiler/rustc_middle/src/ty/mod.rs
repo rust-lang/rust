@@ -158,10 +158,11 @@ pub use opaque_hidden_type::OpaqueHiddenType;
 pub use param_env::{ParamEnv, ParamEnvAnd};
 pub use placeholder::{Placeholder, PlaceholderConst, PlaceholderRegion, PlaceholderType};
 pub use predicate::{
-    Clause, CoercePredicate, InstantiatedPredicates, OutlivesPredicate, PolyCoercePredicate,
-    PolyProjectionPredicate, PolyRegionOutlivesPredicate, PolySubtypePredicate, PolyTraitPredicate,
-    PolyTypeOutlivesPredicate, Predicate, PredicateKind, ProjectionPredicate,
-    RegionOutlivesPredicate, SubtypePredicate, ToPredicate, TraitPredicate, TypeOutlivesPredicate,
+    Clause, CoercePredicate, CratePredicatesMap, InstantiatedPredicates, OutlivesPredicate,
+    PolyCoercePredicate, PolyProjectionPredicate, PolyRegionOutlivesPredicate,
+    PolySubtypePredicate, PolyTraitPredicate, PolyTypeOutlivesPredicate, Predicate, PredicateKind,
+    ProjectionPredicate, RegionOutlivesPredicate, SubtypePredicate, ToPredicate, TraitPredicate,
+    TypeOutlivesPredicate,
 };
 pub use resolver_outputs::{ResolverAstLowering, ResolverGlobalCtxt, ResolverOutputs};
 pub use symbol_name::SymbolName;
@@ -258,20 +259,6 @@ pub struct CrateVariancesMap<'tcx> {
 pub struct CReaderCacheKey {
     pub cnum: Option<CrateNum>,
     pub pos: usize,
-}
-
-/// The crate outlives map is computed during typeck and contains the
-/// outlives of every item in the local crate. You should not use it
-/// directly, because to do so will make your pass dependent on the
-/// HIR of every item in the local crate. Instead, use
-/// `tcx.inferred_outlives_of()` to get the outlives for a *particular*
-/// item.
-#[derive(HashStable, Debug)]
-pub struct CratePredicatesMap<'tcx> {
-    /// For each struct with outlive bounds, maps to a vector of the
-    /// predicate of its outlive bounds. If an item has no outlives
-    /// bounds, it will have no entry.
-    pub predicates: FxHashMap<DefId, &'tcx [(Clause<'tcx>, Span)]>,
 }
 
 const TAG_MASK: usize = 0b11;

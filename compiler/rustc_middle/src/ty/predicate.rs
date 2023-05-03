@@ -12,6 +12,7 @@ use crate::ty::{
 
 mod clause;
 mod coerce_predicate;
+mod crate_predicates_map;
 mod instantiated_predicates;
 mod outlives_predicate;
 mod projection_predicate;
@@ -21,6 +22,7 @@ mod trait_predicate;
 
 pub use clause::Clause;
 pub use coerce_predicate::{CoercePredicate, PolyCoercePredicate};
+pub use crate_predicates_map::CratePredicatesMap;
 pub use instantiated_predicates::InstantiatedPredicates;
 pub use outlives_predicate::{
     OutlivesPredicate, PolyRegionOutlivesPredicate, PolyTypeOutlivesPredicate,
