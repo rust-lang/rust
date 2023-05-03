@@ -28,26 +28,33 @@ extern "C" {
 }
 
 /// Transaction successfully started.
+#[unstable(feature = "stdarch_x86_rtm", issue = "111138")]
 pub const _XBEGIN_STARTED: u32 = !0;
 
 /// Transaction explicitly aborted with xabort. The parameter passed to xabort is available with
 /// `_xabort_code(status)`.
 #[allow(clippy::identity_op)]
+#[unstable(feature = "stdarch_x86_rtm", issue = "111138")]
 pub const _XABORT_EXPLICIT: u32 = 1 << 0;
 
 /// Transaction retry is possible.
+#[unstable(feature = "stdarch_x86_rtm", issue = "111138")]
 pub const _XABORT_RETRY: u32 = 1 << 1;
 
 /// Transaction abort due to a memory conflict with another thread.
+#[unstable(feature = "stdarch_x86_rtm", issue = "111138")]
 pub const _XABORT_CONFLICT: u32 = 1 << 2;
 
 /// Transaction abort due to the transaction using too much memory.
+#[unstable(feature = "stdarch_x86_rtm", issue = "111138")]
 pub const _XABORT_CAPACITY: u32 = 1 << 3;
 
 /// Transaction abort due to a debug trap.
+#[unstable(feature = "stdarch_x86_rtm", issue = "111138")]
 pub const _XABORT_DEBUG: u32 = 1 << 4;
 
 /// Transaction abort in a inner nested transaction.
+#[unstable(feature = "stdarch_x86_rtm", issue = "111138")]
 pub const _XABORT_NESTED: u32 = 1 << 5;
 
 /// Specifies the start of a restricted transactional memory (RTM) code region and returns a value
@@ -57,6 +64,7 @@ pub const _XABORT_NESTED: u32 = 1 << 5;
 #[inline]
 #[target_feature(enable = "rtm")]
 #[cfg_attr(test, assert_instr(xbegin))]
+#[unstable(feature = "stdarch_x86_rtm", issue = "111138")]
 pub unsafe fn _xbegin() -> u32 {
     x86_xbegin() as _
 }
@@ -67,6 +75,7 @@ pub unsafe fn _xbegin() -> u32 {
 #[inline]
 #[target_feature(enable = "rtm")]
 #[cfg_attr(test, assert_instr(xend))]
+#[unstable(feature = "stdarch_x86_rtm", issue = "111138")]
 pub unsafe fn _xend() {
     x86_xend()
 }
@@ -78,6 +87,7 @@ pub unsafe fn _xend() {
 #[target_feature(enable = "rtm")]
 #[cfg_attr(test, assert_instr(xabort, IMM8 = 0x0))]
 #[rustc_legacy_const_generics(0)]
+#[unstable(feature = "stdarch_x86_rtm", issue = "111138")]
 pub unsafe fn _xabort<const IMM8: u32>() {
     static_assert_uimm_bits!(IMM8, 8);
     x86_xabort(IMM8 as i8)
@@ -90,6 +100,7 @@ pub unsafe fn _xabort<const IMM8: u32>() {
 #[inline]
 #[target_feature(enable = "rtm")]
 #[cfg_attr(test, assert_instr(xtest))]
+#[unstable(feature = "stdarch_x86_rtm", issue = "111138")]
 pub unsafe fn _xtest() -> u8 {
     x86_xtest() as _
 }
@@ -97,6 +108,7 @@ pub unsafe fn _xtest() -> u8 {
 /// Retrieves the parameter passed to [`_xabort`] when [`_xbegin`]'s status has the
 /// `_XABORT_EXPLICIT` flag set.
 #[inline]
+#[unstable(feature = "stdarch_x86_rtm", issue = "111138")]
 pub const fn _xabort_code(status: u32) -> u32 {
     (status >> 24) & 0xFF
 }
