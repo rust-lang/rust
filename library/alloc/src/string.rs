@@ -2614,6 +2614,15 @@ impl ToString for String {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "fmt_arguments_to_string_specialization", since = "CURRENT_RUSTC_VERSION")]
+impl ToString for fmt::Arguments<'_> {
+    #[inline]
+    fn to_string(&self) -> String {
+        crate::fmt::format(*self)
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<str> for String {
     #[inline]
