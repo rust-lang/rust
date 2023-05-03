@@ -54,7 +54,6 @@ pub use vtable::*;
 
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::{fmt, str};
 
 pub use crate::ty::diagnostics::*;
 pub use rustc_type_ir::AliasKind::*;
@@ -148,6 +147,7 @@ mod opaque_hidden_type;
 mod param_env;
 mod placeholder;
 mod predicate;
+mod symbol_name;
 mod term;
 mod ty_; // FIXME: rename to `ty` once we don't import `crate::ty` here
 mod variant_def;
@@ -166,6 +166,7 @@ pub use predicate::{
     PolyTypeOutlivesPredicate, Predicate, PredicateKind, ProjectionPredicate,
     RegionOutlivesPredicate, SubtypePredicate, ToPredicate, TraitPredicate, TypeOutlivesPredicate,
 };
+pub use symbol_name::SymbolName;
 pub use term::{Term, TermKind};
 pub use ty_::Ty;
 pub use variant_def::VariantDef;
@@ -1128,32 +1129,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
 pub struct CrateInherentImpls {
     pub inherent_impls: LocalDefIdMap<Vec<DefId>>,
     pub incoherent_impls: FxHashMap<SimplifiedType, Vec<LocalDefId>>,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, HashStable)]
-pub struct SymbolName<'tcx> {
-    /// `&str` gives a consistent ordering, which ensures reproducible builds.
-    pub name: &'tcx str,
-}
-
-impl<'tcx> SymbolName<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, name: &str) -> SymbolName<'tcx> {
-        SymbolName {
-            name: unsafe { str::from_utf8_unchecked(tcx.arena.alloc_slice(name.as_bytes())) },
-        }
-    }
-}
-
-impl<'tcx> fmt::Display for SymbolName<'tcx> {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.name, fmt)
-    }
-}
-
-impl<'tcx> fmt::Debug for SymbolName<'tcx> {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.name, fmt)
-    }
 }
 
 #[derive(Debug, Default, Copy, Clone)]
