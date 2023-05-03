@@ -109,6 +109,14 @@ impl<'a, 'tcx> MutVisitor<'tcx> for RegionRenumberer<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
+    fn visit_ty_const(&mut self, ct: &mut ty::Const<'tcx>, location: Location) {
+        let old_ct = *ct;
+        *ct = self.renumber_regions(old_ct, || RegionCtxt::Location(location));
+
+        debug!(?ct);
+    }
+
+    #[instrument(skip(self), level = "debug")]
     fn visit_constant(&mut self, constant: &mut Constant<'tcx>, location: Location) {
         let literal = constant.literal;
         constant.literal = self.renumber_regions(literal, || RegionCtxt::Location(location));

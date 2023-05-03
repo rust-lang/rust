@@ -192,6 +192,15 @@ macro_rules! make_mir_visitor {
                 self.super_constant(constant, location);
             }
 
+            #[allow(rustc::pass_by_value)]
+            fn visit_ty_const(
+                &mut self,
+                ct: & $($mutability)? ty::Const<'tcx>,
+                location: Location,
+            ) {
+                self.super_ty_const(ct, location);
+            }
+
             fn visit_span(
                 &mut self,
                 span: $(& $mutability)? Span,
@@ -625,8 +634,9 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(operand, location);
                     }
 
-                    Rvalue::Repeat(value, _) => {
+                    Rvalue::Repeat(value, ct) => {
                         self.visit_operand(value, location);
+                        self.visit_ty_const(ct, location);
                     }
 
                     Rvalue::ThreadLocalRef(_) => {}
@@ -878,10 +888,19 @@ macro_rules! make_mir_visitor {
                 self.visit_span($(& $mutability)? *span);
                 drop(user_ty); // no visit method for this
                 match literal {
-                    ConstantKind::Ty(_) => {}
+                    ConstantKind::Ty(ct) => self.visit_ty_const(ct, location),
                     ConstantKind::Val(_, ty) => self.visit_ty($(& $mutability)? *ty, TyContext::Location(location)),
                     ConstantKind::Unevaluated(_, ty) => self.visit_ty($(& $mutability)? *ty, TyContext::Location(location)),
                 }
+            }
+
+            #[allow(rustc::pass_by_value)]
+            fn super_ty_const(
+                &mut self,
+                _ct: & $($mutability)? ty::Const<'tcx>,
+                _location: Location,
+            ) {
+
             }
 
             fn super_span(&mut self, _span: $(& $mutability)? Span) {
