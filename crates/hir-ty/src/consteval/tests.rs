@@ -1228,6 +1228,53 @@ fn from_trait() {
 }
 
 #[test]
+fn builtin_derive_macro() {
+    check_number(
+        r#"
+    //- minicore: clone, derive, builtin_impls
+    #[derive(Clone)]
+    enum Z {
+        Foo(Y),
+        Bar,
+    }
+    #[derive(Clone)]
+    struct X(i32, Z, i64)
+    #[derive(Clone)]
+    struct Y {
+        field1: i32,
+        field2: u8,
+    }
+
+    const GOAL: u8 = {
+        let x = X(2, Z::Foo(Y { field1: 4, field2: 5 }), 8);
+        let x = x.clone();
+        let Z::Foo(t) = x.1;
+        t.field2
+    };
+    "#,
+        5,
+    );
+    check_number(
+        r#"
+    //- minicore: default, derive, builtin_impls
+    #[derive(Default)]
+    struct X(i32, Y, i64)
+    #[derive(Default)]
+    struct Y {
+        field1: i32,
+        field2: u8,
+    }
+
+    const GOAL: u8 = {
+        let x = X::default();
+        x.1.field2
+    };
+    "#,
+        0,
+    );
+}
+
+#[test]
 fn try_operator() {
     check_number(
         r#"

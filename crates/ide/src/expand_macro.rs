@@ -151,9 +151,11 @@ fn _format(
     _db: &RootDatabase,
     _kind: SyntaxKind,
     _file_id: FileId,
-    _expansion: &str,
+    expansion: &str,
 ) -> Option<String> {
-    None
+    // remove trailing spaces for test
+    use itertools::Itertools;
+    Some(expansion.lines().map(|x| x.trim_end()).join("\n"))
 }
 
 #[cfg(not(any(test, target_arch = "wasm32", target_os = "emscripten")))]
@@ -276,8 +278,7 @@ f$0oo!();
 "#,
             expect![[r#"
                 foo!
-                fn b(){}
-            "#]],
+                fn b(){}"#]],
         );
     }
 
@@ -471,8 +472,17 @@ struct Foo {}
 "#,
             expect![[r#"
                 Clone
-                impl < >core::clone::Clone for Foo< >where{}
-            "#]],
+                impl < >core::clone::Clone for Foo< >where {
+                  fn clone(&self) -> Self {
+                    match self {
+                      Foo{}
+                       => Foo{}
+                      ,
+
+                      }
+                  }
+
+                  }"#]],
         );
     }
 
@@ -488,8 +498,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Copy
-                impl < >core::marker::Copy for Foo< >where{}
-            "#]],
+                impl < >core::marker::Copy for Foo< >where{}"#]],
         );
     }
 
@@ -504,8 +513,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Copy
-                impl < >core::marker::Copy for Foo< >where{}
-            "#]],
+                impl < >core::marker::Copy for Foo< >where{}"#]],
         );
         check(
             r#"
@@ -516,8 +524,17 @@ struct Foo {}
 "#,
             expect![[r#"
                 Clone
-                impl < >core::clone::Clone for Foo< >where{}
-            "#]],
+                impl < >core::clone::Clone for Foo< >where {
+                  fn clone(&self) -> Self {
+                    match self {
+                      Foo{}
+                       => Foo{}
+                      ,
+
+                      }
+                  }
+
+                  }"#]],
         );
     }
 }

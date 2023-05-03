@@ -11,6 +11,7 @@
 //!     add:
 //!     as_ref: sized
 //!     bool_impl: option, fn
+//!     builtin_impls:
 //!     cell: copy, drop
 //!     clone: sized
 //!     coerce_unsized: unsize
@@ -127,6 +128,27 @@ pub mod default {
     #[rustc_builtin_macro(Default, attributes(default))]
     pub macro Default($item:item) {}
     // endregion:derive
+
+    // region:builtin_impls
+    macro_rules! impl_default {
+        ($v:literal; $($t:ty)*) => {
+            $(
+                impl const Default for $t {
+                    fn default() -> Self {
+                        $v
+                    }
+                }
+            )*
+        }
+    }
+
+    impl_default! {
+        0; usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128
+    }
+    impl_default! {
+        0.0; f32 f64
+    }
+    // endregion:builtin_impls
 }
 // endregion:default
 
@@ -137,6 +159,11 @@ pub mod hash {
     pub trait Hash {
         fn hash<H: Hasher>(&self, state: &mut H);
     }
+
+    // region:derive
+    #[rustc_builtin_macro]
+    pub macro Hash($item:item) {}
+    // endregion:derive
 }
 // endregion:hash
 
@@ -198,6 +225,28 @@ pub mod clone {
             *self
         }
     }
+
+    // region:builtin_impls
+    macro_rules! impl_clone {
+        ($($t:ty)*) => {
+            $(
+                impl const Clone for $t {
+                    fn clone(&self) -> Self {
+                        *self
+                    }
+                }
+            )*
+        }
+    }
+
+    impl_clone! {
+        usize u8 u16 u32 u64 u128
+        isize i8 i16 i32 i64 i128
+        f32 f64
+        bool char
+    }
+    // endregion:builtin_impls
+
     // region:derive
     #[rustc_builtin_macro]
     pub macro Clone($item:item) {}
@@ -723,6 +772,11 @@ pub mod fmt {
     pub trait Display {
         fn fmt(&self, f: &mut Formatter<'_>) -> Result;
     }
+
+    // region:derive
+    #[rustc_builtin_macro]
+    pub macro Debug($item:item) {}
+    // endregion:derive
 }
 // endregion:fmt
 
