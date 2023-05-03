@@ -7,13 +7,15 @@ use rustc_type_ir::WithCachedTypeInfo;
 
 use crate::ty::{
     self, AliasRelationDirection, Binder, BoundConstness, Clause, ClosureKind, CoercePredicate,
-    Const, DebruijnIndex, EarlyBinder, GenericArg, PolyProjectionPredicate, PolyTraitPredicate,
-    PolyTypeOutlivesPredicate, SubstsRef, SubtypePredicate, Term, TraitPredicate, Ty, TypeFlags,
+    Const, DebruijnIndex, EarlyBinder, GenericArg, PolyProjectionPredicate,
+    PolyTypeOutlivesPredicate, SubstsRef, SubtypePredicate, Term, Ty, TypeFlags,
 };
 
 mod instantiated_predicates;
+mod trait_predicate;
 
 pub use instantiated_predicates::InstantiatedPredicates;
+pub use trait_predicate::{PolyTraitPredicate, TraitPredicate};
 
 /// Use this rather than `PredicateKind`, whenever possible.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable)]
