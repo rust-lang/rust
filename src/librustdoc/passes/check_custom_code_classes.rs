@@ -67,10 +67,11 @@ pub(crate) fn look_for_custom_classes<'tcx>(cx: &DocContext<'tcx>, item: &Item) 
         .note(
             // This will list the wrong items to make them more easily searchable.
             // To ensure the most correct hits, it adds back the 'class:' that was stripped.
-            &format!(
+            format!(
                 "found these custom classes: class={}",
                 tests.custom_classes_found.join(",class=")
-            ),
+            )
+            .as_str(),
         )
         .emit();
     }
