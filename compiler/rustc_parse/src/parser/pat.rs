@@ -406,11 +406,11 @@ impl<'a> Parser<'a> {
             // Parse pattern starting with a path
             let (qself, path) = if self.eat_lt() {
                 // Parse a qualified path
-                let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
+                let (qself, path) = self.parse_qpath(PathStyle::Pat)?;
                 (Some(qself), path)
             } else {
                 // Parse an unqualified path
-                (None, self.parse_path(PathStyle::Expr)?)
+                (None, self.parse_path(PathStyle::Pat)?)
             };
             let span = lo.to(self.prev_token.span);
 
@@ -444,7 +444,7 @@ impl<'a> Parser<'a> {
                         super::token_descr(&self_.token)
                     );
 
-                    let mut err = self_.struct_span_err(self_.token.span, &msg);
+                    let mut err = self_.struct_span_err(self_.token.span, msg);
                     err.span_label(self_.token.span, format!("expected {}", expected));
                     err
                 });
@@ -666,7 +666,7 @@ impl<'a> Parser<'a> {
     fn parse_pat_mac_invoc(&mut self, path: Path) -> PResult<'a, PatKind> {
         self.bump();
         let args = self.parse_delim_args()?;
-        let mac = P(MacCall { path, args, prior_type_ascription: self.last_type_ascription });
+        let mac = P(MacCall { path, args });
         Ok(PatKind::MacCall(mac))
     }
 
@@ -680,7 +680,7 @@ impl<'a> Parser<'a> {
         let expected = Expected::to_string_or_fallback(expected);
         let msg = format!("expected {}, found {}", expected, super::token_descr(&self.token));
 
-        let mut err = self.struct_span_err(self.token.span, &msg);
+        let mut err = self.struct_span_err(self.token.span, msg);
         err.span_label(self.token.span, format!("expected {}", expected));
 
         let sp = self.sess.source_map().start_point(self.token.span);
@@ -789,11 +789,11 @@ impl<'a> Parser<'a> {
             let lo = self.token.span;
             let (qself, path) = if self.eat_lt() {
                 // Parse a qualified path
-                let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
+                let (qself, path) = self.parse_qpath(PathStyle::Pat)?;
                 (Some(qself), path)
             } else {
                 // Parse an unqualified path
-                (None, self.parse_path(PathStyle::Expr)?)
+                (None, self.parse_path(PathStyle::Pat)?)
             };
             let hi = self.prev_token.span;
             Ok(self.mk_expr(lo.to(hi), ExprKind::Path(qself, path)))
@@ -978,7 +978,7 @@ impl<'a> Parser<'a> {
                     break;
                 }
                 let token_str = super::token_descr(&self.token);
-                let msg = &format!("expected `}}`, found {}", token_str);
+                let msg = format!("expected `}}`, found {}", token_str);
                 let mut err = self.struct_span_err(self.token.span, msg);
 
                 err.span_label(self.token.span, "expected `}`");

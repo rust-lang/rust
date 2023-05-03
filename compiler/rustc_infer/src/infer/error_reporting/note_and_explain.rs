@@ -209,7 +209,7 @@ impl<T> Trait<T> for X {
                         if !sp.contains(p_span) {
                             diag.span_label(p_span, "this type parameter");
                         }
-                        diag.help(&format!(
+                        diag.help(format!(
                             "every closure has a distinct type and so could not always match the \
                              caller-chosen type of parameter `{}`",
                             p
@@ -248,7 +248,7 @@ impl<T> Trait<T> for X {
                             proj_ty,
                             values.expected,
                         )) {
-                            diag.help(&msg);
+                            diag.help(msg);
                             diag.note(
                                 "for more information, visit \
                                 https://doc.rust-lang.org/book/ch19-03-advanced-traits.html",
@@ -415,12 +415,12 @@ impl<T> Trait<T> for X {
         if !impl_comparison {
             // Generic suggestion when we can't be more specific.
             if callable_scope {
-                diag.help(&format!(
+                diag.help(format!(
                     "{} or calling a method that returns `{}`",
                     msg, values.expected
                 ));
             } else {
-                diag.help(&msg);
+                diag.help(msg);
             }
             diag.note(
                 "for more information, visit \
@@ -536,7 +536,7 @@ fn foo(&self) -> Self::T { String::new() }
             for (sp, label) in methods.into_iter() {
                 span.push_span_label(sp, label);
             }
-            diag.span_help(span, &msg);
+            diag.span_help(span, msg);
             return true;
         }
         false

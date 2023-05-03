@@ -987,7 +987,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                                         lifetime.ident
                                     ),
                                     |lint| {
-                                        let help = &format!(
+                                        let help = format!(
                                             "you can use the `'static` lifetime directly, in place of `{}`",
                                             lifetime.ident,
                                         );
@@ -1365,7 +1365,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
 
         self.tcx.sess.delay_span_bug(
             lifetime_ref.ident.span,
-            &format!("Could not resolve {:?} in scope {:#?}", lifetime_ref, self.scope,),
+            format!("Could not resolve {:?} in scope {:#?}", lifetime_ref, self.scope,),
         );
     }
 

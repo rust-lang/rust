@@ -601,7 +601,7 @@ impl Emitter for SilentEmitter {
         if d.level == Level::Fatal {
             let mut d = d.clone();
             if let Some(ref note) = self.fatal_note {
-                d.note(note);
+                d.note(note.clone());
             }
             self.fatal_handler.emit_diagnostic(&mut d);
         }

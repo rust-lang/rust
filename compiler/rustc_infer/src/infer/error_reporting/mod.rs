@@ -282,9 +282,9 @@ fn emit_msg_span(
     let message = format!("{}{}{}", prefix, description, suffix);
 
     if let Some(span) = span {
-        err.span_note(span, &message);
+        err.span_note(span, message);
     } else {
-        err.note(&message);
+        err.note(message);
     }
 }
 
@@ -298,9 +298,9 @@ fn label_msg_span(
     let message = format!("{}{}{}", prefix, description, suffix);
 
     if let Some(span) = span {
-        err.span_label(span, &message);
+        err.span_label(span, message);
     } else {
-        err.note(&message);
+        err.note(message);
     }
 }
 
@@ -2395,7 +2395,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 );
             } else {
                 let consider = format!("{} `{}: {}`...", msg, bound_kind, sub);
-                err.help(&consider);
+                err.help(consider);
             }
         }
 
@@ -2625,7 +2625,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             );
             err.span_note(
                 sup_trace.cause.span,
-                &format!("...so that the {}", sup_trace.cause.as_requirement_str()),
+                format!("...so that the {}", sup_trace.cause.as_requirement_str()),
             );
 
             err.note_expected_found(&"", sup_expected, &"", sup_found);

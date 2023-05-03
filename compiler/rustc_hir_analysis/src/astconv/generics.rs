@@ -112,7 +112,7 @@ fn generic_arg_mismatch_err(
             if let rustc_hir::ExprKind::Path(rustc_hir::QPath::Resolved(_, path)) = body.value.kind
             {
                 if let Res::Def(DefKind::Fn { .. }, id) = path.res {
-                    err.help(&format!("`{}` is a function item, not a type", tcx.item_name(id)));
+                    err.help(format!("`{}` is a function item, not a type", tcx.item_name(id)));
                     err.help("function item types cannot be named directly");
                 }
             }
@@ -130,7 +130,7 @@ fn generic_arg_mismatch_err(
         } else {
             (arg.descr(), param.kind.descr())
         };
-        err.note(&format!("{} arguments must be provided before {} arguments", first, last));
+        err.note(format!("{} arguments must be provided before {} arguments", first, last));
         if let Some(help) = help {
             err.help(help);
         }

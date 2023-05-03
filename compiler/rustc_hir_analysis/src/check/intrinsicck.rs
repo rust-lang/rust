@@ -130,7 +130,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             _ => None,
         };
         let Some(asm_ty) = asm_ty else {
-            let msg = &format!("cannot use value of type `{ty}` for inline assembly");
+            let msg = format!("cannot use value of type `{ty}` for inline assembly");
             let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
             err.note(
                 "only integers, floats, SIMD vectors, pointers and function pointers \
@@ -145,7 +145,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         if !ty.is_copy_modulo_regions(self.tcx, self.param_env) {
             let msg = "arguments for inline assembly must be copyable";
             let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
-            err.note(&format!("`{ty}` does not implement the Copy trait"));
+            err.note(format!("`{ty}` does not implement the Copy trait"));
             err.emit();
         }
 
@@ -164,8 +164,8 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                 let mut err = self.tcx.sess.struct_span_err(vec![in_expr.span, expr.span], msg);
 
                 let in_expr_ty = (self.get_operand_ty)(in_expr);
-                err.span_label(in_expr.span, &format!("type `{in_expr_ty}`"));
-                err.span_label(expr.span, &format!("type `{ty}`"));
+                err.span_label(in_expr.span, format!("type `{in_expr_ty}`"));
+                err.span_label(expr.span, format!("type `{ty}`"));
                 err.note(
                     "asm inout arguments must have the same type, \
                     unless they are both pointers or integers of the same size",
@@ -184,17 +184,17 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         let reg_class = reg.reg_class();
         let supported_tys = reg_class.supported_types(asm_arch);
         let Some((_, feature)) = supported_tys.iter().find(|&&(t, _)| t == asm_ty) else {
-            let msg = &format!("type `{ty}` cannot be used with this register class");
+            let msg = format!("type `{ty}` cannot be used with this register class");
             let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
             let supported_tys: Vec<_> =
                 supported_tys.iter().map(|(t, _)| t.to_string()).collect();
-            err.note(&format!(
+            err.note(format!(
                 "register class `{}` supports these types: {}",
                 reg_class.name(),
                 supported_tys.join(", "),
             ));
             if let Some(suggest) = reg_class.suggest_class(asm_arch, asm_ty) {
-                err.help(&format!(
+                err.help(format!(
                     "consider using the `{}` register class instead",
                     suggest.name()
                 ));
@@ -215,9 +215,9 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         // register class is usable at all.
         if let Some(feature) = feature {
             if !target_features.contains(feature) {
-                let msg = &format!("`{}` target feature is not enabled", feature);
+                let msg = format!("`{}` target feature is not enabled", feature);
                 let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
-                err.note(&format!(
+                err.note(format!(
                     "this is required to use type `{}` with register class `{}`",
                     ty,
                     reg_class.name(),
@@ -252,10 +252,10 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     "formatting may not be suitable for sub-register argument",
                     |lint| {
                         lint.span_label(expr.span, "for this argument");
-                        lint.help(&format!(
+                        lint.help(format!(
                             "use `{{{idx}:{suggested_modifier}}}` to have the register formatted as `{suggested_result}`",
                         ));
-                        lint.help(&format!(
+                        lint.help(format!(
                             "or use `{{{idx}:{default_modifier}}}` to keep the default formatting of `{default_result}`",
                         ));
                         lint
@@ -301,7 +301,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         op.is_clobber(),
                     ) {
                         let msg = format!("cannot use register `{}`: {}", reg.name(), msg);
-                        self.tcx.sess.struct_span_err(*op_sp, &msg).emit();
+                        self.tcx.sess.struct_span_err(*op_sp, msg).emit();
                         continue;
                     }
                 }
@@ -340,7 +340,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                                 reg_class.name(),
                                 feature
                             );
-                            self.tcx.sess.struct_span_err(*op_sp, &msg).emit();
+                            self.tcx.sess.struct_span_err(*op_sp, msg).emit();
                             // register isn't enabled, don't do more checks
                             continue;
                         }
@@ -354,7 +354,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                                     .intersperse(", ")
                                     .collect::<String>(),
                             );
-                            self.tcx.sess.struct_span_err(*op_sp, &msg).emit();
+                            self.tcx.sess.struct_span_err(*op_sp, msg).emit();
                             // register isn't enabled, don't do more checks
                             continue;
                         }
@@ -436,7 +436,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                                 self.tcx.sess.struct_span_err(*op_sp, "invalid `sym` operand");
                             err.span_label(
                                 self.tcx.def_span(anon_const.def_id),
-                                &format!("is {} `{}`", ty.kind().article(), ty),
+                                format!("is {} `{}`", ty.kind().article(), ty),
                             );
                             err.help("`sym` operands must refer to either a function or a static");
                             err.emit();

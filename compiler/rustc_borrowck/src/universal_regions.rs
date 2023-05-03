@@ -335,7 +335,7 @@ impl<'tcx> UniversalRegions<'tcx> {
     pub(crate) fn annotate(&self, tcx: TyCtxt<'tcx>, err: &mut Diagnostic) {
         match self.defining_ty {
             DefiningTy::Closure(def_id, substs) => {
-                err.note(&format!(
+                err.note(format!(
                     "defining type: {} with closure substs {:#?}",
                     tcx.def_path_str_with_substs(def_id, substs),
                     &substs[tcx.generics_of(def_id).parent_count..],
@@ -347,11 +347,11 @@ impl<'tcx> UniversalRegions<'tcx> {
                 // and other things that are not stable across tests!
                 // So we just include the region-vid. Annoying.
                 for_each_late_bound_region_in_recursive_scope(tcx, def_id.expect_local(), |r| {
-                    err.note(&format!("late-bound region is {:?}", self.to_region_vid(r)));
+                    err.note(format!("late-bound region is {:?}", self.to_region_vid(r)));
                 });
             }
             DefiningTy::Generator(def_id, substs, _) => {
-                err.note(&format!(
+                err.note(format!(
                     "defining type: {} with generator substs {:#?}",
                     tcx.def_path_str_with_substs(def_id, substs),
                     &substs[tcx.generics_of(def_id).parent_count..],
@@ -361,23 +361,23 @@ impl<'tcx> UniversalRegions<'tcx> {
                 // `r` but doing so is not stable across architectures
                 // and so forth.
                 for_each_late_bound_region_in_recursive_scope(tcx, def_id.expect_local(), |r| {
-                    err.note(&format!("late-bound region is {:?}", self.to_region_vid(r)));
+                    err.note(format!("late-bound region is {:?}", self.to_region_vid(r)));
                 });
             }
             DefiningTy::FnDef(def_id, substs) => {
-                err.note(&format!(
+                err.note(format!(
                     "defining type: {}",
                     tcx.def_path_str_with_substs(def_id, substs),
                 ));
             }
             DefiningTy::Const(def_id, substs) => {
-                err.note(&format!(
+                err.note(format!(
                     "defining constant type: {}",
                     tcx.def_path_str_with_substs(def_id, substs),
                 ));
             }
             DefiningTy::InlineConst(def_id, substs) => {
-                err.note(&format!(
+                err.note(format!(
                     "defining inline constant type: {}",
                     tcx.def_path_str_with_substs(def_id, substs),
                 ));

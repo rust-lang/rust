@@ -77,7 +77,7 @@ impl<'tcx> NonConstOp<'tcx> for FloatingPointOp {
             &ccx.tcx.sess.parse_sess,
             sym::const_fn_floating_point_arithmetic,
             span,
-            &format!("floating point arithmetic is not allowed in {}s", ccx.const_kind()),
+            format!("floating point arithmetic is not allowed in {}s", ccx.const_kind()),
         )
     }
 }
@@ -211,13 +211,13 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                         err.span_note(span, "function defined here, but it is not `const`");
                     }
                     FnPtr(..) => {
-                        err.note(&format!(
+                        err.note(format!(
                             "function pointers need an RFC before allowed to be called in {}s",
                             ccx.const_kind()
                         ));
                     }
                     Closure(..) => {
-                        err.note(&format!(
+                        err.note(format!(
                             "closures need an RFC before allowed to be called in {}s",
                             ccx.const_kind()
                         ));
@@ -289,7 +289,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                     ccx.const_kind()
                 );
 
-                err.note(&format!("attempting to deref into `{}`", deref_target_ty));
+                err.note(format!("attempting to deref into `{}`", deref_target_ty));
 
                 // Check first whether the source is accessible (issue #87060)
                 if tcx.sess.source_map().is_span_accessible(deref_target) {
@@ -310,14 +310,14 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
             }),
         };
 
-        err.note(&format!(
+        err.note(format!(
             "calls in {}s are limited to constant functions, \
              tuple structs and tuple variants",
             ccx.const_kind(),
         ));
 
         if let Some(feature) = feature && ccx.tcx.sess.is_nightly_build() {
-            err.help(&format!(
+            err.help(format!(
                 "add `#![feature({})]` to the crate attributes to enable",
                 feature,
             ));
@@ -354,7 +354,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
             err.help("const-stable functions can only call other const-stable functions");
         } else if ccx.tcx.sess.is_nightly_build() {
             if let Some(feature) = feature {
-                err.help(&format!(
+                err.help(format!(
                     "add `#![feature({})]` to the crate attributes to enable",
                     feature
                 ));
@@ -637,7 +637,7 @@ impl<'tcx> NonConstOp<'tcx> for RawMutPtrDeref {
             &ccx.tcx.sess.parse_sess,
             sym::const_mut_refs,
             span,
-            &format!("dereferencing raw mutable pointers in {}s is unstable", ccx.const_kind(),),
+            format!("dereferencing raw mutable pointers in {}s is unstable", ccx.const_kind(),),
         )
     }
 }
@@ -724,7 +724,7 @@ pub mod ty {
                 &ccx.tcx.sess.parse_sess,
                 sym::const_mut_refs,
                 span,
-                &format!("mutable references are not allowed in {}s", ccx.const_kind()),
+                format!("mutable references are not allowed in {}s", ccx.const_kind()),
             )
         }
     }

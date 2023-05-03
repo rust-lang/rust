@@ -31,8 +31,8 @@ fn opt_span_bug_fmt<S: Into<MultiSpan>>(
     tls::with_opt(move |tcx| {
         let msg = format!("{}: {}", location, args);
         match (tcx, span) {
-            (Some(tcx), Some(span)) => tcx.sess.diagnostic().span_bug(span, &msg),
-            (Some(tcx), None) => tcx.sess.diagnostic().bug(&msg),
+            (Some(tcx), Some(span)) => tcx.sess.diagnostic().span_bug(span, msg),
+            (Some(tcx), None) => tcx.sess.diagnostic().bug(msg),
             (None, _) => panic_any(msg),
         }
     })

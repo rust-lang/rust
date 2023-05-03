@@ -372,10 +372,10 @@ fn emit_orphan_check_error<'tcx>(
 
                 if is_target_ty {
                     // Point at `D<A>` in `impl<A, B> for C<B> in D<A>`
-                    err.span_label(self_ty_span, &msg);
+                    err.span_label(self_ty_span, msg);
                 } else {
                     // Point at `C<B>` in `impl<A, B> for C<B> in D<A>`
-                    err.span_label(trait_span, &msg);
+                    err.span_label(trait_span, msg);
                 }
             }
             err.note("define and implement a trait or new type instead");
@@ -531,15 +531,15 @@ fn lint_auto_trait_impl<'tcx>(
             let self_descr = tcx.def_descr(self_type_did);
             match arg {
                 ty::util::NotUniqueParam::DuplicateParam(arg) => {
-                    lint.note(&format!("`{}` is mentioned multiple times", arg));
+                    lint.note(format!("`{}` is mentioned multiple times", arg));
                 }
                 ty::util::NotUniqueParam::NotParam(arg) => {
-                    lint.note(&format!("`{}` is not a generic parameter", arg));
+                    lint.note(format!("`{}` is not a generic parameter", arg));
                 }
             }
             lint.span_note(
                 item_span,
-                &format!(
+                format!(
                     "try using the same sequence of generic parameters as the {} definition",
                     self_descr,
                 ),

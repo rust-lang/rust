@@ -633,7 +633,7 @@ pub fn print_query_stack<Qcx: QueryContext>(
         };
         let mut diag = Diagnostic::new(
             Level::FailureNote,
-            &format!("#{} [{:?}] {}", i, query_info.query.dep_kind, query_info.query.description),
+            format!("#{} [{:?}] {}", i, query_info.query.dep_kind, query_info.query.description),
         );
         diag.span = query_info.job.span.into();
         handler.force_print_diagnostic(diag);

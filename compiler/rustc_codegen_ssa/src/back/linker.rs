@@ -1631,7 +1631,7 @@ impl<'a> Linker for AixLinker<'a> {
             }
         };
         if let Err(e) = res {
-            self.sess.fatal(&format!("failed to write export file: {}", e));
+            self.sess.fatal(format!("failed to write export file: {}", e));
         }
         self.cmd.arg(format!("-bE:{}", path.to_str().unwrap()));
     }

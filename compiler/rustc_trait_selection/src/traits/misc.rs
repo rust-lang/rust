@@ -2,13 +2,14 @@
 
 use crate::traits::{self, ObligationCause, ObligationCtxt};
 
+use hir::LangItem;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::{infer::outlives::env::OutlivesEnvironment, traits::FulfillmentError};
-use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, AdtDef, GenericArg, List, ParamEnv, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::DUMMY_SP;
 
 use super::outlives_bounds::InferCtxtExt;
@@ -19,6 +20,11 @@ pub enum CopyImplementationError<'tcx> {
     HasDestructor,
 }
 
+pub enum ConstParamTyImplementationError<'tcx> {
+    InfrigingFields(Vec<(&'tcx ty::FieldDef, Ty<'tcx>, InfringingFieldsReason<'tcx>)>),
+    NotAnAdtOrBuiltinAllowed,
+}
+
 pub enum InfringingFieldsReason<'tcx> {
     Fulfill(Vec<FulfillmentError<'tcx>>),
     Regions(Vec<RegionResolutionError<'tcx>>),
@@ -27,7 +33,10 @@ pub enum InfringingFieldsReason<'tcx> {
 /// Checks that the fields of the type (an ADT) all implement copy.
 ///
 /// If fields don't implement copy, return an error containing a list of
-/// those violating fields. If it's not an ADT, returns `Err(NotAnAdt)`.
+/// those violating fields.
+///
+/// If it's not an ADT, int ty, `bool`, float ty, `char`, raw pointer, `!`,
+/// a reference or an array returns `Err(NotAnAdt)`.
 pub fn type_allowed_to_implement_copy<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -47,12 +56,82 @@ pub fn type_allowed_to_implement_copy<'tcx>(
         | ty::Ref(_, _, hir::Mutability::Not)
         | ty::Array(..) => return Ok(()),
 
-        ty::Adt(adt, substs) => (adt, substs),
+        &ty::Adt(adt, substs) => (adt, substs),
 
         _ => return Err(CopyImplementationError::NotAnAdt),
     };
 
-    let copy_def_id = tcx.require_lang_item(hir::LangItem::Copy, Some(parent_cause.span));
+    all_fields_implement_trait(
+        tcx,
+        param_env,
+        self_type,
+        adt,
+        substs,
+        parent_cause,
+        hir::LangItem::Copy,
+    )
+    .map_err(CopyImplementationError::InfringingFields)?;
+
+    if adt.has_dtor(tcx) {
+        return Err(CopyImplementationError::HasDestructor);
+    }
+
+    Ok(())
+}
+
+/// Checks that the fields of the type (an ADT) all implement `ConstParamTy`.
+///
+/// If fields don't implement `ConstParamTy`, return an error containing a list of
+/// those violating fields.
+///
+/// If it's not an ADT, int ty, `bool` or `char`, returns `Err(NotAnAdtOrBuiltinAllowed)`.
+pub fn type_allowed_to_implement_const_param_ty<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    self_type: Ty<'tcx>,
+    parent_cause: ObligationCause<'tcx>,
+) -> Result<(), ConstParamTyImplementationError<'tcx>> {
+    let (adt, substs) = match self_type.kind() {
+        // `core` provides these impls.
+        ty::Uint(_)
+        | ty::Int(_)
+        | ty::Bool
+        | ty::Char
+        | ty::Str
+        | ty::Array(..)
+        | ty::Slice(_)
+        | ty::Ref(.., hir::Mutability::Not) => return Ok(()),
+
+        &ty::Adt(adt, substs) => (adt, substs),
+
+        _ => return Err(ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed),
+    };
+
+    all_fields_implement_trait(
+        tcx,
+        param_env,
+        self_type,
+        adt,
+        substs,
+        parent_cause,
+        hir::LangItem::ConstParamTy,
+    )
+    .map_err(ConstParamTyImplementationError::InfrigingFields)?;
+
+    Ok(())
+}
+
+/// Check that all fields of a given `adt` implement `lang_item` trait.
+pub fn all_fields_implement_trait<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    self_type: Ty<'tcx>,
+    adt: AdtDef<'tcx>,
+    substs: &'tcx List<GenericArg<'tcx>>,
+    parent_cause: ObligationCause<'tcx>,
+    lang_item: LangItem,
+) -> Result<(), Vec<(&'tcx ty::FieldDef, Ty<'tcx>, InfringingFieldsReason<'tcx>)>> {
+    let trait_def_id = tcx.require_lang_item(lang_item, Some(parent_cause.span));
 
     let mut infringing = Vec::new();
     for variant in adt.variants() {
@@ -93,7 +172,7 @@ pub fn type_allowed_to_implement_copy<'tcx>(
             // between expected and found const-generic types. Don't report an
             // additional copy error here, since it's not typically useful.
             if !normalization_errors.is_empty() || ty.references_error() {
-                tcx.sess.delay_span_bug(field_span, format!("couldn't normalize struct field `{unnormalized_ty}` when checking Copy implementation"));
+                tcx.sess.delay_span_bug(field_span, format!("couldn't normalize struct field `{unnormalized_ty}` when checking {tr} implementation", tr = tcx.def_path_str(trait_def_id)));
                 continue;
             }
 
@@ -101,7 +180,7 @@ pub fn type_allowed_to_implement_copy<'tcx>(
                 ObligationCause::dummy_with_span(field_ty_span),
                 param_env,
                 ty,
-                copy_def_id,
+                trait_def_id,
             );
             let errors = ocx.select_all_or_error();
             if !errors.is_empty() {
@@ -124,15 +203,7 @@ pub fn type_allowed_to_implement_copy<'tcx>(
         }
     }
 
-    if !infringing.is_empty() {
-        return Err(CopyImplementationError::InfringingFields(infringing));
-    }
-
-    if adt.has_dtor(tcx) {
-        return Err(CopyImplementationError::HasDestructor);
-    }
-
-    Ok(())
+    if infringing.is_empty() { Ok(()) } else { Err(infringing) }
 }
 
 pub fn check_tys_might_be_eq<'tcx>(

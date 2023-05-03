@@ -1,0 +1,23 @@
+- // MIR for `less_as_i8` before ConstProp
++ // MIR for `less_as_i8` after ConstProp
+  
+  fn less_as_i8() -> i8 {
+      let mut _0: i8;                      // return place in scope 0 at $DIR/transmute.rs:+0:24: +0:26
+      let mut _1: std::cmp::Ordering;      // in scope 0 at $DIR/transmute.rs:+1:24: +1:48
+      scope 1 {
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 1 at $DIR/transmute.rs:+1:24: +1:48
+-         _1 = Less;                       // scope 1 at $DIR/transmute.rs:+1:24: +1:48
+-         _0 = move _1 as i8 (Transmute);  // scope 1 at $DIR/transmute.rs:+1:14: +1:49
++         _1 = const Less;                 // scope 1 at $DIR/transmute.rs:+1:24: +1:48
++                                          // mir::Constant
++                                          // + span: no-location
++                                          // + literal: Const { ty: std::cmp::Ordering, val: Value(Scalar(0xff)) }
++         _0 = const -1_i8;                // scope 1 at $DIR/transmute.rs:+1:14: +1:49
+          StorageDead(_1);                 // scope 1 at $DIR/transmute.rs:+1:48: +1:49
+          return;                          // scope 0 at $DIR/transmute.rs:+2:2: +2:2
+      }
+  }
+  

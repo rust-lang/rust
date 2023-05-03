@@ -250,8 +250,7 @@ fn expand_macro<'cx>(
                 trace_macros_note(&mut cx.expansions, sp, msg);
             }
 
-            let mut p = Parser::new(sess, tts, false, None);
-            p.last_type_ascription = cx.current_expansion.prior_type_ascription;
+            let p = Parser::new(sess, tts, false, None);
 
             if is_local {
                 cx.resolver.record_macro_rule_usage(node_id, i);
@@ -475,7 +474,7 @@ pub fn compile_declarative_macro(
 
                 let s = parse_failure_msg(&token);
                 let sp = token.span.substitute_dummy(def.span);
-                let mut err = sess.parse_sess.span_diagnostic.struct_span_err(sp, &s);
+                let mut err = sess.parse_sess.span_diagnostic.struct_span_err(sp, s);
                 err.span_label(sp, msg);
                 annotate_doc_comment(&mut err, sess.source_map(), sp);
                 err.emit();
@@ -484,7 +483,7 @@ pub fn compile_declarative_macro(
             Error(sp, msg) => {
                 sess.parse_sess
                     .span_diagnostic
-                    .struct_span_err(sp.substitute_dummy(def.span), &msg)
+                    .struct_span_err(sp.substitute_dummy(def.span), msg)
                     .emit();
                 return dummy_syn_ext();
             }
@@ -556,7 +555,7 @@ pub fn compile_declarative_macro(
     let (transparency, transparency_error) = attr::find_transparency(&def.attrs, macro_rules);
     match transparency_error {
         Some(TransparencyError::UnknownTransparency(value, span)) => {
-            diag.span_err(span, &format!("unknown macro transparency: `{}`", value));
+            diag.span_err(span, format!("unknown macro transparency: `{}`", value));
         }
         Some(TransparencyError::MultipleTransparencyAttrs(old_span, new_span)) => {
             diag.span_err(vec![old_span, new_span], "multiple macro transparency attributes");
@@ -1165,7 +1164,7 @@ fn check_matcher_core<'tt>(
                             let sp = next_token.span();
                             let mut err = sess.span_diagnostic.struct_span_err(
                                 sp,
-                                &format!(
+                                format!(
                                     "`${name}:{frag}` {may_be} followed by `{next}`, which \
                                      is not allowed for `{frag}` fragments",
                                     name = name,
@@ -1197,13 +1196,13 @@ fn check_matcher_core<'tt>(
                             match possible {
                                 &[] => {}
                                 &[t] => {
-                                    err.note(&format!(
+                                    err.note(format!(
                                         "only {} is allowed after `{}` fragments",
                                         t, kind,
                                     ));
                                 }
                                 ts => {
-                                    err.note(&format!(
+                                    err.note(format!(
                                         "{}{} or {}",
                                         msg,
                                         ts[..ts.len() - 1].to_vec().join(", "),

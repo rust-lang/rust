@@ -1341,6 +1341,28 @@ pub(crate) struct ExpectedFnPathFoundFnKeyword {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_path_single_colon)]
+pub(crate) struct PathSingleColon {
+    #[primary_span]
+    #[suggestion(applicability = "machine-applicable", code = "::")]
+    pub span: Span,
+
+    #[note(parse_type_ascription_removed)]
+    pub type_ascription: Option<()>,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_colon_as_semi)]
+pub(crate) struct ColonAsSemi {
+    #[primary_span]
+    #[suggestion(applicability = "machine-applicable", code = ";")]
+    pub span: Span,
+
+    #[note(parse_type_ascription_removed)]
+    pub type_ascription: Option<()>,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_where_clause_before_tuple_struct_body)]
 pub(crate) struct WhereClauseBeforeTupleStructBody {
     #[primary_span]

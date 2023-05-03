@@ -287,7 +287,7 @@ impl<'tcx> Collector<'tcx> {
                                 &sess.parse_sess,
                                 sym::$feature,
                                 span,
-                                &format!("linking modifier `{modifier}` is unstable"),
+                                format!("linking modifier `{modifier}` is unstable"),
                             )
                             .emit();
                         }

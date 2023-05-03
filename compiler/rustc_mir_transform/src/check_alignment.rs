@@ -224,10 +224,10 @@ fn insert_alignment_check<'tcx>(
             cond: Operand::Copy(is_ok),
             expected: true,
             target: new_block,
-            msg: AssertKind::MisalignedPointerDereference {
+            msg: Box::new(AssertKind::MisalignedPointerDereference {
                 required: Operand::Copy(alignment),
                 found: Operand::Copy(addr),
-            },
+            }),
             unwind: UnwindAction::Terminate,
         },
     });

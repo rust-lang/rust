@@ -61,7 +61,7 @@ fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[(ty::Clau
 
                     let span = tcx.def_span(item_def_id);
                     let mut err = tcx.sess.struct_span_err(span, "rustc_outlives");
-                    for p in &pred {
+                    for p in pred {
                         err.note(p);
                     }
                     err.emit();

@@ -227,7 +227,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 // When encountering `return [0][0]` outside of a `fn` body we can encounter a base
                 // that isn't in the type table. We assume more relevant errors have already been
                 // emitted, so we delay an ICE if none have. (#64638)
-                self.tcx().sess.delay_span_bug(e.span, &format!("bad base: `{:?}`", base));
+                self.tcx().sess.delay_span_bug(e.span, format!("bad base: `{:?}`", base));
             }
             if let Some(ty::Ref(_, base_ty, _)) = base_ty {
                 let index_ty = typeck_results.expr_ty_adjusted_opt(index).unwrap_or_else(|| {
@@ -491,7 +491,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     let err = self
                         .tcx()
                         .sess
-                        .struct_span_err(span, &format!("user substs: {:?}", user_substs));
+                        .struct_span_err(span, format!("user substs: {:?}", user_substs));
                     err.buffer(&mut errors_buffer);
                 }
             }

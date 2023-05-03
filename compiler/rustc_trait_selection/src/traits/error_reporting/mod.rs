@@ -271,7 +271,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                 let underscores = vec!["_"; expected_args.len()].join(", ");
                 err.span_suggestion_verbose(
                     closure_arg_span.unwrap_or(found_span),
-                    &format!(
+                    format!(
                         "consider changing the closure to take and ignore the expected argument{}",
                         pluralize!(expected_args.len())
                     ),
@@ -575,7 +575,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             Limit(0) => Limit(2),
             limit => limit * 2,
         };
-        err.help(&format!(
+        err.help(format!(
             "consider increasing the recursion limit by adding a \
              `#![recursion_limit = \"{}\"]` attribute to your crate (`{}`)",
             suggested_limit,
@@ -737,7 +737,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         if is_try_conversion && let Some(ret_span) = self.return_type_span(&obligation) {
                             err.span_label(
                                 ret_span,
-                                &format!(
+                                format!(
                                     "expected `{}` because of this",
                                     trait_ref.skip_binder().self_ty()
                                 ),
@@ -780,7 +780,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             err.emit();
                             return;
                         }
-                        if let Some(ref s) = label {
+                        if let Some(s) = label {
                             // If it has a custom `#[rustc_on_unimplemented]`
                             // error message, let's display it as the label!
                             err.span_label(span, s);
@@ -788,7 +788,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 // When the self type is a type param We don't need to "the trait
                                 // `std::marker::Sized` is not implemented for `T`" as we will point
                                 // at the type param with a label to suggest constraining it.
-                                err.help(&explanation);
+                                err.help(explanation);
                             }
                         } else if let Some(custom_explanation) = safe_transmute_explanation {
                             err.span_label(span, custom_explanation);
@@ -811,13 +811,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             );
 
                         if let Some((msg, span)) = type_def {
-                            err.span_label(span, &msg);
+                            err.span_label(span, msg);
                         }
-                        if let Some(ref s) = note {
+                        if let Some(s) = note {
                             // If it has a custom `#[rustc_on_unimplemented]` note, let's display it
-                            err.note(s.as_str());
+                            err.note(s);
                         }
-                        if let Some(ref s) = parent_label {
+                        if let Some(s) = parent_label {
                             let body = obligation.cause.body_id;
                             err.span_label(tcx.def_span(body), s);
                         }
@@ -1028,7 +1028,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 // which bounds actually failed to hold.
                                 self.tcx.sess.struct_span_err(
                                     span,
-                                    &format!("the type `{}` is not well-formed", ty),
+                                    format!("the type `{}` is not well-formed", ty),
                                 )
                             }
                         }
@@ -1071,7 +1071,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {
                         let mut diag = self.tcx.sess.struct_span_err(
                             span,
-                            &format!("the constant `{}` is not of type `{}`", ct, ty),
+                            format!("the constant `{}` is not of type `{}`", ct, ty),
                         );
                         self.note_type_err(
                             &mut diag,
@@ -1835,7 +1835,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             candidates.sort();
             candidates.dedup();
             let end = if candidates.len() <= 9 { candidates.len() } else { 8 };
-            err.help(&format!(
+            err.help(format!(
                 "the following {other}types implement trait `{}`:{}{}",
                 trait_ref.print_only_trait_path(),
                 candidates[..end].join(""),
@@ -2026,7 +2026,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 "perhaps two different versions of crate `{}` are being used?",
                 trait_crate
             );
-            err.note(&crate_msg);
+            err.note(crate_msg);
             suggested = true;
         }
         suggested
@@ -2158,7 +2158,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 err.cancel();
                                 return;
                             }
-                            err.note(&format!("cannot satisfy `{}`", predicate));
+                            err.note(format!("cannot satisfy `{}`", predicate));
                             let impl_candidates = self.find_similar_impl_candidates(
                                 predicate.to_opt_poly_trait_pred().unwrap(),
                             );
@@ -2178,7 +2178,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             err.cancel();
                             return;
                         }
-                        err.note(&format!("cannot satisfy `{}`", predicate));
+                        err.note(format!("cannot satisfy `{}`", predicate));
                     }
                 }
 
@@ -2223,9 +2223,9 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         err.cancel();
                         err = self.tcx.sess.struct_span_err_with_code(
                             span,
-                            &format!(
+                            format!(
                                 "cannot {verb} associated {noun} on trait without specifying the corresponding `impl` type",
-                             ),
+                            ),
                             rustc_errors::error_code!(E0790),
                         );
 
@@ -2332,7 +2332,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         ErrorCode::E0284,
                         true,
                     );
-                    err.note(&format!("cannot satisfy `{}`", predicate));
+                    err.note(format!("cannot satisfy `{}`", predicate));
                     err
                 } else {
                     // If we can't find a substitution, just print a generic error
@@ -2343,7 +2343,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         "type annotations needed: cannot satisfy `{}`",
                         predicate,
                     );
-                    err.span_label(span, &format!("cannot satisfy `{}`", predicate));
+                    err.span_label(span, format!("cannot satisfy `{}`", predicate));
                     err
                 }
             }
@@ -2371,7 +2371,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         "type annotations needed: cannot satisfy `{}`",
                         predicate,
                     );
-                    err.span_label(span, &format!("cannot satisfy `{}`", predicate));
+                    err.span_label(span, format!("cannot satisfy `{}`", predicate));
                     err
                 }
             }
@@ -2386,7 +2386,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     "type annotations needed: cannot satisfy `{}`",
                     predicate,
                 );
-                err.span_label(span, &format!("cannot satisfy `{}`", predicate));
+                err.span_label(span, format!("cannot satisfy `{}`", predicate));
                 err
             }
         };
@@ -2459,13 +2459,13 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         match (spans.len(), crates.len(), crate_names.len()) {
             (0, 0, 0) => {
-                err.note(&format!("cannot satisfy `{}`", predicate));
+                err.note(format!("cannot satisfy `{}`", predicate));
             }
             (0, _, 1) => {
-                err.note(&format!("{} in the `{}` crate{}", msg, crates[0], post,));
+                err.note(format!("{} in the `{}` crate{}", msg, crates[0], post,));
             }
             (0, _, _) => {
-                err.note(&format!(
+                err.note(format!(
                     "{} in the following crates: {}{}",
                     msg,
                     crate_names.join(", "),
@@ -2474,19 +2474,17 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
             (_, 0, 0) => {
                 let span: MultiSpan = spans.into();
-                err.span_note(span, &msg);
+                err.span_note(span, msg);
             }
             (_, 1, 1) => {
                 let span: MultiSpan = spans.into();
-                err.span_note(span, &msg);
-                err.note(
-                    &format!("and another `impl` found in the `{}` crate{}", crates[0], post,),
-                );
+                err.span_note(span, msg);
+                err.note(format!("and another `impl` found in the `{}` crate{}", crates[0], post,));
             }
             _ => {
                 let span: MultiSpan = spans.into();
-                err.span_note(span, &msg);
-                err.note(&format!(
+                err.span_note(span, msg);
+                err.note(format!(
                     "and more `impl`s found in the following crates: {}{}",
                     crate_names.join(", "),
                     post,
@@ -2657,7 +2655,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         }
         err.span_help(
             multispan,
-            &format!(
+            format!(
                 "you could relax the implicit `Sized` bound on `{T}` if it were \
                 used through indirection like `&{T}` or `Box<{T}>`",
                 T = param.name.ident(),
@@ -2882,7 +2880,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             .fn_trait_kind_from_def_id(trait_ref.def_id())
             .expect("expected to map DefId to ClosureKind");
         if !implemented_kind.extends(selected_kind) {
-            err.note(&format!(
+            err.note(format!(
                 "`{}` implements `{}`, but it must implement `{}`, which is more general",
                 trait_ref.skip_binder().self_ty(),
                 implemented_kind,
@@ -2899,7 +2897,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             if expected.len() != given.len() {
                 // Note number of types that were expected and given
                 err.note(
-                    &format!(
+                    format!(
                         "expected a closure taking {} argument{}, but one taking {} argument{} was given",
                         given.len(),
                         pluralize!(given.len()),
@@ -2942,7 +2940,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 unsatisfied_const = UnsatisfiedConst(true);
                 err.span_note(
                     span,
-                    &format!(
+                    format!(
                         "the trait `{}` is implemented for `{}`, \
                         but that implementation is not `const`",
                         non_const_predicate.print_modifiers_and_trait_path(),
@@ -3171,7 +3169,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 let mut err = self.tcx.sess.struct_span_err(span, "unconstrained generic constant");
                 let const_span = self.tcx.def_span(uv.def);
                 match self.tcx.sess.source_map().span_to_snippet(const_span) {
-                    Ok(snippet) => err.help(&format!(
+                    Ok(snippet) => err.help(format!(
                         "try adding a `where` bound using this expression: `where [(); {}]:`",
                         snippet
                     )),

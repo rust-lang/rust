@@ -6,7 +6,7 @@ cfg_if::cfg_if! {
         mod static_local;
         #[doc(hidden)]
         pub use static_local::{Key, thread_local_inner};
-    } else if #[cfg(all(target_thread_local))] {
+    } else if #[cfg(target_thread_local)] {
         #[doc(hidden)]
         mod fast_local;
         #[doc(hidden)]

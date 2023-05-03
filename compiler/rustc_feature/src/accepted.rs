@@ -130,6 +130,8 @@ declare_features! (
     (accepted, copy_closures, "1.26.0", Some(44490), None),
     /// Allows `crate` in paths.
     (accepted, crate_in_paths, "1.30.0", Some(45477), None),
+    /// Allows using `#[debugger_visualizer]` attribute.
+    (accepted, debugger_visualizer, "CURRENT_RUSTC_VERSION", Some(95939), None),
     /// Allows rustc to inject a default alloc_error_handler
     (accepted, default_alloc_error_handler, "1.68.0", Some(66741), None),
     /// Allows using assigning a default type to type parameters in algebraic data type definitions.

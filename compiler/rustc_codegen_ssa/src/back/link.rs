@@ -40,7 +40,6 @@ use regex::Regex;
 use tempfile::Builder as TempFileBuilder;
 
 use itertools::Itertools;
-use std::borrow::Borrow;
 use std::cell::OnceCell;
 use std::collections::BTreeSet;
 use std::ffi::OsString;
@@ -54,7 +53,7 @@ use std::{env, fmt, fs, io, mem, str};
 pub fn ensure_removed(diag_handler: &Handler, path: &Path) {
     if let Err(e) = fs::remove_file(path) {
         if e.kind() != io::ErrorKind::NotFound {
-            diag_handler.err(&format!("failed to remove {}: {}", path.display(), e));
+            diag_handler.err(format!("failed to remove {}: {}", path.display(), e));
         }
     }
 }
@@ -576,17 +575,17 @@ fn link_dwarf_object<'a>(
 
     impl<Relocations> ThorinSession<Relocations> {
         fn alloc_mmap(&self, data: Mmap) -> &Mmap {
-            (*self.arena_mmap.alloc(data)).borrow()
+            &*self.arena_mmap.alloc(data)
         }
     }
 
     impl<Relocations> thorin::Session<Relocations> for ThorinSession<Relocations> {
         fn alloc_data(&self, data: Vec<u8>) -> &[u8] {
-            (*self.arena_data.alloc(data)).borrow()
+            &*self.arena_data.alloc(data)
         }
 
         fn alloc_relocation(&self, data: Relocations) -> &Relocations {
-            (*self.arena_relocations.alloc(data)).borrow()
+            &*self.arena_relocations.alloc(data)
         }
 
         fn read_input(&self, path: &Path) -> std::io::Result<&[u8]> {
@@ -1406,7 +1405,7 @@ fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLib]) {
         sess.emit_note(errors::StaticLibraryNativeArtifacts);
         // Prefix for greppability
         // Note: This must not be translated as tools are allowed to depend on this exact string.
-        sess.note_without_error(&format!("native-static-libs: {}", &lib_args.join(" ")));
+        sess.note_without_error(format!("native-static-libs: {}", &lib_args.join(" ")));
     }
 }
 

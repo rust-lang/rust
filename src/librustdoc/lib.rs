@@ -677,7 +677,7 @@ fn wrap_return(diag: &rustc_errors::Handler, res: Result<(), String>) -> MainRes
     match res {
         Ok(()) => diag.has_errors().map_or(Ok(()), Err),
         Err(err) => {
-            let reported = diag.struct_err(&err).emit();
+            let reported = diag.struct_err(err).emit();
             Err(reported)
         }
     }
@@ -693,10 +693,10 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
         Ok(_) => tcx.sess.has_errors().map_or(Ok(()), Err),
         Err(e) => {
             let mut msg =
-                tcx.sess.struct_err(&format!("couldn't generate documentation: {}", e.error));
+                tcx.sess.struct_err(format!("couldn't generate documentation: {}", e.error));
             let file = e.file.display().to_string();
             if !file.is_empty() {
-                msg.note(&format!("failed to create or modify \"{}\"", file));
+                msg.note(format!("failed to create or modify \"{}\"", file));
             }
             Err(msg.emit())
         }

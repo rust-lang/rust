@@ -96,7 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
                                 if let PredicateKind::Clause(Clause::Trait(trait_pred)) =
                                     obligation.predicate.kind().skip_binder()
                                 {
-                                    db.note(&format!(
+                                    db.note(format!(
                                         "`{}` doesn't implement `{}`",
                                         trait_pred.self_ty(),
                                         trait_pred.trait_ref.print_only_trait_path(),

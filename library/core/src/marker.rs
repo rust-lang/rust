@@ -12,6 +12,60 @@ use crate::fmt::Debug;
 use crate::hash::Hash;
 use crate::hash::Hasher;
 
+/// Implements a given marker trait for multiple types at the same time.
+///
+/// The basic syntax looks like this:
+/// ```ignore private macro
+/// marker_impls! { MarkerTrait for u8, i8 }
+/// ```
+/// You can also implement `unsafe` traits
+/// ```ignore private macro
+/// marker_impls! { unsafe MarkerTrait for u8, i8 }
+/// ```
+/// Add attributes to all impls:
+/// ```ignore private macro
+/// marker_impls! {
+///     #[allow(lint)]
+///     #[unstable(feature = "marker_trait", issue = "none")]
+///     MarkerTrait for u8, i8
+/// }
+/// ```
+/// And use generics:
+/// ```ignore private macro
+/// marker_impls! {
+///     MarkerTrait for
+///         u8, i8,
+///         {T: ?Sized} *const T,
+///         {T: ?Sized} *mut T,
+///         {T: MarkerTrait} PhantomData<T>,
+///         u32,
+/// }
+/// ```
+#[unstable(feature = "internal_impls_macro", issue = "none")]
+macro marker_impls {
+    ( $(#[$($meta:tt)*])* $Trait:ident for $( $({$($bounds:tt)*})? $T:ty ),+ $(,)?) => {
+        // This inner macro is needed because... idk macros are weird.
+        // It allows repeating `meta` on all impls.
+        #[unstable(feature = "internal_impls_macro", issue = "none")]
+        macro _impl {
+            ( $$({$$($$bounds_:tt)*})? $$T_:ty ) => {
+                $(#[$($meta)*])* impl<$$($$($$bounds_)*)?> $Trait for $$T_ {}
+            }
+        }
+        $( _impl! { $({$($bounds)*})? $T } )+
+    },
+    ( $(#[$($meta:tt)*])* unsafe $Trait:ident for $( $({$($bounds:tt)*})? $T:ty ),+ $(,)?) => {
+        #[unstable(feature = "internal_impls_macro", issue = "none")]
+        macro _impl {
+            ( $$({$$($$bounds_:tt)*})? $$T_:ty ) => {
+                $(#[$($meta)*])* unsafe impl<$$($$($$bounds_)*)?> $Trait for $$T_ {}
+            }
+        }
+
+        $( _impl! { $({$($bounds)*})? $T } )+
+    },
+}
+
 /// Types that can be transferred across thread boundaries.
 ///
 /// This trait is automatically implemented when the compiler determines it's
@@ -214,6 +268,20 @@ pub trait StructuralEq {
     // Empty.
 }
 
+// FIXME: Remove special cases of these types from the compiler pattern checking code and always check `T: StructuralEq` instead
+marker_impls! {
+    #[unstable(feature = "structural_match", issue = "31434")]
+    StructuralEq for
+        usize, u8, u16, u32, u64, u128,
+        isize, i8, i16, i32, i64, i128,
+        bool,
+        char,
+        str /* Technically requires `[u8]: StructuralEq` */,
+        {T, const N: usize} [T; N],
+        {T} [T],
+        {T: ?Sized} &T,
+}
+
 /// Types whose values can be duplicated simply by copying bits.
 ///
 /// By default, variable bindings have 'move semantics.' In other
@@ -400,6 +468,30 @@ pub trait Copy: Clone {
 pub macro Copy($item:item) {
     /* compiler built-in */
 }
+
+// Implementations of `Copy` for primitive types.
+//
+// Implementations that cannot be described in Rust
+// are implemented in `traits::SelectionContext::copy_clone_conditions()`
+// in `rustc_trait_selection`.
+marker_impls! {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    Copy for
+        usize, u8, u16, u32, u64, u128,
+        isize, i8, i16, i32, i64, i128,
+        f32, f64,
+        bool, char,
+        {T: ?Sized} *const T,
+        {T: ?Sized} *mut T,
+
+}
+
+#[unstable(feature = "never_type", issue = "35121")]
+impl Copy for ! {}
+
+/// Shared references can be copied, but mutable references *cannot*!
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> Copy for &T {}
 
 /// Types for which it is safe to share references between threads.
 ///
@@ -778,11 +870,14 @@ pub trait DiscriminantKind {
 pub(crate) unsafe auto trait Freeze {}
 
 impl<T: ?Sized> !Freeze for UnsafeCell<T> {}
-unsafe impl<T: ?Sized> Freeze for PhantomData<T> {}
-unsafe impl<T: ?Sized> Freeze for *const T {}
-unsafe impl<T: ?Sized> Freeze for *mut T {}
-unsafe impl<T: ?Sized> Freeze for &T {}
-unsafe impl<T: ?Sized> Freeze for &mut T {}
+marker_impls! {
+    unsafe Freeze for
+        {T: ?Sized} PhantomData<T>,
+        {T: ?Sized} *const T,
+        {T: ?Sized} *mut T,
+        {T: ?Sized} &T,
+        {T: ?Sized} &mut T,
+}
 
 /// Types that can be safely moved after being pinned.
 ///
@@ -843,17 +938,19 @@ pub struct PhantomPinned;
 #[stable(feature = "pin", since = "1.33.0")]
 impl !Unpin for PhantomPinned {}
 
-#[stable(feature = "pin", since = "1.33.0")]
-impl<'a, T: ?Sized + 'a> Unpin for &'a T {}
+marker_impls! {
+    #[stable(feature = "pin", since = "1.33.0")]
+    Unpin for
+        {T: ?Sized} &T,
+        {T: ?Sized} &mut T,
+}
 
-#[stable(feature = "pin", since = "1.33.0")]
-impl<'a, T: ?Sized + 'a> Unpin for &'a mut T {}
-
-#[stable(feature = "pin_raw", since = "1.38.0")]
-impl<T: ?Sized> Unpin for *const T {}
-
-#[stable(feature = "pin_raw", since = "1.38.0")]
-impl<T: ?Sized> Unpin for *mut T {}
+marker_impls! {
+    #[stable(feature = "pin_raw", since = "1.38.0")]
+    Unpin for
+        {T: ?Sized} *const T,
+        {T: ?Sized} *mut T,
+}
 
 /// A marker for types that can be dropped.
 ///
@@ -888,43 +985,25 @@ pub trait Tuple {}
 )]
 pub trait PointerLike {}
 
-/// Implementations of `Copy` for primitive types.
-///
-/// Implementations that cannot be described in Rust
-/// are implemented in `traits::SelectionContext::copy_clone_conditions()`
-/// in `rustc_trait_selection`.
-mod copy_impls {
+/// A marker for types which can be used as types of `const` generic parameters.
+#[cfg_attr(not(bootstrap), lang = "const_param_ty")]
+#[unstable(feature = "adt_const_params", issue = "95174")]
+#[rustc_on_unimplemented(message = "`{Self}` can't be used as a const parameter type")]
+pub trait ConstParamTy: StructuralEq {}
 
-    use super::Copy;
-
-    macro_rules! impl_copy {
-        ($($t:ty)*) => {
-            $(
-                #[stable(feature = "rust1", since = "1.0.0")]
-                impl Copy for $t {}
-            )*
-        }
-    }
-
-    impl_copy! {
-        usize u8 u16 u32 u64 u128
-        isize i8 i16 i32 i64 i128
-        f32 f64
-        bool char
-    }
-
-    #[unstable(feature = "never_type", issue = "35121")]
-    impl Copy for ! {}
-
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl<T: ?Sized> Copy for *const T {}
-
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl<T: ?Sized> Copy for *mut T {}
-
-    /// Shared references can be copied, but mutable references *cannot*!
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl<T: ?Sized> Copy for &T {}
+// FIXME(generic_const_parameter_types): handle `ty::FnDef`/`ty::Closure`
+// FIXME(generic_const_parameter_types): handle `ty::Tuple`
+marker_impls! {
+    #[unstable(feature = "adt_const_params", issue = "95174")]
+    ConstParamTy for
+        usize, u8, u16, u32, u64, u128,
+        isize, i8, i16, i32, i64, i128,
+        bool,
+        char,
+        str /* Technically requires `[u8]: ConstParamTy` */,
+        {T: ConstParamTy, const N: usize} [T; N],
+        {T: ConstParamTy} [T],
+        {T: ?Sized + ConstParamTy} &T,
 }
 
 /// A common trait implemented by all function pointers.

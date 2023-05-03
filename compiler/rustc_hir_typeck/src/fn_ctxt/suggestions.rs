@@ -278,9 +278,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.check_ref(expr, found, expected)
         {
             if verbose {
-                err.span_suggestion_verbose(sp, &msg, suggestion, applicability);
+                err.span_suggestion_verbose(sp, msg, suggestion, applicability);
             } else {
-                err.span_suggestion(sp, &msg, suggestion, applicability);
+                err.span_suggestion(sp, msg, suggestion, applicability);
             }
             if annotation {
                 let suggest_annotation = match expr.peel_drop_temps().kind {
@@ -1449,7 +1449,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             diag.span_note(
                 callee_expr.span,
-                &format!(
+                format!(
                     "`{expected_ty}` does not implement `Clone`, so `{found_ty}` was cloned instead"
                 ),
             );

@@ -220,13 +220,13 @@ pub(crate) fn verify_func(
         match cranelift_codegen::verify_function(&func, &flags) {
             Ok(_) => {}
             Err(err) => {
-                tcx.sess.err(&format!("{:?}", err));
+                tcx.sess.err(format!("{:?}", err));
                 let pretty_error = cranelift_codegen::print_errors::pretty_verifier_error(
                     &func,
                     Some(Box::new(writer)),
                     err,
                 );
-                tcx.sess.fatal(&format!("cranelift verify error:\n{}", pretty_error));
+                tcx.sess.fatal(format!("cranelift verify error:\n{}", pretty_error));
             }
         }
     });
@@ -335,7 +335,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 fx.bcx.switch_to_block(failure);
                 fx.bcx.ins().nop();
 
-                match msg {
+                match &**msg {
                     AssertKind::BoundsCheck { ref len, ref index } => {
                         let len = codegen_operand(fx, len).load_scalar(fx);
                         let index = codegen_operand(fx, index).load_scalar(fx);

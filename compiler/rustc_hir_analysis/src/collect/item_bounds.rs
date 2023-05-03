@@ -1,5 +1,5 @@
 use super::ItemCtxt;
-use crate::astconv::AstConv;
+use crate::astconv::{AstConv, OnlySelfBounds};
 use rustc_hir as hir;
 use rustc_infer::traits::util;
 use rustc_middle::ty::subst::InternalSubsts;
@@ -26,7 +26,7 @@ fn associated_type_bounds<'tcx>(
     );
 
     let icx = ItemCtxt::new(tcx, assoc_item_def_id);
-    let mut bounds = icx.astconv().compute_bounds(item_ty, ast_bounds);
+    let mut bounds = icx.astconv().compute_bounds(item_ty, ast_bounds, OnlySelfBounds(false));
     // Associated types are implicitly sized unless a `?Sized` bound is found
     icx.astconv().add_implicitly_sized(&mut bounds, item_ty, ast_bounds, None, span);
 
@@ -67,7 +67,7 @@ fn opaque_type_bounds<'tcx>(
 ) -> &'tcx [(ty::Predicate<'tcx>, Span)] {
     ty::print::with_no_queries!({
         let icx = ItemCtxt::new(tcx, opaque_def_id);
-        let mut bounds = icx.astconv().compute_bounds(item_ty, ast_bounds);
+        let mut bounds = icx.astconv().compute_bounds(item_ty, ast_bounds, OnlySelfBounds(false));
         // Opaque types are implicitly sized unless a `?Sized` bound is found
         icx.astconv().add_implicitly_sized(&mut bounds, item_ty, ast_bounds, None, span);
         debug!(?bounds);

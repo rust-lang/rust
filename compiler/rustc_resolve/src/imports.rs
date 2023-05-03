@@ -578,7 +578,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let mut diag = struct_span_err!(self.tcx.sess, span, E0432, "{}", &msg);
 
         if let Some((_, UnresolvedImportError { note: Some(note), .. })) = errors.iter().last() {
-            diag.note(note);
+            diag.note(note.clone());
         }
 
         for (import, err) in errors.into_iter().take(MAX_LABEL_COUNT) {
@@ -588,10 +588,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             if let Some((suggestions, msg, applicability)) = err.suggestion {
                 if suggestions.is_empty() {
-                    diag.help(&msg);
+                    diag.help(msg);
                     continue;
                 }
-                diag.multipart_suggestion(&msg, suggestions, applicability);
+                diag.multipart_suggestion(msg, suggestions, applicability);
             }
 
             if let Some(candidates) = &err.candidates {
@@ -1063,7 +1063,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     PUB_USE_OF_PRIVATE_EXTERN_CRATE,
                     import_id,
                     import.span,
-                    &msg,
+                    msg,
                 );
             } else {
                 let error_msg = if crate_private_reexport {
@@ -1084,7 +1084,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                     struct_span_err!(self.tcx.sess, import.span, E0365, "{}", error_msg)
                         .span_label(import.span, label_msg)
-                        .note(&format!("consider declaring type or module `{}` with `pub`", ident))
+                        .note(format!("consider declaring type or module `{}` with `pub`", ident))
                         .emit();
                 } else {
                     let mut err =
@@ -1102,7 +1102,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         _ => {
                             err.span_note(
                                 import.span,
-                                &format!(
+                                format!(
                                     "consider marking `{ident}` as `pub` in the imported module"
                                 ),
                             );
@@ -1200,7 +1200,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 UNUSED_IMPORTS,
                 id,
                 import.span,
-                &format!("the item `{}` is imported redundantly", ident),
+                format!("the item `{}` is imported redundantly", ident),
                 BuiltinLintDiagnostics::RedundantImport(redundant_spans, ident),
             );
         }

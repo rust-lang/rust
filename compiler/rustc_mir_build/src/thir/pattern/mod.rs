@@ -229,7 +229,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                         self.lower_pattern_range(ty, lc, hc, end, lo_span, lo_expr, hi_expr)
                     }
                     None => {
-                        let msg = &format!(
+                        let msg = format!(
                             "found bad range pattern `{:?}` outside of error recovery",
                             (&lo, &hi),
                         );

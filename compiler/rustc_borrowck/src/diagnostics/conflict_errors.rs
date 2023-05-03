@@ -158,7 +158,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             } else if reinits > 1 {
                 err.span_note(
                     MultiSpan::from_spans(reinit_spans),
-                    &if reinits <= 3 {
+                    if reinits <= 3 {
                         format!("these {reinits} reinitializations might get skipped")
                     } else {
                         format!(
@@ -253,7 +253,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     // We have a `&mut` ref, we need to reborrow on each iteration (#62112).
                     err.span_suggestion_verbose(
                         span.shrink_to_lo(),
-                        &format!(
+                        format!(
                             "consider creating a fresh reborrow of {} here",
                             self.describe_place(moved_place)
                                 .map(|n| format!("`{n}`"))
@@ -304,7 +304,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 ..
             } = use_spans
             {
-                err.note(&format!(
+                err.note(format!(
                     "{} occurs due to deref coercion to `{deref_target_ty}`",
                     desired_action.as_noun(),
                 ));
@@ -586,7 +586,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 //     _ => {} // We don't want to point to this.
                 // };
                 // ```
-                err.span_label(sp, &label);
+                err.span_label(sp, label);
                 shown = true;
             }
         }
@@ -1139,7 +1139,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
 
         if union_type_name != "" {
-            err.note(&format!(
+            err.note(format!(
                 "{} is a field of the union `{}`, so it overlaps the field {}",
                 msg_place, union_type_name, msg_borrow,
             ));
@@ -1238,14 +1238,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
         err.span_help(
             inner_call_span,
-            &format!(
+            format!(
                 "try adding a local storing this{}...",
                 if use_span.is_some() { "" } else { " argument" }
             ),
         );
         err.span_help(
             outer_call_span,
-            &format!(
+            format!(
                 "...and then using that local {}",
                 if use_span.is_some() { "here" } else { "as the argument to this call" }
             ),
@@ -2281,7 +2281,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         );
         err.span_suggestion_verbose(
             sugg_span,
-            &format!(
+            format!(
                 "to force the {} to take ownership of {} (and any \
                  other referenced variables), use the `move` keyword",
                 kind, captured_var
@@ -2293,7 +2293,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         match category {
             ConstraintCategory::Return(_) | ConstraintCategory::OpaqueType => {
                 let msg = format!("{} is returned here", kind);
-                err.span_note(constraint_span, &msg);
+                err.span_note(constraint_span, msg);
             }
             ConstraintCategory::CallArgument(_) => {
                 fr_name.highlight_region_name(&mut err);
@@ -2304,7 +2304,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     );
                 } else {
                     let msg = format!("{scope} requires argument type to outlive `{fr_name}`");
-                    err.span_note(constraint_span, &msg);
+                    err.span_note(constraint_span, msg);
                 }
             }
             _ => bug!(
@@ -2626,7 +2626,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     });
                 if let Some(Ok(instance)) = deref_target {
                     let deref_target_ty = instance.ty(tcx, self.param_env);
-                    err.note(&format!(
+                    err.note(format!(
                         "borrow occurs due to deref coercion to `{}`",
                         deref_target_ty
                     ));
@@ -3180,7 +3180,7 @@ impl<'tcx> AnnotatedBorrowFnSignature<'tcx> {
 
                 diag.span_label(*return_span, format!("also has lifetime `{}`", region_name,));
 
-                diag.help(&format!(
+                diag.help(format!(
                     "use data from the highlighted arguments which match the `{}` lifetime of \
                      the return type",
                     region_name,

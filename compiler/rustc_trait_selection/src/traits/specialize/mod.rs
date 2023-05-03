@@ -373,7 +373,7 @@ fn report_conflicting_impls<'tcx>(
                     }
                     None => format!("conflicting implementation in crate `{}`", cname),
                 };
-                err.note(&msg);
+                err.note(msg);
             }
         }
 

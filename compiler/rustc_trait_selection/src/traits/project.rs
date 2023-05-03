@@ -1749,7 +1749,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 // These traits have no associated types.
                 selcx.tcx().sess.delay_span_bug(
                     obligation.cause.span,
-                    &format!("Cannot project an associated type from `{:?}`", impl_source),
+                    format!("Cannot project an associated type from `{:?}`", impl_source),
                 );
                 return Err(());
             }

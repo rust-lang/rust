@@ -67,7 +67,7 @@ impl IntercrateAmbiguityCause {
     /// Emits notes when the overlap is caused by complex intercrate ambiguities.
     /// See #23980 for details.
     pub fn add_intercrate_ambiguity_hint(&self, err: &mut Diagnostic) {
-        err.note(&self.intercrate_ambiguity_hint());
+        err.note(self.intercrate_ambiguity_hint());
     }
 
     pub fn intercrate_ambiguity_hint(&self) -> String {
@@ -2449,7 +2449,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 // for a variable being generalized...
                 let guar = self.infcx.tcx.sess.delay_span_bug(
                     obligation.cause.span,
-                    &format!(
+                    format!(
                         "Impl {:?} was matchable against {:?} but now is not",
                         impl_def_id, obligation
                     ),
