@@ -209,18 +209,20 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
     }
 
     /// Generates the code for a field with no attributes.
-    fn generate_field_set_arg(&mut self, binding: &BindingInfo<'_>) -> TokenStream {
-        let ast = binding.ast();
-
+    fn generate_field_set_arg(&mut self, binding_info: &BindingInfo<'_>) -> TokenStream {
         let diag = &self.parent.diag;
-        let ident = ast.ident.as_ref().unwrap();
-        // strip `r#` prefix, if present
-        let ident = format_ident!("{}", ident);
+
+        let field = binding_info.ast();
+        let mut field_binding = binding_info.binding.clone();
+        field_binding.set_span(field.ty.span());
+
+        let ident = field.ident.as_ref().unwrap();
+        let ident = format_ident!("{}", ident); // strip `r#` prefix, if present
 
         quote! {
             #diag.set_arg(
                 stringify!(#ident),
-                #binding
+                #field_binding
             );
         }
     }
@@ -397,7 +399,8 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         clone_suggestion_code: bool,
     ) -> Result<TokenStream, DiagnosticDeriveError> {
         let span = attr.span().unwrap();
-        let ident = &list.path.segments.last().unwrap().ident;
+        let mut ident = list.path.segments.last().unwrap().ident.clone();
+        ident.set_span(info.ty.span());
         let name = ident.to_string();
         let name = name.as_str();
 
@@ -496,7 +499,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
             .variant
             .bindings()
             .iter()
-            .filter(|binding| !binding.ast().attrs.is_empty())
+            .filter(|binding| !should_generate_set_arg(binding.ast()))
             .map(|binding| self.generate_field_attr_code(binding, kind_stats))
             .collect();
 

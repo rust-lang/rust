@@ -207,6 +207,12 @@ impl<'ty> FieldInnerTy<'ty> {
             FieldInnerTy::Plain(..) => quote! { #inner },
         }
     }
+
+    pub fn span(&self) -> proc_macro2::Span {
+        match self {
+            FieldInnerTy::Option(ty) | FieldInnerTy::Vec(ty) | FieldInnerTy::Plain(ty) => ty.span(),
+        }
+    }
 }
 
 /// Field information passed to the builder. Deliberately omits attrs to discourage the

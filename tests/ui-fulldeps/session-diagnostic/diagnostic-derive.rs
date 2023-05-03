@@ -339,12 +339,12 @@ struct ErrorWithDefaultLabelAttr<'a> {
 }
 
 #[derive(Diagnostic)]
-//~^ ERROR the trait bound `Hello: IntoDiagnosticArg` is not satisfied
 #[diag(no_crate_example, code = "E0123")]
 struct ArgFieldWithoutSkip {
     #[primary_span]
     span: Span,
     other: Hello,
+    //~^ ERROR the trait bound `Hello: IntoDiagnosticArg` is not satisfied
 }
 
 #[derive(Diagnostic)]
