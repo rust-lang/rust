@@ -146,6 +146,7 @@ mod field_def;
 mod impl_polarity;
 mod opaque_hidden_type;
 mod param_env;
+mod placeholder;
 mod predicate;
 mod term;
 mod ty_; // FIXME: rename to `ty` once we don't import `crate::ty` here
@@ -158,6 +159,7 @@ pub use field_def::FieldDef;
 pub use impl_polarity::ImplPolarity;
 pub use opaque_hidden_type::OpaqueHiddenType;
 pub use param_env::{ParamEnv, ParamEnvAnd};
+pub use placeholder::{Placeholder, PlaceholderConst, PlaceholderRegion, PlaceholderType};
 pub use predicate::{
     CoercePredicate, InstantiatedPredicates, OutlivesPredicate, PolyCoercePredicate,
     PolyProjectionPredicate, PolyRegionOutlivesPredicate, PolySubtypePredicate, PolyTraitPredicate,
@@ -417,29 +419,12 @@ pub struct OpaqueTypeKey<'tcx> {
     pub substs: SubstsRef<'tcx>,
 }
 
-/// The "placeholder index" fully defines a placeholder region, type, or const. Placeholders are
-/// identified by both a universe, as well as a name residing within that universe. Distinct bound
-/// regions/types/consts within the same universe simply have an unknown relationship to one
-/// another.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-#[derive(HashStable, TyEncodable, TyDecodable)]
-pub struct Placeholder<T> {
-    pub universe: UniverseIndex,
-    pub bound: T,
-}
-
-pub type PlaceholderRegion = Placeholder<BoundRegion>;
-
-pub type PlaceholderType = Placeholder<BoundTy>;
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
 #[derive(TyEncodable, TyDecodable, PartialOrd, Ord)]
 pub struct BoundConst<'tcx> {
     pub var: BoundVar,
     pub ty: Ty<'tcx>,
 }
-
-pub type PlaceholderConst<'tcx> = Placeholder<BoundVar>;
 
 // FIXME(ecstaticmorse): Audit all occurrences of `without_const().to_predicate(tcx)` to ensure that
 // the constness of trait bounds is being propagated correctly.
