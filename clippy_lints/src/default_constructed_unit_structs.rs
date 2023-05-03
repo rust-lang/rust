@@ -15,6 +15,7 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
+    /// # use std::marker::PhantomData;
     /// #[derive(Default)]
     /// struct S<T> {
     ///     _marker: PhantomData<T>
@@ -26,9 +27,14 @@ declare_clippy_lint! {
     /// ```
     /// Use instead:
     /// ```rust
-    /// let _: S<i32> = Something {
-    ///     _marker: PhantomData
+    /// # use std::marker::PhantomData;
+    /// struct S<T> {
+    ///     _marker: PhantomData<T>
     /// }
+    ///
+    /// let _: S<i32> = S {
+    ///     _marker: PhantomData
+    /// };
     /// ```
     #[clippy::version = "1.71.0"]
     pub DEFAULT_CONSTRUCTED_UNIT_STRUCTS,
