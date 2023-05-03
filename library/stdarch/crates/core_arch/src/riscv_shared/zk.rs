@@ -61,6 +61,7 @@ extern "unadjusted" {
 /// # Safety
 ///
 /// This function is safe to use if the `zbkx` target feature is present.
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 #[target_feature(enable = "zbkx")]
 #[cfg_attr(test, assert_instr(xperm8))]
 #[inline]
@@ -92,6 +93,7 @@ pub unsafe fn xperm8(rs1: usize, rs2: usize) -> usize {
 /// # Safety
 ///
 /// This function is safe to use if the `zbkx` target feature is present.
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 #[target_feature(enable = "zbkx")]
 #[cfg_attr(test, assert_instr(xperm4))]
 #[inline]
@@ -126,6 +128,7 @@ pub unsafe fn xperm4(rs1: usize, rs2: usize) -> usize {
 /// # Safety
 ///
 /// This function is safe to use if the `zknh` target feature is present.
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 #[target_feature(enable = "zknh")]
 #[cfg_attr(test, assert_instr(sha256sig0))]
 #[inline]
@@ -152,6 +155,7 @@ pub unsafe fn sha256sig0(rs1: u32) -> u32 {
 /// # Safety
 ///
 /// This function is safe to use if the `zknh` target feature is present.
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 #[target_feature(enable = "zknh")]
 #[cfg_attr(test, assert_instr(sha256sig1))]
 #[inline]
@@ -178,6 +182,7 @@ pub unsafe fn sha256sig1(rs1: u32) -> u32 {
 /// # Safety
 ///
 /// This function is safe to use if the `zknh` target feature is present.
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 #[target_feature(enable = "zknh")]
 #[cfg_attr(test, assert_instr(sha256sum0))]
 #[inline]
@@ -204,6 +209,7 @@ pub unsafe fn sha256sum0(rs1: u32) -> u32 {
 /// # Safety
 ///
 /// This function is safe to use if the `zknh` target feature is present.
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 #[target_feature(enable = "zknh")]
 #[cfg_attr(test, assert_instr(sha256sum1))]
 #[inline]
@@ -280,6 +286,7 @@ pub unsafe fn sha256sum1(rs1: u32) -> u32 {
 /// return c3; // c3 represents c[0..=3]
 /// # }
 /// ```
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 #[target_feature(enable = "zksed")]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(sm4ed, BS = 0))]
@@ -359,6 +366,7 @@ pub unsafe fn sm4ed<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 /// return c3; // c3 represents c[0..=3]
 /// # }
 /// ```
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 #[target_feature(enable = "zksed")]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(sm4ks, BS = 0))]
@@ -400,6 +408,7 @@ pub unsafe fn sm4ks<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 /// In the SM3 algorithm, the `P0` transformation is used as `E ← P0(TT2)` when the
 /// compression function `CF` uses the intermediate value `TT2` to calculate
 /// the variable `E` in one iteration for subsequent processes.
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 #[target_feature(enable = "zksh")]
 #[cfg_attr(test, assert_instr(sm3p0))]
 #[inline]
@@ -444,6 +453,7 @@ pub unsafe fn sm3p0(rs1: u32) -> u32 {
 ///     Wj ← P1(Wj−16 ⊕ Wj−9 ⊕ (Wj−3 ≪ 15)) ⊕ (Wj−13 ≪ 7) ⊕ Wj−6
 /// ENDFOR
 /// ```
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 #[target_feature(enable = "zksh")]
 #[cfg_attr(test, assert_instr(sm3p1))]
 #[inline]

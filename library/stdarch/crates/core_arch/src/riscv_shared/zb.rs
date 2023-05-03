@@ -46,6 +46,7 @@ extern "unadjusted" {
 /// # Safety
 ///
 /// This function is safe to use if the `zbb` target feature is present.
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 #[target_feature(enable = "zbb")]
 #[cfg_attr(test, assert_instr(orc.b))]
 #[inline]
@@ -74,6 +75,7 @@ pub unsafe fn orc_b(rs: usize) -> usize {
 /// # Safety
 ///
 /// This function is safe to use if the `zbc` target feature is present.
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 #[target_feature(enable = "zbc")]
 #[cfg_attr(test, assert_instr(clmul))]
 #[inline]
@@ -102,6 +104,7 @@ pub unsafe fn clmul(rs1: usize, rs2: usize) -> usize {
 /// # Safety
 ///
 /// This function is safe to use if the `zbc` target feature is present.
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 #[target_feature(enable = "zbc")]
 #[cfg_attr(test, assert_instr(clmulh))]
 #[inline]
@@ -130,6 +133,7 @@ pub unsafe fn clmulh(rs1: usize, rs2: usize) -> usize {
 /// # Safety
 ///
 /// This function is safe to use if the `zbc` target feature is present.
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 #[target_feature(enable = "zbc")]
 #[cfg_attr(test, assert_instr(clmulr))]
 #[inline]

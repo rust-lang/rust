@@ -5,6 +5,7 @@ use crate::arch::asm;
 
 /// Adds packed 16-bit signed numbers, discarding overflow bits
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn add16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -15,6 +16,7 @@ pub fn add16(a: usize, b: usize) -> usize {
 
 /// Halves the sum of packed 16-bit signed numbers, dropping least bits
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn radd16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -25,6 +27,7 @@ pub fn radd16(a: usize, b: usize) -> usize {
 
 /// Halves the sum of packed 16-bit unsigned numbers, dropping least bits
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn uradd16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -35,6 +38,7 @@ pub fn uradd16(a: usize, b: usize) -> usize {
 
 /// Adds packed 16-bit signed numbers, saturating at the numeric bounds
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn kadd16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -45,6 +49,7 @@ pub fn kadd16(a: usize, b: usize) -> usize {
 
 /// Adds packed 16-bit unsigned numbers, saturating at the numeric bounds
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn ukadd16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -55,6 +60,7 @@ pub fn ukadd16(a: usize, b: usize) -> usize {
 
 /// Subtracts packed 16-bit signed numbers, discarding overflow bits
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn sub16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -65,6 +71,7 @@ pub fn sub16(a: usize, b: usize) -> usize {
 
 /// Halves the subtraction result of packed 16-bit signed numbers, dropping least bits
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn rsub16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -75,6 +82,7 @@ pub fn rsub16(a: usize, b: usize) -> usize {
 
 /// Halves the subtraction result of packed 16-bit unsigned numbers, dropping least bits
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn ursub16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -85,6 +93,7 @@ pub fn ursub16(a: usize, b: usize) -> usize {
 
 /// Subtracts packed 16-bit signed numbers, saturating at the numeric bounds
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn ksub16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -95,6 +104,7 @@ pub fn ksub16(a: usize, b: usize) -> usize {
 
 /// Subtracts packed 16-bit unsigned numbers, saturating at the numeric bounds
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn uksub16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -105,6 +115,7 @@ pub fn uksub16(a: usize, b: usize) -> usize {
 
 /// Cross adds and subtracts packed 16-bit signed numbers, discarding overflow bits
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn cras16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -115,6 +126,7 @@ pub fn cras16(a: usize, b: usize) -> usize {
 
 /// Cross halves of adds and subtracts packed 16-bit signed numbers, dropping least bits
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn rcras16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -125,6 +137,7 @@ pub fn rcras16(a: usize, b: usize) -> usize {
 
 /// Cross halves of adds and subtracts packed 16-bit unsigned numbers, dropping least bits
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn urcras16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -135,6 +148,7 @@ pub fn urcras16(a: usize, b: usize) -> usize {
 
 /// Cross adds and subtracts packed 16-bit signed numbers, saturating at the numeric bounds
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn kcras16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -145,6 +159,7 @@ pub fn kcras16(a: usize, b: usize) -> usize {
 
 /// Cross adds and subtracts packed 16-bit unsigned numbers, saturating at the numeric bounds
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn ukcras16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -155,6 +170,7 @@ pub fn ukcras16(a: usize, b: usize) -> usize {
 
 /// Cross subtracts and adds packed 16-bit signed numbers, discarding overflow bits
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn crsa16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -165,6 +181,7 @@ pub fn crsa16(a: usize, b: usize) -> usize {
 
 /// Cross halves of subtracts and adds packed 16-bit signed numbers, dropping least bits
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn rcrsa16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -175,6 +192,7 @@ pub fn rcrsa16(a: usize, b: usize) -> usize {
 
 /// Cross halves of subtracts and adds packed 16-bit unsigned numbers, dropping least bits
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn urcrsa16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -185,6 +203,7 @@ pub fn urcrsa16(a: usize, b: usize) -> usize {
 
 /// Cross subtracts and adds packed 16-bit signed numbers, saturating at the numeric bounds
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn kcrsa16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -195,6 +214,7 @@ pub fn kcrsa16(a: usize, b: usize) -> usize {
 
 /// Cross subtracts and adds packed 16-bit unsigned numbers, saturating at the numeric bounds
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn ukcrsa16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -205,6 +225,7 @@ pub fn ukcrsa16(a: usize, b: usize) -> usize {
 
 /// Straight adds and subtracts packed 16-bit signed numbers, discarding overflow bits
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn stas16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -215,6 +236,7 @@ pub fn stas16(a: usize, b: usize) -> usize {
 
 /// Straight halves of adds and subtracts packed 16-bit signed numbers, dropping least bits
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn rstas16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -225,6 +247,7 @@ pub fn rstas16(a: usize, b: usize) -> usize {
 
 /// Straight halves of adds and subtracts packed 16-bit unsigned numbers, dropping least bits
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn urstas16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -235,6 +258,7 @@ pub fn urstas16(a: usize, b: usize) -> usize {
 
 /// Straight adds and subtracts packed 16-bit signed numbers, saturating at the numeric bounds
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn kstas16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -245,6 +269,7 @@ pub fn kstas16(a: usize, b: usize) -> usize {
 
 /// Straight adds and subtracts packed 16-bit unsigned numbers, saturating at the numeric bounds
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn ukstas16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -255,6 +280,7 @@ pub fn ukstas16(a: usize, b: usize) -> usize {
 
 /// Straight subtracts and adds packed 16-bit signed numbers, discarding overflow bits
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn stsa16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -265,6 +291,7 @@ pub fn stsa16(a: usize, b: usize) -> usize {
 
 /// Straight halves of subtracts and adds packed 16-bit signed numbers, dropping least bits
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn rstsa16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -275,6 +302,7 @@ pub fn rstsa16(a: usize, b: usize) -> usize {
 
 /// Straight halves of subtracts and adds packed 16-bit unsigned numbers, dropping least bits
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn urstsa16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -285,6 +313,7 @@ pub fn urstsa16(a: usize, b: usize) -> usize {
 
 /// Straight subtracts and adds packed 16-bit signed numbers, saturating at the numeric bounds
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn kstsa16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -295,6 +324,7 @@ pub fn kstsa16(a: usize, b: usize) -> usize {
 
 /// Straight subtracts and adds packed 16-bit unsigned numbers, saturating at the numeric bounds
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn ukstsa16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -305,6 +335,7 @@ pub fn ukstsa16(a: usize, b: usize) -> usize {
 
 /// Adds packed 8-bit signed numbers, discarding overflow bits
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn add8(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -315,6 +346,7 @@ pub fn add8(a: usize, b: usize) -> usize {
 
 /// Halves the sum of packed 8-bit signed numbers, dropping least bits
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn radd8(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -325,6 +357,7 @@ pub fn radd8(a: usize, b: usize) -> usize {
 
 /// Halves the sum of packed 8-bit unsigned numbers, dropping least bits
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn uradd8(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -335,6 +368,7 @@ pub fn uradd8(a: usize, b: usize) -> usize {
 
 /// Adds packed 8-bit signed numbers, saturating at the numeric bounds
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn kadd8(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -345,6 +379,7 @@ pub fn kadd8(a: usize, b: usize) -> usize {
 
 /// Adds packed 8-bit unsigned numbers, saturating at the numeric bounds
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn ukadd8(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -355,6 +390,7 @@ pub fn ukadd8(a: usize, b: usize) -> usize {
 
 /// Subtracts packed 8-bit signed numbers, discarding overflow bits
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn sub8(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -365,6 +401,7 @@ pub fn sub8(a: usize, b: usize) -> usize {
 
 /// Halves the subtraction result of packed 8-bit signed numbers, dropping least bits
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn rsub8(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -375,6 +412,7 @@ pub fn rsub8(a: usize, b: usize) -> usize {
 
 /// Halves the subtraction result of packed 8-bit unsigned numbers, dropping least bits
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn ursub8(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -385,6 +423,7 @@ pub fn ursub8(a: usize, b: usize) -> usize {
 
 /// Subtracts packed 8-bit signed numbers, saturating at the numeric bounds
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn ksub8(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -395,6 +434,7 @@ pub fn ksub8(a: usize, b: usize) -> usize {
 
 /// Subtracts packed 8-bit unsigned numbers, saturating at the numeric bounds
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn uksub8(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -405,6 +445,7 @@ pub fn uksub8(a: usize, b: usize) -> usize {
 
 /// Arithmetic right shift packed 16-bit elements without rounding up
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn sra16(a: usize, b: u32) -> usize {
     let value: usize;
     unsafe {
@@ -415,6 +456,7 @@ pub fn sra16(a: usize, b: u32) -> usize {
 
 /// Arithmetic right shift packed 16-bit elements with rounding up
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn sra16u(a: usize, b: u32) -> usize {
     let value: usize;
     unsafe {
@@ -425,6 +467,7 @@ pub fn sra16u(a: usize, b: u32) -> usize {
 
 /// Logical right shift packed 16-bit elements without rounding up
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn srl16(a: usize, b: u32) -> usize {
     let value: usize;
     unsafe {
@@ -435,6 +478,7 @@ pub fn srl16(a: usize, b: u32) -> usize {
 
 /// Logical right shift packed 16-bit elements with rounding up
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn srl16u(a: usize, b: u32) -> usize {
     let value: usize;
     unsafe {
@@ -445,6 +489,7 @@ pub fn srl16u(a: usize, b: u32) -> usize {
 
 /// Logical left shift packed 16-bit elements, discarding overflow bits
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn sll16(a: usize, b: u32) -> usize {
     let value: usize;
     unsafe {
@@ -455,6 +500,7 @@ pub fn sll16(a: usize, b: u32) -> usize {
 
 /// Logical left shift packed 16-bit elements, saturating at the numeric bounds
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn ksll16(a: usize, b: u32) -> usize {
     let value: usize;
     unsafe {
@@ -465,6 +511,7 @@ pub fn ksll16(a: usize, b: u32) -> usize {
 
 /// Logical saturating left then arithmetic right shift packed 16-bit elements
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn kslra16(a: usize, b: i32) -> usize {
     let value: usize;
     unsafe {
@@ -475,6 +522,7 @@ pub fn kslra16(a: usize, b: i32) -> usize {
 
 /// Logical saturating left then arithmetic right shift packed 16-bit elements
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn kslra16u(a: usize, b: i32) -> usize {
     let value: usize;
     unsafe {
@@ -485,6 +533,7 @@ pub fn kslra16u(a: usize, b: i32) -> usize {
 
 /// Arithmetic right shift packed 8-bit elements without rounding up
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn sra8(a: usize, b: u32) -> usize {
     let value: usize;
     unsafe {
@@ -495,6 +544,7 @@ pub fn sra8(a: usize, b: u32) -> usize {
 
 /// Arithmetic right shift packed 8-bit elements with rounding up
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn sra8u(a: usize, b: u32) -> usize {
     let value: usize;
     unsafe {
@@ -505,6 +555,7 @@ pub fn sra8u(a: usize, b: u32) -> usize {
 
 /// Logical right shift packed 8-bit elements without rounding up
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn srl8(a: usize, b: u32) -> usize {
     let value: usize;
     unsafe {
@@ -515,6 +566,7 @@ pub fn srl8(a: usize, b: u32) -> usize {
 
 /// Logical right shift packed 8-bit elements with rounding up
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn srl8u(a: usize, b: u32) -> usize {
     let value: usize;
     unsafe {
@@ -525,6 +577,7 @@ pub fn srl8u(a: usize, b: u32) -> usize {
 
 /// Logical left shift packed 8-bit elements, discarding overflow bits
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn sll8(a: usize, b: u32) -> usize {
     let value: usize;
     unsafe {
@@ -535,6 +588,7 @@ pub fn sll8(a: usize, b: u32) -> usize {
 
 /// Logical left shift packed 8-bit elements, saturating at the numeric bounds
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn ksll8(a: usize, b: u32) -> usize {
     let value: usize;
     unsafe {
@@ -545,6 +599,7 @@ pub fn ksll8(a: usize, b: u32) -> usize {
 
 /// Logical saturating left then arithmetic right shift packed 8-bit elements
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn kslra8(a: usize, b: i32) -> usize {
     let value: usize;
     unsafe {
@@ -555,6 +610,7 @@ pub fn kslra8(a: usize, b: i32) -> usize {
 
 /// Logical saturating left then arithmetic right shift packed 8-bit elements
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn kslra8u(a: usize, b: i32) -> usize {
     let value: usize;
     unsafe {
@@ -565,6 +621,7 @@ pub fn kslra8u(a: usize, b: i32) -> usize {
 
 /// Compare equality for packed 16-bit elements
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn cmpeq16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -575,6 +632,7 @@ pub fn cmpeq16(a: usize, b: usize) -> usize {
 
 /// Compare whether 16-bit packed signed integers are less than the others
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn scmplt16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -585,6 +643,7 @@ pub fn scmplt16(a: usize, b: usize) -> usize {
 
 /// Compare whether 16-bit packed signed integers are less than or equal to the others
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn scmple16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -595,6 +654,7 @@ pub fn scmple16(a: usize, b: usize) -> usize {
 
 /// Compare whether 16-bit packed unsigned integers are less than the others
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn ucmplt16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -605,6 +665,7 @@ pub fn ucmplt16(a: usize, b: usize) -> usize {
 
 /// Compare whether 16-bit packed unsigned integers are less than or equal to the others
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn ucmple16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -615,6 +676,7 @@ pub fn ucmple16(a: usize, b: usize) -> usize {
 
 /// Compare equality for packed 8-bit elements
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn cmpeq8(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -625,6 +687,7 @@ pub fn cmpeq8(a: usize, b: usize) -> usize {
 
 /// Compare whether 8-bit packed signed integers are less than the others
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn scmplt8(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -635,6 +698,7 @@ pub fn scmplt8(a: usize, b: usize) -> usize {
 
 /// Compare whether 8-bit packed signed integers are less than or equal to the others
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn scmple8(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -645,6 +709,7 @@ pub fn scmple8(a: usize, b: usize) -> usize {
 
 /// Compare whether 8-bit packed unsigned integers are less than the others
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn ucmplt8(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -655,6 +720,7 @@ pub fn ucmplt8(a: usize, b: usize) -> usize {
 
 /// Compare whether 8-bit packed unsigned integers are less than or equal to the others
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn ucmple8(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -665,6 +731,7 @@ pub fn ucmple8(a: usize, b: usize) -> usize {
 
 /// Get minimum values from 16-bit packed signed integers
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn smin16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -675,6 +742,7 @@ pub fn smin16(a: usize, b: usize) -> usize {
 
 /// Get minimum values from 16-bit packed unsigned integers
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn umin16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -685,6 +753,7 @@ pub fn umin16(a: usize, b: usize) -> usize {
 
 /// Get maximum values from 16-bit packed signed integers
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn smax16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -695,6 +764,7 @@ pub fn smax16(a: usize, b: usize) -> usize {
 
 /// Get maximum values from 16-bit packed unsigned integers
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn umax16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -707,6 +777,7 @@ pub fn umax16(a: usize, b: usize) -> usize {
 
 /// Compute the absolute value of packed 16-bit signed integers
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn kabs16(a: usize) -> usize {
     let value: usize;
     unsafe {
@@ -717,6 +788,7 @@ pub fn kabs16(a: usize) -> usize {
 
 /// Count the number of redundant sign bits of the packed 16-bit elements
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn clrs16(a: usize) -> usize {
     let value: usize;
     unsafe {
@@ -727,6 +799,7 @@ pub fn clrs16(a: usize) -> usize {
 
 /// Count the number of leading zero bits of the packed 16-bit elements
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn clz16(a: usize) -> usize {
     let value: usize;
     unsafe {
@@ -737,6 +810,7 @@ pub fn clz16(a: usize) -> usize {
 
 /// Swap the 16-bit halfwords within each 32-bit word of a register
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn swap16(a: usize) -> usize {
     let value: usize;
     // this instruction is an alias for `pkbt rd, rs1, rs1`.
@@ -748,6 +822,7 @@ pub fn swap16(a: usize) -> usize {
 
 /// Get minimum values from 8-bit packed signed integers
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn smin8(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -758,6 +833,7 @@ pub fn smin8(a: usize, b: usize) -> usize {
 
 /// Get minimum values from 8-bit packed unsigned integers
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn umin8(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -768,6 +844,7 @@ pub fn umin8(a: usize, b: usize) -> usize {
 
 /// Get maximum values from 8-bit packed signed integers
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn smax8(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -778,6 +855,7 @@ pub fn smax8(a: usize, b: usize) -> usize {
 
 /// Get maximum values from 8-bit packed unsigned integers
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn umax8(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -790,6 +868,7 @@ pub fn umax8(a: usize, b: usize) -> usize {
 
 /// Compute the absolute value of packed 8-bit signed integers
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn kabs8(a: usize) -> usize {
     let value: usize;
     unsafe {
@@ -800,6 +879,7 @@ pub fn kabs8(a: usize) -> usize {
 
 /// Count the number of redundant sign bits of the packed 8-bit elements
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn clrs8(a: usize) -> usize {
     let value: usize;
     unsafe {
@@ -810,6 +890,7 @@ pub fn clrs8(a: usize) -> usize {
 
 /// Count the number of leading zero bits of the packed 8-bit elements
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn clz8(a: usize) -> usize {
     let value: usize;
     unsafe {
@@ -820,6 +901,7 @@ pub fn clz8(a: usize) -> usize {
 
 /// Swap the 8-bit bytes within each 16-bit halfword of a register.
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn swap8(a: usize) -> usize {
     let value: usize;
     unsafe {
@@ -830,6 +912,7 @@ pub fn swap8(a: usize) -> usize {
 
 /// Unpack first and zeroth into two 16-bit signed halfwords in each 32-bit chunk
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn sunpkd810(a: usize) -> usize {
     let value: usize;
     unsafe {
@@ -840,6 +923,7 @@ pub fn sunpkd810(a: usize) -> usize {
 
 /// Unpack second and zeroth into two 16-bit signed halfwords in each 32-bit chunk
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn sunpkd820(a: usize) -> usize {
     let value: usize;
     unsafe {
@@ -850,6 +934,7 @@ pub fn sunpkd820(a: usize) -> usize {
 
 /// Unpack third and zeroth into two 16-bit signed halfwords in each 32-bit chunk
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn sunpkd830(a: usize) -> usize {
     let value: usize;
     unsafe {
@@ -860,6 +945,7 @@ pub fn sunpkd830(a: usize) -> usize {
 
 /// Unpack third and first into two 16-bit signed halfwords in each 32-bit chunk
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn sunpkd831(a: usize) -> usize {
     let value: usize;
     unsafe {
@@ -870,6 +956,7 @@ pub fn sunpkd831(a: usize) -> usize {
 
 /// Unpack third and second into two 16-bit signed halfwords in each 32-bit chunk
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn sunpkd832(a: usize) -> usize {
     let value: usize;
     unsafe {
@@ -880,6 +967,7 @@ pub fn sunpkd832(a: usize) -> usize {
 
 /// Unpack first and zeroth into two 16-bit unsigned halfwords in each 32-bit chunk
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn zunpkd810(a: usize) -> usize {
     let value: usize;
     unsafe {
@@ -890,6 +978,7 @@ pub fn zunpkd810(a: usize) -> usize {
 
 /// Unpack second and zeroth into two 16-bit unsigned halfwords in each 32-bit chunk
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn zunpkd820(a: usize) -> usize {
     let value: usize;
     unsafe {
@@ -900,6 +989,7 @@ pub fn zunpkd820(a: usize) -> usize {
 
 /// Unpack third and zeroth into two 16-bit unsigned halfwords in each 32-bit chunk
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn zunpkd830(a: usize) -> usize {
     let value: usize;
     unsafe {
@@ -910,6 +1000,7 @@ pub fn zunpkd830(a: usize) -> usize {
 
 /// Unpack third and first into two 16-bit unsigned halfwords in each 32-bit chunk
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn zunpkd831(a: usize) -> usize {
     let value: usize;
     unsafe {
@@ -920,6 +1011,7 @@ pub fn zunpkd831(a: usize) -> usize {
 
 /// Unpack third and second into two 16-bit unsigned halfwords in each 32-bit chunk
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn zunpkd832(a: usize) -> usize {
     let value: usize;
     unsafe {
@@ -932,6 +1024,7 @@ pub fn zunpkd832(a: usize) -> usize {
 
 /// Pack two 16-bit data from bottom and top half from 32-bit chunks
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn pkbt16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -942,6 +1035,7 @@ pub fn pkbt16(a: usize, b: usize) -> usize {
 
 /// Pack two 16-bit data from top and bottom half from 32-bit chunks
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn pktb16(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -952,6 +1046,7 @@ pub fn pktb16(a: usize, b: usize) -> usize {
 
 /// Count the number of redundant sign bits of the packed 32-bit elements
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn clrs32(a: usize) -> usize {
     let value: usize;
     unsafe {
@@ -962,6 +1057,7 @@ pub fn clrs32(a: usize) -> usize {
 
 /// Count the number of leading zero bits of the packed 32-bit elements
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn clz32(a: usize) -> usize {
     let value: usize;
     unsafe {
@@ -972,6 +1068,7 @@ pub fn clz32(a: usize) -> usize {
 
 /// Calculate the sum of absolute difference of unsigned 8-bit data elements
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn pbsad(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -982,6 +1079,7 @@ pub fn pbsad(a: usize, b: usize) -> usize {
 
 /// Calculate and accumulate the sum of absolute difference of unsigned 8-bit data elements
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn pbsada(t: usize, a: usize, b: usize) -> usize {
     let mut value: usize;
     unsafe {
@@ -992,6 +1090,7 @@ pub fn pbsada(t: usize, a: usize, b: usize) -> usize {
 
 /// Multiply signed 8-bit elements and add 16-bit elements on results for packed 32-bit chunks
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn smaqa(t: usize, a: usize, b: usize) -> usize {
     let mut value: usize;
     unsafe {
@@ -1002,6 +1101,7 @@ pub fn smaqa(t: usize, a: usize, b: usize) -> usize {
 
 /// Multiply unsigned 8-bit elements and add 16-bit elements on results for packed 32-bit chunks
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn umaqa(t: usize, a: usize, b: usize) -> usize {
     let mut value: usize;
     unsafe {
@@ -1012,6 +1112,7 @@ pub fn umaqa(t: usize, a: usize, b: usize) -> usize {
 
 /// Multiply signed to unsigned 8-bit and add 16-bit elements on results for packed 32-bit chunks
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn smaqasu(t: usize, a: usize, b: usize) -> usize {
     let mut value: usize;
     unsafe {
@@ -1022,6 +1123,7 @@ pub fn smaqasu(t: usize, a: usize, b: usize) -> usize {
 
 /// Adds signed lower 16-bit content of two registers with Q15 saturation
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn kaddh(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -1032,6 +1134,7 @@ pub fn kaddh(a: usize, b: usize) -> usize {
 
 /// Subtracts signed lower 16-bit content of two registers with Q15 saturation
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn ksubh(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -1042,6 +1145,7 @@ pub fn ksubh(a: usize, b: usize) -> usize {
 
 /// Adds signed lower 16-bit content of two registers with U16 saturation
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn ukaddh(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
@@ -1052,6 +1156,7 @@ pub fn ukaddh(a: usize, b: usize) -> usize {
 
 /// Subtracts signed lower 16-bit content of two registers with U16 saturation
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn uksubh(a: usize, b: usize) -> usize {
     let value: usize;
     unsafe {
