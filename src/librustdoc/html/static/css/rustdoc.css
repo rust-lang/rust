@@ -1259,6 +1259,10 @@ a.tooltip:hover::after {
 	background-color: var(--search-error-code-background-color);
 }
 
+.search-corrections {
+	font-weight: normal;
+}
+
 #src-sidebar-toggle {
 	position: sticky;
 	top: 0;
