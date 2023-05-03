@@ -15,6 +15,7 @@ mod instantiated_predicates;
 mod outlives_predicate;
 mod projection_predicate;
 mod subtype_predicate;
+mod to_predicate;
 mod trait_predicate;
 
 pub use coerce_predicate::{CoercePredicate, PolyCoercePredicate};
@@ -25,6 +26,7 @@ pub use outlives_predicate::{
 };
 pub use projection_predicate::{PolyProjectionPredicate, ProjectionPredicate};
 pub use subtype_predicate::{PolySubtypePredicate, SubtypePredicate};
+pub use to_predicate::ToPredicate;
 pub use trait_predicate::{PolyTraitPredicate, TraitPredicate};
 
 /// Use this rather than `PredicateKind`, whenever possible.
