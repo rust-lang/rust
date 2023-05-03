@@ -453,9 +453,6 @@ fn is_float_mul_expr<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(&'
 
 // TODO: Fix rust-lang/rust-clippy#4735
 fn check_mul_add(cx: &LateContext<'_>, expr: &Expr<'_>) {
-    if is_no_std_crate(cx) {
-        return; // The suggested methods are not available in core
-    }
     if let ExprKind::Binary(
         Spanned {
             node: op @ (BinOpKind::Add | BinOpKind::Sub),
@@ -570,9 +567,6 @@ fn are_negated<'a>(cx: &LateContext<'_>, expr1: &'a Expr<'a>, expr2: &'a Expr<'a
 }
 
 fn check_custom_abs(cx: &LateContext<'_>, expr: &Expr<'_>) {
-    if is_no_std_crate(cx) {
-        return; // The suggested methods are not available in core
-    }
     if_chain! {
         if let Some(higher::If { cond, then, r#else: Some(r#else) }) = higher::If::hir(expr);
         let if_body_expr = peel_blocks(then);
@@ -737,7 +731,7 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
 
 impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        // All of these operations are currently not const.
+        // All of these operations are currently not const and are in std.
         if in_constant(cx, expr.hir_id) {
             return;
         }
@@ -745,7 +739,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
         if let ExprKind::MethodCall(path, receiver, args, _) = &expr.kind {
             let recv_ty = cx.typeck_results().expr_ty(receiver);
 
-            if recv_ty.is_floating_point() {
+            if recv_ty.is_floating_point() && !is_no_std_crate(cx) {
                 match path.ident.name.as_str() {
                     "ln" => check_ln1p(cx, expr, receiver),
                     "log" => check_log_base(cx, expr, receiver, args),
@@ -756,10 +750,12 @@ impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
                 }
             }
         } else {
-            check_expm1(cx, expr);
-            check_mul_add(cx, expr);
-            check_custom_abs(cx, expr);
-            check_log_division(cx, expr);
+            if !is_no_std_crate(cx) {
+                check_expm1(cx, expr);
+                check_mul_add(cx, expr);
+                check_custom_abs(cx, expr);
+                check_log_division(cx, expr);
+            }
             check_radians(cx, expr);
         }
     }
