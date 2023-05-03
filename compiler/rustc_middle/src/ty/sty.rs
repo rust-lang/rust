@@ -5,11 +5,11 @@
 use crate::infer::canonical::Canonical;
 use crate::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use crate::ty::visit::ValidateBoundVars;
-use crate::ty::InferTy::*;
 use crate::ty::{
     self, AdtDef, Discr, Term, Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor,
 };
+use crate::ty::{BoundConstness, InferTy::*, PolyTraitPredicate};
 use crate::ty::{List, ParamEnv};
 use hir::def::DefKind;
 use polonius_engine::Atom;
@@ -895,6 +895,22 @@ impl<'tcx> PolyTraitRef<'tcx> {
     pub fn def_id(&self) -> DefId {
         self.skip_binder().def_id
     }
+
+    #[inline]
+    pub fn with_constness(self, constness: BoundConstness) -> PolyTraitPredicate<'tcx> {
+        self.map_bound(|trait_ref| ty::TraitPredicate {
+            trait_ref,
+            constness,
+            polarity: ty::ImplPolarity::Positive,
+        })
+    }
+
+    // FIXME(ecstaticmorse): Audit all occurrences of `without_const().to_predicate(tcx)` to ensure that
+    // the constness of trait bounds is being propagated correctly.
+    #[inline]
+    pub fn without_const(self) -> PolyTraitPredicate<'tcx> {
+        self.with_constness(BoundConstness::NotConst)
+    }
 }
 
 impl<'tcx> IntoDiagnosticArg for TraitRef<'tcx> {
@@ -1449,6 +1465,14 @@ pub struct EarlyBoundRegion {
     pub def_id: DefId,
     pub index: u32,
     pub name: Symbol,
+}
+
+impl EarlyBoundRegion {
+    /// Does this early bound region have a name? Early bound regions normally
+    /// always have names except when using anonymous lifetimes (`'_`).
+    pub fn has_name(&self) -> bool {
+        self.name != kw::UnderscoreLifetime && self.name != kw::Empty
+    }
 }
 
 impl fmt::Debug for EarlyBoundRegion {

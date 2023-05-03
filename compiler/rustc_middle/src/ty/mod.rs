@@ -44,7 +44,7 @@ use rustc_serialize::{Decodable, Encodable};
 use rustc_session::lint::LintBuffer;
 pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{ExpnId, ExpnKind, Span};
 use rustc_target::abi::{Align, FieldIdx, Integer, IntegerType, VariantIdx};
 pub use rustc_target::abi::{ReprFlags, ReprOptions};
@@ -338,14 +338,6 @@ pub struct CReaderCacheKey {
     pub pos: usize,
 }
 
-impl ty::EarlyBoundRegion {
-    /// Does this early bound region have a name? Early bound regions normally
-    /// always have names except when using anonymous lifetimes (`'_`).
-    pub fn has_name(&self) -> bool {
-        self.name != kw::UnderscoreLifetime && self.name != kw::Empty
-    }
-}
-
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 /// A clause is something that can appear in where bounds or be inferred
@@ -425,24 +417,6 @@ pub struct OpaqueTypeKey<'tcx> {
 pub struct BoundConst<'tcx> {
     pub var: BoundVar,
     pub ty: Ty<'tcx>,
-}
-
-// FIXME(ecstaticmorse): Audit all occurrences of `without_const().to_predicate(tcx)` to ensure that
-// the constness of trait bounds is being propagated correctly.
-impl<'tcx> PolyTraitRef<'tcx> {
-    #[inline]
-    pub fn with_constness(self, constness: BoundConstness) -> PolyTraitPredicate<'tcx> {
-        self.map_bound(|trait_ref| ty::TraitPredicate {
-            trait_ref,
-            constness,
-            polarity: ty::ImplPolarity::Positive,
-        })
-    }
-
-    #[inline]
-    pub fn without_const(self) -> PolyTraitPredicate<'tcx> {
-        self.with_constness(BoundConstness::NotConst)
-    }
 }
 
 #[derive(Copy, Clone, Debug, HashStable, Encodable, Decodable)]
