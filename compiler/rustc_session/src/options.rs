@@ -1235,6 +1235,8 @@ options! {
         line-tables-only, limited, or full; default: 0)"),
     default_linker_libraries: bool = (false, parse_bool, [UNTRACKED],
         "allow the linker to link its default libraries (default: no)"),
+    dlltool: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
+        "import library generation tool (ignored except when targeting windows-gnu)"),
     embed_bitcode: bool = (true, parse_bool, [TRACKED],
         "emit bitcode in rlibs (default: yes)"),
     extra_filename: String = (String::new(), parse_string, [UNTRACKED],
@@ -1391,8 +1393,6 @@ options! {
         (default: no)"),
     diagnostic_width: Option<usize> = (None, parse_opt_number, [UNTRACKED],
         "set the current output width for diagnostic truncation"),
-    dlltool: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
-        "import library generation tool (windows-gnu only)"),
     dont_buffer_diagnostics: bool = (false, parse_bool, [UNTRACKED],
         "emit diagnostics rather than buffering (breaks NLL error downgrading, sorting) \
         (default: no)"),
