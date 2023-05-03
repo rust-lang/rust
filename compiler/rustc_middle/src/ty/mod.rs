@@ -141,6 +141,7 @@ mod structural_impls;
 mod sty;
 mod typeck_results;
 
+mod alias_relation_direction;
 mod bound_constness;
 mod impl_polarity;
 mod param_env;
@@ -149,6 +150,7 @@ mod term;
 mod ty_; // FIXME: rename to `ty` once we don't import `crate::ty` here
 mod visibility;
 
+pub use alias_relation_direction::AliasRelationDirection;
 pub use bound_constness::BoundConstness;
 pub use impl_polarity::ImplPolarity;
 pub use param_env::{ParamEnv, ParamEnvAnd};
@@ -359,22 +361,6 @@ pub enum Clause<'tcx> {
     /// Ensures that a const generic argument to a parameter `const N: u8`
     /// is of type `u8`.
     ConstArgHasType(Const<'tcx>, Ty<'tcx>),
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, Debug)]
-pub enum AliasRelationDirection {
-    Equate,
-    Subtype,
-}
-
-impl std::fmt::Display for AliasRelationDirection {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            AliasRelationDirection::Equate => write!(f, "=="),
-            AliasRelationDirection::Subtype => write!(f, "<:"),
-        }
-    }
 }
 
 /// The crate outlives map is computed during typeck and contains the
