@@ -300,6 +300,9 @@ jobs:
     strategy:
       matrix:
         include:
+          - name: x86_64-gnu
+            <<: *job-linux-8c
+
           - name: mingw-check
             <<: *job-linux-16c
             tidy: false
