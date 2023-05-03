@@ -31,13 +31,13 @@ declare_clippy_lint! {
     /// }
     /// ```
     #[clippy::version = "1.71.0"]
-    pub DEFAULT_CONSTRUCTED_UNIT_STRUCT,
+    pub DEFAULT_CONSTRUCTED_UNIT_STRUCTS,
     complexity,
     "unit structs can be contructed without calling `default`"
 }
-declare_lint_pass!(DefaultConstructedUnitStruct => [DEFAULT_CONSTRUCTED_UNIT_STRUCT]);
+declare_lint_pass!(DefaultConstructedUnitStructs => [DEFAULT_CONSTRUCTED_UNIT_STRUCTS]);
 
-impl LateLintPass<'_> for DefaultConstructedUnitStruct {
+impl LateLintPass<'_> for DefaultConstructedUnitStructs {
     fn check_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
         if_chain!(
             // make sure we have a call to `Default::default`
@@ -53,7 +53,7 @@ impl LateLintPass<'_> for DefaultConstructedUnitStruct {
             then {
                 span_lint_and_sugg(
                     cx,
-                    DEFAULT_CONSTRUCTED_UNIT_STRUCT,
+                    DEFAULT_CONSTRUCTED_UNIT_STRUCTS,
                     expr.span.with_lo(qpath.qself_span().hi()),
                     "use of `default` to create a unit struct",
                     "remove this call to `default`",
