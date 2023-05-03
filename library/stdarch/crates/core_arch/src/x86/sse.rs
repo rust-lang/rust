@@ -984,7 +984,7 @@ pub unsafe fn _mm_setzero_ps() -> __m128 {
 /// permute intrinsics.
 #[inline]
 #[allow(non_snake_case)]
-#[unstable(feature = "stdarch", issue = "27731")]
+#[unstable(feature = "stdarch_x86_mm_shuffle", issue = "111147")]
 pub const fn _MM_SHUFFLE(z: u32, y: u32, x: u32, w: u32) -> i32 {
     ((z << 6) | (y << 4) | (x << 2) | w) as i32
 }
