@@ -146,6 +146,7 @@ mod impl_polarity;
 mod param_env;
 mod predicate;
 mod term;
+mod ty_; // FIXME: rename to `ty` once we don't import `crate::ty` here
 mod visibility;
 
 pub use bound_constness::BoundConstness;
@@ -158,6 +159,7 @@ pub use predicate::{
     RegionOutlivesPredicate, SubtypePredicate, ToPredicate, TraitPredicate, TypeOutlivesPredicate,
 };
 pub use term::{Term, TermKind};
+pub use ty_::Ty;
 pub use visibility::Visibility;
 
 pub struct ResolverOutputs {
@@ -325,12 +327,6 @@ pub struct CReaderCacheKey {
     pub cnum: Option<CrateNum>,
     pub pos: usize,
 }
-
-/// Use this rather than `TyKind`, whenever possible.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
-#[rustc_diagnostic_item = "Ty"]
-#[rustc_pass_by_value]
-pub struct Ty<'tcx>(Interned<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>);
 
 impl ty::EarlyBoundRegion {
     /// Does this early bound region have a name? Early bound regions normally
