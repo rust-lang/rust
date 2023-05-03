@@ -6,8 +6,9 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::HirIdMap;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{DefiningAnchor, InferCtxt, InferOk, TyCtxtInferExt};
+use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::visit::TypeVisitableExt;
-use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{self, OpaqueTypeKey, ToPredicate, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefIdMap;
 use rustc_span::{self, sym, Span};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
@@ -117,6 +118,8 @@ impl<'tcx> Inherited<'tcx> {
         if tcx.trait_solver_next() {
             let opaques = tcx.opaque_types_defined_by(def_id).subst_identity();
             if !opaques.is_empty() {
+                let mut needed_item_bounds = Vec::new();
+
                 let define_opaques = opaques
                     .iter()
                     .map(|ty| match *ty.kind() {
@@ -126,7 +129,14 @@ impl<'tcx> Inherited<'tcx> {
                                 kind: TypeVariableOriginKind::OpaqueTypeInference(def_id),
                                 span: self.tcx.def_span(def_id),
                             });
-                            // FIXME(-Ztrait-solver=next): Add item bounds for opaques here.
+
+                            needed_item_bounds.push((
+                                OpaqueTypeKey {
+                                    def_id: def_id.expect_local(),
+                                    substs: alias_ty.substs,
+                                },
+                                ty_var,
+                            ));
                             ty::PredicateKind::DefineOpaque(alias_ty, ty_var)
                         }
                         _ => bug!("unexpected defined opaque: {opaques:?}"),
@@ -140,6 +150,18 @@ impl<'tcx> Inherited<'tcx> {
                     param_env.reveal(),
                     param_env.constness(),
                 );
+
+                for (key, hidden_ty) in needed_item_bounds {
+                    let mut obligations = Vec::new();
+                    self.infcx.add_item_bounds_for_hidden_type(
+                        key,
+                        ObligationCause::dummy(),
+                        param_env,
+                        hidden_ty,
+                        &mut obligations,
+                    );
+                    self.register_predicates(obligations);
+                }
 
                 param_env
             } else {

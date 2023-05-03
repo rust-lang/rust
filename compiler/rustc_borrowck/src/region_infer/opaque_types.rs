@@ -44,10 +44,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             };
 
             let substs = opaque_ty.substs;
-            let opaque_type_key = OpaqueTypeKey {
-                def_id: opaque_ty.def_id.expect_local(),
-                substs,
-            };
+            let opaque_type_key = OpaqueTypeKey { def_id: opaque_ty.def_id.expect_local(), substs };
 
             let mut subst_regions = vec![self.universal_regions.fr_static];
 
@@ -114,10 +111,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 OpaqueTypeKey { def_id: opaque_type_key.def_id, substs: universal_substs };
             let ty = infcx.infer_opaque_definition_from_instantiation(
                 opaque_type_key,
-                OpaqueHiddenType {
-                    span: DUMMY_SP,
-                    ty: universal_concrete_type,
-                },
+                OpaqueHiddenType { span: DUMMY_SP, ty: universal_concrete_type },
                 OpaqueTyOrigin::TyAlias,
             );
             // Sometimes two opaque types are the same only after we remap the generic parameters
@@ -127,10 +121,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             if let Some(prev) = result.get_mut(&opaque_type_key.def_id) {
                 if prev.ty != ty {
                     let guar = ty.error_reported().err().unwrap_or_else(|| {
-                        prev.report_mismatch(
-                            &OpaqueHiddenType { ty, span: DUMMY_SP },
-                            infcx.tcx,
-                        )
+                        prev.report_mismatch(&OpaqueHiddenType { ty, span: DUMMY_SP }, infcx.tcx)
                     });
                     prev.ty = infcx.tcx.ty_error(guar);
                 }
@@ -138,15 +129,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // FIXME(oli-obk): collect multiple spans for better diagnostics down the road.
                 prev.span = prev.span;
             } else {
-                result.insert(
-                    opaque_type_key.def_id,
-                    OpaqueHiddenType { ty, span: DUMMY_SP },
-                );
+                result.insert(opaque_type_key.def_id, OpaqueHiddenType { ty, span: DUMMY_SP });
             }
         }
         result
     }
-
 
     /// Resolve any opaque types that were encountered while borrow checking
     /// this item. This is then used to get the type in the `type_of` query.
