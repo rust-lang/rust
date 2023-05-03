@@ -7,7 +7,8 @@
 
 #[doc(no_inline)]
 pub use super::{
-    SimdConstPtr, SimdFloat, SimdInt, SimdMutPtr, SimdOrd, SimdPartialEq, SimdPartialOrd, SimdUint,
+    simd_swizzle, Mask, Simd, SimdConstPtr, SimdFloat, SimdInt, SimdMutPtr, SimdOrd, SimdPartialEq,
+    SimdPartialOrd, SimdUint,
 };
 
 #[rustfmt::skip]
