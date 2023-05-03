@@ -137,6 +137,7 @@ mod alias_relation_direction;
 mod bound_constness;
 mod field_def;
 mod impl_polarity;
+mod main_definition;
 mod opaque_hidden_type;
 mod param_env;
 mod placeholder;
@@ -152,6 +153,7 @@ pub use alias_relation_direction::AliasRelationDirection;
 pub use bound_constness::BoundConstness;
 pub use field_def::FieldDef;
 pub use impl_polarity::ImplPolarity;
+pub use main_definition::MainDefinition;
 pub use opaque_hidden_type::OpaqueHiddenType;
 pub use param_env::{ParamEnv, ParamEnvAnd};
 pub use placeholder::{Placeholder, PlaceholderConst, PlaceholderRegion, PlaceholderType};
@@ -167,19 +169,6 @@ pub use term::{Term, TermKind};
 pub use ty_::Ty;
 pub use variant_def::VariantDef;
 pub use visibility::Visibility;
-
-#[derive(Clone, Copy, Debug)]
-pub struct MainDefinition {
-    pub res: Res<ast::NodeId>,
-    pub is_import: bool,
-    pub span: Span,
-}
-
-impl MainDefinition {
-    pub fn opt_fn_def_id(self) -> Option<DefId> {
-        if let Res::Def(DefKind::Fn, def_id) = self.res { Some(def_id) } else { None }
-    }
-}
 
 /// The "header" of an impl is everything outside the body: a Self type, a trait
 /// ref (in the case of a trait impl), and a set of predicates (from the
