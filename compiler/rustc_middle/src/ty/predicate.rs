@@ -6,10 +6,11 @@ use rustc_hir::def_id::DefId;
 use rustc_type_ir::WithCachedTypeInfo;
 
 use crate::ty::{
-    self, AliasRelationDirection, Binder, BoundConstness, Clause, ClosureKind, Const,
-    DebruijnIndex, EarlyBinder, GenericArg, SubstsRef, Term, Ty, TypeFlags,
+    self, AliasRelationDirection, Binder, BoundConstness, ClosureKind, Const, DebruijnIndex,
+    EarlyBinder, GenericArg, SubstsRef, Term, Ty, TypeFlags,
 };
 
+mod clause;
 mod coerce_predicate;
 mod instantiated_predicates;
 mod outlives_predicate;
@@ -18,6 +19,7 @@ mod subtype_predicate;
 mod to_predicate;
 mod trait_predicate;
 
+pub use clause::Clause;
 pub use coerce_predicate::{CoercePredicate, PolyCoercePredicate};
 pub use instantiated_predicates::InstantiatedPredicates;
 pub use outlives_predicate::{
