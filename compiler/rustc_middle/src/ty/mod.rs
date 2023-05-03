@@ -148,8 +148,10 @@ mod structural_impls;
 mod sty;
 mod typeck_results;
 
+mod impl_polarity;
 mod visibility;
 
+pub use impl_polarity::ImplPolarity;
 pub use visibility::Visibility;
 
 pub struct ResolverOutputs {
@@ -243,41 +245,6 @@ pub struct ImplHeader<'tcx> {
 pub enum ImplSubject<'tcx> {
     Trait(TraitRef<'tcx>),
     Inherent(Ty<'tcx>),
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable, Debug)]
-#[derive(TypeFoldable, TypeVisitable)]
-pub enum ImplPolarity {
-    /// `impl Trait for Type`
-    Positive,
-    /// `impl !Trait for Type`
-    Negative,
-    /// `#[rustc_reservation_impl] impl Trait for Type`
-    ///
-    /// This is a "stability hack", not a real Rust feature.
-    /// See #64631 for details.
-    Reservation,
-}
-
-impl ImplPolarity {
-    /// Flips polarity by turning `Positive` into `Negative` and `Negative` into `Positive`.
-    pub fn flip(&self) -> Option<ImplPolarity> {
-        match self {
-            ImplPolarity::Positive => Some(ImplPolarity::Negative),
-            ImplPolarity::Negative => Some(ImplPolarity::Positive),
-            ImplPolarity::Reservation => None,
-        }
-    }
-}
-
-impl fmt::Display for ImplPolarity {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Positive => f.write_str("positive"),
-            Self::Negative => f.write_str("negative"),
-            Self::Reservation => f.write_str("reservation"),
-        }
-    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
