@@ -380,20 +380,7 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn escape_unicode(self) -> EscapeUnicode {
-        let c = self as u32;
-
-        // or-ing 1 ensures that for c==0 the code computes that one
-        // digit should be printed and (which is the same) avoids the
-        // (31 - 32) underflow
-        let msb = 31 - (c | 1).leading_zeros();
-
-        // the index of the most significant hex digit
-        let ms_hex_digit = msb / 4;
-        EscapeUnicode {
-            c: self,
-            state: EscapeUnicodeState::Backslash,
-            hex_digit_idx: ms_hex_digit as usize,
-        }
+        EscapeUnicode::new(self)
     }
 
     /// An extended version of `escape_debug` that optionally permits escaping
@@ -403,21 +390,20 @@ impl char {
     /// characters, and double quotes in strings.
     #[inline]
     pub(crate) fn escape_debug_ext(self, args: EscapeDebugExtArgs) -> EscapeDebug {
-        let init_state = match self {
-            '\0' => EscapeDefaultState::Backslash('0'),
-            '\t' => EscapeDefaultState::Backslash('t'),
-            '\r' => EscapeDefaultState::Backslash('r'),
-            '\n' => EscapeDefaultState::Backslash('n'),
-            '\\' => EscapeDefaultState::Backslash(self),
-            '"' if args.escape_double_quote => EscapeDefaultState::Backslash(self),
-            '\'' if args.escape_single_quote => EscapeDefaultState::Backslash(self),
+        match self {
+            '\0' => EscapeDebug::backslash(b'0'),
+            '\t' => EscapeDebug::backslash(b't'),
+            '\r' => EscapeDebug::backslash(b'r'),
+            '\n' => EscapeDebug::backslash(b'n'),
+            '\\' => EscapeDebug::backslash(b'\\'),
+            '"' if args.escape_double_quote => EscapeDebug::backslash(b'"'),
+            '\'' if args.escape_single_quote => EscapeDebug::backslash(b'\''),
             _ if args.escape_grapheme_extended && self.is_grapheme_extended() => {
-                EscapeDefaultState::Unicode(self.escape_unicode())
+                EscapeDebug::from_unicode(self.escape_unicode())
             }
-            _ if is_printable(self) => EscapeDefaultState::Char(self),
-            _ => EscapeDefaultState::Unicode(self.escape_unicode()),
-        };
-        EscapeDebug(EscapeDefault { state: init_state })
+            _ if is_printable(self) => EscapeDebug::printable(self),
+            _ => EscapeDebug::from_unicode(self.escape_unicode()),
+        }
     }
 
     /// Returns an iterator that yields the literal escape code of a character
@@ -515,15 +501,14 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn escape_default(self) -> EscapeDefault {
-        let init_state = match self {
-            '\t' => EscapeDefaultState::Backslash('t'),
-            '\r' => EscapeDefaultState::Backslash('r'),
-            '\n' => EscapeDefaultState::Backslash('n'),
-            '\\' | '\'' | '"' => EscapeDefaultState::Backslash(self),
-            '\x20'..='\x7e' => EscapeDefaultState::Char(self),
-            _ => EscapeDefaultState::Unicode(self.escape_unicode()),
-        };
-        EscapeDefault { state: init_state }
+        match self {
+            '\t' => EscapeDefault::backslash(b't'),
+            '\r' => EscapeDefault::backslash(b'r'),
+            '\n' => EscapeDefault::backslash(b'n'),
+            '\\' | '\'' | '"' => EscapeDefault::backslash(self as u8),
+            '\x20'..='\x7e' => EscapeDefault::printable(self as u8),
+            _ => EscapeDefault::from_unicode(self.escape_unicode()),
+        }
     }
 
     /// Returns the number of bytes this `char` would need if encoded in UTF-8.

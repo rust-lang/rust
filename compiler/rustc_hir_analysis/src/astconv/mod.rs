@@ -56,6 +56,9 @@ use std::slice;
 #[derive(Debug)]
 pub struct PathSeg(pub DefId, pub usize);
 
+#[derive(Copy, Clone, Debug)]
+pub struct OnlySelfBounds(pub bool);
+
 pub trait AstConv<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx>;
 
@@ -670,6 +673,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         args: &GenericArgs<'_>,
         infer_args: bool,
         self_ty: Ty<'tcx>,
+        only_self_bounds: OnlySelfBounds,
     ) -> GenericArgCountResult {
         let (substs, arg_count) = self.create_substs_for_ast_path(
             trait_ref_span,
@@ -706,6 +710,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 &mut dup_bindings,
                 binding_span.unwrap_or(binding.span),
                 constness,
+                only_self_bounds,
             );
             // Okay to ignore `Err` because of `ErrorGuaranteed` (see above).
         }
@@ -741,6 +746,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         self_ty: Ty<'tcx>,
         bounds: &mut Bounds<'tcx>,
         speculative: bool,
+        only_self_bounds: OnlySelfBounds,
     ) -> GenericArgCountResult {
         let hir_id = trait_ref.hir_ref_id;
         let binding_span = None;
@@ -766,6 +772,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             args,
             infer_args,
             self_ty,
+            only_self_bounds,
         )
     }
 
@@ -777,6 +784,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         args: &GenericArgs<'_>,
         self_ty: Ty<'tcx>,
         bounds: &mut Bounds<'tcx>,
+        only_self_bounds: OnlySelfBounds,
     ) {
         let binding_span = Some(span);
         let constness = ty::BoundConstness::NotConst;
@@ -799,6 +807,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             args,
             infer_args,
             self_ty,
+            only_self_bounds,
         );
     }
 
@@ -947,6 +956,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         ast_bounds: I,
         bounds: &mut Bounds<'tcx>,
         bound_vars: &'tcx ty::List<ty::BoundVariableKind>,
+        only_self_bounds: OnlySelfBounds,
     ) {
         for ast_bound in ast_bounds {
             match ast_bound {
@@ -964,11 +974,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         param_ty,
                         bounds,
                         false,
+                        only_self_bounds,
                     );
                 }
                 &hir::GenericBound::LangItemTrait(lang_item, span, hir_id, args) => {
                     self.instantiate_lang_item_trait_ref(
-                        lang_item, span, hir_id, args, param_ty, bounds,
+                        lang_item,
+                        span,
+                        hir_id,
+                        args,
+                        param_ty,
+                        bounds,
+                        only_self_bounds,
                     );
                 }
                 hir::GenericBound::Outlives(lifetime) => {
@@ -1006,8 +1023,19 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         param_ty: Ty<'tcx>,
         ast_bounds: &[hir::GenericBound<'_>],
+        only_self_bounds: OnlySelfBounds,
     ) -> Bounds<'tcx> {
-        self.compute_bounds_inner(param_ty, ast_bounds)
+        let mut bounds = Bounds::default();
+        self.add_bounds(
+            param_ty,
+            ast_bounds.iter(),
+            &mut bounds,
+            ty::List::empty(),
+            only_self_bounds,
+        );
+        debug!(?bounds);
+
+        bounds
     }
 
     /// Convert the bounds in `ast_bounds` that refer to traits which define an associated type
@@ -1029,17 +1057,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
-        self.compute_bounds_inner(param_ty, &result)
-    }
-
-    fn compute_bounds_inner(
-        &self,
-        param_ty: Ty<'tcx>,
-        ast_bounds: &[hir::GenericBound<'_>],
-    ) -> Bounds<'tcx> {
         let mut bounds = Bounds::default();
-
-        self.add_bounds(param_ty, ast_bounds.iter(), &mut bounds, ty::List::empty());
+        self.add_bounds(
+            param_ty,
+            result.iter(),
+            &mut bounds,
+            ty::List::empty(),
+            OnlySelfBounds(true),
+        );
         debug!(?bounds);
 
         bounds
@@ -1062,6 +1087,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         dup_bindings: &mut FxHashMap<DefId, Span>,
         path_span: Span,
         constness: ty::BoundConstness,
+        only_self_bounds: OnlySelfBounds,
     ) -> Result<(), ErrorGuaranteed> {
         // Given something like `U: SomeTrait<T = X>`, we want to produce a
         // predicate like `<U as SomeTrait>::T = X`. This is somewhat
@@ -1142,9 +1168,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             tcx.sess
                 .struct_span_err(
                     binding.span,
-                    &format!("{} `{}` is private", assoc_item.kind, binding.item_name),
+                    format!("{} `{}` is private", assoc_item.kind, binding.item_name),
                 )
-                .span_label(binding.span, &format!("private {}", assoc_item.kind))
+                .span_label(binding.span, format!("private {}", assoc_item.kind))
                 .emit();
         }
         tcx.check_stability(assoc_item.def_id, Some(hir_ref_id), binding.span, None);
@@ -1316,11 +1342,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         let expected = tcx.def_descr(assoc_item_def_id);
                         let mut err = tcx.sess.struct_span_err(
                             binding.span,
-                            &format!("expected {expected} bound, found {got}"),
+                            format!("expected {expected} bound, found {got}"),
                         );
                         err.span_note(
                             tcx.def_span(assoc_item_def_id),
-                            &format!("{expected} defined here"),
+                            format!("{expected} defined here"),
                         );
 
                         if let hir::def::DefKind::AssocConst = def_kind
@@ -1361,8 +1387,20 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 //
                 // Calling `skip_binder` is okay, because `add_bounds` expects the `param_ty`
                 // parameter to have a skipped binder.
-                let param_ty = tcx.mk_alias(ty::Projection, projection_ty.skip_binder());
-                self.add_bounds(param_ty, ast_bounds.iter(), bounds, projection_ty.bound_vars());
+                //
+                // NOTE: If `only_self_bounds` is true, do NOT expand this associated
+                // type bound into a trait predicate, since we only want to add predicates
+                // for the `Self` type.
+                if !only_self_bounds.0 {
+                    let param_ty = tcx.mk_alias(ty::Projection, projection_ty.skip_binder());
+                    self.add_bounds(
+                        param_ty,
+                        ast_bounds.iter(),
+                        bounds,
+                        projection_ty.bound_vars(),
+                        only_self_bounds,
+                    );
+                }
             }
         }
         Ok(())
@@ -1403,6 +1441,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 dummy_self,
                 &mut bounds,
                 false,
+                // FIXME: This should be `true`, but we don't really handle
+                // associated type bounds or type aliases in objects in a way
+                // that makes this meaningful, I think.
+                OnlySelfBounds(false),
             ) {
                 potential_assoc_types.extend(cur_potential_assoc_types);
             }
@@ -1466,7 +1508,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 "additional use",
             );
             first_trait.label_with_exp_info(&mut err, "first non-auto trait", "first use");
-            err.help(&format!(
+            err.help(format!(
                 "consider creating a new trait with all of these as supertraits and using that \
                  trait here instead: `trait NewTrait: {} {{}}`",
                 regular_traits
@@ -1776,7 +1818,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 ([], []) => {
                     err.span_suggestion_verbose(
                         span,
-                        &format!(
+                        format!(
                             "if there were a type named `Type` that implements a trait named \
                              `Trait` with associated type `{name}`, you could use the \
                              fully-qualified path",
@@ -1788,7 +1830,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 ([], [trait_str]) => {
                     err.span_suggestion_verbose(
                         span,
-                        &format!(
+                        format!(
                             "if there were a type named `Example` that implemented `{trait_str}`, \
                              you could use the fully-qualified path",
                         ),
@@ -1799,7 +1841,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 ([], traits) => {
                     err.span_suggestions(
                         span,
-                        &format!(
+                        format!(
                             "if there were a type named `Example` that implemented one of the \
                              traits with associated type `{name}`, you could use the \
                              fully-qualified path",
@@ -1814,7 +1856,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 ([type_str], []) => {
                     err.span_suggestion_verbose(
                         span,
-                        &format!(
+                        format!(
                             "if there were a trait named `Example` with associated type `{name}` \
                              implemented for `{type_str}`, you could use the fully-qualified path",
                         ),
@@ -1825,7 +1867,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 (types, []) => {
                     err.span_suggestions(
                         span,
-                        &format!(
+                        format!(
                             "if there were a trait named `Example` with associated type `{name}` \
                              implemented for one of the types, you could use the fully-qualified \
                              path",
@@ -1991,7 +2033,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         );
                     }
                 } else {
-                    err.note(&format!(
+                    err.note(format!(
                         "associated type `{}` could derive from `{}`",
                         ty_param_name,
                         bound.print_only_trait_path(),
@@ -1999,7 +2041,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
             }
             if !where_bounds.is_empty() {
-                err.help(&format!(
+                err.help(format!(
                     "consider introducing a new type parameter `T` and adding `where` constraints:\
                      \n    where\n        T: {},\n{}",
                     ty_param_name,
@@ -2067,14 +2109,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 // work for the `enum`, instead of just looking if it takes *any*.
                                 err.span_suggestion_verbose(
                                     args_span,
-                                    &format!("{type_name} doesn't have generic parameters"),
+                                    format!("{type_name} doesn't have generic parameters"),
                                     "",
                                     Applicability::MachineApplicable,
                                 );
                                 return;
                             }
                             let Ok(snippet) = tcx.sess.source_map().span_to_snippet(args_span) else {
-                                err.note(&msg);
+                                err.note(msg);
                                 return;
                             };
                             let (qself_sugg_span, is_self) = if let hir::TyKind::Path(
@@ -2108,12 +2150,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                         kw::SelfUpper == segment.ident.name,
                                     ),
                                     _ => {
-                                        err.note(&msg);
+                                        err.note(msg);
                                         return;
                                     }
                                 }
                             } else {
-                                err.note(&msg);
+                                err.note(msg);
                                 return;
                             };
                             let suggestion = vec![
@@ -2128,7 +2170,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 (args_span, String::new()),
                             ];
                             err.multipart_suggestion_verbose(
-                                &msg,
+                                msg,
                                 suggestion,
                                 Applicability::MaybeIncorrect,
                             );
@@ -2180,7 +2222,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let reported = if variant_resolution.is_some() {
                     // Variant in type position
                     let msg = format!("expected type, found variant `{}`", assoc_ident);
-                    tcx.sess.span_err(span, &msg)
+                    tcx.sess.span_err(span, msg)
                 } else if qself_ty.is_enum() {
                     let mut err = struct_span_err!(
                         tcx.sess,
@@ -2251,7 +2293,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // Assume that if it's not matched, there must be a const defined with the same name
             // but it was used in a type position.
             let msg = format!("found associated const `{assoc_ident}` when type was expected");
-            let guar = tcx.sess.struct_span_err(span, &msg).emit();
+            let guar = tcx.sess.struct_span_err(span, msg).emit();
             return Err(guar);
         };
 
@@ -2271,7 +2313,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             also,
                             tcx.def_kind_descr(kind, def_id)
                         );
-                        lint.span_note(tcx.def_span(def_id), &note_msg);
+                        lint.span_note(tcx.def_span(def_id), note_msg);
                     };
 
                     could_refer_to(DefKind::Variant, variant_def_id, "");
@@ -2468,9 +2510,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let msg = format!("{kind} `{name}` is private");
             let def_span = tcx.def_span(item);
             tcx.sess
-                .struct_span_err_with_code(span, &msg, rustc_errors::error_code!(E0624))
-                .span_label(span, &format!("private {kind}"))
-                .span_label(def_span, &format!("{kind} defined here"))
+                .struct_span_err_with_code(span, msg, rustc_errors::error_code!(E0624))
+                .span_label(span, format!("private {kind}"))
+                .span_label(def_span, format!("{kind} defined here"))
                 .emit();
         }
         tcx.check_stability(item, Some(block), span, None);
@@ -2918,7 +2960,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 self.prohibit_generics(path.segments.iter(), |err| {
                     if let Some(span) = tcx.def_ident_span(def_id) {
                         let name = tcx.item_name(def_id);
-                        err.span_note(span, &format!("type parameter `{name}` defined here"));
+                        err.span_note(span, format!("type parameter `{name}` defined here"));
                     }
                 });
 
@@ -2979,7 +3021,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         let mut span: MultiSpan = vec![t_sp].into();
                         span.push_span_label(
                             i_sp,
-                            &format!("`Self` is on type `{type_name}` in this `impl`"),
+                            format!("`Self` is on type `{type_name}` in this `impl`"),
                         );
                         let mut postfix = "";
                         if generics == 0 {
@@ -2987,11 +3029,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         }
                         span.push_span_label(
                             t_sp,
-                            &format!("`Self` corresponds to this type{postfix}"),
+                            format!("`Self` corresponds to this type{postfix}"),
                         );
-                        err.span_note(span, &msg);
+                        err.span_note(span, msg);
                     } else {
-                        err.note(&msg);
+                        err.note(msg);
                     }
                     for segment in path.segments {
                         if let Some(args) = segment.args && segment.ident.name == kw::SelfUpper {
@@ -3082,7 +3124,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         if let Some(args) = segment.args {
                             err.span_suggestion_verbose(
                                 segment.ident.span.shrink_to_hi().to(args.span_ext),
-                                &format!("primitive type `{name}` doesn't have generic parameters"),
+                                format!("primitive type `{name}` doesn't have generic parameters"),
                                 "",
                                 Applicability::MaybeIncorrect,
                             );
@@ -3373,7 +3415,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             if !infer_replacements.is_empty() {
                 diag.multipart_suggestion(
-                    &format!(
+                    format!(
                     "try replacing `_` with the type{} in the corresponding trait method signature",
                     rustc_errors::pluralize!(infer_replacements.len()),
                 ),

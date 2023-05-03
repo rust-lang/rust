@@ -387,7 +387,7 @@ pub fn intern_const_alloc_recursive<
             Err(error) => {
                 ecx.tcx.sess.delay_span_bug(
                     ecx.tcx.span,
-                    &format!(
+                    format!(
                         "error during interning should later cause validation failure: {}",
                         error
                     ),

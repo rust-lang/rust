@@ -73,6 +73,10 @@ x--expand-yaml-anchors--remove:
   - &base-job
     env: {}
 
+  - &job-linux-4c
+    os: ubuntu-20.04-4core-16gb
+    <<: *base-job
+
   - &job-linux-8c
     os: ubuntu-20.04-8core-32gb
     <<: *base-job
@@ -416,13 +420,13 @@ jobs:
             <<: *job-linux-8c
 
           - name: i686-gnu
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: i686-gnu-nopt
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: mingw-check
-            <<: *job-linux-8c
+            <<: *job-linux-4c
 
           - name: test-various
             <<: *job-linux-8c
@@ -431,7 +435,7 @@ jobs:
             <<: *job-linux-8c
 
           - name: x86_64-gnu
-            <<: *job-linux-8c
+            <<: *job-linux-4c
 
           # This job ensures commits landing on nightly still pass the full
           # test suite on the stable channel. There are some UI tests that
@@ -446,10 +450,10 @@ jobs:
               # could cause failures when `dev: 1` in `stage0.txt`, and running
               # this on stable is useless.
               CI_ONLY_WHEN_CHANNEL: nightly
-            <<: *job-linux-8c
+            <<: *job-linux-4c
 
           - name: x86_64-gnu-aux
-            <<: *job-linux-8c
+            <<: *job-linux-4c
 
           - name: x86_64-gnu-debug
             <<: *job-linux-8c
@@ -478,7 +482,7 @@ jobs:
             <<: *job-linux-8c
 
           - name: x86_64-gnu-nopt
-            <<: *job-linux-8c
+            <<: *job-linux-4c
 
           - name: x86_64-gnu-tools
             env:

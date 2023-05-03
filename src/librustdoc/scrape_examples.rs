@@ -331,7 +331,7 @@ pub(crate) fn run(
     };
 
     if let Err(e) = inner() {
-        tcx.sess.fatal(&e);
+        tcx.sess.fatal(e);
     }
 
     Ok(())
@@ -358,7 +358,7 @@ pub(crate) fn load_call_locations(
     };
 
     inner().map_err(|e: String| {
-        diag.err(&format!("failed to load examples: {}", e));
+        diag.err(format!("failed to load examples: {}", e));
         1
     })
 }

@@ -533,7 +533,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         suggestions.sort_unstable_by_key(|&(span, _, _)| span);
         suggestions.dedup_by_key(|&mut (span, _, _)| span);
         for (span, msg, suggestion) in suggestions {
-            err.span_suggestion_verbose(span, &msg, suggestion, Applicability::MachineApplicable);
+            err.span_suggestion_verbose(span, msg, suggestion, Applicability::MachineApplicable);
         }
     }
 

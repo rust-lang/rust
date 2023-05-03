@@ -828,14 +828,14 @@ fn infer_placeholder_type<'a>(
                 if let Some(ty) = ty.make_suggestable(tcx, false) {
                     err.span_suggestion(
                         span,
-                        &format!("provide a type for the {item}", item = kind),
+                        format!("provide a type for the {item}", item = kind),
                         format!("{colon} {ty}"),
                         Applicability::MachineApplicable,
                     );
                 } else {
                     with_forced_trimmed_paths!(err.span_note(
                         tcx.hir().body(body_id).value.span,
-                        &format!("however, the inferred type `{ty}` cannot be named"),
+                        format!("however, the inferred type `{ty}` cannot be named"),
                     ));
                 }
             }
@@ -856,7 +856,7 @@ fn infer_placeholder_type<'a>(
                 } else {
                     with_forced_trimmed_paths!(diag.span_note(
                         tcx.hir().body(body_id).value.span,
-                        &format!("however, the inferred type `{ty}` cannot be named"),
+                        format!("however, the inferred type `{ty}` cannot be named"),
                     ));
                 }
             }

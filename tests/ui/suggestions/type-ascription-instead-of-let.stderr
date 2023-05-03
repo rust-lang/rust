@@ -1,18 +1,8 @@
-error[E0425]: cannot find value `temp` in this scope
-  --> $DIR/type-ascription-instead-of-let.rs:5:9
+error: expected identifier, found `:`
+  --> $DIR/type-ascription-instead-of-let.rs:5:13
    |
 LL |         temp: i32 = fun(5i32);
-   |         ^^^^
-   |         |
-   |         not found in this scope
-   |         help: maybe you meant to write an assignment here: `let temp`
+   |             ^ expected identifier
 
-error[E0425]: cannot find value `temp` in this scope
-  --> $DIR/type-ascription-instead-of-let.rs:7:9
-   |
-LL |         temp + value + 1
-   |         ^^^^ not found in this scope
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0425`.

@@ -85,7 +85,7 @@ fn resolve_associated_item<'tcx>(
         Err(CodegenObligationError::Ambiguity) => {
             let reported = tcx.sess.delay_span_bug(
                 tcx.def_span(trait_item_id),
-                &format!(
+                format!(
                     "encountered ambiguity selecting `{trait_ref:?}` during codegen, presuming due to \
                      overflow or prior type error",
                 ),

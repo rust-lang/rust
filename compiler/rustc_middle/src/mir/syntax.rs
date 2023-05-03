@@ -651,7 +651,7 @@ pub enum TerminatorKind<'tcx> {
     Assert {
         cond: Operand<'tcx>,
         expected: bool,
-        msg: AssertMessage<'tcx>,
+        msg: Box<AssertMessage<'tcx>>,
         target: BasicBlock,
         unwind: UnwindAction,
     },

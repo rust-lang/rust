@@ -207,7 +207,7 @@ pub(crate) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
         }
         */
         _ => {
-            fx.tcx.sess.warn(&format!(
+            fx.tcx.sess.warn(format!(
                 "unsupported AArch64 llvm intrinsic {}; replacing with trap",
                 intrinsic
             ));

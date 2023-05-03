@@ -418,7 +418,7 @@ impl Resolver<'_, '_> {
                 UNUSED_IMPORTS,
                 unused.use_tree_id,
                 ms,
-                &msg,
+                msg,
                 BuiltinLintDiagnostics::UnusedImports(fix_msg.into(), fixes, test_module_span),
             );
         }

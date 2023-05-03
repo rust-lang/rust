@@ -106,7 +106,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if body.yield_ty().is_some() != universal_regions.yield_ty.is_some() {
             self.tcx().sess.delay_span_bug(
                 body.span,
-                &format!(
+                format!(
                     "Expected body to have yield_ty ({:?}) iff we have a UR yield_ty ({:?})",
                     body.yield_ty(),
                     universal_regions.yield_ty,

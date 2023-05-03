@@ -146,7 +146,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let reported = self
                     .tcx
                     .sess
-                    .delay_span_bug(span, &format!("`{:?}` should be sized but is not?", t));
+                    .delay_span_bug(span, format!("`{:?}` should be sized but is not?", t));
                 return Err(reported);
             }
         })
@@ -270,7 +270,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     fcx,
                 );
                 if self.cast_ty.is_integral() {
-                    err.help(&format!(
+                    err.help(format!(
                         "cast through {} first",
                         match e {
                             CastError::NeedViaPtr => "a raw pointer",
@@ -292,7 +292,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     self.cast_ty,
                     fcx,
                 )
-                .help(&format!(
+                .help(format!(
                     "cast through {} first",
                     match e {
                         CastError::NeedViaInt => "an integer",
@@ -651,13 +651,13 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             );
                         }
                         Err(_) => {
-                            let msg = &format!("did you mean `&{}{}`?", mtstr, tstr);
+                            let msg = format!("did you mean `&{}{}`?", mtstr, tstr);
                             err.span_help(self.cast_span, msg);
                         }
                     }
                 } else {
                     let msg =
-                        &format!("consider using an implicit coercion to `&{mtstr}{tstr}` instead");
+                        format!("consider using an implicit coercion to `&{mtstr}{tstr}` instead");
                     err.span_help(self.span, msg);
                 }
             }
@@ -674,7 +674,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     Err(_) => {
                         err.span_help(
                             self.cast_span,
-                            &format!("you might have meant `Box<{tstr}>`"),
+                            format!("you might have meant `Box<{tstr}>`"),
                         );
                     }
                 }

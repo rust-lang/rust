@@ -136,7 +136,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         self.diagnostic().span_bug(
             p.span,
-            &format!(
+            format!(
                 "lower_qpath: no final extension segment in {}..{}",
                 proj_start,
                 p.segments.len()

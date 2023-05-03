@@ -370,7 +370,7 @@ pub fn from_target_feature(
             let Some(feature_gate) = supported_target_features.get(feature) else {
                 let msg =
                     format!("the feature named `{}` is not valid for this target", feature);
-                let mut err = tcx.sess.struct_span_err(item.span(), &msg);
+                let mut err = tcx.sess.struct_span_err(item.span(), msg);
                 err.span_label(
                     item.span(),
                     format!("`{}` is not valid for this target", feature),
@@ -408,7 +408,7 @@ pub fn from_target_feature(
                     &tcx.sess.parse_sess,
                     feature_gate.unwrap(),
                     item.span(),
-                    &format!("the target feature `{}` is currently unstable", feature),
+                    format!("the target feature `{}` is currently unstable", feature),
                 )
                 .emit();
             }

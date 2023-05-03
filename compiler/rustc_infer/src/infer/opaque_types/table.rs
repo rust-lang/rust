@@ -42,7 +42,7 @@ impl<'tcx> Drop for OpaqueTypeStorage<'tcx> {
     fn drop(&mut self) {
         if !self.opaque_types.is_empty() {
             ty::tls::with(|tcx| {
-                tcx.sess.delay_span_bug(DUMMY_SP, &format!("{:?}", self.opaque_types))
+                tcx.sess.delay_span_bug(DUMMY_SP, format!("{:?}", self.opaque_types))
             });
         }
     }

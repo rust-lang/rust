@@ -73,7 +73,7 @@ pub fn report_object_safety_error<'tcx>(
                 format!("...because {}", violation.error_msg())
             };
             if spans.is_empty() {
-                err.note(&msg);
+                err.note(msg);
             } else {
                 for span in spans {
                     multi_span.push(span);

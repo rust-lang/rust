@@ -90,7 +90,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     {
                         err.span_label(
                             pat.span,
-                            &format!("binding `{ident}` declared here"),
+                            format!("binding `{ident}` declared here"),
                         );
                     }
                 }
@@ -323,7 +323,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
 
             err.span_suggestion_verbose(
                 span.shrink_to_hi(),
-                &msg,
+                msg,
                 format!(" + {suggestable_name}"),
                 Applicability::Unspecified,
             );

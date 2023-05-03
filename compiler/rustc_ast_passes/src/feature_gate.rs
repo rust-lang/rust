@@ -83,7 +83,7 @@ impl<'a> PostExpansionVisitor<'a> {
                     &self,
                     const_extern_fn,
                     span,
-                    &format!("`{}` as a `const fn` ABI is unstable", abi)
+                    format!("`{}` as a `const fn` ABI is unstable", abi)
                 ),
             }
         }
@@ -104,7 +104,7 @@ impl<'a> PostExpansionVisitor<'a> {
                 if self.sess.opts.pretty.map_or(true, |ppm| ppm.needs_hir()) {
                     self.sess.parse_sess.span_diagnostic.delay_span_bug(
                         span,
-                        &format!(
+                        format!(
                             "unrecognized ABI not caught in lowering: {}",
                             symbol_unescaped.as_str()
                         ),

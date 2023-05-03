@@ -139,7 +139,7 @@ pub fn suggest_arbitrary_trait_bound<'tcx>(
     // Suggest a where clause bound for a non-type parameter.
     err.span_suggestion_verbose(
         generics.tail_span_for_predicate_suggestion(),
-        &format!(
+        format!(
             "consider {} `where` clause, but there might be an alternative better way to express \
              this requirement",
             if generics.where_clause_span.is_empty() { "introducing a" } else { "extending the" },
@@ -242,7 +242,7 @@ pub fn suggest_constraining_type_params<'a>(
 
                 err.span_label(
                     param.span,
-                    &format!("this type parameter needs to be `{}`", constraint),
+                    format!("this type parameter needs to be `{}`", constraint),
                 );
                 suggest_removing_unsized_bound(generics, &mut suggestions, param, def_id);
             }

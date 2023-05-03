@@ -1,43 +1,34 @@
+error: expected identifier, found `:`
+  --> $DIR/or-patterns-syntactic-fail.rs:11:19
+   |
+LL |     let _ = |A | B: E| ();
+   |                   ^ expected identifier
+   |
+   = note: type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
+
 error: top-level or-patterns are not allowed in function parameters
-  --> $DIR/or-patterns-syntactic-fail.rs:15:13
+  --> $DIR/or-patterns-syntactic-fail.rs:18:13
    |
 LL |     fn fun1(A | B: E) {}
    |             ^^^^^ help: wrap the pattern in parentheses: `(A | B)`
 
 error: top-level or-patterns are not allowed in function parameters
-  --> $DIR/or-patterns-syntactic-fail.rs:18:13
+  --> $DIR/or-patterns-syntactic-fail.rs:21:13
    |
 LL |     fn fun2(| A | B: E) {}
    |             ^^^^^^^ help: wrap the pattern in parentheses: `(A | B)`
 
 error: top-level or-patterns are not allowed in `let` bindings
-  --> $DIR/or-patterns-syntactic-fail.rs:23:9
+  --> $DIR/or-patterns-syntactic-fail.rs:26:9
    |
 LL |     let A | B: E = A;
    |         ^^^^^ help: wrap the pattern in parentheses: `(A | B)`
 
 error: top-level or-patterns are not allowed in `let` bindings
-  --> $DIR/or-patterns-syntactic-fail.rs:26:9
+  --> $DIR/or-patterns-syntactic-fail.rs:29:9
    |
 LL |     let | A | B: E = A;
    |         ^^^^^^^ help: wrap the pattern in parentheses: `(A | B)`
 
-error[E0369]: no implementation for `E | ()`
-  --> $DIR/or-patterns-syntactic-fail.rs:11:22
-   |
-LL |     let _ = |A | B: E| ();
-   |                  ----^ -- ()
-   |                  |
-   |                  E
-   |
-note: an implementation of `BitOr<()>` might be missing for `E`
-  --> $DIR/or-patterns-syntactic-fail.rs:6:1
-   |
-LL | enum E { A, B }
-   | ^^^^^^ must implement `BitOr<()>`
-note: the trait `BitOr` must be implemented
-  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
-
 error: aborting due to 5 previous errors
 
-For more information about this error, try `rustc --explain E0369`.

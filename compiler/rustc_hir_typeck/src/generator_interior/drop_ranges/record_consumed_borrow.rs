@@ -205,7 +205,7 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
         if ty.has_infer() {
             self.tcx.sess.delay_span_bug(
                 self.tcx.hir().span(assignee_place.hir_id),
-                &format!("inference variables in {ty}"),
+                format!("inference variables in {ty}"),
             );
         } else if ty.needs_drop(self.tcx, self.param_env) {
             self.places

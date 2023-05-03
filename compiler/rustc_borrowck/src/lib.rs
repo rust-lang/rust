@@ -738,7 +738,7 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
             TerminatorKind::Assert { cond, expected: _, msg, target: _, unwind: _ } => {
                 self.consume_operand(loc, (cond, span), flow_state);
                 use rustc_middle::mir::AssertKind;
-                if let AssertKind::BoundsCheck { len, index } = msg {
+                if let AssertKind::BoundsCheck { len, index } = &**msg {
                     self.consume_operand(loc, (len, span), flow_state);
                     self.consume_operand(loc, (index, span), flow_state);
                 }
@@ -2022,7 +2022,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     // been emitted (#52262).
                     self.infcx.tcx.sess.delay_span_bug(
                         span,
-                        &format!(
+                        format!(
                             "Accessing `{:?}` with the kind `{:?}` shouldn't be possible",
                             place, kind,
                         ),
@@ -2383,7 +2383,7 @@ mod error {
             }
             for (_, (mut diag, count)) in std::mem::take(&mut self.errors.buffered_mut_errors) {
                 if count > 10 {
-                    diag.note(&format!("...and {} other attempted mutable borrows", count - 10));
+                    diag.note(format!("...and {} other attempted mutable borrows", count - 10));
                 }
                 diag.buffer(&mut self.errors.buffered);
             }

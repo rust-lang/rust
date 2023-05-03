@@ -193,10 +193,13 @@ trait TRI3<T: Iterator<Item: 'static, Item: 'static>> {}
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
 trait TRS1: Iterator<Item: Copy, Item: Send> {}
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+//~| ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
 trait TRS2: Iterator<Item: Copy, Item: Copy> {}
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+//~| ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
 trait TRS3: Iterator<Item: 'static, Item: 'static> {}
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+//~| ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
 trait TRW1<T>
 where
     T: Iterator<Item: Copy, Item: Send>,

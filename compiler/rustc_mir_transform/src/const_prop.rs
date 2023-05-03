@@ -21,9 +21,9 @@ use rustc_target::spec::abi::Abi as CallAbi;
 
 use crate::MirPass;
 use rustc_const_eval::interpret::{
-    self, compile_time_machine, AllocId, ConstAllocation, ConstValue, CtfeValidationMode, Frame,
-    ImmTy, Immediate, InterpCx, InterpResult, LocalValue, MemoryKind, OpTy, PlaceTy, Pointer,
-    Scalar, StackPopCleanup,
+    self, compile_time_machine, AllocId, ConstAllocation, ConstValue, Frame, ImmTy, Immediate,
+    InterpCx, InterpResult, LocalValue, MemoryKind, OpTy, PlaceTy, Pointer, Scalar,
+    StackPopCleanup,
 };
 
 /// The maximum number of bytes that we'll allocate space for a local or the return value.
@@ -464,16 +464,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
                 return None;
             }
-            // Do not try creating references, nor any types with potentially-complex
-            // invariants. This avoids an issue where checking validity would do a
-            // bunch of work generating a nice message about the invariant violation,
-            // only to not show it to anyone (since this isn't the lint).
-            Rvalue::Cast(CastKind::Transmute, op, dst_ty) if !dst_ty.is_primitive() => {
-                trace!("skipping Transmute of {:?} to {:?}", op, dst_ty);
-
-                return None;
-            }
-
             // There's no other checking to do at this time.
             Rvalue::Aggregate(..)
             | Rvalue::Use(..)
@@ -591,18 +581,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
 
         trace!("attempting to replace {:?} with {:?}", rval, value);
-        if let Err(e) = self.ecx.const_validate_operand(
-            value,
-            vec![],
-            // FIXME: is ref tracking too expensive?
-            // FIXME: what is the point of ref tracking if we do not even check the tracked refs?
-            &mut interpret::RefTracking::empty(),
-            CtfeValidationMode::Regular,
-        ) {
-            trace!("validation error, attempt failed: {:?}", e);
-            return;
-        }
-
         // FIXME> figure out what to do when read_immediate_raw fails
         let imm = self.ecx.read_immediate_raw(value).ok();
 

@@ -189,7 +189,7 @@ fn emit_malformed_attribute(
         sess.buffer_lint(&ILL_FORMED_ATTRIBUTE_INPUT, span, ast::CRATE_NODE_ID, &msg);
     } else {
         sess.span_diagnostic
-            .struct_span_err(span, &error_msg)
+            .struct_span_err(span, error_msg)
             .span_suggestions(
                 span,
                 if suggestions.len() == 1 {

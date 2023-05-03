@@ -21,7 +21,6 @@ pub fn placeholder(
                 delim: ast::MacDelimiter::Parenthesis,
                 tokens: ast::tokenstream::TokenStream::new(Vec::new()),
             }),
-            prior_type_ascription: None,
         })
     }
 

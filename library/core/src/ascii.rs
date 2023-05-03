@@ -9,10 +9,10 @@
 
 #![stable(feature = "core_ascii", since = "1.26.0")]
 
+use crate::escape;
 use crate::fmt;
 use crate::iter::FusedIterator;
-use crate::ops::Range;
-use crate::str::from_utf8_unchecked;
+use crate::num::NonZeroUsize;
 
 /// An iterator over the escaped version of a byte.
 ///
@@ -21,10 +21,7 @@ use crate::str::from_utf8_unchecked;
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
-pub struct EscapeDefault {
-    range: Range<u8>,
-    data: [u8; 4],
-}
+pub struct EscapeDefault(escape::EscapeIterInner<4>);
 
 /// Returns an iterator that produces an escaped version of a `u8`.
 ///
@@ -90,21 +87,9 @@ pub struct EscapeDefault {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn escape_default(c: u8) -> EscapeDefault {
-    let (data, len) = match c {
-        b'\t' => ([b'\\', b't', 0, 0], 2),
-        b'\r' => ([b'\\', b'r', 0, 0], 2),
-        b'\n' => ([b'\\', b'n', 0, 0], 2),
-        b'\\' => ([b'\\', b'\\', 0, 0], 2),
-        b'\'' => ([b'\\', b'\'', 0, 0], 2),
-        b'"' => ([b'\\', b'"', 0, 0], 2),
-        b'\x20'..=b'\x7e' => ([c, 0, 0, 0], 1),
-        _ => {
-            let hex_digits: &[u8; 16] = b"0123456789abcdef";
-            ([b'\\', b'x', hex_digits[(c >> 4) as usize], hex_digits[(c & 0xf) as usize]], 4)
-        }
-    };
-
-    return EscapeDefault { range: 0..len, data };
+    let mut data = [0; 4];
+    let range = escape::escape_ascii_into(&mut data, c);
+    EscapeDefault(escape::EscapeIterInner::new(data, range))
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -113,33 +98,59 @@ impl Iterator for EscapeDefault {
 
     #[inline]
     fn next(&mut self) -> Option<u8> {
-        self.range.next().map(|i| self.data[i as usize])
+        self.0.next()
     }
+
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.range.size_hint()
+        let n = self.0.len();
+        (n, Some(n))
     }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.0.len()
+    }
+
+    #[inline]
     fn last(mut self) -> Option<u8> {
-        self.next_back()
+        self.0.next_back()
+    }
+
+    #[inline]
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+        self.0.advance_by(n)
     }
 }
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl DoubleEndedIterator for EscapeDefault {
+    #[inline]
     fn next_back(&mut self) -> Option<u8> {
-        self.range.next_back().map(|i| self.data[i as usize])
+        self.0.next_back()
+    }
+
+    #[inline]
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+        self.0.advance_back_by(n)
     }
 }
+
 #[stable(feature = "rust1", since = "1.0.0")]
-impl ExactSizeIterator for EscapeDefault {}
+impl ExactSizeIterator for EscapeDefault {
+    #[inline]
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
 #[stable(feature = "fused", since = "1.26.0")]
 impl FusedIterator for EscapeDefault {}
 
 #[stable(feature = "ascii_escape_display", since = "1.39.0")]
 impl fmt::Display for EscapeDefault {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // SAFETY: ok because `escape_default` created only valid utf-8 data
-        f.write_str(unsafe {
-            from_utf8_unchecked(&self.data[(self.range.start as usize)..(self.range.end as usize)])
-        })
+        f.write_str(self.0.as_str())
     }
 }
 

@@ -543,13 +543,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // We are pointing at the binding's type or initializer value, but it's pattern
                     // is in a different line, so we point at both.
                     err.span_label(secondary_span, "expected due to the type of this binding");
-                    err.span_label(primary_span, &format!("expected due to this{post_message}"));
+                    err.span_label(primary_span, format!("expected due to this{post_message}"));
                 } else if post_message == "" {
                     // We are pointing at either the assignment lhs or the binding def pattern.
                     err.span_label(primary_span, "expected due to the type of this binding");
                 } else {
                     // We are pointing at the binding's type or initializer value.
-                    err.span_label(primary_span, &format!("expected due to this{post_message}"));
+                    err.span_label(primary_span, format!("expected due to this{post_message}"));
                 }
 
                 if !lhs.is_syntactic_place_expr() {
@@ -566,7 +566,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ) if rhs.hir_id == expr.hir_id
                 && self.typeck_results.borrow().expr_ty_adjusted_opt(lhs) == Some(expected) =>
             {
-                err.span_label(lhs.span, &format!("expected because this is `{expected}`"));
+                err.span_label(lhs.span, format!("expected because this is `{expected}`"));
             }
             _ => {}
         }
@@ -704,19 +704,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         });
         err.span_note(
             path_span,
-            &format!(
+            format!(
                 "the `{}` call is resolved to the method in `{container}`, shadowing {tail}",
                 path.ident,
             ),
         );
         if suggestions.len() > other_methods_in_scope.len() {
-            err.note(&format!(
+            err.note(format!(
                 "additionally, there are {} other available methods that aren't in scope",
                 suggestions.len() - other_methods_in_scope.len()
             ));
         }
         err.multipart_suggestions(
-            &format!(
+            format!(
                 "you might have meant to call {}; you can use the fully-qualified path to call {} \
                  explicitly",
                 if suggestions.len() == 1 {
@@ -941,7 +941,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 [(variant, ctor_kind, field_name, note)] => {
                     // Just a single matching variant.
                     err.multipart_suggestion_verbose(
-                        &format!(
+                        format!(
                             "try wrapping the expression in `{variant}`{note}",
                             note = note.as_deref().unwrap_or("")
                         ),
@@ -953,7 +953,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => {
                     // More than one matching variant.
                     err.multipart_suggestions(
-                        &format!(
+                        format!(
                             "try wrapping the expression in a variant of `{}`",
                             self.tcx.def_path_str(expected_adt.did())
                         ),
@@ -1726,7 +1726,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ];
                     (msg, suggestion)
                 } else {
-                    let msg = format!("{msg} and panic if the converted value doesn't fit");
+                    let msg =
+                        format!("{} and panic if the converted value doesn't fit", msg.clone());
                     let mut suggestion = sugg.clone();
                     suggestion.push((
                         expr.span.shrink_to_hi(),
@@ -1734,11 +1735,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ));
                     (msg, suggestion)
                 };
-                err.multipart_suggestion_verbose(
-                    &msg,
-                    suggestion,
-                    Applicability::MachineApplicable,
-                );
+                err.multipart_suggestion_verbose(msg, suggestion, Applicability::MachineApplicable);
             };
 
         let suggest_to_change_suffix_or_into =
@@ -1755,13 +1752,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let always_fallible = found_to_exp_is_fallible
                     && (exp_to_found_is_fallible || expected_ty_expr.is_none());
                 let msg = if literal_is_ty_suffixed(expr) {
-                    &lit_msg
+                    lit_msg.clone()
                 } else if always_fallible && (is_negative_int(expr) && is_uint(expected_ty)) {
                     // We now know that converting either the lhs or rhs is fallible. Before we
                     // suggest a fallible conversion, check if the value can never fit in the
                     // expected type.
                     let msg = format!("`{src}` cannot fit into type `{expected_ty}`");
-                    err.note(&msg);
+                    err.note(msg);
                     return;
                 } else if in_const_context {
                     // Do not recommend `into` or `try_into` in const contexts.
@@ -1769,7 +1766,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else if found_to_exp_is_fallible {
                     return suggest_fallible_into_or_lhs_from(err, exp_to_found_is_fallible);
                 } else {
-                    &msg
+                    msg.clone()
                 };
                 let suggestion = if literal_is_ty_suffixed(expr) {
                     suffix_suggestion.clone()
@@ -1831,14 +1828,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     suggest_to_change_suffix_or_into(err, false, true);
                 } else if literal_is_ty_suffixed(expr) {
                     err.multipart_suggestion_verbose(
-                        &lit_msg,
+                        lit_msg,
                         suffix_suggestion,
                         Applicability::MachineApplicable,
                     );
                 } else if can_cast {
                     // Missing try_into implementation for `f64` to `f32`
                     err.multipart_suggestion_verbose(
-                        &format!("{cast_msg}, producing the closest possible value"),
+                        format!("{cast_msg}, producing the closest possible value"),
                         cast_suggestion,
                         Applicability::MaybeIncorrect, // lossy conversion
                     );
@@ -1848,14 +1845,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (&ty::Uint(_) | &ty::Int(_), &ty::Float(_)) => {
                 if literal_is_ty_suffixed(expr) {
                     err.multipart_suggestion_verbose(
-                        &lit_msg,
+                        lit_msg,
                         suffix_suggestion,
                         Applicability::MachineApplicable,
                     );
                 } else if can_cast {
                     // Missing try_into implementation for `{float}` to `{integer}`
                     err.multipart_suggestion_verbose(
-                        &format!("{msg}, rounding the float towards zero"),
+                        format!("{msg}, rounding the float towards zero"),
                         cast_suggestion,
                         Applicability::MaybeIncorrect, // lossy conversion
                     );
@@ -1866,7 +1863,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // if `found` is `None` (meaning found is `usize`), don't suggest `.into()`
                 if exp.bit_width() > found.bit_width().unwrap_or(256) {
                     err.multipart_suggestion_verbose(
-                        &format!(
+                        format!(
                             "{msg}, producing the floating point representation of the integer",
                         ),
                         into_suggestion,
@@ -1874,14 +1871,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                 } else if literal_is_ty_suffixed(expr) {
                     err.multipart_suggestion_verbose(
-                        &lit_msg,
+                        lit_msg,
                         suffix_suggestion,
                         Applicability::MachineApplicable,
                     );
                 } else {
                     // Missing try_into implementation for `{integer}` to `{float}`
                     err.multipart_suggestion_verbose(
-                        &format!(
+                        format!(
                             "{cast_msg}, producing the floating point representation of the integer, \
                                  rounded if necessary",
                         ),
@@ -1895,23 +1892,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // if `found` is `None` (meaning found is `isize`), don't suggest `.into()`
                 if exp.bit_width() > found.bit_width().unwrap_or(256) {
                     err.multipart_suggestion_verbose(
-                        &format!(
+                        format!(
                             "{}, producing the floating point representation of the integer",
-                            &msg,
+                            msg.clone(),
                         ),
                         into_suggestion,
                         Applicability::MachineApplicable,
                     );
                 } else if literal_is_ty_suffixed(expr) {
                     err.multipart_suggestion_verbose(
-                        &lit_msg,
+                        lit_msg,
                         suffix_suggestion,
                         Applicability::MachineApplicable,
                     );
                 } else {
                     // Missing try_into implementation for `{integer}` to `{float}`
                     err.multipart_suggestion_verbose(
-                        &format!(
+                        format!(
                             "{}, producing the floating point representation of the integer, \
                                 rounded if necessary",
                             &msg,
@@ -1928,7 +1925,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &ty::Char,
             ) => {
                 err.multipart_suggestion_verbose(
-                    &format!("{cast_msg}, since a `char` always occupies 4 bytes"),
+                    format!("{cast_msg}, since a `char` always occupies 4 bytes"),
                     cast_suggestion,
                     Applicability::MachineApplicable,
                 );

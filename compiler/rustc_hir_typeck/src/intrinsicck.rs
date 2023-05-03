@@ -72,8 +72,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let from = unpack_option_like(tcx, from);
             if let (&ty::FnDef(..), SizeSkeleton::Known(size_to)) = (from.kind(), sk_to) && size_to == Pointer(dl.instruction_address_space).size(&tcx) {
                 struct_span_err!(tcx.sess, span, E0591, "can't transmute zero-sized type")
-                    .note(&format!("source type: {from}"))
-                    .note(&format!("target type: {to}"))
+                    .note(format!("source type: {from}"))
+                    .note(format!("target type: {to}"))
                     .help("cast with `as` to a pointer instead")
                     .emit();
                 return;
@@ -109,10 +109,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         or dependently-sized types"
         );
         if from == to {
-            err.note(&format!("`{from}` does not have a fixed size"));
+            err.note(format!("`{from}` does not have a fixed size"));
         } else {
-            err.note(&format!("source type: `{}` ({})", from, skeleton_string(from, sk_from)))
-                .note(&format!("target type: `{}` ({})", to, skeleton_string(to, sk_to)));
+            err.note(format!("source type: `{}` ({})", from, skeleton_string(from, sk_from)))
+                .note(format!("target type: `{}` ({})", to, skeleton_string(to, sk_to)));
             let mut should_delay_as_bug = false;
             if let Err(LayoutError::Unknown(bad_from)) = sk_from && bad_from.references_error() {
                 should_delay_as_bug = true;

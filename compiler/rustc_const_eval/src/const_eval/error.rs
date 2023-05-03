@@ -104,13 +104,13 @@ impl<'tcx> ConstEvalErr<'tcx> {
         // Add spans for the stacktrace. Don't print a single-line backtrace though.
         if self.stacktrace.len() > 1 {
             // Helper closure to print duplicated lines.
-            let mut flush_last_line = |last_frame, times| {
+            let mut flush_last_line = |last_frame: Option<(String, _)>, times| {
                 if let Some((line, span)) = last_frame {
-                    err.span_note(span, &line);
+                    err.span_note(span, line.clone());
                     // Don't print [... additional calls ...] if the number of lines is small
                     if times < 3 {
                         for _ in 0..times {
-                            err.span_note(span, &line);
+                            err.span_note(span, line.clone());
                         }
                     } else {
                         err.span_note(
