@@ -305,6 +305,7 @@ types! {
     /// This type is representing a 128-bit SIMD register which internally is consisted of
     /// eight packed `u16` instances. Its purpose is for bf16 related intrinsic
     /// implementations.
+    #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
     pub struct __m128bh(u16, u16, u16, u16, u16, u16, u16, u16);
 
     /// 256-bit wide set of 16 `u16` types, x86-specific
@@ -313,6 +314,7 @@ types! {
     /// representing a 256-bit SIMD register which internally is consisted of
     /// 16 packed `u16` instances. Its purpose is for bf16 related intrinsic
     /// implementations.
+    #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
     pub struct __m256bh(
         u16, u16, u16, u16, u16, u16, u16, u16,
         u16, u16, u16, u16, u16, u16, u16, u16
@@ -324,6 +326,7 @@ types! {
     /// representing a 512-bit SIMD register which internally is consisted of
     /// 32 packed `u16` instances. Its purpose is for bf16 related intrinsic
     /// implementations.
+    #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
     pub struct __m512bh(
         u16, u16, u16, u16, u16, u16, u16, u16,
         u16, u16, u16, u16, u16, u16, u16, u16,
@@ -334,34 +337,42 @@ types! {
 
 /// The `__mmask64` type used in AVX-512 intrinsics, a 64-bit integer
 #[allow(non_camel_case_types)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub type __mmask64 = u64;
 
 /// The `__mmask32` type used in AVX-512 intrinsics, a 32-bit integer
 #[allow(non_camel_case_types)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub type __mmask32 = u32;
 
 /// The `__mmask16` type used in AVX-512 intrinsics, a 16-bit integer
 #[allow(non_camel_case_types)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub type __mmask16 = u16;
 
 /// The `__mmask8` type used in AVX-512 intrinsics, a 8-bit integer
 #[allow(non_camel_case_types)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub type __mmask8 = u8;
 
 /// The `_MM_CMPINT_ENUM` type used to specify comparison operations in AVX-512 intrinsics.
 #[allow(non_camel_case_types)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub type _MM_CMPINT_ENUM = i32;
 
 /// The `MM_MANTISSA_NORM_ENUM` type used to specify mantissa normalized operations in AVX-512 intrinsics.
 #[allow(non_camel_case_types)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub type _MM_MANTISSA_NORM_ENUM = i32;
 
 /// The `MM_MANTISSA_SIGN_ENUM` type used to specify mantissa signed operations in AVX-512 intrinsics.
 #[allow(non_camel_case_types)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub type _MM_MANTISSA_SIGN_ENUM = i32;
 
 /// The `MM_PERM_ENUM` type used to specify shuffle operations in AVX-512 intrinsics.
 #[allow(non_camel_case_types)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub type _MM_PERM_ENUM = i32;
 
 #[cfg(test)]

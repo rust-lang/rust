@@ -11,6 +11,7 @@ use stdarch_test::assert_instr;
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_broadcastmw_epi32&expand=553)
 #[inline]
 #[target_feature(enable = "avx512cd")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpbroadcast))] // should be vpbroadcastmw2d
 pub unsafe fn _mm512_broadcastmw_epi32(k: __mmask16) -> __m512i {
     _mm512_set1_epi32(k as i32)
@@ -21,6 +22,7 @@ pub unsafe fn _mm512_broadcastmw_epi32(k: __mmask16) -> __m512i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_broadcastmw_epi32&expand=552)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpbroadcast))] // should be vpbroadcastmw2d
 pub unsafe fn _mm256_broadcastmw_epi32(k: __mmask16) -> __m256i {
     _mm256_set1_epi32(k as i32)
@@ -31,6 +33,7 @@ pub unsafe fn _mm256_broadcastmw_epi32(k: __mmask16) -> __m256i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_broadcastmw_epi32&expand=551)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpbroadcast))] // should be vpbroadcastmw2d
 pub unsafe fn _mm_broadcastmw_epi32(k: __mmask16) -> __m128i {
     _mm_set1_epi32(k as i32)
@@ -41,6 +44,7 @@ pub unsafe fn _mm_broadcastmw_epi32(k: __mmask16) -> __m128i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_broadcastmb_epi64&expand=550)
 #[inline]
 #[target_feature(enable = "avx512cd")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpbroadcast))] // should be vpbroadcastmb2q
 pub unsafe fn _mm512_broadcastmb_epi64(k: __mmask8) -> __m512i {
     _mm512_set1_epi64(k as i64)
@@ -51,6 +55,7 @@ pub unsafe fn _mm512_broadcastmb_epi64(k: __mmask8) -> __m512i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_broadcastmb_epi64&expand=549)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpbroadcast))] // should be vpbroadcastmb2q
 pub unsafe fn _mm256_broadcastmb_epi64(k: __mmask8) -> __m256i {
     _mm256_set1_epi64x(k as i64)
@@ -61,6 +66,7 @@ pub unsafe fn _mm256_broadcastmb_epi64(k: __mmask8) -> __m256i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_broadcastmb_epi64&expand=548)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpbroadcast))] // should be vpbroadcastmb2q
 pub unsafe fn _mm_broadcastmb_epi64(k: __mmask8) -> __m128i {
     _mm_set1_epi64x(k as i64)
@@ -71,6 +77,7 @@ pub unsafe fn _mm_broadcastmb_epi64(k: __mmask8) -> __m128i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_conflict_epi32&expand=1248)
 #[inline]
 #[target_feature(enable = "avx512cd")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpconflictd))]
 pub unsafe fn _mm512_conflict_epi32(a: __m512i) -> __m512i {
     transmute(vpconflictd(a.as_i32x16()))
@@ -81,6 +88,7 @@ pub unsafe fn _mm512_conflict_epi32(a: __m512i) -> __m512i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_conflict_epi32&expand=1249)
 #[inline]
 #[target_feature(enable = "avx512cd")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpconflictd))]
 pub unsafe fn _mm512_mask_conflict_epi32(src: __m512i, k: __mmask16, a: __m512i) -> __m512i {
     let conflict = _mm512_conflict_epi32(a).as_i32x16();
@@ -92,6 +100,7 @@ pub unsafe fn _mm512_mask_conflict_epi32(src: __m512i, k: __mmask16, a: __m512i)
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_conflict_epi32&expand=1250)
 #[inline]
 #[target_feature(enable = "avx512cd")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpconflictd))]
 pub unsafe fn _mm512_maskz_conflict_epi32(k: __mmask16, a: __m512i) -> __m512i {
     let conflict = _mm512_conflict_epi32(a).as_i32x16();
@@ -104,6 +113,7 @@ pub unsafe fn _mm512_maskz_conflict_epi32(k: __mmask16, a: __m512i) -> __m512i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_conflict_epi32&expand=1245)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpconflictd))]
 pub unsafe fn _mm256_conflict_epi32(a: __m256i) -> __m256i {
     transmute(vpconflictd256(a.as_i32x8()))
@@ -114,6 +124,7 @@ pub unsafe fn _mm256_conflict_epi32(a: __m256i) -> __m256i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_conflict_epi32&expand=1246)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpconflictd))]
 pub unsafe fn _mm256_mask_conflict_epi32(src: __m256i, k: __mmask8, a: __m256i) -> __m256i {
     let conflict = _mm256_conflict_epi32(a).as_i32x8();
@@ -125,6 +136,7 @@ pub unsafe fn _mm256_mask_conflict_epi32(src: __m256i, k: __mmask8, a: __m256i) 
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_conflict_epi32&expand=1247)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpconflictd))]
 pub unsafe fn _mm256_maskz_conflict_epi32(k: __mmask8, a: __m256i) -> __m256i {
     let conflict = _mm256_conflict_epi32(a).as_i32x8();
@@ -137,6 +149,7 @@ pub unsafe fn _mm256_maskz_conflict_epi32(k: __mmask8, a: __m256i) -> __m256i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_conflict_epi32&expand=1242)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpconflictd))]
 pub unsafe fn _mm_conflict_epi32(a: __m128i) -> __m128i {
     transmute(vpconflictd128(a.as_i32x4()))
@@ -147,6 +160,7 @@ pub unsafe fn _mm_conflict_epi32(a: __m128i) -> __m128i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_conflict_epi32&expand=1243)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpconflictd))]
 pub unsafe fn _mm_mask_conflict_epi32(src: __m128i, k: __mmask8, a: __m128i) -> __m128i {
     let conflict = _mm_conflict_epi32(a).as_i32x4();
@@ -158,6 +172,7 @@ pub unsafe fn _mm_mask_conflict_epi32(src: __m128i, k: __mmask8, a: __m128i) -> 
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_conflict_epi32&expand=1244)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpconflictd))]
 pub unsafe fn _mm_maskz_conflict_epi32(k: __mmask8, a: __m128i) -> __m128i {
     let conflict = _mm_conflict_epi32(a).as_i32x4();
@@ -170,6 +185,7 @@ pub unsafe fn _mm_maskz_conflict_epi32(k: __mmask8, a: __m128i) -> __m128i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_conflict_epi64&expand=1257)
 #[inline]
 #[target_feature(enable = "avx512cd")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpconflictq))]
 pub unsafe fn _mm512_conflict_epi64(a: __m512i) -> __m512i {
     transmute(vpconflictq(a.as_i64x8()))
@@ -180,6 +196,7 @@ pub unsafe fn _mm512_conflict_epi64(a: __m512i) -> __m512i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_conflict_epi64&expand=1258)
 #[inline]
 #[target_feature(enable = "avx512cd")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpconflictq))]
 pub unsafe fn _mm512_mask_conflict_epi64(src: __m512i, k: __mmask8, a: __m512i) -> __m512i {
     let conflict = _mm512_conflict_epi64(a).as_i64x8();
@@ -191,6 +208,7 @@ pub unsafe fn _mm512_mask_conflict_epi64(src: __m512i, k: __mmask8, a: __m512i) 
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_conflict_epi64&expand=1259)
 #[inline]
 #[target_feature(enable = "avx512cd")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpconflictq))]
 pub unsafe fn _mm512_maskz_conflict_epi64(k: __mmask8, a: __m512i) -> __m512i {
     let conflict = _mm512_conflict_epi64(a).as_i64x8();
@@ -203,6 +221,7 @@ pub unsafe fn _mm512_maskz_conflict_epi64(k: __mmask8, a: __m512i) -> __m512i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_conflict_epi64&expand=1254)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpconflictq))]
 pub unsafe fn _mm256_conflict_epi64(a: __m256i) -> __m256i {
     transmute(vpconflictq256(a.as_i64x4()))
@@ -213,6 +232,7 @@ pub unsafe fn _mm256_conflict_epi64(a: __m256i) -> __m256i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_conflict_epi64&expand=1255)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpconflictq))]
 pub unsafe fn _mm256_mask_conflict_epi64(src: __m256i, k: __mmask8, a: __m256i) -> __m256i {
     let conflict = _mm256_conflict_epi64(a).as_i64x4();
@@ -224,6 +244,7 @@ pub unsafe fn _mm256_mask_conflict_epi64(src: __m256i, k: __mmask8, a: __m256i) 
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_conflict_epi64&expand=1256)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpconflictq))]
 pub unsafe fn _mm256_maskz_conflict_epi64(k: __mmask8, a: __m256i) -> __m256i {
     let conflict = _mm256_conflict_epi64(a).as_i64x4();
@@ -236,6 +257,7 @@ pub unsafe fn _mm256_maskz_conflict_epi64(k: __mmask8, a: __m256i) -> __m256i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_conflict_epi64&expand=1251)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpconflictq))]
 pub unsafe fn _mm_conflict_epi64(a: __m128i) -> __m128i {
     transmute(vpconflictq128(a.as_i64x2()))
@@ -246,6 +268,7 @@ pub unsafe fn _mm_conflict_epi64(a: __m128i) -> __m128i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_conflict_epi64&expand=1252)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpconflictq))]
 pub unsafe fn _mm_mask_conflict_epi64(src: __m128i, k: __mmask8, a: __m128i) -> __m128i {
     let conflict = _mm_conflict_epi64(a).as_i64x2();
@@ -257,6 +280,7 @@ pub unsafe fn _mm_mask_conflict_epi64(src: __m128i, k: __mmask8, a: __m128i) -> 
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_conflict_epi64&expand=1253)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpconflictq))]
 pub unsafe fn _mm_maskz_conflict_epi64(k: __mmask8, a: __m128i) -> __m128i {
     let conflict = _mm_conflict_epi64(a).as_i64x2();
@@ -269,6 +293,7 @@ pub unsafe fn _mm_maskz_conflict_epi64(k: __mmask8, a: __m128i) -> __m128i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_lzcnt_epi32&expand=3491)
 #[inline]
 #[target_feature(enable = "avx512cd")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
 pub unsafe fn _mm512_lzcnt_epi32(a: __m512i) -> __m512i {
     transmute(vplzcntd(a.as_i32x16(), false))
@@ -279,6 +304,7 @@ pub unsafe fn _mm512_lzcnt_epi32(a: __m512i) -> __m512i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_lzcnt_epi32&expand=3492)
 #[inline]
 #[target_feature(enable = "avx512cd")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
 pub unsafe fn _mm512_mask_lzcnt_epi32(src: __m512i, k: __mmask16, a: __m512i) -> __m512i {
     let zerocount = _mm512_lzcnt_epi32(a).as_i32x16();
@@ -290,6 +316,7 @@ pub unsafe fn _mm512_mask_lzcnt_epi32(src: __m512i, k: __mmask16, a: __m512i) ->
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_lzcnt_epi32&expand=3493)
 #[inline]
 #[target_feature(enable = "avx512cd")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
 pub unsafe fn _mm512_maskz_lzcnt_epi32(k: __mmask16, a: __m512i) -> __m512i {
     let zerocount = _mm512_lzcnt_epi32(a).as_i32x16();
@@ -302,6 +329,7 @@ pub unsafe fn _mm512_maskz_lzcnt_epi32(k: __mmask16, a: __m512i) -> __m512i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_lzcnt_epi32&expand=3488)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
 pub unsafe fn _mm256_lzcnt_epi32(a: __m256i) -> __m256i {
     transmute(vplzcntd256(a.as_i32x8(), false))
@@ -312,6 +340,7 @@ pub unsafe fn _mm256_lzcnt_epi32(a: __m256i) -> __m256i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_lzcnt_epi32&expand=3489)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
 pub unsafe fn _mm256_mask_lzcnt_epi32(src: __m256i, k: __mmask8, a: __m256i) -> __m256i {
     let zerocount = _mm256_lzcnt_epi32(a).as_i32x8();
@@ -323,6 +352,7 @@ pub unsafe fn _mm256_mask_lzcnt_epi32(src: __m256i, k: __mmask8, a: __m256i) -> 
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_lzcnt_epi32&expand=3490)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
 pub unsafe fn _mm256_maskz_lzcnt_epi32(k: __mmask8, a: __m256i) -> __m256i {
     let zerocount = _mm256_lzcnt_epi32(a).as_i32x8();
@@ -335,6 +365,7 @@ pub unsafe fn _mm256_maskz_lzcnt_epi32(k: __mmask8, a: __m256i) -> __m256i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_lzcnt_epi32&expand=3485)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
 pub unsafe fn _mm_lzcnt_epi32(a: __m128i) -> __m128i {
     transmute(vplzcntd128(a.as_i32x4(), false))
@@ -345,6 +376,7 @@ pub unsafe fn _mm_lzcnt_epi32(a: __m128i) -> __m128i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_lzcnt_epi32&expand=3486)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
 pub unsafe fn _mm_mask_lzcnt_epi32(src: __m128i, k: __mmask8, a: __m128i) -> __m128i {
     let zerocount = _mm_lzcnt_epi32(a).as_i32x4();
@@ -356,6 +388,7 @@ pub unsafe fn _mm_mask_lzcnt_epi32(src: __m128i, k: __mmask8, a: __m128i) -> __m
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_lzcnt_epi32&expand=3487)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
 pub unsafe fn _mm_maskz_lzcnt_epi32(k: __mmask8, a: __m128i) -> __m128i {
     let zerocount = _mm_lzcnt_epi32(a).as_i32x4();
@@ -368,6 +401,7 @@ pub unsafe fn _mm_maskz_lzcnt_epi32(k: __mmask8, a: __m128i) -> __m128i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_lzcnt_epi64&expand=3500)
 #[inline]
 #[target_feature(enable = "avx512cd")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vplzcntq))]
 pub unsafe fn _mm512_lzcnt_epi64(a: __m512i) -> __m512i {
     transmute(vplzcntq(a.as_i64x8(), false))
@@ -378,6 +412,7 @@ pub unsafe fn _mm512_lzcnt_epi64(a: __m512i) -> __m512i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_lzcnt_epi64&expand=3501)
 #[inline]
 #[target_feature(enable = "avx512cd")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vplzcntq))]
 pub unsafe fn _mm512_mask_lzcnt_epi64(src: __m512i, k: __mmask8, a: __m512i) -> __m512i {
     let zerocount = _mm512_lzcnt_epi64(a).as_i64x8();
@@ -389,6 +424,7 @@ pub unsafe fn _mm512_mask_lzcnt_epi64(src: __m512i, k: __mmask8, a: __m512i) -> 
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_lzcnt_epi64&expand=3502)
 #[inline]
 #[target_feature(enable = "avx512cd")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vplzcntq))]
 pub unsafe fn _mm512_maskz_lzcnt_epi64(k: __mmask8, a: __m512i) -> __m512i {
     let zerocount = _mm512_lzcnt_epi64(a).as_i64x8();
@@ -401,6 +437,7 @@ pub unsafe fn _mm512_maskz_lzcnt_epi64(k: __mmask8, a: __m512i) -> __m512i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_lzcnt_epi64&expand=3497)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vplzcntq))]
 pub unsafe fn _mm256_lzcnt_epi64(a: __m256i) -> __m256i {
     transmute(vplzcntq256(a.as_i64x4(), false))
@@ -411,6 +448,7 @@ pub unsafe fn _mm256_lzcnt_epi64(a: __m256i) -> __m256i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_lzcnt_epi64&expand=3498)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vplzcntq))]
 pub unsafe fn _mm256_mask_lzcnt_epi64(src: __m256i, k: __mmask8, a: __m256i) -> __m256i {
     let zerocount = _mm256_lzcnt_epi64(a).as_i64x4();
@@ -422,6 +460,7 @@ pub unsafe fn _mm256_mask_lzcnt_epi64(src: __m256i, k: __mmask8, a: __m256i) -> 
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_lzcnt_epi64&expand=3499)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vplzcntq))]
 pub unsafe fn _mm256_maskz_lzcnt_epi64(k: __mmask8, a: __m256i) -> __m256i {
     let zerocount = _mm256_lzcnt_epi64(a).as_i64x4();
@@ -434,6 +473,7 @@ pub unsafe fn _mm256_maskz_lzcnt_epi64(k: __mmask8, a: __m256i) -> __m256i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_lzcnt_epi64&expand=3494)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vplzcntq))]
 pub unsafe fn _mm_lzcnt_epi64(a: __m128i) -> __m128i {
     transmute(vplzcntq128(a.as_i64x2(), false))
@@ -444,6 +484,7 @@ pub unsafe fn _mm_lzcnt_epi64(a: __m128i) -> __m128i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_lzcnt_epi64&expand=3495)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vplzcntq))]
 pub unsafe fn _mm_mask_lzcnt_epi64(src: __m128i, k: __mmask8, a: __m128i) -> __m128i {
     let zerocount = _mm_lzcnt_epi64(a).as_i64x2();
@@ -455,6 +496,7 @@ pub unsafe fn _mm_mask_lzcnt_epi64(src: __m128i, k: __mmask8, a: __m128i) -> __m
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_lzcnt_epi64&expand=3496)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vplzcntq))]
 pub unsafe fn _mm_maskz_lzcnt_epi64(k: __mmask8, a: __m128i) -> __m128i {
     let zerocount = _mm_lzcnt_epi64(a).as_i64x2();

@@ -12,6 +12,7 @@ use stdarch_test::assert_instr;
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#avx512techs=AVX512IFMA52&expand=3488)
 #[inline]
 #[target_feature(enable = "avx512ifma")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmadd52huq))]
 pub unsafe fn _mm512_madd52hi_epu64(a: __m512i, b: __m512i, c: __m512i) -> __m512i {
     vpmadd52huq_512(a, b, c)
@@ -26,6 +27,7 @@ pub unsafe fn _mm512_madd52hi_epu64(a: __m512i, b: __m512i, c: __m512i) -> __m51
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=3497&avx512techs=AVX512IFMA52)
 #[inline]
 #[target_feature(enable = "avx512ifma")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmadd52luq))]
 pub unsafe fn _mm512_madd52lo_epu64(a: __m512i, b: __m512i, c: __m512i) -> __m512i {
     vpmadd52luq_512(a, b, c)
@@ -40,6 +42,7 @@ pub unsafe fn _mm512_madd52lo_epu64(a: __m512i, b: __m512i, c: __m512i) -> __m51
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=vpmadd52&avx512techs=AVX512IFMA52,AVX512VL&expand=3485)
 #[inline]
 #[target_feature(enable = "avx512ifma,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmadd52huq))]
 pub unsafe fn _mm256_madd52hi_epu64(a: __m256i, b: __m256i, c: __m256i) -> __m256i {
     vpmadd52huq_256(a, b, c)
@@ -54,6 +57,7 @@ pub unsafe fn _mm256_madd52hi_epu64(a: __m256i, b: __m256i, c: __m256i) -> __m25
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=vpmadd52&avx512techs=AVX512IFMA52,AVX512VL&expand=3494)
 #[inline]
 #[target_feature(enable = "avx512ifma,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmadd52luq))]
 pub unsafe fn _mm256_madd52lo_epu64(a: __m256i, b: __m256i, c: __m256i) -> __m256i {
     vpmadd52luq_256(a, b, c)
@@ -68,6 +72,7 @@ pub unsafe fn _mm256_madd52lo_epu64(a: __m256i, b: __m256i, c: __m256i) -> __m25
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=3488,3482&text=vpmadd52&avx512techs=AVX512IFMA52,AVX512VL)
 #[inline]
 #[target_feature(enable = "avx512ifma,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmadd52huq))]
 pub unsafe fn _mm_madd52hi_epu64(a: __m128i, b: __m128i, c: __m128i) -> __m128i {
     vpmadd52huq_128(a, b, c)
@@ -82,6 +87,7 @@ pub unsafe fn _mm_madd52hi_epu64(a: __m128i, b: __m128i, c: __m128i) -> __m128i 
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=3488,3491&text=vpmadd52&avx512techs=AVX512IFMA52,AVX512VL)
 #[inline]
 #[target_feature(enable = "avx512ifma,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmadd52luq))]
 pub unsafe fn _mm_madd52lo_epu64(a: __m128i, b: __m128i, c: __m128i) -> __m128i {
     vpmadd52luq_128(a, b, c)
