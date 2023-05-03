@@ -22,6 +22,7 @@ pub mod thread;
 #[cfg(target_thread_local)]
 pub mod thread_local_dtor;
 pub mod thread_local_key;
+pub mod thread_parking;
 pub mod time;
 
 mod common;
