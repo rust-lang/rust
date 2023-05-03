@@ -280,6 +280,8 @@ declare_features! (
     (accepted, pub_restricted, "1.18.0", Some(32409), None),
     /// Allows use of the postfix `?` operator in expressions.
     (accepted, question_mark, "1.13.0", Some(31436), None),
+    /// Allows the use of raw-dylibs (RFC 2627).
+    (accepted, raw_dylib, "CURRENT_RUSTC_VERSION", Some(58713), None),
     /// Allows keywords to be escaped for use as identifiers.
     (accepted, raw_identifiers, "1.30.0", Some(48589), None),
     /// Allows relaxing the coherence rules such that

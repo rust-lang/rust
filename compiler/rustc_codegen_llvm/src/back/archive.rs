@@ -198,7 +198,7 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
                 "arm" => ("arm", "--32"),
                 _ => panic!("unsupported arch {}", sess.target.arch),
             };
-            let result = std::process::Command::new(dlltool)
+            let result = std::process::Command::new(&dlltool)
                 .args([
                     "-d",
                     def_file_path.to_str().unwrap(),
@@ -218,9 +218,13 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
 
             match result {
                 Err(e) => {
-                    sess.emit_fatal(ErrorCallingDllTool { error: e });
+                    sess.emit_fatal(ErrorCallingDllTool {
+                        dlltool_path: dlltool.to_string_lossy(),
+                        error: e,
+                    });
                 }
-                Ok(output) if !output.status.success() => {
+                // dlltool returns '0' on failure, so check for error output instead.
+                Ok(output) if !output.stderr.is_empty() => {
                     sess.emit_fatal(DlltoolFailImportLibrary {
                         stdout: String::from_utf8_lossy(&output.stdout),
                         stderr: String::from_utf8_lossy(&output.stderr),
@@ -431,7 +435,7 @@ fn string_to_io_error(s: String) -> io::Error {
 
 fn find_binutils_dlltool(sess: &Session) -> OsString {
     assert!(sess.target.options.is_like_windows && !sess.target.options.is_like_msvc);
-    if let Some(dlltool_path) = &sess.opts.unstable_opts.dlltool {
+    if let Some(dlltool_path) = &sess.opts.cg.dlltool {
         return dlltool_path.clone().into_os_string();
     }
 
