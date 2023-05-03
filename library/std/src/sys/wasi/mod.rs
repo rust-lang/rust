@@ -47,6 +47,8 @@ pub mod thread;
 pub mod thread_local_dtor;
 #[path = "../unsupported/thread_local_key.rs"]
 pub mod thread_local_key;
+#[path = "../unsupported/thread_parking.rs"]
+pub mod thread_parking;
 pub mod time;
 
 cfg_if::cfg_if! {
