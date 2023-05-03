@@ -107,6 +107,7 @@
 #![feature(const_arguments_as_str)]
 #![feature(const_array_from_ref)]
 #![feature(const_array_into_iter_constructors)]
+#![feature(const_assume)]
 #![feature(const_bigint_helper_methods)]
 #![feature(const_black_box)]
 #![feature(const_caller_location)]
