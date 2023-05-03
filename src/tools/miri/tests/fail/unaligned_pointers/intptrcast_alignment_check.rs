@@ -1,4 +1,4 @@
-//@compile-flags: -Zmiri-symbolic-alignment-check -Zmiri-permissive-provenance -Cdebug-assertions=no
+//@compile-flags: -Zmiri-symbolic-alignment-check -Zmiri-permissive-provenance
 // With the symbolic alignment check, even with intptrcast and without
 // validation, we want to be *sure* to catch bugs that arise from pointers being
 // insufficiently aligned. The only way to achieve that is not to let programs

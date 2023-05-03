@@ -1,5 +1,5 @@
 // This should fail even without validation
-//@compile-flags: -Zmiri-disable-validation -Cdebug-assertions=no
+//@compile-flags: -Zmiri-disable-validation
 
 fn main() {
     // Try many times as this might work by chance.

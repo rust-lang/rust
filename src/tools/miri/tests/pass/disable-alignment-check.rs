@@ -1,6 +1,6 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
-//@compile-flags: -Zmiri-disable-alignment-check -Cdebug-assertions=no
+//@compile-flags: -Zmiri-disable-alignment-check
 
 fn main() {
     let mut x = [0u8; 20];

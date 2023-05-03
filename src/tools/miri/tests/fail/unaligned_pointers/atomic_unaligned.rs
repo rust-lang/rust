@@ -1,4 +1,4 @@
-//@compile-flags: -Zmiri-symbolic-alignment-check -Cdebug-assertions=no
+//@compile-flags: -Zmiri-symbolic-alignment-check
 #![feature(core_intrinsics)]
 
 fn main() {

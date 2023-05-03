@@ -1316,6 +1316,8 @@ options! {
         "emit bitcode in rlibs (default: yes)"),
     extra_filename: String = (String::new(), parse_string, [UNTRACKED],
         "extra data to put in each output filename"),
+    extra_ub_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "insert extra runtime checks in codegen that catch Undefined Behavior"),
     force_frame_pointers: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "force use of the frame pointers"),
     #[rustc_lint_opt_deny_field_access("use `Session::must_emit_unwind_tables` instead of this field")]

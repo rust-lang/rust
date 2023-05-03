@@ -1,5 +1,5 @@
 // This should fail even without SB
-//@compile-flags: -Zmiri-disable-stacked-borrows -Cdebug-assertions=no
+//@compile-flags: -Zmiri-disable-stacked-borrows
 
 #![allow(dead_code, unused_variables)]
 

@@ -140,6 +140,17 @@ This option allows you to put extra data in each output filename. It takes a
 string to add as a suffix to the filename. See the [`--emit`
 flag][option-emit] for more information.
 
+## extra-ub-checks
+
+This flag controls whether the compiler inserts runtime checks during code generation
+to catch Undefined Behavior.
+
+* `y`, `yes`, `on`, `true`, or no value: insert such checks regardless of debug-assertions.
+* `n`, `no`, `off`, `false`: do not emit such checks regardless of debug-assertions.
+
+If not specified, extra UB checks are enabled if
+[debug-assertions](#debug-assertions) are enabled, disabled otherwise.
+
 ## force-frame-pointers
 
 This flag forces the use of frame pointers. It takes one of the following

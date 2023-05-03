@@ -1,5 +1,5 @@
 // This should fail even without Stacked Borrows.
-//@compile-flags: -Zmiri-disable-stacked-borrows -Cdebug-assertions=no
+//@compile-flags: -Zmiri-disable-stacked-borrows
 
 fn main() {
     // Try many times as this might work by chance.

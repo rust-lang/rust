@@ -18,7 +18,7 @@ impl<'tcx> MirPass<'tcx> for CheckAlignment {
         if sess.target.llvm_target == "i686-pc-windows-msvc" {
             return false;
         }
-        sess.opts.debug_assertions
+        sess.extra_ub_checks()
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
