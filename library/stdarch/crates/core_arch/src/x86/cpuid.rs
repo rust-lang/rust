@@ -98,6 +98,7 @@ pub unsafe fn __cpuid(leaf: u32) -> CpuidResult {
 
 /// Does the host support the `cpuid` instruction?
 #[inline]
+#[unstable(feature = "stdarch_x86_has_cpuid", issue = "60123")]
 pub fn has_cpuid() -> bool {
     #[cfg(target_env = "sgx")]
     {
