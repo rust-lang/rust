@@ -18,12 +18,16 @@ use crate::mem::transmute;
 types! {
     // pub struct vector_Float16 = f16x8;
     /// PowerPC-specific 128-bit wide vector of two packed `i64`
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub struct vector_signed_long(i64, i64);
     /// PowerPC-specific 128-bit wide vector of two packed `u64`
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub struct vector_unsigned_long(u64, u64);
     /// PowerPC-specific 128-bit wide vector mask of two `i64`
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub struct vector_bool_long(i64, i64);
     /// PowerPC-specific 128-bit wide vector of two packed `f64`
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub struct vector_double(f64, f64);
     // pub struct vector_signed_long_long = vector_signed_long;
     // pub struct vector_unsigned_long_long = vector_unsigned_long;
@@ -36,7 +40,9 @@ mod sealed {
     use super::*;
     use crate::core_arch::simd::*;
 
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub trait VectorPermDI {
+        #[unstable(feature = "stdarch_powerpc", issue = "111145")]
         unsafe fn vec_xxpermdi(self, b: Self, dm: u8) -> Self;
     }
 
@@ -59,6 +65,7 @@ mod sealed {
 
     macro_rules! vec_xxpermdi {
         {$impl: ident} => {
+            #[unstable(feature = "stdarch_powerpc", issue = "111145")]
             impl VectorPermDI for $impl {
                 #[inline]
                 #[target_feature(enable = "vsx")]
@@ -79,6 +86,7 @@ mod sealed {
 #[inline]
 #[target_feature(enable = "vsx")]
 //#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
 pub unsafe fn vec_xxpermdi<T, const DM: i32>(a: T, b: T) -> T
 where
     T: sealed::VectorPermDI,

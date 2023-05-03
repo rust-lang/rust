@@ -238,7 +238,7 @@ pub mod arch {
     /// See the [module documentation](../index.html) for more details.
     #[cfg(any(target_arch = "powerpc", doc))]
     #[doc(cfg(target_arch = "powerpc"))]
-    #[unstable(feature = "stdsimd", issue = "27731")]
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub mod powerpc {
         pub use crate::core_arch::powerpc::*;
     }
@@ -248,7 +248,7 @@ pub mod arch {
     /// See the [module documentation](../index.html) for more details.
     #[cfg(any(target_arch = "powerpc64", doc))]
     #[doc(cfg(target_arch = "powerpc64"))]
-    #[unstable(feature = "stdsimd", issue = "27731")]
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub mod powerpc64 {
         pub use crate::core_arch::powerpc64::*;
     }

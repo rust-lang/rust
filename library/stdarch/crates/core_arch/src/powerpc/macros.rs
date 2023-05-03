@@ -21,6 +21,7 @@ macro_rules! test_impl {
 #[allow(unknown_lints, unused_macro_rules)]
 macro_rules! impl_vec_trait {
     ([$Trait:ident $m:ident] $fun:ident ($a:ty)) => {
+        #[unstable(feature = "stdarch_powerpc", issue = "111145")]
         impl $Trait for $a {
             #[inline]
             #[target_feature(enable = "altivec")]
@@ -30,6 +31,7 @@ macro_rules! impl_vec_trait {
         }
     };
     ([$Trait:ident $m:ident] $fun:ident ($a:ty) -> $r:ty) => {
+        #[unstable(feature = "stdarch_powerpc", issue = "111145")]
         impl $Trait for $a {
             type Result = $r;
             #[inline]
@@ -59,6 +61,7 @@ macro_rules! impl_vec_trait {
         impl_vec_trait!{ [$Trait $m] $sf (vector_float) -> vector_float }
     };
     ([$Trait:ident $m:ident] $fun:ident ($a:ty, $b:ty) -> $r:ty) => {
+        #[unstable(feature = "stdarch_powerpc", issue = "111145")]
         impl $Trait<$b> for $a {
             type Result = $r;
             #[inline]
