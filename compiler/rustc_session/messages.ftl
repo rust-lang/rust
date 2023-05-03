@@ -35,7 +35,15 @@ session_cannot_mix_and_match_sanitizers = `-Zsanitizer={$first}` is incompatible
 
 session_cannot_enable_crt_static_linux = sanitizer is incompatible with statically linked libc, disable it using `-C target-feature=-crt-static`
 
-session_sanitizer_cfi_enabled = `-Zsanitizer=cfi` requires `-Clto`
+session_sanitizer_cfi_requires_lto = `-Zsanitizer=cfi` requires `-Clto`, `-Clto=thin`, or `-Clinker-plugin-lto`
+
+session_sanitizer_cfi_canonical_jump_tables_requires_cfi = `-Zsanitizer-cfi-canonical-jump-tables` requires `-Zsanitizer=cfi`
+
+session_sanitizer_cfi_generalize_pointers_requires_cfi = `-Zsanitizer-cfi-generalize-pointers` requires `-Zsanitizer=cfi` or `-Zsanitizer=kcfi`
+
+session_sanitizer_cfi_normalize_integers_requires_cfi = `-Zsanitizer-cfi-normalize-integers` requires `-Zsanitizer=cfi` or `-Zsanitizer=kcfi`
+
+session_split_lto_unit_requires_lto = `-Zsplit-lto-unit` requires `-Clto`, `-Clto=thin`, or `-Clinker-plugin-lto`
 
 session_unstable_virtual_function_elimination = `-Zvirtual-function-elimination` requires `-Clto`
 

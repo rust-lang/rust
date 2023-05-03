@@ -280,16 +280,4 @@ pub fn struct_fields<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLayout
 }
 
 impl<'gcc, 'tcx> TypeMembershipMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
-    fn set_type_metadata(&self, _function: RValue<'gcc>, _typeid: String) {
-        // Unsupported.
-    }
-
-    fn typeid_metadata(&self, _typeid: String) -> RValue<'gcc> {
-        // Unsupported.
-        self.context.new_rvalue_from_int(self.int_type, 0)
-    }
-
-    fn set_kcfi_type_metadata(&self, _function: RValue<'gcc>, _kcfi_typeid: u32) {
-        // Unsupported.
-    }
 }
