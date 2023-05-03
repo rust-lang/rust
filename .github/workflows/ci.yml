@@ -46,6 +46,9 @@ jobs:
     strategy:
       matrix:
         include:
+          - name: x86_64-gnu
+            os: ubuntu-20.04-8core-32gb
+            env: {}
           - name: mingw-check
             tidy: false
             os: ubuntu-20.04-16core-64gb
