@@ -320,6 +320,10 @@ jobs:
             <<: *job-linux-16c
             tidy: false
 
+          - name: x86_64-gnu
+            <<: *job-linux-8c
+            tidy: false
+
   auto:
     permissions:
       actions: write # for rust-lang/simpleinfra/github-actions/cancel-outdated-builds

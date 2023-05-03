@@ -62,6 +62,10 @@ jobs:
             tidy: false
             os: ubuntu-20.04-16core-64gb
             env: {}
+          - name: x86_64-gnu
+            tidy: false
+            os: ubuntu-20.04-8core-32gb
+            env: {}
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
