@@ -260,13 +260,13 @@ jobs:
             os: ubuntu-20.04-8core-32gb
             env: {}
           - name: i686-gnu
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: i686-gnu-nopt
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
           - name: mingw-check
-            os: ubuntu-20.04-8core-32gb
+            os: ubuntu-20.04-4core-16gb
             env: {}
           - name: test-various
             os: ubuntu-20.04-8core-32gb
@@ -275,16 +275,16 @@ jobs:
             os: ubuntu-20.04-8core-32gb
             env: {}
           - name: x86_64-gnu
-            os: ubuntu-20.04-8core-32gb
+            os: ubuntu-20.04-4core-16gb
             env: {}
           - name: x86_64-gnu-stable
             env:
               IMAGE: x86_64-gnu
               RUST_CI_OVERRIDE_RELEASE_CHANNEL: stable
               CI_ONLY_WHEN_CHANNEL: nightly
-            os: ubuntu-20.04-8core-32gb
+            os: ubuntu-20.04-4core-16gb
           - name: x86_64-gnu-aux
-            os: ubuntu-20.04-8core-32gb
+            os: ubuntu-20.04-4core-16gb
             env: {}
           - name: x86_64-gnu-debug
             os: ubuntu-20.04-8core-32gb
@@ -309,7 +309,7 @@ jobs:
               RUST_BACKTRACE: 1
             os: ubuntu-20.04-8core-32gb
           - name: x86_64-gnu-nopt
-            os: ubuntu-20.04-8core-32gb
+            os: ubuntu-20.04-4core-16gb
             env: {}
           - name: x86_64-gnu-tools
             env:
