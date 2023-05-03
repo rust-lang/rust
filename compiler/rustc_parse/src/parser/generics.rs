@@ -78,7 +78,7 @@ impl<'a> Parser<'a> {
                 }
                 self.restore_snapshot(snapshot);
             }
-            self.parse_generic_bounds(colon_span)?
+            self.parse_generic_bounds()?
         } else {
             Vec::new()
         };
@@ -419,7 +419,7 @@ impl<'a> Parser<'a> {
         // or with mandatory equality sign and the second type.
         let ty = self.parse_ty_for_where_clause()?;
         if self.eat(&token::Colon) {
-            let bounds = self.parse_generic_bounds(Some(self.prev_token.span))?;
+            let bounds = self.parse_generic_bounds()?;
             Ok(ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
                 span: lo.to(self.prev_token.span),
                 bound_generic_params: lifetime_defs,

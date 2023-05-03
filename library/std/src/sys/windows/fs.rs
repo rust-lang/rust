@@ -477,7 +477,7 @@ impl File {
     fn reparse_point(
         &self,
         space: &mut Align8<[MaybeUninit<u8>]>,
-    ) -> io::Result<(c::DWORD, *const c::REPARSE_DATA_BUFFER)> {
+    ) -> io::Result<(c::DWORD, *mut c::REPARSE_DATA_BUFFER)> {
         unsafe {
             let mut bytes = 0;
             cvt({
@@ -496,7 +496,7 @@ impl File {
                 )
             })?;
             const _: () = assert!(core::mem::align_of::<c::REPARSE_DATA_BUFFER>() <= 8);
-            Ok((bytes, space.0.as_ptr().cast::<c::REPARSE_DATA_BUFFER>()))
+            Ok((bytes, space.0.as_mut_ptr().cast::<c::REPARSE_DATA_BUFFER>()))
         }
     }
 
@@ -506,22 +506,22 @@ impl File {
         unsafe {
             let (path_buffer, subst_off, subst_len, relative) = match (*buf).ReparseTag {
                 c::IO_REPARSE_TAG_SYMLINK => {
-                    let info: *const c::SYMBOLIC_LINK_REPARSE_BUFFER =
-                        ptr::addr_of!((*buf).rest).cast();
+                    let info: *mut c::SYMBOLIC_LINK_REPARSE_BUFFER =
+                        ptr::addr_of_mut!((*buf).rest).cast();
                     assert!(info.is_aligned());
                     (
-                        ptr::addr_of!((*info).PathBuffer).cast::<u16>(),
+                        ptr::addr_of_mut!((*info).PathBuffer).cast::<u16>(),
                         (*info).SubstituteNameOffset / 2,
                         (*info).SubstituteNameLength / 2,
                         (*info).Flags & c::SYMLINK_FLAG_RELATIVE != 0,
                     )
                 }
                 c::IO_REPARSE_TAG_MOUNT_POINT => {
-                    let info: *const c::MOUNT_POINT_REPARSE_BUFFER =
-                        ptr::addr_of!((*buf).rest).cast();
+                    let info: *mut c::MOUNT_POINT_REPARSE_BUFFER =
+                        ptr::addr_of_mut!((*buf).rest).cast();
                     assert!(info.is_aligned());
                     (
-                        ptr::addr_of!((*info).PathBuffer).cast::<u16>(),
+                        ptr::addr_of_mut!((*info).PathBuffer).cast::<u16>(),
                         (*info).SubstituteNameOffset / 2,
                         (*info).SubstituteNameLength / 2,
                         false,
@@ -535,13 +535,20 @@ impl File {
                 }
             };
             let subst_ptr = path_buffer.add(subst_off.into());
-            let mut subst = slice::from_raw_parts(subst_ptr, subst_len as usize);
+            let subst = slice::from_raw_parts_mut(subst_ptr, subst_len as usize);
             // Absolute paths start with an NT internal namespace prefix `\??\`
             // We should not let it leak through.
             if !relative && subst.starts_with(&[92u16, 63u16, 63u16, 92u16]) {
-                subst = &subst[4..];
+                // Turn `\??\` into `\\?\` (a verbatim path).
+                subst[1] = b'\\' as u16;
+                // Attempt to convert to a more user-friendly path.
+                let user = super::args::from_wide_to_user_path(
+                    subst.iter().copied().chain([0]).collect(),
+                )?;
+                Ok(PathBuf::from(OsString::from_wide(&user.strip_suffix(&[0]).unwrap_or(&user))))
+            } else {
+                Ok(PathBuf::from(OsString::from_wide(subst)))
             }
-            Ok(PathBuf::from(OsString::from_wide(subst)))
         }
     }
 

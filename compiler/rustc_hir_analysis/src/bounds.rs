@@ -42,8 +42,14 @@ impl<'tcx> Bounds<'tcx> {
         trait_ref: ty::PolyTraitRef<'tcx>,
         span: Span,
         constness: ty::BoundConstness,
+        polarity: ty::ImplPolarity,
     ) {
-        self.predicates.push((trait_ref.with_constness(constness).to_predicate(tcx), span));
+        self.predicates.push((
+            trait_ref
+                .map_bound(|trait_ref| ty::TraitPredicate { trait_ref, constness, polarity })
+                .to_predicate(tcx),
+            span,
+        ));
     }
 
     pub fn push_projection_bound(

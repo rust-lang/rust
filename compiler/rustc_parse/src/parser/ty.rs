@@ -3,8 +3,7 @@ use super::{Parser, PathStyle, TokenType};
 use crate::errors::{
     self, DynAfterMut, ExpectedFnPathFoundFnKeyword, ExpectedMutOrConstInRawPointerType,
     FnPointerCannotBeAsync, FnPointerCannotBeConst, FnPtrWithGenerics, FnPtrWithGenericsSugg,
-    InvalidDynKeyword, LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime,
-    NegativeBoundsNotSupported, NegativeBoundsNotSupportedSugg, NestedCVariadicType,
+    InvalidDynKeyword, LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime, NestedCVariadicType,
     ReturnTypesUseThinArrow,
 };
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
@@ -14,8 +13,9 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
-    self as ast, BareFnTy, FnRetTy, GenericBound, GenericBounds, GenericParam, Generics, Lifetime,
-    MacCall, MutTy, Mutability, PolyTraitRef, TraitBoundModifier, TraitObjectSyntax, Ty, TyKind,
+    self as ast, BareFnTy, BoundPolarity, FnRetTy, GenericBound, GenericBounds, GenericParam,
+    Generics, Lifetime, MacCall, MutTy, Mutability, PolyTraitRef, TraitBoundModifier,
+    TraitObjectSyntax, Ty, TyKind,
 };
 use rustc_errors::{Applicability, PResult};
 use rustc_span::source_map::Span;
@@ -23,10 +23,10 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Symbol;
 use thin_vec::{thin_vec, ThinVec};
 
-/// Any `?` or `~const` modifiers that appear at the start of a bound.
+/// Any `?`, `!`, or `~const` modifiers that appear at the start of a bound.
 struct BoundModifiers {
     /// `?Trait`.
-    maybe: Option<Span>,
+    bound_polarity: BoundPolarity,
 
     /// `~const Trait`.
     maybe_const: Option<Span>,
@@ -34,11 +34,13 @@ struct BoundModifiers {
 
 impl BoundModifiers {
     fn to_trait_bound_modifier(&self) -> TraitBoundModifier {
-        match (self.maybe, self.maybe_const) {
-            (None, None) => TraitBoundModifier::None,
-            (Some(_), None) => TraitBoundModifier::Maybe,
-            (None, Some(_)) => TraitBoundModifier::MaybeConst,
-            (Some(_), Some(_)) => TraitBoundModifier::MaybeConstMaybe,
+        match (self.bound_polarity, self.maybe_const) {
+            (BoundPolarity::Positive, None) => TraitBoundModifier::None,
+            (BoundPolarity::Negative(_), None) => TraitBoundModifier::Negative,
+            (BoundPolarity::Maybe(_), None) => TraitBoundModifier::Maybe,
+            (BoundPolarity::Positive, Some(_)) => TraitBoundModifier::MaybeConst,
+            (BoundPolarity::Negative(_), Some(_)) => TraitBoundModifier::MaybeConstNegative,
+            (BoundPolarity::Maybe(_), Some(_)) => TraitBoundModifier::MaybeConstMaybe,
         }
     }
 }
@@ -368,7 +370,7 @@ impl<'a> Parser<'a> {
 
     fn parse_bare_trait_object(&mut self, lo: Span, allow_plus: AllowPlus) -> PResult<'a, TyKind> {
         let lt_no_plus = self.check_lifetime() && !self.look_ahead(1, |t| t.is_like_plus());
-        let bounds = self.parse_generic_bounds_common(allow_plus, None)?;
+        let bounds = self.parse_generic_bounds_common(allow_plus)?;
         if lt_no_plus {
             self.sess.emit_err(NeedPlusAfterTraitObjectLifetime { span: lo });
         }
@@ -395,7 +397,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, TyKind> {
         if plus {
             self.eat_plus(); // `+`, or `+=` gets split and `+` is discarded
-            bounds.append(&mut self.parse_generic_bounds(Some(self.prev_token.span))?);
+            bounds.append(&mut self.parse_generic_bounds()?);
         }
         Ok(TyKind::TraitObject(bounds, TraitObjectSyntax::None))
     }
@@ -598,7 +600,7 @@ impl<'a> Parser<'a> {
                 }
             })
         }
-        let bounds = self.parse_generic_bounds(None)?;
+        let bounds = self.parse_generic_bounds()?;
         *impl_dyn_multi = bounds.len() > 1 || self.prev_token.kind == TokenKind::BinOp(token::Plus);
         Ok(TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds))
     }
@@ -629,7 +631,7 @@ impl<'a> Parser<'a> {
         };
 
         // Always parse bounds greedily for better error recovery.
-        let bounds = self.parse_generic_bounds(None)?;
+        let bounds = self.parse_generic_bounds()?;
         *impl_dyn_multi = bounds.len() > 1 || self.prev_token.kind == TokenKind::BinOp(token::Plus);
         Ok(TyKind::TraitObject(bounds, syntax))
     }
@@ -660,23 +662,15 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn parse_generic_bounds(
-        &mut self,
-        colon_span: Option<Span>,
-    ) -> PResult<'a, GenericBounds> {
-        self.parse_generic_bounds_common(AllowPlus::Yes, colon_span)
+    pub(super) fn parse_generic_bounds(&mut self) -> PResult<'a, GenericBounds> {
+        self.parse_generic_bounds_common(AllowPlus::Yes)
     }
 
     /// Parses bounds of a type parameter `BOUND + BOUND + ...`, possibly with trailing `+`.
     ///
     /// See `parse_generic_bound` for the `BOUND` grammar.
-    fn parse_generic_bounds_common(
-        &mut self,
-        allow_plus: AllowPlus,
-        colon_span: Option<Span>,
-    ) -> PResult<'a, GenericBounds> {
+    fn parse_generic_bounds_common(&mut self, allow_plus: AllowPlus) -> PResult<'a, GenericBounds> {
         let mut bounds = Vec::new();
-        let mut negative_bounds = Vec::new();
 
         // In addition to looping while we find generic bounds:
         // We continue even if we find a keyword. This is necessary for error recovery on,
@@ -693,17 +687,10 @@ impl<'a> Parser<'a> {
                 self.sess.emit_err(InvalidDynKeyword { span: self.token.span });
                 self.bump();
             }
-            match self.parse_generic_bound()? {
-                Ok(bound) => bounds.push(bound),
-                Err(neg_sp) => negative_bounds.push(neg_sp),
-            }
+            bounds.push(self.parse_generic_bound()?);
             if allow_plus == AllowPlus::No || !self.eat_plus() {
                 break;
             }
-        }
-
-        if !negative_bounds.is_empty() {
-            self.error_negative_bounds(colon_span, &bounds, negative_bounds);
         }
 
         Ok(bounds)
@@ -713,55 +700,22 @@ impl<'a> Parser<'a> {
     fn can_begin_bound(&mut self) -> bool {
         // This needs to be synchronized with `TokenKind::can_begin_bound`.
         self.check_path()
-        || self.check_lifetime()
-        || self.check(&token::Not) // Used for error reporting only.
-        || self.check(&token::Question)
-        || self.check(&token::Tilde)
-        || self.check_keyword(kw::For)
-        || self.check(&token::OpenDelim(Delimiter::Parenthesis))
-    }
-
-    fn error_negative_bounds(
-        &self,
-        colon_span: Option<Span>,
-        bounds: &[GenericBound],
-        negative_bounds: Vec<Span>,
-    ) {
-        let sub = if let Some(bound_list) = colon_span {
-            let bound_list = bound_list.to(self.prev_token.span);
-            let mut new_bound_list = String::new();
-            if !bounds.is_empty() {
-                let mut snippets = bounds.iter().map(|bound| self.span_to_snippet(bound.span()));
-                while let Some(Ok(snippet)) = snippets.next() {
-                    new_bound_list.push_str(" + ");
-                    new_bound_list.push_str(&snippet);
-                }
-                new_bound_list = new_bound_list.replacen(" +", ":", 1);
-            }
-
-            Some(NegativeBoundsNotSupportedSugg {
-                bound_list,
-                num_bounds: negative_bounds.len(),
-                fixed: new_bound_list,
-            })
-        } else {
-            None
-        };
-
-        let last_span = *negative_bounds.last().expect("no negative bounds, but still error?");
-        self.sess.emit_err(NegativeBoundsNotSupported { negative_bounds, last_span, sub });
+            || self.check_lifetime()
+            || self.check(&token::Not)
+            || self.check(&token::Question)
+            || self.check(&token::Tilde)
+            || self.check_keyword(kw::For)
+            || self.check(&token::OpenDelim(Delimiter::Parenthesis))
     }
 
     /// Parses a bound according to the grammar:
     /// ```ebnf
     /// BOUND = TY_BOUND | LT_BOUND
     /// ```
-    fn parse_generic_bound(&mut self) -> PResult<'a, Result<GenericBound, Span>> {
-        let anchor_lo = self.prev_token.span;
+    fn parse_generic_bound(&mut self) -> PResult<'a, GenericBound> {
         let lo = self.token.span;
         let has_parens = self.eat(&token::OpenDelim(Delimiter::Parenthesis));
         let inner_lo = self.token.span;
-        let is_negative = self.eat(&token::Not);
 
         let modifiers = self.parse_ty_bound_modifiers()?;
         let bound = if self.token.is_lifetime() {
@@ -771,7 +725,7 @@ impl<'a> Parser<'a> {
             self.parse_generic_ty_bound(lo, has_parens, modifiers)?
         };
 
-        Ok(if is_negative { Err(anchor_lo.to(self.prev_token.span)) } else { Ok(bound) })
+        Ok(bound)
     }
 
     /// Parses a lifetime ("outlives") bound, e.g. `'a`, according to:
@@ -799,8 +753,14 @@ impl<'a> Parser<'a> {
             self.sess.emit_err(errors::TildeConstLifetime { span });
         }
 
-        if let Some(span) = modifiers.maybe {
-            self.sess.emit_err(errors::MaybeLifetime { span });
+        match modifiers.bound_polarity {
+            BoundPolarity::Positive => {}
+            BoundPolarity::Negative(span) => {
+                self.sess.emit_err(errors::ModifierLifetime { span, sigil: "!" });
+            }
+            BoundPolarity::Maybe(span) => {
+                self.sess.emit_err(errors::ModifierLifetime { span, sigil: "?" });
+            }
         }
     }
 
@@ -843,9 +803,16 @@ impl<'a> Parser<'a> {
             None
         };
 
-        let maybe = self.eat(&token::Question).then_some(self.prev_token.span);
+        let bound_polarity = if self.eat(&token::Question) {
+            BoundPolarity::Maybe(self.prev_token.span)
+        } else if self.eat(&token::Not) {
+            self.sess.gated_spans.gate(sym::negative_bounds, self.prev_token.span);
+            BoundPolarity::Negative(self.prev_token.span)
+        } else {
+            BoundPolarity::Positive
+        };
 
-        Ok(BoundModifiers { maybe, maybe_const })
+        Ok(BoundModifiers { bound_polarity, maybe_const })
     }
 
     /// Parses a type bound according to:

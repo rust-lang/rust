@@ -1,20 +1,38 @@
-error: negative bounds are not supported
-  --> $DIR/issue-67146-negative-outlives-bound-syntactic-fail.rs:9:12
+error: `!` may only modify trait bounds, not lifetime bounds
+  --> $DIR/issue-67146-negative-outlives-bound-syntactic-fail.rs:9:14
    |
 LL | pub fn f1<T: !'static>() {}
-   |            ^^^^^^^^^^ negative bounds are not supported
+   |              ^
 
-error: negative bounds are not supported
-  --> $DIR/issue-67146-negative-outlives-bound-syntactic-fail.rs:11:22
+error: `!` may only modify trait bounds, not lifetime bounds
+  --> $DIR/issue-67146-negative-outlives-bound-syntactic-fail.rs:12:24
    |
 LL | pub fn f2<'a, T: Ord + !'a>() {}
-   |                      ^^^^^ negative bounds are not supported
+   |                        ^
 
-error: negative bounds are not supported
-  --> $DIR/issue-67146-negative-outlives-bound-syntactic-fail.rs:13:16
+error: `!` may only modify trait bounds, not lifetime bounds
+  --> $DIR/issue-67146-negative-outlives-bound-syntactic-fail.rs:15:18
    |
 LL | pub fn f3<'a, T: !'a + Ord>() {}
-   |                ^^^^^ negative bounds are not supported
+   |                  ^
 
-error: aborting due to 3 previous errors
+error: negative bounds are not supported
+  --> $DIR/issue-67146-negative-outlives-bound-syntactic-fail.rs:9:14
+   |
+LL | pub fn f1<T: !'static>() {}
+   |              ^
+
+error: negative bounds are not supported
+  --> $DIR/issue-67146-negative-outlives-bound-syntactic-fail.rs:12:24
+   |
+LL | pub fn f2<'a, T: Ord + !'a>() {}
+   |                        ^
+
+error: negative bounds are not supported
+  --> $DIR/issue-67146-negative-outlives-bound-syntactic-fail.rs:15:18
+   |
+LL | pub fn f3<'a, T: !'a + Ord>() {}
+   |                  ^
+
+error: aborting due to 6 previous errors
 

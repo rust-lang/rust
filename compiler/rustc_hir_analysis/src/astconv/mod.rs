@@ -665,6 +665,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         span: Span,
         binding_span: Option<Span>,
         constness: ty::BoundConstness,
+        polarity: ty::ImplPolarity,
         bounds: &mut Bounds<'tcx>,
         speculative: bool,
         trait_ref_span: Span,
@@ -696,10 +697,20 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             ty::Binder::bind_with_vars(tcx.mk_trait_ref(trait_def_id, substs), bound_vars);
 
         debug!(?poly_trait_ref, ?assoc_bindings);
-        bounds.push_trait_bound(tcx, poly_trait_ref, span, constness);
+        bounds.push_trait_bound(tcx, poly_trait_ref, span, constness, polarity);
 
         let mut dup_bindings = FxHashMap::default();
         for binding in &assoc_bindings {
+            // Don't register additional associated type bounds for negative bounds,
+            // since we should have emitten an error for them earlier, and they will
+            // not be well-formed!
+            if polarity == ty::ImplPolarity::Negative {
+                self.tcx()
+                    .sess
+                    .delay_span_bug(binding.span, "negative trait bounds should not have bindings");
+                continue;
+            }
+
             // Specify type to assert that error was already reported in `Err` case.
             let _: Result<_, ErrorGuaranteed> = self.add_predicates_for_ast_type_binding(
                 hir_id,
@@ -711,6 +722,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 binding_span.unwrap_or(binding.span),
                 constness,
                 only_self_bounds,
+                polarity,
             );
             // Okay to ignore `Err` because of `ErrorGuaranteed` (see above).
         }
@@ -743,6 +755,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         trait_ref: &hir::TraitRef<'_>,
         span: Span,
         constness: ty::BoundConstness,
+        polarity: ty::ImplPolarity,
         self_ty: Ty<'tcx>,
         bounds: &mut Bounds<'tcx>,
         speculative: bool,
@@ -764,6 +777,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             span,
             binding_span,
             constness,
+            polarity,
             bounds,
             speculative,
             trait_ref_span,
@@ -799,6 +813,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             span,
             binding_span,
             constness,
+            ty::ImplPolarity::Positive,
             bounds,
             speculative,
             trait_ref_span,
@@ -961,16 +976,23 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         for ast_bound in ast_bounds {
             match ast_bound {
                 hir::GenericBound::Trait(poly_trait_ref, modifier) => {
-                    let constness = match modifier {
-                        hir::TraitBoundModifier::MaybeConst => ty::BoundConstness::ConstIfConst,
-                        hir::TraitBoundModifier::None => ty::BoundConstness::NotConst,
+                    let (constness, polarity) = match modifier {
+                        hir::TraitBoundModifier::MaybeConst => {
+                            (ty::BoundConstness::ConstIfConst, ty::ImplPolarity::Positive)
+                        }
+                        hir::TraitBoundModifier::None => {
+                            (ty::BoundConstness::NotConst, ty::ImplPolarity::Positive)
+                        }
+                        hir::TraitBoundModifier::Negative => {
+                            (ty::BoundConstness::NotConst, ty::ImplPolarity::Negative)
+                        }
                         hir::TraitBoundModifier::Maybe => continue,
                     };
-
                     let _ = self.instantiate_poly_trait_ref(
                         &poly_trait_ref.trait_ref,
                         poly_trait_ref.span,
                         constness,
+                        polarity,
                         param_ty,
                         bounds,
                         false,
@@ -1088,6 +1110,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         path_span: Span,
         constness: ty::BoundConstness,
         only_self_bounds: OnlySelfBounds,
+        polarity: ty::ImplPolarity,
     ) -> Result<(), ErrorGuaranteed> {
         // Given something like `U: SomeTrait<T = X>`, we want to produce a
         // predicate like `<U as SomeTrait>::T = X`. This is somewhat
@@ -1438,6 +1461,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 &trait_bound.trait_ref,
                 trait_bound.span,
                 ty::BoundConstness::NotConst,
+                ty::ImplPolarity::Positive,
                 dummy_self,
                 &mut bounds,
                 false,

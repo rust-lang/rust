@@ -313,6 +313,9 @@ pub(crate) fn make_bat_command_line(
 ///
 /// This is necessary because cmd.exe does not support verbatim paths.
 pub(crate) fn to_user_path(path: &Path) -> io::Result<Vec<u16>> {
+    from_wide_to_user_path(to_u16s(path)?)
+}
+pub(crate) fn from_wide_to_user_path(mut path: Vec<u16>) -> io::Result<Vec<u16>> {
     use crate::ptr;
     use crate::sys::windows::fill_utf16_buf;
 
@@ -324,8 +327,6 @@ pub(crate) fn to_user_path(path: &Path) -> io::Result<Vec<u16>> {
     const U: u16 = b'U' as _;
     const N: u16 = b'N' as _;
     const C: u16 = b'C' as _;
-
-    let mut path = to_u16s(path)?;
 
     // Early return if the path is too long to remove the verbatim prefix.
     const LEGACY_MAX_PATH: usize = 260;
