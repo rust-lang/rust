@@ -1987,6 +1987,21 @@ extern "C" {
         Decl: Option<&'a DIDescriptor>,
     ) -> &'a DISubprogram;
 
+    pub fn LLVMRustDIBuilderCreateMethod<'a>(
+        Builder: &DIBuilder<'a>,
+        Scope: &'a DIDescriptor,
+        Name: *const c_char,
+        NameLen: size_t,
+        LinkageName: *const c_char,
+        LinkageNameLen: size_t,
+        File: &'a DIFile,
+        LineNo: c_uint,
+        Ty: &'a DIType,
+        Flags: DIFlags,
+        SPFlags: DISPFlags,
+        TParam: &'a DIArray,
+    ) -> &'a DISubprogram;
+
     pub fn LLVMRustDIBuilderCreateBasicType<'a>(
         Builder: &DIBuilder<'a>,
         Name: *const c_char,
