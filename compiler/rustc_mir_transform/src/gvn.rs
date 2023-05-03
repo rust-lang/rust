@@ -84,7 +84,7 @@
 
 use rustc_const_eval::interpret::{intern_const_alloc_for_constprop, MemoryKind};
 use rustc_const_eval::interpret::{ImmTy, InterpCx, OpTy, Projectable, Scalar};
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
@@ -238,8 +238,10 @@ struct VnState<'body, 'tcx> {
     local_decls: &'body LocalDecls<'tcx>,
     /// Value stored in each local.
     locals: IndexVec<Local, Option<VnIndex>>,
-    /// First local to be assigned that value.
-    rev_locals: FxHashMap<VnIndex, Vec<Local>>,
+    /// Locals that are assigned that value.
+    // This vector does not hold all the values of `VnIndex` that we create.
+    // It stops at the largest value created in the first phase of collecting assignments.
+    rev_locals: IndexVec<VnIndex, Vec<Local>>,
     values: FxIndexSet<Value<'tcx>>,
     /// Values evaluated as constants if possible.
     evaluated: IndexVec<VnIndex, Option<OpTy<'tcx>>>,
@@ -265,7 +267,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             param_env,
             local_decls,
             locals: IndexVec::from_elem(None, local_decls),
-            rev_locals: FxHashMap::default(),
+            rev_locals: IndexVec::default(),
             values: FxIndexSet::default(),
             evaluated: IndexVec::new(),
             next_opaque: Some(0),
@@ -319,7 +321,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         let is_sized = !self.tcx.features().unsized_locals
             || self.local_decls[local].ty.is_sized(self.tcx, self.param_env);
         if is_sized {
-            self.rev_locals.entry(value).or_default().push(local);
+            self.rev_locals.ensure_contains_elem(value, Vec::new);
+            self.rev_locals[value].push(local);
         }
     }
 
@@ -986,11 +989,11 @@ impl<'tcx> VnState<'_, 'tcx> {
     /// If there is a local which is assigned `index`, and its assignment strictly dominates `loc`,
     /// return it.
     fn try_as_local(&mut self, index: VnIndex, loc: Location) -> Option<Local> {
-        let other = self.rev_locals.get(&index)?;
+        let other = self.rev_locals.get(index)?;
         other
             .iter()
+            .find(|&&other| self.ssa.assignment_dominates(self.dominators, other, loc))
             .copied()
-            .find(|&other| self.ssa.assignment_dominates(self.dominators, other, loc))
     }
 }
 
