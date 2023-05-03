@@ -405,8 +405,7 @@ impl<'a> Parser<'a> {
             let prev_span = self.prev_token.span.shrink_to_lo();
             let snapshot = self.create_snapshot_for_diagnostic();
             self.bump();
-            let res = self.parse_ty();
-            if res.is_ok() && self.token == token::Eq {
+            if self.parse_ty().is_ok() && self.token == token::Eq {
                 err.span_suggestion_verbose(
                     prev_span,
                     "you might have meant to introduce a new binding",
