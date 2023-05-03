@@ -1118,11 +1118,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             ) {
                 trait_ref
             } else {
-                return Err(tcx.sess.emit_err(crate::errors::ReturnTypeNotationMissingMethod {
-                    span: binding.span,
-                    trait_name: tcx.item_name(trait_ref.def_id()),
-                    assoc_name: binding.item_name.name,
-                }));
+                self.one_bound_for_assoc_method(
+                    traits::supertraits(tcx, trait_ref),
+                    trait_ref.print_only_trait_path(),
+                    binding.item_name,
+                    path_span,
+                )?
             }
         } else if self.trait_defines_associated_item_named(
             trait_ref.def_id(),
@@ -2055,6 +2056,38 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         Ok(bound)
+    }
+
+    #[instrument(level = "debug", skip(self, all_candidates, ty_name), ret)]
+    fn one_bound_for_assoc_method(
+        &self,
+        all_candidates: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
+        ty_name: impl Display,
+        assoc_name: Ident,
+        span: Span,
+    ) -> Result<ty::PolyTraitRef<'tcx>, ErrorGuaranteed> {
+        let mut matching_candidates = all_candidates.filter(|r| {
+            self.trait_defines_associated_item_named(r.def_id(), ty::AssocKind::Fn, assoc_name)
+        });
+
+        let candidate = match matching_candidates.next() {
+            Some(candidate) => candidate,
+            None => {
+                return Err(self.tcx().sess.emit_err(
+                    crate::errors::ReturnTypeNotationMissingMethod {
+                        span,
+                        ty_name: ty_name.to_string(),
+                        assoc_name: assoc_name.name,
+                    },
+                ));
+            }
+        };
+
+        if let Some(_conflicting_candidate) = matching_candidates.next() {
+            todo!()
+        }
+
+        Ok(candidate)
     }
 
     // Create a type from a path to an associated type or to an enum variant.

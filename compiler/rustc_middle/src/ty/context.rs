@@ -1570,7 +1570,12 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn trait_may_define_assoc_type(self, trait_def_id: DefId, assoc_name: Ident) -> bool {
         self.super_traits_of(trait_def_id).any(|trait_did| {
             self.associated_items(trait_did)
-                .find_by_name_and_kind(self, assoc_name, ty::AssocKind::Type, trait_did)
+                .find_by_name_and_kinds(
+                    self,
+                    assoc_name,
+                    &[ty::AssocKind::Type, ty::AssocKind::Const, ty::AssocKind::Fn],
+                    trait_did,
+                )
                 .is_some()
         })
     }

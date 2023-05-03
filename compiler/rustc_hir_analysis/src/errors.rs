@@ -512,7 +512,7 @@ pub(crate) struct ReturnTypeNotationEqualityBound {
 pub(crate) struct ReturnTypeNotationMissingMethod {
     #[primary_span]
     pub span: Span,
-    pub trait_name: Symbol,
+    pub ty_name: String,
     pub assoc_name: Symbol,
 }
 
