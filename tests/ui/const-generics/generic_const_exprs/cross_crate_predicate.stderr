@@ -8,6 +8,9 @@ LL |     let _ = const_evaluatable_lib::test1::<T>();
 note: required by a bound in `test1`
   --> $DIR/auxiliary/const_evaluatable_lib.rs:6:10
    |
+LL | pub fn test1<T>() -> [u8; std::mem::size_of::<T>() - 1]
+   |        ----- required by a bound in this function
+LL | where
 LL |     [u8; std::mem::size_of::<T>() - 1]: Sized,
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `test1`
 
@@ -34,6 +37,9 @@ LL |     let _ = const_evaluatable_lib::test1::<T>();
 note: required by a bound in `test1`
   --> $DIR/auxiliary/const_evaluatable_lib.rs:6:10
    |
+LL | pub fn test1<T>() -> [u8; std::mem::size_of::<T>() - 1]
+   |        ----- required by a bound in this function
+LL | where
 LL |     [u8; std::mem::size_of::<T>() - 1]: Sized,
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `test1`
 
