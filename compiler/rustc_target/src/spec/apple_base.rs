@@ -1,7 +1,7 @@
 use std::{borrow::Cow, env};
 
 use crate::spec::{cvs, Cc, DebuginfoKind, FramePointer, LinkArgs};
-use crate::spec::{LinkerFlavor, Lld, SplitDebuginfo, StaticCow, TargetOptions};
+use crate::spec::{LinkerFlavor, Lld, SplitDebuginfo, StaticCow, Target, TargetOptions};
 
 #[cfg(test)]
 #[path = "apple/tests.rs"]
@@ -179,12 +179,28 @@ pub fn opts(os: &'static str, arch: Arch) -> TargetOptions {
     }
 }
 
-fn deployment_target(var_name: &str) -> Option<(u32, u32)> {
-    let deployment_target = env::var(var_name).ok();
-    deployment_target
-        .as_ref()
-        .and_then(|s| s.split_once('.'))
-        .and_then(|(a, b)| a.parse::<u32>().and_then(|a| b.parse::<u32>().map(|b| (a, b))).ok())
+pub fn deployment_target(target: &Target) -> Option<String> {
+    let (major, minor) = match &*target.os {
+        "macos" => {
+            // This does not need to be specific. It just needs to handle x86 vs M1.
+            let arch = if target.arch == "x86" || target.arch == "x86_64" { X86_64 } else { Arm64 };
+            macos_deployment_target(arch)
+        }
+        "ios" => ios_deployment_target(),
+        "watchos" => watchos_deployment_target(),
+        "tvos" => tvos_deployment_target(),
+        _ => return None,
+    };
+
+    Some(format!("{major}.{minor}"))
+}
+
+fn from_set_deployment_target(var_name: &str) -> Option<(u32, u32)> {
+    let deployment_target = env::var(var_name).ok()?;
+    let (unparsed_major, unparsed_minor) = deployment_target.split_once('.')?;
+    let (major, minor) = (unparsed_major.parse().ok()?, unparsed_minor.parse().ok()?);
+
+    Some((major, minor))
 }
 
 fn macos_default_deployment_target(arch: Arch) -> (u32, u32) {
@@ -198,7 +214,8 @@ fn macos_default_deployment_target(arch: Arch) -> (u32, u32) {
 }
 
 fn macos_deployment_target(arch: Arch) -> (u32, u32) {
-    deployment_target("MACOSX_DEPLOYMENT_TARGET")
+    // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
+    from_set_deployment_target("MACOSX_DEPLOYMENT_TARGET")
         .unwrap_or_else(|| macos_default_deployment_target(arch))
 }
 
@@ -247,7 +264,8 @@ fn link_env_remove(arch: Arch, os: &'static str) -> StaticCow<[StaticCow<str>]> 
 }
 
 fn ios_deployment_target() -> (u32, u32) {
-    deployment_target("IPHONEOS_DEPLOYMENT_TARGET").unwrap_or((7, 0))
+    // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
+    from_set_deployment_target("IPHONEOS_DEPLOYMENT_TARGET").unwrap_or((7, 0))
 }
 
 pub fn ios_llvm_target(arch: Arch) -> String {
@@ -272,7 +290,8 @@ pub fn ios_sim_llvm_target(arch: Arch) -> String {
 }
 
 fn tvos_deployment_target() -> (u32, u32) {
-    deployment_target("TVOS_DEPLOYMENT_TARGET").unwrap_or((7, 0))
+    // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
+    from_set_deployment_target("TVOS_DEPLOYMENT_TARGET").unwrap_or((7, 0))
 }
 
 fn tvos_lld_platform_version() -> String {
@@ -281,7 +300,8 @@ fn tvos_lld_platform_version() -> String {
 }
 
 fn watchos_deployment_target() -> (u32, u32) {
-    deployment_target("WATCHOS_DEPLOYMENT_TARGET").unwrap_or((5, 0))
+    // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
+    from_set_deployment_target("WATCHOS_DEPLOYMENT_TARGET").unwrap_or((5, 0))
 }
 
 fn watchos_lld_platform_version() -> String {

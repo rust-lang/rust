@@ -1,2 +1,2 @@
-error: unknown print request `uwu`. Valid print requests are: `crate-name`, `file-names`, `sysroot`, `target-libdir`, `cfg`, `calling-conventions`, `target-list`, `target-cpus`, `target-features`, `relocation-models`, `code-models`, `tls-models`, `native-static-libs`, `stack-protector-strategies`, `target-spec-json`, `all-target-specs-json`, `link-args`, `split-debuginfo`
+error: unknown print request `uwu`. Valid print requests are: `crate-name`, `file-names`, `sysroot`, `target-libdir`, `cfg`, `calling-conventions`, `target-list`, `target-cpus`, `target-features`, `relocation-models`, `code-models`, `tls-models`, `native-static-libs`, `stack-protector-strategies`, `target-spec-json`, `all-target-specs-json`, `link-args`, `split-debuginfo`, `deployment-target`
 
