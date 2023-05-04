@@ -45,6 +45,7 @@ mod iter_overeager_cloned;
 mod iter_skip_next;
 mod iter_with_drain;
 mod iterator_step_by_zero;
+mod manual_next_back;
 mod manual_ok_or;
 mod manual_saturating_arithmetic;
 mod manual_str_repeat;
@@ -3193,6 +3194,29 @@ declare_clippy_lint! {
     "calling `drain` in order to `clear` a container"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `.rev().next()` on a `DoubleEndedIterator`
+    ///
+    /// ### Why is this bad?
+    /// `.next_back()` is cleaner.
+    ///
+    /// ### Example
+    /// ```rust
+    /// # let foo = [0; 10];
+    /// foo.iter().rev().next();
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// # let foo = [0; 10];
+    /// foo.iter().next_back();
+    /// ```
+    #[clippy::version = "1.71.0"]
+    pub MANUAL_NEXT_BACK,
+    style,
+    "manual reverse iteration of `DoubleEndedIterator`"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -3321,6 +3345,7 @@ impl_lint_pass!(Methods => [
     NEEDLESS_COLLECT,
     SUSPICIOUS_COMMAND_ARG_SPACE,
     CLEAR_WITH_DRAIN,
+    MANUAL_NEXT_BACK,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -3677,6 +3702,7 @@ impl Methods {
                             ("iter", []) => iter_next_slice::check(cx, expr, recv2),
                             ("skip", [arg]) => iter_skip_next::check(cx, expr, recv2, arg),
                             ("skip_while", [_]) => skip_while_next::check(cx, expr),
+                            ("rev", [])=> manual_next_back::check(cx, expr, recv, recv2),
                             _ => {},
                         }
                     }
