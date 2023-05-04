@@ -425,6 +425,7 @@ lint_overflowing_bin_hex = literal out of range for `{$ty}`
     .negative_becomes_note = and the value `-{$lit}` will become `{$actually}{$ty}`
     .positive_note = the literal `{$lit}` (decimal `{$dec}`) does not fit into the type `{$ty}` and will become `{$actually}{$ty}`
     .suggestion = consider using the type `{$suggestion_ty}` instead
+    .sign_bit_suggestion = to use as a negative number (decimal `{$negative_val}`), consider using the type `{$uint_ty}` for the literal and cast it to `{$int_ty}`
     .help = consider using the type `{$suggestion_ty}` instead
 
 lint_overflowing_int = literal out of range for `{$ty}`
