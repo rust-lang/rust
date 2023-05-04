@@ -1171,7 +1171,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     return Res::Err;
                 }
             }
-            Res::Def(DefKind::TyParam, _) | Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } => {
+            Res::Def(DefKind::TyParam, _)
+            | Res::SelfTyParam { .. }
+            | Res::SelfTyAlias { .. }
+            | Res::SelfCtor(_) => {
                 for rib in ribs {
                     let has_generic_params: HasGenericParams = match rib.kind {
                         NormalRibKind
