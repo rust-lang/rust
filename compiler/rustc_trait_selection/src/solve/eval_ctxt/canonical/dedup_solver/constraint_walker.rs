@@ -4,7 +4,7 @@ use ty::subst::{GenericArg, GenericArgKind};
 use ty::{Const, OutlivesPredicate, Placeholder, Region, Ty, TyCtxt};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 
 pub type Outlives<'tcx> = OutlivesPredicate<GenericArg<'tcx>, Region<'tcx>>;
 
@@ -46,7 +46,7 @@ impl<'tcx, 'a> ConstraintWalker<'tcx, 'a> {
             definition_span: input.definition_span,
             hidden_ty: self.walk_ty(input.hidden_ty),
             member_region: self.walk_region(input.member_region),
-            choice_regions: Rc::new(
+            choice_regions: Lrc::new(
                 input.choice_regions.iter().map(|x| self.walk_region(*x)).collect::<Vec<_>>(),
             ),
         }
