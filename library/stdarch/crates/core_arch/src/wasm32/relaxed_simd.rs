@@ -68,6 +68,7 @@ extern "C" {
 #[cfg_attr(test, assert_instr(i8x16.relaxed_swizzle))]
 #[target_feature(enable = "relaxed-simd")]
 #[doc(alias("i8x16.relaxed_swizzle"))]
+#[unstable(feature = "stdarch_wasm_relaxed_simd", issue = "111196")]
 pub fn i8x16_relaxed_swizzle(a: v128, s: v128) -> v128 {
     unsafe { llvm_relaxed_swizzle(a.as_i8x16(), s.as_i8x16()).v128() }
 }
@@ -81,6 +82,7 @@ pub fn i8x16_relaxed_swizzle(a: v128, s: v128) -> v128 {
 #[cfg_attr(test, assert_instr(i32x4.relaxed_trunc_f32x4_s))]
 #[target_feature(enable = "relaxed-simd")]
 #[doc(alias("i32x4.relaxed_trunc_f32x4_s"))]
+#[unstable(feature = "stdarch_wasm_relaxed_simd", issue = "111196")]
 pub fn i32x4_relaxed_trunc_f32x4(a: v128) -> v128 {
     unsafe { llvm_relaxed_trunc_signed(a.as_f32x4()).v128() }
 }
@@ -94,6 +96,7 @@ pub fn i32x4_relaxed_trunc_f32x4(a: v128) -> v128 {
 #[cfg_attr(test, assert_instr(i32x4.relaxed_trunc_f32x4_u))]
 #[target_feature(enable = "relaxed-simd")]
 #[doc(alias("i32x4.relaxed_trunc_f32x4_u"))]
+#[unstable(feature = "stdarch_wasm_relaxed_simd", issue = "111196")]
 pub fn u32x4_relaxed_trunc_f32x4(a: v128) -> v128 {
     unsafe { llvm_relaxed_trunc_unsigned(a.as_f32x4()).v128() }
 }
@@ -107,6 +110,7 @@ pub fn u32x4_relaxed_trunc_f32x4(a: v128) -> v128 {
 #[cfg_attr(test, assert_instr(i32x4.relaxed_trunc_f64x2_s_zero))]
 #[target_feature(enable = "relaxed-simd")]
 #[doc(alias("i32x4.relaxed_trunc_f64x2_s_zero"))]
+#[unstable(feature = "stdarch_wasm_relaxed_simd", issue = "111196")]
 pub fn i32x4_relaxed_trunc_f64x2_zero(a: v128) -> v128 {
     unsafe { llvm_relaxed_trunc_signed_zero(a.as_f64x2()).v128() }
 }
@@ -120,6 +124,7 @@ pub fn i32x4_relaxed_trunc_f64x2_zero(a: v128) -> v128 {
 #[cfg_attr(test, assert_instr(i32x4.relaxed_trunc_f64x2_u_zero))]
 #[target_feature(enable = "relaxed-simd")]
 #[doc(alias("i32x4.relaxed_trunc_f64x2_u_zero"))]
+#[unstable(feature = "stdarch_wasm_relaxed_simd", issue = "111196")]
 pub fn u32x4_relaxed_trunc_f64x2_zero(a: v128) -> v128 {
     unsafe { llvm_relaxed_trunc_unsigned_zero(a.as_f64x2()).v128() }
 }
@@ -129,6 +134,7 @@ pub fn u32x4_relaxed_trunc_f64x2_zero(a: v128) -> v128 {
 #[cfg_attr(test, assert_instr(f32x4.relaxed_madd))]
 #[target_feature(enable = "relaxed-simd")]
 #[doc(alias("f32x4.relaxed_madd"))]
+#[unstable(feature = "stdarch_wasm_relaxed_simd", issue = "111196")]
 pub fn f32x4_relaxed_madd(a: v128, b: v128, c: v128) -> v128 {
     unsafe { llvm_f32x4_fma(a.as_f32x4(), b.as_f32x4(), c.as_f32x4()).v128() }
 }
@@ -138,6 +144,7 @@ pub fn f32x4_relaxed_madd(a: v128, b: v128, c: v128) -> v128 {
 #[cfg_attr(test, assert_instr(f32x4.relaxed_nmadd))]
 #[target_feature(enable = "relaxed-simd")]
 #[doc(alias("f32x4.relaxed_nmadd"))]
+#[unstable(feature = "stdarch_wasm_relaxed_simd", issue = "111196")]
 pub fn f32x4_relaxed_nmadd(a: v128, b: v128, c: v128) -> v128 {
     unsafe { llvm_f32x4_fms(a.as_f32x4(), b.as_f32x4(), c.as_f32x4()).v128() }
 }
@@ -147,6 +154,7 @@ pub fn f32x4_relaxed_nmadd(a: v128, b: v128, c: v128) -> v128 {
 #[cfg_attr(test, assert_instr(f64x2.relaxed_madd))]
 #[target_feature(enable = "relaxed-simd")]
 #[doc(alias("f64x2.relaxed_madd"))]
+#[unstable(feature = "stdarch_wasm_relaxed_simd", issue = "111196")]
 pub fn f64x2_relaxed_madd(a: v128, b: v128, c: v128) -> v128 {
     unsafe { llvm_f64x2_fma(a.as_f64x2(), b.as_f64x2(), c.as_f64x2()).v128() }
 }
@@ -156,6 +164,7 @@ pub fn f64x2_relaxed_madd(a: v128, b: v128, c: v128) -> v128 {
 #[cfg_attr(test, assert_instr(f64x2.relaxed_nmadd))]
 #[target_feature(enable = "relaxed-simd")]
 #[doc(alias("f64x2.relaxed_nmadd"))]
+#[unstable(feature = "stdarch_wasm_relaxed_simd", issue = "111196")]
 pub fn f64x2_relaxed_nmadd(a: v128, b: v128, c: v128) -> v128 {
     unsafe { llvm_f64x2_fms(a.as_f64x2(), b.as_f64x2(), c.as_f64x2()).v128() }
 }
@@ -171,6 +180,7 @@ pub fn f64x2_relaxed_nmadd(a: v128, b: v128, c: v128) -> v128 {
 #[cfg_attr(test, assert_instr(i8x16.relaxed_laneselect))]
 #[target_feature(enable = "relaxed-simd")]
 #[doc(alias("i8x16.relaxed_laneselect"))]
+#[unstable(feature = "stdarch_wasm_relaxed_simd", issue = "111196")]
 pub fn i8x16_relaxed_laneselect(a: v128, b: v128, m: v128) -> v128 {
     unsafe { llvm_i8x16_laneselect(a.as_i8x16(), b.as_i8x16(), m.as_i8x16()).v128() }
 }
@@ -186,6 +196,7 @@ pub fn i8x16_relaxed_laneselect(a: v128, b: v128, m: v128) -> v128 {
 #[cfg_attr(test, assert_instr(i16x8.relaxed_laneselect))]
 #[target_feature(enable = "relaxed-simd")]
 #[doc(alias("i16x8.relaxed_laneselect"))]
+#[unstable(feature = "stdarch_wasm_relaxed_simd", issue = "111196")]
 pub fn i16x8_relaxed_laneselect(a: v128, b: v128, m: v128) -> v128 {
     unsafe { llvm_i16x8_laneselect(a.as_i16x8(), b.as_i16x8(), m.as_i16x8()).v128() }
 }
@@ -201,6 +212,7 @@ pub fn i16x8_relaxed_laneselect(a: v128, b: v128, m: v128) -> v128 {
 #[cfg_attr(test, assert_instr(i32x4.relaxed_laneselect))]
 #[target_feature(enable = "relaxed-simd")]
 #[doc(alias("i32x4.relaxed_laneselect"))]
+#[unstable(feature = "stdarch_wasm_relaxed_simd", issue = "111196")]
 pub fn i32x4_relaxed_laneselect(a: v128, b: v128, m: v128) -> v128 {
     unsafe { llvm_i32x4_laneselect(a.as_i32x4(), b.as_i32x4(), m.as_i32x4()).v128() }
 }
@@ -216,6 +228,7 @@ pub fn i32x4_relaxed_laneselect(a: v128, b: v128, m: v128) -> v128 {
 #[cfg_attr(test, assert_instr(i64x2.relaxed_laneselect))]
 #[target_feature(enable = "relaxed-simd")]
 #[doc(alias("i64x2.relaxed_laneselect"))]
+#[unstable(feature = "stdarch_wasm_relaxed_simd", issue = "111196")]
 pub fn i64x2_relaxed_laneselect(a: v128, b: v128, m: v128) -> v128 {
     unsafe { llvm_i64x2_laneselect(a.as_i64x2(), b.as_i64x2(), m.as_i64x2()).v128() }
 }
@@ -226,6 +239,7 @@ pub fn i64x2_relaxed_laneselect(a: v128, b: v128, m: v128) -> v128 {
 #[cfg_attr(test, assert_instr(f32x4.relaxed_min))]
 #[target_feature(enable = "relaxed-simd")]
 #[doc(alias("f32x4.relaxed_min"))]
+#[unstable(feature = "stdarch_wasm_relaxed_simd", issue = "111196")]
 pub fn f32x4_relaxed_min(a: v128, b: v128) -> v128 {
     unsafe { llvm_f32x4_relaxed_min(a.as_f32x4(), b.as_f32x4()).v128() }
 }
@@ -236,6 +250,7 @@ pub fn f32x4_relaxed_min(a: v128, b: v128) -> v128 {
 #[cfg_attr(test, assert_instr(f32x4.relaxed_max))]
 #[target_feature(enable = "relaxed-simd")]
 #[doc(alias("f32x4.relaxed_max"))]
+#[unstable(feature = "stdarch_wasm_relaxed_simd", issue = "111196")]
 pub fn f32x4_relaxed_max(a: v128, b: v128) -> v128 {
     unsafe { llvm_f32x4_relaxed_max(a.as_f32x4(), b.as_f32x4()).v128() }
 }
@@ -246,6 +261,7 @@ pub fn f32x4_relaxed_max(a: v128, b: v128) -> v128 {
 #[cfg_attr(test, assert_instr(f64x2.relaxed_min))]
 #[target_feature(enable = "relaxed-simd")]
 #[doc(alias("f64x2.relaxed_min"))]
+#[unstable(feature = "stdarch_wasm_relaxed_simd", issue = "111196")]
 pub fn f64x2_relaxed_min(a: v128, b: v128) -> v128 {
     unsafe { llvm_f64x2_relaxed_min(a.as_f64x2(), b.as_f64x2()).v128() }
 }
@@ -256,6 +272,7 @@ pub fn f64x2_relaxed_min(a: v128, b: v128) -> v128 {
 #[cfg_attr(test, assert_instr(f64x2.relaxed_max))]
 #[target_feature(enable = "relaxed-simd")]
 #[doc(alias("f64x2.relaxed_max"))]
+#[unstable(feature = "stdarch_wasm_relaxed_simd", issue = "111196")]
 pub fn f64x2_relaxed_max(a: v128, b: v128) -> v128 {
     unsafe { llvm_f64x2_relaxed_max(a.as_f64x2(), b.as_f64x2()).v128() }
 }
@@ -266,6 +283,7 @@ pub fn f64x2_relaxed_max(a: v128, b: v128) -> v128 {
 #[cfg_attr(test, assert_instr(i16x8.relaxed_q15mulr_s))]
 #[target_feature(enable = "relaxed-simd")]
 #[doc(alias("i16x8.relaxed_q15mulr_s"))]
+#[unstable(feature = "stdarch_wasm_relaxed_simd", issue = "111196")]
 pub fn i16x8_relaxed_q15mulr(a: v128, b: v128) -> v128 {
     unsafe { llvm_relaxed_q15mulr_signed(a.as_i16x8(), b.as_i16x8()).v128() }
 }
@@ -285,6 +303,7 @@ pub fn i16x8_relaxed_q15mulr(a: v128, b: v128) -> v128 {
 #[cfg_attr(test, assert_instr(i16x8.relaxed_dot_i8x16_i7x16_s))]
 #[target_feature(enable = "relaxed-simd")]
 #[doc(alias("i16x8.relaxed_dot_i8x16_i7x16_s"))]
+#[unstable(feature = "stdarch_wasm_relaxed_simd", issue = "111196")]
 pub fn i16x8_relaxed_dot_i8x16_i7x16(a: v128, b: v128) -> v128 {
     unsafe { llvm_i16x8_relaxed_dot_i8x16_i7x16_s(a.as_i8x16(), b.as_i8x16()).v128() }
 }
@@ -296,6 +315,7 @@ pub fn i16x8_relaxed_dot_i8x16_i7x16(a: v128, b: v128) -> v128 {
 #[cfg_attr(test, assert_instr(i32x4.relaxed_dot_i8x16_i7x16_add_s))]
 #[target_feature(enable = "relaxed-simd")]
 #[doc(alias("i32x4.relaxed_dot_i8x16_i7x16_add_s"))]
+#[unstable(feature = "stdarch_wasm_relaxed_simd", issue = "111196")]
 pub fn i32x4_relaxed_dot_i8x16_i7x16_add(a: v128, b: v128, c: v128) -> v128 {
     unsafe {
         llvm_i32x4_relaxed_dot_i8x16_i7x16_add_s(a.as_i8x16(), b.as_i8x16(), c.as_i32x4()).v128()

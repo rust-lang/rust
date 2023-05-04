@@ -4,15 +4,19 @@
 use stdarch_test::assert_instr;
 
 mod atomic;
+#[unstable(feature = "stdarch_wasm_atomic_wait", issue = "77839")]
 pub use self::atomic::*;
 
 mod simd128;
+#[stable(feature = "wasm_simd", since = "1.54.0")]
 pub use self::simd128::*;
 
 mod relaxed_simd;
+#[unstable(feature = "stdarch_wasm_relaxed_simd", issue = "111196")]
 pub use self::relaxed_simd::*;
 
 mod memory;
+#[stable(feature = "simd_wasm32", since = "1.33.0")]
 pub use self::memory::*;
 
 /// Generates the [`unreachable`] instruction, which causes an unconditional [trap].

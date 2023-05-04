@@ -36,6 +36,7 @@ extern "C" {
 #[cfg_attr(test, assert_instr(memory.atomic.wait32))]
 #[target_feature(enable = "atomics")]
 #[doc(alias("memory.atomic.wait32"))]
+#[unstable(feature = "stdarch_wasm_atomic_wait", issue = "77839")]
 pub unsafe fn memory_atomic_wait32(ptr: *mut i32, expression: i32, timeout_ns: i64) -> i32 {
     llvm_atomic_wait_i32(ptr, expression, timeout_ns)
 }
@@ -66,6 +67,7 @@ pub unsafe fn memory_atomic_wait32(ptr: *mut i32, expression: i32, timeout_ns: i
 #[cfg_attr(test, assert_instr(memory.atomic.wait64))]
 #[target_feature(enable = "atomics")]
 #[doc(alias("memory.atomic.wait64"))]
+#[unstable(feature = "stdarch_wasm_atomic_wait", issue = "77839")]
 pub unsafe fn memory_atomic_wait64(ptr: *mut i64, expression: i64, timeout_ns: i64) -> i32 {
     llvm_atomic_wait_i64(ptr, expression, timeout_ns)
 }
@@ -88,6 +90,7 @@ pub unsafe fn memory_atomic_wait64(ptr: *mut i64, expression: i64, timeout_ns: i
 #[cfg_attr(test, assert_instr(memory.atomic.notify))]
 #[target_feature(enable = "atomics")]
 #[doc(alias("memory.atomic.notify"))]
+#[unstable(feature = "stdarch_wasm_atomic_wait", issue = "77839")]
 pub unsafe fn memory_atomic_notify(ptr: *mut i32, waiters: u32) -> u32 {
     llvm_atomic_notify(ptr, waiters as i32) as u32
 }
