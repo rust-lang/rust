@@ -1870,6 +1870,7 @@ impl<'a> Parser<'a> {
         let recovered = self.recover_after_dot();
         let token = recovered.as_ref().unwrap_or(&self.token);
         let span = token.span;
+
         token::Lit::from_token(token).map(|token_lit| {
             self.bump();
             (token_lit, span)

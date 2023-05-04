@@ -186,12 +186,16 @@ pub enum LiteralKind {
     Str { terminated: bool },
     /// "b"abc"", "b"abc"
     ByteStr { terminated: bool },
+    /// `c"abc"`, `c"abc`
+    CStr { terminated: bool },
     /// "r"abc"", "r#"abc"#", "r####"ab"###"c"####", "r#"a". `None` indicates
     /// an invalid literal.
     RawStr { n_hashes: Option<u8> },
     /// "br"abc"", "br#"abc"#", "br####"ab"###"c"####", "br#"a". `None`
     /// indicates an invalid literal.
     RawByteStr { n_hashes: Option<u8> },
+    /// `cr"abc"`, "cr#"abc"#", `cr#"a`. `None` indicates an invalid literal.
+    RawCStr { n_hashes: Option<u8> },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -357,39 +361,18 @@ impl Cursor<'_> {
             },
 
             // Byte literal, byte string literal, raw byte string literal or identifier.
-            'b' => match (self.first(), self.second()) {
-                ('\'', _) => {
-                    self.bump();
-                    let terminated = self.single_quoted_string();
-                    let suffix_start = self.pos_within_token();
-                    if terminated {
-                        self.eat_literal_suffix();
-                    }
-                    let kind = Byte { terminated };
-                    Literal { kind, suffix_start }
-                }
-                ('"', _) => {
-                    self.bump();
-                    let terminated = self.double_quoted_string();
-                    let suffix_start = self.pos_within_token();
-                    if terminated {
-                        self.eat_literal_suffix();
-                    }
-                    let kind = ByteStr { terminated };
-                    Literal { kind, suffix_start }
-                }
-                ('r', '"') | ('r', '#') => {
-                    self.bump();
-                    let res = self.raw_double_quoted_string(2);
-                    let suffix_start = self.pos_within_token();
-                    if res.is_ok() {
-                        self.eat_literal_suffix();
-                    }
-                    let kind = RawByteStr { n_hashes: res.ok() };
-                    Literal { kind, suffix_start }
-                }
-                _ => self.ident_or_unknown_prefix(),
-            },
+            'b' => self.c_or_byte_string(
+                |terminated| ByteStr { terminated },
+                |n_hashes| RawByteStr { n_hashes },
+                Some(|terminated| Byte { terminated }),
+            ),
+
+            // c-string literal, raw c-string literal or identifier.
+            'c' => self.c_or_byte_string(
+                |terminated| CStr { terminated },
+                |n_hashes| RawCStr { n_hashes },
+                None,
+            ),
 
             // Identifier (this should be checked after other variant that can
             // start as identifier).
@@ -550,6 +533,47 @@ impl Cursor<'_> {
         match self.first() {
             '#' | '"' | '\'' => UnknownPrefix,
             _ => InvalidIdent,
+        }
+    }
+
+    fn c_or_byte_string(
+        &mut self,
+        mk_kind: impl FnOnce(bool) -> LiteralKind,
+        mk_kind_raw: impl FnOnce(Option<u8>) -> LiteralKind,
+        single_quoted: Option<fn(bool) -> LiteralKind>,
+    ) -> TokenKind {
+        match (self.first(), self.second(), single_quoted) {
+            ('\'', _, Some(mk_kind)) => {
+                self.bump();
+                let terminated = self.single_quoted_string();
+                let suffix_start = self.pos_within_token();
+                if terminated {
+                    self.eat_literal_suffix();
+                }
+                let kind = mk_kind(terminated);
+                Literal { kind, suffix_start }
+            }
+            ('"', _, _) => {
+                self.bump();
+                let terminated = self.double_quoted_string();
+                let suffix_start = self.pos_within_token();
+                if terminated {
+                    self.eat_literal_suffix();
+                }
+                let kind = mk_kind(terminated);
+                Literal { kind, suffix_start }
+            }
+            ('r', '"', _) | ('r', '#', _) => {
+                self.bump();
+                let res = self.raw_double_quoted_string(2);
+                let suffix_start = self.pos_within_token();
+                if res.is_ok() {
+                    self.eat_literal_suffix();
+                }
+                let kind = mk_kind_raw(res.ok());
+                Literal { kind, suffix_start }
+            }
+            _ => self.ident_or_unknown_prefix(),
         }
     }
 
