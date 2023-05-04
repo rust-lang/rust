@@ -258,7 +258,7 @@ pub mod arch {
     /// See the [module documentation](../index.html) for more details.
     #[cfg(any(target_arch = "nvptx64", doc))]
     #[doc(cfg(target_arch = "nvptx64"))]
-    #[unstable(feature = "stdsimd", issue = "27731")]
+    #[unstable(feature = "stdarch_nvptx", issue = "111199")]
     pub mod nvptx {
         pub use crate::core_arch::nvptx::*;
     }
