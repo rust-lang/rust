@@ -11,20 +11,6 @@
 
 #![allow(rustc::usage_of_ty_tykind)]
 
-pub use self::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
-pub use self::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
-pub use self::AssocItemContainer::*;
-pub use self::BorrowKind::*;
-pub use self::IntVarValue::*;
-pub use self::Variance::*;
-use crate::error::TypeMismatchReason;
-use crate::mir::{Body, GeneratorLayout};
-use crate::ty;
-use crate::ty::fast_reject::SimplifiedType;
-use crate::ty::util::Discr;
-pub use adt::*;
-pub use assoc::*;
-pub use generics::*;
 use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_data_structures::intern::Interned;
@@ -34,58 +20,17 @@ use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::Node;
 use rustc_serialize::{Decodable, Encodable};
-pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{ExpnKind, Span};
 use rustc_target::abi::{Align, FieldIdx, Integer, IntegerType, VariantIdx};
-pub use rustc_target::abi::{ReprFlags, ReprOptions};
 use rustc_type_ir::WithCachedTypeInfo;
-pub use subst::*;
-pub use vtable::*;
 
-pub use crate::ty::diagnostics::*;
-pub use rustc_type_ir::AliasKind::*;
-pub use rustc_type_ir::DynKind::*;
-pub use rustc_type_ir::InferTy::*;
-pub use rustc_type_ir::RegionKind::*;
-pub use rustc_type_ir::TyKind::*;
-pub use rustc_type_ir::*;
-
-pub use self::binding::BindingMode;
-pub use self::binding::BindingMode::*;
-pub use self::closure::{
-    is_ancestor_or_same_capture, place_to_string_for_capture, BorrowKind, CaptureInfo,
-    CapturedPlace, ClosureKind, ClosureTypeInfo, MinCaptureInformationMap, MinCaptureList,
-    RootVariableMinCaptureList, UpvarCapture, UpvarCaptureMap, UpvarId, UpvarListMap, UpvarPath,
-    CAPTURE_STRUCT_LOCAL,
-};
-pub use self::consts::{
-    Const, ConstData, ConstInt, ConstKind, Expr, InferConst, ScalarInt, UnevaluatedConst, ValTree,
-};
-pub use self::context::{
-    tls, CtxtInterners, DeducedParamAttrs, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt, TyCtxtFeed,
-};
-pub use self::instance::{Instance, InstanceDef, ShortInstance, UnusedGenericParams};
-pub use self::list::List;
-pub use self::parameterized::ParameterizedOverTcx;
-pub use self::rvalue_scopes::RvalueScopes;
-pub use self::sty::BoundRegionKind::*;
-pub use self::sty::{
-    AliasTy, Article, Binder, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, BoundVar,
-    BoundVariableKind, CanonicalPolyFnSig, ClosureSubsts, ClosureSubstsParts, ConstVid,
-    EarlyBoundRegion, ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FnSig,
-    FreeRegion, GenSig, GeneratorSubsts, GeneratorSubstsParts, InlineConstSubsts,
-    InlineConstSubstsParts, ParamConst, ParamTy, PolyExistentialPredicate,
-    PolyExistentialProjection, PolyExistentialTraitRef, PolyFnSig, PolyGenSig, PolyTraitRef,
-    Region, RegionKind, RegionVid, TraitRef, TyKind, TypeAndMut, UpvarSubsts, VarianceDiagInfo,
-};
-pub use self::trait_def::TraitDef;
-pub use self::typeck_results::{
-    CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
-    GeneratorDiagnosticData, GeneratorInteriorTypeCause, TypeckResults, UserType,
-    UserTypeAnnotationIndex,
-};
+use self::fast_reject::SimplifiedType;
+use self::util::Discr;
+use crate::error::TypeMismatchReason;
+use crate::mir::{Body, GeneratorLayout};
+use crate::ty;
 
 pub mod _match;
 pub mod abstract_const;
@@ -111,90 +56,144 @@ pub mod vtable;
 pub mod walk;
 
 mod adt;
-mod assoc;
-mod closure;
-mod consts;
-mod context;
-mod diagnostics;
-mod erase_regions;
-mod generics;
-mod impls_ty;
-mod instance;
-mod list;
-mod opaque_types;
-mod parameterized;
-mod rvalue_scopes;
-mod structural_impls;
-mod sty;
-mod typeck_results;
-
 mod alias_relation_direction;
+mod assoc;
 mod bound_const;
 mod bound_constness;
 mod c_reader_cache_key;
+mod closure;
 mod closure_size_profile_data;
+mod consts;
+mod context;
 mod crate_inherent_impls;
 mod crate_variances_map;
 mod destructor;
 mod destructured_const;
+mod diagnostics;
+mod erase_regions;
 mod field_def;
+mod generics;
 mod impl_header;
 mod impl_overlap_kind;
 mod impl_polarity;
 mod impl_subject;
 mod impl_trait_in_trait_data;
+mod impls_ty;
 mod infer_var_info;
+mod instance;
+mod list;
 mod main_definition;
 mod opaque_hidden_type;
 mod opaque_type_key;
+mod opaque_types;
 mod param_env;
+mod parameterized;
 mod placeholder;
 mod predicate;
 mod resolver_outputs;
+mod rvalue_scopes;
+mod structural_impls;
+mod sty;
 mod symbol_name;
 mod term;
 mod ty_; // FIXME: rename to `ty` once we don't import `crate::ty` here
+mod typeck_results;
 mod variant_def;
 mod variant_discr;
 mod variant_flags;
 mod visibility;
 
-pub use alias_relation_direction::AliasRelationDirection;
-pub use bound_const::BoundConst;
-pub use bound_constness::BoundConstness;
-pub use c_reader_cache_key::CReaderCacheKey;
-pub use closure_size_profile_data::ClosureSizeProfileData;
-pub use crate_inherent_impls::CrateInherentImpls;
-pub use crate_variances_map::CrateVariancesMap;
-pub use destructor::Destructor;
-pub use destructured_const::DestructuredConst;
-pub use field_def::FieldDef;
-pub use impl_header::ImplHeader;
-pub use impl_overlap_kind::ImplOverlapKind;
-pub use impl_polarity::ImplPolarity;
-pub use impl_subject::ImplSubject;
-pub use impl_trait_in_trait_data::ImplTraitInTraitData;
-pub use infer_var_info::InferVarInfo;
-pub use main_definition::MainDefinition;
-pub use opaque_hidden_type::OpaqueHiddenType;
-pub use opaque_type_key::OpaqueTypeKey;
-pub use param_env::{ParamEnv, ParamEnvAnd};
-pub use placeholder::{Placeholder, PlaceholderConst, PlaceholderRegion, PlaceholderType};
-pub use predicate::{
+pub use rustc_session::lint::RegisteredTools;
+pub use rustc_target::abi::{ReprFlags, ReprOptions};
+pub use rustc_type_ir::AliasKind::*;
+pub use rustc_type_ir::DynKind::*;
+pub use rustc_type_ir::InferTy::*;
+pub use rustc_type_ir::RegionKind::*;
+pub use rustc_type_ir::TyKind::*;
+pub use rustc_type_ir::*;
+
+pub use self::adt::*;
+pub use self::alias_relation_direction::AliasRelationDirection;
+pub use self::assoc::*;
+pub use self::binding::BindingMode;
+pub use self::binding::BindingMode::*;
+pub use self::bound_const::BoundConst;
+pub use self::bound_constness::BoundConstness;
+pub use self::c_reader_cache_key::CReaderCacheKey;
+pub use self::closure::{
+    is_ancestor_or_same_capture, place_to_string_for_capture, BorrowKind, CaptureInfo,
+    CapturedPlace, ClosureKind, ClosureTypeInfo, MinCaptureInformationMap, MinCaptureList,
+    RootVariableMinCaptureList, UpvarCapture, UpvarCaptureMap, UpvarId, UpvarListMap, UpvarPath,
+    CAPTURE_STRUCT_LOCAL,
+};
+pub use self::closure_size_profile_data::ClosureSizeProfileData;
+pub use self::consts::{
+    Const, ConstData, ConstInt, ConstKind, Expr, InferConst, ScalarInt, UnevaluatedConst, ValTree,
+};
+pub use self::context::{
+    tls, CtxtInterners, DeducedParamAttrs, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt, TyCtxtFeed,
+};
+pub use self::crate_inherent_impls::CrateInherentImpls;
+pub use self::crate_variances_map::CrateVariancesMap;
+pub use self::destructor::Destructor;
+pub use self::destructured_const::DestructuredConst;
+pub use self::diagnostics::*;
+pub use self::field_def::FieldDef;
+pub use self::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
+pub use self::generics::*;
+pub use self::impl_header::ImplHeader;
+pub use self::impl_overlap_kind::ImplOverlapKind;
+pub use self::impl_polarity::ImplPolarity;
+pub use self::impl_subject::ImplSubject;
+pub use self::impl_trait_in_trait_data::ImplTraitInTraitData;
+pub use self::infer_var_info::InferVarInfo;
+pub use self::instance::{Instance, InstanceDef, ShortInstance, UnusedGenericParams};
+pub use self::list::List;
+pub use self::main_definition::MainDefinition;
+pub use self::opaque_hidden_type::OpaqueHiddenType;
+pub use self::opaque_type_key::OpaqueTypeKey;
+pub use self::param_env::{ParamEnv, ParamEnvAnd};
+pub use self::parameterized::ParameterizedOverTcx;
+pub use self::placeholder::{Placeholder, PlaceholderConst, PlaceholderRegion, PlaceholderType};
+pub use self::predicate::{
     Clause, CoercePredicate, CratePredicatesMap, InstantiatedPredicates, OutlivesPredicate,
     PolyCoercePredicate, PolyProjectionPredicate, PolyRegionOutlivesPredicate,
     PolySubtypePredicate, PolyTraitPredicate, PolyTypeOutlivesPredicate, Predicate, PredicateKind,
     ProjectionPredicate, RegionOutlivesPredicate, SubtypePredicate, ToPredicate, TraitPredicate,
     TypeOutlivesPredicate,
 };
-pub use resolver_outputs::{ResolverAstLowering, ResolverGlobalCtxt, ResolverOutputs};
-pub use symbol_name::SymbolName;
-pub use term::{Term, TermKind};
-pub use ty_::Ty;
-pub use variant_def::VariantDef;
-pub use variant_discr::VariantDiscr;
-pub use variant_flags::VariantFlags;
-pub use visibility::Visibility;
+pub use self::resolver_outputs::{ResolverAstLowering, ResolverGlobalCtxt, ResolverOutputs};
+pub use self::rvalue_scopes::RvalueScopes;
+pub use self::sty::BoundRegionKind::*;
+pub use self::sty::{
+    AliasTy, Article, Binder, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, BoundVar,
+    BoundVariableKind, CanonicalPolyFnSig, ClosureSubsts, ClosureSubstsParts, ConstVid,
+    EarlyBoundRegion, ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FnSig,
+    FreeRegion, GenSig, GeneratorSubsts, GeneratorSubstsParts, InlineConstSubsts,
+    InlineConstSubstsParts, ParamConst, ParamTy, PolyExistentialPredicate,
+    PolyExistentialProjection, PolyExistentialTraitRef, PolyFnSig, PolyGenSig, PolyTraitRef,
+    Region, RegionKind, RegionVid, TraitRef, TyKind, TypeAndMut, UpvarSubsts, VarianceDiagInfo,
+};
+pub use self::subst::*;
+pub use self::symbol_name::SymbolName;
+pub use self::term::{Term, TermKind};
+pub use self::trait_def::TraitDef;
+pub use self::ty_::Ty;
+pub use self::typeck_results::{
+    CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
+    GeneratorDiagnosticData, GeneratorInteriorTypeCause, TypeckResults, UserType,
+    UserTypeAnnotationIndex,
+};
+pub use self::variant_def::VariantDef;
+pub use self::variant_discr::VariantDiscr;
+pub use self::variant_flags::VariantFlags;
+pub use self::visibility::Visibility;
+pub use self::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
+pub use self::vtable::*;
+pub use self::AssocItemContainer::*;
+pub use self::BorrowKind::*;
+pub use self::IntVarValue::*;
+pub use self::Variance::*;
 
 impl TyCtxt<'_> {
     #[inline]
