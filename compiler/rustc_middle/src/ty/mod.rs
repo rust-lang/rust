@@ -137,6 +137,7 @@ mod alias_relation_direction;
 mod bound_constness;
 mod field_def;
 mod impl_polarity;
+mod impl_trait_in_trait_data;
 mod main_definition;
 mod opaque_hidden_type;
 mod param_env;
@@ -153,6 +154,7 @@ pub use alias_relation_direction::AliasRelationDirection;
 pub use bound_constness::BoundConstness;
 pub use field_def::FieldDef;
 pub use impl_polarity::ImplPolarity;
+pub use impl_trait_in_trait_data::ImplTraitInTraitData;
 pub use main_definition::MainDefinition;
 pub use opaque_hidden_type::OpaqueHiddenType;
 pub use param_env::{ParamEnv, ParamEnvAnd};
@@ -376,14 +378,6 @@ pub enum ImplOverlapKind {
     ///
     /// Once `traitobject` 0.1.0 is no longer an active concern, this hack can be removed.
     Issue33140,
-}
-
-/// Useful source information about where a desugared associated type for an
-/// RPITIT originated from.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encodable, Decodable, HashStable)]
-pub enum ImplTraitInTraitData {
-    Trait { fn_def_id: DefId, opaque_def_id: DefId },
-    Impl { fn_def_id: DefId },
 }
 
 impl<'tcx> TyCtxt<'tcx> {
