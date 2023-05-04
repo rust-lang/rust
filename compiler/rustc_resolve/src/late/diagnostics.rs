@@ -29,6 +29,7 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 
+use std::borrow::Cow;
 use std::iter;
 use std::ops::Deref;
 
@@ -1248,7 +1249,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     }),
                 ) if followed_by_brace => {
                     if let Some(sp) = closing_brace {
-                        err.span_label(span, fallback_label);
+                        err.span_label(span, fallback_label.to_string());
                         err.multipart_suggestion(
                             "surround the struct literal with parentheses",
                             vec![
@@ -1320,7 +1321,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     );
                 }
                 _ => {
-                    err.span_label(span, fallback_label);
+                    err.span_label(span, fallback_label.to_string());
                 }
             }
         };
@@ -1333,7 +1334,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 }))
                 | PathSource::Struct,
             ) => {
-                err.span_label(span, fallback_label);
+                err.span_label(span, fallback_label.to_string());
                 err.span_suggestion_verbose(
                     span.shrink_to_hi(),
                     "use `!` to invoke the macro",
@@ -1345,7 +1346,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 }
             }
             (Res::Def(DefKind::Macro(MacroKind::Bang), _), _) => {
-                err.span_label(span, fallback_label);
+                err.span_label(span, fallback_label.to_string());
             }
             (Res::Def(DefKind::TyAlias, def_id), PathSource::Trait(_)) => {
                 err.span_label(span, "type aliases cannot be used as traits");
@@ -1513,7 +1514,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 );
             }
             (Res::SelfTyParam { .. } | Res::SelfTyAlias { .. }, _) if ns == ValueNS => {
-                err.span_label(span, fallback_label);
+                err.span_label(span, fallback_label.to_string());
                 err.note("can't use `Self` as a constructor, you must use the implemented struct");
             }
             (Res::Def(DefKind::TyAlias | DefKind::AssocTy, _), _) if ns == ValueNS => {
@@ -2243,7 +2244,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         &self,
         err: &mut Diagnostic,
         name: Option<&str>,
-        suggest: impl Fn(&mut Diagnostic, bool, Span, &str, String) -> bool,
+        suggest: impl Fn(&mut Diagnostic, bool, Span, Cow<'static, str>, String) -> bool,
     ) {
         let mut suggest_note = true;
         for rib in self.lifetime_ribs.iter().rev() {
@@ -2288,22 +2289,23 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         (span, sugg)
                     };
                     if higher_ranked {
-                        let message = format!(
+                        let message = Cow::from(format!(
                             "consider making the {} lifetime-generic with a new `{}` lifetime",
                             kind.descr(),
                             name.unwrap_or("'a"),
-                        );
-                        should_continue = suggest(err, true, span, &message, sugg);
+                        ));
+                        should_continue = suggest(err, true, span, message, sugg);
                         err.note_once(
                             "for more information on higher-ranked polymorphism, visit \
                              https://doc.rust-lang.org/nomicon/hrtb.html",
                         );
                     } else if let Some(name) = name {
-                        let message = format!("consider introducing lifetime `{}` here", name);
-                        should_continue = suggest(err, false, span, &message, sugg);
+                        let message =
+                            Cow::from(format!("consider introducing lifetime `{}` here", name));
+                        should_continue = suggest(err, false, span, message, sugg);
                     } else {
-                        let message = "consider introducing a named lifetime parameter";
-                        should_continue = suggest(err, false, span, &message, sugg);
+                        let message = Cow::from("consider introducing a named lifetime parameter");
+                        should_continue = suggest(err, false, span, message, sugg);
                     }
                 }
                 LifetimeRibKind::Item => break,

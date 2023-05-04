@@ -781,7 +781,7 @@ impl<'tcx> ExtraInfo<'tcx> {
         ExtraInfo { def_id, sp, tcx }
     }
 
-    fn error_invalid_codeblock_attr(&self, msg: String, help: &str) {
+    fn error_invalid_codeblock_attr(&self, msg: String, help: &'static str) {
         if let Some(def_id) = self.def_id.as_local() {
             self.tcx.struct_span_lint_hir(
                 crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,

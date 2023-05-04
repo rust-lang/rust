@@ -1,5 +1,6 @@
 //! Diagnostics related methods for `Ty`.
 
+use std::borrow::Cow;
 use std::ops::ControlFlow;
 
 use crate::ty::{
@@ -384,22 +385,18 @@ pub fn suggest_constraining_type_params<'a>(
 
     if suggestions.len() == 1 {
         let (span, suggestion, msg) = suggestions.pop().unwrap();
-
-        let s;
         let msg = match msg {
             SuggestChangingConstraintsMessage::RestrictBoundFurther => {
-                "consider further restricting this bound"
+                Cow::from("consider further restricting this bound")
             }
             SuggestChangingConstraintsMessage::RestrictType { ty } => {
-                s = format!("consider restricting type parameter `{}`", ty);
-                &s
+                Cow::from(format!("consider restricting type parameter `{}`", ty))
             }
             SuggestChangingConstraintsMessage::RestrictTypeFurther { ty } => {
-                s = format!("consider further restricting type parameter `{}`", ty);
-                &s
+                Cow::from(format!("consider further restricting type parameter `{}`", ty))
             }
             SuggestChangingConstraintsMessage::RemovingQSized => {
-                "consider removing the `?Sized` bound to make the type parameter `Sized`"
+                Cow::from("consider removing the `?Sized` bound to make the type parameter `Sized`")
             }
         };
 

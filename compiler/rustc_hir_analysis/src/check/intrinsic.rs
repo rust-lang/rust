@@ -121,10 +121,11 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: DefId) -> hir
     if has_safe_attr != is_in_list {
         tcx.sess.struct_span_err(
             tcx.def_span(intrinsic_id),
-            DiagnosticMessage::Str(format!(
-                    "intrinsic safety mismatch between list of intrinsics within the compiler and core library intrinsics for intrinsic `{}`",
-                    tcx.item_name(intrinsic_id)
-        ))).emit();
+            DiagnosticMessage::from(format!(
+                "intrinsic safety mismatch between list of intrinsics within the compiler and core library intrinsics for intrinsic `{}`",
+                tcx.item_name(intrinsic_id)
+            )
+        )).emit();
     }
 
     is_in_list
