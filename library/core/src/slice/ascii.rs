@@ -16,6 +16,36 @@ impl [u8] {
         is_ascii(self)
     }
 
+    /// If this slice [`is_ascii`](Self::is_ascii), returns it as a slice of
+    /// [ASCII characters](`ascii::Char`), otherwise returns `None`.
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[must_use]
+    #[inline]
+    pub fn as_ascii(&self) -> Option<&[ascii::Char]> {
+        if self.is_ascii() {
+            // SAFETY: Just checked that it's ASCII
+            Some(unsafe { self.as_ascii_unchecked() })
+        } else {
+            None
+        }
+    }
+
+    /// Converts this slice of bytes into a slice of ASCII characters,
+    /// without checking whether they're valid.
+    ///
+    /// # Safety
+    ///
+    /// Every byte in the slice must be in `0..=127`, or else this is UB.
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[must_use]
+    #[inline]
+    pub const unsafe fn as_ascii_unchecked(&self) -> &[ascii::Char] {
+        let byte_ptr: *const [u8] = self;
+        let ascii_ptr = byte_ptr as *const [ascii::Char];
+        // SAFETY: The caller promised all the bytes are ASCII
+        unsafe { &*ascii_ptr }
+    }
+
     /// Checks that two slices are an ASCII case-insensitive match.
     ///
     /// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`,
