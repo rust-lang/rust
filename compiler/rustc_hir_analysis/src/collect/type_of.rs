@@ -404,7 +404,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
                         icx.to_ty(ty)
                     }
                 }
-                ItemKind::Const(ty, body_id) => {
+                ItemKind::Const(ty, _, body_id) => {
                     if is_suggestable_infer_ty(ty) {
                         infer_placeholder_type(
                             tcx, def_id, body_id, ty.span, item.ident, "constant",

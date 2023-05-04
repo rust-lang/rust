@@ -2603,7 +2603,8 @@ fn clean_maybe_renamed_item<'tcx>(
             ItemKind::Static(ty, mutability, body_id) => {
                 StaticItem(Static { type_: clean_ty(ty, cx), mutability, expr: Some(body_id) })
             }
-            ItemKind::Const(ty, body_id) => ConstantItem(Constant {
+            // FIXME(fmease): rustdoc integration
+            ItemKind::Const(ty, _generics, body_id) => ConstantItem(Constant {
                 type_: clean_ty(ty, cx),
                 kind: ConstantKind::Local { body: body_id, def_id },
             }),
