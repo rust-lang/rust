@@ -32,7 +32,6 @@ enum ConstraintType<'tcx> {
 
 impl<'tcx> Deduper<'tcx> {
     pub fn dedup(tcx: TyCtxt<'tcx>, input: &mut Canonical<'tcx, Response<'tcx>>) {
-        println!("INPUT: {:#?}", input);
         let mut constraints = input.value.external_constraints.deref().clone();
         let mut deduper = Self {
             tcx,
@@ -43,7 +42,6 @@ impl<'tcx> Deduper<'tcx> {
         };
         deduper.dedup_internal(&mut constraints, &mut input.variables, &mut input.max_universe);
         input.value.external_constraints = tcx.mk_external_constraints(constraints);
-        println!("OUTPUT: {:#?}", input);
     }
     fn dedup_internal(
         &mut self,
