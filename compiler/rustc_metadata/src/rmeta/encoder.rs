@@ -837,11 +837,12 @@ fn should_encode_span(def_kind: DefKind) -> bool {
         | DefKind::AnonConst
         | DefKind::InlineConst
         | DefKind::OpaqueTy
+        | DefKind::ImplTraitPlaceholder
         | DefKind::Field
         | DefKind::Impl { .. }
         | DefKind::Closure
         | DefKind::Generator => true,
-        DefKind::ForeignMod | DefKind::ImplTraitPlaceholder | DefKind::GlobalAsm => false,
+        DefKind::ForeignMod | DefKind::GlobalAsm => false,
     }
 }
 
