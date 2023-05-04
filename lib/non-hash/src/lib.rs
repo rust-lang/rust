@@ -1,25 +1,49 @@
-//! A none hashing [`Hasher`] implementation.
+//! A non-hashing [`Hasher`] implementation.
+
+#![deny(clippy::pedantic, missing_debug_implementations, missing_docs, rust_2018_idioms)]
+
 use std::{
     hash::{BuildHasher, Hasher},
     marker::PhantomData,
 };
 
+/// A [`std::collections::HashMap`] with [`NoHashHasherBuilder`].
 pub type NoHashHashMap<K, V> = std::collections::HashMap<K, V, NoHashHasherBuilder<K>>;
+
+/// A [`std::collections::HashSet`] with [`NoHashHasherBuilder`].
 pub type NoHashHashSet<K> = std::collections::HashSet<K, NoHashHasherBuilder<K>>;
 
+/// A hasher builder for [`NoHashHasher`].
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct NoHashHasherBuilder<T>(PhantomData<T>);
 
 impl<T> Default for NoHashHasherBuilder<T> {
     fn default() -> Self {
-        Self(Default::default())
+        Self(PhantomData)
     }
 }
 
+/// Types for which an acceptable hash function is to return itself.
+///
+/// This trait is implemented by sufficiently-small integer types. It should only be implemented for
+/// foreign types that are newtypes of these types. If it is implemented on more complex types,
+/// hashing will panic.
 pub trait NoHashHashable {}
-impl NoHashHashable for usize {}
-impl NoHashHashable for u32 {}
 
+impl NoHashHashable for u8 {}
+impl NoHashHashable for u16 {}
+impl NoHashHashable for u32 {}
+impl NoHashHashable for u64 {}
+impl NoHashHashable for usize {}
+
+impl NoHashHashable for i8 {}
+impl NoHashHashable for i16 {}
+impl NoHashHashable for i32 {}
+impl NoHashHashable for i64 {}
+impl NoHashHashable for isize {}
+
+/// A hasher for [`NoHashHashable`] types.
+#[derive(Debug)]
 pub struct NoHashHasher(u64);
 
 impl<T: NoHashHashable> BuildHasher for NoHashHasherBuilder<T> {
@@ -35,7 +59,7 @@ impl Hasher for NoHashHasher {
     }
 
     fn write(&mut self, _: &[u8]) {
-        unimplemented!("NoHashHasher should only be used for hashing primitive integers")
+        unimplemented!("NoHashHasher should only be used for hashing sufficiently-small integer types and their newtypes")
     }
 
     fn write_u8(&mut self, i: u8) {

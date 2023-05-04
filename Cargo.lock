@@ -1055,6 +1055,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "non-hash"
+version = "0.1.0"
+
+[[package]]
 name = "notify"
 version = "5.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1693,6 +1697,7 @@ dependencies = [
  "backtrace",
  "libc",
  "miow",
+ "non-hash",
  "winapi",
 ]
 

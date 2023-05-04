@@ -1,0 +1,7 @@
+[package]
+name = "non-hash"
+version = "0.1.0"
+description = "A non-hashing `Hasher` implementation."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/rust-lang/rust-analyzer/tree/master/lib/non-hash"
+edition = "2021"
