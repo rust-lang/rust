@@ -13,7 +13,7 @@ fn report_simd_type_validation_error(
     span: Span,
     ty: Ty<'_>,
 ) {
-    fx.tcx.sess.span_err(span, &format!("invalid monomorphization of `{}` intrinsic: expected SIMD input type, found non-SIMD `{}`", intrinsic, ty));
+    fx.tcx.sess.span_err(span, format!("invalid monomorphization of `{}` intrinsic: expected SIMD input type, found non-SIMD `{}`", intrinsic, ty));
     // Prevent verifier error
     fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
 }
@@ -150,7 +150,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                     _ => {
                         fx.tcx.sess.span_err(
                             span,
-                            &format!(
+                            format!(
                                 "simd_shuffle index must be an array of `u32`, got `{}`",
                                 idx_ty,
                             ),
@@ -248,7 +248,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             if idx >= lane_count.into() {
                 fx.tcx.sess.span_fatal(
                     fx.mir.span,
-                    &format!("[simd_insert] idx {} >= lane_count {}", idx, lane_count),
+                    format!("[simd_insert] idx {} >= lane_count {}", idx, lane_count),
                 );
             }
 
@@ -296,7 +296,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             if idx >= lane_count.into() {
                 fx.tcx.sess.span_fatal(
                     fx.mir.span,
-                    &format!("[simd_extract] idx {} >= lane_count {}", idx, lane_count),
+                    format!("[simd_extract] idx {} >= lane_count {}", idx, lane_count),
                 );
             }
 
@@ -699,7 +699,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 _ => {
                     fx.tcx.sess.span_fatal(
                         span,
-                        &format!(
+                        format!(
                             "invalid monomorphization of `simd_bitmask` intrinsic: \
                             vector argument `{}`'s element type `{}`, expected integer element \
                             type",
@@ -739,7 +739,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 _ => {
                     fx.tcx.sess.span_fatal(
                         span,
-                        &format!(
+                        format!(
                             "invalid monomorphization of `simd_bitmask` intrinsic: \
                             cannot return `{}`, expected `u{}` or `[u8; {}]`",
                             ret.layout().ty,
@@ -875,7 +875,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
         }
 
         _ => {
-            fx.tcx.sess.span_err(span, &format!("Unknown SIMD intrinsic {}", intrinsic));
+            fx.tcx.sess.span_err(span, format!("Unknown SIMD intrinsic {}", intrinsic));
             // Prevent verifier error
             fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
         }

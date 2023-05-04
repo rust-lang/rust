@@ -481,7 +481,7 @@ impl<'tcx> LayoutOfHelpers<'tcx> for RevealAllLayoutCx<'tcx> {
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
         if let layout::LayoutError::SizeOverflow(_) = err {
-            self.0.sess.span_fatal(span, &err.to_string())
+            self.0.sess.span_fatal(span, err.to_string())
         } else {
             span_bug!(span, "failed to get layout for `{}`: {}", ty, err)
         }
@@ -499,7 +499,7 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for RevealAllLayoutCx<'tcx> {
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
         if let FnAbiError::Layout(LayoutError::SizeOverflow(_)) = err {
-            self.0.sess.span_fatal(span, &err.to_string())
+            self.0.sess.span_fatal(span, err.to_string())
         } else {
             match fn_abi_request {
                 FnAbiRequest::OfFnPtr { sig, extra_args } => {

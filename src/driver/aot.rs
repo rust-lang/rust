@@ -69,7 +69,7 @@ impl OngoingCodegen {
 
             let module_codegen_result = match module_codegen_result {
                 Ok(module_codegen_result) => module_codegen_result,
-                Err(err) => sess.fatal(&err),
+                Err(err) => sess.fatal(err),
             };
             let ModuleCodegenResult { module_regular, module_global_asm, existing_work_product } =
                 module_codegen_result;
@@ -468,7 +468,7 @@ pub(crate) fn run_aot(
             let obj = create_compressed_metadata_file(tcx.sess, &metadata, &symbol_name);
 
             if let Err(err) = std::fs::write(&tmp_file, obj) {
-                tcx.sess.fatal(&format!("error writing metadata object file: {}", err));
+                tcx.sess.fatal(format!("error writing metadata object file: {}", err));
             }
 
             (metadata_cgu_name, tmp_file)
