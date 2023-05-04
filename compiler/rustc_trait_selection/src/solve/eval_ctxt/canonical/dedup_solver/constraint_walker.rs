@@ -62,7 +62,7 @@ impl<'tcx, 'a> ConstraintWalker<'tcx, 'a> {
     }
     fn walk_region(&mut self, input: Region<'tcx>) -> Region<'tcx> {
         let rewritten = match input.kind() {
-            // TODO: Are these all of the variants that can have variables?
+            // FIXME: Are these all of the variants that can have variables?
             ty::ReLateBound(db_indx, bound_region) => {
                 ty::ReLateBound(db_indx, self.walk_bound_region(bound_region))
             }
@@ -79,7 +79,7 @@ impl<'tcx, 'a> ConstraintWalker<'tcx, 'a> {
     }
     fn walk_ty(&mut self, input: Ty<'tcx>) -> Ty<'tcx> {
         let rewritten = match input.kind() {
-            // TODO: Quite a few are missing
+            // FIXME: Quite a few are missing
             ty::Adt(adt_def, substs) => ty::Adt(*adt_def, self.walk_substs_ref(substs)),
             ty::Array(elem_ty, count) => ty::Array(self.walk_ty(*elem_ty), self.walk_const(*count)),
             ty::Slice(elem_ty) => ty::Slice(self.walk_ty(*elem_ty)),

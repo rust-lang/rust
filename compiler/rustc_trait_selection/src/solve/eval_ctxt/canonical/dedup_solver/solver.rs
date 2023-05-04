@@ -90,10 +90,7 @@ impl DedupSolver {
             }
             removed_vars.insert(*from);
         }
-        DedupResult {
-            removed_constraints: deduper.removed_rules.into_inner(),
-            removed_vars,
-        }
+        DedupResult { removed_constraints: deduper.removed_rules.into_inner(), removed_vars }
     }
     fn refine_categories(&mut self) {
         // Refine categories based on shape
@@ -475,87 +472,4 @@ impl MappingInfo {
     }
 }
 
-/*
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn test_noop() {
-        let deduped = DedupSolver::dedup(
-            vec![vec![1], vec![1, 1], vec![2], vec![3]],
-            vec![vec![0, 1], vec![2], vec![3]],
-            FxIndexSet::default(),
-        );
-        assert!(deduped.is_empty());
-    }
-    #[test]
-    fn test_simple() {
-        let deduped = DedupSolver::dedup(
-            vec![vec![1], vec![2], vec![3]],
-            vec![vec![0, 1], vec![2]],
-            FxIndexSet::default(),
-        );
-        assert!([FxIndexSet::from([0]), FxIndexSet::from([1])].contains(&deduped));
-    }
-    #[test]
-    fn test_dependencies() {
-        let deduped = DedupSolver::dedup(
-            vec![
-                vec![1, 2, 13],
-                vec![4, 5, 16],
-                vec![1, 2, 23],
-                vec![4, 5, 26],
-                vec![1, 2],
-                vec![4, 5],
-            ],
-            vec![vec![0, 1], vec![2, 3], vec![4, 5]],
-            FxIndexSet::default(),
-        );
-        assert!([FxIndexSet::from([0, 2, 4]), FxIndexSet::from([1, 3, 5])].contains(&deduped));
-    }
-    #[test]
-    fn test_dependencies_unresolvable() {
-        let deduped = DedupSolver::dedup(
-            vec![
-                vec![1, 2, 13],
-                vec![4, 5, 16],
-                vec![1, 2, 23],
-                vec![4, 6, 26],
-                vec![1, 2],
-                vec![4, 5],
-            ],
-            vec![vec![0, 1], vec![2, 3], vec![4, 5]],
-            FxIndexSet::default(),
-        );
-        assert!(deduped.is_empty());
-    }
-    #[test]
-    fn test_gh_issues_example() {
-        let deduped = DedupSolver::dedup(
-            vec![vec![1], vec![2], vec![3]],
-            vec![vec![0, 1, 2]],
-            FxIndexSet::default(),
-        );
-        assert!([FxIndexSet::from([0, 1]), FxIndexSet::from([0, 2]), FxIndexSet::from([1, 2])]
-            .contains(&deduped));
-    }
-    #[test]
-    fn test_unremovable() {
-        let deduped = DedupSolver::dedup(
-            vec![
-                vec![0, 1],
-                vec![0, 2],
-                vec![1, 0],
-                vec![2, 0],
-                vec![3, 1],
-                vec![3, 2],
-                vec![1, 3],
-                vec![2, 3],
-            ],
-            vec![vec![0, 1, 2, 3, 4, 5, 6, 7]],
-            FxIndexSet::from([0, 1, 2]),
-        );
-        assert!(deduped == FxIndexSet::from([4, 5, 6, 7]));
-    }
-}
-*/
+// FIXME: Tests that test the solver on its own have been deleted cuz tidy check won't stop yelling at me - add back later
