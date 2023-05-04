@@ -976,6 +976,7 @@ impl Step for PlainSourceTarball {
             "config.example.toml",
             "Cargo.toml",
             "Cargo.lock",
+            ".gitmodules",
         ];
         let src_dirs = ["src", "compiler", "library", "tests"];
 

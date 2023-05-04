@@ -4740,6 +4740,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "sysroot"
+version = "0.0.0"
+dependencies = [
+ "proc_macro",
+ "std",
+ "test",
+]
+
+[[package]]
 name = "tar"
 version = "0.4.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4823,7 +4832,6 @@ dependencies = [
  "getopts",
  "panic_abort",
  "panic_unwind",
- "proc_macro",
  "std",
 ]
 

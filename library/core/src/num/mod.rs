@@ -472,7 +472,16 @@ impl u8 {
     #[rustc_const_stable(feature = "const_u8_is_ascii", since = "1.43.0")]
     #[inline]
     pub const fn is_ascii(&self) -> bool {
-        *self & 128 == 0
+        *self <= 127
+    }
+
+    /// If the value of this byte is within the ASCII range, returns it as an
+    /// [ASCII character](ascii::Char).  Otherwise, returns `None`.
+    #[must_use]
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[inline]
+    pub const fn as_ascii(&self) -> Option<ascii::Char> {
+        ascii::Char::from_u8(*self)
     }
 
     /// Makes a copy of the value in its ASCII upper case equivalent.

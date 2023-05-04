@@ -79,7 +79,7 @@ impl Step for Std {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.all_krates("test").path("library")
+        run.all_krates("sysroot").path("library")
     }
 
     fn make_run(run: RunConfig<'_>) {

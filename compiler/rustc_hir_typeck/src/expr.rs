@@ -1426,6 +1426,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.check_repeat_element_needs_copy_bound(element, count, element_ty);
 
+        self.register_wf_obligation(
+            tcx.mk_array_with_const_len(t, count).into(),
+            expr.span,
+            traits::WellFormed(None),
+        );
+
         tcx.mk_array_with_const_len(t, count)
     }
 

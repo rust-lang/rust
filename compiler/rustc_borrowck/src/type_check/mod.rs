@@ -772,12 +772,10 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         match context {
             PlaceContext::MutatingUse(_) => ty::Invariant,
-            PlaceContext::NonUse(StorageDead | StorageLive | PlaceMention | VarDebugInfo) => {
-                ty::Invariant
-            }
+            PlaceContext::NonUse(StorageDead | StorageLive | VarDebugInfo) => ty::Invariant,
             PlaceContext::NonMutatingUse(
-                Inspect | Copy | Move | SharedBorrow | ShallowBorrow | UniqueBorrow | AddressOf
-                | Projection,
+                Inspect | Copy | Move | PlaceMention | SharedBorrow | ShallowBorrow | UniqueBorrow
+                | AddressOf | Projection,
             ) => ty::Covariant,
             PlaceContext::NonUse(AscribeUserTy) => ty::Covariant,
         }
@@ -1802,6 +1800,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
             Rvalue::Repeat(operand, len) => {
                 self.check_operand(operand, location);
+
+                let array_ty = rvalue.ty(body.local_decls(), tcx);
+                self.prove_predicate(
+                    ty::PredicateKind::WellFormed(array_ty.into()),
+                    Locations::Single(location),
+                    ConstraintCategory::Boring,
+                );
 
                 // If the length cannot be evaluated we must assume that the length can be larger
                 // than 1.

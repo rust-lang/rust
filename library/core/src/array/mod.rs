@@ -17,6 +17,7 @@ use crate::ops::{
 };
 use crate::slice::{Iter, IterMut};
 
+mod ascii;
 mod drain;
 mod equality;
 mod iter;

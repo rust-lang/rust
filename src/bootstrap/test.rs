@@ -2145,7 +2145,7 @@ impl Step for Crate {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.crate_or_deps("test")
+        run.crate_or_deps("sysroot")
     }
 
     fn make_run(run: RunConfig<'_>) {

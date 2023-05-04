@@ -101,6 +101,7 @@
 #![feature(array_into_iter_constructors)]
 #![feature(array_methods)]
 #![feature(array_windows)]
+#![feature(ascii_char)]
 #![feature(assert_matches)]
 #![feature(async_iterator)]
 #![feature(coerce_unsized)]
