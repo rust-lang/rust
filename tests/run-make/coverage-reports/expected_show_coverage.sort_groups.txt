@@ -1,0 +1,49 @@
+    1|       |// compile-flags: --edition=2021
+    2|       |
+    3|       |// Demonstrate that `sort_subviews.py` can sort instantiation groups into a
+    4|       |// predictable order, while preserving their heterogeneous contents.
+    5|       |
+    6|      1|fn main() {
+    7|      1|    let cond = std::env::args().len() > 1;
+    8|      1|    generic_fn::<()>(cond);
+    9|      1|    generic_fn::<&'static str>(!cond);
+   10|      1|    if false {
+   11|      0|        generic_fn::<char>(cond);
+   12|      1|    }
+   13|      1|    generic_fn::<i32>(cond);
+   14|      1|    other_fn();
+   15|      1|}
+   16|       |
+   17|      3|fn generic_fn<T>(cond: bool) {
+   18|      3|    if cond {
+   19|      1|        println!("{}", std::any::type_name::<T>());
+   20|      2|    }
+   21|      3|}
+  ------------------
+  | Unexecuted instantiation: sort_groups::generic_fn::<char>
+  ------------------
+  | sort_groups::generic_fn::<&str>:
+  |   17|      1|fn generic_fn<T>(cond: bool) {
+  |   18|      1|    if cond {
+  |   19|      1|        println!("{}", std::any::type_name::<T>());
+  |   20|      1|    }
+  |                   ^0
+  |   21|      1|}
+  ------------------
+  | sort_groups::generic_fn::<()>:
+  |   17|      1|fn generic_fn<T>(cond: bool) {
+  |   18|      1|    if cond {
+  |   19|      0|        println!("{}", std::any::type_name::<T>());
+  |   20|      1|    }
+  |   21|      1|}
+  ------------------
+  | sort_groups::generic_fn::<i32>:
+  |   17|      1|fn generic_fn<T>(cond: bool) {
+  |   18|      1|    if cond {
+  |   19|      0|        println!("{}", std::any::type_name::<T>());
+  |   20|      1|    }
+  |   21|      1|}
+  ------------------
+   22|       |
+   23|      1|fn other_fn() {}
+
