@@ -1,4 +1,4 @@
-use hir::TypeInfo;
+use hir::Type;
 use std::{collections::HashMap, iter::successors};
 use syntax::{
     algo::neighbor,
@@ -95,7 +95,7 @@ fn contains_placeholder(a: &ast::MatchArm) -> bool {
 }
 
 fn are_same_types(
-    current_arm_types: &HashMap<String, Option<TypeInfo>>,
+    current_arm_types: &HashMap<String, Option<Type>>,
     arm: &ast::MatchArm,
     ctx: &AssistContext<'_>,
 ) -> bool {
@@ -103,7 +103,7 @@ fn are_same_types(
     for (other_arm_type_name, other_arm_type) in arm_types {
         match (current_arm_types.get(&other_arm_type_name), other_arm_type) {
             (Some(Some(current_arm_type)), Some(other_arm_type))
-                if other_arm_type.original == current_arm_type.original => {}
+                if other_arm_type == *current_arm_type => {}
             _ => return false,
         }
     }
@@ -114,44 +114,44 @@ fn are_same_types(
 fn get_arm_types(
     context: &AssistContext<'_>,
     arm: &ast::MatchArm,
-) -> HashMap<String, Option<TypeInfo>> {
-    let mut mapping: HashMap<String, Option<TypeInfo>> = HashMap::new();
+) -> HashMap<String, Option<Type>> {
+    let mut mapping: HashMap<String, Option<Type>> = HashMap::new();
 
     fn recurse(
-        map: &mut HashMap<String, Option<TypeInfo>>,
+        map: &mut HashMap<String, Option<Type>>,
         ctx: &AssistContext<'_>,
         pat: &Option<ast::Pat>,
     ) {
         if let Some(local_pat) = pat {
-            match pat {
-                Some(ast::Pat::TupleStructPat(tuple)) => {
+            match local_pat {
+                ast::Pat::TupleStructPat(tuple) => {
                     for field in tuple.fields() {
                         recurse(map, ctx, &Some(field));
                     }
                 }
-                Some(ast::Pat::TuplePat(tuple)) => {
+                ast::Pat::TuplePat(tuple) => {
                     for field in tuple.fields() {
                         recurse(map, ctx, &Some(field));
                     }
                 }
-                Some(ast::Pat::RecordPat(record)) => {
+                ast::Pat::RecordPat(record) => {
                     if let Some(field_list) = record.record_pat_field_list() {
                         for field in field_list.fields() {
                             recurse(map, ctx, &field.pat());
                         }
                     }
                 }
-                Some(ast::Pat::ParenPat(parentheses)) => {
+                ast::Pat::ParenPat(parentheses) => {
                     recurse(map, ctx, &parentheses.pat());
                 }
-                Some(ast::Pat::SlicePat(slice)) => {
+                ast::Pat::SlicePat(slice) => {
                     for slice_pat in slice.pats() {
                         recurse(map, ctx, &Some(slice_pat));
                     }
                 }
-                Some(ast::Pat::IdentPat(ident_pat)) => {
+                ast::Pat::IdentPat(ident_pat) => {
                     if let Some(name) = ident_pat.name() {
-                        let pat_type = ctx.sema.type_of_pat(local_pat);
+                        let pat_type = ctx.sema.type_of_binding_in_pat(ident_pat);
                         map.insert(name.text().to_string(), pat_type);
                     }
                 }

@@ -2034,6 +2034,56 @@ fn test() {
 }
 
 #[test]
+fn tuple_pattern_nested_match_ergonomics() {
+    check_no_mismatches(
+        r#"
+fn f(x: (&i32, &i32)) -> i32 {
+    match x {
+        (3, 4) => 5,
+        _ => 12,
+    }
+}
+        "#,
+    );
+    check_types(
+        r#"
+fn f(x: (&&&&i32, &&&i32)) {
+    let f = match x {
+        t @ (3, 4) => t,
+        _ => loop {},
+    };
+    f;
+  //^ (&&&&i32, &&&i32)
+}
+        "#,
+    );
+    check_types(
+        r#"
+fn f() {
+    let x = &&&(&&&2, &&&&&3);
+    let (y, z) = x;
+       //^ &&&&i32
+    let t @ (y, z) = x;
+    t;
+  //^ &&&(&&&i32, &&&&&i32)
+}
+        "#,
+    );
+    check_types(
+        r#"
+fn f() {
+    let x = &&&(&&&2, &&&&&3);
+    let (y, z) = x;
+       //^ &&&&i32
+    let t @ (y, z) = x;
+    t;
+  //^ &&&(&&&i32, &&&&&i32)
+}
+        "#,
+    );
+}
+
+#[test]
 fn fn_pointer_return() {
     check_infer(
         r#"

@@ -13,7 +13,7 @@ use hir_def::{
         scope::{ExprScopes, ScopeId},
         Body, BodySourceMap,
     },
-    hir::{ExprId, Pat, PatId},
+    hir::{BindingId, ExprId, Pat, PatId},
     lang_item::LangItem,
     lower::LowerCtx,
     macro_id_to_def_id,
@@ -133,6 +133,15 @@ impl SourceAnalyzer {
         self.body_source_map()?.node_pat(src)
     }
 
+    fn binding_id_of_pat(&self, pat: &ast::IdentPat) -> Option<BindingId> {
+        let pat_id = self.pat_id(&pat.clone().into())?;
+        if let Pat::Bind { id, .. } = self.body()?.pats[pat_id] {
+            Some(id)
+        } else {
+            None
+        }
+    }
+
     fn expand_expr(
         &self,
         db: &dyn HirDatabase,
@@ -196,6 +205,18 @@ impl SourceAnalyzer {
         let ty = infer[pat_id].clone();
         let mk_ty = |ty| Type::new_with_resolver(db, &self.resolver, ty);
         Some((mk_ty(ty), coerced.map(mk_ty)))
+    }
+
+    pub(crate) fn type_of_binding_in_pat(
+        &self,
+        db: &dyn HirDatabase,
+        pat: &ast::IdentPat,
+    ) -> Option<Type> {
+        let binding_id = self.binding_id_of_pat(pat)?;
+        let infer = self.infer.as_ref()?;
+        let ty = infer[binding_id].clone();
+        let mk_ty = |ty| Type::new_with_resolver(db, &self.resolver, ty);
+        Some(mk_ty(ty))
     }
 
     pub(crate) fn type_of_self(

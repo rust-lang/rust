@@ -263,7 +263,7 @@ impl<'a> InferenceContext<'a> {
                 // Don't emit type mismatches again, the expression lowering already did that.
                 let ty = self.infer_lit_pat(expr, &expected);
                 self.write_pat_ty(pat, ty.clone());
-                return ty;
+                return self.pat_ty_after_adjustment(pat);
             }
             Pat::Box { inner } => match self.resolve_boxed_box() {
                 Some(box_adt) => {
@@ -298,8 +298,17 @@ impl<'a> InferenceContext<'a> {
                 .type_mismatches
                 .insert(pat.into(), TypeMismatch { expected, actual: ty.clone() });
         }
-        self.write_pat_ty(pat, ty.clone());
-        ty
+        self.write_pat_ty(pat, ty);
+        self.pat_ty_after_adjustment(pat)
+    }
+
+    fn pat_ty_after_adjustment(&self, pat: PatId) -> Ty {
+        self.result
+            .pat_adjustments
+            .get(&pat)
+            .and_then(|x| x.first())
+            .unwrap_or(&self.result.type_of_pat[pat])
+            .clone()
     }
 
     fn infer_ref_pat(
@@ -345,7 +354,7 @@ impl<'a> InferenceContext<'a> {
             }
             BindingMode::Move => inner_ty.clone(),
         };
-        self.write_pat_ty(pat, bound_ty.clone());
+        self.write_pat_ty(pat, inner_ty.clone());
         self.write_binding_ty(binding, bound_ty);
         return inner_ty;
     }
@@ -421,14 +430,6 @@ fn is_non_ref_pat(body: &hir_def::body::Body, pat: PatId) -> bool {
         Pat::ConstBlock(..) => true,
         Pat::Lit(expr) => {
             !matches!(body[*expr], Expr::Literal(Literal::String(..) | Literal::ByteString(..)))
-        }
-        Pat::Bind { id, subpat: Some(subpat), .. }
-            if matches!(
-                body.bindings[*id].mode,
-                BindingAnnotation::Mutable | BindingAnnotation::Unannotated
-            ) =>
-        {
-            is_non_ref_pat(body, *subpat)
         }
         Pat::Wild | Pat::Bind { .. } | Pat::Ref { .. } | Pat::Box { .. } | Pat::Missing => false,
     }
