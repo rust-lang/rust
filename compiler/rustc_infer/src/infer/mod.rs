@@ -58,6 +58,7 @@ pub mod error_reporting;
 pub mod free_regions;
 mod freshen;
 mod fudge;
+mod generalize;
 mod glb;
 mod higher_ranked;
 pub mod lattice;
