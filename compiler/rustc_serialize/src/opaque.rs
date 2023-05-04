@@ -265,7 +265,7 @@ impl Drop for FileEncoder {
     }
 }
 
-macro_rules! file_encoder_write_leb128 {
+macro_rules! write_leb128 {
     ($enc:expr, $value:expr, $int_ty:ty, $fun:ident) => {{
         const MAX_ENCODED_LEN: usize = $crate::leb128::max_leb128_len::<$int_ty>();
 
@@ -294,22 +294,22 @@ macro_rules! file_encoder_write_leb128 {
 impl Encoder for FileEncoder {
     #[inline]
     fn emit_usize(&mut self, v: usize) {
-        file_encoder_write_leb128!(self, v, usize, write_usize_leb128)
+        write_leb128!(self, v, usize, write_usize_leb128)
     }
 
     #[inline]
     fn emit_u128(&mut self, v: u128) {
-        file_encoder_write_leb128!(self, v, u128, write_u128_leb128)
+        write_leb128!(self, v, u128, write_u128_leb128)
     }
 
     #[inline]
     fn emit_u64(&mut self, v: u64) {
-        file_encoder_write_leb128!(self, v, u64, write_u64_leb128)
+        write_leb128!(self, v, u64, write_u64_leb128)
     }
 
     #[inline]
     fn emit_u32(&mut self, v: u32) {
-        file_encoder_write_leb128!(self, v, u32, write_u32_leb128)
+        write_leb128!(self, v, u32, write_u32_leb128)
     }
 
     #[inline]
@@ -324,22 +324,22 @@ impl Encoder for FileEncoder {
 
     #[inline]
     fn emit_isize(&mut self, v: isize) {
-        file_encoder_write_leb128!(self, v, isize, write_isize_leb128)
+        write_leb128!(self, v, isize, write_isize_leb128)
     }
 
     #[inline]
     fn emit_i128(&mut self, v: i128) {
-        file_encoder_write_leb128!(self, v, i128, write_i128_leb128)
+        write_leb128!(self, v, i128, write_i128_leb128)
     }
 
     #[inline]
     fn emit_i64(&mut self, v: i64) {
-        file_encoder_write_leb128!(self, v, i64, write_i64_leb128)
+        write_leb128!(self, v, i64, write_i64_leb128)
     }
 
     #[inline]
     fn emit_i32(&mut self, v: i32) {
-        file_encoder_write_leb128!(self, v, i32, write_i32_leb128)
+        write_leb128!(self, v, i32, write_i32_leb128)
     }
 
     #[inline]
