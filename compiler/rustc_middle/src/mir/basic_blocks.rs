@@ -28,6 +28,8 @@ struct Cache {
     switch_sources: OnceCell<SwitchSources>,
     is_cyclic: OnceCell<bool>,
     postorder: OnceCell<Vec<BasicBlock>>,
+    dominator_tree: OnceCell<DominatorTree<BasicBlock>>,
+    dominators: OnceCell<Dominators<BasicBlock>>,
 }
 
 impl<'tcx> BasicBlocks<'tcx> {
@@ -42,12 +44,12 @@ impl<'tcx> BasicBlocks<'tcx> {
         *self.cache.is_cyclic.get_or_init(|| graph::is_cyclic(self))
     }
 
-    pub fn dominator_tree(&self) -> DominatorTree<BasicBlock> {
-        dominator_tree(&self)
+    pub fn dominator_tree(&self) -> &DominatorTree<BasicBlock> {
+        self.cache.dominator_tree.get_or_init(|| dominator_tree(&self))
     }
 
-    pub fn dominators(&self) -> Dominators<BasicBlock> {
-        dominators(&self.dominator_tree())
+    pub fn dominators(&self) -> &Dominators<BasicBlock> {
+        self.cache.dominators.get_or_init(|| dominators(self.dominator_tree()))
     }
 
     /// Returns predecessors for each basic block.

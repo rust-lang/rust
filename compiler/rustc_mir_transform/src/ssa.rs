@@ -68,8 +68,11 @@ impl SsaLocals {
         let assignment_order = Vec::with_capacity(body.local_decls.len());
 
         let assignments = IndexVec::from_elem(Set1::Empty, &body.local_decls);
-        let dominators =
-            if body.basic_blocks.len() > 2 { Some(body.basic_blocks.dominators()) } else { None };
+        let dominators = if body.basic_blocks.len() > 2 {
+            Some(body.basic_blocks.dominators().clone())
+        } else {
+            None
+        };
         let dominators = SmallDominators { inner: dominators };
 
         let direct_uses = IndexVec::from_elem(0, &body.local_decls);
