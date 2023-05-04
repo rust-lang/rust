@@ -74,6 +74,8 @@ pub enum LitKind {
     StrRaw(u8), // raw string delimited by `n` hash symbols
     ByteStr,
     ByteStrRaw(u8), // raw byte string delimited by `n` hash symbols
+    CStr,
+    CStrRaw(u8),
     Err,
 }
 
@@ -141,6 +143,10 @@ impl fmt::Display for Lit {
                 delim = "#".repeat(n as usize),
                 string = symbol
             )?,
+            CStr => write!(f, "c\"{symbol}\"")?,
+            CStrRaw(n) => {
+                write!(f, "cr{delim}\"{symbol}\"{delim}", delim = "#".repeat(n as usize))?
+            }
             Integer | Float | Bool | Err => write!(f, "{symbol}")?,
         }
 
@@ -170,6 +176,7 @@ impl LitKind {
             Float => "float",
             Str | StrRaw(..) => "string",
             ByteStr | ByteStrRaw(..) => "byte string",
+            CStr | CStrRaw(..) => "C string",
             Err => "error",
         }
     }
