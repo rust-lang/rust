@@ -6,7 +6,8 @@
 mod tests;
 
 use nohash_hasher::IntMap as NoHashHashMap;
-use text_size::{TextRange, TextSize};
+
+pub use text_size::{TextRange, TextSize};
 
 /// Maps flat [`TextSize`] offsets into `(line, column)` representation.
 #[derive(Clone, Debug, PartialEq, Eq)]
