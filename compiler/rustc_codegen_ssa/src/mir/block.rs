@@ -19,7 +19,6 @@ use rustc_middle::ty::{self, Instance, Ty};
 use rustc_session::config::OptLevel;
 use rustc_span::source_map::Span;
 use rustc_span::{sym, Symbol};
-use rustc_symbol_mangling::typeid::typeid_for_fnabi;
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode, Reg};
 use rustc_target::abi::{self, HasDataLayout, WrappingRange};
 use rustc_target::spec::abi::Abi;
@@ -163,6 +162,12 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         // do an invoke, otherwise do a call.
         let fn_ty = bx.fn_decl_backend_type(&fn_abi);
 
+        let fn_attrs = if bx.tcx().def_kind(fx.instance.def_id()).has_codegen_attrs() {
+            Some(bx.tcx().codegen_fn_attrs(fx.instance.def_id()))
+        } else {
+            None
+        };
+
         if !fn_abi.can_unwind {
             unwind = mir::UnwindAction::Unreachable;
         }
@@ -190,6 +195,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             };
             let invokeret = bx.invoke(
                 fn_ty,
+                fn_attrs,
                 Some(&fn_abi),
                 fn_ptr,
                 &llargs,
@@ -211,7 +217,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             }
             MergingSucc::False
         } else {
-            let llret = bx.call(fn_ty, Some(&fn_abi), fn_ptr, &llargs, self.funclet(fx));
+            let llret = bx.call(fn_ty, fn_attrs, Some(&fn_abi), fn_ptr, &llargs, self.funclet(fx));
             if fx.mir[self.bb].is_cleanup {
                 // Cleanup is always the cold path. Don't inline
                 // drop glue. Also, when there is a deeply-nested
@@ -1051,47 +1057,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             self.codegen_argument(bx, location, &mut llargs, last_arg);
         }
 
-        let (is_indirect_call, fn_ptr) = match (llfn, instance) {
-            (Some(llfn), _) => (true, llfn),
-            (None, Some(instance)) => (false, bx.get_fn_addr(instance)),
-            _ => span_bug!(span, "no llfn for call"),
+        let fn_ptr = match (instance, llfn) {
+            (Some(instance), None) => bx.get_fn_addr(instance),
+            (_, Some(llfn)) => llfn,
+            _ => span_bug!(span, "no instance or llfn for call"),
         };
-
-        // For backends that support CFI using type membership (i.e., testing whether a given
-        // pointer is associated with a type identifier).
-        if bx.tcx().sess.is_sanitizer_cfi_enabled() && is_indirect_call {
-            // Emit type metadata and checks.
-            // FIXME(rcvalle): Add support for generalized identifiers.
-            // FIXME(rcvalle): Create distinct unnamed MDNodes for internal identifiers.
-            let typeid = typeid_for_fnabi(bx.tcx(), fn_abi);
-            let typeid_metadata = self.cx.typeid_metadata(typeid);
-
-            // Test whether the function pointer is associated with the type identifier.
-            let cond = bx.type_test(fn_ptr, typeid_metadata);
-            let bb_pass = bx.append_sibling_block("type_test.pass");
-            let bb_fail = bx.append_sibling_block("type_test.fail");
-            bx.cond_br(cond, bb_pass, bb_fail);
-
-            bx.switch_to_block(bb_pass);
-            let merging_succ = helper.do_call(
-                self,
-                bx,
-                fn_abi,
-                fn_ptr,
-                &llargs,
-                target.as_ref().map(|&target| (ret_dest, target)),
-                unwind,
-                &copied_constant_arguments,
-                false,
-            );
-            assert_eq!(merging_succ, MergingSucc::False);
-
-            bx.switch_to_block(bb_fail);
-            bx.abort();
-            bx.unreachable();
-
-            return MergingSucc::False;
-        }
 
         helper.do_call(
             self,
@@ -1640,7 +1610,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let (fn_abi, fn_ptr) = common::build_langcall(&bx, None, LangItem::PanicCannotUnwind);
             let fn_ty = bx.fn_decl_backend_type(&fn_abi);
 
-            let llret = bx.call(fn_ty, Some(&fn_abi), fn_ptr, &[], funclet.as_ref());
+            let llret = bx.call(fn_ty, None, Some(&fn_abi), fn_ptr, &[], funclet.as_ref());
             bx.do_not_inline(llret);
 
             bx.unreachable();

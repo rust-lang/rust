@@ -202,6 +202,7 @@ mod c_long_definition {
 //     would be uninhabited and at least dereferencing such pointers would
 //     be UB.
 #[doc = include_str!("c_void.md")]
+#[cfg_attr(not(bootstrap), lang = "c_void")]
 #[repr(u8)]
 #[stable(feature = "core_c_void", since = "1.30.0")]
 pub enum c_void {

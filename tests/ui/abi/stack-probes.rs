@@ -5,6 +5,7 @@
 // ignore-mips64
 // ignore-sparc
 // ignore-sparc64
+// ignore-loongarch64
 // ignore-wasm
 // ignore-emscripten no processes
 // ignore-sgx no processes
