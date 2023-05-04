@@ -26,6 +26,7 @@
 //! ```
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::TyCtxt;
 pub(crate) use rustc_resolve::rustdoc::main_body_opts;
@@ -808,7 +809,7 @@ impl<'tcx> ExtraInfo<'tcx> {
         ExtraInfo { def_id, sp, tcx }
     }
 
-    fn error_invalid_codeblock_attr(&self, msg: &str) {
+    fn error_invalid_codeblock_attr(&self, msg: impl Into<DiagnosticMessage>) {
         if let Some(def_id) = self.def_id.as_local() {
             self.tcx.struct_span_lint_hir(
                 crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
@@ -820,7 +821,11 @@ impl<'tcx> ExtraInfo<'tcx> {
         }
     }
 
-    fn error_invalid_codeblock_attr_with_help(&self, msg: &str, help: &str) {
+    fn error_invalid_codeblock_attr_with_help(
+        &self,
+        msg: impl Into<DiagnosticMessage>,
+        help: impl Into<SubdiagnosticMessage>,
+    ) {
         if let Some(def_id) = self.def_id.as_local() {
             self.tcx.struct_span_lint_hir(
                 crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
@@ -1246,7 +1251,7 @@ impl LangString {
                     } {
                         if let Some(extra) = extra {
                             extra.error_invalid_codeblock_attr_with_help(
-                                &format!("unknown attribute `{}`. Did you mean `{}`?", x, flag),
+                                format!("unknown attribute `{x}`. Did you mean `{flag}`?"),
                                 help,
                             );
                         }
@@ -1263,9 +1268,8 @@ impl LangString {
                     if key == "class" {
                         data.added_classes.push(value.to_owned());
                     } else if let Some(extra) = extra {
-                        extra.error_invalid_codeblock_attr(&format!(
-                            "unsupported attribute `{key}`"
-                        ));
+                        extra
+                            .error_invalid_codeblock_attr(format!("unsupported attribute `{key}`"));
                     }
                 }
                 LangStringToken::ClassAttribute(class) => {
