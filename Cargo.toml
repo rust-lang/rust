@@ -80,6 +80,7 @@ line-index = { version = "0.1.0", path = "./lib/line-index" }
 smallvec = { version = "1.10.0", features = ["const_new", "union", "const_generics"] }
 smol_str = "0.2.0"
 nohash-hasher = "0.2.0"
+text-size = "1.1.0"
 # the following crates are pinned to prevent us from pulling in syn 2 until all our dependencies have moved
 serde = { version = "=1.0.156", features = ["derive"] }
 serde_json = "1.0.94"
