@@ -1,11 +1,12 @@
-use rustc_errors::{DiagnosticBuilder, DiagnosticMessage};
+use rustc_hir::HirId;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::CONST_ITEM_MUTATION;
 use rustc_span::def_id::DefId;
+use rustc_span::Span;
 
-use crate::MirLint;
+use crate::{errors, MirLint};
 
 pub struct CheckConstItemMutation;
 
@@ -58,16 +59,14 @@ impl<'tcx> ConstMutationChecker<'_, 'tcx> {
         }
     }
 
-    fn lint_const_item_usage(
+    /// If we should lint on this usage, return the [`HirId`], source [`Span`]
+    /// and [`Span`] of the const item to use in the lint.
+    fn should_lint_const_item_usage(
         &self,
         place: &Place<'tcx>,
         const_item: DefId,
         location: Location,
-        msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(
-            &'a mut DiagnosticBuilder<'b, ()>,
-        ) -> &'a mut DiagnosticBuilder<'b, ()>,
-    ) {
+    ) -> Option<(HirId, Span, Span)> {
         // Don't lint on borrowing/assigning when a dereference is involved.
         // If we 'leave' the temporary via a dereference, we must
         // be modifying something else
@@ -83,16 +82,9 @@ impl<'tcx> ConstMutationChecker<'_, 'tcx> {
                 .assert_crate_local()
                 .lint_root;
 
-            self.tcx.struct_span_lint_hir(
-                CONST_ITEM_MUTATION,
-                lint_root,
-                source_info.span,
-                msg,
-                |lint| {
-                    decorate(lint)
-                        .span_note(self.tcx.def_span(const_item), "`const` item defined here")
-                },
-            );
+            Some((lint_root, source_info.span, self.tcx.def_span(const_item)))
+        } else {
+            None
         }
     }
 }
@@ -104,10 +96,14 @@ impl<'tcx> Visitor<'tcx> for ConstMutationChecker<'_, 'tcx> {
             // Assigning directly to a constant (e.g. `FOO = true;`) is a hard error,
             // so emitting a lint would be redundant.
             if !lhs.projection.is_empty() {
-                if let Some(def_id) = self.is_const_item_without_destructor(lhs.local) {
-                    self.lint_const_item_usage(&lhs, def_id, loc, "attempting to modify a `const` item",|lint| {
-                        lint.note("each usage of a `const` item creates a new temporary; the original `const` item will not be modified")
-                    })
+                if let Some(def_id) = self.is_const_item_without_destructor(lhs.local)
+                    && let Some((lint_root, span, item)) = self.should_lint_const_item_usage(&lhs, def_id, loc) {
+                        self.tcx.emit_spanned_lint(
+                            CONST_ITEM_MUTATION,
+                            lint_root,
+                            span,
+                            errors::ConstMutate::Modify { konst: item }
+                        );
                 }
             }
             // We are looking for MIR of the form:
@@ -143,17 +139,22 @@ impl<'tcx> Visitor<'tcx> for ConstMutationChecker<'_, 'tcx> {
                 });
                 let lint_loc =
                     if method_did.is_some() { self.body.terminator_loc(loc.block) } else { loc };
-                self.lint_const_item_usage(place, def_id, lint_loc, "taking a mutable reference to a `const` item", |lint| {
-                    lint
-                        .note("each usage of a `const` item creates a new temporary")
-                        .note("the mutable reference will refer to this temporary, not the original `const` item");
 
-                    if let Some((method_did, _substs)) = method_did {
-                        lint.span_note(self.tcx.def_span(method_did), "mutable reference created due to call to this method");
-                    }
-
-                    lint
-                });
+                let method_call = if let Some((method_did, _)) = method_did {
+                    Some(self.tcx.def_span(method_did))
+                } else {
+                    None
+                };
+                if let Some((lint_root, span, item)) =
+                    self.should_lint_const_item_usage(place, def_id, lint_loc)
+                {
+                    self.tcx.emit_spanned_lint(
+                        CONST_ITEM_MUTATION,
+                        lint_root,
+                        span,
+                        errors::ConstMutate::MutBorrow { method_call, konst: item },
+                    );
+                }
             }
         }
         self.super_rvalue(rvalue, loc);
