@@ -22,7 +22,9 @@ fn main() {
     let mut codegen_backend_arg = OsString::from("-Zcodegen-backend=");
     codegen_backend_arg.push(cg_clif_dylib_path);
     args.push(codegen_backend_arg);
-    if !passed_args.contains(&OsString::from("--sysroot")) {
+    if !passed_args.iter().any(|arg| {
+        arg == "--sysroot" || arg.to_str().map(|s| s.starts_with("--sysroot=")) == Some(true)
+    }) {
         args.push(OsString::from("--sysroot"));
         args.push(OsString::from(sysroot.to_str().unwrap()));
     }
