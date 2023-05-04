@@ -76,7 +76,6 @@ fn generic_arg(p: &mut Parser<'_>) -> bool {
                 }
             }
         }
-        IDENT if p.nth(1) == T!['('] && p.nth_at(2, T![..]) => return_type_arg(p),
         _ if p.at_ts(types::TYPE_FIRST) => type_arg(p),
         _ => return false,
     }
@@ -139,21 +138,4 @@ fn type_arg(p: &mut Parser<'_>) {
     let m = p.start();
     types::type_(p);
     m.complete(p, TYPE_ARG);
-}
-
-// test return_type_arg
-// type T = S<foo(..): Send>;
-pub(super) fn return_type_arg(p: &mut Parser<'_>) {
-    let m = p.start();
-    p.expect(IDENT);
-    p.expect(T!['(']);
-    p.expect(T![..]);
-    p.expect(T![')']);
-    if !p.at(T![:]) {
-        p.error("expected :");
-        m.abandon(p);
-        return;
-    }
-    generic_params::bounds(p);
-    m.complete(p, RETURN_TYPE_ARG);
 }

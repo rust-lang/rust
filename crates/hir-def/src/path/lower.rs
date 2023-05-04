@@ -216,9 +216,6 @@ pub(super) fn lower_generic_args(
                 let arg = ConstRefOrPath::from_expr_opt(arg.expr());
                 args.push(GenericArg::Const(arg))
             }
-            ast::GenericArg::ReturnTypeArg(_) => {
-                // FIXME: return type notation is experimental, we don't do anything with it yet.
-            }
         }
     }
 

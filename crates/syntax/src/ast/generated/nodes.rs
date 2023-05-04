@@ -143,18 +143,6 @@ impl ConstArg {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ReturnTypeArg {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::HasTypeBounds for ReturnTypeArg {}
-impl ReturnTypeArg {
-    pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
-    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
-    pub fn dotdot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![..]) }
-    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeBoundList {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1528,7 +1516,6 @@ pub enum GenericArg {
     AssocTypeArg(AssocTypeArg),
     LifetimeArg(LifetimeArg),
     ConstArg(ConstArg),
-    ReturnTypeArg(ReturnTypeArg),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1869,17 +1856,6 @@ impl AstNode for LifetimeArg {
 }
 impl AstNode for ConstArg {
     fn can_cast(kind: SyntaxKind) -> bool { kind == CONST_ARG }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for ReturnTypeArg {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == RETURN_TYPE_ARG }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -3243,12 +3219,9 @@ impl From<LifetimeArg> for GenericArg {
 impl From<ConstArg> for GenericArg {
     fn from(node: ConstArg) -> GenericArg { GenericArg::ConstArg(node) }
 }
-impl From<ReturnTypeArg> for GenericArg {
-    fn from(node: ReturnTypeArg) -> GenericArg { GenericArg::ReturnTypeArg(node) }
-}
 impl AstNode for GenericArg {
     fn can_cast(kind: SyntaxKind) -> bool {
-        matches!(kind, TYPE_ARG | ASSOC_TYPE_ARG | LIFETIME_ARG | CONST_ARG | RETURN_TYPE_ARG)
+        matches!(kind, TYPE_ARG | ASSOC_TYPE_ARG | LIFETIME_ARG | CONST_ARG)
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
@@ -3256,7 +3229,6 @@ impl AstNode for GenericArg {
             ASSOC_TYPE_ARG => GenericArg::AssocTypeArg(AssocTypeArg { syntax }),
             LIFETIME_ARG => GenericArg::LifetimeArg(LifetimeArg { syntax }),
             CONST_ARG => GenericArg::ConstArg(ConstArg { syntax }),
-            RETURN_TYPE_ARG => GenericArg::ReturnTypeArg(ReturnTypeArg { syntax }),
             _ => return None,
         };
         Some(res)
@@ -3267,7 +3239,6 @@ impl AstNode for GenericArg {
             GenericArg::AssocTypeArg(it) => &it.syntax,
             GenericArg::LifetimeArg(it) => &it.syntax,
             GenericArg::ConstArg(it) => &it.syntax,
-            GenericArg::ReturnTypeArg(it) => &it.syntax,
         }
     }
 }
@@ -4199,13 +4170,7 @@ impl AstNode for AnyHasTypeBounds {
     fn can_cast(kind: SyntaxKind) -> bool {
         matches!(
             kind,
-            ASSOC_TYPE_ARG
-                | RETURN_TYPE_ARG
-                | TRAIT
-                | TYPE_ALIAS
-                | LIFETIME_PARAM
-                | TYPE_PARAM
-                | WHERE_PRED
+            ASSOC_TYPE_ARG | TRAIT | TYPE_ALIAS | LIFETIME_PARAM | TYPE_PARAM | WHERE_PRED
         )
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -4364,11 +4329,6 @@ impl std::fmt::Display for LifetimeArg {
     }
 }
 impl std::fmt::Display for ConstArg {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for ReturnTypeArg {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
