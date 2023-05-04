@@ -37,6 +37,9 @@ text-edit.workspace = true
 # something from some `hir-xxx` subpackage, reexport the API via `hir`.
 hir.workspace = true
 
+# used to be a module, turned into its own library
+line-index = { version = "0.1.0", path = "../../lib/line-index" }
+
 [dev-dependencies]
 expect-test = "1.4.0"
 oorandom = "11.1.3"

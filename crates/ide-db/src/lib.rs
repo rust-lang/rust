@@ -13,7 +13,6 @@ pub mod famous_defs;
 pub mod helpers;
 pub mod items_locator;
 pub mod label;
-pub mod line_index;
 pub mod path_transform;
 pub mod rename;
 pub mod rust_doc;
@@ -54,6 +53,8 @@ use triomphe::Arc;
 
 use crate::{line_index::LineIndex, symbol_index::SymbolsDatabase};
 pub use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
+
+pub use ::line_index;
 
 /// `base_db` is normally also needed in places where `ide_db` is used, so this re-export is for convenience.
 pub use base_db;
@@ -414,4 +415,5 @@ impl SnippetCap {
 #[cfg(test)]
 mod tests {
     mod sourcegen_lints;
+    mod line_index;
 }

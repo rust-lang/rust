@@ -717,6 +717,7 @@ dependencies = [
  "indexmap",
  "itertools",
  "limit",
+ "line-index",
  "memchr",
  "once_cell",
  "oorandom",
@@ -911,6 +912,14 @@ dependencies = [
 [[package]]
 name = "limit"
 version = "0.0.0"
+
+[[package]]
+name = "line-index"
+version = "0.1.0"
+dependencies = [
+ "non-hash",
+ "text-size",
+]
 
 [[package]]
 name = "lock_api"
