@@ -86,14 +86,14 @@ impl LineIndex {
         let mut newlines = Vec::with_capacity(16);
         newlines.push(TextSize::from(0));
 
-        let mut curr_row = 0.into();
-        let mut curr_col = 0.into();
+        let mut cur_row = 0.into();
+        let mut cur_col = 0.into();
         let mut line = 0;
         for c in text.chars() {
             let c_len = TextSize::of(c);
-            curr_row += c_len;
+            cur_row += c_len;
             if c == '\n' {
-                newlines.push(curr_row);
+                newlines.push(cur_row);
 
                 // Save any utf-16 characters seen in the previous line
                 if !wide_chars.is_empty() {
@@ -101,16 +101,16 @@ impl LineIndex {
                 }
 
                 // Prepare for processing the next line
-                curr_col = 0.into();
+                cur_col = 0.into();
                 line += 1;
                 continue;
             }
 
             if !c.is_ascii() {
-                wide_chars.push(WideChar { start: curr_col, end: curr_col + c_len });
+                wide_chars.push(WideChar { start: cur_col, end: cur_col + c_len });
             }
 
-            curr_col += c_len;
+            cur_col += c_len;
         }
 
         // Save any utf-16 characters seen in the last line
