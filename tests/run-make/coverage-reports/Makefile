@@ -174,7 +174,13 @@ else
 	# files are redundant, so there is no need to generate `expected_*.json` files or
 	# compare actual JSON results.)
 
-	$(DIFF) --ignore-matching-lines='^  \| .*::<.*>.*:$$' --ignore-matching-lines='^  \| <.*>::.*:$$' \
+	# CAUTION: GNU diff and Apple/FreeBSD diff use slightly different regex dialects.
+	# GNU diff treats `|` as a literal pipe character, and `\|` as a regex OR operator.
+	# Apple/FreeBSD diff treats `|` as a regex OR operator, and `|` as a literal pipe.
+	# To match a literal pipe character in both implementations, we need to wrap it in
+	# a character class `[|]` instead. Nobody is happy about this.
+
+	$(DIFF) --ignore-matching-lines='^  [|] .*::<.*>.*:$$' --ignore-matching-lines='^  [|] <.*>::.*:$$' \
 		expected_show_coverage.$@.txt "$(TMPDIR)"/actual_show_coverage.$@.txt || \
 		( grep -q '^\/\/ ignore-llvm-cov-show-diffs' $(SOURCEDIR)/$@.rs && \
 			>&2 echo 'diff failed, but suppressed with `// ignore-llvm-cov-show-diffs` in $(SOURCEDIR)/$@.rs' \
