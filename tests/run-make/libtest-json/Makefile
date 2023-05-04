@@ -1,4 +1,5 @@
 # ignore-cross-compile
+# needs-unwind
 include ../tools.mk
 
 # Test expected libtest's JSON output
