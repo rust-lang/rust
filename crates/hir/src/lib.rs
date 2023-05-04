@@ -1535,9 +1535,6 @@ impl DefWithBody {
         for (pat_or_expr, mismatch) in infer.type_mismatches() {
             let expr_or_pat = match pat_or_expr {
                 ExprOrPatId::ExprId(expr) => source_map.expr_syntax(expr).map(Either::Left),
-                // FIXME: Re-enable these once we have less false positives
-                ExprOrPatId::PatId(_pat) => continue,
-                #[allow(unreachable_patterns)]
                 ExprOrPatId::PatId(pat) => source_map.pat_syntax(pat).map(Either::Right),
             };
             let expr_or_pat = match expr_or_pat {

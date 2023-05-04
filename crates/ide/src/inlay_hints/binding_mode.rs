@@ -148,7 +148,6 @@ struct Struct {
     field: &'static str,
 }
 fn foo(s @ Struct { field, .. }: &Struct) {}
-     //^^^^^^^^^^^^^^^^^^^^^^^^ref
          //^^^^^^^^^^^^^^^^^^^^&
                   //^^^^^ref
 "#,

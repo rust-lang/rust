@@ -650,8 +650,11 @@ fn h() {
             r#"
 fn f() {
     let &() = &mut ();
+      //^^^ error: expected &mut (), found &()
     match &() {
+        // FIXME: we should only show the deep one.
         &9 => ()
+      //^^ error: expected &(), found &i32
        //^ error: expected (), found i32
     }
 }

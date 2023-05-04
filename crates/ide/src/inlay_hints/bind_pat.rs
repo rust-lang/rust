@@ -30,7 +30,7 @@ pub(super) fn hints(
 
     let descended = sema.descend_node_into_attributes(pat.clone()).pop();
     let desc_pat = descended.as_ref().unwrap_or(pat);
-    let ty = sema.type_of_pat(&desc_pat.clone().into())?.original;
+    let ty = sema.type_of_binding_in_pat(desc_pat)?;
 
     if should_not_display_type_hint(sema, config, pat, &ty) {
         return None;

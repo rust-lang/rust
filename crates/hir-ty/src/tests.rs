@@ -17,7 +17,7 @@ use expect_test::Expect;
 use hir_def::{
     body::{Body, BodySourceMap, SyntheticSyntax},
     db::{DefDatabase, InternDatabase},
-    hir::{ExprId, PatId},
+    hir::{ExprId, Pat, PatId},
     item_scope::ItemScope,
     nameres::DefMap,
     src::HasSource,
@@ -149,10 +149,13 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
     });
     let mut unexpected_type_mismatches = String::new();
     for def in defs {
-        let (_body, body_source_map) = db.body_with_source_map(def);
+        let (body, body_source_map) = db.body_with_source_map(def);
         let inference_result = db.infer(def);
 
-        for (pat, ty) in inference_result.type_of_pat.iter() {
+        for (pat, mut ty) in inference_result.type_of_pat.iter() {
+            if let Pat::Bind { id, .. } = body.pats[pat] {
+                ty = &inference_result.type_of_binding[id];
+            }
             let node = match pat_node(&body_source_map, pat, &db) {
                 Some(value) => value,
                 None => continue,
@@ -284,11 +287,15 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
     let mut buf = String::new();
 
     let mut infer_def = |inference_result: Arc<InferenceResult>,
+                         body: Arc<Body>,
                          body_source_map: Arc<BodySourceMap>| {
         let mut types: Vec<(InFile<SyntaxNode>, &Ty)> = Vec::new();
         let mut mismatches: Vec<(InFile<SyntaxNode>, &TypeMismatch)> = Vec::new();
 
-        for (pat, ty) in inference_result.type_of_pat.iter() {
+        for (pat, mut ty) in inference_result.type_of_pat.iter() {
+            if let Pat::Bind { id, .. } = body.pats[pat] {
+                ty = &inference_result.type_of_binding[id];
+            }
             let syntax_ptr = match body_source_map.pat_syntax(pat) {
                 Ok(sp) => {
                     let root = db.parse_or_expand(sp.file_id);
@@ -386,9 +393,9 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
         }
     });
     for def in defs {
-        let (_body, source_map) = db.body_with_source_map(def);
+        let (body, source_map) = db.body_with_source_map(def);
         let infer = db.infer(def);
-        infer_def(infer, source_map);
+        infer_def(infer, body, source_map);
     }
 
     buf.truncate(buf.trim_end().len());
