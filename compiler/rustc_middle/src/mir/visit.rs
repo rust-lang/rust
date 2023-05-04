@@ -410,7 +410,7 @@ macro_rules! make_mir_visitor {
                     StatementKind::PlaceMention(place) => {
                         self.visit_place(
                             place,
-                            PlaceContext::NonUse(NonUseContext::PlaceMention),
+                            PlaceContext::NonMutatingUse(NonMutatingUseContext::PlaceMention),
                             location
                         );
                     }
@@ -1251,6 +1251,11 @@ pub enum NonMutatingUseContext {
     UniqueBorrow,
     /// AddressOf for *const pointer.
     AddressOf,
+    /// PlaceMention statement.
+    ///
+    /// This statement is executed as a check that the `Place` is live without reading from it,
+    /// so it must be considered as a non-mutating use.
+    PlaceMention,
     /// Used as base for another place, e.g., `x` in `x.y`. Will not mutate the place.
     /// For example, the projection `x.y` is not marked as a mutation in these cases:
     /// ```ignore (illustrative)
@@ -1301,8 +1306,6 @@ pub enum NonUseContext {
     AscribeUserTy,
     /// The data of a user variable, for debug info.
     VarDebugInfo,
-    /// PlaceMention statement.
-    PlaceMention,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
