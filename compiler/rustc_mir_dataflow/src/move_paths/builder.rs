@@ -3,7 +3,7 @@ use crate::un_derefer::UnDerefer;
 use rustc_index::IndexVec;
 use rustc_middle::mir::tcx::RvalueInitializationState;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use smallvec::{smallvec, SmallVec};
 
 use std::mem;
@@ -50,6 +50,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
                                 &mut init_path_map,
                                 None,
                                 Place::from(i),
+                                body.local_decls[i].ty,
                             )
                         })
                         .collect(),
@@ -70,9 +71,10 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
         init_path_map: &mut IndexVec<MovePathIndex, SmallVec<[InitIndex; 4]>>,
         parent: Option<MovePathIndex>,
         place: Place<'tcx>,
+        ty: Ty<'tcx>,
     ) -> MovePathIndex {
         let move_path =
-            move_paths.push(MovePath { next_sibling: None, first_child: None, parent, place });
+            move_paths.push(MovePath { next_sibling: None, first_child: None, parent, place, ty });
 
         if let Some(parent) = parent {
             let next_sibling = mem::replace(&mut move_paths[parent].first_child, Some(move_path));
@@ -113,12 +115,13 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
         // from `*(u.f: &_)` isn't allowed.
         let mut union_path = None;
 
+        let body = self.builder.body;
+        let tcx = self.builder.tcx;
+
+        // Compute `place_ty` incrementally, as `ty_from` iterates on projections.
+        let mut place_ty = Place::ty_from(place.local, &[], body, tcx);
         for (i, elem) in place.projection.iter().enumerate() {
-            let proj_base = &place.projection[..i];
-            let body = self.builder.body;
-            let tcx = self.builder.tcx;
-            let place_ty = Place::ty_from(place.local, proj_base, body, tcx).ty;
-            match place_ty.kind() {
+            match place_ty.ty.kind() {
                 ty::Ref(..) | ty::RawPtr(..) => {
                     let proj = &place.projection[..i + 1];
                     return Err(MoveError::cannot_move_out_of(
@@ -134,7 +137,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 ty::Adt(adt, _) if adt.has_dtor(tcx) && !adt.is_box() => {
                     return Err(MoveError::cannot_move_out_of(
                         self.loc,
-                        InteriorOfTypeWithDestructor { container_ty: place_ty },
+                        InteriorOfTypeWithDestructor { container_ty: place_ty.ty },
                     ));
                 }
                 ty::Adt(adt, _) if adt.is_union() => {
@@ -144,7 +147,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                     return Err(MoveError::cannot_move_out_of(
                         self.loc,
                         InteriorOfSliceOrArray {
-                            ty: place_ty,
+                            ty: place_ty.ty,
                             is_index: matches!(elem, ProjectionElem::Index(..)),
                         },
                     ));
@@ -154,7 +157,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                     if let ProjectionElem::Index(..) = elem {
                         return Err(MoveError::cannot_move_out_of(
                             self.loc,
-                            InteriorOfSliceOrArray { ty: place_ty, is_index: true },
+                            InteriorOfSliceOrArray { ty: place_ty.ty, is_index: true },
                         ));
                     }
                 }
@@ -162,10 +165,16 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 _ => {}
             };
 
+            place_ty = place_ty.projection_ty(tcx, elem);
             if union_path.is_none() {
-                base = self.add_move_path(base, elem, |tcx| Place {
-                    local: place.local,
-                    projection: tcx.mk_place_elems(&place.projection[..i + 1]),
+                base = self.add_move_path(base, elem, || {
+                    (
+                        Place {
+                            local: place.local,
+                            projection: tcx.mk_place_elems(&place.projection[..i + 1]),
+                        },
+                        place_ty.ty,
+                    )
                 });
             }
         }
@@ -182,7 +191,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
         &mut self,
         base: MovePathIndex,
         elem: PlaceElem<'tcx>,
-        mk_place: impl FnOnce(TyCtxt<'tcx>) -> Place<'tcx>,
+        mk_place: impl FnOnce() -> (Place<'tcx>, Ty<'tcx>),
     ) -> MovePathIndex {
         let MoveDataBuilder {
             data: MoveData { rev_lookup, move_paths, path_map, init_path_map, .. },
@@ -190,12 +199,14 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             ..
         } = self.builder;
         *rev_lookup.projections.entry((base, elem.lift())).or_insert_with(move || {
+            let (place, ty) = mk_place();
             MoveDataBuilder::new_move_path(
                 move_paths,
                 path_map,
                 init_path_map,
                 Some(base),
-                mk_place(*tcx),
+                place,
+                tcx.erase_regions(ty),
             )
         })
     }
@@ -471,8 +482,8 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             // Split `Subslice` patterns into the corresponding list of
             // `ConstIndex` patterns. This is done to ensure that all move paths
             // are disjoint, which is expected by drop elaboration.
-            let base_place =
-                Place { local: place.local, projection: self.builder.tcx.mk_place_elems(base) };
+            let tcx = self.builder.tcx;
+            let base_place = Place { local: place.local, projection: tcx.mk_place_elems(base) };
             let base_path = match self.move_path_for(base_place) {
                 Ok(path) => path,
                 Err(MoveError::UnionMove { path }) => {
@@ -484,18 +495,19 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                     return;
                 }
             };
-            let base_ty = base_place.ty(self.builder.body, self.builder.tcx).ty;
-            let len: u64 = match base_ty.kind() {
-                ty::Array(_, size) => {
-                    size.eval_target_usize(self.builder.tcx, self.builder.param_env)
+            let base_ty = base_place.ty(self.builder.body, tcx).ty;
+            let (inner_ty, len) = match base_ty.kind() {
+                ty::Array(inner_ty, size) => {
+                    (*inner_ty, size.eval_target_usize(tcx, self.builder.param_env))
                 }
                 _ => bug!("from_end: false slice pattern of non-array type"),
             };
             for offset in from..to {
                 let elem =
                     ProjectionElem::ConstantIndex { offset, min_length: len, from_end: false };
-                let path =
-                    self.add_move_path(base_path, elem, |tcx| tcx.mk_place_elem(base_place, elem));
+                let path = self.add_move_path(base_path, elem, || {
+                    (tcx.mk_place_elem(base_place, elem), inner_ty)
+                });
                 self.record_move(place, path);
             }
         } else {

@@ -58,6 +58,7 @@ pub struct MovePath<'tcx> {
     pub first_child: Option<MovePathIndex>,
     pub parent: Option<MovePathIndex>,
     pub place: Place<'tcx>,
+    pub ty: Ty<'tcx>,
 }
 
 impl<'tcx> MovePath<'tcx> {
@@ -137,7 +138,8 @@ impl<'tcx> fmt::Debug for MovePath<'tcx> {
         if let Some(next_sibling) = self.next_sibling {
             write!(w, " next_sibling: {next_sibling:?}")?;
         }
-        write!(w, " place: {:?} }}", self.place)
+        write!(w, " place: {:?} }}", self.place)?;
+        write!(w, " ty: {:?} }}", self.ty)
     }
 }
 

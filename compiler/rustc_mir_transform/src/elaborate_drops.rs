@@ -144,7 +144,7 @@ fn remove_dead_unwinds<'tcx>(
         );
 
         let mut maybe_live = false;
-        on_all_drop_children_bits(tcx, body, &env, path, |child| {
+        on_all_drop_children_bits(tcx, &env, path, |child| {
             maybe_live |= flow_inits.contains(child);
         });
 
@@ -218,7 +218,7 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, '_, 'tcx> {
                 let mut some_live = false;
                 let mut some_dead = false;
                 let mut children_count = 0;
-                on_all_drop_children_bits(self.tcx(), self.body(), self.ctxt.env, path, |child| {
+                on_all_drop_children_bits(self.tcx(), self.ctxt.env, path, |child| {
                     let (live, dead) = self.ctxt.init_data.maybe_live_dead(child);
                     debug!("elaborate_drop: state({:?}) = {:?}", child, (live, dead));
                     some_live |= live;
@@ -242,13 +242,9 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, '_, 'tcx> {
                 self.ctxt.set_drop_flag(loc, path, DropFlagState::Absent);
             }
             DropFlagMode::Deep => {
-                on_all_children_bits(
-                    self.tcx(),
-                    self.body(),
-                    self.ctxt.move_data(),
-                    path,
-                    |child| self.ctxt.set_drop_flag(loc, child, DropFlagState::Absent),
-                );
+                on_all_children_bits(self.tcx(), self.ctxt.move_data(), path, |child| {
+                    self.ctxt.set_drop_flag(loc, child, DropFlagState::Absent)
+                });
             }
         }
     }
@@ -376,7 +372,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 }
             };
 
-            on_all_drop_children_bits(self.tcx, self.body, self.env, path, |child| {
+            on_all_drop_children_bits(self.tcx, self.env, path, |child| {
                 let (maybe_live, maybe_dead) = self.init_data.maybe_live_dead(child);
                 debug!(
                     "collect_drop_flags: collecting {:?} from {:?}@{:?} - {:?}",
@@ -496,7 +492,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
                 let loc = Location { block: tgt, statement_index: 0 };
                 let path = self.move_data().rev_lookup.find(destination.as_ref());
-                on_lookup_result_bits(self.tcx, self.body, self.move_data(), path, |child| {
+                on_lookup_result_bits(self.tcx, self.move_data(), path, |child| {
                     self.set_drop_flag(loc, child, DropFlagState::Present)
                 });
             }
@@ -569,7 +565,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
                 let loc = Location { block: bb, statement_index: data.statements.len() };
                 let path = self.move_data().rev_lookup.find(destination.as_ref());
-                on_lookup_result_bits(self.tcx, self.body, self.move_data(), path, |child| {
+                on_lookup_result_bits(self.tcx, self.move_data(), path, |child| {
                     self.set_drop_flag(loc, child, DropFlagState::Present)
                 });
             }

@@ -322,7 +322,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         // Mark all places as "maybe init" if they are mutably borrowed. See #90752.
         for_each_mut_borrow(statement, location, |place| {
             let LookupResult::Exact(mpi) = self.move_data().rev_lookup.find(place.as_ref()) else { return };
-            on_all_children_bits(self.tcx, self.body, self.move_data(), mpi, |child| {
+            on_all_children_bits(self.tcx, self.move_data(), mpi, |child| {
                 trans.gen(child);
             })
         })
@@ -344,7 +344,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
 
         for_each_mut_borrow(terminator, location, |place| {
             let LookupResult::Exact(mpi) = self.move_data().rev_lookup.find(place.as_ref()) else { return };
-            on_all_children_bits(self.tcx, self.body, self.move_data(), mpi, |child| {
+            on_all_children_bits(self.tcx, self.move_data(), mpi, |child| {
                 trans.gen(child);
             })
         })
@@ -361,7 +361,6 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
             // the bits for that dest_place to 1 (initialized).
             on_lookup_result_bits(
                 self.tcx,
-                self.body,
                 self.move_data(),
                 self.move_data().rev_lookup.find(place.as_ref()),
                 |mpi| {
@@ -406,7 +405,6 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
             // particular outgoing edge of a `SwitchInt`.
             drop_flag_effects::on_all_inactive_variants(
                 self.tcx,
-                self.body,
                 self.move_data(),
                 enum_place,
                 variant,
@@ -477,7 +475,6 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
             // the bits for that dest_place to 0 (initialized).
             on_lookup_result_bits(
                 self.tcx,
-                self.body,
                 self.move_data(),
                 self.move_data().rev_lookup.find(place.as_ref()),
                 |mpi| {
@@ -526,7 +523,6 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
             // uninitialized (in reality, they are *definitely* uninitialized).
             drop_flag_effects::on_all_inactive_variants(
                 self.tcx,
-                self.body,
                 self.move_data(),
                 enum_place,
                 variant,
@@ -594,7 +590,6 @@ impl<'tcx> GenKillAnalysis<'tcx> for DefinitelyInitializedPlaces<'_, 'tcx> {
             // the bits for that dest_place to 1 (initialized).
             on_lookup_result_bits(
                 self.tcx,
-                self.body,
                 self.move_data(),
                 self.move_data().rev_lookup.find(place.as_ref()),
                 |mpi| {
