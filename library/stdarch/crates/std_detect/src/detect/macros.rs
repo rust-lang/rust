@@ -1,5 +1,6 @@
 #[macro_export]
-#[allow_internal_unstable(stdsimd)]
+#[allow_internal_unstable(stdarch_internal)]
+#[unstable(feature = "stdarch_internal", issue = "none")]
 macro_rules! detect_feature {
     ($feature:tt, $feature_lit:tt) => {
         $crate::detect_feature!($feature, $feature_lit : $feature_lit)
@@ -25,7 +26,7 @@ macro_rules! features {
     ) => {
         #[macro_export]
         $(#[$macro_attrs])*
-        #[allow_internal_unstable(stdsimd_internal, stdsimd)]
+        #[allow_internal_unstable(stdarch_internal, stdsimd)]
         #[cfg($cfg)]
         #[doc(cfg($cfg))]
         macro_rules! $macro_name {
@@ -120,7 +121,7 @@ macro_rules! features {
         #[allow(non_camel_case_types)]
         #[derive(Copy, Clone)]
         #[repr(u8)]
-        #[unstable(feature = "stdsimd_internal", issue = "none")]
+        #[unstable(feature = "stdarch_internal", issue = "none")]
         #[cfg($cfg)]
         pub(crate) enum Feature {
             $(
@@ -157,6 +158,7 @@ macro_rules! features {
         /// to change.
         #[doc(hidden)]
         #[cfg($cfg)]
+        #[unstable(feature = "stdarch_internal", issue = "none")]
         pub mod __is_feature_detected {
             $(
 

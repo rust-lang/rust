@@ -6,11 +6,11 @@ features! {
     @MACRO_NAME: is_powerpc_feature_detected;
     @MACRO_ATTRS:
     /// Checks if `powerpc` feature is enabled.
-    #[unstable(feature = "stdsimd", issue = "27731")]
-    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] altivec: "altivec";
+    #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")]
+    @FEATURE: #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")] altivec: "altivec";
     /// Altivec
-    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] vsx: "vsx";
+    @FEATURE: #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")] vsx: "vsx";
     /// VSX
-    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] power8: "power8";
+    @FEATURE: #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")] power8: "power8";
     /// Power8
 }

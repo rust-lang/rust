@@ -27,6 +27,7 @@ mod arch;
 // This module needs to be public because the `is_{arch}_feature_detected!`
 // macros expand calls to items within it in user crates.
 #[doc(hidden)]
+#[unstable(feature = "stdarch_internal", issue = "none")]
 pub use self::arch::__is_feature_detected;
 
 pub(crate) use self::arch::Feature;
@@ -81,7 +82,7 @@ fn check_for(x: Feature) -> bool {
 /// Returns an `Iterator<Item=(&'static str, bool)>` where
 /// `Item.0` is the feature name, and `Item.1` is a `bool` which
 /// is `true` if the feature is supported by the host and `false` otherwise.
-#[unstable(feature = "stdsimd", issue = "27731")]
+#[unstable(feature = "stdarch_internal", issue = "none")]
 pub fn features() -> impl Iterator<Item = (&'static str, bool)> {
     cfg_if! {
         if #[cfg(any(

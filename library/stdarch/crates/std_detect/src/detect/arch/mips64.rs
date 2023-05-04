@@ -6,7 +6,7 @@ features! {
     @MACRO_NAME: is_mips64_feature_detected;
     @MACRO_ATTRS:
     /// Checks if `mips64` feature is enabled.
-    #[unstable(feature = "stdsimd", issue = "27731")]
-    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] msa: "msa";
+    #[unstable(feature = "stdarch_mips_feature_detection", issue = "111188")]
+    @FEATURE: #[unstable(feature = "stdarch_mips_feature_detection", issue = "111188")] msa: "msa";
     /// MIPS SIMD Architecture (MSA)
 }
