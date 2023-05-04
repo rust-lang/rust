@@ -69,7 +69,6 @@ use std::hash::Hash;
 use std::ops::{Add, Range, Sub};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::Arc;
 
 use md5::Digest;
 use md5::Md5;
@@ -1269,13 +1268,13 @@ pub enum DebuggerVisualizerType {
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Encodable, Decodable)]
 pub struct DebuggerVisualizerFile {
     /// The complete debugger visualizer source.
-    pub src: Arc<[u8]>,
+    pub src: Lrc<[u8]>,
     /// Indicates which visualizer type this targets.
     pub visualizer_type: DebuggerVisualizerType,
 }
 
 impl DebuggerVisualizerFile {
-    pub fn new(src: Arc<[u8]>, visualizer_type: DebuggerVisualizerType) -> Self {
+    pub fn new(src: Lrc<[u8]>, visualizer_type: DebuggerVisualizerType) -> Self {
         DebuggerVisualizerFile { src, visualizer_type }
     }
 }
