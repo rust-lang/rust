@@ -683,7 +683,8 @@ impl<'a> Builder<'a> {
                 tool::Miri,
                 tool::CargoMiri,
                 llvm::Lld,
-                llvm::CrtBeginEnd
+                llvm::CrtBeginEnd,
+                tool::TranslatableLimits,
             ),
             Kind::Check | Kind::Clippy | Kind::Fix => describe!(
                 check::Std,
