@@ -4,6 +4,19 @@ use crate::ascii;
 impl<const N: usize> [u8; N] {
     /// Converts this array of bytes into a array of ASCII characters,
     /// or returns `None` if any of the characters is non-ASCII.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ascii_char)]
+    /// #![feature(const_option)]
+    ///
+    /// const HEX_DIGITS: [std::ascii::Char; 16] =
+    ///     *b"0123456789abcdef".as_ascii().unwrap();
+    ///
+    /// assert_eq!(HEX_DIGITS[1].as_str(), "1");
+    /// assert_eq!(HEX_DIGITS[10].as_str(), "a");
+    /// ```
     #[unstable(feature = "ascii_char", issue = "110998")]
     #[must_use]
     #[inline]
