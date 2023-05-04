@@ -1,7 +1,5 @@
-// revisions: old new
-//[new] compile-flags: -Ztrait-solver=next
-//[old] check-pass
-//[new] known-bug: #109764
+// compile-flags: -Ztrait-solver=next
+// check-pass
 
 
 pub struct Bar

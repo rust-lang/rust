@@ -25,6 +25,8 @@ use rustc_span::DUMMY_SP;
 use std::iter;
 use std::ops::Deref;
 
+mod dedup_solver;
+
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// Canonicalizes the goal remembering the original values
     /// for each bound variable.
@@ -92,12 +94,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             }
         };
 
-        let canonical = Canonicalizer::canonicalize(
+        let mut canonical = Canonicalizer::canonicalize(
             self.infcx,
             CanonicalizeMode::Response { max_input_universe: self.max_input_universe },
             &mut Default::default(),
             response,
         );
+        dedup_solver::Deduper::dedup(self.infcx.tcx, &mut canonical);
         Ok(canonical)
     }
 
