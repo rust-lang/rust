@@ -657,14 +657,15 @@ pub(super) fn implied_predicates_with_filter(
         &*tcx.arena.alloc_from_iter(superbounds.predicates().chain(where_bounds_that_match));
     debug!(?implied_bounds);
 
-    // Now require that immediate supertraits are converted,
-    // which will, in turn, reach indirect supertraits.
+    // Now require that immediate supertraits are converted, which will, in
+    // turn, reach indirect supertraits, so we detect cycles now instead of
+    // overflowing during elaboration.
     if matches!(filter, PredicateFilter::SelfOnly) {
-        // Now require that immediate supertraits are converted,
-        // which will, in turn, reach indirect supertraits.
         for &(pred, span) in implied_bounds {
             debug!("superbound: {:?}", pred);
-            if let ty::PredicateKind::Clause(ty::Clause::Trait(bound)) = pred.kind().skip_binder() {
+            if let ty::PredicateKind::Clause(ty::Clause::Trait(bound)) = pred.kind().skip_binder()
+                && bound.polarity == ty::ImplPolarity::Positive
+            {
                 tcx.at(span).super_predicates_of(bound.def_id());
             }
         }
