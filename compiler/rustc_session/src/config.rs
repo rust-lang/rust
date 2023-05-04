@@ -587,6 +587,7 @@ pub enum PrintRequest {
     StackProtectorStrategies,
     LinkArgs,
     SplitDebuginfo,
+    DeploymentTarget,
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -1452,7 +1453,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
             "[crate-name|file-names|sysroot|target-libdir|cfg|calling-conventions|\
              target-list|target-cpus|target-features|relocation-models|code-models|\
              tls-models|target-spec-json|all-target-specs-json|native-static-libs|\
-             stack-protector-strategies|link-args]",
+             stack-protector-strategies|link-args|deployment-target]",
         ),
         opt::flagmulti_s("g", "", "Equivalent to -C debuginfo=2"),
         opt::flagmulti_s("O", "", "Equivalent to -C opt-level=2"),
@@ -1902,6 +1903,7 @@ fn collect_print_requests(
         ("all-target-specs-json", PrintRequest::AllTargetSpecs),
         ("link-args", PrintRequest::LinkArgs),
         ("split-debuginfo", PrintRequest::SplitDebuginfo),
+        ("deployment-target", PrintRequest::DeploymentTarget),
     ];
 
     prints.extend(matches.opt_strs("print").into_iter().map(|req| {
