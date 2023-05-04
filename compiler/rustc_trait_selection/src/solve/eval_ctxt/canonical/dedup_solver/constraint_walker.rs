@@ -8,6 +8,8 @@ use std::rc::Rc;
 
 pub type Outlives<'tcx> = OutlivesPredicate<GenericArg<'tcx>, Region<'tcx>>;
 
+/// Walks over constraints and fetches variables present in the constraint, in order
+/// Also has the ability to re-write the variables there
 pub struct ConstraintWalker<'tcx, 'a> {
     tcx: TyCtxt<'tcx>,
     fetch_var: &'a mut dyn FnMut(usize) -> usize,
@@ -25,8 +27,9 @@ impl<'tcx, 'a> ConstraintWalker<'tcx, 'a> {
         return (self.fetch_var)(var);
     }
 
-    // The walk functions recursively erases all dedupable vars in an input (replacing them with 0s),
-    // and returns the dedupable vars in order
+    // The walk functions recursively walk over an Enum, extracting the variables present inside (in order)
+    // Then, a substitution for each variable is computed using the fetch_var closure stored as a property
+    // If we don't want to re-write variables, we can just use |x| x as the fetch_var closure
 
     pub fn walk_outlives(&mut self, input: &Outlives<'tcx>) -> Outlives<'tcx> {
         ty::OutlivesPredicate(

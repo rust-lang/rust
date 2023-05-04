@@ -71,6 +71,8 @@ impl<'tcx> Deduper<'tcx> {
         self.remove_duplicate_constraints(&solve_result.removed_constraints, constraints);
         self.compress_variables(&solve_result.removed_vars, constraints, variables, max_universe);
     }
+    // Extracts data about each constraint, i.e. the variables present, as well as the constraint
+    // categories
     fn extract_constraint_data(
         &mut self, 
         dedupable_vars: &FxIndexSet<usize>, 
@@ -78,6 +80,10 @@ impl<'tcx> Deduper<'tcx> {
         variables: &mut CanonicalVarInfos<'tcx>
     ) {
         let num_vars = variables.len();
+        // dummy_var_rewriter is the fetch_var function that will be given to ConstraintWalker
+        // it re-writes all variables with a dummy value (num_vars - guaranteed to NOT be a var index),
+        // allowing us to compare constraints based solely on their structure, not on the variables present
+        // Used to compute constraint categories
         let mut dummy_var_rewriter = |var| num_vars;
         /*
         let mut dummy_var_rewriter = |var| {
