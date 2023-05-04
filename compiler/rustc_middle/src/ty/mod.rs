@@ -27,14 +27,12 @@ pub use assoc::*;
 pub use generics::*;
 use rustc_ast as ast;
 use rustc_attr as attr;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::Node;
-use rustc_macros::HashStable;
 use rustc_serialize::{Decodable, Encodable};
 pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
@@ -45,9 +43,6 @@ pub use rustc_target::abi::{ReprFlags, ReprOptions};
 use rustc_type_ir::WithCachedTypeInfo;
 pub use subst::*;
 pub use vtable::*;
-
-use std::fmt::Debug;
-use std::hash::Hash;
 
 pub use crate::ty::diagnostics::*;
 pub use rustc_type_ir::AliasKind::*;
@@ -134,12 +129,24 @@ mod sty;
 mod typeck_results;
 
 mod alias_relation_direction;
+mod bound_const;
 mod bound_constness;
+mod c_reader_cache_key;
+mod closure_size_profile_data;
+mod crate_inherent_impls;
+mod crate_variances_map;
+mod destructor;
+mod destructured_const;
 mod field_def;
+mod impl_header;
+mod impl_overlap_kind;
 mod impl_polarity;
+mod impl_subject;
 mod impl_trait_in_trait_data;
+mod infer_var_info;
 mod main_definition;
 mod opaque_hidden_type;
+mod opaque_type_key;
 mod param_env;
 mod placeholder;
 mod predicate;
@@ -148,15 +155,29 @@ mod symbol_name;
 mod term;
 mod ty_; // FIXME: rename to `ty` once we don't import `crate::ty` here
 mod variant_def;
+mod variant_discr;
+mod variant_flags;
 mod visibility;
 
 pub use alias_relation_direction::AliasRelationDirection;
+pub use bound_const::BoundConst;
 pub use bound_constness::BoundConstness;
+pub use c_reader_cache_key::CReaderCacheKey;
+pub use closure_size_profile_data::ClosureSizeProfileData;
+pub use crate_inherent_impls::CrateInherentImpls;
+pub use crate_variances_map::CrateVariancesMap;
+pub use destructor::Destructor;
+pub use destructured_const::DestructuredConst;
 pub use field_def::FieldDef;
+pub use impl_header::ImplHeader;
+pub use impl_overlap_kind::ImplOverlapKind;
 pub use impl_polarity::ImplPolarity;
+pub use impl_subject::ImplSubject;
 pub use impl_trait_in_trait_data::ImplTraitInTraitData;
+pub use infer_var_info::InferVarInfo;
 pub use main_definition::MainDefinition;
 pub use opaque_hidden_type::OpaqueHiddenType;
+pub use opaque_type_key::OpaqueTypeKey;
 pub use param_env::{ParamEnv, ParamEnvAnd};
 pub use placeholder::{Placeholder, PlaceholderConst, PlaceholderRegion, PlaceholderType};
 pub use predicate::{
@@ -171,33 +192,9 @@ pub use symbol_name::SymbolName;
 pub use term::{Term, TermKind};
 pub use ty_::Ty;
 pub use variant_def::VariantDef;
+pub use variant_discr::VariantDiscr;
+pub use variant_flags::VariantFlags;
 pub use visibility::Visibility;
-
-/// The "header" of an impl is everything outside the body: a Self type, a trait
-/// ref (in the case of a trait impl), and a set of predicates (from the
-/// bounds / where-clauses).
-#[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
-pub struct ImplHeader<'tcx> {
-    pub impl_def_id: DefId,
-    pub self_ty: Ty<'tcx>,
-    pub trait_ref: Option<TraitRef<'tcx>>,
-    pub predicates: Vec<Predicate<'tcx>>,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable)]
-pub enum ImplSubject<'tcx> {
-    Trait(TraitRef<'tcx>),
-    Inherent(Ty<'tcx>),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Copy, Hash, TyEncodable, TyDecodable, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
-pub struct ClosureSizeProfileData<'tcx> {
-    /// Tuple containing the types of closure captures before the feature `capture_disjoint_fields`
-    pub before_feature_tys: Ty<'tcx>,
-    /// Tuple containing the types of closure captures after the feature `capture_disjoint_fields`
-    pub after_feature_tys: Ty<'tcx>,
-}
 
 impl TyCtxt<'_> {
     #[inline]
@@ -241,27 +238,6 @@ impl TyCtxt<'_> {
         true
     }
 }
-/// The crate variances map is computed during typeck and contains the
-/// variance of every item in the local crate. You should not use it
-/// directly, because to do so will make your pass dependent on the
-/// HIR of every item in the local crate. Instead, use
-/// `tcx.variances_of()` to get the variance for a *particular*
-/// item.
-#[derive(HashStable, Debug)]
-pub struct CrateVariancesMap<'tcx> {
-    /// For each item with generics, maps to a vector of the variance
-    /// of its generics. If an item has no generics, it will have no
-    /// entry.
-    pub variances: DefIdMap<&'tcx [ty::Variance]>,
-}
-
-// Contains information needed to resolve types and (in the future) look up
-// the types of AST nodes.
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct CReaderCacheKey {
-    pub cnum: Option<CrateNum>,
-    pub pos: usize,
-}
 
 const TAG_MASK: usize = 0b11;
 const TYPE_TAG: usize = 0b00;
@@ -289,95 +265,6 @@ impl<'tcx> ToPolyTraitRef<'tcx> for PolyTraitPredicate<'tcx> {
     fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx> {
         self.map_bound_ref(|trait_pred| trait_pred.trait_ref)
     }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable, Lift)]
-#[derive(TypeFoldable, TypeVisitable)]
-pub struct OpaqueTypeKey<'tcx> {
-    pub def_id: LocalDefId,
-    pub substs: SubstsRef<'tcx>,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
-#[derive(TyEncodable, TyDecodable, PartialOrd, Ord)]
-pub struct BoundConst<'tcx> {
-    pub var: BoundVar,
-    pub ty: Ty<'tcx>,
-}
-
-#[derive(Copy, Clone, Debug, HashStable, Encodable, Decodable)]
-pub struct Destructor {
-    /// The `DefId` of the destructor method
-    pub did: DefId,
-    /// The constness of the destructor method
-    pub constness: hir::Constness,
-}
-
-bitflags! {
-    #[derive(HashStable, TyEncodable, TyDecodable)]
-    pub struct VariantFlags: u8 {
-        const NO_VARIANT_FLAGS        = 0;
-        /// Indicates whether the field list of this variant is `#[non_exhaustive]`.
-        const IS_FIELD_LIST_NON_EXHAUSTIVE = 1 << 0;
-        /// Indicates whether this variant was obtained as part of recovering from
-        /// a syntactic error. May be incomplete or bogus.
-        const IS_RECOVERED = 1 << 1;
-    }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
-pub enum VariantDiscr {
-    /// Explicit value for this variant, i.e., `X = 123`.
-    /// The `DefId` corresponds to the embedded constant.
-    Explicit(DefId),
-
-    /// The previous variant's discriminant plus one.
-    /// For efficiency reasons, the distance from the
-    /// last `Explicit` discriminant is being stored,
-    /// or `0` for the first variant, if it has none.
-    Relative(u32),
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum ImplOverlapKind {
-    /// These impls are always allowed to overlap.
-    Permitted {
-        /// Whether or not the impl is permitted due to the trait being a `#[marker]` trait
-        marker: bool,
-    },
-    /// These impls are allowed to overlap, but that raises
-    /// an issue #33140 future-compatibility warning.
-    ///
-    /// Some background: in Rust 1.0, the trait-object types `Send + Sync` (today's
-    /// `dyn Send + Sync`) and `Sync + Send` (now `dyn Sync + Send`) were different.
-    ///
-    /// The widely-used version 0.1.0 of the crate `traitobject` had accidentally relied
-    /// that difference, making what reduces to the following set of impls:
-    ///
-    /// ```compile_fail,(E0119)
-    /// trait Trait {}
-    /// impl Trait for dyn Send + Sync {}
-    /// impl Trait for dyn Sync + Send {}
-    /// ```
-    ///
-    /// Obviously, once we made these types be identical, that code causes a coherence
-    /// error and a fairly big headache for us. However, luckily for us, the trait
-    /// `Trait` used in this case is basically a marker trait, and therefore having
-    /// overlapping impls for it is sound.
-    ///
-    /// To handle this, we basically regard the trait as a marker trait, with an additional
-    /// future-compatibility warning. To avoid accidentally "stabilizing" this feature,
-    /// it has the following restrictions:
-    ///
-    /// 1. The trait must indeed be a marker-like trait (i.e., no items), and must be
-    /// positive impls.
-    /// 2. The trait-ref of both impls must be equal.
-    /// 3. The trait-ref of both impls must be a trait object type consisting only of
-    /// marker traits.
-    /// 4. Neither of the impls can have any where-clauses.
-    ///
-    /// Once `traitobject` 0.1.0 is no longer an active concern, this hack can be removed.
-    Issue33140,
 }
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -970,37 +857,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
         vtable_allocation: vtable::vtable_allocation_provider,
         ..*providers
     };
-}
-
-/// A map for the local crate mapping each type to a vector of its
-/// inherent impls. This is not meant to be used outside of coherence;
-/// rather, you should request the vector for a specific type via
-/// `tcx.inherent_impls(def_id)` so as to minimize your dependencies
-/// (constructing this map requires touching the entire crate).
-#[derive(Clone, Debug, Default, HashStable)]
-pub struct CrateInherentImpls {
-    pub inherent_impls: LocalDefIdMap<Vec<DefId>>,
-    pub incoherent_impls: FxHashMap<SimplifiedType, Vec<LocalDefId>>,
-}
-
-#[derive(Debug, Default, Copy, Clone)]
-pub struct InferVarInfo {
-    /// This is true if we identified that this Ty (`?T`) is found in a `?T: Foo`
-    /// obligation, where:
-    ///
-    ///  * `Foo` is not `Sized`
-    ///  * `(): Foo` may be satisfied
-    pub self_in_trait: bool,
-    /// This is true if we identified that this Ty (`?T`) is found in a `<_ as
-    /// _>::AssocType = ?T`
-    pub output: bool,
-}
-
-/// The constituent parts of a type level constant of kind ADT or array.
-#[derive(Copy, Clone, Debug, HashStable)]
-pub struct DestructuredConst<'tcx> {
-    pub variant: Option<VariantIdx>,
-    pub fields: &'tcx [ty::Const<'tcx>],
 }
 
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
