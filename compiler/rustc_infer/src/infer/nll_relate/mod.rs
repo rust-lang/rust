@@ -30,11 +30,10 @@ use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::FnMutDelegate;
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
-use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
+use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, InferConst, Ty, TyCtxt};
 use rustc_span::{Span, Symbol};
 use std::fmt::Debug;
-use std::ops::ControlFlow;
 
 use super::combine::ObligationEmittingRelation;
 
@@ -113,11 +112,6 @@ pub trait TypeRelatingDelegate<'tcx> {
     /// Enables some optimizations if we do not expect inference variables
     /// in the RHS of the relation.
     fn forbid_inference_vars() -> bool;
-}
-
-#[derive(Clone, Debug, Default)]
-struct BoundRegionScope<'tcx> {
-    map: FxHashMap<ty::BoundRegion, ty::Region<'tcx>>,
 }
 
 #[derive(Copy, Clone)]
@@ -230,10 +224,13 @@ where
     ) -> RelateResult<'tcx, T> {
         let universe = self.infcx.probe_ty_var(for_vid).unwrap_err();
 
+        if value.has_escaping_bound_vars() {
+            bug!("trying to instantiate {for_vid:?} with escaping bound vars: {value:?}");
+        }
+
         let mut generalizer = TypeGeneralizer {
             infcx: self.infcx,
             delegate: &mut self.delegate,
-            first_free_index: ty::INNERMOST,
             ambient_variance: self.ambient_variance,
             for_vid_sub_root: self.infcx.inner.borrow_mut().type_variables().sub_root_var(for_vid),
             universe,
@@ -488,13 +485,7 @@ where
         }
 
         if a == b {
-            // Subtle: if a or b has a bound variable that we are lazily
-            // substituting, then even if a == b, it could be that the values we
-            // will substitute for those bound variables are *not* the same, and
-            // hence returning `Ok(a)` is incorrect.
-            if !a.has_escaping_bound_vars() && !b.has_escaping_bound_vars() {
-                return Ok(a);
-            }
+            return Ok(a);
         }
 
         match (a.kind(), b.kind()) {
@@ -726,47 +717,6 @@ where
     }
 }
 
-/// When we encounter a binder like `for<..> fn(..)`, we actually have
-/// to walk the `fn` value to find all the values bound by the `for`
-/// (these are not explicitly present in the ty representation right
-/// now). This visitor handles that: it descends the type, tracking
-/// binder depth, and finds late-bound regions targeting the
-/// `for<..`>. For each of those, it creates an entry in
-/// `bound_region_scope`.
-struct ScopeInstantiator<'me, 'tcx> {
-    next_region: &'me mut dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
-    // The debruijn index of the scope we are instantiating.
-    target_index: ty::DebruijnIndex,
-    bound_region_scope: &'me mut BoundRegionScope<'tcx>,
-}
-
-impl<'me, 'tcx> TypeVisitor<TyCtxt<'tcx>> for ScopeInstantiator<'me, 'tcx> {
-    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
-        &mut self,
-        t: &ty::Binder<'tcx, T>,
-    ) -> ControlFlow<Self::BreakTy> {
-        self.target_index.shift_in(1);
-        t.super_visit_with(self);
-        self.target_index.shift_out(1);
-
-        ControlFlow::Continue(())
-    }
-
-    fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-        let ScopeInstantiator { bound_region_scope, next_region, .. } = self;
-
-        match *r {
-            ty::ReLateBound(debruijn, br) if debruijn == self.target_index => {
-                bound_region_scope.map.entry(br).or_insert_with(|| next_region(br));
-            }
-
-            _ => {}
-        }
-
-        ControlFlow::Continue(())
-    }
-}
-
 /// The "type generalizer" is used when handling inference variables.
 ///
 /// The basic strategy for handling a constraint like `?A <: B` is to
@@ -780,11 +730,6 @@ impl<'me, 'tcx> TypeVisitor<TyCtxt<'tcx>> for ScopeInstantiator<'me, 'tcx> {
 /// value of `A`. Finally, we relate `&'0 u32 <: &'x u32`, which
 /// establishes `'0: 'x` as a constraint.
 ///
-/// As a side-effect of this generalization procedure, we also replace
-/// all the bound regions that we have traversed with concrete values,
-/// so that the resulting generalized type is independent from the
-/// scopes.
-///
 /// [blog post]: https://is.gd/0hKvIr
 struct TypeGeneralizer<'me, 'tcx, D>
 where
@@ -797,8 +742,6 @@ where
     /// After we generalize this type, we are going to relate it to
     /// some other type. What will be the variance at this point?
     ambient_variance: ty::Variance,
-
-    first_free_index: ty::DebruijnIndex,
 
     /// The vid of the type variable that is in the process of being
     /// instantiated. If we find this within the value we are folding,
@@ -939,7 +882,7 @@ where
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
         debug!("TypeGeneralizer::regions(a={:?})", a);
 
-        if let ty::ReLateBound(debruijn, _) = *a && debruijn < self.first_free_index {
+        if let ty::ReLateBound(..) = *a {
             return Ok(a);
         }
 
@@ -958,7 +901,6 @@ where
         // FIXME(#54105) -- if the ambient variance is bivariant,
         // though, we may however need to check well-formedness or
         // risk a problem like #41677 again.
-
         let replacement_region_vid = self.delegate.generalize_existential(self.universe);
 
         Ok(replacement_region_vid)
@@ -1002,10 +944,7 @@ where
         T: Relate<'tcx>,
     {
         debug!("TypeGeneralizer::binders(a={:?})", a);
-
-        self.first_free_index.shift_in(1);
         let result = self.relate(a.skip_binder(), a.skip_binder())?;
-        self.first_free_index.shift_out(1);
         Ok(a.rebind(result))
     }
 }
