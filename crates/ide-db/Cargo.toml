@@ -24,6 +24,7 @@ arrayvec = "0.7.2"
 indexmap = "1.9.1"
 memchr = "2.5.0"
 triomphe.workspace = true
+nohash-hasher.workspace = true
 
 # local deps
 base-db.workspace = true

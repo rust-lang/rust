@@ -5,7 +5,7 @@
 #[cfg(test)]
 mod tests;
 
-use nohash_hasher::IntMap as NoHashHashMap;
+use nohash_hasher::IntMap;
 
 pub use text_size::{TextRange, TextSize};
 
@@ -15,7 +15,7 @@ pub struct LineIndex {
     /// Offset the beginning of each line, zero-based.
     newlines: Vec<TextSize>,
     /// List of non-ASCII characters on each line.
-    line_wide_chars: NoHashHashMap<u32, Vec<WideChar>>,
+    line_wide_chars: IntMap<u32, Vec<WideChar>>,
 }
 
 /// Line/Column information in native, utf8 format.
@@ -80,7 +80,7 @@ impl WideChar {
 impl LineIndex {
     /// Returns a `LineIndex` for the `text`.
     pub fn new(text: &str) -> LineIndex {
-        let mut line_wide_chars = NoHashHashMap::default();
+        let mut line_wide_chars = IntMap::default();
         let mut wide_chars = Vec::new();
 
         let mut newlines = Vec::with_capacity(16);

@@ -8,8 +8,8 @@ use base_db::{
 };
 use hir_def::{db::DefDatabase, ModuleId};
 use hir_expand::db::ExpandDatabase;
+use nohash_hasher::IntMap;
 use rustc_hash::FxHashSet;
-use stdx::hash::NoHashHashMap;
 use syntax::TextRange;
 use test_utils::extract_annotations;
 use triomphe::Arc;
@@ -102,7 +102,7 @@ impl TestDB {
         self.module_for_file_opt(file_id).unwrap()
     }
 
-    pub(crate) fn extract_annotations(&self) -> NoHashHashMap<FileId, Vec<(TextRange, String)>> {
+    pub(crate) fn extract_annotations(&self) -> IntMap<FileId, Vec<(TextRange, String)>> {
         let mut files = Vec::new();
         let crate_graph = self.crate_graph();
         for krate in crate_graph.iter() {

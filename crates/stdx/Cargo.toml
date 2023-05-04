@@ -15,7 +15,6 @@ doctest = false
 libc = "0.2.135"
 backtrace = { version = "0.3.65", optional = true }
 always-assert = { version = "0.1.2", features = ["log"] }
-nohash-hasher.workspace = true
 # Think twice before adding anything here
 
 [target.'cfg(windows)'.dependencies]

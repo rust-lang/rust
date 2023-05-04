@@ -63,7 +63,7 @@ pub use paths::{AbsPath, AbsPathBuf};
 pub struct FileId(pub u32);
 
 /// safe because `FileId` is a newtype of `u32`
-impl stdx::hash::IsEnabled for FileId {}
+impl nohash_hasher::IsEnabled for FileId {}
 
 /// Storage for all files read by rust-analyzer.
 ///
