@@ -5,8 +5,6 @@
 #[cfg(test)]
 mod tests;
 
-use std::{iter, mem};
-
 use nohash_hasher::IntMap as NoHashHashMap;
 use text_size::{TextRange, TextSize};
 
@@ -98,7 +96,7 @@ impl LineIndex {
 
                 // Save any utf-16 characters seen in the previous line
                 if !wide_chars.is_empty() {
-                    line_wide_chars.insert(line, mem::take(&mut wide_chars));
+                    line_wide_chars.insert(line, std::mem::take(&mut wide_chars));
                 }
 
                 // Prepare for processing the next line
@@ -156,9 +154,9 @@ impl LineIndex {
     pub fn lines(&self, range: TextRange) -> impl Iterator<Item = TextRange> + '_ {
         let lo = self.newlines.partition_point(|&it| it < range.start());
         let hi = self.newlines.partition_point(|&it| it <= range.end());
-        let all = iter::once(range.start())
+        let all = std::iter::once(range.start())
             .chain(self.newlines[lo..hi].iter().copied())
-            .chain(iter::once(range.end()));
+            .chain(std::iter::once(range.end()));
 
         all.clone()
             .zip(all.skip(1))
