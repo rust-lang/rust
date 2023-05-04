@@ -13,9 +13,9 @@ pub use text_size::{TextRange, TextSize};
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LineIndex {
     /// Offset the beginning of each line, zero-based.
-    newlines: Vec<TextSize>,
+    newlines: Box<[TextSize]>,
     /// List of non-ASCII characters on each line.
-    line_wide_chars: IntMap<u32, Vec<WideChar>>,
+    line_wide_chars: IntMap<u32, Box<[WideChar]>>,
 }
 
 /// Line/Column information in native, utf8 format.
@@ -97,7 +97,8 @@ impl LineIndex {
 
                 // Save any utf-16 characters seen in the previous line
                 if !wide_chars.is_empty() {
-                    line_wide_chars.insert(line, std::mem::take(&mut wide_chars));
+                    line_wide_chars
+                        .insert(line, std::mem::take(&mut wide_chars).into_boxed_slice());
                 }
 
                 // Prepare for processing the next line
@@ -115,13 +116,10 @@ impl LineIndex {
 
         // Save any utf-16 characters seen in the last line
         if !wide_chars.is_empty() {
-            line_wide_chars.insert(line, wide_chars);
+            line_wide_chars.insert(line, wide_chars.into_boxed_slice());
         }
 
-        newlines.shrink_to_fit();
-        line_wide_chars.shrink_to_fit();
-
-        LineIndex { newlines, line_wide_chars }
+        LineIndex { newlines: newlines.into_boxed_slice(), line_wide_chars }
     }
 
     /// Transforms the `TextSize` into a `LineCol`.
@@ -168,7 +166,7 @@ impl LineIndex {
     fn utf8_to_wide_col(&self, enc: WideEncoding, line: u32, col: TextSize) -> usize {
         let mut res: usize = col.into();
         if let Some(wide_chars) = self.line_wide_chars.get(&line) {
-            for c in wide_chars {
+            for c in wide_chars.iter() {
                 if c.end <= col {
                     res -= usize::from(c.len()) - c.wide_len(enc);
                 } else {
@@ -183,7 +181,7 @@ impl LineIndex {
 
     fn wide_to_utf8_col(&self, enc: WideEncoding, line: u32, mut col: u32) -> TextSize {
         if let Some(wide_chars) = self.line_wide_chars.get(&line) {
-            for c in wide_chars {
+            for c in wide_chars.iter() {
                 if col > u32::from(c.start) {
                     col += u32::from(c.len()) - c.wide_len(enc) as u32;
                 } else {
