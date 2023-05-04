@@ -361,6 +361,12 @@ macro_rules! impl_fold_via_try_fold {
     (rfold -> try_rfold) => {
         impl_fold_via_try_fold! { @internal rfold -> try_rfold }
     };
+    (spec_fold -> spec_try_fold) => {
+        impl_fold_via_try_fold! { @internal spec_fold -> spec_try_fold }
+    };
+    (spec_rfold -> spec_try_rfold) => {
+        impl_fold_via_try_fold! { @internal spec_rfold -> spec_try_rfold }
+    };
     (@internal $fold:ident -> $try_fold:ident) => {
         #[inline]
         fn $fold<AAA, FFF>(mut self, init: AAA, fold: FFF) -> AAA
