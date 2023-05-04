@@ -14,9 +14,9 @@ use text_size::{TextRange, TextSize};
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LineIndex {
     /// Offset the beginning of each line, zero-based.
-    pub(crate) newlines: Vec<TextSize>,
+    newlines: Vec<TextSize>,
     /// List of non-ASCII characters on each line.
-    pub(crate) line_wide_chars: NoHashHashMap<u32, Vec<WideChar>>,
+    line_wide_chars: NoHashHashMap<u32, Vec<WideChar>>,
 }
 
 /// Line/Column information in native, utf8 format.
@@ -49,11 +49,11 @@ pub struct WideLineCol {
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub(crate) struct WideChar {
+struct WideChar {
     /// Start offset of a character inside a line, zero-based
-    pub(crate) start: TextSize,
+    start: TextSize,
     /// End offset of a character inside a line, zero-based
-    pub(crate) end: TextSize,
+    end: TextSize,
 }
 
 impl WideChar {
