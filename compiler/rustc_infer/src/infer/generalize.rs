@@ -3,36 +3,44 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
-use rustc_middle::ty::{self, InferConst, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, InferConst, Term, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::Span;
 
 use crate::infer::nll_relate::TypeRelatingDelegate;
 use crate::infer::type_variable::TypeVariableValue;
 use crate::infer::{InferCtxt, RegionVariableOrigin};
 
-pub(super) fn generalize<'tcx, D: GeneralizerDelegate<'tcx>>(
+pub(super) fn generalize<'tcx, D: GeneralizerDelegate<'tcx>, T: Into<Term<'tcx>> + Relate<'tcx>>(
     infcx: &InferCtxt<'tcx>,
     delegate: &mut D,
-    ty: Ty<'tcx>,
-    for_vid: ty::TyVid,
+    term: T,
+    for_vid: impl Into<ty::TermVid<'tcx>>,
     ambient_variance: ty::Variance,
-) -> RelateResult<'tcx, Generalization<Ty<'tcx>>> {
-    let for_universe = infcx.probe_ty_var(for_vid).unwrap_err();
-    let for_vid_sub_root = infcx.inner.borrow_mut().type_variables().sub_root_var(for_vid);
+) -> RelateResult<'tcx, Generalization<T>> {
+    let (for_universe, root_vid) = match for_vid.into() {
+        ty::TermVid::Ty(ty_vid) => (
+            infcx.probe_ty_var(ty_vid).unwrap_err(),
+            ty::TermVid::Ty(infcx.inner.borrow_mut().type_variables().sub_root_var(ty_vid)),
+        ),
+        ty::TermVid::Const(ct_vid) => (
+            infcx.probe_const_var(ct_vid).unwrap_err(),
+            ty::TermVid::Const(infcx.inner.borrow_mut().const_unification_table().find(ct_vid)),
+        ),
+    };
 
     let mut generalizer = Generalizer {
         infcx,
         delegate,
         ambient_variance,
-        for_vid_sub_root,
+        root_vid,
         for_universe,
-        root_ty: ty,
+        root_term: term.into(),
         needs_wf: false,
         cache: Default::default(),
     };
 
-    assert!(!ty.has_escaping_bound_vars());
-    let value = generalizer.relate(ty, ty)?;
+    assert!(!term.has_escaping_bound_vars());
+    let value = generalizer.relate(term, term)?;
     let needs_wf = generalizer.needs_wf;
     Ok(Generalization { value, needs_wf })
 }
@@ -99,11 +107,8 @@ where
 /// establishes `'0: 'x` as a constraint.
 ///
 /// [blog post]: https://is.gd/0hKvIr
-struct Generalizer<'me, 'tcx, D>
-where
-    D: GeneralizerDelegate<'tcx>,
-{
-    pub infcx: &'me InferCtxt<'tcx>,
+struct Generalizer<'me, 'tcx, D> {
+    infcx: &'me InferCtxt<'tcx>,
 
     // An delegate used to abstract the behaviors of the three previous
     // generalizer-like implementations.
@@ -116,19 +121,29 @@ where
     /// The vid of the type variable that is in the process of being
     /// instantiated. If we find this within the value we are folding,
     /// that means we would have created a cyclic value.
-    pub for_vid_sub_root: ty::TyVid,
+    root_vid: ty::TermVid<'tcx>,
 
     /// The universe of the type variable that is in the process of being
     /// instantiated. If we find anything that this universe cannot name,
     /// we reject the relation.
     for_universe: ty::UniverseIndex,
 
-    pub root_ty: Ty<'tcx>,
+    /// The root term (const or type) we're generalizing. Used for cycle errors.
+    root_term: Term<'tcx>,
 
     cache: SsoHashMap<Ty<'tcx>, Ty<'tcx>>,
 
     /// See the field `needs_wf` in `Generalization`.
     needs_wf: bool,
+}
+
+impl<'tcx, D> Generalizer<'_, 'tcx, D> {
+    fn cyclic_term_error(&self) -> TypeError<'tcx> {
+        match self.root_term.unpack() {
+            ty::TermKind::Ty(ty) => TypeError::CyclicTy(ty),
+            ty::TermKind::Const(ct) => TypeError::CyclicConst(ct),
+        }
+    }
 }
 
 impl<'tcx, D> TypeRelation<'tcx> for Generalizer<'_, 'tcx, D>
@@ -226,10 +241,10 @@ where
                 let mut inner = self.infcx.inner.borrow_mut();
                 let vid = inner.type_variables().root_var(vid);
                 let sub_vid = inner.type_variables().sub_root_var(vid);
-                if sub_vid == self.for_vid_sub_root {
+                if TermVid::Ty(sub_vid) == self.root_vid {
                     // If sub-roots are equal, then `for_vid` and
                     // `vid` are related via subtyping.
-                    Err(TypeError::CyclicTy(self.root_ty))
+                    Err(self.cyclic_term_error())
                 } else {
                     let probe = inner.type_variables().probe(vid);
                     match probe {
@@ -363,6 +378,17 @@ where
                 bug!("unexpected inference variable encountered in NLL generalization: {:?}", c);
             }
             ty::ConstKind::Infer(InferConst::Var(vid)) => {
+                // Check if the current unification would end up
+                // unifying `target_vid` with a const which contains
+                // an inference variable which is unioned with `target_vid`.
+                //
+                // Not doing so can easily result in stack overflows.
+                if TermVid::Const(self.infcx.inner.borrow_mut().const_unification_table().find(vid))
+                    == self.root_vid
+                {
+                    return Err(self.cyclic_term_error());
+                }
+
                 let mut inner = self.infcx.inner.borrow_mut();
                 let variable_table = &mut inner.const_unification_table();
                 let var_value = variable_table.probe_value(vid);
