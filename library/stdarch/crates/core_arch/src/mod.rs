@@ -218,7 +218,7 @@ pub mod arch {
     /// See the [module documentation](../index.html) for more details.
     #[cfg(any(target_arch = "mips", doc))]
     #[doc(cfg(target_arch = "mips"))]
-    #[unstable(feature = "stdsimd", issue = "27731")]
+    #[unstable(feature = "stdarch_mips", issue = "111198")]
     pub mod mips {
         pub use crate::core_arch::mips::*;
     }
@@ -228,7 +228,7 @@ pub mod arch {
     /// See the [module documentation](../index.html) for more details.
     #[cfg(any(target_arch = "mips64", doc))]
     #[doc(cfg(target_arch = "mips64"))]
-    #[unstable(feature = "stdsimd", issue = "27731")]
+    #[unstable(feature = "stdarch_mips", issue = "111198")]
     pub mod mips64 {
         pub use crate::core_arch::mips::*;
     }
