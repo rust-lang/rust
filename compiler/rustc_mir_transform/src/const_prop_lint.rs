@@ -1,6 +1,8 @@
 //! Propagates constants for early reporting of statically known
 //! assertion failures
 
+use std::fmt::Debug;
+
 use either::Left;
 
 use rustc_const_eval::interpret::Immediate;
@@ -17,7 +19,6 @@ use rustc_middle::ty::InternalSubsts;
 use rustc_middle::ty::{
     self, ConstInt, Instance, ParamEnv, ScalarInt, Ty, TyCtxt, TypeVisitableExt,
 };
-use rustc_session::lint;
 use rustc_span::Span;
 use rustc_target::abi::{HasDataLayout, Size, TargetDataLayout};
 use rustc_trait_selection::traits;
@@ -25,6 +26,7 @@ use rustc_trait_selection::traits;
 use crate::const_prop::CanConstProp;
 use crate::const_prop::ConstPropMachine;
 use crate::const_prop::ConstPropMode;
+use crate::errors::AssertLint;
 use crate::MirLint;
 
 /// The maximum number of bytes that we'll allocate space for a local or the return value.
@@ -311,18 +313,9 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
     }
 
-    fn report_assert_as_lint(
-        &self,
-        lint: &'static lint::Lint,
-        location: Location,
-        message: &'static str,
-        panic: AssertKind<impl std::fmt::Debug>,
-    ) {
-        let source_info = self.body().source_info(location);
+    fn report_assert_as_lint(&self, source_info: &SourceInfo, lint: AssertLint<impl Debug>) {
         if let Some(lint_root) = self.lint_root(*source_info) {
-            self.tcx.struct_span_lint_hir(lint, lint_root, source_info.span, message, |lint| {
-                lint.span_label(source_info.span, format!("{:?}", panic))
-            });
+            self.tcx.emit_spanned_lint(lint.lint(), lint_root, source_info.span, lint);
         }
     }
 
@@ -335,11 +328,13 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             // `AssertKind` only has an `OverflowNeg` variant, so make sure that is
             // appropriate to use.
             assert_eq!(op, UnOp::Neg, "Neg is the only UnOp that can overflow");
+            let source_info = self.body().source_info(location);
             self.report_assert_as_lint(
-                lint::builtin::ARITHMETIC_OVERFLOW,
-                location,
-                "this arithmetic operation will overflow",
-                AssertKind::OverflowNeg(val.to_const_int()),
+                source_info,
+                AssertLint::ArithmeticOverflow(
+                    source_info.span,
+                    AssertKind::OverflowNeg(val.to_const_int()),
+                ),
             );
             return None;
         }
@@ -370,23 +365,23 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             let r_bits = r.to_scalar().to_bits(right_size).ok();
             if r_bits.map_or(false, |b| b >= left_size.bits() as u128) {
                 debug!("check_binary_op: reporting assert for {:?}", location);
+                let source_info = self.body().source_info(location);
+                let panic = AssertKind::Overflow(
+                    op,
+                    match l {
+                        Some(l) => l.to_const_int(),
+                        // Invent a dummy value, the diagnostic ignores it anyway
+                        None => ConstInt::new(
+                            ScalarInt::try_from_uint(1_u8, left_size).unwrap(),
+                            left_ty.is_signed(),
+                            left_ty.is_ptr_sized_integral(),
+                        ),
+                    },
+                    r.to_const_int(),
+                );
                 self.report_assert_as_lint(
-                    lint::builtin::ARITHMETIC_OVERFLOW,
-                    location,
-                    "this arithmetic operation will overflow",
-                    AssertKind::Overflow(
-                        op,
-                        match l {
-                            Some(l) => l.to_const_int(),
-                            // Invent a dummy value, the diagnostic ignores it anyway
-                            None => ConstInt::new(
-                                ScalarInt::try_from_uint(1_u8, left_size).unwrap(),
-                                left_ty.is_signed(),
-                                left_ty.is_ptr_sized_integral(),
-                            ),
-                        },
-                        r.to_const_int(),
-                    ),
+                    source_info,
+                    AssertLint::ArithmeticOverflow(source_info.span, panic),
                 );
                 return None;
             }
@@ -398,11 +393,13 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 let (_res, overflow, _ty) = this.ecx.overflowing_binary_op(op, &l, &r)?;
                 Ok(overflow)
             })? {
+                let source_info = self.body().source_info(location);
                 self.report_assert_as_lint(
-                    lint::builtin::ARITHMETIC_OVERFLOW,
-                    location,
-                    "this arithmetic operation will overflow",
-                    AssertKind::Overflow(op, l.to_const_int(), r.to_const_int()),
+                    source_info,
+                    AssertLint::ArithmeticOverflow(
+                        source_info.span,
+                        AssertKind::Overflow(op, l.to_const_int(), r.to_const_int()),
+                    ),
                 );
                 return None;
             }
@@ -543,11 +540,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 // Need proper const propagator for these.
                 _ => return None,
             };
+            let source_info = self.body().source_info(location);
             self.report_assert_as_lint(
-                lint::builtin::UNCONDITIONAL_PANIC,
-                location,
-                "this operation will panic at runtime",
-                msg,
+                source_info,
+                AssertLint::UnconditionalPanic(source_info.span, msg),
             );
         }
 
