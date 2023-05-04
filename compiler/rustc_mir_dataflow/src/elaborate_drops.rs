@@ -272,15 +272,10 @@ where
                 let field = FieldIdx::new(i);
                 let subpath = self.elaborator.field_subpath(variant_path, field);
                 let tcx = self.tcx();
-                assert_eq!(self.elaborator.param_env().reveal(), Reveal::All);
 
-                let fty = f.ty(tcx, substs);
-                let field_ty = match tcx
-                    .try_normalize_erasing_regions(self.elaborator.param_env(), f.ty(tcx, substs))
-                {
-                    Ok(f_ty) => f_ty,
-                    Err(_) => fty,
-                };
+                assert_eq!(self.elaborator.param_env().reveal(), Reveal::All);
+                let field_ty =
+                    tcx.normalize_erasing_regions(self.elaborator.param_env(), f.ty(tcx, substs));
 
                 (tcx.mk_place_field(base_place, field, field_ty), subpath)
             })
