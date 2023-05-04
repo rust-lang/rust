@@ -646,8 +646,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             output_ty,
             &mut nested,
         );
-        let tr =
-            ty::Binder::dummy(self.tcx().at(cause.span).mk_trait_ref(LangItem::Sized, [output_ty]));
+        let tr = ty::TraitRef::from_lang_item(self.tcx(), LangItem::Sized, cause.span, [output_ty]);
         nested.push(Obligation::new(self.infcx.tcx, cause, obligation.param_env, tr));
 
         Ok(ImplSourceFnPointerData { fn_ty: self_ty, nested })
@@ -1050,8 +1049,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 );
 
                 // We can only make objects from sized types.
-                let tr =
-                    ty::Binder::dummy(tcx.at(cause.span).mk_trait_ref(LangItem::Sized, [source]));
+                let tr = ty::TraitRef::from_lang_item(tcx, LangItem::Sized, cause.span, [source]);
                 nested.push(predicate_to_obligation(tr.without_const().to_predicate(tcx)));
 
                 // If the type is `Foo + 'a`, ensure that the type
@@ -1121,7 +1119,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // Construct the nested `TailField<T>: Unsize<TailField<U>>` predicate.
                 let tail_unsize_obligation = obligation.with(
                     tcx,
-                    tcx.mk_trait_ref(obligation.predicate.def_id(), [source_tail, target_tail]),
+                    ty::TraitRef::new(
+                        tcx,
+                        obligation.predicate.def_id(),
+                        [source_tail, target_tail],
+                    ),
                 );
                 nested.push(tail_unsize_obligation);
             }
@@ -1146,8 +1148,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 nested.extend(obligations);
 
                 // Add a nested `T: Unsize<U>` predicate.
-                let last_unsize_obligation = obligation
-                    .with(tcx, tcx.mk_trait_ref(obligation.predicate.def_id(), [a_last, b_last]));
+                let last_unsize_obligation = obligation.with(
+                    tcx,
+                    ty::TraitRef::new(tcx, obligation.predicate.def_id(), [a_last, b_last]),
+                );
                 nested.push(last_unsize_obligation);
             }
 
@@ -1271,10 +1275,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         cause.clone(),
                         obligation.recursion_depth + 1,
                         self_ty.rebind(ty::TraitPredicate {
-                            trait_ref: self
-                                .tcx()
-                                .at(cause.span)
-                                .mk_trait_ref(LangItem::Destruct, [nested_ty]),
+                            trait_ref: ty::TraitRef::from_lang_item(
+                                self.tcx(),
+                                LangItem::Destruct,
+                                cause.span,
+                                [nested_ty],
+                            ),
                             constness: ty::BoundConstness::ConstIfConst,
                             polarity: ty::ImplPolarity::Positive,
                         }),
@@ -1295,10 +1301,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // or it's an ADT (and we need to check for a custom impl during selection)
                 _ => {
                     let predicate = self_ty.rebind(ty::TraitPredicate {
-                        trait_ref: self
-                            .tcx()
-                            .at(cause.span)
-                            .mk_trait_ref(LangItem::Destruct, [nested_ty]),
+                        trait_ref: ty::TraitRef::from_lang_item(
+                            self.tcx(),
+                            LangItem::Destruct,
+                            cause.span,
+                            [nested_ty],
+                        ),
                         constness: ty::BoundConstness::ConstIfConst,
                         polarity: ty::ImplPolarity::Positive,
                     });

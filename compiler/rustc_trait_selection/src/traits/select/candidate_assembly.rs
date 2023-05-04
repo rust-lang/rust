@@ -459,7 +459,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 obligation.param_env,
                 self.tcx().mk_predicate(obligation.predicate.map_bound(|mut pred| {
                     pred.trait_ref =
-                        self.tcx().mk_trait_ref(fn_ptr_trait, [pred.trait_ref.self_ty()]);
+                        ty::TraitRef::new(self.tcx(), fn_ptr_trait, [pred.trait_ref.self_ty()]);
                     ty::PredicateKind::Clause(ty::Clause::Trait(pred))
                 })),
             );
@@ -634,7 +634,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         // <ty as Deref>
-        let trait_ref = tcx.mk_trait_ref(tcx.lang_items().deref_trait()?, [ty]);
+        let trait_ref = ty::TraitRef::new(tcx, tcx.lang_items().deref_trait()?, [ty]);
 
         let obligation =
             traits::Obligation::new(tcx, cause.clone(), param_env, ty::Binder::dummy(trait_ref));

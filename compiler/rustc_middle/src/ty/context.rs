@@ -1838,7 +1838,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline(always)]
-    fn check_and_mk_substs(
+    pub(crate) fn check_and_mk_substs(
         self,
         _def_id: DefId,
         substs: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
@@ -2238,15 +2238,6 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_substs_from_iter(iter::once(self_ty.into()).chain(rest))
     }
 
-    pub fn mk_trait_ref(
-        self,
-        trait_def_id: DefId,
-        substs: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
-    ) -> ty::TraitRef<'tcx> {
-        let substs = self.check_and_mk_substs(trait_def_id, substs);
-        ty::TraitRef { def_id: trait_def_id, substs, _use_mk_trait_ref_instead: () }
-    }
-
     pub fn mk_alias_ty(
         self,
         def_id: DefId,
@@ -2440,15 +2431,6 @@ impl<'tcx> TyCtxtAt<'tcx> {
     #[track_caller]
     pub fn ty_error_with_message(self, msg: &str) -> Ty<'tcx> {
         self.tcx.ty_error_with_message(self.span, msg)
-    }
-
-    pub fn mk_trait_ref(
-        self,
-        trait_lang_item: LangItem,
-        substs: impl IntoIterator<Item: Into<ty::GenericArg<'tcx>>>,
-    ) -> ty::TraitRef<'tcx> {
-        let trait_def_id = self.require_lang_item(trait_lang_item, Some(self.span));
-        self.tcx.mk_trait_ref(trait_def_id, substs)
     }
 }
 

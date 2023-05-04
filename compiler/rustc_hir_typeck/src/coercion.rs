@@ -601,7 +601,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             self.tcx,
             cause,
             self.fcx.param_env,
-            self.tcx.mk_trait_ref(coerce_unsized_did, [coerce_source, coerce_target])
+            ty::TraitRef::new(self.tcx, coerce_unsized_did, [coerce_source, coerce_target])
         )];
 
         let mut has_unsized_tuple_coercion = false;
@@ -764,8 +764,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             self.tcx,
             self.cause.clone(),
             self.param_env,
-            ty::Binder::dummy(
-                self.tcx.at(self.cause.span).mk_trait_ref(hir::LangItem::PointerLike, [a]),
+            ty::TraitRef::from_lang_item(
+                self.tcx,
+                hir::LangItem::PointerLike,
+                self.cause.span,
+                [a],
             ),
         ));
 

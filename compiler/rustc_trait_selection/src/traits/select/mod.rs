@@ -2413,7 +2413,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     self.tcx(),
                     cause.clone(),
                     param_env,
-                    self.tcx().mk_trait_ref(trait_def_id, [normalized_ty]),
+                    ty::TraitRef::new(self.tcx(), trait_def_id, [normalized_ty]),
                 );
                 obligations.push(obligation);
                 obligations
