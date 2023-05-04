@@ -7,7 +7,7 @@ impl<const N: usize> [u8; N] {
     #[unstable(feature = "ascii_char", issue = "110998")]
     #[must_use]
     #[inline]
-    pub fn as_ascii(&self) -> Option<&[ascii::Char; N]> {
+    pub const fn as_ascii(&self) -> Option<&[ascii::Char; N]> {
         if self.is_ascii() {
             // SAFETY: Just checked that it's ASCII
             Some(unsafe { self.as_ascii_unchecked() })
