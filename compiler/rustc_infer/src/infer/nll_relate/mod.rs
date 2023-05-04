@@ -31,7 +31,7 @@ use rustc_span::{Span, Symbol};
 use std::fmt::Debug;
 
 use crate::infer::combine::ObligationEmittingRelation;
-use crate::infer::generalize::{Generalization, Generalizer};
+use crate::infer::generalize::{self, Generalization};
 use crate::infer::InferCtxt;
 use crate::infer::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::traits::{Obligation, PredicateObligations};
@@ -217,23 +217,14 @@ where
     }
 
     fn generalize(&mut self, ty: Ty<'tcx>, for_vid: ty::TyVid) -> RelateResult<'tcx, Ty<'tcx>> {
-        let for_universe = self.infcx.probe_ty_var(for_vid).unwrap_err();
-        let for_vid_sub_root = self.infcx.inner.borrow_mut().type_variables().sub_root_var(for_vid);
-
-        // FIXME: we may need a WF predicate (related to #54105).
-        let Generalization { value, needs_wf: _ } = Generalizer {
-            infcx: self.infcx,
-            delegate: &mut self.delegate,
-            ambient_variance: self.ambient_variance,
-            for_vid_sub_root,
-            for_universe,
-            root_ty: ty,
-            needs_wf: false,
-            cache: Default::default(),
-        }
-        .generalize(ty)?;
-
-        Ok(value)
+        let Generalization { value: ty, needs_wf: _ } = generalize::generalize(
+            self.infcx,
+            &mut self.delegate,
+            ty,
+            for_vid,
+            self.ambient_variance,
+        )?;
+        Ok(ty)
     }
 
     fn relate_opaques(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {

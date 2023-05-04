@@ -4,12 +4,41 @@ use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::{self, InferConst, Ty, TyCtxt, TypeVisitableExt};
+use rustc_span::Span;
 
-use crate::infer::combine::CombineFields;
 use crate::infer::nll_relate::TypeRelatingDelegate;
 use crate::infer::type_variable::TypeVariableValue;
 use crate::infer::{InferCtxt, RegionVariableOrigin};
 
+pub(super) fn generalize<'tcx, D: GeneralizerDelegate<'tcx>>(
+    infcx: &InferCtxt<'tcx>,
+    delegate: &mut D,
+    ty: Ty<'tcx>,
+    for_vid: ty::TyVid,
+    ambient_variance: ty::Variance,
+) -> RelateResult<'tcx, Generalization<Ty<'tcx>>> {
+    let for_universe = infcx.probe_ty_var(for_vid).unwrap_err();
+    let for_vid_sub_root = infcx.inner.borrow_mut().type_variables().sub_root_var(for_vid);
+
+    let mut generalizer = Generalizer {
+        infcx,
+        delegate,
+        ambient_variance,
+        for_vid_sub_root,
+        for_universe,
+        root_ty: ty,
+        needs_wf: false,
+        cache: Default::default(),
+    };
+
+    assert!(!ty.has_escaping_bound_vars());
+    let value = generalizer.relate(ty, ty)?;
+    let needs_wf = generalizer.needs_wf;
+    Ok(Generalization { value, needs_wf })
+}
+
+/// Abstracts the handling of region vars between HIR and MIR/NLL typechecking
+/// in the generalizer code.
 pub trait GeneralizerDelegate<'tcx> {
     fn param_env(&self) -> ty::ParamEnv<'tcx>;
 
@@ -18,7 +47,13 @@ pub trait GeneralizerDelegate<'tcx> {
     fn generalize_existential(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx>;
 }
 
-impl<'tcx> GeneralizerDelegate<'tcx> for CombineFields<'_, 'tcx> {
+pub struct CombineDelegate<'cx, 'tcx> {
+    pub infcx: &'cx InferCtxt<'tcx>,
+    pub param_env: ty::ParamEnv<'tcx>,
+    pub span: Span,
+}
+
+impl<'tcx> GeneralizerDelegate<'tcx> for CombineDelegate<'_, 'tcx> {
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env
     }
@@ -28,10 +63,8 @@ impl<'tcx> GeneralizerDelegate<'tcx> for CombineFields<'_, 'tcx> {
     }
 
     fn generalize_existential(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx> {
-        self.infcx.next_region_var_in_universe(
-            RegionVariableOrigin::MiscVariable(self.trace.span()),
-            universe,
-        )
+        self.infcx
+            .next_region_var_in_universe(RegionVariableOrigin::MiscVariable(self.span), universe)
     }
 }
 
@@ -66,7 +99,7 @@ where
 /// establishes `'0: 'x` as a constraint.
 ///
 /// [blog post]: https://is.gd/0hKvIr
-pub(super) struct Generalizer<'me, 'tcx, D>
+struct Generalizer<'me, 'tcx, D>
 where
     D: GeneralizerDelegate<'tcx>,
 {
@@ -96,18 +129,6 @@ where
 
     /// See the field `needs_wf` in `Generalization`.
     needs_wf: bool,
-}
-
-impl<'tcx, D: GeneralizerDelegate<'tcx>> Generalizer<'_, 'tcx, D> {
-    pub fn generalize<T>(mut self, value: T) -> RelateResult<'tcx, Generalization<T>>
-    where
-        T: Relate<'tcx>,
-    {
-        assert!(!value.has_escaping_bound_vars());
-        let value = self.relate(value, value)?;
-        let needs_wf = self.needs_wf;
-        Ok(Generalization { value, needs_wf })
-    }
 }
 
 impl<'tcx, D> TypeRelation<'tcx> for Generalizer<'_, 'tcx, D>
@@ -202,17 +223,19 @@ where
             }
 
             ty::Infer(ty::TyVar(vid)) => {
-                let vid = self.infcx.inner.borrow_mut().type_variables().root_var(vid);
-                let sub_vid = self.infcx.inner.borrow_mut().type_variables().sub_root_var(vid);
+                let mut inner = self.infcx.inner.borrow_mut();
+                let vid = inner.type_variables().root_var(vid);
+                let sub_vid = inner.type_variables().sub_root_var(vid);
                 if sub_vid == self.for_vid_sub_root {
                     // If sub-roots are equal, then `for_vid` and
                     // `vid` are related via subtyping.
                     Err(TypeError::CyclicTy(self.root_ty))
                 } else {
-                    let probe = self.infcx.inner.borrow_mut().type_variables().probe(vid);
+                    let probe = inner.type_variables().probe(vid);
                     match probe {
                         TypeVariableValue::Known { value: u } => {
                             debug!("generalize: known value {:?}", u);
+                            drop(inner);
                             self.relate(u, u)
                         }
                         TypeVariableValue::Unknown { universe } => {
@@ -235,20 +258,15 @@ where
                                 ty::Covariant | ty::Contravariant => (),
                             }
 
-                            let origin =
-                                *self.infcx.inner.borrow_mut().type_variables().var_origin(vid);
-                            let new_var_id = self
-                                .infcx
-                                .inner
-                                .borrow_mut()
-                                .type_variables()
-                                .new_var(self.for_universe, origin);
+                            let origin = *inner.type_variables().var_origin(vid);
+                            let new_var_id =
+                                inner.type_variables().new_var(self.for_universe, origin);
                             let u = self.tcx().mk_ty_var(new_var_id);
 
                             // Record that we replaced `vid` with `new_var_id` as part of a generalization
                             // operation. This is needed to detect cyclic types. To see why, see the
                             // docs in the `type_variables` module.
-                            self.infcx.inner.borrow_mut().type_variables().sub(vid, new_var_id);
+                            inner.type_variables().sub(vid, new_var_id);
                             debug!("generalize: replacing original vid={:?} with new={:?}", vid, u);
                             Ok(u)
                         }
@@ -278,7 +296,7 @@ where
 
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
                 let s = self.relate(substs, substs)?;
-                Ok(if s == substs { t } else { self.infcx.tcx.mk_opaque(def_id, s) })
+                Ok(if s == substs { t } else { self.tcx().mk_opaque(def_id, s) })
             }
             _ => relate::super_relate_tys(self, t, t),
         }?;

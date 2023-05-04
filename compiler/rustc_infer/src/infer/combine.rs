@@ -28,7 +28,7 @@ use super::lub::Lub;
 use super::sub::Sub;
 use super::type_variable::TypeVariableValue;
 use super::{DefineOpaqueTypes, InferCtxt, MiscVariable, TypeTrace};
-use crate::infer::generalize::{Generalization, Generalizer};
+use crate::infer::generalize::{generalize, CombineDelegate, Generalization};
 use crate::traits::{Obligation, PredicateObligations};
 use rustc_middle::infer::canonical::OriginalQueryValues;
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
@@ -471,25 +471,17 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
             RelationDir::SupertypeOf => ty::Contravariant,
         };
 
-        trace!(?ambient_variance);
-
-        let for_universe = self.infcx.probe_ty_var(for_vid).unwrap_err();
-        let for_vid_sub_root = self.infcx.inner.borrow_mut().type_variables().sub_root_var(for_vid);
-
-        trace!(?for_universe);
-        trace!(?self.trace);
-
-        Generalizer {
-            infcx: self.infcx,
-            delegate: self,
+        generalize::generalize(
+            self.infcx,
+            &mut CombineDelegate {
+                infcx: self.infcx,
+                param_env: self.param_env,
+                span: self.trace.span(),
+            },
+            ty,
+            for_vid,
             ambient_variance,
-            for_universe,
-            for_vid_sub_root,
-            root_ty: ty,
-            cache: Default::default(),
-            needs_wf: false,
-        }
-        .generalize(ty)
+        )
     }
 
     pub fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
