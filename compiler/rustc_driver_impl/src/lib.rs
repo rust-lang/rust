@@ -25,7 +25,7 @@ use rustc_data_structures::profiling::{
 use rustc_data_structures::sync::SeqCst;
 use rustc_errors::registry::{InvalidErrorCode, Registry};
 use rustc_errors::{
-    DiagnosticMessage, ErrorGuaranteed, PResult, SubdiagnosticMessage, TerminalUrl,
+    DiagnosticMessage, ErrorGuaranteed, Handler, PResult, SubdiagnosticMessage, TerminalUrl,
 };
 use rustc_feature::find_gated_cfg;
 use rustc_fluent_macro::fluent_messages;
@@ -55,7 +55,7 @@ use std::panic::{self, catch_unwind};
 use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
 use std::str;
-use std::sync::LazyLock;
+use std::sync::OnceLock;
 use std::time::Instant;
 
 // This import blocks the use of panicking `print` and `println` in all the code
@@ -119,7 +119,7 @@ pub const EXIT_SUCCESS: i32 = 0;
 /// Exit status code used for compilation failures and invalid flags.
 pub const EXIT_FAILURE: i32 = 1;
 
-const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust/issues/new\
+pub const DEFAULT_BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust/issues/new\
     ?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md";
 
 const ICE_REPORT_COMPILER_FLAGS: &[&str] = &["-Z", "-C", "--crate-type"];
@@ -1211,35 +1211,58 @@ pub fn catch_with_exit_code(f: impl FnOnce() -> interface::Result<()>) -> i32 {
     }
 }
 
-static DEFAULT_HOOK: LazyLock<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static>> =
-    LazyLock::new(|| {
-        let hook = panic::take_hook();
-        panic::set_hook(Box::new(|info| {
-            // If the error was caused by a broken pipe then this is not a bug.
-            // Write the error and return immediately. See #98700.
-            #[cfg(windows)]
-            if let Some(msg) = info.payload().downcast_ref::<String>() {
-                if msg.starts_with("failed printing to stdout: ") && msg.ends_with("(os error 232)")
-                {
-                    early_error_no_abort(ErrorOutputType::default(), &msg);
-                    return;
-                }
-            };
+/// Stores the default panic hook, from before [`install_ice_hook`] was called.
+static DEFAULT_HOOK: OnceLock<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static>> =
+    OnceLock::new();
 
-            // Invoke the default handler, which prints the actual panic message and optionally a backtrace
-            // Don't do this for delayed bugs, which already emit their own more useful backtrace.
-            if !info.payload().is::<rustc_errors::DelayedBugPanic>() {
-                (*DEFAULT_HOOK)(info);
+/// Installs a panic hook that will print the ICE message on unexpected panics.
+///
+/// The hook is intended to be useable even by external tools. You can pass a custom
+/// `bug_report_url`, or report arbitrary info in `extra_info`. Note that `extra_info` is called in
+/// a context where *the thread is currently panicking*, so it must not panic or the process will
+/// abort.
+///
+/// If you have no extra info to report, pass the empty closure `|_| ()` as the argument to
+/// extra_info.
+///
+/// A custom rustc driver can skip calling this to set up a custom ICE hook.
+pub fn install_ice_hook(bug_report_url: &'static str, extra_info: fn(&Handler)) {
+    // If the user has not explicitly overridden "RUST_BACKTRACE", then produce
+    // full backtraces. When a compiler ICE happens, we want to gather
+    // as much information as possible to present in the issue opened
+    // by the user. Compiler developers and other rustc users can
+    // opt in to less-verbose backtraces by manually setting "RUST_BACKTRACE"
+    // (e.g. `RUST_BACKTRACE=1`)
+    if std::env::var("RUST_BACKTRACE").is_err() {
+        std::env::set_var("RUST_BACKTRACE", "full");
+    }
 
-                // Separate the output with an empty line
-                eprintln!();
+    let default_hook = DEFAULT_HOOK.get_or_init(panic::take_hook);
+
+    panic::set_hook(Box::new(move |info| {
+        // If the error was caused by a broken pipe then this is not a bug.
+        // Write the error and return immediately. See #98700.
+        #[cfg(windows)]
+        if let Some(msg) = info.payload().downcast_ref::<String>() {
+            if msg.starts_with("failed printing to stdout: ") && msg.ends_with("(os error 232)") {
+                early_error_no_abort(ErrorOutputType::default(), &msg);
+                return;
             }
+        };
 
-            // Print the ICE message
-            report_ice(info, BUG_REPORT_URL);
-        }));
-        hook
-    });
+        // Invoke the default handler, which prints the actual panic message and optionally a backtrace
+        // Don't do this for delayed bugs, which already emit their own more useful backtrace.
+        if !info.payload().is::<rustc_errors::DelayedBugPanic>() {
+            (*default_hook)(info);
+
+            // Separate the output with an empty line
+            eprintln!();
+        }
+
+        // Print the ICE message
+        report_ice(info, bug_report_url, extra_info);
+    }));
+}
 
 /// Prints the ICE message, including query stack, but without backtrace.
 ///
@@ -1247,7 +1270,7 @@ static DEFAULT_HOOK: LazyLock<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 
 ///
 /// When `install_ice_hook` is called, this function will be called as the panic
 /// hook.
-pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
+pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str, extra_info: fn(&Handler)) {
     let fallback_bundle =
         rustc_errors::fallback_fluent_bundle(crate::DEFAULT_LOCALE_RESOURCES.to_vec(), false);
     let emitter = Box::new(rustc_errors::emitter::EmitterWriter::stderr(
@@ -1292,27 +1315,15 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
 
     interface::try_print_query_stack(&handler, num_frames);
 
+    // We don't trust this callback not to panic itself, so run it at the end after we're sure we've
+    // printed all the relevant info.
+    extra_info(&handler);
+
     #[cfg(windows)]
     if env::var("RUSTC_BREAK_ON_ICE").is_ok() {
         // Trigger a debugger if we crashed during bootstrap
         unsafe { windows::Win32::System::Diagnostics::Debug::DebugBreak() };
     }
-}
-
-/// Installs a panic hook that will print the ICE message on unexpected panics.
-///
-/// A custom rustc driver can skip calling this to set up a custom ICE hook.
-pub fn install_ice_hook() {
-    // If the user has not explicitly overridden "RUST_BACKTRACE", then produce
-    // full backtraces. When a compiler ICE happens, we want to gather
-    // as much information as possible to present in the issue opened
-    // by the user. Compiler developers and other rustc users can
-    // opt in to less-verbose backtraces by manually setting "RUST_BACKTRACE"
-    // (e.g. `RUST_BACKTRACE=1`)
-    if std::env::var("RUST_BACKTRACE").is_err() {
-        std::env::set_var("RUST_BACKTRACE", "full");
-    }
-    LazyLock::force(&DEFAULT_HOOK);
 }
 
 /// This allows tools to enable rust logging without having to magically match rustc's
@@ -1385,7 +1396,7 @@ pub fn main() -> ! {
     init_rustc_env_logger();
     signal_handler::install();
     let mut callbacks = TimePassesCallbacks::default();
-    install_ice_hook();
+    install_ice_hook(DEFAULT_BUG_REPORT_URL, |_| ());
     let exit_code = catch_with_exit_code(|| {
         let args = env::args_os()
             .enumerate()
