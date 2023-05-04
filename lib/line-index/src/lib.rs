@@ -7,7 +7,7 @@ mod tests;
 
 use std::{iter, mem};
 
-use non_hash::NoHashHashMap;
+use nohash_hasher::IntMap as NoHashHashMap;
 use text_size::{TextRange, TextSize};
 
 /// Maps flat [`TextSize`] offsets into `(line, column)` representation.

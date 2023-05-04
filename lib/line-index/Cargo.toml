@@ -3,9 +3,9 @@ name = "line-index"
 version = "0.1.0"
 description = "Maps flat `TextSize` offsets into `(line, column)` representation."
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/rust-lang/rust-analyzer/tree/master/lib/non-hash"
+repository = "https://github.com/rust-lang/rust-analyzer/tree/master/lib/line-index"
 edition = "2021"
 
 [dependencies]
 text-size = "1"
-non-hash = { version = "0.1.0", path = "../non-hash" }
+nohash-hasher.workspace = true

@@ -11,9 +11,9 @@ pub mod process;
 pub mod panic_context;
 pub mod non_empty_vec;
 pub mod rand;
+pub mod hash;
 
 pub use always_assert::{always, never};
-pub use non_hash as hash;
 
 #[inline(always)]
 pub fn is_ci() -> bool {

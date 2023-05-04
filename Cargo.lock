@@ -917,7 +917,7 @@ version = "0.0.0"
 name = "line-index"
 version = "0.1.0"
 dependencies = [
- "non-hash",
+ "nohash-hasher",
  "text-size",
 ]
 
@@ -1064,8 +1064,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "non-hash"
-version = "0.1.0"
+name = "nohash-hasher"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2bf50223579dc7cdcfb3bfcacf7069ff68243f8c363f62ffa99cf000a6b9c451"
 
 [[package]]
 name = "notify"
@@ -1706,7 +1708,7 @@ dependencies = [
  "backtrace",
  "libc",
  "miow",
- "non-hash",
+ "nohash-hasher",
  "winapi",
 ]
 
