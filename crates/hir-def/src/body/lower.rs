@@ -54,7 +54,7 @@ pub(super) fn lower(
     ExprCollector {
         db,
         krate,
-        def_map: db.crate_def_map(krate),
+        def_map: expander.module.def_map(db),
         source_map: BodySourceMap::default(),
         ast_id_map: db.ast_id_map(expander.current_file_id),
         body: Body {

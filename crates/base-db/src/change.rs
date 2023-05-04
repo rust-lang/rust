@@ -77,10 +77,10 @@ impl Change {
             db.set_file_text_with_durability(file_id, text, durability)
         }
         if let Some(crate_graph) = self.crate_graph {
-            db.set_crate_graph_with_durability(Arc::new(crate_graph), Durability::HIGH)
+            db.set_crate_graph_with_durability(Arc::new(crate_graph), Durability::HIGH);
         }
         if let Some(proc_macros) = self.proc_macros {
-            db.set_proc_macros_with_durability(Arc::new(proc_macros), Durability::HIGH)
+            db.set_proc_macros_with_durability(Arc::new(proc_macros), Durability::HIGH);
         }
     }
 }
