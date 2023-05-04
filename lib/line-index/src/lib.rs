@@ -37,8 +37,8 @@ pub enum WideEncoding {
 }
 
 /// Line/Column information in legacy encodings.
-///
-/// Deliberately not a generic type and different from [`LineCol`].
+//
+// Deliberately not a generic type and different from `LineCol`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct WideLineCol {
     /// Zero-based.
