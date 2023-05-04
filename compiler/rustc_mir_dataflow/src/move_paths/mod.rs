@@ -59,6 +59,7 @@ pub struct MovePath<'tcx> {
     pub parent: Option<MovePathIndex>,
     pub place: Place<'tcx>,
     pub ty: Ty<'tcx>,
+    pub needs_drop: bool,
 }
 
 impl<'tcx> MovePath<'tcx> {

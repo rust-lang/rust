@@ -142,10 +142,10 @@ pub fn on_all_drop_children_bits<'tcx, F>(
 {
     on_all_children_bits(tcx, &ctxt.move_data, path, |child| {
         let place = || &ctxt.move_data.move_paths[path].place;
-        let ty = ctxt.move_data.move_paths[path].ty;
-        debug!("on_all_drop_children_bits({:?}, {:?} : {:?})", path, place(), ty);
+        let needs_drop = ctxt.move_data.move_paths[path].needs_drop;
+        debug!("on_all_drop_children_bits({:?}, {:?} : {:?})", path, place(), needs_drop);
 
-        if ty.needs_drop(tcx, ctxt.param_env) {
+        if needs_drop {
             each_child(child);
         } else {
             debug!("on_all_drop_children_bits - skipping")

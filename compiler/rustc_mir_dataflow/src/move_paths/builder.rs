@@ -44,13 +44,15 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
                         .local_decls
                         .indices()
                         .map(|i| {
+                            let ty = body.local_decls[i].ty;
                             Self::new_move_path(
                                 &mut move_paths,
                                 &mut path_map,
                                 &mut init_path_map,
                                 None,
                                 Place::from(i),
-                                body.local_decls[i].ty,
+                                ty,
+                                ty.needs_drop(tcx, param_env),
                             )
                         })
                         .collect(),
@@ -72,9 +74,16 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
         parent: Option<MovePathIndex>,
         place: Place<'tcx>,
         ty: Ty<'tcx>,
+        needs_drop: bool,
     ) -> MovePathIndex {
-        let move_path =
-            move_paths.push(MovePath { next_sibling: None, first_child: None, parent, place, ty });
+        let move_path = move_paths.push(MovePath {
+            next_sibling: None,
+            first_child: None,
+            parent,
+            place,
+            ty,
+            needs_drop,
+        });
 
         if let Some(parent) = parent {
             let next_sibling = mem::replace(&mut move_paths[parent].first_child, Some(move_path));
@@ -196,17 +205,21 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
         let MoveDataBuilder {
             data: MoveData { rev_lookup, move_paths, path_map, init_path_map, .. },
             tcx,
+            param_env,
             ..
         } = self.builder;
         *rev_lookup.projections.entry((base, elem.lift())).or_insert_with(move || {
             let (place, ty) = mk_place();
+            let ty = tcx.erase_regions(ty);
+            let needs_drop = ty.needs_drop(*tcx, *param_env);
             MoveDataBuilder::new_move_path(
                 move_paths,
                 path_map,
                 init_path_map,
                 Some(base),
                 place,
-                tcx.erase_regions(ty),
+                ty,
+                needs_drop,
             )
         })
     }
