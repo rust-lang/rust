@@ -490,20 +490,6 @@ impl Session {
     }
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn span_err_or_warn<S: Into<MultiSpan>>(
-        &self,
-        is_warning: bool,
-        sp: S,
-        msg: impl Into<DiagnosticMessage>,
-    ) {
-        if is_warning {
-            self.span_warn(sp, msg);
-        } else {
-            self.span_err(sp, msg);
-        }
-    }
-    #[rustc_lint_diagnostics]
-    #[track_caller]
     pub fn span_err<S: Into<MultiSpan>>(
         &self,
         sp: S,
