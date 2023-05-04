@@ -56,7 +56,7 @@ impl Step for Std {
         // When downloading stage1, the standard library has already been copied to the sysroot, so
         // there's no need to rebuild it.
         let builder = run.builder;
-        run.crate_or_deps("test")
+        run.crate_or_deps("sysroot")
             .path("library")
             .lazy_default_condition(Box::new(|| !builder.download_rustc()))
     }
@@ -364,7 +364,7 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
             .arg("--features")
             .arg(features)
             .arg("--manifest-path")
-            .arg(builder.src.join("library/test/Cargo.toml"));
+            .arg(builder.src.join("library/sysroot/Cargo.toml"));
 
         // Help the libc crate compile by assisting it in finding various
         // sysroot native libraries.
