@@ -47,10 +47,10 @@ impl SystemTime {
     }
 
     pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
-        Some(SystemTime(self.0.checked_add(other.as_secs().try_into().ok()?)?))
+        Some(SystemTime(self.0.checked_add_unsigned(other.as_secs())?))
     }
 
     pub fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
-        Some(SystemTime(self.0.checked_sub(other.as_secs().try_into().ok()?)?))
+        Some(SystemTime(self.0.checked_sub_unsigned(other.as_secs())?))
     }
 }
