@@ -58,7 +58,6 @@ pub mod walk;
 mod adt;
 mod alias_relation_direction;
 mod assoc;
-mod bound_constness;
 mod c_reader_cache_key;
 mod closure;
 mod closure_size_profile_data;
@@ -107,7 +106,6 @@ pub use self::alias_relation_direction::AliasRelationDirection;
 pub use self::assoc::*;
 pub use self::binding::BindingMode;
 pub use self::binding::BindingMode::*;
-pub use self::bound_constness::BoundConstness;
 pub use self::c_reader_cache_key::CReaderCacheKey;
 pub use self::closure::{
     is_ancestor_or_same_capture, place_to_string_for_capture, BorrowKind, CaptureInfo,
@@ -141,8 +139,8 @@ pub use self::param_env::{ParamEnv, ParamEnvAnd};
 pub use self::parameterized::ParameterizedOverTcx;
 pub use self::placeholder::{Placeholder, PlaceholderConst, PlaceholderRegion, PlaceholderType};
 pub use self::predicate::{
-    Clause, CoercePredicate, CratePredicatesMap, InstantiatedPredicates, OutlivesPredicate,
-    PolyCoercePredicate, PolyProjectionPredicate, PolyRegionOutlivesPredicate,
+    BoundConstness, Clause, CoercePredicate, CratePredicatesMap, InstantiatedPredicates,
+    OutlivesPredicate, PolyCoercePredicate, PolyProjectionPredicate, PolyRegionOutlivesPredicate,
     PolySubtypePredicate, PolyTraitPredicate, PolyTypeOutlivesPredicate, Predicate, PredicateKind,
     ProjectionPredicate, RegionOutlivesPredicate, SubtypePredicate, ToPredicate, TraitPredicate,
     TypeOutlivesPredicate,
