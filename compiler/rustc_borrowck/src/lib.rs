@@ -498,11 +498,11 @@ impl<'cx, 'tcx> BorrowckInferCtxt<'cx, 'tcx> {
         let next_region = self.infcx.next_region_var(origin);
         let vid = next_region.as_var();
 
-        if cfg!(debug_assertions) && !self.inside_canonicalization_ctxt() {
+        if cfg!(debug_assertions) {
             debug!("inserting vid {:?} with origin {:?} into var_to_origin", vid, origin);
             let ctxt = get_ctxt_fn();
             let mut var_to_origin = self.reg_var_to_origin.borrow_mut();
-            var_to_origin.insert(vid, ctxt);
+            assert_eq!(var_to_origin.insert(vid, ctxt), None);
         }
 
         next_region
@@ -520,11 +520,11 @@ impl<'cx, 'tcx> BorrowckInferCtxt<'cx, 'tcx> {
         let next_region = self.infcx.next_nll_region_var(origin);
         let vid = next_region.as_var();
 
-        if cfg!(debug_assertions) && !self.inside_canonicalization_ctxt() {
+        if cfg!(debug_assertions) {
             debug!("inserting vid {:?} with origin {:?} into var_to_origin", vid, origin);
             let ctxt = get_ctxt_fn();
             let mut var_to_origin = self.reg_var_to_origin.borrow_mut();
-            var_to_origin.insert(vid, ctxt);
+            assert_eq!(var_to_origin.insert(vid, ctxt), None);
         }
 
         next_region

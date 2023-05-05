@@ -131,9 +131,13 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
             ty::BoundRegionKind::BrEnv => BoundRegionInfo::Name(sym::env),
         };
 
-        if cfg!(debug_assertions) && !self.type_checker.infcx.inside_canonicalization_ctxt() {
+        if cfg!(debug_assertions) {
             let mut var_to_origin = self.type_checker.infcx.reg_var_to_origin.borrow_mut();
-            var_to_origin.insert(reg.as_var(), RegionCtxt::Placeholder(reg_info));
+            let new = RegionCtxt::Placeholder(reg_info);
+            let prev = var_to_origin.insert(reg.as_var(), new);
+            if let Some(prev) = prev {
+                assert_eq!(new, prev);
+            }
         }
 
         reg
@@ -146,9 +150,10 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
             universe,
         );
 
-        if cfg!(debug_assertions) && !self.type_checker.infcx.inside_canonicalization_ctxt() {
+        if cfg!(debug_assertions) {
             let mut var_to_origin = self.type_checker.infcx.reg_var_to_origin.borrow_mut();
-            var_to_origin.insert(reg.as_var(), RegionCtxt::Existential(None));
+            let prev = var_to_origin.insert(reg.as_var(), RegionCtxt::Existential(None));
+            assert_eq!(prev, None);
         }
 
         reg
