@@ -261,7 +261,6 @@ version = "0.1.5"
 dependencies = [
  "cfg-if",
  "compiler_builtins",
- "libc",
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
 ]
@@ -273,6 +272,7 @@ dependencies = [
  "alloc",
  "compiler_builtins",
  "core",
+ "proc_macro",
  "std",
  "test",
 ]
@@ -285,7 +285,6 @@ dependencies = [
  "getopts",
  "panic_abort",
  "panic_unwind",
- "proc_macro",
  "std",
 ]
 

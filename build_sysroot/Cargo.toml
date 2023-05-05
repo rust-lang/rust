@@ -7,6 +7,7 @@ core = { path = "./sysroot_src/library/core" }
 alloc = { path = "./sysroot_src/library/alloc" }
 std = { path = "./sysroot_src/library/std", features = ["panic_unwind", "backtrace"] }
 test = { path = "./sysroot_src/library/test" }
+proc_macro = { path = "./sysroot_src/library/proc_macro" }
 
 compiler_builtins = { version = "0.1.87", default-features = false, features = ["no-asm"] }
 
