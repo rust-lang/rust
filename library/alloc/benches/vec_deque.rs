@@ -68,13 +68,13 @@ fn into_iter_helper<
     setup: F,
     g: G,
 ) {
-    let ptr = v.as_mut_ptr();
     let len = v.len();
     // ensure that the vec is full, to make sure that any wrapping from the deque doesn't
     // access uninitialized memory.
     assert_eq!(v.len(), v.capacity());
 
     let mut deque = VecDeque::from(mem::take(v));
+    let ptr = deque.as_mut_slices().0.as_mut_ptr();
     setup(&mut deque);
 
     let mut it = deque.into_iter();
