@@ -62,7 +62,7 @@ Current stable, released 2023-04-20
 
 * [`explicit_auto_deref`]: Now considers projections when determining if auto deref is applicable
   [#10386](https://github.com/rust-lang/rust-clippy/pull/10386)
-* [`manual_let_else`]: Now considers side effects of branches before linting 
+* [`manual_let_else`]: Now considers side effects of branches before linting
   [#10336](https://github.com/rust-lang/rust-clippy/pull/10336)
 * [`uninlined_format_args`]: No longer lints for arguments with generic parameters
   [#10343](https://github.com/rust-lang/rust-clippy/pull/10343)

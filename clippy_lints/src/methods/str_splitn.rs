@@ -175,13 +175,13 @@ fn check_manual_split_once_indirect(
             let remove_msg = format!("remove the `{iter_ident}` usages");
             diag.span_suggestion(
                 first.span,
-                &remove_msg,
+                remove_msg.clone(),
                 "",
                 app,
             );
             diag.span_suggestion(
                 second.span,
-                &remove_msg,
+                remove_msg,
                 "",
                 app,
             );

@@ -30,6 +30,7 @@ pub static RENAMED_LINTS: &[(&str, &str)] = &[
     ("clippy::stutter", "clippy::module_name_repetitions"),
     ("clippy::to_string_in_display", "clippy::recursive_format_impl"),
     ("clippy::zero_width_space", "clippy::invisible_characters"),
+    ("clippy::clone_double_ref", "suspicious_double_ref_op"),
     ("clippy::drop_bounds", "drop_bounds"),
     ("clippy::for_loop_over_option", "for_loops_over_fallibles"),
     ("clippy::for_loop_over_result", "for_loops_over_fallibles"),

@@ -986,29 +986,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `.clone()` on an `&&T`.
-    ///
-    /// ### Why is this bad?
-    /// Cloning an `&&T` copies the inner `&T`, instead of
-    /// cloning the underlying `T`.
-    ///
-    /// ### Example
-    /// ```rust
-    /// fn main() {
-    ///     let x = vec![1];
-    ///     let y = &&x;
-    ///     let z = y.clone();
-    ///     println!("{:p} {:p}", *y, z); // prints out the same pointer
-    /// }
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub CLONE_DOUBLE_REF,
-    correctness,
-    "using `clone` on `&&T`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for usage of `.to_string()` on an `&&T` where
     /// `T` implements `ToString` directly (like `&&str` or `&&String`).
     ///
@@ -3258,7 +3235,6 @@ impl_lint_pass!(Methods => [
     CHARS_LAST_CMP,
     CLONE_ON_COPY,
     CLONE_ON_REF_PTR,
-    CLONE_DOUBLE_REF,
     COLLAPSIBLE_STR_REPLACE,
     ITER_OVEREAGER_CLONED,
     CLONED_INSTEAD_OF_COPIED,
@@ -3500,8 +3476,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 let first_arg_span = first_arg_ty.span;
                 let first_arg_ty = hir_ty_to_ty(cx.tcx, first_arg_ty);
                 let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id())
-                    .self_ty()
-                    .skip_binder();
+                    .self_ty();
                 wrong_self_convention::check(
                     cx,
                     item.ident.name.as_str(),
@@ -3519,8 +3494,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             if let TraitItemKind::Fn(_, _) = item.kind;
             let ret_ty = return_ty(cx, item.owner_id);
             let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id())
-                .self_ty()
-                .skip_binder();
+                .self_ty();
             if !ret_ty.contains(self_ty);
 
             then {
