@@ -312,8 +312,7 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
                 } else {
                     None
                 }
-                
-            }
+            },
             _ => None,
         };
 
