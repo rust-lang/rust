@@ -700,14 +700,6 @@ impl<'tcx> EmbargoVisitor<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
-    type NestedFilter = nested_filter::All;
-
-    /// We want to visit items in the context of their containing
-    /// module and so forth, so supply a crate for doing a deep walk.
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
-    }
-
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         let item_ev = match item.kind {
             hir::ItemKind::Impl { .. } => {
@@ -915,15 +907,6 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
                 }
             }
         }
-
-        intravisit::walk_item(self, item);
-    }
-
-    fn visit_block(&mut self, b: &'tcx hir::Block<'tcx>) {
-        // Blocks can have public items, for example impls, but they always
-        // start as completely private regardless of publicity of a function,
-        // constant, type, field, etc., in which this block resides.
-        intravisit::walk_block(self, b);
     }
 }
 
@@ -2210,7 +2193,7 @@ fn effective_visibilities(tcx: TyCtxt<'_>, (): ()) -> &EffectiveVisibilities {
 
     visitor.effective_visibilities.check_invariants(tcx, true);
     loop {
-        tcx.hir().walk_toplevel_module(&mut visitor);
+        tcx.hir().visit_all_item_likes_in_crate(&mut visitor);
         if visitor.changed {
             visitor.changed = false;
         } else {
