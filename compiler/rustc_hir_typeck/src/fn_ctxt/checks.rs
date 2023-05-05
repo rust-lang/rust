@@ -1300,6 +1300,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 opt_ty.unwrap_or_else(|| self.next_float_var())
             }
             ast::LitKind::Bool(_) => tcx.types.bool,
+            ast::LitKind::CStr(_, _) => tcx.mk_imm_ref(
+                tcx.lifetimes.re_static,
+                tcx.type_of(tcx.require_lang_item(hir::LangItem::CStr, Some(lit.span)))
+                    .skip_binder(),
+            ),
             ast::LitKind::Err => tcx.ty_error_misc(),
         }
     }

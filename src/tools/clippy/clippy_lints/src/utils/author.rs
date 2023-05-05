@@ -304,6 +304,11 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 kind!("ByteStr(ref {vec})");
                 chain!(self, "let [{:?}] = **{vec}", vec.value);
             },
+            LitKind::CStr(ref vec, _) => {
+                bind!(self, vec);
+                kind!("CStr(ref {vec})");
+                chain!(self, "let [{:?}] = **{vec}", vec.value);
+            }
             LitKind::Str(s, _) => {
                 bind!(self, s);
                 kind!("Str({s}, _)");

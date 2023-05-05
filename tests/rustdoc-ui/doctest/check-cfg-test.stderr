@@ -4,7 +4,7 @@ warning: unexpected `cfg` condition value
 LL | #[cfg(feature = "invalid")]
    |       ^^^^^^^^^^^^^^^^^^^
    |
-   = note: expected values for `feature` are: test
+   = note: expected values for `feature` are: `test`
    = note: `#[warn(unexpected_cfgs)]` on by default
 
 warning: 1 warning emitted

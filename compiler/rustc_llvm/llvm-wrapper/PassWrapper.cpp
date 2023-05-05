@@ -307,7 +307,7 @@ static size_t getLongestEntryLength(ArrayRef<KV> Table) {
   return MaxLen;
 }
 
-extern "C" void LLVMRustPrintTargetCPUs(LLVMTargetMachineRef TM) {
+extern "C" void LLVMRustPrintTargetCPUs(LLVMTargetMachineRef TM, const char* TargetCPU) {
   const TargetMachine *Target = unwrap(TM);
   const MCSubtargetInfo *MCInfo = Target->getMCSubtargetInfo();
   const Triple::ArchType HostArch = Triple(sys::getDefaultTargetTriple()).getArch();
@@ -323,9 +323,18 @@ extern "C" void LLVMRustPrintTargetCPUs(LLVMTargetMachineRef TM) {
     printf("    %-*s - Select the CPU of the current host (currently %.*s).\n",
       MaxCPULen, "native", (int)HostCPU.size(), HostCPU.data());
   }
-  for (auto &CPU : CPUTable)
-    printf("    %-*s\n", MaxCPULen, CPU.Key);
-  printf("\n");
+  for (auto &CPU : CPUTable) {
+    // Compare cpu against current target to label the default
+    if (strcmp(CPU.Key, TargetCPU) == 0) {
+      printf("    %-*s - This is the default target CPU"
+      " for the current build target (currently %s).",
+        MaxCPULen, CPU.Key, Target->getTargetTriple().str().c_str());
+    }
+    else {
+      printf("    %-*s", MaxCPULen, CPU.Key);
+    }
+    printf("\n");
+  }
 }
 
 extern "C" size_t LLVMRustGetTargetFeaturesCount(LLVMTargetMachineRef TM) {
