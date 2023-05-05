@@ -577,7 +577,7 @@ checksum = "8a2dd5a6fe8c6e3502f568a6353e5273bbb15193ad9a89e457b9970798efbea1"
 
 [[package]]
 name = "clippy"
-version = "0.1.70"
+version = "0.1.71"
 dependencies = [
  "clap 4.2.1",
  "clippy_lints",
@@ -619,7 +619,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.70"
+version = "0.1.71"
 dependencies = [
  "arrayvec",
  "cargo_metadata 0.15.3",
@@ -643,7 +643,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.70"
+version = "0.1.71"
 dependencies = [
  "arrayvec",
  "if_chain",
@@ -969,7 +969,7 @@ checksum = "a0afaad2b26fa326569eb264b1363e8ae3357618c43982b3f285f0774ce76b69"
 
 [[package]]
 name = "declare_clippy_lint"
-version = "0.1.70"
+version = "0.1.71"
 dependencies = [
  "itertools",
  "quote",
