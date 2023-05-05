@@ -77,7 +77,7 @@ impl<'a> DiagnosticDerive<'a> {
         });
 
         let DiagnosticDeriveKind::Diagnostic { handler } = &builder.kind else { unreachable!() };
-        #[allow(unused_mut)]
+
         let mut imp = structure.gen_impl(quote! {
             gen impl<'__diagnostic_handler_sess, G>
                     rustc_errors::IntoDiagnostic<'__diagnostic_handler_sess, G>
@@ -95,11 +95,8 @@ impl<'a> DiagnosticDerive<'a> {
                 }
             }
         });
-        #[cfg(debug_assertions)]
-        {
-            for test in slugs.borrow().iter().map(|s| generate_test(s, &structure)) {
-                imp.extend(test);
-            }
+        for test in slugs.borrow().iter().map(|s| generate_test(s, &structure)) {
+            imp.extend(test);
         }
         imp
     }
@@ -170,7 +167,6 @@ impl<'a> LintDiagnosticDerive<'a> {
         });
 
         let diag = &builder.diag;
-        #[allow(unused_mut)]
         let mut imp = structure.gen_impl(quote! {
             gen impl<'__a> rustc_errors::DecorateLint<'__a, ()> for @Self {
                 #[track_caller]
@@ -187,12 +183,10 @@ impl<'a> LintDiagnosticDerive<'a> {
                 }
             }
         });
-        #[cfg(debug_assertions)]
-        {
-            for test in slugs.borrow().iter().map(|s| generate_test(s, &structure)) {
-                imp.extend(test);
-            }
+        for test in slugs.borrow().iter().map(|s| generate_test(s, &structure)) {
+            imp.extend(test);
         }
+
         imp
     }
 }
@@ -223,7 +217,6 @@ impl Mismatch {
 
 /// Generates a `#[test]` that verifies that all referenced variables
 /// exist on this structure.
-#[cfg(debug_assertions)]
 fn generate_test(slug: &syn::Path, structure: &Structure<'_>) -> TokenStream {
     // FIXME: We can't identify variables in a subdiagnostic
     for field in structure.variants().iter().flat_map(|v| v.ast().fields.iter()) {

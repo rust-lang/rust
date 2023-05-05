@@ -271,17 +271,15 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
                         );
                 });
             }
-            #[cfg(debug_assertions)]
-            {
-                // Record variables referenced by these messages so we can produce
-                // tests in the derive diagnostics to validate them.
-                let ident = quote::format_ident!("{snake_name}_refs");
-                let vrefs = variable_references(msg);
-                constants.extend(quote! {
-                    #[cfg(test)]
-                    pub const #ident: &[&str] = &[#(#vrefs),*];
-                })
-            }
+
+            // Record variables referenced by these messages so we can produce
+            // tests in the derive diagnostics to validate them.
+            let ident = quote::format_ident!("{snake_name}_refs");
+            let vrefs = variable_references(msg);
+            constants.extend(quote! {
+                #[cfg(test)]
+                pub const #ident: &[&str] = &[#(#vrefs),*];
+            })
         }
     }
 
@@ -348,7 +346,6 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
     .into()
 }
 
-#[cfg(debug_assertions)]
 fn variable_references<'a>(msg: &Message<&'a str>) -> Vec<&'a str> {
     let mut refs = vec![];
     if let Some(Pattern { elements }) = &msg.value {
