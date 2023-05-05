@@ -22,7 +22,7 @@ fn main() -> io::Result<()> {
         .lines()
         .filter_map(|line| {
             let line = line.trim();
-            if line.is_empty() || line.starts_with('#') { None } else { Some(line) }
+            if line.is_empty() || line.starts_with("//") { None } else { Some(line) }
         })
         .collect();
 
