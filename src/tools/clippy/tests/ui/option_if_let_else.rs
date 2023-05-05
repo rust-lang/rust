@@ -120,7 +120,7 @@ enum DummyEnum {
     Two,
 }
 
-// should not warn since there is a compled complex subpat
+// should not warn since there is a complex subpat
 // see #7991
 fn complex_subpat() -> DummyEnum {
     let x = Some(DummyEnum::One(1));

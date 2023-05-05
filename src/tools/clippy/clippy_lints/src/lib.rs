@@ -94,6 +94,7 @@ mod crate_in_macro_def;
 mod create_dir;
 mod dbg_macro;
 mod default;
+mod default_constructed_unit_structs;
 mod default_instead_of_iter_empty;
 mod default_numeric_fallback;
 mod default_union_representation;
@@ -933,7 +934,14 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(from_raw_with_void_ptr::FromRawWithVoidPtr));
     store.register_late_pass(|_| Box::new(suspicious_xor_used_as_pow::ConfusingXorAndPow));
     store.register_late_pass(move |_| Box::new(manual_is_ascii_check::ManualIsAsciiCheck::new(msrv())));
-    store.register_late_pass(|_| Box::new(semicolon_block::SemicolonBlock));
+    let semicolon_inside_block_ignore_singleline = conf.semicolon_inside_block_ignore_singleline;
+    let semicolon_outside_block_ignore_multiline = conf.semicolon_outside_block_ignore_multiline;
+    store.register_late_pass(move |_| {
+        Box::new(semicolon_block::SemicolonBlock::new(
+            semicolon_inside_block_ignore_singleline,
+            semicolon_outside_block_ignore_multiline,
+        ))
+    });
     store.register_late_pass(|_| Box::new(fn_null_check::FnNullCheck));
     store.register_late_pass(|_| Box::new(permissions_set_readonly_false::PermissionsSetReadonlyFalse));
     store.register_late_pass(|_| Box::new(size_of_ref::SizeOfRef));
@@ -963,6 +971,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(manual_slice_size_calculation::ManualSliceSizeCalculation));
     store.register_early_pass(|| Box::new(suspicious_doc_comments::SuspiciousDocComments));
     store.register_late_pass(|_| Box::new(items_after_test_module::ItemsAfterTestModule));
+    store.register_late_pass(|_| Box::new(default_constructed_unit_structs::DefaultConstructedUnitStructs));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

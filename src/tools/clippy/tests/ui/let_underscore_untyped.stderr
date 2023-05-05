@@ -4,7 +4,11 @@ error: non-binding `let` without a type annotation
 LL |     let _ = a();
    |     ^^^^^^^^^^^^
    |
-   = help: consider adding a type annotation or removing the `let` keyword
+help: consider adding a type annotation
+  --> $DIR/let_underscore_untyped.rs:36:10
+   |
+LL |     let _ = a();
+   |          ^
    = note: `-D clippy::let-underscore-untyped` implied by `-D warnings`
 
 error: non-binding `let` without a type annotation
@@ -13,7 +17,11 @@ error: non-binding `let` without a type annotation
 LL |     let _ = b(1);
    |     ^^^^^^^^^^^^^
    |
-   = help: consider adding a type annotation or removing the `let` keyword
+help: consider adding a type annotation
+  --> $DIR/let_underscore_untyped.rs:37:10
+   |
+LL |     let _ = b(1);
+   |          ^
 
 error: non-binding `let` without a type annotation
   --> $DIR/let_underscore_untyped.rs:39:5
@@ -21,7 +29,11 @@ error: non-binding `let` without a type annotation
 LL |     let _ = d(&1);
    |     ^^^^^^^^^^^^^^
    |
-   = help: consider adding a type annotation or removing the `let` keyword
+help: consider adding a type annotation
+  --> $DIR/let_underscore_untyped.rs:39:10
+   |
+LL |     let _ = d(&1);
+   |          ^
 
 error: non-binding `let` without a type annotation
   --> $DIR/let_underscore_untyped.rs:40:5
@@ -29,7 +41,11 @@ error: non-binding `let` without a type annotation
 LL |     let _ = e();
    |     ^^^^^^^^^^^^
    |
-   = help: consider adding a type annotation or removing the `let` keyword
+help: consider adding a type annotation
+  --> $DIR/let_underscore_untyped.rs:40:10
+   |
+LL |     let _ = e();
+   |          ^
 
 error: non-binding `let` without a type annotation
   --> $DIR/let_underscore_untyped.rs:41:5
@@ -37,7 +53,11 @@ error: non-binding `let` without a type annotation
 LL |     let _ = f();
    |     ^^^^^^^^^^^^
    |
-   = help: consider adding a type annotation or removing the `let` keyword
+help: consider adding a type annotation
+  --> $DIR/let_underscore_untyped.rs:41:10
+   |
+LL |     let _ = f();
+   |          ^
 
 error: aborting due to 5 previous errors
 

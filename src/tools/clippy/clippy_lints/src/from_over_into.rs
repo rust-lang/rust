@@ -94,7 +94,7 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
                         );
                     }
 
-                    let message = format!("replace the `Into` implentation with `From<{}>`", middle_trait_ref.self_ty());
+                    let message = format!("replace the `Into` implementation with `From<{}>`", middle_trait_ref.self_ty());
                     if let Some(suggestions) = convert_to_from(cx, into_trait_seg, target_ty, self_ty, impl_item_ref) {
                         diag.multipart_suggestion(message, suggestions, Applicability::MachineApplicable);
                     } else {

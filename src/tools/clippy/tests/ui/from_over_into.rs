@@ -32,7 +32,7 @@ struct SelfKeywords;
 
 impl Into<SelfKeywords> for X {
     fn into(self) -> SelfKeywords {
-        let _ = Self::default();
+        let _ = Self;
         let _ = Self::FOO;
         let _: Self = self;
 

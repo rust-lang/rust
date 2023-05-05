@@ -22,6 +22,13 @@ macro_rules! string_add {
 }
 
 #[macro_export]
+macro_rules! string_lit_as_bytes {
+    ($s:literal) => {
+        const C: &[u8] = $s.as_bytes();
+    };
+}
+
+#[macro_export]
 macro_rules! mut_mut {
     () => {
         let mut_mut_ty: &mut &mut u32 = &mut &mut 1u32;
