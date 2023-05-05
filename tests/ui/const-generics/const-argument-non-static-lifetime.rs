@@ -11,7 +11,7 @@ fn test<const N: usize>() {}
 
 fn wow<'a>() -> &'a () {
     test::<{
-        let _: &'a (); //[min]~ ERROR a non-static lifetime
+        let _: &'a (); //[min]~ ERROR generic parameters may not be used in const operations
         3
     }>();
     &()

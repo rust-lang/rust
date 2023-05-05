@@ -13,8 +13,10 @@ use rustc_span::{Span, DUMMY_SP};
 
 use std::ptr;
 
+use crate::errors::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
 use crate::late::{
-    ConstantHasGenerics, ConstantItemKind, HasGenericParams, PathSource, Rib, RibKind,
+    ConstantHasGenerics, ConstantItemKind, HasGenericParams, NoConstantGenericsReason, PathSource,
+    Rib, RibKind,
 };
 use crate::macros::{sub_namespace_match, MacroRulesScope};
 use crate::{errors, AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, Determinacy, Finalize};
@@ -1153,7 +1155,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         }
                         RibKind::ConstParamTy => {
                             if let Some(span) = finalize {
-                                self.report_error(span, ParamInTyOfConstParam(rib_ident.name));
+                                self.report_error(
+                                    span,
+                                    ParamInTyOfConstParam {
+                                        name: rib_ident.name,
+                                        param_kind: None,
+                                    },
+                                );
                             }
                             return Res::Err;
                         }
@@ -1206,13 +1214,22 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     }
                                 } else {
                                     if let Some(span) = finalize {
-                                        self.report_error(
-                                            span,
-                                            ResolutionError::ParamInNonTrivialAnonConst {
-                                                name: rib_ident.name,
-                                                is_type: true,
-                                            },
-                                        );
+                                        let error = match cause {
+                                            NoConstantGenericsReason::IsEnumDiscriminant => {
+                                                ResolutionError::ParamInEnumDiscriminant {
+                                                    name: rib_ident.name,
+                                                    param_kind: ParamKindInEnumDiscriminant::Type,
+                                                }
+                                            }
+                                            NoConstantGenericsReason::NonTrivialConstArg => {
+                                                ResolutionError::ParamInNonTrivialAnonConst {
+                                                    name: rib_ident.name,
+                                                    param_kind:
+                                                        ParamKindInNonTrivialAnonConst::Type,
+                                                }
+                                            }
+                                        };
+                                        self.report_error(span, error);
                                         self.tcx.sess.delay_span_bug(span, CG_BUG_STR);
                                     }
 
@@ -1229,7 +1246,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             if let Some(span) = finalize {
                                 self.report_error(
                                     span,
-                                    ResolutionError::ParamInTyOfConstParam(rib_ident.name),
+                                    ResolutionError::ParamInTyOfConstParam {
+                                        name: rib_ident.name,
+                                        param_kind: Some(errors::ParamKindInTyOfConstParam::Type),
+                                    },
                                 );
                             }
                             return Res::Err;
@@ -1262,14 +1282,23 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         RibKind::ConstantItem(trivial, _) => {
                             if let ConstantHasGenerics::No(cause) = trivial {
                                 if let Some(span) = finalize {
-                                    self.report_error(
-                                        span,
-                                        ResolutionError::ParamInNonTrivialAnonConst {
-                                            name: rib_ident.name,
-                                            is_type: false,
-                                        },
-                                    );
-                                    self.tcx.sess.delay_span_bug(span, CG_BUG_STR);
+                                    let error = match cause {
+                                        NoConstantGenericsReason::IsEnumDiscriminant => {
+                                            ResolutionError::ParamInEnumDiscriminant {
+                                                name: rib_ident.name,
+                                                param_kind: ParamKindInEnumDiscriminant::Const,
+                                            }
+                                        }
+                                        NoConstantGenericsReason::NonTrivialConstArg => {
+                                            ResolutionError::ParamInNonTrivialAnonConst {
+                                                name: rib_ident.name,
+                                                param_kind: ParamKindInNonTrivialAnonConst::Const {
+                                                    name: rib_ident.name,
+                                                },
+                                            }
+                                        }
+                                    };
+                                    self.report_error(span, error);
                                 }
 
                                 return Res::Err;
@@ -1283,7 +1312,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             if let Some(span) = finalize {
                                 self.report_error(
                                     span,
-                                    ResolutionError::ParamInTyOfConstParam(rib_ident.name),
+                                    ResolutionError::ParamInTyOfConstParam {
+                                        name: rib_ident.name,
+                                        param_kind: Some(errors::ParamKindInTyOfConstParam::Const),
+                                    },
                                 );
                             }
                             return Res::Err;

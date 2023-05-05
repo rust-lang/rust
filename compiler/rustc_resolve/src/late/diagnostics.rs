@@ -1,7 +1,7 @@
 use crate::diagnostics::{ImportSuggestion, LabelSuggestion, TypoSuggestion};
 use crate::late::{AliasPossibility, LateResolutionVisitor, RibKind};
 use crate::late::{LifetimeBinderKind, LifetimeRes, LifetimeRibKind, LifetimeUseSet};
-use crate::path_names_to_string;
+use crate::{errors, path_names_to_string};
 use crate::{Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{PathResult, PathSource, Segment};
 
@@ -22,7 +22,6 @@ use rustc_hir::def::{self, CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::PrimTy;
 use rustc_session::lint;
-use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
@@ -34,6 +33,8 @@ use std::iter;
 use std::ops::Deref;
 
 use thin_vec::ThinVec;
+
+use super::NoConstantGenericsReason;
 
 type Res = def::Res<ast::NodeId>;
 
@@ -2316,37 +2317,56 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         }
     }
 
-    pub(crate) fn emit_non_static_lt_in_const_generic_error(&self, lifetime_ref: &ast::Lifetime) {
-        struct_span_err!(
-            self.r.tcx.sess,
-            lifetime_ref.ident.span,
-            E0771,
-            "use of non-static lifetime `{}` in const generic",
-            lifetime_ref.ident
-        )
-        .note(
-            "for more information, see issue #74052 \
-            <https://github.com/rust-lang/rust/issues/74052>",
-        )
-        .emit();
+    pub(crate) fn emit_non_static_lt_in_const_param_ty_error(&self, lifetime_ref: &ast::Lifetime) {
+        self.r
+            .tcx
+            .sess
+            .create_err(errors::ParamInTyOfConstParam {
+                span: lifetime_ref.ident.span,
+                name: lifetime_ref.ident.name,
+                param_kind: Some(errors::ParamKindInTyOfConstParam::Lifetime),
+            })
+            .emit();
     }
 
     /// Non-static lifetimes are prohibited in anonymous constants under `min_const_generics`.
     /// This function will emit an error if `generic_const_exprs` is not enabled, the body identified by
     /// `body_id` is an anonymous constant and `lifetime_ref` is non-static.
-    pub(crate) fn maybe_emit_forbidden_non_static_lifetime_error(
+    pub(crate) fn emit_forbidden_non_static_lifetime_error(
         &self,
+        cause: NoConstantGenericsReason,
         lifetime_ref: &ast::Lifetime,
     ) {
-        let feature_active = self.r.tcx.sess.features_untracked().generic_const_exprs;
-        if !feature_active {
-            feature_err(
-                &self.r.tcx.sess.parse_sess,
-                sym::generic_const_exprs,
-                lifetime_ref.ident.span,
-                "a non-static lifetime is not allowed in a `const`",
-            )
-            .emit();
+        match cause {
+            NoConstantGenericsReason::IsEnumDiscriminant => {
+                self.r
+                    .tcx
+                    .sess
+                    .create_err(errors::ParamInEnumDiscriminant {
+                        span: lifetime_ref.ident.span,
+                        name: lifetime_ref.ident.name,
+                        param_kind: errors::ParamKindInEnumDiscriminant::Lifetime,
+                    })
+                    .emit();
+            }
+            NoConstantGenericsReason::NonTrivialConstArg => {
+                assert!(!self.r.tcx.features().generic_const_exprs);
+                self.r
+                    .tcx
+                    .sess
+                    .create_err(errors::ParamInNonTrivialAnonConst {
+                        span: lifetime_ref.ident.span,
+                        name: lifetime_ref.ident.name,
+                        param_kind: errors::ParamKindInNonTrivialAnonConst::Lifetime,
+                        help: self
+                            .r
+                            .tcx
+                            .sess
+                            .is_nightly_build()
+                            .then_some(errors::ParamInNonTrivialAnonConstHelp),
+                    })
+                    .emit();
+            }
         }
     }
 

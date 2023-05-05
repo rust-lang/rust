@@ -21,6 +21,9 @@
 #[macro_use]
 extern crate tracing;
 
+use errors::{
+    ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst, ParamKindInTyOfConstParam,
+};
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{self as ast, attr, NodeId, CRATE_NODE_ID};
@@ -223,11 +226,15 @@ enum ResolutionError<'a> {
     /// Error E0128: generic parameters with a default cannot use forward-declared identifiers.
     ForwardDeclaredGenericParam,
     /// ERROR E0770: the type of const parameters must not depend on other generic parameters.
-    ParamInTyOfConstParam(Symbol),
+    ParamInTyOfConstParam { name: Symbol, param_kind: Option<ParamKindInTyOfConstParam> },
     /// generic parameters must not be used inside const evaluations.
     ///
     /// This error is only emitted when using `min_const_generics`.
-    ParamInNonTrivialAnonConst { name: Symbol, is_type: bool },
+    ParamInNonTrivialAnonConst { name: Symbol, param_kind: ParamKindInNonTrivialAnonConst },
+    /// generic parameters must not be used inside enum discriminants.
+    ///
+    /// This error is emitted even with `generic_const_exprs`.
+    ParamInEnumDiscriminant { name: Symbol, param_kind: ParamKindInEnumDiscriminant },
     /// Error E0735: generic parameters with a default cannot use `Self`
     SelfInGenericParamDefault,
     /// Error E0767: use of unreachable label

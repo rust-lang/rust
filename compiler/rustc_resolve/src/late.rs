@@ -1529,7 +1529,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             match rib.kind {
                 LifetimeRibKind::Item => break,
                 LifetimeRibKind::ConstParamTy => {
-                    self.emit_non_static_lt_in_const_generic_error(lifetime);
+                    self.emit_non_static_lt_in_const_param_ty_error(lifetime);
                     self.record_lifetime_res(
                         lifetime.id,
                         LifetimeRes::Error,
@@ -1538,7 +1538,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     return;
                 }
                 LifetimeRibKind::ConcreteAnonConst(cause) => {
-                    self.maybe_emit_forbidden_non_static_lifetime_error(lifetime);
+                    self.emit_forbidden_non_static_lifetime_error(cause, lifetime);
                     self.record_lifetime_res(
                         lifetime.id,
                         LifetimeRes::Error,

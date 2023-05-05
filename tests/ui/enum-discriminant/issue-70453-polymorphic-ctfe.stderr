@@ -1,11 +1,10 @@
-error: generic parameters may not be used in const operations
+error: generic parameters may not be used in enum discriminant values
   --> $DIR/issue-70453-polymorphic-ctfe.rs:9:41
    |
 LL |     Some(T) = core::mem::size_of::<*mut T>(),
    |                                         ^ cannot perform const operation using `T`
    |
-   = note: type parameters may not be used in const expressions
-   = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: type parameters may not be used in enum discriminant values
 
 error: aborting due to previous error
 
