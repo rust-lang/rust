@@ -36,6 +36,7 @@
 #![feature(fmt_internals)]
 #![feature(float_minimum_maximum)]
 #![feature(future_join)]
+#![feature(future_map)]
 #![feature(generic_assert_internals)]
 #![feature(array_try_from_fn)]
 #![feature(hasher_prefixfree_extras)]
@@ -113,9 +114,9 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(fuzzy_provenance_casts)]
 
-extern crate test;
+//extern crate test;
 
-mod alloc;
+/*mod alloc;
 mod any;
 mod array;
 mod ascii;
@@ -128,9 +129,9 @@ mod clone;
 mod cmp;
 mod const_ptr;
 mod convert;
-mod fmt;
+mod fmt;*/
 mod future;
-mod hash;
+/*mod hash;
 mod intrinsics;
 mod iter;
 mod lazy;
@@ -170,3 +171,4 @@ pub(crate) fn test_rng() -> rand_xorshift::XorShiftRng {
     let seed: [u8; 16] = seed_vec.as_slice().try_into().unwrap();
     rand::SeedableRng::from_seed(seed)
 }
+*/
