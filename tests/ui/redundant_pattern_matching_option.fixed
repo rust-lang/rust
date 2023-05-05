@@ -46,6 +46,7 @@ fn main() {
     let _ = if opt.is_some() { true } else { false };
 
     issue6067();
+    issue10726();
 
     let _ = if gen_opt().is_some() {
         1
@@ -87,4 +88,22 @@ const fn issue6067() {
 fn issue7921() {
     if (&None::<()>).is_none() {}
     if (&None::<()>).is_none() {}
+}
+
+fn issue10726() {
+    Some(42).is_some();
+
+    Some(42).is_none();
+
+    Some(42).is_none();
+
+    Some(42).is_some();
+
+    None::<()>.is_none();
+
+    None::<()>.is_none();
+
+    None::<()>.is_none();
+
+    None::<()>.is_some();
 }

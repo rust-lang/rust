@@ -55,6 +55,7 @@ fn main() {
     let _ = if let Some(_) = opt { true } else { false };
 
     issue6067();
+    issue10726();
 
     let _ = if let Some(_) = gen_opt() {
         1
@@ -102,4 +103,46 @@ const fn issue6067() {
 fn issue7921() {
     if let None = *(&None::<()>) {}
     if let None = *&None::<()> {}
+}
+
+fn issue10726() {
+    match Some(42) {
+        Some(_) => true,
+        _ => false,
+    };
+
+    match Some(42) {
+        Some(_) => false,
+        _ => true,
+    };
+
+    match Some(42) {
+        None => true,
+        _ => false,
+    };
+
+    match Some(42) {
+        None => false,
+        _ => true,
+    };
+
+    match None::<()> {
+        Some(_) => false,
+        _ => true,
+    };
+
+    match None::<()> {
+        Some(_) => false,
+        _ => true,
+    };
+
+    match None::<()> {
+        None => true,
+        _ => false,
+    };
+
+    match None::<()> {
+        None => false,
+        _ => true,
+    };
 }

@@ -186,9 +186,9 @@ fn find_sugg_for_if_let<'tcx>(
 }
 
 pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op: &Expr<'_>, arms: &[Arm<'_>]) {
+    //eprintln!("{:#?}", expr);
     if arms.len() == 2 {
         let node_pair = (&arms[0].pat.kind, &arms[1].pat.kind);
-
         let found_good_method = match node_pair {
             (
                 PatKind::TupleStruct(ref path_left, patterns_left, _),
@@ -252,6 +252,68 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
                     None
                 }
             },
+            (PatKind::TupleStruct(ref path_left, patterns, _), PatKind::Wild) if patterns.len() == 1 => {
+                if let PatKind::Wild = patterns[0].kind {
+                    let ident = match path_left {
+                        QPath::Resolved(_, path) => {
+                            let name = path.segments[0].ident;
+                            Some(name)
+                        },
+                        _ => None,
+                    };
+                    if let Some(name) = ident {
+                        match name.as_str() {
+                            "Ok" => find_good_method_for_matches_macro(
+                                cx,
+                                arms,
+                                path_left,
+                                Item::Lang(ResultOk),
+                                "is_ok()",
+                                "is_err()",
+                            ),
+                            "Some" => find_good_method_for_matches_macro(
+                                cx,
+                                arms,
+                                path_left,
+                                Item::Lang(OptionSome),
+                                "is_some()",
+                                "is_none()",
+                            ),
+                            _ => None,
+                        }
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            },
+            (PatKind::Path(ref path_left), PatKind::Wild) => {
+                let ident = match path_left {
+                    QPath::Resolved(_, path) => {
+                        let name = path.segments[0].ident;
+                        Some(name)
+                    },
+                    _ => None,
+                };
+
+                if let Some(name) = ident {
+                    match name.as_str() {
+                        "None" => find_good_method_for_matches_macro(
+                            cx,
+                            arms,
+                            path_left,
+                            Item::Lang(OptionNone),
+                            "is_none()",
+                            "is_some()",
+                        ),
+                        _ => None,
+                    }
+                } else {
+                    None
+                }
+                
+            }
             _ => None,
         };
 
@@ -332,6 +394,33 @@ fn find_good_method_for_match<'a>(
         && (is_pat_variant(cx, second_pat, path_right, expected_item_left))
     {
         (&arms[1].body.kind, &arms[0].body.kind)
+    } else {
+        return None;
+    };
+
+    match body_node_pair {
+        (ExprKind::Lit(lit_left), ExprKind::Lit(lit_right)) => match (&lit_left.node, &lit_right.node) {
+            (LitKind::Bool(true), LitKind::Bool(false)) => Some(should_be_left),
+            (LitKind::Bool(false), LitKind::Bool(true)) => Some(should_be_right),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+#[expect(clippy::too_many_arguments)]
+fn find_good_method_for_matches_macro<'a>(
+    cx: &LateContext<'_>,
+    arms: &[Arm<'_>],
+    path_left: &QPath<'_>,
+    expected_item_left: Item,
+    should_be_left: &'a str,
+    should_be_right: &'a str,
+) -> Option<&'a str> {
+    let first_pat = arms[0].pat;
+
+    let body_node_pair = if is_pat_variant(cx, first_pat, path_left, expected_item_left) {
+        (&arms[0].body.kind, &arms[1].body.kind)
     } else {
         return None;
     };

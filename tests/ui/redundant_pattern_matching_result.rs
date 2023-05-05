@@ -55,6 +55,7 @@ fn main() {
     issue5504();
     issue6067();
     issue6065();
+    issue10726();
 
     let _ = if let Ok(_) = gen_res() {
         1
@@ -123,5 +124,27 @@ const fn issue6067() {
     match Err::<i32, i32>(42) {
         Ok(_) => false,
         Err(_) => true,
+    };
+}
+
+fn issue10726() {
+    match Ok::<i32, i32>(42) {
+        Ok(_) => true,
+        _ => false,
+    };
+
+    match Ok::<i32, i32>(42) {
+        Ok(_) => false,
+        _ => true,
+    };
+
+    match Err::<i32, i32>(42) {
+        Ok(_) => false,
+        _ => true,
+    };
+
+    match Err::<i32, i32>(42) {
+        Ok(_) => true,
+        _ => false,
     };
 }

@@ -43,6 +43,7 @@ fn main() {
     issue5504();
     issue6067();
     issue6065();
+    issue10726();
 
     let _ = if gen_res().is_ok() {
         1
@@ -106,4 +107,14 @@ const fn issue6067() {
     Ok::<i32, i32>(42).is_ok();
 
     Err::<i32, i32>(42).is_err();
+}
+
+fn issue10726() {
+    Ok::<i32, i32>(42).is_ok();
+
+    Ok::<i32, i32>(42).is_err();
+
+    Err::<i32, i32>(42).is_err();
+
+    Err::<i32, i32>(42).is_ok();
 }
