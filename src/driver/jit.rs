@@ -4,7 +4,7 @@
 use std::cell::RefCell;
 use std::ffi::CString;
 use std::os::raw::{c_char, c_int};
-use std::sync::{mpsc, Mutex};
+use std::sync::{mpsc, Mutex, OnceLock};
 
 use rustc_codegen_ssa::CrateInfo;
 use rustc_middle::mir::mono::MonoItem;
@@ -12,9 +12,6 @@ use rustc_session::Session;
 use rustc_span::Symbol;
 
 use cranelift_jit::{JITBuilder, JITModule};
-
-// FIXME use std::sync::OnceLock once it stabilizes
-use once_cell::sync::OnceCell;
 
 use crate::{prelude::*, BackendConfig};
 use crate::{CodegenCx, CodegenMode};
@@ -29,7 +26,7 @@ thread_local! {
 }
 
 /// The Sender owned by the rustc thread
-static GLOBAL_MESSAGE_SENDER: OnceCell<Mutex<mpsc::Sender<UnsafeMessage>>> = OnceCell::new();
+static GLOBAL_MESSAGE_SENDER: OnceLock<Mutex<mpsc::Sender<UnsafeMessage>>> = OnceLock::new();
 
 /// A message that is sent from the jitted runtime to the rustc thread.
 /// Senders are responsible for upholding `Send` semantics.

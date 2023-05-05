@@ -327,7 +327,6 @@ dependencies = [
  "indexmap",
  "libloading",
  "object",
- "once_cell",
  "smallvec",
  "target-lexicon",
 ]
