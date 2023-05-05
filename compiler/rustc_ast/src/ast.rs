@@ -120,6 +120,12 @@ impl Path {
     pub fn is_global(&self) -> bool {
         !self.segments.is_empty() && self.segments[0].ident.name == kw::PathRoot
     }
+
+    /// If this path is a single identifier with no arguments, does not ensure
+    /// that the path resolves to a const param, the caller should check this.
+    pub fn is_potential_trivial_const_arg(&self) -> bool {
+        self.segments.len() == 1 && self.segments[0].args.is_none()
+    }
 }
 
 /// A segment of a path: an identifier, an optional lifetime, and a set of types.
@@ -1154,7 +1160,9 @@ impl Expr {
     ///
     /// If this is not the case, name resolution does not resolve `N` when using
     /// `min_const_generics` as more complex expressions are not supported.
-    pub fn is_potential_trivial_const_param(&self) -> bool {
+    ///
+    /// Does not ensure that the path resolves to a const param, the caller should check this.
+    pub fn is_potential_trivial_const_arg(&self) -> bool {
         let this = if let ExprKind::Block(block, None) = &self.kind
             && block.stmts.len() == 1
             && let StmtKind::Expr(expr) = &block.stmts[0].kind
@@ -1165,8 +1173,7 @@ impl Expr {
         };
 
         if let ExprKind::Path(None, path) = &this.kind
-            && path.segments.len() == 1
-            && path.segments[0].args.is_none()
+            && path.is_potential_trivial_const_arg()
         {
             true
         } else {

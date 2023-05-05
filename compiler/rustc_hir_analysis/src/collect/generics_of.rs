@@ -51,7 +51,15 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 // of a const parameter type, e.g. `struct Foo<const N: usize, const M: [u8; N]>` is not allowed.
                 None
             } else if tcx.lazy_normalization() {
-                if let Some(param_id) = tcx.hir().opt_const_param_default_param_def_id(hir_id) {
+                let parent_node = tcx.hir().get_parent(hir_id);
+                if let Node::Variant(Variant { disr_expr: Some(constant), .. }) = parent_node
+                    && constant.hir_id == hir_id
+                {
+                    // enum variant discriminants are not allowed to use any kind of generics
+                    None
+                } else if let Some(param_id) =
+                    tcx.hir().opt_const_param_default_param_def_id(hir_id)
+                {
                     // If the def_id we are calling generics_of on is an anon ct default i.e:
                     //
                     // struct Foo<const N: usize = { .. }>;
@@ -94,15 +102,15 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                         has_self: generics.has_self,
                         has_late_bound_regions: generics.has_late_bound_regions,
                     };
+                } else {
+                    // HACK(eddyb) this provides the correct generics when
+                    // `feature(generic_const_expressions)` is enabled, so that const expressions
+                    // used with const generics, e.g. `Foo<{N+1}>`, can work at all.
+                    //
+                    // Note that we do not supply the parent generics when using
+                    // `min_const_generics`.
+                    Some(parent_def_id.to_def_id())
                 }
-
-                // HACK(eddyb) this provides the correct generics when
-                // `feature(generic_const_expressions)` is enabled, so that const expressions
-                // used with const generics, e.g. `Foo<{N+1}>`, can work at all.
-                //
-                // Note that we do not supply the parent generics when using
-                // `min_const_generics`.
-                Some(parent_def_id.to_def_id())
             } else {
                 let parent_node = tcx.hir().get_parent(hir_id);
                 match parent_node {
@@ -112,11 +120,6 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     // as they shouldn't be able to cause query cycle errors.
                     Node::Expr(Expr { kind: ExprKind::Repeat(_, constant), .. })
                         if constant.hir_id() == hir_id =>
-                    {
-                        Some(parent_def_id.to_def_id())
-                    }
-                    Node::Variant(Variant { disr_expr: Some(constant), .. })
-                        if constant.hir_id == hir_id =>
                     {
                         Some(parent_def_id.to_def_id())
                     }

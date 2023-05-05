@@ -1188,11 +1188,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         }
 
                         RibKind::ConstantItem(trivial, _) => {
-                            let features = self.tcx.sess.features_untracked();
-                            // HACK(min_const_generics): We currently only allow `N` or `{ N }`.
-                            if !(trivial == ConstantHasGenerics::Yes
-                                || features.generic_const_exprs)
-                            {
+                            if let ConstantHasGenerics::No(cause) = trivial {
                                 // HACK(min_const_generics): If we encounter `Self` in an anonymous
                                 // constant we can't easily tell if it's generic at this stage, so
                                 // we instead remember this and then enforce the self type to be
@@ -1264,11 +1260,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         | RibKind::ForwardGenericParamBan => continue,
 
                         RibKind::ConstantItem(trivial, _) => {
-                            let features = self.tcx.sess.features_untracked();
-                            // HACK(min_const_generics): We currently only allow `N` or `{ N }`.
-                            if !(trivial == ConstantHasGenerics::Yes
-                                || features.generic_const_exprs)
-                            {
+                            if let ConstantHasGenerics::No(cause) = trivial {
                                 if let Some(span) = finalize {
                                     self.report_error(
                                         span,
