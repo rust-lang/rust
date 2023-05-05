@@ -123,11 +123,6 @@ fn add_gnu_property_note(
             Endianness::Big => v.to_be_bytes(),
         })
     });
-    /*
-    match endianness {
-        Endianness::Little => header_values.map(|v| data.extend_from_slice(&(v.to_le_bytes()))),
-        Endianness::Big => header_values.map(|v| data.extend_from_slice(&(v.to_be_bytes()))),
-    };*/
     data.extend_from_slice(b"GNU\0"); // Owner of the program property note
     let pr_type: u32 = match architecture {
         Architecture::X86_64 => 0xc0000002,
@@ -138,10 +133,12 @@ fn add_gnu_property_note(
     let pr_data: u32 = 3; //program property descriptor
     let pr_padding: u32 = 0;
     let property_values = [pr_type, pr_datasz, pr_data, pr_padding];
-    match endianness {
-        Endianness::Little => property_values.map(|v| data.extend_from_slice(&(v.to_le_bytes()))),
-        Endianness::Big => property_values.map(|v| data.extend_from_slice(&(v.to_be_bytes()))),
-    };
+    property_values.iter().for_each(|v| {
+        data.extend_from_slice(&match endianness {
+            Endianness::Little => v.to_le_bytes(),
+            Endianness::Big => v.to_be_bytes(),
+        })
+    });
     file.append_section_data(section, &data, 8);
 }
 
