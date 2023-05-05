@@ -8,7 +8,7 @@ use rustc_mir_dataflow::impls::MaybeStorageDead;
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::Analysis;
 
-use crate::ssa::SsaLocals;
+use crate::ssa::{SsaLocals, StorageLiveLocals};
 use crate::MirPass;
 
 /// Propagate references using SSA analysis.
@@ -39,7 +39,7 @@ use crate::MirPass;
 /// - all projections in `PROJECTIONS` have a stable offset (no dereference and no indexing).
 ///
 /// If `PLACE` is a direct projection of a local, we consider it as constant if:
-/// - the local is always live, or it has a single `StorageLive` that dominates all uses;
+/// - the local is always live, or it has a single `StorageLive`;
 /// - all projections have a stable offset.
 ///
 /// # Liveness
@@ -110,9 +110,13 @@ fn compute_replacement<'tcx>(
     body: &Body<'tcx>,
     ssa: &SsaLocals,
 ) -> Replacer<'tcx> {
+    let always_live_locals = always_storage_live_locals(body);
+
+    // Compute which locals have a single `StorageLive` statement ever.
+    let storage_live = StorageLiveLocals::new(body, &always_live_locals);
+
     // Compute `MaybeStorageDead` dataflow to check that we only replace when the pointee is
     // definitely live.
-    let always_live_locals = always_storage_live_locals(body);
     let mut maybe_dead = MaybeStorageDead::new(always_live_locals)
         .into_engine(tcx, body)
         .iterate_to_fixpoint()
@@ -125,6 +129,38 @@ fn compute_replacement<'tcx>(
     let mut storage_to_remove = BitSet::new_empty(body.local_decls.len());
 
     let fully_replacable_locals = fully_replacable_locals(ssa);
+
+    // Returns true iff we can use `place` as a pointee.
+    //
+    // Note that we only need to verify that there is a single `StorageLive` statement, and we do
+    // not need to verify that it dominates all uses of that local.
+    //
+    // Consider the three statements:
+    //   SL : StorageLive(a)
+    //   DEF: b = &raw? mut? a
+    //   USE: stuff that uses *b
+    //
+    // First, we recall that DEF is checked to dominate USE. Now imagine for the sake of
+    // contradiction there is a DEF -> SL -> USE path. Consider two cases:
+    //
+    // - DEF dominates SL. We always have UB the first time control flow reaches DEF,
+    //   because the storage of `a` is dead. Since DEF dominates USE, that means we cannot
+    //   reach USE and so our optimization is ok.
+    //
+    // - DEF does not dominate SL. Then there is a `START_BLOCK -> SL` path not including DEF.
+    //   But we can extend this path to USE, meaning there is also a `START_BLOCK -> USE` path not
+    //   including DEF. This violates the DEF dominates USE condition, and so is impossible.
+    let is_constant_place = |place: Place<'_>| {
+        // We only allow `Deref` as the first projection, to avoid surprises.
+        if place.projection.first() == Some(&PlaceElem::Deref) {
+            // `place == (*some_local).xxx`, it is constant only if `some_local` is constant.
+            // We approximate constness using SSAness.
+            ssa.is_ssa(place.local) && place.projection[1..].iter().all(PlaceElem::is_stable_offset)
+        } else {
+            storage_live.has_single_storage(place.local)
+                && place.projection[..].iter().all(PlaceElem::is_stable_offset)
+        }
+    };
 
     let mut can_perform_opt = |target: Place<'tcx>, loc: Location| {
         maybe_dead.seek_after_primary_effect(loc);
@@ -194,7 +230,7 @@ fn compute_replacement<'tcx>(
                     place = target.project_deeper(&place.projection[1..], tcx);
                 }
                 assert_ne!(place.local, local);
-                if ssa.is_constant_place(place) {
+                if is_constant_place(place) {
                     targets[local] = Value::Pointer(place, ty.is_mutable_ptr());
                 }
             }

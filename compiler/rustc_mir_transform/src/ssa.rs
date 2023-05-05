@@ -4,12 +4,6 @@
 //!
 //! As a consequence of rule 2, we consider that borrowed locals are not SSA, even if they are
 //! `Freeze`, as we do not track that the assignment dominates all uses of the borrow.
-//!
-//! We say a local has a stable address if its address has SSA-like properties:
-//! 1/ It has a single `StorageLive` statement, or none at all (always-live);
-//! 2/ This `StorageLive` statement dominates all statements that take this local's address.
-//!
-//! We do not discard borrowed locals from this analysis, as we cannot take their address' address.
 
 use either::Either;
 use rustc_data_structures::graph::dominators::Dominators;
@@ -18,7 +12,6 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
-use rustc_mir_dataflow::storage::always_storage_live_locals;
 
 #[derive(Debug)]
 pub struct SsaLocals {
@@ -33,9 +26,6 @@ pub struct SsaLocals {
     /// Number of "direct" uses of each local, ie. uses that are not dereferences.
     /// We ignore non-uses (Storage statements, debuginfo).
     direct_uses: IndexVec<Local, u32>,
-    /// Set of "StorageLive" statements for each local. When the "StorageLive" statement does not
-    /// dominate all uses of the local, we mark it as `Set1::Many`.
-    storage_live: IndexVec<Local, Set1<LocationExtended>>,
 }
 
 /// We often encounter MIR bodies with 1 or 2 basic blocks. In those cases, it's unnecessary to
@@ -83,16 +73,10 @@ impl SsaLocals {
         let dominators = SmallDominators { inner: dominators };
 
         let direct_uses = IndexVec::from_elem(0, &body.local_decls);
-        let storage_live = IndexVec::from_elem(Set1::Empty, &body.local_decls);
-        let mut visitor =
-            SsaVisitor { assignments, assignment_order, dominators, direct_uses, storage_live };
+        let mut visitor = SsaVisitor { assignments, assignment_order, dominators, direct_uses };
 
         for local in body.args_iter() {
             visitor.assignments[local] = Set1::One(LocationExtended::Arg);
-        }
-
-        for local in always_storage_live_locals(body).iter() {
-            visitor.storage_live[local] = Set1::One(LocationExtended::Arg);
         }
 
         if body.basic_blocks.len() > 2 {
@@ -111,7 +95,6 @@ impl SsaLocals {
 
         debug!(?visitor.assignments);
         debug!(?visitor.direct_uses);
-        debug!(?visitor.storage_live);
 
         visitor
             .assignment_order
@@ -124,7 +107,6 @@ impl SsaLocals {
             assignments: visitor.assignments,
             assignment_order: visitor.assignment_order,
             direct_uses: visitor.direct_uses,
-            storage_live: visitor.storage_live,
             copy_classes,
         }
     }
@@ -139,19 +121,6 @@ impl SsaLocals {
 
     pub fn is_ssa(&self, local: Local) -> bool {
         matches!(self.assignments[local], Set1::One(_))
-    }
-
-    /// Returns true iff we can use `p` as a pointee.
-    pub fn is_constant_place(&self, p: Place<'_>) -> bool {
-        // We only allow `Deref` as the first projection, to avoid surprises.
-        if p.projection.first() == Some(&PlaceElem::Deref) {
-            // `p == (*some_local).xxx`, it is constant only if `some_local` is constant.
-            // We approximate constness using SSAness.
-            self.is_ssa(p.local) && p.projection[1..].iter().all(PlaceElem::is_stable_offset)
-        } else {
-            matches!(self.storage_live[p.local], Set1::One(_))
-                && p.projection[..].iter().all(PlaceElem::is_stable_offset)
-        }
     }
 
     /// Return the number of uses if a local that are not "Deref".
@@ -233,7 +202,6 @@ struct SsaVisitor {
     assignments: IndexVec<Local, Set1<LocationExtended>>,
     assignment_order: Vec<Local>,
     direct_uses: IndexVec<Local, u32>,
-    storage_live: IndexVec<Local, Set1<LocationExtended>>,
 }
 
 impl<'tcx> Visitor<'tcx> for SsaVisitor {
@@ -259,14 +227,10 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor {
             )
             | PlaceContext::MutatingUse(_) => {
                 self.assignments[local] = Set1::Many;
-                self.dominators.check_dominates(&mut self.storage_live[local], loc);
             }
             PlaceContext::NonMutatingUse(_) => {
                 self.dominators.check_dominates(&mut self.assignments[local], loc);
                 self.direct_uses[local] += 1;
-            }
-            PlaceContext::NonUse(NonUseContext::StorageLive) => {
-                self.storage_live[local].insert(LocationExtended::Plain(loc));
             }
             PlaceContext::NonUse(_) => {}
         }
@@ -334,4 +298,38 @@ fn compute_copy_classes(ssa: &mut SsaVisitor, body: &Body<'_>) -> IndexVec<Local
     }
 
     copies
+}
+
+#[derive(Debug)]
+pub(crate) struct StorageLiveLocals {
+    /// Set of "StorageLive" statements for each local. When the "StorageLive" statement does not
+    /// dominate all address-taking uses of the local, we mark it as `Set1::Many`.
+    storage_live: IndexVec<Local, Set1<LocationExtended>>,
+}
+
+impl StorageLiveLocals {
+    pub(crate) fn new(
+        body: &Body<'_>,
+        always_storage_live_locals: &BitSet<Local>,
+    ) -> StorageLiveLocals {
+        let mut storage_live = IndexVec::from_elem(Set1::Empty, &body.local_decls);
+        for local in always_storage_live_locals.iter() {
+            storage_live[local] = Set1::One(LocationExtended::Arg);
+        }
+        for (block, bbdata) in body.basic_blocks.iter_enumerated() {
+            for (statement_index, statement) in bbdata.statements.iter().enumerate() {
+                if let StatementKind::StorageLive(local) = statement.kind {
+                    storage_live[local]
+                        .insert(LocationExtended::Plain(Location { block, statement_index }));
+                }
+            }
+        }
+        debug!(?storage_live);
+        StorageLiveLocals { storage_live }
+    }
+
+    #[inline]
+    pub(crate) fn has_single_storage(&self, local: Local) -> bool {
+        matches!(self.storage_live[local], Set1::One(_))
+    }
 }
