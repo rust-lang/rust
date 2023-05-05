@@ -80,6 +80,7 @@ mod param_env;
 mod parameterized;
 mod placeholder;
 mod predicate;
+mod region;
 mod rvalue_scopes;
 mod structural_impls;
 mod sty;
@@ -118,8 +119,8 @@ pub use self::coherence::{
     CrateInherentImpls, ImplHeader, ImplOverlapKind, ImplPolarity, ImplSubject,
 };
 pub use self::consts::{
-    BoundConst, Const, ConstData, ConstInt, ConstKind, Expr, InferConst, ScalarInt,
-    UnevaluatedConst, ValTree,
+    BoundConst, Const, ConstData, ConstInt, ConstKind, Expr, InferConst, PlaceholderConst,
+    ScalarInt, UnevaluatedConst, ValTree,
 };
 pub use self::context::{
     tls, CtxtInterners, DeducedParamAttrs, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt, TyCtxtFeed,
@@ -137,7 +138,7 @@ pub use self::list::List;
 pub use self::opaque::{OpaqueHiddenType, OpaqueTypeKey};
 pub use self::param_env::{ParamEnv, ParamEnvAnd};
 pub use self::parameterized::ParameterizedOverTcx;
-pub use self::placeholder::{Placeholder, PlaceholderConst, PlaceholderRegion, PlaceholderType};
+pub use self::placeholder::Placeholder;
 pub use self::predicate::{
     BoundConstness, Clause, CoercePredicate, CratePredicatesMap, InstantiatedPredicates,
     OutlivesPredicate, PolyCoercePredicate, PolyProjectionPredicate, PolyRegionOutlivesPredicate,
@@ -145,6 +146,7 @@ pub use self::predicate::{
     ProjectionPredicate, RegionOutlivesPredicate, SubtypePredicate, ToPredicate, TraitPredicate,
     TypeOutlivesPredicate,
 };
+pub use self::region::PlaceholderRegion;
 pub use self::rvalue_scopes::RvalueScopes;
 pub use self::sty::BoundRegionKind::*;
 pub use self::sty::{
@@ -160,7 +162,7 @@ pub use self::subst::*;
 pub use self::symbol_name::SymbolName;
 pub use self::term::{ParamTerm, Term, TermKind};
 pub use self::trait_def::TraitDef;
-pub use self::ty_::Ty;
+pub use self::ty_::{PlaceholderType, Ty};
 pub use self::typeck_results::{
     CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
     GeneratorDiagnosticData, GeneratorInteriorTypeCause, TypeckResults, UserType,

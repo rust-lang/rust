@@ -1,12 +1,14 @@
-use crate::middle::resolve_bound_vars as rbv;
-use crate::mir::interpret::LitToConstInput;
-use crate::ty::{self, InternalSubsts, ParamEnv, ParamEnvAnd, Ty, TyCtxt};
+use std::fmt;
+
 use rustc_data_structures::intern::Interned;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_macros::HashStable;
-use std::fmt;
+
+use crate::middle::resolve_bound_vars as rbv;
+use crate::mir::interpret::LitToConstInput;
+use crate::ty::{self, BoundVar, InternalSubsts, ParamEnv, ParamEnvAnd, Placeholder, Ty, TyCtxt};
 
 mod int;
 mod kind;
@@ -36,6 +38,8 @@ pub struct ConstData<'tcx> {
     pub ty: Ty<'tcx>,
     pub kind: ConstKind<'tcx>,
 }
+
+pub type PlaceholderConst<'tcx> = Placeholder<BoundVar>;
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(ConstData<'_>, 40);

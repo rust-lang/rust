@@ -1,10 +1,4 @@
-use crate::ty::{BoundRegion, BoundTy, BoundVar, UniverseIndex};
-
-pub type PlaceholderRegion = Placeholder<BoundRegion>;
-
-pub type PlaceholderType = Placeholder<BoundTy>;
-
-pub type PlaceholderConst<'tcx> = Placeholder<BoundVar>;
+use crate::ty::UniverseIndex;
 
 /// The "placeholder index" fully defines a placeholder region, type, or const. Placeholders are
 /// identified by both a universe, as well as a name residing within that universe. Distinct bound
