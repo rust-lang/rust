@@ -9,8 +9,8 @@ use rustc_query_system::ich::StableHashingContext;
 
 use crate::ty::{
     self, AliasKind, AliasTy, Const, ConstKind, Decodable, Encodable, FallibleTypeFolder,
-    GenericArg, Interned, Ty, TyCtxt, TyDecoder, TyEncoder, TypeFoldable, TypeVisitable,
-    TypeVisitor, WithCachedTypeInfo, CONST_TAG, TAG_MASK, TYPE_TAG,
+    GenericArg, Interned, ParamConst, ParamTy, Ty, TyCtxt, TyDecoder, TyEncoder, TypeFoldable,
+    TypeVisitable, TypeVisitor, WithCachedTypeInfo, CONST_TAG, TAG_MASK, TYPE_TAG,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -24,6 +24,12 @@ pub struct Term<'tcx> {
 pub enum TermKind<'tcx> {
     Ty(Ty<'tcx>),
     Const(Const<'tcx>),
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum ParamTerm {
+    Ty(ParamTy),
+    Const(ParamConst),
 }
 
 impl<'tcx> Term<'tcx> {
@@ -89,26 +95,6 @@ impl<'tcx> Term<'tcx> {
     }
 }
 
-impl<'tcx> TermKind<'tcx> {
-    #[inline]
-    pub(super) fn pack(self) -> Term<'tcx> {
-        let (tag, ptr) = match self {
-            TermKind::Ty(ty) => {
-                // Ensure we can use the tag bits.
-                assert_eq!(mem::align_of_val(&*ty.0.0) & TAG_MASK, 0);
-                (TYPE_TAG, ty.0.0 as *const WithCachedTypeInfo<ty::TyKind<'tcx>> as usize)
-            }
-            TermKind::Const(ct) => {
-                // Ensure we can use the tag bits.
-                assert_eq!(mem::align_of_val(&*ct.0.0) & TAG_MASK, 0);
-                (CONST_TAG, ct.0.0 as *const ty::ConstData<'tcx> as usize)
-            }
-        };
-
-        Term { ptr: unsafe { NonZeroUsize::new_unchecked(ptr | tag) }, marker: PhantomData }
-    }
-}
-
 impl fmt::Debug for Term<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let data = if let Some(ty) = self.ty() {
@@ -165,5 +151,34 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for Term<'tcx> {
     fn decode(d: &mut D) -> Self {
         let res: TermKind<'tcx> = Decodable::decode(d);
         res.pack()
+    }
+}
+
+impl<'tcx> TermKind<'tcx> {
+    #[inline]
+    pub(super) fn pack(self) -> Term<'tcx> {
+        let (tag, ptr) = match self {
+            TermKind::Ty(ty) => {
+                // Ensure we can use the tag bits.
+                assert_eq!(mem::align_of_val(&*ty.0.0) & TAG_MASK, 0);
+                (TYPE_TAG, ty.0.0 as *const WithCachedTypeInfo<ty::TyKind<'tcx>> as usize)
+            }
+            TermKind::Const(ct) => {
+                // Ensure we can use the tag bits.
+                assert_eq!(mem::align_of_val(&*ct.0.0) & TAG_MASK, 0);
+                (CONST_TAG, ct.0.0 as *const ty::ConstData<'tcx> as usize)
+            }
+        };
+
+        Term { ptr: unsafe { NonZeroUsize::new_unchecked(ptr | tag) }, marker: PhantomData }
+    }
+}
+
+impl ParamTerm {
+    pub fn index(self) -> usize {
+        match self {
+            ParamTerm::Ty(ty) => ty.index as usize,
+            ParamTerm::Const(ct) => ct.index as usize,
+        }
     }
 }

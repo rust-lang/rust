@@ -158,7 +158,7 @@ pub use self::sty::{
 };
 pub use self::subst::*;
 pub use self::symbol_name::SymbolName;
-pub use self::term::{Term, TermKind};
+pub use self::term::{ParamTerm, Term, TermKind};
 pub use self::trait_def::TraitDef;
 pub use self::ty_::Ty;
 pub use self::typeck_results::{
@@ -221,20 +221,6 @@ const TAG_MASK: usize = 0b11;
 const TYPE_TAG: usize = 0b00;
 const CONST_TAG: usize = 0b01;
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum ParamTerm {
-    Ty(ParamTy),
-    Const(ParamConst),
-}
-
-impl ParamTerm {
-    pub fn index(self) -> usize {
-        match self {
-            ParamTerm::Ty(ty) => ty.index as usize,
-            ParamTerm::Const(ct) => ct.index as usize,
-        }
-    }
-}
 pub trait ToPolyTraitRef<'tcx> {
     fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx>;
 }
