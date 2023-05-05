@@ -58,7 +58,6 @@ pub mod walk;
 mod adt;
 mod alias_relation_direction;
 mod assoc;
-mod bound_const;
 mod bound_constness;
 mod c_reader_cache_key;
 mod closure;
@@ -112,7 +111,6 @@ pub use self::alias_relation_direction::AliasRelationDirection;
 pub use self::assoc::*;
 pub use self::binding::BindingMode;
 pub use self::binding::BindingMode::*;
-pub use self::bound_const::BoundConst;
 pub use self::bound_constness::BoundConstness;
 pub use self::c_reader_cache_key::CReaderCacheKey;
 pub use self::closure::{
@@ -126,7 +124,8 @@ pub use self::coherence::{
     CrateInherentImpls, ImplHeader, ImplOverlapKind, ImplPolarity, ImplSubject,
 };
 pub use self::consts::{
-    Const, ConstData, ConstInt, ConstKind, Expr, InferConst, ScalarInt, UnevaluatedConst, ValTree,
+    BoundConst, Const, ConstData, ConstInt, ConstKind, Expr, InferConst, ScalarInt,
+    UnevaluatedConst, ValTree,
 };
 pub use self::context::{
     tls, CtxtInterners, DeducedParamAttrs, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt, TyCtxtFeed,
