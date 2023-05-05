@@ -1632,8 +1632,8 @@ pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usiz
     // FIXME(#75598): Direct use of these intrinsics improves codegen significantly at opt-level <=
     // 1, where the method versions of these operations are not inlined.
     use intrinsics::{
-        cttz_nonzero, exact_div, mul_with_overflow, unchecked_rem, unchecked_shl, unchecked_shr,
-        unchecked_sub, wrapping_add, wrapping_mul, wrapping_sub,
+        assume, cttz_nonzero, exact_div, mul_with_overflow, unchecked_rem, unchecked_shl,
+        unchecked_shr, unchecked_sub, wrapping_add, wrapping_mul, wrapping_sub,
     };
 
     /// Calculate multiplicative modular inverse of `x` modulo `m`.
@@ -1724,12 +1724,18 @@ pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usiz
         // in a branch-free way and then bitwise-OR it with whatever result the `-p mod a`
         // computation produces.
 
+        let aligned_address = wrapping_add(addr, a_minus_one) & wrapping_sub(0, a);
+        let byte_offset = wrapping_sub(aligned_address, addr);
+        // FIXME: Remove the assume after <https://github.com/llvm/llvm-project/issues/62502>
+        // SAFETY: Masking by `-a` can only affect the low bits, and thus cannot have reduced
+        // the value by more than `a-1`, so even though the intermediate values might have
+        // wrapped, the byte_offset is always in `[0, a)`.
+        unsafe { assume(byte_offset < a) };
+
         // SAFETY: `stride == 0` case has been handled by the special case above.
         let addr_mod_stride = unsafe { unchecked_rem(addr, stride) };
 
         return if addr_mod_stride == 0 {
-            let aligned_address = wrapping_add(addr, a_minus_one) & wrapping_sub(0, a);
-            let byte_offset = wrapping_sub(aligned_address, addr);
             // SAFETY: `stride` is non-zero. This is guaranteed to divide exactly as well, because
             // addr has been verified to be aligned to the original type’s alignment requirements.
             unsafe { exact_div(byte_offset, stride) }
