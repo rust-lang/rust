@@ -117,10 +117,17 @@ fn add_gnu_property_note(
     let n_descsz: u32 = 16; // Size of the n_desc field
     let n_type: u32 = NT_GNU_PROPERTY_TYPE_0; // Type of note descriptor
     let header_values = [n_namsz, n_descsz, n_type];
+    header_values.iter().for_each(|v| {
+        data.extend_from_slice(&match endianness {
+            Endianness::Little => v.to_le_bytes(),
+            Endianness::Big => v.to_be_bytes(),
+        })
+    });
+    /*
     match endianness {
         Endianness::Little => header_values.map(|v| data.extend_from_slice(&(v.to_le_bytes()))),
         Endianness::Big => header_values.map(|v| data.extend_from_slice(&(v.to_be_bytes()))),
-    };
+    };*/
     data.extend_from_slice(b"GNU\0"); // Owner of the program property note
     let pr_type: u32 = match architecture {
         Architecture::X86_64 => 0xc0000002,
