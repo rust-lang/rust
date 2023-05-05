@@ -265,52 +265,41 @@ impl Drop for FileEncoder {
     }
 }
 
-macro_rules! file_encoder_write_leb128 {
-    ($enc:expr, $value:expr, $int_ty:ty, $fun:ident) => {{
-        const MAX_ENCODED_LEN: usize = $crate::leb128::max_leb128_len::<$int_ty>();
+macro_rules! write_leb128 {
+    ($this_fn:ident, $int_ty:ty, $write_leb_fn:ident) => {
+        #[inline]
+        fn $this_fn(&mut self, v: $int_ty) {
+            const MAX_ENCODED_LEN: usize = $crate::leb128::max_leb128_len::<$int_ty>();
 
-        // We ensure this during `FileEncoder` construction.
-        debug_assert!($enc.capacity() >= MAX_ENCODED_LEN);
+            // We ensure this during `FileEncoder` construction.
+            debug_assert!(self.capacity() >= MAX_ENCODED_LEN);
 
-        let mut buffered = $enc.buffered;
+            let mut buffered = self.buffered;
 
-        // This can't overflow. See assertion in `FileEncoder::with_capacity`.
-        if std::intrinsics::unlikely(buffered + MAX_ENCODED_LEN > $enc.capacity()) {
-            $enc.flush();
-            buffered = 0;
+            // This can't overflow. See assertion in `FileEncoder::with_capacity`.
+            if std::intrinsics::unlikely(buffered + MAX_ENCODED_LEN > self.capacity()) {
+                self.flush();
+                buffered = 0;
+            }
+
+            // SAFETY: The above check and flush ensures that there is enough
+            // room to write the encoded value to the buffer.
+            let buf = unsafe {
+                &mut *(self.buf.as_mut_ptr().add(buffered)
+                    as *mut [MaybeUninit<u8>; MAX_ENCODED_LEN])
+            };
+
+            let encoded = leb128::$write_leb_fn(buf, v);
+            self.buffered = buffered + encoded.len();
         }
-
-        // SAFETY: The above check and flush ensures that there is enough
-        // room to write the encoded value to the buffer.
-        let buf = unsafe {
-            &mut *($enc.buf.as_mut_ptr().add(buffered) as *mut [MaybeUninit<u8>; MAX_ENCODED_LEN])
-        };
-
-        let encoded = leb128::$fun(buf, $value);
-        $enc.buffered = buffered + encoded.len();
-    }};
+    };
 }
 
 impl Encoder for FileEncoder {
-    #[inline]
-    fn emit_usize(&mut self, v: usize) {
-        file_encoder_write_leb128!(self, v, usize, write_usize_leb128)
-    }
-
-    #[inline]
-    fn emit_u128(&mut self, v: u128) {
-        file_encoder_write_leb128!(self, v, u128, write_u128_leb128)
-    }
-
-    #[inline]
-    fn emit_u64(&mut self, v: u64) {
-        file_encoder_write_leb128!(self, v, u64, write_u64_leb128)
-    }
-
-    #[inline]
-    fn emit_u32(&mut self, v: u32) {
-        file_encoder_write_leb128!(self, v, u32, write_u32_leb128)
-    }
+    write_leb128!(emit_usize, usize, write_usize_leb128);
+    write_leb128!(emit_u128, u128, write_u128_leb128);
+    write_leb128!(emit_u64, u64, write_u64_leb128);
+    write_leb128!(emit_u32, u32, write_u32_leb128);
 
     #[inline]
     fn emit_u16(&mut self, v: u16) {
@@ -322,25 +311,10 @@ impl Encoder for FileEncoder {
         self.write_one(v);
     }
 
-    #[inline]
-    fn emit_isize(&mut self, v: isize) {
-        file_encoder_write_leb128!(self, v, isize, write_isize_leb128)
-    }
-
-    #[inline]
-    fn emit_i128(&mut self, v: i128) {
-        file_encoder_write_leb128!(self, v, i128, write_i128_leb128)
-    }
-
-    #[inline]
-    fn emit_i64(&mut self, v: i64) {
-        file_encoder_write_leb128!(self, v, i64, write_i64_leb128)
-    }
-
-    #[inline]
-    fn emit_i32(&mut self, v: i32) {
-        file_encoder_write_leb128!(self, v, i32, write_i32_leb128)
-    }
+    write_leb128!(emit_isize, isize, write_isize_leb128);
+    write_leb128!(emit_i128, i128, write_i128_leb128);
+    write_leb128!(emit_i64, i64, write_i64_leb128);
+    write_leb128!(emit_i32, i32, write_i32_leb128);
 
     #[inline]
     fn emit_i16(&mut self, v: i16) {
@@ -437,30 +411,19 @@ impl<'a> MemDecoder<'a> {
 }
 
 macro_rules! read_leb128 {
-    ($dec:expr, $fun:ident) => {{ leb128::$fun($dec) }};
+    ($this_fn:ident, $int_ty:ty, $read_leb_fn:ident) => {
+        #[inline]
+        fn $this_fn(&mut self) -> $int_ty {
+            leb128::$read_leb_fn(self)
+        }
+    };
 }
 
 impl<'a> Decoder for MemDecoder<'a> {
-    #[inline]
-    fn position(&self) -> usize {
-        // SAFETY: This type guarantees start <= current
-        unsafe { self.current.sub_ptr(self.start) }
-    }
-
-    #[inline]
-    fn read_u128(&mut self) -> u128 {
-        read_leb128!(self, read_u128_leb128)
-    }
-
-    #[inline]
-    fn read_u64(&mut self) -> u64 {
-        read_leb128!(self, read_u64_leb128)
-    }
-
-    #[inline]
-    fn read_u32(&mut self) -> u32 {
-        read_leb128!(self, read_u32_leb128)
-    }
+    read_leb128!(read_usize, usize, read_usize_leb128);
+    read_leb128!(read_u128, u128, read_u128_leb128);
+    read_leb128!(read_u64, u64, read_u64_leb128);
+    read_leb128!(read_u32, u32, read_u32_leb128);
 
     #[inline]
     fn read_u16(&mut self) -> u16 {
@@ -480,34 +443,14 @@ impl<'a> Decoder for MemDecoder<'a> {
         }
     }
 
-    #[inline]
-    fn read_usize(&mut self) -> usize {
-        read_leb128!(self, read_usize_leb128)
-    }
-
-    #[inline]
-    fn read_i128(&mut self) -> i128 {
-        read_leb128!(self, read_i128_leb128)
-    }
-
-    #[inline]
-    fn read_i64(&mut self) -> i64 {
-        read_leb128!(self, read_i64_leb128)
-    }
-
-    #[inline]
-    fn read_i32(&mut self) -> i32 {
-        read_leb128!(self, read_i32_leb128)
-    }
+    read_leb128!(read_isize, isize, read_isize_leb128);
+    read_leb128!(read_i128, i128, read_i128_leb128);
+    read_leb128!(read_i64, i64, read_i64_leb128);
+    read_leb128!(read_i32, i32, read_i32_leb128);
 
     #[inline]
     fn read_i16(&mut self) -> i16 {
         i16::from_le_bytes(self.read_array())
-    }
-
-    #[inline]
-    fn read_isize(&mut self) -> isize {
-        read_leb128!(self, read_isize_leb128)
     }
 
     #[inline]
@@ -531,6 +474,12 @@ impl<'a> Decoder for MemDecoder<'a> {
         // SAFETY: This type guarantees current is inbounds or one-past-the-end, which is end.
         // Since we just checked current == end, the current pointer must be inbounds.
         unsafe { *self.current }
+    }
+
+    #[inline]
+    fn position(&self) -> usize {
+        // SAFETY: This type guarantees start <= current
+        unsafe { self.current.sub_ptr(self.start) }
     }
 }
 
