@@ -172,7 +172,11 @@ pub fn main() {
 
     let exit_code = rustc_driver::catch_with_exit_code(|| match get_args() {
         Some(args) => main_args(&args),
-        _ => Err(ErrorGuaranteed::unchecked_claim_error_was_emitted()),
+        _ =>
+        {
+            #[allow(deprecated)]
+            Err(ErrorGuaranteed::unchecked_claim_error_was_emitted())
+        }
     });
     process::exit(exit_code);
 }
@@ -725,6 +729,7 @@ fn main_args(at_args: &[String]) -> MainResult {
             return if code == 0 {
                 Ok(())
             } else {
+                #[allow(deprecated)]
                 Err(ErrorGuaranteed::unchecked_claim_error_was_emitted())
             };
         }
