@@ -330,6 +330,9 @@ pub(crate) fn print(req: PrintRequest, sess: &Session) {
     let tm = create_informational_target_machine(sess);
     match req {
         PrintRequest::TargetCPUs => {
+            // SAFETY generate a C compatible string from a byte slice to pass
+            // the target CPU name into LLVM, the lifetime of the reference is
+            // at least as long as the C function
             let cpu_cstring = CString::new(handle_native(sess.target.cpu.as_ref()))
                 .unwrap_or_else(|e| bug!("failed to convert to cstring: {}", e));
             unsafe { llvm::LLVMRustPrintTargetCPUs(tm, cpu_cstring.as_ptr()) };
