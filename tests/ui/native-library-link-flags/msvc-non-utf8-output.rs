@@ -1,6 +1,5 @@
 // build-fail
-// compile-flags:-C link-arg=märchenhaft
+// compile-flags:-C link-arg=⦺ⅈ⽯⭏⽽◃⡽⚞
 // only-msvc
-// error-pattern:= note: LINK : fatal error LNK1181:
-// normalize-stderr-test "(\s*\|\n)\s*= note: .*\n" -> "$1"
+// normalize-stderr-test "(?:.|\n)*(⦺ⅈ⽯⭏⽽◃⡽⚞)(?:.|\n)*" -> "$1"
 pub fn main() {}
