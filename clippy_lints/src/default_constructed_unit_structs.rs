@@ -1,4 +1,4 @@
-use clippy_utils::{diagnostics::span_lint_and_sugg, is_from_proc_macro, match_def_path, paths};
+use clippy_utils::{diagnostics::span_lint_and_sugg, match_def_path, paths};
 use hir::{def::Res, ExprKind};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -55,7 +55,8 @@ impl LateLintPass<'_> for DefaultConstructedUnitStructs {
             if let ty::Adt(def, ..) = cx.typeck_results().expr_ty(expr).kind();
             if def.is_struct();
             if let var @ ty::VariantDef { ctor: Some((hir::def::CtorKind::Const, _)), .. } = def.non_enum_variant();
-            if !var.is_field_list_non_exhaustive() && !is_from_proc_macro(cx, expr);
+            if !var.is_field_list_non_exhaustive();
+            if !expr.span.from_expansion() && !qpath.span().from_expansion();
             then {
                 span_lint_and_sugg(
                     cx,
