@@ -8,6 +8,12 @@ extern crate proc_macro_derive;
 #[derive(proc_macro_derive::ShadowDerive)]
 pub struct Nothing;
 
+macro_rules! reuse {
+    ($v:ident) => {
+        let $v = $v + 1;
+    };
+}
+
 fn shadow_same() {
     let x = 1;
     let x = x;
@@ -31,6 +37,12 @@ fn shadow_reuse() -> Option<()> {
         _ => 3,
     };
     None
+}
+
+fn shadow_reuse_macro() {
+    let x = 1;
+    // this should not warn
+    reuse!(x);
 }
 
 fn shadow_unrelated() {

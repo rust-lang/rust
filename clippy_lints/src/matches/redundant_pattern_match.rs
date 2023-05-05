@@ -63,8 +63,11 @@ fn find_sugg_for_if_let<'tcx>(
     // Determine which function should be used, and the type contained by the corresponding
     // variant.
     let (good_method, inner_ty) = match check_pat.kind {
-        PatKind::TupleStruct(ref qpath, [sub_pat], _) => {
-            if let PatKind::Wild = sub_pat.kind {
+        PatKind::TupleStruct(ref qpath, args, rest) => {
+            let is_wildcard = matches!(args.first().map(|p| &p.kind), Some(PatKind::Wild));
+            let is_rest = matches!((args, rest.as_opt_usize()), ([], Some(_)));
+
+            if is_wildcard || is_rest {
                 let res = cx.typeck_results().qpath_res(qpath, check_pat.hir_id);
                 let Some(id) = res.opt_def_id().map(|ctor_id| cx.tcx.parent(ctor_id)) else { return };
                 let lang_items = cx.tcx.lang_items();
@@ -334,7 +337,7 @@ fn find_good_method_for_match<'a>(
     };
 
     match body_node_pair {
-        (ExprKind::Lit(ref lit_left), ExprKind::Lit(ref lit_right)) => match (&lit_left.node, &lit_right.node) {
+        (ExprKind::Lit(lit_left), ExprKind::Lit(lit_right)) => match (&lit_left.node, &lit_right.node) {
             (LitKind::Bool(true), LitKind::Bool(false)) => Some(should_be_left),
             (LitKind::Bool(false), LitKind::Bool(true)) => Some(should_be_right),
             _ => None,

@@ -36,60 +36,6 @@ pub enum UpdateMode {
 pub fn update(update_mode: UpdateMode) {
     let (lints, deprecated_lints, renamed_lints) = gather_all();
     generate_lint_files(update_mode, &lints, &deprecated_lints, &renamed_lints);
-    remove_old_files(update_mode);
-}
-
-/// Remove files no longer needed after <https://github.com/rust-lang/rust-clippy/pull/9541>
-/// that may be reintroduced unintentionally
-///
-/// FIXME: This is a temporary measure that should be removed when there are no more PRs that
-/// include the stray files
-fn remove_old_files(update_mode: UpdateMode) {
-    let mut failed = false;
-    let mut remove_file = |path: &Path| match update_mode {
-        UpdateMode::Check => {
-            if path.exists() {
-                failed = true;
-                println!("unexpected file: {}", path.display());
-            }
-        },
-        UpdateMode::Change => {
-            if fs::remove_file(path).is_ok() {
-                println!("removed file: {}", path.display());
-            }
-        },
-    };
-
-    let files = [
-        "clippy_lints/src/lib.register_all.rs",
-        "clippy_lints/src/lib.register_cargo.rs",
-        "clippy_lints/src/lib.register_complexity.rs",
-        "clippy_lints/src/lib.register_correctness.rs",
-        "clippy_lints/src/lib.register_internal.rs",
-        "clippy_lints/src/lib.register_lints.rs",
-        "clippy_lints/src/lib.register_nursery.rs",
-        "clippy_lints/src/lib.register_pedantic.rs",
-        "clippy_lints/src/lib.register_perf.rs",
-        "clippy_lints/src/lib.register_restriction.rs",
-        "clippy_lints/src/lib.register_style.rs",
-        "clippy_lints/src/lib.register_suspicious.rs",
-        "src/docs.rs",
-    ];
-
-    for file in files {
-        remove_file(Path::new(file));
-    }
-
-    if let Ok(docs_dir) = fs::read_dir("src/docs") {
-        for doc_file in docs_dir {
-            let path = doc_file.unwrap().path();
-            remove_file(&path);
-        }
-    }
-
-    if failed {
-        exit_with_failure();
-    }
 }
 
 fn generate_lint_files(

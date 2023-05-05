@@ -180,7 +180,7 @@ fn check_regex<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
         .allow_invalid_utf8(!utf8)
         .build();
 
-    if let ExprKind::Lit(ref lit) = expr.kind {
+    if let ExprKind::Lit(lit) = expr.kind {
         if let LitKind::Str(ref r, style) = lit.node {
             let r = r.as_str();
             let offset = if let StrStyle::Raw(n) = style { 2 + n } else { 1 };

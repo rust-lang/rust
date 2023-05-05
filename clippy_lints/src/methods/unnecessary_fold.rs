@@ -78,7 +78,7 @@ pub(super) fn check(
     }
 
     // Check if the first argument to .fold is a suitable literal
-    if let hir::ExprKind::Lit(ref lit) = init.kind {
+    if let hir::ExprKind::Lit(lit) = init.kind {
         match lit.node {
             ast::LitKind::Bool(false) => check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::Or, "any", true),
             ast::LitKind::Bool(true) => check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::And, "all", true),

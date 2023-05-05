@@ -5,7 +5,7 @@ LL | impl Into<StringWrapper> for String {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::from-over-into` implied by `-D warnings`
-help: replace the `Into` implentation with `From<std::string::String>`
+help: replace the `Into` implementation with `From<std::string::String>`
    |
 LL ~ impl From<String> for StringWrapper {
 LL ~     fn from(val: String) -> Self {
@@ -18,7 +18,7 @@ error: an implementation of `From` is preferred since it gives you `Into<_>` for
 LL | impl Into<SelfType> for String {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: replace the `Into` implentation with `From<std::string::String>`
+help: replace the `Into` implementation with `From<std::string::String>`
    |
 LL ~ impl From<String> for SelfType {
 LL ~     fn from(val: String) -> Self {
@@ -31,11 +31,11 @@ error: an implementation of `From` is preferred since it gives you `Into<_>` for
 LL | impl Into<SelfKeywords> for X {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: replace the `Into` implentation with `From<X>`
+help: replace the `Into` implementation with `From<X>`
    |
 LL ~ impl From<X> for SelfKeywords {
 LL ~     fn from(val: X) -> Self {
-LL ~         let _ = X::default();
+LL ~         let _ = X;
 LL ~         let _ = X::FOO;
 LL ~         let _: X = val;
    |
@@ -48,7 +48,7 @@ LL | impl core::convert::Into<bool> for crate::ExplicitPaths {
    |
    = help: `impl From<Local> for Foreign` is allowed by the orphan rules, for more information see
            https://doc.rust-lang.org/reference/items/implementations.html#trait-implementation-coherence
-help: replace the `Into` implentation with `From<ExplicitPaths>`
+help: replace the `Into` implementation with `From<ExplicitPaths>`
    |
 LL ~ impl core::convert::From<crate::ExplicitPaths> for bool {
 LL ~     fn from(mut val: crate::ExplicitPaths) -> Self {
@@ -64,7 +64,7 @@ error: an implementation of `From` is preferred since it gives you `Into<_>` for
 LL |     impl<T> Into<FromOverInto<T>> for Vec<T> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: replace the `Into` implentation with `From<std::vec::Vec<T>>`
+help: replace the `Into` implementation with `From<std::vec::Vec<T>>`
    |
 LL ~     impl<T> From<Vec<T>> for FromOverInto<T> {
 LL ~         fn from(val: Vec<T>) -> Self {

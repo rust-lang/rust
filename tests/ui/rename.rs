@@ -27,6 +27,7 @@
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::recursive_format_impl)]
 #![allow(clippy::invisible_characters)]
+#![allow(suspicious_double_ref_op)]
 #![allow(drop_bounds)]
 #![allow(for_loops_over_fallibles)]
 #![allow(array_into_iter)]
