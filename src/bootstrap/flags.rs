@@ -745,28 +745,10 @@ impl Subcommand {
         }
     }
 
-    pub fn test_args(&self) -> Vec<&str> {
-        match *self {
-            Subcommand::Test { ref test_args, .. } | Subcommand::Bench { ref test_args, .. } => {
-                test_args.iter().flat_map(|s| s.split_whitespace()).collect()
-            }
-            _ => vec![],
-        }
-    }
-
     pub fn rustc_args(&self) -> Vec<&str> {
         match *self {
             Subcommand::Test { ref rustc_args, .. } => {
                 rustc_args.iter().flat_map(|s| s.split_whitespace()).collect()
-            }
-            _ => vec![],
-        }
-    }
-
-    pub fn args(&self) -> Vec<&str> {
-        match *self {
-            Subcommand::Run { ref args, .. } => {
-                args.iter().flat_map(|s| s.split_whitespace()).collect()
             }
             _ => vec![],
         }

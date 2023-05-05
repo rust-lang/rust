@@ -18,7 +18,7 @@ pub macro thread_local_inner {
         ) -> $crate::option::Option<&'static $t> {
             const INIT_EXPR: $t = $init;
 
-                        // On platforms without `#[thread_local]` we fall back to the
+            // On platforms without `#[thread_local]` we fall back to the
             // same implementation as below for os thread locals.
             #[inline]
             const fn __init() -> $t { INIT_EXPR }

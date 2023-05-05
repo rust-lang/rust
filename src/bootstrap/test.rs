@@ -263,7 +263,7 @@ impl Step for Cargotest {
             builder,
             cmd.arg(&cargo)
                 .arg(&out_dir)
-                .args(builder.config.cmd.test_args())
+                .args(builder.config.test_args())
                 .env("RUSTC", builder.rustc(compiler))
                 .env("RUSTDOC", builder.rustdoc(compiler)),
         );
@@ -634,7 +634,7 @@ impl Step for Miri {
             .arg(builder.src.join("src/tools/miri/test-cargo-miri/Cargo.toml"));
         cargo.arg("--target").arg(target.rustc_target_arg());
         cargo.arg("--tests"); // don't run doctests, they are too confused by the staging
-        cargo.arg("--").args(builder.config.cmd.test_args());
+        cargo.arg("--").args(builder.config.test_args());
 
         // Tell `cargo miri` where to find things.
         cargo.env("MIRI_SYSROOT", &miri_sysroot);
@@ -1060,7 +1060,7 @@ impl Step for RustdocGUI {
                 }
             }
         }
-        for test_arg in builder.config.cmd.test_args() {
+        for test_arg in builder.config.test_args() {
             command.arg(test_arg);
         }
         builder.run(&mut command);
@@ -1555,8 +1555,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             .filter_map(|p| util::is_valid_test_suite_arg(p, suite_path, builder))
             .collect();
 
-        test_args.append(&mut builder.config.cmd.test_args());
-        test_args.extend(builder.config.free_args.iter().map(|s| s.as_str()));
+        test_args.append(&mut builder.config.test_args());
 
         // On Windows, replace forward slashes in test-args by backslashes
         // so the correct filters are passed to libtest
@@ -1962,7 +1961,7 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
     cmd.arg(markdown);
     cmd.env("RUSTC_BOOTSTRAP", "1");
 
-    let test_args = builder.config.cmd.test_args().join(" ");
+    let test_args = builder.config.test_args().join(" ");
     cmd.arg("--test-args").arg(test_args);
 
     if builder.config.verbose_tests {
@@ -2099,7 +2098,7 @@ fn prepare_cargo_test(
         cargo.arg("-p").arg(krate);
     }
 
-    cargo.arg("--").args(&builder.config.cmd.test_args()).args(libtest_args);
+    cargo.arg("--").args(&builder.config.test_args()).args(libtest_args);
     if !builder.config.verbose_tests {
         cargo.arg("--quiet");
     }

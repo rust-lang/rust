@@ -101,7 +101,7 @@ macro_rules! tuple_impls {
             }
         }
 
-        #[stable(feature = "array_tuple_conv", since = "1.63.0")]
+        #[stable(feature = "array_tuple_conv", since = "CURRENT_RUSTC_VERSION")]
         impl<T> From<[T; ${count(T)}]> for ($(${ignore(T)} T,)+) {
             #[inline]
             #[allow(non_snake_case)]
@@ -111,7 +111,7 @@ macro_rules! tuple_impls {
             }
         }
 
-        #[stable(feature = "array_tuple_conv", since = "1.63.0")]
+        #[stable(feature = "array_tuple_conv", since = "CURRENT_RUSTC_VERSION")]
         impl<T> From<($(${ignore(T)} T,)+)> for [T; ${count(T)}] {
             #[inline]
             #[allow(non_snake_case)]
