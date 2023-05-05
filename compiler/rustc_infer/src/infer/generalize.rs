@@ -52,7 +52,7 @@ pub trait GeneralizerDelegate<'tcx> {
 
     fn forbid_inference_vars() -> bool;
 
-    fn generalize_existential(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx>;
+    fn generalize_region(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx>;
 }
 
 pub struct CombineDelegate<'cx, 'tcx> {
@@ -70,7 +70,9 @@ impl<'tcx> GeneralizerDelegate<'tcx> for CombineDelegate<'_, 'tcx> {
         false
     }
 
-    fn generalize_existential(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx> {
+    fn generalize_region(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx> {
+        // FIXME: This is non-ideal because we don't give a
+        // very descriptive origin for this region variable.
         self.infcx
             .next_region_var_in_universe(RegionVariableOrigin::MiscVariable(self.span), universe)
     }
@@ -88,18 +90,17 @@ where
         <Self as TypeRelatingDelegate<'tcx>>::forbid_inference_vars()
     }
 
-    fn generalize_existential(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx> {
+    fn generalize_region(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx> {
         <Self as TypeRelatingDelegate<'tcx>>::generalize_existential(self, universe)
     }
 }
 
-/// The "type generalizer" is used when handling inference variables.
+/// The "generalizer" is used when handling inference variables.
 ///
 /// The basic strategy for handling a constraint like `?A <: B` is to
-/// apply a "generalization strategy" to the type `B` -- this replaces
-/// all the lifetimes in the type `B` with fresh inference
-/// variables. (You can read more about the strategy in this [blog
-/// post].)
+/// apply a "generalization strategy" to the term `B` -- this replaces
+/// all the lifetimes in the term `B` with fresh inference variables.
+/// (You can read more about the strategy in this [blog post].)
 ///
 /// As an example, if we had `?A <: &'x u32`, we would generalize `&'x
 /// u32` to `&'0 u32` where `'0` is a fresh variable. This becomes the
@@ -110,9 +111,11 @@ where
 struct Generalizer<'me, 'tcx, D> {
     infcx: &'me InferCtxt<'tcx>,
 
-    // An delegate used to abstract the behaviors of the three previous
-    // generalizer-like implementations.
-    pub delegate: &'me mut D,
+    /// This is used to abstract the behaviors of the three previous
+    /// generalizer-like implementations (`Generalizer`, `TypeGeneralizer`,
+    /// and `ConstInferUnifier`). See [`GeneralizerDelegate`] for more
+    /// information.
+    delegate: &'me mut D,
 
     /// After we generalize this type, we are going to relate it to
     /// some other type. What will be the variance at this point?
@@ -138,6 +141,7 @@ struct Generalizer<'me, 'tcx, D> {
 }
 
 impl<'tcx, D> Generalizer<'_, 'tcx, D> {
+    /// Create an error that corresponds to the term kind in `root_term`
     fn cyclic_term_error(&self) -> TypeError<'tcx> {
         match self.root_term.unpack() {
             ty::TermKind::Ty(ty) => TypeError::CyclicTy(ty),
@@ -183,7 +187,7 @@ where
             relate::relate_substs_with_variances(
                 self,
                 item_def_id,
-                &opt_variances,
+                opt_variances,
                 a_subst,
                 b_subst,
                 true,
@@ -191,6 +195,7 @@ where
         }
     }
 
+    #[instrument(level = "debug", skip(self, variance, b), ret)]
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
         variance: ty::Variance,
@@ -198,29 +203,21 @@ where
         a: T,
         b: T,
     ) -> RelateResult<'tcx, T> {
-        debug!("Generalizer::relate_with_variance(variance={:?}, a={:?}, b={:?})", variance, a, b);
-
         let old_ambient_variance = self.ambient_variance;
         self.ambient_variance = self.ambient_variance.xform(variance);
-
-        debug!("Generalizer::relate_with_variance: ambient_variance = {:?}", self.ambient_variance);
-
+        debug!(?self.ambient_variance, "new ambient variance");
         let r = self.relate(a, b)?;
-
         self.ambient_variance = old_ambient_variance;
-
-        debug!("Generalizer::relate_with_variance: r={:?}", r);
-
         Ok(r)
     }
 
+    #[instrument(level = "debug", skip(self, t2), ret)]
     fn tys(&mut self, t: Ty<'tcx>, t2: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         assert_eq!(t, t2); // we are misusing TypeRelation here; both LHS and RHS ought to be ==
 
         if let Some(&result) = self.cache.get(&t) {
             return Ok(result);
         }
-        debug!("generalize: t={:?}", t);
 
         // Check to see whether the type we are generalizing references
         // any other type variable related to `vid` via
@@ -241,21 +238,22 @@ where
                 let mut inner = self.infcx.inner.borrow_mut();
                 let vid = inner.type_variables().root_var(vid);
                 let sub_vid = inner.type_variables().sub_root_var(vid);
-                if TermVid::Ty(sub_vid) == self.root_vid {
-                    // If sub-roots are equal, then `for_vid` and
+
+                if ty::TermVid::Ty(sub_vid) == self.root_vid {
+                    // If sub-roots are equal, then `root_vid` and
                     // `vid` are related via subtyping.
                     Err(self.cyclic_term_error())
                 } else {
                     let probe = inner.type_variables().probe(vid);
                     match probe {
                         TypeVariableValue::Known { value: u } => {
-                            debug!("generalize: known value {:?}", u);
                             drop(inner);
                             self.relate(u, u)
                         }
                         TypeVariableValue::Unknown { universe } => {
                             match self.ambient_variance {
-                                // Invariant: no need to make a fresh type variable.
+                                // Invariant: no need to make a fresh type variable
+                                // if we can name the universe.
                                 ty::Invariant => {
                                     if self.for_universe.can_name(universe) {
                                         return Ok(t);
@@ -282,7 +280,7 @@ where
                             // operation. This is needed to detect cyclic types. To see why, see the
                             // docs in the `type_variables` module.
                             inner.type_variables().sub(vid, new_var_id);
-                            debug!("generalize: replacing original vid={:?} with new={:?}", vid, u);
+                            debug!("replacing original vid={:?} with new={:?}", vid, u);
                             Ok(u)
                         }
                     }
@@ -297,22 +295,17 @@ where
             }
 
             ty::Placeholder(placeholder) => {
-                if self.for_universe.cannot_name(placeholder.universe) {
+                if self.for_universe.can_name(placeholder.universe) {
+                    Ok(t)
+                } else {
                     debug!(
-                        "Generalizer::tys: root universe {:?} cannot name\
-                         placeholder in universe {:?}",
+                        "root universe {:?} cannot name placeholder in universe {:?}",
                         self.for_universe, placeholder.universe
                     );
                     Err(TypeError::Mismatch)
-                } else {
-                    Ok(t)
                 }
             }
 
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
-                let s = self.relate(substs, substs)?;
-                Ok(if s == substs { t } else { self.tcx().mk_opaque(def_id, s) })
-            }
             _ => relate::super_relate_tys(self, t, t),
         }?;
 
@@ -320,14 +313,13 @@ where
         Ok(g)
     }
 
+    #[instrument(level = "debug", skip(self, r2), ret)]
     fn regions(
         &mut self,
         r: ty::Region<'tcx>,
         r2: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
         assert_eq!(r, r2); // we are misusing TypeRelation here; both LHS and RHS ought to be ==
-
-        debug!("generalize: regions r={:?}", r);
 
         match *r {
             // Never make variables for regions bound within the type itself,
@@ -336,6 +328,8 @@ where
                 return Ok(r);
             }
 
+            // It doesn't really matter for correctness if we generalize ReError,
+            // since we're already on a doomed compilation path.
             ty::ReError(_) => {
                 return Ok(r);
             }
@@ -359,13 +353,10 @@ where
             }
         }
 
-        // FIXME: This is non-ideal because we don't give a
-        // very descriptive origin for this region variable.
-        let replacement_region_vid = self.delegate.generalize_existential(self.for_universe);
-
-        Ok(replacement_region_vid)
+        Ok(self.delegate.generalize_region(self.for_universe))
     }
 
+    #[instrument(level = "debug", skip(self, c2), ret)]
     fn consts(
         &mut self,
         c: ty::Const<'tcx>,
@@ -378,13 +369,12 @@ where
                 bug!("unexpected inference variable encountered in NLL generalization: {:?}", c);
             }
             ty::ConstKind::Infer(InferConst::Var(vid)) => {
-                // Check if the current unification would end up
-                // unifying `target_vid` with a const which contains
-                // an inference variable which is unioned with `target_vid`.
-                //
-                // Not doing so can easily result in stack overflows.
-                if TermVid::Const(self.infcx.inner.borrow_mut().const_unification_table().find(vid))
-                    == self.root_vid
+                // If root const vids are equal, then `root_vid` and
+                // `vid` are related and we'd be inferring an infinitely
+                // deep const.
+                if ty::TermVid::Const(
+                    self.infcx.inner.borrow_mut().const_unification_table().find(vid),
+                ) == self.root_vid
                 {
                     return Err(self.cyclic_term_error());
                 }
@@ -421,10 +411,22 @@ where
                 )?;
                 Ok(self.tcx().mk_const(ty::UnevaluatedConst { def, substs }, c.ty()))
             }
+            ty::ConstKind::Placeholder(placeholder) => {
+                if self.for_universe.can_name(placeholder.universe) {
+                    Ok(c)
+                } else {
+                    debug!(
+                        "root universe {:?} cannot name placeholder in universe {:?}",
+                        self.for_universe, placeholder.universe
+                    );
+                    Err(TypeError::Mismatch)
+                }
+            }
             _ => relate::super_relate_consts(self, c, c),
         }
     }
 
+    #[instrument(level = "debug", skip(self), ret)]
     fn binders<T>(
         &mut self,
         a: ty::Binder<'tcx, T>,
@@ -433,7 +435,6 @@ where
     where
         T: Relate<'tcx>,
     {
-        debug!("Generalizer::binders(a={:?})", a);
         let result = self.relate(a.skip_binder(), a.skip_binder())?;
         Ok(a.rebind(result))
     }
