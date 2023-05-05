@@ -35,7 +35,7 @@ const GENERIC_ARG_FIRST: TokenSet = TokenSet::new(&[
 // type T = S<i32>;
 fn generic_arg(p: &mut Parser<'_>) -> bool {
     match p.current() {
-        LIFETIME_IDENT => lifetime_arg(p),
+        LIFETIME_IDENT if !p.nth_at(1, T![+]) => lifetime_arg(p),
         T!['{'] | T![true] | T![false] | T![-] => const_arg(p),
         k if k.is_literal() => const_arg(p),
         // test associated_type_bounds

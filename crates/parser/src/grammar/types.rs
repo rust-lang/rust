@@ -15,6 +15,7 @@ pub(super) const TYPE_FIRST: TokenSet = paths::PATH_FIRST.union(TokenSet::new(&[
     T![impl],
     T![dyn],
     T![Self],
+    LIFETIME_IDENT,
 ]));
 
 pub(super) const TYPE_RECOVERY_SET: TokenSet = TokenSet::new(&[
@@ -49,6 +50,7 @@ fn type_with_bounds_cond(p: &mut Parser<'_>, allow_bounds: bool) {
         // Some path types are not allowed to have bounds (no plus)
         T![<] => path_type_(p, allow_bounds),
         _ if paths::is_path_start(p) => path_or_macro_type_(p, allow_bounds),
+        LIFETIME_IDENT if p.nth_at(1, T![+]) => bare_dyn_trait_type(p),
         _ => {
             p.err_recover("expected type", TYPE_RECOVERY_SET);
         }
@@ -271,6 +273,15 @@ fn dyn_trait_type(p: &mut Parser<'_>) {
     assert!(p.at(T![dyn]));
     let m = p.start();
     p.bump(T![dyn]);
+    generic_params::bounds_without_colon(p);
+    m.complete(p, DYN_TRAIT_TYPE);
+}
+
+// test bare_dyn_types_with_leading_lifetime
+// type A = 'static + Trait;
+// type B = S<'static + Trait>;
+fn bare_dyn_trait_type(p: &mut Parser<'_>) {
+    let m = p.start();
     generic_params::bounds_without_colon(p);
     m.complete(p, DYN_TRAIT_TYPE);
 }

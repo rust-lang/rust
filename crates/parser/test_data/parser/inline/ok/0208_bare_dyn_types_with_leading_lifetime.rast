@@ -1,0 +1,58 @@
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "A"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    DYN_TRAIT_TYPE
+      TYPE_BOUND_LIST
+        TYPE_BOUND
+          LIFETIME
+            LIFETIME_IDENT "'static"
+        WHITESPACE " "
+        PLUS "+"
+        WHITESPACE " "
+        TYPE_BOUND
+          PATH_TYPE
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "Trait"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "B"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "S"
+          GENERIC_ARG_LIST
+            L_ANGLE "<"
+            TYPE_ARG
+              DYN_TRAIT_TYPE
+                TYPE_BOUND_LIST
+                  TYPE_BOUND
+                    LIFETIME
+                      LIFETIME_IDENT "'static"
+                  WHITESPACE " "
+                  PLUS "+"
+                  WHITESPACE " "
+                  TYPE_BOUND
+                    PATH_TYPE
+                      PATH
+                        PATH_SEGMENT
+                          NAME_REF
+                            IDENT "Trait"
+            R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n"
