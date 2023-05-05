@@ -89,6 +89,8 @@ export class RustDependenciesProvider
             const dep = this.toDep(crate.name || "unknown", crate.version || "", crate.path);
             this.dependenciesMap[dep.dependencyPath.toLowerCase()] = dep;
             return dep;
+        }).sort((a, b) => {
+            return a.label.localeCompare(b.label)
         });
     }
 
