@@ -10,10 +10,15 @@ pushd rust
 
 command -v rg >/dev/null 2>&1 || cargo install ripgrep
 
-# FIXME add needs-asm-support to all tests in tests/ui/asm
 rm -r tests/ui/{unsized-locals/,lto/,linkage*} || true
 for test in $(rg --files-with-matches "lto|// needs-asm-support|// needs-unwind" tests/{codegen-units,ui,incremental}); do
   rm $test
+done
+
+for test in tests/run-make/**/Makefile; do
+  if rg "# needs-asm-support|# needs-unwind" $test >/dev/null; then
+    rm -r $(dirname $test)
+  fi
 done
 
 for test in $(rg -i --files-with-matches "//(\[\w+\])?~[^\|]*\s*ERR|// error-pattern:|// build-fail|// run-fail|-Cllvm-args" tests/ui); do
@@ -28,24 +33,8 @@ rm tests/ui/parser/unclosed-delimiter-in-dep.rs # submodule contains //~ERROR
 # ================
 
 # requires stack unwinding
-# FIXME add needs-unwind to these tests
-rm tests/incremental/change_crate_dep_kind.rs
-rm tests/incremental/issue-80691-bad-eval-cache.rs # -Cpanic=abort causes abort instead of exit(101)
-rm -r tests/run-make/c-unwind-abi-catch-lib-panic
-rm -r tests/run-make/c-unwind-abi-catch-panic
-rm -r tests/run-make/debug-assertions
-rm -r tests/run-make/foreign-double-unwind
-rm -r tests/run-make/foreign-exceptions
-rm -r tests/run-make/foreign-rust-exceptions
-rm -r tests/run-make/libtest-json
-rm -r tests/run-make/static-unwinding
-
-# requires compiling with -Cpanic=unwind
-rm -r tests/ui/macros/rfc-2011-nicer-assert-messages/
-rm -r tests/run-make/test-benches
-rm tests/ui/test-attrs/test-type.rs
-rm -r tests/run-make/const_fn_mir
-rm -r tests/run-make/intrinsic-unreachable
+# FIXME add needs-unwind to this test
+rm -r tests/run-make/libtest-junit
 
 # vendor intrinsics
 rm tests/ui/sse2.rs # cpuid not supported, so sse2 not detected
