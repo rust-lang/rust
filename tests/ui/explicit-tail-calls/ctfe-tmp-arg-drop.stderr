@@ -1,0 +1,19 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/ctfe-tmp-arg-drop.rs:6:23
+   |
+LL |     become takes_view(HasDrop.as_view());
+   |     ------------------^^^^^^^-----------
+   |     |                 |                |
+   |     |                 |                temporary value is freed at the end of this statement
+   |     |                 creates a temporary value which is freed while still in use
+   |     borrow later used here
+   |
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = HasDrop;
+LL ~     become takes_view(binding.as_view());
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0716`.

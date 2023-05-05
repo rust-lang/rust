@@ -182,7 +182,6 @@ pub(crate) enum BreakableTarget {
     Continue(region::Scope),
     Break(region::Scope),
     Return,
-    Become,
 }
 
 rustc_index::newtype_index! {
@@ -628,10 +627,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 .unwrap_or_else(|| span_bug!(span, "no enclosing breakable scope found"))
         };
         let (break_index, destination) = match target {
-            BreakableTarget::Return | BreakableTarget::Become => {
+            BreakableTarget::Return => {
                 let scope = &self.scopes.breakable_scopes[0];
                 if scope.break_destination != Place::return_place() {
-                    span_bug!(span, "`return` or `become` in item with no return scope");
+                    span_bug!(span, "`return` in item with no return scope");
                 }
                 (0, Some(scope.break_destination))
             }
@@ -1462,6 +1461,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
             | TerminatorKind::Resume
             | TerminatorKind::Terminate
             | TerminatorKind::Return
+            | TerminatorKind::TailCall { .. }
             | TerminatorKind::Unreachable
             | TerminatorKind::Yield { .. }
             | TerminatorKind::GeneratorDrop

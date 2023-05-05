@@ -976,7 +976,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 self.check_edge(location, *target, EdgeKind::Normal);
                 self.check_unwind_edge(location, *unwind);
             }
-            TerminatorKind::Call { func, args, destination, target, unwind, .. } => {
+
+            TerminatorKind::Call { func, args, .. }
+            | TerminatorKind::TailCall { func, args, .. } => {
                 let func_ty = func.ty(&self.body.local_decls, self.tcx);
                 match func_ty.kind() {
                     ty::FnPtr(..) | ty::FnDef(..) => {}
@@ -985,16 +987,21 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         format!("encountered non-callable type {} in `Call` terminator", func_ty),
                     ),
                 }
-                if let Some(target) = target {
-                    self.check_edge(location, *target, EdgeKind::Normal);
+
+                if let TerminatorKind::Call { target, unwind, .. } = terminator.kind {
+                    if let Some(target) = target {
+                        self.check_edge(location, target, EdgeKind::Normal);
+                    }
+                    self.check_unwind_edge(location, unwind);
                 }
-                self.check_unwind_edge(location, *unwind);
 
                 // The call destination place and Operand::Move place used as an argument might be
                 // passed by a reference to the callee. Consequently they must be non-overlapping.
                 // Currently this simply checks for duplicate places.
                 self.place_cache.clear();
-                self.place_cache.push(destination.as_ref());
+                if let TerminatorKind::Call { destination, .. } = terminator.kind {
+                    self.place_cache.push(destination.as_ref());
+                }
                 for arg in args {
                     if let Operand::Move(place) = arg {
                         self.place_cache.push(place.as_ref());
@@ -1008,7 +1015,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.fail(
                         location,
                         format!(
-                            "encountered overlapping memory in `Call` terminator: {:?}",
+                            "encountered overlapping memory in `{}` terminator: {:?}",
+                            terminator.kind.name(),
                             terminator.kind,
                         ),
                     );

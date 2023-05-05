@@ -158,6 +158,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             | Terminate
             | GeneratorDrop
             | Return
+            | TailCall { .. }
             | Unreachable
             | Call { target: None, unwind: _, .. }
             | InlineAsm { destination: None, unwind: _, .. } => {
@@ -200,6 +201,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             | Terminate
             | GeneratorDrop
             | Return
+            | TailCall { .. }
             | Unreachable
             | Call { target: None, unwind: _, .. }
             | InlineAsm { destination: None, unwind: _, .. } => None.into_iter().chain(&mut []),
@@ -216,6 +218,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             | TerminatorKind::Resume
             | TerminatorKind::Terminate
             | TerminatorKind::Return
+            | TerminatorKind::TailCall { .. }
             | TerminatorKind::Unreachable
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Yield { .. }
@@ -235,6 +238,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             | TerminatorKind::Resume
             | TerminatorKind::Terminate
             | TerminatorKind::Return
+            | TerminatorKind::TailCall { .. }
             | TerminatorKind::Unreachable
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Yield { .. }
@@ -325,6 +329,16 @@ impl<'tcx> TerminatorKind<'tcx> {
                 }
                 write!(fmt, ")")
             }
+            TailCall { func, args, .. } => {
+                write!(fmt, "tailcall {func:?}(")?;
+                for (index, arg) in args.iter().enumerate() {
+                    if index > 0 {
+                        write!(fmt, ", ")?;
+                    }
+                    write!(fmt, "{:?}", arg)?;
+                }
+                write!(fmt, ")")
+            }
             Assert { cond, expected, msg, .. } => {
                 write!(fmt, "assert(")?;
                 if !expected {
@@ -389,7 +403,7 @@ impl<'tcx> TerminatorKind<'tcx> {
     pub fn fmt_successor_labels(&self) -> Vec<Cow<'static, str>> {
         use self::TerminatorKind::*;
         match *self {
-            Return | Resume | Terminate | Unreachable | GeneratorDrop => vec![],
+            Return | TailCall { .. } | Resume | Terminate | Unreachable | GeneratorDrop => vec![],
             Goto { .. } => vec!["".into()],
             SwitchInt { ref targets, .. } => targets
                 .values

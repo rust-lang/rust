@@ -719,6 +719,12 @@ impl<'cx, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx, R> for MirBorro
                 }
                 self.mutate_place(loc, (*destination, span), Deep, flow_state);
             }
+            TerminatorKind::TailCall { func, args, .. } => {
+                self.consume_operand(loc, (func, span), flow_state);
+                for arg in args {
+                    self.consume_operand(loc, (arg, span), flow_state);
+                }
+            }
             TerminatorKind::Assert { cond, expected: _, msg, target: _, unwind: _ } => {
                 self.consume_operand(loc, (cond, span), flow_state);
                 use rustc_middle::mir::AssertKind;
@@ -803,7 +809,11 @@ impl<'cx, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx, R> for MirBorro
                 }
             }
 
-            TerminatorKind::Resume | TerminatorKind::Return | TerminatorKind::GeneratorDrop => {
+            // FIXME(explicit_tail_calls): do we need to do something similar before the tail call?
+            TerminatorKind::Resume
+            | TerminatorKind::Return
+            | TerminatorKind::TailCall { .. }
+            | TerminatorKind::GeneratorDrop => {
                 // Returning from the function implicitly kills storage for all locals and statics.
                 // Often, the storage will already have been killed by an explicit
                 // StorageDead, but we don't always emit those (notably on unwind paths),

@@ -533,6 +533,17 @@ macro_rules! make_mir_visitor {
                         );
                     }
 
+                    TerminatorKind::TailCall {
+                        func,
+                        args,
+                        fn_span: _,
+                    } => {
+                        self.visit_operand(func, location);
+                        for arg in args {
+                            self.visit_operand(arg, location);
+                        }
+                    },
+
                     TerminatorKind::Assert {
                         cond,
                         expected: _,

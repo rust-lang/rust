@@ -1294,6 +1294,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 fn_span,
                 mergeable_succ(),
             ),
+
+            mir::TerminatorKind::TailCall { .. } => {
+                // FIXME(explicit_tail_calls): implement tail calls in ssa backend
+                span_bug!(
+                    terminator.source_info.span,
+                    "`TailCall` terminator is not yet supported by `rustc_codegen_ssa`"
+                )
+            }
+
             mir::TerminatorKind::GeneratorDrop | mir::TerminatorKind::Yield { .. } => {
                 bug!("generator ops in codegen")
             }

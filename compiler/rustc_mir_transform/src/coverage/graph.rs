@@ -123,6 +123,7 @@ impl CoverageGraph {
 
             match term.kind {
                 TerminatorKind::Return { .. }
+                | TerminatorKind::TailCall { .. }
                 | TerminatorKind::Terminate
                 | TerminatorKind::Yield { .. }
                 | TerminatorKind::SwitchInt { .. } => {

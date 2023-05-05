@@ -411,6 +411,12 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                     self.gather_init(destination.as_ref(), InitKind::NonPanicPathOnly);
                 }
             }
+            TerminatorKind::TailCall { ref func, ref args, .. } => {
+                self.gather_operand(func);
+                for arg in args {
+                    self.gather_operand(arg);
+                }
+            }
             TerminatorKind::InlineAsm {
                 template: _,
                 ref operands,

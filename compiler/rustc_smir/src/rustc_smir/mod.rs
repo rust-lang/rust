@@ -372,6 +372,7 @@ impl<'tcx> Stable for mir::Terminator<'tcx> {
                     unwind: unwind.stable(),
                 }
             }
+            TailCall { .. } => todo!(),
             Yield { .. } | GeneratorDrop | FalseEdge { .. } | FalseUnwind { .. } => unreachable!(),
         }
     }

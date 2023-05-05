@@ -453,7 +453,7 @@ where
 /// building up a `GenKillSet` and then throwing it away.
 pub trait GenKill<T> {
     /// Inserts `elem` into the state vector.
-    fn gen(&mut self, elem: T);
+    fn gen(&mut self, der: T);
 
     /// Removes `elem` from the state vector.
     fn kill(&mut self, elem: T);

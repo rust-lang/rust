@@ -527,6 +527,10 @@ impl Direction for Forward {
                 }
             }
 
+            TailCall { .. } => {
+                // FIXME(explicit_tail_calls): is there anything sensible to do here?
+            }
+
             InlineAsm {
                 template: _,
                 ref operands,

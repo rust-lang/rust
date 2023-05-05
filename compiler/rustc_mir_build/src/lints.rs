@@ -112,6 +112,8 @@ impl<'mir, 'tcx> TriColorVisitor<BasicBlocks<'tcx>> for Search<'mir, 'tcx> {
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Resume
             | TerminatorKind::Return
+            // FIXME(explicit_tail_calls) Is this right??
+            | TerminatorKind::TailCall { .. }
             | TerminatorKind::Unreachable
             | TerminatorKind::Yield { .. } => ControlFlow::Break(NonRecursive),
 

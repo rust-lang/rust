@@ -1078,6 +1078,9 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
                 *target = self.map_block(*target);
                 *unwind = self.map_unwind(*unwind);
             }
+            TerminatorKind::TailCall { .. } => {
+                // FIXME(explicit_tail_calls): figure out how exactly tail calls are inlined
+            }
             TerminatorKind::Call { ref mut target, ref mut unwind, .. } => {
                 if let Some(ref mut tgt) = *target {
                     *tgt = self.map_block(*tgt);

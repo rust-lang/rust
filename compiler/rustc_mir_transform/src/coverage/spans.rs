@@ -841,7 +841,7 @@ pub(super) fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span>
 /// If the MIR `Terminator` has a span contributive to computing coverage spans,
 /// return it; otherwise return `None`.
 pub(super) fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Span> {
-    match terminator.kind {
+    match &terminator.kind {
         // These terminators have spans that don't positively contribute to computing a reasonable
         // span of actually executed source code. (For example, SwitchInt terminators extracted from
         // an `if condition { block }` has a span that includes the executed block, if true,
@@ -856,7 +856,8 @@ pub(super) fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Sp
         | TerminatorKind::Goto { .. } => None,
 
         // Call `func` operand can have a more specific span when part of a chain of calls
-        | TerminatorKind::Call { ref func, .. } => {
+        TerminatorKind::Call { func, .. }
+        | TerminatorKind::TailCall { func, .. } => {
             let mut span = terminator.source_info.span;
             if let mir::Operand::Constant(box constant) = func {
                 if constant.span.lo() > span.lo() {

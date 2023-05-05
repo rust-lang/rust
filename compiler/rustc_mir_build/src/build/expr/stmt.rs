@@ -99,12 +99,31 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 BreakableTarget::Return,
                 source_info,
             ),
-            ExprKind::Become { value } => this.break_scope(
-                block,
-                Some(&this.thir[value]),
-                BreakableTarget::Become,
-                source_info,
-            ),
+            ExprKind::Become { value } => {
+                let v = &this.thir[value];
+                let ExprKind::Scope { value, .. } = v.kind else { span_bug!(v.span, "what {v:?}") };
+                let v = &this.thir[value];
+                let ExprKind::Call { ref args, fun, fn_span, .. } = v.kind else { span_bug!(v.span, "what {v:?}") };
+
+                let fun = unpack!(block = this.as_local_operand(block, &this.thir[fun]));
+                let args: Vec<_> = args
+                    .into_iter()
+                    .copied()
+                    .map(|arg| unpack!(block = this.as_local_call_operand(block, &this.thir[arg])))
+                    .collect();
+
+                this.record_operands_moved(&args);
+
+                debug!("expr_into_dest: fn_span={:?}", fn_span);
+
+                this.cfg.terminate(
+                    block,
+                    source_info,
+                    TerminatorKind::TailCall { func: fun, args, fn_span },
+                );
+
+                this.cfg.start_new_block().unit()
+            }
             _ => {
                 assert!(
                     statement_scope.is_some(),

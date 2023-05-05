@@ -292,6 +292,7 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
                 | TerminatorKind::SwitchInt { .. }
                 | TerminatorKind::Yield { .. }
                 | TerminatorKind::FalseEdge { .. }
+                | TerminatorKind::TailCall { .. }
                 | TerminatorKind::FalseUnwind { .. } => { /* nothing to do */ }
                 TerminatorKind::Call { unwind, .. }
                 | TerminatorKind::InlineAsm { unwind, .. }

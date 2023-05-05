@@ -137,6 +137,12 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 }
                 self.mutate_place(location, *destination, Deep);
             }
+            TerminatorKind::TailCall { func, args, .. } => {
+                self.consume_operand(location, func);
+                for arg in args {
+                    self.consume_operand(location, arg);
+                }
+            }
             TerminatorKind::Assert { cond, expected: _, msg, target: _, unwind: _ } => {
                 self.consume_operand(location, cond);
                 use rustc_middle::mir::AssertKind;

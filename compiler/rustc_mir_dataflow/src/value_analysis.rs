@@ -258,6 +258,9 @@ pub trait ValueAnalysis<'tcx> {
                 // They would have an effect, but are not allowed in this phase.
                 bug!("encountered disallowed terminator");
             }
+            TerminatorKind::TailCall { .. } => {
+                // FIXME(explicit_tail_calls): determine if we need to do something here (probably not)
+            }
             TerminatorKind::Goto { .. }
             | TerminatorKind::SwitchInt { .. }
             | TerminatorKind::Resume
