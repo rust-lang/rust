@@ -72,7 +72,6 @@ mod erase_regions;
 mod generics;
 mod impl_trait_in_trait_data;
 mod impls_ty;
-mod infer_var_info;
 mod instance;
 mod list;
 mod opaque;
@@ -132,7 +131,6 @@ pub use self::diagnostics::*;
 pub use self::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
 pub use self::generics::*;
 pub use self::impl_trait_in_trait_data::ImplTraitInTraitData;
-pub use self::infer_var_info::InferVarInfo;
 pub use self::instance::{Instance, InstanceDef, ShortInstance, UnusedGenericParams};
 pub use self::list::List;
 pub use self::opaque::{OpaqueHiddenType, OpaqueTypeKey};
@@ -162,7 +160,7 @@ pub use self::subst::*;
 pub use self::symbol_name::SymbolName;
 pub use self::term::{ParamTerm, Term, TermKind};
 pub use self::trait_def::TraitDef;
-pub use self::ty_::{PlaceholderType, Ty};
+pub use self::ty_::{InferVarInfo, PlaceholderType, Ty};
 pub use self::typeck_results::{
     CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
     GeneratorDiagnosticData, GeneratorInteriorTypeCause, TypeckResults, UserType,
