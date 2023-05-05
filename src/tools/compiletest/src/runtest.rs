@@ -319,8 +319,7 @@ impl<'test> TestCx<'test> {
 
     fn run_cfail_test(&self) {
         let pm = self.pass_mode();
-        let proc_res =
-            self.compile_test(WillExecute::No, self.should_emit_metadata(pm), Vec::new());
+        let proc_res = self.compile_test(WillExecute::No, self.should_emit_metadata(pm));
         self.check_if_test_should_compile(&proc_res, pm);
         self.check_no_compiler_crash(&proc_res, self.props.should_ice);
 
@@ -348,7 +347,7 @@ impl<'test> TestCx<'test> {
     fn run_rfail_test(&self) {
         let pm = self.pass_mode();
         let should_run = self.run_if_enabled();
-        let proc_res = self.compile_test(should_run, self.should_emit_metadata(pm), Vec::new());
+        let proc_res = self.compile_test(should_run, self.should_emit_metadata(pm));
 
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
@@ -396,7 +395,7 @@ impl<'test> TestCx<'test> {
 
     fn run_cpass_test(&self) {
         let emit_metadata = self.should_emit_metadata(self.pass_mode());
-        let proc_res = self.compile_test(WillExecute::No, emit_metadata, Vec::new());
+        let proc_res = self.compile_test(WillExecute::No, emit_metadata);
 
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
@@ -411,7 +410,7 @@ impl<'test> TestCx<'test> {
     fn run_rpass_test(&self) {
         let emit_metadata = self.should_emit_metadata(self.pass_mode());
         let should_run = self.run_if_enabled();
-        let proc_res = self.compile_test(should_run, emit_metadata, Vec::new());
+        let proc_res = self.compile_test(should_run, emit_metadata);
 
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
@@ -441,7 +440,7 @@ impl<'test> TestCx<'test> {
         }
 
         let should_run = self.run_if_enabled();
-        let mut proc_res = self.compile_test(should_run, Emit::None, Vec::new());
+        let mut proc_res = self.compile_test(should_run, Emit::None);
 
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
@@ -687,7 +686,7 @@ impl<'test> TestCx<'test> {
 
         // compile test file (it should have 'compile-flags:-g' in the header)
         let should_run = self.run_if_enabled();
-        let compile_result = self.compile_test(should_run, Emit::None, Vec::new());
+        let compile_result = self.compile_test(should_run, Emit::None);
         if !compile_result.status.success() {
             self.fatal_proc_rec("compilation failed!", &compile_result);
         }
@@ -807,7 +806,7 @@ impl<'test> TestCx<'test> {
 
         // compile test file (it should have 'compile-flags:-g' in the header)
         let should_run = self.run_if_enabled();
-        let compiler_run_result = self.compile_test(should_run, Emit::None, Vec::new());
+        let compiler_run_result = self.compile_test(should_run, Emit::None);
         if !compiler_run_result.status.success() {
             self.fatal_proc_rec("compilation failed!", &compiler_run_result);
         }
@@ -1044,7 +1043,7 @@ impl<'test> TestCx<'test> {
     fn run_debuginfo_lldb_test_no_opt(&self) {
         // compile test file (it should have 'compile-flags:-g' in the header)
         let should_run = self.run_if_enabled();
-        let compile_result = self.compile_test(should_run, Emit::None, Vec::new());
+        let compile_result = self.compile_test(should_run, Emit::None);
         if !compile_result.status.success() {
             self.fatal_proc_rec("compilation failed!", &compile_result);
         }
@@ -1483,7 +1482,16 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn compile_test(&self, will_execute: WillExecute, emit: Emit, passes: Vec<String>) -> ProcRes {
+    fn compile_test(&self, will_execute: WillExecute, emit: Emit) -> ProcRes {
+        self.compile_test_general(will_execute, emit, self.props.local_pass_mode(), Vec::new())
+    }
+
+    fn compile_test_with_passes(
+        &self,
+        will_execute: WillExecute,
+        emit: Emit,
+        passes: Vec<String>,
+    ) -> ProcRes {
         self.compile_test_general(will_execute, emit, self.props.local_pass_mode(), passes)
     }
 
@@ -2791,7 +2799,7 @@ impl<'test> TestCx<'test> {
     fn run_codegen_units_test(&self) {
         assert!(self.revision.is_none(), "revisions not relevant here");
 
-        let proc_res = self.compile_test(WillExecute::No, Emit::None, Vec::new());
+        let proc_res = self.compile_test(WillExecute::No, Emit::None);
 
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
@@ -3340,7 +3348,7 @@ impl<'test> TestCx<'test> {
         let pm = self.pass_mode();
         let should_run = self.should_run(pm);
         let emit_metadata = self.should_emit_metadata(pm);
-        let proc_res = self.compile_test(should_run, emit_metadata, Vec::new());
+        let proc_res = self.compile_test(should_run, emit_metadata);
         self.check_if_test_should_compile(&proc_res, pm);
 
         // if the user specified a format in the ui test
@@ -3523,7 +3531,7 @@ impl<'test> TestCx<'test> {
         let emit_metadata = self.should_emit_metadata(pm);
         let passes = self.get_passes();
 
-        let proc_res = self.compile_test(should_run, emit_metadata, passes);
+        let proc_res = self.compile_test_with_passes(should_run, emit_metadata, passes);
         self.check_mir_dump();
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
