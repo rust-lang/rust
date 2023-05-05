@@ -324,7 +324,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
         match e.kind {
             ExprKind::Path(ref qpath) => self.fetch_path(qpath, e.hir_id, self.typeck_results.expr_ty(e)),
             ExprKind::Block(block, _) => self.block(block),
-            ExprKind::Lit(ref lit) => {
+            ExprKind::Lit(lit) => {
                 if is_direct_expn_of(e.span, "cfg").is_some() {
                     None
                 } else {

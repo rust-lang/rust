@@ -74,7 +74,7 @@ enum InitializationType<'tcx> {
 
 impl<'tcx> LateLintPass<'tcx> for SlowVectorInit {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        // Matches initialization on reassignements. For example: `vec = Vec::with_capacity(100)`
+        // Matches initialization on reassignments. For example: `vec = Vec::with_capacity(100)`
         if_chain! {
             if let ExprKind::Assign(left, right, _) = expr.kind;
 

@@ -532,7 +532,7 @@ fn check_empty_expr(cx: &LateContext<'_>, span: Span, lit1: &Expr<'_>, lit2: &Ex
 }
 
 fn is_empty_string(expr: &Expr<'_>) -> bool {
-    if let ExprKind::Lit(ref lit) = expr.kind {
+    if let ExprKind::Lit(lit) = expr.kind {
         if let LitKind::Str(lit, _) = lit.node {
             let lit = lit.as_str();
             return lit.is_empty();

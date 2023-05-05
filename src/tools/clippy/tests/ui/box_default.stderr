@@ -1,5 +1,5 @@
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:22:32
+  --> $DIR/box_default.rs:23:32
    |
 LL |     let _string: Box<String> = Box::new(Default::default());
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::default()`
@@ -7,91 +7,91 @@ LL |     let _string: Box<String> = Box::new(Default::default());
    = note: `-D clippy::box-default` implied by `-D warnings`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:23:17
+  --> $DIR/box_default.rs:24:17
    |
 LL |     let _byte = Box::new(u8::default());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<u8>::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:24:16
+  --> $DIR/box_default.rs:25:16
    |
 LL |     let _vec = Box::new(Vec::<u8>::new());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<Vec<u8>>::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:25:17
+  --> $DIR/box_default.rs:26:17
    |
 LL |     let _impl = Box::new(ImplementsDefault::default());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<ImplementsDefault>::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:26:18
+  --> $DIR/box_default.rs:27:18
    |
 LL |     let _impl2 = Box::new(<ImplementsDefault as Default>::default());
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<ImplementsDefault>::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:27:42
+  --> $DIR/box_default.rs:28:42
    |
 LL |     let _impl3: Box<ImplementsDefault> = Box::new(Default::default());
    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:29:28
+  --> $DIR/box_default.rs:30:28
    |
 LL |     let _in_macro = outer!(Box::new(String::new()));
    |                            ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<String>::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:30:34
+  --> $DIR/box_default.rs:31:34
    |
 LL |     let _string_default = outer!(Box::new(String::from("")));
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<String>::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:31:46
+  --> $DIR/box_default.rs:32:46
    |
 LL |     let _vec2: Box<Vec<ImplementsDefault>> = Box::new(vec![]);
    |                                              ^^^^^^^^^^^^^^^^ help: try: `Box::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:32:33
+  --> $DIR/box_default.rs:33:33
    |
 LL |     let _vec3: Box<Vec<bool>> = Box::new(Vec::from([]));
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:33:25
+  --> $DIR/box_default.rs:34:25
    |
 LL |     let _vec4: Box<_> = Box::new(Vec::from([false; 0]));
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<Vec<bool>>::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:35:16
+  --> $DIR/box_default.rs:36:16
    |
 LL |     call_ty_fn(Box::new(u8::default()));
    |                ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:40:5
+  --> $DIR/box_default.rs:41:5
    |
 LL |     Box::new(bool::default())
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<bool>::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:57:28
+  --> $DIR/box_default.rs:58:28
    |
 LL |     let _: Box<dyn Read> = Box::new(ImplementsDefault::default());
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<ImplementsDefault>::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:66:17
+  --> $DIR/box_default.rs:67:17
    |
 LL |         let _ = Box::new(WeirdPathed::default());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<WeirdPathed>::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:78:18
+  --> $DIR/box_default.rs:79:18
    |
 LL |             Some(Box::new(Foo::default()))
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<Foo>::default()`

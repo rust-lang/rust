@@ -311,6 +311,8 @@ pub struct While<'hir> {
     pub condition: &'hir Expr<'hir>,
     /// `while` loop body
     pub body: &'hir Expr<'hir>,
+    /// Span of the loop header
+    pub span: Span,
 }
 
 impl<'hir> While<'hir> {
@@ -336,10 +338,10 @@ impl<'hir> While<'hir> {
             },
             _,
             LoopSource::While,
-            _,
+            span,
         ) = expr.kind
         {
-            return Some(Self { condition, body });
+            return Some(Self { condition, body, span });
         }
         None
     }

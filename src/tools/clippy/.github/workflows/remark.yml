@@ -36,6 +36,12 @@ jobs:
     - name: Check *.md files
       run: git ls-files -z '*.md' | xargs -0 -n 1 -I {} ./node_modules/.bin/remark {} -u lint -f > /dev/null
 
+    - name: Linkcheck book
+      run: |
+        rustup toolchain install nightly --component rust-docs
+        curl https://raw.githubusercontent.com/rust-lang/rust/master/src/tools/linkchecker/linkcheck.sh -o linkcheck.sh
+        sh linkcheck.sh clippy --path ./book
+        
     - name: Build mdbook
       run: mdbook build book
 

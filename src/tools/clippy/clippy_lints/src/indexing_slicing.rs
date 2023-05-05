@@ -170,7 +170,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
                         return;
                     }
                     // Index is a constant uint.
-                    if let Some(..) = constant(cx, cx.typeck_results(), index) {
+                    if constant(cx, cx.typeck_results(), index).is_some() {
                         // Let rustc's `const_err` lint handle constant `usize` indexing on arrays.
                         return;
                     }
