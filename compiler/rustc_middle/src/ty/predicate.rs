@@ -1,37 +1,23 @@
-pub use crate::ty::context::{
-    tls, CtxtInterners, DeducedParamAttrs, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt, TyCtxtFeed,
-};
+use std::fmt;
+
 use rustc_data_structures::intern::Interned;
+use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_type_ir::WithCachedTypeInfo;
 
 use crate::ty::{
-    self, AliasRelationDirection, Binder, BoundConstness, ClosureKind, Const, DebruijnIndex,
-    EarlyBinder, GenericArg, SubstsRef, Term, Ty, TypeFlags,
+    self, AliasRelationDirection, AliasTy, Binder, ClosureKind, Const, DebruijnIndex, EarlyBinder,
+    GenericArg, ImplPolarity, ParamEnv, PolyTraitRef, SubstsRef, Term, TraitRef, Ty, TyCtxt,
+    TypeFlags,
 };
 
-mod clause;
-mod coerce_predicate;
 mod crate_predicates_map;
 mod instantiated_predicates;
-mod outlives_predicate;
-mod projection_predicate;
-mod subtype_predicate;
 mod to_predicate;
-mod trait_predicate;
 
-pub use clause::Clause;
-pub use coerce_predicate::{CoercePredicate, PolyCoercePredicate};
 pub use crate_predicates_map::CratePredicatesMap;
 pub use instantiated_predicates::InstantiatedPredicates;
-pub use outlives_predicate::{
-    OutlivesPredicate, PolyRegionOutlivesPredicate, PolyTypeOutlivesPredicate,
-    RegionOutlivesPredicate, TypeOutlivesPredicate,
-};
-pub use projection_predicate::{PolyProjectionPredicate, ProjectionPredicate};
-pub use subtype_predicate::{PolySubtypePredicate, SubtypePredicate};
 pub use to_predicate::ToPredicate;
-pub use trait_predicate::{PolyTraitPredicate, TraitPredicate};
 
 /// Use this rather than `PredicateKind`, whenever possible.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable)]
@@ -94,6 +80,114 @@ pub enum PredicateKind<'tcx> {
     ///
     /// Only used for new solver
     AliasRelate(Term<'tcx>, Term<'tcx>, AliasRelationDirection),
+}
+
+/// A clause is something that can appear in where bounds or be inferred
+/// by implied bounds.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
+pub enum Clause<'tcx> {
+    /// Corresponds to `where Foo: Bar<A, B, C>`. `Foo` here would be
+    /// the `Self` type of the trait reference and `A`, `B`, and `C`
+    /// would be the type parameters.
+    Trait(TraitPredicate<'tcx>),
+
+    /// `where 'a: 'b`
+    RegionOutlives(RegionOutlivesPredicate<'tcx>),
+
+    /// `where T: 'a`
+    TypeOutlives(TypeOutlivesPredicate<'tcx>),
+
+    /// `where <T as TraitRef>::Name == X`, approximately.
+    /// See the `ProjectionPredicate` struct for details.
+    Projection(ProjectionPredicate<'tcx>),
+
+    /// Ensures that a const generic argument to a parameter `const N: u8`
+    /// is of type `u8`.
+    ConstArgHasType(Const<'tcx>, Ty<'tcx>),
+}
+
+pub type PolySubtypePredicate<'tcx> = ty::Binder<'tcx, SubtypePredicate<'tcx>>;
+
+/// Encodes that `a` must be a subtype of `b`. The `a_is_expected` flag indicates
+/// whether the `a` type is the type that we should label as "expected" when
+/// presenting user diagnostics.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
+pub struct SubtypePredicate<'tcx> {
+    pub a_is_expected: bool,
+    pub a: Ty<'tcx>,
+    pub b: Ty<'tcx>,
+}
+
+pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
+
+/// Encodes that we have to coerce *from* the `a` type to the `b` type.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
+pub struct CoercePredicate<'tcx> {
+    pub a: Ty<'tcx>,
+    pub b: Ty<'tcx>,
+}
+
+pub type PolyTraitPredicate<'tcx> = ty::Binder<'tcx, TraitPredicate<'tcx>>;
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
+pub struct TraitPredicate<'tcx> {
+    pub trait_ref: TraitRef<'tcx>,
+
+    pub constness: BoundConstness,
+
+    /// If polarity is Positive: we are proving that the trait is implemented.
+    ///
+    /// If polarity is Negative: we are proving that a negative impl of this trait
+    /// exists. (Note that coherence also checks whether negative impls of supertraits
+    /// exist via a series of predicates.)
+    ///
+    /// If polarity is Reserved: that's a bug.
+    pub polarity: ImplPolarity,
+}
+
+pub type RegionOutlivesPredicate<'tcx> = OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>;
+pub type TypeOutlivesPredicate<'tcx> = OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>;
+pub type PolyRegionOutlivesPredicate<'tcx> = ty::Binder<'tcx, RegionOutlivesPredicate<'tcx>>;
+pub type PolyTypeOutlivesPredicate<'tcx> = ty::Binder<'tcx, TypeOutlivesPredicate<'tcx>>;
+
+/// `A: B`
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
+pub struct OutlivesPredicate<A, B>(pub A, pub B);
+
+pub type PolyProjectionPredicate<'tcx> = ty::Binder<'tcx, ProjectionPredicate<'tcx>>;
+
+/// This kind of predicate has no *direct* correspondent in the
+/// syntax, but it roughly corresponds to the syntactic forms:
+///
+/// 1. `T: TraitRef<..., Item = Type>`
+/// 2. `<T as TraitRef<...>>::Item == Type` (NYI)
+///
+/// In particular, form #1 is "desugared" to the combination of a
+/// normal trait predicate (`T: TraitRef<...>`) and one of these
+/// predicates. Form #2 is a broader form in that it also permits
+/// equality between arbitrary types. Processing an instance of
+/// Form #2 eventually yields one of these `ProjectionPredicate`
+/// instances to normalize the LHS.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
+pub struct ProjectionPredicate<'tcx> {
+    pub projection_ty: AliasTy<'tcx>,
+    pub term: Term<'tcx>,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
+pub enum BoundConstness {
+    /// `T: Trait`
+    NotConst,
+    /// `T: ~const Trait`
+    ///
+    /// Requires resolving to const only when we are in a const context.
+    ConstIfConst,
 }
 
 impl<'tcx> Predicate<'tcx> {
@@ -195,7 +289,7 @@ impl<'tcx> Predicate<'tcx> {
     pub fn subst_supertrait(
         self,
         tcx: TyCtxt<'tcx>,
-        trait_ref: &ty::PolyTraitRef<'tcx>,
+        trait_ref: &PolyTraitRef<'tcx>,
     ) -> Predicate<'tcx> {
         // The interaction between HRTB and supertraits is not entirely
         // obvious. Let me walk you (and myself) through an example.
@@ -352,5 +446,154 @@ impl<'tcx> Predicate<'tcx> {
 impl rustc_errors::IntoDiagnosticArg for Predicate<'_> {
     fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
         rustc_errors::DiagnosticArgValue::Str(std::borrow::Cow::Owned(self.to_string()))
+    }
+}
+
+impl<'tcx> TraitPredicate<'tcx> {
+    pub fn remap_constness(&mut self, param_env: &mut ParamEnv<'tcx>) {
+        *param_env = param_env.with_constness(self.constness.and(param_env.constness()))
+    }
+
+    /// Remap the constness of this predicate before emitting it for diagnostics.
+    pub fn remap_constness_diag(&mut self, param_env: ParamEnv<'tcx>) {
+        // this is different to `remap_constness` that callees want to print this predicate
+        // in case of selection errors. `T: ~const Drop` bounds cannot end up here when the
+        // param_env is not const because it is always satisfied in non-const contexts.
+        if let hir::Constness::NotConst = param_env.constness() {
+            self.constness = ty::BoundConstness::NotConst;
+        }
+    }
+
+    pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
+        Self { trait_ref: self.trait_ref.with_self_ty(tcx, self_ty), ..self }
+    }
+
+    pub fn def_id(self) -> DefId {
+        self.trait_ref.def_id
+    }
+
+    pub fn self_ty(self) -> Ty<'tcx> {
+        self.trait_ref.self_ty()
+    }
+
+    #[inline]
+    pub fn is_const_if_const(self) -> bool {
+        self.constness == BoundConstness::ConstIfConst
+    }
+
+    pub fn is_constness_satisfied_by(self, constness: hir::Constness) -> bool {
+        match (self.constness, constness) {
+            (BoundConstness::NotConst, _)
+            | (BoundConstness::ConstIfConst, hir::Constness::Const) => true,
+            (BoundConstness::ConstIfConst, hir::Constness::NotConst) => false,
+        }
+    }
+
+    pub fn without_const(mut self) -> Self {
+        self.constness = BoundConstness::NotConst;
+        self
+    }
+}
+
+impl<'tcx> PolyTraitPredicate<'tcx> {
+    pub fn def_id(self) -> DefId {
+        // Ok to skip binder since trait `DefId` does not care about regions.
+        self.skip_binder().def_id()
+    }
+
+    pub fn self_ty(self) -> ty::Binder<'tcx, Ty<'tcx>> {
+        self.map_bound(|trait_ref| trait_ref.self_ty())
+    }
+
+    /// Remap the constness of this predicate before emitting it for diagnostics.
+    pub fn remap_constness_diag(&mut self, param_env: ParamEnv<'tcx>) {
+        *self = self.map_bound(|mut p| {
+            p.remap_constness_diag(param_env);
+            p
+        });
+    }
+
+    #[inline]
+    pub fn is_const_if_const(self) -> bool {
+        self.skip_binder().is_const_if_const()
+    }
+
+    #[inline]
+    pub fn polarity(self) -> ImplPolarity {
+        self.skip_binder().polarity
+    }
+}
+
+impl<'tcx> ProjectionPredicate<'tcx> {
+    pub fn self_ty(self) -> Ty<'tcx> {
+        self.projection_ty.self_ty()
+    }
+
+    pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> ProjectionPredicate<'tcx> {
+        Self { projection_ty: self.projection_ty.with_self_ty(tcx, self_ty), ..self }
+    }
+
+    pub fn trait_def_id(self, tcx: TyCtxt<'tcx>) -> DefId {
+        self.projection_ty.trait_def_id(tcx)
+    }
+
+    pub fn def_id(self) -> DefId {
+        self.projection_ty.def_id
+    }
+}
+
+impl<'tcx> PolyProjectionPredicate<'tcx> {
+    /// Returns the `DefId` of the trait of the associated item being projected.
+    #[inline]
+    pub fn trait_def_id(&self, tcx: TyCtxt<'tcx>) -> DefId {
+        self.skip_binder().projection_ty.trait_def_id(tcx)
+    }
+
+    /// Get the [PolyTraitRef] required for this projection to be well formed.
+    /// Note that for generic associated types the predicates of the associated
+    /// type also need to be checked.
+    #[inline]
+    pub fn required_poly_trait_ref(&self, tcx: TyCtxt<'tcx>) -> PolyTraitRef<'tcx> {
+        // Note: unlike with `TraitRef::to_poly_trait_ref()`,
+        // `self.0.trait_ref` is permitted to have escaping regions.
+        // This is because here `self` has a `Binder` and so does our
+        // return value, so we are preserving the number of binding
+        // levels.
+        self.map_bound(|predicate| predicate.projection_ty.trait_ref(tcx))
+    }
+
+    pub fn term(&self) -> ty::Binder<'tcx, Term<'tcx>> {
+        self.map_bound(|predicate| predicate.term)
+    }
+
+    /// The `DefId` of the `TraitItem` for the associated type.
+    ///
+    /// Note that this is not the `DefId` of the `TraitRef` containing this
+    /// associated type, which is in `tcx.associated_item(projection_def_id()).container`.
+    pub fn projection_def_id(&self) -> DefId {
+        // Ok to skip binder since trait `DefId` does not care about regions.
+        self.skip_binder().projection_ty.def_id
+    }
+}
+
+impl BoundConstness {
+    /// Reduce `self` and `constness` to two possible combined states instead of four.
+    pub fn and(&mut self, constness: hir::Constness) -> hir::Constness {
+        match (constness, self) {
+            (hir::Constness::Const, BoundConstness::ConstIfConst) => hir::Constness::Const,
+            (_, this) => {
+                *this = BoundConstness::NotConst;
+                hir::Constness::NotConst
+            }
+        }
+    }
+}
+
+impl fmt::Display for BoundConstness {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NotConst => f.write_str("normal"),
+            Self::ConstIfConst => f.write_str("`~const`"),
+        }
     }
 }
