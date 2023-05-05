@@ -119,7 +119,28 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
     });
 
     let kind = ModuleItem(Module { items, span });
-    Item::from_def_id_and_parts(doc.def_id.to_def_id(), Some(doc.name), kind, cx)
+    let def_id = doc.def_id.to_def_id();
+    let target_attrs = inline::load_attrs(cx, def_id);
+    let attrs = if let Some(import_id) = doc.import_id {
+        let is_inline = inline::load_attrs(cx, import_id.to_def_id())
+            .lists(sym::doc)
+            .get_word_attr(sym::inline)
+            .is_some();
+        let mut attrs = get_all_import_attributes(cx, import_id, doc.def_id, is_inline);
+        add_without_unwanted_attributes(&mut attrs, target_attrs, is_inline, None);
+        attrs
+    } else {
+        // We only keep the item's attributes.
+        target_attrs.iter().map(|attr| (Cow::Borrowed(attr), None)).collect()
+    };
+
+    let cfg = attrs.cfg(cx.tcx, &cx.cache.hidden_cfg);
+    let attrs = Attributes::from_ast_iter(attrs.iter().map(|(attr, did)| (&**attr, *did)), false);
+
+    let name = doc.renamed.or_else(|| Some(doc.name));
+    let mut item = Item::from_def_id_and_attrs_and_parts(def_id, name, kind, Box::new(attrs), cfg);
+    item.inline_stmt_id = doc.import_id.map(|local| local.to_def_id());
+    item
 }
 
 fn clean_generic_bound<'tcx>(
