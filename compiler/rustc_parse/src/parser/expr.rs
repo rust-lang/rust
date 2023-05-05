@@ -1448,8 +1448,19 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expr_path_start(&mut self) -> PResult<'a, P<Expr>> {
+        let maybe_eq_tok = self.prev_token.clone();
         let (qself, path) = if self.eat_lt() {
-            let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
+            let lt_span = self.prev_token.span;
+            let (qself, path) = self.parse_qpath(PathStyle::Expr).map_err(|mut err| {
+                // Suggests using '<=' if there is an error parsing qpath when the previous token
+                // is an '=' token. Only emits suggestion if the '<' token and '=' token are
+                // directly adjacent (i.e. '=<')
+                if maybe_eq_tok.kind == TokenKind::Eq && maybe_eq_tok.span.hi() == lt_span.lo() {
+                    let eq_lt = maybe_eq_tok.span.to(lt_span);
+                    err.span_suggestion(eq_lt, "did you mean", "<=", Applicability::Unspecified);
+                }
+                err
+            })?;
             (Some(qself), path)
         } else {
             (None, self.parse_path(PathStyle::Expr)?)
