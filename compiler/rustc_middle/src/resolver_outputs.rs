@@ -3,7 +3,7 @@ use rustc_ast::node_id::NodeMap;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::steal::Steal;
 use rustc_hir as hir;
-use rustc_hir::def::{DocLinkResMap, LifetimeRes, Res};
+use rustc_hir::def::{DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap};
 use rustc_index::IndexVec;
 use rustc_session::lint::LintBuffer;
@@ -13,7 +13,7 @@ use rustc_span::{ExpnId, Span};
 
 use crate::metadata::ModChild;
 use crate::middle::privacy::EffectiveVisibilities;
-use crate::ty::{MainDefinition, Visibility};
+use crate::ty::Visibility;
 
 pub struct ResolverOutputs {
     pub global_ctxt: ResolverGlobalCtxt,
@@ -76,4 +76,17 @@ pub struct ResolverAstLowering {
 
     /// Lints that were emitted by the resolver and early lints.
     pub lint_buffer: Steal<LintBuffer>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct MainDefinition {
+    pub res: Res<ast::NodeId>,
+    pub is_import: bool,
+    pub span: Span,
+}
+
+impl MainDefinition {
+    pub fn opt_fn_def_id(self) -> Option<DefId> {
+        if let Res::Def(DefKind::Fn, def_id) = self.res { Some(def_id) } else { None }
+    }
 }

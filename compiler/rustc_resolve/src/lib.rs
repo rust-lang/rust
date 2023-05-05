@@ -44,9 +44,11 @@ use rustc_index::IndexVec;
 use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
+use rustc_middle::resolver_outputs::{
+    MainDefinition, ResolverAstLowering, ResolverGlobalCtxt, ResolverOutputs,
+};
 use rustc_middle::span_bug;
-use rustc_middle::ty::{self, MainDefinition, RegisteredTools, TyCtxt};
-use rustc_middle::ty::{ResolverGlobalCtxt, ResolverOutputs};
+use rustc_middle::ty::{self, RegisteredTools, TyCtxt};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::lint::LintBuffer;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
@@ -1408,7 +1410,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             doc_link_traits_in_scope: self.doc_link_traits_in_scope,
             all_macro_rules: self.all_macro_rules,
         };
-        let ast_lowering = ty::ResolverAstLowering {
+        let ast_lowering = ResolverAstLowering {
             legacy_const_generic_args: self.legacy_const_generic_args,
             partial_res_map: self.partial_res_map,
             import_res_map: self.import_res_map,

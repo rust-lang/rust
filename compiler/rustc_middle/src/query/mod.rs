@@ -37,13 +37,13 @@ rustc_queries! {
         desc { "perform lints prior to macro expansion" }
     }
 
-    query resolutions(_: ()) -> &'tcx ty::ResolverGlobalCtxt {
+    query resolutions(_: ()) -> &'tcx crate::resolver_outputs::ResolverGlobalCtxt {
         feedable
         no_hash
         desc { "getting the resolver outputs" }
     }
 
-    query resolver_for_lowering(_: ()) -> &'tcx Steal<(ty::ResolverAstLowering, Lrc<ast::Crate>)> {
+    query resolver_for_lowering(_: ()) -> &'tcx Steal<(crate::resolver_outputs::ResolverAstLowering, Lrc<ast::Crate>)> {
         eval_always
         no_hash
         desc { "getting the resolver for lowering" }
