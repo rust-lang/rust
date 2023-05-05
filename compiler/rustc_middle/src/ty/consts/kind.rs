@@ -1,17 +1,14 @@
-use super::Const;
-use crate::mir;
-use crate::mir::interpret::{AllocId, ConstValue, Scalar};
-use crate::ty::abstract_const::CastKind;
-use crate::ty::subst::{InternalSubsts, SubstsRef};
-use crate::ty::ParamEnv;
-use crate::ty::{self, List, Ty, TyCtxt, TypeVisitableExt};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_target::abi::Size;
 
-use super::ScalarInt;
+use crate::mir;
+use crate::mir::interpret::{AllocId, ConstValue, Scalar};
+use crate::ty::abstract_const::CastKind;
+use crate::ty::subst::{InternalSubsts, SubstsRef};
+use crate::ty::{self, BoundVar, Const, List, ParamEnv, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
 
 /// An unevaluated (potentially generic) constant used in the type-system.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Lift)]
@@ -72,6 +69,13 @@ pub enum ConstKind<'tcx> {
 
     /// Expr which contains an expression which has partially evaluated items.
     Expr(Expr<'tcx>),
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+#[derive(TyEncodable, TyDecodable, PartialOrd, Ord)]
+pub struct BoundConst<'tcx> {
+    pub var: BoundVar,
+    pub ty: Ty<'tcx>,
 }
 
 impl<'tcx> From<ty::ConstVid<'tcx>> for ConstKind<'tcx> {
