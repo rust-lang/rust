@@ -1460,63 +1460,6 @@ LLVMRustGetBitcodeSliceFromObjectData(const char *data,
   return BitcodeOrError->getBufferStart();
 }
 
-// Rewrite all `DICompileUnit` pointers to the `DICompileUnit` specified. See
-// the comment in `back/lto.rs` for why this exists.
-extern "C" void
-LLVMRustThinLTOGetDICompileUnit(LLVMModuleRef Mod,
-                                DICompileUnit **A,
-                                DICompileUnit **B) {
-  Module *M = unwrap(Mod);
-  DICompileUnit **Cur = A;
-  DICompileUnit **Next = B;
-  for (DICompileUnit *CU : M->debug_compile_units()) {
-    *Cur = CU;
-    Cur = Next;
-    Next = nullptr;
-    if (Cur == nullptr)
-      break;
-  }
-}
-
-// Rewrite all `DICompileUnit` pointers to the `DICompileUnit` specified. See
-// the comment in `back/lto.rs` for why this exists.
-extern "C" void
-LLVMRustThinLTOPatchDICompileUnit(LLVMModuleRef Mod, DICompileUnit *Unit) {
-  Module *M = unwrap(Mod);
-
-  // If the original source module didn't have a `DICompileUnit` then try to
-  // merge all the existing compile units. If there aren't actually any though
-  // then there's not much for us to do so return.
-  if (Unit == nullptr) {
-    for (DICompileUnit *CU : M->debug_compile_units()) {
-      Unit = CU;
-      break;
-    }
-    if (Unit == nullptr)
-      return;
-  }
-
-  // Use LLVM's built-in `DebugInfoFinder` to find a bunch of debuginfo and
-  // process it recursively. Note that we used to specifically iterate over
-  // instructions to ensure we feed everything into it, but `processModule`
-  // started doing this the same way in LLVM 7 (commit d769eb36ab2b8).
-  DebugInfoFinder Finder;
-  Finder.processModule(*M);
-
-  // After we've found all our debuginfo, rewrite all subprograms to point to
-  // the same `DICompileUnit`.
-  for (auto &F : Finder.subprograms()) {
-    F->replaceUnit(Unit);
-  }
-
-  // Erase any other references to other `DICompileUnit` instances, the verifier
-  // will later ensure that we don't actually have any other stale references to
-  // worry about.
-  auto *MD = M->getNamedMetadata("llvm.dbg.cu");
-  MD->clearOperands();
-  MD->addOperand(Unit);
-}
-
 // Computes the LTO cache key for the provided 'ModId' in the given 'Data',
 // storing the result in 'KeyOut'.
 // Currently, this cache key is a SHA-1 hash of anything that could affect
