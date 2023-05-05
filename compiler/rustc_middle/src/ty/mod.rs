@@ -16,7 +16,7 @@ use rustc_attr as attr;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir as hir;
-use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
+use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::Node;
 use rustc_serialize::{Decodable, Encodable};
@@ -62,6 +62,7 @@ mod bound_constness;
 mod c_reader_cache_key;
 mod closure;
 mod closure_size_profile_data;
+mod coherence;
 mod consts;
 mod context;
 mod crate_variances_map;
@@ -69,7 +70,6 @@ mod destructor;
 mod destructured_const;
 mod diagnostics;
 mod erase_regions;
-mod field_def;
 mod generics;
 mod impl_trait_in_trait_data;
 mod impls_ty;
@@ -90,12 +90,7 @@ mod symbol_name;
 mod term;
 mod ty_; // FIXME: rename to `ty` once we don't import `crate::ty` here
 mod typeck_results;
-mod variant_def;
-mod variant_discr;
-mod variant_flags;
 mod visibility;
-
-mod coherence;
 
 pub use rustc_session::lint::RegisteredTools;
 pub use rustc_target::abi::{ReprFlags, ReprOptions};
@@ -106,7 +101,10 @@ pub use rustc_type_ir::RegionKind::*;
 pub use rustc_type_ir::TyKind::*;
 pub use rustc_type_ir::*;
 
-pub use self::adt::*;
+pub use self::adt::{
+    AdtDef, AdtDefData, AdtFlags, AdtKind, FieldDef, Representability, VariantDef, VariantDiscr,
+    VariantFlags,
+};
 pub use self::alias_relation_direction::AliasRelationDirection;
 pub use self::assoc::*;
 pub use self::binding::BindingMode;
@@ -134,7 +132,6 @@ pub use self::crate_variances_map::CrateVariancesMap;
 pub use self::destructor::Destructor;
 pub use self::destructured_const::DestructuredConst;
 pub use self::diagnostics::*;
-pub use self::field_def::FieldDef;
 pub use self::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
 pub use self::generics::*;
 pub use self::impl_trait_in_trait_data::ImplTraitInTraitData;
@@ -175,9 +172,6 @@ pub use self::typeck_results::{
     GeneratorDiagnosticData, GeneratorInteriorTypeCause, TypeckResults, UserType,
     UserTypeAnnotationIndex,
 };
-pub use self::variant_def::VariantDef;
-pub use self::variant_discr::VariantDiscr;
-pub use self::variant_flags::VariantFlags;
 pub use self::visibility::Visibility;
 pub use self::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 pub use self::vtable::*;

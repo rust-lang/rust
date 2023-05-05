@@ -1,56 +1,30 @@
-use crate::mir::interpret::ErrorHandled;
-use crate::ty;
-use crate::ty::util::{Discr, IntTypeExt};
-use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::intern::Interned;
-use rustc_data_structures::stable_hasher::HashingControls;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_hir as hir;
-use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::DefId;
-use rustc_index::{IndexSlice, IndexVec};
-use rustc_query_system::ich::StableHashingContext;
-use rustc_session::DataTypeKind;
-use rustc_span::symbol::sym;
-use rustc_target::abi::{ReprOptions, VariantIdx, FIRST_VARIANT};
-
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 use std::ops::Range;
 use std::str;
 
-use super::{Destructor, FieldDef, GenericPredicates, Ty, TyCtxt, VariantDef, VariantDiscr};
+use rustc_data_structures::captures::Captures;
+use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::intern::Interned;
+use rustc_data_structures::stable_hasher::{HashStable, HashingControls, StableHasher};
+use rustc_hir as hir;
+use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::def_id::DefId;
+use rustc_index::{IndexSlice, IndexVec};
+use rustc_query_system::ich::StableHashingContext;
+use rustc_session::DataTypeKind;
+use rustc_span::symbol::{sym, Ident, Symbol};
+use rustc_target::abi::{ReprOptions, VariantIdx, FIRST_VARIANT};
 
-bitflags! {
-    #[derive(HashStable, TyEncodable, TyDecodable)]
-    pub struct AdtFlags: u16 {
-        const NO_ADT_FLAGS        = 0;
-        /// Indicates whether the ADT is an enum.
-        const IS_ENUM             = 1 << 0;
-        /// Indicates whether the ADT is a union.
-        const IS_UNION            = 1 << 1;
-        /// Indicates whether the ADT is a struct.
-        const IS_STRUCT           = 1 << 2;
-        /// Indicates whether the ADT is a struct and has a constructor.
-        const HAS_CTOR            = 1 << 3;
-        /// Indicates whether the type is `PhantomData`.
-        const IS_PHANTOM_DATA     = 1 << 4;
-        /// Indicates whether the type has a `#[fundamental]` attribute.
-        const IS_FUNDAMENTAL      = 1 << 5;
-        /// Indicates whether the type is `Box`.
-        const IS_BOX              = 1 << 6;
-        /// Indicates whether the type is `ManuallyDrop`.
-        const IS_MANUALLY_DROP    = 1 << 7;
-        /// Indicates whether the variant list of this ADT is `#[non_exhaustive]`.
-        /// (i.e., this flag is never set unless this ADT is an enum).
-        const IS_VARIANT_LIST_NON_EXHAUSTIVE = 1 << 8;
-        /// Indicates whether the type is `UnsafeCell`.
-        const IS_UNSAFE_CELL              = 1 << 9;
-    }
-}
+use crate::mir::interpret::ErrorHandled;
+use crate::ty::util::{Discr, IntTypeExt};
+use crate::ty::{self, Destructor, FieldIdx, GenericPredicates, SubstsRef, Ty, TyCtxt, Visibility};
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, HashStable)]
+#[rustc_pass_by_value]
+pub struct AdtDef<'tcx>(pub Interned<'tcx, AdtDefData>);
 
 /// The definition of a user-defined type, e.g., a `struct`, `enum`, or `union`.
 ///
@@ -97,69 +71,98 @@ pub struct AdtDefData {
     repr: ReprOptions,
 }
 
-impl PartialOrd for AdtDefData {
-    fn partial_cmp(&self, other: &AdtDefData) -> Option<Ordering> {
-        Some(self.cmp(&other))
+bitflags! {
+    #[derive(HashStable, TyEncodable, TyDecodable)]
+    pub struct AdtFlags: u16 {
+        const NO_ADT_FLAGS        = 0;
+        /// Indicates whether the ADT is an enum.
+        const IS_ENUM             = 1 << 0;
+        /// Indicates whether the ADT is a union.
+        const IS_UNION            = 1 << 1;
+        /// Indicates whether the ADT is a struct.
+        const IS_STRUCT           = 1 << 2;
+        /// Indicates whether the ADT is a struct and has a constructor.
+        const HAS_CTOR            = 1 << 3;
+        /// Indicates whether the type is `PhantomData`.
+        const IS_PHANTOM_DATA     = 1 << 4;
+        /// Indicates whether the type has a `#[fundamental]` attribute.
+        const IS_FUNDAMENTAL      = 1 << 5;
+        /// Indicates whether the type is `Box`.
+        const IS_BOX              = 1 << 6;
+        /// Indicates whether the type is `ManuallyDrop`.
+        const IS_MANUALLY_DROP    = 1 << 7;
+        /// Indicates whether the variant list of this ADT is `#[non_exhaustive]`.
+        /// (i.e., this flag is never set unless this ADT is an enum).
+        const IS_VARIANT_LIST_NON_EXHAUSTIVE = 1 << 8;
+        /// Indicates whether the type is `UnsafeCell`.
+        const IS_UNSAFE_CELL              = 1 << 9;
     }
 }
 
-/// There should be only one AdtDef for each `did`, therefore
-/// it is fine to implement `Ord` only based on `did`.
-impl Ord for AdtDefData {
-    fn cmp(&self, other: &AdtDefData) -> Ordering {
-        self.did.cmp(&other.did)
+#[derive(Copy, Clone, Debug, Eq, PartialEq, HashStable, TyEncodable, TyDecodable)]
+pub enum AdtKind {
+    Struct,
+    Union,
+    Enum,
+}
+
+/// Definition of a variant -- a struct's fields or an enum variant.
+#[derive(Debug, HashStable, TyEncodable, TyDecodable)]
+pub struct VariantDef {
+    /// `DefId` that identifies the variant itself.
+    /// If this variant belongs to a struct or union, then this is a copy of its `DefId`.
+    pub def_id: DefId,
+    /// `DefId` that identifies the variant's constructor.
+    /// If this variant is a struct variant, then this is `None`.
+    pub ctor: Option<(CtorKind, DefId)>,
+    /// Variant or struct name.
+    pub name: Symbol,
+    /// Discriminant of this variant.
+    pub discr: VariantDiscr,
+    /// Fields of this variant.
+    pub fields: IndexVec<FieldIdx, FieldDef>,
+    /// Flags of the variant (e.g. is field list non-exhaustive)?
+    flags: VariantFlags,
+}
+
+bitflags! {
+    #[derive(HashStable, TyEncodable, TyDecodable)]
+    pub struct VariantFlags: u8 {
+        const NO_VARIANT_FLAGS = 0;
+        /// Indicates whether the field list of this variant is `#[non_exhaustive]`.
+        const IS_FIELD_LIST_NON_EXHAUSTIVE = 1 << 0;
+        /// Indicates whether this variant was obtained as part of recovering from
+        /// a syntactic error. May be incomplete or bogus.
+        const IS_RECOVERED = 1 << 1;
     }
 }
 
-/// There should be only one AdtDef for each `did`, therefore
-/// it is fine to implement `PartialEq` only based on `did`.
-impl PartialEq for AdtDefData {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        self.did == other.did
-    }
+#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
+pub enum VariantDiscr {
+    /// Explicit value for this variant, i.e., `X = 123`.
+    /// The `DefId` corresponds to the embedded constant.
+    Explicit(DefId),
+
+    /// The previous variant's discriminant plus one.
+    /// For efficiency reasons, the distance from the
+    /// last `Explicit` discriminant is being stored,
+    /// or `0` for the first variant, if it has none.
+    Relative(u32),
 }
 
-impl Eq for AdtDefData {}
-
-/// There should be only one AdtDef for each `did`, therefore
-/// it is fine to implement `Hash` only based on `did`.
-impl Hash for AdtDefData {
-    #[inline]
-    fn hash<H: Hasher>(&self, s: &mut H) {
-        self.did.hash(s)
-    }
+#[derive(Debug, HashStable, TyEncodable, TyDecodable)]
+pub struct FieldDef {
+    pub did: DefId,
+    pub name: Symbol,
+    pub vis: Visibility<DefId>,
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for AdtDefData {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        thread_local! {
-            static CACHE: RefCell<FxHashMap<(usize, HashingControls), Fingerprint>> = Default::default();
-        }
-
-        let hash: Fingerprint = CACHE.with(|cache| {
-            let addr = self as *const AdtDefData as usize;
-            let hashing_controls = hcx.hashing_controls();
-            *cache.borrow_mut().entry((addr, hashing_controls)).or_insert_with(|| {
-                let ty::AdtDefData { did, ref variants, ref flags, ref repr } = *self;
-
-                let mut hasher = StableHasher::new();
-                did.hash_stable(hcx, &mut hasher);
-                variants.hash_stable(hcx, &mut hasher);
-                flags.hash_stable(hcx, &mut hasher);
-                repr.hash_stable(hcx, &mut hasher);
-
-                hasher.finish()
-            })
-        });
-
-        hash.hash_stable(hcx, hasher);
-    }
+#[derive(Clone, Copy, Debug)]
+#[derive(HashStable)]
+pub enum Representability {
+    Representable,
+    Infinite,
 }
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, HashStable)]
-#[rustc_pass_by_value]
-pub struct AdtDef<'tcx>(pub Interned<'tcx, AdtDefData>);
 
 impl<'tcx> AdtDef<'tcx> {
     #[inline]
@@ -186,73 +189,7 @@ impl<'tcx> AdtDef<'tcx> {
     pub fn repr(self) -> ReprOptions {
         self.0.0.repr
     }
-}
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, HashStable, TyEncodable, TyDecodable)]
-pub enum AdtKind {
-    Struct,
-    Union,
-    Enum,
-}
-
-impl Into<DataTypeKind> for AdtKind {
-    fn into(self) -> DataTypeKind {
-        match self {
-            AdtKind::Struct => DataTypeKind::Struct,
-            AdtKind::Union => DataTypeKind::Union,
-            AdtKind::Enum => DataTypeKind::Enum,
-        }
-    }
-}
-
-impl AdtDefData {
-    /// Creates a new `AdtDefData`.
-    pub(super) fn new(
-        tcx: TyCtxt<'_>,
-        did: DefId,
-        kind: AdtKind,
-        variants: IndexVec<VariantIdx, VariantDef>,
-        repr: ReprOptions,
-    ) -> Self {
-        debug!("AdtDef::new({:?}, {:?}, {:?}, {:?})", did, kind, variants, repr);
-        let mut flags = AdtFlags::NO_ADT_FLAGS;
-
-        if kind == AdtKind::Enum && tcx.has_attr(did, sym::non_exhaustive) {
-            debug!("found non-exhaustive variant list for {:?}", did);
-            flags = flags | AdtFlags::IS_VARIANT_LIST_NON_EXHAUSTIVE;
-        }
-
-        flags |= match kind {
-            AdtKind::Enum => AdtFlags::IS_ENUM,
-            AdtKind::Union => AdtFlags::IS_UNION,
-            AdtKind::Struct => AdtFlags::IS_STRUCT,
-        };
-
-        if kind == AdtKind::Struct && variants[FIRST_VARIANT].ctor.is_some() {
-            flags |= AdtFlags::HAS_CTOR;
-        }
-
-        if tcx.has_attr(did, sym::fundamental) {
-            flags |= AdtFlags::IS_FUNDAMENTAL;
-        }
-        if Some(did) == tcx.lang_items().phantom_data() {
-            flags |= AdtFlags::IS_PHANTOM_DATA;
-        }
-        if Some(did) == tcx.lang_items().owned_box() {
-            flags |= AdtFlags::IS_BOX;
-        }
-        if Some(did) == tcx.lang_items().manually_drop() {
-            flags |= AdtFlags::IS_MANUALLY_DROP;
-        }
-        if Some(did) == tcx.lang_items().unsafe_cell_type() {
-            flags |= AdtFlags::IS_UNSAFE_CELL;
-        }
-
-        AdtDefData { did, variants, flags, repr }
-    }
-}
-
-impl<'tcx> AdtDef<'tcx> {
     /// Returns `true` if this is a struct.
     #[inline]
     pub fn is_struct(self) -> bool {
@@ -559,9 +496,287 @@ impl<'tcx> AdtDef<'tcx> {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-#[derive(HashStable)]
-pub enum Representability {
-    Representable,
-    Infinite,
+impl AdtDefData {
+    /// Creates a new `AdtDefData`.
+    pub(super) fn new(
+        tcx: TyCtxt<'_>,
+        did: DefId,
+        kind: AdtKind,
+        variants: IndexVec<VariantIdx, VariantDef>,
+        repr: ReprOptions,
+    ) -> Self {
+        debug!("AdtDef::new({:?}, {:?}, {:?}, {:?})", did, kind, variants, repr);
+        let mut flags = AdtFlags::NO_ADT_FLAGS;
+
+        if kind == AdtKind::Enum && tcx.has_attr(did, sym::non_exhaustive) {
+            debug!("found non-exhaustive variant list for {:?}", did);
+            flags = flags | AdtFlags::IS_VARIANT_LIST_NON_EXHAUSTIVE;
+        }
+
+        flags |= match kind {
+            AdtKind::Enum => AdtFlags::IS_ENUM,
+            AdtKind::Union => AdtFlags::IS_UNION,
+            AdtKind::Struct => AdtFlags::IS_STRUCT,
+        };
+
+        if kind == AdtKind::Struct && variants[FIRST_VARIANT].ctor.is_some() {
+            flags |= AdtFlags::HAS_CTOR;
+        }
+
+        if tcx.has_attr(did, sym::fundamental) {
+            flags |= AdtFlags::IS_FUNDAMENTAL;
+        }
+        if Some(did) == tcx.lang_items().phantom_data() {
+            flags |= AdtFlags::IS_PHANTOM_DATA;
+        }
+        if Some(did) == tcx.lang_items().owned_box() {
+            flags |= AdtFlags::IS_BOX;
+        }
+        if Some(did) == tcx.lang_items().manually_drop() {
+            flags |= AdtFlags::IS_MANUALLY_DROP;
+        }
+        if Some(did) == tcx.lang_items().unsafe_cell_type() {
+            flags |= AdtFlags::IS_UNSAFE_CELL;
+        }
+
+        AdtDefData { did, variants, flags, repr }
+    }
+}
+
+impl PartialOrd for AdtDefData {
+    fn partial_cmp(&self, other: &AdtDefData) -> Option<Ordering> {
+        Some(self.cmp(&other))
+    }
+}
+
+/// There should be only one AdtDef for each `did`, therefore
+/// it is fine to implement `Ord` only based on `did`.
+impl Ord for AdtDefData {
+    fn cmp(&self, other: &AdtDefData) -> Ordering {
+        self.did.cmp(&other.did)
+    }
+}
+
+/// There should be only one AdtDef for each `did`, therefore
+/// it is fine to implement `PartialEq` only based on `did`.
+impl PartialEq for AdtDefData {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.did == other.did
+    }
+}
+
+impl Eq for AdtDefData {}
+
+/// There should be only one AdtDef for each `did`, therefore
+/// it is fine to implement `Hash` only based on `did`.
+impl Hash for AdtDefData {
+    #[inline]
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        self.did.hash(s)
+    }
+}
+
+impl<'a> HashStable<StableHashingContext<'a>> for AdtDefData {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+        thread_local! {
+            static CACHE: RefCell<FxHashMap<(usize, HashingControls), Fingerprint>> = Default::default();
+        }
+
+        let hash: Fingerprint = CACHE.with(|cache| {
+            let addr = self as *const AdtDefData as usize;
+            let hashing_controls = hcx.hashing_controls();
+            *cache.borrow_mut().entry((addr, hashing_controls)).or_insert_with(|| {
+                let ty::AdtDefData { did, ref variants, ref flags, ref repr } = *self;
+
+                let mut hasher = StableHasher::new();
+                did.hash_stable(hcx, &mut hasher);
+                variants.hash_stable(hcx, &mut hasher);
+                flags.hash_stable(hcx, &mut hasher);
+                repr.hash_stable(hcx, &mut hasher);
+
+                hasher.finish()
+            })
+        });
+
+        hash.hash_stable(hcx, hasher);
+    }
+}
+
+impl Into<DataTypeKind> for AdtKind {
+    fn into(self) -> DataTypeKind {
+        match self {
+            AdtKind::Struct => DataTypeKind::Struct,
+            AdtKind::Union => DataTypeKind::Union,
+            AdtKind::Enum => DataTypeKind::Enum,
+        }
+    }
+}
+
+impl VariantDef {
+    /// Creates a new `VariantDef`.
+    ///
+    /// `variant_did` is the `DefId` that identifies the enum variant (if this `VariantDef`
+    /// represents an enum variant).
+    ///
+    /// `ctor_did` is the `DefId` that identifies the constructor of unit or
+    /// tuple-variants/structs. If this is a `struct`-variant then this should be `None`.
+    ///
+    /// `parent_did` is the `DefId` of the `AdtDef` representing the enum or struct that
+    /// owns this variant. It is used for checking if a struct has `#[non_exhaustive]` w/out having
+    /// to go through the redirect of checking the ctor's attributes - but compiling a small crate
+    /// requires loading the `AdtDef`s for all the structs in the universe (e.g., coherence for any
+    /// built-in trait), and we do not want to load attributes twice.
+    ///
+    /// If someone speeds up attribute loading to not be a performance concern, they can
+    /// remove this hack and use the constructor `DefId` everywhere.
+    pub fn new(
+        name: Symbol,
+        variant_did: Option<DefId>,
+        ctor: Option<(CtorKind, DefId)>,
+        discr: VariantDiscr,
+        fields: IndexVec<FieldIdx, FieldDef>,
+        adt_kind: AdtKind,
+        parent_did: DefId,
+        recovered: bool,
+        is_field_list_non_exhaustive: bool,
+    ) -> Self {
+        debug!(
+            "VariantDef::new(name = {:?}, variant_did = {:?}, ctor = {:?}, discr = {:?},
+             fields = {:?}, adt_kind = {:?}, parent_did = {:?})",
+            name, variant_did, ctor, discr, fields, adt_kind, parent_did,
+        );
+
+        let mut flags = VariantFlags::NO_VARIANT_FLAGS;
+        if is_field_list_non_exhaustive {
+            flags |= VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE;
+        }
+
+        if recovered {
+            flags |= VariantFlags::IS_RECOVERED;
+        }
+
+        VariantDef { def_id: variant_did.unwrap_or(parent_did), ctor, name, discr, fields, flags }
+    }
+
+    /// Is this field list non-exhaustive?
+    #[inline]
+    pub fn is_field_list_non_exhaustive(&self) -> bool {
+        self.flags.intersects(VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE)
+    }
+
+    /// Was this variant obtained as part of recovering from a syntactic error?
+    #[inline]
+    pub fn is_recovered(&self) -> bool {
+        self.flags.intersects(VariantFlags::IS_RECOVERED)
+    }
+
+    /// Computes the `Ident` of this variant by looking up the `Span`
+    pub fn ident(&self, tcx: TyCtxt<'_>) -> Ident {
+        Ident::new(self.name, tcx.def_ident_span(self.def_id).unwrap())
+    }
+
+    #[inline]
+    pub fn ctor_kind(&self) -> Option<CtorKind> {
+        self.ctor.map(|(kind, _)| kind)
+    }
+
+    #[inline]
+    pub fn ctor_def_id(&self) -> Option<DefId> {
+        self.ctor.map(|(_, def_id)| def_id)
+    }
+
+    /// Returns the one field in this variant.
+    ///
+    /// `panic!`s if there are no fields or multiple fields.
+    #[inline]
+    pub fn single_field(&self) -> &FieldDef {
+        assert!(self.fields.len() == 1);
+
+        &self.fields[FieldIdx::from_u32(0)]
+    }
+}
+
+impl PartialEq for VariantDef {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        // There should be only one `VariantDef` for each `def_id`, therefore
+        // it is fine to implement `PartialEq` only based on `def_id`.
+        //
+        // Below, we exhaustively destructure `self` and `other` so that if the
+        // definition of `VariantDef` changes, a compile-error will be produced,
+        // reminding us to revisit this assumption.
+
+        let Self { def_id: lhs_def_id, ctor: _, name: _, discr: _, fields: _, flags: _ } = &self;
+        let Self { def_id: rhs_def_id, ctor: _, name: _, discr: _, fields: _, flags: _ } = other;
+        lhs_def_id == rhs_def_id
+    }
+}
+
+impl Eq for VariantDef {}
+
+impl Hash for VariantDef {
+    #[inline]
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        // There should be only one `VariantDef` for each `def_id`, therefore
+        // it is fine to implement `Hash` only based on `def_id`.
+        //
+        // Below, we exhaustively destructure `self` so that if the definition
+        // of `VariantDef` changes, a compile-error will be produced, reminding
+        // us to revisit this assumption.
+
+        let Self { def_id, ctor: _, name: _, discr: _, fields: _, flags: _ } = &self;
+        def_id.hash(s)
+    }
+}
+
+impl<'tcx> FieldDef {
+    /// Returns the type of this field. The resulting type is not normalized. The `subst` is
+    /// typically obtained via the second field of [`TyKind::Adt`].
+    ///
+    /// [`TyKind::Adt`]: crate::ty::TyKind::Adt
+    pub fn ty(&self, tcx: TyCtxt<'tcx>, subst: SubstsRef<'tcx>) -> Ty<'tcx> {
+        tcx.type_of(self.did).subst(tcx, subst)
+    }
+
+    /// Computes the `Ident` of this variant by looking up the `Span`
+    pub fn ident(&self, tcx: TyCtxt<'_>) -> Ident {
+        Ident::new(self.name, tcx.def_ident_span(self.did).unwrap())
+    }
+}
+
+impl PartialEq for FieldDef {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        // There should be only one `FieldDef` for each `did`, therefore it is
+        // fine to implement `PartialEq` only based on `did`.
+        //
+        // Below, we exhaustively destructure `self` so that if the definition
+        // of `FieldDef` changes, a compile-error will be produced, reminding
+        // us to revisit this assumption.
+
+        let Self { did: lhs_did, name: _, vis: _ } = &self;
+
+        let Self { did: rhs_did, name: _, vis: _ } = other;
+
+        lhs_did == rhs_did
+    }
+}
+
+impl Eq for FieldDef {}
+
+impl Hash for FieldDef {
+    #[inline]
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        // There should be only one `FieldDef` for each `did`, therefore it is
+        // fine to implement `Hash` only based on `did`.
+        //
+        // Below, we exhaustively destructure `self` so that if the definition
+        // of `FieldDef` changes, a compile-error will be produced, reminding
+        // us to revisit this assumption.
+
+        let Self { did, name: _, vis: _ } = &self;
+
+        did.hash(s)
+    }
 }
