@@ -744,12 +744,20 @@ pub trait LayoutCalculator {
         for field in only_variant {
             assert!(field.0.is_sized());
 
-            if !field.0.is_zst() && !common_non_zst_abi_and_align.is_err() {
+            align = align.max(field.align());
+            size = cmp::max(size, field.size());
+
+            if field.0.is_zst() {
+                // Nothing more to do for ZST fields
+                continue;
+            }
+
+            if let Ok(common) = common_non_zst_abi_and_align {
                 // Discard valid range information and allow undef
                 let field_abi = field.abi().to_union();
 
-                if let Ok(Some((common_abi, common_align))) = &mut common_non_zst_abi_and_align {
-                    if *common_abi != field_abi {
+                if let Some((common_abi, common_align)) = common {
+                    if common_abi != field_abi {
                         // Different fields have different ABI: disable opt
                         common_non_zst_abi_and_align = Err(AbiMismatch);
                     } else {
@@ -757,7 +765,7 @@ pub trait LayoutCalculator {
                         // have the same alignment
                         if !matches!(common_abi, Abi::Aggregate { .. }) {
                             assert_eq!(
-                                *common_align,
+                                common_align,
                                 field.align().abi,
                                 "non-Aggregate field with matching ABI but differing alignment"
                             );
@@ -768,9 +776,6 @@ pub trait LayoutCalculator {
                     common_non_zst_abi_and_align = Ok(Some((field_abi, field.align().abi)));
                 }
             }
-
-            align = align.max(field.align());
-            size = cmp::max(size, field.size());
         }
 
         if let Some(pack) = repr.pack {
