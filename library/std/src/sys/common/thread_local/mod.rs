@@ -1,5 +1,10 @@
 #![unstable(feature = "thread_local_internals", reason = "should not be necessary", issue = "none")]
 
+// There are three thread-local implementations: "static", "fast", "OS".
+// The "OS" thread local key type is accessed via platform-specific API calls and is slow, while the
+// "fast" key type is accessed via code generated via LLVM, where TLS keys are set up by the linker.
+// "static" is for single-threaded platforms where a global static is sufficient.
+
 cfg_if::cfg_if! {
     if #[cfg(all(target_family = "wasm", not(target_feature = "atomics")))] {
         #[doc(hidden)]
