@@ -106,7 +106,7 @@ impl [u8] {
                   without modifying the original"]
     #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
     pub fn escape_ascii(&self) -> EscapeAscii<'_> {
-        EscapeAscii { inner: self.iter().flat_map(EscapeByte) }
+        EscapeAscii { inner: self.iter().flat_map(|byte| ascii::escape_default(*byte)) }
     }
 
     /// Returns a byte slice with leading ASCII whitespace bytes removed.
@@ -188,12 +188,7 @@ impl [u8] {
     }
 }
 
-impl_fn_for_zst! {
-    #[derive(Clone)]
-    struct EscapeByte impl Fn = |byte: &u8| -> ascii::EscapeDefault {
-        ascii::escape_default(*byte)
-    };
-}
+type EscapeAsciiIterator<'a> = impl iter::DoubleEndedIterator<Item = u8> + Clone + 'a;
 
 /// An iterator over the escaped version of a byte slice.
 ///
@@ -203,7 +198,7 @@ impl_fn_for_zst! {
 #[derive(Clone)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct EscapeAscii<'a> {
-    inner: iter::FlatMap<super::Iter<'a, u8>, ascii::EscapeDefault, EscapeByte>,
+    inner: EscapeAsciiIterator<'a>,
 }
 
 #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
