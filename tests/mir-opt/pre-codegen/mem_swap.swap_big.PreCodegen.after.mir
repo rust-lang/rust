@@ -12,61 +12,61 @@ fn swap_big(_1: &mut [String; 9], _2: &mut [String; 9]) -> () {
         let mut _5: *mut [std::string::String; 9]; // in scope 1 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
         scope 2 {
         }
-        scope 3 (inlined std::mem::size_of::<[String; 9]>) { // at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-        }
-        scope 4 (inlined align_of::<[String; 9]>) { // at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-        }
-        scope 5 (inlined mem::swap_simple::<[String; 9]>) { // at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-            debug x => _1;               // in scope 5 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-            debug y => _2;               // in scope 5 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-            let mut _7: *const [std::string::String; 9]; // in scope 5 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-            let mut _9: *const [std::string::String; 9]; // in scope 5 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-            let mut _10: *mut [std::string::String; 9]; // in scope 5 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-            let mut _11: *mut [std::string::String; 9]; // in scope 5 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-            scope 6 {
-                let _6: [std::string::String; 9]; // in scope 6 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-                scope 7 {
-                    debug a => _6;       // in scope 7 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-                    let _8: [std::string::String; 9]; // in scope 7 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-                    scope 8 {
-                        debug b => _8;   // in scope 8 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-                        scope 15 (inlined std::ptr::write::<[String; 9]>) { // at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-                            debug dst => _10; // in scope 15 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-                            debug src => _8; // in scope 15 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-                            let mut _14: *mut [std::string::String; 9]; // in scope 15 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
-                            scope 16 {
-                                scope 17 (inlined std::ptr::write::runtime::<[String; 9]>) { // at $SRC_DIR/core/src/intrinsics.rs:LL:COL
-                                    debug dst => _14; // in scope 17 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+        scope 3 (inlined mem::swap_simple::<[String; 9]>) { // at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+            debug x => _1;               // in scope 3 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+            debug y => _2;               // in scope 3 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+            let _6: *mut [std::string::String; 9]; // in scope 3 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+            scope 4 {
+                debug x => _6;           // in scope 4 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                let _7: *mut [std::string::String; 9]; // in scope 4 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                scope 5 {
+                    debug y => _7;       // in scope 5 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                    scope 6 {
+                        let _8: [std::string::String; 9]; // in scope 6 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                        scope 7 {
+                            debug a => _8; // in scope 7 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                            let _9: [std::string::String; 9]; // in scope 7 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                            scope 8 {
+                                debug b => _9; // in scope 8 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                                scope 15 (inlined std::ptr::write::<[String; 9]>) { // at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                                    debug dst => _6; // in scope 15 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+                                    debug src => _9; // in scope 15 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+                                    let mut _12: *mut [std::string::String; 9]; // in scope 15 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                                    scope 16 {
+                                        scope 17 (inlined std::ptr::write::runtime::<[String; 9]>) { // at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                                            debug dst => _12; // in scope 17 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                                        }
+                                    }
+                                }
+                                scope 18 (inlined std::ptr::write::<[String; 9]>) { // at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                                    debug dst => _7; // in scope 18 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+                                    debug src => _8; // in scope 18 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+                                    let mut _13: *mut [std::string::String; 9]; // in scope 18 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                                    scope 19 {
+                                        scope 20 (inlined std::ptr::write::runtime::<[String; 9]>) { // at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                                            debug dst => _13; // in scope 20 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                                        }
+                                    }
+                                }
+                            }
+                            scope 12 (inlined ptr::read_mut::<[String; 9]>) { // at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                                debug src => _7; // in scope 12 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+                                let mut _11: *mut [std::string::String; 9]; // in scope 12 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                                scope 13 {
+                                    scope 14 (inlined ptr::read_mut::runtime::<[String; 9]>) { // at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                                        debug src => _11; // in scope 14 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                                    }
                                 }
                             }
                         }
-                        scope 18 (inlined std::ptr::write::<[String; 9]>) { // at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-                            debug dst => _11; // in scope 18 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-                            debug src => _6; // in scope 18 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-                            let mut _15: *mut [std::string::String; 9]; // in scope 18 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
-                            scope 19 {
-                                scope 20 (inlined std::ptr::write::runtime::<[String; 9]>) { // at $SRC_DIR/core/src/intrinsics.rs:LL:COL
-                                    debug dst => _15; // in scope 20 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                        scope 9 (inlined ptr::read_mut::<[String; 9]>) { // at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                            debug src => _6; // in scope 9 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+                            let mut _10: *mut [std::string::String; 9]; // in scope 9 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                            scope 10 {
+                                scope 11 (inlined ptr::read_mut::runtime::<[String; 9]>) { // at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                                    debug src => _10; // in scope 11 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
                                 }
                             }
-                        }
-                    }
-                    scope 12 (inlined std::ptr::read::<[String; 9]>) { // at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-                        debug src => _9; // in scope 12 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-                        let mut _13: *const [std::string::String; 9]; // in scope 12 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
-                        scope 13 {
-                            scope 14 (inlined std::ptr::read::runtime::<[String; 9]>) { // at $SRC_DIR/core/src/intrinsics.rs:LL:COL
-                                debug src => _13; // in scope 14 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
-                            }
-                        }
-                    }
-                }
-                scope 9 (inlined std::ptr::read::<[String; 9]>) { // at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-                    debug src => _7;     // in scope 9 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-                    let mut _12: *const [std::string::String; 9]; // in scope 9 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
-                    scope 10 {
-                        scope 11 (inlined std::ptr::read::runtime::<[String; 9]>) { // at $SRC_DIR/core/src/intrinsics.rs:LL:COL
-                            debug src => _12; // in scope 11 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
                         }
                     }
                 }

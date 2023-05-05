@@ -738,7 +738,7 @@ pub const fn swap<T>(x: &mut T, y: &mut T) {
         // tends to copy the whole thing to stack rather than doing it one part
         // at a time, so instead treat them as one-element slices and piggy-back
         // the slice optimizations that will split up the swaps.
-        if size_of::<T>() / align_of::<T>() > 4 {
+        if const { size_of::<T>() / align_of::<T>() > 4 } {
             // SAFETY: exclusive references always point to one non-overlapping
             // element and are non-null and properly aligned.
             return unsafe { ptr::swap_nonoverlapping(x, y, 1) };
@@ -774,11 +774,14 @@ pub(crate) const fn swap_simple<T>(x: &mut T, y: &mut T) {
     // asymmetry to the behaviour where one value went through read+write
     // whereas the other was copied over by the intrinsic (see #94371).
 
+    let x: *mut T = x;
+    let y: *mut T = y;
+
     // SAFETY: exclusive references are always valid to read/write,
     // including being aligned, and nothing here panics so it's drop-safe.
     unsafe {
-        let a = ptr::read(x);
-        let b = ptr::read(y);
+        let a = ptr::read_mut(x);
+        let b = ptr::read_mut(y);
         ptr::write(x, b);
         ptr::write(y, a);
     }
