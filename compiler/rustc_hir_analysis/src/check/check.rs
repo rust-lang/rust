@@ -536,7 +536,7 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
                             tcx,
                             assoc_item,
                             assoc_item,
-                            tcx.mk_trait_ref(id.owner_id.to_def_id(), trait_substs),
+                            ty::TraitRef::new(tcx, id.owner_id.to_def_id(), trait_substs),
                         );
                     }
                     _ => {}

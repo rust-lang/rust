@@ -228,18 +228,29 @@ pub unsafe fn create_module<'ll>(
         llvm::LLVMRustAddModuleFlag(llmod, llvm::LLVMModFlagBehavior::Warning, avoid_plt, 1);
     }
 
-    if sess.is_sanitizer_cfi_enabled() {
-        // FIXME(rcvalle): Add support for non canonical jump tables.
+    // Enable canonical jump tables if CFI is enabled. (See https://reviews.llvm.org/D65629.)
+    if sess.is_sanitizer_cfi_canonical_jump_tables_enabled() && sess.is_sanitizer_cfi_enabled() {
         let canonical_jump_tables = "CFI Canonical Jump Tables\0".as_ptr().cast();
-        // FIXME(rcvalle): Add it with Override behavior flag.
         llvm::LLVMRustAddModuleFlag(
             llmod,
-            llvm::LLVMModFlagBehavior::Warning,
+            llvm::LLVMModFlagBehavior::Override,
             canonical_jump_tables,
             1,
         );
     }
 
+    // Enable LTO unit splitting if specified or if CFI is enabled. (See https://reviews.llvm.org/D53891.)
+    if sess.is_split_lto_unit_enabled() || sess.is_sanitizer_cfi_enabled() {
+        let enable_split_lto_unit = "EnableSplitLTOUnit\0".as_ptr().cast();
+        llvm::LLVMRustAddModuleFlag(
+            llmod,
+            llvm::LLVMModFlagBehavior::Override,
+            enable_split_lto_unit,
+            1,
+        );
+    }
+
+    // Add "kcfi" module flag if KCFI is enabled. (See https://reviews.llvm.org/D119296.)
     if sess.is_sanitizer_kcfi_enabled() {
         let kcfi = "kcfi\0".as_ptr().cast();
         llvm::LLVMRustAddModuleFlag(llmod, llvm::LLVMModFlagBehavior::Override, kcfi, 1);

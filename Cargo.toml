@@ -2,7 +2,7 @@
 members = [
   "compiler/rustc",
   "library/std",
-  "library/test",
+  "library/sysroot",
   "src/rustdoc-json-types",
   "src/tools/build_helper",
   "src/tools/cargotest",

@@ -136,14 +136,15 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         // is declared but also a reexport of itself producing two exports of the same
         // macro in the same module.
         let mut inserted = FxHashSet::default();
-        for export in self.cx.tcx.module_children_reexports(CRATE_DEF_ID) {
-            if let Res::Def(DefKind::Macro(_), def_id) = export.res &&
+        for child in self.cx.tcx.module_children_local(CRATE_DEF_ID) {
+            if !child.reexport_chain.is_empty() &&
+                let Res::Def(DefKind::Macro(_), def_id) = child.res &&
                 let Some(local_def_id) = def_id.as_local() &&
                 self.cx.tcx.has_attr(def_id, sym::macro_export) &&
                 inserted.insert(def_id)
             {
-                    let item = self.cx.tcx.hir().expect_item(local_def_id);
-                    top_level_module.items.insert((local_def_id, Some(item.ident.name)), (item, None, None));
+                let item = self.cx.tcx.hir().expect_item(local_def_id);
+                top_level_module.items.insert((local_def_id, Some(item.ident.name)), (item, None, None));
             }
         }
 

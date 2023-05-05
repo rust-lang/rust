@@ -1,0 +1,33 @@
+error[E0401]: can't use generic parameters from outer function
+  --> $DIR/self-ctor-inner-const.rs:7:27
+   |
+LL |         const C: S0<u8> = Self(0);
+   |                           ^^^^
+   |                           |
+   |                           use of generic parameter from outer function
+   |                           can't use `Self` here
+
+error[E0401]: can't use generic parameters from outer function
+  --> $DIR/self-ctor-inner-const.rs:9:21
+   |
+LL | impl<T> S0<T> {
+   | ---- `Self` type implicitly declared here, by this `impl`
+...
+LL |         fn bar() -> Self {
+   |                     ^^^^
+   |                     |
+   |                     use of generic parameter from outer function
+   |                     use a type here instead
+
+error[E0401]: can't use generic parameters from outer function
+  --> $DIR/self-ctor-inner-const.rs:11:13
+   |
+LL |             Self(0)
+   |             ^^^^
+   |             |
+   |             use of generic parameter from outer function
+   |             can't use `Self` here
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0401`.

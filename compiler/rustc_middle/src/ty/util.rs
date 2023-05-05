@@ -360,15 +360,15 @@ impl<'tcx> TyCtxt<'tcx> {
         let ty = self.type_of(adt_did).subst_identity();
         let mut dtor_candidate = None;
         self.for_each_relevant_impl(drop_trait, ty, |impl_did| {
-            let Some(item_id) = self.associated_item_def_ids(impl_did).first() else {
-                self.sess.delay_span_bug(self.def_span(impl_did), "Drop impl without drop function");
-                return;
-            };
-
             if validate(self, impl_did).is_err() {
                 // Already `ErrorGuaranteed`, no need to delay a span bug here.
                 return;
             }
+
+            let Some(item_id) = self.associated_item_def_ids(impl_did).first() else {
+                self.sess.delay_span_bug(self.def_span(impl_did), "Drop impl without drop function");
+                return;
+            };
 
             if let Some((old_item_id, _)) = dtor_candidate {
                 self.sess

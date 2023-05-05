@@ -14,6 +14,10 @@ use crate::fmt;
 use crate::iter::FusedIterator;
 use crate::num::NonZeroUsize;
 
+mod ascii_char;
+#[unstable(feature = "ascii_char", issue = "110998")]
+pub use ascii_char::AsciiChar as Char;
+
 /// An iterator over the escaped version of a byte.
 ///
 /// This `struct` is created by the [`escape_default`] function. See its

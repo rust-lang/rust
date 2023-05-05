@@ -152,8 +152,9 @@ pub(crate) fn try_inline_glob(
             // reexported by the glob, e.g. because they are shadowed by something else.
             let reexports = cx
                 .tcx
-                .module_children_reexports(current_mod)
+                .module_children_local(current_mod)
                 .iter()
+                .filter(|child| !child.reexport_chain.is_empty())
                 .filter_map(|child| child.res.opt_def_id())
                 .collect();
             let mut items = build_module_items(cx, did, visited, inlined_names, Some(&reexports));

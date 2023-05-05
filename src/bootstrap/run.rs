@@ -105,7 +105,7 @@ impl Step for BumpStage0 {
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let mut cmd = builder.tool_cmd(Tool::BumpStage0);
-        cmd.args(builder.config.cmd.args());
+        cmd.args(builder.config.args());
         builder.run(&mut cmd);
     }
 }
@@ -182,8 +182,7 @@ impl Step for Miri {
         miri.add_rustc_lib_path(builder, compiler);
         // Forward arguments.
         miri.arg("--").arg("--target").arg(target.rustc_target_arg());
-        miri.args(builder.config.cmd.args());
-        miri.args(&builder.config.free_args);
+        miri.args(builder.config.args());
 
         // miri tests need to know about the stage sysroot
         miri.env("MIRI_SYSROOT", &miri_sysroot);

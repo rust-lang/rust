@@ -31,7 +31,7 @@ use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::dependency_format::Dependencies;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_middle::ty::query::{ExternProviders, Providers};
-use rustc_serialize::opaque::{MemDecoder, MemEncoder};
+use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::config::{CrateType, OutputFilenames, OutputType, RUST_CGU_EXT};
 use rustc_session::cstore::{self, CrateSource};
@@ -39,6 +39,7 @@ use rustc_session::utils::NativeLibKind;
 use rustc_span::symbol::Symbol;
 use rustc_span::DebuggerVisualizerFile;
 use std::collections::BTreeSet;
+use std::io;
 use std::path::{Path, PathBuf};
 
 pub mod back;
@@ -215,8 +216,11 @@ const RLINK_MAGIC: &[u8] = b"rustlink";
 const RUSTC_VERSION: Option<&str> = option_env!("CFG_VERSION");
 
 impl CodegenResults {
-    pub fn serialize_rlink(codegen_results: &CodegenResults) -> Vec<u8> {
-        let mut encoder = MemEncoder::new();
+    pub fn serialize_rlink(
+        rlink_file: &Path,
+        codegen_results: &CodegenResults,
+    ) -> Result<usize, io::Error> {
+        let mut encoder = FileEncoder::new(rlink_file)?;
         encoder.emit_raw_bytes(RLINK_MAGIC);
         // `emit_raw_bytes` is used to make sure that the version representation does not depend on
         // Encoder's inner representation of `u32`.

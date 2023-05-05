@@ -435,6 +435,7 @@ pub enum GenericArgsParentheses {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum TraitBoundModifier {
     None,
+    Negative,
     Maybe,
     MaybeConst,
 }

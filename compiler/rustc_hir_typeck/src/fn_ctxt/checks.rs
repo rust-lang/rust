@@ -1895,7 +1895,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => {
                     // Look for a user-provided impl of a `Fn` trait, and point to it.
                     let new_def_id = self.probe(|_| {
-                        let trait_ref = self.tcx.mk_trait_ref(
+                        let trait_ref = ty::TraitRef::new(self.tcx,
                             call_kind.to_def_id(self.tcx),
                             [
                                 callee_ty,

@@ -124,12 +124,10 @@ macro_rules! iterator {
             fn next(&mut self) -> Option<$elem> {
                 // could be implemented with slices, but this avoids bounds checks
 
-                // SAFETY: `assume` calls are safe since a slice's start pointer
-                // must be non-null, and slices over non-ZSTs must also have a
-                // non-null end pointer. The call to `next_unchecked!` is safe
-                // since we check if the iterator is empty first.
+                // SAFETY: `assume` call is safe because slices over non-ZSTs must
+                // have a non-null end pointer. The call to `next_unchecked!` is
+                // safe since we check if the iterator is empty first.
                 unsafe {
-                    assume(!self.ptr.as_ptr().is_null());
                     if !<T>::IS_ZST {
                         assume(!self.end.is_null());
                     }
@@ -339,12 +337,10 @@ macro_rules! iterator {
             fn next_back(&mut self) -> Option<$elem> {
                 // could be implemented with slices, but this avoids bounds checks
 
-                // SAFETY: `assume` calls are safe since a slice's start pointer must be non-null,
-                // and slices over non-ZSTs must also have a non-null end pointer.
-                // The call to `next_back_unchecked!` is safe since we check if the iterator is
-                // empty first.
+                // SAFETY: `assume` call is safe because slices over non-ZSTs must
+                // have a non-null end pointer. The call to `next_back_unchecked!`
+                // is safe since we check if the iterator is empty first.
                 unsafe {
-                    assume(!self.ptr.as_ptr().is_null());
                     if !<T>::IS_ZST {
                         assume(!self.end.is_null());
                     }

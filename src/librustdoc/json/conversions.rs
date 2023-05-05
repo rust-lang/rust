@@ -533,6 +533,10 @@ pub(crate) fn from_trait_bound_modifier(
         None => TraitBoundModifier::None,
         Maybe => TraitBoundModifier::Maybe,
         MaybeConst => TraitBoundModifier::MaybeConst,
+        // FIXME(negative-bounds): This bound should be rendered negative, but
+        // since that's experimental, maybe let's not add it to the rustdoc json
+        // API just now...
+        Negative => TraitBoundModifier::None,
     }
 }
 

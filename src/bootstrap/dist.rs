@@ -822,6 +822,8 @@ fn copy_src_dirs(
             "llvm-project\\compiler-rt",
             "llvm-project/cmake",
             "llvm-project\\cmake",
+            "llvm-project/runtimes",
+            "llvm-project\\runtimes",
         ];
         if spath.contains("llvm-project")
             && !spath.ends_with("llvm-project")
@@ -976,6 +978,7 @@ impl Step for PlainSourceTarball {
             "config.example.toml",
             "Cargo.toml",
             "Cargo.lock",
+            ".gitmodules",
         ];
         let src_dirs = ["src", "compiler", "library", "tests"];
 

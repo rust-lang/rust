@@ -6,7 +6,8 @@ LL | union Foo<T: ?Sized> {
 LL |     value: ManuallyDrop<T>,
    |            ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = note: required because it appears within the type `ManuallyDrop<T>`
+note: required because it appears within the type `ManuallyDrop<T>`
+  --> $SRC_DIR/core/src/mem/manually_drop.rs:LL:COL
    = note: no field of a union may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
@@ -31,7 +32,8 @@ LL | struct Foo2<T: ?Sized> {
 LL |     value: ManuallyDrop<T>,
    |            ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = note: required because it appears within the type `ManuallyDrop<T>`
+note: required because it appears within the type `ManuallyDrop<T>`
+  --> $SRC_DIR/core/src/mem/manually_drop.rs:LL:COL
    = note: only the last field of a struct may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
@@ -56,7 +58,8 @@ LL | enum Foo3<T: ?Sized> {
 LL |     Value(ManuallyDrop<T>),
    |           ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = note: required because it appears within the type `ManuallyDrop<T>`
+note: required because it appears within the type `ManuallyDrop<T>`
+  --> $SRC_DIR/core/src/mem/manually_drop.rs:LL:COL
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: consider removing the `?Sized` bound to make the type parameter `Sized`

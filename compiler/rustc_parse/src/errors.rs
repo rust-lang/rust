@@ -2280,31 +2280,6 @@ pub(crate) struct InvalidDynKeyword {
     pub span: Span,
 }
 
-#[derive(Diagnostic)]
-#[diag(parse_negative_bounds_not_supported)]
-pub(crate) struct NegativeBoundsNotSupported {
-    #[primary_span]
-    pub negative_bounds: Vec<Span>,
-    #[label]
-    pub last_span: Span,
-    #[subdiagnostic]
-    pub sub: Option<NegativeBoundsNotSupportedSugg>,
-}
-
-#[derive(Subdiagnostic)]
-#[suggestion(
-    parse_suggestion,
-    style = "tool-only",
-    code = "{fixed}",
-    applicability = "machine-applicable"
-)]
-pub(crate) struct NegativeBoundsNotSupportedSugg {
-    #[primary_span]
-    pub bound_list: Span,
-    pub num_bounds: usize,
-    pub fixed: String,
-}
-
 #[derive(Subdiagnostic)]
 pub enum HelpUseLatestEdition {
     #[help(parse_help_set_edition_cargo)]
@@ -2412,10 +2387,12 @@ pub(crate) struct TildeConstLifetime {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_maybe_lifetime)]
-pub(crate) struct MaybeLifetime {
+#[diag(parse_modifier_lifetime)]
+pub(crate) struct ModifierLifetime {
     #[primary_span]
+    #[suggestion(style = "tool-only", applicability = "maybe-incorrect", code = "")]
     pub span: Span,
+    pub sigil: &'static str,
 }
 
 #[derive(Diagnostic)]

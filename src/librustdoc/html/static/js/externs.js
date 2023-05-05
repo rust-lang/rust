@@ -9,6 +9,7 @@ function initSearch(searchIndex){}
 /**
  * @typedef {{
  *     name: string,
+ *     id: integer,
  *     fullPath: Array<string>,
  *     pathWithoutLast: Array<string>,
  *     pathLast: string,
@@ -36,6 +37,8 @@ let ParserState;
  *     args: Array<QueryElement>,
  *     returned: Array<QueryElement>,
  *     foundElems: number,
+ *     literalSearch: boolean,
+ *     corrections: Array<{from: string, to: integer}>,
  * }}
  */
 let ParsedQuery;
@@ -139,7 +142,7 @@ let FunctionSearchType;
 
 /**
  * @typedef {{
- *     name: (null|string),
+ *     id: (null|number),
  *     ty: (null|number),
  *     generics: Array<FunctionType>,
  * }}

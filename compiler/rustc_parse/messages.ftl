@@ -615,13 +615,6 @@ parse_invalid_dyn_keyword = invalid `dyn` keyword
     .help = `dyn` is only needed at the start of a trait `+`-separated list
     .suggestion = remove this keyword
 
-parse_negative_bounds_not_supported = negative bounds are not supported
-    .label = negative bounds are not supported
-    .suggestion = {$num_bounds ->
-            [one] remove the bound
-           *[other] remove the bounds
-        }
-
 parse_help_set_edition_cargo = set `edition = "{$edition}"` in `Cargo.toml`
 parse_help_set_edition_standalone = pass `--edition {$edition}` to `rustc`
 parse_note_edition_guide = for more on editions, read https://doc.rust-lang.org/edition-guide
@@ -772,7 +765,8 @@ parse_assoc_lifetime = associated lifetimes are not supported
 
 parse_tilde_const_lifetime = `~const` may only modify trait bounds, not lifetime bounds
 
-parse_maybe_lifetime = `?` may only modify trait bounds, not lifetime bounds
+parse_modifier_lifetime = `{$sigil}` may only modify trait bounds, not lifetime bounds
+    .suggestion = remove the `{$sigil}`
 
 parse_parenthesized_lifetime = parenthesized lifetime bounds are not supported
     .suggestion = remove the parentheses

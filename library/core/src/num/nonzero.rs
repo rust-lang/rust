@@ -713,6 +713,32 @@ macro_rules! nonzero_signed_operations {
                     unsafe { $Uty::new_unchecked(self.get().unsigned_abs()) }
                 }
 
+                /// Returns `true` if `self` is positive and `false` if the
+                /// number is negative.
+                ///
+                /// # Example
+                ///
+                /// ```
+                /// #![feature(nonzero_negation_ops)]
+                ///
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
+                #[doc = concat!("let pos_five = ", stringify!($Ty), "::new(5)?;")]
+                #[doc = concat!("let neg_five = ", stringify!($Ty), "::new(-5)?;")]
+                ///
+                /// assert!(pos_five.is_positive());
+                /// assert!(!neg_five.is_positive());
+                /// # Some(())
+                /// # }
+                /// ```
+                #[must_use]
+                #[inline]
+                #[unstable(feature = "nonzero_negation_ops", issue = "102443")]
+                pub const fn is_positive(self) -> bool {
+                    self.get().is_positive()
+                }
+
                 /// Returns `true` if `self` is negative and `false` if the
                 /// number is positive.
                 ///

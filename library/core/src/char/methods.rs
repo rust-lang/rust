@@ -1,5 +1,6 @@
 //! impl char {}
 
+use crate::ascii;
 use crate::slice;
 use crate::str::from_utf8_unchecked_mut;
 use crate::unicode::printable::is_printable;
@@ -1099,6 +1100,24 @@ impl char {
     #[inline]
     pub const fn is_ascii(&self) -> bool {
         *self as u32 <= 0x7F
+    }
+
+    /// Returns `Some` if the value is within the ASCII range,
+    /// or `None` if it's not.
+    ///
+    /// This is preferred to [`Self::is_ascii`] when you're passing the value
+    /// along to something else that can take [`ascii::Char`] rather than
+    /// needing to check again for itself whether the value is in ASCII.
+    #[must_use]
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[inline]
+    pub const fn as_ascii(&self) -> Option<ascii::Char> {
+        if self.is_ascii() {
+            // SAFETY: Just checked that this is ASCII.
+            Some(unsafe { ascii::Char::from_u8_unchecked(*self as u8) })
+        } else {
+            None
+        }
     }
 
     /// Makes a copy of the value in its ASCII upper case equivalent.

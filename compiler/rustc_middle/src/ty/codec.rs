@@ -506,23 +506,18 @@ macro_rules! implement_ty_decoder {
 
             impl<$($typaram ),*> Decoder for $DecoderName<$($typaram),*> {
                 $crate::__impl_decoder_methods! {
+                    read_usize -> usize;
                     read_u128 -> u128;
                     read_u64 -> u64;
                     read_u32 -> u32;
                     read_u16 -> u16;
                     read_u8 -> u8;
-                    read_usize -> usize;
 
+                    read_isize -> isize;
                     read_i128 -> i128;
                     read_i64 -> i64;
                     read_i32 -> i32;
                     read_i16 -> i16;
-                    read_i8 -> i8;
-                    read_isize -> isize;
-
-                    read_bool -> bool;
-                    read_char -> char;
-                    read_str -> &str;
                 }
 
                 #[inline]
@@ -531,13 +526,13 @@ macro_rules! implement_ty_decoder {
                 }
 
                 #[inline]
-                fn position(&self) -> usize {
-                    self.opaque.position()
+                fn peek_byte(&self) -> u8 {
+                    self.opaque.peek_byte()
                 }
 
                 #[inline]
-                fn peek_byte(&self) -> u8 {
-                    self.opaque.peek_byte()
+                fn position(&self) -> usize {
+                    self.opaque.position()
                 }
             }
         }

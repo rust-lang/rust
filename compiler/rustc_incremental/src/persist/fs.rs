@@ -346,7 +346,7 @@ pub fn finalize_session_directory(sess: &Session, svh: Option<Svh>) {
     let mut new_sub_dir_name = String::from(&old_sub_dir_name[..=dash_indices[2]]);
 
     // Append the svh
-    base_n::push_str(svh.as_u64() as u128, INT_ENCODE_BASE, &mut new_sub_dir_name);
+    base_n::push_str(svh.as_u128(), INT_ENCODE_BASE, &mut new_sub_dir_name);
 
     // Create the full path
     let new_path = incr_comp_session_dir.parent().unwrap().join(new_sub_dir_name);

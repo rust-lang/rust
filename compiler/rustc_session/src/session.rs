@@ -766,8 +766,28 @@ impl Session {
         self.opts.unstable_opts.sanitizer.contains(SanitizerSet::CFI)
     }
 
+    pub fn is_sanitizer_cfi_canonical_jump_tables_disabled(&self) -> bool {
+        self.opts.unstable_opts.sanitizer_cfi_canonical_jump_tables == Some(false)
+    }
+
+    pub fn is_sanitizer_cfi_canonical_jump_tables_enabled(&self) -> bool {
+        self.opts.unstable_opts.sanitizer_cfi_canonical_jump_tables == Some(true)
+    }
+
+    pub fn is_sanitizer_cfi_generalize_pointers_enabled(&self) -> bool {
+        self.opts.unstable_opts.sanitizer_cfi_generalize_pointers == Some(true)
+    }
+
+    pub fn is_sanitizer_cfi_normalize_integers_enabled(&self) -> bool {
+        self.opts.unstable_opts.sanitizer_cfi_normalize_integers == Some(true)
+    }
+
     pub fn is_sanitizer_kcfi_enabled(&self) -> bool {
         self.opts.unstable_opts.sanitizer.contains(SanitizerSet::KCFI)
+    }
+
+    pub fn is_split_lto_unit_enabled(&self) -> bool {
+        self.opts.unstable_opts.split_lto_unit == Some(true)
     }
 
     /// Check whether this compile session and crate type use static crt.
@@ -1582,22 +1602,58 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         sess.emit_err(errors::CannotEnableCrtStaticLinux);
     }
 
-    // LLVM CFI and VFE both require LTO.
-    if sess.lto() != config::Lto::Fat {
-        if sess.is_sanitizer_cfi_enabled() {
-            sess.emit_err(errors::SanitizerCfiEnabled);
-        }
-        if sess.opts.unstable_opts.virtual_function_elimination {
-            sess.emit_err(errors::UnstableVirtualFunctionElimination);
-        }
+    // LLVM CFI requires LTO.
+    if sess.is_sanitizer_cfi_enabled()
+        && !(sess.lto() == config::Lto::Fat
+            || sess.lto() == config::Lto::Thin
+            || sess.opts.cg.linker_plugin_lto.enabled())
+    {
+        sess.emit_err(errors::SanitizerCfiRequiresLto);
     }
 
-    // LLVM CFI and KCFI are mutually exclusive
+    // LLVM CFI is incompatible with LLVM KCFI.
     if sess.is_sanitizer_cfi_enabled() && sess.is_sanitizer_kcfi_enabled() {
         sess.emit_err(errors::CannotMixAndMatchSanitizers {
             first: "cfi".to_string(),
             second: "kcfi".to_string(),
         });
+    }
+
+    // Canonical jump tables requires CFI.
+    if sess.is_sanitizer_cfi_canonical_jump_tables_disabled() {
+        if !sess.is_sanitizer_cfi_enabled() {
+            sess.emit_err(errors::SanitizerCfiCanonicalJumpTablesRequiresCfi);
+        }
+    }
+
+    // LLVM CFI pointer generalization requires CFI or KCFI.
+    if sess.is_sanitizer_cfi_generalize_pointers_enabled() {
+        if !(sess.is_sanitizer_cfi_enabled() || sess.is_sanitizer_kcfi_enabled()) {
+            sess.emit_err(errors::SanitizerCfiGeneralizePointersRequiresCfi);
+        }
+    }
+
+    // LLVM CFI integer normalization requires CFI or KCFI.
+    if sess.is_sanitizer_cfi_normalize_integers_enabled() {
+        if !(sess.is_sanitizer_cfi_enabled() || sess.is_sanitizer_kcfi_enabled()) {
+            sess.emit_err(errors::SanitizerCfiNormalizeIntegersRequiresCfi);
+        }
+    }
+
+    // LTO unit splitting requires LTO.
+    if sess.is_split_lto_unit_enabled()
+        && !(sess.lto() == config::Lto::Fat
+            || sess.lto() == config::Lto::Thin
+            || sess.opts.cg.linker_plugin_lto.enabled())
+    {
+        sess.emit_err(errors::SplitLtoUnitRequiresLto);
+    }
+
+    // VFE requires LTO.
+    if sess.lto() != config::Lto::Fat {
+        if sess.opts.unstable_opts.virtual_function_elimination {
+            sess.emit_err(errors::UnstableVirtualFunctionElimination);
+        }
     }
 
     if sess.opts.unstable_opts.stack_protector != StackProtector::None {

@@ -316,7 +316,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.var_for_def(cause.span, param)
         });
 
-        let trait_ref = self.tcx.mk_trait_ref(trait_def_id, substs);
+        let trait_ref = ty::TraitRef::new(self.tcx, trait_def_id, substs);
 
         // Construct an obligation
         let poly_trait_ref = ty::Binder::dummy(trait_ref);

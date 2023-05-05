@@ -368,9 +368,8 @@ impl Linker {
         }
 
         if sess.opts.unstable_opts.no_link {
-            let encoded = CodegenResults::serialize_rlink(&codegen_results);
             let rlink_file = self.prepare_outputs.with_extension(config::RLINK_EXT);
-            std::fs::write(&rlink_file, encoded)
+            CodegenResults::serialize_rlink(&rlink_file, &codegen_results)
                 .map_err(|error| sess.emit_fatal(FailedWritingFile { path: &rlink_file, error }))?;
             return Ok(());
         }
