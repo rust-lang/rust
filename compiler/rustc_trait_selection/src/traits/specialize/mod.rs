@@ -99,14 +99,13 @@ pub fn translate_substs<'tcx>(
                 return source_substs;
             }
 
-            fulfill_implication(infcx, param_env, source_trait_ref, target_impl).unwrap_or_else(
-                |()| {
+            fulfill_implication(infcx, param_env, source_trait_ref, source_impl, target_impl)
+                .unwrap_or_else(|()| {
                     bug!(
                         "When translating substitutions from {source_impl:?} to {target_impl:?}, \
                         the expected specialization failed to hold"
                     )
-                },
-            )
+                })
         }
         specialization_graph::Node::Trait(..) => source_trait_ref.substs,
     };
@@ -153,20 +152,9 @@ pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId,
 
     // Create an infcx, taking the predicates of impl1 as assumptions:
     let infcx = tcx.infer_ctxt().build();
-    let impl1_trait_ref =
-        match traits::fully_normalize(&infcx, ObligationCause::dummy(), penv, impl1_trait_ref) {
-            Ok(impl1_trait_ref) => impl1_trait_ref,
-            Err(_errors) => {
-                tcx.sess.delay_span_bug(
-                    tcx.def_span(impl1_def_id),
-                    format!("failed to fully normalize {impl1_trait_ref}"),
-                );
-                impl1_trait_ref
-            }
-        };
 
     // Attempt to prove that impl2 applies, given all of the above.
-    fulfill_implication(&infcx, penv, impl1_trait_ref, impl2_def_id).is_ok()
+    fulfill_implication(&infcx, penv, impl1_trait_ref, impl1_def_id, impl2_def_id).is_ok()
 }
 
 /// Attempt to fulfill all obligations of `target_impl` after unification with
@@ -178,12 +166,29 @@ fn fulfill_implication<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     source_trait_ref: ty::TraitRef<'tcx>,
+    source_impl: DefId,
     target_impl: DefId,
 ) -> Result<SubstsRef<'tcx>, ()> {
     debug!(
         "fulfill_implication({:?}, trait_ref={:?} |- {:?} applies)",
         param_env, source_trait_ref, target_impl
     );
+
+    let source_trait_ref = match traits::fully_normalize(
+        &infcx,
+        ObligationCause::dummy(),
+        param_env,
+        source_trait_ref,
+    ) {
+        Ok(source_trait_ref) => source_trait_ref,
+        Err(_errors) => {
+            infcx.tcx.sess.delay_span_bug(
+                infcx.tcx.def_span(source_impl),
+                format!("failed to fully normalize {source_trait_ref}"),
+            );
+            source_trait_ref
+        }
+    };
 
     let source_trait = ImplSubject::Trait(source_trait_ref);
 
@@ -194,7 +199,7 @@ fn fulfill_implication<'tcx>(
 
     // do the impls unify? If not, no specialization.
     let Ok(InferOk { obligations: more_obligations, .. }) =
-        infcx.at(&ObligationCause::dummy(), param_env, ).eq(DefineOpaqueTypes::No,source_trait, target_trait)
+        infcx.at(&ObligationCause::dummy(), param_env).eq(DefineOpaqueTypes::No, source_trait, target_trait)
     else {
         debug!(
             "fulfill_implication: {:?} does not unify with {:?}",
