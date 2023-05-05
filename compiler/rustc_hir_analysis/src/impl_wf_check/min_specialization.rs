@@ -80,7 +80,7 @@ use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
-use rustc_trait_selection::traits::{self, translate_substs, wf, ObligationCtxt};
+use rustc_trait_selection::traits::{self, translate_substs_with_cause, wf, ObligationCtxt};
 
 pub(super) fn check_min_specialization(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) {
     if let Some(node) = parent_specialization_node(tcx, impl_def_id) {
@@ -180,8 +180,21 @@ fn get_impl_substs(
         ocx.assumed_wf_types(param_env, tcx.def_span(impl1_def_id), impl1_def_id);
 
     let impl1_substs = InternalSubsts::identity_for_item(tcx, impl1_def_id);
-    let impl2_substs =
-        translate_substs(infcx, param_env, impl1_def_id.to_def_id(), impl1_substs, impl2_node);
+    let impl1_span = tcx.def_span(impl1_def_id);
+    let impl2_substs = translate_substs_with_cause(
+        infcx,
+        param_env,
+        impl1_def_id.to_def_id(),
+        impl1_substs,
+        impl2_node,
+        |_, span| {
+            traits::ObligationCause::new(
+                impl1_span,
+                impl1_def_id,
+                traits::ObligationCauseCode::BindingObligation(impl2_node.def_id(), span),
+            )
+        },
+    );
 
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {

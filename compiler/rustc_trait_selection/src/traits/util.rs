@@ -197,6 +197,7 @@ pub fn impl_subject_and_oblig<'a, 'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     impl_def_id: DefId,
     impl_substs: SubstsRef<'tcx>,
+    cause: impl Fn(usize, Span) -> ObligationCause<'tcx>,
 ) -> (ImplSubject<'tcx>, impl Iterator<Item = PredicateObligation<'tcx>>) {
     let subject = selcx.tcx().impl_subject(impl_def_id);
     let subject = subject.subst(selcx.tcx(), impl_substs);
@@ -208,8 +209,7 @@ pub fn impl_subject_and_oblig<'a, 'tcx>(
     let predicates = predicates.instantiate(selcx.tcx(), impl_substs);
     let InferOk { value: predicates, obligations: normalization_obligations2 } =
         selcx.infcx.at(&ObligationCause::dummy(), param_env).normalize(predicates);
-    let impl_obligations =
-        super::predicates_for_generics(|_, _| ObligationCause::dummy(), param_env, predicates);
+    let impl_obligations = super::predicates_for_generics(cause, param_env, predicates);
 
     let impl_obligations = impl_obligations
         .chain(normalization_obligations1.into_iter())
