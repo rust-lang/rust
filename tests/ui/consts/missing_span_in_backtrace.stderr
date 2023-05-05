@@ -5,7 +5,7 @@ error[E0080]: evaluation of constant value failed
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
-note: inside `std::ptr::read::<MaybeUninit<MaybeUninit<u8>>>`
+note: inside `ptr::read_mut::<MaybeUninit<MaybeUninit<u8>>>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `mem::swap_simple::<MaybeUninit<MaybeUninit<u8>>>`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL

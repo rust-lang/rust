@@ -909,11 +909,12 @@ pub fn take<T: Default>(dest: &mut T) -> T {
 #[rustc_const_unstable(feature = "const_replace", issue = "83164")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "mem_replace")]
 pub const fn replace<T>(dest: &mut T, src: T) -> T {
+    let dest: *mut T = dest;
     // SAFETY: We read from `dest` but directly write `src` into it afterwards,
     // such that the old value is not duplicated. Nothing is dropped and
     // nothing here can panic.
     unsafe {
-        let result = ptr::read(dest);
+        let result = ptr::read_mut(dest);
         ptr::write(dest, src);
         result
     }

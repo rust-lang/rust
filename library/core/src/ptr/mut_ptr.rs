@@ -1312,8 +1312,8 @@ impl<T: ?Sized> *mut T {
     where
         T: Sized,
     {
-        // SAFETY: the caller must uphold the safety contract for ``.
-        unsafe { read(self) }
+        // SAFETY: the caller must uphold the safety contract for `read_mut`.
+        unsafe { read_mut(self) }
     }
 
     /// Performs a volatile read of the value from `self` without moving it. This

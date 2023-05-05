@@ -1,0 +1,25 @@
+- // MIR for `read_via_copy_mut` before LowerIntrinsics
++ // MIR for `read_via_copy_mut` after LowerIntrinsics
+  
+  fn read_via_copy_mut(_1: *mut i64) -> i64 {
+      debug r => _1;                       // in scope 0 at $DIR/lower_intrinsics.rs:+0:33: +0:34
+      let mut _0: i64;                     // return place in scope 0 at $DIR/lower_intrinsics.rs:+0:49: +0:52
+      let mut _2: *mut i64;                // in scope 0 at $DIR/lower_intrinsics.rs:+1:37: +1:38
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/lower_intrinsics.rs:+1:37: +1:38
+          _2 = _1;                         // scope 0 at $DIR/lower_intrinsics.rs:+1:37: +1:38
+-         _0 = read_via_copy::<*mut i64, i64>(move _2) -> [return: bb1, unwind unreachable]; // scope 0 at $DIR/lower_intrinsics.rs:+1:5: +1:39
+-                                          // mir::Constant
+-                                          // + span: $DIR/lower_intrinsics.rs:129:5: 129:36
+-                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(*mut i64) -> i64 {read_via_copy::<*mut i64, i64>}, val: Value(<ZST>) }
++         _0 = (*_2);                      // scope 0 at $DIR/lower_intrinsics.rs:+1:5: +1:39
++         goto -> bb1;                     // scope 0 at $DIR/lower_intrinsics.rs:+1:5: +1:39
+      }
+  
+      bb1: {
+          StorageDead(_2);                 // scope 0 at $DIR/lower_intrinsics.rs:+1:38: +1:39
+          return;                          // scope 0 at $DIR/lower_intrinsics.rs:+2:2: +2:2
+      }
+  }
+  

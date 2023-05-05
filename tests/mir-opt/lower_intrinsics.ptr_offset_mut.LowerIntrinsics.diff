@@ -1,0 +1,30 @@
+- // MIR for `ptr_offset_mut` before LowerIntrinsics
++ // MIR for `ptr_offset_mut` after LowerIntrinsics
+  
+  fn ptr_offset_mut(_1: *mut i32, _2: usize) -> *mut i32 {
+      debug p => _1;                       // in scope 0 at $DIR/lower_intrinsics.rs:+0:30: +0:31
+      debug d => _2;                       // in scope 0 at $DIR/lower_intrinsics.rs:+0:43: +0:44
+      let mut _0: *mut i32;                // return place in scope 0 at $DIR/lower_intrinsics.rs:+0:56: +0:64
+      let mut _3: *mut i32;                // in scope 0 at $DIR/lower_intrinsics.rs:+1:30: +1:31
+      let mut _4: usize;                   // in scope 0 at $DIR/lower_intrinsics.rs:+1:33: +1:34
+  
+      bb0: {
+          StorageLive(_3);                 // scope 0 at $DIR/lower_intrinsics.rs:+1:30: +1:31
+          _3 = _1;                         // scope 0 at $DIR/lower_intrinsics.rs:+1:30: +1:31
+          StorageLive(_4);                 // scope 0 at $DIR/lower_intrinsics.rs:+1:33: +1:34
+          _4 = _2;                         // scope 0 at $DIR/lower_intrinsics.rs:+1:33: +1:34
+-         _0 = offset::<*mut i32, usize>(move _3, move _4) -> [return: bb1, unwind unreachable]; // scope 0 at $DIR/lower_intrinsics.rs:+1:5: +1:35
+-                                          // mir::Constant
+-                                          // + span: $DIR/lower_intrinsics.rs:154:5: 154:29
+-                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(*mut i32, usize) -> *mut i32 {offset::<*mut i32, usize>}, val: Value(<ZST>) }
++         _0 = Offset(move _3, move _4);   // scope 0 at $DIR/lower_intrinsics.rs:+1:5: +1:35
++         goto -> bb1;                     // scope 0 at $DIR/lower_intrinsics.rs:+1:5: +1:35
+      }
+  
+      bb1: {
+          StorageDead(_4);                 // scope 0 at $DIR/lower_intrinsics.rs:+1:34: +1:35
+          StorageDead(_3);                 // scope 0 at $DIR/lower_intrinsics.rs:+1:34: +1:35
+          return;                          // scope 0 at $DIR/lower_intrinsics.rs:+2:2: +2:2
+      }
+  }
+  

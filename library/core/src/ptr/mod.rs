@@ -1168,7 +1168,23 @@ pub const unsafe fn read<T>(src: *const T) -> T {
             "ptr::read requires that the pointer argument is aligned and non-null",
             [T](src: *const T) => is_aligned_and_not_null(src)
         );
-        crate::intrinsics::read_via_copy(src)
+        intrinsics::read_via_copy(src)
+    }
+}
+
+/// Like [`read`], but on `*mut` to avoid a `&raw const*`.
+///
+/// # Safety
+///
+/// Same as [`read`].
+pub(crate) const unsafe fn read_mut<T>(src: *mut T) -> T {
+    // SAFETY: see `read` above
+    unsafe {
+        assert_unsafe_precondition!(
+            "ptr::read requires that the pointer argument is aligned and non-null",
+            [T](src: *mut T) => is_aligned_and_not_null(src)
+        );
+        intrinsics::read_via_copy(src)
     }
 }
 

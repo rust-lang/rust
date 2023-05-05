@@ -54,8 +54,9 @@
 )]
 #![allow(missing_docs)]
 
-use crate::marker::DiscriminantKind;
-use crate::marker::Tuple;
+#[cfg(not(bootstrap))]
+use crate::marker::PointerLike;
+use crate::marker::{DiscriminantKind, Tuple};
 use crate::mem;
 
 pub mod mir;
@@ -1429,7 +1430,7 @@ extern "rust-intrinsic" {
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[rustc_nounwind]
-    pub fn offset<Ptr, Delta>(dst: Ptr, offset: Delta) -> Ptr;
+    pub fn offset<Ptr: PointerLike, Delta>(dst: Ptr, offset: Delta) -> Ptr;
 
     /// The bootstrap version of this is more restricted.
     #[cfg(bootstrap)]
@@ -2257,9 +2258,21 @@ extern "rust-intrinsic" {
     /// This is an implementation detail of [`crate::ptr::read`] and should
     /// not be used anywhere else.  See its comments for why this exists.
     ///
-    /// This intrinsic can *only* be called where the pointer is a local without
+    /// `Ptr` must be some kind of pointer to `T`.
+    ///
+    /// This intrinsic can *only* be called where the `ptr` is a local without
     /// projections (`read_via_copy(ptr)`, not `read_via_copy(*ptr)`) so that it
     /// trivially obeys runtime-MIR rules about derefs in operands.
+    ///
+    /// Not meeting the above requirements may arbitrarily misbehave, and
+    /// per MCP#620 that's *not* a compiler bug.
+    #[cfg(not(bootstrap))]
+    #[rustc_const_unstable(feature = "const_ptr_read", issue = "80377")]
+    #[rustc_nounwind]
+    pub fn read_via_copy<Ptr: PointerLike, T>(ptr: Ptr) -> T;
+
+    /// The bootstrap version of this intrinsic is more limited.
+    #[cfg(bootstrap)]
     #[rustc_const_unstable(feature = "const_ptr_read", issue = "80377")]
     #[rustc_nounwind]
     pub fn read_via_copy<T>(ptr: *const T) -> T;

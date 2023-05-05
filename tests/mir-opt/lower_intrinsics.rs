@@ -124,6 +124,11 @@ pub fn read_via_copy_uninhabited(r: &Never) -> Never {
     unsafe { core::intrinsics::read_via_copy(r) }
 }
 
+// EMIT_MIR lower_intrinsics.read_via_copy_mut.LowerIntrinsics.diff
+pub unsafe fn read_via_copy_mut(r: *mut i64) -> i64 {
+    core::intrinsics::read_via_copy(r)
+}
+
 // EMIT_MIR lower_intrinsics.write_via_move_string.LowerIntrinsics.diff
 pub fn write_via_move_string(r: &mut String, v: String) {
     unsafe { core::intrinsics::write_via_move(r, v) }
@@ -141,5 +146,10 @@ pub fn option_payload(o: &Option<usize>, p: &Option<String>) {
 
 // EMIT_MIR lower_intrinsics.ptr_offset.LowerIntrinsics.diff
 pub unsafe fn ptr_offset(p: *const i32, d: isize) -> *const i32 {
+    core::intrinsics::offset(p, d)
+}
+
+// EMIT_MIR lower_intrinsics.ptr_offset_mut.LowerIntrinsics.diff
+pub unsafe fn ptr_offset_mut(p: *mut i32, d: usize) -> *mut i32 {
     core::intrinsics::offset(p, d)
 }
