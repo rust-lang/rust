@@ -22,10 +22,8 @@ fn main() {
     })
     .into_raw_handle() as usize;
 
-    let waiter = move || {
-        unsafe {
-            assert_eq!(WaitForSingleObject(blocker, INFINITE), 0);
-        }
+    let waiter = move || unsafe {
+        assert_eq!(WaitForSingleObject(blocker, INFINITE), 0);
     };
 
     let waiter1 = thread::spawn(waiter);
