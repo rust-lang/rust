@@ -1,5 +1,4 @@
 use rustc_data_structures::unord::{UnordItems, UnordSet};
-use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -14,6 +13,8 @@ use rustc_session::lint::builtin::{UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
 use rustc_session::lint::Level;
 
 use std::ops::Bound;
+
+use crate::errors;
 
 pub struct UnsafetyChecker<'a, 'tcx> {
     body: &'a Body<'tcx>,
@@ -509,21 +510,12 @@ fn unsafety_check_result(tcx: TyCtxt<'_>, def: LocalDefId) -> &UnsafetyCheckResu
 
 fn report_unused_unsafe(tcx: TyCtxt<'_>, kind: UnusedUnsafe, id: HirId) {
     let span = tcx.sess.source_map().guess_head_span(tcx.hir().span(id));
-    let msg = "unnecessary `unsafe` block";
-    tcx.struct_span_lint_hir(UNUSED_UNSAFE, id, span, msg, |lint| {
-        lint.span_label(span, msg);
-        match kind {
-            UnusedUnsafe::Unused => {}
-            UnusedUnsafe::InUnsafeBlock(id) => {
-                lint.span_label(
-                    tcx.sess.source_map().guess_head_span(tcx.hir().span(id)),
-                    "because it's nested under this `unsafe` block",
-                );
-            }
-        }
-
-        lint
-    });
+    let nested_parent = if let UnusedUnsafe::InUnsafeBlock(id) = kind {
+        Some(tcx.sess.source_map().guess_head_span(tcx.hir().span(id)))
+    } else {
+        None
+    };
+    tcx.emit_spanned_lint(UNUSED_UNSAFE, id, span, errors::UnusedUnsafe { span, nested_parent });
 }
 
 pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
@@ -537,26 +529,11 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let UnsafetyCheckResult { violations, unused_unsafes, .. } = tcx.unsafety_check_result(def_id);
 
     for &UnsafetyViolation { source_info, lint_root, kind, details } in violations.iter() {
-        let (description, note) = details.description_and_note();
+        let details = errors::RequiresUnsafeDetail { violation: details, span: source_info.span };
 
         match kind {
             UnsafetyViolationKind::General => {
-                // once
-                let unsafe_fn_msg = if unsafe_op_in_unsafe_fn_allowed(tcx, lint_root) {
-                    " function or"
-                } else {
-                    ""
-                };
-
-                let mut err = struct_span_err!(
-                    tcx.sess,
-                    source_info.span,
-                    E0133,
-                    "{} is unsafe and requires unsafe{} block",
-                    description,
-                    unsafe_fn_msg,
-                );
-                err.span_label(source_info.span, description).note(note);
+                let op_in_unsafe_fn_allowed = unsafe_op_in_unsafe_fn_allowed(tcx, lint_root);
                 let note_non_inherited = tcx.hir().parent_iter(lint_root).find(|(id, node)| {
                     if let Node::Expr(block) = node
                         && let ExprKind::Block(block, _) = block.kind
@@ -572,22 +549,23 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                         false
                     }
                 });
-                if let Some((id, _)) = note_non_inherited {
-                    let span = tcx.hir().span(id);
-                    err.span_label(
-                        tcx.sess.source_map().guess_head_span(span),
-                        "items do not inherit unsafety from separate enclosing items",
-                    );
-                }
-
-                err.emit();
+                let enclosing = if let Some((id, _)) = note_non_inherited {
+                    Some(tcx.sess.source_map().guess_head_span(tcx.hir().span(id)))
+                } else {
+                    None
+                };
+                tcx.sess.emit_err(errors::RequiresUnsafe {
+                    span: source_info.span,
+                    enclosing,
+                    details,
+                    op_in_unsafe_fn_allowed,
+                });
             }
-            UnsafetyViolationKind::UnsafeFn => tcx.struct_span_lint_hir(
+            UnsafetyViolationKind::UnsafeFn => tcx.emit_spanned_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
                 lint_root,
                 source_info.span,
-                format!("{} is unsafe and requires unsafe block (error E0133)", description,),
-                |lint| lint.span_label(source_info.span, description).note(note),
+                errors::UnsafeOpInUnsafeFn { details },
             ),
         }
     }

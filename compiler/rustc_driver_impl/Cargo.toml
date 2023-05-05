@@ -51,6 +51,7 @@ rustc_interface = { path = "../rustc_interface" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_span = { path = "../rustc_span" }
 rustc_hir_analysis = { path = "../rustc_hir_analysis" }
+rustc_mir_transform = { path = "../rustc_mir_transform" }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
@@ -64,5 +65,8 @@ features = [
 [features]
 llvm = ['rustc_interface/llvm']
 max_level_info = ['rustc_log/max_level_info']
-rustc_use_parallel_compiler = ['rustc_data_structures/rustc_use_parallel_compiler', 'rustc_interface/rustc_use_parallel_compiler',
-    'rustc_middle/rustc_use_parallel_compiler']
+rustc_use_parallel_compiler = [
+    'rustc_data_structures/rustc_use_parallel_compiler',
+    'rustc_interface/rustc_use_parallel_compiler',
+    'rustc_middle/rustc_use_parallel_compiler'
+]
