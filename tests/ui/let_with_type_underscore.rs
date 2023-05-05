@@ -12,7 +12,7 @@ fn main() {
     let _: _ = 2;
     let x: _ = func();
 
-    let x = 1; // Will not lint, Rust inferres this to an integer before Clippy
+    let x = 1; // Will not lint, Rust infers this to an integer before Clippy
     let x = func();
     let x: Vec<_> = Vec::<u32>::new();
     let x: [_; 1] = [1];

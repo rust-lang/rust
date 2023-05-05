@@ -101,7 +101,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualLetElse {
                 if source != MatchSource::Normal {
                     return;
                 }
-                // Any other number than two arms doesn't (neccessarily)
+                // Any other number than two arms doesn't (necessarily)
                 // have a trivial mapping to let else.
                 if arms.len() != 2 {
                     return;

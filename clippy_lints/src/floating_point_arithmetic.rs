@@ -2,9 +2,10 @@ use clippy_utils::consts::{
     constant, constant_simple, Constant,
     Constant::{Int, F32, F64},
 };
-use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::higher;
-use clippy_utils::{eq_expr_value, get_parent_expr, in_constant, numeric_literal, peel_blocks, sugg};
+use clippy_utils::{
+    diagnostics::span_lint_and_sugg, eq_expr_value, get_parent_expr, higher, in_constant, is_no_std_crate,
+    numeric_literal, peel_blocks, sugg,
+};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment, UnOp};
@@ -677,7 +678,7 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
             {
                 let mut proposal = format!("{}.to_degrees()", Sugg::hir(cx, mul_lhs, "..").maybe_par());
                 if_chain! {
-                    if let ExprKind::Lit(ref literal) = mul_lhs.kind;
+                    if let ExprKind::Lit(literal) = mul_lhs.kind;
                     if let ast::LitKind::Float(ref value, float_type) = literal.node;
                     if float_type == ast::LitFloatType::Unsuffixed;
                     then {
@@ -703,7 +704,7 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
             {
                 let mut proposal = format!("{}.to_radians()", Sugg::hir(cx, mul_lhs, "..").maybe_par());
                 if_chain! {
-                    if let ExprKind::Lit(ref literal) = mul_lhs.kind;
+                    if let ExprKind::Lit(literal) = mul_lhs.kind;
                     if let ast::LitKind::Float(ref value, float_type) = literal.node;
                     if float_type == ast::LitFloatType::Unsuffixed;
                     then {
@@ -730,7 +731,7 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
 
 impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        // All of these operations are currently not const.
+        // All of these operations are currently not const and are in std.
         if in_constant(cx, expr.hir_id) {
             return;
         }
@@ -738,7 +739,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
         if let ExprKind::MethodCall(path, receiver, args, _) = &expr.kind {
             let recv_ty = cx.typeck_results().expr_ty(receiver);
 
-            if recv_ty.is_floating_point() {
+            if recv_ty.is_floating_point() && !is_no_std_crate(cx) {
                 match path.ident.name.as_str() {
                     "ln" => check_ln1p(cx, expr, receiver),
                     "log" => check_log_base(cx, expr, receiver, args),
@@ -749,10 +750,12 @@ impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
                 }
             }
         } else {
-            check_expm1(cx, expr);
-            check_mul_add(cx, expr);
-            check_custom_abs(cx, expr);
-            check_log_division(cx, expr);
+            if !is_no_std_crate(cx) {
+                check_expm1(cx, expr);
+                check_mul_add(cx, expr);
+                check_custom_abs(cx, expr);
+                check_log_division(cx, expr);
+            }
             check_radians(cx, expr);
         }
     }

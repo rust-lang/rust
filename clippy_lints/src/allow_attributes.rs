@@ -2,7 +2,8 @@ use ast::AttrStyle;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use rustc_ast as ast;
 use rustc_errors::Applicability;
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
@@ -51,6 +52,7 @@ impl LateLintPass<'_> for AllowAttribute {
     // Separate each crate's features.
     fn check_attribute(&mut self, cx: &LateContext<'_>, attr: &ast::Attribute) {
         if_chain! {
+            if !in_external_macro(cx.sess(), attr.span);
             if cx.tcx.features().lint_reasons;
             if let AttrStyle::Outer = attr.style;
             if let Some(ident) = attr.ident();

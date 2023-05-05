@@ -338,7 +338,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
 
     #[allow(clippy::too_many_lines)]
     fn expr(&self, expr: &Binding<&hir::Expr<'_>>) {
-        if let Some(higher::While { condition, body }) = higher::While::hir(expr.value) {
+        if let Some(higher::While { condition, body, .. }) = higher::While::hir(expr.value) {
             bind!(self, condition, body);
             chain!(
                 self,
@@ -566,7 +566,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             ExprKind::OffsetOf(container, ref fields) => {
                 bind!(self, container, fields);
                 kind!("OffsetOf({container}, {fields})");
-            }
+            },
             ExprKind::Struct(qpath, fields, base) => {
                 bind!(self, qpath, fields);
                 opt_bind!(self, base);

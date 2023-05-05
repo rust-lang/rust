@@ -162,7 +162,7 @@ impl<'a> Sugg<'a> {
                 get_snippet(lhs.span),
                 get_snippet(rhs.span),
             ),
-            hir::ExprKind::Cast(lhs, ty) => Sugg::BinOp(AssocOp::As, get_snippet(lhs.span), get_snippet(ty.span)),
+            hir::ExprKind::Cast(lhs, ty) |
             //FIXME(chenyukang), remove this after type ascription is removed from AST
             hir::ExprKind::Type(lhs, ty) => Sugg::BinOp(AssocOp::As, get_snippet(lhs.span), get_snippet(ty.span)),
         }
@@ -254,11 +254,7 @@ impl<'a> Sugg<'a> {
                 snippet_with_context(cx, lhs.span, ctxt, default, app).0,
                 snippet_with_context(cx, rhs.span, ctxt, default, app).0,
             ),
-            ast::ExprKind::Cast(ref lhs, ref ty) => Sugg::BinOp(
-                AssocOp::As,
-                snippet_with_context(cx, lhs.span, ctxt, default, app).0,
-                snippet_with_context(cx, ty.span, ctxt, default, app).0,
-            ),
+            ast::ExprKind::Cast(ref lhs, ref ty) |
             //FIXME(chenyukang), remove this after type ascription is removed from AST
             ast::ExprKind::Type(ref lhs, ref ty) => Sugg::BinOp(
                 AssocOp::As,
@@ -603,8 +599,8 @@ enum Associativity {
 #[must_use]
 fn associativity(op: AssocOp) -> Associativity {
     use rustc_ast::util::parser::AssocOp::{
-        Add, As, Assign, AssignOp, BitAnd, BitOr, BitXor, Divide, DotDot, DotDotEq, Equal, Greater,
-        GreaterEqual, LAnd, LOr, Less, LessEqual, Modulus, Multiply, NotEqual, ShiftLeft, ShiftRight, Subtract,
+        Add, As, Assign, AssignOp, BitAnd, BitOr, BitXor, Divide, DotDot, DotDotEq, Equal, Greater, GreaterEqual, LAnd,
+        LOr, Less, LessEqual, Modulus, Multiply, NotEqual, ShiftLeft, ShiftRight, Subtract,
     };
 
     match op {

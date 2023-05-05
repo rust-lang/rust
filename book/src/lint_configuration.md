@@ -13,6 +13,8 @@ Please use that command to update the file and do not edit it by hand.
 | [msrv](#msrv) | `None` |
 | [cognitive-complexity-threshold](#cognitive-complexity-threshold) | `25` |
 | [disallowed-names](#disallowed-names) | `["foo", "baz", "quux"]` |
+| [semicolon-inside-block-ignore-singleline](#semicolon-inside-block-ignore-singleline) | `false` |
+| [semicolon-outside-block-ignore-multiline](#semicolon-outside-block-ignore-multiline) | `false` |
 | [doc-valid-idents](#doc-valid-idents) | `["KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "DirectX", "ECMAScript", "GPLv2", "GPLv3", "GitHub", "GitLab", "IPv4", "IPv6", "ClojureScript", "CoffeeScript", "JavaScript", "PureScript", "TypeScript", "NaN", "NaNs", "OAuth", "GraphQL", "OCaml", "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap", "OpenDNS", "WebGL", "TensorFlow", "TrueType", "iOS", "macOS", "FreeBSD", "TeX", "LaTeX", "BibTeX", "BibLaTeX", "MinGW", "CamelCase"]` |
 | [too-many-arguments-threshold](#too-many-arguments-threshold) | `7` |
 | [type-complexity-threshold](#type-complexity-threshold) | `250` |
@@ -201,6 +203,22 @@ default configuration of Clippy. By default, any configuration will replace the 
 **Default Value:** `["foo", "baz", "quux"]` (`Vec<String>`)
 
 * [disallowed_names](https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_names)
+
+
+### semicolon-inside-block-ignore-singleline
+Whether to lint only if it's multiline.
+
+**Default Value:** `false` (`bool`)
+
+* [semicolon_inside_block](https://rust-lang.github.io/rust-clippy/master/index.html#semicolon_inside_block)
+
+
+### semicolon-outside-block-ignore-multiline
+Whether to lint only if it's singleline.
+
+**Default Value:** `false` (`bool`)
+
+* [semicolon_outside_block](https://rust-lang.github.io/rust-clippy/master/index.html#semicolon_outside_block)
 
 
 ### doc-valid-idents
